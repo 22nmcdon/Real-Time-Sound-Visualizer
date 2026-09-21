@@ -306,6 +306,29 @@ QLabel[weight="chip"] {{
 QLabel[weight="chip"][state="ready"] {{ color: {gold}; border-color: {gold}; }}
 QLabel[weight="chip"][state="failed"] {{ color: {rust}; border-color: {rust}; }}
 
+/* A scrollbar is a rule with a dot on it, the same way a slider is - it is
+   the one piece of Qt chrome the house cannot restyle out of existence, so
+   it is restyled into the furniture instead. */
+QScrollArea {{ background: transparent; border: none; }}
+QScrollBar:vertical {{
+    background: transparent;
+    width: 6px;
+    margin: 0;
+}}
+QScrollBar::handle:vertical {{
+    background: {line};
+    border-radius: 3px;
+    min-height: 26px;
+}}
+QScrollBar::handle:vertical:hover {{ background: {blush}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+    width: 0;
+}}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
+
 QToolTip {{
     background: {paper};
     color: {text};
@@ -335,7 +358,12 @@ class FocusVisible(QObject):
     )
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.FocusIn:
+        # Installed on the application, so everything Qt owns comes through
+        # here - the top-level `QWindow` and the style object among them, and
+        # neither has a style to repolish. Without the guard the first Tab
+        # raises inside an event filter, where Qt prints the traceback and
+        # carries on, so the only symptom is a focus ring that never appears.
+        if event.type() == QEvent.Type.FocusIn and isinstance(watched, QWidget):
             watched.setProperty(
                 "kbd", "true" if event.reason() in self._KEYBOARD else "false"
             )
@@ -359,8 +387,9 @@ def watch_focus(app) -> FocusVisible:
 # A box layout shares space out by stretch factor and has no idea what a
 # max-width is, so the middle of `wrap` has to out-vote the two margins by
 # enough that what it loses to them rounds away. Written 1/1/1 - which looks
-# like the obvious thing - it gives the content a third of the window.
-_FILL = 1_000_000
+# like the obvious thing - it gives the content a third of the window. Public
+# because the X-Y stage needs the same trick.
+FILL = 1_000_000
 
 
 def wrap(inner, gutter: int = GUTTER):
@@ -377,7 +406,7 @@ def wrap(inner, gutter: int = GUTTER):
     row = QHBoxLayout(holder)
     row.setContentsMargins(gutter, 0, gutter, 0)
     row.addStretch(1)
-    row.addWidget(inner, _FILL)
+    row.addWidget(inner, FILL)
     row.addStretch(1)
     return holder
 

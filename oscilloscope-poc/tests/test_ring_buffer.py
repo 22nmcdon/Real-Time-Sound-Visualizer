@@ -56,7 +56,16 @@ class RingBufferTest(unittest.TestCase):
 
     def test_reader_never_sees_a_torn_window(self):
         """Hammer the buffer from a writer thread; every window must be a
-        contiguous run of the ramp the writer is producing."""
+        contiguous run of the ramp the writer is producing.
+
+        The ramp wraps at 2**20, and that is load-bearing rather than tidy.
+        An unbounded counter passes through 2**24, past which float32 cannot
+        hold consecutive integers at all - neighbouring samples come back
+        equal, `diff == 1` fails, and the test reports tearing that never
+        happened. It passed for a long time only because the writer had not
+        got that far yet.
+        """
+        wrap = 1 << 20
         buffer = RingBuffer(8192)
         stop = threading.Event()
         failures = []
@@ -64,18 +73,28 @@ class RingBufferTest(unittest.TestCase):
         def writer():
             position = 0
             while not stop.is_set():
-                block = np.arange(position, position + 256, dtype=np.float32)
-                buffer.write(block)
-                position += 256
+                block = np.arange(position, position + 256) % wrap
+                buffer.write(block.astype(np.float32))
+                position = (position + 256) % wrap
 
         thread = threading.Thread(target=writer, daemon=True)
         thread.start()
         try:
             for _ in range(2000):
+                # Once the buffer has been round once there is no padding left
+                # in it, so the whole window is data. Filtering zeros out
+                # instead - the obvious way to skip the padding - also eats
+                # the legitimate zero the ramp passes through on every wrap,
+                # and then reports the gap it just made as tearing.
+                if buffer.frames_written < buffer.capacity:
+                    continue
+
                 window = buffer.read_latest(1024).ravel()
-                fresh = window[window != 0]
-                if fresh.size > 1 and not np.all(np.diff(fresh) == 1):
-                    failures.append(fresh)
+                steps = np.diff(window)
+
+                # One step of 1 everywhere, except where the ramp wraps.
+                if not np.all((steps == 1) | (steps == -(wrap - 1))):
+                    failures.append(window)
                     break
         finally:
             stop.set()

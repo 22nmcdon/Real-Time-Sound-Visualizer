@@ -33,7 +33,12 @@ def parse_args(argv=None) -> argparse.Namespace:
         default=None,
         help="capture rate in Hz (default: the device's preferred rate)",
     )
-    parser.add_argument("--channels", type=int, default=1, help="channels to capture")
+    parser.add_argument(
+        "--channels",
+        type=int,
+        default=1,
+        help="channels to capture; 2 turns on the second trace and X-Y",
+    )
     parser.add_argument(
         "--blocksize", type=int, default=DEFAULT_BLOCKSIZE, help="PortAudio block size"
     )
@@ -57,6 +62,18 @@ def parse_args(argv=None) -> argparse.Namespace:
         type=float,
         default=0.02,
         help="trigger noise rejection band (0 disables it)",
+    )
+    parser.add_argument(
+        "--position",
+        type=float,
+        default=0.0,
+        help="fraction of the window that sits before the edge (0-0.9)",
+    )
+    parser.add_argument(
+        "--holdoff-ms",
+        type=float,
+        default=0.0,
+        help="quiet interval an edge needs behind it to qualify",
     )
     parser.add_argument("--fps", type=int, default=60, help="target redraw rate")
     return parser.parse_args(argv)
@@ -99,6 +116,8 @@ def main(argv=None) -> int:
         trigger_level=args.trigger_level,
         trigger_edge=args.trigger_edge,
         hysteresis=args.hysteresis,
+        position=args.position,
+        holdoff_ms=args.holdoff_ms,
     )
 
     # Imported here so --list-devices works without a display attached.

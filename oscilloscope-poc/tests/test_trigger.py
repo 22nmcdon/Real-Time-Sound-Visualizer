@@ -221,3 +221,139 @@ class TriggerEngineTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PreTriggerTest(unittest.TestCase):
+    """The window can start before the edge, which is what pre-trigger is."""
+
+    samplerate = 44100
+
+    def source_with_tone(self, frequency=440, amplitude=0.6):
+        source = FakeSource(samplerate=self.samplerate, buffer_seconds=1.0)
+        source.start()
+        source.feed(sine(self.samplerate // 2, frequency, self.samplerate, amplitude))
+        return source
+
+    def test_position_puts_the_edge_inside_the_window(self):
+        source = self.source_with_tone()
+        engine = TriggerEngine(source, window_length=1024, trigger_level=0.0)
+
+        for position in (0.0, 0.25, 0.5, 0.9):
+            engine.position = position
+            result = engine.capture()
+
+            self.assertTrue(result.triggered, f"no trigger at position {position}")
+            self.assertEqual(result.samples.size, 1024)
+            self.assertEqual(result.pre, round(position * 1024))
+
+            # The sample at the trigger point is the one on the level; what
+            # sits before it is the run-up, which is the whole point.
+            self.assertAlmostEqual(float(result.samples[result.pre]), 0.0, delta=SAMPLE_STEP)
+
+    def test_the_run_up_is_real_signal_not_padding(self):
+        """Half a window before a rising zero crossing of a sine is the
+        negative half of the cycle, not silence."""
+        source = self.source_with_tone()
+        engine = TriggerEngine(source, window_length=512, trigger_level=0.0)
+        engine.position = 0.5
+        result = engine.capture()
+
+        before = result.samples[: result.pre]
+        self.assertGreater(before.size, 0)
+        self.assertLess(float(before.min()), -0.3, "the run-up is flat")
+
+    def test_holdoff_rejects_an_edge_with_one_close_behind_it(self):
+        """A wave that crosses the level twice a cycle should settle on the
+        crossing that opens the cycle once holdoff is wider than the gap."""
+        # Two rising zero crossings per 100-sample cycle: the big one that
+        # opens it, at sample 20, and the recovery from a mid-cycle dip, at
+        # sample 52.  The gap between them is 32 samples; the gap between a
+        # recovery and the next cycle's opening edge is 68.
+        cycle = np.concatenate([
+            np.linspace(-1, 1, 40),
+            np.linspace(1, -0.2, 10),
+            np.linspace(-0.2, 1, 10),
+            np.linspace(1, -1, 40),
+        ]).astype(np.float32)
+        signal = np.tile(cycle, 12)
+
+        loose = find_trigger_index(signal, 0.0, RISING, hysteresis=0.0, holdoff=0)
+        # Wider than 32 and narrower than 68: rejects the recovery, keeps the
+        # opening edge.
+        tight = find_trigger_index(signal, 0.0, RISING, hysteresis=0.0, holdoff=40)
+
+        self.assertEqual(loose, 1152, "the freshest edge is the little recovery")
+        self.assertEqual(tight, 1120, "holdoff should fall back to the cycle's own edge")
+
+    def test_holdoff_narrower_than_the_gap_rejects_nothing(self):
+        """Holdoff is a quiet interval, not a blanket delay: an edge with
+        enough silence behind it survives however busy the rest is."""
+        cycle = np.concatenate([
+            np.linspace(-1, 1, 40),
+            np.linspace(1, -0.2, 10),
+            np.linspace(-0.2, 1, 10),
+            np.linspace(1, -1, 40),
+        ]).astype(np.float32)
+        signal = np.tile(cycle, 12)
+
+        self.assertEqual(
+            find_trigger_index(signal, 0.0, RISING, hysteresis=0.0, holdoff=30),
+            find_trigger_index(signal, 0.0, RISING, hysteresis=0.0, holdoff=0),
+        )
+
+    def test_min_index_refuses_an_edge_with_no_room_behind_it(self):
+        signal = sine(2000, 50, 1000, amplitude=1.0)
+        early = find_trigger_index(signal, 0.0, RISING, hysteresis=0.0, max_index=400)
+        self.assertIsNotNone(early)
+        self.assertLessEqual(early, 400)
+
+        # Ask for room before it and the same search has to look further in.
+        later = find_trigger_index(
+            signal, 0.0, RISING, hysteresis=0.0, min_index=500, max_index=900
+        )
+        self.assertIsNotNone(later)
+        self.assertGreaterEqual(later, 500)
+
+
+class StereoTest(unittest.TestCase):
+    """Two channels, cut at one index, so they stay in step."""
+
+    samplerate = 44100
+
+    def test_both_channels_come_back_and_are_the_same_length(self):
+        source = FakeSource(samplerate=self.samplerate, channels=2, buffer_seconds=1.0)
+        source.start()
+
+        block = np.zeros((self.samplerate // 2, 2), dtype=np.float32)
+        block[:, 0] = sine(block.shape[0], 440, self.samplerate, 0.6)
+        block[:, 1] = sine(block.shape[0], 440, self.samplerate, 0.3)
+        source.feed(block)
+
+        engine = TriggerEngine(source, window_length=1024)
+        result = engine.capture()
+
+        self.assertEqual(len(result.channels), 2)
+        self.assertEqual(result.channels[0].size, result.channels[1].size)
+        # Same wave at half the level: the frames must be aligned in time,
+        # not merely the same length.
+        np.testing.assert_allclose(
+            result.channels[0], result.channels[1] * 2, atol=0.02
+        )
+
+    def test_the_trigger_source_chooses_which_channel_is_read(self):
+        source = FakeSource(samplerate=self.samplerate, channels=2, buffer_seconds=1.0)
+        source.start()
+
+        block = np.zeros((self.samplerate // 2, 2), dtype=np.float32)
+        block[:, 0] = 0.05 * np.random.default_rng(0).normal(size=block.shape[0])
+        block[:, 1] = sine(block.shape[0], 440, self.samplerate, 0.8)
+        source.feed(block)
+
+        engine = TriggerEngine(source, window_length=1024, trigger_level=0.4)
+        engine.trigger_source = 1
+        result = engine.capture()
+
+        self.assertTrue(result.triggered)
+        # The frame is cut on channel two's edge, so that is the channel
+        # sitting on the level at the trigger point.
+        self.assertAlmostEqual(float(result.channels[1][result.pre]), 0.4, delta=0.07)

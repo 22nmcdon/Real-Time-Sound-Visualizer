@@ -162,9 +162,11 @@ class TheFrame(unittest.TestCase):
 
         for triggered in (True, False):
             result = TriggerResult(
-                samples=np.zeros(882, dtype=np.float32),
+                channels=[np.zeros(882, dtype=np.float32)],
                 triggered=triggered,
                 trigger_index=0 if triggered else None,
+                pre=0,
+                samplerate=44100,
                 peak=0.5,
                 rms=0.3,
             )

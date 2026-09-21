@@ -67,8 +67,20 @@ class AudioSource(ABC):
         ...
 
     @abstractmethod
+    def read(self, n_samples: int) -> list:
+        """Most recent ``n_samples`` of every channel.
+
+        One float32 array per channel, each exactly ``n_samples`` long. The
+        scope reads this; `get_latest_window` below is the mono convenience
+        on top of it, for anything that only wants one trace.
+        """
+
     def get_latest_window(self, n_samples: int) -> np.ndarray:
-        """Most recent ``n_samples`` as a mono float32 array of exactly that length."""
+        """The same window, downmixed to one channel."""
+        channels = self.read(n_samples)
+        if len(channels) == 1:
+            return channels[0]
+        return np.mean(channels, axis=0, dtype=np.float32)
 
     def status(self) -> dict:
         """Free-form diagnostics for the UI status line."""
@@ -125,19 +137,20 @@ class BufferedAudioSource(AudioSource):
     def frames_captured(self) -> int:
         return self._buffer.frames_written
 
-    def get_latest_window(self, n_samples: int) -> np.ndarray:
-        """Most recent ``n_samples``, downmixed to mono.
+    def read(self, n_samples: int) -> list:
+        """Every channel of the most recent ``n_samples``.
 
-        Downmix is the mean of all channels unless a specific channel was
-        requested.  Both paths return a fresh array, so the caller can hold
-        onto it while the audio thread keeps writing.
+        One fresh array per channel, so the caller can hold onto them while
+        the audio thread keeps writing.  A single-channel source answers with
+        a list of one rather than with a bare array: the consumer should not
+        have to ask how many channels there are before it can read.
         """
         frames = self._buffer.read_latest(n_samples)
-        if self._channels == 1:
-            return frames[:, 0]
+
         if self._channel is not None:
-            return np.ascontiguousarray(frames[:, self._channel])
-        return frames.mean(axis=1, dtype=np.float32)
+            return [np.ascontiguousarray(frames[:, self._channel])]
+
+        return [np.ascontiguousarray(frames[:, i]) for i in range(self._channels)]
 
 
 class MicrophoneInput(BufferedAudioSource):
