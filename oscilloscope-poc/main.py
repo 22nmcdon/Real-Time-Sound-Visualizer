@@ -107,6 +107,16 @@ def main(argv=None) -> int:
     from main_window import MainWindow
 
     app = QApplication(sys.argv[:1])
+
+    # The body face, set once on the application so anything that does not
+    # ask for a face of its own still gets the house's rather than Qt's.
+    import branding as house
+
+    app.setFont(house.body_font())
+
+    # `:focus-visible`, which Qt does not have on its own.
+    house.watch_focus(app)
+
     window = MainWindow(source, engine, fps=args.fps)
     window.show()
     try:

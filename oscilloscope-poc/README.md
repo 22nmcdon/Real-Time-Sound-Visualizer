@@ -32,11 +32,12 @@ python main.py --hysteresis 0          # disable trigger noise rejection
 
 | File | Role |
 | --- | --- |
+| `branding.py` | The house style, as tokens. The one file allowed to name a colour |
 | `ring_buffer.py` | Lock-free circular buffer between the audio thread and the UI |
 | `audio_input.py` | `AudioSource` interface + the live `MicrophoneInput` |
 | `trigger.py` | Level trigger — finds the edge that makes the trace stand still |
-| `renderer.py` | pyqtgraph plot dressed as a CRT |
-| `main_window.py` | Window, controls, and the redraw timer |
+| `renderer.py` | The screen: a plot engraved the way the house prints |
+| `main_window.py` | The frame: head, screen, dock, and the redraw timer |
 | `main.py` | Wires the pipeline together |
 
 ## How the trigger works
@@ -64,29 +65,78 @@ amplitude and invisible at normal timebases; it would only start to show on a
 very short window of a very high-frequency signal. Sub-sample interpolation is
 the fix if that ever matters.
 
+## House style
+
+The surface follows `BRANDING.md` — the same cream paper, charcoal ink, blush
+and gold, and the same Playfair / Cormorant / Jost stacks as the rest of the
+family. `branding.py` is that document's drop-in block, and it is the only
+file here allowed to name a colour; a check fails the build if another one
+does.
+
+The page is a lead sheet, so the screen is the sheet: paper one stop brighter
+than the page, ruled in `--line`, with the trace as the ink written on it.
+
+**One thing says something in colour, and it is the trigger.** A locked trace
+is charcoal; a free-running one is `--unresolved`, which across the house
+means open and undecided and is the quietest of the five on purpose. The dock
+says the same in words, and the duplication is deliberate — your eye is on the
+trace, not the dock. Free run is deliberately *not* rust: a signal with no
+edge in it is silence, not a fault, and nothing here calls you wrong. Rust is
+kept for the one thing that is a fault, which is clipping.
+
+Four things the web surface gets from CSS and this one builds by hand, each
+noted where it is done:
+
+- **`text-transform` and `letter-spacing`** do not exist in Qt's stylesheet
+  language, and the small-caps control is most of the page's character — so
+  it is `control_font()` plus `caps()` instead.
+- **`:focus-visible`** does not exist either, only `:focus`, which rings the
+  first control the moment the window opens. `FocusVisible` puts it back out
+  of the *reason* Qt gives for each focus change.
+- **`flex-wrap`** does not exist, and a row that cannot wrap does not look
+  wrong — it sets the window's minimum width and the page stops resizing.
+  Three rows here are `Reflow` for that reason.
+- **`max-width`** is not a thing a box layout knows, so `wrap()` is the
+  1080px centred column.
+
+Depth is used once, on the sheet, and it is the second most expensive thing on
+screen — read the note on `Sheet` before touching it.
+
 ## Tests
 
 ```
 python -m unittest discover -s tests
 ```
 
-25 tests, no mic or display required. They cover the ring buffer's
-writer/reader race under threading, edge finding, hysteresis, the
-untriggered fallback, and — standing in for acceptance criterion 2 — that a
-steady tone fed in ragged block sizes produces frames that overlay each other
-to within one sample-step.
+29 tests. The 25 engine tests need neither a mic nor a display; the four in
+`test_house_style.py` open the real window offscreen and skip where Qt is not
+installed.
+
+They cover the ring buffer's writer/reader race under threading, edge finding,
+hysteresis, the untriggered fallback, and — standing in for acceptance
+criterion 2 — that a steady tone fed in ragged block sizes produces frames
+that overlay each other to within one sample-step.
+
+Three of them are `BRANDING.md`'s own checklist, as checks rather than good
+intentions, and all three are things this got wrong first: no hard-coded
+colour outside `branding.py`, the frame fits a 430px window, and the dock's
+readout reserves its height in every state.
 
 ## Measured behaviour
 
 From a 60-second headless run against a synthetic 440 Hz source (offscreen
 software rendering in a container; real hardware should do better):
 
-- 54–58 fps sustained at a 60 fps target
+- 53–58 fps sustained at a 60 fps target
 - triggered on 1587/1587 frames of steady tone
 - display lag flat at ~1.1 ms throughout, no buildup
 - RSS flat at 93 MB
 - cutting to silence kept the display running (`FREE RUN`), and it re-locked
   immediately when the tone returned
+
+![The scope, locked on a 220 Hz tone](docs/screenshot.png)
+
+![The same frame at 430px](docs/screenshot-narrow.png)
 
 ## Not built yet
 
