@@ -1,0 +1,5 @@
+numpy>=1.24
+sounddevice>=0.4.6
+PyQt6>=6.5
+pyqtgraph>=0.13
+soundfile>=0.12  # unused by the POC; kept for the Phase 2 file-playback source
