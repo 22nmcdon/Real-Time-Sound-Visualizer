@@ -1599,20 +1599,106 @@ const TWO_PI = Math.PI * 2;
 /* Two low-frequency oscillators, whose whole job is to make the picture move.
    Each is a phase, a shape and somewhere to point. */
 const lfos = [
-  { dest: "none", shape: "sine", rate: 0.2, depth: 0.5, phase: 0, held: 0 },
-  { dest: "none", shape: "sine", rate: 0.5, depth: 0.3, phase: 0, held: 0 },
+  { shape: "sine", rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
+  { shape: "sine", rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
 ];
 
-const LFO_DESTS = [
-  ["none",  "\u2014 off \u2014"],
-  ["phase", "Right-channel phase"],
-  ["ratio", "Right : left ratio"],
-  ["detail", "Figure detail"],
-  ["tumble", "Wireframe spin rate"],
-  ["depth", "Wireframe perspective"],
-  ["freq",  "Frequency"],
-  ["amp",   "Amplitude"],
+/* --- the modulation matrix --------------------------------------------------
+   A source, a destination and a depth, in a list. What this replaces was a
+   fixed enum whose destination was an integer index into an array - fine until
+   the array is reordered, and every saved setup and every shared code stores
+   those integers. String ids do not shift when a new destination is added in
+   the middle.
+
+   Contributions are summed additively into each destination and the
+   destination applies its own law once, which is what everything from a patch
+   cable to Serum does. Summing first is not just cheaper: for a destination
+   whose law is exponential - frequency in octaves, spin in powers of three -
+   applying twice and applying the sum once are algebraically the same thing,
+   and for the additive ones they always were. So this reproduces exactly what
+   the two hard-wired LFOs did.                                              */
+
+const MOD_SOURCES = new Map();
+const MOD_DESTS = new Map();
+
+function registerSource(entry) { MOD_SOURCES.set(entry.id, entry); return entry; }
+function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
+
+/* The generator's own parameters, and the reason they are a separate kind:
+   these are applied once per SAMPLE. A vibrato rewritten sixty times a second
+   is a staircase, not a vibrato. Everything else a source can point at is a
+   property of the picture and is written once a frame.
+
+   `slot` indexes the accumulator, so the per-sample loop is array arithmetic
+   rather than a map lookup. `unipolar` marks a destination a source may only
+   ever subtract from: an amplitude LFO that could also push upward would just
+   clip, so tremolo ducks. */
+const GEN_DESTS = [
+  { id: "gen.freq",   label: "Frequency",             slot: 0 },
+  { id: "gen.amp",    label: "Amplitude",             slot: 1, unipolar: true },
+  { id: "gen.phase",  label: "Right-channel phase",   slot: 2 },
+  { id: "gen.ratio",  label: "Right : left ratio",    slot: 3 },
+  { id: "gen.detail", label: "Figure detail",         slot: 4, modes: ["figure"] },
+  { id: "gen.tumble", label: "Wireframe spin rate",   slot: 5, modes: ["wireframe"] },
+  { id: "gen.depth",  label: "Wireframe perspective", slot: 6, modes: ["wireframe"] },
 ];
+
+for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
+
+/* Old setups name their destination with the enum's word. Translated on the
+   way in rather than rewritten in place, so a code someone saved before any of
+   this existed still loads. */
+const LEGACY_DESTS = {
+  none: null, phase: "gen.phase", ratio: "gen.ratio", detail: "gen.detail",
+  tumble: "gen.tumble", depth: "gen.depth", freq: "gen.freq", amp: "gen.amp",
+};
+
+/* Compiled once per change rather than walked per sample. The per-sample loop
+   runs 44100 times a second and has no business doing map lookups or checking
+   whether a destination exists. */
+const genMod = new Float32Array(GEN_DESTS.length);
+const genRoutes = [];
+let modDirty = true;
+
+function touchRoutings() { modDirty = true; }
+
+function compileRoutes() {
+  genRoutes.length = 0;
+  for (const routing of state.modRoutings) {
+    const source = MOD_SOURCES.get(routing.sourceId);
+    const dest = MOD_DESTS.get(routing.destId);
+    /* A routing whose source or destination is not currently registered is
+       SKIPPED, not dropped. A preset carries routings for modes it is not in,
+       and deleting them here would quietly rewrite the preset the first time
+       it was loaded into the wrong mode. */
+    if (!source || !dest) continue;
+    if (dest.kind !== "audio" || source.index === undefined) continue;
+    genRoutes.push({
+      index: source.index, slot: dest.slot,
+      amount: routing.amount, unipolar: dest.unipolar === true,
+    });
+  }
+  modDirty = false;
+}
+
+/* Everything a source points at, as text: "lfo1>gen.phase@1" joined by
+   semicolons. A string rather than an array because the whole setup is diffed
+   against the defaults with `!==` before it is encoded, and two arrays are
+   never equal however identical they are. */
+function encodeRoutings(list) {
+  return list.map((r) => r.sourceId + ">" + r.destId + "@" + Number(r.amount).toFixed(3))
+    .join(";");
+}
+
+function decodeRoutings(text) {
+  if (!text) return [];
+  const out = [];
+  for (const part of String(text).split(";")) {
+    const match = /^([^>]+)>([^@]+)@(-?[\d.]+)$/.exec(part.trim());
+    if (match) out.push({ sourceId: match[1], destId: match[2], amount: Number(match[3]) });
+  }
+  return out;
+}
 
 const LFO_SHAPES = [
   ["sine", "Sine"], ["triangle", "Triangle"], ["ramp", "Ramp"],
@@ -1620,15 +1706,26 @@ const LFO_SHAPES = [
 ];
 
 /* Advanced once per sample, whether or not it is pointed anywhere, so its
-   phase does not jump the moment it is given a destination. */
+   phase does not jump the moment it is given a destination. The value is kept
+   on the oscillator as well as returned, because the per-frame destinations
+   need to know where it is without advancing it again. */
 function lfoStep(lfo, rate) {
   lfo.phase += TWO_PI * lfo.rate / rate;
   if (lfo.phase >= TWO_PI) {
     lfo.phase -= TWO_PI;
     lfo.held = Math.random() * 2 - 1;   // sample and hold, once a cycle
   }
-  return lfo.shape === "random" ? lfo.held : waveAt(lfo.shape, lfo.phase);
+  lfo.value = lfo.shape === "random" ? lfo.held : waveAt(lfo.shape, lfo.phase);
+  return lfo.value;
 }
+
+lfos.forEach((lfo, i) => registerSource({
+  id: "lfo" + (i + 1),
+  label: "LFO " + (i + 1),
+  index: i,                       // the per-sample path reads this
+  ink: "ch" + (i + 1),
+  value: () => lfo.value,
+}));
 
 /* --- intervals ------------------------------------------------------------
    A Lissajous figure closes when the two frequencies are a ratio of small
@@ -1955,29 +2052,32 @@ function makeToneSource() {
     lastFill += needed / rate;
 
     const dt = 1 / rate;
+    if (modDirty) compileRoutes();
 
     for (let i = 0; i < needed; i++) {
-      const a = lfoStep(lfos[0], rate);
-      const b = lfoStep(lfos[1], rate);
+      lfoStep(lfos[0], rate);
+      lfoStep(lfos[1], rate);
 
-      let freq = tone.freq, amp = tone.amp, phase = tone.phase;
-      let ratio = intervalRatio(tone.interval, tone.just);
-      let detail = tone.detail;
-      let tumble = 1, depth = tone.depth;
-
-      for (const [lfo, value] of [[lfos[0], a], [lfos[1], b]]) {
-        const d = lfo.depth;
-        switch (lfo.dest) {
-          case "freq":  freq *= Math.pow(2, value * d); break;
-          case "amp":   amp *= 1 - d * (1 - value) / 2; break;
-          case "phase": phase += value * d * Math.PI; break;
-          case "ratio": ratio += value * d * 0.5; break;
-          case "detail": detail += value * d * 4; break;
-          case "tumble": tumble *= Math.pow(3, value * d); break;
-          case "depth":  depth = Math.max(0, Math.min(1, depth + value * d * 0.5)); break;
-          default: break;
-        }
+      /* Every routing pointed at a generator parameter, summed into its slot.
+         Then each parameter applies its own law once - octaves for frequency,
+         powers of three for spin rate, radians for phase - which is why the
+         accumulator holds a plain sum and not a value. */
+      genMod.fill(0);
+      for (let k = 0; k < genRoutes.length; k++) {
+        const route = genRoutes[k];
+        const value = lfos[route.index].value;
+        genMod[route.slot] += route.unipolar
+          ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
+          : route.amount * value;
       }
+
+      const freq = tone.freq * Math.pow(2, genMod[0]);
+      const amp = tone.amp * (1 - genMod[1]);
+      const phase = tone.phase + genMod[2] * Math.PI;
+      const ratio = intervalRatio(tone.interval, tone.just) + genMod[3] * 0.5;
+      const detail = tone.detail + genMod[4] * 4;
+      const tumble = Math.pow(3, genMod[5]);
+      const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
 
       let l, r;
 
@@ -2769,6 +2869,11 @@ const state = {
   /* Lag X-Y: the signal against itself, delayed. One input has no second axis,
      so this makes one out of the only thing there is - a phase portrait rather
      than a Lissajous, and the cheat sheet says so. */
+  /* Where every source points, and how far. One flat list rather than a field
+     per destination: what a matrix is for is that nothing has to be edited to
+     add a route, and a source may point at several things at once. */
+  modRoutings: [],
+
   micBands: false,           // whether live input arrives whole or split in four
 
   lagOn: false,
@@ -5195,14 +5300,50 @@ el.persistence.addEventListener("change", () => {
 
 /* The modulation rows, built from the tables above so a new destination is
    one entry rather than a block of markup. */
+/* An LFO row is a view of the matrix, not a thing of its own: the dropdown
+   reads and writes the routing list. One destination each here, because that
+   is what a dropdown can say; the bench is where a source points at several
+   things at once. */
+function lfoRouting(index) {
+  const id = "lfo" + (index + 1);
+  return state.modRoutings.find((routing) => routing.sourceId === id) || null;
+}
+
+function setLfoDest(index, destId) {
+  const id = "lfo" + (index + 1);
+  state.modRoutings = state.modRoutings.filter((routing) => routing.sourceId !== id);
+  if (destId) {
+    state.modRoutings.push({ sourceId: id, destId, amount: lfos[index].depth });
+  }
+  touchRoutings();
+}
+
+function setLfoDepth(index, amount) {
+  // Kept on the oscillator as well, so a depth set before a destination is
+  // chosen is the depth the routing gets when one is.
+  lfos[index].depth = amount;
+  const routing = lfoRouting(index);
+  if (routing) { routing.amount = amount; touchRoutings(); }
+}
+
+function destOptions(selected) {
+  let out = '<option value="">\u2014 off \u2014</option>';
+  for (const dest of MOD_DESTS.values()) {
+    out += '<option value="' + dest.id + '"'
+      + (dest.id === selected ? " selected" : "") + ">" + escapeText(dest.label) + "</option>";
+  }
+  return out;
+}
+
 function buildLfoRows() {
-  el.lfoRows.innerHTML = lfos.map((lfo, i) => `
+  el.lfoRows.innerHTML = lfos.map((lfo, i) => {
+    const routing = lfoRouting(i);
+    return `
     <div class="menu-row">
       <span class="menu-label">LFO ${i + 1}</span>
       <div class="grow">
         <select id="lfoDest${i}" style="flex:1 1 auto" aria-label="LFO ${i + 1} destination">
-          ${LFO_DESTS.map(([v, t]) =>
-            `<option value="${v}"${v === lfo.dest ? " selected" : ""}>${t}</option>`).join("")}
+          ${destOptions(routing ? routing.destId : "")}
         </select>
         <select id="lfoShape${i}" style="flex:0 0 auto" aria-label="LFO ${i + 1} shape">
           ${LFO_SHAPES.map(([v, t]) =>
@@ -5224,11 +5365,11 @@ function buildLfoRows() {
         <span class="reading" id="lfoDepthValue${i}">${Math.round(lfo.depth * 100)}%</span>
       </div>
     </div>
-  `).join("");
+  `; }).join("");
 
   lfos.forEach((lfo, i) => {
     document.getElementById("lfoDest" + i)
-      .addEventListener("change", (e) => { lfo.dest = e.target.value; });
+      .addEventListener("change", (e) => { setLfoDest(i, e.target.value); });
     document.getElementById("lfoShape" + i)
       .addEventListener("change", (e) => { lfo.shape = e.target.value; });
 
@@ -5240,7 +5381,7 @@ function buildLfoRows() {
 
     const depth = document.getElementById("lfoDepth" + i);
     depth.addEventListener("input", () => {
-      lfo.depth = Number(depth.value) / 100;
+      setLfoDepth(i, Number(depth.value) / 100);
       document.getElementById("lfoDepthValue" + i).textContent =
         Math.round(lfo.depth * 100) + "%";
     });
@@ -5348,8 +5489,11 @@ const DEFAULTS = {
   figure: "Circle", detail: 5, figureRate: 40,
   swingRate: 21, decay: 12, detune: 40,
   model: "Cube", spinX: 11, spinY: 17, spinZ: 0, depth: 45,
+  // l0d / l1d are read on the way in only: a setup written before the matrix
+  // existed names its destination with the old enum's word.
   l0d: "none", l0s: "sine", l0r: 20, l0a: 50,
   l1d: "none", l1s: "sine", l1r: 50, l1a: 30,
+  mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
   position: 10, holdoff: 0, trigMode: "auto",
@@ -5382,10 +5526,11 @@ function snapshot() {
     model: el.model.value,
     spinX: Number(el.spinX.value), spinY: Number(el.spinY.value),
     spinZ: Number(el.spinZ.value), depth: Number(el.depth.value),
-    l0d: lfos[0].dest, l0s: lfos[0].shape,
+    l0s: lfos[0].shape,
     l0r: Math.round(lfos[0].rate * 100), l0a: Math.round(lfos[0].depth * 100),
-    l1d: lfos[1].dest, l1s: lfos[1].shape,
+    l1s: lfos[1].shape,
     l1r: Math.round(lfos[1].rate * 100), l1a: Math.round(lfos[1].depth * 100),
+    mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
     span: el.spectroSpan.value,
@@ -5452,11 +5597,29 @@ function restore(partial) {
 
   [0, 1].forEach((i) => {
     const lfo = lfos[i], key = "l" + i;
-    lfo.dest = s[key + "d"];
     lfo.shape = s[key + "s"];
     lfo.rate = s[key + "r"] / 100;
     lfo.depth = s[key + "a"] / 100;
   });
+
+  /* The routing list when the setup has one, and the old enum when it does
+     not. Checked against what was actually passed in rather than the merged
+     object, or the default empty string would look like a deliberate "no
+     routings" and silently wipe every preset written before this. */
+  if (partial && partial.mod !== undefined) {
+    state.modRoutings = decodeRoutings(partial.mod);
+  } else {
+    state.modRoutings = [];
+    [0, 1].forEach((i) => {
+      const destId = LEGACY_DESTS[s["l" + i + "d"]];
+      if (destId) {
+        state.modRoutings.push({
+          sourceId: "lfo" + (i + 1), destId, amount: s["l" + i + "a"] / 100,
+        });
+      }
+    });
+  }
+  touchRoutings();
   buildLfoRows();
 
   el.timebase.value = String(s.timebase);
@@ -5697,8 +5860,12 @@ function writeSaved(all) {
 
 /* Only what differs from the defaults, so a code stays short enough to paste
    into a message. */
+/* Stamped on every code, so the next migration can dispatch on a number
+   rather than guess from which keys happen to be present. */
+const SETUP_VERSION = 1;
+
 function encodeSetup(snap) {
-  const diff = {};
+  const diff = { v: SETUP_VERSION };
   for (const key of Object.keys(snap)) {
     if (snap[key] !== DEFAULTS[key]) diff[key] = snap[key];
   }
