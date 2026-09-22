@@ -84,21 +84,28 @@ bisecting `destReach`, which is monotonic in the depth. A hand-written inverse
 would be a second formula obliged to agree with the first forever, and
 `lanetest.py` round-trips all six to 6e-8 precisely so that stays one formula.
 
-**A control's appearance must not depend on how many sources are on it.** This
-is the second design of this surface; the first one failed here. A split thumb
-whose lower half showed the depth could state one attachment and not two — with
-two it had to show a *sum*, a sum cannot be dragged, and the control fell back
-to a stack of rows that grew the panel by a line per attachment. So: the lane
-draws whichever source is **armed** and no other, and the pips say who else is
-there. `patchtest.py` measures the row's height and the control's box with
-nought, one, two and three sources on it and requires all four to be identical.
+**A control's appearance must not depend on how many sources are on it.**
+Three designs have now been tried here and the first two failed on this. A
+split thumb whose lower half was the depth could state one attachment and not
+two: with two it had to show a *sum*, a sum cannot be dragged, and the control
+fell back to a stack of rows that grew the panel by a line per attachment. The
+lane that replaced it could state any number, and was horrible to aim.
+`patchtest.py` measures the row's height and the control's box with nought,
+one, two and three sources on it and requires all four to be identical.
 
-**Arming is a mode, not a moment.** `armedSource` used to survive one tap,
-because all it did was aim the next one. It now decides what every lane on the
-page is drawing, so it persists until the chip is clicked again — which is also
-why the capture-phase `pointerdown` handler that used to assign on a tap
-anywhere is gone. A listener claiming every press on the page would have made
-the sliders themselves unusable once arming stopped ending on its own.
+**The way in is a button, not a gesture.** Both earlier designs made a *drag*
+the only way to patch anything, onto a target a few pixels tall that did not
+exist until a source had been picked up first. Every destination now carries a
+`.mod-open` button — a hollow ring when empty, the inks of what is on it
+otherwise — and pressing it opens `openModEditor`: a row per source with an
+ordinary `input[type=range]` for the depth. A real input means the keyboard,
+the screen reader and the touch target come for free rather than being built
+three times.
+
+**The lane reads and does not write.** It draws one source — `focusSource` if
+it is on the control, else the first that is — because a sum cannot be shown as
+a range honestly. `focusSource` is view state only: there is no mode to enter
+or to remember to leave.
 
 **The lane is drawn in the control's existing container.** `ensureLane` marks
 the input's parent `.mod-lane-host` and positions absolutely-placed spans
@@ -111,10 +118,23 @@ by a line the first time anything was patched.
 **The bench body uses real columns, not CSS ones.** `columns: 2` re-balances
 the whole flow whenever any section's height changes, and a section's height
 changes whenever a fold opens or a generator mode swaps its rows in. The first
-drag of the first build proved it: the control under the pointer jumped 350px
-into the next column mid-drag. `layoutBenchBody` deals the groups into
-`.bench-col` elements once per view and on a column-count change, so a height
-change reflows one column and moves nothing.
+drag of that build proved it: the control under the pointer jumped 350px into
+the next column mid-drag. `layoutBenchBody` deals the groups into `.bench-col`
+elements once per view, so a height change reflows one column and moves nothing.
+
+The exception is when a height change makes the body **overflow**, which is the
+one thing this view must not do: a `ResizeObserver` then re-deals, once,
+debounced, guarded by a `dealing` flag so it cannot watch its own work and loop.
+Wireframe mode is what forced it — it brings six rows with it and took the
+Generator column 106px past the window.
+
+**Neither panel may scroll, and that is a test.** `patchtest.py` sweeps the four
+generator modes plus filter-and-lag and requires `scrollHeight <= clientHeight`
+for the body and the side column in each. What bought the room was moving the
+prose behind each section's `⋯`: measured, the notes were 1010px of a 2148px
+stack. `.bench-body .menu-note` and `.bench-body [data-more]` are hidden, and
+`openGroupDetail` moves them into an overlay that is outside `.bench-body`, so
+the rule stops applying the moment they are moved.
 
 **`scope.html` carries its own viewport meta.** The artifact host wraps the file
 in a `<head>` of its own, which is why the file went a long time without one and
@@ -133,6 +153,12 @@ usually a slider, and a browser treats a touch on a range input as a drag of
 it — the touch is consumed and no click is ever synthesized, so a click
 listener never ran on a phone at all. The handler catches the press in the
 capture phase and stops it before the slider sees it.
+
+**`data-more` on a title would hide the title.** The attribute means
+"secondary content": the body hides it and `groupExtras` collects it into the
+overlay. Using the same name as the "already decorated" flag on a section title
+hid every decorated title and would have dragged each one into its own
+overlay. The flag is `data-dots`.
 
 **`hidden`, `data-off` and `.folded` are three different questions.**
 `data-off` means the group does not apply to the loaded source at all (the

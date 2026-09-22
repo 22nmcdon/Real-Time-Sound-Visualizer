@@ -119,7 +119,7 @@ with sync_playwright() as pw:
     p.evaluate("""() => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.freq', amount: 1 }];
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
-      armedSource = null; armSource('lfo1');
+      focusSource = null; paintRoutings();
     }"""); p.wait_for_timeout(350)
     geo = p.evaluate("""() => {
       const input = el.freq, host = input.parentElement;
@@ -152,25 +152,36 @@ with sync_playwright() as pw:
         .querySelector('.lane-cap').style.left) - el.freq.offsetLeft;
 
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.freq', amount: 0.25 }];
-      armedSource = null; armSource('lfo1'); await settle();
+      focusSource = null; paintRoutings(); await settle();
       const alone = capAt();
 
       state.modRoutings.push({ sourceId: 'lfo2', destId: 'gen.freq', amount: 0.95 });
       touchRoutings(); await settle();
       const withCompany = capAt();
 
-      armedSource = null; armSource('lfo2'); await settle();
+      focusSource = null; armSource('lfo2'); await settle();
       const other = capAt();
       return { alone, withCompany, other,
-               pips: document.querySelectorAll('[data-mod-dest="gen.freq"] .mod-pip').length };
+               width: el.freq.offsetWidth,
+               min: Number(el.freq.min), max: Number(el.freq.max),
+               pips: document.querySelectorAll('[data-mod-dest="gen.freq"] .mod-open .pip').length };
     }"""); p.wait_for_timeout(200)
+
+    def freq_x(hz):
+        return (6.5 + (hz - both["min"]) / (both["max"] - both["min"])
+                * (both["width"] - 13))
+    # 220 Hz driven a quarter of an octave up, and nineteen twentieths of one.
+    want_one, want_two = freq_x(220 * 2 ** 0.25), freq_x(220 * 2 ** 0.95)
     check("a second source does not move the first one's cap",
           abs(both["alone"] - both["withCompany"]) < 0.5,
           "%.2f -> %.2f" % (both["alone"], both["withCompany"]))
-    check("arming the second shows the second",
-          both["other"] > both["withCompany"] + 4,
-          "%.2f vs %.2f" % (both["other"], both["withCompany"]))
-    check("and both are named by pips", both["pips"] == 2, str(both["pips"]))
+    check("and the cap is where the first one's own depth puts it",
+          abs(both["withCompany"] - want_one) < 0.5,
+          "%.2f wanted %.2f" % (both["withCompany"], want_one))
+    check("focusing the second shows the second, at its own depth",
+          abs(both["other"] - want_two) < 0.5,
+          "%.2f wanted %.2f" % (both["other"], want_two))
+    check("and both are counted on the button", both["pips"] == 2, str(both["pips"]))
 
     print("\n--- a bipolar source sweeps both ways, an envelope one ---")
     def bar_for(routing_js, elid, want_section):
@@ -187,7 +198,7 @@ with sync_playwright() as pw:
     osc = bar_for("""() => {
       el.rotate.value = '0'; el.rotate.dispatchEvent(new Event('input'));
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.6 }];
-      armedSource = null; armSource('lfo1'); }""", "rotate", "Display")
+      focusSource = null; paintRoutings(); }""", "rotate", "Display")
     check("an oscillator's bar reaches one way from the value",
           abs(osc["left"] - osc["base"]) < 0.6 or
           abs(osc["left"] + osc["width"] - osc["base"]) < 0.6,
@@ -195,7 +206,7 @@ with sync_playwright() as pw:
 
     env = bar_for("""() => {
       state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 0.6 }];
-      armedSource = null; armSource('env.live'); }""", "rotate", "Display")
+      focusSource = null; paintRoutings(); }""", "rotate", "Display")
     check("and an envelope's the same, since the bar is the depth you set",
           abs(env["width"] - osc["width"]) < 1.0,
           "%.1f px vs %.1f" % (env["width"], osc["width"]))
@@ -205,7 +216,7 @@ with sync_playwright() as pw:
     p.evaluate("""() => {
       el.rotate.value = '50'; el.rotate.dispatchEvent(new Event('input'));
       state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 1 }];
-      armedSource = null; armSource('env.live');
+      focusSource = null; paintRoutings();
     }"""); p.wait_for_timeout(350)
     marked = p.evaluate("""() => el.rotate.parentElement
       .querySelector('.lane-cap').classList.contains('clipped')""")
@@ -214,12 +225,12 @@ with sync_playwright() as pw:
     check("but the depth is kept, not trimmed", close(kept, 1), str(kept))
     p.evaluate("() => { el.rotate.value = '0'; el.rotate.dispatchEvent(new Event('input')); }")
 
-    print("\n--- the live tick, armed or not ---")
+    print("\n--- the live tick ---")
     section(p, "Display")
     moved = p.evaluate("""async () => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.9 }];
       lfos[0].rate = 4;
-      armedSource = null;                    // nothing in hand: the quiet state
+      focusSource = null;
       paintRoutings();
       await new Promise((d) => requestAnimationFrame(d));
       const host = el.rotate.parentElement;
@@ -231,13 +242,23 @@ with sync_playwright() as pw:
       }
       return { places: seen.size,
                tick: !host.querySelector('.lane-now').hidden,
-               span: host.querySelector('.lane-span').hidden,
-               grab: host.querySelector('.lane-grab').hidden };
+               grabs: document.querySelectorAll('.lane-grab').length };
     }""")
-    check("a patched control still shows itself working with nothing armed",
-          moved["tick"] is True and moved["places"] > 4, str(moved))
-    check("but the bar and the handle are put away",
-          moved["span"] is True and moved["grab"] is True, str(moved))
+    check("a patched control shows itself working", moved["places"] > 4, str(moved))
+    check("the tick is on whether or not anything is in focus", moved["tick"] is True)
+    # The lane reads and nothing else now: what used to be a drag target on it
+    # is gone, and the editor does the editing.
+    check("and the lane has no handle at all", moved["grabs"] == 0, str(moved["grabs"]))
+
+    print("\n--- an unpatched control draws no lane ---")
+    bare = p.evaluate("""() => {
+      state.modRoutings = []; paintRoutings();
+      const host = el.rotate.parentElement;
+      return { parts: Array.from(host.querySelectorAll('.mod-lane')).filter((n) => !n.hidden).length,
+               ring: !!document.querySelector('[data-mod-dest="view.rotate"] .mod-open .ring') };
+    }"""); p.wait_for_timeout(200)
+    check("nothing on it, nothing drawn", bare["parts"] == 0, str(bare))
+    check("but the way in is still there", bare["ring"] is True, str(bare))
 
     print("\n--- zoom is a destination now ---")
     p.evaluate("""() => {
@@ -296,7 +317,7 @@ with sync_playwright() as pw:
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.42 }];
       touchRoutings();
       return null;
-    }"""); p.wait_for_timeout(300)
+    }"""); p.wait_for_timeout(350)
     one = p.evaluate("""() => ({
       dest: document.getElementById('lfoDest0').value,
       disabled: document.getElementById('lfoDest0').disabled,
