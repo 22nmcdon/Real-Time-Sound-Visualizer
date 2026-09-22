@@ -216,3 +216,9 @@ they belong here too.
 The seams are already there: `AudioSource` is the swap point for a file
 player, `measure.py` already owns the transform a spectrogram would need, and
 the trigger engine and renderer never learn where their samples came from.
+
+[`docs/z-axis-lane.md`](docs/z-axis-lane.md) is a design that was worked out
+and deliberately not built: a third signal that modulates the beam's
+brightness rather than its position, which is what blanked flyback and real
+depth cueing need. It concerns the web surface rather than this one, and it is
+written down in enough detail to pick up without re-deriving it.
