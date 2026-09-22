@@ -27,6 +27,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
 | `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
 | `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
+| `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
+| `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -43,6 +45,12 @@ builds a second copy of a control gives two elements one id, and
 `getElementById` returns the first — which is how the dock's readout line came
 to display nothing for weeks. `benchtest.py` asserts there are no duplicate ids
 in either view or after a round trip.
+
+**Patching happens on `pointerdown`, not `click`.** A control row's control is
+usually a slider, and a browser treats a touch on a range input as a drag of
+it — the touch is consumed and no click is ever synthesized, so a click
+listener never ran on a phone at all. The handler catches the press in the
+capture phase and stops it before the slider sees it.
 
 **`hidden` and `data-off` are different questions.** `hidden` on a settings
 group is the bench's section selector; `data-off` means the group does not apply

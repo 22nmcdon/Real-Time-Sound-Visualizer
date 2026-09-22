@@ -441,6 +441,98 @@ body[data-view="bench"] #menuButton { display: none; }
   body[data-view="bench"] .screen { height: auto; }
 }
 
+/* --- patching --------------------------------------------------------------
+   A source is a chip you pick up and put on a control. What appears under the
+   control is one labelled row per routing, in that source's ink, and the row
+   is the depth: drag it, and the number is what it is worth.                */
+.bench-sources {
+  flex: 0 0 168px; display: flex; flex-direction: column; gap: 6px;
+  border-left: 1px solid var(--line); padding-left: 16px; min-height: 0; overflow-y: auto;
+}
+.mod-chip {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 30px;
+  padding: 6px 12px; font-family: var(--sans); font-size: 12.5px; color: var(--charcoal);
+  cursor: grab; touch-action: none;
+}
+.mod-chip:hover { border-color: var(--blush); }
+.mod-chip[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
+.mod-chip .count {
+  margin-left: auto; font-size: 10.5px; color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+.mod-chip[aria-pressed="true"] .count { color: var(--cream); }
+.mod-chip .clear {
+  background: none; border: 0; padding: 0 0 0 6px; color: inherit;
+  font-size: 14px; line-height: 1; opacity: 0.55;
+}
+.mod-chip .clear:hover { opacity: 1; }
+
+/* Carried under the pointer while a chip is being dragged. */
+.mod-ghost {
+  position: fixed; z-index: 200; pointer-events: none;
+  background: var(--charcoal); color: var(--cream); border-radius: 30px;
+  padding: 5px 11px; font-family: var(--sans); font-size: 12px;
+  transform: translate(-50%, -140%); white-space: nowrap;
+}
+[data-mod-dest].mod-target { outline: 2px dashed var(--blush-deep); outline-offset: 3px; }
+
+.mod-rows { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 96px; }
+.mod-rows:empty { display: none; }
+.mod-row {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--text-soft);
+}
+.mod-row:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 1px; }
+.mod-name { flex: 0 0 auto; color: var(--chip); font-weight: 500; }
+.mod-track {
+  flex: 1 1 auto; position: relative; height: 14px; min-width: 60px;
+  cursor: ew-resize; touch-action: none;
+}
+.mod-track::before {
+  content: ""; position: absolute; inset: 6px 0 auto; height: 2px; background: var(--line);
+}
+/* Grown from the middle, because depth is signed: left of centre is the same
+   amount pointing the other way. */
+.mod-fill { position: absolute; top: 5px; height: 4px; background: var(--chip); border-radius: 2px; }
+/* The part of the depth the destination's own range will not accept. Drawn
+   rather than silently ignored: a patch doing less than it was asked to should
+   be visible. Only destinations that declare a range can say this. */
+.mod-clip { position: absolute; top: 5px; height: 4px; background: var(--chip); opacity: 0.28; border-radius: 2px; }
+.mod-amount { flex: 0 0 38px; text-align: right; font-variant-numeric: tabular-nums; }
+.mod-x {
+  flex: 0 0 auto; background: none; border: 0; padding: 0 2px; line-height: 1;
+  color: var(--text-soft); font-size: 14px; opacity: 0;
+}
+.mod-row:hover .mod-x, .mod-row:focus-within .mod-x { opacity: 1; }
+.mod-x:hover { color: var(--rust); }
+.mod-more {
+  align-self: flex-start; background: none; border: 1px solid var(--line);
+  border-radius: 20px; padding: 1px 8px; font-size: 10px; color: var(--text-soft);
+}
+.mod-add {
+  flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 50%;
+  width: 20px; height: 20px; line-height: 1; padding: 0; color: var(--text-soft); font-size: 13px;
+}
+.mod-add:hover { border-color: var(--blush); color: var(--blush-deep); }
+body[data-view="scope"] .mod-add { display: none; }
+
+@media (pointer: coarse) {
+  /* A two-pixel row cannot host a target a thumb can hit, so on touch the row
+     is tall enough and the remove button is simply always there. A long-press
+     menu would have been the other answer and this one is less to learn. */
+  .mod-row { min-height: 30px; }
+  .mod-x { opacity: 1; padding: 0 8px; }
+}
+@media (max-width: 760px) {
+  .bench-sources {
+    flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; align-items: center;
+    border-left: 0; border-top: 1px solid var(--line); padding: 10px 0 0;
+  }
+  .bench-sources .menu-note { flex: 1 1 100%; }
+  .mod-rows { margin-left: 0; }
+}
+
 /* --- dock ---------------------------------------------------------------- */
 .dock {
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
@@ -681,14 +773,14 @@ body[data-view="bench"] #menuButton { display: none; }
                   </select>
                 </div>
               </div>
-              <div class="menu-row">
+              <div class="menu-row" data-mod-dest="gen.freq" data-mod-control="freq">
                 <label class="menu-label" for="freq">Frequency</label>
                 <div class="grow">
                   <input type="range" id="freq" min="30" max="4000" step="1" value="220">
                   <span class="reading" id="freqValue">220 Hz</span>
                 </div>
               </div>
-              <div class="menu-row">
+              <div class="menu-row" data-mod-dest="gen.amp" data-mod-control="amp">
                 <label class="menu-label" for="amp">Amplitude</label>
                 <div class="grow">
                   <input type="range" id="amp" min="0" max="140" value="55">
@@ -707,7 +799,7 @@ body[data-view="bench"] #menuButton { display: none; }
                   </select>
                 </div>
               </div>
-              <div class="menu-row">
+              <div class="menu-row" data-mod-dest="gen.ratio" data-mod-control="interval">
                 <label class="menu-label" for="interval">Interval</label>
                 <div class="grow"><select id="interval" style="flex:1 1 auto"></select></div>
               </div>
@@ -718,7 +810,7 @@ body[data-view="bench"] #menuButton { display: none; }
                   <button type="button" class="caps" id="tuneEqual" role="radio" aria-checked="false">Equal</button>
                 </div>
               </div>
-              <div class="menu-row">
+              <div class="menu-row" data-mod-dest="gen.phase" data-mod-control="phase">
                 <label class="menu-label" for="phase">Phase</label>
                 <div class="grow">
                   <input type="range" id="phase" min="0" max="360" value="90">
@@ -736,7 +828,7 @@ body[data-view="bench"] #menuButton { display: none; }
                   <label class="menu-label" for="figure">Figure</label>
                   <div class="grow"><select id="figure" style="flex:1 1 auto"></select></div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.detail" data-mod-control="detail">
                   <label class="menu-label" for="detail">Detail</label>
                   <div class="grow">
                     <input type="range" id="detail" min="2" max="12" value="5">
@@ -775,7 +867,14 @@ body[data-view="bench"] #menuButton { display: none; }
                     <span class="reading" id="spinZValue">0.00 Hz</span>
                   </div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.tumble" data-mod-control="spinRate">
+                  <label class="menu-label" for="spinRate">Spin rate</label>
+                  <div class="grow">
+                    <input type="range" id="spinRate" min="10" max="300" value="100">
+                    <span class="reading" id="spinRateValue">1.00&times;</span>
+                  </div>
+                </div>
+                <div class="menu-row" data-mod-dest="gen.depth" data-mod-control="depth">
                   <label class="menu-label" for="depth">Perspective</label>
                   <div class="grow">
                     <input type="range" id="depth" min="0" max="100" value="45">
@@ -889,7 +988,7 @@ body[data-view="bench"] #menuButton { display: none; }
             <label class="check" id="lagCheck">
               <input type="checkbox" id="lagOn"> Lag X&ndash;Y: the signal against itself, delayed
             </label>
-            <div class="menu-row" id="lagRow" hidden>
+            <div class="menu-row" id="lagRow" hidden data-mod-dest="view.lag" data-mod-control="lag">
               <label class="menu-label" for="lag">Delay</label>
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="Lag delay" style="flex:0 0 auto">
@@ -908,7 +1007,7 @@ body[data-view="bench"] #menuButton { display: none; }
 
           <div class="menu-group">
             <span class="menu-title">Display</span>
-            <div class="menu-row">
+            <div class="menu-row" data-mod-dest="view.rotate" data-mod-control="rotate">
               <label class="menu-label" for="rotate">X&ndash;Y rotation</label>
               <div class="grow">
                 <input type="range" id="rotate" min="-50" max="50" value="0">
@@ -1168,6 +1267,7 @@ body[data-view="bench"] #menuButton { display: none; }
   <div class="wrap bench-wrap">
     <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench sections"></nav>
     <div class="bench-body" id="benchBody"></div>
+    <aside class="bench-sources" id="benchSources"></aside>
   </div>
 </section>
 
@@ -1489,7 +1589,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "viewScope", "viewBench", "bench", "benchRail", "benchBody",
-                  "rotate", "rotateValue",
+                  "rotate", "rotateValue", "benchSources",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -1498,6 +1598,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
+                  "spinRate", "spinRateValue",
                   "spinX", "spinXValue", "spinY", "spinYValue",
                   "spinZ", "spinZValue", "depth", "depthValue",
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
@@ -1693,7 +1794,7 @@ function updateEnvelope(frame, elapsed) {
 }
 
 registerSource({
-  id: "env.live", label: "Level", ink: "ch3", bipolar: false,
+  id: "env.live", label: "Level", ink: "ch3", bipolar: false, order: 10,
   value: () => Math.min(1, envLive / ENV_FULL),
 });
 
@@ -1709,10 +1810,6 @@ const VISUAL_DESTS = [
   {
     id: "view.rotate", label: "X\u2013Y rotation", span: 1, min: -2, max: 2,
     base: () => state.rotate, set: (offset) => { state.rotateMod = offset; },
-  },
-  {
-    id: "view.zoom", label: "Zoom", span: 12, min: 0, max: 24,
-    base: () => state.zoomStep, set: (offset) => { state.zoomMod = offset; },
   },
   {
     id: "view.lag", label: "Lag delay", span: LAG_MAX_MS, min: 0, max: LAG_MAX_MS,
@@ -1764,7 +1861,17 @@ const genMod = new Float32Array(GEN_DESTS.length);
 const genRoutes = [];
 let modDirty = true;
 
-function touchRoutings() { modDirty = true; }
+let repaintQueued = false;
+
+function touchRoutings() {
+  modDirty = true;
+  // Coalesced: dragging a depth fires this on every pointermove, and rebuilding
+  // the rows sixty times a second under the finger doing the dragging would
+  // replace the element being dragged out from under it.
+  if (repaintQueued) return;
+  repaintQueued = true;
+  requestAnimationFrame(() => { repaintQueued = false; paintRoutings(); });
+}
 
 function compileRoutes() {
   genRoutes.length = 0;
@@ -1826,6 +1933,7 @@ function lfoStep(lfo, rate) {
 lfos.forEach((lfo, i) => registerSource({
   id: "lfo" + (i + 1),
   label: "LFO " + (i + 1),
+  order: i,
   index: i,                       // the per-sample path reads this
   ink: "ch" + (i + 1),
   value: () => lfo.value,
@@ -6769,6 +6877,367 @@ function setView(view) {
 el.viewScope.addEventListener("click", () => setView("scope"));
 el.viewBench.addEventListener("click", () => setView("bench"));
 
+/* --- patching -----------------------------------------------------------------
+   Picking a source up and putting it on a control. Three ways in, because a
+   drag is one input method out of three: pointer drags it, touch taps the chip
+   and then the control, and a keyboard presses the plus on the row. The third
+   is not an afterthought - assignment by drag alone is a feature a keyboard
+   cannot reach at all.                                                       */
+
+const MOD_START_AMOUNT = 0.35;    // enough to see, not enough to startle
+const MOD_ROWS_SHOWN = 4;
+
+let armedSource = null;           // a chip tapped, waiting for a control
+let dragging1 = null;             // {id, ghost, over} while a chip is in hand
+const expandedDests = new Set();
+
+function routingsFor(destId) {
+  return state.modRoutings.filter((routing) => routing.destId === destId);
+}
+
+function addRouting(sourceId, destId) {
+  if (!MOD_SOURCES.has(sourceId) || !MOD_DESTS.has(destId)) return;
+  const already = state.modRoutings.find(
+    (r) => r.sourceId === sourceId && r.destId === destId);
+  // Dropping the same source on the same control twice is a nudge, not a
+  // second routing: two rows from one source onto one destination would only
+  // ever be one row's worth of depth written twice.
+  if (already) { already.amount = MOD_START_AMOUNT; touchRoutings(); return; }
+  state.modRoutings.push({ sourceId, destId, amount: MOD_START_AMOUNT });
+  touchRoutings();
+}
+
+function dropRouting(sourceId, destId) {
+  state.modRoutings = state.modRoutings.filter(
+    (r) => !(r.sourceId === sourceId && r.destId === destId));
+  touchRoutings();
+}
+
+function clearSource(sourceId) {
+  state.modRoutings = state.modRoutings.filter((r) => r.sourceId !== sourceId);
+  touchRoutings();
+}
+
+function clearDest(destId) {
+  state.modRoutings = state.modRoutings.filter((r) => r.destId !== destId);
+  touchRoutings();
+}
+
+/* --- the chips ---------------------------------------------------------- */
+
+function buildSourceChips() {
+  const sources = Array.from(MOD_SOURCES.values())
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  el.benchSources.innerHTML = '<span class="menu-title">Sources</span>'
+    + sources.map((source) => {
+        const count = state.modRoutings.filter((r) => r.sourceId === source.id).length;
+        return '<button type="button" class="mod-chip" data-source="' + source.id + '"'
+          + ' style="--chip:var(--' + source.ink + ')" aria-pressed="'
+          + (armedSource === source.id) + '">'
+          + '<span class="dot-sm" style="background:var(--' + source.ink + ')"></span>'
+          + escapeText(source.label)
+          + (count ? '<span class="count">' + count + "</span>"
+                     + '<span class="clear" role="button" tabindex="0" aria-label="Clear '
+                     + escapeText(source.label) + '">\u00d7</span>' : "")
+          + "</button>";
+      }).join("")
+    + '<p class="menu-note">Drag one onto a control, or tap it and then tap a control. '
+    + 'The rows underneath are the depth &mdash; drag them.</p>';
+
+  el.benchSources.querySelectorAll(".mod-chip").forEach((chip) => {
+    const id = chip.dataset.source;
+
+    chip.addEventListener("pointerdown", (event) => {
+      if (event.target.closest(".clear")) return;
+      beginChipDrag(id, chip, event);
+    });
+
+    const clear = chip.querySelector(".clear");
+    if (clear) {
+      const wipe = (event) => { event.stopPropagation(); event.preventDefault(); clearSource(id); };
+      clear.addEventListener("click", wipe);
+      clear.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") wipe(event);
+      });
+    }
+  });
+}
+
+function armSource(id) {
+  armedSource = armedSource === id ? null : id;
+  buildSourceChips();
+}
+
+function beginChipDrag(id, chip, event) {
+  const ghost = document.createElement("div");
+  ghost.className = "mod-ghost";
+  ghost.textContent = MOD_SOURCES.get(id).label;
+  ghost.style.left = event.clientX + "px";
+  ghost.style.top = event.clientY + "px";
+  document.body.appendChild(ghost);
+
+  dragging1 = { id, ghost, over: null, from: [event.clientX, event.clientY], moved: false };
+  chip.setPointerCapture(event.pointerId);
+  event.preventDefault();
+
+  const move = (e) => {
+    if (!dragging1) return;
+    const far = Math.abs(e.clientX - dragging1.from[0]) + Math.abs(e.clientY - dragging1.from[1]);
+    if (far > 6) dragging1.moved = true;
+    dragging1.ghost.style.left = e.clientX + "px";
+    dragging1.ghost.style.top = e.clientY + "px";
+
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const target = under && under.closest("[data-mod-dest]");
+    if (target !== dragging1.over) {
+      if (dragging1.over) dragging1.over.classList.remove("mod-target");
+      if (target) target.classList.add("mod-target");
+      dragging1.over = target;
+    }
+  };
+
+  const done = () => {
+    chip.removeEventListener("pointermove", move);
+    chip.removeEventListener("pointerup", done);
+    chip.removeEventListener("pointercancel", done);
+    if (!dragging1) return;
+
+    const { id: sourceId, ghost: g, over, moved } = dragging1;
+    dragging1 = null;
+    g.remove();
+    if (over) over.classList.remove("mod-target");
+
+    // A tap is not a failed drag: it arms the chip so the next control tapped
+    // gets it, which is the only assignment gesture a touch screen has.
+    if (!moved) { armSource(sourceId); return; }
+    if (over) { addRouting(sourceId, over.dataset.modDest); }
+  };
+
+  chip.addEventListener("pointermove", move);
+  chip.addEventListener("pointerup", done);
+  chip.addEventListener("pointercancel", done);
+}
+
+/* --- the depth rows ------------------------------------------------------ */
+
+/* The clipped part of a depth, for a destination that has a range to clip
+   against. The generator's parameters do not: a frequency an octave up is not
+   out of range, it is an octave up. */
+function clipFraction(dest, amount) {
+  if (dest.min === undefined || dest.max === undefined || !dest.base) return 0;
+  const reach = Math.abs(amount) * dest.span;
+  if (reach <= 0) return 0;
+  const base = dest.base();
+  const room = amount >= 0 ? dest.max - base : base - dest.min;
+  return Math.max(0, Math.min(1, (reach - Math.max(0, room)) / reach));
+}
+
+function paintRoutings() {
+  for (const row of document.querySelectorAll("[data-mod-dest]")) {
+    const destId = row.dataset.modDest;
+    const dest = MOD_DESTS.get(destId);
+
+    // The plus lives in the row itself: a keyboard cannot drag a chip.
+    if (!row.querySelector(".mod-add")) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "mod-add";
+      add.textContent = "+";
+      add.setAttribute("aria-label", "Add modulation to " + (dest ? dest.label : destId));
+      add.addEventListener("click", () => offerSources(destId, add));
+      (row.querySelector(".grow") || row).appendChild(add);
+    }
+
+    let holder = row.nextElementSibling;
+    if (!holder || !holder.classList.contains("mod-rows")) {
+      holder = document.createElement("div");
+      holder.className = "mod-rows";
+      row.after(holder);
+    }
+
+    const list = routingsFor(destId);
+    const open = expandedDests.has(destId);
+    const shown = open ? list : list.slice(0, MOD_ROWS_SHOWN);
+
+    holder.innerHTML = shown.map((routing) => {
+      const source = MOD_SOURCES.get(routing.sourceId);
+      const ink = source ? source.ink : "unresolved";
+      const label = source ? source.label : routing.sourceId + " (not here)";
+      const width = Math.min(1, Math.abs(routing.amount)) * 50;
+      const clipped = dest ? clipFraction(dest, routing.amount) : 0;
+      const solid = width * (1 - clipped);
+      const side = routing.amount >= 0;
+      return '<div class="mod-row" tabindex="0" data-source="' + routing.sourceId
+        + '" data-dest="' + destId + '" style="--chip:var(--' + ink + ')">'
+        + '<span class="mod-name">' + escapeText(label) + "</span>"
+        + '<span class="mod-track">'
+        + '<span class="mod-fill" style="' + (side ? "left:50%" : "right:50%")
+        + ";width:" + solid + '%"></span>'
+        + (clipped > 0
+            ? '<span class="mod-clip" style="' + (side ? "left:" + (50 + solid) + "%"
+                                                       : "right:" + (50 + solid) + "%")
+              + ";width:" + (width - solid) + '%"></span>'
+            : "")
+        + "</span>"
+        + '<span class="mod-amount">' + Math.round(routing.amount * 100) + "%</span>"
+        + '<button type="button" class="mod-x" aria-label="Remove ' + escapeText(label)
+        + '">\u00d7</button>'
+        + "</div>";
+    }).join("")
+      + (list.length > MOD_ROWS_SHOWN && !open
+          ? '<button type="button" class="mod-more" data-expand="' + destId + '">+'
+            + (list.length - MOD_ROWS_SHOWN) + " more</button>"
+          : "")
+      + (list.length > 1
+          ? '<button type="button" class="mod-more" data-clear="' + destId + '">clear</button>'
+          : "");
+
+    wireDepthRows(holder);
+  }
+
+  buildSourceChips();
+}
+
+function wireDepthRows(holder) {
+  holder.querySelectorAll(".mod-row").forEach((row) => {
+    const sourceId = row.dataset.source, destId = row.dataset.dest;
+
+    row.querySelector(".mod-x").addEventListener("click", (event) => {
+      event.stopPropagation();
+      dropRouting(sourceId, destId);
+    });
+
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        dropRouting(sourceId, destId);
+      }
+    });
+
+    const track = row.querySelector(".mod-track");
+    track.addEventListener("pointerdown", (event) => {
+      track.setPointerCapture(event.pointerId);
+      const routing = state.modRoutings.find(
+        (r) => r.sourceId === sourceId && r.destId === destId);
+      if (!routing) return;
+
+      /* Repainted in place rather than through `touchRoutings`. A rebuild
+         would replace the very element the pointer is captured on, the
+         capture would go with it, and the drag would end on its first
+         millimetre - the classic way a live control dies. */
+      const fill = row.querySelector(".mod-fill");
+      const clip = row.querySelector(".mod-clip");
+      const amountText = row.querySelector(".mod-amount");
+      const dest = MOD_DESTS.get(destId);
+
+      const drag = (e) => {
+        const box = track.getBoundingClientRect();
+        let amount = ((e.clientX - box.left) / box.width - 0.5) * 2;
+        if (Math.abs(amount) < 0.04) amount = 0;      // a detent at nothing
+        routing.amount = Math.max(-1, Math.min(1, amount));
+        modDirty = true;
+
+        const width = Math.min(1, Math.abs(routing.amount)) * 50;
+        const clipped = dest ? clipFraction(dest, routing.amount) : 0;
+        const solid = width * (1 - clipped);
+        const side = routing.amount >= 0;
+        fill.style.left = side ? "50%" : "";
+        fill.style.right = side ? "" : "50%";
+        fill.style.width = solid + "%";
+        if (clip) {
+          clip.style.left = side ? (50 + solid) + "%" : "";
+          clip.style.right = side ? "" : (50 + solid) + "%";
+          clip.style.width = (width - solid) + "%";
+        }
+        amountText.textContent = Math.round(routing.amount * 100) + "%";
+      };
+      drag(event);
+
+      const stop = () => {
+        track.removeEventListener("pointermove", drag);
+        track.removeEventListener("pointerup", stop);
+        track.removeEventListener("pointercancel", stop);
+        // Now it is safe to rebuild: the clip band may have appeared or gone.
+        touchRoutings();
+      };
+      track.addEventListener("pointermove", drag);
+      track.addEventListener("pointerup", stop);
+      track.addEventListener("pointercancel", stop);
+      event.preventDefault();
+    });
+  });
+
+  holder.querySelectorAll("[data-expand]").forEach((button) => {
+    button.addEventListener("click", () => {
+      expandedDests.add(button.dataset.expand);
+      paintRoutings();
+    });
+  });
+  holder.querySelectorAll("[data-clear]").forEach((button) => {
+    button.addEventListener("click", () => clearDest(button.dataset.clear));
+  });
+}
+
+/* The keyboard's way in, and the pointer's second way: a plain menu of what
+   could be pointed at this. */
+function offerSources(destId, anchor) {
+  const picker = document.createElement("select");
+  picker.className = "mod-picker";
+  picker.innerHTML = '<option value="">\u2014 add a source \u2014</option>'
+    + Array.from(MOD_SOURCES.values())
+        .sort((a, b) => (a.order || 0) - (b.order || 0)).map((source) =>
+        '<option value="' + source.id + '">' + escapeText(source.label) + "</option>").join("");
+  anchor.after(picker);
+  picker.focus();
+
+  /* A flag rather than a check of the DOM. Removing the focused select fires
+     its `blur` SYNCHRONOUSLY, part-way through the removal, so the blur
+     handler re-enters this while the node still reports itself connected -
+     takes it out first - and the removal that was already running then throws
+     because its child has gone. Asking whether the work has been started is
+     the only question that survives being asked from inside itself. */
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    picker.remove();
+  };
+  picker.addEventListener("change", () => {
+    if (picker.value) addRouting(picker.value, destId);
+    close();
+  });
+  picker.addEventListener("blur", close);
+}
+
+/* Tapping a control while a chip is armed is the touch gesture, and it has to
+   be `pointerdown` in the capture phase rather than `click`.
+
+   A row's control is usually a slider, and a browser treats a touch on a range
+   input as a drag of it: the touch is consumed and no click is ever
+   synthesised, so a click listener here simply never ran on a phone. Catching
+   the press instead - and stopping it before the slider sees it - is what
+   makes the gesture land on the row rather than on the control inside it.
+
+   A control that cannot be modulated disarms rather than doing nothing, so a
+   mistaken tap says so instead of leaving the chip mysteriously lit. */
+document.addEventListener("pointerdown", (event) => {
+  if (armedSource === null) return;
+  if (event.target.closest(".mod-chip")) return;
+
+  const target = event.target.closest("[data-mod-dest]");
+  const source = armedSource;
+  armedSource = null;
+
+  if (target) {
+    event.preventDefault();
+    event.stopPropagation();
+    addRouting(source, target.dataset.modDest);
+  } else {
+    buildSourceChips();
+  }
+}, true);
+
 /* --- the settings panel -------------------------------------------------------- */
 
 /* Two popovers, and each one closes the other. A click outside closes both -
@@ -6917,6 +7386,7 @@ let startView = "scope";
 try { startView = window.localStorage.getItem(VIEW_KEY) || "scope"; }
 catch (error) { startView = "scope"; }
 setView(startView);
+paintRoutings();
 showHelpTab(0);
 
 /* Opened once, on a first visit. Failing open is the right way round: a
