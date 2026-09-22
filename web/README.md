@@ -25,6 +25,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `beam.test.mjs` | the speed-to-brightness mapping, including the degenerate cases at zero |
 | `lagtest.py` | lag X-Y: figure geometry, the slow pitch lock, mid/side exclusivity, preset round trip |
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
+| `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -34,6 +35,12 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 samples than it holds and you get silence at the front of the window, not an
 error. Every buffer size in `capture()` is clamped against `source.capacity` for
 that reason, and `captest.py` exists to keep it that way.
+
+**A live band split reports itself as a microphone.** `makeLiveBandSource` returns
+`kind: "mic"` with a `lanes` array, because it *is* a live input and the four
+lanes are an implementation detail. Anything asking "has this several signals?"
+must test `source.lanes`, not the kind — asking the kind is how a preset once
+truncated a four-lane source to two and crashed the draw loop.
 
 **The test tone is silent.** `makeToneSource` has no `AudioContext` at all — it
 is a per-sample ring buffer that feeds the screen and nothing else. Anything

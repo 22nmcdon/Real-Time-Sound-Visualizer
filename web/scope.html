@@ -572,6 +572,21 @@ dialog[open] { display: flex; flex-direction: column; }
               <label class="menu-label" for="device">Device</label>
               <div class="grow"><select id="device" style="flex:1 1 auto"></select></div>
             </div>
+            <div class="menu-row" id="micShapeRow" hidden>
+              <span class="menu-label">Lanes</span>
+              <div class="grow">
+                <div class="switch" role="radiogroup" aria-label="Live input lanes" style="flex:0 0 auto">
+                  <button type="button" class="caps" id="micWhole" role="radio" aria-checked="true">Whole</button>
+                  <button type="button" class="caps" id="micBands" role="radio" aria-checked="false">Into bands</button>
+                </div>
+              </div>
+            </div>
+            <p class="menu-note" id="micNote" hidden><i>Into bands</i> splits what you are
+              playing across four crossovers, so one instrument down one input gets four
+              lanes and an X&ndash;Y figure that moves when you move. Live input is never
+              sent to the speakers &mdash; a microphone routed back out of them is a
+              feedback loop &mdash; so <i>solo</i> and <i>mute</i> choose what the screen
+              draws and nothing else.</p>
             <div id="toneRows">
               <div class="menu-row">
                 <label class="menu-label" for="genMode">Generator</label>
@@ -1347,6 +1362,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows",
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
+                  "micShapeRow", "micWhole", "micBands", "micNote",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -1943,16 +1959,71 @@ function makeToneSource() {
   };
 }
 
-async function makeMicSource(deviceId) {
-  const constraints = {
-    audio: {
-      echoCancellation: false, noiseSuppression: false, autoGainControl: false,
-      channelCount: 2,
-    },
-  };
-  if (deviceId) constraints.audio.deviceId = { exact: deviceId };
+/* One stream per device, shared by everything that wants it, and what the
+   cache holds is the **call** rather than its result. Two features asking for
+   the same microphone in the same tick would both find an empty cache and both
+   reach for getUserMedia: two permission prompts, two streams, and the browser
+   processing one input twice. Storing the promise means the second caller
+   waits on the first call instead of making another. */
+const liveStreams = new Map();          // deviceId -> { promise, holders }
 
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+function openLiveStream(deviceId) {
+  const key = deviceId || "";
+  let entry = liveStreams.get(key);
+
+  if (!entry) {
+    /* Every one of these defaults to on, and every one of them is tuned for a
+       voice call: echo cancellation, noise suppression and automatic gain all
+       reshape the waveform this page exists to measure. A scope that quietly
+       measured the browser's idea of your playing would be lying. */
+    const constraints = {
+      audio: {
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+        channelCount: 2,
+      },
+    };
+    if (deviceId) constraints.audio.deviceId = { exact: deviceId };
+
+    entry = { holders: 0, stream: null,
+              promise: navigator.mediaDevices.getUserMedia(constraints) };
+    // Kept alongside the promise so the last release can stop the tracks now
+    // rather than a microtask later - that microtask is the browser's recording
+    // indicator staying lit after the thing using it has gone.
+    entry.promise.then((stream) => { entry.stream = stream; }, () => {});
+    // A refusal must not be cached, or every retry for the rest of the page's
+    // life would be handed the same old rejection instead of asking again.
+    entry.promise.catch(() => {
+      if (liveStreams.get(key) === entry) liveStreams.delete(key);
+    });
+    liveStreams.set(key, entry);
+  }
+
+  entry.holders++;
+  return entry.promise;
+}
+
+function releaseLiveStream(deviceId) {
+  const key = deviceId || "";
+  const entry = liveStreams.get(key);
+  if (!entry) return;
+
+  entry.holders--;
+  if (entry.holders > 0) return;              // something else is still listening
+
+  liveStreams.delete(key);
+  // Stopping the tracks is what puts the browser's recording indicator out.
+  if (entry.stream) {
+    entry.stream.getTracks().forEach((track) => track.stop());
+  } else {
+    // Released before it ever opened: stop it as soon as it arrives.
+    entry.promise.then(
+      (stream) => stream.getTracks().forEach((track) => track.stop()),
+      () => {});
+  }
+}
+
+async function makeMicSource(deviceId) {
+  const stream = await openLiveStream(deviceId);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
 
@@ -2000,7 +2071,11 @@ async function makeMicSource(deviceId) {
     },
 
     stop() {
-      stream.getTracks().forEach((t) => t.stop());
+      // Through the refcount rather than straight at the tracks: the stream may
+      // be shared, and stopping it under something else that is still listening
+      // would leave that thing drawing a flat line with no way to tell why.
+      node.disconnect();
+      releaseLiveStream(deviceId);
       ctx.close();
     },
   };
@@ -2345,27 +2420,33 @@ const BANDS = [
   { name: "High", from: 4000, to: 0 },
 ];
 
-async function makeBandSource(data, label) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (ctx.state === "suspended") await ctx.resume();
+/* Web Audio reads `Q` in **decibels** for lowpass and highpass, not as the
+   linear quality factor the same name means everywhere else. 0.707 is the
+   linear Butterworth value, and putting it in a dB parameter asks for 0.7 dB of
+   peaking: measured on a 120 Hz lowpass it gives +0.71 dB at the corner and
+   +1.11 dB an octave below, where Butterworth wants -3.01 dB. Barely audible,
+   but a resonant bump carries phase distortion with it, and once two of these
+   bands are the two axes of an X-Y figure that phase is the picture. */
+const BUTTERWORTH_Q_DB = -3.0103;
 
-  const buffer = await ctx.decodeAudioData(data);
-  const duration = buffer.duration;
-
-  const mix = ctx.createGain();
-  mix.connect(ctx.destination);
-
+/* One crossover rig, built the same way whether the audio came out of a file
+   or is arriving from an input this instant. Everything downstream of `head`
+   is identical, which is the only reason a live band split is a small change
+   rather than a second implementation. */
+function buildBands(ctx, mix) {
   const lanes = BANDS.map((band) => {
     const lane = makeLane(ctx, band.name, mix);
     const chain = [];
     if (band.from > 0) {
       const hp = ctx.createBiquadFilter();
-      hp.type = "highpass"; hp.frequency.value = band.from; hp.Q.value = 0.707;
+      hp.type = "highpass"; hp.frequency.value = band.from;
+      hp.Q.value = BUTTERWORTH_Q_DB;
       chain.push(hp);
     }
     if (band.to > 0) {
       const lp = ctx.createBiquadFilter();
-      lp.type = "lowpass"; lp.frequency.value = band.to; lp.Q.value = 0.707;
+      lp.type = "lowpass"; lp.frequency.value = band.to;
+      lp.Q.value = BUTTERWORTH_Q_DB;
       chain.push(lp);
     }
     for (let i = 0; i < chain.length - 1; i++) chain[i].connect(chain[i + 1]);
@@ -2377,6 +2458,76 @@ async function makeBandSource(data, label) {
     return lane;
   });
   laneMixer(lanes);
+  return lanes;
+}
+
+/* The same four bands, taken from whatever is being played into the computer
+   right now. This is what gives one instrument down one input something to
+   draw: low end on one axis and upper harmonics on the other is a figure that
+   moves because you moved, rather than a diagonal line. */
+async function makeLiveBandSource(deviceId) {
+  const stream = await openLiveStream(deviceId);
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") await ctx.resume();
+
+  const track = stream.getAudioTracks()[0];
+  const node = ctx.createMediaStreamSource(stream);
+
+  /* Deliberately not connected to `ctx.destination`. A live microphone routed
+     back out of the speakers is a feedback loop, and through four resonant
+     filters it is a loud one. The lane mixer still runs, because solo and mute
+     pick what the screen draws; what they cannot do here is make it louder. */
+  const mix = ctx.createGain();
+  const lanes = buildBands(ctx, mix);
+  lanes.forEach((lane) => node.connect(lane.head));
+
+  return {
+    kind: "mic",
+    name: "live",
+    lanes,
+    bands: true,
+    live: true,
+    get sampleRate() { return ctx.sampleRate; },
+    get channels() { return lanes.length; },
+    get capacity() { return lanes[0].scratch.length; },
+
+    describe() {
+      const name = (track && track.label) || "live input";
+      return lanes.length + " bands  \u00b7  " + name + "  \u00b7  not monitored";
+    },
+
+    remix() { laneMixer(lanes); },
+    tick() {},
+
+    getLatestWindow(n) {
+      return lanes.map((lane) => {
+        lane.analyser.getFloatTimeDomainData(lane.scratch);
+        const take = Math.min(n, lane.scratch.length);
+        const out = new Float32Array(n);
+        out.set(lane.scratch.subarray(lane.scratch.length - take), n - take);
+        return out;
+      });
+    },
+
+    stop() {
+      node.disconnect();
+      releaseLiveStream(deviceId);
+      ctx.close();
+    },
+  };
+}
+
+async function makeBandSource(data, label) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") await ctx.resume();
+
+  const buffer = await ctx.decodeAudioData(data);
+  const duration = buffer.duration;
+
+  const mix = ctx.createGain();
+  mix.connect(ctx.destination);
+
+  const lanes = buildBands(ctx, mix);
 
   let node = null;
   let offset = 0;
@@ -2507,6 +2658,8 @@ const state = {
   /* Lag X-Y: the signal against itself, delayed. One input has no second axis,
      so this makes one out of the only thing there is - a phase portrait rather
      than a Lissajous, and the cheat sheet says so. */
+  micBands: false,           // whether live input arrives whole or split in four
+
   lagOn: false,
   lagMs: 5,
   lagAuto: true,
@@ -2573,13 +2726,13 @@ const gainOf = (ch) => Math.pow(10, -FULL_SCALE_DB[state.channels[ch].scale] / 2
    all - the samples were already in the buffer, nothing here ever read them. */
 
 /* How far back the lag lane reaches, in seconds. One gate for the whole
-   feature: a rack's lanes are six different recordings and overwriting the
-   second with a delayed copy of the first would destroy it, and mid/side
-   already owns lane two. Auto falls back to the slider until the lock warms
+   feature: a source that brings its own lanes - a rack of stems, a band split
+   - is several real signals, and overwriting the second with a delayed copy of
+   the first would destroy it. Mid/side already owns lane two as well. Auto falls back to the slider until the lock warms
    up, so the figure never drops back to a diagonal while it waits. */
 function lagSeconds() {
   if (!state.lagOn || state.midSide) return 0;
-  if (!state.source || state.source.kind === "rack") return 0;
+  if (!state.source || state.source.lanes) return 0;
   if (!state.lagAuto || lagLock === null) return state.lagMs / 1000;
   return lagLock;
 }
@@ -4600,7 +4753,7 @@ function syncLagLabel() {
 /* Offered only where it would mean something. A rack's lanes are six different
    recordings, and the second one is not a delayed copy of the first. */
 function showLag() {
-  const capable = state.source && state.source.kind !== "rack";
+  const capable = state.source && !state.source.lanes;
   if (!capable && state.lagOn) { state.lagOn = false; el.lagOn.checked = false; }
   el.lagCheck.hidden = !capable;
   el.lagRow.hidden = !capable || !state.lagOn;
@@ -5093,6 +5246,7 @@ const DEFAULTS = {
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
   lagOn: false, lagMs: 5, lagAuto: true,
+  xy0: 0, xy1: 1,
   pGoni: true, pSpec: true, pHarm: false, pTune: false, cursors: false,
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
 };
@@ -5138,6 +5292,7 @@ function snapshot() {
     c1s: state.channels[1].scale, c1o: Math.round(state.channels[1].offset * 100),
     midSide: state.midSide,
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
+    xy0: state.xyPair[0], xy1: state.xyPair[1],
     pGoni: state.panes.goni, pSpec: state.panes.spectrum,
     pHarm: state.panesExtra.harmonics, pTune: state.panesExtra.tuner,
     cursors: state.cursors,
@@ -5230,6 +5385,11 @@ function restore(partial) {
   lagLock = null;
   setLagAuto(s.lagAuto);
   showLag();
+
+  // Before the relane, because `fitChannels` is what clamps a pair that names
+  // more lanes than the source has and `buildTrigSources` is what redraws the
+  // two selects to match.
+  state.xyPair = [s.xy0, s.xy1];
   relaneForLag();
 
   state.reference = null;
@@ -5360,6 +5520,32 @@ const PRESETS = [
     ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3,
                     display: "xy", persistence: "-1", timebase: 3 }],
   ]],
+  /* These name nothing about the generator, so they land on whatever is
+     already playing. A preset has never switched the source - `restore` only
+     touches `state.source` behind a `kind === "tone"` guard - which is what
+     makes a display-only group possible at all. */
+  ["Live", [
+    ["Playing, waveform", { display: "yt", timebase: 5, persistence: "0",
+                            trigMode: "auto", level: 20 }],
+    ["Playing, lag X\u2013Y", { display: "xy", lagOn: true, lagAuto: true,
+                                persistence: "0.12", timebase: 4 }],
+    // A long tail, so a phrase leaves the whole of itself on the screen.
+    ["Playing, long tail", { display: "xy", lagOn: true, lagAuto: true,
+                             persistence: "0.04", timebase: 5 }],
+    /* For the band split: low end across, upper harmonics up. Correlation
+       between two bands of one instrument is not a stereo measurement, so the
+       goniometer goes away. */
+    ["Bands, low against high", { display: "xy", xy0: 0, xy1: 2,
+                                  persistence: "0.12", timebase: 5, pGoni: false }],
+    ["Bands, stacked", { display: "yt", timebase: 6, persistence: "0",
+                         pGoni: false, pSpec: false }],
+    ["Playing, spectrogram", { display: "spect", span: "10", timebase: 5 }],
+    // Twenty milliseconds a division: slow enough that what you see is the
+    // shape of the note rather than the shape of the waveform.
+    ["Playing, envelope", { display: "yt", timebase: 7, persistence: "0.12",
+                            pSpec: false, pGoni: false }],
+  ]],
+
   ["Analysis", [
     ["Harmonics and THD", { shape: "square", freq: 110, timebase: 4,
                             pHarm: true, pGoni: false }],
@@ -5566,6 +5752,9 @@ el.presetLoad.addEventListener("click", () => {
 function showSource(pending) {
   const kind = pending || state.source.kind;
   const loaded = state.source.kind;
+  el.micWhole.setAttribute("aria-checked", String(!state.micBands));
+  el.micBands.setAttribute("aria-checked", String(state.micBands));
+
   el.srcTone.setAttribute("aria-checked", String(kind === "tone"));
   el.srcMic.setAttribute("aria-checked", String(kind === "mic"));
   el.srcFile.setAttribute("aria-checked", String(kind === "file"));
@@ -5574,6 +5763,8 @@ function showSource(pending) {
   el.toneRows.hidden = kind !== "tone";
   el.lfoGroup.hidden = kind !== "tone";
   el.deviceRow.hidden = kind !== "mic";
+  el.micShapeRow.hidden = kind !== "mic";
+  el.micNote.hidden = kind !== "mic";
   el.rackRows.hidden = kind !== "rack";
 
   // A rack plays, so it borrows the file's transport - all but the row that
@@ -5588,6 +5779,7 @@ function showSource(pending) {
   el.sourceMark.textContent = loaded === "tone" ? "Test tone"
                             : loaded === "file" ? "File"
                             : loaded === "rack" ? (state.source.bands ? "Bands" : "Stems")
+                            : state.source.live ? "Live bands"
                             : "Live input";
   el.credit.textContent = state.source.describe();
   peakHold.fill(-120);
@@ -5595,6 +5787,9 @@ function showSource(pending) {
 }
 
 /* Anything with a transport on it. */
+/* Anything with a transport on it. A live input has none - there is nothing to
+   seek in a signal that is arriving now - and it reports itself as a mic, so it
+   is already excluded. */
 const playable = () => state.source.kind === "file" || state.source.kind === "rack";
 
 function toTone() {
@@ -5633,7 +5828,12 @@ async function toMic(deviceId) {
   el.status.dataset.state = "loading";
 
   try {
-    const mic = await makeMicSource(deviceId);
+    /* The new source opens before the old one is stopped, which with a shared
+       stream is exactly right: switching between whole and bands on the same
+       device takes the hold count 1 -> 2 -> 1, so the stream is never torn
+       down and the permission is never asked for twice. */
+    const mic = state.micBands ? await makeLiveBandSource(deviceId)
+                               : await makeMicSource(deviceId);
     if (state.source) state.source.stop();
     state.source = mic;
     showSource();
@@ -5766,8 +5966,24 @@ document.addEventListener("drop", (event) => {
   if (files.length > 1) toRack(files); else toFile(files[0]);
 });
 
+/* Whole or split, on whatever is already open. Nothing is torn down and
+   rebuilt beyond the source itself - the stream underneath is shared, so this
+   costs one AudioContext and no second permission prompt. */
+function setMicShape(bands) {
+  if (state.micBands === bands) return;
+  state.micBands = bands;
+  showSource();
+  if (state.source.kind === "mic") toMic(el.device.value || undefined);
+}
+
+el.micWhole.addEventListener("click", () => setMicShape(false));
+el.micBands.addEventListener("click", () => setMicShape(true));
+
 el.srcTone.addEventListener("click", toTone);
-el.srcMic.addEventListener("click", () => toMic());
+el.srcMic.addEventListener("click", () => {
+  showSource("mic");
+  toMic(el.device.value || undefined);
+});
 el.device.addEventListener("change", () => toMic(el.device.value));
 
 el.freq.addEventListener("input", () => {
