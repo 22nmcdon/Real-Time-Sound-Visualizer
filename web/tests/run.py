@@ -14,6 +14,7 @@ SUITES = [
     ("lag", [sys.executable, "lagtest.py"], "lag X-Y: geometry, the lock, exclusivity"),
     ("cap", [sys.executable, "captest.py"], "what capture asks a source for"),
     ("live", [sys.executable, "livetest.py"], "live input: shared stream, wiring, crossovers"),
+    ("bench", [sys.executable, "benchtest.py"], "the Bench: one node per control, two views"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]

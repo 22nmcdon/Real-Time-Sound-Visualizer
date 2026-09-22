@@ -370,6 +370,77 @@ dialog[open] { display: flex; flex-direction: column; }
   pointer-events: none;
 }
 
+/* --- the bench -----------------------------------------------------------
+   The settings panel grew until it was five hundred lines of markup in one
+   anchored popover, which is a place things go to be lost. The bench is the
+   same controls with room around them: the trace shrinks to a strip along the
+   top and keeps running, so you can see what a control does while your hand is
+   still on it, and the rest of the window is the controls themselves.
+
+   It holds no markup of its own. The groups are MOVED here from the popover
+   and moved back when the view changes, because two copies of a control means
+   two elements with one id, and the last time that happened a whole readout
+   line silently stopped displaying. */
+.bench { display: none; background: var(--cream-2); border-top: 1px solid var(--line); }
+body[data-view="bench"] .bench { display: flex; flex: 1 1 auto; min-height: 0; }
+
+/* The trace gives up the height, not the width: a strip across the top reads
+   as an instrument you are working under. Its panes go away because at this
+   height a goniometer would be a smear. */
+body[data-view="bench"] .screen { flex: 0 0 auto; height: 32vh; min-height: 190px; }
+body[data-view="bench"] .aside { display: none; }
+body[data-view="bench"] #menuButton { display: none; }
+
+.bench-wrap { flex: 1 1 auto; display: flex; gap: 22px; min-height: 0; min-width: 0; padding-block: 14px 16px; }
+
+.bench-rail {
+  flex: 0 0 148px; display: flex; flex-direction: column; gap: 1px;
+  border-right: 1px solid var(--line); padding-right: 12px; min-height: 0;
+  overflow-y: auto;
+}
+.bench-rail button {
+  background: none; border: none; border-left: 2px solid transparent;
+  text-align: left; padding: 7px 10px; color: var(--text-soft);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500;
+}
+.bench-rail button:hover { color: var(--blush-deep); }
+.bench-rail button[aria-selected="true"] {
+  color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
+}
+
+.bench-body { flex: 1 1 auto; min-width: 0; max-width: 980px; overflow-y: auto; padding-right: 8px; }
+/* The section's own title is already in the rail, and repeating it at the top
+   of the body is a heading naming the thing you just clicked. */
+.bench-body .menu-title { display: none; }
+.bench-body .menu-group { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* Two columns once there is room, the same way the cheat sheet does it: a
+   section of fifteen rows in one column is the popover again, just wider. */
+@media (min-width: 900px) {
+  .bench-body .menu-group { columns: 2; column-gap: 36px; }
+  .bench-body .menu-row, .bench-body .check, .bench-body .lane { break-inside: avoid; }
+  .bench-body .menu-note { break-inside: avoid; }
+}
+
+@media (max-width: 760px) {
+  /* The rail becomes a row of chips above the body, because 148px of section
+     names down the side of a phone is most of the phone. */
+  .bench-wrap { flex-direction: column; gap: 10px; }
+  .bench-rail {
+    flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: visible;
+    border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px;
+    /* Without this the rail is a flex item at its content width - seven chips,
+       574px of them - and rather than scrolling it stretches the whole page
+       sideways, taking the trace and the dock with it. `overflow-x: auto` can
+       only do its job once the item is allowed to be narrower than its
+       contents. */
+    min-width: 0;
+  }
+  .bench-rail button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .bench-rail button[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
+  body[data-view="bench"] .screen { height: auto; }
+}
+
 /* --- dock ---------------------------------------------------------------- */
 .dock {
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
@@ -430,6 +501,13 @@ dialog[open] { display: flex; flex-direction: column; }
    per component, because the next component with a `display` would be the
    next one to inherit the bug. */
 [hidden] { display: none !important; }
+/* Not the same thing as `hidden`. `hidden` is which section the bench is
+   showing; this is a group that does not apply to what is loaded at all - the
+   modulation rows belong to the generator, and there is no generator to
+   modulate when a microphone is plugged in. Kept apart because the bench sets
+   one of them and the source switch sets the other, and when they were the
+   same attribute each kept undoing the other. */
+.menu-group[data-off] { display: none !important; }
 .dot-sm { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .colophon { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--text-soft); }
 
@@ -480,6 +558,10 @@ dialog[open] { display: flex; flex-direction: column; }
       <h1 class="sheet-title">Oscilloscope</h1>
       <span class="sheet-credit" id="credit">220 Hz, synthesised in the page</span>
       <span class="status caps" id="status" data-state="ready">running</span>
+      <div class="switch" role="radiogroup" aria-label="View" style="flex:0 0 auto">
+        <button type="button" class="caps" id="viewScope" role="radio" aria-checked="true">Scope</button>
+        <button type="button" class="caps" id="viewBench" role="radio" aria-checked="false">Bench</button>
+      </div>
       <div class="menu-wrap">
         <button type="button" class="help-button" id="helpButton"
                 aria-label="How this works" title="How this works">?</button>
@@ -1066,6 +1148,14 @@ dialog[open] { display: flex; flex-direction: column; }
   </div>
 </footer>
 
+<!-- Empty on purpose: the groups are moved in from the settings panel. -->
+<section class="bench" id="bench">
+  <div class="wrap bench-wrap">
+    <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench sections"></nav>
+    <div class="bench-body" id="benchBody"></div>
+  </div>
+</section>
+
 <dialog id="helpDialog">
   <div class="dialog-head">
     <div>
@@ -1141,6 +1231,14 @@ dialog[open] { display: flex; flex-direction: column; }
       <li><b>Panes</b>
         <span>What sits down the right-hand side. Turn them all off and the trace takes the
         whole width.</span></li>
+
+      <li><b>Scope and Bench are the same instrument</b>
+        <span>In <i>Scope</i> the trace has the window and the controls are behind
+        <i>Settings</i>. In <i>Bench</i> the trace becomes a strip along the top and keeps
+        running while the controls spread out underneath it, a section at a time down the
+        left. Nothing is duplicated and nothing is lost between them &mdash; they are the
+        same controls in two places &mdash; so a setting made in one is made in the
+        other. <b>B</b> switches, and the choice is remembered.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -1315,7 +1413,7 @@ dialog[open] { display: flex; flex-direction: column; }
 
       <li><b>Keys</b>
         <span><b>Space</b> run and stop &middot; <b>S</b> single &middot; <b>A</b> autoset
-        &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
+        &middot; <b>B</b> bench &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
         <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet.</span></li>
     </ul>
@@ -1375,6 +1473,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "micShapeRow", "micWhole", "micBands", "micNote",
+                  "viewScope", "viewBench", "bench", "benchRail", "benchBody",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -5773,7 +5872,7 @@ function showSource(pending) {
   el.srcRack.setAttribute("aria-checked", String(kind === "rack"));
 
   el.toneRows.hidden = kind !== "tone";
-  el.lfoGroup.hidden = kind !== "tone";
+  if (kind === "tone") delete el.lfoGroup.dataset.off; else el.lfoGroup.dataset.off = "1";
   el.deviceRow.hidden = kind !== "mic";
   el.micShapeRow.hidden = kind !== "mic";
   el.micNote.hidden = kind !== "mic";
@@ -5794,6 +5893,7 @@ function showSource(pending) {
                             : state.source.live ? "Live bands"
                             : "Live input";
   el.credit.textContent = state.source.describe();
+  if (document.body.dataset.view === "bench") buildBenchRail();
   peakHold.fill(-120);
   clearSpectro();
 }
@@ -6281,6 +6381,89 @@ el.srcRack.addEventListener("click", () => {
   el.rackInput.click();
 });
 
+/* --- the bench ---------------------------------------------------------------
+   Two views over one set of controls, and "views" is meant literally: the
+   groups are MOVED between the settings popover and the bench, never copied.
+   Two copies of a control is two elements answering to one id, and the last
+   time that happened in this page a whole readout line silently stopped
+   displaying and stayed broken for weeks. Moving them also keeps every
+   listener bound at boot, so nothing has to be rewired on a view change.    */
+
+const VIEW_KEY = "scope.view";
+let benchGroups = null;      // in the order the popover had them
+let benchSection = 0;
+
+function settingsGroups() {
+  if (benchGroups === null) {
+    benchGroups = Array.from(el.menuPanel.querySelectorAll(":scope > .menu-group"));
+  }
+  return benchGroups;
+}
+
+function groupTitle(group) {
+  const title = group.querySelector(".menu-title");
+  return title ? title.textContent.trim() : "Settings";
+}
+
+const benchable = () => settingsGroups().filter((g) => g.dataset.off === undefined);
+
+function buildBenchRail() {
+  const shown = benchable();
+  if (shown.length === 0) return;
+  if (benchSection >= shown.length) benchSection = 0;
+
+  el.benchRail.innerHTML = shown.map((group, i) =>
+    '<button type="button" role="tab" data-section="' + i + '" aria-selected="'
+    + (i === benchSection) + '">' + escapeText(groupTitle(group)) + "</button>").join("");
+
+  el.benchRail.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => showBenchSection(Number(button.dataset.section)));
+  });
+  showBenchSection(benchSection);
+}
+
+function showBenchSection(index) {
+  const shown = benchable();
+  if (shown.length === 0) return;
+  benchSection = Math.max(0, Math.min(index, shown.length - 1));
+
+  // Every group is in the body; one of them is not hidden.
+  settingsGroups().forEach((group) => { group.hidden = true; });
+  shown[benchSection].hidden = false;
+
+  el.benchRail.querySelectorAll("button").forEach((button) => {
+    button.setAttribute("aria-selected",
+      String(Number(button.dataset.section) === benchSection));
+  });
+}
+
+function setView(view) {
+  const bench = view === "bench";
+  document.body.dataset.view = bench ? "bench" : "scope";
+  el.viewScope.setAttribute("aria-checked", String(!bench));
+  el.viewBench.setAttribute("aria-checked", String(bench));
+
+  const groups = settingsGroups();
+  const home = bench ? el.benchBody : el.menuPanel;
+  for (const group of groups) home.appendChild(group);
+
+  if (bench) {
+    setMenuOpen(false);
+    setPanesOpen(false);
+    buildBenchRail();
+  } else {
+    // Back in the popover every group is on show again; only the bench ever
+    // wanted one at a time.
+    for (const group of groups) group.hidden = false;
+  }
+
+  try { window.localStorage.setItem(VIEW_KEY, document.body.dataset.view); }
+  catch (error) { /* private window */ }
+}
+
+el.viewScope.addEventListener("click", () => setView("scope"));
+el.viewBench.addEventListener("click", () => setView("bench"));
+
 /* --- the settings panel -------------------------------------------------------- */
 
 /* Two popovers, and each one closes the other. A click outside closes both -
@@ -6388,6 +6571,10 @@ document.addEventListener("keydown", (event) => {
       el.cursorsOn.checked = !el.cursorsOn.checked;
       el.cursorsOn.dispatchEvent(new Event("change"));
       break;
+    case "b": case "B":
+      event.preventDefault();
+      setView(document.body.dataset.view === "bench" ? "scope" : "bench");
+      break;
     case "1": event.preventDefault(); setDisplay("yt"); break;
     case "2": event.preventDefault(); setDisplay("xy"); break;
     case "3": event.preventDefault(); setDisplay("spect"); break;
@@ -6420,6 +6607,11 @@ state.lastReadout = performance.now();
 
 // Open on something, rather than on whatever the markup happened to say.
 applyPreset("b:Harmonic tone");
+
+let startView = "scope";
+try { startView = window.localStorage.getItem(VIEW_KEY) || "scope"; }
+catch (error) { startView = "scope"; }
+setView(startView);
 showHelpTab(0);
 
 /* Opened once, on a first visit. Failing open is the right way round: a

@@ -26,6 +26,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `lagtest.py` | lag X-Y: figure geometry, the slow pitch lock, mid/side exclusivity, preset round trip |
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
 | `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
+| `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -35,6 +36,18 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 samples than it holds and you get silence at the front of the window, not an
 error. Every buffer size in `capture()` is clamped against `source.capacity` for
 that reason, and `captest.py` exists to keep it that way.
+
+**The Bench moves controls, it does not copy them.** `setView` relocates the
+same `.menu-group` elements between `#menuPanel` and `#benchBody`. Anything that
+builds a second copy of a control gives two elements one id, and
+`getElementById` returns the first — which is how the dock's readout line came
+to display nothing for weeks. `benchtest.py` asserts there are no duplicate ids
+in either view or after a round trip.
+
+**`hidden` and `data-off` are different questions.** `hidden` on a settings
+group is the bench's section selector; `data-off` means the group does not apply
+to the loaded source at all (modulation with no generator under it). They were
+the same attribute once and each kept undoing the other.
 
 **A live band split reports itself as a microphone.** `makeLiveBandSource` returns
 `kind: "mic"` with a `lanes` array, because it *is* a live input and the four
