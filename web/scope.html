@@ -714,6 +714,33 @@ body[data-view="scope"] .mod-add { display: none; }
                 </div>
               </div>
               <div class="menu-row">
+                <span class="menu-label">Play along</span>
+                <div class="grow">
+                  <label class="link-btn caps" for="alongInput" style="cursor:pointer">With a track</label>
+                  <input type="file" id="alongInput" accept="audio/*" hidden>
+                </div>
+              </div>
+              <div class="menu-row" id="alignRow" hidden>
+                <label class="menu-label" for="align">Alignment</label>
+                <div class="grow">
+                  <input type="range" id="align" min="-100" max="200" value="0">
+                  <span class="reading" id="alignValue">0 ms</span>
+                </div>
+              </div>
+              <p class="menu-note" id="alignNote" hidden>Everything a converter does takes
+                time: what you hear of the track left this page a moment ago, and what the
+                microphone heard of your answer arrives a moment late. <i>Alignment</i>
+                delays the track to meet the input &mdash; the only direction that works,
+                since the input cannot be made earlier. Start from the suggestion and trim
+                by eye until a note you play lands on the beat it belongs to.
+                <br><br>
+                Your playing is drawn and never monitored: the track is already going into
+                the same microphone, and sending that back out is a feedback loop. The two
+                clocks also drift &mdash; the converter counts samples at its own rate and
+                the page counts at its own &mdash; so over a long session the alignment
+                walks and wants nudging again. That is a known limit rather than something
+                handled.</p>
+              <div class="menu-row">
                 <span class="menu-label">Or split one</span>
                 <div class="grow">
                   <label class="link-btn caps" for="bandInput" style="cursor:pointer">Into bands</label>
@@ -1500,6 +1527,22 @@ body[data-view="scope"] .mod-add { display: none; }
         the page &mdash; and plays it as it draws. Drop <i>several</i> files at once and each
         becomes a lane.</span></li>
 
+      <li><b>Playing along with a track</b>
+        <span><i>Stems &rarr; Play along &rarr; With a track</i> opens a backing track and
+        your microphone as two lanes of one rack &mdash; so X&ndash;Y is the track against
+        you, which is the figure worth having. Your playing is drawn and never sent to the
+        speakers: the track is already going into the same microphone and sending that back
+        out is a feedback loop.
+        <br><br>
+        <i>Alignment</i> is the control that matters. Everything a converter does takes
+        time, so what you hear of the track left the page a moment ago and what the
+        microphone heard of your answer arrives a moment late; on one graticule that reads
+        as a phrase which never lines up. It holds the track back to meet the input, which
+        is the only direction available &mdash; the input cannot be made earlier. Start
+        from the suggestion and trim by eye. The two clocks drift as well, so over a long
+        session it walks and wants nudging again; that is a limit rather than a
+        setting.</span></li>
+
       <li><b>Playing live: split the input into bands</b>
         <span>Under <i>Mic</i>, <i>Lanes &rarr; Into bands</i> puts what you are playing
         through the same four crossovers the stem splitter uses. One instrument down one
@@ -1696,6 +1739,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "micShapeRow", "micWhole", "micBands", "micNote",
+                  "alongInput", "alignRow", "align", "alignValue", "alignNote",
                   "viewScope", "viewBench", "bench", "benchRail", "benchBody",
                   "rotate", "rotateValue", "benchSources",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
@@ -2534,16 +2578,37 @@ function openLiveStream(deviceId) {
     };
     if (deviceId) constraints.audio.deviceId = { exact: deviceId };
 
-    entry = { holders: 0, stream: null,
+    entry = { holders: 0, stream: null, keys: [key],
               promise: navigator.mediaDevices.getUserMedia(constraints) };
-    // Kept alongside the promise so the last release can stop the tracks now
-    // rather than a microtask later - that microtask is the browser's recording
-    // indicator staying lit after the thing using it has gone.
-    entry.promise.then((stream) => { entry.stream = stream; }, () => {});
+
+    entry.promise.then((stream) => {
+      // Kept alongside the promise so the last release can stop the tracks now
+      // rather than a microtask later - that microtask is the browser's
+      // recording indicator staying lit after the thing using it has gone.
+      entry.stream = stream;
+
+      /* And filed under the name the browser gives it, as well as under the
+         empty key that asked for "whatever the default is".
+
+         A browser hands out device ids only once permission has been granted,
+         so the first open is always anonymous and every one after it names the
+         device explicitly - the same microphone arriving under two different
+         keys, which is two cache entries, two streams and two permission
+         prompts. Aliasing them is what makes the second request find the
+         first stream. */
+      const track = stream.getAudioTracks()[0];
+      const named = track && track.getSettings ? track.getSettings().deviceId : null;
+      if (named && !liveStreams.has(named)) {
+        liveStreams.set(named, entry);
+        entry.keys.push(named);
+      }
+    }, () => {});
     // A refusal must not be cached, or every retry for the rest of the page's
     // life would be handed the same old rejection instead of asking again.
     entry.promise.catch(() => {
-      if (liveStreams.get(key) === entry) liveStreams.delete(key);
+      for (const name of entry.keys) {
+        if (liveStreams.get(name) === entry) liveStreams.delete(name);
+      }
     });
     liveStreams.set(key, entry);
   }
@@ -2560,7 +2625,10 @@ function releaseLiveStream(deviceId) {
   entry.holders--;
   if (entry.holders > 0) return;              // something else is still listening
 
-  liveStreams.delete(key);
+  // Every name it is filed under, not only the one this caller used.
+  for (const name of entry.keys) {
+    if (liveStreams.get(name) === entry) liveStreams.delete(name);
+  }
   // Stopping the tracks is what puts the browser's recording indicator out.
   if (entry.stream) {
     entry.stream.getTracks().forEach((track) => track.stop());
@@ -2924,39 +2992,84 @@ function makeLane(ctx, name, mix) {
     level: 0,            // dB of monitor trim
     mute: false,
     solo: false,
+    /* How far back this lane is read, in samples. Everything a converter does
+       takes time: what you hear of a backing track left the page a moment ago,
+       and what the microphone heard of your answer arrives a moment late. The
+       two are not the same moment, and on one graticule that shows as a phrase
+       that never lines up. Delaying the track to meet the input is the only
+       direction that works, because the input cannot be made earlier. */
+    delay: 0,
+    live: false,         // arriving now rather than playing back
+    monitored: true,     // whether anything it makes can reach the speakers
   };
 }
 
 function laneMixer(lanes) {
-  const soloed = lanes.some((lane) => lane.solo);
+  /* A lane nobody can hear cannot be soloed. Counting a live input as a solo
+     candidate would mean soloing it silences the backing track and yields
+     silence, because the live lane is deliberately not connected to anything
+     that reaches the speakers. */
+  const audible = lanes.filter((lane) => lane.monitored !== false);
+  const soloed = audible.some((lane) => lane.solo);
+
   lanes.forEach((lane) => {
     const heard = soloed ? lane.solo : !lane.mute;
     lane.gain.gain.value = heard ? Math.pow(10, lane.level / 20) : 0;
   });
 }
 
-async function makeRackSource(entries, label) {
+/* An entry is either a decoded file or the live input. Both become lanes, and
+   from there almost nothing cares which is which - the transport only ever
+   touches lanes that have a buffer, so a stream needs no special case in
+   play, pause, seek or loop. */
+async function makeRackSource(entries, label, deviceId) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
 
-  const decoded = [];
-  for (const entry of entries.slice(0, MAX_LANES)) {
-    decoded.push(await ctx.decodeAudioData(entry.data));
-  }
-  if (decoded.length === 0) throw new Error("nothing to decode");
+  const list = entries.slice(0, MAX_LANES);
+  const wantsLive = list.some((entry) => entry.stream);
+  const stream = wantsLive ? await openLiveStream(deviceId) : null;
 
-  const frames = Math.max(...decoded.map((b) => b.length));
-  const buffers = decoded.map((b) => padded(ctx, b, frames));
-  const duration = frames / ctx.sampleRate;
+  const decoded = new Map();
+  for (const entry of list) {
+    if (entry.data) decoded.set(entry, await ctx.decodeAudioData(entry.data));
+  }
+  if (decoded.size === 0 && !wantsLive) throw new Error("nothing to decode");
+
+  const frames = decoded.size > 0
+    ? Math.max(...Array.from(decoded.values()).map((b) => b.length)) : 0;
+  const duration = frames > 0 ? frames / ctx.sampleRate : 0;
 
   const mix = ctx.createGain();
   const monitor = makeMonitorChain(ctx);
   mix.connect(monitor.input);
 
-  const lanes = entries.slice(0, MAX_LANES)
-    .map((entry, i) => makeLane(ctx, entry.name, mix));
-  lanes.forEach((lane, i) => { lane.buffer = buffers[i]; });
+  const lanes = list.map((entry) => {
+    const lane = makeLane(ctx, entry.name, mix);
+    if (entry.stream) {
+      /* Straight to the analyser and nowhere else. A live input routed to the
+         speakers is a feedback loop, and here the backing track is already
+         playing into the same microphone - so this is the one lane in the rack
+         that exists only to be looked at. */
+      lane.live = true;
+      lane.monitored = false;
+      lane.node = ctx.createMediaStreamSource(stream);
+      lane.node.connect(lane.analyser);
+    } else {
+      lane.buffer = padded(ctx, decoded.get(entry), frames);
+    }
+    return lane;
+  });
   laneMixer(lanes);
+
+  /* What a converter costs, in samples, as a starting guess for the alignment.
+     `outputLatency` is how far ahead of the speakers the graph runs and
+     `baseLatency` is the graph's own block; the input's own latency is not
+     exposed at all, so this is a starting point to trim from rather than an
+     answer. */
+  const suggestedAlignMs = wantsLive
+    ? Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000)
+    : 0;
 
   let nodes = [];
   let offset = 0;
@@ -2986,7 +3099,7 @@ async function makeRackSource(entries, label) {
     const when = ctx.currentTime + RACK_LEAD;
     const from = Math.min(offset, Math.max(0, duration - 0.01));
 
-    nodes = lanes.map((lane) => {
+    nodes = lanes.filter((lane) => lane.buffer).map((lane) => {
       const node = ctx.createBufferSource();
       node.buffer = lane.buffer;
       node.loop = loop;
@@ -3010,13 +3123,19 @@ async function makeRackSource(entries, label) {
     stopNodes();
   }
 
+  // The room a delayed lane eats: it is read from further back, so there is
+  // that much less of the buffer left to hand out.
+  const deepest = () => lanes.reduce((most, lane) => Math.max(most, lane.delay), 0);
+
   return {
     kind: "rack",
     name: label,
     lanes,
+    hasLive: wantsLive,
+    suggestedAlignMs,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
-    get capacity() { return lanes[0].scratch.length; },
+    get capacity() { return lanes[0].scratch.length - deepest(); },
     get duration() { return duration; },
     get playing() { return nodes.length > 0; },
     get at() { return position(); },
@@ -3025,8 +3144,10 @@ async function makeRackSource(entries, label) {
     describe() {
       const minutes = Math.floor(duration / 60);
       const seconds = Math.round(duration % 60);
-      return lanes.length + " lanes  ·  " + minutes + ":"
-             + String(seconds).padStart(2, "0");
+      const length = minutes + ":" + String(seconds).padStart(2, "0");
+      return wantsLive
+        ? "a track and you  ·  " + length + "  ·  you are not monitored"
+        : lanes.length + " lanes  ·  " + length;
     },
 
     remix() { laneMixer(lanes); },
@@ -3052,15 +3173,20 @@ async function makeRackSource(entries, label) {
     getLatestWindow(n) {
       return lanes.map((lane) => {
         lane.analyser.getFloatTimeDomainData(lane.scratch);
-        const take = Math.min(n, lane.scratch.length);
+        // Read ending `delay` samples before the newest, which is what putting
+        // this lane a moment in the past amounts to.
+        const end = Math.max(0, lane.scratch.length - lane.delay);
+        const take = Math.min(n, end);
         const out = new Float32Array(n);
-        out.set(lane.scratch.subarray(lane.scratch.length - take), n - take);
+        out.set(lane.scratch.subarray(end - take, end), n - take);
         return out;
       });
     },
 
     stop() {
       stopNodes();
+      lanes.forEach((lane) => { if (lane.node) lane.node.disconnect(); });
+      if (wantsLive) releaseLiveStream(deviceId);
       dropMonitorChain(monitor);
       ctx.close();
     },
@@ -3358,6 +3484,7 @@ const state = {
   analyseAt: "post",         // pre | post
   monitorAt: "pre",          // pre | post
   micBands: false,           // whether live input arrives whole or split in four
+  alignMs: 0,                // how far the backing track is held back to meet the input
 
   lagOn: false,
   lagMs: 5,                  // what the slider says
@@ -5630,6 +5757,7 @@ function syncLabels() {
   el.filterCutoffValue.textContent = cut < 1000
     ? Math.round(cut) + " Hz" : (cut / 1000).toFixed(2) + " kHz";
   el.filterResValue.textContent = String(state.filter.res);
+  el.alignValue.textContent = state.alignMs + " ms";
   el.looking.innerHTML = (state.edge === RISING ? "&uarr; " : "&darr; ")
     + (state.level >= 0 ? "+" : "−") + Math.abs(state.level).toFixed(3);
 
@@ -6772,10 +6900,12 @@ function showSource(pending) {
   // listening to.
   el.sourceMark.textContent = loaded === "tone" ? "Test tone"
                             : loaded === "file" ? "File"
-                            : loaded === "rack" ? (state.source.bands ? "Bands" : "Stems")
+                            : loaded === "rack" ? (state.source.hasLive ? "Play along"
+                                                 : state.source.bands ? "Bands" : "Stems")
                             : state.source.live ? "Live bands"
                             : "Live input";
   el.credit.textContent = state.source.describe();
+  showAlign();
   if (document.body.dataset.view === "bench") buildBenchRail();
   peakHold.fill(-120);
   clearSpectro();
@@ -7214,6 +7344,51 @@ async function toRack(files) {
   }
 }
 
+/* Positive holds the track back to meet a late input, which is the usual
+   direction. Negative holds the input back instead, for a rig where the track
+   is somehow the later of the two. */
+function applyAlignment() {
+  const source = state.source;
+  if (!source || !source.lanes) return;
+
+  const samples = Math.round(Math.abs(state.alignMs) * source.sampleRate / 1000);
+  for (const lane of source.lanes) {
+    lane.delay = state.alignMs >= 0 ? (lane.live ? 0 : samples)
+                                    : (lane.live ? samples : 0);
+  }
+}
+
+function showAlign() {
+  const live = !!(state.source && state.source.hasLive);
+  el.alignRow.hidden = !live;
+  el.alignNote.hidden = !live;
+}
+
+async function toPlayAlong(file) {
+  if (!file) return;
+  sayRack("Opening the microphone and decoding \u201c" + file.name + "\u201d\u2026");
+
+  try {
+    const entries = [
+      { name: laneNameFor(file), data: await file.arrayBuffer() },
+      { name: "You", stream: true },
+    ];
+    const source = await makeRackSource(entries, "play along", el.device.value || undefined);
+    adoptRack(source, "along");
+
+    state.alignMs = source.suggestedAlignMs;
+    el.align.value = String(state.alignMs);
+    applyAlignment();
+    syncLabels();
+    await listDevices();
+    sayRack(null);
+  } catch (error) {
+    sayRack(error && error.name === "NotAllowedError"
+      ? "The microphone was blocked \u2014 allow it in the address bar and try again."
+      : "That would not open: " + error.message);
+  }
+}
+
 async function toBands(file) {
   if (!file) return;
   sayRack("Splitting “" + file.name + "”…");
@@ -7258,6 +7433,14 @@ el.rackInput.addEventListener("change", () => {
 });
 el.bandInput.addEventListener("change", () => {
   if (el.bandInput.files.length) toBands(el.bandInput.files[0]);
+});
+el.alongInput.addEventListener("change", () => {
+  if (el.alongInput.files.length) toPlayAlong(el.alongInput.files[0]);
+});
+el.align.addEventListener("input", () => {
+  state.alignMs = Number(el.align.value);
+  applyAlignment();
+  syncLabels();
 });
 el.srcRack.addEventListener("click", () => {
   showSource("rack");

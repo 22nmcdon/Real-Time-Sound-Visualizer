@@ -27,6 +27,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
 | `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
 | `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
+| `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -76,6 +77,18 @@ capture phase and stops it before the slider sees it.
 group is the bench's section selector; `data-off` means the group does not apply
 to the loaded source at all (modulation with no generator under it). They were
 the same attribute once and each kept undoing the other.
+
+**One microphone can arrive under two names.** A browser hands out device ids
+only after permission is granted, so the first open is anonymous (`""`) and
+every one after it names the device — the same microphone in two cache entries,
+which is two streams and two prompts. `openLiveStream` files each entry under
+both and releases all of its names at once.
+
+**Clock drift between a live input and a file is a known limit, not a bug.**
+The converter counts samples at its own rate and the page counts at its own, so
+a play-along alignment walks over a long session. It is measurable (the
+cross-lane correlation peak moves) and therefore correctable later by
+re-measuring, but nothing does that today.
 
 **A live band split reports itself as a microphone.** `makeLiveBandSource` returns
 `kind: "mic"` with a `lanes` array, because it *is* a live input and the four
