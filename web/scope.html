@@ -1,3 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- A phone renders a page with no viewport meta at 980 CSS pixels and then
+     scales it down, so every media query below the breakpoint stops matching
+     and the narrow layout - the one this page has - is never reached. The
+     artifact host supplies this line in a wrapper of its own, which is exactly
+     why it was missing here: the file was only ever opened through that
+     wrapper. Served on its own it needs its own. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Oscilloscope</title>
 
 <link rel="stylesheet"
@@ -373,22 +382,32 @@ dialog[open] { display: flex; flex-direction: column; }
 /* --- the bench -----------------------------------------------------------
    The settings panel grew until it was five hundred lines of markup in one
    anchored popover, which is a place things go to be lost. The bench is the
-   same controls with room around them: the trace shrinks to a strip along the
-   top and keeps running, so you can see what a control does while your hand is
-   still on it, and the rest of the window is the controls themselves.
+   other half of the instrument: the controls get the window, and the screen
+   becomes a square you work beside.
 
-   It holds no markup of its own. The groups are MOVED here from the popover
-   and moved back when the view changes, because two copies of a control means
-   two elements with one id, and the last time that happened a whole readout
-   line silently stopped displaying. */
+   A square, and not the strip this used to be. The figure you are usually
+   patching toward is X-Y, and a circle in a letterbox is a circle that lies
+   about being one - a control that makes the picture rounder would read as
+   doing nothing at all. Square is the only aspect that tells the truth about
+   both axes at once.
+
+   The bench holds no markup of its own but the frames. The control groups AND
+   the screen itself are MOVED here and moved back when the view changes. Two
+   copies of a control is two elements answering to one id, and the last time
+   that happened in this page a whole readout line silently stopped displaying
+   and stayed broken for weeks. Moving the canvas rather than drawing a second
+   one means the cursor handlers, the resize path and the persistence buffer
+   all come with it and none of them know anything happened.                 */
 .bench { display: none; background: var(--cream-2); border-top: 1px solid var(--line); }
 body[data-view="bench"] .bench { display: flex; flex: 1 1 auto; min-height: 0; }
 
-/* The trace gives up the height, not the width: a strip across the top reads
-   as an instrument you are working under. Its panes go away because at this
-   height a goniometer would be a smear. */
-body[data-view="bench"] .screen { flex: 0 0 auto; height: 32vh; min-height: 190px; }
-body[data-view="bench"] .aside { display: none; }
+/* The bench IS the screen here, so the full-height one goes away rather than
+   being squeezed in above it. The dock stays: it is the readout for whichever
+   screen is showing, and it is ordered after the bench because the page
+   declares it before one. */
+body[data-view="bench"] .screen { display: none; }
+body[data-view="bench"] .bench { order: 2; }
+body[data-view="bench"] .dock  { order: 3; }
 body[data-view="bench"] #menuButton { display: none; }
 
 .bench-wrap { flex: 1 1 auto; display: flex; gap: 22px; min-height: 0; min-width: 0; padding-block: 14px 16px; }
@@ -408,18 +427,60 @@ body[data-view="bench"] #menuButton { display: none; }
   color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
 }
 
-.bench-body { flex: 1 1 auto; min-width: 0; max-width: 980px; overflow-y: auto; padding-right: 8px; }
+.bench-body { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding-right: 8px; }
 /* The section's own title is already in the rail, and repeating it at the top
    of the body is a heading naming the thing you just clicked. */
 .bench-body .menu-title { display: none; }
 .bench-body .menu-group { margin-top: 0; padding-top: 0; border-top: 0; }
 
 /* Two columns once there is room, the same way the cheat sheet does it: a
-   section of fifteen rows in one column is the popover again, just wider. */
-@media (min-width: 900px) {
+   section of fifteen rows in one column is the popover again, just wider.
+   Raised from the old 900px because the side column now takes 300px of the
+   width this was measured against. */
+@media (min-width: 1180px) {
   .bench-body .menu-group { columns: 2; column-gap: 36px; }
   .bench-body .menu-row, .bench-body .check, .bench-body .lane { break-inside: avoid; }
   .bench-body .menu-note { break-inside: avoid; }
+}
+
+/* --- the side column -------------------------------------------------------
+   The screen, and the things you point at it. Neither is ever behind a tab.
+
+   An LFO you cannot see while you are patching it is an LFO you set by opening
+   a panel, reading a number and closing the panel again - which is exactly the
+   popover this whole view exists to replace. So the modulation group does not
+   join the rail's rotation; it lives here, next to the screen it is moving,
+   and the rail is left holding the things you set once and leave.           */
+.bench-side {
+  flex: 0 0 264px; display: flex; flex-direction: column; gap: 12px;
+  border-left: 1px solid var(--line); padding-left: 16px;
+  min-height: 0; overflow-y: auto;
+}
+/* Small, and capped rather than given the column's width. "Enough to see the
+   figure answer while your hand is on the control" is what this has to be, and
+   past about two hundred pixels it starts taking the room the oscillators need
+   to be on screen at the same time - which is the thing that would actually be
+   missed. */
+.bench-scope {
+  flex: 0 0 auto; width: min(100%, 200px); aspect-ratio: 1 / 1;
+  display: flex; margin-inline: auto;
+}
+.bench-scope > .sheet { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.bench-scope:empty { display: none; }
+
+/* Narrower labels than the body's, because 96px of label in a 264px column
+   leaves a slider that cannot say anything. */
+.bench-side .menu-label { flex: 0 0 58px; font-size: 11.5px; }
+.bench-side .menu-group { margin-top: 0; padding-top: 0; border-top: 0; }
+.bench-side .menu-row { gap: 5px 8px; margin-top: 5px; }
+/* The prose goes. This column is a working surface, not a page to read: the
+   paragraphs are still under Settings in the Scope view and the cheat sheet
+   still teaches the gesture, and what they cost here is the oscillators being
+   below the fold - which is the one thing this column exists to prevent. */
+.bench-side .menu-note { display: none; }
+.bench-hint {
+  font-size: 10.5px; line-height: 1.45; color: var(--text-soft);
+  margin: 2px 0 0; max-width: 40ch;
 }
 
 @media (max-width: 760px) {
@@ -431,23 +492,40 @@ body[data-view="bench"] #menuButton { display: none; }
     border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px;
     /* Without this the rail is a flex item at its content width - seven chips,
        574px of them - and rather than scrolling it stretches the whole page
-       sideways, taking the trace and the dock with it. `overflow-x: auto` can
+       sideways, taking the screen and the dock with it. `overflow-x: auto` can
        only do its job once the item is allowed to be narrower than its
        contents. */
     min-width: 0;
   }
   .bench-rail button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
   .bench-rail button[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
-  body[data-view="bench"] .screen { height: auto; }
+
+  /* The column stops being a column and its three parts join the stack, so
+     the screen can sit at the top where it is worth looking at while the
+     sources and the oscillators go to the bottom. A side column here would
+     put the screen below a phone's worth of controls. */
+  .bench-side { display: contents; }
+  .bench-scope { order: -1; width: 100%; max-width: 340px; margin-inline: auto; }
+  .bench-sources { order: 3; border-top: 1px solid var(--line); padding-top: 10px; }
+  #lfoGroup { order: 4; }
+  .bench-side .menu-label { flex: 0 0 96px; }
 }
 
 /* --- patching --------------------------------------------------------------
-   A source is a chip you pick up and put on a control. What appears under the
-   control is one labelled row per routing, in that source's ink, and the row
-   is the depth: drag it, and the number is what it is worth.                */
+   A source is a chip you pick up and put on a control. What the control does
+   with it is the part worth getting right: it grows a second slider inside the
+   space it already had.
+
+   The thumb splits in half. The top half stays where you set the value by
+   hand; the bottom half slides away to where the attachment takes it, and the
+   bar between them is the sweep. At no depth the two halves are one circle
+   again - so an attachment doing nothing looks exactly like no attachment,
+   which is what it is. A dotted frame says a control has something on it, and
+   costs no height, because the reason this is a split thumb rather than an
+   extra row is that the panel should not grow every time something is
+   patched.                                                                  */
 .bench-sources {
-  flex: 0 0 168px; display: flex; flex-direction: column; gap: 6px;
-  border-left: 1px solid var(--line); padding-left: 16px; min-height: 0; overflow-y: auto;
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0;
 }
 .mod-chip {
   display: flex; align-items: center; gap: 8px; text-align: left;
@@ -477,6 +555,90 @@ body[data-view="bench"] #menuButton { display: none; }
 }
 [data-mod-dest].mod-target { outline: 2px dashed var(--blush-deep); outline-offset: 3px; }
 
+/* --- a control with something on it ---------------------------------------- */
+[data-mod-dest].modulated {
+  position: relative;
+  outline: 1px dotted var(--chip, var(--blush-deep));
+  outline-offset: 4px;
+  /* Four pixels more than an unpatched row, which is the whole price of the
+     frame and the tag together. The tag itself is out of flow. */
+  margin-top: 12px;
+}
+/* The tag rides on the frame rather than in the flow, so naming the source and
+   offering a way off again costs nothing in height. */
+.mod-tag {
+  position: absolute; top: -9px; right: 26px; z-index: 2;
+  display: flex; align-items: center; gap: 5px; line-height: 1;
+  background: var(--cream-2); padding: 1px 5px;
+  font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--chip, var(--blush-deep)); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* In the popover the paper behind it is the other cream. */
+body[data-view="scope"] .mod-tag { background: var(--cream); }
+.mod-tag button {
+  background: none; border: 0; padding: 0; color: inherit;
+  font-family: inherit; font-size: 11px; line-height: 1; opacity: 0.6;
+}
+.mod-tag button:hover { opacity: 1; color: var(--rust); }
+
+/* --- the two-slider control -------------------------------------------------
+   The native input keeps every listener it was born with and goes on being the
+   base value; what is drawn over it is the other half. Its own thumb is hidden
+   rather than restyled into a dome, because Firefox centres a thumb on the
+   track whatever height it is given - a half-circle floating in the middle of
+   the track is worse than none - so both halves are drawn here from one
+   formula that reads the same in every browser.
+
+   The halves are positioned inside the control's EXISTING container rather
+   than inside a wrapper put round the input. A wrapper would become the flex
+   item in its place, and every width in this page was measured against the
+   input being that item.                                                    */
+.mod-dual-host { position: relative; }
+.dual-part { position: absolute; pointer-events: none; }
+input[type="range"].dual-hidden::-webkit-slider-thumb { opacity: 0; }
+input[type="range"].dual-hidden::-moz-range-thumb { opacity: 0; }
+
+/* The sweep: everything the attachment can reach from where the value sits. */
+.dual-bar { height: 2px; background: var(--chip); opacity: 0.8; }
+/* Where it is at this instant. The one part that moves on its own. */
+.dual-now { width: 2px; height: 9px; background: var(--chip); border-radius: 1px; }
+/* The two halves of one circle: the value, and what is attached to it. */
+.dual-top {
+  width: 13px; height: 6.5px; margin-left: -6.5px;
+  border-radius: 6.5px 6.5px 0 0; background: var(--blush-deep);
+}
+.dual-bot {
+  width: 13px; height: 6.5px; margin-left: -6.5px;
+  border-radius: 0 0 6.5px 6.5px; background: var(--chip);
+}
+/* Asking for more than the control's own range will accept. The depth is kept
+   - it is a legitimate thing to want and the range may move - but the half
+   that cannot get there says so rather than sitting at the end looking set. */
+.dual-bot.clipped { opacity: 0.4; }
+.mod-dual-host:hover .dual-top { background: var(--charcoal); }
+
+/* The bottom half of the control belongs to the attachment. Laid over the
+   input rather than beside it, so the top half still belongs to the value. */
+.dual-grab { position: absolute; height: 7px; cursor: ew-resize; touch-action: none; }
+.dual-grab[hidden] { display: none; }
+@media (pointer: coarse) {
+  /* Seven pixels is not a target a thumb can hit. Five of the extra twelve
+     hang below the control, which is the gap before the next row. */
+  .dual-grab { height: 12px; }
+  /* Nor is an eleven-pixel glyph. The tag grows into a target and the frame
+     gives it the room, which is six pixels a patched control only pays for on
+     a screen that is touched. */
+  .mod-tag { top: -13px; padding: 3px 6px; font-size: 9.5px; }
+  .mod-tag button { font-size: 14px; padding: 0 5px; }
+  [data-mod-dest].modulated { margin-top: 18px; }
+}
+
+/* --- the depth rows ---------------------------------------------------------
+   Still here, and still the only way to read several sources on one control:
+   the split thumb can show one attachment honestly and a sum dishonestly. So
+   one source is the thumb, and two or more is the thumb for the sum plus these
+   for the parts.                                                            */
 .mod-rows { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 96px; }
 .mod-rows:empty { display: none; }
 .mod-row {
@@ -495,9 +657,6 @@ body[data-view="bench"] #menuButton { display: none; }
 /* Grown from the middle, because depth is signed: left of centre is the same
    amount pointing the other way. */
 .mod-fill { position: absolute; top: 5px; height: 4px; background: var(--chip); border-radius: 2px; }
-/* The part of the depth the destination's own range will not accept. Drawn
-   rather than silently ignored: a patch doing less than it was asked to should
-   be visible. Only destinations that declare a range can say this. */
 .mod-clip { position: absolute; top: 5px; height: 4px; background: var(--chip); opacity: 0.28; border-radius: 2px; }
 .mod-amount { flex: 0 0 38px; text-align: right; font-variant-numeric: tabular-nums; }
 .mod-x {
@@ -516,20 +675,15 @@ body[data-view="bench"] #menuButton { display: none; }
 }
 .mod-add:hover { border-color: var(--blush); color: var(--blush-deep); }
 body[data-view="scope"] .mod-add { display: none; }
+/* The transport's rows are in a strip, not a panel: let them take their own
+   line rather than squeezing the control they belong to. */
+.transport .mod-rows { flex: 1 1 100%; margin-left: 0; }
 
 @media (pointer: coarse) {
-  /* A two-pixel row cannot host a target a thumb can hit, so on touch the row
-     is tall enough and the remove button is simply always there. A long-press
-     menu would have been the other answer and this one is less to learn. */
   .mod-row { min-height: 30px; }
   .mod-x { opacity: 1; padding: 0 8px; }
 }
 @media (max-width: 760px) {
-  .bench-sources {
-    flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; align-items: center;
-    border-left: 0; border-top: 1px solid var(--line); padding: 10px 0 0;
-  }
-  .bench-sources .menu-note { flex: 1 1 100%; }
   .mod-rows { margin-left: 0; }
 }
 
@@ -959,10 +1113,10 @@ body[data-view="scope"] .mod-add { display: none; }
 
           <div class="menu-group" id="lfoGroup">
             <span class="menu-title">Modulation</span>
-            <p class="menu-note" style="margin-top:0">Two low-frequency oscillators, running
-              under everything the generator does. Point one at <i>phase</i> and a circle
-              turns; point one at <i>ratio</i> and the figure walks through the whole family.
-              They modulate the signal, not the screen.</p>
+            <p class="menu-note" style="margin-top:0">Two oscillators with nothing to do
+              until you point them at something. Drag one onto any control that takes a
+              dotted frame &mdash; the generator, the filter, the rotation, the zoom.
+              <i>Rate</i> is how fast, <i>depth</i> is how far.</p>
             <div id="lfoRows"></div>
           </div>
 
@@ -1114,7 +1268,7 @@ body[data-view="scope"] .mod-add { display: none; }
               <span class="menu-label">Source</span>
               <div class="switch" role="radiogroup" aria-label="Trigger source" id="trigSources"></div>
             </div>
-            <div class="menu-row">
+            <div class="menu-row" data-mod-dest="trig.position">
               <label class="menu-label" for="position">Position</label>
               <div class="grow">
                 <input type="range" id="position" min="0" max="100" value="10">
@@ -1236,7 +1390,7 @@ body[data-view="scope"] .mod-add { display: none; }
             <button type="button" class="caps" id="dispSpect" role="radio" aria-checked="false">Spect</button>
           </div>
         </div>
-        <div class="field fixed">
+        <div class="field fixed" data-mod-dest="view.zoom">
           <span class="eyebrow" id="zoomLabel">Zoom</span>
           <div class="field-row">
             <input type="range" id="zoom" min="0" max="24" value="0"
@@ -1303,8 +1457,8 @@ body[data-view="scope"] .mod-add { display: none; }
 
 <main class="screen">
   <div class="wrap">
-    <div class="panes">
-      <div class="sheet main"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas></div>
+    <div class="panes" id="panes">
+      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas></div>
       <div class="aside" id="aside">
         <div class="sheet pane" id="goniPane">
           <span class="pane-name">Goniometer</span>
@@ -1350,12 +1504,18 @@ body[data-view="scope"] .mod-add { display: none; }
   </div>
 </footer>
 
-<!-- Empty on purpose: the groups are moved in from the settings panel. -->
+<!-- Empty on purpose: the control groups AND the screen are moved in from
+     elsewhere in this page, never copied. #benchScope takes the trace sheet;
+     #lfoGroup is moved in under the sources so the oscillators are never
+     behind a tab. -->
 <section class="bench" id="bench">
   <div class="wrap bench-wrap">
     <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench sections"></nav>
     <div class="bench-body" id="benchBody"></div>
-    <aside class="bench-sources" id="benchSources"></aside>
+    <aside class="bench-side" id="benchSide">
+      <div class="bench-scope" id="benchScope"></div>
+      <div class="bench-sources" id="benchSources"></div>
+    </aside>
   </div>
 </section>
 
@@ -1447,12 +1607,16 @@ body[data-view="scope"] .mod-add { display: none; }
         whole width.</span></li>
 
       <li><b>Scope and Bench are the same instrument</b>
-        <span>In <i>Scope</i> the trace has the window and the controls are behind
-        <i>Settings</i>. In <i>Bench</i> the trace becomes a strip along the top and keeps
-        running while the controls spread out underneath it, a section at a time down the
-        left. Nothing is duplicated and nothing is lost between them &mdash; they are the
-        same controls in two places &mdash; so a setting made in one is made in the
-        other. <b>B</b> switches, and the choice is remembered.</span></li>
+        <span>In <i>Scope</i> the screen has the window and the controls are behind
+        <i>Settings</i>. In <i>Bench</i> they change places: the controls take the window,
+        a section at a time down the left, and the screen becomes a small square in the
+        right-hand column &mdash; still running, still the same canvas, so you can watch a
+        figure answer with your hand still on the control. The oscillators and the sources
+        share that column and are never behind a tab, because they are what you are holding
+        while you work everything else. Nothing is duplicated and nothing is lost between
+        the two views &mdash; they are the same controls moved, not copied &mdash; so a
+        setting made in one is made in the other. <b>B</b> switches, and the choice is
+        remembered.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -1620,23 +1784,42 @@ body[data-view="scope"] .mod-add { display: none; }
       <li><b>Sources, and what they can be pointed at</b>
         <span>Two low-frequency oscillators and <i>Level</i>, which is how hard you are
         playing. On the <i>Bench</i> each one is a chip: drag it onto a control, or tap it
-        and then tap a control. What appears under the control is one row per source, in
-        that source's ink, and the row is the depth &mdash; drag it. The cross removes it;
-        so does <b>Delete</b> with the row focused. Dragging a depth to nothing leaves the
-        row where it is, because a patch parked at zero is a thing you meant.</span></li>
+        and then tap the control. The control takes a dotted frame and a tag saying what is
+        on it.</span></li>
+
+      <li><b>A patched control has two sliders in one</b>
+        <span>Its thumb comes apart. The <b>top half</b> is still the value you set by
+        hand; the <b>bottom half</b> is the attachment, and it sits where the modulation
+        reaches &mdash; drag it, or focus it and use the arrows. The bar between them is
+        the sweep, and the tick inside it is where the modulation is at this instant. At no
+        depth the halves are one circle again, which is what an attachment doing nothing
+        should look like. Nothing grows: the row is the height it always was.
+        <br><br>
+        The reach is the destination's own law, not a fraction of the slider. Full depth on
+        <i>frequency</i> is an octave, so 220 Hz puts its lower half at 440 rather than at
+        the end of the track. The cross on the tag takes the patch off, and so does
+        <b>Delete</b> on the focused lower half. A depth dragged to nothing stays
+        patched, because a patch parked at zero is a thing you meant.</span></li>
 
       <li><b>Several sources on one control</b>
-        <span>They add up. Point both oscillators at the same thing and you get the sum of
-        them, which is how every patch cable ever made behaves. Where a control has a range
-        it cannot leave &mdash; rotation, the lag delay &mdash; the part of a depth that
-        would push past it is drawn faded, so a patch doing less than you asked is
-        something you can see rather than something you have to work out.</span></li>
+        <span>They add up, which is how every patch cable ever made behaves. Past one
+        source the lower half of the thumb is showing a <em>sum</em>, and a sum is not
+        something that can be dragged &mdash; so it stops being a handle and a row appears
+        for each source underneath, in that source's ink. Those are what you drag then.
+        <br><br>
+        Where a control has a range it cannot leave, a depth that would push past it is
+        kept but drawn faded &mdash; the lower half dims, and on a row the part that
+        cannot get there is pale. A patch doing less than you asked is something to see
+        rather than work out, and the depth is kept because the range may move.</span></li>
 
       <li><b>Point Level at the picture</b>
-        <span>The oscillators modulate the signal; <i>Level</i> modulates whatever it is
-        pointed at, and the two display destinations &mdash; <i>X&ndash;Y rotation</i> and
-        the lag delay &mdash; are the ones that make a live input draw something that
-        answers. Play harder and the figure turns.</span></li>
+        <span>Everything here points at anything, whatever the source is. The generator's
+        parameters grey out when there is no generator &mdash; a microphone has no
+        <i>interval</i> &mdash; but <i>X&ndash;Y rotation</i>, the <i>lag delay</i>,
+        <i>zoom</i> and the <i>filter</i> are the picture's own and take a patch on any
+        input. <i>Level</i> is how hard you are playing: send it to the rotation and the
+        figure turns as you play, which is the difference between a shape that sits there
+        and one that answers.</span></li>
     </ul>
 
     <ul class="help-list" id="panelKeys" hidden>
@@ -1741,6 +1924,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
                   "viewScope", "viewBench", "bench", "benchRail", "benchBody",
+                  "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "benchSources",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
@@ -1905,14 +2089,33 @@ function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
    rather than a map lookup. `unipolar` marks a destination a source may only
    ever subtract from: an amplitude LFO that could also push upward would just
    clip, so tremolo ducks. */
+/* `reach` answers one question, asked by the split thumb: if this destination
+   were driven this hard, where would the control's own slider be standing?
+   It is the destination's law written once more in the slider's units, and it
+   has to be written out here because these laws are not linear and not shared
+   - frequency is octaves, spin is powers of three, amplitude only ducks. A
+   visual destination needs none of this: it declares a span in its own units
+   and the span maps straight onto the slider, so one derivation covers all of
+   them (see `destReach`).
+
+   Only the forward direction is ever written. Dragging the lower half asks the
+   opposite question - what depth puts the reach HERE - and that is answered by
+   bisecting this function rather than by a second formula that could disagree
+   with it. Two functions that must agree eventually do not. */
 const GEN_DESTS = [
-  { id: "gen.freq",   label: "Frequency",             slot: 0 },
-  { id: "gen.amp",    label: "Amplitude",             slot: 1, unipolar: true },
-  { id: "gen.phase",  label: "Right-channel phase",   slot: 2 },
-  { id: "gen.ratio",  label: "Right : left ratio",    slot: 3 },
-  { id: "gen.detail", label: "Figure detail",         slot: 4, modes: ["figure"] },
-  { id: "gen.tumble", label: "Wireframe spin rate",   slot: 5, modes: ["wireframe"] },
-  { id: "gen.depth",  label: "Wireframe perspective", slot: 6, modes: ["wireframe"] },
+  { id: "gen.freq",   label: "Frequency",             slot: 0,
+    reach: (v, s) => v * Math.pow(2, s) },                    // octaves
+  { id: "gen.amp",    label: "Amplitude",             slot: 1, unipolar: true,
+    reach: (v, s) => v * (1 - s) },                           // and only ever down
+  { id: "gen.phase",  label: "Right-channel phase",   slot: 2,
+    reach: (v, s) => v + s * 180 },                           // pi radians, in degrees
+  { id: "gen.ratio",  label: "Right : left ratio",    slot: 3 },   // a menu, so no slider
+  { id: "gen.detail", label: "Figure detail",         slot: 4, modes: ["figure"],
+    reach: (v, s) => v + s * 4 },
+  { id: "gen.tumble", label: "Wireframe spin rate",   slot: 5, modes: ["wireframe"],
+    reach: (v, s) => v * Math.pow(3, s) },
+  { id: "gen.depth",  label: "Wireframe perspective", slot: 6, modes: ["wireframe"],
+    reach: (v, s) => v + s * 50 },                            // slider is hundredths
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -1982,6 +2185,25 @@ const VISUAL_DESTS = [
   {
     id: "filter.res", label: "Filter resonance", span: 50, min: 0, max: 100,
     base: () => state.filter.res, set: (offset) => { state.resMod = offset; },
+  },
+  /* Zoom was built to be modulated - `zoomStep` and `zoomMod` have been
+     separate since the day the matrix landed - and then was left unregistered
+     because it had no row of its own to carry the patch. It has one now: the
+     control in the transport strip is a destination like any other, which is
+     the whole point of the frame being drawn on the control rather than in a
+     panel somewhere. A third of the range at full depth, so the figure
+     breathes rather than lunges. */
+  {
+    id: "view.zoom", label: "Zoom", span: 8, min: 0, max: 24,
+    base: () => state.zoomStep, set: (offset) => { state.zoomMod = offset; },
+  },
+  /* Not the trigger itself - the trigger stays where it was and goes on finding
+     the same edge. This is how much of the window sits BEFORE it, so a source
+     pointed here slides the waveform across the screen while the thing it is
+     locked to stands still. Half the window at full depth. */
+  {
+    id: "trig.position", label: "Trigger position", span: 0.5, min: 0, max: 1,
+    base: () => state.position, set: (offset) => { state.positionMod = offset; },
   },
 ];
 
@@ -3485,6 +3707,8 @@ const state = {
   monitorAt: "pre",          // pre | post
   micBands: false,           // whether live input arrives whole or split in four
   alignMs: 0,                // how far the backing track is held back to meet the input
+
+  positionMod: 0,          // what a source is adding to where the trigger sits
 
   lagOn: false,
   lagMs: 5,                  // what the slider says
@@ -5609,6 +5833,10 @@ function frameLoop(now) {
 
   // Before the drawing, so what is drawn is what the sources just asked for.
   applyModMatrix(frame, elapsed);
+  /* The live tick inside a split thumb is the only part of a control that has
+     to move on its own, so it moves with the picture rather than on a timer of
+     its own. Costs nothing when nothing is patched. */
+  updateDuals();
 
   drawMain(frame, elapsed);
   drawGoni(frame);
@@ -6146,6 +6374,46 @@ function setLfoDest(index, destId) {
   touchRoutings();
 }
 
+/* The dropdown is a one-destination window onto a source that can now point at
+   several things at once, and the two have to be kept honest about each other.
+   Dragging a chip onto a second control used to leave this menu reading the
+   first one - which mattered little while it was buried in a popover and
+   matters a great deal now the oscillators are on screen the whole time.
+
+   Past one destination the menu stops offering to change anything, because
+   what it would do is REPLACE: choosing from it wipes every other routing that
+   source has. Saying how many there are and standing down is the honest
+   behaviour; the controls themselves, and the chip's own clear, are where a
+   set of routings is edited. */
+function syncLfoRows() {
+  lfos.forEach((lfo, i) => {
+    const select = document.getElementById("lfoDest" + i);
+    if (!select) return;
+
+    const list = state.modRoutings.filter((r) => r.sourceId === "lfo" + (i + 1));
+    const many = list.length > 1;
+    if (many !== (select.dataset.many === "1")) {
+      select.dataset.many = many ? "1" : "0";
+      select.disabled = many;
+      select.innerHTML = many ? "<option></option>" : destOptions("");
+    }
+    if (many) select.options[0].textContent = list.length + " destinations";
+    else select.value = list.length ? list[0].destId : "";
+
+    // And the depth slider, which is the same number the lower half of a
+    // thumb is showing somewhere else on the page.
+    const depth = document.getElementById("lfoDepth" + i);
+    const reading = document.getElementById("lfoDepthValue" + i);
+    if (depth && list.length === 1) {
+      const percent = Math.round(list[0].amount * 100);
+      if (depth.value !== String(percent)) {
+        depth.value = String(percent);
+        if (reading) reading.textContent = percent + "%";
+      }
+    }
+  });
+}
+
 function setLfoDepth(index, amount) {
   // Kept on the oscillator as well, so a depth set before a destination is
   // chosen is the depth the routing gets when one is.
@@ -6154,11 +6422,26 @@ function setLfoDepth(index, amount) {
   if (routing) { routing.amount = amount; touchRoutings(); }
 }
 
+/* Greyed rather than dropped. A destination that does not apply to the source
+   currently loaded is still a destination a saved setup can name, and removing
+   it from the list would make the dropdown disagree with the routing it is
+   showing. Saying why it is unavailable is also the difference between a
+   control that looks broken and one that has told you something. */
+/* What the panel is presenting, which is not always what is loaded: choosing
+   Mic shows the microphone's rows while the stream is still being asked for,
+   and the destination list has to agree with the rows beside it rather than
+   with a source that has not arrived yet. */
+let shownKind = "tone";
+
 function destOptions(selected) {
+  const tone = shownKind === "tone";
   let out = '<option value="">\u2014 off \u2014</option>';
   for (const dest of MOD_DESTS.values()) {
+    const dead = dest.kind === "audio" && !tone;
     out += '<option value="' + dest.id + '"'
-      + (dest.id === selected ? " selected" : "") + ">" + escapeText(dest.label) + "</option>";
+      + (dest.id === selected ? " selected" : "")
+      + (dead && dest.id !== selected ? " disabled" : "") + ">"
+      + escapeText(dest.label) + (dead ? " \u2014 test tone only" : "") + "</option>";
   }
   return out;
 }
@@ -6882,8 +7165,17 @@ function showSource(pending) {
   el.srcFile.setAttribute("aria-checked", String(kind === "file"));
   el.srcRack.setAttribute("aria-checked", String(kind === "rack"));
 
+  shownKind = kind;
   el.toneRows.hidden = kind !== "tone";
-  if (kind === "tone") delete el.lfoGroup.dataset.off; else el.lfoGroup.dataset.off = "1";
+  /* The oscillators stay, whatever the source is. They were switched off
+     wholesale on anything but the test tone, which was right when every
+     destination they had was a generator parameter and is wrong now: an LFO on
+     the filter cutoff, or on the rotation, or on the zoom, is the same patch
+     whether the signal came from arithmetic or a microphone. What does not
+     apply on a live input is the generator half of the destination list, and
+     that greys out per entry - see `destOptions`. */
+  delete el.lfoGroup.dataset.off;
+  buildLfoRows();      // the destination list says which ones this source has
   el.deviceRow.hidden = kind !== "mic";
   el.micShapeRow.hidden = kind !== "mic";
   el.micNote.hidden = kind !== "mic";
@@ -7471,7 +7763,16 @@ function groupTitle(group) {
   return title ? title.textContent.trim() : "Settings";
 }
 
-const benchable = () => settingsGroups().filter((g) => g.dataset.off === undefined);
+/* The oscillators do not take a turn in the rail. They are the thing you are
+   holding while you work every other control, so they sit in the side column
+   beside the screen and stay there - the rail is left holding what you set
+   once and leave. Anything else that earns permanent residency goes in this
+   list and is excluded from the rotation by the same line. */
+const SIDE_GROUPS = ["lfoGroup"];
+const inSide = (group) => SIDE_GROUPS.indexOf(group.id) >= 0;
+
+const benchable = () =>
+  settingsGroups().filter((g) => !inSide(g) && g.dataset.off === undefined);
 
 function buildBenchRail() {
   const shown = benchable();
@@ -7493,8 +7794,11 @@ function showBenchSection(index) {
   if (shown.length === 0) return;
   benchSection = Math.max(0, Math.min(index, shown.length - 1));
 
-  // Every group is in the body; one of them is not hidden.
-  settingsGroups().forEach((group) => { group.hidden = true; });
+  /* Only what is actually in the body: a group living in the side column is
+     not one of the rail's sections and must not be hidden by picking one. */
+  settingsGroups().forEach((group) => {
+    if (group.parentElement === el.benchBody) group.hidden = true;
+  });
   shown[benchSection].hidden = false;
 
   el.benchRail.querySelectorAll("button").forEach((button) => {
@@ -7510,8 +7814,18 @@ function setView(view) {
   el.viewBench.setAttribute("aria-checked", String(bench));
 
   const groups = settingsGroups();
-  const home = bench ? el.benchBody : el.menuPanel;
-  for (const group of groups) home.appendChild(group);
+  for (const group of groups) {
+    (bench ? (inSide(group) ? el.benchSide : el.benchBody) : el.menuPanel)
+      .appendChild(group);
+  }
+
+  /* The screen moves too, and it is the same argument as the controls: a
+     second canvas would be a second thing to resize, a second set of cursor
+     handlers and a second persistence buffer that disagrees with the first.
+     One canvas, carried between two frames. Everything drawing into it reads
+     its parent's box every frame, so none of it needs telling. */
+  if (bench) el.benchScope.appendChild(el.traceSheet);
+  else el.panes.insertBefore(el.traceSheet, el.aside);
 
   if (bench) {
     setMenuOpen(false);
@@ -7522,6 +7836,10 @@ function setView(view) {
     // wanted one at a time.
     for (const group of groups) group.hidden = false;
   }
+
+  // The split thumbs are positioned from a measured width, and every control
+  // on the page just changed width.
+  requestAnimationFrame(paintRoutings);
 
   try { window.localStorage.setItem(VIEW_KEY, document.body.dataset.view); }
   catch (error) { /* private window */ }
@@ -7595,8 +7913,8 @@ function buildSourceChips() {
                      + escapeText(source.label) + '">\u00d7</span>' : "")
           + "</button>";
       }).join("")
-    + '<p class="menu-note">Drag one onto a control, or tap it and then tap a control. '
-    + 'The rows underneath are the depth &mdash; drag them.</p>';
+    + '<p class="bench-hint">Drag one onto a control, or tap it and then tap the control. '
+    + 'The lower half of that control\u2019s thumb is then the depth &mdash; drag it.</p>';
 
   el.benchSources.querySelectorAll(".mod-chip").forEach((chip) => {
     const id = chip.dataset.source;
@@ -7686,10 +8004,278 @@ function clipFraction(dest, amount) {
   return Math.max(0, Math.min(1, (reach - Math.max(0, room)) / reach));
 }
 
+/* --- the split thumb ----------------------------------------------------------
+   What a control does when something is attached to it. The thumb comes apart:
+   its top half stays on the value you set by hand, its bottom half slides to
+   where the attachment reaches, and the bar between them is the sweep. At no
+   depth the halves sit on the same pixel and read as the one circle they were,
+   which is right - an attachment at nothing is nothing.
+
+   This replaces a stacked row per routing for the ordinary case, and the rows
+   stay for the case it cannot state honestly: two sources on one control means
+   the thumb is showing a sum, and a sum cannot be dragged.                   */
+
+const duals = [];              // one record per control currently wearing a patch
+const DUAL_THUMB = 13;         // the width the stylesheet gives a thumb
+
+/* Where a destination's own slider would stand if the destination were driven
+   this hard. A generator destination writes its law out (see `GEN_DESTS`);
+   a visual one declares a span in its own units and its slider covers exactly
+   min..max, so proportion does for all of them at once. */
+function destReach(dest, input, sum) {
+  const v = Number(input.value);
+  if (!dest) return v;
+  if (dest.reach) return dest.reach(v, sum);
+  if (dest.span === undefined || dest.max === undefined || dest.max === dest.min) return v;
+  const lo = Number(input.min), hi = Number(input.max);
+  return v + sum * (dest.span / (dest.max - dest.min)) * (hi - lo);
+}
+
+/* And the same question backwards, which is what dragging the lower half asks:
+   what depth puts the reach HERE? Bisected rather than inverted. Every one of
+   these laws is monotonic in the depth, so bisection always lands; an inverse
+   written by hand would be a second formula obliged to agree with the first
+   forever, and the pair of them would eventually stop. */
+function amountForReach(dest, input, target) {
+  const rising = destReach(dest, input, 1) >= destReach(dest, input, -1);
+  let lo = -1, hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if ((destReach(dest, input, mid) < target) === rising) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// Where a thumb's centre sits, in the input's own box. The track is inset by
+// half a thumb at each end, which is what stops a slider at maximum from
+// hanging over its own edge.
+function thumbX(input, width, value) {
+  const lo = Number(input.min), hi = Number(input.max);
+  const frac = hi === lo ? 0 : (Math.max(lo, Math.min(hi, value)) - lo) / (hi - lo);
+  return DUAL_THUMB / 2 + frac * Math.max(0, width - DUAL_THUMB);
+}
+
+/* Built once per control and left in place. The parts live in the container
+   the input already had, so the input keeps its place in the flex row exactly
+   as it was. */
+function ensureDual(input) {
+  const host = input.parentElement;
+  if (!host) return null;
+  if (host.dataset.dual === "1") return host;
+
+  host.dataset.dual = "1";
+  host.classList.add("mod-dual-host");
+  for (const part of ["dual-bar", "dual-now", "dual-top", "dual-bot"]) {
+    const span = document.createElement("span");
+    span.className = "dual-part " + part;
+    span.dataset.for = input.id || "";
+    host.appendChild(span);
+  }
+  /* Focusable, because it is a control. The row it replaced could not be
+     reached by keyboard either, and that was a gap rather than a precedent:
+     the depth of a patch is the patch's one number and there has to be a way
+     to set it without a pointer. */
+  const grab = document.createElement("span");
+  grab.className = "dual-grab";
+  grab.hidden = true;
+  grab.tabIndex = 0;
+  grab.setAttribute("role", "slider");
+  grab.setAttribute("aria-valuemin", "-100");
+  grab.setAttribute("aria-valuemax", "100");
+  host.appendChild(grab);
+
+  // Dragging the value moves its own half now rather than at the next frame.
+  input.addEventListener("input", updateDuals);
+  wireDualGrab(host, input, grab);
+  return host;
+}
+
+/* Every measurement first, every style after. Both halves are positioned from
+   the input's measured width, and interleaving the reads with the writes makes
+   the browser lay the page out once per control instead of once in total. */
+function updateDuals() {
+  if (duals.length === 0) return;
+
+  const reads = [];
+  for (const d of duals) {
+    if (!d.input.isConnected) continue;
+    const width = d.input.offsetWidth;
+    if (width <= 0) continue;                 // in a view that is not showing
+    const dest = MOD_DESTS.get(d.destId);
+
+    let handle = 0, hiSum = 0, loSum = 0, live = 0;
+    for (const routing of routingsFor(d.destId)) {
+      const source = MOD_SOURCES.get(routing.sourceId);
+      if (!source) continue;
+      // What the source's own value can be. An envelope never goes negative,
+      // so what it sweeps is one-sided; an oscillator's is not.
+      const floor = source.bipolar === false ? 0 : -1;
+      handle += routing.amount;
+      hiSum  += routing.amount >= 0 ? routing.amount : routing.amount * floor;
+      loSum  += routing.amount >= 0 ? routing.amount * floor : routing.amount;
+      live   += source.value() * routing.amount;
+    }
+    /* A destination that only ever ducks halves and rectifies whatever it is
+       given, so its sweep is one-sided whatever the source was. */
+    if (dest && dest.unipolar) { loSum = 0; hiSum = handle; }
+
+    const lo = Number(d.input.min), hi = Number(d.input.max);
+    const pin = (v) => Math.max(lo, Math.min(hi, v));
+    const want = destReach(dest, d.input, handle);
+
+    reads.push({
+      d,
+      left: d.input.offsetLeft,
+      top: d.input.offsetTop,
+      base: thumbX(d.input, width, Number(d.input.value)),
+      bot:  thumbX(d.input, width, pin(want)),
+      end1: thumbX(d.input, width, pin(destReach(dest, d.input, hiSum))),
+      end2: thumbX(d.input, width, pin(destReach(dest, d.input, loSum))),
+      now:  thumbX(d.input, width, pin(destReach(dest, d.input, live))),
+      width, depth: handle,
+      clipped: want > hi + 1e-9 || want < lo - 1e-9,
+    });
+  }
+
+  for (const r of reads) {
+    const d = r.d;
+    d.top.style.left = (r.left + r.base) + "px";
+    d.top.style.top = (r.top + 0.5) + "px";
+    d.bot.style.left = (r.left + r.bot) + "px";
+    d.bot.style.top = (r.top + 7) + "px";
+    d.bot.classList.toggle("clipped", r.clipped);
+
+    const from = Math.min(r.end1, r.end2, r.base);
+    const to = Math.max(r.end1, r.end2, r.base);
+    d.bar.style.left = (r.left + from) + "px";
+    d.bar.style.top = (r.top + 6) + "px";
+    d.bar.style.width = (to - from) + "px";
+
+    d.now.style.left = (r.left + r.now - 1) + "px";
+    d.now.style.top = (r.top + 2.5) + "px";
+    d.now.style.display = to - from > 1.5 ? "" : "none";
+
+    d.grab.style.left = r.left + "px";
+    d.grab.style.width = r.width + "px";
+    d.grab.style.top = (r.top + 7) + "px";
+    d.grab.setAttribute("aria-valuenow", String(Math.round(r.depth * 100)));
+  }
+}
+
+function wireDualGrab(host, input, grab) {
+  grab.addEventListener("pointerdown", (event) => {
+    const row = host.closest("[data-mod-dest]");
+    if (!row) return;
+    const destId = row.dataset.modDest;
+    const list = routingsFor(destId);
+    /* With more than one source on a control the lower half is showing a sum,
+       and a sum is not a thing anyone can drag - moving it would have to
+       decide which contribution to change. The rows underneath are what edits
+       those, and they are on screen whenever there is more than one. */
+    if (list.length !== 1) return;
+
+    const routing = list[0];
+    const dest = MOD_DESTS.get(destId);
+    grab.setPointerCapture(event.pointerId);
+
+    const drag = (e) => {
+      const box = input.getBoundingClientRect();
+      const lo = Number(input.min), hi = Number(input.max);
+      const span = Math.max(1, box.width - DUAL_THUMB);
+      const frac = Math.max(0, Math.min(1,
+        (e.clientX - box.left - DUAL_THUMB / 2) / span));
+      let amount = amountForReach(dest, input, lo + frac * (hi - lo));
+      if (Math.abs(amount) < 0.04) amount = 0;        // a detent at nothing
+      routing.amount = Math.max(-1, Math.min(1, amount));
+      modDirty = true;
+
+      /* Moved in place rather than through `touchRoutings`. A rebuild would
+         replace the element the pointer is captured on, the capture would go
+         with it, and the drag would end on its first millimetre. */
+      updateDuals();
+      const reading = row.querySelector(".mod-tag .depth");
+      if (reading) reading.textContent = Math.round(routing.amount * 100) + "%";
+    };
+    drag(event);
+
+    const stop = () => {
+      grab.removeEventListener("pointermove", drag);
+      grab.removeEventListener("pointerup", stop);
+      grab.removeEventListener("pointercancel", stop);
+      touchRoutings();
+    };
+    grab.addEventListener("pointermove", drag);
+    grab.addEventListener("pointerup", stop);
+    grab.addEventListener("pointercancel", stop);
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
+  grab.addEventListener("keydown", (event) => {
+    const row = host.closest("[data-mod-dest]");
+    if (!row) return;
+    const list = routingsFor(row.dataset.modDest);
+    if (list.length !== 1) return;
+
+    const step = event.shiftKey ? 0.01 : 0.05;
+    let next = list[0].amount;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") next += step;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= step;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      dropRouting(list[0].sourceId, row.dataset.modDest);
+      return;
+    } else return;
+
+    event.preventDefault();
+    list[0].amount = Math.max(-1, Math.min(1, next));
+    modDirty = true;
+    touchRoutings();
+  });
+}
+
+/* The label on the dotted frame. It rides on the outline rather than sitting
+   in the flow, so saying what is attached and offering a way off again costs
+   the panel no height at all - which was the point of the split thumb. */
+function paintTag(row, destId, dest, list) {
+  let tag = null;
+  for (const child of row.children) {
+    if (child.classList.contains("mod-tag")) { tag = child; break; }
+  }
+  if (list.length === 0) { if (tag) tag.remove(); return; }
+  if (!tag) {
+    tag = document.createElement("span");
+    tag.className = "mod-tag";
+    row.appendChild(tag);
+  }
+
+  const one = list.length === 1 ? MOD_SOURCES.get(list[0].sourceId) : null;
+  const label = list.length === 1
+    ? (one ? one.label : list[0].sourceId + " (not here)")
+    : list.length + " sources";
+
+  tag.innerHTML = escapeText(label)
+    + (list.length === 1
+        ? '<span class="depth">' + Math.round(list[0].amount * 100) + "%</span>"
+        : "")
+    + '<button type="button" aria-label="Remove modulation from '
+    + escapeText(dest ? dest.label : destId) + '">×</button>';
+
+  tag.querySelector("button").addEventListener("click", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    clearDest(destId);
+  });
+}
+
 function paintRoutings() {
+  duals.length = 0;
+
   for (const row of document.querySelectorAll("[data-mod-dest]")) {
     const destId = row.dataset.modDest;
     const dest = MOD_DESTS.get(destId);
+    const list = routingsFor(destId);
 
     // The plus lives in the row itself: a keyboard cannot drag a chip.
     if (!row.querySelector(".mod-add")) {
@@ -7699,7 +8285,42 @@ function paintRoutings() {
       add.textContent = "+";
       add.setAttribute("aria-label", "Add modulation to " + (dest ? dest.label : destId));
       add.addEventListener("click", () => offerSources(destId, add));
-      (row.querySelector(".grow") || row).appendChild(add);
+      (row.querySelector(".grow") || row.querySelector(".field-row") || row).appendChild(add);
+    }
+
+    /* The frame, and whose ink it is in. One source lends the control its
+       colour; several belong to nobody, so the frame falls back to the accent
+       and the rows underneath carry the inks. */
+    const first = list.length ? MOD_SOURCES.get(list[0].sourceId) : null;
+    row.classList.toggle("modulated", list.length > 0);
+    if (list.length === 1 && first) row.style.setProperty("--chip", "var(--" + first.ink + ")");
+    else if (list.length > 1) row.style.setProperty("--chip", "var(--blush-deep)");
+    else row.style.removeProperty("--chip");
+    paintTag(row, destId, dest, list);
+
+    const range = row.querySelector('input[type="range"]');
+    const host = range ? ensureDual(range) : null;
+    if (host) {
+      const on = list.length > 0;
+      range.classList.toggle("dual-hidden", on);
+      for (const part of host.querySelectorAll(".dual-part")) part.hidden = !on;
+      const grab = host.querySelector(".dual-grab");
+      grab.hidden = list.length !== 1;
+      if (list.length === 1) {
+        grab.setAttribute("aria-label",
+          (first ? first.label : list[0].sourceId) + " depth on "
+          + (dest ? dest.label : destId));
+      }
+      if (on) {
+        duals.push({
+          destId, input: range,
+          bar: host.querySelector(".dual-bar"),
+          now: host.querySelector(".dual-now"),
+          top: host.querySelector(".dual-top"),
+          bot: host.querySelector(".dual-bot"),
+          grab: host.querySelector(".dual-grab"),
+        });
+      }
     }
 
     let holder = row.nextElementSibling;
@@ -7709,7 +8330,12 @@ function paintRoutings() {
       row.after(holder);
     }
 
-    const list = routingsFor(destId);
+    /* The rows say what the thumb cannot: several sources at once, or a
+       destination whose control is a menu and has no thumb to split. One
+       source on a slider is the case the split thumb was built for, and it
+       gets no row. */
+    if (list.length === 0 || (host && list.length === 1)) { holder.innerHTML = ""; continue; }
+
     const open = expandedDests.has(destId);
     const shown = open ? list : list.slice(0, MOD_ROWS_SHOWN);
 
@@ -7735,20 +8361,19 @@ function paintRoutings() {
         + "</span>"
         + '<span class="mod-amount">' + Math.round(routing.amount * 100) + "%</span>"
         + '<button type="button" class="mod-x" aria-label="Remove ' + escapeText(label)
-        + '">\u00d7</button>'
+        + '">×</button>'
         + "</div>";
     }).join("")
       + (list.length > MOD_ROWS_SHOWN && !open
           ? '<button type="button" class="mod-more" data-expand="' + destId + '">+'
             + (list.length - MOD_ROWS_SHOWN) + " more</button>"
-          : "")
-      + (list.length > 1
-          ? '<button type="button" class="mod-more" data-clear="' + destId + '">clear</button>'
           : "");
 
     wireDepthRows(holder);
   }
 
+  updateDuals();
+  syncLfoRows();
   buildSourceChips();
 }
 
@@ -7826,9 +8451,6 @@ function wireDepthRows(holder) {
       expandedDests.add(button.dataset.expand);
       paintRoutings();
     });
-  });
-  holder.querySelectorAll("[data-clear]").forEach((button) => {
-    button.addEventListener("click", () => clearDest(button.dataset.clear));
   });
 }
 

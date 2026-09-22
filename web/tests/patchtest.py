@@ -62,24 +62,53 @@ with sync_playwright() as pw:
     check("the control lights up under the chip", highlighted == 1, str(highlighted))
     check("the drop makes a routing", p.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"],
           str(p.evaluate(ROUTES)))
-    check("and a depth row appears under it",
-          p.locator('[data-mod-dest="gen.freq"] + .mod-rows .mod-row').count() == 1)
+    # One source on a slider gets no row at all: the thumb says it. A row per
+    # routing is what several sources need, and that is checked further down.
+    check("no depth row is added for the one source",
+          p.locator('[data-mod-dest="gen.freq"] + .mod-rows .mod-row').count() == 0)
+    check("the control wears a dotted frame instead",
+          "modulated" in p.locator('[data-mod-dest="gen.freq"]').get_attribute("class"))
+    frame = p.evaluate("""() => {
+      const r = document.querySelector('[data-mod-dest="gen.freq"]');
+      const cs = getComputedStyle(r);
+      return { style: cs.outlineStyle, tag: !!r.querySelector('.mod-tag') };
+    }""")
+    check("and the frame is dotted", frame["style"] == "dotted", frame["style"])
+    check("with a tag naming the source", frame["tag"])
 
-    print("\n--- pointer: the depth row is the depth ---")
-    trackbox = p.locator('[data-mod-dest="gen.freq"] + .mod-rows .mod-track').bounding_box()
-    p.mouse.move(trackbox["x"] + trackbox["width"] * 0.9, trackbox["y"] + trackbox["height"] / 2)
-    p.mouse.down()
-    p.mouse.move(trackbox["x"] + trackbox["width"] * 0.9, trackbox["y"] + trackbox["height"] / 2, steps=3)
-    p.mouse.up(); p.wait_for_timeout(200)
-    after = p.evaluate("() => state.modRoutings[0].amount")
-    check("dragging it right raises the depth", after > 0.7, "%.2f" % after)
+    print("\n--- pointer: the lower half of the thumb is the depth ---")
+    # Driven on the rotation rather than the frequency, because frequency is
+    # exponential: dragging its lower half to a tenth of the track still asks
+    # for MORE than 220 Hz, so it could not show an inverted depth at all. The
+    # rotation's law is linear in its slider, so both signs are reachable and
+    # the number that comes back can be predicted exactly.
+    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
+    section(p, "Display")
+    p.evaluate("() => { addRouting('lfo1', 'view.rotate'); }"); p.wait_for_timeout(250)
+    grab = p.locator('[data-mod-dest="view.rotate"] .dual-grab')
+    check("the lower half is there to drag", grab.count() == 1)
 
-    p.mouse.move(trackbox["x"] + trackbox["width"] * 0.1, trackbox["y"] + trackbox["height"] / 2)
-    p.mouse.down(); p.mouse.move(trackbox["x"] + trackbox["width"] * 0.1,
-                                 trackbox["y"] + trackbox["height"] / 2, steps=3)
-    p.mouse.up(); p.wait_for_timeout(200)
-    negative = p.evaluate("() => state.modRoutings[0].amount")
-    check("and left inverts it", negative < -0.7, "%.2f" % negative)
+    def drag_grab(fraction):
+        box = p.locator('#rotate').bounding_box()
+        gb = grab.bounding_box()
+        x = box["x"] + 6.5 + (box["width"] - 13) * fraction
+        p.mouse.move(gb["x"] + gb["width"] / 2, gb["y"] + gb["height"] / 2)
+        p.mouse.down()
+        p.mouse.move(x, gb["y"] + gb["height"] / 2, steps=5)
+        p.mouse.up(); p.wait_for_timeout(200)
+        return p.evaluate("() => state.modRoutings[0].amount")
+
+    # The slider runs -50..50 and full depth is a quarter of that range, so
+    # seven tenths along the track is +20 on the slider and 20/25 of a depth.
+    right = drag_grab(0.7)
+    check("dragging it right sets the depth the reach implies",
+          abs(right - 0.8) < 0.05, "%.3f wanted 0.800" % right)
+    left = drag_grab(0.3)
+    check("and left inverts it", abs(left + 0.8) < 0.05, "%.3f wanted -0.800" % left)
+
+    # The base value must not have moved: the top half is the other slider.
+    check("without touching the value underneath",
+          p.evaluate("() => el.rotate.value") == "0", p.evaluate("() => el.rotate.value"))
 
     zeroed = p.evaluate("""() => {
       state.modRoutings[0].amount = 0; touchRoutings();
@@ -87,11 +116,22 @@ with sync_playwright() as pw:
     }""")
     p.wait_for_timeout(200)
     check("a depth of zero does NOT remove the routing", zeroed == 1, str(zeroed))
+    halves = p.evaluate("""() => {
+      const host = document.getElementById('rotate').parentElement;
+      const x = (c) => parseFloat(host.querySelector('.' + c).style.left);
+      return { top: x('dual-top'), bot: x('dual-bot') };
+    }""")
+    check("and at zero the two halves are one circle again",
+          abs(halves["top"] - halves["bot"]) < 0.5,
+          "top %.1f bot %.1f" % (halves["top"], halves["bot"]))
 
     print("\n--- pointer: removing ---")
-    p.locator('[data-mod-dest="gen.freq"] + .mod-rows .mod-x').first.click()
+    p.locator('[data-mod-dest="view.rotate"] .mod-tag button').click()
     p.wait_for_timeout(200)
-    check("the cross removes it", p.evaluate(ROUTES) == [], str(p.evaluate(ROUTES)))
+    check("the cross on the tag removes it", p.evaluate(ROUTES) == [], str(p.evaluate(ROUTES)))
+    check("and the frame goes with it",
+          "modulated" not in p.locator('[data-mod-dest="view.rotate"]').get_attribute("class"))
+    section(p, "Input")
 
     print("\n--- keyboard ---")
     p.locator('[data-mod-dest="gen.phase"] .mod-add').click()
@@ -102,9 +142,18 @@ with sync_playwright() as pw:
     check("choosing from it patches", p.evaluate(ROUTES) == ["lfo2>gen.phase@0.35"],
           str(p.evaluate(ROUTES)))
 
-    p.locator('[data-mod-dest="gen.phase"] + .mod-rows .mod-row').first.focus()
+    # The row that used to carry Delete is not built for one source any more,
+    # so the lower half of the thumb has to be a control in its own right.
+    p.locator('[data-mod-dest="gen.phase"] .dual-grab').focus()
+    p.keyboard.press("ArrowRight"); p.keyboard.press("ArrowRight")
+    p.wait_for_timeout(200)
+    stepped = p.evaluate("() => state.modRoutings[0].amount")
+    check("arrows on the focused lower half set the depth",
+          abs(stepped - 0.45) < 1e-6, "%.3f wanted 0.450" % stepped)
+
+    p.locator('[data-mod-dest="gen.phase"] .dual-grab').focus()
     p.keyboard.press("Delete"); p.wait_for_timeout(200)
-    check("and Delete on a focused row removes it", p.evaluate(ROUTES) == [],
+    check("and Delete on it removes the routing", p.evaluate(ROUTES) == [],
           str(p.evaluate(ROUTES)))
 
     print("\n--- several sources on one destination ---")
@@ -141,9 +190,18 @@ with sync_playwright() as pw:
 
     print("\n--- clearing in bulk ---")
     section(p, "Display")
-    p.locator('[data-mod-dest="view.rotate"] + .mod-rows [data-clear]').click()
+    tag = p.evaluate("""() => {
+      const t = document.querySelector('[data-mod-dest="view.rotate"] .mod-tag');
+      return t ? t.textContent : null;
+    }""")
+    check("the tag counts them rather than naming one", tag and "3 sources" in tag, str(tag))
+    check("and the lower half stops being draggable, because it is a sum",
+          p.evaluate("""() => document.querySelector(
+            '[data-mod-dest="view.rotate"] .dual-grab').hidden""") is True)
+    p.locator('[data-mod-dest="view.rotate"] .mod-tag button').click()
     p.wait_for_timeout(200)
-    check("clear empties that control", p.evaluate(ROUTES) == [], str(p.evaluate(ROUTES)))
+    check("clearing the tag empties that control", p.evaluate(ROUTES) == [],
+          str(p.evaluate(ROUTES)))
 
     p.evaluate("""() => {
       state.modRoutings = [
@@ -163,9 +221,13 @@ with sync_playwright() as pw:
     p.evaluate("() => setView('scope')"); p.wait_for_timeout(250)
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("still patched", p.evaluate(ROUTES) == ["lfo2>gen.phase@0.3"], str(p.evaluate(ROUTES)))
-    check("and still exactly one row",
-          p.locator('.mod-rows .mod-row').count() == 1,
-          str(p.locator('.mod-rows .mod-row').count()))
+    check("and still wearing its frame after the round trip",
+          "modulated" in p.locator('[data-mod-dest="gen.phase"]').get_attribute("class"))
+    check("with the halves repositioned for the new width",
+          p.evaluate("""() => {
+            const host = document.getElementById('phase').parentElement;
+            return !!host.querySelector('.dual-bot').style.left;
+          }"""))
     check("with no duplicate ids", p.evaluate("""() => {
       const seen = new Set(), dupes = [];
       for (const n of document.querySelectorAll('[id]')) {
@@ -207,11 +269,28 @@ with sync_playwright() as pw:
           t.evaluate("() => armedSource") is None
           and len(t.evaluate(ROUTES)) == 1, str(t.evaluate(ROUTES)))
 
-    check("the remove button is always visible on touch",
-          t.evaluate("""() => {
-            const x = document.querySelector('.mod-rows .mod-x');
-            return x ? Number(getComputedStyle(x).opacity) : 0;
-          }""") == 1)
+    section(t, "Display")      # the tap above moved the rail off it
+    # One source needs no row, so the way off a control on a touch screen is
+    # the cross on its tag - and a cross is only a way off if a thumb can hit
+    # it. Measured rather than assumed.
+    box = t.evaluate("""() => {
+      const b = document.querySelector('[data-mod-dest="view.rotate"] .mod-tag button');
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { w: r.width, h: r.height, shown: getComputedStyle(b).opacity };
+    }""")
+    check("the way off a control is a real target on touch",
+          box and box["w"] >= 14 and box["h"] >= 14,
+          str(box))
+    grabbox = t.evaluate("""() => {
+      const g = document.querySelector('[data-mod-dest="view.rotate"] .dual-grab');
+      return g ? g.getBoundingClientRect().height : 0;
+    }""")
+    check("and the depth is a taller target than on a pointer", grabbox >= 12,
+          "%.0f px" % grabbox)
+    t.locator('[data-mod-dest="view.rotate"] .mod-tag button').tap(); t.wait_for_timeout(250)
+    check("tapping it takes the patch off", t.evaluate(ROUTES) == [],
+          str(t.evaluate(ROUTES)))
     check("no sideways overflow while patched",
           t.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"))
     t.screenshot(path=f"{SHOTS}/bench-touch.png", full_page=True)

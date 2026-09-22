@@ -30,6 +30,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
+| `dualtest.py` | the split thumb: that the lower half draws the destination's own law |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
@@ -41,12 +42,20 @@ samples than it holds and you get silence at the front of the window, not an
 error. Every buffer size in `capture()` is clamped against `source.capacity` for
 that reason, and `captest.py` exists to keep it that way.
 
-**The Bench moves controls, it does not copy them.** `setView` relocates the
-same `.menu-group` elements between `#menuPanel` and `#benchBody`. Anything that
-builds a second copy of a control gives two elements one id, and
-`getElementById` returns the first — which is how the dock's readout line came
-to display nothing for weeks. `benchtest.py` asserts there are no duplicate ids
-in either view or after a round trip.
+**The Bench moves things, it does not copy them.** `setView` relocates the same
+`.menu-group` elements between `#menuPanel`, `#benchBody` and `#benchSide`, and
+it moves the screen too: `#traceSheet` goes between `.panes` and `#benchScope`,
+so there is exactly one `#trace` canvas and every cursor handler, resize path
+and persistence buffer travels with it. Anything that builds a second copy of a
+control gives two elements one id, and `getElementById` returns the first —
+which is how the dock's readout line came to display nothing for weeks.
+`benchtest.py` asserts there are no duplicate ids in either view or after a
+round trip.
+
+`SIDE_GROUPS` names the groups that live in the side column instead of taking a
+turn in the rail. The oscillators are there because a control you cannot see
+while patching is one you set by opening a panel — which is the popover the
+Bench exists to replace.
 
 **Web Audio reads `Q` in decibels for lowpass and highpass, and linearly for
 everything else.** Putting the linear Butterworth value 0.707 into the decibel
@@ -62,6 +71,34 @@ whose curve cannot exceed its own table, and that shaper runs at
 `oversample: "none"` on purpose: at `2x` the resampling filter rings past the
 curve, which is the one thing a clamp must not do.
 
+**A patched control draws its destination's law, not a fraction of its
+slider.** The lower half of a split thumb sits where the modulation actually
+reaches: full depth on `gen.freq` is an octave, so 220 Hz puts it at 440 and not
+at the end of a 30–4000 Hz track. Each generator destination writes that law out
+as `reach`; a visual one declares a `span` in its own units and `destReach`
+derives it, because a visual destination's slider covers exactly `min..max`.
+
+Only the forward law is ever written. Dragging the lower half asks the opposite
+question — what depth puts the reach *here* — and `amountForReach` answers it by
+bisecting `destReach`, which is monotonic in the depth. A hand-written inverse
+would be a second formula obliged to agree with the first forever, and
+`dualtest.py` round-trips all six to 6e-8 precisely so that stays one formula.
+
+**The split thumb is drawn in the control's existing container.** `ensureDual`
+marks the input's parent `.mod-dual-host` and positions four absolutely-placed
+spans against `input.offsetLeft/offsetTop`. It does not wrap the input: a
+wrapper would become the flex item in its place, and every width on the page was
+measured against the input being that item. The native thumb is hidden rather
+than restyled into a dome, because Firefox centres a thumb on the track whatever
+height it is given.
+
+**`scope.html` carries its own viewport meta.** The artifact host wraps the file
+in a `<head>` of its own, which is why the file went a long time without one and
+nobody noticed. Served on its own — from Pages, or from disk — a page with no
+viewport meta renders on a phone at 980 CSS pixels and scales down, so every
+media query below the 760px breakpoint stops matching and the narrow layout is
+never reached.
+
 **The tone source is a ring buffer filled from the frame loop.** A `capture()`
 taken in the same tick as a preset is applied reads the *previous* signal. Any
 test that changes the source has to let it turn over first; two separate
@@ -75,8 +112,17 @@ capture phase and stops it before the slider sees it.
 
 **`hidden` and `data-off` are different questions.** `hidden` on a settings
 group is the bench's section selector; `data-off` means the group does not apply
-to the loaded source at all (modulation with no generator under it). They were
-the same attribute once and each kept undoing the other.
+to the loaded source at all. They were the same attribute once and each kept
+undoing the other. Note that `showBenchSection` only hides groups whose parent
+is `#benchBody`, or picking a section would hide the side column's groups too.
+
+**A destination that does not apply greys out; it is never removed.** The
+modulation group used to be switched off whole on anything but the test tone,
+which was right while every destination was a generator parameter. It is wrong
+now — an LFO on the filter cutoff is the same patch on a microphone — so what
+withdraws is the generator half of `destOptions`, per entry, against
+`shownKind` rather than `state.source.kind` so it agrees with the rows beside
+it while a source is still being opened.
 
 **One microphone can arrive under two names.** A browser hands out device ids
 only after permission is granted, so the first open is anonymous (`""`) and
