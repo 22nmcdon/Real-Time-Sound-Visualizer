@@ -11,6 +11,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
+import fixtures
+STEMS = fixtures.ensure()
+
 fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
@@ -164,6 +167,109 @@ with sync_playwright() as pw:
     check("choosing a destination makes the routing", ui["after"] == ["gen.ratio"], str(ui["after"]))
     check("the depth slider sets its amount", abs((ui["amount"] or 0) - 0.35) < 1e-9, str(ui["amount"]))
     check("and off removes it", ui["cleared"] == 0, str(ui["cleared"]))
+
+    print("\n--- the picture is a destination too ---")
+    # A unison at zero phase draws a 45 degree diagonal. Turning it by an
+    # eighth of a turn should stand it up.
+    angles = p.evaluate("""() => {
+      applyPreset('b:Circle');
+      el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
+      state.modRoutings = []; touchRoutings();
+      const axis = () => {
+        const f = capture();
+        const x = f.channels[0], y = f.channels[1], n = x.length;
+        let mx = 0, my = 0;
+        for (let i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+        mx /= n; my /= n;
+        let sxx = 0, syy = 0, sxy = 0;
+        const spin = (state.rotate + state.rotateMod) * Math.PI * 2;
+        const c = Math.cos(spin), s2 = Math.sin(spin);
+        for (let i = 0; i < n; i++) {
+          const px = x[i] - mx, py = y[i] - my;
+          const rx = px * c - py * s2, ry = px * s2 + py * c;
+          sxx += rx * rx; syy += ry * ry; sxy += rx * ry;
+        }
+        return 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI;
+      };
+      state.rotate = 0; const flat = axis();
+      state.rotate = 0.125; const turned = axis();
+      state.rotate = 0;
+      return { flat, turned };
+    }""")
+    turn = (angles["turned"] - angles["flat"] + 180) % 180
+    check("a rotation really turns the figure", abs(turn - 45) < 3,
+          "%.1f deg from %.1f to %.1f" % (turn, angles["flat"], angles["turned"]))
+
+    offsets = p.evaluate("""() => {
+      state.modRoutings = []; touchRoutings();
+      const f = capture();
+      applyModMatrix(f, 16);
+      const rest = { rotate: state.rotateMod, zoom: state.zoomMod, lag: state.lagMod };
+      // A depth far past the destination's range must stop at the range.
+      state.rotate = 0;
+      state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 99 }];
+      touchRoutings();
+      lfos[0].value = 1;
+      applyModMatrix(f, 16);
+      const pushed = state.rotateMod;
+      state.modRoutings = []; touchRoutings();
+      applyModMatrix(f, 16);
+      return { rest, pushed, max: MOD_DESTS.get('view.rotate').max };
+    }""")
+    check("with nothing routed every offset is zero",
+          offsets["rest"] == {"rotate": 0, "zoom": 0, "lag": 0}, str(offsets["rest"]))
+    check("and a source cannot push past the range",
+          abs(offsets["pushed"] - offsets["max"]) < 1e-9,
+          "%.2f against a limit of %.2f" % (offsets["pushed"], offsets["max"]))
+
+    print("\n--- the envelope follows what you play ---")
+    env = p.evaluate("""async () => {
+      applyPreset('b:Pure sine');
+      const source = MOD_SOURCES.get('env.live');
+      el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 600));
+      const loud = source.value();
+      el.amp.value = '0'; el.amp.dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 120));
+      const justAfter = source.value();
+      await new Promise((r) => setTimeout(r, 900));
+      const quiet = source.value();
+      el.amp.value = '55'; el.amp.dispatchEvent(new Event('input'));
+      return { loud, justAfter, quiet };
+    }""")
+    print("    loud %.3f -> 120 ms later %.3f -> 1 s later %.3f"
+          % (env["loud"], env["justAfter"], env["quiet"]))
+    check("it rises with the signal", env["loud"] > 0.5, "%.3f" % env["loud"])
+    check("and falls when it stops", env["quiet"] < 0.05, "%.3f" % env["quiet"])
+    check("but releases slower than it attacks", env["justAfter"] > env["quiet"] * 2,
+          "still %.3f after 120 ms" % env["justAfter"])
+
+    print("\n--- every oscillator advances exactly once ---")
+    # The trap the two paths create: the tone source steps them per sample and
+    # everything else steps them per frame. Both would run at double rate, and
+    # double is exactly the kind of wrong that looks plausible.
+    def cycles(seconds=2.0):
+        p.evaluate("() => { lfos[0].shape = 'sine'; lfos[0].rate = 2; lfos[0].phase = 0; }")
+        last = p.evaluate("() => lfos[0].phase")
+        wraps = 0
+        for _ in range(int(seconds / 0.04)):
+            p.wait_for_timeout(40)
+            now = p.evaluate("() => lfos[0].phase")
+            if now < last: wraps += 1
+            last = now
+        return wraps
+
+    p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(500)
+    onTone = cycles()
+    check("2 Hz is 2 Hz on the tone source", abs(onTone - 4) <= 1, "%d cycles in 2 s" % onTone)
+
+    p.locator("#menuButton").click(); p.wait_for_timeout(150)
+    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
+    p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
+    p.wait_for_timeout(1800)
+    onFile = cycles()
+    check("and 2 Hz on a file source, not 4", abs(onFile - 4) <= 1, "%d cycles in 2 s" % onFile)
+    p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(400)
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

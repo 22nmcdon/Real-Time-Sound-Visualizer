@@ -907,6 +907,21 @@ body[data-view="bench"] #menuButton { display: none; }
           </div>
 
           <div class="menu-group">
+            <span class="menu-title">Display</span>
+            <div class="menu-row">
+              <label class="menu-label" for="rotate">X&ndash;Y rotation</label>
+              <div class="grow">
+                <input type="range" id="rotate" min="-50" max="50" value="0">
+                <span class="reading" id="rotateValue">0&deg;</span>
+              </div>
+            </div>
+            <p class="menu-note">Turns the figure on the screen. Worth little by hand and a
+              great deal pointed at something: send <i>Level</i> to it and the picture turns
+              as you play, which is the difference between a shape that sits there and one
+              that answers.</p>
+          </div>
+
+          <div class="menu-group">
             <span class="menu-title">Trigger</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1474,6 +1489,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "viewScope", "viewBench", "bench", "benchRail", "benchBody",
+                  "rotate", "rotateValue",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -1652,6 +1668,94 @@ const LEGACY_DESTS = {
   none: null, phase: "gen.phase", ratio: "gen.ratio", detail: "gen.detail",
   tumble: "gen.tumble", depth: "gen.depth", freq: "gen.freq", amp: "gen.amp",
 };
+
+/* How hard you are playing, as something a figure can be pointed at. This is
+   the one source that is not an oscillator, and it is the whole answer to what
+   a live input can drive: play harder and the picture opens up.
+
+   Attack fast and release slow, because that is what an envelope follower is
+   for - a meter that fell as fast as it rose would flicker on every cycle
+   rather than describe a note. */
+const ENV_ATTACK = 0.02, ENV_RELEASE = 0.25;       // seconds
+const ENV_FULL = 0.707;                            // RMS of a full-scale sine
+let envLive = 0;
+
+function updateEnvelope(frame, elapsed) {
+  const lane = frame.channels[state.trigSource] || frame.channels[0];
+  let sum = 0, n = 0;
+  // Strided: this runs every frame and the answer is a level, not a waveform.
+  const stride = Math.max(1, Math.floor(lane.length / 512));
+  for (let i = 0; i < lane.length; i += stride) { sum += lane[i] * lane[i]; n++; }
+  const rms = n > 0 ? Math.sqrt(sum / n) : 0;
+
+  const tau = rms > envLive ? ENV_ATTACK : ENV_RELEASE;
+  envLive += (rms - envLive) * (1 - Math.exp(-(elapsed / 1000) / tau));
+}
+
+registerSource({
+  id: "env.live", label: "Level", ink: "ch3", bipolar: false,
+  value: () => Math.min(1, envLive / ENV_FULL),
+});
+
+/* Properties of the picture rather than of the signal, so they are written
+   once a frame.
+
+   What is written is an OFFSET, not the value. Pushing a finished value into a
+   second field means every path that sets the knob has to remember to push it
+   too, and the one that forgot drew a stale figure until the next frame
+   happened to fix it. An offset defaults to zero, so a base read on its own is
+   always already right and nothing has to be kept in step. */
+const VISUAL_DESTS = [
+  {
+    id: "view.rotate", label: "X\u2013Y rotation", span: 1, min: -2, max: 2,
+    base: () => state.rotate, set: (offset) => { state.rotateMod = offset; },
+  },
+  {
+    id: "view.zoom", label: "Zoom", span: 12, min: 0, max: 24,
+    base: () => state.zoomStep, set: (offset) => { state.zoomMod = offset; },
+  },
+  {
+    id: "view.lag", label: "Lag delay", span: LAG_MAX_MS, min: 0, max: LAG_MAX_MS,
+    base: () => state.lagMs, set: (offset) => { state.lagMod = offset; },
+  },
+];
+
+for (const dest of VISUAL_DESTS) registerDest(Object.assign({ kind: "visual" }, dest));
+
+/* Advanced in exactly one place. The tone source steps the oscillators once a
+   sample inside `fill`, because a vibrato written sixty times a second is a
+   staircase; every other source has no per-sample loop at all, so they are
+   stepped here instead. Doing both would run every rate at double. */
+function applyModMatrix(frame, elapsed) {
+  if (state.source.kind !== "tone") {
+    const perSecond = 1000 / Math.max(1, elapsed);
+    lfoStep(lfos[0], perSecond);
+    lfoStep(lfos[1], perSecond);
+  }
+
+  updateEnvelope(frame, elapsed);
+
+  for (const dest of MOD_DESTS.values()) {
+    if (dest.kind !== "visual") continue;
+
+    let sum = 0;
+    for (const routing of state.modRoutings) {
+      if (routing.destId !== dest.id) continue;
+      const source = MOD_SOURCES.get(routing.sourceId);
+      if (source) sum += source.value() * routing.amount;
+    }
+
+    // Clamped as a value, stored as an offset, so a source cannot push a
+    // destination past the range its own control has.
+    const base = dest.base();
+    const want = Math.max(dest.min, Math.min(dest.max, base + sum * dest.span));
+    dest.set(want - base);
+  }
+
+  // Zoom is read as a magnification rather than as a step, so the one that is
+  // derived gets recomputed here rather than by whoever last touched a slider.
+  state.zoom = zoomAt(state.zoomStep + state.zoomMod);
+}
 
 /* Compiled once per change rather than walked per sample. The per-sample loop
    runs 44100 times a second and has no business doing map lookups or checking
@@ -2863,6 +2967,13 @@ const state = {
   display: "yt",             // yt | xy | spect
   spectroSpan: 5,            // seconds across the spectrogram
   zoom: 1,                   // magnification, and it means something different per mode
+  zoomStep: 0,               // the slider's own position, before any modulation
+  zoomMod: 0,
+
+  // The X-Y figure, turned. A little by hand, and as much as you like by a
+  // source pointed at it.
+  rotate: 0,                 // turns
+  rotateMod: 0,
   hoverY: null,              // where the pointer is reading a frequency
   midSide: false,
 
@@ -2877,7 +2988,8 @@ const state = {
   micBands: false,           // whether live input arrives whole or split in four
 
   lagOn: false,
-  lagMs: 5,
+  lagMs: 5,                  // what the slider says
+  lagMod: 0,                 // what a source is adding to it
   lagAuto: true,
   lagActual: 0,              // what capture could actually afford, for the label
   starved: 0,                // samples the window asked for beyond what the source holds
@@ -2949,7 +3061,9 @@ const gainOf = (ch) => Math.pow(10, -FULL_SCALE_DB[state.channels[ch].scale] / 2
 function lagSeconds() {
   if (!state.lagOn || state.midSide) return 0;
   if (!state.source || state.source.lanes) return 0;
-  if (!state.lagAuto || lagLock === null) return state.lagMs / 1000;
+  if (!state.lagAuto || lagLock === null) {
+    return Math.max(0, state.lagMs + state.lagMod) / 1000;
+  }
   return lagLock;
 }
 
@@ -4040,10 +4154,20 @@ function drawXY(frame, fit, elapsed) {
   // Gathered first, drawn second: the beam has to know how long a segment is
   // before it can choose a colour for it, so the polyline goes into the
   // scratch arrays rather than straight into a path.
+  /* Turned, when something is turning it. Computed once rather than per point,
+     and skipped altogether at rest so the common path is the one it always
+     was. */
+  const spin = state.rotate + state.rotateMod;
+  const turn = spin * TWO_PI;
+  const rc = Math.cos(turn), rs = Math.sin(turn);
+  const turning = spin !== 0;
+
   let n = 0;
   for (let i = 0; i < points && n < BEAM_MAX; i += stride, n++) {
-    beamX[n] = cx + (left[i] * gainX + offX) * scale;
-    beamY[n] = cy - (right[i] * gainY + offY) * scale;
+    const px = left[i] * gainX + offX;
+    const py = right[i] * gainY + offY;
+    beamX[n] = cx + (turning ? px * rc - py * rs : px) * scale;
+    beamY[n] = cy - (turning ? px * rs + py * rc : py) * scale;
     if (n > 0) {
       const dx = beamX[n] - beamX[n - 1], dy = beamY[n] - beamY[n - 1];
       beamL2[n - 1] = dx * dx + dy * dy;
@@ -4842,6 +4966,9 @@ function frameLoop(now) {
   const elapsed = state.lastFrame ? Math.min(250, now - state.lastFrame) : 16;
   state.lastFrame = now;
 
+  // Before the drawing, so what is drawn is what the sources just asked for.
+  applyModMatrix(frame, elapsed);
+
   drawMain(frame, elapsed);
   drawGoni(frame);
   drawSpectrum(frame);
@@ -4983,6 +5110,7 @@ function syncLabels() {
   el.positionValue.textContent = Math.round(state.position * 100) + "%";
   el.holdoffValue.textContent = state.holdoffMs === 0
     ? "off" : state.holdoffMs.toFixed(1) + " ms";
+  el.rotateValue.textContent = Math.round(state.rotate * 360) + "\u00b0";
   el.looking.innerHTML = (state.edge === RISING ? "&uarr; " : "&darr; ")
     + (state.level >= 0 ? "+" : "−") + Math.abs(state.level).toFixed(3);
 
@@ -5013,6 +5141,11 @@ el.position.addEventListener("input", () => {
 
 el.holdoff.addEventListener("input", () => {
   state.holdoffMs = Number(el.holdoff.value) / 10;
+  syncLabels();
+});
+
+el.rotate.addEventListener("input", () => {
+  state.rotate = Number(el.rotate.value) / 100;
   syncLabels();
 });
 
@@ -5271,7 +5404,8 @@ el.spectroSpan.addEventListener("change", () => {
 
 function setZoom(step) {
   const clamped = Math.max(0, Math.min(24, step));
-  state.zoom = zoomAt(clamped);
+  state.zoomStep = clamped;
+  state.zoom = zoomAt(clamped + state.zoomMod);
   el.zoom.value = String(clamped);
   el.zoomValue.textContent = state.zoom < 10
     ? state.zoom.toFixed(1) + "\u00d7" : Math.round(state.zoom) + "\u00d7";
@@ -5500,7 +5634,7 @@ const DEFAULTS = {
   c0on: true, c0ac: false, c0s: 0, c0o: 0,
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
-  lagOn: false, lagMs: 5, lagAuto: true,
+  lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   xy0: 0, xy1: 1,
   pGoni: true, pSpec: true, pHarm: false, pTune: false, cursors: false,
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
@@ -5548,6 +5682,7 @@ function snapshot() {
     c1s: state.channels[1].scale, c1o: Math.round(state.channels[1].offset * 100),
     midSide: state.midSide,
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
+    rotate: Math.round(state.rotate * 100),
     xy0: state.xyPair[0], xy1: state.xyPair[1],
     pGoni: state.panes.goni, pSpec: state.panes.spectrum,
     pHarm: state.panesExtra.harmonics, pTune: state.panesExtra.tuner,
@@ -5656,6 +5791,9 @@ function restore(partial) {
   el.lagOn.checked = state.lagOn;
   state.lagMs = s.lagMs;
   el.lag.value = String(Math.round(s.lagMs * 10));
+
+  state.rotate = s.rotate / 100;
+  el.rotate.value = String(s.rotate);
   lagLock = null;
   setLagAuto(s.lagAuto);
   showLag();
