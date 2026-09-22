@@ -30,7 +30,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
-| `dualtest.py` | the split thumb: that the lower half draws the destination's own law |
+| `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
@@ -72,25 +72,49 @@ whose curve cannot exceed its own table, and that shaper runs at
 curve, which is the one thing a clamp must not do.
 
 **A patched control draws its destination's law, not a fraction of its
-slider.** The lower half of a split thumb sits where the modulation actually
-reaches: full depth on `gen.freq` is an octave, so 220 Hz puts it at 440 and not
-at the end of a 30–4000 Hz track. Each generator destination writes that law out
-as `reach`; a visual one declares a `span` in its own units and `destReach`
-derives it, because a visual destination's slider covers exactly `min..max`.
+slider.** The lane ends where the modulation actually reaches: full depth on
+`gen.freq` is an octave, so 220 Hz puts it at 440 and not at the end of a
+30–4000 Hz track. Each generator destination writes that law out as `reach`; a
+visual one declares a `span` in its own units and `destReach` derives it,
+because a visual destination's slider covers exactly `min..max`.
 
-Only the forward law is ever written. Dragging the lower half asks the opposite
+Only the forward law is ever written. Dragging a lane asks the opposite
 question — what depth puts the reach *here* — and `amountForReach` answers it by
 bisecting `destReach`, which is monotonic in the depth. A hand-written inverse
 would be a second formula obliged to agree with the first forever, and
-`dualtest.py` round-trips all six to 6e-8 precisely so that stays one formula.
+`lanetest.py` round-trips all six to 6e-8 precisely so that stays one formula.
 
-**The split thumb is drawn in the control's existing container.** `ensureDual`
-marks the input's parent `.mod-dual-host` and positions four absolutely-placed
-spans against `input.offsetLeft/offsetTop`. It does not wrap the input: a
-wrapper would become the flex item in its place, and every width on the page was
-measured against the input being that item. The native thumb is hidden rather
-than restyled into a dome, because Firefox centres a thumb on the track whatever
-height it is given.
+**A control's appearance must not depend on how many sources are on it.** This
+is the second design of this surface; the first one failed here. A split thumb
+whose lower half showed the depth could state one attachment and not two — with
+two it had to show a *sum*, a sum cannot be dragged, and the control fell back
+to a stack of rows that grew the panel by a line per attachment. So: the lane
+draws whichever source is **armed** and no other, and the pips say who else is
+there. `patchtest.py` measures the row's height and the control's box with
+nought, one, two and three sources on it and requires all four to be identical.
+
+**Arming is a mode, not a moment.** `armedSource` used to survive one tap,
+because all it did was aim the next one. It now decides what every lane on the
+page is drawing, so it persists until the chip is clicked again — which is also
+why the capture-phase `pointerdown` handler that used to assign on a tap
+anywhere is gone. A listener claiming every press on the page would have made
+the sliders themselves unusable once arming stopped ending on its own.
+
+**The lane is drawn in the control's existing container.** `ensureLane` marks
+the input's parent `.mod-lane-host` and positions absolutely-placed spans
+against `input.offsetLeft/offsetTop`. It does not wrap the input: a wrapper
+would become the flex item in its place, and every width on the page was
+measured against the input being that item. The pips live in that same strip,
+right-aligned — in the label they wrapped a fixed 96px column and grew the row
+by a line the first time anything was patched.
+
+**The bench body uses real columns, not CSS ones.** `columns: 2` re-balances
+the whole flow whenever any section's height changes, and a section's height
+changes whenever a fold opens or a generator mode swaps its rows in. The first
+drag of the first build proved it: the control under the pointer jumped 350px
+into the next column mid-drag. `layoutBenchBody` deals the groups into
+`.bench-col` elements once per view and on a column-count change, so a height
+change reflows one column and moves nothing.
 
 **`scope.html` carries its own viewport meta.** The artifact host wraps the file
 in a `<head>` of its own, which is why the file went a long time without one and
@@ -110,11 +134,14 @@ it — the touch is consumed and no click is ever synthesized, so a click
 listener never ran on a phone at all. The handler catches the press in the
 capture phase and stops it before the slider sees it.
 
-**`hidden` and `data-off` are different questions.** `hidden` on a settings
-group is the bench's section selector; `data-off` means the group does not apply
-to the loaded source at all. They were the same attribute once and each kept
-undoing the other. Note that `showBenchSection` only hides groups whose parent
-is `#benchBody`, or picking a section would hide the side column's groups too.
+**`hidden`, `data-off` and `.folded` are three different questions.**
+`data-off` means the group does not apply to the loaded source at all (the
+generator, with a microphone plugged in). `.folded` is the bench's own, set on
+the three set-once sections and toggled by their titles; the rule that acts on
+it is scoped to `.bench-body`, so it is inert in the popover and is therefore
+*not* stripped on the way there — stripping it is what made every fold spring
+open after a trip to Scope and back. `hidden` is now used by neither, since the
+bench shows every section at once.
 
 **A destination that does not apply greys out; it is never removed.** The
 modulation group used to be switched off whole on anything but the test tone,

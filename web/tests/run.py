@@ -17,7 +17,7 @@ SUITES = [
     ("bench", [sys.executable, "benchtest.py"], "the Bench: one node per control, two views"),
     ("mod", [sys.executable, "modtest.py"], "the modulation matrix, and the enum it replaces"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
-    ("dual", [sys.executable, "dualtest.py"], "the split thumb: does the lower half tell the truth"),
+    ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),
     ("along", [sys.executable, "alongtest.py"], "a backing track and a live input as lanes"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),

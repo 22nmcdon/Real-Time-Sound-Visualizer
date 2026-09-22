@@ -423,34 +423,63 @@ body[data-view="bench"] #menuButton { display: none; }
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500;
 }
 .bench-rail button:hover { color: var(--blush-deep); }
-.bench-rail button[aria-selected="true"] {
+.bench-rail button[aria-current="true"] {
   color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
 }
 
-.bench-body { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding-right: 8px; }
-/* The section's own title is already in the rail, and repeating it at the top
-   of the body is a heading naming the thing you just clicked. */
-.bench-body .menu-title { display: none; }
-.bench-body .menu-group { margin-top: 0; padding-top: 0; border-top: 0; }
+/* --- the bench body --------------------------------------------------------
+   Every section at once, in columns, rather than one at a time behind a rail.
+   A settings panel you have to page through is a settings panel you forget the
+   shape of - and the rail's own list was the only place the shape was visible,
+   which is a map standing in for the territory.
 
-/* Two columns once there is room, the same way the cheat sheet does it: a
-   section of fifteen rows in one column is the popover again, just wider.
-   Raised from the old 900px because the side column now takes 300px of the
-   width this was measured against. */
-@media (min-width: 1180px) {
-  .bench-body .menu-group { columns: 2; column-gap: 36px; }
-  .bench-body .menu-row, .bench-body .check, .bench-body .lane { break-inside: avoid; }
-  .bench-body .menu-note { break-inside: avoid; }
+   The rail stays, as a way of getting to a section rather than a way of
+   revealing one. The three sections nobody opens twice in a sitting - presets,
+   the beam, the measuring tools - are folded shut and take one click. */
+.bench-body { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding-right: 8px; }
+.bench-body .menu-group {
+  margin: 0 0 18px; padding: 0; border-top: 0;
+  break-inside: avoid;              /* a section split down a column is unreadable */
 }
+.bench-body .menu-title {
+  display: block; width: 100%; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 0 0 6px; margin-bottom: 10px; cursor: default;
+}
+/* The foldable ones are buttons, and say so. */
+.bench-body .menu-group[data-fold] > .menu-title { cursor: pointer; }
+.bench-body .menu-group[data-fold] > .menu-title::after {
+  content: "\2212"; float: right; color: var(--text-soft); font-size: 12px;
+  letter-spacing: 0; line-height: 1;
+}
+.bench-body .menu-group[data-fold].folded > .menu-title::after { content: "+"; }
+.bench-body .menu-group.folded > *:not(.menu-title) { display: none; }
+
+/* Real columns, not CSS ones.
+
+   `columns: 2` was the obvious way to do this and it is the wrong one for a
+   surface you interact with: the browser re-balances the flow whenever any
+   section's height changes, and a section's height changes whenever a fold
+   opens, a generator mode swaps its rows in, or a patch adds anything at all.
+   The first drag proved it - the control being dragged jumped 350 pixels into
+   the next column while the pointer was still down on it.
+
+   So the columns are elements, each group is put in one when the view is built
+   and stays there. A height change then reflows that column and nothing
+   else. */
+.bench-body { display: flex; align-items: flex-start; gap: 34px; }
+/* Kept in step with BENCH_GAP, which the column count is derived from. */
+.bench-col { flex: 1 1 0; min-width: 0; }
+.bench-col:empty { display: none; }
 
 /* --- the side column -------------------------------------------------------
-   The screen, and the things you point at it. Neither is ever behind a tab.
+   The screen, and the things you point at it. Neither is ever behind a fold.
 
-   An LFO you cannot see while you are patching it is an LFO you set by opening
-   a panel, reading a number and closing the panel again - which is exactly the
+   An oscillator you cannot see while you are patching it is one you set by
+   opening a panel, reading a number and closing the panel again - which is the
    popover this whole view exists to replace. So the modulation group does not
-   join the rail's rotation; it lives here, next to the screen it is moving,
-   and the rail is left holding the things you set once and leave.           */
+   go in the body with the rest; it lives here, next to the screen it is
+   moving. */
 .bench-side {
   flex: 0 0 264px; display: flex; flex-direction: column; gap: 12px;
   border-left: 1px solid var(--line); padding-left: 16px;
@@ -459,8 +488,7 @@ body[data-view="bench"] #menuButton { display: none; }
 /* Small, and capped rather than given the column's width. "Enough to see the
    figure answer while your hand is on the control" is what this has to be, and
    past about two hundred pixels it starts taking the room the oscillators need
-   to be on screen at the same time - which is the thing that would actually be
-   missed. */
+   to be on screen at the same time. */
 .bench-scope {
   flex: 0 0 auto; width: min(100%, 200px); aspect-ratio: 1 / 1;
   display: flex; margin-inline: auto;
@@ -475,8 +503,7 @@ body[data-view="bench"] #menuButton { display: none; }
 .bench-side .menu-row { gap: 5px 8px; margin-top: 5px; }
 /* The prose goes. This column is a working surface, not a page to read: the
    paragraphs are still under Settings in the Scope view and the cheat sheet
-   still teaches the gesture, and what they cost here is the oscillators being
-   below the fold - which is the one thing this column exists to prevent. */
+   still teaches the gesture. */
 .bench-side .menu-note { display: none; }
 .bench-hint {
   font-size: 10.5px; line-height: 1.45; color: var(--text-soft);
@@ -490,20 +517,17 @@ body[data-view="bench"] #menuButton { display: none; }
   .bench-rail {
     flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: visible;
     border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px;
-    /* Without this the rail is a flex item at its content width - seven chips,
-       574px of them - and rather than scrolling it stretches the whole page
-       sideways, taking the screen and the dock with it. `overflow-x: auto` can
-       only do its job once the item is allowed to be narrower than its
-       contents. */
+    /* Without this the rail is a flex item at its content width - nine chips,
+       and rather than scrolling it stretches the whole page sideways, taking
+       the screen and the dock with it. */
     min-width: 0;
   }
   .bench-rail button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
-  .bench-rail button[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
+  .bench-rail button[aria-current="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
 
-  /* The column stops being a column and its three parts join the stack, so
-     the screen can sit at the top where it is worth looking at while the
-     sources and the oscillators go to the bottom. A side column here would
-     put the screen below a phone's worth of controls. */
+  /* The column stops being a column and its three parts join the stack, so the
+     screen can sit at the top where it is worth looking at while the sources
+     and the oscillators go to the bottom. */
   .bench-side { display: contents; }
   .bench-scope { order: -1; width: 100%; max-width: 340px; margin-inline: auto; }
   .bench-sources { order: 3; border-top: 1px solid var(--line); padding-top: 10px; }
@@ -512,18 +536,24 @@ body[data-view="bench"] #menuButton { display: none; }
 }
 
 /* --- patching --------------------------------------------------------------
-   A source is a chip you pick up and put on a control. What the control does
-   with it is the part worth getting right: it grows a second slider inside the
-   space it already had.
+   The half-circle is gone. It could state one attachment beautifully and two
+   not at all: the lower half had to show a sum, a sum is not a thing anyone can
+   drag, and the control fell back to a stack of rows that grew the panel by a
+   line every time - which is the thing the split thumb existed to avoid.
 
-   The thumb splits in half. The top half stays where you set the value by
-   hand; the bottom half slides away to where the attachment takes it, and the
-   bar between them is the sweep. At no depth the two halves are one circle
-   again - so an attachment doing nothing looks exactly like no attachment,
-   which is what it is. A dotted frame says a control has something on it, and
-   costs no height, because the reason this is a split thumb rather than an
-   extra row is that the panel should not grow every time something is
-   patched.                                                                  */
+   What replaces it separates the two questions that were being asked of one
+   shape. WHO is attached is a row of pips beside the label, one per source, and
+   it is the same size for one source or five. HOW FAR is a lane under the
+   slider, and the lane only ever shows ONE source at a time: the one that is
+   armed in the side column. Arm an oscillator and every control on the page
+   shows what that oscillator does to it - which is more than the old design
+   could say, not less, because before you could only read one control at a
+   time. Nothing armed and the lanes show only a live tick, so a patched page at
+   rest is quiet.
+
+   The lane is always there on a control that can take a patch, whether or not
+   anything is on it. Reserving four pixels once is the price of a layout that
+   never moves again.                                                        */
 .bench-sources {
   flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0;
 }
@@ -534,7 +564,11 @@ body[data-view="bench"] #menuButton { display: none; }
   cursor: grab; touch-action: none;
 }
 .mod-chip:hover { border-color: var(--blush); }
-.mod-chip[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
+/* Armed is not hover and not pressed-for-a-moment: it is a mode the whole
+   bench is in, so it is the loudest state a chip has. */
+.mod-chip[aria-pressed="true"] {
+  background: var(--charcoal); color: var(--cream); border-color: var(--charcoal);
+}
 .mod-chip .count {
   margin-left: auto; font-size: 10.5px; color: var(--text-soft);
   font-variant-numeric: tabular-nums;
@@ -555,90 +589,94 @@ body[data-view="bench"] #menuButton { display: none; }
 }
 [data-mod-dest].mod-target { outline: 2px dashed var(--blush-deep); outline-offset: 3px; }
 
-/* --- a control with something on it ---------------------------------------- */
+/* --- who is attached ------------------------------------------------------- */
+/* In the lane's own strip, right-aligned past the end of the track, so they sit
+   beside the reading rather than in the label. In the label they wrapped it -
+   a fixed 96px column and one more word's worth of dots - and the row grew by a
+   line the first time anything was patched to it, which is the exact fault this
+   whole design is meant to remove. Out of flow here, so one source and five are
+   the same height and the same width. */
+.mod-pips {
+  position: absolute; right: 0; bottom: 0; z-index: 1;
+  display: inline-flex; align-items: center; gap: 3px; height: 8px;
+}
+.mod-pips:empty { display: none; }
+.mod-pip {
+  width: 7px; height: 7px; border-radius: 50%; padding: 0; border: 0;
+  background: var(--pip); opacity: 0.85; cursor: pointer;
+}
+.mod-drop {
+  background: none; border: 0; padding: 0 0 0 2px; line-height: 1;
+  color: var(--text-soft); font-size: 12px; cursor: pointer;
+}
+.mod-drop:hover { color: var(--rust); }
+.mod-pip:hover { opacity: 1; transform: scale(1.25); }
+.mod-pip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--cream), 0 0 0 3px var(--pip); }
+/* A control with something on it. An outline rather than a border, so it costs
+   no height at all, and in the accent rather than in a source's ink: with three
+   sources on a control there is no one ink to use, and saying WHO is the pips'
+   job. This only says that there is someone. */
 [data-mod-dest].modulated {
-  position: relative;
-  outline: 1px dotted var(--chip, var(--blush-deep));
-  outline-offset: 4px;
-  /* Four pixels more than an unpatched row, which is the whole price of the
-     frame and the tag together. The tag itself is out of flow. */
-  margin-top: 12px;
+  outline: 1px dotted var(--blush-deep);
+  outline-offset: 3px;
 }
-/* The tag rides on the frame rather than in the flow, so naming the source and
-   offering a way off again costs nothing in height. */
-.mod-tag {
-  position: absolute; top: -9px; right: 26px; z-index: 2;
-  display: flex; align-items: center; gap: 5px; line-height: 1;
-  background: var(--cream-2); padding: 1px 5px;
-  font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--chip, var(--blush-deep)); white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+[data-mod-dest].modulated > .menu-label, [data-mod-dest].modulated > label.menu-label {
+  color: var(--charcoal);
 }
-/* In the popover the paper behind it is the other cream. */
-body[data-view="scope"] .mod-tag { background: var(--cream); }
-.mod-tag button {
-  background: none; border: 0; padding: 0; color: inherit;
-  font-family: inherit; font-size: 11px; line-height: 1; opacity: 0.6;
-}
-.mod-tag button:hover { opacity: 1; color: var(--rust); }
 
-/* --- the two-slider control -------------------------------------------------
-   The native input keeps every listener it was born with and goes on being the
-   base value; what is drawn over it is the other half. Its own thumb is hidden
-   rather than restyled into a dome, because Firefox centres a thumb on the
-   track whatever height it is given - a half-circle floating in the middle of
-   the track is worse than none - so both halves are drawn here from one
-   formula that reads the same in every browser.
-
-   The halves are positioned inside the control's EXISTING container rather
-   than inside a wrapper put round the input. A wrapper would become the flex
-   item in its place, and every width in this page was measured against the
-   input being that item.                                                    */
-.mod-dual-host { position: relative; }
-.dual-part { position: absolute; pointer-events: none; }
-input[type="range"].dual-hidden::-webkit-slider-thumb { opacity: 0; }
-input[type="range"].dual-hidden::-moz-range-thumb { opacity: 0; }
-
-/* The sweep: everything the attachment can reach from where the value sits. */
-.dual-bar { height: 2px; background: var(--chip); opacity: 0.8; }
-/* Where it is at this instant. The one part that moves on its own. */
-.dual-now { width: 2px; height: 9px; background: var(--chip); border-radius: 1px; }
-/* The two halves of one circle: the value, and what is attached to it. */
-.dual-top {
-  width: 13px; height: 6.5px; margin-left: -6.5px;
-  border-radius: 6.5px 6.5px 0 0; background: var(--blush-deep);
+/* --- how far --------------------------------------------------------------- */
+/* The lane. Four pixels under the slider, reserved on every control that can
+   take a patch so that patching one never moves the page. */
+.mod-lane-host { position: relative; }
+/* The pips are its children, so they inherit nothing from the armed source's
+   ink - each sets its own. */
+.mod-lane {
+  position: absolute; height: 4px; pointer-events: none;
+  border-radius: 2px;
 }
-.dual-bot {
-  width: 13px; height: 6.5px; margin-left: -6.5px;
-  border-radius: 0 0 6.5px 6.5px; background: var(--chip);
+/* The armed source's reach, from where the value sits to where it takes it. */
+.lane-span { background: var(--pip); opacity: 0.55; }
+/* Where the whole matrix has this control at this instant: the sum, live. It
+   is the only part that moves on its own, and it is drawn whether or not
+   anything is armed, so a patched page still shows itself working. */
+.lane-now { width: 3px; height: 8px; border-radius: 2px; background: var(--blush-deep); }
+/* The end you drag, and the only handle on the lane. */
+.lane-cap {
+  width: 9px; height: 8px; margin-left: -4.5px; border-radius: 3px;
+  background: var(--pip);
 }
-/* Asking for more than the control's own range will accept. The depth is kept
-   - it is a legitimate thing to want and the range may move - but the half
-   that cannot get there says so rather than sitting at the end looking set. */
-.dual-bot.clipped { opacity: 0.4; }
-.mod-dual-host:hover .dual-top { background: var(--charcoal); }
+/* Asking for more than the control's own range will take. The depth is kept -
+   it is a legitimate thing to want and the range may move - but the cap says
+   it cannot get there rather than sitting at the end looking satisfied. */
+.lane-cap.clipped { opacity: 0.4; }
+/* Armed, but not yet attached to this control: an invitation, not a state. */
+.lane-offer {
+  border: 1px dashed var(--pip); height: 4px; opacity: 0.5; background: none;
+}
+/* The whole lane is the target while a source is armed. */
+.lane-grab {
+  position: absolute; height: 12px; cursor: ew-resize; touch-action: none;
+  background: none;
+}
+.lane-grab[hidden] { display: none; }
+@media (pointer: coarse) { .lane-grab { height: 18px; } }
+/* Taking it off again. Only on show while its own source is armed, which is
+   the only moment removing it is the obvious thing to mean. */
+.lane-off {
+  position: absolute; background: none; border: 0; padding: 0; line-height: 1;
+  color: var(--text-soft); font-size: 12px; cursor: pointer;
+}
+.lane-off:hover { color: var(--rust); }
+.lane-off[hidden] { display: none; }
 
-/* The bottom half of the control belongs to the attachment. Laid over the
-   input rather than beside it, so the top half still belongs to the value. */
-.dual-grab { position: absolute; height: 7px; cursor: ew-resize; touch-action: none; }
-.dual-grab[hidden] { display: none; }
-@media (pointer: coarse) {
-  /* Seven pixels is not a target a thumb can hit. Five of the extra twelve
-     hang below the control, which is the gap before the next row. */
-  .dual-grab { height: 12px; }
-  /* Nor is an eleven-pixel glyph. The tag grows into a target and the frame
-     gives it the room, which is six pixels a patched control only pays for on
-     a screen that is touched. */
-  .mod-tag { top: -13px; padding: 3px 6px; font-size: 9.5px; }
-  .mod-tag button { font-size: 14px; padding: 0 5px; }
-  [data-mod-dest].modulated { margin-top: 18px; }
-}
+/* Every modulatable control keeps room for its lane whether or not it has one.
+   Seven pixels, once, rather than a row per attachment. */
+[data-mod-dest] .mod-lane-host { padding-bottom: 7px; }
+@media (pointer: coarse) { [data-mod-dest] .mod-lane-host { padding-bottom: 11px; } }
 
 /* --- the depth rows ---------------------------------------------------------
-   Still here, and still the only way to read several sources on one control:
-   the split thumb can show one attachment honestly and a sum dishonestly. So
-   one source is the thumb, and two or more is the thumb for the sum plus these
-   for the parts.                                                            */
+   Still here, and now only for what the lane cannot draw: a destination whose
+   control is a menu rather than a slider has no track to lay a lane along.  */
 .mod-rows { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 96px; }
 .mod-rows:empty { display: none; }
 .mod-row {
@@ -942,9 +980,12 @@ body[data-view="scope"] .mod-add { display: none; }
               sent to the speakers &mdash; a microphone routed back out of them is a
               feedback loop &mdash; so <i>solo</i> and <i>mute</i> choose what the screen
               draws and nothing else.</p>
-            <div id="toneRows">
+          </div>
+
+          <div class="menu-group" id="toneRows">
+            <span class="menu-title">Generator</span>
               <div class="menu-row">
-                <label class="menu-label" for="genMode">Generator</label>
+                <label class="menu-label" for="genMode">Kind</label>
                 <div class="grow">
                   <select id="genMode" style="flex:1 1 auto">
                     <option value="wave" selected>Waveform</option>
@@ -1108,7 +1149,6 @@ body[data-view="scope"] .mod-add { display: none; }
                   <i>infinite</i>. A tiny detune is what turns a closed figure into a
                   spirograph.</p>
               </div>
-            </div>
           </div>
 
           <div class="menu-group" id="lfoGroup">
@@ -1120,7 +1160,7 @@ body[data-view="scope"] .mod-add { display: none; }
             <div id="lfoRows"></div>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-fold="1">
             <span class="menu-title">Presets</span>
             <div class="menu-row">
               <label class="menu-label" for="presetName">Save as</label>
@@ -1288,7 +1328,7 @@ body[data-view="scope"] .mod-add { display: none; }
               settles a waveform crossing the level more than once a cycle.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-fold="1">
             <span class="menu-title">Beam</span>
             <div class="menu-row">
               <label class="menu-label" for="beamLevel">Intensity</label>
@@ -1316,7 +1356,7 @@ body[data-view="scope"] .mod-add { display: none; }
               dimming the steep edge of a square wave fights the job Y&ndash;T is for.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-fold="1">
             <span class="menu-title">Measure</span>
             <label class="check"><input type="checkbox" id="cursorsOn"> Cursors</label>
             <div class="menu-row" style="margin-top:10px">
@@ -1510,7 +1550,7 @@ body[data-view="scope"] .mod-add { display: none; }
      behind a tab. -->
 <section class="bench" id="bench">
   <div class="wrap bench-wrap">
-    <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench sections"></nav>
+    <nav class="bench-rail" id="benchRail" aria-label="Jump to a section"></nav>
     <div class="bench-body" id="benchBody"></div>
     <aside class="bench-side" id="benchSide">
       <div class="bench-scope" id="benchScope"></div>
@@ -1608,15 +1648,17 @@ body[data-view="scope"] .mod-add { display: none; }
 
       <li><b>Scope and Bench are the same instrument</b>
         <span>In <i>Scope</i> the screen has the window and the controls are behind
-        <i>Settings</i>. In <i>Bench</i> they change places: the controls take the window,
-        a section at a time down the left, and the screen becomes a small square in the
-        right-hand column &mdash; still running, still the same canvas, so you can watch a
-        figure answer with your hand still on the control. The oscillators and the sources
-        share that column and are never behind a tab, because they are what you are holding
-        while you work everything else. Nothing is duplicated and nothing is lost between
-        the two views &mdash; they are the same controls moved, not copied &mdash; so a
-        setting made in one is made in the other. <b>B</b> switches, and the choice is
-        remembered.</span></li>
+        <i>Settings</i>. In <i>Bench</i> they change places: the controls take the window
+        &mdash; every section at once, in columns &mdash; and the screen becomes a small
+        square in the right-hand column, still running, still the same canvas, so you can
+        watch a figure answer with your hand on the control. The oscillators and the
+        sources share that column and are never folded away, because they are what you are
+        holding while you work everything else. <i>Presets</i>, <i>Beam</i> and
+        <i>Measure</i> start shut, being the ones you set once; their titles open them.
+        The list down the left is a table of contents, not a switch &mdash; it takes you to
+        a section rather than hiding the others. Nothing is duplicated between the two
+        views, so a setting made in one is made in the other. <b>B</b> switches, and the
+        choice is remembered.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -1781,36 +1823,40 @@ body[data-view="scope"] .mod-add { display: none; }
         identical. The octahedron meets four edges at every corner, so it needs no retracing
         at all.</span></li>
 
-      <li><b>Sources, and what they can be pointed at</b>
+      <li><b>Pick a source up, and every control offers it a lane</b>
         <span>Two low-frequency oscillators and <i>Level</i>, which is how hard you are
-        playing. On the <i>Bench</i> each one is a chip: drag it onto a control, or tap it
-        and then tap the control. The control takes a dotted frame and a tag saying what is
-        on it.</span></li>
+        playing. Click one in the side column and it stays in your hand: a thin
+        <b>lane</b> appears under every control it could drive, dashed where it is not on
+        one yet. Drag a lane and that is both how the source gets there and how far it
+        goes &mdash; one gesture, not a drop followed by a correction. It stays in hand, so
+        the next control takes it too. Click the chip again to put it down. Dragging the
+        chip itself onto a control still works, and so does the <b>+</b> on a control for
+        a keyboard.</span></li>
 
-      <li><b>A patched control has two sliders in one</b>
-        <span>Its thumb comes apart. The <b>top half</b> is still the value you set by
-        hand; the <b>bottom half</b> is the attachment, and it sits where the modulation
-        reaches &mdash; drag it, or focus it and use the arrows. The bar between them is
-        the sweep, and the tick inside it is where the modulation is at this instant. At no
-        depth the halves are one circle again, which is what an attachment doing nothing
-        should look like. Nothing grows: the row is the height it always was.
+      <li><b>The lane is where the modulation goes</b>
+        <span>The bar runs from the value you set by hand to where the armed source takes
+        it, and the tick is where it is at this instant &mdash; that one stays after you
+        put the source down, so a patched page still shows itself working. Focus a lane and
+        the arrows set the depth; <b>Delete</b> takes the patch off, as does the cross by
+        the dots. A depth dragged to nothing stays patched, because a patch parked at zero
+        is a thing you meant.
         <br><br>
-        The reach is the destination's own law, not a fraction of the slider. Full depth on
-        <i>frequency</i> is an octave, so 220 Hz puts its lower half at 440 rather than at
-        the end of the track. The cross on the tag takes the patch off, and so does
-        <b>Delete</b> on the focused lower half. A depth dragged to nothing stays
-        patched, because a patch parked at zero is a thing you meant.</span></li>
+        What the lane draws is the destination's own law, not a fraction of the slider.
+        Full depth on <i>frequency</i> is an octave, so at 220 Hz the lane ends at 440
+        rather than at the end of a four-kilohertz track.</span></li>
 
       <li><b>Several sources on one control</b>
-        <span>They add up, which is how every patch cable ever made behaves. Past one
-        source the lower half of the thumb is showing a <em>sum</em>, and a sum is not
-        something that can be dragged &mdash; so it stops being a handle and a row appears
-        for each source underneath, in that source's ink. Those are what you drag then.
+        <span>They add up, which is how every patch cable ever made behaves. The
+        <b>dots</b> under the right of a control are who is on it, one per source in that
+        source's ink &mdash; click one to pick that source up and the lane switches to
+        showing it. So a control looks and measures exactly the same with one source on it
+        or five: the lane only ever draws the one in your hand, and the dots do the
+        counting. Nothing stacks and nothing grows.
         <br><br>
         Where a control has a range it cannot leave, a depth that would push past it is
-        kept but drawn faded &mdash; the lower half dims, and on a row the part that
-        cannot get there is pale. A patch doing less than you asked is something to see
-        rather than work out, and the depth is kept because the range may move.</span></li>
+        kept but the end of the lane dims to say it cannot get there. A patch doing less
+        than you asked is something to see rather than work out, and the depth is kept
+        because the range may move.</span></li>
 
       <li><b>Point Level at the picture</b>
         <span>Everything here points at anything, whatever the source is. The generator's
@@ -5836,7 +5882,7 @@ function frameLoop(now) {
   /* The live tick inside a split thumb is the only part of a control that has
      to move on its own, so it moves with the picture rather than on a timer of
      its own. Costs nothing when nothing is patched. */
-  updateDuals();
+  updateLanes();
 
   drawMain(frame, elapsed);
   drawGoni(frame);
@@ -7166,7 +7212,10 @@ function showSource(pending) {
   el.srcRack.setAttribute("aria-checked", String(kind === "rack"));
 
   shownKind = kind;
-  el.toneRows.hidden = kind !== "tone";
+  /* A section now, not a div inside one, so it says it does not apply the way
+     every other section does. `hidden` would be the bench's to set. */
+  if (kind === "tone") delete el.toneRows.dataset.off;
+  else el.toneRows.dataset.off = "1";
   /* The oscillators stay, whatever the source is. They were switched off
      wholesale on anything but the test tone, which was right when every
      destination they had was a generator parameter and is wrong now: an LFO on
@@ -7780,31 +7829,141 @@ function buildBenchRail() {
   if (benchSection >= shown.length) benchSection = 0;
 
   el.benchRail.innerHTML = shown.map((group, i) =>
-    '<button type="button" role="tab" data-section="' + i + '" aria-selected="'
+    '<button type="button" data-section="' + i + '" aria-current="'
     + (i === benchSection) + '">' + escapeText(groupTitle(group)) + "</button>").join("");
 
   el.benchRail.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => showBenchSection(Number(button.dataset.section)));
   });
-  showBenchSection(benchSection);
+  markRail();
 }
 
+function markRail() {
+  el.benchRail.querySelectorAll("button").forEach((button) => {
+    button.setAttribute("aria-current",
+      String(Number(button.dataset.section) === benchSection));
+  });
+}
+
+/* Not a switch any more. Every section is on show at once, so the rail is a
+   table of contents: it says what there is and takes you to one. Hiding six
+   sections to reveal a seventh made the list the only place the shape of the
+   thing was visible, which is a map standing in for the territory. */
 function showBenchSection(index) {
   const shown = benchable();
   if (shown.length === 0) return;
   benchSection = Math.max(0, Math.min(index, shown.length - 1));
 
-  /* Only what is actually in the body: a group living in the side column is
-     not one of the rail's sections and must not be hidden by picking one. */
-  settingsGroups().forEach((group) => {
-    if (group.parentElement === el.benchBody) group.hidden = true;
-  });
-  shown[benchSection].hidden = false;
+  const group = shown[benchSection];
+  unfold(group);
+  if (group.scrollIntoView) group.scrollIntoView({ block: "nearest" });
+  markRail();
+}
 
-  el.benchRail.querySelectorAll("button").forEach((button) => {
-    button.setAttribute("aria-selected",
-      String(Number(button.dataset.section) === benchSection));
+/* Folding. Three sections - the presets, the beam, the measuring tools - are
+   set once and left, so on the bench they start shut and cost one click. The
+   popover in Scope has no folds at all: it is a list you scroll, and a fold
+   there would be a second thing to open inside a thing you already opened. */
+function unfold(group) {
+  if (!group.classList.contains("folded")) return;
+  group.classList.remove("folded");
+  const title = group.querySelector(":scope > .menu-title");
+  if (title) title.setAttribute("aria-expanded", "true");
+  requestAnimationFrame(paintRoutings);      // lanes in it can be measured now
+}
+
+/* Groups into columns, once per view, greedily into whichever column is
+   shortest. Two layout passes: everything into the first column to be
+   measured, then dealt out. Deterministic and - the point of doing it here
+   rather than in CSS - stable, because nothing moves again until the window
+   does. */
+let benchCols = 0;
+
+const BENCH_COL = 320;          // the narrowest a section reads well at
+const BENCH_GAP = 34;
+
+function benchColumns() {
+  // The body's own width, not the window's: the rail and the side column take
+  // a third of the page before this gets any, and measuring the window put two
+  // columns' worth of room into one by two pixels.
+  const width = el.benchBody.clientWidth || 0;
+  if (width <= 0) return 1;
+  return Math.max(1, Math.min(3,
+    Math.floor((width + BENCH_GAP) / (BENCH_COL + BENCH_GAP))));
+}
+
+function layoutBenchBody() {
+  const want = benchColumns();
+  const groups = settingsGroups().filter((g) => !inSide(g));
+
+  const cols = [];
+  el.benchBody.innerHTML = "";
+  for (let i = 0; i < want; i++) {
+    const col = document.createElement("div");
+    col.className = "bench-col";
+    el.benchBody.appendChild(col);
+    cols.push(col);
+  }
+  benchCols = want;
+
+  // Measured at the width they will actually have: the columns are flex items
+  // with a basis of zero, so an empty one is still its full share wide.
+  for (const group of groups) cols[0].appendChild(group);
+  const heights = groups.map((g) => g.offsetHeight);
+
+  const filled = cols.map(() => 0);
+  groups.forEach((group, i) => {
+    let pick = 0;
+    for (let c = 1; c < cols.length; c++) if (filled[c] < filled[pick]) pick = c;
+    cols[pick].appendChild(group);
+    filled[pick] += heights[i] + 18;
   });
+}
+
+let benchResize = null;
+window.addEventListener("resize", () => {
+  if (document.body.dataset.view !== "bench") return;
+  if (benchResize) clearTimeout(benchResize);
+  benchResize = setTimeout(() => {
+    benchResize = null;
+    // Only when the count actually changes: re-dealing the sections under
+    // someone who is only making the window a little wider is worse than a
+    // slightly uneven pair of columns.
+    if (benchColumns() !== benchCols) layoutBenchBody();
+    paintRoutings();
+  }, 180);
+});
+
+function applyFolds(bench) {
+  /* The class is inert outside the bench - the rule that acts on it is scoped
+     to `.bench-body` - so leaving it alone on the way to the popover is both
+     simpler and what anyone would expect: a section you shut stays shut when
+     you come back to it. Stripping it here is what made every fold spring open
+     after a trip to Scope and back. */
+  if (!bench) return;
+  for (const group of settingsGroups()) {
+    const title = group.querySelector(":scope > .menu-title");
+    if (!title) continue;
+    if (group.dataset.fold === undefined) continue;
+
+    if (title.dataset.fold !== "1") {
+      title.dataset.fold = "1";
+      title.setAttribute("role", "button");
+      title.tabIndex = 0;
+      const toggle = () => {
+        group.classList.toggle("folded");
+        title.setAttribute("aria-expanded",
+          String(!group.classList.contains("folded")));
+        requestAnimationFrame(paintRoutings);
+      };
+      title.addEventListener("click", toggle);
+      title.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); }
+      });
+      group.classList.add("folded");
+    }
+    title.setAttribute("aria-expanded", String(!group.classList.contains("folded")));
+  }
 }
 
 function setView(view) {
@@ -7818,6 +7977,7 @@ function setView(view) {
     (bench ? (inSide(group) ? el.benchSide : el.benchBody) : el.menuPanel)
       .appendChild(group);
   }
+  if (!bench) el.benchBody.innerHTML = "";
 
   /* The screen moves too, and it is the same argument as the controls: a
      second canvas would be a second thing to resize, a second set of cursor
@@ -7827,18 +7987,19 @@ function setView(view) {
   if (bench) el.benchScope.appendChild(el.traceSheet);
   else el.panes.insertBefore(el.traceSheet, el.aside);
 
+  // Nothing is hidden in either view now; the bench folds rather than hides.
+  for (const group of groups) group.hidden = false;
+  applyFolds(bench);
+
   if (bench) {
     setMenuOpen(false);
     setPanesOpen(false);
+    layoutBenchBody();
     buildBenchRail();
-  } else {
-    // Back in the popover every group is on show again; only the bench ever
-    // wanted one at a time.
-    for (const group of groups) group.hidden = false;
   }
 
-  // The split thumbs are positioned from a measured width, and every control
-  // on the page just changed width.
+  // The lanes are positioned from a measured box, and every control on the
+  // page just changed width.
   requestAnimationFrame(paintRoutings);
 
   try { window.localStorage.setItem(VIEW_KEY, document.body.dataset.view); }
@@ -7913,8 +8074,10 @@ function buildSourceChips() {
                      + escapeText(source.label) + '">\u00d7</span>' : "")
           + "</button>";
       }).join("")
-    + '<p class="bench-hint">Drag one onto a control, or tap it and then tap the control. '
-    + 'The lower half of that control\u2019s thumb is then the depth &mdash; drag it.</p>';
+    + '<p class="bench-hint">Pick one up: every control then shows a lane under it, '
+    + 'and dragging that lane is both how the source gets there and how far it goes. '
+    + 'The dots beside a label are what is on it already \u2014 click one to pick that '
+    + 'up instead.</p>';
 
   el.benchSources.querySelectorAll(".mod-chip").forEach((chip) => {
     const id = chip.dataset.source;
@@ -7935,9 +8098,14 @@ function buildSourceChips() {
   });
 }
 
+/* Arming is a MODE now, not a moment. It used to survive exactly one tap - arm
+   a chip, tap a control, disarmed - because the only thing it did was aim the
+   next tap. It now decides what every lane on the page is drawing, so it stays
+   until you put it down, and a source can be patched onto six controls without
+   being picked up again. */
 function armSource(id) {
   armedSource = armedSource === id ? null : id;
-  buildSourceChips();
+  paintRoutings();
 }
 
 function beginChipDrag(id, chip, event) {
@@ -8004,23 +8172,36 @@ function clipFraction(dest, amount) {
   return Math.max(0, Math.min(1, (reach - Math.max(0, room)) / reach));
 }
 
-/* --- the split thumb ----------------------------------------------------------
-   What a control does when something is attached to it. The thumb comes apart:
-   its top half stays on the value you set by hand, its bottom half slides to
-   where the attachment reaches, and the bar between them is the sweep. At no
-   depth the halves sit on the same pixel and read as the one circle they were,
-   which is right - an attachment at nothing is nothing.
+/* --- pips and lanes -----------------------------------------------------------
+   What a control does when something is attached to it, second attempt.
 
-   This replaces a stacked row per routing for the ordinary case, and the rows
-   stay for the case it cannot state honestly: two sources on one control means
-   the thumb is showing a sum, and a sum cannot be dragged.                   */
+   The split thumb could state one attachment beautifully and two not at all.
+   Its lower half had to show a SUM once there were two, a sum is not a thing
+   anyone can drag, and so the control fell back to a stack of rows that grew
+   the panel by a line per attachment - which is the thing the split thumb was
+   built to avoid. The shape was being asked two questions at once.
 
-const duals = [];              // one record per control currently wearing a patch
-const DUAL_THUMB = 13;         // the width the stylesheet gives a thumb
+   They are separated here. WHO is attached is a row of pips beside the label,
+   one small dot per source in that source's ink; it is the same height for one
+   source or five, and clicking a pip arms that source. HOW FAR is a lane under
+   the slider, and the lane only ever draws ONE source: whichever is armed in
+   the side column. So a control's appearance no longer depends on how many
+   things are on it, which was the whole complaint.
+
+   Arming is a mode rather than a moment. Arm an oscillator and every control on
+   the page shows what that oscillator does to it - which is strictly more than
+   the old design could say, because before you could read one control at a
+   time. Drag any lane to set the depth; drag a lane the armed source is not on
+   yet and that is how it gets there, so assigning and setting the depth are one
+   gesture instead of two. Disarm and the lanes go quiet, leaving one live tick
+   per patched control so a page at rest still shows itself working.           */
+
+const lanes = [];              // one record per control currently drawing a lane
+const LANE_THUMB = 13;         // the width the stylesheet gives a slider's thumb
 
 /* Where a destination's own slider would stand if the destination were driven
-   this hard. A generator destination writes its law out (see `GEN_DESTS`);
-   a visual one declares a span in its own units and its slider covers exactly
+   this hard. A generator destination writes its law out (see `GEN_DESTS`); a
+   visual one declares a span in its own units and its slider covers exactly
    min..max, so proportion does for all of them at once. */
 function destReach(dest, input, sum) {
   const v = Number(input.value);
@@ -8031,11 +8212,11 @@ function destReach(dest, input, sum) {
   return v + sum * (dest.span / (dest.max - dest.min)) * (hi - lo);
 }
 
-/* And the same question backwards, which is what dragging the lower half asks:
-   what depth puts the reach HERE? Bisected rather than inverted. Every one of
-   these laws is monotonic in the depth, so bisection always lands; an inverse
-   written by hand would be a second formula obliged to agree with the first
-   forever, and the pair of them would eventually stop. */
+/* And the same question backwards, which is what dragging a lane asks: what
+   depth puts the reach HERE? Bisected rather than inverted. Every one of these
+   laws is monotonic in the depth, so bisection always lands; an inverse written
+   by hand would be a second formula obliged to agree with the first forever,
+   and the pair of them would eventually stop. */
 function amountForReach(dest, input, target) {
   const rising = destReach(dest, input, 1) >= destReach(dest, input, -1);
   let lo = -1, hi = 1;
@@ -8048,35 +8229,56 @@ function amountForReach(dest, input, target) {
 
 // Where a thumb's centre sits, in the input's own box. The track is inset by
 // half a thumb at each end, which is what stops a slider at maximum from
-// hanging over its own edge.
+// hanging over its own edge - and the lane is laid along the same inset so the
+// two line up.
 function thumbX(input, width, value) {
   const lo = Number(input.min), hi = Number(input.max);
   const frac = hi === lo ? 0 : (Math.max(lo, Math.min(hi, value)) - lo) / (hi - lo);
-  return DUAL_THUMB / 2 + frac * Math.max(0, width - DUAL_THUMB);
+  return LANE_THUMB / 2 + frac * Math.max(0, width - LANE_THUMB);
 }
 
-/* Built once per control and left in place. The parts live in the container
-   the input already had, so the input keeps its place in the flex row exactly
-   as it was. */
-function ensureDual(input) {
+/* What a source's value can be. An envelope never goes negative, so what it
+   sweeps is one-sided; an oscillator's is not. A destination that only ever
+   ducks halves and rectifies whatever it is given, so its sweep is one-sided
+   whatever the source was. */
+function sweepOf(dest, list) {
+  let handle = 0, hiSum = 0, loSum = 0, live = 0;
+  for (const routing of list) {
+    const source = MOD_SOURCES.get(routing.sourceId);
+    if (!source) continue;
+    const floor = source.bipolar === false ? 0 : -1;
+    handle += routing.amount;
+    hiSum  += routing.amount >= 0 ? routing.amount : routing.amount * floor;
+    loSum  += routing.amount >= 0 ? routing.amount * floor : routing.amount;
+    live   += source.value() * routing.amount;
+  }
+  if (dest && dest.unipolar) { loSum = 0; hiSum = handle; }
+  return { handle, hiSum, loSum, live };
+}
+
+/* Built once per control and left in place. The parts live in the container the
+   input already had, so the input keeps its place in the flex row exactly as it
+   was - a wrapper would become the flex item instead and every width on this
+   page was measured against the input being that item. */
+function ensureLane(input) {
   const host = input.parentElement;
   if (!host) return null;
-  if (host.dataset.dual === "1") return host;
+  if (host.dataset.lane === "1") return host;
 
-  host.dataset.dual = "1";
-  host.classList.add("mod-dual-host");
-  for (const part of ["dual-bar", "dual-now", "dual-top", "dual-bot"]) {
+  host.dataset.lane = "1";
+  host.classList.add("mod-lane-host");
+  for (const part of ["lane-offer", "lane-span", "lane-cap", "lane-now"]) {
     const span = document.createElement("span");
-    span.className = "dual-part " + part;
-    span.dataset.for = input.id || "";
+    span.className = "mod-lane " + part;
+    span.hidden = true;
     host.appendChild(span);
   }
-  /* Focusable, because it is a control. The row it replaced could not be
-     reached by keyboard either, and that was a gap rather than a precedent:
-     the depth of a patch is the patch's one number and there has to be a way
-     to set it without a pointer. */
+
+  /* Focusable, because it is a control. Nothing about a depth should need a
+     pointer, and the stack of rows this replaces could not be reached by
+     keyboard at all. */
   const grab = document.createElement("span");
-  grab.className = "dual-grab";
+  grab.className = "lane-grab";
   grab.hidden = true;
   grab.tabIndex = 0;
   grab.setAttribute("role", "slider");
@@ -8084,117 +8286,132 @@ function ensureDual(input) {
   grab.setAttribute("aria-valuemax", "100");
   host.appendChild(grab);
 
-  // Dragging the value moves its own half now rather than at the next frame.
-  input.addEventListener("input", updateDuals);
-  wireDualGrab(host, input, grab);
+  input.addEventListener("input", updateLanes);
+  wireLane(host, input, grab);
   return host;
 }
 
-/* Every measurement first, every style after. Both halves are positioned from
-   the input's measured width, and interleaving the reads with the writes makes
-   the browser lay the page out once per control instead of once in total. */
-function updateDuals() {
-  if (duals.length === 0) return;
+/* Every measurement first, every style after. The parts are positioned from the
+   input's measured box, and interleaving the reads with the writes makes the
+   browser lay the page out once per control instead of once in total. */
+function updateLanes() {
+  if (lanes.length === 0) return;
 
   const reads = [];
-  for (const d of duals) {
-    if (!d.input.isConnected) continue;
-    const width = d.input.offsetWidth;
-    if (width <= 0) continue;                 // in a view that is not showing
-    const dest = MOD_DESTS.get(d.destId);
+  for (const rec of lanes) {
+    const input = rec.input;
+    if (!input.isConnected) continue;
+    const width = input.offsetWidth;
+    if (width <= 0) continue;                 // in a fold, or a view not showing
 
-    let handle = 0, hiSum = 0, loSum = 0, live = 0;
-    for (const routing of routingsFor(d.destId)) {
-      const source = MOD_SOURCES.get(routing.sourceId);
-      if (!source) continue;
-      // What the source's own value can be. An envelope never goes negative,
-      // so what it sweeps is one-sided; an oscillator's is not.
-      const floor = source.bipolar === false ? 0 : -1;
-      handle += routing.amount;
-      hiSum  += routing.amount >= 0 ? routing.amount : routing.amount * floor;
-      loSum  += routing.amount >= 0 ? routing.amount * floor : routing.amount;
-      live   += source.value() * routing.amount;
-    }
-    /* A destination that only ever ducks halves and rectifies whatever it is
-       given, so its sweep is one-sided whatever the source was. */
-    if (dest && dest.unipolar) { loSum = 0; hiSum = handle; }
+    const dest = MOD_DESTS.get(rec.destId);
+    const list = routingsFor(rec.destId);
+    const whole = sweepOf(dest, list);
+    const mine = rec.armed
+      ? list.filter((r) => r.sourceId === rec.armed)
+      : [];
+    const own = sweepOf(dest, mine);
 
-    const lo = Number(d.input.min), hi = Number(d.input.max);
+    const lo = Number(input.min), hi = Number(input.max);
     const pin = (v) => Math.max(lo, Math.min(hi, v));
-    const want = destReach(dest, d.input, handle);
+    const want = destReach(dest, input, own.handle);
 
     reads.push({
-      d,
-      left: d.input.offsetLeft,
-      top: d.input.offsetTop,
-      base: thumbX(d.input, width, Number(d.input.value)),
-      bot:  thumbX(d.input, width, pin(want)),
-      end1: thumbX(d.input, width, pin(destReach(dest, d.input, hiSum))),
-      end2: thumbX(d.input, width, pin(destReach(dest, d.input, loSum))),
-      now:  thumbX(d.input, width, pin(destReach(dest, d.input, live))),
-      width, depth: handle,
+      rec, width,
+      left: input.offsetLeft,
+      y: input.offsetTop + input.offsetHeight,
+      base: thumbX(input, width, Number(input.value)),
+      cap: thumbX(input, width, pin(want)),
+      now: thumbX(input, width, pin(destReach(dest, input, whole.live))),
+      any: list.length > 0,
+      attached: mine.length > 0,
+      depth: own.handle,
       clipped: want > hi + 1e-9 || want < lo - 1e-9,
     });
   }
 
   for (const r of reads) {
-    const d = r.d;
-    d.top.style.left = (r.left + r.base) + "px";
-    d.top.style.top = (r.top + 0.5) + "px";
-    d.bot.style.left = (r.left + r.bot) + "px";
-    d.bot.style.top = (r.top + 7) + "px";
-    d.bot.classList.toggle("clipped", r.clipped);
+    const rec = r.rec;
+    const put = (node, left, width) => {
+      node.style.left = (r.left + left) + "px";
+      if (width !== undefined) node.style.width = width + "px";
+    };
 
-    const from = Math.min(r.end1, r.end2, r.base);
-    const to = Math.max(r.end1, r.end2, r.base);
-    d.bar.style.left = (r.left + from) + "px";
-    d.bar.style.top = (r.top + 6) + "px";
-    d.bar.style.width = (to - from) + "px";
+    // The armed source's reach, and the end you drag it by.
+    rec.span.hidden = !(rec.armed && r.attached);
+    rec.cap.hidden = rec.span.hidden;
+    if (!rec.span.hidden) {
+      const from = Math.min(r.base, r.cap), to = Math.max(r.base, r.cap);
+      put(rec.span, from, to - from);
+      rec.span.style.top = (r.y + 2) + "px";
+      put(rec.cap, r.cap);
+      rec.cap.style.top = r.y + "px";
+      rec.cap.classList.toggle("clipped", r.clipped);
+    }
 
-    d.now.style.left = (r.left + r.now - 1) + "px";
-    d.now.style.top = (r.top + 2.5) + "px";
-    d.now.style.display = to - from > 1.5 ? "" : "none";
+    // Armed but not on this control yet: an invitation, not a state.
+    rec.offer.hidden = !(rec.armed && !r.attached);
+    if (!rec.offer.hidden) {
+      put(rec.offer, LANE_THUMB / 2, Math.max(0, r.width - LANE_THUMB));
+      rec.offer.style.top = (r.y + 2) + "px";
+    }
 
-    d.grab.style.left = r.left + "px";
-    d.grab.style.width = r.width + "px";
-    d.grab.style.top = (r.top + 7) + "px";
-    d.grab.setAttribute("aria-valuenow", String(Math.round(r.depth * 100)));
+    // Where the whole matrix has this control at this instant. Drawn whether or
+    // not anything is armed, because a patched page at rest should still be
+    // visibly doing something.
+    rec.now.hidden = !r.any;
+    if (r.any) {
+      put(rec.now, r.now - 1.5);
+      rec.now.style.top = (r.y - 2) + "px";
+    }
+
+    rec.grab.hidden = !rec.armed;
+    if (rec.armed) {
+      put(rec.grab, 0, r.width);
+      rec.grab.style.top = r.y + "px";
+      rec.grab.setAttribute("aria-valuenow", String(Math.round(r.depth * 100)));
+    }
   }
 }
 
-function wireDualGrab(host, input, grab) {
-  grab.addEventListener("pointerdown", (event) => {
+function wireLane(host, input, grab) {
+  const destOf = () => {
     const row = host.closest("[data-mod-dest]");
-    if (!row) return;
-    const destId = row.dataset.modDest;
-    const list = routingsFor(destId);
-    /* With more than one source on a control the lower half is showing a sum,
-       and a sum is not a thing anyone can drag - moving it would have to
-       decide which contribution to change. The rows underneath are what edits
-       those, and they are on screen whenever there is more than one. */
-    if (list.length !== 1) return;
+    return row ? row.dataset.modDest : null;
+  };
 
-    const routing = list[0];
+  grab.addEventListener("pointerdown", (event) => {
+    const destId = destOf();
+    if (destId === null || armedSource === null) return;
     const dest = MOD_DESTS.get(destId);
+    if (!dest || !MOD_SOURCES.has(armedSource)) return;
+
+    /* Dragging a lane the armed source is not on yet is how it gets there. One
+       gesture for assigning and for saying how far, rather than a drop at some
+       default depth followed by a second drag to fix it. */
+    let routing = state.modRoutings.find(
+      (r) => r.sourceId === armedSource && r.destId === destId);
+    if (!routing) {
+      routing = { sourceId: armedSource, destId, amount: 0 };
+      state.modRoutings.push(routing);
+      touchRoutings();
+    }
     grab.setPointerCapture(event.pointerId);
 
     const drag = (e) => {
       const box = input.getBoundingClientRect();
       const lo = Number(input.min), hi = Number(input.max);
-      const span = Math.max(1, box.width - DUAL_THUMB);
+      const span = Math.max(1, box.width - LANE_THUMB);
       const frac = Math.max(0, Math.min(1,
-        (e.clientX - box.left - DUAL_THUMB / 2) / span));
+        (e.clientX - box.left - LANE_THUMB / 2) / span));
       let amount = amountForReach(dest, input, lo + frac * (hi - lo));
       if (Math.abs(amount) < 0.04) amount = 0;        // a detent at nothing
       routing.amount = Math.max(-1, Math.min(1, amount));
       modDirty = true;
-
       /* Moved in place rather than through `touchRoutings`. A rebuild would
          replace the element the pointer is captured on, the capture would go
          with it, and the drag would end on its first millimetre. */
-      updateDuals();
-      const reading = row.querySelector(".mod-tag .depth");
-      if (reading) reading.textContent = Math.round(routing.amount * 100) + "%";
+      updateLanes();
     };
     drag(event);
 
@@ -8212,65 +8429,87 @@ function wireDualGrab(host, input, grab) {
   });
 
   grab.addEventListener("keydown", (event) => {
-    const row = host.closest("[data-mod-dest]");
-    if (!row) return;
-    const list = routingsFor(row.dataset.modDest);
-    if (list.length !== 1) return;
+    const destId = destOf();
+    if (destId === null || armedSource === null) return;
+    const routing = state.modRoutings.find(
+      (r) => r.sourceId === armedSource && r.destId === destId);
+
+    if (event.key === "Delete" || event.key === "Backspace") {
+      if (!routing) return;
+      event.preventDefault();
+      dropRouting(armedSource, destId);
+      return;
+    }
 
     const step = event.shiftKey ? 0.01 : 0.05;
-    let next = list[0].amount;
+    let next = routing ? routing.amount : 0;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") next += step;
     else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= step;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "Delete" || event.key === "Backspace") {
-      event.preventDefault();
-      dropRouting(list[0].sourceId, row.dataset.modDest);
-      return;
-    } else return;
+    else return;
 
     event.preventDefault();
-    list[0].amount = Math.max(-1, Math.min(1, next));
+    if (!routing) state.modRoutings.push({ sourceId: armedSource, destId, amount: 0 });
+    const target = state.modRoutings.find(
+      (r) => r.sourceId === armedSource && r.destId === destId);
+    target.amount = Math.max(-1, Math.min(1, next));
     modDirty = true;
     touchRoutings();
   });
 }
 
-/* The label on the dotted frame. It rides on the outline rather than sitting
-   in the flow, so saying what is attached and offering a way off again costs
-   the panel no height at all - which was the point of the split thumb. */
-function paintTag(row, destId, dest, list) {
-  let tag = null;
-  for (const child of row.children) {
-    if (child.classList.contains("mod-tag")) { tag = child; break; }
+/* Who is attached, beside the label. One dot per source, and the same height
+   whether there is one or five - which is the difference between this and
+   everything it replaces. */
+function paintPips(row, destId, dest, list, host) {
+  // In the lane's strip when there is one, which is every destination whose
+  // control is a slider. A menu-valued destination has no strip, so its pips
+  // go beside the label and it is the one place they can still cost a line.
+  const home = host || row.querySelector(".menu-label, .eyebrow") || row;
+  let pips = home.querySelector(":scope > .mod-pips");
+  if (list.length === 0) { if (pips) pips.remove(); return; }
+  if (!pips) {
+    pips = document.createElement("span");
+    pips.className = "mod-pips";
+    home.appendChild(pips);
   }
-  if (list.length === 0) { if (tag) tag.remove(); return; }
-  if (!tag) {
-    tag = document.createElement("span");
-    tag.className = "mod-tag";
-    row.appendChild(tag);
-  }
 
-  const one = list.length === 1 ? MOD_SOURCES.get(list[0].sourceId) : null;
-  const label = list.length === 1
-    ? (one ? one.label : list[0].sourceId + " (not here)")
-    : list.length + " sources";
+  const armedHere = list.some((r) => r.sourceId === armedSource);
+  pips.innerHTML = list.map((routing) => {
+      const source = MOD_SOURCES.get(routing.sourceId);
+      const ink = source ? source.ink : "unresolved";
+      const name = source ? source.label : routing.sourceId;
+      return '<button type="button" class="mod-pip" data-source="' + routing.sourceId
+        + '" style="--pip:var(--' + ink + ')" aria-pressed="'
+        + (routing.sourceId === armedSource) + '" title="' + escapeText(name)
+        + ' — click to arm" aria-label="' + escapeText(name) + ' on '
+        + escapeText(dest ? dest.label : destId) + '"></button>';
+    }).join("")
+    + (armedHere
+        ? '<button type="button" class="mod-drop" aria-label="Take '
+          + escapeText(MOD_SOURCES.get(armedSource).label) + ' off '
+          + escapeText(dest ? dest.label : destId) + '">×</button>'
+        : "");
 
-  tag.innerHTML = escapeText(label)
-    + (list.length === 1
-        ? '<span class="depth">' + Math.round(list[0].amount * 100) + "%</span>"
-        : "")
-    + '<button type="button" aria-label="Remove modulation from '
-    + escapeText(dest ? dest.label : destId) + '">×</button>';
-
-  tag.querySelector("button").addEventListener("click", (event) => {
-    event.stopPropagation();
-    event.preventDefault();
-    clearDest(destId);
+  pips.querySelectorAll(".mod-pip").forEach((pip) => {
+    pip.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      armSource(pip.dataset.source);
+    });
   });
+  const drop = pips.querySelector(".mod-drop");
+  if (drop) {
+    drop.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dropRouting(armedSource, destId);
+    });
+  }
 }
 
 function paintRoutings() {
-  duals.length = 0;
+  lanes.length = 0;
 
   for (const row of document.querySelectorAll("[data-mod-dest]")) {
     const destId = row.dataset.modDest;
@@ -8288,38 +8527,36 @@ function paintRoutings() {
       (row.querySelector(".grow") || row.querySelector(".field-row") || row).appendChild(add);
     }
 
-    /* The frame, and whose ink it is in. One source lends the control its
-       colour; several belong to nobody, so the frame falls back to the accent
-       and the rows underneath carry the inks. */
-    const first = list.length ? MOD_SOURCES.get(list[0].sourceId) : null;
     row.classList.toggle("modulated", list.length > 0);
-    if (list.length === 1 && first) row.style.setProperty("--chip", "var(--" + first.ink + ")");
-    else if (list.length > 1) row.style.setProperty("--chip", "var(--blush-deep)");
-    else row.style.removeProperty("--chip");
-    paintTag(row, destId, dest, list);
 
     const range = row.querySelector('input[type="range"]');
-    const host = range ? ensureDual(range) : null;
+    const host = range ? ensureLane(range) : null;
+    paintPips(row, destId, dest, list, host);
     if (host) {
-      const on = list.length > 0;
-      range.classList.toggle("dual-hidden", on);
-      for (const part of host.querySelectorAll(".dual-part")) part.hidden = !on;
-      const grab = host.querySelector(".dual-grab");
-      grab.hidden = list.length !== 1;
-      if (list.length === 1) {
-        grab.setAttribute("aria-label",
-          (first ? first.label : list[0].sourceId) + " depth on "
-          + (dest ? dest.label : destId));
+      /* The lane's ink is the ARMED source's, because the lane draws that
+         source and no other. The pips carry everyone else's. */
+      const armed = armedSource && MOD_SOURCES.has(armedSource) ? armedSource : null;
+      if (armed) {
+        host.style.setProperty("--pip", "var(--" + MOD_SOURCES.get(armed).ink + ")");
+      } else {
+        host.style.removeProperty("--pip");
       }
-      if (on) {
-        duals.push({
-          destId, input: range,
-          bar: host.querySelector(".dual-bar"),
-          now: host.querySelector(".dual-now"),
-          top: host.querySelector(".dual-top"),
-          bot: host.querySelector(".dual-bot"),
-          grab: host.querySelector(".dual-grab"),
+      if (armed || list.length > 0) {
+        lanes.push({
+          destId, input: range, armed,
+          offer: host.querySelector(".lane-offer"),
+          span: host.querySelector(".lane-span"),
+          cap: host.querySelector(".lane-cap"),
+          now: host.querySelector(".lane-now"),
+          grab: host.querySelector(".lane-grab"),
         });
+        if (armed) {
+          host.querySelector(".lane-grab").setAttribute("aria-label",
+            MOD_SOURCES.get(armed).label + " depth on " + (dest ? dest.label : destId));
+        }
+      } else {
+        for (const part of host.querySelectorAll(".mod-lane")) part.hidden = true;
+        host.querySelector(".lane-grab").hidden = true;
       }
     }
 
@@ -8330,11 +8567,9 @@ function paintRoutings() {
       row.after(holder);
     }
 
-    /* The rows say what the thumb cannot: several sources at once, or a
-       destination whose control is a menu and has no thumb to split. One
-       source on a slider is the case the split thumb was built for, and it
-       gets no row. */
-    if (list.length === 0 || (host && list.length === 1)) { holder.innerHTML = ""; continue; }
+    /* The rows are for what a lane cannot be laid along: a destination whose
+       control is a menu rather than a slider has no track to draw on. */
+    if (host || list.length === 0) { holder.innerHTML = ""; continue; }
 
     const open = expandedDests.has(destId);
     const shown = open ? list : list.slice(0, MOD_ROWS_SHOWN);
@@ -8372,7 +8607,7 @@ function paintRoutings() {
     wireDepthRows(holder);
   }
 
-  updateDuals();
+  updateLanes();
   syncLfoRows();
   buildSourceChips();
 }
@@ -8485,33 +8720,16 @@ function offerSources(destId, anchor) {
   picker.addEventListener("blur", close);
 }
 
-/* Tapping a control while a chip is armed is the touch gesture, and it has to
-   be `pointerdown` in the capture phase rather than `click`.
+/* Assignment while a source is armed happens in the control's own lane, not by
+   tapping the control anywhere. That used to be a capture-phase handler over
+   the whole document, which was right while arming lasted a single tap and
+   wrong the moment arming became a mode: a listener claiming every press on the
+   page would make the sliders themselves unusable.
 
-   A row's control is usually a slider, and a browser treats a touch on a range
-   input as a drag of it: the touch is consumed and no click is ever
-   synthesised, so a click listener here simply never ran on a phone. Catching
-   the press instead - and stopping it before the slider sees it - is what
-   makes the gesture land on the row rather than on the control inside it.
-
-   A control that cannot be modulated disarms rather than doing nothing, so a
-   mistaken tap says so instead of leaving the chip mysteriously lit. */
-document.addEventListener("pointerdown", (event) => {
-  if (armedSource === null) return;
-  if (event.target.closest(".mod-chip")) return;
-
-  const target = event.target.closest("[data-mod-dest]");
-  const source = armedSource;
-  armedSource = null;
-
-  if (target) {
-    event.preventDefault();
-    event.stopPropagation();
-    addRouting(source, target.dataset.modDest);
-  } else {
-    buildSourceChips();
-  }
-}, true);
+   The lane is a real target on a touch screen for the same reason that handler
+   existed. A browser treats a touch on a range input as a drag of it - the
+   touch is consumed and no click is ever synthesised - so the lane sits beside
+   the input rather than over it, and takes `pointerdown` of its own.        */
 
 /* --- the settings panel -------------------------------------------------------- */
 

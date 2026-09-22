@@ -45,7 +45,7 @@ with sync_playwright() as pw:
     check("no duplicate ids in Bench", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
 
     moved = p.evaluate("""() => {
-      const inBench = document.querySelectorAll('#benchBody > .menu-group').length;
+      const inBench = document.querySelectorAll('#benchBody .bench-col > .menu-group').length;
       const inSide = document.querySelectorAll('#benchSide > .menu-group').length;
       const inPanel = document.querySelectorAll('#menuPanel > .menu-group').length;
       return { inBench, inSide, inPanel, total: settingsGroups().length };
@@ -58,7 +58,7 @@ with sync_playwright() as pw:
 
     p.locator("#viewScope").click(); p.wait_for_timeout(300)
     back = p.evaluate("""() => ({
-      inBench: document.querySelectorAll('#benchBody > .menu-group').length,
+      inBench: document.querySelectorAll('#benchBody .menu-group').length,
       inPanel: document.querySelectorAll('#menuPanel > .menu-group').length,
       allShown: settingsGroups().every((g) => !g.hidden || g.dataset.off !== undefined),
     })""")
@@ -71,33 +71,93 @@ with sync_playwright() as pw:
     rail = p.evaluate("""() => ({
       titles: Array.from(document.querySelectorAll('#benchRail button')).map((b) => b.textContent),
       inBody: settingsGroups().filter(
-        (g) => !g.hidden && g.parentElement === el.benchBody).length,
+        (g) => !g.hidden && g.closest('.bench-col') !== null).length,
+      open: settingsGroups().filter(
+        (g) => g.closest('.bench-col') !== null && !g.classList.contains('folded')).length,
+      folded: settingsGroups().filter((g) => g.classList.contains('folded'))
+        .map((g) => groupTitle(g)),
       modShown: !el.lfoGroup.hidden && el.lfoGroup.dataset.off === undefined,
     })""")
     print("    sections:", ", ".join(rail["titles"]))
     check("a button per available section", len(rail["titles"]) >= 6, str(len(rail["titles"])))
-    check("exactly one body section on show", rail["inBody"] == 1, str(rail["inBody"]))
+    # The point of the redesign: no section is behind another one.
+    check("every body section is on show at once",
+          rail["inBody"] == len(rail["titles"]), "%d of %d" % (rail["inBody"], len(rail["titles"])))
+    check("all but a select few are open",
+          rail["open"] == rail["inBody"] - 3, "%d open, folded: %s" % (rail["open"], rail["folded"]))
+    check("and the folded ones are the set-once sections",
+          sorted(rail["folded"]) == ["Beam", "Measure", "Presets"], str(rail["folded"]))
     check("Modulation is not one of the rail's sections",
           "Modulation" not in rail["titles"], str(rail["titles"]))
     check("it is on show beside them instead", rail["modShown"], str(rail))
 
-    # Every section, in turn: the one named is the one shown.
+    # The rail is a table of contents now, not a switch: clicking an entry
+    # takes you to the section and opens it if it was folded. What it must
+    # never do is hide any of the others.
     wrong = p.evaluate("""() => {
       const bad = [];
       const buttons = Array.from(document.querySelectorAll('#benchRail button'));
+      const shown = () => settingsGroups().filter(
+        (g) => !g.hidden && g.closest('.bench-col') !== null).length;
+      const all = shown();
       for (const button of buttons) {
         button.click();
-        const shown = settingsGroups().filter(
-          (g) => !g.hidden && g.parentElement === el.benchBody);
-        // Whichever section is picked, the oscillators stay up.
-        if (shown.length !== 1 || groupTitle(shown[0]) !== button.textContent
-            || el.lfoGroup.hidden) {
-          bad.push(button.textContent + ' -> ' + shown.map(groupTitle).join(','));
+        const mine = benchable()[Number(button.dataset.section)];
+        if (shown() !== all) bad.push(button.textContent + ' hid something');
+        if (mine.classList.contains('folded')) bad.push(button.textContent + ' left folded');
+        if (button.getAttribute('aria-current') !== 'true') {
+          bad.push(button.textContent + ' not marked');
         }
       }
       return bad;
     }""")
-    check("each rail button shows its own section", wrong == [], str(wrong))
+    check("a rail entry opens its section and hides none", wrong == [], str(wrong))
+
+    print("\n--- folds ---")
+    fold = p.evaluate("""() => {
+      const group = benchable().find((g) => groupTitle(g) === 'Beam');
+      const title = group.querySelector(':scope > .menu-title');
+      const rowsShown = () => group.querySelectorAll('.menu-row, .check').length
+        && getComputedStyle(group.querySelector('.check')).display !== 'none';
+      title.click();                       // Beam was opened by the rail sweep: shut it
+      const shut = { folded: group.classList.contains('folded'), rows: rowsShown(),
+                     said: title.getAttribute('aria-expanded') };
+      title.click();
+      const open = { folded: group.classList.contains('folded'), rows: rowsShown(),
+                     said: title.getAttribute('aria-expanded') };
+      return { shut, open };
+    }""")
+    check("a fold hides its own rows and nothing else",
+          fold["shut"]["folded"] is True and fold["shut"]["rows"] is False, str(fold["shut"]))
+    check("and says so", fold["shut"]["said"] == "false", str(fold["shut"]))
+    check("clicking again opens it",
+          fold["open"]["folded"] is False and fold["open"]["said"] == "true", str(fold["open"]))
+
+    print("\n--- columns hold still ---")
+    # CSS multi-column re-balances the whole flow whenever one section changes
+    # height, and a section changes height whenever a fold opens. The first
+    # drag of the first build teleported the control being dragged into the
+    # next column while the pointer was still down on it.
+    steady = p.evaluate("""() => {
+      const cols = document.querySelectorAll('.bench-col').length;
+      const where = () => Array.from(document.querySelectorAll('.bench-col'))
+        .map((c) => Array.from(c.children).map((g) => groupTitle(g)).join(',')).join('|');
+      const before = where();
+      const x = () => Math.round(document.getElementById('freq').getBoundingClientRect().x);
+      const xBefore = x();
+      // The thing that moved it: a patch, and a fold opening above it.
+      addRouting('lfo1', 'gen.freq');
+      const group = benchable().find((g) => groupTitle(g) === 'Presets');
+      group.classList.remove('folded');
+      return { cols, before, after: where(), xBefore, xAfter: x() };
+    }"""); p.wait_for_timeout(300)
+    check("the body is in real columns", steady["cols"] >= 2, str(steady["cols"]))
+    check("a patch and a fold do not re-deal the sections",
+          steady["before"] == steady["after"], steady["after"])
+    check("and do not move the control being patched",
+          steady["xBefore"] == steady["xAfter"],
+          "%d -> %d" % (steady["xBefore"], steady["xAfter"]))
+    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
 
     print("\n--- the controls still work from the bench ---")
     live = p.evaluate("""() => {

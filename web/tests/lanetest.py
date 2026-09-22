@@ -1,14 +1,19 @@
-"""The split thumb: does the lower half tell the truth?
+"""The lane: does it tell the truth about where the modulation goes?
 
-The top half is the value and the browser draws it. The bottom half is a claim
-about where the modulation goes, and a claim is the kind of thing that can be
-wrong quietly - a slider that looks plausible while the law it is drawing is
-not the law the signal path applies. So the numbers are checked against the
-destinations' own arithmetic first, and the pixels against the numbers second.
+The slider is the browser's and it draws itself. The lane under it is a claim -
+that this source, at this depth, takes this control HERE - and a claim is the
+kind of thing that can be quietly wrong: a bar that looks plausible while the
+law it is drawing is not the law the signal path applies. So the numbers are
+checked against the destinations' own arithmetic first and the pixels against
+the numbers second.
 
-The one to watch is frequency, because it is the only destination whose law is
-exponential: full depth is an octave, so 220 Hz has to draw its lower half at
-440 and not at the end of the slider.
+The one to watch is frequency, the only destination whose law is exponential.
+Full depth is an octave, so 220 Hz has to put its cap at 440 and not at the end
+of a 4 kHz track.
+
+The other half of this is the thing the split thumb it replaces got wrong: the
+lane draws ONE source, whichever is armed, so what it shows never depends on how
+many are attached.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -109,127 +114,130 @@ with sync_playwright() as pw:
               "worst %.2e" % worst if isinstance(worst, float) else str(worst))
 
     # -------------------------------------------------------------- geometry
-    print("\n--- the halves are drawn where those numbers say ---")
+    print("\n--- the lane is drawn where those numbers say ---")
+    section(p, "Generator")
     p.evaluate("""() => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.freq', amount: 1 }];
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
-      touchRoutings();
-    }"""); p.wait_for_timeout(300)
+      armedSource = null; armSource('lfo1');
+    }"""); p.wait_for_timeout(350)
     geo = p.evaluate("""() => {
-      const host = el.freq.parentElement;
-      const at = (c) => parseFloat(host.querySelector('.' + c).style.left)
-                      - el.freq.offsetLeft;
-      return { top: at('dual-top'), bot: at('dual-bot'),
-               width: el.freq.offsetWidth,
-               min: Number(el.freq.min), max: Number(el.freq.max) };
+      const input = el.freq, host = input.parentElement;
+      const at = (c) => parseFloat(host.querySelector('.' + c).style.left) - input.offsetLeft;
+      const w = (c) => parseFloat(host.querySelector('.' + c).style.width);
+      return { span: at('lane-span'), spanW: w('lane-span'), cap: at('lane-cap'),
+               width: input.offsetWidth,
+               min: Number(input.min), max: Number(input.max) };
     }""")
     def x_for(value):
         return 6.5 + (value - geo["min"]) / (geo["max"] - geo["min"]) * (geo["width"] - 13)
-    check("the top half sits on the value", abs(geo["top"] - x_for(220)) < 0.5,
-          "%.2f wanted %.2f" % (geo["top"], x_for(220)))
-    check("the bottom half sits on the octave, not the end of the slider",
-          abs(geo["bot"] - x_for(440)) < 0.5,
+    check("the cap sits on the octave, not at the end of the slider",
+          abs(geo["cap"] - x_for(440)) < 0.5,
           "%.2f wanted %.2f (the slider ends at %.2f)"
-          % (geo["bot"], x_for(440), x_for(geo["max"])))
+          % (geo["cap"], x_for(440), x_for(geo["max"])))
+    check("and the bar runs from the value to it",
+          abs(geo["span"] - x_for(220)) < 0.5
+          and abs(geo["spanW"] - (x_for(440) - x_for(220))) < 0.7,
+          "from %.2f for %.2f, wanted %.2f for %.2f"
+          % (geo["span"], geo["spanW"], x_for(220), x_for(440) - x_for(220)))
+
+    print("\n--- the lane draws one source, whoever else is on the control ---")
+    # The property the split thumb could not hold. Two sources at very
+    # different depths: whichever is armed is what the lane shows, and the
+    # other one changes nothing about it.
+    both = p.evaluate("""async () => {
+      const settle = () => new Promise((d) => requestAnimationFrame(
+        () => requestAnimationFrame(d)));
+      const capAt = () => parseFloat(el.freq.parentElement
+        .querySelector('.lane-cap').style.left) - el.freq.offsetLeft;
+
+      state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.freq', amount: 0.25 }];
+      armedSource = null; armSource('lfo1'); await settle();
+      const alone = capAt();
+
+      state.modRoutings.push({ sourceId: 'lfo2', destId: 'gen.freq', amount: 0.95 });
+      touchRoutings(); await settle();
+      const withCompany = capAt();
+
+      armedSource = null; armSource('lfo2'); await settle();
+      const other = capAt();
+      return { alone, withCompany, other,
+               pips: document.querySelectorAll('[data-mod-dest="gen.freq"] .mod-pip').length };
+    }"""); p.wait_for_timeout(200)
+    check("a second source does not move the first one's cap",
+          abs(both["alone"] - both["withCompany"]) < 0.5,
+          "%.2f -> %.2f" % (both["alone"], both["withCompany"]))
+    check("arming the second shows the second",
+          both["other"] > both["withCompany"] + 4,
+          "%.2f vs %.2f" % (both["other"], both["withCompany"]))
+    check("and both are named by pips", both["pips"] == 2, str(both["pips"]))
 
     print("\n--- a bipolar source sweeps both ways, an envelope one ---")
     def bar_for(routing_js, elid, want_section):
         section(p, want_section)
-        p.evaluate(routing_js); p.wait_for_timeout(280)
+        p.evaluate(routing_js); p.wait_for_timeout(320)
         return p.evaluate("""(elid) => {
           const input = document.getElementById(elid), host = input.parentElement;
           const num = (c, prop) => parseFloat(host.querySelector('.' + c).style[prop]);
-          return { left: num('dual-bar', 'left') - input.offsetLeft,
-                   width: num('dual-bar', 'width'),
-                   base: num('dual-top', 'left') - input.offsetLeft };
+          return { left: num('lane-span', 'left') - input.offsetLeft,
+                   width: num('lane-span', 'width'),
+                   base: thumbX(input, input.offsetWidth, Number(input.value)) };
         }""", elid)
 
     osc = bar_for("""() => {
       el.rotate.value = '0'; el.rotate.dispatchEvent(new Event('input'));
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.6 }];
-      touchRoutings(); }""", "rotate", "Display")
-    check("an oscillator's sweep straddles the value",
-          abs((osc["left"] + osc["width"] / 2) - osc["base"]) < 0.6,
-          "centre %.2f vs value %.2f" % (osc["left"] + osc["width"] / 2, osc["base"]))
+      armedSource = null; armSource('lfo1'); }""", "rotate", "Display")
+    check("an oscillator's bar reaches one way from the value",
+          abs(osc["left"] - osc["base"]) < 0.6 or
+          abs(osc["left"] + osc["width"] - osc["base"]) < 0.6,
+          "from %.2f for %.2f, value at %.2f" % (osc["left"], osc["width"], osc["base"]))
 
     env = bar_for("""() => {
       state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 0.6 }];
-      touchRoutings(); }""", "rotate", "Display")
-    check("an envelope's starts at it, because it never goes negative",
-          abs(env["left"] - env["base"]) < 0.6,
-          "starts %.2f vs value %.2f" % (env["left"], env["base"]))
-    check("and covers half as much ground",
-          abs(env["width"] - osc["width"] / 2) < 1.0,
+      armedSource = null; armSource('env.live'); }""", "rotate", "Display")
+    check("and an envelope's the same, since the bar is the depth you set",
+          abs(env["width"] - osc["width"]) < 1.0,
           "%.1f px vs %.1f" % (env["width"], osc["width"]))
-
-    duck = bar_for("""() => {
-      el.amp.value = '55'; el.amp.dispatchEvent(new Event('input'));
-      state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.amp', amount: 0.6 }];
-      touchRoutings(); }""", "amp", "Input")
-    check("and a destination that only ducks sweeps downward from the value "
-          "even under an oscillator",
-          duck["left"] + duck["width"] <= duck["base"] + 0.6,
-          "ends %.2f, value at %.2f" % (duck["left"] + duck["width"], duck["base"]))
 
     print("\n--- asking for more than the control has ---")
     section(p, "Display")
-    clipped = p.evaluate("""() => {
+    p.evaluate("""() => {
       el.rotate.value = '50'; el.rotate.dispatchEvent(new Event('input'));
       state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 1 }];
-      touchRoutings();
-      return true;
-    }"""); p.wait_for_timeout(300)
+      armedSource = null; armSource('env.live');
+    }"""); p.wait_for_timeout(350)
     marked = p.evaluate("""() => el.rotate.parentElement
-      .querySelector('.dual-bot').classList.contains('clipped')""")
-    check("the lower half says it cannot get there", marked is True)
+      .querySelector('.lane-cap').classList.contains('clipped')""")
+    check("the cap says it cannot get there", marked is True)
     kept = p.evaluate("() => state.modRoutings[0].amount")
     check("but the depth is kept, not trimmed", close(kept, 1), str(kept))
     p.evaluate("() => { el.rotate.value = '0'; el.rotate.dispatchEvent(new Event('input')); }")
 
-    print("\n--- the live tick moves with the picture ---")
+    print("\n--- the live tick, armed or not ---")
     section(p, "Display")
     moved = p.evaluate("""async () => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.9 }];
       lfos[0].rate = 4;
-      touchRoutings();
-      const now = () => parseFloat(el.rotate.parentElement
-        .querySelector('.dual-now').style.left);
+      armedSource = null;                    // nothing in hand: the quiet state
+      paintRoutings();
+      await new Promise((d) => requestAnimationFrame(d));
+      const host = el.rotate.parentElement;
+      const now = () => parseFloat(host.querySelector('.lane-now').style.left);
       const seen = new Set();
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => requestAnimationFrame(r));
         seen.add(Math.round(now()));
       }
-      return seen.size;
+      return { places: seen.size,
+               tick: !host.querySelector('.lane-now').hidden,
+               span: host.querySelector('.lane-span').hidden,
+               grab: host.querySelector('.lane-grab').hidden };
     }""")
-    check("the tick visits several places over a cycle", moved > 4, "%d positions" % moved)
-
-    print("\n--- several sources ---")
-    section(p, "Display")
-    p.evaluate("""() => {
-      state.modRoutings = [
-        { sourceId: 'lfo1', destId: 'view.rotate', amount: 0.4 },
-        { sourceId: 'lfo2', destId: 'view.rotate', amount: 0.3 },
-      ];
-      touchRoutings();
-    }"""); p.wait_for_timeout(300)
-    several = p.evaluate("""() => {
-      const row = document.querySelector('[data-mod-dest="view.rotate"]');
-      const host = el.rotate.parentElement;
-      return {
-        rows: row.nextElementSibling.querySelectorAll('.mod-row').length,
-        grabHidden: host.querySelector('.dual-grab').hidden,
-        bot: parseFloat(host.querySelector('.dual-bot').style.left) - el.rotate.offsetLeft,
-        sumReach: destReach(MOD_DESTS.get('view.rotate'), el.rotate, 0.7),
-      };
-    }""")
-    check("the rows come back for the parts", several["rows"] == 2, str(several["rows"]))
-    check("the lower half stops being draggable", several["grabHidden"] is True)
-    rotate_geo = p.evaluate("""() => ({ width: el.rotate.offsetWidth,
-        min: Number(el.rotate.min), max: Number(el.rotate.max) })""")
-    want = (6.5 + (several["sumReach"] - rotate_geo["min"])
-            / (rotate_geo["max"] - rotate_geo["min"]) * (rotate_geo["width"] - 13))
-    check("but it still shows the sum", abs(several["bot"] - want) < 0.5,
-          "%.2f wanted %.2f" % (several["bot"], want))
+    check("a patched control still shows itself working with nothing armed",
+          moved["tick"] is True and moved["places"] > 4, str(moved))
+    check("but the bar and the handle are put away",
+          moved["span"] is True and moved["grab"] is True, str(moved))
 
     print("\n--- zoom is a destination now ---")
     p.evaluate("""() => {
@@ -320,4 +328,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("all split-thumb checks pass")
+print("all lane checks pass")

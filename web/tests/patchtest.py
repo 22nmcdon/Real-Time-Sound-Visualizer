@@ -1,9 +1,14 @@
 """Patching, per input method.
 
-Pointer drag, tap-to-arm and keyboard are three different code paths and the
-obvious test only covers the first. Tap-to-arm in particular is a whole target
-interaction that nothing else here would exercise - the same gap as the
-stereo-hardware check, except this one can be automated, so it is.
+Pointer, keyboard and touch are three different code paths and the obvious test
+only covers the first. What they drive is one model: a source is ARMED in the
+side column and stays armed, and while it is, every control on the page grows a
+lane that is both how that source gets onto the control and how far it goes.
+
+The property worth guarding hardest is at the bottom - that a control looks and
+measures the same with nought, one, two and three sources on it. The design
+before this one failed exactly there, and failed silently: it looked right until
+the second source arrived.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -20,9 +25,10 @@ def check(name, ok, detail=""):
 
 ROUTES = "() => state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount)"
 
+
 def section(page, name):
-    """The bench shows one section at a time, so a control in another one is
-    genuinely not on screen. Reach it the way a person would."""
+    """Every section is on show now, so this is only needed to open a folded
+    one and to put it in view."""
     page.evaluate("""(want) => {
       for (const button of document.querySelectorAll('#benchRail button')) {
         if (button.textContent === want) { button.click(); return; }
@@ -35,8 +41,32 @@ def open_bench(page):
     page.goto(f"file://{ART}/scope.html"); page.wait_for_timeout(700)
     if page.locator("#helpClose").is_visible(): page.locator("#helpClose").click()
     page.wait_for_timeout(150)
-    page.evaluate("() => { setView('bench'); state.modRoutings = []; touchRoutings(); }")
-    page.wait_for_timeout(300)
+    page.evaluate("""() => {
+      setView('bench'); state.modRoutings = []; armedSource = null; paintRoutings();
+    }""")
+    page.wait_for_timeout(350)
+
+
+def lane_drag(page, elid, destId, fraction):
+    """Drag a control's lane to a fraction of its track, the way a hand would.
+    Returns the depth that landed on the routing."""
+    geo = page.evaluate("""(a) => {
+      const input = document.getElementById(a.elid);
+      const grab = document.querySelector('[data-mod-dest="' + a.dest + '"] .lane-grab');
+      const i = input.getBoundingClientRect(), g = grab.getBoundingClientRect();
+      return { ix: i.x, iw: i.width, gy: g.y + g.height / 2 };
+    }""", {"elid": elid, "dest": destId})
+    # The track is inset by half a thumb at each end, and the lane with it.
+    x = geo["ix"] + 6.5 + (geo["iw"] - 13) * fraction
+    page.mouse.move(geo["ix"] + geo["iw"] / 2, geo["gy"])
+    page.mouse.down()
+    page.mouse.move(x, geo["gy"], steps=6)
+    page.mouse.up(); page.wait_for_timeout(200)
+    return page.evaluate("""(d) => {
+      const r = state.modRoutings.find((r) => r.destId === d && r.sourceId === armedSource);
+      return r ? r.amount : null;
+    }""", destId)
+
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -49,185 +79,174 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     open_bench(p)
 
-    print("\n--- pointer: drag a chip onto a control ---")
+    print("\n--- arming is a mode ---")
+    quiet = p.evaluate("""() => ({
+      grabs: document.querySelectorAll('.lane-grab:not([hidden])').length,
+      offers: document.querySelectorAll('.lane-offer:not([hidden])').length,
+    })""")
+    check("with nothing armed the lanes are quiet",
+          quiet["grabs"] == 0 and quiet["offers"] == 0, str(quiet))
+
+    p.locator('.mod-chip[data-source="lfo1"]').click(); p.wait_for_timeout(300)
+    armed = p.evaluate("""() => ({
+      armed: armedSource,
+      said: document.querySelector('.mod-chip[data-source="lfo1"]')
+        .getAttribute('aria-pressed'),
+      grabs: document.querySelectorAll('.lane-grab:not([hidden])').length,
+      offers: document.querySelectorAll('.lane-offer:not([hidden])').length,
+    })""")
+    check("clicking a chip arms it", armed["armed"] == "lfo1" and armed["said"] == "true",
+          str(armed))
+    check("and every control on show offers it a lane",
+          armed["grabs"] >= 6 and armed["offers"] == armed["grabs"], str(armed))
+
+    print("\n--- one gesture assigns and sets the depth ---")
+    # The rotation, because its law is linear in its own slider: full depth is a
+    # quarter of the track, so seven tenths along is +20 of -50..50 and 20/25 of
+    # a depth. Frequency could not show an inverted depth at all - it is
+    # exponential, and a tenth of the way along its track still asks for more
+    # than 220 Hz.
+    section(p, "Display")
+    depth = lane_drag(p, "rotate", "view.rotate", 0.7)
+    check("dragging a lane creates the routing", p.evaluate(ROUTES) != [], str(p.evaluate(ROUTES)))
+    check("at the depth the drag implies", depth is not None and abs(depth - 0.8) < 0.05,
+          "%.3f wanted 0.800" % (depth if depth is not None else -9))
+    check("without touching the value underneath",
+          p.evaluate("() => el.rotate.value") == "0", p.evaluate("() => el.rotate.value"))
+    back = lane_drag(p, "rotate", "view.rotate", 0.3)
+    check("and dragging the other way inverts it", abs(back + 0.8) < 0.05,
+          "%.3f wanted -0.800" % back)
+
+    print("\n--- and it stays armed ---")
+    still = p.evaluate("() => armedSource")
+    check("the source is still in hand after patching", still == "lfo1", str(still))
+    section(p, "Filter")
+    lane_drag(p, "filterCutoff", "filter.cutoff", 0.9)
+    check("so a second control takes it without picking it up again",
+          len(p.evaluate(ROUTES)) == 2, str(p.evaluate(ROUTES)))
+
+    print("\n--- a depth of nothing is still a patch ---")
+    zeroed = p.evaluate("""() => {
+      state.modRoutings.forEach((r) => { if (r.destId === 'view.rotate') r.amount = 0; });
+      touchRoutings();
+      return state.modRoutings.filter((r) => r.destId === 'view.rotate').length;
+    }"""); p.wait_for_timeout(250)
+    check("a depth dragged to nothing leaves the routing alone", zeroed == 1, str(zeroed))
+
+    print("\n--- taking it off ---")
+    section(p, "Display")
+    drop = p.locator('[data-mod-dest="view.rotate"] .mod-drop')
+    check("the cross is offered while its own source is armed", drop.count() == 1)
+    drop.click(); p.wait_for_timeout(250)
+    check("and clicking it removes that one",
+          [r for r in p.evaluate(ROUTES) if "view.rotate" in r] == [], str(p.evaluate(ROUTES)))
+
+    print("\n--- keyboard ---")
+    p.evaluate("() => { state.modRoutings = []; armedSource = null; paintRoutings(); }")
+    p.wait_for_timeout(250)
+    p.locator('[data-mod-dest="gen.phase"] .mod-add').click(); p.wait_for_timeout(150)
+    picker = p.locator(".mod-picker")
+    check("the plus offers a menu", picker.count() == 1)
+    picker.select_option("lfo2"); p.wait_for_timeout(250)
+    check("choosing from it patches", p.evaluate(ROUTES) == ["lfo2>gen.phase@0.35"],
+          str(p.evaluate(ROUTES)))
+
+    # The lane is a control, so it has to be reachable without a pointer. The
+    # stack of rows this replaced could not be reached by keyboard at all.
+    p.evaluate("() => armSource('lfo2')"); p.wait_for_timeout(250)
+    p.locator('[data-mod-dest="gen.phase"] .lane-grab').focus()
+    p.keyboard.press("ArrowRight"); p.keyboard.press("ArrowRight")
+    p.wait_for_timeout(250)
+    stepped = p.evaluate("() => state.modRoutings[0].amount")
+    check("arrows on the focused lane set the depth", abs(stepped - 0.45) < 1e-6,
+          "%.3f wanted 0.450" % stepped)
+    p.locator('[data-mod-dest="gen.phase"] .lane-grab').focus()
+    p.keyboard.press("Delete"); p.wait_for_timeout(250)
+    check("and Delete on it removes the routing", p.evaluate(ROUTES) == [],
+          str(p.evaluate(ROUTES)))
+
+    print("\n--- dragging the chip itself still works ---")
+    p.evaluate("() => { armedSource = null; paintRoutings(); }"); p.wait_for_timeout(200)
     chip = p.locator('.mod-chip[data-source="lfo1"]')
     target = p.locator('[data-mod-dest="gen.freq"]')
-    check("the sources rail is there", chip.is_visible())
     cb, tb = chip.bounding_box(), target.bounding_box()
     p.mouse.move(cb["x"] + cb["width"] / 2, cb["y"] + cb["height"] / 2)
     p.mouse.down()
     p.mouse.move(tb["x"] + 40, tb["y"] + tb["height"] / 2, steps=12)
     highlighted = p.evaluate("() => document.querySelectorAll('.mod-target').length")
-    p.mouse.up(); p.wait_for_timeout(200)
+    p.mouse.up(); p.wait_for_timeout(250)
     check("the control lights up under the chip", highlighted == 1, str(highlighted))
-    check("the drop makes a routing", p.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"],
-          str(p.evaluate(ROUTES)))
-    # One source on a slider gets no row at all: the thumb says it. A row per
-    # routing is what several sources need, and that is checked further down.
-    check("no depth row is added for the one source",
-          p.locator('[data-mod-dest="gen.freq"] + .mod-rows .mod-row').count() == 0)
-    check("the control wears a dotted frame instead",
-          "modulated" in p.locator('[data-mod-dest="gen.freq"]').get_attribute("class"))
-    frame = p.evaluate("""() => {
-      const r = document.querySelector('[data-mod-dest="gen.freq"]');
-      const cs = getComputedStyle(r);
-      return { style: cs.outlineStyle, tag: !!r.querySelector('.mod-tag') };
-    }""")
-    check("and the frame is dotted", frame["style"] == "dotted", frame["style"])
-    check("with a tag naming the source", frame["tag"])
-
-    print("\n--- pointer: the lower half of the thumb is the depth ---")
-    # Driven on the rotation rather than the frequency, because frequency is
-    # exponential: dragging its lower half to a tenth of the track still asks
-    # for MORE than 220 Hz, so it could not show an inverted depth at all. The
-    # rotation's law is linear in its slider, so both signs are reachable and
-    # the number that comes back can be predicted exactly.
-    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
-    section(p, "Display")
-    p.evaluate("() => { addRouting('lfo1', 'view.rotate'); }"); p.wait_for_timeout(250)
-    grab = p.locator('[data-mod-dest="view.rotate"] .dual-grab')
-    check("the lower half is there to drag", grab.count() == 1)
-
-    def drag_grab(fraction):
-        box = p.locator('#rotate').bounding_box()
-        gb = grab.bounding_box()
-        x = box["x"] + 6.5 + (box["width"] - 13) * fraction
-        p.mouse.move(gb["x"] + gb["width"] / 2, gb["y"] + gb["height"] / 2)
-        p.mouse.down()
-        p.mouse.move(x, gb["y"] + gb["height"] / 2, steps=5)
-        p.mouse.up(); p.wait_for_timeout(200)
-        return p.evaluate("() => state.modRoutings[0].amount")
-
-    # The slider runs -50..50 and full depth is a quarter of that range, so
-    # seven tenths along the track is +20 on the slider and 20/25 of a depth.
-    right = drag_grab(0.7)
-    check("dragging it right sets the depth the reach implies",
-          abs(right - 0.8) < 0.05, "%.3f wanted 0.800" % right)
-    left = drag_grab(0.3)
-    check("and left inverts it", abs(left + 0.8) < 0.05, "%.3f wanted -0.800" % left)
-
-    # The base value must not have moved: the top half is the other slider.
-    check("without touching the value underneath",
-          p.evaluate("() => el.rotate.value") == "0", p.evaluate("() => el.rotate.value"))
-
-    zeroed = p.evaluate("""() => {
-      state.modRoutings[0].amount = 0; touchRoutings();
-      return state.modRoutings.length;
-    }""")
-    p.wait_for_timeout(200)
-    check("a depth of zero does NOT remove the routing", zeroed == 1, str(zeroed))
-    halves = p.evaluate("""() => {
-      const host = document.getElementById('rotate').parentElement;
-      const x = (c) => parseFloat(host.querySelector('.' + c).style.left);
-      return { top: x('dual-top'), bot: x('dual-bot') };
-    }""")
-    check("and at zero the two halves are one circle again",
-          abs(halves["top"] - halves["bot"]) < 0.5,
-          "top %.1f bot %.1f" % (halves["top"], halves["bot"]))
-
-    print("\n--- pointer: removing ---")
-    p.locator('[data-mod-dest="view.rotate"] .mod-tag button').click()
-    p.wait_for_timeout(200)
-    check("the cross on the tag removes it", p.evaluate(ROUTES) == [], str(p.evaluate(ROUTES)))
-    check("and the frame goes with it",
-          "modulated" not in p.locator('[data-mod-dest="view.rotate"]').get_attribute("class"))
-    section(p, "Input")
-
-    print("\n--- keyboard ---")
-    p.locator('[data-mod-dest="gen.phase"] .mod-add').click()
-    p.wait_for_timeout(150)
-    picker = p.locator(".mod-picker")
-    check("the plus offers a menu", picker.count() == 1)
-    picker.select_option("lfo2"); p.wait_for_timeout(200)
-    check("choosing from it patches", p.evaluate(ROUTES) == ["lfo2>gen.phase@0.35"],
+    check("and the drop makes a routing", p.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"],
           str(p.evaluate(ROUTES)))
 
-    # The row that used to carry Delete is not built for one source any more,
-    # so the lower half of the thumb has to be a control in its own right.
-    p.locator('[data-mod-dest="gen.phase"] .dual-grab').focus()
-    p.keyboard.press("ArrowRight"); p.keyboard.press("ArrowRight")
-    p.wait_for_timeout(200)
-    stepped = p.evaluate("() => state.modRoutings[0].amount")
-    check("arrows on the focused lower half set the depth",
-          abs(stepped - 0.45) < 1e-6, "%.3f wanted 0.450" % stepped)
+    print("\n--- several sources on one control change nothing about it ---")
+    # The whole point. The design before this one grew the control by a row per
+    # attachment, which is what made two of them unusable.
+    # Each measurement has to wait for the repaint it is measuring. The repaint
+    # is coalesced into a frame on purpose - rebuilding sixty times a second
+    # under a finger that is dragging would replace the element being dragged -
+    # so reading in the same tick would have measured the page before anything
+    # happened and passed for that reason alone.
+    shape = p.evaluate("""async () => {
+      const row = document.querySelector('[data-mod-dest="gen.freq"]');
+      const input = document.getElementById('freq');
+      const settle = () => new Promise((done) => requestAnimationFrame(
+        () => requestAnimationFrame(done)));
+      const snap = () => ({ h: row.offsetHeight,
+                            x: Math.round(input.getBoundingClientRect().x),
+                            w: Math.round(input.getBoundingClientRect().width) });
 
-    p.locator('[data-mod-dest="gen.phase"] .dual-grab').focus()
-    p.keyboard.press("Delete"); p.wait_for_timeout(200)
-    check("and Delete on it removes the routing", p.evaluate(ROUTES) == [],
-          str(p.evaluate(ROUTES)))
+      state.modRoutings = []; armedSource = null; paintRoutings();
+      await settle();
+      const none = snap();
+      addRouting('lfo1', 'gen.freq');     await settle();  const one = snap();
+      addRouting('lfo2', 'gen.freq');     await settle();  const two = snap();
+      addRouting('env.live', 'gen.freq'); await settle();  const three = snap();
+      return { none, one, two, three,
+               pips: row.querySelectorAll('.mod-pip').length,
+               rows: row.nextElementSibling.querySelectorAll('.mod-row').length };
+    }"""); p.wait_for_timeout(250)
+    same = (shape["none"] == shape["one"] == shape["two"] == shape["three"])
+    check("nought, one, two and three sources measure the same", same,
+          "%s / %s / %s / %s" % (shape["none"], shape["one"], shape["two"], shape["three"]))
+    check("three pips say who is on it", shape["pips"] == 3, str(shape["pips"]))
+    check("and no row is added for any of them", shape["rows"] == 0, str(shape["rows"]))
 
-    print("\n--- several sources on one destination ---")
-    many = p.evaluate("""() => {
-      state.modRoutings = [
-        { sourceId: 'lfo1', destId: 'view.rotate', amount: 0.4 },
-        { sourceId: 'lfo2', destId: 'view.rotate', amount: -0.25 },
-        { sourceId: 'env.live', destId: 'view.rotate', amount: 0.6 },
-      ];
-      touchRoutings();
-      return true;
-    }""")
+    print("\n--- a pip is how you pick one of them up ---")
+    p.locator('[data-mod-dest="gen.freq"] .mod-pip[data-source="lfo2"]').click()
     p.wait_for_timeout(250)
-    rows = p.locator('[data-mod-dest="view.rotate"] + .mod-rows .mod-row')
-    check("one labelled row per routing", rows.count() == 3, str(rows.count()))
-    labels = p.evaluate("""() => Array.from(
-      document.querySelectorAll('[data-mod-dest="view.rotate"] + .mod-rows .mod-name'))
-      .map((n) => n.textContent)""")
-    check("each row says which source it is", labels == ["LFO 1", "LFO 2", "Level"], str(labels))
-    inks = p.evaluate("""() => Array.from(
-      document.querySelectorAll('[data-mod-dest="view.rotate"] + .mod-rows .mod-row'))
-      .map((r) => getComputedStyle(r).getPropertyValue('--chip').trim())""")
-    check("in three different inks", len(set(inks)) == 3, str(inks))
+    picked = p.evaluate("""() => ({
+      armed: armedSource,
+      lane: document.querySelector('[data-mod-dest="gen.freq"] .lane-span').hidden,
+      chip: document.querySelector('.mod-chip[data-source="lfo2"]')
+        .getAttribute('aria-pressed'),
+    })""")
+    check("clicking a pip arms that source", picked["armed"] == "lfo2", str(picked))
+    check("the chip in the rail agrees", picked["chip"] == "true", str(picked))
+    check("and the lane switches to showing it", picked["lane"] is False, str(picked))
 
-    summed = p.evaluate("""() => {
-      lfos[0].value = 1; lfos[1].value = 1;
-      const f = capture();
-      applyModMatrix(f, 16);
-      return { mod: state.rotateMod, env: MOD_SOURCES.get('env.live').value() };
-    }""")
-    check("and the offset is their sum",
-          abs(summed["mod"] - (0.4 - 0.25 + 0.6 * summed["env"])) < 1e-6,
-          "%.4f" % summed["mod"])
-
-    print("\n--- clearing in bulk ---")
-    section(p, "Display")
-    tag = p.evaluate("""() => {
-      const t = document.querySelector('[data-mod-dest="view.rotate"] .mod-tag');
-      return t ? t.textContent : null;
-    }""")
-    check("the tag counts them rather than naming one", tag and "3 sources" in tag, str(tag))
-    check("and the lower half stops being draggable, because it is a sum",
-          p.evaluate("""() => document.querySelector(
-            '[data-mod-dest="view.rotate"] .dual-grab').hidden""") is True)
-    p.locator('[data-mod-dest="view.rotate"] .mod-tag button').click()
-    p.wait_for_timeout(200)
-    check("clearing the tag empties that control", p.evaluate(ROUTES) == [],
-          str(p.evaluate(ROUTES)))
-
+    print("\n--- a destination with no slider still gets rows ---")
     p.evaluate("""() => {
       state.modRoutings = [
-        { sourceId: 'lfo1', destId: 'view.rotate', amount: 0.4 },
-        { sourceId: 'lfo1', destId: 'gen.freq', amount: 0.2 },
-        { sourceId: 'lfo2', destId: 'gen.phase', amount: 0.3 },
+        { sourceId: 'lfo1', destId: 'gen.ratio', amount: 0.4 },
+        { sourceId: 'lfo2', destId: 'gen.ratio', amount: -0.25 },
       ];
       touchRoutings();
-    }"""); p.wait_for_timeout(250)
-    count = p.evaluate("""() => document.querySelector('.mod-chip[data-source="lfo1"] .count').textContent""")
-    check("a chip counts what it drives", count == "2", count)
-    p.locator('.mod-chip[data-source="lfo1"] .clear').click(); p.wait_for_timeout(250)
-    check("and clearing the chip drops only its own",
-          p.evaluate(ROUTES) == ["lfo2>gen.phase@0.3"], str(p.evaluate(ROUTES)))
+    }"""); p.wait_for_timeout(300)
+    rows = p.locator('[data-mod-dest="gen.ratio"] + .mod-rows .mod-row')
+    check("an interval is a menu, so it keeps the stacked rows", rows.count() == 2,
+          str(rows.count()))
 
     print("\n--- the routings survive a view change ---")
-    p.evaluate("() => setView('scope')"); p.wait_for_timeout(250)
-    p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
+    p.evaluate("""() => {
+      state.modRoutings = [{ sourceId: 'lfo2', destId: 'gen.phase', amount: 0.3 }];
+      touchRoutings();
+    }"""); p.wait_for_timeout(250)
+    p.evaluate("() => setView('scope')"); p.wait_for_timeout(300)
+    p.evaluate("() => setView('bench')"); p.wait_for_timeout(400)
     check("still patched", p.evaluate(ROUTES) == ["lfo2>gen.phase@0.3"], str(p.evaluate(ROUTES)))
-    check("and still wearing its frame after the round trip",
+    check("and still framed",
           "modulated" in p.locator('[data-mod-dest="gen.phase"]').get_attribute("class"))
-    check("with the halves repositioned for the new width",
-          p.evaluate("""() => {
-            const host = document.getElementById('phase').parentElement;
-            return !!host.querySelector('.dual-bot').style.left;
-          }"""))
     check("with no duplicate ids", p.evaluate("""() => {
       const seen = new Set(), dupes = [];
       for (const n of document.querySelectorAll('[id]')) {
@@ -239,58 +258,45 @@ with sync_playwright() as pw:
     p.close()
 
     # ---------------- touch -------------------------------------------------
-    print("\n--- tap to arm, on a touch screen ---")
+    print("\n--- on a touch screen ---")
     ctxb = b.new_context(viewport={"width": 430, "height": 900}, has_touch=True, is_mobile=True)
     t = ctxb.new_page()
     tbad = []
     t.on("pageerror", lambda e: tbad.append("pageerror: " + str(e)))
     open_bench(t)
 
-    t.locator('.mod-chip[data-source="env.live"]').tap(); t.wait_for_timeout(200)
-    check("tapping a chip arms it",
-          t.evaluate("() => armedSource") == "env.live",
+    t.locator('.mod-chip[data-source="env.live"]').tap(); t.wait_for_timeout(250)
+    check("tapping a chip arms it", t.evaluate("() => armedSource") == "env.live",
           str(t.evaluate("() => armedSource")))
     check("and it says so on the chip",
           t.locator('.mod-chip[data-source="env.live"]').get_attribute("aria-pressed") == "true")
 
-    t.locator('.mod-chip[data-source="env.live"]').tap(); t.wait_for_timeout(200)
-    check("tapping it again cancels", t.evaluate("() => armedSource") is None)
-
     section(t, "Display")
-    t.locator('.mod-chip[data-source="env.live"]').tap(); t.wait_for_timeout(150)
-    t.locator('[data-mod-dest="view.rotate"]').tap(); t.wait_for_timeout(250)
-    check("tap a chip then a control patches it",
-          t.evaluate(ROUTES) == ["env.live>view.rotate@0.35"], str(t.evaluate(ROUTES)))
-    check("and the chip disarms itself", t.evaluate("() => armedSource") is None)
-
-    t.locator('.mod-chip[data-source="lfo1"]').tap(); t.wait_for_timeout(150)
-    t.locator("#benchRail button").first.tap(); t.wait_for_timeout(250)
-    check("tapping something unpatchable cancels rather than doing nothing",
-          t.evaluate("() => armedSource") is None
-          and len(t.evaluate(ROUTES)) == 1, str(t.evaluate(ROUTES)))
-
-    section(t, "Display")      # the tap above moved the rail off it
-    # One source needs no row, so the way off a control on a touch screen is
-    # the cross on its tag - and a cross is only a way off if a thumb can hit
-    # it. Measured rather than assumed.
-    box = t.evaluate("""() => {
-      const b = document.querySelector('[data-mod-dest="view.rotate"] .mod-tag button');
-      if (!b) return null;
-      const r = b.getBoundingClientRect();
-      return { w: r.width, h: r.height, shown: getComputedStyle(b).opacity };
-    }""")
-    check("the way off a control is a real target on touch",
-          box and box["w"] >= 14 and box["h"] >= 14,
-          str(box))
-    grabbox = t.evaluate("""() => {
-      const g = document.querySelector('[data-mod-dest="view.rotate"] .dual-grab');
+    lane = t.locator('[data-mod-dest="view.rotate"] .lane-grab')
+    tall = t.evaluate("""() => {
+      const g = document.querySelector('[data-mod-dest="view.rotate"] .lane-grab');
       return g ? g.getBoundingClientRect().height : 0;
     }""")
-    check("and the depth is a taller target than on a pointer", grabbox >= 12,
-          "%.0f px" % grabbox)
-    t.locator('[data-mod-dest="view.rotate"] .mod-tag button').tap(); t.wait_for_timeout(250)
-    check("tapping it takes the patch off", t.evaluate(ROUTES) == [],
-          str(t.evaluate(ROUTES)))
+    check("the lane is a thumb-sized target", tall >= 16, "%.0f px" % tall)
+    lane.tap(); t.wait_for_timeout(300)
+    check("tapping it patches the armed source",
+          [r for r in t.evaluate(ROUTES) if "view.rotate" in r] != [], str(t.evaluate(ROUTES)))
+    check("and the source stays in hand", t.evaluate("() => armedSource") == "env.live")
+
+    box = t.evaluate("""() => {
+      const b = document.querySelector('[data-mod-dest="view.rotate"] .mod-drop');
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { w: r.width, h: r.height };
+    }""")
+    check("the way off it is a real target too", box and box["w"] >= 12 and box["h"] >= 12,
+          str(box))
+    t.locator('[data-mod-dest="view.rotate"] .mod-drop').tap(); t.wait_for_timeout(250)
+    check("tapping that takes the patch off",
+          [r for r in t.evaluate(ROUTES) if "view.rotate" in r] == [], str(t.evaluate(ROUTES)))
+
+    t.locator('.mod-chip[data-source="env.live"]').tap(); t.wait_for_timeout(250)
+    check("tapping the chip again puts it down", t.evaluate("() => armedSource") is None)
     check("no sideways overflow while patched",
           t.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"))
     t.screenshot(path=f"{SHOTS}/bench-touch.png", full_page=True)
