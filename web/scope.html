@@ -1043,6 +1043,24 @@ body[data-view="scope"] .mod-add { display: none; }
                 <span class="reading" id="filterResValue">0</span>
               </div>
             </div>
+            <div class="menu-row" style="margin-top:8px">
+              <span class="menu-label">Screen reads</span>
+              <div class="grow">
+                <div class="switch" role="radiogroup" aria-label="What the screen reads" style="flex:0 0 auto">
+                  <button type="button" class="caps" id="seeDry" role="radio" aria-checked="false">Input</button>
+                  <button type="button" class="caps" id="seeWet" role="radio" aria-checked="true">Filtered</button>
+                </div>
+              </div>
+            </div>
+            <div class="menu-row">
+              <span class="menu-label">Speakers get</span>
+              <div class="grow">
+                <div class="switch" role="radiogroup" aria-label="What the speakers get" style="flex:0 0 auto">
+                  <button type="button" class="caps" id="hearDry" role="radio" aria-checked="true">Input</button>
+                  <button type="button" class="caps" id="hearWet" role="radio" aria-checked="false">Filtered</button>
+                </div>
+              </div>
+            </div>
             <p class="menu-note">This shapes the <em>trace</em>, not the sound: a low pass
               rounds a square's corners toward a sine, a notch carves one harmonic out of
               the picture, and a resonant sweep draws its own ringing. It runs on the
@@ -1050,6 +1068,13 @@ body[data-view="scope"] .mod-add { display: none; }
               &mdash; which is arithmetic and has no audio graph at all. <i>Resonance</i>
               is nought for gentle and a hundred for extreme; at nought a low pass is
               maximally flat.</p>
+            <p class="menu-note">The two switches are separate because they answer different
+              questions. <i>Screen filtered, speakers input</i> is the filter as an
+              instrument for looking. Both filtered is a filter in the ordinary sense.
+              <i>Screen input, speakers filtered</i> lets you watch what you are feeding it.
+              Anything that reaches the speakers passes a limiter first, which is not a
+              taste decision: resonance is something a source can sweep, and a resonant peak
+              swept upward is a loud surprise in a pair of headphones.</p>
           </div>
 
           <div class="menu-group">
@@ -1356,6 +1381,17 @@ body[data-view="scope"] .mod-add { display: none; }
         &mdash; the record is unchanged, so the measurements still read all of it. In X&ndash;Y
         it scales the figure; on the spectrogram it closes in the frequency band.</span></li>
 
+      <li><b>A filter, on two taps</b>
+        <span>Under <i>Filter</i>. It reshapes the trace, which is the point of having one
+        here: a low pass rounds a square's corners toward a sine, a notch carves a harmonic
+        out of the picture, a resonant sweep draws its own ringing. <i>Screen reads</i> and
+        <i>Speakers get</i> are separate switches, so the filter can be an instrument for
+        looking while what you hear is untouched, or both, or the other way round.
+        <i>Resonance</i> is nought for gentle and a hundred for extreme, and at nought a low
+        pass is maximally flat. It runs on the samples rather than in the audio graph, so it
+        reaches the test tone too &mdash; which is arithmetic and has no audio graph at all.
+        Point a source at the cutoff and it sweeps.</span></li>
+
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
         X&ndash;Y, where the figure is built up a pass at a time.</span></li>
@@ -1660,6 +1696,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "rotate", "rotateValue", "benchSources",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
+                  "seeDry", "seeWet", "hearDry", "hearWet",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -1935,6 +1972,9 @@ function applyModMatrix(frame, elapsed) {
   // Zoom is read as a magnification rather than as a step, so the one that is
   // derived gets recomputed here rather than by whoever last touched a slider.
   state.zoom = zoomAt(state.zoomStep + state.zoomMod);
+
+  // And the half of the matrix that has to be glided rather than assigned.
+  syncMonitor();
 }
 
 /* Compiled once per change rather than walked per sample. The per-sample loop
@@ -2605,6 +2645,7 @@ async function makeFileSource(data, name) {
   const buffer = await ctx.decodeAudioData(data);
   const mono = buffer.numberOfChannels < 2;
 
+  const monitor = makeMonitorChain(ctx);
   const splitter = ctx.createChannelSplitter(2);
   const analysers = [ctx.createAnalyser(), ctx.createAnalyser()];
   analysers.forEach((a, i) => {
@@ -2642,7 +2683,7 @@ async function makeFileSource(data, name) {
     node.buffer = buffer;
     node.loop = loop;
     node.connect(splitter);
-    node.connect(ctx.destination);   // so you hear what you are looking at
+    node.connect(monitor.input);     // so you hear what you are looking at
     node.onended = () => { node = null; offset = 0; };
     node.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
     startedAt = ctx.currentTime;
@@ -2702,6 +2743,7 @@ async function makeFileSource(data, name) {
 
     stop() {
       stopNode();
+      dropMonitorChain(monitor);
       ctx.close();
     },
   };
@@ -2735,6 +2777,122 @@ function padded(ctx, buffer, frames) {
     out.copyToChannel(buffer.getChannelData(c), c, 0);
   }
   return out;
+}
+
+/* --- what reaches the speakers ----------------------------------------------
+   Every audible source ends with the same two things, and only one of them is
+   optional.
+
+   The filter is optional, and bypassed by crossfade rather than by rewiring:
+   disconnecting a node mid-stream is a click, and a click is the one thing a
+   monitor path must never produce on its own.
+
+   The limiter is not optional and is not a sound-design choice. Resonance is a
+   modulation destination, which means a source can sweep a filter's Q, and a
+   resonant peak swept upward is a loud transient arriving in somebody's
+   headphones with no warning at all. That is a different failure from the
+   feedback loop a live microphone makes - the live mix is never connected to
+   the speakers at all - and it needs its own answer. This is it.            */
+
+const MONITOR_GLIDE = 0.005;    // seconds; about a third of a frame
+const MONITOR_MAX_Q = 18;       // dB. Past this a resonant filter is an oscillator.
+
+/* The compressor is not a brickwall, whatever its ratio. It has no lookahead,
+   so a transient is already past before the gain reduction has finished
+   arriving: measured, a resonant peak at four times full scale came out of one
+   set to -3 dB and 20:1 still at 1.10, which a converter clips. So the last
+   thing in the chain is a shaper that cannot exceed one by construction -
+   linear below the knee and asymptotic above it, so it is inaudible on
+   anything that was not going to clip anyway. */
+const CLAMP_KNEE = 0.85;
+
+const CLAMP_CEILING = 0.99;
+
+function clampCurve(points) {
+  const curve = new Float32Array(points);
+  const room = CLAMP_CEILING - CLAMP_KNEE;
+  for (let i = 0; i < points; i++) {
+    const x = (i / (points - 1)) * 2 - 1;
+    const size = Math.abs(x);
+    const shaped = size <= CLAMP_KNEE
+      ? size
+      : CLAMP_KNEE + room * Math.tanh((size - CLAMP_KNEE) / room);
+    curve[i] = x < 0 ? -shaped : shaped;
+  }
+  return curve;
+}
+
+const CLAMP_CURVE = clampCurve(2048);
+
+const monitorChains = new Set();
+
+function makeMonitorChain(ctx) {
+  const input = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  const wet = ctx.createGain();
+  const dry = ctx.createGain();
+  const limiter = ctx.createDynamicsCompressor();
+
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.1;
+
+  const clamp = ctx.createWaveShaper();
+  clamp.curve = CLAMP_CURVE;
+  /* No oversampling, and that is the point rather than an economy. A shaper
+     set to 2x resamples and filters back down, and the filter rings past the
+     curve: a curve asymptotic to exactly one came out at 1.011, and lowering
+     the curve's own ceiling by two percent only moved it to 1.004, because the
+     overshoot is the filter's and not the curve's. Without it the output
+     cannot exceed the largest value in the table, which is the only guarantee
+     worth having here. The aliasing that buys is the price of a shaper that
+     only ever engages on signal which would otherwise have clipped at the
+     converter - where it would have aliased far worse. */
+  clamp.oversample = "none";
+
+  input.connect(filter); filter.connect(wet); wet.connect(limiter);
+  input.connect(dry); dry.connect(limiter);
+  limiter.connect(clamp);
+  clamp.connect(ctx.destination);
+
+  wet.gain.value = 0;
+  dry.gain.value = 1;
+
+  const chain = { ctx, input, filter, wet, dry, limiter, clamp };
+  monitorChains.add(chain);
+  return chain;
+}
+
+function dropMonitorChain(chain) {
+  if (chain) monitorChains.delete(chain);
+}
+
+/* Written once a frame, and through `setTargetAtTime` rather than by assigning
+   `.value`.
+
+   This is where the two halves of the matrix stop being the same thing. A
+   value written straight into an AudioParam sixty times a second is a
+   staircase in the signal - zipper noise, plainly audible on a sweep - because
+   the parameter jumps between frames instead of moving between them. Anything
+   the screen reads can be assigned; anything the ears read has to be glided
+   to. */
+function syncMonitor() {
+  if (monitorChains.size === 0) return;
+
+  const now = filterNow();
+  const wet = state.filter.on && state.monitorAt === "post" ? 1 : 0;
+  const q = Q_IN_DECIBELS.has(now.type) ? Math.min(now.q, MONITOR_MAX_Q) : now.q;
+
+  for (const chain of monitorChains) {
+    const at = chain.ctx.currentTime;
+    if (chain.filter.type !== now.type) chain.filter.type = now.type;
+    chain.filter.frequency.setTargetAtTime(now.hz, at, MONITOR_GLIDE);
+    chain.filter.Q.setTargetAtTime(q, at, MONITOR_GLIDE);
+    chain.wet.gain.setTargetAtTime(wet, at, 0.01);
+    chain.dry.gain.setTargetAtTime(1 - wet, at, 0.01);
+  }
 }
 
 /* One lane: a gain into the speakers, an analyser off the raw signal.
@@ -2788,7 +2946,8 @@ async function makeRackSource(entries, label) {
   const duration = frames / ctx.sampleRate;
 
   const mix = ctx.createGain();
-  mix.connect(ctx.destination);
+  const monitor = makeMonitorChain(ctx);
+  mix.connect(monitor.input);
 
   const lanes = entries.slice(0, MAX_LANES)
     .map((entry, i) => makeLane(ctx, entry.name, mix));
@@ -2898,6 +3057,7 @@ async function makeRackSource(entries, label) {
 
     stop() {
       stopNodes();
+      dropMonitorChain(monitor);
       ctx.close();
     },
   };
@@ -3031,7 +3191,8 @@ async function makeBandSource(data, label) {
   const duration = buffer.duration;
 
   const mix = ctx.createGain();
-  mix.connect(ctx.destination);
+  const monitor = makeMonitorChain(ctx);
+  mix.connect(monitor.input);
 
   const lanes = buildBands(ctx, mix);
 
@@ -3119,6 +3280,7 @@ async function makeBandSource(data, label) {
 
     stop() {
       stopNode();
+      dropMonitorChain(monitor);
       ctx.close();
     },
   };
@@ -3182,6 +3344,15 @@ const state = {
   filter: { on: false, type: "lowpass", cutoff: 566, res: 0 },   // 566 is 1 kHz
   cutoffMod: 0,
   resMod: 0,
+
+  /* Two taps on one filter, and they are independent on purpose. The screen
+     reading the filtered signal while the speakers get the input is a filter
+     used as an instrument for looking; both post is a filter in the usual
+     sense; the screen on the input while the speakers are filtered lets you
+     watch what you are feeding it. Three useful answers out of two switches,
+     which is why it is two switches and not a three-way mode. */
+  analyseAt: "post",         // pre | post
+  monitorAt: "pre",          // pre | post
   micBands: false,           // whether live input arrives whole or split in four
 
   lagOn: false,
@@ -3426,7 +3597,7 @@ function capture() {
 
      Over the whole fetch rather than the window, because a filter that started
      at the left edge of the screen would ring there. */
-  if (state.filter.on) {
+  if (state.filter.on && state.analyseAt === "post") {
     const now = filterNow();
     const coefficients = biquadCoefficients(now.type, now.hz, now.q, rate);
     const lanes = laneCount();
@@ -5171,6 +5342,13 @@ function writeReadout(frame) {
     bits.push((state.zoom < 10 ? state.zoom.toFixed(1) : Math.round(state.zoom)) + "\u00d7 zoom");
   }
 
+  /* A measurement of a filtered signal is a measurement of a filtered signal,
+     and the numbers along the bottom do not otherwise say which one they are
+     about. */
+  if (state.filter.on && state.analyseAt === "post") {
+    bits.push("post-filter");
+  }
+
   if (state.starved > 0) {
     bits.push("buffer short by "
       + Math.round(state.starved / frame.rate * 1000) + " ms");
@@ -5488,6 +5666,28 @@ el.filterOn.addEventListener("change", (e) => {
   fit.ctx.fillStyle = ink.paper;
   fit.ctx.fillRect(0, 0, fit.w, fit.h);
 });
+
+function setAnalyseAt(where) {
+  state.analyseAt = where;
+  el.seeDry.setAttribute("aria-checked", String(where === "pre"));
+  el.seeWet.setAttribute("aria-checked", String(where === "post"));
+  // The paper holds a trace drawn through the other setting.
+  const fit = fitCanvas(el.trace);
+  fit.ctx.fillStyle = ink.paper;
+  fit.ctx.fillRect(0, 0, fit.w, fit.h);
+}
+
+function setMonitorAt(where) {
+  state.monitorAt = where;
+  el.hearDry.setAttribute("aria-checked", String(where === "pre"));
+  el.hearWet.setAttribute("aria-checked", String(where === "post"));
+  syncMonitor();
+}
+
+el.seeDry.addEventListener("click", () => setAnalyseAt("pre"));
+el.seeWet.addEventListener("click", () => setAnalyseAt("post"));
+el.hearDry.addEventListener("click", () => setMonitorAt("pre"));
+el.hearWet.addEventListener("click", () => setMonitorAt("post"));
 
 el.filterType.addEventListener("change", () => {
   state.filter.type = el.filterType.value;
@@ -5998,6 +6198,7 @@ const DEFAULTS = {
   midSide: false,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   fOn: false, fType: "lowpass", fCut: 566, fRes: 0,
+  fSee: "post", fHear: "pre",
   xy0: 0, xy1: 1,
   pGoni: true, pSpec: true, pHarm: false, pTune: false, cursors: false,
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
@@ -6048,6 +6249,7 @@ function snapshot() {
     rotate: Math.round(state.rotate * 100),
     fOn: state.filter.on, fType: state.filter.type,
     fCut: state.filter.cutoff, fRes: state.filter.res,
+    fSee: state.analyseAt, fHear: state.monitorAt,
     xy0: state.xyPair[0], xy1: state.xyPair[1],
     pGoni: state.panes.goni, pSpec: state.panes.spectrum,
     pHarm: state.panesExtra.harmonics, pTune: state.panesExtra.tuner,
@@ -6164,6 +6366,8 @@ function restore(partial) {
   state.filter.type = s.fType; el.filterType.value = s.fType;
   state.filter.cutoff = s.fCut; el.filterCutoff.value = String(s.fCut);
   state.filter.res = s.fRes; el.filterRes.value = String(s.fRes);
+  setAnalyseAt(s.fSee);
+  setMonitorAt(s.fHear);
   lagLock = null;
   setLagAuto(s.lagAuto);
   showLag();

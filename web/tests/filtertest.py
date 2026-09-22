@@ -194,7 +194,7 @@ with sync_playwright() as pw:
 
     # Six lanes is the worst case the page allows, and the one where a
     # per-sample filter could stop being affordable.
-    p.locator("#menuButton").click(); p.wait_for_timeout(150)
+    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#rackInput").set_input_files(
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
@@ -218,8 +218,44 @@ with sync_playwright() as pw:
           % (rack["lanes"], rack["off"], rack["all"], rack["some"]))
     check("still fits a frame at full width", rack["all"] < 12,
           "%.2f ms" % rack["all"])
-    check("and hiding lanes really saves the work", rack["some"] < rack["all"] * 0.75,
-          "%.2f against %.2f ms" % (rack["some"], rack["all"]))
+    skipped = p.evaluate("""() => {
+      /* A fixed signal, because three captures of a playing file are three
+         different moments and comparing them says nothing. A square is the
+         clearest thing to see a low pass act on. */
+      const source = state.source;
+      const real = source.getLatestWindow.bind(source);
+      source.getLatestWindow = (n) => {
+        const lanes = [];
+        for (let c = 0; c < source.channels; c++) {
+          const x = new Float32Array(n);
+          for (let i = 0; i < n; i++) x[i] = Math.sin(i / 50) >= 0 ? 0.8 : -0.8;
+          lanes.push(x);
+        }
+        return lanes;
+      };
+
+      state.filter.on = true; state.filter.type = 'lowpass';
+      state.filter.cutoff = cutoffStep(200); state.filter.res = 0;
+      for (const ch of state.channels) ch.on = true;
+      const lit = Array.from(capture().channels.map((c) => c[100]));
+
+      state.channels[1].on = false;
+      const dark = Array.from(capture().channels.map((c) => c[100]));
+
+      for (const ch of state.channels) ch.on = true;
+      state.filter.on = false;
+      const raw = Array.from(capture().channels.map((c) => c[100]));
+
+      source.getLatestWindow = real;
+      return { lit, dark, raw };
+    }""")
+    shownChanged = abs(skipped["lit"][0] - skipped["raw"][0]) > 1e-6
+    hiddenSkipped = abs(skipped["dark"][1] - skipped["raw"][1]) < 1e-9
+    hiddenFiltered = abs(skipped["lit"][1] - skipped["raw"][1]) > 1e-6
+    check("a shown lane is filtered", shownChanged)
+    check("a hidden lane is not filtered at all", hiddenSkipped and hiddenFiltered,
+          "shown %.6f hidden %.6f raw %.6f"
+          % (skipped["lit"][1], skipped["dark"][1], skipped["raw"][1]))
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(500)
 
     print("\n--- it is patchable, and it round trips ---")
@@ -253,6 +289,167 @@ with sync_playwright() as pw:
     }""")
     check("the filter survives a round trip", trip["differ"] == [], str(trip["differ"]))
     check("with its type and switch", trip["type"] == "notch" and trip["on"] is True, str(trip))
+
+    print("\n--- what reaches the speakers ---")
+    p.evaluate("""() => {
+      window.__toDest = [];
+      const real = AudioNode.prototype.connect;
+      AudioNode.prototype.connect = function (dest, ...rest) {
+        if (dest && dest.context && dest === dest.context.destination) {
+          window.__toDest.push(this.constructor.name);
+        }
+        return real.call(this, dest, ...rest);
+      };
+    }""")
+    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
+    p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
+    p.wait_for_timeout(2200)
+
+    wiring = p.evaluate("""() => ({
+      toDestination: window.__toDest.slice(),
+      chains: monitorChains.size,
+      limiter: Array.from(monitorChains).map((c) => ({
+        threshold: c.limiter.threshold.value, ratio: c.limiter.ratio.value,
+        knee: c.limiter.knee.value, attack: +c.limiter.attack.value.toFixed(4),
+        clamped: !!c.clamp && !!c.clamp.curve,
+      })),
+      wet: Array.from(monitorChains).map((c) => c.wet.gain.value),
+    })""")
+    check("the only thing touching the speakers is the output clamp",
+          wiring["toDestination"] == ["WaveShaperNode"], str(wiring["toDestination"]))
+    check("there is exactly one chain for the source", wiring["chains"] == 1, str(wiring["chains"]))
+    check("with a limiter set as a brickwall, not a compressor",
+          wiring["limiter"][0]["ratio"] >= 20 and wiring["limiter"][0]["knee"] == 0
+          and wiring["limiter"][0]["threshold"] <= -1, str(wiring["limiter"]))
+    check("and a clamp behind it, because a compressor has no lookahead",
+          wiring["limiter"][0]["clamped"] is True)
+    check("and the filter starts out of the monitor path", wiring["wet"] == [0], str(wiring["wet"]))
+
+    print("\n--- the two taps are independent ---")
+    taps = p.evaluate("""async () => {
+      const chain = Array.from(monitorChains)[0];
+      const settle = () => new Promise((r) => setTimeout(r, 200));
+      const out = {};
+      state.filter.on = true;
+
+      setAnalyseAt('post'); setMonitorAt('pre'); syncMonitor(); await settle();
+      out.pictureOnly = { screen: state.analyseAt, wet: +chain.wet.gain.value.toFixed(2) };
+
+      setMonitorAt('post'); syncMonitor(); await settle();
+      out.both = { screen: state.analyseAt, wet: +chain.wet.gain.value.toFixed(2) };
+
+      setAnalyseAt('pre'); await settle();
+      out.earsOnly = { screen: state.analyseAt, wet: +chain.wet.gain.value.toFixed(2) };
+
+      setAnalyseAt('post'); setMonitorAt('pre'); syncMonitor();
+      state.filter.on = false;
+      return out;
+    }""")
+    check("picture only leaves the speakers dry",
+          taps["pictureOnly"]["screen"] == "post" and taps["pictureOnly"]["wet"] < 0.05,
+          str(taps["pictureOnly"]))
+    check("both filtered brings the speakers in",
+          taps["both"]["wet"] > 0.9, str(taps["both"]))
+    check("and the screen can read the input while the ears do not",
+          taps["earsOnly"]["screen"] == "pre" and taps["earsOnly"]["wet"] > 0.9,
+          str(taps["earsOnly"]))
+
+    print("\n--- glided, not assigned ---")
+    # A value written straight into an AudioParam once a frame is a staircase
+    # in the signal. Anything the ears read has to be moved to, not set.
+    zipper = p.evaluate("""() => {
+      const descriptor = Object.getOwnPropertyDescriptor(AudioParam.prototype, 'value');
+      let assigned = 0, glided = 0;
+      Object.defineProperty(AudioParam.prototype, 'value', {
+        configurable: true, get: descriptor.get,
+        set(v) { assigned++; return descriptor.set.call(this, v); },
+      });
+      const realTarget = AudioParam.prototype.setTargetAtTime;
+      AudioParam.prototype.setTargetAtTime = function (...args) {
+        glided++; return realTarget.apply(this, args);
+      };
+
+      state.filter.on = true;
+      state.modRoutings = [{ sourceId: 'lfo1', destId: 'filter.cutoff', amount: 1 }];
+      touchRoutings();
+      const frame = capture();
+      assigned = 0; glided = 0;
+      for (let i = 0; i < 10; i++) { lfos[0].value = i / 10; applyModMatrix(frame, 16); }
+
+      Object.defineProperty(AudioParam.prototype, 'value', descriptor);
+      AudioParam.prototype.setTargetAtTime = realTarget;
+      state.modRoutings = []; touchRoutings();
+      state.filter.on = false;
+      return { assigned, glided };
+    }""")
+    check("no AudioParam is assigned during a sweep", zipper["assigned"] == 0,
+          "%d direct writes" % zipper["assigned"])
+    check("they are all glided", zipper["glided"] >= 30,
+          "%d setTargetAtTime calls over 10 frames" % zipper["glided"])
+
+    print("\n--- the limiter, rendered ---")
+    limited = p.evaluate("""async () => {
+      const render = async (throughTheChain) => {
+        const rate = 44100;
+        const ctx = new OfflineAudioContext(1, rate, rate);
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 400;
+        const hot = ctx.createGain();
+        hot.gain.value = 4;                       // far past full scale
+
+        osc.connect(hot);
+        let chain = null;
+        if (throughTheChain) {
+          // The real thing, not a copy of it.
+          chain = makeMonitorChain(ctx);
+          chain.filter.type = 'lowpass';
+          chain.filter.frequency.value = 400;
+          chain.filter.Q.value = MONITOR_MAX_Q;
+          chain.wet.gain.value = 1;
+          chain.dry.gain.value = 0;
+          hot.connect(chain.input);
+        } else {
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 400;
+          filter.Q.value = MONITOR_MAX_Q;
+          hot.connect(filter); filter.connect(ctx.destination);
+        }
+
+        osc.start(0);
+        const buffer = await ctx.startRendering();
+        if (chain) dropMonitorChain(chain);
+        const data = buffer.getChannelData(0);
+        let peak = 0;
+        for (let i = Math.floor(rate * 0.2); i < data.length; i++) {
+          const a = Math.abs(data[i]); if (a > peak) peak = a;
+        }
+        return peak;
+      };
+      return { raw: await render(false), limited: await render(true) };
+    }""")
+    print("    a resonant peak at four times full scale: %.2f raw, %.3f through the chain"
+          % (limited["raw"], limited["limited"]))
+    check("unlimited it would be far past full scale", limited["raw"] > 2, "%.2f" % limited["raw"])
+    check("the chain holds it under full scale", limited["limited"] < 1.0,
+          "%.4f" % limited["limited"])
+
+    print("\n--- the readout says which signal it measured ---")
+    p.evaluate("() => { state.filter.on = true; setAnalyseAt('post'); }")
+    p.wait_for_timeout(400)
+    said = p.evaluate("() => el.readoutDetail.textContent")
+    check("post-filter is stated", "post-filter" in said, said)
+    p.evaluate("() => { setAnalyseAt('pre'); }")
+    p.wait_for_timeout(400)
+    check("and not when the screen reads the input",
+          "post-filter" not in p.evaluate("() => el.readoutDetail.textContent"))
+    p.evaluate("() => { state.filter.on = false; el.srcTone.click(); }")
+    p.wait_for_timeout(400)
+    check("the chain goes when the source does",
+          p.evaluate("() => monitorChains.size") == 0,
+          str(p.evaluate("() => monitorChains.size")))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

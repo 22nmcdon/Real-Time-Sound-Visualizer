@@ -54,6 +54,13 @@ that way in the band crossovers for weeks. `biquadCoefficients` encodes the
 distinction and `filtertest.py` checks every type against
 `getFrequencyResponse`.
 
+**A `DynamicsCompressorNode` is not a brickwall.** It has no lookahead, so a
+transient is past before the gain reduction arrives — one set to −3 dB and 20:1
+still passed a resonant peak at 1.10. The monitor chain ends with a shaper
+whose curve cannot exceed its own table, and that shaper runs at
+`oversample: "none"` on purpose: at `2x` the resampling filter rings past the
+curve, which is the one thing a clamp must not do.
+
 **The tone source is a ring buffer filled from the frame loop.** A `capture()`
 taken in the same tick as a preset is applied reads the *previous* signal. Any
 test that changes the source has to let it turn over first; two separate
