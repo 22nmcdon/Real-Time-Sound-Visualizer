@@ -29,6 +29,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
+| `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -45,6 +46,18 @@ builds a second copy of a control gives two elements one id, and
 `getElementById` returns the first — which is how the dock's readout line came
 to display nothing for weeks. `benchtest.py` asserts there are no duplicate ids
 in either view or after a round trip.
+
+**Web Audio reads `Q` in decibels for lowpass and highpass, and linearly for
+everything else.** Putting the linear Butterworth value 0.707 into the decibel
+parameter is a decibel of peaking, not a maximally flat response — it shipped
+that way in the band crossovers for weeks. `biquadCoefficients` encodes the
+distinction and `filtertest.py` checks every type against
+`getFrequencyResponse`.
+
+**The tone source is a ring buffer filled from the frame loop.** A `capture()`
+taken in the same tick as a preset is applied reads the *previous* signal. Any
+test that changes the source has to let it turn over first; two separate
+measurements in this project have been wrong for exactly that reason.
 
 **Patching happens on `pointerdown`, not `click`.** A control row's control is
 usually a slider, and a browser treats a touch on a range input as a drag of

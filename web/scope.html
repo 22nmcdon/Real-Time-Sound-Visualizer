@@ -1021,6 +1021,38 @@ body[data-view="scope"] .mod-add { display: none; }
           </div>
 
           <div class="menu-group">
+            <span class="menu-title">Filter</span>
+            <label class="check">
+              <input type="checkbox" id="filterOn"> Filter the trace
+            </label>
+            <div class="menu-row" style="margin-top:8px">
+              <label class="menu-label" for="filterType">Type</label>
+              <div class="grow"><select id="filterType" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row" data-mod-dest="filter.cutoff">
+              <label class="menu-label" for="filterCutoff">Cutoff</label>
+              <div class="grow">
+                <input type="range" id="filterCutoff" min="0" max="1000" value="566">
+                <span class="reading" id="filterCutoffValue">1.00 kHz</span>
+              </div>
+            </div>
+            <div class="menu-row" data-mod-dest="filter.res">
+              <label class="menu-label" for="filterRes">Resonance</label>
+              <div class="grow">
+                <input type="range" id="filterRes" min="0" max="100" value="0">
+                <span class="reading" id="filterResValue">0</span>
+              </div>
+            </div>
+            <p class="menu-note">This shapes the <em>trace</em>, not the sound: a low pass
+              rounds a square's corners toward a sine, a notch carves one harmonic out of
+              the picture, and a resonant sweep draws its own ringing. It runs on the
+              samples rather than in the audio graph, so it reaches the test tone as well
+              &mdash; which is arithmetic and has no audio graph at all. <i>Resonance</i>
+              is nought for gentle and a hundred for extreme; at nought a low pass is
+              maximally flat.</p>
+          </div>
+
+          <div class="menu-group">
             <span class="menu-title">Trigger</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1588,6 +1620,27 @@ const LAG_PROBE = 8192;        // samples the lock listens to, whatever the time
    `laneCount` reads it during boot. */
 let lagLock = null;
 
+/* The filter's constants live up here with the others rather than beside the
+   filter itself, because the modulation table names `CUTOFF_STEPS` in a
+   literal that is evaluated as the file loads. A `const` read before its own
+   declaration is a temporal dead zone throw, and a throw at the top level
+   leaves every declaration after it uninitialised - which in this file once
+   meant the entire preset list quietly did not exist. Twice now. */
+const FILTER_TYPES = [
+  ["lowpass", "Low pass"], ["highpass", "High pass"],
+  ["bandpass", "Band pass"], ["notch", "Notch"],
+];
+
+// Q is read in dB for exactly these two. Everywhere else it is linear.
+const Q_IN_DECIBELS = new Set(["lowpass", "highpass"]);
+
+/* The cutoff slider is logarithmic, so a step of it is a fixed interval rather
+   than a fixed number of hertz - which is the only way a control spanning ten
+   octaves is usable at both ends. */
+const CUTOFF_STEPS = 1000;
+const cutoffHz = (step) => 20 * Math.pow(1000, step / CUTOFF_STEPS);
+const cutoffStep = (hz) => Math.log(hz / 20) / Math.log(1000) * CUTOFF_STEPS;
+
 /* Calibrated 1-2-5 steps, as a scope's timebase has always been, rather than
    a linear slider over milliseconds. Ten divisions across the screen. */
 const TIMEBASE = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];   // ms per division
@@ -1605,6 +1658,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "viewScope", "viewBench", "bench", "benchRail", "benchBody",
                   "rotate", "rotateValue", "benchSources",
+                  "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
+                  "filterRes", "filterResValue",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -1829,6 +1884,19 @@ const VISUAL_DESTS = [
   {
     id: "view.lag", label: "Lag delay", span: LAG_MAX_MS, min: 0, max: LAG_MAX_MS,
     base: () => state.lagMs, set: (offset) => { state.lagMod = offset; },
+  },
+  /* A cutoff sweep is the thing a filter is most worth pointing something at,
+     and the span is in slider steps rather than hertz - the slider is
+     logarithmic, so full depth is a fixed number of octaves wherever it starts
+     rather than a number of hertz that means everything at the bottom of the
+     range and nothing at the top. */
+  {
+    id: "filter.cutoff", label: "Filter cutoff", span: 400, min: 0, max: CUTOFF_STEPS,
+    base: () => state.filter.cutoff, set: (offset) => { state.cutoffMod = offset; },
+  },
+  {
+    id: "filter.res", label: "Filter resonance", span: 50, min: 0, max: 100,
+    base: () => state.filter.res, set: (offset) => { state.resMod = offset; },
   },
 ];
 
@@ -3108,6 +3176,12 @@ const state = {
      add a route, and a source may point at several things at once. */
   modRoutings: [],
 
+  /* One filter, applied to every lane separately. Shared settings because it
+     is one instrument; separate state per lane because mid and side of two
+     filtered lanes means something and a filter over the pair would not. */
+  filter: { on: false, type: "lowpass", cutoff: 566, res: 0 },   // 566 is 1 kHz
+  cutoffMod: 0,
+  resMod: 0,
   micBands: false,           // whether live input arrives whole or split in four
 
   lagOn: false,
@@ -3169,6 +3243,113 @@ const stacked = () => state.stack && laneCount() > 2;
    the top. */
 const zoomAt = (step) => Math.pow(2, step / 4);
 const gainOf = (ch) => Math.pow(10, -FULL_SCALE_DB[state.channels[ch].scale] / 20);
+
+/* --- the filter -------------------------------------------------------------
+   A filter reshapes the trace, which is the point: a lowpass rounds a square's
+   corners toward a sine, a notch carves one harmonic out of the picture, a
+   resonant sweep draws its own ringing. It is an instrument for looking, not
+   only for listening.
+
+   Written twice on purpose. This one is arithmetic over the captured samples,
+   so it reaches every source including the test tone - which has no
+   AudioContext at all and never will. A second one made of real Web Audio
+   nodes reaches only what can be heard. Both are fed the same coefficients,
+   and a test asserts they answer within a tenth of a decibel, because two
+   filters that are meant to be one filter will otherwise drift apart quietly.
+
+   THE Q TRAP IS ENCODED HERE. Web Audio reads `Q` in decibels for lowpass and
+   highpass and as a plain linear value for everything else. That is not a
+   detail: shipping 0.707 - the linear Butterworth number - into the dB
+   parameter is exactly the bug that sat in the band crossovers of this page
+   for weeks, putting a decibel of peaking on every one of them. */
+
+/* The Robert Bristow-Johnson cookbook, in the form the Web Audio specification
+   writes it, so the two implementations cannot disagree by construction. */
+function biquadCoefficients(type, hz, q, rate) {
+  const nyquist = rate / 2;
+  const f0 = Math.max(1e-4, Math.min(hz / nyquist, 0.9999));
+  const w0 = Math.PI * f0;
+  const cosw = Math.cos(w0), sinw = Math.sin(w0);
+  const linearQ = Q_IN_DECIBELS.has(type) ? Math.pow(10, q / 20) : Math.max(1e-4, q);
+  const alpha = sinw / (2 * linearQ);
+
+  let b0, b1, b2, a0, a1, a2;
+  if (type === "highpass") {
+    b0 = (1 + cosw) / 2; b1 = -(1 + cosw); b2 = b0;
+    a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha;
+  } else if (type === "bandpass") {
+    b0 = alpha; b1 = 0; b2 = -alpha;
+    a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha;
+  } else if (type === "notch") {
+    b0 = 1; b1 = -2 * cosw; b2 = 1;
+    a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha;
+  } else {
+    b0 = (1 - cosw) / 2; b1 = 1 - cosw; b2 = b0;
+    a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha;
+  }
+
+  return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 };
+}
+
+/* The magnitude the coefficients give at one frequency, for checking this
+   against `getFrequencyResponse` without a browser in the way. */
+function biquadMagnitude(c, hz, rate) {
+  const w = 2 * Math.PI * hz / rate;
+  const cw = Math.cos(w), sw = Math.sin(w);
+  const c2w = Math.cos(2 * w), s2w = Math.sin(2 * w);
+  const nr = c.b0 + c.b1 * cw + c.b2 * c2w;
+  const ni = -(c.b1 * sw + c.b2 * s2w);
+  const dr = 1 + c.a1 * cw + c.a2 * c2w;
+  const di = -(c.a1 * sw + c.a2 * s2w);
+  return Math.sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
+}
+
+/* In place, over the whole fetched buffer rather than the window, and primed
+   rather than started from silence.
+
+   An IIR started from zero rings for as long as it takes to settle, and this
+   runs afresh on every frame - so an unprimed filter draws a wobble at the
+   left edge of the screen sixty times a second, worse the longer the
+   persistence. Primed to the steady state the first sample would eventually
+   produce, there is nothing to settle: a constant input is already at its
+   answer, and a real signal starts from its own first value rather than from
+   an assumption of silence that is never true. */
+function filterInPlace(buffer, c) {
+  const first = buffer.length > 0 ? buffer[0] : 0;
+  // What this filter does to a constant, which is where a constant input sits.
+  const dcGain = (c.b0 + c.b1 + c.b2) / (1 + c.a1 + c.a2);
+  let x1 = first, x2 = first;
+  let y1 = first * dcGain, y2 = y1;
+
+  for (let i = 0; i < buffer.length; i++) {
+    const x0 = buffer[i];
+    const y0 = c.b0 * x0 + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2;
+    x2 = x1; x1 = x0;
+    y2 = y1; y1 = y0;
+    buffer[i] = y0;
+  }
+}
+
+/* What the filter is set to right now, cutoff and resonance included, after
+   whatever is pointed at them. */
+function filterNow() {
+  const f = state.filter;
+  const step = Math.max(0, Math.min(CUTOFF_STEPS, f.cutoff + state.cutoffMod));
+  const res = Math.max(0, Math.min(100, f.res + state.resMod));
+
+  /* One control, two units. The specification reads Q in decibels for the two
+     filters whose Q is the height of a resonant peak, and linearly for the two
+     whose Q is a bandwidth - so a single number cannot mean the same thing to
+     all four. Nought is gentle either way and a hundred is extreme, and a
+     lowpass at nought is Butterworth, which is the setting the band crossovers
+     of this page spent weeks getting wrong. */
+  return {
+    type: f.type,
+    hz: cutoffHz(step),
+    q: Q_IN_DECIBELS.has(f.type) ? BUTTERWORTH_Q_DB + res / 100 * 27
+                                 : 0.5 + res / 100 * 19.5,
+  };
+}
 
 /* --- capture ----------------------------------------------------------------
    Ask for the window plus a span of history, and look for an edge inside a
@@ -3235,6 +3416,34 @@ function capture() {
     for (let k = 0; k < buffer.length; k++) out[k] = buffer[k] - mean;
     return out;
   });
+
+  /* The filter goes here, and the position in this list is the whole of the
+     decision: each lane on its own, after the coupling is taken out and before
+     anything is derived from the pair. Mid and side of two filtered lanes
+     means something; a filter applied to a mid/side pair would no longer be a
+     filter on an input. The lag lane reads the same filtered buffer, so the
+     phase portrait is a portrait of what is on screen.
+
+     Over the whole fetch rather than the window, because a filter that started
+     at the left edge of the screen would ring there. */
+  if (state.filter.on) {
+    const now = filterNow();
+    const coefficients = biquadCoefficients(now.type, now.hz, now.q, rate);
+    const lanes = laneCount();
+    for (let i = 0; i < full.length; i++) {
+      /* Only the lanes actually being drawn. The filter is the most expensive
+         thing in this function by an order of magnitude - it touches every
+         fetched sample, and the fetch is the window plus the trigger's search
+         span - so filtering a lane nobody is looking at is the whole cost for
+         none of the benefit. Six lanes with four switched off is then four
+         lanes of work saved. */
+      if (i >= lanes || !state.channels[i] || !state.channels[i].on) continue;
+      // A source that skipped the AC copy handed back its own array, and this
+      // writes in place.
+      if (full[i] === raw[i]) full[i] = Float32Array.from(raw[i]);
+      filterInPlace(full[i], coefficients);
+    }
+  }
 
   // Everything downstream works in the present frame; the lag lane is the one
   // thing that reads behind it, so it keeps hold of the un-offset buffer.
@@ -5234,6 +5443,11 @@ function syncLabels() {
   el.holdoffValue.textContent = state.holdoffMs === 0
     ? "off" : state.holdoffMs.toFixed(1) + " ms";
   el.rotateValue.textContent = Math.round(state.rotate * 360) + "\u00b0";
+
+  const cut = cutoffHz(state.filter.cutoff);
+  el.filterCutoffValue.textContent = cut < 1000
+    ? Math.round(cut) + " Hz" : (cut / 1000).toFixed(2) + " kHz";
+  el.filterResValue.textContent = String(state.filter.res);
   el.looking.innerHTML = (state.edge === RISING ? "&uarr; " : "&darr; ")
     + (state.level >= 0 ? "+" : "−") + Math.abs(state.level).toFixed(3);
 
@@ -5264,6 +5478,29 @@ el.position.addEventListener("input", () => {
 
 el.holdoff.addEventListener("input", () => {
   state.holdoffMs = Number(el.holdoff.value) / 10;
+  syncLabels();
+});
+
+el.filterOn.addEventListener("change", (e) => {
+  state.filter.on = e.target.checked;
+  // What is on the paper was drawn through the other setting.
+  const fit = fitCanvas(el.trace);
+  fit.ctx.fillStyle = ink.paper;
+  fit.ctx.fillRect(0, 0, fit.w, fit.h);
+});
+
+el.filterType.addEventListener("change", () => {
+  state.filter.type = el.filterType.value;
+  syncLabels();
+});
+
+el.filterCutoff.addEventListener("input", () => {
+  state.filter.cutoff = Number(el.filterCutoff.value);
+  syncLabels();
+});
+
+el.filterRes.addEventListener("input", () => {
+  state.filter.res = Number(el.filterRes.value);
   syncLabels();
 });
 
@@ -5376,6 +5613,8 @@ function fillIntervals() {
   el.interval.innerHTML = INTERVALS.map(([name, p, q], i) =>
     '<option value="' + i + '">' + name + "  \u00b7  " + p + ":" + q + "</option>").join("");
   el.figure.innerHTML = FIGURES.map((f) => '<option value="' + f + '">' + f + "</option>").join("");
+  el.filterType.innerHTML = FILTER_TYPES.map(([v, t]) =>
+    '<option value="' + v + '">' + t + "</option>").join("");
   el.model.innerHTML = MODELS.map((m) =>
     '<option value="' + m.name + '">' + m.name + "</option>").join("");
 }
@@ -5758,6 +5997,7 @@ const DEFAULTS = {
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
+  fOn: false, fType: "lowpass", fCut: 566, fRes: 0,
   xy0: 0, xy1: 1,
   pGoni: true, pSpec: true, pHarm: false, pTune: false, cursors: false,
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
@@ -5806,6 +6046,8 @@ function snapshot() {
     midSide: state.midSide,
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
     rotate: Math.round(state.rotate * 100),
+    fOn: state.filter.on, fType: state.filter.type,
+    fCut: state.filter.cutoff, fRes: state.filter.res,
     xy0: state.xyPair[0], xy1: state.xyPair[1],
     pGoni: state.panes.goni, pSpec: state.panes.spectrum,
     pHarm: state.panesExtra.harmonics, pTune: state.panesExtra.tuner,
@@ -5917,6 +6159,11 @@ function restore(partial) {
 
   state.rotate = s.rotate / 100;
   el.rotate.value = String(s.rotate);
+
+  state.filter.on = s.fOn; el.filterOn.checked = s.fOn;
+  state.filter.type = s.fType; el.filterType.value = s.fType;
+  state.filter.cutoff = s.fCut; el.filterCutoff.value = String(s.fCut);
+  state.filter.res = s.fRes; el.filterRes.value = String(s.fRes);
   lagLock = null;
   setLagAuto(s.lagAuto);
   showLag();

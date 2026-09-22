@@ -17,6 +17,7 @@ SUITES = [
     ("bench", [sys.executable, "benchtest.py"], "the Bench: one node per control, two views"),
     ("mod", [sys.executable, "modtest.py"], "the modulation matrix, and the enum it replaces"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
+    ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]
