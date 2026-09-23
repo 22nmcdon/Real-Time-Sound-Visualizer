@@ -9,6 +9,20 @@ same instrument. Work usually lands here first, because the browser has an audio
 graph and a canvas and the Qt app has neither in the same shape; see
 `../oscilloscope-poc/docs/z-axis-lane.md` for a design that spells out why.
 
+## Designs written down but not built
+
+| note | what it covers |
+|---|---|
+| `docs/midi-and-the-audio-path.md` | MIDI in from a Nord Electro 6D; giving the generator a real audio path; letting the picture's own transforms shape the sound; two visualisers at once |
+| `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
+
+Also recorded and not built: band-limited waveforms. `waveAt` is not
+band-limited — `square` is `Math.sin(phase) >= 0 ? 0.9 : -0.9` — which is correct
+for a silent generator drawing a picture of a square wave, and wrong the moment
+the generator is audible, because this app ships a "Harmonics and THD" preset
+that would report the foldover as content. PolyBLEP is a prerequisite of the
+audio path, not a separate feature.
+
 ## Running the checks
 
 ```
