@@ -918,6 +918,9 @@ body[data-view="bench"] #menuButton { display: none; }
             <div id="rackRows" hidden>
               <label class="check" id="rackSynthRow">
                 <input type="checkbox" id="rackSynth"> Add the generator as a lane
+              </label>
+              <label class="check" id="rackLiveRow">
+                <input type="checkbox" id="rackLive"> Add the live input as a lane
                 <span class="reading" id="rackBudget"></span>
               </label>
               <div class="menu-row">
@@ -977,14 +980,21 @@ body[data-view="bench"] #menuButton { display: none; }
                 </div>
               </div>
               <div id="laneList"></div>
-              <p class="menu-note" id="rackNote2">The <i>generator</i> can be one of the
-              lanes, so what the page is making and what you are playing go on one
-              graticule &mdash; and <i>X&ndash;Y</i> can pair either against either. It is one
-              lane, which means its <em>left</em> channel: a lane is one signal and the
-              generator makes two, so its own figure is not available while it is a lane.
-              It is also silent there for now; on its own it can be heard, but a lane's
-              worth of it does not yet reach the speakers. The count beside the box is how
-              many lanes the current choice comes to, out of six.</p>
+              <p class="menu-note" id="rackNote2">A rack is whatever you tick plus whatever
+              files you choose, and the two boxes are the parts that are not files. The
+              <i>generator</i> and the <i>live input</i> together, with no track between
+              them, is what you want for playing along with something the page is making
+              &mdash; and <i>X&ndash;Y</i> can pair either against either.
+              <br><br>
+              Each is one lane, which for the generator means its <em>left</em> channel: a
+              lane is one signal and the generator makes two, so its own figure is not
+              available while it is a lane, and a note sets its pitch without starting or
+              stopping it. It is silent as a lane too &mdash; on its own it can be heard,
+              but a lane's worth of it does not yet reach the speakers. Neither does the
+              input, which is the microphone rule unchanged.
+              <br><br>
+              The count beside the boxes is how many lanes your choice comes to, out of six;
+              the two boxes take their places before any file does.</p>
             <p class="menu-note" id="rackNote">Drop several files at once and each becomes a
                 lane. They share one clock and one timebase &mdash; lanes on different
                 timebases cannot be compared, which is the only reason to stack them.
@@ -2055,10 +2065,12 @@ body[data-view="bench"] #menuButton { display: none; }
         for the same instant; two melodic parts draw the interval between them. The
         goniometer follows the same pair.</span></li>
 
-      <li><b>The generator can be one of the lanes</b>
-        <span>Tick <i>Add the generator as a lane</i> before choosing stems, and what the
-        page is making goes on the graticule beside what you are playing &mdash; and
-        <i>X&ndash;Y</i> can pair either against either. It is one lane, which means its
+      <li><b>The generator and your playing, on one graticule</b>
+        <span>Under <i>Stems</i>, tick <i>Add the generator as a lane</i> and <i>Add the
+        live input as a lane</i>. No backing track needed: that combination is the whole
+        point &mdash; what the page is making and what you are playing, on one graticule,
+        with <i>X&ndash;Y</i> able to pair either against either. Add files to it as well
+        if you want them. It is one lane each, which for the generator means its
         <em>left</em> channel: a lane is one signal and the generator makes two, so its own
         figure is not available while it is a lane. It is silent there for now &mdash; on
         its own it can be heard, but a lane's worth of it does not yet reach the speakers
@@ -2310,7 +2322,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows",
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
-                  "rackSynthRow", "rackSynth", "rackBudget",
+                  "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiLaneNote",
@@ -5348,7 +5360,19 @@ async function makeRackSource(entries, label, deviceId) {
   for (const entry of list) {
     if (entry.data) decoded.set(entry, await ctx.decodeAudioData(entry.data));
   }
-  if (decoded.size === 0 && !wantsLive) throw new Error("nothing to decode");
+  /* A rack of nothing but the generator is allowed, and that is a change. It
+     used to throw "nothing to decode", which was unreachable and therefore
+     harmless - until the two checkboxes made it reachable by unticking the
+     other one, and then it meant the last rack silently stayed on screen under
+     an error about decoding.
+
+     It is a real picture rather than a duplicate of the tone source: a lane is
+     one signal, so this is the generator's left channel alone, in mono, where
+     the tone source is the pair. Which is worse for most purposes, so the rack
+     note says as much rather than the page pretending the two are the same. */
+  if (decoded.size === 0 && !wantsLive && !seenSynth) {
+    throw new Error("nothing to decode");
+  }
 
   const frames = decoded.size > 0
     ? Math.max(...Array.from(decoded.values()).map((b) => b.length)) : 0;
@@ -5469,9 +5493,23 @@ async function makeRackSource(entries, label, deviceId) {
       const minutes = Math.floor(duration / 60);
       const seconds = Math.round(duration % 60);
       const length = minutes + ":" + String(seconds).padStart(2, "0");
-      return wantsLive
-        ? "a track and you  ·  " + length + "  ·  you are not monitored"
-        : lanes.length + " lanes  ·  " + length;
+
+      /* What is actually in it, rather than which of two shapes it is. There
+         were two - files, or a track and you - and naming them by shape stopped
+         working the moment a rack could be the generator and an input with no
+         track at all: that one described itself as "a track and you - 0:00". */
+      const played = lanes.filter((lane) => lane.buffer).length;
+      const parts = [];
+      if (lanes.some((lane) => lane.synth)) parts.push("the generator");
+      if (played > 0) parts.push(played === 1 ? "a track" : played + " stems");
+      if (wantsLive) parts.push("you");
+      const said = parts.length === 0 ? lanes.length + " lanes"
+        : parts.length === 1 ? parts[0]
+        : parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+
+      return said
+        + (played > 0 ? "  \u00b7  " + length : "")
+        + (wantsLive ? "  \u00b7  you are not monitored" : "");
     },
 
     remix() { laneMixer(lanes); },
@@ -5815,6 +5853,11 @@ const state = {
      rack is whatever files you dropped on it, and a preset cannot carry those,
      so a preset that carried this would restore half of an arrangement. */
   rackSynth: false,
+  /* And whether it carries the live input, without a backing track having to
+     be the reason. Stage D's headline is "the generator and the Nord, on one
+     graticule", and until this existed the only way to get a live lane into a
+     rack was to bring a file along with it. */
+  rackLive: false,
   /* What is plugged in, as the player asserts it, and whether they want to
      hear it. Neither is in a setup code and neither survives a reload, which
      is deliberate: this is a claim about the room, and the cost of being wrong
@@ -10236,7 +10279,11 @@ function showSource(pending) {
 /* Anything with a transport on it. A live input has none - there is nothing to
    seek in a signal that is arriving now - and it reports itself as a mic, so it
    is already excluded. */
-const playable = () => state.source.kind === "file" || state.source.kind === "rack";
+/* Something to press play on, which is not the same as being a rack: a rack of
+   the generator and a live input has no buffer in it and a transport over it
+   would be three controls that do nothing. */
+const playable = () => state.source.kind === "file"
+  || (state.source.kind === "rack" && state.source.duration > 0);
 
 function toTone() {
   // Already a tone: there is nothing to build, but the panel may be showing
@@ -10539,6 +10586,7 @@ function setMicShape(bands) {
 }
 
 el.rackSynth.addEventListener("change", () => setRackSynth(el.rackSynth.checked));
+el.rackLive.addEventListener("change", () => setRackLive(el.rackLive.checked));
 
 el.micWhole.addEventListener("click", () => setMicShape(false));
 el.micBands.addEventListener("click", () => setMicShape(true));
@@ -10784,9 +10832,13 @@ function laneBudget(fileCount, extras) {
   };
 }
 
+function rackExtras() {
+  return (state.rackSynth ? 1 : 0) + (state.rackLive ? 1 : 0);
+}
+
 function sayBudget() {
   const files = rackFiles ? rackFiles.length : 0;
-  const extras = (state.rackSynth ? 1 : 0) + (rackAlong ? 1 : 0);
+  const extras = rackExtras() + (rackAlong ? 1 : 0);
   if (files === 0 && extras === 0) { el.rackBudget.textContent = ""; return; }
   const budget = laneBudget(files, extras);
   el.rackBudget.textContent = budget.over > 0
@@ -10800,26 +10852,49 @@ async function toRack(files) {
   rackAlong = null;
   rackFiles = all;
 
-  // The generator takes one of the six before any file does, so the files are
-  // cut to what is left rather than to six.
-  const budget = laneBudget(all.length, state.rackSynth ? 1 : 0);
+  // The lanes that are not files take their places first, so the files are cut
+  // to what is left rather than to six.
+  const extras = rackExtras();
+  const budget = laneBudget(all.length, extras);
   const list = all.slice(0, budget.room);
   sayBudget();
-  if (list.length === 0) return;
+  /* Nothing at all is nothing to build. A rack of the generator and the live
+     input and no files is a perfectly good rack, though - it is the one Stage
+     D is for - so "no files" is not the test. */
+  if (list.length === 0 && extras === 0) return;
 
-  sayRack("Decoding " + list.length + (list.length === 1 ? " file…" : " files…"));
+  sayRack(list.length > 0
+    ? "Decoding " + list.length + (list.length === 1 ? " file…" : " files…")
+    : "Opening the input…");
   try {
     const entries = await readAll(list);
+    if (state.rackLive) entries.unshift({ name: "You", stream: true });
     if (state.rackSynth) entries.unshift({ name: "Generator", synth: true });
-    const source = await makeRackSource(entries, list.length + " stems");
+    const source = await makeRackSource(entries, list.length + " stems",
+                                        el.device.value || undefined);
     adoptRack(source, "stems");
+    if (state.rackLive) await listDevices();
     sayRack(budget.over > 0
       ? "Six lanes is the most the screen can tell apart, so the first "
         + list.length + " were taken."
-      : null);
+      : (entries.length === 1 && state.rackSynth
+        ? "A rack of nothing but the generator is its left channel on its own. "
+          + "Choose Tone to get both, and the figure they make."
+        : null));
   } catch (error) {
-    sayRack("That would not decode: " + error.message);
+    sayRack(error && error.name === "NotAllowedError"
+      ? "The microphone was blocked \u2014 allow it in the address bar and try again."
+      : "That would not open: " + error.message);
   }
+}
+
+async function setRackLive(on) {
+  if (state.rackLive === on) return;
+  state.rackLive = on;
+  el.rackLive.checked = on;
+  sayBudget();
+  if (rackAlong) { await toPlayAlong(rackAlong); return; }
+  await toRack(rackFiles || []);
 }
 
 /* Ticking the box rebuilds whatever is loaded, rather than applying to the
@@ -10832,7 +10907,7 @@ async function setRackSynth(on) {
   el.rackSynth.checked = on;
   sayBudget();
   if (rackAlong) { await toPlayAlong(rackAlong); return; }
-  if (rackFiles && rackFiles.length > 0) await toRack(rackFiles);
+  await toRack(rackFiles || []);
 }
 
 /* Positive holds the track back to meet a late input, which is the usual
@@ -10913,6 +10988,13 @@ function adoptRack(source, kind) {
   buildLaneRows();
   buildLaneList();
   el.fileLoop.checked = source.looping;
+  /* Unguarded, and that is deliberate after checking. A rack can now be made
+     entirely of things that arrive on their own, and `play` over one is
+     already a no-op - it maps over the lanes that have a buffer and there are
+     none - while the transport it labels is hidden, because `playable` asks
+     for a duration rather than for a rack. A guard here was indistinguishable
+     from its absence under mutation, which is the same test `setLiveKind`'s
+     dead guard failed. */
   source.play();
   el.filePlay.textContent = "Pause";
   setRunning(true);

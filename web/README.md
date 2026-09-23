@@ -1074,3 +1074,38 @@ protection along with the name.
 
 **A hidden element holding stale text is one stray `hidden = false` from lying.**
 The lane note is cleared when it is hidden, not just hidden.
+
+**Stage D's headline case was not reachable.** "Generator plus Nord, overlaid"
+needs a live lane in a rack, and the only thing that made one was *Play along*,
+which always pairs the input with a backing track. So generator + live input
+with nothing between them could not be built at all. A second checkbox — *Add
+the live input as a lane* — is what makes the rack's membership actually
+choosable, and it is worth more than re-skinning the selector, which was the
+piece the plan named next.
+
+**A rack can now have nothing to play, and three things assumed otherwise.**
+`playable()` was `kind === "file" || kind === "rack"`, so a rack of the
+generator and an input showed a transport over nothing. `describe()` named the
+rack by which of two shapes it was — files, or a track and you — and reported
+"a track and you · 0:00" for a rack with neither; it names what is in it now.
+And `adoptRack` played it unconditionally, which turned out to be harmless:
+`play` maps over the lanes that have a buffer and there are none, and the
+transport it labels is hidden. That guard was indistinguishable from its
+absence under mutation — the same test `setLiveKind`'s dead guard failed — so
+it went rather than staying as decoration.
+
+**A rack of nothing but the generator used to throw "nothing to decode".**
+Unreachable, and therefore harmless, until the two checkboxes made it reachable
+by unticking the other one — at which point the last rack stayed on screen
+under an error about decoding. It is allowed now, because it is a real picture
+rather than a duplicate of the tone source: a lane is one signal, so it is the
+generator's left channel alone in mono, where the tone source is the pair. The
+rack note says so and points at *Tone* rather than the page pretending the two
+are the same.
+
+**A `MediaStreamAudioDestinationNode` is a microphone you can test with.** There
+is no input device in the container, so `contracttest.py` makes one: an
+oscillator into a destination node hands back a real `MediaStream` with a real
+audio track, and everything downstream — `getUserMedia`, `createMediaStreamSource`,
+the analyser, the lane — is the genuine article. `liveStreams.clear()` first,
+because the cache is keyed by device id.

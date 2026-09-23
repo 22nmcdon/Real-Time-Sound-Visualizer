@@ -282,12 +282,28 @@ be discovered during implementation.
   decoded — the generator takes one of the six before any file does — and
   ticking the box rebuilds what is loaded, the way the band split already does.
 
-  **What is left of D1: the selector itself.** Tone / Mic / File / Stems is
-  still a mutually exclusive radiogroup; the generator joins a rack through a
-  checkbox on the Stems rows rather than by being a peer of the four. That is
-  the honest state: the *representation* is now "what is in the rack", and the
-  *selector* has not caught up with it. Everything else in D1 is done, and D's
-  own verification list can be run against what exists.
+  **D1d — the rack's membership is choosable — is built**, and it turned out
+  to matter more than the selector. Stage D's headline is "generator plus Nord,
+  overlaid"; that needs a live lane in a rack, and the only thing that made one
+  was *Play along*, which always brings a backing track. So the headline case
+  could not be built at all. Two checkboxes on the Stems rows — the generator,
+  the live input — are what make a rack's membership a choice rather than a
+  consequence of which button opened it.
+
+  **What is left of D1: the selector itself, and its migration.** Tone / Mic /
+  File / Stems is still a mutually exclusive radiogroup, and the setup code
+  still stores one source kind. That second half is the third instance of the
+  standing rule in `CLAUDE.md` — a field that has stopped being able to answer
+  its own question with one value — so it wants a version-tagged decode pass
+  rather than a wider `if`.
+
+  One thing the selector pass should not do without deciding it: collapsing
+  *File* into *Stems*. They look like the same thing and are not. A file source
+  is **one signal in stereo**, so X–Y plots its own two channels against each
+  other; a rack lane is **one mono signal**. Collapsing them costs the
+  per-source figure exactly the way a generator lane costs the dyad figure
+  (D11). The rack model and the single-source model are both needed, and the
+  selector's job is to make that legible rather than to erase it.
 
   **D2 — the generator's sound reaching a lane's speakers.** This needed B3,
   and calling it "built" was an overclaim that wants correcting: the generator

@@ -596,6 +596,106 @@ with sync_playwright() as pw:
     check("and back again the worklet owns them, with no lane left to argue",
           back["driver"] == "worklet" and back["kind"] == "tone", str(back))
 
+    print("\n--- the generator and a live input, with no track between them ---")
+    # Stage D's headline, and until now not reachable: a live lane could only
+    # get into a rack by bringing a backing track with it, because the only
+    # thing that made one was Play along.
+    #
+    # There is no microphone in this container, so one is made: a
+    # `MediaStreamAudioDestinationNode` hands back a real `MediaStream` with a
+    # real audio track in it, fed by an oscillator. Everything downstream -
+    # `createMediaStreamSource`, the analyser, the lane - is the real thing.
+    p.evaluate("""() => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = ctx.createMediaStreamDestination();
+      const osc = ctx.createOscillator();
+      osc.frequency.value = 330;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.4;
+      osc.connect(gain); gain.connect(dest);
+      osc.start();
+      window.__fakeInput = { ctx, dest };
+      navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
+      if (!navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices = () => Promise.resolve([]);
+      }
+      liveStreams.clear();
+    }""")
+    p.evaluate("""async () => {
+      // Nothing loaded, both extras on: the rack is built out of them alone.
+      rackFiles = null;
+      el.rackSynth.checked = true;
+      await setRackSynth(true);
+      el.rackLive.checked = true;
+      await setRackLive(true);
+    }""")
+    p.wait_for_timeout(1500)
+    pair = p.evaluate("""() => {
+      const source = state.source;
+      return {
+        kind: source.kind,
+        names: source.lanes.map((l) => l.name),
+        synth: source.lanes.filter((l) => l.synth).length,
+        live: source.lanes.filter((l) => l.live).length,
+        monitored: source.lanes.map((l) => l.monitored),
+        duration: source.duration,
+        playable: playable(),
+        describe: source.describe(),
+        budget: el.rackBudget.textContent,
+        hasLive: source.hasLive,
+      };
+    }""")
+    print("    %s: %s" % (pair["kind"], pair["names"]))
+    print("    describes itself as %r, budget %r"
+          % (pair["describe"], pair["budget"]))
+    check("the generator and a live input make a rack of two, with no files",
+          pair["names"] == ["Generator", "You"] and pair["synth"] == 1
+          and pair["live"] == 1, str(pair["names"]))
+    check("neither of them can reach the speakers",
+          pair["monitored"] == [False, False], str(pair["monitored"]))
+    check("and there is no transport over a rack with nothing to play",
+          pair["duration"] == 0 and pair["playable"] is False, str(pair))
+    check("it describes what is in it rather than which shape it is",
+          "generator" in pair["describe"] and "you" in pair["describe"]
+          and "0:00" not in pair["describe"], pair["describe"])
+    check("and the budget counts both of them",
+          "2 of 6" in pair["budget"], pair["budget"])
+
+    # Both lanes carrying signal is the whole point - one graticule, two
+    # things, and X-Y able to pair them.
+    p.wait_for_timeout(700)
+    drawing = p.evaluate("""() => {
+      state.xyPair = [0, 1];
+      const f = capture();
+      const peaks = f.channels.map((ch) => {
+        let peak = 0;
+        for (let i = 0; i < ch.length; i++) peak = Math.max(peak, Math.abs(ch[i]));
+        return peak;
+      });
+      return { peaks, lanes: laneCount(), pair: state.xyPair };
+    }""")
+    print("    peaks %s across %d lanes"
+          % ([round(x, 3) for x in drawing["peaks"]], drawing["lanes"]))
+    check("both lanes are carrying signal onto one graticule",
+          len(drawing["peaks"]) == 2 and all(x > 0.05 for x in drawing["peaks"]),
+          str([round(x, 4) for x in drawing["peaks"]]))
+    check("and X-Y can pair the generator against the input",
+          drawing["pair"] == [0, 1], str(drawing["pair"]))
+
+    # And taking the input out again leaves the generator lane alone.
+    p.evaluate("() => { el.rackLive.checked = false; return setRackLive(false); }")
+    p.wait_for_timeout(1200)
+    alone = p.evaluate("""() => ({
+      names: state.source.lanes.map((l) => l.name),
+      live: state.source.lanes.filter((l) => l.live).length,
+      driver: lfoDriver(),
+    })""")
+    print("    with the input taken out: %s" % alone["names"])
+    check("unticking the input leaves the generator lane where it was",
+          alone["names"] == ["Generator"] and alone["live"] == 0, str(alone))
+    check("and the oscillators are still the lane's to advance",
+          alone["driver"] == "fill", alone["driver"])
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
