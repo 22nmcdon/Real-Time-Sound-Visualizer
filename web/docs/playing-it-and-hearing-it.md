@@ -40,12 +40,17 @@ all, because all 39 place both lanes alike.
 gains in the monitor chain, from one `turnOf`, agreeing to float32's rounding —
 so turning the figure turns the stereo image of anything with an audio path.
 The Speakers switch says *Shaped* rather than *Filtered* now, because the block
-it straddles is no longer only the filter. What is not built from C1's table:
-full scale as a `GainNode` and lag as a `DelayNode` (both wait on the holds
-below, since neither is in the picture's block yet), and AC coupling as a
-shared one-pole — that one is worth doing next and the plan's own note has it
-wrong, pairing a mean subtraction against a high-pass, which cannot agree. The
-fix is the same DC blocker in both places via `IIRFilterNode`.
+it straddles is no longer only the filter. **C1's AC row is built too**, and the plan's own note was wrong about it: it
+paired a mean subtraction against a high pass and conceded they would not agree
+exactly. They could never have agreed at all — one is non-causal and
+whole-block, the other causal and per-sample, and no tolerance closes that. Both
+sides run the same one-pole DC blocker now, from one shared corner (0.5–20 Hz,
+ten by default), and they agree bit for bit. The size of the change is measured
+in `web/README.md`; the readout names the corner while AC is on.
+
+What is left of C1's table: full scale as a `GainNode` and lag as a
+`DelayNode`. Both wait on the holds below, since neither is in the picture's
+block yet.
 
 **Held: the trigger level becoming screen-relative.** Full scale moving ahead of
 the trigger is *more* authentic, not less — a bench scope taps its trigger after

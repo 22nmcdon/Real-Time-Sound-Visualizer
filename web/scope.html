@@ -1305,10 +1305,24 @@ body[data-view="bench"] #menuButton { display: none; }
                 <span class="reading" id="lagValue">listening</span>
               </div>
             </div>
-            <p class="menu-note"><i>AC</i> takes the average out of the window, so a converter
-              with a DC offset does not push the trace off the screen. <i>Full scale</i> is the
-              level that reaches the top of the graticule &mdash; drop it to open up a quiet
-              signal.</p>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="acCorner">AC corner</label>
+              <div class="grow">
+                <input type="range" id="acCorner" min="5" max="200" value="100">
+                <span class="reading" id="acCornerValue">10.0 Hz</span>
+              </div>
+            </div>
+            <p class="menu-note"><i>AC</i> blocks what is not moving, so a converter with a
+              DC offset does not push the trace off the screen. It is a one-pole high pass,
+              and its <i>corner</i> is where it starts to take things away: low and it only
+              removes a slow drift, high and it thins the bottom of the signal as well. Ten
+              hertz is where a bench scope's AC coupling usually sits. The same corner
+              reaches the speakers when they are on the shaped side, from one set of
+              numbers &mdash; the screen and the speakers cannot disagree about what AC
+              coupling is.
+              <br><br>
+              <i>Full scale</i> is the level that reaches the top of the graticule &mdash;
+              drop it to open up a quiet signal.</p>
           </div>
 
           <div class="menu-group">
@@ -1701,6 +1715,27 @@ body[data-view="bench"] #menuButton { display: none; }
         a pure tone a circle, and it locks slowly on purpose &mdash; chasing the pitch would
         hold the circle round through vibrato and hide the very thing worth seeing. Locked
         slowly, vibrato makes the loop turn.</span></li>
+
+      <li><b>AC coupling, and where its corner sits</b>
+        <span>Under <i>Vertical</i>, per lane. It blocks what is not moving, so a converter
+        with a DC offset does not push the trace off the screen &mdash; a one-pole high pass,
+        the same one a bench scope puts in front of its input. The <i>corner</i> is where it
+        starts taking things away: at ten hertz, which is where a scope usually sits, a slow
+        drift goes and the signal does not; down at one hertz almost nothing is removed
+        quickly, which is what you want when the drift IS the signal; up at twenty it thins
+        the bottom of a bass note as well.
+        <br><br>
+        The corner is worth knowing about because the numbers under the trace are about the
+        coupled signal, not the raw one. At ten hertz that moves a peak reading by a per cent
+        or two, and rather more on anything near the corner; at one hertz an asymmetric
+        signal &mdash; a half-wave rectified tone, say &mdash; can read a third higher,
+        because a pole that slow has not finished taking the offset out within the window.
+        That is what AC coupling at one hertz means rather than a fault, and the readout
+        names the corner while it is on so the numbers say which signal they are about.
+        <br><br>
+        The same corner reaches the speakers when they are on the shaped side, from one set
+        of numbers: the screen and the speakers cannot disagree about what AC coupling
+        is.</span></li>
 
       <li><b>Spect is a spectrogram</b>
         <span>Frequency up, time running right to left, level as ink. Hover it and it names
@@ -2131,6 +2166,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
+                  "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
                   "beamLevel", "beamXY", "beamYT", "beamGoni",
                   "helpButton", "helpDialog", "helpClose",
@@ -3985,8 +4021,25 @@ function makeMonitorChain(ctx) {
   splitter.connect(rot[2], 0); rot[2].connect(merger, 0, 1);
   splitter.connect(rot[3], 1); rot[3].connect(merger, 0, 1);
 
-  input.connect(filter); filter.connect(wet); wet.connect(splitter);
-  input.connect(dry); dry.connect(splitter);
+  /* AC coupling, first in the shaped block the way it is first in the
+     picture's. An `IIRFilterNode` takes the coefficients directly, so the
+     speakers run the same difference equation the screen does rather than a
+     biquad high pass that would merely be near it.
+
+     Its coefficients cannot be changed once it is built, so moving the corner
+     builds a new one - `tuneMonitorAC` below. Crossfaded rather than switched,
+     because AC is a checkbox and a checkbox that clicks is a checkbox you can
+     hear. */
+  const acWet = ctx.createGain(), acDry = ctx.createGain(), acOut = ctx.createGain();
+  acWet.gain.value = 0;
+  acDry.gain.value = 1;
+  input.connect(acDry); acDry.connect(acOut);
+  acWet.connect(acOut);
+  // The blocker itself is hung on by `tuneMonitorAC`, which also replaces it
+  // when the corner moves.
+
+  acOut.connect(filter); filter.connect(wet); wet.connect(splitter);
+  acOut.connect(dry); dry.connect(splitter);
   merger.connect(limiter);
   limiter.connect(clamp);
   clamp.connect(ctx.destination);
@@ -3994,9 +4047,27 @@ function makeMonitorChain(ctx) {
   wet.gain.value = 0;
   dry.gain.value = 1;
 
-  const chain = { ctx, input, filter, wet, dry, splitter, rot, merger, limiter, clamp };
+  const chain = { ctx, input, ac: null, acHz: null, acWet, acDry, acOut,
+                  filter, wet, dry, splitter, rot, merger, limiter, clamp };
   monitorChains.add(chain);
   return chain;
+}
+
+/* The speakers' DC blocker, built from the picture's own coefficients. An
+   `IIRFilterNode` fixes its coefficients at construction, so a corner that
+   moves means a new node rather than a new number - built here, left alone
+   while the corner does not change, and replaced rather than added to. */
+function tuneMonitorAC(chain) {
+  if (chain.acHz === state.acHz) return;
+  const c = dcBlockerCoefficients(state.acHz, chain.ctx.sampleRate);
+  if (chain.ac) {
+    chain.input.disconnect(chain.ac);
+    chain.ac.disconnect();
+  }
+  chain.ac = chain.ctx.createIIRFilter([c.b0, c.b1], [1, c.a1]);
+  chain.input.connect(chain.ac);
+  chain.ac.connect(chain.acWet);
+  chain.acHz = state.acHz;
 }
 
 function dropMonitorChain(chain) {
@@ -4028,8 +4099,22 @@ function syncMonitor() {
   const spin = state.monitorAt === "post" ? state.rotate + state.rotateMod : 0;
   const { cos, sin } = turnOf(spin);
 
+  /* AC on the speakers is all or nothing, because the speakers are one signal.
+     The picture can couple one lane and not the other; a claim that what you
+     are hearing is AC coupled is only true if every lane being drawn is. Mixed,
+     the speakers keep the input and the note in the panel says so. */
+  const lanes = laneCount();
+  let coupled = lanes > 0 && state.monitorAt === "post";
+  for (let i = 0; coupled && i < lanes; i++) {
+    if (!state.channels[i] || !state.channels[i].ac) coupled = false;
+  }
+  const ac = coupled ? 1 : 0;
+
   for (const chain of monitorChains) {
     const at = chain.ctx.currentTime;
+    tuneMonitorAC(chain);
+    chain.acWet.gain.setTargetAtTime(ac, at, MONITOR_GLIDE);
+    chain.acDry.gain.setTargetAtTime(1 - ac, at, MONITOR_GLIDE);
     if (chain.filter.type !== now.type) chain.filter.type = now.type;
     chain.filter.frequency.setTargetAtTime(now.hz, at, MONITOR_GLIDE);
     chain.filter.Q.setTargetAtTime(q, at, MONITOR_GLIDE);
@@ -4558,6 +4643,12 @@ const state = {
      which is why it is two switches and not a three-way mode. */
   analyseAt: "post",         // pre | post
   monitorAt: "pre",          // pre | post
+  /* Where AC coupling's one pole sits, in hertz, shared by the picture and
+     the speakers. One number rather than a default in each place: identical
+     algorithms are not enough for exact agreement, identical coefficients are,
+     and two corner settings that matched today would part the first time one
+     of them moved. */
+  acHz: 10,
   micBands: false,           // whether live input arrives whole or split in four
   /* What is plugged in, as the player asserts it, and whether they want to
      hear it. Neither is in a setup code and neither survives a reload, which
@@ -4724,6 +4815,53 @@ function filterNow() {
   };
 }
 
+/* --- AC coupling -------------------------------------------------------------
+   One corner, one set of coefficients, two implementations that cannot drift
+   apart - and a note about what this replaced, because the thing it replaced
+   was not a worse version of this. It was a different operation.
+
+   Taking the window's mean out is NON-CAUSAL and whole-block: it needs every
+   sample before it can say what to subtract, and what it removes depends on
+   how long the block is. A one-pole high-pass is causal and per-sample, acting
+   on history it has already seen. No tolerance was ever going to close that
+   gap - a longer fetch changes what the mean removes and does nothing to what
+   the pole removes - so the design note's plan to pair a mean subtraction
+   against a high-pass and state a tolerance could not have worked. Same shape
+   of mistake as the Q-in-decibels bug: two different algorithms asked to
+   agree, rather than one algorithm used twice.
+
+   A DC blocker is y[n] = x[n] - x[n-1] + R*y[n-1], which is a biquad with
+   b = [1, -1, 0] and a = [1, -R, 0]. That matters more than it looks: it means
+   `filterInPlace` runs it, priming and all. Its priming sets the history to
+   the steady state for a constant x[0], and a DC blocker's gain at DC is
+   exactly zero - (1 - 1 + 0) / (1 - R) - so the primed output starts at zero
+   rather than at a step, which is the whole of the left-edge problem.
+
+   The corner is a SHARED parameter rather than a default in each place.
+   Identical algorithms agreeing is not enough; exact agreement is a property
+   of identical coefficients, and two corner settings that happen to match
+   today would reopen this the first time one of them moved. */
+const AC_CORNER_MIN = 0.5, AC_CORNER_MAX = 20;
+
+function dcBlockerCoefficients(hz, rate) {
+  const corner = Math.max(AC_CORNER_MIN, Math.min(AC_CORNER_MAX, hz));
+  // The pole that puts the -3 dB point at the corner. `acCornerHz` below
+  // measures where it actually lands, rather than trusting the algebra.
+  const r = Math.exp(-TWO_PI * corner / rate);
+  return { b0: 1, b1: -1, b2: 0, a1: -r, a2: 0, r, corner };
+}
+
+/* The response of that blocker at one frequency, so the corner can be checked
+   rather than asserted. */
+function dcBlockerMagnitude(c, hz, rate) {
+  const w = TWO_PI * hz / rate;
+  const cosw = Math.cos(w), sinw = Math.sin(w);
+  const numRe = c.b0 + c.b1 * cosw, numIm = -c.b1 * sinw;
+  const denRe = 1 + c.a1 * cosw, denIm = -c.a1 * sinw;
+  return Math.sqrt((numRe * numRe + numIm * numIm)
+                 / (denRe * denRe + denIm * denIm));
+}
+
 /* --- rotation ----------------------------------------------------------------
    One 2x2 matrix, and the two things in this page that turn a pair of lanes
    with it. Turning an X-Y figure and rotating a stereo image are the same
@@ -4822,15 +4960,21 @@ function capture() {
 
   const raw = source.getLatestWindow(length + span + lead);
 
-  // AC takes the average out of the window rather than filtering: over a
-  // window this short the two are the same thing, and this one cannot ring.
+  /* AC coupling, as the same one-pole DC blocker the speakers get, run over
+     the whole fetch rather than the window - a filter started at the left edge
+     of the screen would settle there in plain view, and with persistence on it
+     would leave the settling behind it. `filterInPlace` primes the history to
+     the steady state for a constant first sample, which for a blocker is an
+     output of nought, so the runway is only carrying whatever the signal does
+     rather than the filter's own start.
+
+     This used to take the mean of the window out instead. That is a different
+     operation, not a cheaper one - see `dcBlockerCoefficients`. */
+  const acCoefficients = dcBlockerCoefficients(state.acHz, rate);
   const full = raw.map((buffer, i) => {
     if (!state.channels[i] || !state.channels[i].ac) return buffer;
-    let mean = 0;
-    for (let k = 0; k < buffer.length; k++) mean += buffer[k];
-    mean /= buffer.length;
-    const out = new Float32Array(buffer.length);
-    for (let k = 0; k < buffer.length; k++) out[k] = buffer[k] - mean;
+    const out = Float32Array.from(buffer);
+    filterInPlace(out, acCoefficients);
     return out;
   });
 
@@ -6629,6 +6773,10 @@ function writeReadout(frame) {
     bits.push("post-filter");
   }
 
+  if (state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
+    bits.push("AC " + state.acHz.toFixed(1) + " Hz");
+  }
+
   if (state.starved > 0) {
     bits.push("buffer short by "
       + Math.round(state.starved / frame.rate * 1000) + " ms");
@@ -7012,6 +7160,17 @@ el.beamLevel.addEventListener("change", () => {
 /* Both of these rewrite lane two, so they cannot both be on. The one just
    thrown wins and the other goes off on the page, rather than staying checked
    while silently doing nothing. */
+/* Tenths of a hertz on the slider, because half a hertz to twenty is a
+   useful range and a whole-number slider over it would have four positions
+   below five hertz - which is where the interesting end of it is. */
+el.acCorner.addEventListener("input", () => {
+  state.acHz = Number(el.acCorner.value) / 10;
+  el.acCornerValue.textContent = state.acHz.toFixed(1) + " Hz";
+  // The speakers' copy is a node with fixed coefficients, so it is rebuilt
+  // rather than retuned; `syncMonitor` notices the number has moved.
+  syncMonitor();
+});
+
 el.midSide.addEventListener("change", (e) => {
   state.midSide = e.target.checked;
   if (state.midSide && state.lagOn) {
@@ -7664,6 +7823,7 @@ const DEFAULTS = {
   c0on: true, c0ac: false, c0s: 0, c0o: 0,
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
+  acHz: 100,                 // tenths of a hertz, so 10.0
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
   midiDrive: "wave,harmonograph,figure", cc: "",
@@ -7717,6 +7877,7 @@ function snapshot() {
     c1on: state.channels[1].on, c1ac: state.channels[1].ac,
     c1s: state.channels[1].scale, c1o: Math.round(state.channels[1].offset * 100),
     midSide: state.midSide,
+    acHz: Math.round(state.acHz * 10),
     octaves: tone ? tone.octaves : DEFAULTS.octaves,
     midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
     midiFollow: midi.follow,
@@ -7846,6 +8007,8 @@ function restore(partial) {
 
   state.midSide = s.midSide;
   el.midSide.checked = s.midSide;
+  el.acCorner.value = String(s.acHz);
+  el.acCorner.dispatchEvent(new Event("input"));
 
   // Mid/side wins a setup that somehow carries both, because it is the older
   // switch and the one a stereo preset means.

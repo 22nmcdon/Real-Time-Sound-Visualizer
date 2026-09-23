@@ -47,6 +47,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
 | `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
 | `rotatetest.py` | rotation and mid/side, and the measurements rotation is not allowed to reach |
+| `actest.py` | AC coupling: the picture's blocker and the speakers', from one corner |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -252,6 +253,56 @@ quieter. Measured at the top of the generator's range the naive triangle put
 triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
+
+**A window mean and a one-pole are not two implementations of AC coupling.**
+They are two operations. Mean subtraction is non-causal and whole-block — it
+needs every sample before it can say what to subtract, and what it removes
+depends on how long the fetch is; a one-pole high pass is causal and
+per-sample. No tolerance was ever going to close that, because a longer fetch
+changes one and does nothing to the other. The design note planned to pair them
+and state a tolerance, which could not have worked. Same shape as the
+Q-in-decibels bug: two algorithms asked to agree instead of one algorithm used
+twice. Both sides run the blocker now and agree *exactly* — worst difference 0,
+not 0.0001 dB, because it is the same difference equation with the same
+coefficients.
+
+**A DC blocker is a biquad, which is why the priming came free.**
+`y[n] = x[n] − x[n−1] + R·y[n−1]` is `b = [1, −1, 0]`, `a = [1, −R, 0]`, so
+`filterInPlace` runs it — and its priming, which sets the history to the steady
+state for a constant `x[0]`, is exactly right here because a blocker's gain at
+DC is zero. A one-pole is *not* too simple to need that: run cold on every
+captured window, a DC offset arrives as a step and the left edge of the screen
+shows the filter settling rather than the signal, which persistence would then
+smear behind it. Unprimed, the first sample sits a whole offset away from where
+the filter ends up; primed, it starts there. The runway is the same one the
+biquad gets — the whole fetch is filtered and only the tail is drawn.
+
+**The corner is one number both sides read.** Identical algorithms are not
+enough for exact agreement; identical *coefficients* are, and two corner
+settings that matched today would part the first time one of them moved.
+`state.acHz` is that number, selectable from 0.5 to 20 Hz (ten is where a bench
+scope sits), and it is in the setup code. Worth knowing how nearly this was
+missed: every agreement check built its own node from the coefficients, so a
+`tuneMonitorAC` that quietly asked for its own ten hertz would have passed all
+of them. The check that catches it renders the *chain's own* blocker at 3 Hz.
+
+**What the change costs, measured.** At the default corner the reported peak
+moves by −1.7% to +3.3% on ordinary signals and −6.3% on a 40 Hz sine, which is
+near the corner and therefore genuinely attenuated; RMS moves by at most 1.2%.
+At 1 Hz an asymmetric signal is where the two part company: a half-wave
+rectified tone reads 36% higher at the peak and 19% higher in RMS, because a
+pole that slow has not finished removing the offset inside the window. That is
+what AC coupling at 1 Hz means rather than an error — but it is large enough
+that the readout now names the corner while AC is on, the way it already says
+"post-filter".
+
+**Comparing a primed filter against a cold one looks exactly like a precision
+bug.** The first agreement test failed by 0.19 at 0.5 Hz, 0.012 at 10 Hz and
+3e-6 at 20 Hz — a tidy pattern that reads as float32 error accumulating in a
+marginally stable filter. It was the priming: an `IIRFilterNode` always starts
+from zero, `filterInPlace` starts from the steady state for `x[0]`, and that
+difference decays with the pole's own time constant — 28,000 samples at half a
+hertz. The probe starts at nought now, so both histories are the same one.
 
 **Rotation exists twice now, from one set of numbers.** `turnOf` feeds the
 picture's X–Y pass and four `GainNode`s between a splitter and a merger in the
