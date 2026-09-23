@@ -9,11 +9,12 @@ same instrument. Work usually lands here first, because the browser has an audio
 graph and a canvas and the Qt app has neither in the same shape; see
 `../oscilloscope-poc/docs/z-axis-lane.md` for a design that spells out why.
 
-## Designs written down but not built
+## Designs written down, and how much of each is built
 
 | note | what it covers |
 |---|---|
-| `docs/midi-and-the-audio-path.md` | MIDI in from a Nord Electro 6D; giving the generator a real audio path; letting the picture's own transforms shape the sound; two visualisers at once |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A — MIDI in — is built; B to E are not |
+| `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
 Also recorded and not built: band-limited waveforms. `waveAt` is not
@@ -43,6 +44,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
 | `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
+| `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -230,6 +232,71 @@ re-measuring, but nothing does that today.
 lanes are an implementation detail. Anything asking "has this several signals?"
 must test `source.lanes`, not the kind — asking the kind is how a preset once
 truncated a four-lane source to two and crashed the draw loop.
+
+**A note is not an estimate, and that is the point of the keyboard.** Every
+pitch on this page is otherwise inferred: the automatic lag sits behind a
+confidence gate and a second of slow approach precisely because
+`estimatePeriod` jitters. When a MIDI note is held, `lagLockUpdate` returns a
+quarter of its period and returns immediately — no gate, no lock-in — and the
+estimator becomes the fallback. The same note drives the timebase and gives the
+tuner something to read against, which for an organ is a real measurement:
+tonewheel tuning is not equal temperament, so the key and the air disagree by a
+number worth seeing.
+
+**A dyad wider than an octave needed a second number, not a second tuning.**
+`intervalRatio` has read the Just / Equal switch since the interval menu
+landed, so a played interval is `intervalRatio(semis % 12, just)` times
+`2^octaves` and nothing else. `tone.octaves` carries that count, the keyboard
+is the only thing that writes it, and `beatRate` takes it as an argument
+because a dyad an octave and a fifth wide is 3:1 against 2 and beats at a
+different rate than 3:2 does. Inventing a separate ratio for the dyad would
+have left the interval menu, the credit line and the beat readout all
+describing a figure that was not on the screen.
+
+**`midi` was very nearly a MIDI note number.** `noteFor` and `drawTuner` both
+had a local `const midi = 69 + 12 * Math.log2(...)`, which after this work
+shadows the object holding the keyboard. Legal, silent, and in `drawTuner`
+exactly wrong — it reads `midi.truth` two lines later. Both are `heard` now.
+
+**A main-thread source can reach the generator, and is held across the block.**
+`compileRoutes` used to drop any routing whose source had no `index`, which
+meant `env.live` — and now a drawbar — could point at the filter and not at the
+frequency: the routing existed, the editor drew it, and nothing happened. Those
+sources are read once per `fill` block and held, rather than stepped per
+sample, because they are written on the main thread at frame rate and there is
+nothing between two samples of them to interpolate. It is also what the worklet
+will have to do when that loop moves off the main thread.
+
+**Controllers are learned, and so is `midi.key`.** Registering 127 CCs would
+bury the chip rail; registering one dead `Key` chip costs a row of a column
+that has about twenty pixels to spare. Both appear when the keyboard is
+connected and a controller has moved. A routing pointing at a source that is
+not registered yet is *skipped, not dropped* — the rule a preset carrying
+routings for another generator mode already depends on — so a setup code
+restores a patch for a drawbar that has not been touched yet, and `midiForget`
+can unregister one without losing what it was patched to.
+
+**A setup carries the controllers' names, never the set of them.** `restore`
+merges: it renames what the code mentions and leaves everything else learned.
+Loading someone else's figure is no reason to forget the instrument in the
+room.
+
+**The chip rail is the one list on the bench allowed to scroll.** Every other
+section's height was decided here; the number of chips is however many
+controllers you have moved. So the chips wrap rather than stacking — a chip is
+two words wide and the column is 318, so a row holds two or three — and
+`.chip-rail` bounds what is left and scrolls it. The row per learned
+controller in the Keyboard section is marked `data-more` so the bench body
+hides it and the section's `⋯` shows it — nine drawbars put the body 117px past
+the window before that.
+
+**Web MIDI is a reason for the Pages copy to exist.** It needs a secure
+context, and in a cross-origin iframe it needs the embedder to grant `midi` in
+its permissions policy. The published artifact does not, so `requestMIDIAccess`
+rejects there exactly as a denied permission does — which is why the status
+line says "not allowed on this page" rather than "denied", a word that sends
+people looking for a browser setting. Safari has no Web MIDI at all and the
+feature detect says so.
 
 **The test tone is silent.** `makeToneSource` has no `AudioContext` at all — it
 is a per-sample ring buffer that feeds the screen and nothing else. Anything

@@ -1,7 +1,11 @@
 # Playing it, and hearing it
 
-A design note. Nothing here is built. It covers three things asked for together,
-which turn out to be one thing with a dependency order:
+A design note. **Stage A is built** — MIDI in, the learned controllers, the
+dyad, and the note as ground truth for the measuring side; see
+`playing-it-and-hearing-it.md` for the plan that took the decisions and
+`../tests/miditest.py` for what is checked. Stages B, C and D are still design.
+It covers three things asked for together, which turn out to be one thing with
+a dependency order:
 
 1. **MIDI in**, from a Nord Electro 6D — notes and panel CCs.
 2. **The generator makes sound**, and the picture's own settings shape that

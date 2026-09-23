@@ -268,6 +268,9 @@ select, input[type="number"] {
 }
 .menu-head { display: none; align-items: center; }
 .menu-group + .menu-group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cc-name { flex: 1 1 auto; min-width: 0; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 1px; padding: 3px 6px; font-family: var(--sans); font-size: 12.5px;
+  color: var(--charcoal); }
 .menu-title {
   display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em;
   color: var(--blush-deep); margin-bottom: 10px;
@@ -611,8 +614,21 @@ body[data-view="bench"] #menuButton { display: none; }
    anything is on it. Reserving four pixels once is the price of a layout that
    never moves again.                                                        */
 .bench-sources {
-  flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; min-width: 0;
+  flex: 0 1 auto; display: flex; flex-direction: column; gap: 5px;
+  min-width: 0; min-height: 0;
 }
+/* Chips wrap rather than stacking. A chip is two words wide and the column is
+   318, so a row holds two or three of them - which matters because this is the
+   one list here whose length belongs to the instrument: nine drawbars stacked
+   are nine rows and 270px the side column does not have. It still scrolls when
+   even wrapped they will not fit. */
+.chip-rail {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  min-height: 0; overflow-y: auto;
+}
+/* A port names itself, and can name itself anything. "Nord Electro 6D MIDI"
+   ran out of the column and over the section beside it. */
+#midiStatus { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bench-side .mod-chip { padding: 4px 11px; }
 .mod-chip {
   display: flex; align-items: center; gap: 8px; text-align: left;
@@ -979,6 +995,53 @@ body[data-view="bench"] #menuButton { display: none; }
               sent to the speakers &mdash; a microphone routed back out of them is a
               feedback loop &mdash; so <i>solo</i> and <i>mute</i> choose what the screen
               draws and nothing else.</p>
+          </div>
+
+          <div class="menu-group" id="midiGroup">
+            <span class="menu-title">Keyboard</span>
+            <div class="menu-row">
+              <span class="menu-label">MIDI in</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="midiConnect">Connect</button>
+                <span class="reading" id="midiStatus">off</span>
+              </div>
+            </div>
+            <div class="menu-row" id="midiPlayingRow" hidden>
+              <span class="menu-label">Playing</span>
+              <div class="grow"><span class="reading" id="midiMonitor">nothing held</span></div>
+            </div>
+            <div class="menu-row">
+              <span class="menu-label">Notes</span>
+              <div class="switch" role="radiogroup" aria-label="What held notes do">
+                <button type="button" class="caps" id="midiDyad" role="radio" aria-checked="true">Dyad</button>
+                <button type="button" class="caps" id="midiMono" role="radio" aria-checked="false">Mono</button>
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" id="midiDrive"> Notes play this generator</label>
+            <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
+            <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note</label>
+            <label class="check"><input type="checkbox" id="midiFollow"> &hellip; and the timebase</label>
+            <div id="midiCC" data-more="1"></div>
+            <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
+              under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
+              a third walks. <i>Dyad</i> reads the two most recent notes and puts the lower on
+              X; <i>mono</i> takes the newest note as the pitch and leaves the interval to the
+              menu. A note is also the one pitch on this page that is not estimated, which is
+              why the lag, the tuner and the timebase can be told to take it as read.
+              <br><br>
+              Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
+              and right line outs go to a stereo line input &mdash; that is the organ itself,
+              and the rotary, chorus and vibrato are genuinely stereo, so X&ndash;Y draws a
+              moving figure rather than the diagonal a mono microphone gives. On the keyboard,
+              System Menu 12 &rarr; <i>Send &amp; Receive</i>, or no panel control transmits at
+              all; <i>Local</i> on to hear the organ while the generator draws under your
+              hands, off to play the generator alone. Move a drawbar, a pedal or the swell and
+              it learns as a source you can put on any control &mdash; CC 11 is the swell pedal
+              and exists only if one is plugged into the control pedal jack.
+              <br><br>
+              Web MIDI needs a secure page, and inside an iframe it needs the embedding page to
+              grant it. The published artifact is such an iframe and does not, so the keyboard
+              works on the GitHub Pages copy and not there. Safari has no Web MIDI at all.</p>
           </div>
 
           <div class="menu-group" id="toneRows">
@@ -1801,6 +1864,32 @@ body[data-view="bench"] #menuButton { display: none; }
         and stands still; in <i>equal</i> it is slightly off, and the figure turns at the rate
         the interval beats.</span></li>
 
+      <li><b>Play it: a MIDI keyboard</b>
+        <span><i>Settings &rarr; Keyboard &rarr; Connect</i>. Two held notes become the two
+        channels, so the interval under your hands is the figure on the screen: hold a fifth
+        and 2:3 stands still, walk through thirds and the figure walks with you. The lower
+        note goes on X and the higher on Y whichever finger landed first, so the picture
+        turns only when the interval does. A third note takes the place of the older of the
+        two. <i>Mono</i> instead takes the newest note as the pitch and leaves the interval
+        to the menu; <i>Hold</i> keeps the last interval above a single note, which is how
+        you walk a figure up a melody with one finger.
+        <br><br>
+        Tuning applies to what you play: <i>just</i> snaps the interval to its whole-number
+        ratio and the figure stands still, <i>equal</i> takes the keys as they are and it
+        turns at the rate the interval beats. A tempered fifth turns about three quarters of
+        a time a second, which is worth seeing. A tempered third turns nearly nine times a
+        second, which under persistence is a blur.
+        <br><br>
+        A note is also the only pitch here that is not estimated, so the lag, the tuner and
+        the timebase can be told to take it as read &mdash; no confidence gate, no second of
+        settling. The tuner then reads the gap between the key you pressed and the pitch that
+        came back, which on an organ is a real number rather than an error.
+        <br><br>
+        Move a drawbar, a pedal or the swell and it becomes a source you can put on any
+        control. Web MIDI needs a secure page and permission from whatever embeds it: the
+        published artifact is an iframe that does not grant it, so this works on the GitHub
+        Pages copy and not there, and Safari has no Web MIDI at all.</span></li>
+
       <li><b>Harmonograph</b>
         <span>Two pendulums an axis, running down. Wants X&ndash;Y and infinite persistence.
         A tiny detune is what turns a closed figure into a spirograph.</span></li>
@@ -1832,8 +1921,9 @@ body[data-view="bench"] #menuButton { display: none; }
         to take it off, and the sources not on it yet as buttons to add. That is the whole
         gesture, and it is the same with a mouse, a thumb or a keyboard.
         <br><br>
-        The sources are two low-frequency oscillators and <i>Level</i>, which is how hard
-        you are playing. Dragging one of their chips from the side column straight onto a
+        The sources are two low-frequency oscillators, <i>Level</i> &mdash; how hard you
+        are playing &mdash; <i>Key</i>, and every MIDI controller you have moved since the
+        keyboard was connected. Dragging one of their chips from the side column straight onto a
         control is the quick way when you already know where it goes.</span></li>
 
       <li><b>The lane under a slider is the reading</b>
@@ -1962,6 +2052,9 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows",
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
+                  "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
+                  "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
+                  "midiCC",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
                   "viewScope", "viewBench", "benchRail", "benchBody",
@@ -2265,6 +2358,7 @@ function applyModMatrix(frame, elapsed) {
   }
 
   updateEnvelope(frame, elapsed);
+  midiSmooth(elapsed);
 
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
@@ -2320,9 +2414,13 @@ function compileRoutes() {
        and deleting them here would quietly rewrite the preset the first time
        it was loaded into the wrong mode. */
     if (!source || !dest) continue;
-    if (dest.kind !== "audio" || source.index === undefined) continue;
+    if (dest.kind !== "audio") continue;
+    /* Sources without an `index` used to be dropped here, which meant the
+       level and - later - a drawbar could point at the picture and not at the
+       generator, silently: the routing existed, the editor drew it, and
+       nothing happened. They are held across the block instead; see `fill`. */
     genRoutes.push({
-      index: source.index, slot: dest.slot,
+      index: source.index, source, held: 0, slot: dest.slot,
       amount: routing.amount, unipolar: dest.unipolar === true,
     });
   }
@@ -2410,12 +2508,463 @@ function intervalRatio(index, just) {
   return just ? p / q : Math.pow(2, semitones / 12);
 }
 
-/* How fast the figure turns, which is the same number as the beat you hear. */
-function beatRate(index, just, baseHz) {
+/* How fast the figure turns, which is the same number as the beat you hear.
+
+   Octaves belong on top of the numerator: a dyad an octave and a fifth wide is
+   3:1 against 2, not 3:2, and it beats at a different rate. A keyboard is the
+   only thing that plays one that wide, which is why this argument arrived with
+   the keyboard. */
+function beatRate(index, just, baseHz, octaves) {
   if (just) return 0;
   const [, p, q] = INTERVALS[index];
-  const right = baseHz * intervalRatio(index, false);
-  return Math.abs(q * right - p * baseHz);
+  const reach = Math.pow(2, octaves || 0);
+  const right = baseHz * intervalRatio(index, false) * reach;
+  return Math.abs(q * right - p * reach * baseHz);
+}
+
+/* --- the keyboard -----------------------------------------------------------
+   MIDI in, and the two quite different jobs it does here.
+
+   The obvious one: two held notes are the generator's two channels, so the
+   Lissajous half of this page stops being something you set and becomes
+   something you play. A fifth draws 2:3 under your hands and a third walks.
+
+   The quiet one, which may be the more useful: a note is GROUND TRUTH. Every
+   pitch on this page is otherwise an estimate - the automatic lag sits behind
+   a confidence gate and a one-second lock precisely because estimates jitter -
+   and a note does not have to be estimated. Where a note is held the estimator
+   becomes the fallback rather than the source.
+
+   Everything arrives at `midiBytes`, so a stubbed port and a synthetic message
+   reach exactly the code the keyboard does. That is the only way this is
+   testable without the instrument in the room.                               */
+
+/* The Electro 6D's panel as the manual has it. A starting point and never an
+   assumption: the numbers move across firmware revisions, this supplies a NAME
+   and nothing else, and anything not in it learns as "CC 42" and can be
+   renamed. The panel's monitor line exists so this document can be checked
+   against the instrument rather than trusted. */
+const NORD_CC = {
+  7: "Volume", 11: "Swell pedal", 13: "Organ level", 34: "Piano level",
+  43: "Sample level", 64: "Sustain",
+  16: "Drawbar 1", 17: "Drawbar 2", 18: "Drawbar 3", 19: "Drawbar 4",
+  20: "Drawbar 5", 21: "Drawbar 6", 22: "Drawbar 7", 23: "Drawbar 8",
+  24: "Drawbar 9",
+  86: "Effect 1 rate", 90: "Effect 2 rate", 93: "Delay amount",
+  108: "Rotary speed", 113: "Reverb amount",
+};
+
+/* A learned controller takes the next ink along, starting past the one Key
+   holds. Six is the ceiling the paper can tell apart and four are spoken for,
+   so the third controller learned shares an ink - visibly, on its chip, rather
+   than by inventing a seventh colour nobody could name. */
+const CC_INKS = ["ch5", "ch6", "ch4"];
+
+/* One pole, in seconds. A controller is seven bits, and on a slow drawbar
+   sweep 128 steps are audible as a staircase; this is long enough to bridge a
+   step and short enough that the control still feels immediate. Smoothed HERE,
+   upstream of `value()`, so every destination is fixed by one filter rather
+   than by each one remembering to - the direct write and the glided one would
+   otherwise be two filters obliged to agree. */
+const CC_SMOOTH = 0.03;
+
+const MIDI_ROOT = 220;          // A3, the pitch a trace rate is measured against
+const MIDI_PERIODS = 4;         // periods of the played note across the screen
+
+const midi = {
+  supported: typeof navigator !== "undefined" && !!navigator.requestMIDIAccess,
+  status: "off",                // off | asking | on | denied | unsupported
+  access: null,
+  ports: [],
+  notes: [],                    // the held stack, most recent last
+  mode: "dyad",                 // dyad | mono
+  hold: false,                  // keep the last interval under a single note
+  truth: true,                  // the note sets the lag and the tuner
+  follow: false,                // ... and the timebase
+  /* Per generator kind, because a note means something different in each. In
+     wireframe `freq` is how fast the solid is drawn, so a note changes the
+     tumble rate rather than a pitch: interesting, but a choice rather than a
+     default, and off until it is made. */
+  drive: { wave: true, harmonograph: true, figure: true, wireframe: false },
+  cc: new Map(),                // number -> { number, name, raw, value, target }
+  key: 0,                       // velocity of the newest held note, 0 for none
+  last: "",                     // what the monitor line says
+  interval: { index: 0, octaves: 0 },   // the last dyad, for Hold
+};
+
+const midiHz = (note) => 440 * Math.pow(2, (note - 69) / 12);
+
+function midiNoteName(note) {
+  return NOTES[((note % 12) + 12) % 12] + (Math.floor(note / 12) - 1);
+}
+
+/* The lowest note held, which is what the measuring side wants: the pitch an
+   estimator finds in a chord is the bottom of it. */
+function midiPitch() {
+  if (midi.notes.length === 0) return null;
+  let low = midi.notes[0].note;
+  for (const held of midi.notes) if (held.note < low) low = held.note;
+  return low;
+}
+
+function midiPitchHz() {
+  const note = midiPitch();
+  return note === null ? null : midiHz(note);
+}
+
+/* The stack, and three rules that have to be here from the start rather than
+   added after the first hung note: a note-on at velocity 0 IS a note-off,
+   which is how most keyboards send a release; the same note arriving twice
+   without a release must not stack twice; and losing the window releases
+   everything, because a note held when the tab goes away is held for ever. */
+function midiNoteOn(note, velocity) {
+  if (velocity === 0) { midiNoteOff(note); return; }
+  const at = midi.notes.findIndex((held) => held.note === note);
+  if (at >= 0) midi.notes.splice(at, 1);
+  midi.notes.push({ note, velocity: velocity / 127 });
+  midiApplyNotes();
+}
+
+function midiNoteOff(note) {
+  const at = midi.notes.findIndex((held) => held.note === note);
+  if (at < 0) return;
+  midi.notes.splice(at, 1);
+  midiApplyNotes();
+}
+
+function midiPanic() {
+  if (midi.notes.length === 0) return;
+  midi.notes.length = 0;
+  midiApplyNotes();
+}
+
+/* Which two notes the figure is drawn from. The pair is the two most RECENT of
+   the stack, so a third note displaces the older of the two and releasing one
+   promotes whatever was under it - the same last-note semantics the mono
+   reading has always had, read twice over.
+
+   They are then ordered BY PITCH, and that is the part worth arguing about.
+   Ordering by recency would put the figure on one diagonal or the other
+   depending on which finger landed first: the same interval, drawn two ways,
+   with nothing on screen to say why. Pitch order holds the orientation still
+   and leaves the interval the only thing that moves it. */
+function midiPair() {
+  const held = midi.notes;
+  if (held.length === 0) return null;
+  if (held.length === 1) return { low: held[0].note, high: null };
+  const a = held[held.length - 2].note, b = held[held.length - 1].note;
+  return { low: Math.min(a, b), high: Math.max(a, b) };
+}
+
+/* A played interval as the two numbers the generator already has. There is no
+   second tuning concept here on purpose: `intervalRatio` has read the Just /
+   Equal switch since the interval menu landed, and an index plus a count of
+   octaves is all it takes to reach any dyad. So *just* snaps the interval to
+   its small-integer ratio and the figure stands still, *equal* takes the
+   literal key frequencies and it turns at the rate the interval beats - and
+   the menu, the credit line and the beat number stay true, because they are
+   reading the fields they always read.
+
+   An equal-tempered fifth on A3 turns about three quarters of a time a second,
+   which is lovely. An equal third turns nearly nine times a second, which
+   under persistence is a blur. Hence the default being just. */
+function midiInterval(semitones) {
+  const semis = Math.max(0, Math.round(semitones));
+  if (semis <= 12) return { index: semis, octaves: 0 };
+  return { index: semis % 12, octaves: Math.floor(semis / 12) };
+}
+
+function midiDrivesGenerator() {
+  if (!state.source || state.source.kind !== "tone") return false;
+  return midi.drive[state.source.settings.mode] === true;
+}
+
+/* What a note does to the generator, which depends on what the generator is.
+   Only the waveform has a pitch to set. A harmonograph's pendulums run at a
+   couple of hertz and a traced figure at a few tens, so there the note arrives
+   as a RATIO to A3 applied to the slider's own value: the slider stays the
+   base and the keyboard moves it, which is the shape every modulation
+   destination on this page has, and the reason `gen.tumble` applying its law
+   to nothing was a bug rather than a quirk.
+
+   Releasing everything leaves the last note standing. There is no envelope to
+   close yet - `tone.amp` is a constant and the generator is silent - so a gate
+   would be a picture that vanished when you lifted your hands. The gate is
+   `midi.key`, which is registered as a source and can be pointed at anything
+   that should answer to it; the envelope proper arrives with the audio path. */
+function midiApplyNotes() {
+  midi.key = midi.notes.length ? midi.notes[midi.notes.length - 1].velocity : 0;
+  midiSayMonitor();
+  if (!midiDrivesGenerator()) return;
+
+  const pair = midiPair();
+  if (!pair) return;
+
+  const source = state.source, tone = source.settings;
+  const lead = midi.mode === "mono" ? midi.notes[midi.notes.length - 1].note : pair.low;
+  const hz = midiHz(lead);
+
+  if (midi.mode === "dyad") {
+    /* One note is a unison, unless Hold is on - in which case the interval the
+       last dyad set stays above it, which is how you walk a figure up a
+       melody with one finger. */
+    if (pair.high !== null) midi.interval = midiInterval(pair.high - pair.low);
+    else if (!midi.hold) midi.interval = { index: 0, octaves: 0 };
+
+    source.set("interval", midi.interval.index);
+    source.set("octaves", midi.interval.octaves);
+    el.interval.value = String(midi.interval.index);
+  } else {
+    /* Mono leaves the interval to the menu, and the menu covers one octave.
+       Coming here from a dyad two octaves wide, anything left in `octaves`
+       would be a ratio the panel had no way of saying. */
+    source.set("interval", Number(el.interval.value));
+    source.set("octaves", 0);
+  }
+
+  if (tone.mode === "wave") {
+    /* Clamped to the slider's own range so the control and the signal agree: a
+       generator that went to 12 kHz would have a slider that could not say so.
+       The top of the keyboard lands on 4 kHz together, which is a limit worth
+       hearing about rather than a silent fold. */
+    const set = Math.max(30, Math.min(4000, hz));
+    source.set("freq", set);
+    el.freq.value = String(Math.round(set));
+    el.freqValue.textContent = Math.round(set) + " Hz";
+  } else if (tone.mode === "figure" || tone.mode === "wireframe") {
+    const rate = Math.max(1, Math.min(200, Number(el.figureRate.value) * hz / MIDI_ROOT));
+    source.set("figureRate", rate);
+    el.figureRateValue.textContent = Math.round(rate) + " Hz";
+  }
+
+  el.credit.textContent = source.describe();
+}
+
+/* Handing the controls back, when the notes are told to stop playing this
+   generator. Nothing here remembers what it overwrote: the trace-rate slider
+   never moved, and the frequency slider was moved along with the pitch, so
+   re-reading the panel is the whole of it and what the panel says is what the
+   generator is doing either way. */
+function midiUndrive() {
+  if (!state.source || state.source.kind !== "tone") return;
+  const source = state.source;
+  source.set("freq", Number(el.freq.value));
+  source.set("figureRate", Number(el.figureRate.value));
+  source.set("interval", Number(el.interval.value));
+  source.set("octaves", 0);
+  el.figureRateValue.textContent = el.figureRate.value + " Hz";
+  el.credit.textContent = source.describe();
+}
+
+/* Learn, rather than a registry of a hundred and twenty-seven. A controller
+   becomes a source the first time it moves, which keeps the chip list short
+   and - the real reason - makes that list a description of the instrument
+   actually plugged in rather than of the manual. */
+function midiControl(number, raw) {
+  /* 120 is "all sound off" and 123 "all notes off": a panic button, and on
+     some keyboards a patch change. Learning them as controllers would hang the
+     notes they exist to release. */
+  if (number === 120 || number === 123) { midiPanic(); return; }
+
+  const entry = midi.cc.get(number) || midiLearn(number);
+  entry.raw = raw;
+  entry.target = raw / 127;
+  midiSayMonitor("CC " + number + " " + raw);
+}
+
+function midiLearn(number, name) {
+  const already = midi.cc.get(number);
+  if (already) {
+    if (name) { already.name = name; buildSourceChips(); buildMidiRows(); }
+    return already;
+  }
+
+  const entry = {
+    number, raw: 0, value: 0, target: 0,
+    name: name || NORD_CC[number] || "CC " + number,
+  };
+  midi.cc.set(number, entry);
+
+  registerSource({
+    id: "cc." + number,
+    /* A getter rather than a copy: the chips, the depth editor and the lane
+       all read `label`, and a rename has to reach three places none of which
+       knows a rename is possible. */
+    get label() { return entry.name; },
+    ink: CC_INKS[(midi.cc.size - 1) % CC_INKS.length],
+    bipolar: false,
+    order: 20 + number / 1000,
+    value: () => entry.value,
+  });
+
+  buildSourceChips();
+  buildMidiRows();
+  return entry;
+}
+
+/* Forgetting unregisters the source and leaves the routings alone. A routing
+   whose source is not registered is skipped rather than dropped - the rule a
+   preset carrying routings for a mode it is not in already depends on - so
+   moving the controller again brings the patch back rather than finding it
+   quietly rewritten. */
+function midiForget(number) {
+  if (!midi.cc.has(number)) return;
+  MOD_SOURCES.delete("cc." + number);
+  midi.cc.delete(number);
+  if (focusSource === "cc." + number) focusSource = null;
+  buildSourceChips();
+  buildMidiRows();
+  touchRoutings();
+}
+
+/* Advanced once a frame, beside everything else that is. A controller arrives
+   when it arrives - forty times a second under a moving drawbar, not at all
+   for a minute after - so what the message writes is a target and this is what
+   walks toward it. */
+function midiSmooth(elapsed) {
+  if (midi.cc.size === 0) return;
+  const a = 1 - Math.exp(-(Math.max(0, elapsed) / 1000) / CC_SMOOTH);
+  for (const entry of midi.cc.values()) {
+    entry.value += (entry.target - entry.value) * a;
+  }
+}
+
+/* How hard you are playing, as something a figure can be pointed at, and the
+   gate the envelope will replace. Organ programs send a fixed velocity, so on
+   a drawbar sound this is a switch rather than a control - which is worth
+   knowing before pointing it at anything that should be expressive.
+
+   Registered when a keyboard is connected rather than at boot, for the reason
+   the controllers are learned rather than declared: a chip for a source that
+   cannot move is a line of the side column spent on nothing, and that column
+   has about twenty pixels to spare. A setup carrying a routing from it loads
+   with the routing skipped and picks it up on connect - the same rule a preset
+   for a mode you are not in already relies on. */
+function midiRegisterKey() {
+  if (MOD_SOURCES.has("midi.key")) return;
+  registerSource({
+    id: "midi.key", label: "Key", ink: "ch4", bipolar: false, order: 11,
+    value: () => midi.key,
+  });
+  buildSourceChips();
+}
+
+/* Bytes in. Web MIDI hands over one complete message at a time, so the running
+   status this honours is not strictly needed for a port - but a stub, a file
+   and anything coming off a DIN socket all use it, and refusing it turns a
+   valid message into a note that never arrives. */
+let midiRunning = 0;
+
+function midiBytes(data) {
+  for (let i = 0; i < data.length;) {
+    let status = data[i];
+
+    if (status >= 0xf8) { i++; continue; }          // clock, start, stop: no data
+    if (status >= 0x80) {
+      i++;
+      // A channel message sets running status; a system common one cancels it.
+      midiRunning = status < 0xf0 ? status : 0;
+    } else {
+      status = midiRunning;
+      if (!status) { i++; continue; }               // data with nothing to belong to
+    }
+
+    const kind = status & 0xf0;
+    if (kind === 0xc0 || kind === 0xd0) { i += 1; continue; }     // one data byte
+    if (kind < 0x80) { i += 1; continue; }
+
+    if (i + 1 >= data.length) return;               // truncated: half a message is none
+    const a = data[i], b = data[i + 1];
+    i += 2;
+
+    /* Every channel, rather than one. The Electro sends its two manuals on
+       different channels and there is nothing here that wants them apart. */
+    if (kind === 0x90) midiNoteOn(a, b);
+    else if (kind === 0x80) midiNoteOff(a);
+    else if (kind === 0xb0) midiControl(a, b);
+  }
+}
+
+async function midiConnect() {
+  if (!midi.supported) { midi.status = "unsupported"; syncMidi(); return; }
+
+  midi.status = "asking";
+  syncMidi();
+  try {
+    const access = await navigator.requestMIDIAccess({ sysex: false });
+    midi.access = access;
+    midi.status = "on";
+    midiRegisterKey();
+    access.onstatechange = midiWire;
+    midiWire();
+  } catch (error) {
+    /* Denied, or - the case worth naming - an iframe whose embedder has not
+       granted `midi` in its permissions policy. The published artifact is such
+       an iframe, which is why this feature is a reason to open the Pages copy
+       rather than a reason to think the page is broken. */
+    midi.status = "denied";
+  }
+  syncMidi();
+}
+
+function midiWire() {
+  midi.ports = [];
+  const inputs = midi.access && midi.access.inputs;
+  if (!inputs) return;
+
+  const take = (port) => {
+    port.onmidimessage = (event) => midiBytes(event.data);
+    midi.ports.push(port.name || "input");
+  };
+  // A MIDIInputMap is map-like rather than a Map, and old implementations
+  // offer only the iterator.
+  if (typeof inputs.forEach === "function") inputs.forEach(take);
+  else for (const port of inputs.values()) take(port);
+  syncMidi();
+}
+
+/* The timebase, from the note rather than from a guess. N periods of the
+   lowest note held, snapped to the steps the timebase actually has - four
+   periods, because that is enough to see the shape repeat and few enough that
+   it is still a shape. Nearest in the log domain, since the steps are. */
+function midiFollowTimebase() {
+  if (!midi.follow || !midi.truth) return;
+  const hz = midiPitchHz();
+  if (!hz) return;
+
+  const want = MIDI_PERIODS * 1000 / hz;
+  let best = 0, bestErr = Infinity;
+  for (let i = 0; i < TIMEBASE.length; i++) {
+    const err = Math.abs(Math.log2(TIMEBASE[i] * DIVS_X / want));
+    if (err < bestErr) { best = i; bestErr = err; }
+  }
+
+  if (best === state.timebase) return;
+  state.timebase = best;
+  el.timebase.value = String(best);
+  syncLabels();
+}
+
+/* The learned controllers, as text a setup code can carry: "16:Drawbar 1".
+   Names are the whole of it - a value is where the drawbar is standing now and
+   belongs to the instrument, not to the setup. */
+function encodeCC() {
+  return Array.from(midi.cc.values())
+    .map((entry) => entry.number + ":" + entry.name.replace(/[;:]/g, " "))
+    .join(";");
+}
+
+function decodeCC(text) {
+  /* Merged into what is already learned, never swapped for it. A setup carries
+     the names a player gave their controllers; the controllers themselves
+     belong to the instrument in the room, and loading someone else's figure is
+     no reason to forget them. */
+  for (const part of String(text || "").split(";")) {
+    const match = /^(\d+):(.*)$/.exec(part.trim());
+    if (match) midiLearn(Number(match[1]), match[2].trim());
+  }
+  buildSourceChips();
+  buildMidiRows();
 }
 
 /* --- figures --------------------------------------------------------------
@@ -2660,6 +3209,11 @@ function makeToneSource() {
     freq: 220,
     amp: 0.55,
     interval: 0,
+    /* Whole octaves on top of the interval, which is how a dyad wider than one
+       is said in the two numbers this already had. Nothing but the keyboard
+       writes it; by hand the menu covers a single octave and the frequency
+       slider covers the rest. */
+    octaves: 0,
     just: true,
     phase: Math.PI / 2,
     figure: "Circle",
@@ -2708,6 +3262,21 @@ function makeToneSource() {
     const dt = 1 / rate;
     if (modDirty) compileRoutes();
 
+    // Hoisted: neither changes inside a block, and `pow` in the per-sample
+    // loop is `pow` forty-four thousand times a second for one answer.
+    const octave = Math.pow(2, tone.octaves);
+
+    /* The sources that are not oscillators - a controller, the level, a key -
+       are written on the main thread at frame rate, so they are read once here
+       and HELD across the block. Stepping them per sample would interpolate
+       between two samples of a number that only moved once, and holding them
+       is what the worklet will have to do anyway when this loop moves off the
+       main thread. */
+    for (let k = 0; k < genRoutes.length; k++) {
+      const route = genRoutes[k];
+      if (route.index === undefined) route.held = route.source.value();
+    }
+
     for (let i = 0; i < needed; i++) {
       lfoStep(lfos[0], rate);
       lfoStep(lfos[1], rate);
@@ -2719,7 +3288,7 @@ function makeToneSource() {
       genMod.fill(0);
       for (let k = 0; k < genRoutes.length; k++) {
         const route = genRoutes[k];
-        const value = lfos[route.index].value;
+        const value = route.index === undefined ? route.held : lfos[route.index].value;
         genMod[route.slot] += route.unipolar
           ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
           : route.amount * value;
@@ -2728,7 +3297,7 @@ function makeToneSource() {
       const freq = tone.freq * Math.pow(2, genMod[0]);
       const amp = tone.amp * (1 - genMod[1]);
       const phase = tone.phase + genMod[2] * Math.PI;
-      const ratio = intervalRatio(tone.interval, tone.just) + genMod[3] * 0.5;
+      const ratio = intervalRatio(tone.interval, tone.just) * octave + genMod[3] * 0.5;
       const detail = tone.detail + genMod[4] * 4;
       const tumble = tone.spinRate * Math.pow(3, genMod[5]);
       const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
@@ -2793,7 +3362,10 @@ function makeToneSource() {
       if (tone.mode === "wireframe") return tone.model.toLowerCase() + ", turning in X\u2013Y";
       if (tone.mode === "harmonograph") return "harmonograph, " + tone.swingRate.toFixed(1) + " Hz";
       const name = INTERVALS[tone.interval][0].toLowerCase();
-      return Math.round(tone.freq) + " Hz, " + name + (tone.just ? " just" : " equal");
+      const wide = tone.octaves > 0
+        ? " + " + tone.octaves + (tone.octaves > 1 ? " octaves" : " octave") : "";
+      return Math.round(tone.freq) + " Hz, " + name + wide
+             + (tone.just ? " just" : " equal");
     },
 
     set(field, value) {
@@ -4071,9 +4643,9 @@ const NOTES = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B�
 
 function noteFor(hz) {
   if (!hz || hz < 16 || hz > 12000) return null;
-  const midi = 69 + 12 * Math.log2(hz / 440);
-  const nearest = Math.round(midi);
-  const cents = Math.round((midi - nearest) * 100);
+  const heard = 69 + 12 * Math.log2(hz / 440);
+  const nearest = Math.round(heard);
+  const cents = Math.round((heard - nearest) * 100);
   const name = NOTES[((nearest % 12) + 12) % 12] + (Math.floor(nearest / 12) - 1);
   return name + (cents === 0 ? "" : (cents > 0 ? " +" : " −") + Math.abs(cents));
 }
@@ -5506,10 +6078,17 @@ function drawTuner(frame) {
     return;
   }
 
-  const midi = 69 + 12 * Math.log2(hz / 440);
-  const nearest = Math.round(midi);
-  const cents = (midi - nearest) * 100;
-  const name = NOTES[((nearest % 12) + 12) % 12] + (Math.floor(nearest / 12) - 1);
+  /* Against the note being PLAYED when there is one, and against the nearest
+     note otherwise. For an organ that difference is the interesting number
+     rather than an error bar: tonewheel tuning is not equal temperament, so
+     what the key says and what the air says are two different pitches and this
+     is the gap between them. Without a keyboard there is nothing to compare
+     against but the nearest note, which is what a tuner has always done. */
+  const played = midi.truth ? midiPitch() : null;
+  const heard = 69 + 12 * Math.log2(hz / 440);
+  const nearest = played === null ? Math.round(heard) : played;
+  const cents = (heard - nearest) * 100;
+  const name = midiNoteName(nearest);
 
   ctx.fillStyle = ink.charcoal;
   ctx.font = "600 30px " + getComputedStyle(document.querySelector(".sheet-title")).fontFamily;
@@ -5544,7 +6123,8 @@ function drawTuner(frame) {
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
   ctx.textBaseline = "top";
   ctx.fillText((cents > 0 ? "+" : cents < 0 ? "\u2212" : "")
-               + Math.abs(cents).toFixed(0) + "\u00a2", w / 2, baseline + 5);
+               + Math.abs(cents).toFixed(0) + "\u00a2"
+               + (played === null ? "" : " vs key"), w / 2, baseline + 5);
 }
 
 /* The spectrum, on a log frequency axis because that is how hearing works. */
@@ -5630,6 +6210,14 @@ function say(element, text) {
 function lagLockUpdate(frame) {
   if (!state.lagOn || !state.lagAuto) return;
 
+  /* A note is not an estimate. When one is held the quarter period is
+     arithmetic on a number the keyboard sent, so it needs neither the
+     confidence gate below nor the second of slow approach: both exist to stop
+     a bad ESTIMATE moving the figure, and there is no estimate here. The
+     estimator becomes the fallback rather than the source. */
+  const played = midi.truth ? midiPitchHz() : null;
+  if (played !== null) { lagLock = 0.25 / played; return; }
+
   /* Listened to on its own block rather than on the displayed window. The
      window is as short as the timebase says: at 2 ms/div it holds 2.2 periods
      of a low E, which is two crossings, which is no evidence of periodicity at
@@ -5651,6 +6239,7 @@ function lagLockUpdate(frame) {
 
 function writeReadout(frame) {
   lagLockUpdate(frame);
+  midiFollowTimebase();
   const peak = Math.max(
     ...frame.channels.map((s) => {
       let p = 0;
@@ -5726,7 +6315,7 @@ function writeReadout(frame) {
     if (state.source.kind === "tone") {
       const tone = state.source.settings;
       if (tone.mode === "wave" && !tone.just) {
-        const beat = beatRate(tone.interval, false, tone.freq);
+        const beat = beatRate(tone.interval, false, tone.freq, tone.octaves);
         if (beat > 0.005) bits.push("beating " + beat.toFixed(2) + " Hz");
       }
     }
@@ -5771,6 +6360,7 @@ function writeReadout(frame) {
   }
 
   el.readoutDetail.textContent = bits.join(" · ");
+  syncMidiValues();
   markPresetDirty();
   el.colophon.textContent = "trigger.js · " + Math.round(frame.rate)
     + " Hz · " + state.source.channels + " ch";
@@ -6207,6 +6797,9 @@ function showGenerator() {
   const drawn = mode === "figure" || mode === "wireframe";
   el.shape.parentElement.parentElement.hidden = drawn;
   el.interval.parentElement.parentElement.hidden = drawn;
+  // What a note does is a per-kind decision, so the box that states it has to
+  // be re-read whenever the kind changes.
+  syncMidi();
   el.credit.textContent = state.source.describe();
 }
 
@@ -6629,6 +7222,124 @@ el.autoset.addEventListener("click", () => {
 });
 
 
+/* --- the keyboard, as controls -------------------------------------------- */
+
+/* What the status line says, in words rather than in states. "Not allowed
+   here" is the one that matters: it is what an iframe without the `midi`
+   permission gives, and a player who reads "denied" goes looking for a browser
+   setting that is not the problem. */
+function midiStatusText() {
+  if (midi.status === "unsupported") return "this browser has no Web MIDI";
+  if (midi.status === "denied") return "not allowed on this page";
+  if (midi.status === "asking") return "asking";
+  if (midi.status !== "on") return "off";
+  return midi.ports.length ? midi.ports.join(", ") : "connected, nothing plugged in";
+}
+
+function syncMidi() {
+  el.midiStatus.textContent = midiStatusText();
+  el.midiConnect.textContent = midi.status === "on" ? "Reconnect" : "Connect";
+  el.midiPlayingRow.hidden = midi.status !== "on";
+  el.midiDyad.setAttribute("aria-checked", String(midi.mode === "dyad"));
+  el.midiMono.setAttribute("aria-checked", String(midi.mode === "mono"));
+  el.midiHold.checked = midi.hold;
+  el.midiTruth.checked = midi.truth;
+  el.midiFollow.checked = midi.follow;
+
+  /* One checkbox for a per-kind decision, because the decision is only ever
+     about the generator in front of you: a note sets a pitch in waveform, a
+     pendulum ratio in harmonograph, a trace rate in figure, and how fast a
+     solid tumbles in wireframe - which is why that last one starts off. The
+     box therefore says what THIS kind does and remembers each kind's answer. */
+  const kind = state.source && state.source.kind === "tone"
+    ? state.source.settings.mode : null;
+  el.midiDrive.checked = kind ? midi.drive[kind] === true : false;
+  el.midiDrive.disabled = kind === null;
+}
+
+function buildMidiRows() {
+  if (!el.midiCC) return;
+  const entries = Array.from(midi.cc.values());
+
+  el.midiCC.innerHTML = entries.map((entry) =>
+    '<div class="menu-row" data-cc="' + entry.number + '">'
+    + '<label class="menu-label" for="ccName' + entry.number + '">CC '
+    + entry.number + "</label>"
+    + '<div class="grow">'
+    + '<input type="text" class="cc-name" id="ccName' + entry.number
+    + '" value="' + escapeText(entry.name) + '">'
+    + '<span class="reading" data-cc-value="' + entry.number + '">'
+    + entry.raw + "</span>"
+    + '<button type="button" class="link-btn caps" data-cc-forget="' + entry.number
+    + '">Forget</button>'
+    + "</div></div>").join("");
+
+  el.midiCC.querySelectorAll(".cc-name").forEach((input) => {
+    const number = Number(input.closest("[data-cc]").dataset.cc);
+    /* On `input`, not on `change`: the chip beside it is the thing being named
+       and watching it take the name as you type is the whole feedback. */
+    input.addEventListener("input", () => {
+      const entry = midi.cc.get(number);
+      if (!entry) return;
+      entry.name = input.value || "CC " + number;
+      buildSourceChips();
+      paintRoutings();
+    });
+  });
+
+  el.midiCC.querySelectorAll("[data-cc-forget]").forEach((button) => {
+    button.addEventListener("click", () => midiForget(Number(button.dataset.ccForget)));
+  });
+}
+
+/* The live numbers, written at the readout's pace rather than the frame's.
+   Words are read, not watched - the same reason the readout line updates five
+   times a second and not sixty. */
+function syncMidiValues() {
+  if (!el.midiCC || midi.cc.size === 0) return;
+  el.midiCC.querySelectorAll("[data-cc-value]").forEach((span) => {
+    const entry = midi.cc.get(Number(span.dataset.ccValue));
+    if (entry) say(span, String(entry.raw));
+  });
+}
+
+function midiSayMonitor(text) {
+  const held = midi.notes.map((note) => midiNoteName(note.note)).join(" ");
+  midi.last = (text ? text + "  ·  " : "") + (held || "nothing held");
+  if (el.midiMonitor) say(el.midiMonitor, midi.last);
+}
+
+el.midiConnect.addEventListener("click", midiConnect);
+
+function setMidiMode(mode) {
+  midi.mode = mode;
+  syncMidi();
+  midiApplyNotes();
+}
+el.midiDyad.addEventListener("click", () => setMidiMode("dyad"));
+el.midiMono.addEventListener("click", () => setMidiMode("mono"));
+
+el.midiHold.addEventListener("change", () => { midi.hold = el.midiHold.checked; });
+el.midiTruth.addEventListener("change", () => { midi.truth = el.midiTruth.checked; });
+el.midiFollow.addEventListener("change", () => { midi.follow = el.midiFollow.checked; });
+
+el.midiDrive.addEventListener("change", () => {
+  if (!state.source || state.source.kind !== "tone") return;
+  midi.drive[state.source.settings.mode] = el.midiDrive.checked;
+  if (el.midiDrive.checked) midiApplyNotes();
+  else midiUndrive();
+});
+
+/* A note held when the window goes away is held for ever: nothing sends the
+   release, because the keyboard did send it and this page was not listening.
+   Both events, because they are not the same - a tab switch hides without
+   blurring in some browsers and a click into another window blurs without
+   hiding. */
+window.addEventListener("blur", midiPanic);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") midiPanic();
+});
+
 /* --- presets ----------------------------------------------------------------
    Forty-odd controls across three generators, three displays and two LFOs.
    Every interesting configuration is reachable and almost none of them are
@@ -6658,6 +7369,9 @@ const DEFAULTS = {
   c0on: true, c0ac: false, c0s: 0, c0o: 0,
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
+  octaves: 0,
+  midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
+  midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   fOn: false, fType: "lowpass", fCut: 566, fRes: 0,
   fSee: "post", fHear: "pre",
@@ -6708,6 +7422,11 @@ function snapshot() {
     c1on: state.channels[1].on, c1ac: state.channels[1].ac,
     c1s: state.channels[1].scale, c1o: Math.round(state.channels[1].offset * 100),
     midSide: state.midSide,
+    octaves: tone ? tone.octaves : DEFAULTS.octaves,
+    midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
+    midiFollow: midi.follow,
+    midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
+    cc: encodeCC(),
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
     rotate: Math.round(state.rotate * 100),
     fOn: state.filter.on, fType: state.filter.type,
@@ -6760,6 +7479,23 @@ function restore(partial) {
   }
   setTuning(s.just);
   showGenerator();
+
+  /* The keyboard, and the one thing a setup does not carry: which controllers
+     have moved. It carries their NAMES, which is what a player chose and what
+     a shared code should bring with it; whether a drawbar has been touched yet
+     is a fact about the room. */
+  midi.mode = s.midiMode === "mono" ? "mono" : "dyad";
+  midi.hold = s.midiHold === true;
+  midi.truth = s.midiTruth !== false;
+  midi.follow = s.midiFollow === true;
+  const drives = String(s.midiDrive).split(",");
+  for (const kind of Object.keys(midi.drive)) {
+    midi.drive[kind] = drives.indexOf(kind) >= 0;
+  }
+  decodeCC(s.cc);
+  syncMidi();
+  // Last, so that what is under your hands outranks what the setup asked for.
+  midiApplyNotes();
 
   [0, 1].forEach((i) => {
     const lfo = lfos[i], key = "l" + i;
@@ -7278,6 +8014,7 @@ function toTone() {
   state.source.set("shape", el.shape.value);
   state.source.set("mode", el.genMode.value);
   state.source.set("interval", Number(el.interval.value));
+  state.source.set("octaves", 0);
   state.source.set("just", el.tuneJust.getAttribute("aria-checked") === "true");
   state.source.set("phase", Number(el.phase.value) * Math.PI / 180);
   state.source.set("figure", el.figure.value);
@@ -7290,6 +8027,9 @@ function toTone() {
   showGenerator();
   buildLaneRows();
   buildLaneList();
+  // A new generator knows nothing about what is being held. Whatever is under
+  // your hands is still under them.
+  midiApplyNotes();
 }
 
 async function toMic(deviceId) {
@@ -8130,7 +8870,13 @@ function buildSourceChips() {
   const sources = Array.from(MOD_SOURCES.values())
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
+  /* The chips live in a rail of their own, and it is the one list on the bench
+     allowed to scroll. Every other section's height is a thing this page
+     decided; this one is however many controllers you have moved, which is not
+     ours to fix - and a side column that grew past the window would take the
+     oscillators under it off the screen entirely. */
   el.benchSources.innerHTML = '<span class="menu-title">Sources</span>'
+    + '<div class="chip-rail">'
     + sources.map((source) => {
         const count = state.modRoutings.filter((r) => r.sourceId === source.id).length;
         return '<button type="button" class="mod-chip" data-source="' + source.id + '"'
@@ -8143,6 +8889,7 @@ function buildSourceChips() {
                      + escapeText(source.label) + '">\u00d7</span>' : "")
           + "</button>";
       }).join("")
+    + "</div>"
     + '<p class="bench-hint">Press the dots on a control to put one of these on it. '
     + 'Dragging a chip onto one is the quick way.</p>';
 
@@ -8756,6 +9503,8 @@ toTone();
 fillPresets();
 syncPanes();
 syncLabels();
+syncMidi();
+midiSayMonitor();
 setMode("auto");
 setRunning(true);
 state.lastReadout = performance.now();
