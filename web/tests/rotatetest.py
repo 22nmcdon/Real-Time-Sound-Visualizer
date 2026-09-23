@@ -271,6 +271,187 @@ with sync_playwright() as pw:
     check("mid/side does reach them, and renames the lanes so you can tell",
           asym["changed"] and asym["names"] == ["Mid", "Side"], str(asym))
 
+    print("\n--- and the same rotation, in the audio graph ---")
+    # The filter's discipline, applied to the second transform that wants to
+    # live in two places: one set of numbers, two implementations, and a test
+    # that renders the real chain rather than a copy of it.
+    #
+    # Tapped at the merger rather than at the destination, and that needs
+    # saying. What follows the rotation is the limiter and the clamp, and the
+    # limiter is Chrome's own: it carries a lookahead delay and an internal
+    # makeup gain, so comparing the destination against the arithmetic would be
+    # measuring those two rather than the matrix. They are measured below, on
+    # their own, and the clamp is checked where it belongs - at the end, with a
+    # signal loud enough to need it.
+    RENDER = """async ([turns, at, tap]) => {
+      const rate = 44100, frames = Math.round(rate * 0.3);
+      const ctx = new OfflineAudioContext(2, frames, rate);
+
+      // Two different signals, so a matrix that mixed them the wrong way round
+      // could not hide: a sine on the left, a slower cosine on the right.
+      const buffer = ctx.createBuffer(2, frames, rate);
+      const l = buffer.getChannelData(0), r = buffer.getChannelData(1);
+      for (let i = 0; i < frames; i++) {
+        l[i] = 0.3 * Math.sin(2 * Math.PI * 220 * i / rate);
+        r[i] = 0.3 * Math.cos(2 * Math.PI * 137 * i / rate);
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const chain = makeMonitorChain(ctx);        // the real thing
+      src.connect(chain.input);
+
+      if (tap === 'merger') {
+        // Straight out of the rotation, past the limiter and the clamp.
+        chain.merger.disconnect();
+        chain.merger.connect(ctx.destination);
+      }
+
+      const was = { rotate: state.rotate, mod: state.rotateMod,
+                    at: state.monitorAt, on: state.filter.on };
+      state.rotate = turns; state.rotateMod = 0;
+      state.monitorAt = at; state.filter.on = false;
+      syncMonitor();                              // the page's own setter
+      state.rotate = was.rotate; state.rotateMod = was.mod;
+      state.monitorAt = was.at; state.filter.on = was.on;
+      /* Out of the live set but still connected: `dropMonitorChain` unhooks
+         the clamp from the destination, which would render silence. This only
+         stops the page's frame loop re-targeting these gains mid-render. */
+      monitorChains.delete(chain);
+
+      src.start();
+      const out = await ctx.startRendering();
+      return {
+        inL: Array.from(l), inR: Array.from(r),
+        outL: Array.from(out.getChannelData(0)),
+        outR: Array.from(out.getChannelData(1)),
+        rate, frames,
+      };
+    }"""
+
+    def worst_against(run, turns, shift=0, gain=1.0):
+        cos, sin = math.cos(turns * 2 * math.pi), math.sin(turns * 2 * math.pi)
+        worst = 0.0
+        n = run["frames"]
+        for i in range(n // 2, n - shift - 1):
+            want_l = (run["inL"][i] * cos - run["inR"][i] * sin) * gain
+            want_r = (run["inL"][i] * sin + run["inR"][i] * cos) * gain
+            worst = max(worst, abs(run["outL"][i + shift] - want_l),
+                               abs(run["outR"][i + shift] - want_r))
+        return worst
+
+    at_rest = p.evaluate(RENDER, [0, "post", "merger"])
+    check("at rest the rotation stage is not there at all",
+          worst_against(at_rest, 0) == 0, "worst %.3g" % worst_against(at_rest, 0))
+
+    for turns in (0.125, 0.3, -0.07):
+        run = p.evaluate(RENDER, [turns, "post", "merger"])
+        worst = worst_against(run, turns)
+        check("at %+.3f of a turn the graph is the matrix the picture uses" % turns,
+              worst < 1e-7, "worst %.3g" % worst)
+
+    dry = p.evaluate(RENDER, [0.3, "pre", "merger"])
+    check("and on the input side it does not turn at all",
+          worst_against(dry, 0) == 0, "worst %.3g" % worst_against(dry, 0))
+
+    print("\n--- what the rest of the chain does, since it was measured anyway ---")
+    # Facts about monitoring rather than about rotation, and both worth writing
+    # down: the latency figure the panel gives is the browser's own for the
+    # output side, and this sits on top of it.
+    #
+    # Measured with an impulse rather than a tone. A 220 Hz sine repeats every
+    # 200 samples, so correlating against one finds a maximum every period and
+    # answers 264 or 465 or 665 depending on where it started looking - which
+    # is exactly the kind of measurement that reads as a result.
+    chainFacts = p.evaluate("""async () => {
+      const rate = 44100, frames = rate / 4, at = 1000;
+      const ctx = new OfflineAudioContext(2, frames, rate);
+      const buffer = ctx.createBuffer(2, frames, rate);
+      buffer.getChannelData(0)[at] = 0.5;
+      buffer.getChannelData(1)[at] = 0.5;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const chain = makeMonitorChain(ctx);
+      src.connect(chain.input);
+      const was = { at: state.monitorAt, on: state.filter.on, rotate: state.rotate };
+      state.monitorAt = 'post'; state.filter.on = false;
+      state.rotate = 0; state.rotateMod = 0;
+      syncMonitor();
+      state.monitorAt = was.at; state.filter.on = was.on; state.rotate = was.rotate;
+      monitorChains.delete(chain);
+
+      src.start();
+      const out = await ctx.startRendering();
+      const ch = out.getChannelData(0);
+      let first = -1, peak = 0;
+      for (let i = 0; i < ch.length; i++) {
+        if (Math.abs(ch[i]) > 1e-4) { if (first < 0) first = i; }
+        peak = Math.max(peak, Math.abs(ch[i]));
+      }
+      return { delay: first - at, peak, rate, sent: 0.5 };
+    }""")
+    ms = chainFacts["delay"] / chainFacts["rate"] * 1000
+    print("    an impulse comes out %d samples (%.2f ms) later, at %.2f dB"
+          % (chainFacts["delay"], ms,
+             20 * math.log10(chainFacts["peak"] / chainFacts["sent"])))
+    check("the limiter's lookahead is a few milliseconds, and it is not free",
+          1 < ms < 15, "%.2f ms" % ms)
+
+    # And it is not unity either. Chrome's compressor applies a makeup gain of
+    # its own whatever the level, so monitoring is slightly louder than the
+    # signal being monitored - measured on a steady tone, where an impulse
+    # would only measure how much the compressor smears one.
+    steady = p.evaluate(RENDER, [0, "post", "destination"])
+    rms = lambda xs: math.sqrt(sum(v * v for v in xs) / len(xs))
+    gain = rms(steady["outL"][5000:12000]) / rms(steady["inL"][5000:12000])
+    print("    and a steady tone comes out %.2f dB louder than it went in"
+          % (20 * math.log10(gain)))
+    check("its makeup gain is a decibel or so, applied whatever the level",
+          1.0 < gain < 1.4, "%.3f, or %.2f dB" % (gain, 20 * math.log10(gain)))
+
+    # The rule that must not bend, with a new node in the way: a turn can put
+    # 41% more into one channel than either started with, on top of whatever a
+    # resonant filter is doing.
+    loud = p.evaluate("""async () => {
+      const rate = 44100, frames = rate / 2;
+      const ctx = new OfflineAudioContext(2, frames, rate);
+      const buffer = ctx.createBuffer(2, frames, rate);
+      const l = buffer.getChannelData(0), r = buffer.getChannelData(1);
+      for (let i = 0; i < frames; i++) {
+        // Both channels alike and already at full scale, which is the worst
+        // case for a 45 degree turn: it puts their sum into one of them.
+        const v = Math.sin(2 * Math.PI * 400 * i / rate);
+        l[i] = v; r[i] = v;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const hot = ctx.createGain();
+      hot.gain.value = 4;                        // far past full scale
+      const chain = makeMonitorChain(ctx);
+      src.connect(hot); hot.connect(chain.input);
+
+      const was = { rotate: state.rotate, at: state.monitorAt, on: state.filter.on,
+                    res: state.filter.res, type: state.filter.type };
+      state.rotate = 0.125; state.rotateMod = 0;
+      state.monitorAt = 'post';
+      state.filter.on = true; state.filter.type = 'lowpass'; state.filter.res = 100;
+      syncMonitor();
+      Object.assign(state.filter, { on: was.on, res: was.res, type: was.type });
+      state.rotate = was.rotate; state.monitorAt = was.at;
+      monitorChains.delete(chain);
+
+      src.start();
+      const out = await ctx.startRendering();
+      let peak = 0;
+      for (const ch of [out.getChannelData(0), out.getChannelData(1)]) {
+        for (let i = 0; i < ch.length; i++) peak = Math.max(peak, Math.abs(ch[i]));
+      }
+      return peak;
+    }""")
+    check("resonance, a turn and four times full scale still cannot pass the clamp",
+          loud <= 1.0, "peak %.4f at the destination" % loud)
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

@@ -36,6 +36,17 @@ that is display cosmetics and nothing the app reports as a measurement. Built,
 with the same preset-by-preset check — and it turns out no preset can see it at
 all, because all 39 place both lanes alike.
 
+**C1's first row is built: rotation, twice.** The picture's matrix and four
+gains in the monitor chain, from one `turnOf`, agreeing to float32's rounding —
+so turning the figure turns the stereo image of anything with an audio path.
+The Speakers switch says *Shaped* rather than *Filtered* now, because the block
+it straddles is no longer only the filter. What is not built from C1's table:
+full scale as a `GainNode` and lag as a `DelayNode` (both wait on the holds
+below, since neither is in the picture's block yet), and AC coupling as a
+shared one-pole — that one is worth doing next and the plan's own note has it
+wrong, pairing a mean subtraction against a high-pass, which cannot agree. The
+fix is the same DC blocker in both places via `IIRFilterNode`.
+
 **Held: the trigger level becoming screen-relative.** Full scale moving ahead of
 the trigger is *more* authentic, not less — a bench scope taps its trigger after
 the vertical amplifier, so the front-panel level really is a volts/div-relative

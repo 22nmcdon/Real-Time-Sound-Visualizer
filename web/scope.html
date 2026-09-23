@@ -1363,7 +1363,7 @@ body[data-view="bench"] #menuButton { display: none; }
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="What the speakers get" style="flex:0 0 auto">
                   <button type="button" class="caps" id="hearDry" role="radio" aria-checked="true">Input</button>
-                  <button type="button" class="caps" id="hearWet" role="radio" aria-checked="false">Filtered</button>
+                  <button type="button" class="caps" id="hearWet" role="radio" aria-checked="false">Shaped</button>
                 </div>
               </div>
             </div>
@@ -1380,11 +1380,25 @@ body[data-view="bench"] #menuButton { display: none; }
               <i>Vertical</i>, or the amplitude.</p>
             <p class="menu-note">The two switches are separate because they answer different
               questions. <i>Screen filtered, speakers input</i> is the filter as an
-              instrument for looking. Both filtered is a filter in the ordinary sense.
-              <i>Screen input, speakers filtered</i> lets you watch what you are feeding it.
+              instrument for looking. Both shaped is a filter in the ordinary sense.
+              <i>Screen input, speakers shaped</i> lets you watch what you are feeding it.
               Anything that reaches the speakers passes a limiter first, which is not a
               taste decision: resonance is something a source can sweep, and a resonant peak
               swept upward is a loud surprise in a pair of headphones.</p>
+            <p class="menu-note"><i>Shaped</i> is the filter and the X&ndash;Y rotation, and
+              the rotation is the interesting one: turning a figure and rotating a stereo
+              image are the same 2&times;2 matrix, so the control that exists to make the
+              picture prettier is a real stereo operation and this is where you hear it.
+              Both are driven from one set of numbers &mdash; the screen and the speakers
+              cannot disagree about what a rotation is, and a test renders the graph and
+              checks it against the arithmetic.
+              <br><br>
+              Rotation is <em>seen</em> in X&ndash;Y whether or not it is heard, and it is
+              deliberately kept out of everything else: the Y&ndash;T lanes, the trigger and
+              every number in the readout are about the signal that arrived, not about a
+              mix of two lanes that a display control made. Turning the stereo image can
+              also put up to 41% more into one channel than either started with, which the
+              limiter and the clamp are still the last things before.</p>
           </div>
 
           <div class="menu-group">
@@ -3673,7 +3687,8 @@ async function makeMicSource(deviceId) {
        driver's. It is a floor rather than the round trip, and the panel says
        so - the real number is measured by playing something and listening. */
     get latencyMs() {
-      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000);
+      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
+                        + MONITOR_LOOKAHEAD_MS);
     },
     get sampleRate() { return ctx.sampleRate; },
     tick() {},
@@ -3886,6 +3901,13 @@ const MONITOR_MAX_Q = 18;       // dB. Past this a resonant filter is an oscilla
    thing in the chain is a shaper that cannot exceed one by construction -
    linear below the knee and asymptotic above it, so it is inaudible on
    anything that was not going to clip anyway. */
+/* What the limiter costs in time, measured through the real chain by
+   `rotatetest.py`: 264 samples at 44.1 kHz. A DynamicsCompressorNode has to
+   see a transient before it can duck it, so it delays everything by its
+   lookahead - and that delay is part of what someone monitoring through this
+   page hears, on top of whatever the browser admits to for the output side. */
+const MONITOR_LOOKAHEAD_MS = 6;
+
 const CLAMP_KNEE = 0.85;
 
 const CLAMP_CEILING = 0.99;
@@ -3934,15 +3956,45 @@ function makeMonitorChain(ctx) {
      converter - where it would have aliased far worse. */
   clamp.oversample = "none";
 
-  input.connect(filter); filter.connect(wet); wet.connect(limiter);
-  input.connect(dry); dry.connect(limiter);
+  /* Rotation, as four gains and the same 2x2 the picture turns the figure
+     with. Turning an X-Y figure and rotating a stereo image are one operation,
+     which is the whole reason this is worth having in the graph: the control
+     that makes the picture prettier is a real stereo operation, and now it is
+     one you can hear on anything with an audio path.
+
+     One set of numbers and two implementations, with a test that they agree -
+     the discipline `biquadCoefficients` set, and the only thing that keeps two
+     versions of an operation from drifting apart.
+
+     After the wet/dry crossfade rather than inside it, because at rest the
+     matrix is exactly the identity - cosine one, sine nought - so a chain
+     nobody is turning is the chain that was here before, sample for sample.
+
+     A mono input rotates too, into a pan: the vector is (l, 0) and turning it
+     puts some of it in the other channel. That is what rotating a vector with
+     one axis means, and it is worth knowing rather than guarding against. */
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  // left->left, right->left, left->right, right->right
+  const rot = [ctx.createGain(), ctx.createGain(), ctx.createGain(), ctx.createGain()];
+  rot[0].gain.value = 1; rot[1].gain.value = 0;
+  rot[2].gain.value = 0; rot[3].gain.value = 1;
+
+  splitter.connect(rot[0], 0); rot[0].connect(merger, 0, 0);
+  splitter.connect(rot[1], 1); rot[1].connect(merger, 0, 0);
+  splitter.connect(rot[2], 0); rot[2].connect(merger, 0, 1);
+  splitter.connect(rot[3], 1); rot[3].connect(merger, 0, 1);
+
+  input.connect(filter); filter.connect(wet); wet.connect(splitter);
+  input.connect(dry); dry.connect(splitter);
+  merger.connect(limiter);
   limiter.connect(clamp);
   clamp.connect(ctx.destination);
 
   wet.gain.value = 0;
   dry.gain.value = 1;
 
-  const chain = { ctx, input, filter, wet, dry, limiter, clamp };
+  const chain = { ctx, input, filter, wet, dry, splitter, rot, merger, limiter, clamp };
   monitorChains.add(chain);
   return chain;
 }
@@ -3969,6 +4021,13 @@ function syncMonitor() {
   const wet = state.filter.on && state.monitorAt === "post" ? 1 : 0;
   const q = Q_IN_DECIBELS.has(now.type) ? Math.min(now.q, MONITOR_MAX_Q) : now.q;
 
+  /* Heard on the shaped side only. "Input" has to mean the input as it
+     arrived or the switch is not telling the truth, and at rest this is the
+     identity anyway. The MODULATED angle, so an oscillator pointed at the
+     rotation turns the stereo image as well as the figure. */
+  const spin = state.monitorAt === "post" ? state.rotate + state.rotateMod : 0;
+  const { cos, sin } = turnOf(spin);
+
   for (const chain of monitorChains) {
     const at = chain.ctx.currentTime;
     if (chain.filter.type !== now.type) chain.filter.type = now.type;
@@ -3976,6 +4035,10 @@ function syncMonitor() {
     chain.filter.Q.setTargetAtTime(q, at, MONITOR_GLIDE);
     chain.wet.gain.setTargetAtTime(wet, at, 0.01);
     chain.dry.gain.setTargetAtTime(1 - wet, at, 0.01);
+    chain.rot[0].gain.setTargetAtTime(cos, at, MONITOR_GLIDE);
+    chain.rot[1].gain.setTargetAtTime(-sin, at, MONITOR_GLIDE);
+    chain.rot[2].gain.setTargetAtTime(sin, at, MONITOR_GLIDE);
+    chain.rot[3].gain.setTargetAtTime(cos, at, MONITOR_GLIDE);
   }
 }
 

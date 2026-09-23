@@ -253,6 +253,36 @@ triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
 
+**Rotation exists twice now, from one set of numbers.** `turnOf` feeds the
+picture's X–Y pass and four `GainNode`s between a splitter and a merger in the
+monitor chain, so the stereo image turns when the figure does — on a line
+input, a file or a rack. That is the filter's discipline applied to the second
+transform that wants to live in two places, and `rotatetest.py` renders the
+real chain and checks it against the arithmetic to 4e-8, which is float32's
+rounding and not the matrix's.
+
+It sits *after* the wet/dry crossfade, where at rest it is the identity exactly
+(cosine one, sine nought) and therefore not there at all; it is zeroed when the
+speakers are on the input side, because "input" has to mean the input; and it
+is before the limiter and the clamp, which stay last. A turn can put 41% more
+into one channel than either started with, so that ordering is load-bearing —
+put the rotation after the clamp and the worst-case check fails by name.
+
+**The test taps the merger, not the destination, and that is on purpose.** What
+follows the rotation is Chrome's own limiter, and measuring the destination
+would be measuring the limiter. Two things were found by doing that wrong
+first, and both are now recorded as checks of their own: the chain runs **264
+samples — 6 ms — behind its input**, which is the compressor's lookahead and is
+now part of the latency the panel reports; and it applies a **makeup gain of
+about 1.5 dB whatever the level**, so monitoring is slightly louder than the
+signal being monitored.
+
+**Measuring a delay against a periodic signal answers the period, not the
+delay.** The first attempt correlated the chain's output against a 220 Hz sine
+and got 264, 465 or 665 samples depending on where the search started — one
+period apart each time, each of them a plausible-looking number. The delay is
+measured with an impulse now.
+
 **Mid/side is rotation at 45°, with the gain and the flip kept out in the
 open.** `turnOf` is the one matrix, and the goniometer pane had already been
 drawing M/S that way since it was written. Two constants survive the merge

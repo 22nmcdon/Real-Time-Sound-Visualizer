@@ -172,11 +172,22 @@ with sync_playwright() as pw:
           str(p.evaluate(ROUTES)))
 
     print("\n--- a section's detail is moved, not copied ---")
+    # Counted before it opens rather than written down here. What this is about
+    # is that ALL of a section's secondary content moves and none of it stays
+    # behind - not that the filter has two paragraphs, which is a fact about
+    # today's prose and changed the first time a paragraph was added.
+    had = p.evaluate("""() => ({
+      notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
+      rows: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
+    })""")
     p.locator('.menu-group:has(#filterCutoff) .more-dots').click(); p.wait_for_timeout(300)
     detail = p.evaluate("""() => ({
       title: document.querySelector('.over-title').textContent,
       notes: document.querySelectorAll('.over-body .menu-note').length,
       rows: document.querySelectorAll('.over-body [data-more]').length,
+      stayed: document.querySelectorAll(
+        '.menu-group:has(#filterCutoff) .menu-note, .menu-group:has(#filterCutoff) [data-more]'
+      ).length,
       leftBehind: document.querySelectorAll('#benchBody .menu-note').length,
       dupes: (() => { const seen = new Set(), d = [];
         for (const n of document.querySelectorAll('[id]')) {
@@ -184,8 +195,11 @@ with sync_playwright() as pw:
         return d; })(),
     })""")
     check("the dots open the section's own detail", detail["title"] == "Filter", str(detail))
-    check("with its prose and its secondary rows",
-          detail["notes"] == 2 and detail["rows"] == 2, str(detail))
+    check("with all of its prose and its secondary rows, and none left behind",
+          detail["notes"] == had["notes"] and detail["rows"] == had["rows"]
+          and detail["stayed"] == 0 and had["notes"] > 0,
+          "%d notes and %d rows, %d stayed" % (detail["notes"], detail["rows"],
+                                               detail["stayed"]))
     check("moved rather than copied, so no id is answered twice",
           detail["dupes"] == [], str(detail["dupes"]))
 
@@ -198,7 +212,8 @@ with sync_playwright() as pw:
                             el.seeWet.click(); return a === 'pre' && state.analyseAt === 'post'; })(),
     })""")
     check("Escape puts it away", home["over"] == 0)
-    check("and everything goes home", home["notes"] == 2 and home["more"] == 2, str(home))
+    check("and everything goes home",
+          home["notes"] == had["notes"] and home["more"] == had["rows"], str(home))
     check("still wired to what it drives", home["switchWorks"], str(home))
 
     print("\n--- neither panel scrolls ---")
