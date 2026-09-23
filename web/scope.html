@@ -1475,7 +1475,9 @@ body[data-view="bench"] #menuButton { display: none; }
               looking. Both shaped is the ordinary sense. <i>Screen input, speakers
               shaped</i> lets you watch what you are feeding it, and the readout says
               <i>screen on the input</i> so a flat trace under a filtered sound is never a
-              mystery. Anything that reaches the speakers passes a limiter first, which is
+              mystery &mdash; and <i>speakers on the input</i> the other way round, because a
+              sweep on the graticule over a plain tone is the same confusion mirrored.
+              Neither is said when there is nothing switched on for them to differ about. Anything that reaches the speakers passes a limiter first, which is
               not a taste decision: resonance is something a source can sweep, and a
               resonant peak swept upward is a loud surprise in a pair of headphones.
               <br><br>
@@ -8007,16 +8009,35 @@ function writeReadout(frame) {
      the numbers along the bottom do not otherwise say which one they are
      about. Named by what is actually in force rather than by the switch: with
      the filter off and nothing turning, "post-filter" was a claim about a
-     stage that was not there. */
+     stage that was not there.
+
+     And a MISMATCH is named in both directions, which is the point of saying
+     anything. The first version of this only spoke when the screen was on the
+     input - a flat trace under a filtered sound - and said nothing about the
+     mirror case, which is just as confusing the other way round: a dramatic
+     sweep on the graticule over a plain, unfiltered tone. Two switches with
+     four corners cannot have a note on one of them.
+
+     Neither note fires when there is nothing in the block to disagree about.
+     With the filter off, nothing turning and no coupling, "screen on the
+     input" describes a difference of nothing, which is the same kind of empty
+     claim "post-filter" used to make. */
+  const turning = rotateTurns() !== 0 && rotatesSignal();
+  const coupling = state.channels.some((ch, i) => i < laneCount() && ch.ac);
+  const inBlock = state.filter.on || turning || coupling;
+  // The speakers' switch only changes something when there are speakers. The
+  // screen is always there, so its side of this needs no such test.
+  const audible = monitorChains.size > 0;
+
   if (state.analyseAt === "post") {
     const shaped = [];
     if (state.filter.on) shaped.push("filter");
     if (frame.turned) shaped.push("rotation");
     if (shaped.length > 0) bits.push("post-" + shaped.join("+"));
-  } else {
-    // And the other way round, which used to say nothing at all: a screen
-    // reading the input while the speakers are shaped is a useful place to be
-    // and a confusing one to be in silently.
+    if (inBlock && audible && state.monitorAt === "pre") {
+      bits.push("speakers on the input");
+    }
+  } else if (inBlock) {
     bits.push("screen on the input");
   }
 
@@ -8029,8 +8050,7 @@ function writeReadout(frame) {
 
   // Only when it is reaching the picture, now that the screen's switch can
   // take the coupling out along with everything else.
-  if (state.analyseAt === "post"
-      && state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
+  if (state.analyseAt === "post" && coupling) {
     bits.push("AC " + state.acHz.toFixed(1) + " Hz");
   }
 

@@ -191,15 +191,21 @@ with sync_playwright() as pw:
           "%.1f dB taken off" % (just_filter["input"] - just_filter["shaped"]))
 
     print("\n--- and it says which one you are looking at ---")
-    words = p.evaluate("""() => {
-      const was = { see: state.analyseAt, on: state.filter.on, rotate: state.rotate,
+    words = p.evaluate("""async () => {
+      const was = { see: state.analyseAt, hear: state.monitorAt, on: state.filter.on,
+                    rotate: state.rotate, sound: state.genSound,
                     ac: state.channels.map((c) => c.ac) };
       const read = () => { writeReadout(capture()); return el.readoutDetail.textContent; };
 
       state.filter.on = false; state.rotate = 0;
       state.channels.forEach((c) => { c.ac = false; });
-      state.analyseAt = 'post';
+      state.analyseAt = 'post'; state.monitorAt = 'pre';
       const bare = read();
+      // Nothing in the block AND the screen on the input: still nothing to
+      // say, which is the case the first version of this got wrong.
+      state.analyseAt = 'pre';
+      const bareOnInput = read();
+      state.analyseAt = 'post';
 
       state.filter.on = true;
       const filtered = read();
@@ -209,13 +215,35 @@ with sync_playwright() as pw:
 
       state.analyseAt = 'pre';
       const onInput = read();
+      state.analyseAt = 'post';
 
-      state.analyseAt = was.see; state.filter.on = was.on; state.rotate = was.rotate;
+      /* And the mirror. It needs real speakers, because the speakers' switch
+         changes nothing when there is no chain to change - so the generator is
+         actually switched on for this one. */
+      state.genSound = true;
+      await applyGeneratorSound();
+      const audible = state.source.audible ? state.source.audible() : false;
+      state.monitorAt = 'pre';
+      const speakersDry = read();
+      state.monitorAt = 'post';
+      const bothShaped = read();
+      state.genSound = false;
+      await applyGeneratorSound();
+      // The same switch position, with nothing listening: no note, because
+      // there is nothing on the other side of the mismatch.
+      state.monitorAt = 'pre';
+      const speakersDrySilent = read();
+
+      state.analyseAt = was.see; state.monitorAt = was.hear;
+      state.filter.on = was.on; state.rotate = was.rotate;
+      state.genSound = was.sound;
       state.channels.forEach((c, i) => { c.ac = was.ac[i]; });
-      return { bare, filtered, coupled, onInput };
+      return { bare, bareOnInput, filtered, coupled, onInput,
+               audible, speakersDry, bothShaped, speakersDrySilent };
     }""")
-    for name in ("bare", "filtered", "coupled", "onInput"):
-        print("    %-9s %s" % (name, words[name][:72]))
+    for name in ("bare", "bareOnInput", "filtered", "coupled", "onInput",
+                 "speakersDry", "bothShaped", "speakersDrySilent"):
+        print("    %-18s %s" % (name, words[name][:66]))
     # It used to say "post-filter" whenever the switch was on the shaped side
     # and the filter was on, which is a claim about a stage rather than about
     # what is in force. With nothing switched on there is nothing to say.
@@ -230,6 +258,24 @@ with sync_playwright() as pw:
           "screen on the input" in words["onInput"]
           and "post-" not in words["onInput"] and "AC " not in words["onInput"],
           words["onInput"][:60])
+    check("with nothing in the block, being on the input is not worth saying",
+          "screen on the input" not in words["bareOnInput"],
+          words["bareOnInput"][:60])
+
+    # The mirror, which the first version of this had no note for at all: a
+    # sweep on the graticule over a plain tone is the same confusion the other
+    # way round.
+    check("the generator really was sounding for the mirror case",
+          words["audible"] is True, str(words["audible"]))
+    check("speakers on the input is named too, not only the screen",
+          "speakers on the input" in words["speakersDry"], words["speakersDry"][:66])
+    check("and with both on the shaped side there is no mismatch to name",
+          "speakers on the input" not in words["bothShaped"]
+          and "screen on the input" not in words["bothShaped"],
+          words["bothShaped"][:66])
+    check("and with nothing listening, the speakers' switch is not worth a note",
+          "speakers on the input" not in words["speakersDrySilent"],
+          words["speakersDrySilent"][:66])
 
     # And the FIGURE, which is drawn rather than captured and so obeys the
     # switch in a different place. With a stereo pair the lanes arrive turned

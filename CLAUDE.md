@@ -48,15 +48,52 @@ Watch for two more:
 
 The rule that matters: **write the test against the failure, not the happy
 path.** A test that passes whatever the code does is worse than no test, because
-it is believed. This repository has shipped three of them, and each is now
+it is believed. This repository has shipped seven of them, and each is now
 commented at the site with what it used to assert and why that was not enough:
 
 - Asserting a modulation offset was *set*, while nothing read it.
 - Comparing rendered output between two runs that differed for reasons of their
   own — twice, two different ways.
+- Reading a verdict from a *stopped* scope, which reports "held" before it has
+  looked at a sample, so no assertion about clipping could fail.
+- Comparing a ring buffer against a snapshot 600 ms later, on a 220 Hz tone —
+  132 whole cycles, so the two windows were identical by construction.
+- Turning the captured lanes by the rotation *itself* before measuring the
+  angle, which answers 45 degrees for any two arrays and never reads the app.
+- Indexing rendered audio from `frames / 2` — 5512.5, so every read was
+  `undefined`, every difference `NaN`, and `Math.max` carried the NaN to the
+  end while the code under test behaved perfectly.
 
-Before trusting a new test, **break the code and watch it fail.** If it does not
-name the fault, it is not testing it.
+### Null-test every new assertion
+
+The last four of those were found by luck rather than by method, and two of them
+in consecutive stages. So: **before trusting a new check, feed it one
+known-wrong value on purpose and watch it fail.** Not "break the code
+eventually" — do it as the check is written, the way a null test proves an
+instrument can read non-zero before its zero reading is believed. The cheapest
+form is usually a literal: assert against `0`, or the unrotated array, or the
+value from the other branch, and confirm the check goes red. A check that has
+never been seen to fail is a check whose failure mode is unknown.
+
+Mutation testing the *code* is still required before saying a piece is done,
+and it is what catches the rest. But a mutation pass only proves the suite as a
+whole is sensitive; it does not prove that the check you just wrote is the one
+doing the work, and twice now a passing check has been carried along by its
+neighbours.
+
+### Fixtures have to be able to show the effect
+
+A test signal that is symmetric under the transform being tested cannot see it.
+Discovered twice, independently, for the same transform: **a fixture for a
+rotation-sensitive check must be asymmetric — never a circle and never a
+quadrature pair.** Rotating a circle leaves every statistic of it unchanged:
+peak, RMS, correlation, principal axis, spectrum. The default `b:Circle` preset
+and a sine-against-cosine stand-in are both invisible to rotation, so those
+checks use a diagonal line (both channels the same signal) or two copies of one
+signal at 45 degrees, where the effect is 41 per cent and obvious.
+
+The general rule behind it: before writing the fixture, ask what the transform
+leaves alone, and make sure the signal is not that.
 
 Prefer numerical assertions to visual ones. "50 ms is 2205 samples at 44.1 kHz",
 "the JS biquad matches Web Audio to 0.0001 dB", "the limiter turns 17.26 into

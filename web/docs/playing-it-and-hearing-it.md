@@ -224,11 +224,15 @@ be discovered during implementation.
             │                                                   ▼
  B1 band-limit ─► B3 worklet ─► B4 gate/envelope      E · photocell
       │               │                                   ▲
-      │               ├──────────► D · overlay (lanes)    │
-      │               ▼                                   │
+      │               │        D2 · generator's sound      │
+      │               └─────────► reaches a lane's         │
+      │                           speakers                 │
       │         C · transforms in the audio path ─────────┘
       │               ▲
       └── C can start on mic/file/rack before B exists ──┘
+
+ D1 · what "the source" is  ──────────────────────────► (needs nothing)
+      the Tone/Mic/File/Stems selector becomes rack membership
 ```
 
 - **A** needs nothing. It is useful immediately and it is the thing asked for first.
@@ -236,7 +240,30 @@ be discovered during implementation.
   still silent — the harmonics pane measures it.
 - **C** works today on mic, file and rack sources. Prove it there before the
   worklet exists; B only extends it to the generator.
-- **D** is nearly free once B3 lands.
+- ~~**D** is nearly free once B3 lands.~~ **Wrong, and the correction matters
+  for sequencing.** D splits into two pieces with quite different costs and
+  quite different dependencies, and drawing it as one arrow off B3 hid both.
+
+  **D1 — `state.source` stops being one thing.** The mutually exclusive
+  Tone / Mic / File / Stems selector becomes "what is in the rack", with the
+  generator as a lane type. This is the largest remaining refactor in the plan
+  and it **depends on nothing**. It is a statement about how sources are
+  selected and represented, not about whether the generator emits audio: a
+  silent generator can be a lane today. The one real obstacle is internal
+  rather than sequential — `makeLane` builds every lane around an
+  `AnalyserNode`, so a lane whose samples come from a JS ring has no analyser
+  to read, and the per-lane read has to become a function before a silent
+  generator can sit in a rack. That generalisation is worth making on its own
+  terms; it is also what a file lane, a live lane and a worklet lane already
+  differ by.
+
+  **D2 — the generator's sound reaching a lane's speakers.** This is the part
+  that needed B3, it is the part that is nearly free, and it is now built.
+
+  The practical consequence: D1 can move in parallel with portable-DSP work
+  rather than queuing behind the worklet. If the JUCE port is where the
+  transforms go next, D1 is the piece of this plan that does not compete with
+  it for the same knowledge.
 - **E** needs only the mod matrix and the beam renderer. It is *more interesting*
   after C (the loop can then close through audio you hear), but its first
   version can close through picture-only destinations.
@@ -561,7 +588,24 @@ by construction.
 
 **Lag as audio is a comb filter and a Haas effect** — a fine thing to hear, but
 at the τ values auto-lag picks it can also be a strong, pitch-tracking comb.
-Worth a listening check before shipping it on by default.
+
+**The decision is the default depth, not whether it exists.** Framing it as a
+listening yes-or-no was the wrong shape. A comb that tracks pitch and gets
+stronger at exactly the τ auto-lag chooses is a real effect with a real
+intensity dial, and full-strength summing of the delayed copy is both the
+version most likely to sound bad and the version nobody would choose as a
+default even if the effect is worth keeping. So the row becomes: a **mix**
+control for the delayed copy into the monitor path, a conservative default —
+somewhere well under unity, set by listening — and an explicit ceiling. That is
+the move this page already makes for anything with an unpleasant extreme: the
+limiter is last and not optional, the photocell's reach is clamped (D9), and
+resonance is boosted but never quietly compressed. An on/off switch would be
+the one shape inconsistent with all three.
+
+Note that lag is also the one transform still outside the block the two taps
+straddle (C2), for the honest reason that the speakers have no lag to bypass
+yet. Building this row is what puts it in, and the mix control is what it
+straddles.
 
 ### C2 · Widen the taps — built
 

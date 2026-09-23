@@ -925,3 +925,12 @@ rotation ignoring the switch — survived, because `taptest.py` only captured.
 It draws an X–Y figure now and compares the polyline against the block it came
 from, using a diagonal line rather than the quadrature pair the rest of the
 suite uses: a circle is the one figure whose angle a rotation leaves alone.
+
+**A note that fires in one direction only is half a note.** The readout said
+`screen on the input` — a flat trace under a filtered sound — and said nothing
+about the mirror, which is the same confusion the other way round: a dramatic
+sweep on the graticule over a plain, unfiltered tone. Two switches make four
+corners and a note on one of them is not a note about the mismatch. It says
+`speakers on the input` as well now, and neither fires when there is nothing
+switched on for them to differ about, nor the speakers' one when no monitor
+chain exists — the screen is always there, the speakers are not.
