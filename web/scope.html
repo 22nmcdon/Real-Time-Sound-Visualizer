@@ -1379,6 +1379,13 @@ body[data-view="bench"] #menuButton { display: none; }
                 <span class="reading" id="lagValue">listening</span>
               </div>
             </div>
+            <div class="menu-row" id="lagMixRow" hidden data-more="1">
+              <label class="menu-label" for="lagMix">Heard</label>
+              <div class="grow">
+                <input type="range" id="lagMix" min="0" max="40" value="25">
+                <span class="reading" id="lagMixValue">25%</span>
+              </div>
+            </div>
             <div class="menu-row" data-more="1">
               <label class="menu-label" for="acCorner">AC corner</label>
               <div class="grow">
@@ -1826,7 +1833,13 @@ body[data-view="bench"] #menuButton { display: none; }
         sounds relate. <i>Auto</i> sets the delay to a quarter of a period, which is what makes
         a pure tone a circle, and it locks slowly on purpose &mdash; chasing the pitch would
         hold the circle round through vibrato and hide the very thing worth seeing. Locked
-        slowly, vibrato makes the loop turn.</span></li>
+        slowly, vibrato makes the loop turn.
+        <br><br>
+        <i>Heard</i> is how much of the delayed copy reaches the right speaker, when the
+        speakers are on the shaped side. Heard, a signal plus itself a moment later is a comb
+        filter that tracks the pitch. In headphones it cuts deepest at half, and in a room at
+        full, so the slider stops at 40% and starts at 25%: enough to hear the width, short of
+        the setting where a note's own harmonics cancel.</span></li>
 
       <li><b>AC coupling, and where its corner sits</b>
         <span>Under <i>Vertical</i>, per lane. It blocks what is not moving, so a converter
@@ -2264,6 +2277,33 @@ const MAX_SEARCH_SECONDS = 0.2;
    Every source zero-pads the front of an over-ask rather than refusing it, so
    going over draws flatline at the left edge and reports nothing. */
 const LAG_MAX_MS = 40;         // a quarter period at 6.25 Hz - below anything musical
+/* How much of the lag lane reaches the speakers, and the most it ever may.
+
+   The lag is a delayed copy of the signal, and heard it is a comb filter: at
+   the quarter-period tau the automatic lock chooses, its notches fall at odd
+   multiples of 1/(2 tau), which is twice the pitch, then six and ten times it -
+   the fundamental survives and the second harmonic is the first to go, which
+   is why an octave-rich sound hollows out. So this was never a question of
+   whether it should exist but of how much of it, and the shape is the one this
+   page uses for anything with an unpleasant extreme - the limiter is last and
+   not optional, the photocell's reach is clamped - rather than an on/off
+   switch, which would be the one shape inconsistent with both.
+
+   PLACEHOLDERS, set without listening, and to be tuned by ear. What the
+   numbers were chosen from is measured rather than guessed (`combtest.py`),
+   and it does not go the way the plan assumed, which was that more mix means
+   more comb. With mix m the right channel is (1-m) of the signal plus m of the
+   delayed copy, so its notch has depth |1-2m|: a total null at m = 0.5, and
+   none at all at m = 1, which is a pure Haas delay and sounds like width. The
+   mono sum - a laptop speaker, a room - notches to 1-m, total at m = 1. So the
+   worst headphone setting is in the middle of the range, and a ceiling of 0.5
+   would have been exactly on it; the first draft had that. At 0.4 the right
+   channel's notch is -14 dB and the room's is -4.4 dB; at the default 0.25
+   they are -6 dB and -2.5 dB. Above the null the headphone comb gets
+   shallower again, and a setting up there may be worth having for width, but
+   reaching it means passing through the hole, and the slider cannot jump. */
+const LAG_MIX_DEFAULT = 0.25;
+const LAG_MIX_CEILING = 0.4;
 /* The least search room worth keeping, as a quarter of the room the trigger
    actually wants. It used to be 512 samples, which is a duration written as a
    sample count: 11.6 ms at 44.1 kHz, 5.3 ms at 96 kHz, so the rule quietly
@@ -2323,6 +2363,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
+                  "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiLaneNote",
@@ -5047,8 +5088,39 @@ function makeMonitorChain(ctx) {
   // The blocker itself is hung on by `tuneMonitorAC`, which also replaces it
   // when the corner moves.
 
-  acOut.connect(filter); filter.connect(wet); wet.connect(splitter);
-  acOut.connect(dry); dry.connect(splitter);
+  /* The lag lane, heard, and it goes here because this is where it goes in
+     the picture: after the coupling and the filter, before the rotation. The
+     lag builds lane two out of lane one, so it has to exist before anything
+     turns the pair - D7, the pinned order.
+
+     What it does is the picture's own construction in sound. On the screen,
+     lag replaces the second lane with the first one delayed; here the right
+     channel crossfades from itself towards the left delayed by the same tau.
+     At a mix of one the speakers ARE the picture - the right channel is the
+     delayed lane - and that is the point at which the two implementations can
+     be held against each other. At nought it is the identity, exactly: a gain
+     of one on one path and nothing on the other, so a chain with no lag in it
+     is the chain that was here before, sample for sample.
+
+     Only the right channel is touched. The left is the signal and is heard as
+     it was, the same as lane one is drawn as it was. */
+  const lagIn = ctx.createGain();
+  const lagSplit = ctx.createChannelSplitter(2);
+  const lagMerge = ctx.createChannelMerger(2);
+  const lagDelay = ctx.createDelay(LAG_MAX_MS / 1000 + 0.01);
+  const lagWet = ctx.createGain();
+  const lagDry = ctx.createGain();
+  lagWet.gain.value = 0;
+  lagDry.gain.value = 1;
+  lagIn.connect(lagSplit);
+  lagSplit.connect(lagMerge, 0, 0);                       // left, untouched
+  lagSplit.connect(lagDry, 1); lagDry.connect(lagMerge, 0, 1);
+  lagSplit.connect(lagDelay, 0); lagDelay.connect(lagWet);
+  lagWet.connect(lagMerge, 0, 1);                         // the delayed left
+  lagMerge.connect(splitter);
+
+  acOut.connect(filter); filter.connect(wet); wet.connect(lagIn);
+  acOut.connect(dry); dry.connect(lagIn);
   merger.connect(limiter);
   limiter.connect(clamp);
   clamp.connect(ctx.destination);
@@ -5057,7 +5129,8 @@ function makeMonitorChain(ctx) {
   dry.gain.value = 1;
 
   const chain = { ctx, input, ac: null, acHz: null, acWet, acDry, acOut,
-                  filter, wet, dry, splitter, rot, merger, limiter, clamp };
+                  filter, wet, dry, lagIn, lagDelay, lagWet, lagDry, lagMerge,
+                  splitter, rot, merger, limiter, clamp };
   monitorChains.add(chain);
   return chain;
 }
@@ -5124,9 +5197,35 @@ function syncMonitor() {
   }
   const ac = coupled ? 1 : 0;
 
+  /* The lag, from the same numbers the picture reads. On the shaped side
+     only, like everything else in the block, and only while the lag lane
+     exists at all - `lagActive` is the same gate `capture` uses.
+
+     The WANTED tau rather than the one the picture could afford, and that is
+     a decision with a reason. When the scope's buffer is too short for the
+     timebase, `capture` gives the lag up and says "no room at this timebase";
+     that is a limit of the scope's history, not a property of the lag, and a
+     speaker that went dry every time somebody chose a slow sweep would be a
+     display knob changing the sound - the argument that kept full scale out
+     of the block. So the two agree whenever the picture can have its lag, and
+     the readout says so when it cannot.
+
+     And the ceiling is enforced here rather than only on the slider, because
+     a setup code, a test or a future modulation route can each write a number
+     the slider could not. */
+  const lagOn = state.monitorAt === "post" && lagActive();
+  const lagMix = lagOn ? Math.max(0, Math.min(LAG_MIX_CEILING, state.lagMix)) : 0;
+  const lagTau = Math.min(lagSeconds(), LAG_MAX_MS / 1000);
+
   for (const chain of monitorChains) {
     const at = chain.ctx.currentTime;
     tuneMonitorAC(chain);
+    /* The delay only follows tau while the lag is on. Gliding a delay time is
+       a pitch bend, and one swooping up from nothing every time the lag was
+       switched back on would be a noise nobody asked for. */
+    if (lagOn) chain.lagDelay.delayTime.setTargetAtTime(lagTau, at, MONITOR_GLIDE);
+    chain.lagWet.gain.setTargetAtTime(lagMix, at, MONITOR_GLIDE);
+    chain.lagDry.gain.setTargetAtTime(1 - lagMix, at, MONITOR_GLIDE);
     chain.acWet.gain.setTargetAtTime(ac, at, MONITOR_GLIDE);
     chain.acDry.gain.setTargetAtTime(1 - ac, at, MONITOR_GLIDE);
     if (chain.filter.type !== now.type) chain.filter.type = now.type;
@@ -5876,6 +5975,7 @@ const state = {
 
   lagOn: false,
   lagMs: 5,                  // what the slider says
+  lagMix: LAG_MIX_DEFAULT,   // how much of the lag lane the speakers get
   lagMod: 0,                 // what a source is adding to it
   lagAuto: true,
   lagActual: 0,              // what capture could actually afford, for the label
@@ -8654,6 +8754,7 @@ function showLag() {
   if (!capable && state.lagOn) { state.lagOn = false; el.lagOn.checked = false; }
   el.lagCheck.hidden = !capable;
   el.lagRow.hidden = !capable || !state.lagOn;
+  el.lagMixRow.hidden = !capable || !state.lagOn;
 }
 
 function syncLabels() {
@@ -8863,6 +8964,14 @@ el.lagManual.addEventListener("click", () => setLagAuto(false));
 el.lag.addEventListener("input", () => {
   state.lagMs = Number(el.lag.value) / 10;
   syncLabels();
+});
+
+/* How much of the lag lane the speakers get. The slider's own top IS the
+   ceiling, so it cannot ask for more; `syncMonitor` clamps as well, because a
+   setup code or a test can. */
+el.lagMix.addEventListener("input", () => {
+  state.lagMix = Math.min(LAG_MIX_CEILING, Number(el.lagMix.value) / 100);
+  el.lagMixValue.textContent = Math.round(state.lagMix * 100) + "%";
 });
 
 el.saveReference.addEventListener("click", () => {
@@ -9575,6 +9684,8 @@ const DEFAULTS = {
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
   midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
+  // Percent. Additive, so no version bump: an older code gets the default.
+  lagMix: Math.round(LAG_MIX_DEFAULT * 100),
   fOn: false, fType: "lowpass", fCut: 566, fRes: 0,
   fSee: "post", fHear: "pre",
   /* No version bump for this one, and that is the point of `Object.assign`
@@ -9640,6 +9751,7 @@ function snapshot() {
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     cc: encodeCC(),
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
+    lagMix: Math.round(state.lagMix * 100),
     rotate: Math.round(state.rotate * 100),
     fOn: state.filter.on, fType: state.filter.type,
     fCut: state.filter.cutoff, fRes: state.filter.res,
@@ -9774,6 +9886,10 @@ function restore(partial) {
   state.lagOn = s.lagOn && !s.midSide;
   el.lagOn.checked = state.lagOn;
   state.lagMs = s.lagMs;
+  // Clamped on the way in too: a code written by hand can say anything.
+  state.lagMix = Math.max(0, Math.min(LAG_MIX_CEILING, s.lagMix / 100));
+  el.lagMix.value = String(Math.round(state.lagMix * 100));
+  el.lagMixValue.textContent = Math.round(state.lagMix * 100) + "%";
   el.lag.value = String(Math.round(s.lagMs * 10));
 
   state.rotate = s.rotate / 100;

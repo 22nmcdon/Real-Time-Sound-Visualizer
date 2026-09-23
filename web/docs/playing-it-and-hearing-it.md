@@ -48,7 +48,12 @@ sides run the same one-pole DC blocker now, from one shared corner (0.5–20 Hz,
 ten by default), and they agree bit for bit. The size of the change is measured
 in `web/README.md`; the readout names the corner while AC is on.
 
-What is left of C1's table: lag as a `DelayNode`. **Full scale as a `GainNode`
+**C1's last row is built: lag, heard.** A `DelayNode` on the right channel,
+between the shaped block and the rotation, agreeing with the picture's
+interpolated read to 2.75 × 10⁻⁶ at a fractional τ. It comes with a mix control
+(*Heard*, in the Lag section) with a placeholder default and a ceiling, and the
+measurement behind the ceiling went the other way from what this plan assumed:
+see C1 below. **Full scale as a `GainNode`
 is withdrawn rather than deferred** — see the widening below for why a display
 magnification should not be a thing the speakers follow.
 
@@ -171,9 +176,9 @@ witness the tap moving the numbers at all. Both now have their own checks and
 both are in `web/README.md`.
 
 **What is left after it.** Lag as a `DelayNode`, the last row of C1's table,
-which needs the block to contain it before there is anything to straddle. Full
-scale as a `GainNode` is withdrawn, as above. That closes C0 and C1 apart from
-lag, and the next work is B2 — the sample-rate audit — which nothing here
+which needs the block to contain it before there is anything to straddle —
+since built. Full scale as a `GainNode` is withdrawn, as above. That closes C0
+and C1 apart from lag, and the next work is B2 — the sample-rate audit — which nothing here
 blocks.
 
 One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
@@ -674,10 +679,27 @@ limiter is last and not optional, the photocell's reach is clamped (D9), and
 resonance is boosted but never quietly compressed. An on/off switch would be
 the one shape inconsistent with all three.
 
-Note that lag is also the one transform still outside the block the two taps
-straddle (C2), for the honest reason that the speakers have no lag to bypass
-yet. Building this row is what puts it in, and the mix control is what it
-straddles.
+**Built, and the assumption under "more mix, more comb" was wrong.** With mix
+*m* the right channel is (1 − *m*) of the signal plus *m* of the delayed copy,
+so its notch has depth |1 − 2*m*|: total at *m* = ½, and absent at *m* = 1,
+where it is a pure Haas delay and sounds like width rather than a comb. It is
+the mono sum — a laptop speaker, a room — that notches to 1 − *m* and is total
+at the top. So in headphones the worst setting is in the middle of the range,
+and the first draft's ceiling of 0.5 sat exactly on it; `combtest.py` caught it
+before it was committed. The ceiling is 0.4 (right channel −14 dB at the notch,
+room −4.4 dB) and the default 0.25 (−6 dB and −2.5 dB). Both are placeholders
+for a pair of ears; the test asserts the properties — neither null reachable,
+default under ceiling — rather than the numbers, so tuning them does not mean
+editing a test.
+
+What the ceiling costs: the top of the range, past the null, is a real and
+possibly pleasant setting in headphones, and it is out of reach. Getting there
+from the default means sweeping through the hole, so it would want a switch
+rather than a longer slider; nobody has asked for it yet.
+
+Lag is inside the block the two taps straddle now: with the speakers on the
+input it is not heard at all, and switched off the stage is exactly the
+identity, including when the delay is still holding the τ it last had.
 
 ### C2 · Widen the taps — built
 

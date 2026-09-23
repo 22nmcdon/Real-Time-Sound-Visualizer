@@ -29,6 +29,7 @@ SUITES = [
     ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),
     ("tap", [sys.executable, "taptest.py"], "the two taps, and the block they straddle"),
+    ("comb", [sys.executable, "combtest.py"], "the lag, heard, and where its comb is deepest"),
     ("along", [sys.executable, "alongtest.py"], "a backing track and a live input as lanes"),
     ("contract", [sys.executable, "contracttest.py"], "the lane contract, and a lane with no audio"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),

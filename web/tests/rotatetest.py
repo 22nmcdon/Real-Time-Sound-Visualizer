@@ -720,16 +720,20 @@ with sync_playwright() as pw:
 
       const was = { rotate: state.rotate, mod: state.rotateMod,
                     at: state.monitorAt, on: state.filter.on,
-                    lagOn: state.lagOn, auto: state.lagAuto };
+                    lagOn: state.lagOn, auto: state.lagAuto, mix: state.lagMix };
       state.rotate = turns; state.rotateMod = 0;
       state.monitorAt = at; state.filter.on = false;
-      // `lag` puts the page into the one state where rotation is a display
-      // knob, to check the speakers agree about that too.
-      if (lag) { state.lagOn = true; state.lagAuto = false; }
+      /* `lag` puts the page into the one state where rotation is a display
+         knob, to check the speakers agree about that too. With the lag's own
+         mix at nought, because the lag is heard now and it moves the right
+         channel for reasons of its own: this check is about rotation, and it
+         used the lag only as a way of switching rotation off. Left at its
+         default, it failed with the speakers doing exactly what they should. */
+      if (lag) { state.lagOn = true; state.lagAuto = false; state.lagMix = 0; }
       syncMonitor();                              // the page's own setter
       state.rotate = was.rotate; state.rotateMod = was.mod;
       state.monitorAt = was.at; state.filter.on = was.on;
-      state.lagOn = was.lagOn; state.lagAuto = was.auto;
+      state.lagOn = was.lagOn; state.lagAuto = was.auto; state.lagMix = was.mix;
       /* Out of the live set but still connected: `dropMonitorChain` unhooks
          the clamp from the destination, which would render silence. This only
          stops the page's frame loop re-targeting these gains mid-render. */

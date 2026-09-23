@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), all of Stage B, and Stage C's C0/C1 apart from lag are built; C2/C3, D and E are not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in), B and C are built; D is in progress (the generator as a lane, silent) and E is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -53,6 +53,12 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
+| `ratetest.py` | the sample-rate audit: everything that was secretly a count of samples, from 22 kHz to 96 kHz |
+| `worklettest.py` | the generator in the audio thread, and that it is the same code as the picture's |
+| `envtest.py` | the gate, the envelope and the legato rule |
+| `taptest.py` | the two taps, all four combinations, and the block they straddle |
+| `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
+| `contracttest.py` | the lane contract, the generator as a lane, and a rack with no files in it |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1109,3 +1115,22 @@ oscillator into a destination node hands back a real `MediaStream` with a real
 audio track, and everything downstream — `getUserMedia`, `createMediaStreamSource`,
 the analyser, the lane — is the genuine article. `liveStreams.clear()` first,
 because the cache is keyed by device id.
+
+**The lag's comb is deepest in headphones at half mix, not at full.** The plan
+assumed more of the delayed copy meant more comb. With mix *m* the right
+channel is (1 − *m*) of the signal plus *m* of the copy, and its notch has depth
+|1 − 2*m*|: a total null at ½, and none at 1, which is a pure Haas delay. The
+mono sum is the one that is total at the top. So the first draft's ceiling of
+0.5 was exactly the worst setting for anyone in headphones, and nobody would
+have found it by reasoning from the plan; `combtest.py` found it by rendering a
+sine at the notch through the real chain across seven mixes. The ceiling is 0.4
+now, and the test asserts that neither null is reachable rather than any
+particular number, because both numbers are waiting to be tuned by ear.
+
+**A fresh `DelayNode` sits at nought, and an undelayed copy mixed with the
+signal is the signal.** So "with the lag off, the stage is the identity" passed
+whether or not switching the lag off took the copy out of the mix — any split
+of wet and dry sums back to the input when the delay is zero. The mutation that
+left the mix up with the lag off survived until the fixture gave the delay the
+tau it would still be holding after the lag had been on, which is the real case.
+
