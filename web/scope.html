@@ -149,6 +149,9 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px; color: var(--text-soft);
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
+/* A reading that is telling you the setting cannot be served, rather than
+   what it came to. Only the timebase uses it so far. */
+.reading[data-state="over"] { color: var(--rust); }
 
 .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; align-self: center; }
 .switch button { background: none; border: none; padding: 6px 13px; color: var(--text-soft); }
@@ -1880,6 +1883,14 @@ body[data-view="bench"] #menuButton { display: none; }
         amplitude; the readout gives the difference between each pair, and &Delta;t as a
         frequency.</span></li>
 
+      <li><b>The longest timebase depends on the converter</b>
+        <span>The scope reads its history out of an analyser, and Web Audio caps one at
+        32768 samples &mdash; 743 ms at 44.1 kHz, but only 341 at 96, because that cap is a
+        count of samples rather than a length of time. So the slowest sweeps are available
+        on one machine and not on another, and the timebase says <i>past the buffer</i>
+        rather than leaving you to notice a trace that stops early. The readout gives the
+        shortfall in milliseconds when it happens.</span></li>
+
       <li><b>THD only answers when there is a tone</b>
         <span>It needs a real spectral line &mdash; a local maximum standing well above the
         band. Noise is all peaks, so it says nothing rather than inventing a number.</span></li>
@@ -2133,10 +2144,25 @@ const MAX_SEARCH_SECONDS = 0.2;
    Every source zero-pads the front of an over-ask rather than refusing it, so
    going over draws flatline at the left edge and reports nothing. */
 const LAG_MAX_MS = 40;         // a quarter period at 6.25 Hz - below anything musical
-const LAG_MIN_SPAN = 512;      // the trigger keeps this much to search in
+/* The least search room worth keeping, as a quarter of the room the trigger
+   actually wants. It used to be 512 samples, which is a duration written as a
+   sample count: 11.6 ms at 44.1 kHz, 5.3 ms at 96 kHz, so the rule quietly
+   got twice as permissive when the converter got twice as fast. Derived from
+   `SEARCH_SECONDS` rather than given its own number, because what it means is
+   "a quarter of what we asked for" and that survives both being retuned. At
+   44.1 kHz it comes to 551 samples against the old 512 - the lag is dropped a
+   shade sooner on a short buffer, which is the direction that errs toward a
+   stable trigger. */
+const LAG_MIN_SPAN_SECONDS = SEARCH_SECONDS / 4;
 const LAG_LOCK_SECONDS = 1;    // how long the automatic lag takes to follow a new note
 const LAG_JITTER_MAX = 0.08;   // crossing spread above which the pitch is not trusted
-const LAG_PROBE = 8192;        // samples the lock listens to, whatever the timebase
+/* How long the automatic lock listens for, whatever the timebase. Also a
+   duration that used to be written as 8192 samples - 186 ms at 44.1 kHz but
+   only 85 ms at 96 kHz, which is under two periods of the lowest pitch the
+   lock will accept and not enough crossings for `estimatePeriod` to report
+   any confidence in. Said as what it needs instead: four periods of 20 Hz,
+   which is where `lagLockUpdate` stops believing the answer. */
+const LAG_PROBE_SECONDS = 4 / 20;
 
 /* The automatic lag, in seconds, or null before it has heard anything worth
    locking to. Declared here rather than beside the code that uses it because
@@ -3406,8 +3432,61 @@ function makeWireframe() {
   };
 }
 
-function makeToneSource() {
-  const rate = 44100;
+/* --- what rate this machine actually runs at --------------------------------
+   The generator used to be hard-wired to 44100 because it has no audio graph
+   at all - it is arithmetic into a ring buffer - so the number was free. It
+   stops being free the moment the generator has an output: a worklet runs at
+   the context's rate, and a generator that had been computing its steps
+   against a different one would be transposed by the ratio. Fixing that after
+   the fact means auditing every derived number twice, so it is fixed here,
+   while the consequences are still only numbers on a screen.
+
+   Measured from a context opened and closed for the purpose, rather than
+   assumed. Constructing an `AudioContext` makes no sound and needs no gesture;
+   only starting one does. Where there is no Web Audio at all the fallback is
+   the old constant, and `deviceRateFrom` says which of the two you are
+   looking at rather than leaving the colophon to imply a measurement.
+
+   KNOWN LIMIT: the answer is memoised, and a machine whose rate changes
+   mid-session - headphones swapped for a different converter - keeps the old
+   one until something opens a real context. That is what `noteDeviceRate` is
+   for: every source that opens one reports what it got, so the guess is
+   corrected by the thing it was guessing at, and the next generator built
+   picks the correction up. A generator already running keeps its rate, which
+   is the honest thing for it to do: its ring buffer was sized in samples. */
+const FALLBACK_RATE = 44100;
+let deviceRateMemo = null;
+let deviceRateFrom = "assumed";
+
+function deviceRate() {
+  if (deviceRateMemo !== null) return deviceRateMemo;
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  deviceRateMemo = FALLBACK_RATE;
+  if (!Ctor) return deviceRateMemo;
+  try {
+    const probe = new Ctor();
+    if (probe.sampleRate > 0) {
+      deviceRateMemo = probe.sampleRate;
+      deviceRateFrom = "measured";
+    }
+    if (probe.close) probe.close();
+  } catch (error) {
+    /* A browser that refuses to open one at all: keep the fallback and keep
+       saying it is a fallback. */
+  }
+  return deviceRateMemo;
+}
+
+function noteDeviceRate(rate) {
+  if (!(rate > 0)) return;
+  deviceRateMemo = rate;
+  deviceRateFrom = "measured";
+}
+
+/* The rate is an argument so a test can run the whole capture path at 96 kHz
+   without a converter that does. Nothing in the page passes one. */
+function makeToneSource(atRate) {
+  const rate = atRate || deviceRate();
 
   const tone = {
     mode: "wave",            // wave | harmonograph | figure
@@ -3703,6 +3782,8 @@ async function makeMicSource(deviceId) {
   const stream = await openLiveStream(deviceId);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
+  // The guess, corrected by the thing it was guessing at.
+  noteDeviceRate(ctx.sampleRate);
 
   const track = stream.getAudioTracks()[0];
   const settings = track.getSettings ? track.getSettings() : {};
@@ -3815,6 +3896,8 @@ async function makeMicSource(deviceId) {
 async function makeFileSource(data, name) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
+  // The guess, corrected by the thing it was guessing at.
+  noteDeviceRate(ctx.sampleRate);
 
   const buffer = await ctx.decodeAudioData(data);
   const mono = buffer.numberOfChannels < 2;
@@ -4235,6 +4318,8 @@ function laneMixer(lanes) {
 async function makeRackSource(entries, label, deviceId) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
+  // The guess, corrected by the thing it was guessing at.
+  noteDeviceRate(ctx.sampleRate);
 
   const list = entries.slice(0, MAX_LANES);
   const wantsLive = list.some((entry) => entry.stream);
@@ -4475,6 +4560,8 @@ async function makeLiveBandSource(deviceId) {
   const stream = await openLiveStream(deviceId);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
+  // The guess, corrected by the thing it was guessing at.
+  noteDeviceRate(ctx.sampleRate);
 
   const track = stream.getAudioTracks()[0];
   const node = ctx.createMediaStreamSource(stream);
@@ -4526,6 +4613,8 @@ async function makeLiveBandSource(deviceId) {
 async function makeBandSource(data, label) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
+  // The guess, corrected by the thing it was guessing at.
+  noteDeviceRate(ctx.sampleRate);
 
   const buffer = await ctx.decodeAudioData(data);
   const duration = buffer.duration;
@@ -5073,6 +5162,51 @@ function lagSeconds() {
 
 function lagActive() { return lagSeconds() > 0; }
 
+/* What this source can serve at the rate it is running, in the units the
+   timebase is chosen in.
+
+   An `AnalyserNode` holds at most 32768 frames - that is a Web Audio ceiling
+   and not a choice, `fftSize` may not go higher - so the longest window this
+   instrument can draw is a DURATION THAT HALVES when the converter doubles.
+   743 ms at 44.1 kHz, 683 at 48, 341 at 96. The longest timebase asks for 500
+   ms, which fits twice over on one machine and not at all on another.
+
+   That was already true and already reported: `state.starved` says "buffer
+   short by 158 ms" underneath a trace drawn from whatever did fit. This is
+   the same fact said before the knob is turned rather than after, which is
+   the whole of what a rate audit is for - every assumption an assertion at
+   the point it is used, and the point of use for a timebase is choosing it.
+
+   `triggerableMs` is the stricter of the two and the one the ceiling is taken
+   from: a window that exactly fills the buffer leaves the trigger nowhere to
+   look, so it free runs and the trace slides. */
+function windowBudget(source) {
+  const rate = (source && source.sampleRate) || deviceRate();
+  const capacity = (source && source.capacity) || Infinity;
+  if (!isFinite(capacity)) {
+    return { rate, capacity, longestMs: Infinity, triggerableMs: Infinity };
+  }
+  const minSearch = Math.round(LAG_MIN_SPAN_SECONDS * rate);
+  return {
+    rate, capacity,
+    longestMs: capacity / rate * 1000,
+    triggerableMs: Math.max(0, capacity - minSearch) / rate * 1000,
+  };
+}
+
+/* The longest timebase this source can actually serve, as an index into
+   TIMEBASE. Always at least the shortest one: a buffer too small for even
+   0.1 ms/div is not a case worth a second branch, and the readout says the
+   window was short anyway. */
+function timebaseCeiling(source) {
+  const budget = windowBudget(source);
+  let best = 0;
+  for (let i = 0; i < TIMEBASE.length; i++) {
+    if (TIMEBASE[i] * DIVS_X <= budget.triggerableMs) best = i;
+  }
+  return best;
+}
+
 function capture() {
   const source = state.source;
   const rate = source.sampleRate;
@@ -5098,7 +5232,7 @@ function capture() {
   let lead = Math.ceil(tau);
 
   const room = capacity - length;
-  if (room - lead < LAG_MIN_SPAN) { tau = 0; lead = 0; }
+  if (room - lead < Math.round(LAG_MIN_SPAN_SECONDS * rate)) { tau = 0; lead = 0; }
   span = Math.max(0, Math.min(span, room - lead));
 
   state.lagActual = tau / rate * 1000;
@@ -5283,6 +5417,12 @@ function capture() {
     // What the level actually came to for this block, which is the number the
     // readout shows and the only place anything downstream should read it.
     levelAt,
+    /* What this block asked the buffer for against what the buffer has. The
+       invariant the give-way order above exists to keep is `asked <=
+       capacity`, and this is it stated rather than assumed - a test can hold
+       the page to it at any rate, and `state.starved` is what a player sees
+       when it is not met. */
+    asked: length + span + lead, capacity,
     rate, length, pre,
   };
 }
@@ -6907,7 +7047,8 @@ function lagLockUpdate(frame) {
      locked to last. What the lag should be does not depend on how much of the
      signal is being looked at. */
   const source = state.source;
-  const probe = Math.min(LAG_PROBE, source.capacity || LAG_PROBE);
+  const want = Math.round(LAG_PROBE_SECONDS * frame.rate);
+  const probe = Math.min(want, source.capacity || want);
   const found = estimatePeriod(source.getLatestWindow(probe)[0], frame.rate);
   if (found === null || found.jitter > LAG_JITTER_MAX) return;
   if (found.hz < 20 || found.hz > 5000) return;
@@ -7059,8 +7200,12 @@ function writeReadout(frame) {
   el.readoutDetail.textContent = bits.join(" · ");
   syncMidiValues();
   markPresetDirty();
+  /* The rate, and whether anything actually measured it. A generator built
+     before any context existed is running on a fallback, and a colophon that
+     printed 44100 either way would be stating a measurement it never made. */
   el.colophon.textContent = "trigger.js · " + Math.round(frame.rate)
-    + " Hz · " + state.source.channels + " ch";
+    + " Hz" + (deviceRateFrom === "measured" ? "" : " (assumed)")
+    + " · " + state.source.channels + " ch";
 
   writeMeasures(frame);
 }
@@ -7309,7 +7454,16 @@ function syncLabels() {
   // readout gives both numbers.
   el.levelValue.textContent = (state.level >= 0 ? "+" : "−")
     + Math.abs(state.level).toFixed(3) + " fs";
-  el.timebaseValue.textContent = TIMEBASE[state.timebase] + " ms/div";
+  /* And whether the buffer can serve it, said on the control rather than
+     found afterwards in the readout. The ceiling moves with the converter -
+     an analyser's 32768 frames are 743 ms at 44.1 kHz and 341 at 96 - so a
+     timebase that is fine on one machine is past the end of the buffer on
+     another, and nothing on the panel used to hint at that until the trace
+     went short. */
+  const ceiling = state.source ? timebaseCeiling(state.source) : TIMEBASE.length - 1;
+  el.timebaseValue.textContent = TIMEBASE[state.timebase] + " ms/div"
+    + (state.timebase > ceiling ? " \u00b7 past the buffer" : "");
+  el.timebaseValue.dataset.state = state.timebase > ceiling ? "over" : "";
   el.positionValue.textContent = Math.round(state.position * 100) + "%";
   el.holdoffValue.textContent = state.holdoffMs === 0
     ? "off" : state.holdoffMs.toFixed(1) + " ms";

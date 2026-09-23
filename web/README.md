@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 (band-limiting) and Stage C's C0/C1 apart from lag are built; the rest is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 (band-limiting), B2 (the rate audit) and Stage C's C0/C1 apart from lag are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -686,3 +686,66 @@ as they come now, waits for the buffer to hold a line rather than the circle
 the preset starts from, and freezes the source so the two captures differ only
 in the angle. It reports 45.0 from 45.0 to 90.0 — the numbers the geometry
 predicts — and a `capture` that turns nothing fails it.
+
+**The page asks the machine what rate it runs at.** `deviceRate()` opens a
+context, reads `sampleRate`, closes it, and memoises the answer; the generator
+is built at that rate rather than at 44100. Constructing an `AudioContext`
+makes no sound and needs no gesture — only starting one does. Every source
+that opens a real context calls `noteDeviceRate`, so the guess is corrected by
+the thing it was guessing at, and the colophon says `(assumed)` when nothing
+ever measured it rather than printing a number that looks like a measurement.
+A generator already running keeps its rate if the machine's changes, which is
+honest: its ring buffer was sized in samples.
+
+**Two durations had been written as sample counts, and both changed meaning
+off 44.1 kHz.** The trigger's minimum search room was 512 samples — 11.6 ms at
+44.1 kHz, 5.3 at 96 — so the rule that drops the lag lane got twice as
+permissive on a faster converter. It is `SEARCH_SECONDS / 4` now, 12.5 ms,
+551 samples at 44.1 kHz against the old 512: the lag goes a shade sooner on a
+cramped buffer, which errs toward a stable trigger. The automatic lock's probe
+was 8192 samples, 186 ms at 44.1 kHz but 85 at 96; it is four periods of 20 Hz
+now, the lowest pitch `lagLockUpdate` will believe.
+
+**That probe change was justified by measurement, and my first reasoning about
+it was wrong.** I wrote a check asserting the old 8192-sample probe would fail
+at 96 kHz on a 30 Hz tone. It does not: 85 ms is two and a half periods, which
+on a clean sine gives three crossings, two gaps and a jitter of exactly
+nought. Sweeping downward found the real boundary — from 21 to 25 Hz at
+96 kHz the old probe gets one gap and `estimatePeriod` reports infinite
+jitter, which is the honest answer and which the lock rejects, while the same
+pitches lock cleanly at 44.1 kHz. The check stands at 25 Hz.
+
+**An AnalyserNode's 32768 frames are a length of time that halves when the
+converter doubles.** 1486 ms at 22.05 kHz, 743 at 44.1, 683 at 48, 341 at 96 —
+and the slowest timebase asks for 500, so 96 kHz cannot serve the bottom two
+sweeps at all. `fftSize` may not go above 32768, so this is a Web Audio
+ceiling rather than a choice. It was already reported, as a short trace with
+`buffer short by 158 ms` underneath; `timebaseCeiling` now says it on the
+control before the knob is turned, which is what a rate audit is for.
+
+**The invariant `capture` keeps is not "never over-ask".** The window is the
+picture and never shrinks, so at 96 kHz and 50 ms/div it genuinely asks the
+buffer for 48000 samples out of 32768. What holds is the give-way order: as
+long as the window itself fits, the search span and the lag lead give way
+until the whole fetch fits; and once the window alone is too big, nothing is
+left to give, the over-ask is exactly the window's own shortfall, and that is
+what `state.starved` reports. The first draft of the rate test asserted the
+simpler, wronger thing and failed on the case the design handles deliberately.
+
+**The limiter's lookahead is a time, not a block of frames** — 132 samples at
+22.05 kHz, 264 at 44.1, 288 at 48, 576 at 96, which is 5.99 ms at the two
+rates that do not divide evenly and 6.00 at the two that do. So the six
+milliseconds the latency figure quotes is right at every rate. Worth
+rendering rather than assuming: 264 samples at 44.1 kHz is equally consistent
+with a fixed block of 256 and a rounding error, and only a second rate tells
+them apart.
+
+**The spectrum gets coarser on a faster converter, and that is not a bug.**
+`FFT_SIZE` is a count of samples, so the bin width is the rate over it: 10.8
+Hz at 22.05 kHz, 21.5 at 44.1, 46.9 at 96. A pure 220 Hz sine reads 0.001%
+distortion at 44.1 kHz and 0.504% at 96 — still clean, but five hundred times
+further from nought, because the wider bins smear the line. The local-maximum
+guard is six bins either side, which is a leakage property and correctly
+counted in bins rather than hertz; the same tone is put through at all four
+rates and the answers have to agree, which is how that would be caught if it
+were wrong.

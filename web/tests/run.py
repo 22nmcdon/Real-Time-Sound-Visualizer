@@ -22,6 +22,7 @@ SUITES = [
     ("ac", [sys.executable, "actest.py"], "AC coupling: one blocker, the picture and the speakers"),
     ("trig", [sys.executable, "trigtest.py"], "the trigger level as a fraction of full scale"),
     ("scale", [sys.executable, "scaletest.py"], "full scale as decibels, and the nine detents"),
+    ("rate", [sys.executable, "ratetest.py"], "the sample-rate audit: 22k to 96k"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
     ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),

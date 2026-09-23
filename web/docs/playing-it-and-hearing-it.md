@@ -384,12 +384,38 @@ place it claims to measure.
   Measure the aliasing first; the answer may differ per generator — the
   harmonograph is smooth and may need nothing.
 
-### B2 · Sample-rate audit
+### B2 · Sample-rate audit — built
 
-`const rate = 44100` becomes `ctx.sampleRate` — 48000 on most machines. Audit
-every alignment, capacity and span computation that assumed 44100. The
-`length + span + LAG_MAX ≤ CAPACITY` assertion from the lag work is the model:
-make each assumption an assertion at the point it's used.
+`const rate = 44100` is now `deviceRate()`, measured from a context opened and
+closed for the purpose and corrected by every source that opens a real one.
+The colophon says `(assumed)` when nothing ever measured it. `ratetest.py`
+runs the audit at 22.05, 44.1, 48 and 96 kHz — the capture path against a
+stand-in source, the audio graph against `OfflineAudioContext` — so the page
+meets rates no converter in the container offers.
+
+Three kinds of assumption turned up, and they fail differently.
+
+**Durations written as sample counts** change meaning silently. The trigger's
+minimum search room was 512 samples (11.6 ms at 44.1 kHz, 5.3 at 96) and the
+lock's probe was 8192 (186 ms, or 85). Both are durations now. The probe
+change was justified by sweeping rather than by argument: at 30 Hz the old one
+locks fine even at 96 kHz, and the real boundary is 21–25 Hz, where it gets
+one gap and `estimatePeriod` honestly reports no confidence.
+
+**A capacity in samples is a time that halves** when the converter doubles.
+32768 analyser frames are 743 ms at 44.1 kHz and 341 at 96, against a slowest
+sweep of 500 — so `timebaseCeiling` says *past the buffer* on the control
+rather than leaving it to be found as a trace that stops early.
+
+**A time constant in the audio graph may be either**, and only rendering says
+which. The limiter's lookahead is a time: 264 samples at 44.1 kHz, 576 at 96,
+6 ms at both. The figure the panel quotes was right and is now known to be.
+
+One thing the audit corrected about itself: the invariant is not
+`length + span + lead ≤ capacity`. The window is the picture and never
+shrinks, so it is *everything else gives way first, and when the window alone
+is too big the over-ask is exactly its own shortfall* — which is what
+`state.starved` has always reported.
 
 ### B3 · The worklet
 
