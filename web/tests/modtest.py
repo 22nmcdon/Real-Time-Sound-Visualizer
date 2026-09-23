@@ -136,7 +136,13 @@ with sync_playwright() as pw:
     }""")
     check("nothing changes through encode and decode", trip["differ"] == [], str(trip["differ"]))
     check("the routings survive as text", ">" in (trip["mod"] or ""), trip["mod"])
-    check("and the code carries a version", trip["version"] == 1, str(trip["version"]))
+    # The number the page is on, not a number written here: what this is about
+    # is that a code SAYS which format it is in, so an old one can be migrated
+    # rather than misread. Pinning the digit meant a format change failed in a
+    # suite that has nothing to do with the format.
+    check("and the code carries the current version",
+          trip["version"] == p.evaluate("() => SETUP_VERSION"),
+          str(trip["version"]))
 
     print("\n--- a code written before the matrix existed ---")
     legacy = p.evaluate("""() => {

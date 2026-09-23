@@ -20,6 +20,7 @@ SUITES = [
     ("alias", [sys.executable, "aliastest.py"], "band-limiting: what folds back, and what does not"),
     ("rotate", [sys.executable, "rotatetest.py"], "rotation, mid/side, and what rotation may not reach"),
     ("ac", [sys.executable, "actest.py"], "AC coupling: one blocker, the picture and the speakers"),
+    ("trig", [sys.executable, "trigtest.py"], "the trigger level as a fraction of full scale"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
     ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),

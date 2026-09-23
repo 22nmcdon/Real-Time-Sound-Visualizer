@@ -48,6 +48,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
 | `rotatetest.py` | rotation and mid/side, and the measurements rotation is not allowed to reach |
 | `actest.py` | AC coupling: the picture's blocker and the speakers', from one corner |
+| `trigtest.py` | the trigger level in fractions of full scale, and the v1 setup migration |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -253,6 +254,50 @@ quieter. Measured at the top of the generator's range the naive triangle put
 triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
+
+**The trigger level is a fraction of full scale, not an amplitude.** A bench
+scope taps its trigger after the vertical amplifier, so the front-panel level
+really is a volts-per-division quantity: set the line halfway up the screen and
+it stays halfway up when volts per division changes. This page compared an
+absolute amplitude, so the line moved when full scale did. `state.level` is a
+fraction now, `capture` converts it with `gainOf(trigSource)`, and the drawn
+line is placed at the fraction directly — no gain, which is the same arithmetic
+seen from the other end.
+
+**Converted per capture, and that is the load-bearing part.** Full scale is
+about to be something a source can modulate; a threshold cached from the last
+time a human moved a control would then be one block stale against the gain it
+is meant to track. `frame.levelAt` is what it came to for that block, and it is
+the only number anything downstream should read. The hysteresis is converted
+with it, because that band is two per cent of the screen rather than of a
+converter.
+
+**Autoset had to be resequenced, not just converted.** It chooses the level
+*and* the full scales; the level is expressed in terms of those scales, so
+setting it first states a fraction of a number that is about to change. It is
+set last now. No test caught that until one was written for it — the other four
+mutations in this area all failed loudly and this one passed silently.
+
+**Setup codes are version 2, and version 1 is migrated on the way in.** The
+stored level was an amplitude; the fraction is that amplitude times the gain of
+the lane the trigger was watching — which is to say, where it sat on the
+graticule. Only lanes one and two have a stored full scale, so a setup whose
+trigger watched a rack lane keeps its number. Every built-in preset is
+unaffected: exactly one sets a level and none sets a scale.
+
+**What this does not do is scale the captured lanes.** Putting full scale
+inside the block changes what `dBFS` means, what the clipping verdict is about
+(clipping is a property of the input, not of where the graticule is) and what
+`env.live` follows — the same measurement-honesty question rotation is held on.
+The trigger needed the fraction, not the scaling, and the two separate cleanly:
+when the measurements get their own tap, moving full scale in is a no-op for
+the trigger, because the level is already a fraction. `trigtest.py` asserts the
+lanes are untouched, so widening it without the tap fails there.
+
+**A trigger level of 2 is no longer out of reach.** Tests used that to suppress
+triggering; a fraction of two at −30 dBFS is 0.06 of an amplitude, which a
+signal crosses easily. `rotatetest.py` still uses it safely at 0 dBFS, and
+`trigtest.py` watches a lane the trigger is not reading instead.
 
 **A window mean and a one-pole are not two implementations of AC coupling.**
 They are two operations. Mean subtraction is non-causal and whole-block — it

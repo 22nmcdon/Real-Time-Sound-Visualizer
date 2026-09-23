@@ -52,7 +52,13 @@ What is left of C1's table: full scale as a `GainNode` and lag as a
 `DelayNode`. Both wait on the holds below, since neither is in the picture's
 block yet.
 
-**Held: the trigger level becoming screen-relative.** Full scale moving ahead of
+**Taken: the trigger level is screen-relative.** Redefined as a fraction of
+full scale, converted per capture on the gain in force for that block, with the
+real amplitude beside it in the dock and a version-2 setup migration for codes
+that stored an amplitude. What is still held is the *reordering* it was blocking
+— see below.
+
+**Still held: full scale inside the captured block.** Full scale moving ahead of
 the trigger is *more* authentic, not less — a bench scope taps its trigger after
 the vertical amplifier, so the front-panel level really is a volts/div-relative
 quantity. But it cannot ship as a side effect of something else moving. It needs

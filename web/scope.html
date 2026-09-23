@@ -5041,10 +5041,30 @@ function capture() {
     channels[1] = side;
   }
 
+  /* The trigger level is a FRACTION OF FULL SCALE, and this is where it
+     becomes a voltage. A bench scope taps its trigger after the vertical
+     amplifier, so the front-panel level is a volts-per-division quantity
+     rather than an absolute one, and that is the honest reading here too: the
+     line you set sits at a height on the graticule, and it should stay at that
+     height when the lane's full scale changes.
+
+     Computed per capture rather than when the slider last moved, and that is
+     the load-bearing part. Full scale is about to become something a source
+     can modulate, and a threshold cached from the last time a human touched a
+     control would then be one block stale against the gain it is supposed to
+     track - a small error that only appears once something is actually routed
+     at it, which is the case this whole change exists to make correct.
+
+     The hysteresis travels with it for the same reason: it guards a band
+     around the level, and that band is two per cent of the screen rather than
+     two per cent of a converter. */
+  const gain = gainOf(state.trigSource);
+  const levelAt = state.level / gain;
+
   const holdoff = Math.round(state.holdoffMs * rate / 1000);
   const at = findTriggerIndex(
     channels[state.trigSource] || channels[0],
-    state.level, state.edge, HYSTERESIS,
+    levelAt, state.edge, HYSTERESIS / gain,
     pre, pre + span, holdoff
   );
 
@@ -5054,6 +5074,9 @@ function capture() {
   return {
     channels: channels.map((buffer) => buffer.subarray(from, from + length)),
     triggered: at !== null,
+    // What the level actually came to for this block, which is the number the
+    // readout shows and the only place anything downstream should read it.
+    levelAt,
     rate, length, pre,
   };
 }
@@ -5845,7 +5868,11 @@ function drawMain(frame, elapsed) {
   // In the trigger source's own band, because that is the lane the level is
   // being compared against. Drawn across all of them it would read as a
   // level that applies to every lane, which is exactly what it is not.
-  const levelY = Math.round(yAt(state.trigSource, state.level * trigGain + trigOffset)) + 0.5;
+  // The level is a fraction of full scale, which is to say a height in this
+  // lane's band, so it needs no gain applied to it - that is the point of the
+  // change. The line therefore stays where it is drawn when full scale moves,
+  // and the signal grows or shrinks past it.
+  const levelY = Math.round(yAt(state.trigSource, state.level + trigOffset)) + 0.5;
   ctx.moveTo(plot.x, levelY); ctx.lineTo(plot.x + plot.w, levelY);
   ctx.stroke();
   ctx.restore();
@@ -7047,8 +7074,11 @@ function showLag() {
 
 function syncLabels() {
   syncLagLabel();
+  // "fs": a fraction of full scale, which is where the line sits on the
+  // graticule rather than what the signal has to reach. The dock's own
+  // readout gives both numbers.
   el.levelValue.textContent = (state.level >= 0 ? "+" : "−")
-    + Math.abs(state.level).toFixed(3);
+    + Math.abs(state.level).toFixed(3) + " fs";
   el.timebaseValue.textContent = TIMEBASE[state.timebase] + " ms/div";
   el.positionValue.textContent = Math.round(state.position * 100) + "%";
   el.holdoffValue.textContent = state.holdoffMs === 0
@@ -7060,8 +7090,17 @@ function syncLabels() {
     ? Math.round(cut) + " Hz" : (cut / 1000).toFixed(2) + " kHz";
   el.filterResValue.textContent = String(state.filter.res);
   el.alignValue.textContent = state.alignMs + " ms";
+  /* Both numbers, because they answer different questions: the fraction is
+     where the line sits on the graticule, and the amplitude is what the signal
+     has to reach to cross it. They are the same number only while full scale
+     is at nought dBFS, and the second is the one that stops meaning something
+     else when full scale moves. */
+  const levelAt = state.level / gainOf(state.trigSource);
   el.looking.innerHTML = (state.edge === RISING ? "&uarr; " : "&darr; ")
-    + (state.level >= 0 ? "+" : "−") + Math.abs(state.level).toFixed(3);
+    + (state.level >= 0 ? "+" : "−") + Math.abs(state.level).toFixed(3)
+    + " fs"
+    + '<span class="reading"> = ' + (levelAt >= 0 ? "+" : "−")
+    + Math.abs(levelAt).toFixed(3) + "</span>";
 
   state.channels.forEach((ch, i) => {
     const scale = el["ch" + (i + 1) + "ScaleValue"];
@@ -7633,10 +7672,6 @@ el.autoset.addEventListener("click", () => {
     el.timebase.value = String(best);
   }
 
-  // Trigger halfway up the rising side, which is the most stable place on it.
-  state.level = Math.max(-0.99, Math.min(0.99, mean));
-  el.level.value = String(Math.round(state.level * 1000));
-
   /* Full scale per lane, from that lane's own peak.
 
      One figure for all of them is right for a stereo pair, where the two
@@ -7669,6 +7704,15 @@ el.autoset.addEventListener("click", () => {
     state.channels[i].scale = best;
     if (el["ch" + (i + 1) + "Scale"]) el["ch" + (i + 1) + "Scale"].value = String(best);
   });
+
+  /* And the trigger last, halfway up the rising side - which is the most
+     stable place on it - expressed as a fraction of the full scale that was
+     just chosen rather than of the one that was there a moment ago. Setting it
+     before the scales would have stated a fraction of a number about to
+     change, which is the same staleness the per-capture conversion exists to
+     prevent, arriving by a different door. */
+  state.level = Math.max(-0.99, Math.min(0.99, mean * gainOf(state.trigSource)));
+  el.level.value = String(Math.round(state.level * 1000));
 
   setMode("auto");
   setRunning(true);
@@ -8232,7 +8276,12 @@ function writeSaved(all) {
    into a message. */
 /* Stamped on every code, so the next migration can dispatch on a number
    rather than guess from which keys happen to be present. */
-const SETUP_VERSION = 1;
+/* 2: the trigger level became a fraction of full scale rather than an
+   amplitude. Version 1 codes are migrated on the way in - see `decodeSetup` -
+   which is the same treatment the modulation enum got, and for the same
+   reason: a stored number whose meaning changed is not something to fix up
+   quietly at the point of use. */
+const SETUP_VERSION = 2;
 
 function encodeSetup(snap) {
   const diff = { v: SETUP_VERSION };
@@ -8243,11 +8292,38 @@ function encodeSetup(snap) {
 }
 
 function decodeSetup(code) {
+  let setup;
   try {
-    return JSON.parse(atob(code.trim()));
+    setup = JSON.parse(atob(code.trim()));
   } catch (error) {
     return null;
   }
+  return migrateSetup(setup);
+}
+
+/* A setup written before the trigger level meant a fraction of full scale.
+   The stored number was an amplitude, so the fraction it corresponds to is
+   that amplitude times the lane's gain - which is to say, where it sat on the
+   graticule, which is what the control now means.
+
+   Only lanes one and two have a stored full scale, because only they have a
+   row in the format. A setup whose trigger watched a rack lane keeps its
+   number unchanged, which is right for the common case of a rack at nought
+   dBFS and stated here rather than discovered. */
+function migrateSetup(setup) {
+  if (!setup || setup.v >= 2) return setup;
+
+  const lane = setup.trig === undefined ? DEFAULTS.trig : setup.trig;
+  const key = "c" + lane + "s";
+  const stored = setup[key] === undefined ? DEFAULTS[key] : setup[key];
+  const scale = lane <= 1 && FULL_SCALE_DB[stored] !== undefined ? stored : 0;
+  const gain = Math.pow(10, -FULL_SCALE_DB[scale] / 20);
+
+  if (setup.level !== undefined && gain !== 1) {
+    setup.level = Math.max(-1000, Math.min(1000, Math.round(setup.level * gain)));
+  }
+  setup.v = SETUP_VERSION;
+  return setup;
 }
 
 /* --- the preset picker ----------------------------------------------------- */
