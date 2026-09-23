@@ -52,6 +52,12 @@ What is left of C1's table: full scale as a `GainNode` and lag as a
 `DelayNode`. Both wait on the holds below, since neither is in the picture's
 block yet.
 
+**Taken: full scale is a continuous gain, and a destination.** Which is what
+the trigger work was actually for: a fraction sitting on a table of nine
+positions promised safety across nine discrete jumps rather than across a gain.
+The lanes are still not scaled — that is the widening below — so this closes
+#1's promise without touching what the measurements are about.
+
 **Taken: the trigger level is screen-relative.** Redefined as a fraction of
 full scale, converted per capture on the gain in force for that block, with the
 real amplitude beside it in the dock and a version-2 setup migration for codes
@@ -120,10 +126,11 @@ number is bit-identical to what it was.
 - `rotatetest.py`'s scoping checks are rewritten rather than deleted: they
   currently assert rotation reaches nothing, and would become assertions that
   it reaches the drawn lanes and not the measured ones.
-- Full scale becomes a continuous gain before it can be a modulation
-  destination. It is a per-lane integer index into a nine-entry dB table today,
-  so `scaleMod` in decibels is a prerequisite of the thing that makes all of
-  this worth doing.
+- ~~Full scale becomes a continuous gain before it can be a modulation
+  destination.~~ **Built.** `fsDb` plus `fsMod`, the knob keeps its nine
+  detents, and `view.scale1…N` are destinations. The nine table values give
+  their old gains to zero difference, which is the baseline everything below
+  is measured against.
 
 **What it unblocks, in order.** Rotation as a signal transform (#3); full scale
 inside the block (#1's second half); full scale as a modulation destination,

@@ -49,6 +49,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `rotatetest.py` | rotation and mid/side, and the measurements rotation is not allowed to reach |
 | `actest.py` | AC coupling: the picture's blocker and the speakers', from one corner |
 | `trigtest.py` | the trigger level in fractions of full scale, and the v1 setup migration |
+| `scaletest.py` | full scale as a continuous gain, its nine detents, and both setup migrations |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -254,6 +255,37 @@ quieter. Measured at the top of the generator's range the naive triangle put
 triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
+
+**Full scale is decibels, and the knob keeps its nine detents.** It was a
+position in a table of nine, which made the trigger fraction built to track it
+a promise about nine discrete jumps rather than about a gain. `fsDb` is the
+stored value, `fsMod` is what the matrix adds, `fullScaleDb` sums and clamps
+them to the range the knob covers, and `gainOf` reads that. The control still
+offers the same nine positions writing the same nine numbers — a scope's
+volts-per-division switch has always had detents, and they are what anyone
+reading a graticule works in.
+
+The conversion is exact by construction and checked in isolation before
+anything else: the nine table values give the nine gains they always gave, to
+zero difference, because it is the same expression fed the same number. That
+check comes first in `scaletest.py` on purpose — everything downstream is
+compared against that baseline, and a baseline that moved would make every
+later comparison a comparison with a moving target.
+
+**Full scale is a modulation destination, one per lane.** `view.scale1` …
+`view.scaleN`, registered as lanes appear and dropped as they go, the way a
+learned controller is registered when it first moves. Twelve decibels at full
+depth. This is what the trigger work was for: with an oscillator on it the
+threshold fires at 0.2506, 0.1256 and 0.5000 as the gain swings, and sits at
+exactly 0.500 of the screen every time.
+
+**Setup codes are version 3, and both migrations run in one ordered pass.**
+1 → 2 converts the trigger level from an amplitude to a fraction, reading the
+stored full scale *as a table position* because that is what it was; 2 → 3 then
+turns that position into decibels. Run the other way round, the first step
+reads a decibel value as an index and the level conversion silently does
+nothing — which is what the mutation run shows, and why the two live in one
+function with the order written down rather than in two passes kept in step.
 
 **The trigger level is a fraction of full scale, not an amplitude.** A bench
 scope taps its trigger after the vertical amplifier, so the front-panel level

@@ -138,9 +138,9 @@ with sync_playwright() as pw:
         for (const [name] of entries) {
           applyPreset('b:' + name);
           const a = state.channels[0], b = state.channels[1];
-          if (state.rotate !== 0 || a.scale !== b.scale
+          if (state.rotate !== 0 || a.fsDb !== b.fsDb
               || a.offset !== 0 || b.offset !== 0) {
-            odd.push({ name, rotate: state.rotate, scales: [a.scale, b.scale],
+            odd.push({ name, rotate: state.rotate, scales: [a.fsDb, b.fsDb],
                        offsets: [a.offset, b.offset] });
           }
         }
@@ -183,8 +183,8 @@ with sync_playwright() as pw:
       /* Full scale is what fills the screen, so a smaller number MAGNIFIES:
          index 3 is -12 dBFS, which is four times the gain of index 0. The
          lanes are placed four to one, which is all this needs. */
-      state.channels[0].scale = 0;     // 0 dBFS
-      state.channels[1].scale = 3;     // -12 dBFS: Y drawn four times as tall
+      state.channels[0].fsDb = 0;      // 0 dBFS
+      state.channels[1].fsDb = -12;    // Y drawn four times as tall
       state.rotate = 0.125;
       state.zoom = 1; state.zoomStep = 0; state.zoomMod = 0;
     }""")
@@ -217,7 +217,7 @@ with sync_playwright() as pw:
     # from `capture`, so if rotation ever moves in there this fails and says
     # which measurements have to be given their own tap first.
     scope = p.evaluate("""() => {
-      state.channels[1].scale = 0;
+      state.channels[1].fsDb = 0;
       state.rotate = 0;
       state.running = false;
       const flat = capture();

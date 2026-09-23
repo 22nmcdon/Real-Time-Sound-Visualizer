@@ -50,12 +50,12 @@ with sync_playwright() as pw:
       state.level = 0.5;                          // half way up the graticule
       const out = [];
       for (const scale of [0, 3, 6]) {            // 0, -12 and -30 dBFS
-        state.channels[0].scale = scale;
+        state.channels[0].fsDb = FULL_SCALE_DB[scale];
         state.trigSource = 0;
         const frame = capture();
         out.push({ scale, db: FULL_SCALE_DB[scale], levelAt: frame.levelAt });
       }
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       return out;
     }""")
     for row in heights:
@@ -78,16 +78,16 @@ with sync_playwright() as pw:
     stale = p.evaluate("""() => {
       state.level = 0.25;
       state.trigSource = 0;
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       const first = capture().levelAt;
 
       // Moved with no slider event of any kind, which is what a modulated full
       // scale will look like: the state changes and the next capture is the
       // first thing to notice.
-      state.channels[0].scale = 3;                // -12 dBFS
+      state.channels[0].fsDb = -12;
       const second = capture().levelAt;
 
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       const third = capture().levelAt;
       return { first, second, third };
     }""")
@@ -127,7 +127,7 @@ with sync_playwright() as pw:
       const out = [];
       for (const [level, scale] of [[0.5, 0], [0.5, 3], [-0.25, 0]]) {
         state.level = level;
-        state.channels[0].scale = scale;
+        state.channels[0].fsDb = FULL_SCALE_DB[scale];
         const frame = capture();
         // The sample the trigger sat on, read out of the returned window.
         out.push({ level, scale, levelAt: frame.levelAt,
@@ -135,7 +135,7 @@ with sync_playwright() as pw:
                    triggered: frame.triggered });
       }
       state.source = was;
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       state.mode = 'auto';
       return out;
     }""")
@@ -160,8 +160,8 @@ with sync_playwright() as pw:
         setDisplay('yt');
         state.level = 0.5;
         state.trigSource = 0;
-        state.channels[0].scale = scale;
-        state.channels[1].scale = scale;
+        state.channels[0].fsDb = FULL_SCALE_DB[scale];
+        state.channels[1].fsDb = FULL_SCALE_DB[scale];
         drawMain(capture(), 16);
 
         const c = el.trace, ctx = c.getContext('2d');
@@ -184,7 +184,7 @@ with sync_playwright() as pw:
         }
         found.push({ scale, row: best, count: bestCount });
       }
-      state.channels[0].scale = 0; state.channels[1].scale = 0;
+      state.channels[0].fsDb = 0; state.channels[1].fsDb = 0;
       state.level = 0;
       return found;
     }""")
@@ -226,14 +226,13 @@ with sync_playwright() as pw:
       el.autoset.click();
 
       const out = {
-        scale: state.channels[0].scale,
-        db: FULL_SCALE_DB[state.channels[0].scale],
+        db: state.channels[0].fsDb,
         level: state.level,
         amplitude: state.level / gainOf(0),
         offset,
       };
       state.source = was;
-      state.channels[0].scale = 0; state.channels[1].scale = 0;
+      state.channels[0].fsDb = 0; state.channels[1].fsDb = 0;
       state.level = 0; el.level.value = '0';
       state.running = true;
       syncLabels();
@@ -251,11 +250,11 @@ with sync_playwright() as pw:
     print("\n--- what the panel says about it ---")
     said = p.evaluate("""() => {
       state.level = 0.5;
-      state.channels[0].scale = 3;                // -12 dBFS, so they differ
+      state.channels[0].fsDb = -12;               // so the two differ
       state.trigSource = 0;
       syncLabels();
       const out = { slider: el.levelValue.textContent, looking: el.looking.textContent };
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       syncLabels();
       return out;
     }""")
@@ -284,8 +283,13 @@ with sync_playwright() as pw:
       const current = decodeSetup(btoa(JSON.stringify({ v: 2, level: 250 })).replace(/=+$/, ''));
       return { plain, scaled, other, huge, rack, current };
     }""")
+    # The version the page is on, not a digit written here - the same trap the
+    # modulation suite fell into when this format last moved. What matters is
+    # that the level is left alone, and that the code comes out saying which
+    # format it is in; `scaletest.py` owns the version story itself.
     check("at nought dBFS the number is already a fraction and is left alone",
-          migrated["plain"]["level"] == 250 and migrated["plain"]["v"] == 2,
+          migrated["plain"]["level"] == 250
+          and migrated["plain"]["v"] == p.evaluate("() => SETUP_VERSION"),
           str(migrated["plain"]))
     check("at -12 dBFS it becomes where it sat on the graticule",
           migrated["scaled"]["level"] == round(250 * 10 ** (12 / 20)),
@@ -302,17 +306,17 @@ with sync_playwright() as pw:
 
     trip = p.evaluate("""() => {
       state.level = 0.4; el.level.value = '400';
-      state.channels[0].scale = 2;
+      state.channels[0].fsDb = -6;
       const code = encodeSetup(snapshot());
       state.level = 0; el.level.value = '0';
       restore(decodeSetup(code));
-      const after = { level: state.level, scale: state.channels[0].scale,
+      const after = { level: state.level, scale: state.channels[0].fsDb,
                       v: decodeSetup(code).v };
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
       return after;
     }""")
     check("a setup saved now comes back unchanged",
-          abs(trip["level"] - 0.4) < 1e-9 and trip["scale"] == 2 and trip["v"] == 2,
+          abs(trip["level"] - 0.4) < 1e-9 and trip["scale"] == -6 and trip["v"] == 3,
           str(trip))
 
     print("\n--- and the lanes are still the lanes ---")
@@ -331,13 +335,13 @@ with sync_playwright() as pw:
          change working, and it cost this test a rewrite. */
       state.trigSource = 0;
       state.level = 0;
-      state.channels[0].scale = 0;
+      state.channels[0].fsDb = 0;
 
-      state.channels[1].scale = 0;
+      state.channels[1].fsDb = 0;
       const flat = capture();
       const a = measure(flat.channels[1], flat.rate);
 
-      state.channels[1].scale = 6;                // -30 dBFS on the watched lane
+      state.channels[1].fsDb = -30;               // on the lane being read
       const scaled = capture();
       const c = measure(scaled.channels[1], scaled.rate);
 
@@ -345,7 +349,7 @@ with sync_playwright() as pw:
       for (let i = 0; i < flat.channels[1].length; i++) {
         worst = Math.max(worst, Math.abs(flat.channels[1][i] - scaled.channels[1][i]));
       }
-      state.channels[1].scale = 0;
+      state.channels[1].fsDb = 0;
       state.running = true;
       return { worst, peaks: [a.peak, c.peak], rms: [a.rms, c.rms] };
     }""")

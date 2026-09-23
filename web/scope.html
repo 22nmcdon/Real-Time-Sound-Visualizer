@@ -4593,8 +4593,8 @@ const state = {
      this list; `fitChannels` is the only thing that resizes it, so a lane
      that appears always arrives with settings rather than undefined. */
   channels: [
-    { on: true, ac: false, scale: 0, offset: 0 },
-    { on: true, ac: false, scale: 0, offset: 0 },
+    { on: true, ac: false, fsDb: 0, fsMod: 0, offset: 0 },
+    { on: true, ac: false, fsDb: 0, fsMod: 0, offset: 0 },
   ],
   stack: true,               // lanes on their own bands, or all on one
   xyPair: [0, 1],            // which two lanes the figure is drawn from
@@ -4698,11 +4698,43 @@ function laneName(index) {
 /* Settings for exactly as many lanes as there are, keeping the ones already
    set. A lane list that is short by one is an `undefined.on` in the draw
    loop, which is a blank screen and no error worth the name. */
+/* Full scale, as somewhere to point a source - which is the whole reason it
+   became a continuous number. One destination per lane, registered as the
+   lanes appear rather than declared up front, the way a controller becomes a
+   source the first time it moves: six lanes' worth of destinations on a page
+   showing two would be a list describing the format rather than the signal.
+
+   Twelve decibels at full depth. Enough to see a trace breathe, small enough
+   that a source cannot drive a lane from the top of the graticule to the
+   bottom of the table by itself - and the clamp in `fullScaleDb` means it
+   cannot leave the range the knob covers however hard it is pushed. */
+const FS_SPAN_DB = 12;
+
+function registerLaneDests(n) {
+  for (let i = 0; i < n; i++) {
+    const id = "view.scale" + (i + 1);
+    if (MOD_DESTS.has(id)) continue;
+    registerDest({
+      kind: "visual", id, label: "Full scale, lane " + (i + 1),
+      span: FS_SPAN_DB, min: FS_BOTTOM, max: FS_TOP,
+      base: () => (state.channels[i] ? state.channels[i].fsDb : 0),
+      set: (offset) => { if (state.channels[i]) state.channels[i].fsMod = offset; },
+    });
+  }
+  /* And the ones for lanes that have gone: dropped rather than left pointing
+     at a lane that is not there, because `applyModMatrix` walks every
+     registered destination every frame and a routing whose destination has
+     vanished is skipped rather than dropped - so the patch comes back if the
+     lane does. */
+  for (let i = n; i < MAX_LANES; i++) MOD_DESTS.delete("view.scale" + (i + 1));
+}
+
 function fitChannels(n) {
   while (state.channels.length < n) {
-    state.channels.push({ on: true, ac: false, scale: 0, offset: 0 });
+    state.channels.push({ on: true, ac: false, fsDb: 0, fsMod: 0, offset: 0 });
   }
   state.channels.length = Math.max(2, n);
+  registerLaneDests(state.channels.length);
   if (state.trigSource >= n) state.trigSource = 0;
   state.xyPair = [Math.min(state.xyPair[0], n - 1), Math.min(state.xyPair[1], n - 1)];
   if (state.xyPair[0] === state.xyPair[1]) state.xyPair[1] = (state.xyPair[0] + 1) % Math.max(2, n);
@@ -4717,7 +4749,41 @@ const stacked = () => state.stack && laneCount() > 2;
    even perceptual jumps rather than crawling at the bottom and leaping at
    the top. */
 const zoomAt = (step) => Math.pow(2, step / 4);
-const gainOf = (ch) => Math.pow(10, -FULL_SCALE_DB[state.channels[ch].scale] / 20);
+
+/* Full scale, in decibels rather than as a position in a table of nine.
+
+   The knob keeps its nine detents - a scope's volts-per-division switch has
+   always had detents, and they are the numbers anyone reading a graticule
+   works in - but what is stored underneath them is a continuous number, and
+   what a modulation source adds is another. That is the base-and-offset split
+   every other destination here uses, and it is what makes full scale safe to
+   point something at: nine discrete jumps is a stranger guarantee than a
+   continuous one, and the trigger fraction that was just built to track this
+   deserves something worth tracking.
+
+   Clamped to the range the knob itself covers, so a source cannot push a lane
+   somewhere its own control could not reach. */
+const FS_TOP = 0, FS_BOTTOM = FULL_SCALE_DB[FULL_SCALE_DB.length - 1];
+
+function fullScaleDb(ch) {
+  const lane = state.channels[ch];
+  if (!lane) return FS_TOP;
+  return Math.max(FS_BOTTOM, Math.min(FS_TOP, lane.fsDb + (lane.fsMod || 0)));
+}
+
+const gainOf = (ch) => Math.pow(10, -fullScaleDb(ch) / 20);
+
+/* Which detent a stored value sits on, for the knob's own position. A setup
+   written by hand or migrated from the old table lands exactly on one; a value
+   a source left behind lands near one, and the knob shows the nearest rather
+   than refusing to have a position. */
+function fsDetent(db) {
+  let best = 0;
+  for (let i = 1; i < FULL_SCALE_DB.length; i++) {
+    if (Math.abs(FULL_SCALE_DB[i] - db) < Math.abs(FULL_SCALE_DB[best] - db)) best = i;
+  }
+  return best;
+}
 
 /* --- the filter -------------------------------------------------------------
    A filter reshapes the trace, which is the point: a lowpass rounds a square's
@@ -6857,7 +6923,10 @@ function writeMeasures(frame) {
       // watching - so it is only quoted against that lane.
       ["thd", index === state.trigSource && state.harmonics
         ? (state.harmonics.thd * 100).toFixed(2) + "%" : "\u2014"],
-      ["fs", FULL_SCALE_DB[state.channels[index].scale] + " dBFS"],
+      // What is in force, not what the knob says: a source on full scale moves
+      // this, and the cell would otherwise report the base while the trace
+      // answered to something else.
+      ["fs", fullScaleDb(index).toFixed(1) + " dBFS"],
     ];
 
     rows.push(
@@ -7105,7 +7174,7 @@ function syncLabels() {
   state.channels.forEach((ch, i) => {
     const scale = el["ch" + (i + 1) + "ScaleValue"];
     if (!scale) return;      // a lane whose row has not been built yet
-    scale.textContent = FULL_SCALE_DB[ch.scale] + " dBFS";
+    scale.textContent = fullScaleDb(i).toFixed(1) + " dBFS";
     el["ch" + (i + 1) + "OffsetValue"].textContent = ch.offset.toFixed(2);
   });
 }
@@ -7701,7 +7770,7 @@ el.autoset.addEventListener("click", () => {
     });
     if (FULL_SCALE_DB[best] < needed) best = 0;
 
-    state.channels[i].scale = best;
+    state.channels[i].fsDb = FULL_SCALE_DB[best];
     if (el["ch" + (i + 1) + "Scale"]) el["ch" + (i + 1) + "Scale"].value = String(best);
   });
 
@@ -7864,7 +7933,7 @@ const DEFAULTS = {
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
   position: 10, holdoff: 0, trigMode: "auto",
-  c0on: true, c0ac: false, c0s: 0, c0o: 0,
+  c0on: true, c0ac: false, c0s: 0, c0o: 0,     // c0s and c1s are decibels
   c1on: true, c1ac: false, c1s: 0, c1o: 0,
   midSide: false,
   acHz: 100,                 // tenths of a hertz, so 10.0
@@ -7917,9 +7986,10 @@ function snapshot() {
     holdoff: Number(el.holdoff.value),
     trigMode: state.mode,
     c0on: state.channels[0].on, c0ac: state.channels[0].ac,
-    c0s: state.channels[0].scale, c0o: Math.round(state.channels[0].offset * 100),
+    // Decibels since version 3, where it used to be a position in the table.
+    c0s: state.channels[0].fsDb, c0o: Math.round(state.channels[0].offset * 100),
     c1on: state.channels[1].on, c1ac: state.channels[1].ac,
-    c1s: state.channels[1].scale, c1o: Math.round(state.channels[1].offset * 100),
+    c1s: state.channels[1].fsDb, c1o: Math.round(state.channels[1].offset * 100),
     midSide: state.midSide,
     acHz: Math.round(state.acHz * 10),
     octaves: tone ? tone.octaves : DEFAULTS.octaves,
@@ -8041,7 +8111,7 @@ function restore(partial) {
     const key = "c" + i;
     state.channels[i].on = s[key + "on"];
     state.channels[i].ac = s[key + "ac"];
-    state.channels[i].scale = s[key + "s"];
+    state.channels[i].fsDb = s[key + "s"];
     state.channels[i].offset = s[key + "o"] / 100;
     el["ch" + (i + 1) + "On"].checked = s[key + "on"];
     el["ch" + (i + 1) + "Ac"].checked = s[key + "ac"];
@@ -8277,11 +8347,12 @@ function writeSaved(all) {
 /* Stamped on every code, so the next migration can dispatch on a number
    rather than guess from which keys happen to be present. */
 /* 2: the trigger level became a fraction of full scale rather than an
-   amplitude. Version 1 codes are migrated on the way in - see `decodeSetup` -
-   which is the same treatment the modulation enum got, and for the same
-   reason: a stored number whose meaning changed is not something to fix up
-   quietly at the point of use. */
-const SETUP_VERSION = 2;
+   amplitude. 3: full scale became decibels rather than a position in a table
+   of nine. Both are migrated on the way in - see `migrateSetup` - which is the
+   same treatment the modulation enum got, and for the same reason: a stored
+   number whose meaning changed is not something to fix up quietly at the point
+   of use. */
+const SETUP_VERSION = 3;
 
 function encodeSetup(snap) {
   const diff = { v: SETUP_VERSION };
@@ -8301,27 +8372,49 @@ function decodeSetup(code) {
   return migrateSetup(setup);
 }
 
-/* A setup written before the trigger level meant a fraction of full scale.
-   The stored number was an amplitude, so the fraction it corresponds to is
-   that amplitude times the lane's gain - which is to say, where it sat on the
-   graticule, which is what the control now means.
+/* Both format changes, in one ordered pass, because they touch the same
+   fields for related reasons and two passes kept in step is two passes that
+   can fall out of step.
 
-   Only lanes one and two have a stored full scale, because only they have a
-   row in the format. A setup whose trigger watched a rack lane keeps its
-   number unchanged, which is right for the common case of a rack at nought
-   dBFS and stated here rather than discovered. */
+   The ORDER is the part to be careful with. Step one reads the stored full
+   scale as a position in the table, because that is what it was in a version 1
+   setup; step two is what turns that position into decibels. Run them the
+   other way round and the first would read a decibel value as an index.
+
+   1 -> 2: the trigger level was an amplitude and is now a fraction of full
+   scale, so the fraction is that amplitude times the lane's gain - which is to
+   say, where the line sat on the graticule, which is what the control means
+   now. Only lanes one and two have a stored full scale, because only they have
+   a row in the format; a setup whose trigger watched a rack lane keeps its
+   number, which is right for the common case of a rack at nought dBFS and
+   stated here rather than discovered.
+
+   2 -> 3: full scale itself was a position in a table of nine and is now
+   decibels. The nine positions map to the nine numbers the table held, so a
+   setup that was on a detent stays exactly on it. */
 function migrateSetup(setup) {
-  if (!setup || setup.v >= 2) return setup;
+  if (!setup || setup.v >= SETUP_VERSION) return setup;
 
-  const lane = setup.trig === undefined ? DEFAULTS.trig : setup.trig;
-  const key = "c" + lane + "s";
-  const stored = setup[key] === undefined ? DEFAULTS[key] : setup[key];
-  const scale = lane <= 1 && FULL_SCALE_DB[stored] !== undefined ? stored : 0;
-  const gain = Math.pow(10, -FULL_SCALE_DB[scale] / 20);
+  if (!(setup.v >= 2)) {
+    const lane = setup.trig === undefined ? DEFAULTS.trig : setup.trig;
+    const key = "c" + lane + "s";
+    const stored = setup[key] === undefined ? 0 : setup[key];
+    const index = lane <= 1 && FULL_SCALE_DB[stored] !== undefined ? stored : 0;
+    const gain = Math.pow(10, -FULL_SCALE_DB[index] / 20);
 
-  if (setup.level !== undefined && gain !== 1) {
-    setup.level = Math.max(-1000, Math.min(1000, Math.round(setup.level * gain)));
+    if (setup.level !== undefined && gain !== 1) {
+      setup.level = Math.max(-1000, Math.min(1000, Math.round(setup.level * gain)));
+    }
   }
+
+  if (!(setup.v >= 3)) {
+    for (const key of ["c0s", "c1s"]) {
+      const stored = setup[key];
+      if (stored === undefined) continue;
+      setup[key] = FULL_SCALE_DB[stored] !== undefined ? FULL_SCALE_DB[stored] : 0;
+    }
+  }
+
   setup.v = SETUP_VERSION;
   return setup;
 }
@@ -8843,7 +8936,7 @@ function buildLaneRows() {
       + '<label class="menu-label" for="' + id + 'Scale">Full scale</label>'
       + '<div class="grow">'
       + '<input type="range" id="' + id + 'Scale" min="0" max="' + (FULL_SCALE_DB.length - 1)
-      + '" step="1" value="' + ch.scale + '">'
+      + '" step="1" value="' + fsDetent(ch.fsDb) + '">'
       + '<span class="reading" id="' + id + 'ScaleValue"></span>'
       + "</div></div>"
       + '<div class="menu-row">'
@@ -8863,7 +8956,10 @@ function buildLaneRows() {
     el[id + "On"].addEventListener("change", (e) => { state.channels[i].on = e.target.checked; });
     el[id + "Ac"].addEventListener("change", (e) => { state.channels[i].ac = e.target.checked; });
     el[id + "Scale"].addEventListener("input", (e) => {
-      state.channels[i].scale = Number(e.target.value);
+      // The detent's own decibels, so the nine positions are the nine numbers
+      // the table has always held and a hand-set lane is bit for bit what it
+      // used to be.
+      state.channels[i].fsDb = FULL_SCALE_DB[Number(e.target.value)];
       syncLabels();
     });
     el[id + "Offset"].addEventListener("input", (e) => {
@@ -10091,6 +10187,7 @@ document.addEventListener("keydown", (event) => {
 const watchSize = new ResizeObserver(() => { /* the next frame refits */ });
 [el.trace, el.goni, el.spectrum].forEach((c) => watchSize.observe(c.parentElement));
 
+registerLaneDests(state.channels.length);
 buildLfoRows();
 fillIntervals();
 toTone();
