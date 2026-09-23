@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A — MIDI in — is built; B to E are not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 (band-limiting) and Stage C's C0/C1 apart from lag are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -563,3 +563,70 @@ feature detect says so.
 is a per-sample ring buffer that feeds the screen and nothing else. Anything
 built on the audio graph (filters, monitoring) reaches the microphone, file and
 rack sources and cannot reach the generator.
+
+**Rotation is a signal transform on a stereo pair and a display knob on
+everything else.** `rotatesSignal` decides, and both halves of the instrument
+read it: `capture` turns the lanes before the trigger sees them, and
+`syncMonitor` turns the speakers, so a pair cannot have a figure at one angle
+and an image at another. A rack of stems, a band split, a mono input and the
+lag lane's delayed copy of one signal are none of them a stereo image, so
+there rotation stays what it was — `drawXY` turns the figure and nothing else
+moves. One consequence, written where it will surprise someone: a mono input
+no longer pans when it is monitored on the shaped side. Turning the vector
+(l, 0) is a real operation and it used to happen, but there was no figure
+turning on the screen to have asked for it.
+
+**The measurements have their own tap, and its default is the signal.** Peak,
+RMS, Vpp, frequency, THD, the tuner and the correlation bar read
+`frame.measured`, which is the block before rotation unless *Numbers read* is
+set to *Turned*. The level meter and the *Clipping* verdict read
+`frame.signal` whatever that switch says — the first because a modulation
+source that moved when a display knob moved would come back through the matrix
+and change the picture, the second because clipping is a claim about the
+input. At rest all three are the same arrays, not three copies: turning
+nothing costs nothing and reads bit-identically.
+
+**The window the trigger picks is allowed to move; what is in it is not.**
+The trigger reads the drawn lanes — that is what made its level a fraction of
+the screen — so turning a pair can put the edge on a different sample and the
+measurements are then over a different slice of the same signal. That is a
+bench scope's behaviour rather than a leak, but it means "turn the knob and
+the numbers do not change" is only true to the last few digits once the
+trigger is live. `rotatetest.py` asserts the exact statement instead: whatever
+window came back, turning the measured pair by the angle in force reproduces
+the drawn pair. The bit-identical comparison is made with the level put out of
+reach, so both captures fall back to the same offset.
+
+**Full scale is not in the block, and that row of the plan was withdrawn
+rather than deferred.** Anything inside the tapped block is by definition
+something `monitorAt: post` can send to the speakers, and full scale is a
+display magnification — putting it in would make the monitoring level follow a
+knob whose job is how big the trace is. What it actually needed was to be
+continuous, modulatable and tracked by the trigger, and it got all three
+without moving. This is the same reason zoom was scoped out (D6).
+
+**A stopped scope says "held" before it has looked at a sample.** The first
+version of the clipping checks in `rotatetest.py` set `state.running = false`
+so two captures would read the same buffer, then called `writeReadout` and
+asserted the verdict was not "Clipping". It never can be: the stopped branch
+comes first. Every one of those assertions passed no matter what the code did,
+and the mutation that should have broken them — reading the drawn lanes
+instead of the input — broke nothing. They now run the scope, and there is a
+control that drives the amplitude past full scale and requires the verdict to
+say "clipping", because three checks that something does not happen are worth
+nothing without one that says it can.
+
+**A circle is the one figure a rotation leaves every statistic of alone.** The
+harmonic-tone preset with phase at 90 draws one, and peak, RMS and correlation
+all come back identical before and after a turn — so it cannot witness the tap
+*moving* the numbers when it is pointed at the turned signal, only that it
+does not move them when it is not. That check uses two copies of one signal
+instead, where 45 degrees really is 41 per cent taller.
+
+**Turning the figure twice was invisible to everything else.** Rotation moving
+into `capture` means `drawXY` must not do it again, and the gate is
+`frame.turned`. Removing that gate leaves the captured lanes right, the
+speakers right and every number right, with the picture at twice the angle the
+knob says — and until `rotatetest.py` gained a check comparing the drawn
+polyline against the shape of `frame.channels`, nothing failed. A circle
+cannot see that either, so the check uses the phase-0 line.

@@ -1,20 +1,37 @@
-"""Rotation, mid/side as a case of it, and the line it is not allowed to cross.
-
-Three things are asserted here and the third is the one that matters most.
+"""Rotation, mid/side as a case of it, and the line it is still not allowed
+to cross.
 
 That mid/side is what it always was, now that it is written as a rotation at
 45 degrees with its gain and its flip kept explicit. That the X-Y figure is
-turned before each lane is placed rather than after. And that rotation reaches
-the X-Y figure and NOTHING else - not Y-T, not the trigger, not a single
-number in the readout.
+turned before each lane is placed rather than after. That the same matrix
+reaches the speakers, from the same numbers. And - the part that matters most
+- where rotation is allowed to reach and where it is not.
 
-That last one is a scoping decision rather than an implementation detail. A
-rotated lane in Y-T is a blend of two signals with no picture to justify it,
-and a frequency or a THD reading taken off it would still be labelled as
-though it described the input. Zoom was scoped out of the shared transforms
-for the same reason. When rotation does become a signal transform for
-everything, these checks are what say which measurements have to be given
-their own tap first.
+That last one used to be simple: rotation touched the figure and nothing else.
+It is now two rules rather than one, and both are asserted here.
+
+On a stereo pair rotation is a transform on the SIGNAL. `capture` turns the
+lanes before the trigger reads them, so Y-T, the figure, the trigger and the
+speakers are one rotation rather than several that happen to agree. On
+anything that is not a pair - a rack of stems, a band split, the lag lane's
+delayed copy of one signal - it stays a display knob and turns the figure at
+draw time, because there is no stereo image there to turn.
+
+The per-lane measurements read their own tap, and its default is the signal
+as it was before rotation. So a turned figure leaves peak, RMS, frequency,
+THD and the correlation bar reading exactly what they read before - the same
+arithmetic on the same samples, not a close copy. Two things are pinned there
+whatever the tap says: the level meter, because a modulation source that moved
+when a display knob moved would feed back into the picture through the matrix,
+and the Clipping verdict, because clipping is a claim about the input.
+
+One thing the window IS allowed to do is move. The trigger reads what is
+drawn, which is what made its level a fraction of the screen in the first
+place, so turning the figure can put the edge somewhere else and the
+measurements are then over a different slice of the same signal. That is a
+bench scope's behaviour rather than a leak, and it is checked as an algebraic
+identity instead: whatever window came back, the measured lanes are that
+window before it was turned.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -22,6 +39,11 @@ from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
+
+# The page's own clipping threshold, and the one number this file needs from
+# it: a rotation at 45 degrees is what pushes a pair over it without the input
+# having gone anywhere near.
+CLIP = 0.999
 
 fails = []
 def check(name, ok, detail=""):
@@ -212,45 +234,388 @@ with sync_playwright() as pw:
     check("and the stretch is the one the two full scales ask for",
           abs(drawn["ratio"] - 0.25) < 0.05, "%.3f against 0.250" % drawn["ratio"])
 
-    print("\n--- rotation reaches the figure and nothing else ---")
-    # The scoping decision, as a test. Every number in the readout is taken
-    # from `capture`, so if rotation ever moves in there this fails and says
-    # which measurements have to be given their own tap first.
+    print("\n--- rotation turns the pair, and the tap keeps the numbers still ---")
+    # The scoping decision as it now stands, and it is two decisions rather
+    # than one. Rotation IS a signal transform on a stereo pair - it reaches
+    # the captured lanes, the trigger and the speakers. The per-lane
+    # measurements read their own tap, and at its default that tap is the
+    # signal before rotation, so every number is the one it was.
+    #
+    # These checks used to assert that rotation reached nothing at all. They
+    # were rewritten rather than deleted, because what they were protecting is
+    # still being protected: a measurement that quietly stops describing what
+    # its label says.
     scope = p.evaluate("""() => {
-      state.channels[1].fsDb = 0;
-      state.rotate = 0;
+      const was = { level: state.level, rotate: state.rotate, tap: state.measureAt };
+      state.channels[0].fsDb = 0; state.channels[1].fsDb = 0;
+      state.rotateMod = 0;
+      state.measureAt = 'pre';
       state.running = false;
+      /* The trigger put out of reach, so both captures fall back to the same
+         fixed offset and the two windows are the same samples.
+
+         With it live the rotation genuinely does move the window - the
+         trigger reads what is drawn now, and a turned lane crosses the level
+         somewhere else. That is a real consequence and it gets its own check
+         below; mixing it in here would compare two different slices of the
+         signal and call the difference a tap failure. */
+      state.level = 2;
+
+      state.rotate = 0;
       const flat = capture();
-      const before = measure(flat.channels[0], flat.rate);
-      const corrBefore = correlation(flat.channels[0], flat.channels[1]);
+      const restingSame = flat.channels === flat.signal
+                       && flat.measured === flat.signal && flat.turned === false;
+      const before = measure(flat.measured[0], flat.rate);
+      const corrBefore = correlation(flat.measured[0], flat.measured[1]);
 
       state.rotate = 0.3;
       const turned = capture();
-      const after = measure(turned.channels[0], turned.rate);
-      const corrAfter = correlation(turned.channels[0], turned.channels[1]);
+      const after = measure(turned.measured[0], turned.rate);
+      const corrAfter = correlation(turned.measured[0], turned.measured[1]);
 
-      let worst = 0;
+      let drawnMoved = 0, measuredMoved = 0, matrix = 0;
+      const { cos, sin } = turnOf(0.3);
       for (let i = 0; i < flat.channels[0].length; i++) {
-        worst = Math.max(worst, Math.abs(flat.channels[0][i] - turned.channels[0][i]),
-                                Math.abs(flat.channels[1][i] - turned.channels[1][i]));
+        drawnMoved = Math.max(drawnMoved,
+          Math.abs(flat.channels[0][i] - turned.channels[0][i]),
+          Math.abs(flat.channels[1][i] - turned.channels[1][i]));
+        measuredMoved = Math.max(measuredMoved,
+          Math.abs(flat.measured[0][i] - turned.measured[0][i]),
+          Math.abs(flat.measured[1][i] - turned.measured[1][i]));
+        const l = flat.signal[0][i], r = flat.signal[1][i];
+        matrix = Math.max(matrix,
+          Math.abs(turned.channels[0][i] - (l * cos - r * sin)),
+          Math.abs(turned.channels[1][i] - (l * sin + r * cos)));
       }
-      state.rotate = 0;
+
+      // And with the tap moved, the same numbers follow what is drawn.
+      state.measureAt = 'post';
+      const post = capture();
+      const postFollows = post.measured === post.channels;
+      const postCorr = correlation(post.measured[0], post.measured[1]);
+
+      state.measureAt = was.tap; state.rotate = was.rotate; state.level = was.level;
       state.running = true;
       return {
-        worst, triggeredSame: flat.triggered === turned.triggered,
-        preSame: flat.pre === turned.pre,
+        restingSame, turnedFlag: turned.turned, drawnMoved, measuredMoved, matrix,
         peak: [before.peak, after.peak], rms: [before.rms, after.rms],
-        corr: [corrBefore, corrAfter],
+        corr: [corrBefore, corrAfter], postFollows, postCorr,
       };
     }""")
-    check("turning the figure does not touch the captured lanes",
-          scope["worst"] == 0, "worst difference %.3g" % scope["worst"])
-    check("nor the trigger", scope["triggeredSame"] and scope["preSame"], str(scope))
-    check("nor the per-lane peak and RMS",
+    check("at rest the block is one set of arrays and not three copies of it",
+          scope["restingSame"], str(scope["restingSame"]))
+    check("turning a pair turns what is drawn",
+          scope["turnedFlag"] and scope["drawnMoved"] > 0.01,
+          "moved by %.3f" % scope["drawnMoved"])
+    check("and it is exactly the matrix the figure was drawn with",
+          scope["matrix"] < 1e-7, "worst %.3g" % scope["matrix"])
+    check("the measured lanes do not move one sample",
+          scope["measuredMoved"] == 0, "worst %.3g" % scope["measuredMoved"])
+    check("so peak and RMS are the same numbers, not close ones",
           scope["peak"][0] == scope["peak"][1] and scope["rms"][0] == scope["rms"][1],
           str(scope["peak"]) + " " + str(scope["rms"]))
-    check("nor the correlation the goniometer reports",
+    check("and so is the correlation under the goniometer",
           scope["corr"][0] == scope["corr"][1], str(scope["corr"]))
+    # Identity rather than a number, and deliberately: this preset draws a
+    # circle, and a circle is the one figure a rotation leaves every statistic
+    # of alone. That the tap moves the NUMBERS is checked below, on a pair
+    # that is not circular - which is the sort of thing a test can be fooled
+    # by once and then believed forever.
+    check("point the tap at the turned signal and it reads what is drawn",
+          scope["postFollows"], str(scope["postFollows"]))
+
+    # The window the trigger picks IS allowed to move - it reads what is
+    # drawn, which is what made the level a fraction of the screen in the
+    # first place. What may not happen is the measured lanes being anything
+    # other than that window before it was turned, and that is an algebraic
+    # statement rather than a comparison against a second capture: turn the
+    # measured pair by the angle in force and the drawn pair has to come back.
+    live = p.evaluate("""() => {
+      const wasLevel = state.level;
+      state.running = false;
+      state.measureAt = 'pre';
+      /* A quarter turn, so the two lanes are as far apart as a rotation can
+         put them: lane one of what is drawn is the negated second lane of
+         what is measured. At three tenths of a turn they came out 0.31 and
+         0.34, which is a real difference and too small to assert against
+         without picking a threshold to fit it. */
+      state.rotate = 0.25; state.rotateMod = 0;
+      /* A level worth finding. At nought the check would be satisfied by any
+         sample that happened to sit near the axis, which on a sine is one in
+         every few - a test that passes whatever the code does. */
+      state.level = 0.3;
+      const f = capture();
+      const { cos, sin } = turnOf(0.25);
+      let worst = 0;
+      for (let i = 0; i < f.channels[0].length; i++) {
+        const l = f.measured[0][i], r = f.measured[1][i];
+        worst = Math.max(worst, Math.abs(f.channels[0][i] - (l * cos - r * sin)),
+                                Math.abs(f.channels[1][i] - (l * sin + r * cos)));
+      }
+      const at = f.triggered ? f.channels[state.trigSource][f.pre] : null;
+      const measuredAt = f.triggered ? f.measured[state.trigSource][f.pre] : null;
+      state.rotate = 0;
+      state.level = wasLevel;
+      state.running = true;
+      return { worst, triggered: f.triggered, at, measuredAt, want: f.levelAt };
+    }""")
+    check("whatever window the trigger picks, the measured lanes are it unturned",
+          live["worst"] < 1e-6, "worst %.3g" % live["worst"])
+    check("and the trigger fires on what is drawn, not on what is measured",
+          live["triggered"] and abs(live["at"] - live["want"]) < 0.02
+          and abs(live["measuredAt"] - live["want"]) > 0.05,
+          "drawn %.4f, measured %.4f, wanted %.4f"
+          % (live["at"] or 0, live["measuredAt"] or 0, live["want"]))
+
+    # Two things pinned to the signal whatever the tap says, and both for the
+    # same reason: one of them feeds back into the picture and the other is a
+    # claim about the input rather than about the display.
+    #
+    # Both lanes carry the same signal at 0.72 from here on, which no rotation
+    # can clip on its own - but at 45 degrees the pair comes out 41 per cent
+    # taller, which does. The input is the same input either way.
+    pinned = p.evaluate("""() => {
+      const was = { rotate: state.rotate, tap: state.measureAt, amp: el.amp.value,
+                    phase: el.phase.value };
+      state.running = true;
+      el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
+      el.amp.value = '72'; el.amp.dispatchEvent(new Event('input'));
+      return was;
+    }""")
+    p.wait_for_timeout(400)
+
+    # The verdict, with the scope RUNNING. This is worth spelling out because
+    # the first version of this check was stopped, and a stopped scope reports
+    # "held" before it has looked at a single sample - so every assertion
+    # below passed no matter what the code did. The control at the end is what
+    # says the clipping branch can be reached at all.
+    verdicts = p.evaluate("""() => {
+      state.running = true;
+      state.measureAt = 'pre';
+      state.rotate = 0; state.rotateMod = 0;
+      const flat = capture();
+      let inPeak = 0;
+      for (let i = 0; i < flat.signal[0].length; i++) {
+        inPeak = Math.max(inPeak, Math.abs(flat.signal[0][i]), Math.abs(flat.signal[1][i]));
+      }
+      writeReadout(flat);
+      const restVerdict = el.verdict.dataset.state;
+      const restLine = el.readoutDetail.textContent;
+
+      state.rotate = -0.125;                       // 45 degrees, the M/S angle
+      const turned = capture();
+      let outPeak = 0;
+      for (let i = 0; i < turned.channels[0].length; i++) {
+        outPeak = Math.max(outPeak, Math.abs(turned.channels[0][i]),
+                                    Math.abs(turned.channels[1][i]));
+      }
+      writeReadout(turned);
+      const turnedVerdict = el.verdict.dataset.state;
+      const peakPre = measure(turned.measured[0], turned.rate).peak;
+
+      state.measureAt = 'post';
+      const tapped = capture();
+      writeReadout(tapped);
+      const tappedVerdict = el.verdict.dataset.state;
+      const tappedLine = el.readoutDetail.textContent;
+      const peakPost = measure(tapped.measured[0], tapped.rate).peak;
+
+      state.measureAt = 'pre';
+      state.rotate = 0;
+      return { inPeak, outPeak, restVerdict, turnedVerdict, tappedVerdict,
+               restLine, tappedLine, peakPre, peakPost };
+    }""")
+    check("the rotation really did push the drawn pair past the converter",
+          verdicts["inPeak"] < CLIP and verdicts["outPeak"] > CLIP,
+          "input %.3f, drawn %.3f" % (verdicts["inPeak"], verdicts["outPeak"]))
+    check("and the verdict still says the input is not clipping",
+          verdicts["restVerdict"] == verdicts["turnedVerdict"] != "clipping",
+          "%s then %s" % (verdicts["restVerdict"], verdicts["turnedVerdict"]))
+    check("it says so with the tap moved as well",
+          verdicts["tappedVerdict"] != "clipping", verdicts["tappedVerdict"])
+    # Here the numbers really can move, because this pair is not a circle: two
+    # copies of one signal turned by 45 degrees come out 41 per cent taller.
+    check("and with the tap moved, peak is about the turned signal",
+          abs(verdicts["peakPre"] - verdicts["inPeak"]) < 1e-6
+          and verdicts["peakPost"] > verdicts["peakPre"] * 1.3,
+          "%.4f at the default, %.4f tapped, input %.4f"
+          % (verdicts["peakPre"], verdicts["peakPost"], verdicts["inPeak"]))
+    check("the readout says nothing about rotation at the tap's default",
+          "post-rotation" not in verdicts["restLine"], verdicts["restLine"][:70])
+    check("and names it when the numbers are about the turned signal",
+          "post-rotation" in verdicts["tappedLine"], verdicts["tappedLine"][:70])
+
+    # The control. Without it the three verdict checks above are satisfied by
+    # a page that never says "Clipping" about anything.
+    control = p.evaluate("""() => {
+      const amp = el.amp.value;
+      el.amp.value = '130'; el.amp.dispatchEvent(new Event('input'));
+      return amp;
+    }""")
+    p.wait_for_timeout(400)
+    loud_verdict = p.evaluate("""() => {
+      writeReadout(capture());
+      return el.verdict.dataset.state;
+    }""")
+    check("and an input that really is over the top does say so",
+          loud_verdict == "clipping", loud_verdict)
+    p.evaluate("""(amp) => {
+      el.amp.value = amp; el.amp.dispatchEvent(new Event('input'));
+    }""", control)
+    p.wait_for_timeout(300)
+
+    # The level meter, from two frames of the same samples - so the scope is
+    # stopped for this one and the verdict is not being read.
+    env = p.evaluate("""() => {
+      state.running = false;
+      state.rotate = 0; state.rotateMod = 0;
+      const flat = capture();
+      state.rotate = -0.125;
+      const turned = capture();
+      /* Run to convergence rather than reaching inside the follower: a huge
+         elapsed makes the one-pole settle on the block's RMS exactly, so the
+         two runs are comparable. */
+      updateEnvelope(flat, 1e6);
+      const envFlat = MOD_SOURCES.get('env.live').value();
+      updateEnvelope(turned, 1e6);
+      const envTurned = MOD_SOURCES.get('env.live').value();
+      state.rotate = 0;
+      state.running = true;
+      return { envFlat, envTurned, turnedFlag: turned.turned };
+    }""")
+    check("the level meter does not move when the figure turns",
+          env["turnedFlag"] and env["envFlat"] == env["envTurned"],
+          "%.9f against %.9f" % (env["envFlat"], env["envTurned"]))
+
+    # And the figure is drawn from the lanes as they came out of `capture`,
+    # not turned a second time on the way to the paper. Nothing else catches
+    # that: the captured lanes would be right, the speakers would be right,
+    # every number would be right, and the picture would be at twice the angle
+    # the knob says. A line rather than the circle the preset draws, because a
+    # circle has no angle to be wrong about.
+    twice = p.evaluate("""(shape) => {
+      const was = { display: state.display, rotate: state.rotate,
+                    persist: state.persistence };
+      state.running = false;
+      state.display = 'xy';
+      state.persistence = 0;
+      state.channels[0].fsDb = 0; state.channels[1].fsDb = 0;
+      state.channels[0].offset = 0; state.channels[1].offset = 0;
+      state.zoom = 1; state.zoomStep = 0; state.zoomMod = 0;
+      state.rotate = 1 / 12;                       // 30 degrees
+      state.rotateMod = 0;
+
+      const f = capture();
+      drawXY(f, fitCanvas(el.trace), 16);
+      const n = Math.min(2000, beamX.length);
+      const xs = [], ys = [];
+      for (let i = 0; i < n; i++) {
+        if (beamX[i] === 0 && beamY[i] === 0) break;
+        xs.push(beamX[i]); ys.push(-beamY[i]);
+      }
+      const shapeOf = eval(shape);
+      const onPaper = shapeOf(xs, ys);
+      const inBlock = shapeOf(Array.from(f.channels[0]), Array.from(f.channels[1]));
+      const unturned = shapeOf(Array.from(f.signal[0]), Array.from(f.signal[1]));
+
+      state.display = was.display; state.rotate = was.rotate;
+      state.persistence = was.persist;
+      state.running = true;
+      return { onPaper: onPaper.angle, inBlock: inBlock.angle,
+               unturned: unturned.angle, ratio: onPaper.ratio, turned: f.turned };
+    }""", SHAPE)
+    # The principal axis is only defined to within 180 degrees, so every
+    # comparison here is folded into that.
+    fold = lambda d: abs((d + 90) % 180 - 90)
+    check("the figure on the paper is the block, not the block turned again",
+          twice["turned"] and fold(twice["onPaper"] - twice["inBlock"]) < 2,
+          "paper %.1f, block %.1f" % (twice["onPaper"], twice["inBlock"]))
+    check("and it did turn, by the thirty degrees the knob was set to",
+          abs(fold(twice["onPaper"] - twice["unturned"]) - 30) < 3,
+          "%.1f degrees from the signal, ratio %.3f"
+          % (fold(twice["onPaper"] - twice["unturned"]), twice["ratio"]))
+
+    p.evaluate("""(was) => {
+      el.phase.value = was.phase; el.phase.dispatchEvent(new Event('input'));
+      el.amp.value = was.amp; el.amp.dispatchEvent(new Event('input'));
+      state.rotate = was.rotate; state.measureAt = was.tap;
+    }""", pinned)
+    p.wait_for_timeout(300)
+
+    print("\n--- and on anything that is not a stereo pair, it is a display knob ---")
+    # The rule, as a truth table taken from the page's own predicate. A rack
+    # is several real signals; the lag lane's second channel is the first one
+    # delayed. Neither is a stereo image, and the speakers are still being
+    # handed left against right in both cases.
+    rule = p.evaluate("""() => {
+      const src = state.source, lagOn = state.lagOn;
+      const out = { pair: rotatesSignal() };
+      state.source = { channels: 2, lanes: [{ name: 'a' }, { name: 'b' }] };
+      out.rack = rotatesSignal();
+      state.source = { channels: 1 };
+      out.mono = rotatesSignal();
+      state.source = src;
+      state.lagOn = true; state.lagAuto = false;
+      out.lag = rotatesSignal();
+      state.lagOn = lagOn; state.lagAuto = true;
+      return out;
+    }""")
+    check("a stereo pair turns; a rack, a mono input and the lag lane do not",
+          rule["pair"] and not rule["rack"] and not rule["mono"] and not rule["lag"],
+          str(rule))
+
+    # And the figure still turns there, at draw time, exactly as it always
+    # did. Without this the widening could have quietly removed rotation from
+    # every rack in the page and no other check would have noticed.
+    rack = p.evaluate("""(shape) => {
+      const was = { display: state.display, rotate: state.rotate,
+                    lagOn: state.lagOn, auto: state.lagAuto, persist: state.persistence };
+      state.running = false;
+      state.display = 'xy';
+      state.persistence = 0;
+      state.lagOn = true; state.lagAuto = false; state.lagMs = 5;
+      const active = lagActive();
+
+      const read = () => {
+        const n = Math.min(2000, beamX.length);
+        const xs = [], ys = [];
+        for (let i = 0; i < n; i++) {
+          if (beamX[i] === 0 && beamY[i] === 0) break;
+          xs.push(beamX[i]); ys.push(-beamY[i]);
+        }
+        return eval(shape)(xs, ys);
+      };
+
+      state.rotate = 0; state.rotateMod = 0;
+      const flat = capture();
+      const untouched = flat.channels === flat.signal && flat.turned === false;
+      drawXY(flat, fitCanvas(el.trace), 16);
+      const before = read();
+
+      state.rotate = 0.25;
+      const turned = capture();
+      const stillUntouched = turned.channels === turned.signal && turned.turned === false;
+      drawXY(turned, fitCanvas(el.trace), 16);
+      const after = read();
+
+      state.display = was.display; state.rotate = was.rotate;
+      state.lagOn = was.lagOn; state.lagAuto = was.auto;
+      state.persistence = was.persist;
+      state.running = true;
+      return { active, untouched, stillUntouched,
+               before: before.angle, after: after.angle,
+               ratio: [before.ratio, after.ratio] };
+    }""", SHAPE)
+    check("the lag lane is a lane and the capture is left alone",
+          rack["active"] and rack["untouched"] and rack["stillUntouched"], str(rack))
+    # A quarter turn is 90 degrees, and the principal axis is only defined to
+    # within 180, so the angle comes back folded. What matters is that it moved
+    # by a quarter turn and the figure kept its shape.
+    moved = abs(((rack["after"] - rack["before"]) + 90) % 180 - 90)
+    check("but the figure itself turns, at draw time, as it always did",
+          abs(moved - 90) < 8 or moved > 82,
+          "%.1f degrees, ratio %.3f then %.3f"
+          % (moved, rack["ratio"][0], rack["ratio"][1]))
 
     # Mid/side is the other way about on purpose, and says so: it IS a signal
     # transform, it does reach the measurements, and the lane names change so
@@ -283,7 +648,7 @@ with sync_playwright() as pw:
     # measuring those two rather than the matrix. They are measured below, on
     # their own, and the clamp is checked where it belongs - at the end, with a
     # signal loud enough to need it.
-    RENDER = """async ([turns, at, tap]) => {
+    RENDER = """async ([turns, at, tap, lag]) => {
       const rate = 44100, frames = Math.round(rate * 0.3);
       const ctx = new OfflineAudioContext(2, frames, rate);
 
@@ -308,12 +673,17 @@ with sync_playwright() as pw:
       }
 
       const was = { rotate: state.rotate, mod: state.rotateMod,
-                    at: state.monitorAt, on: state.filter.on };
+                    at: state.monitorAt, on: state.filter.on,
+                    lagOn: state.lagOn, auto: state.lagAuto };
       state.rotate = turns; state.rotateMod = 0;
       state.monitorAt = at; state.filter.on = false;
+      // `lag` puts the page into the one state where rotation is a display
+      // knob, to check the speakers agree about that too.
+      if (lag) { state.lagOn = true; state.lagAuto = false; }
       syncMonitor();                              // the page's own setter
       state.rotate = was.rotate; state.rotateMod = was.mod;
       state.monitorAt = was.at; state.filter.on = was.on;
+      state.lagOn = was.lagOn; state.lagAuto = was.auto;
       /* Out of the live set but still connected: `dropMonitorChain` unhooks
          the clamp from the destination, which would render silence. This only
          stops the page's frame loop re-targeting these gains mid-render. */
@@ -340,19 +710,27 @@ with sync_playwright() as pw:
                                abs(run["outR"][i + shift] - want_r))
         return worst
 
-    at_rest = p.evaluate(RENDER, [0, "post", "merger"])
+    at_rest = p.evaluate(RENDER, [0, "post", "merger", False])
     check("at rest the rotation stage is not there at all",
           worst_against(at_rest, 0) == 0, "worst %.3g" % worst_against(at_rest, 0))
 
     for turns in (0.125, 0.3, -0.07):
-        run = p.evaluate(RENDER, [turns, "post", "merger"])
+        run = p.evaluate(RENDER, [turns, "post", "merger", False])
         worst = worst_against(run, turns)
         check("at %+.3f of a turn the graph is the matrix the picture uses" % turns,
               worst < 1e-7, "worst %.3g" % worst)
 
-    dry = p.evaluate(RENDER, [0.3, "pre", "merger"])
+    dry = p.evaluate(RENDER, [0.3, "pre", "merger", False])
     check("and on the input side it does not turn at all",
           worst_against(dry, 0) == 0, "worst %.3g" % worst_against(dry, 0))
+
+    # And the other half of the rule the picture obeys: where rotation is a
+    # display knob, the speakers must not turn either. Otherwise a rack would
+    # have its stems mixed into each other by a control that, on screen, only
+    # tilts a figure.
+    lagged = p.evaluate(RENDER, [0.3, "post", "merger", True])
+    check("and where the figure is only a figure, the speakers do not turn",
+          worst_against(lagged, 0) == 0, "worst %.3g" % worst_against(lagged, 0))
 
     print("\n--- what the rest of the chain does, since it was measured anyway ---")
     # Facts about monitoring rather than about rotation, and both worth writing
@@ -402,7 +780,7 @@ with sync_playwright() as pw:
     # its own whatever the level, so monitoring is slightly louder than the
     # signal being monitored - measured on a steady tone, where an impulse
     # would only measure how much the compressor smears one.
-    steady = p.evaluate(RENDER, [0, "post", "destination"])
+    steady = p.evaluate(RENDER, [0, "post", "destination", False])
     rms = lambda xs: math.sqrt(sum(v * v for v in xs) / len(xs))
     gain = rms(steady["outL"][5000:12000]) / rms(steady["inL"][5000:12000])
     print("    and a steady tone comes out %.2f dB louder than it went in"
@@ -458,4 +836,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("rotation stays where it was scoped to")
+print("rotation turns the pair, and the numbers stay about the signal")

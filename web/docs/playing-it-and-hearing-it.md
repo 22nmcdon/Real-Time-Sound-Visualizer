@@ -48,9 +48,9 @@ sides run the same one-pole DC blocker now, from one shared corner (0.5–20 Hz,
 ten by default), and they agree bit for bit. The size of the change is measured
 in `web/README.md`; the readout names the corner while AC is on.
 
-What is left of C1's table: full scale as a `GainNode` and lag as a
-`DelayNode`. Both wait on the holds below, since neither is in the picture's
-block yet.
+What is left of C1's table: lag as a `DelayNode`. **Full scale as a `GainNode`
+is withdrawn rather than deferred** — see the widening below for why a display
+magnification should not be a thing the speakers follow.
 
 **Taken: full scale is a continuous gain, and a destination.** Which is what
 the trigger work was actually for: a fraction sitting on a table of nine
@@ -64,113 +64,110 @@ real amplitude beside it in the dock and a version-2 setup migration for codes
 that stored an amplitude. What is still held is the *reordering* it was blocking
 — see below.
 
-**Still held: full scale inside the captured block.** The redefinition it was
-waiting for is built — the level is a fraction, converted per capture, and the
-dock gives the amplitude beside it. What remains is the move itself, and it is
-held for the same reason rotation is: it changes what the numbers are about.
-See *the measurement tap* below, which is now the single piece of work both
-holds reduce to.
+**Settled: full scale stays out of the captured block.** The redefinition it
+was waiting for is built — the level is a fraction, converted per capture, and
+the dock gives the amplitude beside it — and on looking at what moving it in
+would actually buy, the answer was nothing it did not already have. It is a
+display magnification, and a member of the tapped block is by definition
+something the speakers can be sent. So #1 is closed rather than half-closed,
+and it closed by dropping a step rather than by taking it.
 
-**Held: rotation reaching Y–T and the measurements.** Rotation has a clear
-meaning in X–Y and on the goniometer, where it turns a real stereo vector. In
-Y–T a channel is a waveform over time, not one axis of a vector, and a 2×2 mix
-there quietly blends L and R into what is plotted with no visible rotation to
-justify it. Worse, ahead of trigger and slice it reaches every number computed
-downstream: a knob a player reasonably reads as "how the Lissajous is oriented"
-would change the pitch or the THD in an unrelated pane. That is the same class
-of dishonesty `analyseAt` already solved once, and the fix is the same shape —
-the per-lane measurements get their own tap, defaulting to pre-rotation and
-pre-full-scale — or rotation stays scoped to X–Y and the goniometer the way zoom
-already is (D6). Until one of those is built, rotation is scoped, and
-`rotatetest.py` asserts the scope so that widening it fails loudly and names
-what has to move.
+**Built: rotation reaching Y–T and the measurements, with the tap that makes
+it honest.** The objection was never to rotation being a signal transform — it
+was to a knob a player reads as "how the Lissajous is oriented" changing the
+pitch or the THD in an unrelated pane. Both halves of the fix are in. Rotation
+turns the captured lanes on a stereo pair, before the trigger, so Y–T, the
+figure and the speakers are one rotation. The per-lane measurements read their
+own tap, defaulting to the signal as it arrived, so none of those numbers
+moved. On anything that is not a pair — a rack, a band split, a mono input,
+the lag lane — it stays a display knob and `syncMonitor` is gated on the same
+predicate, so the speakers cannot disagree with the screen about it either.
+`rotatetest.py` asserts all of that in both directions, and the checks that
+used to say "rotation reaches nothing" were rewritten rather than deleted.
 
-### The measurement tap, which is what both holds want
+### The measurement tap — built
 
-Written down before anyone builds it, because its whole value is in what it
-promises about numbers and that promise is easy to lose in the plumbing.
+Written down before it was built, because its whole value is in what it
+promises about numbers and that promise is easy to lose in the plumbing. What
+follows is that note with the answers filled in.
 
-**What it is.** `capture` produces two sets of lanes rather than one: the lanes
-the screen draws, and the lanes the measurements read. Today they are the same
-array and every number — peak, RMS, Vpp, frequency, THD, the clipping verdict,
-`env.live`, the goniometer's correlation — is taken from what is drawn. That is
-fine while everything in the block is something a measurement should be about.
-Full scale and rotation are not: one is where the trace sits on the graticule,
-the other is how the figure is oriented.
+**What it is.** `capture` produces three views of one block rather than one
+array: `channels`, what the screen draws; `signal`, what arrived, shaped by
+everything a measurement should be about and by nothing that is only about the
+picture; and `measured`, whichever of those the tap points at. Peak, RMS, Vpp,
+frequency, period, THD, the tuner and the goniometer's correlation read
+`measured`. The switch is *Numbers read* under *Display*, and the readout says
+`post-rotation` when it is not at its default.
 
-**Where it defaults.** Pre-rotation and pre-full-scale, which is exactly
-today's behaviour, so the change ships with every number unmoved. The switch
-exists for the person who genuinely wants to measure the rotated pair — the
-same shape as `analyseAt`, and marked in the readout the same way.
+**Where it defaults.** On `signal`, which is exactly the old behaviour, so the
+change shipped with every number unmoved. At rest all three views are the same
+arrays rather than copies of each other, so "unmoved" means bit-identical and
+not close.
 
-**Why it cannot usefully be built first.** With rotation and full scale outside
-the block, the measured lanes and the drawn lanes are identical by construction
-and the tap is a second name for one array. It earns its keep only in the same
-change that moves them in. So the work is one piece: move full scale and
-rotation into the block, split the taps, and prove every default-configuration
-number is bit-identical to what it was.
+**What had to be true before it landed, and what happened to each.**
 
-**What has to be true before it lands.**
-
-- Every reading in the dock and every pane is bit-identical with the tap at its
-  default, on a sweep of sources and settings. Not "close" — identical, because
-  the default is meant to be the same arithmetic.
-- The clipping verdict stays about the input. Clipping is a property of what
-  arrived, not of where the graticule is, so it reads the pre-full-scale lanes
-  whatever the tap says.
-- `env.live` stays a source about the signal. A modulation source that moved
-  when a display knob moved would be the same dishonesty one level down, and it
-  would feed back into the picture through the matrix.
-- The readout marks the tap when it is not at the default, the way it already
-  says `post-filter` and `AC 10.0 Hz`.
-- `rotatetest.py`'s scoping checks are rewritten rather than deleted: they
-  currently assert rotation reaches nothing, and would become assertions that
-  it reaches the drawn lanes and not the measured ones.
+- ~~Every reading bit-identical with the tap at its default.~~ **Done**, and
+  with one qualification found on the way. The trigger reads the drawn lanes —
+  that is what made its level a fraction of the screen — so turning a pair can
+  put the edge on a different sample, and the measurements are then over a
+  different *slice* of the same signal. That is a bench scope's behaviour
+  rather than a leak. The bit-identical check therefore puts the level out of
+  reach so both captures land on the same offset, and the live case is
+  asserted as an algebraic identity instead: whatever window came back, turning
+  the measured pair by the angle in force reproduces the drawn pair.
+- ~~The clipping verdict stays about the input.~~ **Done**, reading `signal`
+  whatever the tap says. The check that said so was vacuous for its first
+  draft — see `web/README.md` on what a stopped scope reports — and now runs
+  the scope with a control that proves the verdict can say "Clipping" at all.
+- ~~`env.live` stays a source about the signal.~~ **Done**, pinned to `signal`.
+- ~~The readout marks the tap when it is not at the default.~~ **Done**, and
+  only when it is making a difference: the tap can sit on the turned signal all
+  day with nothing turning.
+- ~~`rotatetest.py`'s scoping checks rewritten rather than deleted.~~ **Done**.
+  They assert the same thing they always did — that no number quietly stops
+  describing what its label says — against a rule that is now two rules.
 - ~~Full scale becomes a continuous gain before it can be a modulation
-  destination.~~ **Built.** `fsDb` plus `fsMod`, the knob keeps its nine
-  detents, and `view.scale1…N` are destinations. The nine table values give
-  their old gains to zero difference, which is the baseline everything below
-  is measured against.
+  destination.~~ **Built**, ahead of the rest, and the nine table values give
+  their old gains to zero difference.
 
-**Two questions the note did not have, found while designing it.**
+**The two questions, answered.**
 
-*Should full scale be in the block at all?* The design note's table lists it as
-a signal transform — "as audio it is a gain" — and the pinned order puts it
-between AC and the filter. But a member of the tapped block is by definition
-something `monitorAt: post` can send to the speakers, and full scale is a
-display magnification: making it audible means the monitoring level follows a
-knob whose job is how big the trace is. No bench scope behaves that way, and
-nothing else in this page does either — zoom was scoped out for a related
-reason (D6). What full scale actually needed was to be continuous, modulatable
-and tracked by the trigger, and all three are built. So the proposal is that it
-stays a display control, enters the *drawn* lanes only, and never reaches the
-monitor chain — which also means C1's "full scale as a `GainNode`" row is
-withdrawn rather than deferred.
+*Should full scale be in the block at all?* **No, and C1's `GainNode` row is
+withdrawn.** A member of the tapped block is by definition something
+`monitorAt: post` can send to the speakers, and full scale is a display
+magnification — making it audible means the monitoring level follows a knob
+whose job is how big the trace is. No bench scope behaves that way and nothing
+else on this page does either; zoom was scoped out for a related reason (D6).
+What full scale actually needed was to be continuous, modulatable and tracked
+by the trigger, and all three are built without it moving. The second reason
+stands as well: the trigger finds its edge on lanes full scale has not touched,
+with the threshold converted instead, and moving it onto scaled lanes would be
+the same comparison up to floating-point rounding — same arithmetic, possibly a
+different sample, and the bit-identity standard broken for nothing.
 
-There is a second reason, smaller but concrete: the trigger currently finds its
-edge on the unscaled lanes with the threshold converted, and moving it onto
-scaled lanes is the same comparison up to floating-point rounding. Same
-arithmetic, possibly a different sample. That would break the bit-identity
-standard for no gain, so the trigger stays where it is either way.
+*Which pair does rotation turn, when there are more than two lanes?* **The
+stereo pair, and on anything else it stays a display knob** — mid/side's
+existing rule, extended to exclude the lag lane. `rotatesSignal` is the one
+predicate, read by `capture` and by `syncMonitor`, so the picture and the
+speakers cannot part company over it. On a rack, "rotate the stereo image"
+does not describe anything you could do to six stems; the lag lane's second
+channel is the first one delayed, so turning that pair would mix a signal with
+its own past and call the result stereo. One cost, recorded where someone will
+hit it: a monitored mono input no longer pans, which it used to.
 
-*Which pair does rotation turn, when there are more than two lanes?* Today it
-turns whichever two the X–Y figure is drawn from, at draw time, and that is
-well defined because the figure is a pair by construction. As a transform on
-captured lanes it has to pick: rotate the X–Y pair and lanes 0 and 1 in Y–T are
-untouched unless they happen to be that pair, which is a rule nobody could
-predict from the screen. The proposal is the rule mid/side already uses —
-rotation becomes a signal transform only when the source is a stereo pair
-(`channels.length === 2`), and stays display-only on a rack, where "rotate the
-stereo image" does not describe anything. That is one precedent rather than a
-new one, and it keeps the tap's meaning simple: on a pair, the measurements can
-be asked for the rotated signal; on a rack, there is no rotated signal to ask
-for.
+**What it turned out to catch.** Two things nothing else would have. Turning
+the figure twice — rotation in `capture` and again in `drawXY` — leaves the
+captured lanes, the speakers and every number correct with the picture at
+double the angle; and a circle, which is what the default preset draws, is the
+one figure whose every statistic survives a rotation untouched, so it cannot
+witness the tap moving the numbers at all. Both now have their own checks and
+both are in `web/README.md`.
 
-**What it unblocks, in order.** Rotation as a signal transform (#3); full scale
-inside the block (#1's second half); full scale as a modulation destination,
-which is the case the trigger fix was made correct for; and the last two rows
-of C1's table — full scale as a `GainNode`, lag as a `DelayNode` — since both
-need the block to contain them before there is anything to straddle.
+**What is left after it.** Lag as a `DelayNode`, the last row of C1's table,
+which needs the block to contain it before there is anything to straddle. Full
+scale as a `GainNode` is withdrawn, as above. That closes C0 and C1 apart from
+lag, and the next work is B2 — the sample-rate audit — which nothing here
+blocks.
 
 One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
 a single sample when the pendulums have run down, which is an audible click the

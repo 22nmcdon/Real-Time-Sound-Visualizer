@@ -1334,10 +1334,35 @@ body[data-view="bench"] #menuButton { display: none; }
                 <span class="reading" id="rotateValue">0&deg;</span>
               </div>
             </div>
+            <div class="menu-row" data-more="1">
+              <span class="menu-label">Numbers read</span>
+              <div class="grow">
+                <div class="switch" role="radiogroup" aria-label="What the numbers are about" style="flex:0 0 auto">
+                  <button type="button" class="caps" id="measurePre" role="radio" aria-checked="true">Signal</button>
+                  <button type="button" class="caps" id="measurePost" role="radio" aria-checked="false">Turned</button>
+                </div>
+              </div>
+            </div>
             <p class="menu-note">Turns the figure on the screen. Worth little by hand and a
               great deal pointed at something: send <i>Level</i> to it and the picture turns
               as you play, which is the difference between a shape that sits there and one
-              that answers.</p>
+              that answers.
+              <br><br>
+              On a stereo pair it turns the <em>signal</em>: the lanes are rotated before the
+              trigger sees them, so Y&ndash;T, the figure and &mdash; on the shaped side &mdash;
+              the speakers are all the same rotation. On a rack of stems, a band split or the
+              lag lane it only turns the figure, because those are not a stereo image and
+              mixing two stems together is not what the knob says it does.
+              <br><br>
+              <i>Numbers read</i> is what the cells along the bottom, the tuner and the
+              correlation bar are about. <i>Signal</i> is what arrived and is the default, so
+              turning the picture leaves every reading exactly where it was &mdash; the same
+              arithmetic on the same samples, not a close copy. <i>Turned</i> points them at
+              what is on the screen, and the readout says <i>post-rotation</i> so a number is
+              never quietly about something other than its label. The level meter and the
+              <i>Clipping</i> verdict stay on the signal either way: one is a modulation
+              source and would feed back into the picture, and the other is a claim about the
+              input.</p>
           </div>
 
           <div class="menu-group">
@@ -1407,12 +1432,14 @@ body[data-view="bench"] #menuButton { display: none; }
               cannot disagree about what a rotation is, and a test renders the graph and
               checks it against the arithmetic.
               <br><br>
-              Rotation is <em>seen</em> in X&ndash;Y whether or not it is heard, and it is
-              deliberately kept out of everything else: the Y&ndash;T lanes, the trigger and
-              every number in the readout are about the signal that arrived, not about a
-              mix of two lanes that a display control made. Turning the stereo image can
-              also put up to 41% more into one channel than either started with, which the
-              limiter and the clamp are still the last things before.</p>
+              Rotation is <em>seen</em> whether or not it is heard, and on a stereo pair it
+              reaches the Y&ndash;T lanes and the trigger as well as the figure &mdash; it is
+              a transform on the signal, so it is in the block before anything looks at it.
+              What it does not reach is the numbers: those read <i>Signal</i> by default,
+              under <i>Display</i>, and stay about what arrived. The level meter and the
+              <i>Clipping</i> verdict stay there whatever that switch says. Turning the
+              stereo image can put up to 41% more into one channel than either started with,
+              which the limiter and the clamp are still the last things before.</p>
           </div>
 
           <div class="menu-group">
@@ -1838,6 +1865,16 @@ body[data-view="bench"] #menuButton { display: none; }
         cycle, and total harmonic distortion. <i>fs</i> is the level that reaches the top of
         the graticule.</span></li>
 
+      <li><b>They are about the signal, not about the picture</b>
+        <span>Full scale and zoom are where the trace sits and how big it is, and neither
+        touches a number here. <i>X&ndash;Y rotation</i> is the one shared transform that
+        does reach the samples &mdash; on a stereo pair it turns the lanes themselves, and
+        the speakers with them &mdash; so these numbers read the signal as it arrived unless
+        you say otherwise. <i>Numbers read &rarr; Turned</i>, under <i>Settings &rarr;
+        Display</i>, points them at what is on the screen instead, and the readout says
+        <i>post-rotation</i> so you can tell. The level meter and the <i>Clipping</i>
+        verdict stay on the signal either way.</span></li>
+
       <li><b>Cursors are draggable</b>
         <span>Turn them on under <i>Settings &rarr; Measure</i>. Two in time and two in
         amplitude; the readout gives the difference between each pair, and &Delta;t as a
@@ -2148,7 +2185,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
                   "viewScope", "viewBench", "benchRail", "benchBody",
                   "benchSide", "benchScope", "traceSheet", "panes",
-                  "rotate", "rotateValue", "benchSources",
+                  "rotate", "rotateValue", "measurePre", "measurePost", "benchSources",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
                   "seeDry", "seeWet", "hearDry", "hearWet",
@@ -2442,7 +2479,11 @@ const ENV_FULL = 0.707;                            // RMS of a full-scale sine
 let envLive = 0;
 
 function updateEnvelope(frame, elapsed) {
-  const lane = frame.channels[state.trigSource] || frame.channels[0];
+  /* The signal lanes, never the drawn ones and never the tap. This is a
+     modulation source: a rotation knob that moved it would come back through
+     the matrix and change the picture, which is a feedback loop made out of a
+     display control. */
+  const lane = frame.signal[state.trigSource] || frame.signal[0];
   let sum = 0, n = 0;
   // Strided: this runs every frame and the answer is a level, not a waveform.
   const stride = Math.max(1, Math.floor(lane.length / 512));
@@ -4006,9 +4047,13 @@ function makeMonitorChain(ctx) {
      matrix is exactly the identity - cosine one, sine nought - so a chain
      nobody is turning is the chain that was here before, sample for sample.
 
-     A mono input rotates too, into a pan: the vector is (l, 0) and turning it
-     puts some of it in the other channel. That is what rotating a vector with
-     one axis means, and it is worth knowing rather than guarding against. */
+     A mono input does not rotate, and that is a change from how this first
+     shipped. Turning the vector (l, 0) is a perfectly real operation - it
+     pans - but there is no figure turning on the screen to have asked for it,
+     and the rule now is one rule: rotation is audible exactly when it is a
+     transform on the captured pair, which `rotatesSignal` decides for both
+     halves at once. A pan that only the ears could find was the sort of
+     disagreement the pinned order exists to stop. */
   const splitter = ctx.createChannelSplitter(2);
   const merger = ctx.createChannelMerger(2);
   // left->left, right->left, left->right, right->right
@@ -4096,7 +4141,12 @@ function syncMonitor() {
      arrived or the switch is not telling the truth, and at rest this is the
      identity anyway. The MODULATED angle, so an oscillator pointed at the
      rotation turns the stereo image as well as the figure. */
-  const spin = state.monitorAt === "post" ? state.rotate + state.rotateMod : 0;
+  /* `rotatesSignal` rather than the angle alone, and it has to be the same
+     gate `capture` uses or the two halves part company: on a rack the picture
+     turns the figure and the speakers must not turn anything, because there
+     is no stereo image there and what they would be mixing is two unrelated
+     stems. */
+  const spin = state.monitorAt === "post" && rotatesSignal() ? rotateTurns() : 0;
   const { cos, sin } = turnOf(spin);
 
   /* AC on the speakers is all or nothing, because the speakers are one signal.
@@ -4643,6 +4693,14 @@ const state = {
      which is why it is two switches and not a three-way mode. */
   analyseAt: "post",         // pre | post
   monitorAt: "pre",          // pre | post
+  /* Where the per-lane measurements are taken, once rotation is a transform
+     on the captured pair: `pre` is the signal as it arrived, `post` is the
+     turned signal the screen is drawing. The default is `pre` because that is
+     what every one of these numbers has always meant, and because a rotation
+     is a thing you do to a picture - the frequency of a lane should not
+     depend on how the figure is oriented. The switch is there for the person
+     who is rotating deliberately and wants the numbers to follow. */
+  measureAt: "pre",          // pre | post
   /* Where AC coupling's one pole sits, in hertz, shared by the picture and
      the speakers. One number rather than a default in each place: identical
      algorithms are not enough for exact agreement, identical coefficients are,
@@ -4936,19 +4994,44 @@ function dcBlockerMagnitude(c, hz, rate) {
    operation, and it is the function an audio graph would be fed from on the
    day the picture's transforms become audible.
 
-   Where it is NOT applied is a decision rather than an omission, and the same
-   one zoom got. Rotation stays on the X-Y figure: out of Y-T, out of the
-   per-lane measurements, out of the trigger. A rotated lane in Y-T is a blend
-   of two signals with no picture to justify it, and the frequency, dBFS and
-   THD readings taken from it would quietly stop describing the signal their
-   labels name. Making it a transform for everything is worth doing, but it
-   needs the measurements to get their own tap first - the way the filter's
-   readouts already say "post-filter" when they are about the filtered signal.
-   `rotatetest.py` asserts the scoping, so the day someone widens it the tests
-   say what else has to move.                                                 */
+   Where it applies is a decision rather than a default, and there are two of
+   them. On a stereo pair rotation is a SIGNAL transform: `capture` turns the
+   lanes before the trigger looks at them, so the figure on the screen and the
+   image in the speakers are the same rotation rather than two that happen to
+   agree. On anything else - a rack of stems, a band split, the lag lane's
+   delayed copy of one signal - it stays what it was, a way of orienting the
+   X-Y figure at draw time. That is mid/side's rule rather than a new one, and
+   the reason is the same: there is no stereo vector there to turn.
+
+   What it does not reach is the other half of the decision. The per-lane
+   measurements read their own tap, which defaults to the signal as it was
+   before rotation, so the frequency, dBFS and THD under a turned figure still
+   describe the signal that arrived. Two things are pinned there whatever the
+   tap says - the envelope follower, because a modulation source that moved
+   when a display knob moved would feed back into the picture through the
+   matrix, and the clipping verdict, because clipping is a property of what
+   arrived rather than of how it is being looked at. `rotatetest.py` asserts
+   all of it, in both directions.                                             */
 function turnOf(turns) {
   const angle = turns * TWO_PI;
   return { cos: Math.cos(angle), sin: Math.sin(angle) };
+}
+
+/* The angle in force: the knob plus whatever is pointed at it, in turns. */
+const rotateTurns = () => state.rotate + state.rotateMod;
+
+/* Whether that angle is a transform on the signal rather than on the picture.
+
+   A rack is several real signals and "rotate the stereo image" does not name
+   anything you could do to them. The lag lane's second channel is the first
+   one delayed, so turning that pair would mix a signal with its own past and
+   call the result stereo. In both cases the monitor chain is still handed
+   left against right, so a rotation applied to the capture would be one the
+   ears could not hear - and two transforms that disagree about what they are
+   acting on is the exact thing the pinned order exists to prevent. */
+function rotatesSignal() {
+  return !!state.source && state.source.channels === 2 && !state.source.lanes
+      && !lagActive() && laneCount() === 2;
 }
 
 /* Mid and side, which is this same rotation at 45 degrees - the goniometer
@@ -5107,6 +5190,39 @@ function capture() {
     channels[1] = side;
   }
 
+  /* Rotation, which is the widening the measurement tap was written down for.
+     After mid/side because mid/side is itself a rotation and the two compose;
+     after the lag lane because that lane has to exist before anything can
+     turn it, which was D7.
+
+     Before the trigger, on purpose. The level is a fraction of the screen
+     now, so the edge it finds has to be an edge in what is on the screen - a
+     trigger on the unturned lane would leave the trace sliding sideways as
+     the knob moved, which is the one thing a trigger exists to stop. It costs
+     a pass over the whole fetch rather than over the window, for the same
+     reason the filter does: the search span is part of what gets drawn, once
+     an edge has been found in it.
+
+     At rest this is not merely cheap but absent. `signal` and `channels` stay
+     the same arrays, so every number downstream is the same arithmetic on the
+     same samples rather than a close copy of them - which is the standard
+     this change was asked to meet. */
+  const signal = channels.slice();
+  const spin = rotateTurns();
+  const turned = spin !== 0 && channels.length === 2 && rotatesSignal();
+  if (turned) {
+    const { cos, sin } = turnOf(spin);
+    const [left, right] = channels;
+    const n = Math.min(left.length, right.length);
+    const x = new Float32Array(n), y = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      x[i] = left[i] * cos - right[i] * sin;
+      y[i] = left[i] * sin + right[i] * cos;
+    }
+    channels[0] = x;
+    channels[1] = y;
+  }
+
   /* The trigger level is a FRACTION OF FULL SCALE, and this is where it
      becomes a voltage. A bench scope taps its trigger after the vertical
      amplifier, so the front-panel level is a volts-per-division quantity
@@ -5137,8 +5253,32 @@ function capture() {
   const total = length + span;
   const from = at === null ? total - length : at - pre;
 
+  const cut = (list) => list.map((buffer) => buffer.subarray(from, from + length));
+  const drawn = cut(channels);
+  /* Three views of one block, and the difference between them is the whole of
+     what the tap promises.
+
+     `channels` is what the screen draws. `signal` is what arrived, shaped by
+     everything a measurement should be about and by nothing that is only
+     about the picture. `measured` is whichever of those the tap points at,
+     and it defaults to `signal` - so with the switch where it has always
+     effectively been, the two are the same arrays and every reading is
+     bit-identical rather than close.
+
+     Full scale is in none of them, and that is a decision rather than an
+     oversight: it is a display magnification, the trace's height on the
+     graticule, and putting it in the block would make the monitoring level
+     follow a knob about how big the trace is. It got what it actually needed
+     - continuous, modulatable, and tracked by the trigger - without being in
+     here. */
+  const sig = turned ? cut(signal) : drawn;
   return {
-    channels: channels.map((buffer) => buffer.subarray(from, from + length)),
+    channels: drawn,
+    signal: sig,
+    measured: state.measureAt === "post" ? drawn : sig,
+    // Whether the rotation happened in here. `drawXY` turns the figure itself
+    // when it did not, and the readout marks the tap when it did.
+    turned,
     triggered: at !== null,
     // What the level actually came to for this block, which is the number the
     // readout shows and the only place anything downstream should read it.
@@ -6147,7 +6287,10 @@ function drawXY(frame, fit, elapsed) {
   /* Turned, when something is turning it. Computed once rather than per point,
      and skipped altogether at rest so the common path is the one it always
      was. */
-  const spin = state.rotate + state.rotateMod;
+  /* Only when `capture` has not already done it. On a stereo pair the lanes
+     arrive turned and this is the identity; on a rack rotation is still a way
+     of orienting the figure, and this is the only place it happens. */
+  const spin = frame.turned ? 0 : rotateTurns();
   const { cos: rc, sin: rs } = turnOf(spin);
   const turning = spin !== 0;
 
@@ -6511,8 +6654,15 @@ function drawGoni(frame) {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
 
-  // Correlation, as a number and as a bar from -1 to +1.
-  const r = correlation(left, right);
+  /* Correlation, as a number and as a bar from -1 to +1 - and taken from the
+     measurement tap rather than from what is drawn. Correlation is a
+     statement about the stereo signal, so at the tap's default the bar has to
+     sit still while the figure above it turns. Move the tap and it follows,
+     which is what someone rotating deliberately is asking for; the readout
+     says which of the two they are looking at. */
+  const mx = frame.measured[gx] || frame.measured[0];
+  const my = frame.measured[gy] || frame.measured[1] || mx;
+  const r = correlation(mx, my);
   const barY = h - 26;
   const barW = w - 28;
 
@@ -6599,7 +6749,7 @@ function drawTuner(frame) {
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
 
-  const hz = estimateFrequency(frame.channels[0], frame.rate);
+  const hz = estimateFrequency(frame.measured[0], frame.rate);
   ctx.textAlign = "center";
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
 
@@ -6772,8 +6922,12 @@ function lagLockUpdate(frame) {
 function writeReadout(frame) {
   lagLockUpdate(frame);
   midiFollowTimebase();
+  /* From the signal rather than from the tap or the screen: clipping is a
+     property of what arrived. A rotation can put 41 per cent more into one
+     channel than either started with, and calling that a clipped input would
+     be the display accusing the source of something the display did. */
   const peak = Math.max(
-    ...frame.channels.map((s) => {
+    ...frame.signal.map((s) => {
       let p = 0;
       for (let i = 0; i < s.length; i++) { const a = Math.abs(s[i]); if (a > p) p = a; }
       return p;
@@ -6831,8 +6985,8 @@ function writeReadout(frame) {
         ? "lag " + state.lagActual.toFixed(2) + " ms" + (state.lagAuto ? ", auto" : "")
         : "lag: no room at this timebase");
     } else if (!drawn) {
-      const a = estimateFrequency(frame.channels[0], frame.rate);
-      const b = estimateFrequency(frame.channels[1], frame.rate);
+      const a = estimateFrequency(frame.measured[0], frame.rate);
+      const b = estimateFrequency(frame.measured[1], frame.rate);
       const ratio = ratioText(a, b);
       if (ratio) bits.push("ratio " + ratio);
     } else {
@@ -6864,6 +7018,13 @@ function writeReadout(frame) {
      about. */
   if (state.filter.on && state.analyseAt === "post") {
     bits.push("post-filter");
+  }
+
+  /* Only when it is making a difference. The tap can sit on the turned signal
+     all day with nothing turning, and a mark for a difference of nothing is
+     noise in a line that is already long. */
+  if (frame.turned && state.measureAt === "post") {
+    bits.push("post-rotation");
   }
 
   if (state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
@@ -6907,7 +7068,7 @@ function writeReadout(frame) {
 function writeMeasures(frame) {
   const rows = [];
 
-  frame.channels.forEach((samples, index) => {
+  frame.measured.forEach((samples, index) => {
     if (index >= laneCount() || !state.channels[index].on) return;
 
     const m = measure(samples, frame.rate);
@@ -7225,6 +7386,18 @@ function setMonitorAt(where) {
   el.hearWet.setAttribute("aria-checked", String(where === "post"));
   syncMonitor();
 }
+
+/* No clearing of the paper, unlike `setAnalyseAt`: the tap changes what the
+   numbers are about and not one pixel of what is drawn, so there is no stale
+   trace under the persistence to account for. */
+function setMeasureAt(where) {
+  state.measureAt = where;
+  el.measurePre.setAttribute("aria-checked", String(where === "pre"));
+  el.measurePost.setAttribute("aria-checked", String(where === "post"));
+}
+
+el.measurePre.addEventListener("click", () => setMeasureAt("pre"));
+el.measurePost.addEventListener("click", () => setMeasureAt("post"));
 
 el.seeDry.addEventListener("click", () => setAnalyseAt("pre"));
 el.seeWet.addEventListener("click", () => setAnalyseAt("post"));
@@ -7943,6 +8116,11 @@ const DEFAULTS = {
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   fOn: false, fType: "lowpass", fCut: 566, fRes: 0,
   fSee: "post", fHear: "pre",
+  /* No version bump for this one, and that is the point of `Object.assign`
+     over the defaults: a code written before the tap existed simply has no
+     `mSee`, gets `pre`, and draws and reads exactly what it drew and read.
+     A migration is for a field whose MEANING changed, not for a new one. */
+  mSee: "pre",
   xy0: 0, xy1: 1,
   pGoni: true, pSpec: true, pHarm: false, pTune: false, cursors: false,
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
@@ -8001,7 +8179,7 @@ function snapshot() {
     rotate: Math.round(state.rotate * 100),
     fOn: state.filter.on, fType: state.filter.type,
     fCut: state.filter.cutoff, fRes: state.filter.res,
-    fSee: state.analyseAt, fHear: state.monitorAt,
+    fSee: state.analyseAt, fHear: state.monitorAt, mSee: state.measureAt,
     xy0: state.xyPair[0], xy1: state.xyPair[1],
     pGoni: state.panes.goni, pSpec: state.panes.spectrum,
     pHarm: state.panesExtra.harmonics, pTune: state.panesExtra.tuner,
@@ -8140,6 +8318,7 @@ function restore(partial) {
   state.filter.res = s.fRes; el.filterRes.value = String(s.fRes);
   setAnalyseAt(s.fSee);
   setMonitorAt(s.fHear);
+  setMeasureAt(s.mSee);
   lagLock = null;
   setLagAuto(s.lagAuto);
   showLag();

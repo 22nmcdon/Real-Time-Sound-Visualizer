@@ -18,7 +18,7 @@ SUITES = [
     ("mod", [sys.executable, "modtest.py"], "the modulation matrix, and the enum it replaces"),
     ("midi", [sys.executable, "miditest.py"], "the keyboard: notes, the dyad, controllers"),
     ("alias", [sys.executable, "aliastest.py"], "band-limiting: what folds back, and what does not"),
-    ("rotate", [sys.executable, "rotatetest.py"], "rotation, mid/side, and what rotation may not reach"),
+    ("rotate", [sys.executable, "rotatetest.py"], "rotation as a signal transform, and the measurement tap"),
     ("ac", [sys.executable, "actest.py"], "AC coupling: one blocker, the picture and the speakers"),
     ("trig", [sys.executable, "trigtest.py"], "the trigger level as a fraction of full scale"),
     ("scale", [sys.executable, "scaletest.py"], "full scale as decibels, and the nine detents"),
