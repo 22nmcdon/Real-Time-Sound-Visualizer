@@ -32,6 +32,7 @@ SUITES = [
     ("comb", [sys.executable, "combtest.py"], "the lag, heard, and where its comb is deepest"),
     ("along", [sys.executable, "alongtest.py"], "a backing track and a live input as lanes"),
     ("contract", [sys.executable, "contracttest.py"], "the lane contract, and a lane with no audio"),
+    ("keys", [sys.executable, "keystest.py"], "the keyboard on the screen, and the letters"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]

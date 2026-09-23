@@ -300,6 +300,56 @@ select, input[type="number"] {
   pointer-events: none;
 }
 
+/* --- the on-screen keyboard ---------------------------------------------- */
+/* Fixed over the foot of the page rather than in the flow, because the flow is
+   two panels that are tested never to scroll and never to move a control
+   under the pointer; a dock that pushed them would do both. What it costs is
+   covering whatever is at the bottom while it is open. */
+.screen-keys {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+  background: var(--cream); border-top: 1px solid var(--line);
+  box-shadow: 0 -12px 36px rgba(36, 31, 29, 0.14);
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+}
+.screen-keys[hidden] { display: none; }
+.keys-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  max-width: var(--max); margin: 0 auto 8px;
+}
+.keys-velocity { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); }
+.keys-velocity input { width: 110px; accent-color: var(--blush-deep); }
+.keys-hint { font-size: 12px; color: var(--text-soft); }
+.keys-hint kbd {
+  font-family: var(--mono); font-size: 11px; border: 1px solid var(--line);
+  border-radius: 3px; padding: 0 4px; background: var(--paper);
+}
+.keys-bar .close-btn { margin-left: auto; }
+.keys-bed {
+  position: relative; display: flex; height: 118px;
+  max-width: var(--max); margin: 0 auto;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.key {
+  position: relative; flex: 1 1 0; min-width: 0;
+  border: 1px solid var(--line); border-right-width: 0; border-radius: 0 0 4px 4px;
+  background: var(--paper); cursor: pointer;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  padding-bottom: 6px; gap: 2px;
+  font-size: 10.5px; color: var(--text-soft);
+}
+.key:last-child { border-right-width: 1px; }
+.key.black {
+  position: absolute; top: 0; height: 62%; z-index: 1;
+  background: var(--charcoal); border: 1px solid var(--charcoal); color: var(--cream-2);
+}
+.key.held { background: var(--blush); }
+.key.black.held { background: var(--blush-deep); border-color: var(--blush-deep); }
+.key .letter { font-family: var(--mono); font-size: 10px; opacity: 0.75; }
+@media (max-width: 720px) {
+  .keys-hint { display: none; }
+  .keys-bed { height: 96px; }
+}
+
 /* --- the cheat sheet ------------------------------------------------------ */
 /* Sectioned because it stopped fitting: five short panels, each of which fits
    whatever it is opened on, rather than one sheet nobody reads past the fold. */
@@ -1054,6 +1104,13 @@ body[data-view="bench"] #menuButton { display: none; }
                 <span class="reading" id="midiStatus">off</span>
               </div>
             </div>
+            <div class="menu-row">
+              <span class="menu-label">On screen</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="keysOpen"
+                        aria-controls="screenKeys" aria-expanded="false">Show keys</button>
+              </div>
+            </div>
             <div class="menu-row" id="midiPlayingRow" hidden>
               <span class="menu-label">Playing</span>
               <div class="grow"><span class="reading" id="midiMonitor">nothing held</span></div>
@@ -1791,6 +1848,24 @@ body[data-view="bench"] #menuButton { display: none; }
   </div>
 </section>
 
+<!-- Outside the bench and the scope both, so opening it moves no control and
+     neither panel gains a scrollbar: it lies over the bottom of the page. -->
+<section class="screen-keys" id="screenKeys" hidden aria-label="On-screen keyboard">
+  <div class="keys-bar">
+    <button type="button" class="link-btn caps" id="keysDown" aria-label="Down an octave">&larr; Octave</button>
+    <span class="reading" id="keysRange">C3&ndash;C5</span>
+    <button type="button" class="link-btn caps" id="keysUp" aria-label="Up an octave">Octave &rarr;</button>
+    <label class="check"><input type="checkbox" id="keysLatch"> Latch</label>
+    <label class="keys-velocity" for="keysVelocity">Velocity
+      <input type="range" id="keysVelocity" min="1" max="127" value="100">
+      <span class="reading" id="keysVelocityValue">100</span></label>
+    <span class="keys-hint">Type <kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>E</kbd> <kbd>D</kbd>&hellip; to play,
+      <kbd>Z</kbd> <kbd>X</kbd> for octaves</span>
+    <button type="button" class="close-btn" id="keysClose" aria-label="Hide the keyboard">&times;</button>
+  </div>
+  <div class="keys-bed" id="keysBed"></div>
+</section>
+
 <dialog id="helpDialog">
   <div class="dialog-head">
     <div>
@@ -2158,6 +2233,19 @@ body[data-view="bench"] #menuButton { display: none; }
         published artifact is an iframe that does not grant it, so this works on the GitHub
         Pages copy and not there, and Safari has no Web MIDI at all.</span></li>
 
+      <li><b>No keyboard? Keys on the screen</b>
+        <span><i>Settings &rarr; Keyboard &rarr; Show keys</i> puts two octaves along the
+        bottom of the page, and they play exactly what a MIDI keyboard would &mdash; the dyad,
+        <i>Hold</i>, the envelope and the note-as-truth all work from them, and they work in
+        the published artifact and in Safari, where MIDI does not. Drag across them for a
+        glissando. A mouse is one finger, so to hold a dyad tick <i>Latch</i>: each tap then
+        holds its note until tapped again. The computer keyboard plays too, laid out as music
+        software does it &mdash; <b>A</b> is C, <b>W</b> C&#9839;, <b>S</b> D and so on along
+        two rows &mdash; with <b>Z</b> and <b>X</b> for octaves. While the keys are open those
+        letters play notes rather than their shortcuts; close the keys to have the shortcuts
+        back. With the keys open the waveform waits for a note, as it does with a keyboard
+        plugged in.</span></li>
+
       <li><b>Harmonograph</b>
         <span>Two pendulums an axis, running down. Wants X&ndash;Y and infinite persistence.
         A tiny detune is what turns a closed figure into a spirograph.</span></li>
@@ -2244,7 +2332,9 @@ body[data-view="bench"] #menuButton { display: none; }
         <span><b>Space</b> run and stop &middot; <b>S</b> single &middot; <b>A</b> autoset
         &middot; <b>B</b> bench &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
-        <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet.</span></li>
+        <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet.
+        With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
+        <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave.</span></li>
     </ul>
   </div>
 </dialog>
@@ -2366,7 +2456,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
-                  "midiLaneNote",
+                  "midiLaneNote", "keysOpen", "screenKeys", "keysBed", "keysDown", "keysUp",
+                  "keysRange", "keysLatch", "keysVelocity", "keysVelocityValue", "keysClose",
                   "midiCC",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "liveKindRow", "kindMic", "kindLine", "monitorRow", "monitorLive",
@@ -3058,6 +3149,35 @@ const midi = {
 
 const midiHz = (note) => 440 * Math.pow(2, (note - 69) / 12);
 
+/* A keyboard on the screen, for playing the generator with nothing plugged in.
+   It is a second way INTO the note stack and nothing else: every key calls
+   `midiNoteOn` and `midiNoteOff`, exactly as a byte from a port does, so the
+   dyad, the gate, the lag's truth and the lane all see one stack whichever
+   hands are on it. What it keeps of its own is only which note each finger
+   started - a pointer, a typed key, a latch - so that lifting the finger
+   releases the note that finger pressed even if the octave moved meanwhile.
+   Whether a key is LIT is never kept here: it is painted from `midi.notes`,
+   so a note from a real keyboard lights it too and a panic darkens it. */
+const screenKeys = {
+  open: false,
+  base: 48,                     // C3, the leftmost key
+  span: 24,                     // two octaves, and the C that closes them
+  latch: false,                 // a tap holds the note until tapped again
+  velocity: 100,
+  pointers: new Map(),          // pointerId -> the note that pointer holds
+  typed: new Map(),             // KeyboardEvent.code -> the note it holds
+  latched: new Set(),
+};
+
+/* Whether there is a keyboard to wait for, which is the question the gate was
+   asking when it asked whether MIDI was connected. The envelope shuts the
+   generator between notes only while something could play one; with neither
+   a port nor the screen's keys, a shut gate would be a blank screen and no way
+   to open it. */
+function keyboardPresent() {
+  return midi.access !== null || screenKeys.open;
+}
+
 function midiNoteName(note) {
   return NOTES[((note % 12) + 12) % 12] + (Math.floor(note / 12) - 1);
 }
@@ -3090,6 +3210,12 @@ function midiNoteOn(note, velocity) {
 }
 
 function midiNoteOff(note) {
+  /* Whoever sends it, a release ends the latch's claim on the note. A port can
+     release a key the screen latched - the note-off for C3 does not know which
+     hand held it - and a latch still claiming it would answer the next tap by
+     "releasing" a note already gone, so the tap played nothing; and turning
+     latch off later would cut a C3 the port had started since. */
+  screenKeys.latched.delete(note);
   const at = midi.notes.findIndex((held) => held.note === note);
   if (at < 0) return;
   midi.notes.splice(at, 1);
@@ -3097,7 +3223,14 @@ function midiNoteOff(note) {
 }
 
 function midiPanic() {
-  if (midi.notes.length === 0) return;
+  /* Before the early return. A finger or a letter still down when the stack
+     was emptied another way - a port releasing the same key - is a claim the
+     panic has to end too, or lifting it afterwards releases whatever holds
+     that note by then. */
+  screenKeys.pointers.clear();
+  screenKeys.typed.clear();
+  screenKeys.latched.clear();
+  if (midi.notes.length === 0) { paintScreenKeys(); return; }
   midi.notes.length = 0;
   midiApplyNotes();
 }
@@ -3138,9 +3271,13 @@ function midiInterval(semitones) {
   return { index: semis % 12, octaves: Math.floor(semis / 12) };
 }
 
+/* Where the generator is, not what the source is. This asked whether the
+   source was a tone source for a stage after the generator could be a lane,
+   so a note played into a rack with a generator in it did nothing at all -
+   while the panel beside it said the lane was a drone that followed pitch. */
 function midiDrivesGenerator() {
-  if (!state.source || state.source.kind !== "tone") return false;
-  return midi.drive[state.source.settings.mode] === true;
+  const tone = genSettings();
+  return tone !== null && midi.drive[tone.mode] === true;
 }
 
 /* The gate, which is the half of a note that is not a pitch.
@@ -3177,8 +3314,8 @@ function midiApplyGate() {
      the moment a keyboard was plugged in and nobody was playing. The note
      still reaches them, as it always did; what it does not do is switch them
      off between phrases. */
-  const drives = midiDrivesGenerator() && midi.access !== null
-                 && state.source.settings.mode === "wave";
+  const drives = midiDrivesGenerator() && keyboardPresent()
+                 && genSettings().mode === "wave";
   const was = source.gated;
   source.setGated(drives);
 
@@ -3225,7 +3362,7 @@ function midiApplyNotes() {
   const pair = midiPair();
   if (!pair) return;
 
-  const source = state.source, tone = source.settings;
+  const tone = genSettings();
   const lead = midi.mode === "mono" ? midi.notes[midi.notes.length - 1].note : pair.low;
   const hz = midiHz(lead);
 
@@ -3236,15 +3373,15 @@ function midiApplyNotes() {
     if (pair.high !== null) midi.interval = midiInterval(pair.high - pair.low);
     else if (!midi.hold) midi.interval = { index: 0, octaves: 0 };
 
-    source.set("interval", midi.interval.index);
-    source.set("octaves", midi.interval.octaves);
+    genSet("interval", midi.interval.index);
+    genSet("octaves", midi.interval.octaves);
     el.interval.value = String(midi.interval.index);
   } else {
     /* Mono leaves the interval to the menu, and the menu covers one octave.
        Coming here from a dyad two octaves wide, anything left in `octaves`
        would be a ratio the panel had no way of saying. */
-    source.set("interval", Number(el.interval.value));
-    source.set("octaves", 0);
+    genSet("interval", Number(el.interval.value));
+    genSet("octaves", 0);
   }
 
   if (tone.mode === "wave") {
@@ -3253,16 +3390,16 @@ function midiApplyNotes() {
        The top of the keyboard lands on 4 kHz together, which is a limit worth
        hearing about rather than a silent fold. */
     const set = Math.max(30, Math.min(4000, hz));
-    source.set("freq", set);
+    genSet("freq", set);
     el.freq.value = String(Math.round(set));
     el.freqValue.textContent = Math.round(set) + " Hz";
   } else if (tone.mode === "figure" || tone.mode === "wireframe") {
     const rate = Math.max(1, Math.min(200, Number(el.figureRate.value) * hz / MIDI_ROOT));
-    source.set("figureRate", rate);
+    genSet("figureRate", rate);
     el.figureRateValue.textContent = Math.round(rate) + " Hz";
   }
 
-  el.credit.textContent = source.describe();
+  el.credit.textContent = state.source.describe();
 }
 
 /* Handing the controls back, when the notes are told to stop playing this
@@ -3271,14 +3408,13 @@ function midiApplyNotes() {
    re-reading the panel is the whole of it and what the panel says is what the
    generator is doing either way. */
 function midiUndrive() {
-  if (!state.source || state.source.kind !== "tone") return;
-  const source = state.source;
-  source.set("freq", Number(el.freq.value));
-  source.set("figureRate", Number(el.figureRate.value));
-  source.set("interval", Number(el.interval.value));
-  source.set("octaves", 0);
+  if (!genSettings()) return;
+  genSet("freq", Number(el.freq.value));
+  genSet("figureRate", Number(el.figureRate.value));
+  genSet("interval", Number(el.interval.value));
+  genSet("octaves", 0);
   el.figureRateValue.textContent = el.figureRate.value + " Hz";
-  el.credit.textContent = source.describe();
+  el.credit.textContent = state.source.describe();
 }
 
 /* Learn, rather than a registry of a hundred and twenty-seven. A controller
@@ -9068,13 +9204,14 @@ function fillIntervals() {
 }
 
 el.genMode.addEventListener("change", () => {
-  if (state.source.kind !== "tone") return;
-  state.source.set("mode", el.genMode.value);
+  if (!genSet("mode", el.genMode.value)) return;
   showGenerator();
 
   // A figure and a harmonograph are both X-Y things; showing them against
-  // time is a waveform nobody asked to look at.
-  if (el.genMode.value !== "wave" && state.display === "yt") setDisplay("xy");
+  // time is a waveform nobody asked to look at. Not for a lane, which is one
+  // signal among others and has no X-Y figure of its own to be shown.
+  if (state.source.kind === "tone" && el.genMode.value !== "wave"
+      && state.display === "yt") setDisplay("xy");
 });
 
 el.interval.addEventListener("change", () => {
@@ -9509,7 +9646,9 @@ function midiStatusText() {
 function syncMidi() {
   el.midiStatus.textContent = midiStatusText();
   el.midiConnect.textContent = midi.status === "on" ? "Reconnect" : "Connect";
-  el.midiPlayingRow.hidden = midi.status !== "on";
+  el.midiPlayingRow.hidden = !keyboardPresent();
+  el.keysOpen.textContent = screenKeys.open ? "Hide keys" : "Show keys";
+  el.keysOpen.setAttribute("aria-expanded", String(screenKeys.open));
   el.midiDyad.setAttribute("aria-checked", String(midi.mode === "dyad"));
   el.midiMono.setAttribute("aria-checked", String(midi.mode === "mono"));
   el.midiHold.checked = midi.hold;
@@ -9611,6 +9750,7 @@ function midiSayMonitor(text) {
   const held = midi.notes.map((note) => midiNoteName(note.note)).join(" ");
   midi.last = (text ? text + "  ·  " : "") + (held || "nothing held");
   if (el.midiMonitor) say(el.midiMonitor, midi.last);
+  paintScreenKeys();
 }
 
 el.midiConnect.addEventListener("click", midiConnect);
@@ -9628,8 +9768,9 @@ el.midiTruth.addEventListener("change", () => { midi.truth = el.midiTruth.checke
 el.midiFollow.addEventListener("change", () => { midi.follow = el.midiFollow.checked; });
 
 el.midiDrive.addEventListener("change", () => {
-  if (!state.source || state.source.kind !== "tone") return;
-  midi.drive[state.source.settings.mode] = el.midiDrive.checked;
+  const tone = genSettings();
+  if (!tone) return;
+  midi.drive[tone.mode] = el.midiDrive.checked;
   if (el.midiDrive.checked) midiApplyNotes();
   else midiUndrive();
 });
@@ -9643,6 +9784,211 @@ window.addEventListener("blur", midiPanic);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") midiPanic();
 });
+
+/* --- the keyboard, on the screen -------------------------------------------
+   Laid out the way music software lays out a computer keyboard: the home row
+   is the white keys and the row above it the black, so A is C and W is C#.
+   By physical key (`event.code`) rather than by letter, because on an AZERTY
+   or a Dvorak keyboard the letters move and the shape of a piano does not. */
+const TYPED_KEYS = ["KeyA", "KeyW", "KeyS", "KeyE", "KeyD", "KeyF", "KeyT", "KeyG", "KeyY",
+                    "KeyH", "KeyU", "KeyJ", "KeyK", "KeyO", "KeyL", "KeyP", "Semicolon", "Quote"];
+const TYPED_LABELS = ["A", "W", "S", "E", "D", "F", "T", "G", "Y",
+                      "H", "U", "J", "K", "O", "L", "P", ";", "'"];
+const WHITE_KEYS = [0, 2, 4, 5, 7, 9, 11];
+
+function buildScreenKeys() {
+  const notes = [];
+  for (let n = screenKeys.base; n <= screenKeys.base + screenKeys.span; n++) notes.push(n);
+  const whites = notes.filter((n) => WHITE_KEYS.includes(n % 12)).length;
+  const width = 100 / whites;
+  let html = "", whiteIndex = 0;
+  for (const note of notes) {
+    const offset = note - screenKeys.base;
+    const letter = offset < TYPED_LABELS.length
+      ? '<span class="letter">' + escapeText(TYPED_LABELS[offset]) + "</span>" : "";
+    const name = midiNoteName(note);
+    if (WHITE_KEYS.includes(note % 12)) {
+      html += '<div class="key" data-note="' + note + '" aria-label="' + name + '">'
+        + letter + (note % 12 === 0 ? "<span>" + name + "</span>" : "") + "</div>";
+      whiteIndex++;
+    } else {
+      html += '<div class="key black" data-note="' + note + '" aria-label="' + name + '"'
+        + ' style="left:' + (whiteIndex * width - width * 0.3).toFixed(3) + "%;width:"
+        + (width * 0.6).toFixed(3) + '%">' + letter + "</div>";
+    }
+  }
+  el.keysBed.innerHTML = html;
+  el.keysRange.textContent = midiNoteName(screenKeys.base) + "–"
+    + midiNoteName(screenKeys.base + screenKeys.span);
+  el.keysDown.disabled = screenKeys.base <= 24;
+  el.keysUp.disabled = screenKeys.base >= 84;
+  paintScreenKeys();
+}
+
+/* Lit from the stack, every time the stack changes, and from nothing else. */
+function paintScreenKeys() {
+  if (!screenKeys.open || !el.keysBed) return;
+  const held = new Set(midi.notes.map((n) => n.note));
+  el.keysBed.querySelectorAll("[data-note]").forEach((key) => {
+    key.classList.toggle("held", held.has(Number(key.dataset.note)));
+  });
+}
+
+/* A tap under latch is a toggle, and is not remembered as a finger: there is
+   nothing to release when the finger lifts, which is the point of latch - it
+   is how a mouse, which is one finger, holds a dyad. */
+function screenPress(note) {
+  if (screenKeys.latch) {
+    if (screenKeys.latched.has(note)) {
+      screenKeys.latched.delete(note);
+      midiNoteOff(note);
+    } else {
+      screenKeys.latched.add(note);
+      midiNoteOn(note, screenKeys.velocity);
+    }
+    return;
+  }
+  midiNoteOn(note, screenKeys.velocity);
+}
+
+// Not while another finger, or a typed key, is still on the same note: two
+// ways of holding one key are one held key, and lifting either must not end it.
+function screenRelease(note) {
+  for (const other of screenKeys.pointers.values()) if (other === note) return;
+  for (const other of screenKeys.typed.values()) if (other === note) return;
+  if (screenKeys.latched.has(note)) return;
+  midiNoteOff(note);
+}
+
+// Every note the screen is holding, released, and nothing a real keyboard holds.
+function screenReleaseAll() {
+  const mine = new Set([...screenKeys.pointers.values(), ...screenKeys.typed.values(),
+                        ...screenKeys.latched]);
+  screenKeys.pointers.clear();
+  screenKeys.typed.clear();
+  screenKeys.latched.clear();
+  for (const note of mine) midiNoteOff(note);
+}
+
+function setScreenKeys(open) {
+  if (screenKeys.open === open) return;
+  if (!open) screenReleaseAll();
+  screenKeys.open = open;
+  el.screenKeys.hidden = !open;
+  if (open) buildScreenKeys();
+  syncMidi();
+  midiApplyGate();
+}
+
+function shiftScreenKeys(octaves) {
+  screenKeys.base = Math.max(24, Math.min(84, screenKeys.base + 12 * octaves));
+  buildScreenKeys();
+}
+
+el.keysOpen.addEventListener("click", () => setScreenKeys(!screenKeys.open));
+el.keysClose.addEventListener("click", () => setScreenKeys(false));
+el.keysDown.addEventListener("click", () => shiftScreenKeys(-1));
+el.keysUp.addEventListener("click", () => shiftScreenKeys(1));
+el.keysVelocity.addEventListener("input", () => {
+  screenKeys.velocity = Number(el.keysVelocity.value);
+  el.keysVelocityValue.textContent = el.keysVelocity.value;
+});
+
+/* Turning latch on keeps what is down, as latched notes, so the switch never
+   drops a note under your hand; turning it off lets go of everything it held. */
+el.keysLatch.addEventListener("change", () => {
+  screenKeys.latch = el.keysLatch.checked;
+  if (screenKeys.latch) {
+    for (const note of [...screenKeys.pointers.values(), ...screenKeys.typed.values()]) {
+      screenKeys.latched.add(note);
+    }
+    screenKeys.pointers.clear();
+    screenKeys.typed.clear();
+  } else {
+    const held = [...screenKeys.latched];
+    screenKeys.latched.clear();
+    held.forEach(screenRelease);
+  }
+});
+
+el.keysBed.addEventListener("pointerdown", (event) => {
+  const key = event.target.closest("[data-note]");
+  if (!key) return;
+  event.preventDefault();
+  const note = Number(key.dataset.note);
+  if (!screenKeys.latch) {
+    screenKeys.pointers.set(event.pointerId, note);
+    // Captured, so the release arrives here even if it happens off the keys.
+    try { el.keysBed.setPointerCapture(event.pointerId); } catch (e) { /* synthetic */ }
+  }
+  screenPress(note);
+});
+
+/* Dragging across the keys plays them, as a glissando: the new key goes down
+   before the old one comes up, which the envelope's legato rule then treats as
+   one phrase. Off the keys the note is kept rather than dropped at the edge,
+   so a hand that strays below the bed does not cut the sound. */
+el.keysBed.addEventListener("pointermove", (event) => {
+  if (!screenKeys.pointers.has(event.pointerId)) return;
+  const hit = document.elementFromPoint(event.clientX, event.clientY);
+  const key = hit && hit.closest ? hit.closest("#keysBed [data-note]") : null;
+  if (!key) return;
+  const was = screenKeys.pointers.get(event.pointerId);
+  const note = Number(key.dataset.note);
+  if (note === was) return;
+  screenKeys.pointers.set(event.pointerId, note);
+  midiNoteOn(note, screenKeys.velocity);
+  screenRelease(was);
+});
+
+function liftScreenPointer(event) {
+  if (!screenKeys.pointers.has(event.pointerId)) return;
+  const note = screenKeys.pointers.get(event.pointerId);
+  screenKeys.pointers.delete(event.pointerId);
+  screenRelease(note);
+}
+["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
+  el.keysBed.addEventListener(type, liftScreenPointer));
+
+/* Typing is looser than the shortcut handler's rule, on purpose. That rule
+   stands down for any focused INPUT, and after touching Latch or Velocity the
+   focus is on one - so typing would stop playing for no reason anyone could
+   see. Only fields that take text are left alone here. */
+function takesText(target) {
+  if (!target) return false;
+  if (target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable) return true;
+  return target.tagName === "INPUT" && !/^(checkbox|radio|range|button|submit|reset)$/.test(target.type);
+}
+
+/* Captured at the window, ahead of the shortcut keys, and that is a decision
+   with a price: with the keys open, A, S, C and B play notes rather than
+   Autoset, Single, cursors and the Bench, and Z and X move the octave. The
+   arrows, the digits, ? and the zoom keys are not on the playing rows and keep
+   working. Close the keys and every shortcut is back. The alternative was a
+   layout that avoided every shortcut letter, which is no layout a player's
+   hands already know. */
+window.addEventListener("keydown", (event) => {
+  if (!screenKeys.open || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (el.helpDialog.open || takesText(event.target)) return;
+  const at = TYPED_KEYS.indexOf(event.code);
+  const octave = event.code === "KeyZ" ? -1 : event.code === "KeyX" ? 1 : 0;
+  if (at < 0 && octave === 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.repeat) return;               // a held key auto-repeats; a held note does not
+  if (octave) { shiftScreenKeys(octave); return; }
+  if (screenKeys.typed.has(event.code)) return;
+  const note = screenKeys.base + at;
+  if (!screenKeys.latch) screenKeys.typed.set(event.code, note);
+  screenPress(note);
+}, true);
+
+window.addEventListener("keyup", (event) => {
+  if (!screenKeys.typed.has(event.code)) return;
+  const note = screenKeys.typed.get(event.code);
+  screenKeys.typed.delete(event.code);
+  screenRelease(note);
+}, true);
 
 /* --- presets ----------------------------------------------------------------
    Forty-odd controls across three generators, three displays and two LFOs.
@@ -10042,8 +10388,9 @@ const PRESETS = [
   ]],
   /* These name nothing about the generator, so they land on whatever is
      already playing. A preset has never switched the source - `restore` only
-     touches `state.source` behind a `kind === "tone"` guard - which is what
-     makes a display-only group possible at all. */
+     reaches the generator through `genSet`, which writes wherever the
+     generator is and nowhere else - which is what makes a display-only group
+     possible at all. */
   ["Live", [
     ["Playing, waveform", { display: "yt", timebase: 5, persistence: "0",
                             trigMode: "auto", level: 20 }],

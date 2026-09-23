@@ -59,6 +59,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `taptest.py` | the two taps, all four combinations, and the block they straddle |
 | `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
 | `contracttest.py` | the lane contract, the generator as a lane, and a rack with no files in it |
+| `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1133,4 +1134,67 @@ whether or not switching the lag off took the copy out of the mix — any split
 of wet and dry sums back to the input when the delay is zero. The mutation that
 left the mix up with the lag off survived until the fixture gave the delay the
 tau it would still be holding after the lag had been on, which is the real case.
+
+**The on-screen keyboard is a second way into the note stack, and keeps
+nothing else.** Every key calls `midiNoteOn` and `midiNoteOff` exactly as a byte
+from a port does, so the dyad, the gate, the lag's truth and a generator lane
+all see one stack. What it remembers is only which note each holder started —
+a pointer, a typed key, a latch — so a finger lifted after an octave shift
+releases the note it pressed rather than whatever that key means now, and a
+note held both by a finger and a letter survives either one lifting. Whether a
+key is *lit* is never stored: it is painted from `midi.notes` whenever the
+stack changes, so a note from a real keyboard lights it and a panic darkens it
+without either knowing the screen's keys exist. The one piece of its own state
+a panic has to clear is the latch, and it clears it before the early return
+for an empty stack — otherwise the next tap on a key the stack had already
+lost would "release" it and play nothing.
+
+**With the keys open, A, S, C and B play notes.** Musical typing is the layout
+music software uses — home row white, the row above black — and it covers four
+of the shortcut letters. The alternative was a layout that dodged them, which
+is a layout nobody's hands already know. So the letters are captured at the
+window ahead of the shortcut handler only while the keys are open; the arrows,
+digits, `?` and the zoom keys are off the playing rows and keep working, and
+closing the keys gives every shortcut back. By `event.code`, so an AZERTY
+keyboard gets a piano shape rather than a scattering. Text fields are left
+alone, but checkboxes and sliders are not treated as typing — after touching
+*Latch* the focus is on one, and the shortcut handler's broader rule would
+have silently stopped the letters playing.
+
+**`midi.access !== null` was asking whether a keyboard could play, not whether
+a port was open.** The gate shuts the generator between notes only while
+something could play one, and the screen's keys are something. It is
+`keyboardPresent()` now, and the Playing line uses it too.
+
+**Five places still asked `state.source.kind === "tone"` after the generator
+could be a lane, and the panel said the opposite of what they did.** The note
+path (`midiDrivesGenerator`, `midiApplyNotes`, `midiUndrive`), the *Notes play
+this generator* box and the *Kind* menu. A note played into a rack with a
+generator lane reached nothing, while the keyboard panel beside it said the
+lane was a drone that followed pitch. `contracttest.py` had checked that the
+generator's controls reach a lane by calling `genSet` itself, which proves
+`genSet` works and nothing about whether the controls call it. Found by
+playing, which the on-screen keyboard made possible without a keyboard in the
+room. What is left of that question is legitimate, and each one is about the
+source as such: the envelope and the gate (a lane is not gated, by D10), the
+worklet driver, the source selector's own state, and the readout's "gated"
+line.
+
+**A hidden control's bounding box is all noughts.** `keystest.py` first checked
+that opening the keys moved no control by measuring the lag's mix slider,
+which lives in the closed Settings panel — `[0, 0]` open and shut, so the check
+could not fail. It measures the trace and the timebase now, and asserts they
+have a size, which is the part that would have said so.
+
+**A note-off does not know which hand held the note.** The screen's latch
+first kept its own record of what it had latched, so a port releasing the same
+key left the latch claiming a note the stack had lost: the next tap "released"
+it and played nothing, and turning latch off later cut a C3 the port had
+started since. `midiNoteOff` now ends the latch's claim whoever sends it, which
+keeps the latch a subset of the stack. Found by a mutation that survived — the
+panic's clearing of the latch had been moved ahead of its early return for this
+case, and no check reached it, because every panic in the suite arrived with
+the latched note still on the stack. The first version of the new latch-off
+check was then carried by the state its neighbour left behind, and caught the
+mutation only after it was made to start from a clean slate.
 

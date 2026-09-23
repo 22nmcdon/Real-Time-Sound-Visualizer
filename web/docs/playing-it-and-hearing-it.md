@@ -443,6 +443,18 @@ embedder to grant `midi`, so **Stage A almost certainly cannot run in the
 published artifact** and Pages becomes the only way to use it. Safari has no Web
 MIDI at all — feature-detect and say so plainly.
 
+**And without a keyboard in the room: keys on the screen.** Added after Stage A
+for testing with no controller to hand, and useful in the published artifact
+and in Safari for the same reason — neither can reach a port. Twenty-five keys
+docked at the foot of the page, octave shift, a latch so one mouse can hold a
+dyad, a velocity slider, and musical typing on the letters. It feeds the same
+note stack a port does and keeps no state of its own beyond which holder started
+which note, so everything Stage A built — dyad, Hold, the gate, the note as
+truth — is exercised by it unchanged. `keystest.py` is its suite. Playing it
+turned up five places that still asked whether the source was the tone source,
+so a note played into a rack reached nothing while the panel said the
+generator lane followed pitch; see `web/README.md`.
+
 ### A · verification
 
 Stub `navigator.requestMIDIAccess` with a fake port; dispatch synthetic messages.
