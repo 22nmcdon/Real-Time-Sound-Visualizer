@@ -1035,3 +1035,42 @@ how they were built rather than by decision.
 switch that describes what the source *is* reads as broken if the source does
 not change. The File objects are held for it, which costs nothing — a File is a
 reference and the bytes are read on demand.
+
+**A generator lane loses two capabilities, and both are now said where they are
+met.** The keyboard panel gains a live note whenever the generator is a lane. A
+lane is one signal, so only its left channel is drawn — which means the *dyad
+figure is not available*: dyad still sets the interval, but the second axis it
+would be plotted against is not on the screen. And a note sets the lane's pitch
+without starting or stopping it, because the envelope belongs to the generator
+as a source. Both are real consequences of "a lane is one signal", and this page
+marks a reading `post-filter` rather than letting it go quietly wrong; a
+capability should disappear the same way.
+
+**A generator lane is a drone that follows pitch, and that is a decision.** A
+lane in a rack is expected to be producing signal the way a live input always
+is — solo, mute and the mixer all assume there is something there — so a lane
+that went silent between phrases would be a lane the rest of the rack had to be
+told about. Playing the generator on its own is the version with an envelope.
+The alternative reading ("you can still play it, just as part of a bigger mix")
+is coherent too; it was not chosen, and the note in the keyboard panel says
+which way it went.
+
+**`state.genSound` survived the source it was about.** Adopting a rack stops the
+generator that was sounding — `stop` hushes the worklet — but the flag stayed
+true, so the checkbox claimed a sound that had no worklet behind it. It reads
+back from `source.audible()` now rather than being trusted, which is the same
+lesson as `lfoDriver` and `rotatesSignal` in a third place. Found by asking who
+was driving the oscillators after the swap, which is a different question that
+happened to walk past this one.
+
+**Two per-sample loops cannot coexist today, and that is checked rather than
+assumed.** `lfoDriver` used to ask whether the source was a tone; it now asks
+whether anything runs a per-sample loop, and the hazard the ownership rule was
+written for is a generator sounding as the source while a generator lane also
+exists. `state.source` is one thing and adopting a rack stops what it replaces,
+so they cannot — but `contracttest.py` switches each way, runs a second of real
+audio at each end, and asks who is driving, rather than inheriting the
+protection along with the name.
+
+**A hidden element holding stale text is one stray `hidden = false` from lying.**
+The lane note is cleared when it is hidden, not just hidden.

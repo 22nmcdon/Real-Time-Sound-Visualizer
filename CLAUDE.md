@@ -99,6 +99,41 @@ Prefer numerical assertions to visual ones. "50 ms is 2205 samples at 44.1 kHz",
 "the JS biquad matches Web Audio to 0.0001 dB", "the limiter turns 17.26 into
 0.961" — these survive a redesign; a screenshot does not.
 
+### A field that stops having one answer becomes a structure, with a migration
+
+Three times now a single stored value has turned out to be answering a question
+that had grown a second answer, and each time the fix was the same shape:
+
+- The modulation destination was an **integer index** into an array, which is
+  fine until the array is reordered and every saved setup means something else.
+  It became a string id and a matrix.
+- The trigger level was an **absolute amplitude**, which stops meaning anything
+  once full scale is a continuous, modulatable gain. It became a fraction of
+  full scale, with a version-2 decode pass for codes that stored the old thing.
+- `state.source.kind === "tone"` asked **which one of four** the source is,
+  which stops being answerable once the generator can be one lane of a rack. It
+  became `genSettings` / `genSet` / `genReswing` — where does the generator
+  live, rather than what is the source.
+
+So: **when a field can no longer answer its own question with one value, widen
+the representation and write the migration, rather than widening the `if`.** The
+tell is a condition growing an `||`, or a call site asking "which kind is it"
+in order to work out where to write. Both are the field having become a
+structure without anyone saying so.
+
+Two parts to doing it properly. The *representation* changes — a new field, an
+id, a helper that answers the real question — and anything already stored in
+the old shape gets a **version-tagged decode pass**, not a value that is
+interpreted two ways depending on its magnitude. `migrateSetup` runs them in
+order and `SETUP_VERSION` names where you are; a purely additive field needs no
+bump, because `Object.assign` over the defaults already gives an old code the
+new default.
+
+The third of these is only half done: the generator can be a lane, but the
+*selector* is still a mutually exclusive radiogroup and the setup code still
+stores one source kind. That is named in the plan rather than left to be
+discovered.
+
 ## House style
 
 Comments explain **why**, not what, and are written in prose. British spelling

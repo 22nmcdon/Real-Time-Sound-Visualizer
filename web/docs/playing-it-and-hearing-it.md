@@ -212,6 +212,8 @@ be discovered during implementation.
 | D6 | Does zoom join the shared transforms? | **No.** Full scale is the shared gain; zoom stays display-only. | Zoom means different things in X–Y and Y–T; a transform that changes meaning with the display mode can't be heard honestly. |
 | D7 | Where does rotation go in the pinned pipeline order? | After lag, and **mid/side becomes a case of rotation** (see Stage C). | Lag builds lane 2 from lane 1, so it must exist before anything rotates it. |
 | D8 | May a live input be monitored? | **Yes, for a declared line input; never for a microphone.** An input carries a user-asserted kind: `mic` (default, never monitored) or `line`. | The existing rule exists to stop acoustic feedback. A Nord on a line input has no acoustic path back into itself. |
+| D10 | Is a generator *lane* a played voice or a drone? | **A drone that follows pitch.** The envelope belongs to the generator as a source; a lane sets its pitch from the keyboard without starting or stopping. | A lane in a rack is expected to be producing signal the way a live input always is — solo, mute and the mixer assume there is something there. A lane going silent between phrases is a lane the rest of the rack has to be told about. Said in the keyboard panel rather than left to be found. |
+| D11 | A generator lane is one signal — which? | **Its left channel.** | A lane is one signal and the generator makes two. D's own verification asks for `generator-L` against `Nord-L`. The cost is that the generator's own figure — and so dyad mode's whole payoff, the interval you can see — is not available while it is a lane. Also said in the keyboard panel. |
 | D9 | Photocell v1: canvas readback or an intermediate tap? | **A low-resolution shadow phosphor grid** fed by the same segment walk the beam renderer does. Canvas readback only if v1 looks meaningfully wrong. | Nearly free, persistence-aware, and never touches `getImageData`. Measure before paying for the honest version. |
 
 ---
@@ -293,6 +295,26 @@ be discovered during implementation.
   silent. Giving one an output means a second worklet on the rack's own context
   feeding the rack's mix, with the monitoring rules that go with it, and that
   is not built.
+
+  **"A second worklet" means the same processor on another context, and this is
+  a constraint on the work rather than a description of it.** One piece of
+  arithmetic called from two places is the rule this whole plan has followed —
+  the AC blocker's shared coefficients, the biquad's two implementations from
+  one parameter set, `turnOf` for the picture and the graph, and
+  `makeGeneratorCore` as literally the same text on the main thread and in the
+  worklet. A rack lane's audio must be `generatorModuleSource()` loaded onto the
+  rack's own `AudioContext`, not a second thing that produces the same
+  waveform. The mechanism for it already exists and was built with this in
+  mind: `loadGeneratorModule` is keyed by context in a `WeakMap`, precisely
+  because a module added to one context has not been added to another.
+
+  The ownership hazard that comes with it is named too. Two worklets each
+  running `makeGeneratorCore` would be two per-sample loops over one set of
+  shared oscillators, which is the exact shape `assertLfoDriver` exists for.
+  Today they cannot coexist — `state.source` is one thing and adopting a rack
+  stops what it replaces — and `contracttest.py` checks that rather than
+  assuming it. The day a lane gets its own worklet, that check is the one to
+  extend first.
 
   The practical consequence: D1 can move in parallel with portable-DSP work
   rather than queuing behind the worklet. If the JUCE port is where the

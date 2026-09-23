@@ -1055,6 +1055,7 @@ body[data-view="bench"] #menuButton { display: none; }
                 <button type="button" class="caps" id="midiMono" role="radio" aria-checked="false">Mono</button>
               </div>
             </div>
+            <p class="menu-note" id="midiLaneNote" hidden></p>
             <label class="check"><input type="checkbox" id="midiDrive"> Notes play this generator</label>
             <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
             <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note</label>
@@ -2312,6 +2313,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "rackSynthRow", "rackSynth", "rackBudget",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
+                  "midiLaneNote",
                   "midiCC",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "liveKindRow", "kindMic", "kindLine", "monitorRow", "monitorLive",
@@ -8878,6 +8880,9 @@ function genReswing() {
 function showGenerator() {
   const tone = genSettings();
   syncGeneratorSound();
+  /* The keyboard panel says what a generator LANE cannot do, so it has to be
+     told when the generator moves between being a source and being a lane. */
+  syncMidi();
   if (!tone) return;
 
   const mode = tone.mode;
@@ -9368,6 +9373,40 @@ function syncMidi() {
   const kind = shown ? shown.mode : null;
   el.midiDrive.checked = kind ? midi.drive[kind] === true : false;
   el.midiDrive.disabled = kind === null;
+
+  /* Two things a generator LANE cannot do, said here rather than discovered by
+     playing a fifth into a rack and wondering where the figure went.
+
+     A lane is one signal, so only the generator's left is drawn - and dyad
+     mode's whole payoff is the two against each other, the 2:3 you can see. It
+     still sets the interval; there is just no second axis to plot it on.
+
+     And the envelope lives on the source, so a lane is a drone that follows
+     pitch rather than a voice you start and stop. That is a decision and not
+     an omission: a lane in a rack is expected to be producing signal the way a
+     live input always is - solo, mute and the mixer all assume there is
+     something there - and a lane that went silent between phrases would be a
+     lane the rest of the rack had to be told about. Playing the generator on
+     its own is the version with an envelope. */
+  const asLane = !!genLane();
+  el.midiLaneNote.hidden = !asLane;
+  // Cleared rather than left behind it. A hidden element holding a sentence
+  // about a lane that is no longer there is one stray `hidden = false` away
+  // from telling somebody something untrue.
+  if (!asLane) el.midiLaneNote.textContent = "";
+  if (asLane) {
+    el.midiLaneNote.innerHTML = "The generator is a <i>lane</i> here, and two things "
+      + "follow. A lane is one signal, so only its left channel is drawn &mdash; "
+      + (midi.mode === "dyad"
+          ? "<b>the interval figure is not available</b>: dyad still sets the "
+            + "interval, but the second axis it would be plotted against is not on "
+            + "the screen. Put the generator back on its own to see it."
+          : "in <i>dyad</i> the interval figure would not be available, because the "
+            + "second axis it needs is not on the screen.")
+      + " And a note sets its pitch without starting or stopping it: the envelope "
+      + "belongs to the generator as a <em>source</em>, so as a lane it is a drone "
+      + "that follows what you play.";
+  }
 }
 
 function buildMidiRows() {
@@ -10461,8 +10500,21 @@ async function applyGeneratorSound() {
 function syncGeneratorSound() {
   const source = state.source;
   const able = !!source && typeof source.setSound === "function";
+
+  /* Read back from the source rather than trusted as a flag. A generator that
+     was sounding and has been replaced - by a rack, a file, a microphone - is
+     not sounding: `stop` hushed it. The flag survived that, so the box stayed
+     ticked over a source that had no worklet at all, and the panel disagreed
+     with the graph. Found by asking who was driving the oscillators after the
+     swap, which is a different question that happened to walk past this one.
+
+     `state.genSound` is therefore what is happening, not what was last asked
+     for. Coming back to the generator does not resume the sound, because
+     `toTone` clears it: switching the speakers on is an act, not a setting. */
+  state.genSound = able && typeof source.audible === "function" && source.audible();
+
   el.genSoundRow.hidden = !able;
-  el.genSound.checked = able && state.genSound;
+  el.genSound.checked = state.genSound;
   if (!state.genSound) {
     // A fault outlives the switch it turned off: the whole point is that the
     // box comes back unticked and says why.
@@ -10854,6 +10906,10 @@ function adoptRack(source, kind) {
   state.xyPair = [0, Math.min(1, source.channels - 1)];
 
   showSource();
+  /* Which reconciles the generator's own panel with where the generator now
+     is: whether it is sounding, whether its controls apply, and what the
+     keyboard panel should say about a lane. */
+  showGenerator();
   buildLaneRows();
   buildLaneList();
   el.fileLoop.checked = source.looping;

@@ -481,6 +481,121 @@ with sync_playwright() as pw:
     check("and the generator's controls stop claiming to apply",
           without["panel"] is False, str(without["panel"]))
 
+    print("\n--- and what a lane cannot do, said where it is met ---")
+    # Two capabilities that disappear when the generator becomes a lane, and
+    # the rule this project keeps applying: a thing withheld has to say so
+    # where somebody would go looking for it, not go quietly missing.
+    # No keyboard needed and none asked for: the note is about where the
+    # generator is, not about whether anything is plugged in, and
+    # `requestMIDIAccess` in a headless browser with no stub is a wait with no
+    # end to it.
+    # With a lane actually present: the section above took it out again, and
+    # the first version of this read a note that was hidden and still carrying
+    # the text from before - right words, wrong moment.
+    p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
+    p.wait_for_timeout(1800)
+    said = p.evaluate("""async () => {
+      midi.mode = 'dyad';
+      syncMidi();
+      const asLane = { hidden: el.midiLaneNote.hidden,
+                       text: el.midiLaneNote.textContent };
+      const wasKind = state.source.kind;
+      await toTone();
+      const asSource = { hidden: el.midiLaneNote.hidden,
+                         text: el.midiLaneNote.textContent };
+      return { asLane, asSource, wasKind };
+    }""")
+    print("    as a lane: %r" % said["asLane"]["text"][:110])
+    check("with the generator as a lane, the keyboard panel says what is gone",
+          said["asLane"]["hidden"] is False
+          and "interval figure is not available" in said["asLane"]["text"]
+          and "without starting or stopping it" in said["asLane"]["text"],
+          said["asLane"]["text"][:80])
+    check("and says nothing of the kind when the generator is on its own",
+          said["asSource"]["hidden"] is True and said["asSource"]["text"] == "",
+          "hidden %s, text %r"
+          % (said["asSource"]["hidden"], said["asSource"]["text"][:40]))
+
+    print("\n--- one loop, when the generator can be in two places ---")
+    # The ownership rule was written for exactly this shape, and it is worth
+    # RE-RUNNING against it rather than assuming the refactor inherited the
+    # protection along with the name. `lfoDriver` used to ask "is the source a
+    # tone"; it now asks "does anything here run a per-sample loop", and the
+    # hazard is a generator sounding as the source while a generator lane also
+    # exists - two loops, one set of oscillators, every rate at double.
+    #
+    # The two cannot coexist today, because `state.source` is one thing and
+    # adopting a rack stops the source it replaces. That is the claim being
+    # checked, not assumed: switching each way and asking who is driving.
+    both = p.evaluate("""async () => {
+      const out = {};
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      // Generator as the source, sounding: its worklet owns them.
+      el.rackSynth.checked = false;
+      await setRackSynth(false);
+      await toTone();
+      state.genSound = true;
+      await applyGeneratorSound();
+      await wait(300);
+      out.asSource = { driver: lfoDriver(),
+                       audible: state.source.audible(),
+                       kind: state.source.kind };
+
+      /* Now a rack with a generator lane, adopted over it. If the old
+         worklet outlived the switch, two loops would be stepping the same two
+         oscillators and `assertLfoDriver` would throw on the first block of
+         whichever one is not the driver. */
+      el.rackSynth.checked = true;
+      await setRackSynth(true);
+      return out;
+    }""")
+    p.locator("#rackInput").set_input_files(
+        [f"{STEMS}/{n}.wav" for n in ("drums", "bass")])
+    p.wait_for_timeout(2000)
+    swapped = p.evaluate("""() => ({
+      driver: lfoDriver(),
+      kind: state.source.kind,
+      synth: state.source.lanes.some((l) => l.synth),
+      // The generator that WAS the source has been stopped, so nothing of it
+      // is still producing.
+      soundFlag: state.genSound,
+    })""")
+    print("    as a source: %s; after adopting a rack with a lane: %s"
+          % (both["asSource"], swapped))
+    check("as the source and sounding, the worklet owns the oscillators",
+          both["asSource"]["driver"] == "worklet" and both["asSource"]["audible"],
+          str(both["asSource"]))
+    check("and adopting a rack hands them to the lane's loop, not to both",
+          swapped["driver"] == "fill" and swapped["synth"]
+          and swapped["soundFlag"] is False, str(swapped))
+
+    # A second of real running, because the throw happens on a block rather
+    # than on a switch: if anything else were still stepping them, this is
+    # where it would say so.
+    p.wait_for_timeout(1000)
+    ran = p.evaluate("""() => ({ driver: lfoDriver(), value: lfos[0].value })""")
+    check("and a second of running produces no ownership complaint",
+          not [x for x in [] ] and ran["driver"] == "fill", str(ran))
+
+    # And back the other way: a rack with a lane, then the generator alone
+    # with its sound on.
+    back = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      await toTone();
+      state.genSound = true;
+      await applyGeneratorSound();
+      await wait(400);
+      const out = { driver: lfoDriver(), kind: state.source.kind,
+                    audible: state.source.audible() };
+      state.genSound = false;
+      await applyGeneratorSound();
+      return out;
+    }""")
+    print("    back to the generator alone: %s" % back)
+    check("and back again the worklet owns them, with no lane left to argue",
+          back["driver"] == "worklet" and back["kind"] == "tone", str(back))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
