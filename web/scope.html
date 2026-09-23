@@ -724,57 +724,6 @@ body[data-view="bench"] #menuButton { display: none; }
 [data-mod-dest] .mod-lane-host { padding-bottom: 8px; }
 @media (pointer: coarse) { [data-mod-dest] .mod-lane-host { padding-bottom: 14px; } }
 
-/* --- the depth rows ---------------------------------------------------------
-   Still here, and now only for what the lane cannot draw: a destination whose
-   control is a menu rather than a slider has no track to lay a lane along.  */
-.mod-rows { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 96px; }
-.mod-rows:empty { display: none; }
-.mod-row {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 11px; color: var(--text-soft);
-}
-.mod-row:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 1px; }
-.mod-name { flex: 0 0 auto; color: var(--chip); font-weight: 500; }
-.mod-track {
-  flex: 1 1 auto; position: relative; height: 14px; min-width: 60px;
-  cursor: ew-resize; touch-action: none;
-}
-.mod-track::before {
-  content: ""; position: absolute; inset: 6px 0 auto; height: 2px; background: var(--line);
-}
-/* Grown from the middle, because depth is signed: left of centre is the same
-   amount pointing the other way. */
-.mod-fill { position: absolute; top: 5px; height: 4px; background: var(--chip); border-radius: 2px; }
-.mod-clip { position: absolute; top: 5px; height: 4px; background: var(--chip); opacity: 0.28; border-radius: 2px; }
-.mod-amount { flex: 0 0 38px; text-align: right; font-variant-numeric: tabular-nums; }
-.mod-x {
-  flex: 0 0 auto; background: none; border: 0; padding: 0 2px; line-height: 1;
-  color: var(--text-soft); font-size: 14px; opacity: 0;
-}
-.mod-row:hover .mod-x, .mod-row:focus-within .mod-x { opacity: 1; }
-.mod-x:hover { color: var(--rust); }
-.mod-more {
-  align-self: flex-start; background: none; border: 1px solid var(--line);
-  border-radius: 20px; padding: 1px 8px; font-size: 10px; color: var(--text-soft);
-}
-.mod-add {
-  flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 50%;
-  width: 20px; height: 20px; line-height: 1; padding: 0; color: var(--text-soft); font-size: 13px;
-}
-.mod-add:hover { border-color: var(--blush); color: var(--blush-deep); }
-body[data-view="scope"] .mod-add { display: none; }
-/* The transport's rows are in a strip, not a panel: let them take their own
-   line rather than squeezing the control they belong to. */
-.transport .mod-rows { flex: 1 1 100%; margin-left: 0; }
-
-@media (pointer: coarse) {
-  .mod-row { min-height: 30px; }
-  .mod-x { opacity: 1; padding: 0 8px; }
-}
-@media (max-width: 760px) {
-  .mod-rows { margin-left: 0; }
-}
-
 /* --- dock ---------------------------------------------------------------- */
 .dock {
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
@@ -1999,8 +1948,6 @@ const Q_IN_DECIBELS = new Set(["lowpass", "highpass"]);
    octaves is usable at both ends. */
 const CUTOFF_STEPS = 1000;
 const cutoffHz = (step) => 20 * Math.pow(1000, step / CUTOFF_STEPS);
-const cutoffStep = (hz) => Math.log(hz / 20) / Math.log(1000) * CUTOFF_STEPS;
-
 /* Calibrated 1-2-5 steps, as a scope's timebase has always been, rather than
    a linear slider over milliseconds. Ten divisions across the screen. */
 const TIMEBASE = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];   // ms per division
@@ -2017,7 +1964,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
-                  "viewScope", "viewBench", "bench", "benchRail", "benchBody",
+                  "viewScope", "viewBench", "benchRail", "benchBody",
                   "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "benchSources",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
@@ -2026,7 +1973,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
-                  "freq", "freqValue", "amp", "ampValue", "shape", "ratio", "phase", "phaseValue",
+                  "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
                   "lfoGroup", "lfoRows", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
@@ -2045,9 +1992,12 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "preset", "presetName", "presetSave", "presetDelete",
                   "presetCode", "presetCopy", "presetLoad", "presetNote",
                   "harmonicsOn", "tunerOn", "harmonicsPane", "tunerPane", "harmonics", "tuner",
-                  "ch1On", "ch1Ac", "ch1Scale", "ch1ScaleValue", "ch1Offset", "ch1OffsetValue",
-                  "ch2On", "ch2Ac", "ch2Scale", "ch2ScaleValue", "ch2Offset", "ch2OffsetValue",
-                  "trigCh1", "trigCh2", "position", "positionValue", "holdoff", "holdoffValue",
+                  /* No per-lane or trigger-source ids here: those rows are
+                     built by `buildLaneRows` and `buildTrigSources`, which
+                     register what they make. Listing them statically resolved
+                     twelve ids to null at boot and told a reader the markup
+                     holds something it does not. */
+                  "position", "positionValue", "holdoff", "holdoffValue",
                   "cursorsOn", "goniOn", "spectrumOn", "goniPane", "spectrumPane", "aside",
                   "run", "runLabel", "modeAuto", "modeNormal", "modeSingle", "autoset",
                   "level", "levelValue", "edgeRising", "edgeFalling",
@@ -2723,6 +2673,11 @@ function makeToneSource() {
     // to the same attitude every few seconds and it reads as a loop rather
     // than as something turning.
     spin: [0.11, 0.17, 0.0],
+    /* One multiplier over all three axes, so the solid can be sped up or slowed
+       without losing the ratio between them that stops it reading as a loop.
+       It had no base for a long time - `gen.tumble` applied `3^depth` to
+       nothing - so the slider on the panel moved and the solid did not. */
+    spinRate: 1,
     depth: 0.45,             // 0 nearly flat, 1 a short eye distance
   };
 
@@ -2775,7 +2730,7 @@ function makeToneSource() {
       const phase = tone.phase + genMod[2] * Math.PI;
       const ratio = intervalRatio(tone.interval, tone.just) + genMod[3] * 0.5;
       const detail = tone.detail + genMod[4] * 4;
-      const tumble = Math.pow(3, genMod[5]);
+      const tumble = tone.spinRate * Math.pow(3, genMod[5]);
       const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
 
       let l, r;
@@ -3812,7 +3767,6 @@ const state = {
   starved: 0,                // samples the window asked for beyond what the source holds
 
   reference: null,           // a frozen capture kept for comparison
-  showReference: true,
   harmonics: null,           // the last harmonic reading
   panesExtra: { harmonics: false, tuner: false },
   persistence: 0,            // 0 off, >0 the fade per frame, -1 infinite
@@ -3913,17 +3867,6 @@ function biquadCoefficients(type, hz, q, rate) {
 
 /* The magnitude the coefficients give at one frequency, for checking this
    against `getFrequencyResponse` without a browser in the way. */
-function biquadMagnitude(c, hz, rate) {
-  const w = 2 * Math.PI * hz / rate;
-  const cw = Math.cos(w), sw = Math.sin(w);
-  const c2w = Math.cos(2 * w), s2w = Math.sin(2 * w);
-  const nr = c.b0 + c.b1 * cw + c.b2 * c2w;
-  const ni = -(c.b1 * sw + c.b2 * s2w);
-  const dr = 1 + c.a1 * cw + c.a2 * c2w;
-  const di = -(c.a1 * sw + c.a2 * s2w);
-  return Math.sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
-}
-
 /* In place, over the whole fetched buffer rather than the window, and primed
    rather than started from silence.
 
@@ -3999,7 +3942,11 @@ function capture() {
   const capacity = source.capacity || Infinity;
 
   const length = Math.max(MIN_WINDOW, Math.round(windowMs() * rate / 1000));
-  const pre = Math.round(state.position * length);
+  /* Where the trigger sits in the window, plus whatever a source is adding to
+     it. Modulated, the waveform slides across the screen while the trigger
+     stays locked to the same edge. */
+  const where = Math.max(0, Math.min(1, state.position + state.positionMod));
+  const pre = Math.round(where * length);
   const post = length - pre;
 
   /* Never ask for more than the source holds, and give way in the order that
@@ -4927,7 +4874,7 @@ function drawMain(frame, elapsed) {
   // The reference first, so the live trace is the one on top. Drawn in the
   // channel's own ink at low alpha rather than in a colour of its own: it is
   // the same signal, earlier, and a fourth hue would say otherwise.
-  if (state.reference && state.showReference) {
+  if (state.reference) {
     ctx.save();
     ctx.globalAlpha = 0.34;
     ctx.setLineDash([3, 3]);
@@ -6363,6 +6310,12 @@ el.model.addEventListener("change", () => {
   });
 });
 
+el.spinRate.addEventListener("input", () => {
+  const rate = Number(el.spinRate.value) / 100;
+  el.spinRateValue.textContent = rate.toFixed(2) + "\u00d7";
+  if (state.source.kind === "tone") state.source.set("spinRate", rate);
+});
+
 el.depth.addEventListener("input", () => {
   const depth = Number(el.depth.value) / 100;
   el.depthValue.textContent = depth.toFixed(2);
@@ -6693,7 +6646,7 @@ const DEFAULTS = {
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
   swingRate: 21, decay: 12, detune: 40,
-  model: "Cube", spinX: 11, spinY: 17, spinZ: 0, depth: 45,
+  model: "Cube", spinX: 11, spinY: 17, spinZ: 0, spinRate: 100, depth: 45,
   // l0d / l1d are read on the way in only: a setup written before the matrix
   // existed names its destination with the old enum's word.
   l0d: "none", l0s: "sine", l0r: 20, l0a: 50,
@@ -6732,7 +6685,8 @@ function snapshot() {
     detune: Number(el.detune.value),
     model: el.model.value,
     spinX: Number(el.spinX.value), spinY: Number(el.spinY.value),
-    spinZ: Number(el.spinZ.value), depth: Number(el.depth.value),
+    spinZ: Number(el.spinZ.value), spinRate: Number(el.spinRate.value),
+    depth: Number(el.depth.value),
     l0s: lfos[0].shape,
     l0r: Math.round(lfos[0].rate * 100), l0a: Math.round(lfos[0].depth * 100),
     l1s: lfos[1].shape,
@@ -6788,11 +6742,12 @@ function restore(partial) {
   el.spinX.value = String(s.spinX);
   el.spinY.value = String(s.spinY);
   el.spinZ.value = String(s.spinZ);
+  el.spinRate.value = String(s.spinRate);
   el.depth.value = String(s.depth);
   el.genMode.value = s.gen;
 
   ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "detune",
-   "spinX", "spinY", "spinZ", "depth"]
+   "spinX", "spinY", "spinZ", "spinRate", "depth"]
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
   el.shape.dispatchEvent(new Event("change"));
   el.figure.dispatchEvent(new Event("change"));
@@ -8169,11 +8124,6 @@ function clearSource(sourceId) {
   touchRoutings();
 }
 
-function clearDest(destId) {
-  state.modRoutings = state.modRoutings.filter((r) => r.destId !== destId);
-  touchRoutings();
-}
-
 /* --- the chips ---------------------------------------------------------- */
 
 function buildSourceChips() {
@@ -8276,8 +8226,6 @@ function beginChipDrag(id, chip, event) {
   chip.addEventListener("pointerup", done);
   chip.addEventListener("pointercancel", done);
 }
-
-/* --- the depth rows ------------------------------------------------------ */
 
 /* --- overlays -----------------------------------------------------------------
    One panel, anchored to whatever opened it. A section's detail uses it and so
@@ -8481,19 +8429,6 @@ function destReach(dest, input, sum) {
   if (dest.span === undefined || dest.max === undefined || dest.max === dest.min) return v;
   const lo = Number(input.min), hi = Number(input.max);
   return v + sum * (dest.span / (dest.max - dest.min)) * (hi - lo);
-}
-
-/* The same question backwards, kept because the presets and the lane both want
-   it and because it is one formula rather than two that must agree: every one
-   of these laws is monotonic in the depth, so bisection always lands. */
-function amountForReach(dest, input, target) {
-  const rising = destReach(dest, input, 1) >= destReach(dest, input, -1);
-  let lo = -1, hi = 1;
-  for (let i = 0; i < 24; i++) {
-    const mid = (lo + hi) / 2;
-    if ((destReach(dest, input, mid) < target) === rising) lo = mid; else hi = mid;
-  }
-  return (lo + hi) / 2;
 }
 
 // Where a thumb's centre sits in the input's own box. The track is inset by

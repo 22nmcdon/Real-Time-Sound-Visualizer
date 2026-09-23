@@ -89,29 +89,10 @@ with sync_playwright() as pw:
     check("full depth on cutoff is 400 steps, as declared",
           close(reach["cutoffFull"], 966), "%.1f" % reach["cutoffFull"])
 
-    print("\n--- and dragging it back asks the same law backwards ---")
-    # The inverse is bisected rather than written out, so what matters is that
-    # it lands on the depth the forward law came from - including on the one
-    # destination whose law is not linear and the one that only ducks.
-    trip = p.evaluate("""() => {
-      const out = [];
-      for (const [id, elid] of [['gen.freq','freq'], ['gen.amp','amp'],
-                                ['gen.phase','phase'], ['view.rotate','rotate'],
-                                ['filter.cutoff','filterCutoff'], ['gen.tumble','spinRate']]) {
-        const dest = MOD_DESTS.get(id), input = document.getElementById(elid);
-        if (!input) { out.push([id, 'no control']); continue; }
-        let worst = 0;
-        for (const a of [-0.9, -0.5, -0.1, 0, 0.1, 0.5, 0.9]) {
-          const back = amountForReach(dest, input, destReach(dest, input, a));
-          worst = Math.max(worst, Math.abs(back - a));
-        }
-        out.push([id, worst]);
-      }
-      return out;
-    }""")
-    for name, worst in trip:
-        check("%s round-trips" % name, isinstance(worst, float) and worst < 1e-6,
-              "worst %.2e" % worst if isinstance(worst, float) else str(worst))
+    # The round-trip check that used to live here went with `amountForReach`.
+    # Nothing inverts the reach laws now that the lane only reads, and a
+    # function kept alive so that a test can call it is not a tested function -
+    # it is a tested test.
 
     # -------------------------------------------------------------- geometry
     print("\n--- the lane is drawn where those numbers say ---")
@@ -287,24 +268,49 @@ with sync_playwright() as pw:
 
     print("\n--- the trigger position slides the window, not the trigger ---")
     section(p, "Trigger")
+    # The first version of this asserted that `positionMod` held 0.5 and stopped
+    # there - and passed for two releases while NOTHING READ IT. `capture()`
+    # went on using `state.position` raw, so the destination moved a number and
+    # not the picture. What has to be asserted is the window, not the offset.
     slid = p.evaluate("""() => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'trig.position', amount: 1 }];
       touchRoutings();
       el.position.value = '10'; el.position.dispatchEvent(new Event('input'));
       const level = state.level, pos = state.position;
-      lfos[0].value = 1;
-      applyModMatrix(capture(), 16);
-      const up = state.positionMod;
+
+      // How much of the window sits before the trigger, read off the capture
+      // itself rather than off the offset that is supposed to have moved it.
+      const preOf = (frame) => frame.pre;
+
       lfos[0].value = 0;
       applyModMatrix(capture(), 16);
-      return { up, rest: state.positionMod, level, pos,
-               levelAfter: state.level, posAfter: state.position };
+      const restFrame = capture();
+
+      lfos[0].value = 1;
+      applyModMatrix(capture(), 16);
+      const upFrame = capture();
+
+      const out = { up: state.positionMod, rest: 0, level, pos,
+                    levelAfter: state.level, posAfter: state.position,
+                    restPre: preOf(restFrame), upPre: preOf(upFrame),
+                    length: upFrame.channels[0].length };
+      lfos[0].value = 0;
+      applyModMatrix(capture(), 16);
+      out.rest = state.positionMod;
+      return out;
     }""")
     # Full depth is half the window, but the knob is at a tenth and the
     # destination clamps at the end of its own range: 0.1 + 0.5 cannot pass 1,
     # so what it actually gets is the 0.5 it asked for.
-    check("full depth moves it half a window", close(slid["up"], 0.5), str(slid["up"]))
+    check("full depth moves the offset half a window", close(slid["up"], 0.5),
+          str(slid["up"]))
     check("and nothing at rest", close(slid["rest"], 0), str(slid["rest"]))
+    # The assertion that matters: the capture itself moved.
+    moved = (slid["upPre"] - slid["restPre"]) / slid["length"]
+    check("and the window actually slides by that much",
+          abs(moved - 0.5) < 0.02,
+          "%.3f of the window (%d -> %d samples of %d)"
+          % (moved, slid["restPre"], slid["upPre"], slid["length"]))
     check("the trigger level is untouched", close(slid["level"], slid["levelAfter"]),
           "%s -> %s" % (slid["level"], slid["levelAfter"]))
     check("and so is the knob it is offset from",

@@ -157,6 +157,28 @@ viewport meta renders on a phone at 980 CSS pixels and scales down, so every
 media query below the 760px breakpoint stops matching and the narrow layout is
 never reached.
 
+**A modulation destination needs a base as well as a depth.** `gen.tumble`
+applied `3^depth` to nothing for two releases: the Spin rate slider moved, wrote
+nowhere, and the lane drew a reach the generator was never going to honour. A
+control that is a destination but not also a base is the shape of that bug, and
+`modtest.py` now sweeps every generator mode moving every modulatable slider and
+requires each one to change some state.
+
+**An offset nothing reads is not a feature.** `trig.position` wrote
+`state.positionMod` while `capture()` went on using `state.position` raw, so the
+destination moved a number and not the picture — shipped, because the test
+asserted the offset was *set* rather than that the window moved. It asserts
+`frame.pre` now. Both of these came in through the same door: a patch script
+that does several replacements and writes at the end loses all of them when one
+anchor fails to match, and the failure looks like success because the earlier
+replacements printed "ok".
+
+**Test-only code does not live in the app.** `biquadMagnitude` and `cutoffStep`
+sat in `scope.html` because `filtertest.py` called them, which told a reader the
+page computed frequency responses somewhere. They are injected by the test now,
+and `cutoffStep` finds its answer by bisecting the app's own `cutoffHz` rather
+than restating the formula, so it cannot drift from it.
+
 **The tone source is a ring buffer filled from the frame loop.** A `capture()`
 taken in the same tick as a preset is applied reads the *previous* signal. Any
 test that changes the source has to let it turn over first; two separate

@@ -23,6 +23,40 @@ def check(name, ok, detail=""):
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
+
+    # two helpers that only this suite needs
+    p.add_init_script("""
+      // The magnitude of a biquad at a frequency. This is the MEASUREMENT, not
+      // the law: the law is `biquadCoefficients`, which lives in the app and is
+      // what these checks are about. It sat in the app for a while purely
+      // because this file called it, which made a reader think the page
+      // computed frequency responses somewhere. It does not.
+      window.biquadMagnitude = (c, hz, rate) => {
+        const w = 2 * Math.PI * hz / rate;
+        const cw = Math.cos(w), sw = Math.sin(w);
+        const c2w = Math.cos(2 * w), s2w = Math.sin(2 * w);
+        const nr = c.b0 + c.b1 * cw + c.b2 * c2w;
+        const ni = -(c.b1 * sw + c.b2 * s2w);
+        const dr = 1 + c.a1 * cw + c.a2 * c2w;
+        const di = -(c.a1 * sw + c.a2 * s2w);
+        return Math.sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
+      };
+
+      // Hertz back to a slider step. Found by bisecting the app's OWN forward
+      // mapping rather than by writing the inverse out, so it cannot drift
+      // from `cutoffHz` the way a second copy of the formula could. Late
+      // binding: `cutoffHz` is declared by the page script, which runs after
+      // this, and is in scope by the time anything calls this.
+      window.cutoffStep = (hz) => {
+        let lo = 0, hi = CUTOFF_STEPS;
+        for (let i = 0; i < 40; i++) {
+          const mid = (lo + hi) / 2;
+          if (cutoffHz(mid) < hz) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+      };
+    """)
+
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)

@@ -271,6 +271,76 @@ with sync_playwright() as pw:
     check("and 2 Hz on a file source, not 4", abs(onFile - 4) <= 1, "%d cycles in 2 s" % onFile)
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(400)
 
+    print("\n--- every modulatable control drives something ---")
+    # `gen.tumble` applied 3^depth to nothing for several releases: the Spin
+    # rate slider moved, wrote nothing, and the lane drew a reach the generator
+    # was never going to honour. A control that is a modulation DESTINATION but
+    # not also a base is the shape of that bug, so this looks for it everywhere
+    # rather than in the one place it happened to be found.
+    #
+    # Deliberately not a comparison of rendered output. Two earlier attempts at
+    # this did compare the generator's samples between runs, and both PASSED
+    # against the broken code - the first because the two runs differed for
+    # reasons of their own, the second because successive runs drift further
+    # apart than the thing under test moves them. The question is much simpler
+    # than those attempts made it: does moving this slider change any state?
+    inert = p.evaluate("""() => {
+      const VOLATILE = new Set(['zoom', 'lagActual', 'starved', 'rotateMod',
+        'lagMod', 'cutoffMod', 'resMod', 'zoomMod', 'positionMod', 'harmonics',
+        'reference', 'hoverY', 'source', 'modRoutings', 'running']);
+
+      const look = () => {
+        const out = [];
+        for (const key of Object.keys(state)) {
+          if (VOLATILE.has(key)) continue;
+          try { out.push(key + '=' + JSON.stringify(state[key])); } catch (e) { }
+        }
+        if (state.source && state.source.settings) {
+          out.push('@=' + JSON.stringify(state.source.settings));
+        }
+        return out.join('|');
+      };
+
+      /* Every generator kind in turn: the figure and wireframe rows are hidden
+         in the others, and a hidden row is exactly where an inert control goes
+         unnoticed. `#spinRate` - the one that was actually broken - is only on
+         screen in wireframe. */
+      const seen = new Set();
+      const dead = [];
+      for (const kind of ['wave', 'figure', 'wireframe', 'harmonograph']) {
+        el.genMode.value = kind;
+        el.genMode.dispatchEvent(new Event('change'));
+
+      for (const row of document.querySelectorAll('[data-mod-dest]')) {
+        const input = row.querySelector('input[type=range]');
+        if (!input || input.offsetWidth === 0) continue;
+        if (seen.has(input.id)) continue;
+        seen.add(input.id);
+
+        const was = input.value;
+        const lo = Number(input.min), hi = Number(input.max);
+        const other = String(Number(was) === hi ? lo : hi);
+
+        const before = look();
+        input.value = other;
+        input.dispatchEvent(new Event('input'));
+        const after = look();
+
+        input.value = was;
+        input.dispatchEvent(new Event('input'));
+
+        if (before === after) dead.push(row.dataset.modDest + ' (#' + input.id + ')');
+      }
+      }
+      el.genMode.value = 'wave';
+      el.genMode.dispatchEvent(new Event('change'));
+      return { dead, checked: seen.size };
+    }""")
+    check("every destination's own control drives something",
+          inert["dead"] == [], str(inert["dead"]))
+    check("and enough of them were reachable to mean it",
+          inert["checked"] >= 9, "%d controls" % inert["checked"])
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
