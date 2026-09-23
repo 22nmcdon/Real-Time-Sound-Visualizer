@@ -132,6 +132,40 @@ number is bit-identical to what it was.
   their old gains to zero difference, which is the baseline everything below
   is measured against.
 
+**Two questions the note did not have, found while designing it.**
+
+*Should full scale be in the block at all?* The design note's table lists it as
+a signal transform — "as audio it is a gain" — and the pinned order puts it
+between AC and the filter. But a member of the tapped block is by definition
+something `monitorAt: post` can send to the speakers, and full scale is a
+display magnification: making it audible means the monitoring level follows a
+knob whose job is how big the trace is. No bench scope behaves that way, and
+nothing else in this page does either — zoom was scoped out for a related
+reason (D6). What full scale actually needed was to be continuous, modulatable
+and tracked by the trigger, and all three are built. So the proposal is that it
+stays a display control, enters the *drawn* lanes only, and never reaches the
+monitor chain — which also means C1's "full scale as a `GainNode`" row is
+withdrawn rather than deferred.
+
+There is a second reason, smaller but concrete: the trigger currently finds its
+edge on the unscaled lanes with the threshold converted, and moving it onto
+scaled lanes is the same comparison up to floating-point rounding. Same
+arithmetic, possibly a different sample. That would break the bit-identity
+standard for no gain, so the trigger stays where it is either way.
+
+*Which pair does rotation turn, when there are more than two lanes?* Today it
+turns whichever two the X–Y figure is drawn from, at draw time, and that is
+well defined because the figure is a pair by construction. As a transform on
+captured lanes it has to pick: rotate the X–Y pair and lanes 0 and 1 in Y–T are
+untouched unless they happen to be that pair, which is a rule nobody could
+predict from the screen. The proposal is the rule mid/side already uses —
+rotation becomes a signal transform only when the source is a stereo pair
+(`channels.length === 2`), and stays display-only on a rack, where "rotate the
+stereo image" does not describe anything. That is one precedent rather than a
+new one, and it keeps the tap's meaning simple: on a pair, the measurements can
+be asked for the rotated signal; on a rack, there is no rotated signal to ask
+for.
+
 **What it unblocks, in order.** Rotation as a signal transform (#3); full scale
 inside the block (#1's second half); full scale as a modulation destination,
 which is the case the trigger fix was made correct for; and the last two rows
