@@ -80,8 +80,14 @@ with sync_playwright() as pw:
     check("pressing the dots opens it on that parameter",
           opened and opened["title"] == "Frequency", str(opened))
     check("it says what the control is at", opened["sub"] == "220 Hz", str(opened))
+    # Counted from the registry rather than pinned at three. It was three, and
+    # then the note envelope became a source and three tests in this file said
+    # the page was broken. What the panel promises is "every source you have",
+    # not "three".
+    every = p.evaluate("() => MOD_SOURCES.size")
     check("nothing on it yet, so every source is offered",
-          len(opened["add"]) == 3, str(opened["add"]))
+          len(opened["add"]) == every, "%d offered of %d registered"
+          % (len(opened["add"]), every))
 
     p.locator('.mod-add-one[data-add="lfo1"]').click(); p.wait_for_timeout(300)
     check("adding one patches it", p.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"],
@@ -97,7 +103,9 @@ with sync_playwright() as pw:
     check("and it becomes a row with a real slider in it",
           row["kind"] == "range" and row["value"] == "35", str(row))
     check("named, read out, and no longer in the offer list",
-          row["name"] == "LFO 1" and row["reads"] == "+35%" and row["offered"] == 2, str(row))
+          row["name"] == "LFO 1" and row["reads"] == "+35%"
+          and row["offered"] == every - 1,
+          "%s, %d offered of %d" % (row["name"], row["offered"], every))
 
     print("\n--- the slider is the depth ---")
     p.locator(".mod-edit input[type=range]").fill("-80")
@@ -117,18 +125,30 @@ with sync_playwright() as pw:
     print("\n--- several sources, same panel ---")
     p.locator('.mod-add-one[data-add="lfo2"]').click(); p.wait_for_timeout(250)
     p.locator('.mod-add-one[data-add="env.live"]').click(); p.wait_for_timeout(250)
+    # Whatever else is registered, so "nothing left to offer" stays a
+    # statement about the panel rather than about how many sources exist.
+    while p.locator(".mod-add-one").count() > 0:
+        p.locator(".mod-add-one").first.click(); p.wait_for_timeout(200)
     many = p.evaluate("""() => ({
       rows: document.querySelectorAll('.mod-edit').length,
       add: document.querySelectorAll('.mod-add-one').length,
       routings: state.modRoutings.length,
     })""")
-    check("three sources are three rows", many["rows"] == 3 and many["routings"] == 3, str(many))
+    check("every source is a row of its own",
+          many["rows"] == every and many["routings"] == every,
+          "%d rows, %d routings, %d sources" % (many["rows"], many["routings"], every))
     check("with nothing left to offer", many["add"] == 0, str(many))
 
+    before = p.evaluate(ROUTES)
     p.locator(".mod-edit .mod-edit-off").first.click(); p.wait_for_timeout(250)
+    after = p.evaluate(ROUTES)
+    # One fewer, and the one whose cross was pressed - rather than a count,
+    # which said two and meant "the three that were here when this was
+    # written".
     check("and the cross on a row removes that one",
-          p.evaluate("() => state.modRoutings.length") == 2,
-          str(p.evaluate(ROUTES)))
+          len(after) == len(before) - 1 and before[0] not in after
+          and all(r in after for r in before[1:]),
+          "%s became %s" % (before, after))
 
     print("\n--- and the page underneath does not move ---")
     # The property both earlier designs lost. Measured across the whole range,

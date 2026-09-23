@@ -461,18 +461,33 @@ the samples posted back in batches of about forty milliseconds, transferred
 rather than copied. A render quantum is 128 frames — posting each one would be
 375 messages a second for a picture that wants sixty.
 
-### B4 · Gate and envelope
+### B4 · Gate and envelope — built
 
-`tone.amp` is a constant today; there is nothing to gate. Keys that sound need an
-envelope, and this is new code, not wiring:
+An ADSR in the core, so it runs a sample at a time wherever the core is, with
+one envelope over the pair. The gate is the note stack's, the legato rule is
+the standard mono one — a second key over a held one changes the pitch and
+keeps both the envelope and the velocity of the note that opened it — and
+`glideMs` slides between pitches instead of stepping, off by default.
+`env.note` is registered beside `env.live`, and the two mean opposite halves of
+one word: one is a measurement of what is being drawn, the other is where the
+generator's own envelope has got to.
 
-- A per-voice ADSR in the worklet, driven by the note stack's gate. In dyad mode
-  one envelope covers the pair; whether each channel gets its own is a later
-  choice.
-- **Legato rule:** a new note while the gate is already open changes pitch
-  without retriggering (standard mono behaviour), with an optional glide.
-- The envelope is **also registered as a mod source** — `env.note` beside
-  `env.live`. Play harder, the figure opens.
+**Gated only in `wave`, which the plan did not say and should have.** There a
+note has a pitch, a beginning and an end. In the drawn modes a note is a ratio
+applied to the trace rate, so gating them would blank the screen the moment a
+keyboard was plugged in and nobody was playing. And where a gate *is* open with
+nothing held, the readout says `gated · no note held` — silence is correct
+there and a scope that simply went dark would not be.
+
+**The sliders name durations, not time constants.** A one-pole aimed at its own
+target never arrives, so each stage works out its own span in time constants
+when it is entered, from where the envelope actually is. Attack peaks 47 ms
+after a 50 ms attack; sustain is reached at 147 against 50 + 100; silence 200 ms
+after a 200 ms release.
+
+**The harmonograph's restart, which B1 flagged for this stage, is a ten
+millisecond raised cosine.** Worst step across a second of restarts: 0.0024,
+against 0.2709 with the fade removed.
 
 ### B · verification
 
@@ -482,8 +497,11 @@ envelope, and this is new code, not wiring:
 - B2: every sample-rate assumption asserted at 44100 and 48000.
 - B3: stringified processor runs one block in Node; LFO rate test in the worklet;
   the dev-mode ownership throw fires when both paths claim one source.
-- B4: rendered in an `OfflineAudioContext`, a note-on/off produces the expected
-  envelope within one block; legato doesn't retrigger; no clicks at gate edges.
+- B4: **done**, and the render needed a trick the plan did not know about — a
+  message posted before `startRendering` is never delivered, so both gate edges
+  are placed from `suspend(when)` callbacks on 128-frame boundaries. See
+  `web/README.md`: the first version of this test measured a second of silence
+  and four of its checks passed on the zeros.
 - Regression: all 27 presets still apply; the silent-generator picture is
   unchanged when audio output is muted.
 

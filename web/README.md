@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 to B3 (band-limiting, the rate audit, the worklet) and Stage C's C0/C1 apart from lag are built; B4, C2/C3, D and E are not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), all of Stage B, and Stage C's C0/C1 apart from lag are built; C2/C3, D and E are not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -822,3 +822,75 @@ rather than a second run of the same arithmetic agreeing with it in character
 and not in phase. It goes out through the ordinary monitor chain, which is
 what gives the generator the filter, the AC coupling, the rotation and the
 limiter that Stage C built and had nothing to point at.
+
+**The envelope is a multiply by one until something gates it.** `setGated` is
+off unless a keyboard is actually driving the generator, and off means the
+amplitude is the slider and nothing else — which every preset here and every
+test that predates a keyboard depends on. It is checked as the old arithmetic
+rather than as nearly it: the first sample and the last of an ungated core are
+both exactly the amplitude.
+
+**Only the waveform is gated, and that is a decision.** In `wave` a note has a
+pitch, a beginning and an end, and an envelope is what makes it a note rather
+than a drone. In the drawn modes a note is a *ratio* applied to the trace rate
+— the harmonograph's pendulums swing at a couple of hertz, the figure is a
+continuous drawing — so gating them would mean the screen went blank the moment
+a keyboard was plugged in and nobody was playing. The note still reaches them
+exactly as it did; what it no longer does is switch them off between phrases.
+
+**A gate held open with nothing played is the one state where a blank screen is
+correct, so the readout says `gated · no note held`.** Silence with no note is
+right, and a scope that simply went dark would send somebody to the amplitude
+slider.
+
+**An ADSR slider that names a time constant is lying by about 80%.** A one-pole
+aimed at its own target never arrives, so the usual trick is to aim past it —
+but how far past, in time constants, depends on the stage and on the sustain
+level: 1.79 of them from nought to one, 1.25 from a half down to nothing. Each
+stage works out its own span when it is entered, from where the envelope
+actually is, so "50 ms" is fifty milliseconds whether the note began in silence
+or on top of a release that had not finished. The *duration* is still read per
+sample, so a slider moved mid-note takes effect mid-note; only the shape is
+fixed at the edge. Measured: attack peaks 47 ms after the gate, sustain is
+reached at 147, silence 200 ms after the release.
+
+**The glide shared the envelope's pole, and a mutation that looked redundant is
+what found it.** `poleFor` was one function; making it divide by the current
+stage's span meant the portamento time quietly scaled with whichever stage the
+envelope was in. Removing an apparently-dead line in `set` survived the test
+suite, which was the clue: it survived because `glide` at zero already arrives
+in one sample, and *that* was true because the glide was reading a span it had
+no business reading. There are two pole functions now, and a check measures the
+same glide with the gate open and shut.
+
+**The harmonograph's restart is a fade.** The pendulums run down and the loop
+lets them go again so the screen is never a dot waiting to be noticed, and that
+used to put the envelope back to one in a single sample — invisible on a screen,
+a click the moment there is an output. B1 turned it up and flagged it for B4.
+Ten milliseconds of raised cosine now: the measured worst step across a second
+of restarts is 0.0024, against 0.2709 with the fade removed. It costs the first
+ten milliseconds of each swing, drawn a little short — two per cent of a period
+at 2.1 Hz.
+
+**A message posted to a worklet before `startRendering` is never delivered.**
+The render runs to completion and the port is drained afterwards, so the first
+version of the envelope test measured a whole second of silence and four of its
+checks passed on the zeros. A message posted from inside a `suspend(when)`
+callback *does* arrive, at exactly the frame the suspend named, and that is the
+only way to time an event inside an offline render. Both gate edges are placed
+that way, on 128-frame boundaries, because a suspend between two render quanta
+is not a thing that can happen.
+
+**`env.note` and `env.live` mean opposite halves of one word.** `env.live` is a
+measurement — how loud the thing being drawn actually is, and it answers to a
+microphone or a file. `env.note` is a control signal: where the generator's own
+ADSR has got to, which is only ever about a key being held. It reads the core's
+value rather than running a second copy, because a second envelope on the frame
+clock would be a staircase of a different shape and it would be the one the
+picture answered to.
+
+**The readout line is written at `READOUT_MS`, not every frame.** A check that
+changed a setting, slept 120 ms and read `#readoutDetail` failed about one run
+in three — words are rewritten every 200 ms on purpose, because they are read
+rather than watched. It polls for the text it is asserting about now, with a
+generous ceiling, rather than sleeping for a number that happened to work.
