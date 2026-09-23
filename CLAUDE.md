@@ -129,10 +129,11 @@ order and `SETUP_VERSION` names where you are; a purely additive field needs no
 bump, because `Object.assign` over the defaults already gives an old code the
 new default.
 
-The third of these is only half done: the generator can be a lane, but the
-*selector* is still a mutually exclusive radiogroup and the setup code still
-stores one source kind. That is named in the plan rather than left to be
-discovered.
+The third of these needed no stored-format migration, and it is worth saying
+why so nobody goes looking for one: a setup code has never recorded which
+source is loaded — it stores the generator's *mode* and the trigger lane, and a
+preset lands on whatever you are playing. So the remaining selector work is a
+change to the interface, not to anything saved.
 
 ## House style
 

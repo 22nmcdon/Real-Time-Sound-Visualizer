@@ -290,12 +290,12 @@ be discovered during implementation.
   the live input — are what make a rack's membership a choice rather than a
   consequence of which button opened it.
 
-  **What is left of D1: the selector itself, and its migration.** Tone / Mic /
-  File / Stems is still a mutually exclusive radiogroup, and the setup code
-  still stores one source kind. That second half is the third instance of the
-  standing rule in `CLAUDE.md` — a field that has stopped being able to answer
-  its own question with one value — so it wants a version-tagged decode pass
-  rather than a wider `if`.
+  **What is left of D1: the selector itself, and nothing saved.** Tone / Mic /
+  File / Stems is still a mutually exclusive radiogroup. An earlier version of
+  this note said the setup code stores one source kind and so needed a
+  migration; it does not — `snapshot()` records the generator's mode and the
+  trigger lane, never which source is loaded, which is why a preset lands on
+  whatever you are playing. So this is interface work only.
 
   One thing the selector pass should not do without deciding it: collapsing
   *File* into *Stems*. They look like the same thing and are not. A file source
