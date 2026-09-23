@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 (band-limiting), B2 (the rate audit) and Stage C's C0/C1 apart from lag are built; the rest is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stage A (MIDI in), B1 to B3 (band-limiting, the rate audit, the worklet) and Stage C's C0/C1 apart from lag are built; B4, C2/C3, D and E are not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -559,10 +559,14 @@ line says "not allowed on this page" rather than "denied", a word that sends
 people looking for a browser setting. Safari has no Web MIDI at all and the
 feature detect says so.
 
-**The test tone is silent.** `makeToneSource` has no `AudioContext` at all — it
-is a per-sample ring buffer that feeds the screen and nothing else. Anything
-built on the audio graph (filters, monitoring) reaches the microphone, file and
-rack sources and cannot reach the generator.
+**The test tone was silent, and is now silent by default.** `makeToneSource`
+had no `AudioContext` at all — a per-sample ring buffer feeding the screen and
+nothing else — so everything built on the audio graph reached the microphone,
+file and rack sources and could not reach the generator. *Hear the generator*
+is what changed that: switched on, the loop moves into an `AudioWorkletNode`
+and out through the ordinary monitor chain. Switched off, which is how the page
+opens, it is exactly the ring buffer it was. The entries below are the things
+that went wrong on the way.
 
 **Rotation is a signal transform on a stereo pair and a display knob on
 everything else.** `rotatesSignal` decides, and both halves of the instrument
@@ -749,3 +753,72 @@ guard is six bins either side, which is a leakage property and correctly
 counted in bins rather than hertz; the same tone is put through at all four
 rates and the answers have to agree, which is how that would be caught if it
 were wrong.
+
+**A worklet module cannot be a Blob URL from `file://`.** The plan said blob,
+and blob is what a served copy wants — it loads the same and puts a file name
+in a stack trace instead of forty kilobytes of `data:`. Opened from a file the
+page's origin is opaque, the URL comes out `blob:null/…`, and `addModule`
+refuses it with "Unable to load a worklet's module". A data URL is fetched
+rather than looked up in an origin's blob store, and it loads. So the loader
+tries the blob and falls back, `worklettest.py` tries both and records which
+worked, and anybody reading this on an https copy will never see the second
+branch run — which is exactly why it is written down.
+
+**`String(fn)` does not carry a name.** The module is built by stringifying a
+list of functions, and half of them are `function foo()` while `cycleOf` is
+`const cycleOf = (phase) =>`. Stringifying that arrow gives
+`(phase) => { … }` — a valid expression statement bound to nothing. The module
+then *loaded*, registered its processor, constructed the node, and threw
+`cycleOf is not defined` on the first sample inside `process`, where nothing on
+the main thread can see it: the switch said yes, the panel said yes, and no
+sample ever arrived. Every part is bound to its name explicitly now, so the
+declaration style stops mattering.
+
+**A `Map` does not survive `JSON.stringify`.** `MODEL_BY_NAME` came out `{}`,
+`wire.set` found nothing, and — because it keeps the model it has when the
+name is not found — every solid quietly drew the cube. It is rebuilt in the
+module from the same expression as the main thread rather than serialised.
+
+**A harness that drives only the obvious branch is worth less than it looks.**
+The first version of `workletharness.mjs` drove the four generator modes with
+`{mode}` alone and passed while the real thing threw in its constructor:
+`set("model", …)` is the only caller of `wire.set`, which is the only caller
+of `MODEL_BY_NAME`. It sets every field a panel could produce now, and walks
+every shape, every solid and every figure. And the solids are compared by
+*fingerprint* rather than by "is it finite and not silent" — three cubes pass
+that, which is precisely what the bug produced.
+
+**A worklet that throws dies silently.** The browser removes the processor and
+all the main thread gets is `onprocessorerror`, which carries no message by
+specification. `process` is wrapped: the first throw is posted back, the node
+stops, the switch comes back unticked and the panel says what went wrong.
+
+**Two windows of a periodic tone, a whole number of cycles apart, are the same
+window.** A check meant to prove the ring was being rewritten by the worklet
+compared it against a snapshot taken before the switch and required a
+difference. The default tone is 220 Hz and the wait was 600 ms — 132 cycles
+exactly — so the difference was nothing and the check was measuring the
+calendar. Provenance is counted now: while the generator sounds, `absorb` is
+the only thing that writes the ring, so the number of blocks it took is the
+answer. This is the fourth test in this repository to have compared two
+renderings that agreed for a reason of their own.
+
+**The generator's loop runs in exactly one place, and the rule is checked
+rather than remembered.** `lfoDriver()` is derived, not stored — "main" while
+the per-frame path is all there is, "fill" while the loop runs on this thread,
+"worklet" once it does not — and both advance paths call `assertLfoDriver`,
+which throws. Removing the `fill`-side call alone is not observable, because
+the early return in `tick` already prevents that path from running while the
+worklet produces; it is a tripwire for a future edit. What *is* observable is
+the real failure: make the per-frame path step them unconditionally and three
+suites fail naming the driver.
+
+**The generator is silent until you ask.** A measuring instrument that made a
+noise when it was opened would be wrong in the way a scope is not allowed to
+be wrong, and the live input already works this way. What the switch buys
+besides sound is that the worklet becomes the only thing generating samples —
+so the trace is the waveform that went to the speakers, sample for sample,
+rather than a second run of the same arithmetic agreeing with it in character
+and not in phase. It goes out through the ordinary monitor chain, which is
+what gives the generator the filter, the AC coupling, the rotation and the
+limiter that Stage C built and had nothing to point at.

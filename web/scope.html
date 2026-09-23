@@ -1072,6 +1072,10 @@ body[data-view="bench"] #menuButton { display: none; }
 
           <div class="menu-group" id="toneRows">
             <span class="menu-title">Generator</span>
+              <label class="check" id="genSoundRow">
+                <input type="checkbox" id="genSound"> Hear the generator
+                <span class="reading" id="genSoundNote"></span>
+              </label>
               <div class="menu-row">
                 <label class="menu-label" for="genMode">Kind</label>
                 <div class="grow">
@@ -1989,6 +1993,15 @@ body[data-view="bench"] #menuButton { display: none; }
         one is a drum. It answers <i>which part of the mix is that bump</i> in a millisecond,
         with no model to download. Solo a band to hear the part you are looking at.</span></li>
 
+      <li><b>Hear the generator</b>
+        <span>Off when the page opens, because an instrument for looking at signals should
+        not make one until you ask. Switched on, the generator moves into the audio thread
+        and out through the same chain a line input gets &mdash; so the <i>filter</i>, the
+        <i>AC coupling</i> and the <i>X&ndash;Y rotation</i> shape what you hear as well as
+        what you see, whenever <i>Speakers get</i> is on <i>Shaped</i>. The trace is then
+        the waveform that went to the speakers, sample for sample, rather than a second
+        run of the same arithmetic.</span></li>
+
       <li><b>Waveform</b>
         <span>Sine, square, triangle, noise, and a sine with a third harmonic. The
         <i>interval</i> sets the right channel against the left.</span></li>
@@ -2212,6 +2225,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "viewScope", "viewBench", "benchRail", "benchBody",
                   "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "measurePre", "measurePost", "benchSources",
+                  "genSoundRow", "genSound", "genSoundNote",
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
                   "seeDry", "seeWet", "hearDry", "hearWet",
@@ -2583,7 +2597,12 @@ for (const dest of VISUAL_DESTS) registerDest(Object.assign({ kind: "visual" }, 
    staircase; every other source has no per-sample loop at all, so they are
    stepped here instead. Doing both would run every rate at double. */
 function applyModMatrix(frame, elapsed) {
-  if (state.source.kind !== "tone") {
+  /* The driver rather than the source kind. They said the same thing while
+     the generator's loop was the only per-sample loop there was; once that
+     loop can be in a worklet instead, "is the source a tone" stops being the
+     question and "is anyone else already stepping these" starts being it. */
+  if (lfoDriver() === "main") {
+    assertLfoDriver("main");
     const perSecond = 1000 / Math.max(1, elapsed);
     lfoStep(lfos[0], perSecond);
     lfoStep(lfos[1], perSecond);
@@ -2687,6 +2706,35 @@ const LFO_SHAPES = [
    phase does not jump the moment it is given a destination. The value is kept
    on the oscillator as well as returned, because the per-frame destinations
    need to know where it is without advancing it again. */
+/* Who is allowed to advance the oscillators.
+
+   There is exactly one right answer at any moment, and getting it wrong is
+   not a crash: it is every rate running at double, which reads as a taste
+   decision until somebody measures it. This page has shipped that once.
+
+   Derived rather than stored, which is the other lesson - a flag set when a
+   source is chosen is correct at the moment it is set and wrong some frames
+   later, and `rotatesSignal` is here for the same reason. "main" while the
+   per-frame path is all there is, "fill" while the generator's loop is
+   running on this thread, "worklet" once that loop is somewhere else and
+   these objects are only being told where it got to. */
+function lfoDriver() {
+  const source = state.source;
+  if (!source || source.kind !== "tone") return "main";
+  return source.audible && source.audible() ? "worklet" : "fill";
+}
+
+/* Checked once a block rather than once a sample: two paths stepping the same
+   oscillator is a per-block condition, and a branch at 44100 Hz to catch it
+   would cost more than the bug. Thrown rather than ignored, because a caller
+   that is not the driver is a fault in the wiring and not in the signal. */
+function assertLfoDriver(who) {
+  const driving = lfoDriver();
+  if (who !== driving) {
+    throw new Error("the oscillators are driven by " + driving + ", not " + who);
+  }
+}
+
 function lfoStep(lfo, rate) {
   lfo.phase += TWO_PI * lfo.rate / rate;
   if (lfo.phase >= TWO_PI) {
@@ -3483,11 +3531,27 @@ function noteDeviceRate(rate) {
   deviceRateFrom = "measured";
 }
 
-/* The rate is an argument so a test can run the whole capture path at 96 kHz
-   without a converter that does. Nothing in the page passes one. */
-function makeToneSource(atRate) {
-  const rate = atRate || deviceRate();
+/* --- the generator's per-sample loop ----------------------------------------
+   Everything below runs once per SAMPLE, and none of it may touch the page.
 
+   That is not a style rule. This same source text is stringified into an
+   `AudioWorkletNode`, where `document`, `state`, `el` and every other
+   main-thread name simply does not exist - so a reference that resolves here
+   and nowhere else is silence in a browser rather than an error anybody sees.
+   `worklettest.py` evaluates the module against stub globals and runs a
+   block, which turns that into a named `ReferenceError` on the first sample.
+
+   One body of code, two places it runs: on this thread while the generator is
+   silent, and in the worklet once it is not. Not two implementations kept in
+   agreement by a test, the way the biquad and the rotation are - the same
+   text, so there is nothing to keep in agreement.
+
+   It owns its phases and its wireframe, and it is HANDED its oscillators
+   rather than reaching for them. On the main thread those are the same two
+   objects the per-frame destinations read, so a patch to the rotation and a
+   patch to the frequency are the same LFO. In the worklet they are the
+   worklet's own, and their values are posted back for the picture to use. */
+function makeGeneratorCore(rate, slots, lfos) {
   const tone = {
     mode: "wave",            // wave | harmonograph | figure
     shape: "harmonic",
@@ -3521,48 +3585,24 @@ function makeToneSource(atRate) {
   };
 
   const wire = makeWireframe();
+  const genMod = new Float32Array(slots);
+  /* Plain numbers, never the source objects the matrix compiles. A route that
+     carried a `value()` to call would be a main-thread function smuggled
+     across the boundary, and it would be smuggled successfully until the day
+     it was not. */
+  const routes = [];
 
-  /* A real ring buffer, filled a sample at a time from running phase
-     accumulators. A plain `phase = time * step` cannot be modulated: change
-     the frequency and the whole history is recomputed at the new rate, so the
-     waveform jumps every frame. A phase you integrate can be; one you
-     evaluate cannot. */
-  const CAPACITY = rate * 2;
-  const buffer = [new Float32Array(CAPACITY), new Float32Array(CAPACITY)];
-  let writePos = 0;
   let phaseL = 0, phaseR = 0, figurePhase = 0;
   let swing = 0;             // harmonograph: seconds since the pendulums were let go
-  let lastFill = null;
 
-  function fill(nowSeconds) {
-    if (lastFill === null) { lastFill = nowSeconds; return; }
-
-    // Capped, so a tab returning from the background does not try to
-    // synthesise the minute it was away.
-    let needed = Math.floor((nowSeconds - lastFill) * rate);
-    if (needed <= 0) return;
-    needed = Math.min(needed, Math.floor(rate * 0.25));
-    lastFill += needed / rate;
-
+  function block(outL, outR, n) {
     const dt = 1 / rate;
-    if (modDirty) compileRoutes();
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
     // loop is `pow` forty-four thousand times a second for one answer.
     const octave = Math.pow(2, tone.octaves);
 
-    /* The sources that are not oscillators - a controller, the level, a key -
-       are written on the main thread at frame rate, so they are read once here
-       and HELD across the block. Stepping them per sample would interpolate
-       between two samples of a number that only moved once, and holding them
-       is what the worklet will have to do anyway when this loop moves off the
-       main thread. */
-    for (let k = 0; k < genRoutes.length; k++) {
-      const route = genRoutes[k];
-      if (route.index === undefined) route.held = route.source.value();
-    }
-
-    for (let i = 0; i < needed; i++) {
+    for (let i = 0; i < n; i++) {
       lfoStep(lfos[0], rate);
       lfoStep(lfos[1], rate);
 
@@ -3571,8 +3611,8 @@ function makeToneSource(atRate) {
          powers of three for spin rate, radians for phase - which is why the
          accumulator holds a plain sum and not a value. */
       genMod.fill(0);
-      for (let k = 0; k < genRoutes.length; k++) {
-        const route = genRoutes[k];
+      for (let k = 0; k < routes.length; k++) {
+        const route = routes[k];
         const value = route.index === undefined ? route.held : lfos[route.index].value;
         genMod[route.slot] += route.unipolar
           ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
@@ -3592,15 +3632,15 @@ function makeToneSource(atRate) {
       if (tone.mode === "figure") {
         figurePhase += tone.figureRate * dt;
         if (figurePhase >= 1) figurePhase -= 1;
-        const [x, y] = figureAt(tone.figure, figurePhase, detail);
-        l = amp * x;
-        r = amp * y;
+        const at = figureAt(tone.figure, figurePhase, detail);
+        l = amp * at[0];
+        r = amp * at[1];
       } else if (tone.mode === "wireframe") {
-        const [wx, wy] = wire.step(dt, tone.figureRate, depth, [
+        const at = wire.step(dt, tone.figureRate, depth, [
           tone.spin[0] * tumble, tone.spin[1] * tumble, tone.spin[2] * tumble,
         ]);
-        l = amp * wx;
-        r = amp * wy;
+        l = amp * at[0];
+        r = amp * at[1];
       } else if (tone.mode === "harmonograph") {
         swing += dt;
         const env = Math.exp(-tone.decay * swing);
@@ -3639,9 +3679,397 @@ function makeToneSource(atRate) {
                                    : amp * waveAt(tone.shape, phaseR + phase, stepR);
       }
 
-      buffer[0][writePos] = Math.max(-1, Math.min(1, l));
-      buffer[1][writePos] = Math.max(-1, Math.min(1, r));
-      writePos = (writePos + 1) % CAPACITY;
+      outL[i] = Math.max(-1, Math.min(1, l));
+      outR[i] = Math.max(-1, Math.min(1, r));
+    }
+  }
+
+  return {
+    tone, block,
+    /* Copied rather than held by reference, for the same reason the routes
+       are numbers: whatever the caller hands over has to survive being posted
+       across a thread boundary, and the only way to be sure it would is to
+       write it as though it already had been. */
+    setRoutes(list) {
+      routes.length = 0;
+      for (let i = 0; i < list.length; i++) {
+        const route = list[i];
+        routes.push({
+          index: route.index, held: route.held || 0, slot: route.slot,
+          amount: route.amount, unipolar: route.unipolar === true,
+        });
+      }
+    },
+    set(field, value) {
+      tone[field] = value;
+      if (field === "model") wire.set(value);
+      if (field === "mode" || field === "decay") { swing = 0; }
+    },
+    reswing() { swing = 0; phaseL = 0; phaseR = 0; wire.reset(); },
+  };
+}
+
+/* --- the generator, in the audio thread -------------------------------------
+   The processor, written as a real function in this file rather than as a
+   string, so `node --check` parses it and an editor can see it. The module
+   text is this function stringified and immediately called, with everything
+   it depends on stringified in front of it.
+
+   What a worklet may not do is reach for anything on this side. There is no
+   `state`, no `el`, no `document`; `sampleRate` and `currentFrame` exist and
+   almost nothing else. That is why `makeGeneratorCore` is written the way it
+   is, and why `worklettest.py` runs the module against stub globals in Node -
+   a name that only resolves on the main thread has to fail as a
+   `ReferenceError` naming it, rather than as a generator that stays silent. */
+function generatorProcessor() {
+  class GeneratorProcessor extends AudioWorkletProcessor {
+    constructor(options) {
+      super();
+      const setup = (options && options.processorOptions) || {};
+      /* The worklet's own oscillators. They are copies of the two on the
+         other side and the worklet is their driver while it is running; their
+         values go back with every block of samples so the picture's own
+         destinations follow the same phase rather than a second one. */
+      this.lfos = (setup.lfos || []).map((lfo) => ({
+        shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
+        phase: lfo.phase || 0, held: lfo.held || 0, value: lfo.value || 0,
+      }));
+      this.core = makeGeneratorCore(sampleRate, setup.slots || 8, this.lfos);
+      if (setup.tone) {
+        for (const field in setup.tone) this.core.set(field, setup.tone[field]);
+      }
+      if (setup.routes) this.core.setRoutes(setup.routes);
+
+      /* Samples go back in batches rather than per block. A render quantum is
+         128 frames, which at 48 kHz is 375 messages a second and two typed
+         arrays apiece; the picture wants sixty frames a second and does not
+         care which of them a sample arrives in. Batched to about forty
+         milliseconds, transferred rather than copied. */
+      this.batch = Math.max(256, Math.round(sampleRate * 0.04));
+      this.outL = new Float32Array(this.batch);
+      this.outR = new Float32Array(this.batch);
+      this.filled = 0;
+      this.running = true;
+
+      this.port.onmessage = (event) => {
+        const message = event.data || {};
+        if (message.tone) {
+          for (const field in message.tone) this.core.set(field, message.tone[field]);
+        }
+        if (message.routes) this.core.setRoutes(message.routes);
+        if (message.lfos) {
+          for (let i = 0; i < message.lfos.length && i < this.lfos.length; i++) {
+            // Shape, rate and depth only. Phase belongs to whoever is
+            // stepping it, and this side is.
+            this.lfos[i].shape = message.lfos[i].shape;
+            this.lfos[i].rate = message.lfos[i].rate;
+            this.lfos[i].depth = message.lfos[i].depth;
+          }
+        }
+        if (message.reswing) this.core.reswing();
+        if (message.stop) this.running = false;
+      };
+    }
+
+    process(inputs, outputs) {
+      const out = outputs[0];
+      if (!out || out.length < 2) return this.running;
+      const n = out[0].length;
+
+      /* Wrapped, and the wrapping earns its place. A processor that throws is
+         removed by the browser and the only thing on this side is
+         `onprocessorerror`, which carries no message: the switch says yes, the
+         node exists, and no sample ever arrives. Sent back once and then
+         stopped, so the panel can say what went wrong rather than nothing. */
+      try {
+        this.core.block(out[0], out[1], n);
+      } catch (error) {
+        this.running = false;
+        this.port.postMessage({ error: String(error && error.message || error) });
+        return false;
+      }
+
+      /* The same samples to the picture, not a second rendering of them.
+         That is the whole point of the generator having an audio path: what
+         is on the graticule is what came out of the speakers, sample for
+         sample, rather than two runs of the same arithmetic that agree in
+         character and not in phase. */
+      for (let i = 0; i < n; i++) {
+        this.outL[this.filled] = out[0][i];
+        this.outR[this.filled] = out[1][i];
+        this.filled++;
+        if (this.filled === this.batch) {
+          const l = this.outL, r = this.outR;
+          this.outL = new Float32Array(this.batch);
+          this.outR = new Float32Array(this.batch);
+          this.filled = 0;
+          this.port.postMessage(
+            { l, r, lfos: this.lfos.map((lfo) => ({ phase: lfo.phase, held: lfo.held, value: lfo.value })) },
+            [l.buffer, r.buffer]
+          );
+        }
+      }
+      return this.running;
+    }
+  }
+
+  registerProcessor("generator", GeneratorProcessor);
+}
+
+/* The module, as text. Everything the core reaches for, in front of it.
+
+   The list is written out rather than discovered, which is a cost worth
+   naming: add a helper to the core and forget to add it here and the
+   generator goes silent. What makes that survivable is that it cannot reach a
+   browser - `worklettest.py` evaluates this text and runs a block, so a
+   missing name is a `ReferenceError` with the name in it. */
+function generatorModuleSource() {
+  /* Bound to a name explicitly, rather than relying on the text of the
+     function carrying one.
+
+     `String(fn)` gives back whatever the declaration looked like, and half of
+     these are `function foo()` while `cycleOf` is `const cycleOf = (phase) =>`.
+     Stringifying that arrow yields `(phase) => { ... }` - a valid expression
+     statement, bound to nothing, silently. The module then LOADED, registered
+     its processor, constructed the node, and threw `cycleOf is not defined` on
+     the first sample inside `process`, where nothing on this side can see it:
+     the switch said yes, the panel said yes, and no samples ever arrived.
+     Naming every part here makes the declaration style stop mattering. */
+  const bind = (name, value) => "const " + name + " = " + value + ";";
+  return [
+    bind("TWO_PI", TWO_PI),
+    bind("WIRE_REPROJECT", WIRE_REPROJECT),
+    bind("INTERVALS", JSON.stringify(INTERVALS)),
+    bind("MODELS", JSON.stringify(MODELS)),
+    /* Derived on the other side rather than serialised, because a Map does
+       not survive `JSON.stringify` - it comes out `{}`, and `wire.set` then
+       finds nothing and quietly keeps the cube. Rebuilt from the same table
+       by the same expression, so the two cannot disagree. */
+    "const MODEL_BY_NAME = new Map(MODELS.map((m) => [m.name, m]));",
+    bind("polyBlep", String(polyBlep)),
+    bind("polyBlamp", String(polyBlamp)),
+    bind("cycleOf", String(cycleOf)),
+    bind("waveAt", String(waveAt)),
+    bind("figureAt", String(figureAt)),
+    bind("makeWireframe", String(makeWireframe)),
+    bind("intervalRatio", String(intervalRatio)),
+    bind("lfoStep", String(lfoStep)),
+    bind("makeGeneratorCore", String(makeGeneratorCore)),
+    "(" + String(generatorProcessor) + ")();",
+  ].join("\n\n");
+}
+
+/* Where the module is served from, and this is a real constraint rather than
+   a detail.
+
+   A Blob URL is the obvious answer and it is the one the plan had. It does
+   not work here: opened from `file://` the page's origin is opaque, the blob
+   comes out as `blob:null/...`, and `addModule` refuses it with "Unable to
+   load a worklet's module". A data URL is fetched rather than looked up in an
+   origin's blob store, and it loads. Measured, not assumed - both were tried.
+
+   So: the blob first, because on a served copy it loads the same and gives a
+   file name in a stack trace instead of forty kilobytes of `data:`; the data
+   URL when that fails, which is every time anybody opens the file directly.
+   Someone reading this on a page served over https will never see the second
+   branch run, which is exactly why it is written down here. */
+const generatorModules = new WeakMap();
+let generatorModuleFrom = null;
+
+function loadGeneratorModule(ctx) {
+  /* Keyed by context rather than by a single flag. Every source in this page
+     opens its own `AudioContext`, and a module added to one of them has not
+     been added to any of the others - a bare boolean would say it had, and
+     the second context would fail to construct the node with no clue why. */
+  if (generatorModules.has(ctx)) return generatorModules.get(ctx);
+  const text = generatorModuleSource();
+  const blob = URL.createObjectURL(new Blob([text], { type: "application/javascript" }));
+  const ready = ctx.audioWorklet.addModule(blob)
+    .then(() => { generatorModuleFrom = "blob"; })
+    .catch(() => ctx.audioWorklet
+      .addModule("data:application/javascript," + encodeURIComponent(text))
+      .then(() => { generatorModuleFrom = "data"; }))
+    .then(() => { URL.revokeObjectURL(blob); });
+  generatorModules.set(ctx, ready);
+  return ready;
+}
+
+/* The rate is an argument so a test can run the whole capture path at 96 kHz
+   without a converter that does. Nothing in the page passes one. */
+function makeToneSource(atRate) {
+  const rate = atRate || deviceRate();
+  const core = makeGeneratorCore(rate, GEN_DESTS.length, lfos);
+  const tone = core.tone;
+
+  /* A real ring buffer, filled a sample at a time from running phase
+     accumulators. A plain `phase = time * step` cannot be modulated: change
+     the frequency and the whole history is recomputed at the new rate, so the
+     waveform jumps every frame. A phase you integrate can be; one you
+     evaluate cannot. */
+  const CAPACITY = rate * 2;
+  const buffer = [new Float32Array(CAPACITY), new Float32Array(CAPACITY)];
+  const CHUNK = Math.ceil(rate * 0.25);
+  const scratch = [new Float32Array(CHUNK), new Float32Array(CHUNK)];
+  let writePos = 0;
+  let lastFill = null;
+
+  /* The audio side, which is all off until somebody asks for it.
+
+     Silent by default, and that is a decision rather than an unfinished
+     edge. A measuring instrument that made a noise the moment it was opened
+     would be wrong in the way a scope is not allowed to be wrong, and the
+     live input already works this way for a related reason. What the switch
+     buys when it is on is not only sound: the worklet becomes the only thing
+     generating samples, and the picture is drawn from the ones it posts
+     back - so the trace is the waveform that went to the speakers, sample for
+     sample, rather than a second run of the same arithmetic agreeing with it
+     in character and not in phase. */
+  let ctx = null, node = null, chain = null, level = null;
+  let audible = false;
+  let workletFault = null;
+  /* How many blocks the worklet has handed over. Not a diagnostic count for
+     its own sake: while the generator is sounding this is the ONLY thing
+     writing the ring, so it is the answer to "are the samples on the
+     graticule the ones that went to the speakers" - and unlike comparing the
+     ring against itself, it cannot be fooled by a periodic waveform. */
+  let blocks = 0;
+
+  function absorb(l, r) {
+    blocks++;
+    let done = 0;
+    while (done < l.length) {
+      const take = Math.min(l.length - done, CAPACITY - writePos);
+      buffer[0].set(l.subarray(done, done + take), writePos);
+      buffer[1].set(r.subarray(done, done + take), writePos);
+      writePos = (writePos + take) % CAPACITY;
+      done += take;
+    }
+  }
+
+  function hush() {
+    if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
+    if (level) { try { level.disconnect(); } catch (error) { /* gone */ } }
+    if (node) { try { node.disconnect(); } catch (error) { /* gone */ } }
+    dropMonitorChain(chain);
+    node = null; level = null; chain = null;
+    audible = false;
+  }
+
+  async function setSound(on) {
+    if (on === audible) return audible;
+    if (!on) { hush(); return false; }
+    try {
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        noteDeviceRate(ctx.sampleRate);
+      }
+      if (ctx.state === "suspended") await ctx.resume();
+      await loadGeneratorModule(ctx);
+
+      node = new AudioWorkletNode(ctx, "generator", {
+        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+        processorOptions: {
+          slots: GEN_DESTS.length,
+          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+          tone: JSON.parse(JSON.stringify(tone)),
+          routes: plainRoutes(),
+        },
+      });
+      node.onprocessorerror = () => {
+        // No message on this event, by specification. All it can say is that
+        // something went wrong in there, which is still better than silence.
+        if (!workletFault) workletFault = "the processor stopped";
+        hush();
+      };
+      node.port.onmessage = (event) => {
+        const message = event.data;
+        if (!message) return;
+        if (message.error) { workletFault = message.error; hush(); return; }
+        if (!message.l) return;
+        absorb(message.l, message.r);
+        /* Where the oscillators got to, read back rather than run again. The
+           worklet is their driver while it is producing, so the copies on
+           this side are told their phase instead of finding it - which is the
+           whole of what `lfoDriver` is protecting. */
+        if (message.lfos) {
+          for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
+            lfos[i].phase = message.lfos[i].phase;
+            lfos[i].held = message.lfos[i].held;
+            lfos[i].value = message.lfos[i].value;
+          }
+        }
+      };
+
+      /* A ramp in, because connecting a running oscillator to the speakers
+         starts it wherever its phase happens to be and that is a click. Out
+         through the monitor chain, so the filter, the AC coupling, the
+         rotation and the limiter all reach it - which is what Stage C built
+         and has never until now had a generator to act on. */
+      level = ctx.createGain();
+      level.gain.value = 0;
+      chain = makeMonitorChain(ctx);
+      node.connect(level);
+      level.connect(chain.input);
+      level.gain.setTargetAtTime(1, ctx.currentTime, 0.02);
+      audible = true;
+      syncMonitor();
+    } catch (error) {
+      workletFault = String(error && error.message || error);
+      hush();
+    }
+    return audible;
+  }
+
+  /* The routes as numbers, which is the only form that crosses a thread. */
+  function plainRoutes() {
+    if (modDirty) compileRoutes();
+    return genRoutes.map((route) => ({
+      index: route.index,
+      held: route.index === undefined ? route.source.value() : 0,
+      slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
+    }));
+  }
+
+  function fill(nowSeconds) {
+    if (lastFill === null) { lastFill = nowSeconds; return; }
+
+    // Capped, so a tab returning from the background does not try to
+    // synthesise the minute it was away.
+    let needed = Math.floor((nowSeconds - lastFill) * rate);
+    if (needed <= 0) return;
+    needed = Math.min(needed, CHUNK);
+    lastFill += needed / rate;
+
+    /* The guard, on the one path that still steps them here. Both advance
+       paths check, and this is the one that used to be a comment saying "doing
+       both would run every rate at double". */
+    assertLfoDriver("fill");
+
+    if (modDirty) compileRoutes();
+
+    /* The sources that are not oscillators - a controller, the level, a key -
+       are written on the main thread at frame rate, so they are read once here
+       and HELD across the block. Stepping them per sample would interpolate
+       between two samples of a number that only moved once, and holding them
+       is what the worklet has to do anyway, for the same reason. */
+    for (let k = 0; k < genRoutes.length; k++) {
+      const route = genRoutes[k];
+      if (route.index === undefined) route.held = route.source.value();
+    }
+    core.setRoutes(genRoutes);
+
+    /* Generated into a flat scratch and copied into the ring, rather than
+       written into the ring a sample at a time. The core has to be able to
+       fill an `AudioWorkletNode`'s output, which is a plain block with no
+       wraparound in it, so the wraparound lives out here where the ring is. */
+    let done = 0;
+    while (done < needed) {
+      const take = Math.min(needed - done, CAPACITY - writePos);
+      core.block(scratch[0], scratch[1], take);
+      buffer[0].set(scratch[0].subarray(0, take), writePos);
+      buffer[1].set(scratch[1].subarray(0, take), writePos);
+      writePos = (writePos + take) % CAPACITY;
+      done += take;
     }
   }
 
@@ -3664,12 +4092,39 @@ function makeToneSource(atRate) {
     },
 
     set(field, value) {
-      tone[field] = value;
-      if (field === "model") wire.set(value);
-      if (field === "mode" || field === "decay") { swing = 0; }
+      core.set(field, value);
+      if (node) node.port.postMessage({ tone: { [field]: value } });
     },
-    reswing() { swing = 0; phaseL = 0; phaseR = 0; wire.reset(); },
-    tick(nowSeconds) { fill(nowSeconds); },
+    reswing() {
+      core.reswing();
+      if (node) node.port.postMessage({ reswing: true });
+    },
+
+    // Whether the worklet is the thing making the samples, which is also the
+    // answer to who is driving the oscillators; see `lfoDriver`.
+    audible() { return audible; },
+    setSound(on) { return setSound(on); },
+    get latencyMs() {
+      if (!ctx) return 0;
+      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
+                        + MONITOR_LOOKAHEAD_MS);
+    },
+    get moduleFrom() { return generatorModuleFrom; },
+    get fault() { return workletFault; },
+    get blocks() { return blocks; },
+
+    tick(nowSeconds) {
+      if (!audible) { fill(nowSeconds); return; }
+      /* One message a frame, carrying everything that is written on this
+         thread: the routes, the held value of every source that is not an
+         oscillator, and the oscillators' own settings. Posted on the frame
+         clock because that is when they change; the worklet holds them across
+         its block, the same as this loop used to. */
+      node.port.postMessage({
+        routes: plainRoutes(),
+        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+      });
+    },
 
     getLatestWindow(n) {
       return buffer.map((channel) => {
@@ -3687,7 +4142,11 @@ function makeToneSource(atRate) {
         return out;
       });
     },
-    stop() {},
+    stop() {
+      hush();
+      if (ctx && ctx.close) { try { ctx.close(); } catch (error) { /* gone */ } }
+      ctx = null;
+    },
   };
 }
 
@@ -4803,6 +5262,12 @@ const state = {
      about someone else's room is a feedback loop in it. */
   liveKind: "mic",           // mic | line
   monitorLive: false,
+  /* Whether the generator is making a sound, which is also whether the
+     worklet is the thing producing its samples. Not in a setup code and not
+     restored on load, the same as `monitorLive` and for the same reason: a
+     preset that started making a noise on somebody else's machine would be a
+     preset nobody trusted twice. */
+  genSound: false,
   alignMs: 0,                // how far the backing track is held back to meet the input
 
   positionMod: 0,          // what a source is adding to where the trigger sits
@@ -7670,6 +8135,7 @@ el.clearReference.addEventListener("click", () => { state.reference = null; });
 
 function showGenerator() {
   const tone = state.source.kind === "tone" ? state.source.settings : null;
+  syncGeneratorSound();
   if (!tone) return;
 
   const mode = tone.mode;
@@ -8975,6 +9441,10 @@ function toTone() {
     return;
   }
   if (state.source) state.source.stop();
+  /* A generator that was sounding and has been replaced is a generator that
+     has stopped; the flag has to follow or the switch says yes while nothing
+     is connected. `stop` hushes the old one, this remembers that it did. */
+  state.genSound = false;
   state.source = makeToneSource();
   state.source.set("freq", Number(el.freq.value));
   state.source.set("amp", Number(el.amp.value) / 100);
@@ -9196,6 +9666,42 @@ el.kindLine.addEventListener("click", () => setLiveKind("line"));
 el.monitorLive.addEventListener("change", () => {
   state.monitorLive = el.monitorLive.checked;
   applyMonitor();
+});
+
+/* The generator's own switch, and it asks rather than tells - the same shape
+   as `applyMonitor`, for the same reason. A browser with no `AudioWorklet`,
+   a context that will not start, a module that will not load: each of those
+   comes back as "no", and the checkbox has to show what happened rather than
+   what was clicked. */
+async function applyGeneratorSound() {
+  const source = state.source;
+  if (!source || typeof source.setSound !== "function") {
+    state.genSound = false;
+  } else {
+    state.genSound = await source.setSound(state.genSound);
+  }
+  syncGeneratorSound();
+}
+
+function syncGeneratorSound() {
+  const source = state.source;
+  const able = !!source && typeof source.setSound === "function";
+  el.genSoundRow.hidden = !able;
+  el.genSound.checked = able && state.genSound;
+  if (!state.genSound) {
+    // A fault outlives the switch it turned off: the whole point is that the
+    // box comes back unticked and says why.
+    el.genSoundNote.textContent = able && source.fault ? source.fault : "";
+    return;
+  }
+  const ms = source.latencyMs;
+  el.genSoundNote.textContent = (ms ? "at least " + ms + " ms late" : "")
+    + (source.moduleFrom === "data" ? " \u00b7 data URL" : "");
+}
+
+el.genSound.addEventListener("change", () => {
+  state.genSound = el.genSound.checked;
+  applyGeneratorSound();
 });
 
 function setMicShape(bands) {

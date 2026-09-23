@@ -417,38 +417,49 @@ shrinks, so it is *everything else gives way first, and when the window alone
 is too big the over-ask is exactly its own shortfall* — which is what
 `state.starved` has always reported.
 
-### B3 · The worklet
+### B3 · The worklet — built
 
-Move the per-sample loop — `waveAt`, `figureAt`, wireframe projection,
-harmonograph — into an `AudioWorkletNode`.
+The per-sample loop is `makeGeneratorCore`, and it is *one* body of code that
+runs in two places: on the main thread while the generator is silent, and in an
+`AudioWorkletNode` once it is not. Not two implementations kept in agreement by
+a test the way the biquad and the rotation are — the same text, stringified, so
+there is nothing to keep in agreement.
 
-**Single-file constraint.** The note's answer is the right one and better than
-the build-step alternative raised in review: write the processor as a real
-function in the file and `String(fn)` it into a Blob URL. It stays parsed by
-`node --check`. Add a test that goes one step further than parsing: evaluate the
-stringified source in Node against a stub `AudioWorkletProcessor` /
-`registerProcessor` and run one `process()` block — a blob that parses but
-references a main-thread identifier fails there instead of in the browser.
+**Silent until asked.** *Hear the generator*, off by default. A measuring
+instrument that made a noise when it was opened would be wrong in the way a
+scope is not allowed to be wrong. What the switch buys besides sound is that
+the worklet becomes the only thing producing samples, so the trace is the
+waveform that went to the speakers rather than a second run of the same
+arithmetic. It goes out through the ordinary monitor chain, which hands the
+generator the filter, the AC coupling, the rotation and the limiter that C0/C1
+built and had nothing to point at.
 
-**LFO ownership, enforced rather than remembered.** Every oscillator source gets
-an `owner` field — `"worklet"` or `"main"` — set once at registration. Both
-advance paths check it and **throw in dev** if they are asked to step a source
-they don't own. This project has shipped a double-rate LFO once; the second time
-should be an exception on first frame, not a wrong rate in production. Plus the
-test from the note: a 2 Hz LFO completes two cycles in one second, measured in
-the worklet.
+**Single-file constraint — the note's answer was half right.** The processor is
+a real function in the file, stringified, and `node --check` still parses it.
+But a *Blob* URL does not load from `file://`: the origin is opaque, the URL
+comes out `blob:null/…`, and `addModule` refuses it. A data URL loads. Both are
+tried, in that order, and `worklettest.py` records which one worked.
 
-**Traffic across the boundary**, one channel each way, both posted on change,
-never polled:
+**The Node-side check earned its place on its first run**, and twice more
+after. It caught `cycleOf is not defined` — an arrow constant stringified
+without its name — then `MODEL_BY_NAME` coming out of `JSON.stringify` as
+`{}`, which made every solid quietly draw the cube. Both were invisible to
+`node --check` and would have reached a browser as a generator that said yes
+and made no sound. See `web/README.md` for all of it.
 
-- main → worklet: routing list; generator parameters; **main-thread source
-  values** (`env.live`, CCs, and later the photocell) in one batched message per
-  frame.
-- worklet → main: the sample ring the picture reads, replacing today's JS ring.
+**LFO ownership, enforced but derived.** The note said a fixed `owner` field
+set at registration. That cannot be right: the same oscillator drives a
+generator parameter and a view parameter, and which side steps it depends on
+whether the worklet is running — a fact that changes while the page is open.
+So `lfoDriver()` is *derived* rather than stored, the same lesson
+`rotatesSignal` carries, and both advance paths call `assertLfoDriver`, which
+throws. A 2 Hz oscillator measures 1.98 Hz across the boundary.
 
-Main-thread sources arrive once per frame, so inside the worklet they are
-**held and ramped across the block**, not stepped — the same one-pole smoothing
-CCs get, for the same reason.
+**Traffic across the boundary**, as planned: parameters posted on change, the
+routes and every main-thread source value in one batched message per frame, and
+the samples posted back in batches of about forty milliseconds, transferred
+rather than copied. A render quantum is 128 frames — posting each one would be
+375 messages a second for a picture that wants sixty.
 
 ### B4 · Gate and envelope
 
