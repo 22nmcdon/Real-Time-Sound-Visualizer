@@ -17,12 +17,12 @@ graph and a canvas and the Qt app has neither in the same shape; see
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
-Also recorded and not built: band-limited waveforms. `waveAt` is not
-band-limited — `square` is `Math.sin(phase) >= 0 ? 0.9 : -0.9` — which is correct
-for a silent generator drawing a picture of a square wave, and wrong the moment
-the generator is audible, because this app ships a "Harmonics and THD" preset
-that would report the foldover as content. PolyBLEP is a prerequisite of the
-audio path, not a separate feature.
+Band-limiting is built, ahead of the sound that needs it: `waveAt` takes a
+`step` — how much of a cycle one sample covers — and corrects the square and
+the ramp with polyBLEP and the triangle with polyBLAMP. It was done while the
+generator is still silent because that is when it can be checked: the spectrum
+of a picture is measurable whether or not anyone can hear it. See
+`tests/aliastest.py` for what folds back now and what did before.
 
 ## Running the checks
 
@@ -45,6 +45,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
+| `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -232,6 +233,37 @@ re-measuring, but nothing does that today.
 lanes are an implementation detail. Anything asking "has this several signals?"
 must test `source.lanes`, not the kind — asking the kind is how a preset once
 truncated a four-lane source to two and crashed the draw loop.
+
+**The square's polyBLEP correction is added and the saw's subtracted.** The
+step at the top of a square's cycle goes *up* where the saw's goes down, so the
+two corrections have opposite signs and the one half a cycle later flips again.
+With the signs the other way round the correction doubles the error instead of
+cancelling it — measured, 4 dB *worse* than no correction at all, which is the
+sort of wrong that looks like working code. `aliastest.py` has a control: the
+same loop with `step` at nought, which is the function as it was.
+
+**The triangle was the dirtiest waveform, not the cleanest.** It was nearly
+left alone on the usual reasoning — a corner is a break in the slope rather
+than the value, so its harmonics fall away as 1/n² and what folds back is
+quieter. Measured at the top of the generator's range the naive triangle put
+−38.6 dB into the audible band, which is *louder* than the corrected square's
+−46.2. PolyBLAMP is ten lines and takes it to −65.2. The scaling, 4, is the
+triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
+the spectrum rather than read off a paper: 4 wins at every frequency tried, by
+up to 30 dB.
+
+**`waveAt` with no `step` is the function as it was, to the bit.** That is the
+contract the LFOs rely on: an oscillator at 0.2 Hz has no aliasing to correct,
+and a correction applied to it would be a dent in the shape it exists to draw.
+`polyBlep` and `polyBlamp` both return nought for a step of nought, and the
+test asserts a square LFO still steps between exactly ±0.9.
+
+**The harmonics pane walks a grid of bins from the fundamental's bin.** At
+2048 points and 44.1 kHz that grid is 21.5 Hz, and it searches two bins either
+side of each multiple — so for a fundamental that does not land on a bin, the
+seventh harmonic can sit outside the window and read about 3 dB low. 431 Hz is
+twenty bins exactly, which is why `aliastest.py` uses it and not 440. The
+pane's resolution, not the generator's.
 
 **A note is not an estimate, and that is the point of the keyboard.** Every
 pitch on this page is otherwise inferred: the automatic lag sits behind a

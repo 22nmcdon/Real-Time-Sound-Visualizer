@@ -2,8 +2,10 @@
 
 **Where this stands.** Stage A is built: MIDI in, CC learn, the dyad, the tuning
 switch, and the note as ground truth for the lag, the timebase and the tuner.
-Everything from Stage B on is still a plan. `web/tests/miditest.py` holds the
-verification A asked for.
+**B1 is built too** — the generator is band-limited, ahead of the sound that
+needs it. Everything else from Stage B on is still a plan.
+`web/tests/miditest.py` and `web/tests/aliastest.py` hold the verification A
+and B1 asked for.
 
 A plan, built on `docs/midi-and-the-audio-path.md`. That note describes *what*
 and *why*; this one turns it into stages with decisions made, dependencies

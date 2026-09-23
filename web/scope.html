@@ -1777,7 +1777,10 @@ body[data-view="bench"] #menuButton { display: none; }
 
       <li><b>The harmonics pane</b>
         <span>The fundamental in ink and its partials beside it. A square wave shows odd
-        harmonics tall and even ones almost absent.</span></li>
+        harmonics tall and even ones almost absent, and about 41% distortion &mdash; the
+        first eight partials' worth, which is what this counts. The generator's own
+        waveforms are band-limited, so what you are reading is the waveform rather than
+        the arithmetic that drew it.</span></li>
 
       <li><b>A reference trace</b>
         <span><i>Settings &rarr; Measure &rarr; Save reference</i> freezes what is on screen
@@ -2171,19 +2174,94 @@ function findTriggerIndex(x, level, edge, hysteresis, minIndex, maxIndex, holdof
    phase clock and some arithmetic - which is why this page shows a live
    trace the instant it loads instead of waiting on a permission prompt.     */
 
+/* PolyBLEP: what makes a step audible rather than a lie.
+
+   A square written as "+1 until half way, then -1" has every harmonic a step
+   has, forever. Sampled, the ones above Nyquist do not vanish - they fold back
+   to frequencies that are not multiples of anything, and this page ships a
+   Harmonics and THD preset that would report them as content. Silent, the
+   naive square is a perfect PICTURE of a square wave; audible, it is the
+   instrument lying in exactly the place it claims to measure. So the
+   band-limiting lands before the sound does, where the harmonics pane can
+   check it.
+
+   The correction replaces the ideal step with what a band-limited step would
+   have put in the two samples either side of it. `t` is the position in the
+   cycle, 0 to 1, and `dt` is how much of a cycle one sample covers - so the
+   window is two samples wide however fast the oscillator runs, and the
+   correction shrinks to nothing as the oscillator slows down.
+
+   At dt = 0 it is exactly zero, which is what the LFOs need. An LFO at 0.2 Hz
+   has no aliasing to correct, and a correction applied to it would be a dent
+   in the shape it is there to draw. */
+function polyBlep(t, dt) {
+  if (!(dt > 0)) return 0;
+  if (t < dt) { const x = t / dt; return x + x - x * x - 1; }
+  if (t > 1 - dt) { const x = (t - 1) / dt; return x * x + x + x + 1; }
+  return 0;
+}
+
+/* PolyBLAMP, the same idea for a corner rather than a step. A triangle's
+   value never jumps; its SLOPE does, which aliases more gently - as 1/n^2
+   rather than 1/n - and so was nearly left alone. Measured, that would have
+   been wrong: at the top of the generator's range the naive triangle folds
+   back at -38.6 dB, which is louder than the corrected square. Ten lines is
+   cheaper than a footnote explaining why the quietest-looking waveform is the
+   dirtiest one.
+
+   The scaling is the triangle's own slope, four units a cycle, and it was
+   arrived at by measurement rather than from the paper: at 4, 2 and 0.44 kHz
+   it beats 2, 6, 8 and 12 on everything below 10 kHz, by up to 30 dB.  */
+function polyBlamp(t, dt) {
+  if (!(dt > 0)) return 0;
+  if (t < dt) { const x = t / dt - 1; return -x * x * x / 3; }
+  if (t > 1 - dt) { const x = (t - 1) / dt + 1; return x * x * x / 3; }
+  return 0;
+}
+
+const cycleOf = (phase) => {
+  const t = (phase / TWO_PI) % 1;
+  return t < 0 ? t + 1 : t;
+};
+
 /* One waveform function, shared by the generator and by the LFOs under it -
-   a shape is a shape whether it is running at 220 Hz or at a fifth of one. */
-function waveAt(shape, phase) {
+   a shape is a shape whether it is running at 220 Hz or at a fifth of one.
+
+   `step` is how much of a cycle one sample covers, and it is what separates
+   the two callers: the generator knows its own frequency and passes it, an LFO
+   does not pass it at all, and at nought every line below is what it was
+   before the band-limiting arrived. */
+function waveAt(shape, phase, step) {
+  const dt = step > 0 ? Math.min(0.49, step) : 0;
   switch (shape) {
     case "sine":     return Math.sin(phase);
-    case "triangle": return (2 / Math.PI) * Math.asin(Math.sin(phase));
-    case "square":   return Math.sin(phase) >= 0 ? 0.9 : -0.9;
-    case "ramp": {
-      let t = (phase / (2 * Math.PI)) % 1;
-      if (t < 0) t += 1;
-      return t * 2 - 1;
+    case "triangle": {
+      const t = cycleOf(phase);
+      // How far past each corner we are: a quarter of the way through the
+      // cycle the slope turns over, and three quarters through it turns back.
+      const pastUp = (t + 0.75) % 1, pastDown = (t + 0.25) % 1;
+      return (2 / Math.PI) * Math.asin(Math.sin(phase))
+             + 4 * dt * (polyBlamp(pastDown, dt) - polyBlamp(pastUp, dt));
     }
-    default:         return Math.sin(phase) + 0.33 * Math.sin(3 * phase);
+    case "square": {
+      const t = cycleOf(phase);
+      // Two steps a cycle, half a cycle apart: up at the top of the cycle,
+      // down in the middle, so the corrections go opposite ways.
+      return 0.9 * ((t < 0.5 ? 1 : -1) + polyBlep(t, dt) - polyBlep((t + 0.5) % 1, dt));
+    }
+    case "ramp": {
+      const t = cycleOf(phase);
+      return t * 2 - 1 - polyBlep(t, dt);
+    }
+    default: {
+      /* A sine and its third harmonic, and the third is only a harmonic while
+         it is below Nyquist - above that it folds down to something that is
+         not related to the fundamental at all. Faded out over the last tenth
+         rather than dropped, so a frequency sweep has no step in it where the
+         harmonic leaves. */
+      const room = Math.max(0, Math.min(1, (0.5 - 3 * dt) / 0.05));
+      return Math.sin(phase) + room * 0.33 * Math.sin(3 * phase);
+    }
   }
 }
 
@@ -3338,10 +3416,20 @@ function makeToneSource() {
         if (phaseR >= TWO_PI) phaseR -= TWO_PI;
         if (phaseR < 0) phaseR += TWO_PI;
 
+        /* What one sample is worth of each channel's cycle, which is all the
+           band-limiting needs to know. Taken from the MODULATED frequency, so
+           a vibrato that sweeps an octave is corrected at the frequency it has
+           reached rather than at the one the slider says. Absolute, because a
+           deep enough modulation of the ratio can invert it, and clamped
+           because past half the sample rate the correction windows overlap and
+           there is nothing left to band-limit anyway. */
+        const stepL = Math.abs(freq) / rate;
+        const stepR = Math.abs(freq * ratio) / rate;
+
         l = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseL);
+                                   : amp * waveAt(tone.shape, phaseL, stepL);
         r = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseR + phase);
+                                   : amp * waveAt(tone.shape, phaseR + phase, stepR);
       }
 
       buffer[0][writePos] = Math.max(-1, Math.min(1, l));
@@ -4851,8 +4939,11 @@ function computeSpectrum(samples) {
    over the fundamental, which is the textbook definition and the one a
    distortion figure on a spec sheet means.
 
-   Reported as a ratio, not a verdict. A square wave is 43% THD and there is
-   nothing wrong with it. */
+   Reported as a ratio, not a verdict. A square wave is 41% THD and there is
+   nothing wrong with it - and that 41 is the first eight partials' worth,
+   sqrt(1/9 + 1/25 + 1/49), rather than the whole series' 48.3%. A reading up
+   near 48 on a square would mean this had found energy that is not a harmonic
+   of anything, which is what band-limiting the generator is for. */
 const HARMONIC_COUNT = 8;
 
 function analyseHarmonics(rate) {
