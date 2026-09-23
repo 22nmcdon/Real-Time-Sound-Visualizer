@@ -25,13 +25,17 @@ whatever the tap says: the level meter, because a modulation source that moved
 when a display knob moved would feed back into the picture through the matrix,
 and the Clipping verdict, because clipping is a claim about the input.
 
-One thing the window IS allowed to do is move. The trigger reads what is
-drawn, which is what made its level a fraction of the screen in the first
-place, so turning the figure can put the edge somewhere else and the
-measurements are then over a different slice of the same signal. That is a
-bench scope's behaviour rather than a leak, and it is checked as an algebraic
-identity instead: whatever window came back, the measured lanes are that
-window before it was turned.
+The guarantee has two tiers and the checks below say which is which. With
+nothing turning - the default configuration - all three views are the same
+arrays and every number is bit-identical, armed or free running. With the knob
+turned, the array comparison only holds with the trigger free running, because
+the trigger reads what is DRAWN: turning the figure can put the edge on a
+different sample, so the measurements land on a different slice of the same
+signal. No hardware precedent is claimed for that - an analogue scope has no
+time base in X-Y and therefore no trigger there at all - it is this page's own
+logic followed through. The armed case is checked as an algebraic identity
+instead: whatever window came back, turning the measured pair by the angle in
+force reproduces the drawn pair.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -235,6 +239,11 @@ with sync_playwright() as pw:
           abs(drawn["ratio"] - 0.25) < 0.05, "%.3f against 0.250" % drawn["ratio"])
 
     print("\n--- rotation turns the pair, and the tap keeps the numbers still ---")
+    # Tier one: the strict comparison, and the conditions it is strict under
+    # are named in the check titles rather than left to this comment. Array
+    # equality needs both captures to land on the same window, so the trigger
+    # is put out of reach for it. Tier two - the armed case, which is what
+    # anybody actually watching the screen is in - follows below.
     # The scoping decision as it now stands, and it is two decisions rather
     # than one. Rotation IS a signal transform on a stereo pair - it reaches
     # the captured lanes, the trigger and the speakers. The per-lane
@@ -309,9 +318,9 @@ with sync_playwright() as pw:
           "moved by %.3f" % scope["drawnMoved"])
     check("and it is exactly the matrix the figure was drawn with",
           scope["matrix"] < 1e-7, "worst %.3g" % scope["matrix"])
-    check("the measured lanes do not move one sample",
+    check("free running, the measured lanes do not move one sample",
           scope["measuredMoved"] == 0, "worst %.3g" % scope["measuredMoved"])
-    check("so peak and RMS are the same numbers, not close ones",
+    check("so there peak and RMS are the same numbers, not close ones",
           scope["peak"][0] == scope["peak"][1] and scope["rms"][0] == scope["rms"][1],
           str(scope["peak"]) + " " + str(scope["rms"]))
     check("and so is the correlation under the goniometer",
@@ -359,7 +368,7 @@ with sync_playwright() as pw:
       state.running = true;
       return { worst, triggered: f.triggered, at, measuredAt, want: f.levelAt };
     }""")
-    check("whatever window the trigger picks, the measured lanes are it unturned",
+    check("armed, the measured lanes are whatever window came back, unturned",
           live["worst"] < 1e-6, "worst %.3g" % live["worst"])
     check("and the trigger fires on what is drawn, not on what is measured",
           live["triggered"] and abs(live["at"] - live["want"]) < 0.02
@@ -563,6 +572,43 @@ with sync_playwright() as pw:
     check("a stereo pair turns; a rack, a mono input and the lag lane do not",
           rule["pair"] and not rule["rack"] and not rule["mono"] and not rule["lag"],
           str(rule))
+
+    # And it is a question asked every capture rather than an answer stored
+    # when a source was chosen. A stereo input that drops to one channel
+    # mid-session, or a lane appearing in a rack, moves this predicate while
+    # the page keeps running - and a predicate that was right when it was set
+    # and wrong four frames later is the shape of bug this project has already
+    # shipped twice, once in who owns an LFO and once in a stale full scale.
+    live_rule = p.evaluate("""() => {
+      const real = state.source;
+      let howMany = 2;
+      // A stand-in that delegates everything but the channel count, so the
+      // samples and the rate are the real source's and only the answer to
+      // "is this a stereo pair" moves.
+      const stub = {
+        get channels() { return howMany; },
+        get sampleRate() { return real.sampleRate; },
+        get capacity() { return real.capacity; },
+        getLatestWindow: (n) => real.getLatestWindow(n),
+      };
+      state.running = false;
+      state.source = stub;
+      state.rotate = 0.2; state.rotateMod = 0;
+
+      const asPair = capture().turned;
+      howMany = 1;                                 // the input drops a channel
+      const asMono = capture().turned;
+      howMany = 2;                                 // and gets it back
+      const again = capture().turned;
+
+      state.source = real;
+      state.rotate = 0;
+      state.running = true;
+      return { asPair, asMono, again };
+    }""")
+    check("and it is asked every capture, not settled when a source was chosen",
+          live_rule["asPair"] and not live_rule["asMono"] and live_rule["again"],
+          str(live_rule))
 
     # And the figure still turns there, at draw time, exactly as it always
     # did. Without this the widening could have quietly removed rotation from

@@ -588,14 +588,29 @@ nothing costs nothing and reads bit-identically.
 
 **The window the trigger picks is allowed to move; what is in it is not.**
 The trigger reads the drawn lanes — that is what made its level a fraction of
-the screen — so turning a pair can put the edge on a different sample and the
-measurements are then over a different slice of the same signal. That is a
-bench scope's behaviour rather than a leak, but it means "turn the knob and
-the numbers do not change" is only true to the last few digits once the
-trigger is live. `rotatetest.py` asserts the exact statement instead: whatever
-window came back, turning the measured pair by the angle in force reproduces
-the drawn pair. The bit-identical comparison is made with the level put out of
-reach, so both captures fall back to the same offset.
+the screen — so turning a pair can put the edge on a different sample, and the
+measurements are then over a different slice of the same signal.
+
+No hardware precedent is being claimed for that, and an earlier draft of this
+paragraph claimed one. An analogue bench scope does not trigger in X–Y at all:
+X–Y disables the time base, and the trigger circuit exists to align a sweep
+there is no longer any of. So there is no instrument to point at that had
+rotation ahead of a trigger and behaved this way. It is this page's own logic
+followed through — the level is a fraction of the screen, and the screen
+includes the rotation — and it is worth labelling as that rather than
+borrowing authority it has not got.
+
+What it costs is a guarantee that has two tiers, and they are worth keeping
+apart. With **nothing turning**, which is the default configuration, all three
+views are the same arrays and every number is bit-identical to what the code
+produced before any of this existed — armed or free running, no exceptions.
+With the knob **actually turned**, "the numbers do not move" is bit-exact only
+when the trigger is free running, because then both captures fall back to the
+same offset; that is how `rotatetest.py` makes the array comparison. Once the
+trigger is armed, which is what most people are looking at, the honest
+statement is the algebraic one the suite asserts instead: whatever window came
+back, turning the measured pair by the angle in force reproduces the drawn
+pair. Different slice of the same signal, not a different signal.
 
 **Full scale is not in the block, and that row of the plan was withdrawn
 rather than deferred.** Anything inside the tapped block is by definition
@@ -630,3 +645,44 @@ speakers right and every number right, with the picture at twice the angle the
 knob says — and until `rotatetest.py` gained a check comparing the drawn
 polyline against the shape of `frame.channels`, nothing failed. A circle
 cannot see that either, so the check uses the phase-0 line.
+
+**Full scale is multiplied in at draw time, and that is what makes the Numbers
+switch safe.** `gainOf` appears inside `capture` exactly once, dividing the
+trigger threshold, and never multiplying a sample; every use that scales
+samples is in the draw code — the trace, the reference, the trigger line and
+the X–Y figure. So `frame.channels` is rotated but not magnified, and pointing
+the measurements at it reports an amplitude rather than an amplitude times a
+display knob. This is now pinned, because it is exactly the class of
+dishonesty the tap exists to prevent and it would arrive silently.
+
+**Comparing `channels`, `signal` and `measured` against each other proves
+almost nothing.** They are the same arrays whenever nothing is turning, so a
+magnification applied where `drawn` is built lands on all three at once and
+the comparison passes. The first draft of the check above did exactly that,
+and the mutation that should have broken it — full scale multiplied in inside
+`capture` — left it green while four other checks went red. It asks the
+stronger question now: with rotation engaged and lane two thirty decibels
+down, is `channels` still the plain rotation of `signal`, with no gain
+anywhere in it?
+
+**`rotatesSignal` is a question asked per capture, not an answer stored when a
+source was chosen.** A stereo input that drops to one channel mid-session, or
+a lane appearing in a rack, moves the predicate while the page keeps running —
+and a predicate that was right when it was set and wrong four frames later is
+a shape of bug this page has shipped before, in who owns an LFO and in a stale
+full scale. `capture` and `syncMonitor` both call it fresh, and a check swaps
+a stand-in source's channel count between two captures to say so; caching the
+answer fails four checks by name.
+
+**A fourth test that measured its own arithmetic.** `modtest.py`'s "a rotation
+really turns the figure" took the captured lanes, turned them by
+`state.rotate` *itself*, and compared the axis before and against after. That
+answers 45 degrees for any two arrays whatsoever — it never read the app's
+rotation at all, so it would have passed a `capture` that ignored the knob
+entirely, and it did not need the ring buffer to hold the signal it named.
+Moving the rotation into `capture` broke it loudly (90 degrees, because it was
+now turning twice), which is the only reason it was found. It reads the lanes
+as they come now, waits for the buffer to hold a line rather than the circle
+the preset starts from, and freezes the source so the two captures differ only
+in the angle. It reports 45.0 from 45.0 to 90.0 — the numbers the geometry
+predicts — and a `capture` that turns nothing fails it.

@@ -107,14 +107,19 @@ not close.
 **What had to be true before it landed, and what happened to each.**
 
 - ~~Every reading bit-identical with the tap at its default.~~ **Done**, and
-  with one qualification found on the way. The trigger reads the drawn lanes —
-  that is what made its level a fraction of the screen — so turning a pair can
-  put the edge on a different sample, and the measurements are then over a
-  different *slice* of the same signal. That is a bench scope's behaviour
-  rather than a leak. The bit-identical check therefore puts the level out of
-  reach so both captures land on the same offset, and the live case is
-  asserted as an algebraic identity instead: whatever window came back, turning
-  the measured pair by the angle in force reproduces the drawn pair.
+  for the default configuration, where nothing is turning and all three views
+  are the same arrays — armed or free running, no exceptions. With the knob
+  turned there is a second tier, found on the way. The trigger reads the drawn
+  lanes — that is what made its level a fraction of the screen — so turning a
+  pair can put the edge on a different sample, and the measurements are then
+  over a different *slice* of the same signal. The array comparison therefore
+  puts the level out of reach so both captures land on the same offset, and the
+  armed case is asserted as an algebraic identity instead: whatever window came
+  back, turning the measured pair by the angle in force reproduces the drawn
+  pair. No hardware precedent is claimed for the moving window and an earlier
+  draft claimed one; an analogue scope has no time base in X–Y and so no
+  trigger there to compare against. It is this page's own logic followed
+  through, and it is labelled as that.
 - ~~The clipping verdict stays about the input.~~ **Done**, reading `signal`
   whatever the tap says. The check that said so was vacuous for its first
   draft — see `web/README.md` on what a stopped scope reports — and now runs
@@ -136,8 +141,10 @@ not close.
 withdrawn.** A member of the tapped block is by definition something
 `monitorAt: post` can send to the speakers, and full scale is a display
 magnification — making it audible means the monitoring level follows a knob
-whose job is how big the trace is. No bench scope behaves that way and nothing
-else on this page does either; zoom was scoped out for a related reason (D6).
+whose job is how big the trace is. Nothing else on this page behaves that way;
+zoom was scoped out for a related reason (D6). (An analogue scope has no
+monitor output at all, so it is not a precedent either way — this is the
+page's own consistency, not hardware fidelity.)
 What full scale actually needed was to be continuous, modulatable and tracked
 by the trigger, and all three are built without it moving. The second reason
 stands as well: the trigger finds its edge on lanes full scale has not touched,

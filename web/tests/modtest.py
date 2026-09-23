@@ -177,10 +177,30 @@ with sync_playwright() as pw:
     print("\n--- the picture is a destination too ---")
     # A unison at zero phase draws a 45 degree diagonal. Turning it by an
     # eighth of a turn should stand it up.
-    angles = p.evaluate("""() => {
+    #
+    # This used to turn the pair itself before measuring the axis, because
+    # `capture` handed back lanes the draw code was going to rotate later. It
+    # does the rotation now, on a stereo pair, so re-applying the matrix here
+    # turned the figure twice and read 90 degrees. Taking the lanes as they
+    # come is both the fix and a better check: it is the pipeline being
+    # measured rather than this function's own arithmetic.
+    # And the buffer has to hold the signal this claims to be measuring. The
+    # preset draws a circle; the line comes from forcing the phase to nought,
+    # and a ring buffer full of the circle takes a moment to become one. The
+    # old version could skip this wait because it never read the app's
+    # rotation at all - it turned whatever came back by the angle itself, so
+    # the answer was 45 degrees whatever the samples were, and whatever
+    # `capture` did.
+    p.evaluate("""() => {
       applyPreset('b:Circle');
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
       state.modRoutings = []; touchRoutings();
+    }""")
+    p.wait_for_timeout(500)
+    angles = p.evaluate("""() => {
+      // Frozen, so both captures read the same samples and the only thing
+      // that differs between them is the angle.
+      state.running = false;
       const axis = () => {
         const f = capture();
         const x = f.channels[0], y = f.channels[1], n = x.length;
@@ -188,22 +208,22 @@ with sync_playwright() as pw:
         for (let i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
         mx /= n; my /= n;
         let sxx = 0, syy = 0, sxy = 0;
-        const spin = (state.rotate + state.rotateMod) * Math.PI * 2;
-        const c = Math.cos(spin), s2 = Math.sin(spin);
         for (let i = 0; i < n; i++) {
           const px = x[i] - mx, py = y[i] - my;
-          const rx = px * c - py * s2, ry = px * s2 + py * c;
-          sxx += rx * rx; syy += ry * ry; sxy += rx * ry;
+          sxx += px * px; syy += py * py; sxy += px * py;
         }
-        return 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI;
+        return { deg: 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI,
+                 turned: f.turned };
       };
       state.rotate = 0; const flat = axis();
       state.rotate = 0.125; const turned = axis();
       state.rotate = 0;
-      return { flat, turned };
+      state.running = true;
+      return { flat: flat.deg, turned: turned.deg, applied: turned.turned };
     }""")
     turn = (angles["turned"] - angles["flat"] + 180) % 180
-    check("a rotation really turns the figure", abs(turn - 45) < 3,
+    check("a rotation really turns the figure",
+          angles["applied"] and abs(turn - 45) < 3,
           "%.1f deg from %.1f to %.1f" % (turn, angles["flat"], angles["turned"]))
 
     offsets = p.evaluate("""() => {

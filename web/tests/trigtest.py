@@ -349,10 +349,46 @@ with sync_playwright() as pw:
       for (let i = 0; i < flat.channels[1].length; i++) {
         worst = Math.max(worst, Math.abs(flat.channels[1][i] - scaled.channels[1][i]));
       }
+
+      /* And in the drawn view specifically, with the rotation engaged so that
+         it is genuinely a different array from the other two.
+
+         This matters more than it did when the check above was written: the
+         Numbers switch can point the measurements at `channels`, and if full
+         scale were multiplied in before `capture` returned then throwing that
+         switch would report an amplitude scaled by a display knob. It is
+         applied in the draw code instead - `gainOf` appears in `capture`
+         exactly once, dividing the trigger threshold, and never multiplying a
+         sample.
+
+         Comparing the three views against each other is not enough to say so,
+         and the first draft of this did exactly that: a magnification applied
+         where `drawn` is built lands on all three at once, since they are the
+         same arrays until something turns. So this asks the stronger question
+         - with lane two thirty decibels down, is `channels` still the plain
+         rotation of `signal`, with no gain anywhere in it? */
+      state.rotate = 0.2; state.rotateMod = 0;
+      const spun = capture();
+      const { cos, sin } = turnOf(0.2);
+      let acrossViews = 0;
+      for (let i = 0; i < spun.channels[0].length; i++) {
+        const l = spun.signal[0][i], r = spun.signal[1][i];
+        acrossViews = Math.max(acrossViews,
+          Math.abs(spun.channels[0][i] - (l * cos - r * sin)),
+          Math.abs(spun.channels[1][i] - (l * sin + r * cos)));
+      }
+      const spunTurned = spun.turned;
+      state.rotate = 0;
+
       state.channels[1].fsDb = 0;
       state.running = true;
-      return { worst, peaks: [a.peak, c.peak], rms: [a.rms, c.rms] };
+      return { worst, acrossViews, spunTurned,
+               peaks: [a.peak, c.peak], rms: [a.rms, c.rms] };
     }""")
+    check("and the drawn lanes are the rotation alone, with no magnification in",
+          untouched["spunTurned"] and untouched["acrossViews"] < 1e-6,
+          "worst %.3g, rotation applied %s"
+          % (untouched["acrossViews"], untouched["spunTurned"]))
     check("full scale does not touch the captured samples",
           untouched["worst"] == 0, "worst %.3g" % untouched["worst"])
     check("so dBFS is still about the converter, not the graticule",
