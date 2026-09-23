@@ -265,11 +265,34 @@ be discovered during implementation.
   The duplication was also a latent bug: `applyAlignment` writes `delay` on
   every lane of any source with lanes, and one reader of three honoured it.
 
-  What is left of D1: the selector itself, the lane budget at selection time,
-  and the generator as a lane type.
+  **D1b — the generator as a lane type — is built.** `makeSynthLane` is the
+  generator's own core on a JS ring, satisfying the contract and nothing else:
+  no analyser, no gain node, nothing connected. One lane, meaning its left
+  channel, which is what D's verification asks for. At most one per rack, first
+  one wins, because two would step the shared oscillators twice a sample.
+  `lfoDriver` asks whether any lane is one rather than whether the source is a
+  tone.
 
-  **D2 — the generator's sound reaching a lane's speakers.** This is the part
-  that needed B3, it is the part that is nearly free, and it is now built.
+  **D1c — the controls, and the budget — is built.** Thirty places asked
+  `state.source.kind === "tone"` before writing to the generator; that is a
+  question about what the generator *was*, and `genSettings` / `genSet` /
+  `genReswing` are it re-asked. The lane budget is stated before anything is
+  decoded — the generator takes one of the six before any file does — and
+  ticking the box rebuilds what is loaded, the way the band split already does.
+
+  **What is left of D1: the selector itself.** Tone / Mic / File / Stems is
+  still a mutually exclusive radiogroup; the generator joins a rack through a
+  checkbox on the Stems rows rather than by being a peer of the four. That is
+  the honest state: the *representation* is now "what is in the rack", and the
+  *selector* has not caught up with it. Everything else in D1 is done, and D's
+  own verification list can be run against what exists.
+
+  **D2 — the generator's sound reaching a lane's speakers.** This needed B3,
+  and calling it "built" was an overclaim that wants correcting: the generator
+  sounds when it IS the source, which is what B3 delivered. A generator LANE is
+  silent. Giving one an output means a second worklet on the rack's own context
+  feeding the rack's mix, with the monitoring rules that go with it, and that
+  is not built.
 
   The practical consequence: D1 can move in parallel with portable-DSP work
   rather than queuing behind the worklet. If the JUCE port is where the

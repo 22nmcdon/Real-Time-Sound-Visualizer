@@ -150,7 +150,7 @@ button { font-family: inherit; cursor: pointer; }
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
 /* A reading that is telling you the setting cannot be served, rather than
-   what it came to. Only the timebase uses it so far. */
+   what it came to. The timebase, and the rack's lane budget. */
 .reading[data-state="over"] { color: var(--rust); }
 
 .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; align-self: center; }
@@ -916,6 +916,10 @@ body[data-view="bench"] #menuButton { display: none; }
                 decoded here.</p>
             </div>
             <div id="rackRows" hidden>
+              <label class="check" id="rackSynthRow">
+                <input type="checkbox" id="rackSynth"> Add the generator as a lane
+                <span class="reading" id="rackBudget"></span>
+              </label>
               <div class="menu-row">
                 <span class="menu-label">Stems</span>
                 <div class="grow">
@@ -973,7 +977,15 @@ body[data-view="bench"] #menuButton { display: none; }
                 </div>
               </div>
               <div id="laneList"></div>
-              <p class="menu-note" id="rackNote">Drop several files at once and each becomes a
+              <p class="menu-note" id="rackNote2">The <i>generator</i> can be one of the
+              lanes, so what the page is making and what you are playing go on one
+              graticule &mdash; and <i>X&ndash;Y</i> can pair either against either. It is one
+              lane, which means its <em>left</em> channel: a lane is one signal and the
+              generator makes two, so its own figure is not available while it is a lane.
+              It is also silent there for now; on its own it can be heard, but a lane's
+              worth of it does not yet reach the speakers. The count beside the box is how
+              many lanes the current choice comes to, out of six.</p>
+            <p class="menu-note" id="rackNote">Drop several files at once and each becomes a
                 lane. They share one clock and one timebase &mdash; lanes on different
                 timebases cannot be compared, which is the only reason to stack them.
                 <i>Solo</i> and <i>mute</i> are the monitor mix; <i>show</i> is the screen.
@@ -2042,6 +2054,18 @@ body[data-view="bench"] #menuButton { display: none; }
         for the same instant; two melodic parts draw the interval between them. The
         goniometer follows the same pair.</span></li>
 
+      <li><b>The generator can be one of the lanes</b>
+        <span>Tick <i>Add the generator as a lane</i> before choosing stems, and what the
+        page is making goes on the graticule beside what you are playing &mdash; and
+        <i>X&ndash;Y</i> can pair either against either. It is one lane, which means its
+        <em>left</em> channel: a lane is one signal and the generator makes two, so its own
+        figure is not available while it is a lane. It is silent there for now &mdash; on
+        its own it can be heard, but a lane's worth of it does not yet reach the speakers
+        &mdash; and a keyboard sets its pitch without starting or stopping it, because the
+        envelope lives on the source rather than on a lane. The count beside the box says
+        how many lanes your choice comes to, out of six; the generator takes one of the six
+        before any file does.</span></li>
+
       <li><b>No stems? Split into bands</b>
         <span>Four filters, and honest about it &mdash; a kick and a hi-hat land in different
         lanes because they are at different frequencies, not because anything worked out that
@@ -2285,6 +2309,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows",
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
+                  "rackSynthRow", "rackSynth", "rackBudget",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiCC",
@@ -2816,8 +2841,16 @@ const LFO_SHAPES = [
    these objects are only being told where it got to. */
 function lfoDriver() {
   const source = state.source;
-  if (!source || source.kind !== "tone") return "main";
-  return source.audible && source.audible() ? "worklet" : "fill";
+  if (!source) return "main";
+  if (source.kind === "tone") {
+    return source.audible && source.audible() ? "worklet" : "fill";
+  }
+  /* A rack can hold a lane made of arithmetic, and that lane runs the same
+     per-sample loop the tone source does. Asking the source's KIND was right
+     while the generator could only be the whole source; it stops being right
+     the moment the generator can be one lane of something else. */
+  if (source.lanes && source.lanes.some((lane) => lane.synth)) return "fill";
+  return "main";
 }
 
 /* Checked once a block rather than once a sample: two paths stepping the same
@@ -5188,6 +5221,100 @@ function laneMixer(lanes) {
   });
 }
 
+/* --- a lane made of arithmetic ----------------------------------------------
+   The generator as one lane among several, which is what Stage D1 is for: what
+   you are playing and what the page is generating, on one graticule. It
+   satisfies the lane contract and nothing else - no analyser, no gain node,
+   nothing connected to anything - which is the whole reason that contract was
+   worth separating from how a lane happens to be built.
+
+   ONE LANE, and the loss is worth naming rather than discovering. A lane is one
+   signal and the generator makes two, so this is its LEFT channel; the right
+   is computed and thrown away, because the core produces the pair together and
+   half of it is not cheaper. Stage D's own verification asks for exactly this
+   ("X-Y can pair generator-L against Nord-L"). What it costs is the
+   generator's own figure - its left against its right - which is not available
+   while it is a lane. Put the generator back on its own to see that.
+
+   SILENT, for now, and this is the part of D2 that is not built. The worklet
+   gives the generator an output when it IS the source; giving a LANE an output
+   means a second worklet on the rack's context feeding the rack's mix, and the
+   monitoring rules that go with it. `monitored` is false, the same as the live
+   lane in a play-along rack and for a related reason: this lane is here to be
+   looked at.
+
+   AT MOST ONE of these in a rack, enforced where the rack is built. Two would
+   both step the oscillators once a sample and every rate would run at double -
+   which `assertLfoDriver` would catch on the first block, but the rack is
+   where the answer is knowable rather than where the symptom appears.        */
+function makeSynthLane(name, rate) {
+  const core = makeGeneratorCore(rate, GEN_DESTS.length, lfos);
+  // What an analyser holds, so putting this lane in a rack never makes it the
+  // short one and never quietly shortens the longest timebase.
+  const FRAMES = 32768;
+  const ring = new Float32Array(FRAMES);
+  const CHUNK = Math.ceil(rate * 0.25);
+  const scratch = [new Float32Array(CHUNK), new Float32Array(CHUNK)];
+  let writePos = 0;
+  let lastFill = null;
+
+  return {
+    name, synth: true, core,
+    level: 0, mute: false, solo: false,
+    delay: 0,
+    live: false,
+    monitored: false,
+
+    get frames() { return FRAMES; },
+
+    read(n) {
+      const out = new Float32Array(n);
+      const take = Math.min(n, FRAMES);
+      const end = ((writePos - this.delay) % FRAMES + FRAMES) % FRAMES;
+      const from = ((end - take) % FRAMES + FRAMES) % FRAMES;
+      if (from + take <= FRAMES) {
+        out.set(ring.subarray(from, from + take), n - take);
+      } else {
+        const split = FRAMES - from;
+        out.set(ring.subarray(from), n - take);
+        out.set(ring.subarray(0, take - split), n - take + split);
+      }
+      return out;
+    },
+
+    // Nothing to hear yet, so nothing to set. Not an oversight - see above.
+    setMix() {},
+
+    tick(nowSeconds) {
+      if (lastFill === null) { lastFill = nowSeconds; return; }
+      let needed = Math.floor((nowSeconds - lastFill) * rate);
+      if (needed <= 0) return;
+      needed = Math.min(needed, CHUNK);
+      lastFill += needed / rate;
+
+      // The same guard the tone source's own loop carries, for the same
+      // reason: this is a per-sample loop stepping the shared oscillators.
+      assertLfoDriver("fill");
+
+      if (modDirty) compileRoutes();
+      for (let k = 0; k < genRoutes.length; k++) {
+        const route = genRoutes[k];
+        if (route.index === undefined) route.held = route.source.value();
+      }
+      core.setRoutes(genRoutes);
+
+      let done = 0;
+      while (done < needed) {
+        const take = Math.min(needed - done, FRAMES - writePos);
+        core.block(scratch[0], scratch[1], take);
+        ring.set(scratch[0].subarray(0, take), writePos);
+        writePos = (writePos + take) % FRAMES;
+        done += take;
+      }
+    },
+  };
+}
+
 /* An entry is either a decoded file or the live input. Both become lanes, and
    from there almost nothing cares which is which - the transport only ever
    touches lanes that have a buffer, so a stream needs no special case in
@@ -5200,6 +5327,19 @@ async function makeRackSource(entries, label, deviceId) {
 
   const list = entries.slice(0, MAX_LANES);
   const wantsLive = list.some((entry) => entry.stream);
+  /* One at most, and dropped rather than refused: a caller that asked for two
+     gets one and a rack, instead of an exception and nothing. Two would both
+     step the oscillators once a sample and every modulation rate would run at
+     double.
+
+     The FIRST survives, which is what "one at most" ought to mean and is not
+     what this did - it swept backwards and kept the last, so the comment and
+     the code disagreed and a test caught them at it. */
+  let seenSynth = false;
+  for (let i = 0; i < list.length; i++) {
+    if (!list[i].synth) continue;
+    if (seenSynth) { list.splice(i, 1); i--; } else seenSynth = true;
+  }
   const stream = wantsLive ? await openLiveStream(deviceId) : null;
 
   const decoded = new Map();
@@ -5217,6 +5357,10 @@ async function makeRackSource(entries, label, deviceId) {
   mix.connect(monitor.input);
 
   const lanes = list.map((entry) => {
+    // A lane with nothing behind it is built by something else entirely, and
+    // never touches the context, the mix or the transport.
+    if (entry.synth) return makeSynthLane(entry.name, ctx.sampleRate);
+
     const lane = makeLane(ctx, entry.name, mix);
     if (entry.stream) {
       /* Straight to the analyser and nowhere else. A live input routed to the
@@ -5307,7 +5451,13 @@ async function makeRackSource(entries, label, deviceId) {
     suggestedAlignMs,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
-    get capacity() { return lanes[0].frames - deepest(); },
+    /* The shortest lane rather than the first. They were all analysers until
+       a lane could be arithmetic, and the first one being representative was a
+       property of that rather than a decision. */
+    get capacity() {
+      return lanes.reduce((least, lane) => Math.min(least, lane.frames), Infinity)
+             - deepest();
+    },
     get duration() { return duration; },
     get playing() { return nodes.length > 0; },
     get at() { return position(); },
@@ -5324,6 +5474,14 @@ async function makeRackSource(entries, label, deviceId) {
 
     remix() { laneMixer(lanes); },
 
+    /* Driven rather than idle. Every lane in a rack used to be fed by the
+       audio graph, so there was nothing for a tick to do; a lane made of
+       arithmetic has to be asked, and the transport never touches it because
+       the transport only ever touches lanes with a buffer. */
+    tick(nowSeconds) {
+      for (const lane of lanes) if (lane.tick) lane.tick(nowSeconds);
+    },
+
     play,
     pause,
     toggle() { if (nodes.length === 0) play(); else pause(); },
@@ -5339,8 +5497,6 @@ async function makeRackSource(entries, label, deviceId) {
       loop = on;
       nodes.forEach((node) => { node.loop = on; });
     },
-
-    tick() {},
 
     getLatestWindow(n) {
       return lanes.map((lane) => lane.read(n));
@@ -5653,6 +5809,10 @@ const state = {
      of them moved. */
   acHz: 10,
   micBands: false,           // whether live input arrives whole or split in four
+  /* Whether a rack carries a lane made of arithmetic. Not in a setup code: a
+     rack is whatever files you dropped on it, and a preset cannot carry those,
+     so a preset that carried this would restore half of an arrangement. */
+  rackSynth: false,
   /* What is plugged in, as the player asserts it, and whether they want to
      hear it. Neither is in a setup code and neither survives a reload, which
      is deliberate: this is a claim about the room, and the cost of being wrong
@@ -8058,7 +8218,8 @@ function writeReadout(frame) {
     /* A frequency ratio is what a Lissajous figure of two tones means. A
        drawn figure is not two tones - the estimator will still hand back a
        number for a pentagram, and it would be a measurement of nothing. */
-    const drawn = state.source.kind === "tone" && state.source.settings.mode !== "wave";
+    const generating = genSettings();
+    const drawn = !!generating && generating.mode !== "wave";
 
     if (lagActive()) {
       /* Against a delayed copy of itself the ratio is 1:1 by construction, so
@@ -8081,8 +8242,8 @@ function writeReadout(frame) {
 
     // What the figure's rotation rate actually is. In just tuning it is zero
     // and the figure stands still; in equal it is the beat you would hear.
-    if (state.source.kind === "tone") {
-      const tone = state.source.settings;
+    {
+      const tone = genSettings() || { mode: "" };
       if (tone.mode === "wave" && !tone.just) {
         const beat = beatRate(tone.interval, false, tone.freq, tone.octaves);
         if (beat > 0.005) bits.push("beating " + beat.toFixed(2) + " Hz");
@@ -8164,6 +8325,12 @@ function writeReadout(frame) {
      which is correct and is also the one state in this page where the trace
      legitimately disappears - so it says so rather than leaving somebody
      tapping the amplitude slider. */
+  /* The tone source specifically, and that is a limitation rather than an
+     oversight: the gate lives on the source, and a generator LANE is not
+     gated - `midiApplyGate` finds no `setGated` on a rack and leaves it
+     alone. A keyboard played into a rack with a generator lane sets its pitch
+     and does not start or stop it. Worth saying here because this is the line
+     that would otherwise be expected to appear. */
   if (state.source.kind === "tone" && state.source.gated
       && midi.notes.length === 0) {
     bits.push("gated \u00b7 no note held");
@@ -8664,10 +8831,52 @@ el.saveReference.addEventListener("click", () => {
 
 el.clearReference.addEventListener("click", () => { state.reference = null; });
 
+/* --- where the generator is -------------------------------------------------
+   The generator used to be a source or nothing, so every control that writes
+   to it asked `state.source.kind === "tone"` and wrote to `state.source`.
+   Thirty of them did. That question is a statement about what the generator
+   *was* rather than about what a generator is, and it stops being answerable
+   the moment the generator can be one lane of a rack.
+
+   These three are the question re-asked: where do the generator's controls
+   write, what are they reading, and is there a generator at all. A tone source
+   answers for itself; a rack answers through its synth lane, which carries the
+   same core. Nothing else answers, and `genSet` says so by returning false
+   rather than throwing - a control moved with no generator loaded has always
+   been a no-op and still is.                                                */
+function genLane() {
+  const source = state.source;
+  if (!source || !source.lanes) return null;
+  return source.lanes.find((lane) => lane.synth) || null;
+}
+
+function genSettings() {
+  const source = state.source;
+  if (source && source.kind === "tone") return source.settings;
+  const lane = genLane();
+  return lane ? lane.core.tone : null;
+}
+
+function genSet(field, value) {
+  const source = state.source;
+  if (source && source.kind === "tone") { source.set(field, value); return true; }
+  const lane = genLane();
+  if (!lane) return false;
+  lane.core.set(field, value);
+  return true;
+}
+
+function genReswing() {
+  const source = state.source;
+  if (source && source.kind === "tone") { source.reswing(); return; }
+  const lane = genLane();
+  if (lane) lane.core.reswing();
+}
+
 /* --- the generator's three families ------------------------------------- */
 
 function showGenerator() {
-  const tone = state.source.kind === "tone" ? state.source.settings : null;
+  const tone = genSettings();
   syncGeneratorSound();
   if (!tone) return;
 
@@ -8712,51 +8921,42 @@ el.genMode.addEventListener("change", () => {
 });
 
 el.interval.addEventListener("change", () => {
-  if (state.source.kind === "tone") {
-    state.source.set("interval", Number(el.interval.value));
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("interval", Number(el.interval.value))) el.credit.textContent = state.source.describe();
 });
 
 function setTuning(just) {
   el.tuneJust.setAttribute("aria-checked", String(just));
   el.tuneEqual.setAttribute("aria-checked", String(!just));
-  if (state.source.kind === "tone") {
-    state.source.set("just", just);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("just", just)) el.credit.textContent = state.source.describe();
 }
 el.tuneJust.addEventListener("click", () => setTuning(true));
 el.tuneEqual.addEventListener("click", () => setTuning(false));
 
 el.figure.addEventListener("change", () => {
-  if (state.source.kind === "tone") {
-    state.source.set("figure", el.figure.value);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("figure", el.figure.value)) el.credit.textContent = state.source.describe();
 });
 
 el.detail.addEventListener("input", () => {
   el.detailValue.textContent = el.detail.value;
-  if (state.source.kind === "tone") state.source.set("detail", Number(el.detail.value));
+  genSet("detail", Number(el.detail.value));
 });
 
 el.figureRate.addEventListener("input", () => {
   el.figureRateValue.textContent = el.figureRate.value + " Hz";
-  if (state.source.kind === "tone") state.source.set("figureRate", Number(el.figureRate.value));
+  genSet("figureRate", Number(el.figureRate.value));
 });
 
 el.decay.addEventListener("input", () => {
   const decay = Number(el.decay.value) / 100;
   // Said as the time it takes to run down, which is the thing you are setting.
   el.decayValue.textContent = (Math.log(1 / 0.015) / decay).toFixed(1) + " s";
-  if (state.source.kind === "tone") state.source.set("decay", decay);
+  genSet("decay", decay);
 });
 
 el.detune.addEventListener("input", () => {
   const detune = Number(el.detune.value) / 10000;
   el.detuneValue.textContent = detune.toFixed(4);
-  if (state.source.kind === "tone") state.source.set("detune", detune);
+  genSet("detune", detune);
 });
 
 /* The five envelope controls, which all do the same thing to a different
@@ -8774,7 +8974,7 @@ for (const [id, field, law, say] of ENVELOPE_CONTROLS) {
   el[id].addEventListener("input", () => {
     const raw = Number(el[id].value);
     el[id + "Value"].textContent = say(raw);
-    if (state.source.kind === "tone") state.source.set(field, law(raw));
+    genSet(field, law(raw));
   });
 }
 
@@ -8787,31 +8987,26 @@ function syncEnvelopeLabels() {
 el.swingRate.addEventListener("input", () => {
   const hz = Number(el.swingRate.value) / 10;
   el.swingRateValue.textContent = hz.toFixed(1) + " Hz";
-  if (state.source.kind === "tone") {
-    state.source.set("swingRate", hz);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("swingRate", hz)) el.credit.textContent = state.source.describe();
 });
 
 el.reswing.addEventListener("click", () => {
-  if (state.source.kind === "tone") state.source.reswing();
+  genReswing();
 });
 
 el.model.addEventListener("change", () => {
-  if (state.source.kind === "tone") {
-    state.source.set("model", el.model.value);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("model", el.model.value)) el.credit.textContent = state.source.describe();
 });
 
 [["spinX", 0], ["spinY", 1], ["spinZ", 2]].forEach(([id, axis]) => {
   el[id].addEventListener("input", () => {
     const hz = Number(el[id].value) / 100;
     el[id + "Value"].textContent = hz.toFixed(2) + " Hz";
-    if (state.source.kind === "tone") {
-      const spin = state.source.settings.spin.slice();
+    const shown = genSettings();
+    if (shown) {
+      const spin = shown.spin.slice();
       spin[axis] = hz;
-      state.source.set("spin", spin);
+      genSet("spin", spin);
     }
   });
 });
@@ -8819,13 +9014,13 @@ el.model.addEventListener("change", () => {
 el.spinRate.addEventListener("input", () => {
   const rate = Number(el.spinRate.value) / 100;
   el.spinRateValue.textContent = rate.toFixed(2) + "\u00d7";
-  if (state.source.kind === "tone") state.source.set("spinRate", rate);
+  genSet("spinRate", rate);
 });
 
 el.depth.addEventListener("input", () => {
   const depth = Number(el.depth.value) / 100;
   el.depthValue.textContent = depth.toFixed(2);
-  if (state.source.kind === "tone") state.source.set("depth", depth);
+  genSet("depth", depth);
 });
 
 el.harmonicsOn.addEventListener("change", (e) => {
@@ -9169,8 +9364,8 @@ function syncMidi() {
      pendulum ratio in harmonograph, a trace rate in figure, and how fast a
      solid tumbles in wireframe - which is why that last one starts off. The
      box therefore says what THIS kind does and remembers each kind's answer. */
-  const kind = state.source && state.source.kind === "tone"
-    ? state.source.settings.mode : null;
+  const shown = genSettings();
+  const kind = shown ? shown.mode : null;
   el.midiDrive.checked = kind ? midi.drive[kind] === true : false;
   el.midiDrive.disabled = kind === null;
 }
@@ -9311,7 +9506,7 @@ const DEFAULTS = {
 };
 
 function snapshot() {
-  const tone = state.source.kind === "tone" ? state.source.settings : null;
+  const tone = genSettings();
 
   return {
     gen: tone ? tone.mode : DEFAULTS.gen,
@@ -9413,10 +9608,8 @@ function restore(partial) {
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
 
-  if (state.source.kind === "tone") {
-    state.source.set("mode", s.gen);
-    state.source.reswing();
-  }
+  genSet("mode", s.gen);
+  genReswing();
   setTuning(s.just);
   showGenerator();
 
@@ -9951,7 +10144,11 @@ function showSource(pending) {
   shownKind = kind;
   /* A section now, not a div inside one, so it says it does not apply the way
      every other section does. `hidden` would be the bench's to set. */
-  if (kind === "tone") delete el.toneRows.dataset.off;
+  /* On whenever there is a generator to control, which is no longer the same
+     as "the source is the test tone": a rack with a synth lane in it has one,
+     and its controls have to reach it or the lane is a thing you can put on
+     the screen and not steer. */
+  if (genSettings()) delete el.toneRows.dataset.off;
   else el.toneRows.dataset.off = "1";
   /* The oscillators stay, whatever the source is. They were switched off
      wholesale on anything but the test tone, which was right when every
@@ -10289,6 +10486,8 @@ function setMicShape(bands) {
   if (state.source.kind === "mic") toMic(el.device.value || undefined);
 }
 
+el.rackSynth.addEventListener("change", () => setRackSynth(el.rackSynth.checked));
+
 el.micWhole.addEventListener("click", () => setMicShape(false));
 el.micBands.addEventListener("click", () => setMicShape(true));
 
@@ -10302,29 +10501,23 @@ el.device.addEventListener("change", () => toMic(el.device.value));
 el.freq.addEventListener("input", () => {
   const hz = Number(el.freq.value);
   el.freqValue.textContent = hz + " Hz";
-  if (state.source.kind === "tone") {
-    state.source.set("freq", hz);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("freq", hz)) el.credit.textContent = state.source.describe();
 });
 
 el.amp.addEventListener("input", () => {
   const amp = Number(el.amp.value) / 100;
   el.ampValue.textContent = amp.toFixed(2);
-  if (state.source.kind === "tone") state.source.set("amp", amp);
+  genSet("amp", amp);
 });
 
 el.shape.addEventListener("change", () => {
-  if (state.source.kind === "tone") {
-    state.source.set("shape", el.shape.value);
-    el.credit.textContent = state.source.describe();
-  }
+  if (genSet("shape", el.shape.value)) el.credit.textContent = state.source.describe();
 });
 
 el.phase.addEventListener("input", () => {
   const degrees = Number(el.phase.value);
   el.phaseValue.textContent = degrees + "\u00b0";
-  if (state.source.kind === "tone") state.source.set("phase", degrees * Math.PI / 180);
+  genSet("phase", degrees * Math.PI / 180);
 });
 
 /* --- the lanes, as controls --------------------------------------------------
@@ -10519,20 +10712,75 @@ async function readAll(files) {
   return entries;
 }
 
+/* The files a rack was built from, kept so that adding or removing the
+   generator can rebuild it rather than asking for them again. File objects are
+   references rather than copies - the bytes are read on demand - so holding
+   them costs nothing, and `setMicShape` set the precedent: a switch that
+   changes what a source IS rebuilds the source. */
+let rackFiles = null;
+let rackAlong = null;
+
+/* How many lanes a choice would come to, and what has to go. The generator
+   takes one of six, so this is said BEFORE anything is decoded rather than
+   discovered afterwards as files quietly missing from the rack. */
+function laneBudget(fileCount, extras) {
+  const wanted = fileCount + extras;
+  return {
+    wanted,
+    room: Math.max(0, MAX_LANES - extras),
+    over: Math.max(0, wanted - MAX_LANES),
+  };
+}
+
+function sayBudget() {
+  const files = rackFiles ? rackFiles.length : 0;
+  const extras = (state.rackSynth ? 1 : 0) + (rackAlong ? 1 : 0);
+  if (files === 0 && extras === 0) { el.rackBudget.textContent = ""; return; }
+  const budget = laneBudget(files, extras);
+  el.rackBudget.textContent = budget.over > 0
+    ? budget.wanted + " lanes wanted, " + MAX_LANES + " is the most"
+    : budget.wanted + " of " + MAX_LANES + " lanes";
+  el.rackBudget.dataset.state = budget.over > 0 ? "over" : "";
+}
+
 async function toRack(files) {
-  const list = Array.from(files).slice(0, MAX_LANES);
+  const all = Array.from(files);
+  rackAlong = null;
+  rackFiles = all;
+
+  // The generator takes one of the six before any file does, so the files are
+  // cut to what is left rather than to six.
+  const budget = laneBudget(all.length, state.rackSynth ? 1 : 0);
+  const list = all.slice(0, budget.room);
+  sayBudget();
   if (list.length === 0) return;
 
   sayRack("Decoding " + list.length + (list.length === 1 ? " file…" : " files…"));
   try {
-    const source = await makeRackSource(await readAll(list), list.length + " stems");
+    const entries = await readAll(list);
+    if (state.rackSynth) entries.unshift({ name: "Generator", synth: true });
+    const source = await makeRackSource(entries, list.length + " stems");
     adoptRack(source, "stems");
-    sayRack(list.length < files.length
-      ? "Six lanes is the most the screen can tell apart, so the first six were taken."
+    sayRack(budget.over > 0
+      ? "Six lanes is the most the screen can tell apart, so the first "
+        + list.length + " were taken."
       : null);
   } catch (error) {
     sayRack("That would not decode: " + error.message);
   }
+}
+
+/* Ticking the box rebuilds whatever is loaded, rather than applying to the
+   next thing you open. `setMicShape` does the same for the band split, and for
+   the same reason: a switch that describes what the source IS reads as broken
+   if the source it is describing does not change. */
+async function setRackSynth(on) {
+  if (state.rackSynth === on) return;
+  state.rackSynth = on;
+  el.rackSynth.checked = on;
+  sayBudget();
+  if (rackAlong) { await toPlayAlong(rackAlong); return; }
+  if (rackFiles && rackFiles.length > 0) await toRack(rackFiles);
 }
 
 /* Positive holds the track back to meet a late input, which is the usual
@@ -10557,6 +10805,9 @@ function showAlign() {
 
 async function toPlayAlong(file) {
   if (!file) return;
+  rackFiles = null;
+  rackAlong = file;
+  sayBudget();
   sayRack("Opening the microphone and decoding \u201c" + file.name + "\u201d\u2026");
 
   try {
@@ -10564,6 +10815,7 @@ async function toPlayAlong(file) {
       { name: laneNameFor(file), data: await file.arrayBuffer() },
       { name: "You", stream: true },
     ];
+    if (state.rackSynth) entries.unshift({ name: "Generator", synth: true });
     const source = await makeRackSource(entries, "play along", el.device.value || undefined);
     adoptRack(source, "along");
 

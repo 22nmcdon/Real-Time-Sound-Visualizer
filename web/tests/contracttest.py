@@ -250,6 +250,237 @@ with sync_playwright() as pw:
           and all(abs(x - 0.4) < 0.01 for x in synthetic["peaks"]),
           str([round(x, 4) for x in synthetic["peaks"]]))
 
+    print("\n--- and the generator as one of them, for real ---")
+    # Everything above proves a made-up lane satisfies the contract. This is
+    # the real one: the generator's own core, in a real rack, beside real
+    # files, reached through the real checkbox.
+    p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
+    p.wait_for_timeout(200)
+    p.locator("#rackInput").set_input_files(
+        [f"{STEMS}/{n}.wav" for n in ("drums", "bass")])
+    p.wait_for_timeout(1800)
+    withSynth = p.evaluate("""() => {
+      const source = state.source;
+      const lane = source.lanes.find((l) => l.synth);
+      return {
+        lanes: source.lanes.map((l) => l.name),
+        found: !!lane,
+        keeps: lane ? (typeof lane.read === 'function'
+                       && typeof lane.setMix === 'function'
+                       && typeof lane.frames === 'number') : false,
+        monitored: lane ? lane.monitored : null,
+        driver: lfoDriver(),
+        budget: el.rackBudget.textContent,
+        // The generator panel has to be reachable, or the lane is a thing you
+        // can put on the screen and not steer.
+        panel: el.toneRows.dataset.off === undefined,
+        settings: !!genSettings(),
+      };
+    }""")
+    print("    lanes %s, budget %r, driver %s"
+          % (withSynth["lanes"], withSynth["budget"], withSynth["driver"]))
+    check("the generator is a lane of the rack",
+          withSynth["found"] and withSynth["lanes"][0] == "Generator"
+          and len(withSynth["lanes"]) == 3, str(withSynth["lanes"]))
+    check("and it keeps the contract like any other lane",
+          withSynth["keeps"] and withSynth["monitored"] is False, str(withSynth))
+    check("the oscillators are driven by the lane's own loop, not the frame",
+          withSynth["driver"] == "fill", withSynth["driver"])
+    check("and the generator's controls reach it",
+          withSynth["panel"] and withSynth["settings"], str(withSynth))
+
+    # It has to be making something, not merely present.
+    p.wait_for_timeout(600)
+    making = p.evaluate("""() => {
+      const lane = state.source.lanes.find((l) => l.synth);
+      const w = lane.read(4096);
+      let peak = 0;
+      for (let i = 0; i < w.length; i++) peak = Math.max(peak, Math.abs(w[i]));
+      // And the generator's own controls move it.
+      genSet('amp', 0.2);
+      return { peak, amp: genSettings().amp };
+    }""")
+    p.wait_for_timeout(500)
+    quieter = p.evaluate("""() => {
+      const lane = state.source.lanes.find((l) => l.synth);
+      const w = lane.read(4096);
+      let peak = 0;
+      for (let i = 0; i < w.length; i++) peak = Math.max(peak, Math.abs(w[i]));
+      genSet('amp', 0.55);
+      return peak;
+    }""")
+    print("    the lane made %.3f, and %.3f after the amplitude was turned down"
+          % (making["peak"], quieter))
+    check("the lane is actually generating",
+          making["peak"] > 0.3, "%.3f" % making["peak"])
+    check("and the amplitude slider reaches it",
+          quieter < making["peak"] * 0.6 and quieter > 0.1,
+          "%.3f against %.3f" % (quieter, making["peak"]))
+
+    print("\n--- the lane budget, said before anything is decoded ---")
+    budget = p.evaluate("""() => {
+      const shown = () => ({ text: el.rackBudget.textContent,
+                             over: el.rackBudget.dataset.state });
+      const out = { withGenerator: shown() };
+      // Six files and the generator is seven lanes' worth of intent.
+      const sums = [];
+      for (const files of [1, 4, 5, 6, 8]) {
+        for (const extras of [0, 1, 2]) {
+          const b = laneBudget(files, extras);
+          sums.push({ files, extras, wanted: b.wanted, room: b.room, over: b.over });
+        }
+      }
+      return { ...out, sums, max: MAX_LANES };
+    }""")
+    print("    with two stems and the generator: %r" % budget["withGenerator"]["text"])
+    for row in budget["sums"]:
+        if row["files"] in (5, 6) and row["extras"] == 1:
+            print("    %d files + %d extra: wants %d, room for %d, over by %d"
+                  % (row["files"], row["extras"], row["wanted"],
+                     row["room"], row["over"]))
+    check("the count is shown for what is loaded",
+          "3 of 6" in budget["withGenerator"]["text"],
+          budget["withGenerator"]["text"])
+    check("the generator takes one of the six before any file does",
+          all(r["room"] == budget["max"] - r["extras"] for r in budget["sums"]),
+          str([(r["extras"], r["room"]) for r in budget["sums"][:6]]))
+    check("and a choice that will not fit says so rather than dropping quietly",
+          all((r["over"] > 0) == (r["wanted"] > budget["max"]) for r in budget["sums"]),
+          str([(r["wanted"], r["over"]) for r in budget["sums"]]))
+
+    # Six stems and the generator: the files give way, not the generator, and
+    # the rack says what it took.
+    p.locator("#rackInput").set_input_files(
+        [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
+    p.wait_for_timeout(1800)
+    over = p.evaluate("""() => {
+      const loaded = {
+        lanes: state.source.lanes.length,
+        names: state.source.lanes.map((l) => l.name),
+      };
+      /* Two more pretended, so the over-budget line can be read without two
+         more fixtures - and PUT BACK, because the next check rebuilds from
+         this list and six files is a perfectly good rack. Leaving it padded
+         made "unticking it removes the lane" fail with six lanes and no
+         generator, which is the right answer to the wrong question. */
+      const was = rackFiles;
+      rackFiles = rackFiles.concat(rackFiles.slice(0, 2));
+      sayBudget();
+      const text = el.rackBudget.textContent;
+      const overState = el.rackBudget.dataset.state;
+      rackFiles = was;
+      sayBudget();
+      return { ...loaded, text, over: overState };
+    }""")
+    print("    four stems and the generator: %d lanes %s; six would say %r"
+          % (over["lanes"], over["names"], over["text"]))
+    check("four stems plus the generator is five lanes, generator first",
+          over["lanes"] == 5 and over["names"][0] == "Generator", str(over["names"]))
+    check("and seven wanted is marked as over",
+          over["over"] == "over" and "most" in over["text"], over["text"])
+
+    # More files than there is room for, which is the only case where
+    # reserving a lane for the generator changes anything - and the case a
+    # mutation that stopped reserving it survived, because every rack above
+    # fits comfortably. Six chosen, five taken, the generator keeping its one.
+    p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
+    p.wait_for_timeout(200)
+    p.locator("#rackInput").set_input_files(
+        [f"{STEMS}/{n}.wav" for n in
+         ("drums", "bass", "other", "vocals", "drums", "bass")])
+    p.wait_for_timeout(2200)
+    crowded = p.evaluate("""() => ({
+      lanes: state.source.lanes.length,
+      names: state.source.lanes.map((l) => l.name),
+      synth: state.source.lanes.filter((l) => l.synth).length,
+      budget: el.rackBudget.textContent,
+      note: el.rackNote.textContent,
+    })""")
+    print("    six files and the generator: %d lanes, %s"
+          % (crowded["lanes"], crowded["names"]))
+    print("    budget %r" % crowded["budget"])
+    check("six files and the generator comes to six lanes, not seven",
+          crowded["lanes"] == 6, str(crowded["lanes"]))
+    check("and the one dropped is a file, not the generator",
+          crowded["synth"] == 1 and crowded["names"][0] == "Generator"
+          and len(crowded["names"]) - 1 == 5, str(crowded["names"]))
+    check("and the page says what it took rather than doing it quietly",
+          "most" in crowded["note"] and "5" in crowded["note"],
+          crowded["note"][:80])
+
+    # Back to something small for the checks below.
+    p.locator("#rackInput").set_input_files(
+        [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
+    p.wait_for_timeout(1800)
+
+    # Two of them, which no control can ask for and which would be a quiet
+    # disaster if one ever could: both would step the shared oscillators once a
+    # sample and every modulation rate would run at double. Dropped where the
+    # rack is built rather than refused, so a caller that asked for two gets a
+    # rack rather than an exception.
+    doubled = p.evaluate("""async () => {
+      /* A real file alongside, because a rack of nothing but arithmetic is
+         refused - and rightly: that is the tone source with extra steps. Built
+         here rather than fetched, since a page opened from `file://` cannot
+         read its own siblings. A tenth of a second of 16-bit mono is enough
+         for `decodeAudioData` to say yes. */
+      const wav = () => {
+        const rate = 44100, n = Math.round(rate * 0.1);
+        const buffer = new ArrayBuffer(44 + n * 2);
+        const view = new DataView(buffer);
+        const tag = (at, text) => {
+          for (let i = 0; i < text.length; i++) view.setUint8(at + i, text.charCodeAt(i));
+        };
+        tag(0, 'RIFF'); view.setUint32(4, 36 + n * 2, true); tag(8, 'WAVE');
+        tag(12, 'fmt '); view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+        view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
+        view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+        tag(36, 'data'); view.setUint32(40, n * 2, true);
+        for (let i = 0; i < n; i++) {
+          view.setInt16(44 + i * 2,
+            Math.round(12000 * Math.sin(2 * Math.PI * 220 * i / rate)), true);
+        }
+        return buffer;
+      };
+
+      const made = await makeRackSource([
+        { name: 'Generator', synth: true },
+        { name: 'Generator too', synth: true },
+        { name: 'A file', data: wav() },
+        { name: 'Tone', synth: true },
+      ], 'two of them');
+      const out = { lanes: made.lanes.length,
+                    synths: made.lanes.filter((l) => l.synth).length,
+                    names: made.lanes.map((l) => l.name) };
+      made.stop();
+      return out;
+    }""")
+    print("    three asked for beside a file: %d lanes, %d arithmetic %s"
+          % (doubled["lanes"], doubled["synths"], doubled["names"]))
+    check("a rack keeps one generator lane however many were asked for",
+          doubled["synths"] == 1, str(doubled))
+    check("and it is the first one, not the last",
+          doubled["names"][0] == "Generator", str(doubled["names"]))
+
+    print("\n--- and taking it out again ---")
+    p.evaluate("() => { el.rackSynth.checked = false; return setRackSynth(false); }")
+    p.wait_for_timeout(1800)
+    without = p.evaluate("""() => ({
+      lanes: state.source.lanes.map((l) => l.name),
+      synth: state.source.lanes.some((l) => l.synth),
+      driver: lfoDriver(),
+      panel: el.toneRows.dataset.off === undefined,
+    })""")
+    print("    lanes %s, driver %s" % (without["lanes"], without["driver"]))
+    check("unticking it rebuilds the rack without the lane",
+          without["synth"] is False and len(without["lanes"]) == 4,
+          str(without["lanes"]))
+    check("and the oscillators go back to the frame clock",
+          without["driver"] == "main", without["driver"])
+    check("and the generator's controls stop claiming to apply",
+          without["panel"] is False, str(without["panel"]))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

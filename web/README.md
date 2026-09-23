@@ -987,3 +987,51 @@ reaching for a gain node again, the second call threw out of the whole
 page. Every call is wrapped now and the mutation produces a named failure. The
 same rule as "if it does not name the fault, it is not testing it", one level
 out: if it cannot report the fault, it is not reporting it.
+
+**The generator can be a lane, and it is one lane — its left channel.** A lane
+is one signal and the generator makes two, so the right is computed and thrown
+away (the core produces the pair together; half of it is not cheaper). Stage D's
+own verification asks for exactly this — "X–Y can pair generator-L against
+Nord-L" — and the cost is that the generator's own figure, its left against its
+right, is not available while it is a lane. Put it back on its own to see that.
+
+**A generator lane is silent, and that is the rest of D2 rather than an
+oversight.** The worklet gives the generator an output when it *is* the source;
+giving a lane an output means a second worklet on the rack's context feeding the
+rack's mix, with the monitoring rules that go with it. `monitored` is false, the
+same as the live lane in a play-along rack. A keyboard is also not gated into a
+lane: the gate lives on the source, `midiApplyGate` finds no `setGated` on a
+rack, so a note sets the pitch without starting or stopping it.
+
+**`state.source.kind === "tone"` was asked in thirty places, and it was the
+wrong question.** It is a statement about what the generator *was* — a source or
+nothing — and it stops being answerable the moment the generator can be one lane
+of a rack. `genSettings()`, `genSet()` and `genReswing()` are the question
+re-asked: where do the generator's controls write, and is there a generator at
+all. A tone source answers for itself, a rack answers through its synth lane,
+nothing else answers. `genSet` returns false rather than throwing, because a
+control moved with no generator loaded has always been a no-op.
+
+**Only one generator lane per rack, and the first one survives.** Two would both
+step the shared oscillators once a sample and every modulation rate would run at
+double — which `assertLfoDriver` catches on the first block, but the rack is
+where the answer is knowable rather than where the symptom appears. The
+de-duplication swept backwards and kept the *last*, so the comment beside it and
+the code disagreed; a test caught them at it.
+
+**The lane budget is said before anything is decoded.** The generator takes one
+of the six before any file does, so the file list is cut to what is left rather
+than to six, and the reading beside the checkbox says `3 of 6 lanes` or
+`7 lanes wanted, 6 is the most`. A mutation that stopped reserving the lane
+survived every rack in the suite, because they all fit comfortably — the check
+that catches it chooses six files with the generator on, and requires the one
+dropped to be a file.
+
+**A rack's capacity is its shortest lane, not its first.** They were all
+analysers holding 32768 frames, so `lanes[0]` was representative by accident of
+how they were built rather than by decision.
+
+**Ticking the box rebuilds what is loaded.** `setMicShape` set the precedent: a
+switch that describes what the source *is* reads as broken if the source does
+not change. The File objects are held for it, which costs nothing — a File is a
+reference and the bytes are read on demand.
