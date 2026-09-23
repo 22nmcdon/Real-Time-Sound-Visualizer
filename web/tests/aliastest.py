@@ -38,7 +38,7 @@ def window(n):
             + BH[2] * np.cos(4 * np.pi * i / n) - BH[3] * np.cos(6 * np.pi * i / n))
 
 
-def alias_floors(samples, f0, rate=RATE):
+def alias_floors(samples, f0, rate=RATE, against="fundamental"):
     """Everything that is not a harmonic of f0, in dB below the fundamental.
 
     Two numbers, because they answer different questions. The worst peak
@@ -59,8 +59,12 @@ def alias_floors(samples, f0, rate=RATE):
         harmonic |= np.abs(hz - k * f0) < near
         k += 1
 
-    fundamental = spec[np.abs(hz - f0) < near].max()
-    db = lambda v: 20 * math.log10(max(float(v), 1e-12) / fundamental)
+    # A drawn figure's loudest partial is not the one at its trace rate - a
+    # five-pointed star puts most of its energy in the fifth - so those are
+    # measured against the loudest component instead. For a waveform the two
+    # are the same thing.
+    ref = spec.max() if against == "loudest" else spec[np.abs(hz - f0) < near].max()
+    db = lambda v: 20 * math.log10(max(float(v), 1e-12) / ref)
     return db(spec[~harmonic].max()), db(spec[~harmonic & (hz < 10000)].max())
 
 
@@ -174,6 +178,53 @@ with sync_playwright() as pw:
     check("the generator's own samples are band-limited, not just waveAt",
           audible <= -40, "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
 
+    print("\n--- the drawn generators, which polyBLEP cannot reach ---")
+    # A figure, a solid and a harmonograph are parametric paths: their
+    # discontinuities, where they have any, are at no phase anything knows in
+    # advance, so the correction above does not apply to them. The plan's
+    # choice was between rendering them at 4x and decimating, or leaving them
+    # and stating the limit. Measured, they do not need it: the worst of them
+    # is no worse than the corrected square, which is the floor this page has
+    # decided to live with. These checks keep that true - a figure added later
+    # with a jump in it will say so here.
+    def drawn(name, setup, f0, want, settle=1100):
+        p.evaluate(setup)
+        p.wait_for_timeout(settle)
+        got = p.evaluate("(n) => Array.from(state.source.getLatestWindow(n)[0])", N)
+        peak, audible = alias_floors(got, f0, against="loudest")
+        check("%s stays under %d dB" % (name, want), audible <= want,
+              "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
+
+    drawn("a star traced 200 times a second", """() => {
+      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
+      el.figure.value = 'Star'; el.figure.dispatchEvent(new Event('change'));
+      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 200, -70)
+
+    drawn("a cube tumbling at 40", """() => {
+      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
+      el.model.value = 'Cube'; el.model.dispatchEvent(new Event('change'));
+      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 40, -42)
+
+    # The harmonograph's partials are two hertz apart, which no window can
+    # separate, so "is this a harmonic" is not a question that can be put to
+    # it. It is also not worth putting: a sum of sines at a few hertz has
+    # nothing above Nyquist to fold. What can be asked is whether anything
+    # lands up high at all.
+    p.evaluate("""() => {
+      el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change'));
+      el.swingRate.value = '21'; el.swingRate.dispatchEvent(new Event('input'));
+      state.source.reswing();
+    }""")
+    p.wait_for_timeout(1100)
+    swung = np.asarray(p.evaluate("(n) => Array.from(state.source.getLatestWindow(n)[0])", N))
+    spec = np.abs(np.fft.rfft(swung * window(len(swung))))
+    hz = np.arange(len(spec)) * RATE / len(swung)
+    high = 20 * math.log10(max(float(spec[hz > 1000].max()), 1e-12) / spec.max())
+    check("the harmonograph puts nothing above a kilohertz", high < -100,
+          "%.1f dB down" % high)
+
     print("\n--- what it costs the picture ---")
     # The generator is a picture first and will be a sound second, so it is
     # worth stating exactly where the correction lands: one sample either side
@@ -209,6 +260,8 @@ with sync_playwright() as pw:
     # nothing to do with band-limiting, but it catches anyone who tries this
     # with a round number.
     p.evaluate("""() => {
+      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
+      el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
       el.freq.value = '431'; el.freq.dispatchEvent(new Event('input'));
       state.panesExtra.harmonics = true; syncPanes();
     }""")

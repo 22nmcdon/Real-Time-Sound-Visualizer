@@ -2,10 +2,16 @@
 
 **Where this stands.** Stage A is built: MIDI in, CC learn, the dyad, the tuning
 switch, and the note as ground truth for the lag, the timebase and the tuner.
-**B1 is built too** — the generator is band-limited, ahead of the sound that
-needs it. Everything else from Stage B on is still a plan.
-`web/tests/miditest.py` and `web/tests/aliastest.py` hold the verification A
-and B1 asked for.
+**B1 is built too** — polyBLEP on the square and the ramp, polyBLAMP on the
+triangle, and the question B1 left open for the geometric generators settled by
+measurement: they alias no worse than the corrected square, so none of them is
+oversampled and none needs to be. Everything else from Stage B on is still a
+plan. `web/tests/miditest.py` and `web/tests/aliastest.py` hold the
+verification A and B1 asked for.
+
+One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
+a single sample when the pendulums have run down, which is an audible click the
+moment the generator has an output.
 
 A plan, built on `docs/midi-and-the-audio-path.md`. That note describes *what*
 and *why*; this one turns it into stages with decisions made, dependencies

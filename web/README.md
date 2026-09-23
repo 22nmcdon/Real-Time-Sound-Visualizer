@@ -252,6 +252,24 @@ triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
 
+**The drawn generators need no oversampling, and that was measured rather
+than assumed.** A figure, a solid and a harmonograph are parametric paths whose
+discontinuities are at no phase anything knows in advance, so polyBLEP cannot
+reach them; the plan's choice was between rendering them at 4× and decimating,
+or leaving them and stating the limit. Measured: every figure is at −75 dB or
+quieter (the worst is a star traced 200 times a second), a tumbling wireframe
+is around −47 dB, and the harmonograph puts nothing at all above a kilohertz.
+The worst of them is no worse than the corrected square, which is the floor
+this page has settled for — so nothing was built, and `aliastest.py` keeps the
+statement true if someone adds a figure with a jump in it.
+
+**The harmonograph's restart is a step, and it will click.** When the pendulums
+have run down the envelope is set back to 1 and the phases to nought in one
+sample — an amplitude jump of about half full scale. Silent, it is a figure
+being redrawn; audible, it is a click every few seconds. Nothing to do about it
+until the generator has an envelope, which is Stage B4, but it is a known thing
+rather than a surprise waiting there.
+
 **`waveAt` with no `step` is the function as it was, to the bit.** That is the
 contract the LFOs rely on: an oscillator at 0.2 Hz has no aliasing to correct,
 and a correction applied to it would be a dent in the shape it exists to draw.
