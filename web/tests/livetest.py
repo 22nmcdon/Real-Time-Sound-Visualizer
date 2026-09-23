@@ -217,6 +217,125 @@ with sync_playwright() as pw:
     check("without asking for the microphone again", swapped["calls"] == 0,
           "%d further getUserMedia calls" % swapped["calls"])
 
+    # ---- microphone or line, and what may reach the speakers ---------------
+    print("\n--- a microphone is never monitored, a declared line input may be ---")
+    # The rule this bends is the oldest safety rule in the page, so it is
+    # tested from both ends: what the state says, and what the graph is
+    # actually wired to. The source re-checks the kind itself, so forcing the
+    # UI state past it is one of the cases.
+    p.evaluate("() => setMicShape(false)")            # monitoring is whole-input only
+    p.wait_for_timeout(1400)
+
+    def wiring():
+        return p.evaluate("""() => {
+          const source = state.source;
+          return {
+            kind: state.liveKind,
+            wanted: state.monitorLive,
+            monitored: source.monitored === true,
+            chains: monitorChains.size,
+            box: el.monitorLive.disabled,
+            says: source.describe(),
+          };
+        }""")
+
+    start = wiring()
+    check("a live input opens as a microphone and is not monitored",
+          start["kind"] == "mic" and start["monitored"] is False
+          and start["chains"] == 0, str(start))
+    check("and the toggle is unavailable rather than inert", start["box"] is True)
+
+    forced = p.evaluate("""() => {
+      // Past the UI, straight at the state: a preset, a stray click or a bug
+      // must not be able to put a microphone through the speakers.
+      state.monitorLive = true;
+      applyMonitor();
+      const direct = state.source.setMonitor(true);
+      return { after: state.monitorLive, direct, chains: monitorChains.size };
+    }""")
+    check("asking for it anyway does nothing at all",
+          forced["after"] is False and forced["direct"] is False
+          and forced["chains"] == 0, str(forced))
+
+    # Now the declared line input, with the graph watched from the destination
+    # backwards rather than from the source forwards.
+    lined = p.evaluate("""() => {
+      window.__toDest = [];
+      const realConnect = AudioNode.prototype.connect;
+      AudioNode.prototype.connect = function (dest, ...rest) {
+        if (dest && dest.context && dest === dest.context.destination) {
+          window.__toDest.push(this.constructor.name);
+        }
+        return realConnect.call(this, dest, ...rest);
+      };
+      setLiveKind('line');
+      state.monitorLive = true;
+      applyMonitor();
+      AudioNode.prototype.connect = realConnect;
+      return { monitored: state.source.monitored, chains: monitorChains.size,
+               lastBeforeSpeakers: window.__toDest,
+               says: state.source.describe(), box: el.monitorLive.disabled,
+               latency: el.monitorLatency.textContent };
+    }""")
+    check("a line input can be heard when its toggle is on",
+          lined["monitored"] is True and lined["chains"] == 1, str(lined))
+    check("and the last thing before the speakers is the clamp",
+          lined["lastBeforeSpeakers"] == ["WaveShaperNode"],
+          str(lined["lastBeforeSpeakers"]))
+    check("the credit line says it is monitored", "monitored" in lined["says"],
+          lined["says"])
+    check("and the latency is stated rather than left to be discovered",
+          "ms" in lined["latency"], lined["latency"])
+
+    back = p.evaluate("""() => {
+      window.__cut = 0;
+      const realDisconnect = AudioNode.prototype.disconnect;
+      AudioNode.prototype.disconnect = function (...args) {
+        if (this.constructor.name === 'WaveShaperNode') window.__cut++;
+        return realDisconnect.apply(this, args);
+      };
+      setLiveKind('mic');
+      AudioNode.prototype.disconnect = realDisconnect;
+      return { monitored: state.source.monitored, wanted: state.monitorLive,
+               chains: monitorChains.size, cut: window.__cut };
+    }""")
+    check("calling it a microphone again takes it off the speakers at once",
+          back["monitored"] is False and back["wanted"] is False
+          and back["chains"] == 0, str(back))
+    check("and the clamp is unhooked rather than left dangling", back["cut"] == 1,
+          "%d disconnects" % back["cut"])
+
+    again = p.evaluate("""() => {
+      // Switching back must not resume anything. The wish is dropped when the
+      // input stops being a line input, so coming back to one starts from
+      // silence and waits to be asked - the alternative is a page that begins
+      // monitoring because of something you said a minute ago.
+      setLiveKind('line');
+      return { monitored: state.source.monitored, wanted: state.monitorLive,
+               box: el.monitorLive.checked };
+    }""")
+    check("and calling it a line input again does not resume it",
+          again["monitored"] is False and again["wanted"] is False
+          and again["box"] is False, str(again))
+
+    split = p.evaluate("""async () => {
+      setLiveKind('line');
+      state.monitorLive = true;
+      applyMonitor();
+      const before = state.source.monitored;
+      setMicShape(true);                       // a band split cannot be monitored
+      await new Promise((r) => setTimeout(r, 1500));
+      const out = { before, after: state.monitorLive, chains: monitorChains.size,
+                    box: el.monitorLive.disabled };
+      setLiveKind('mic');
+      return out;
+    }""")
+    check("splitting into bands takes the monitoring with it",
+          split["before"] is True and split["after"] is False
+          and split["chains"] == 0 and split["box"] is True, str(split))
+    # Left as a band split: this section borrowed the source the ones below
+    # were written against rather than bringing its own.
+
     # ---- the Live presets must not throw away what you are playing ---------
     print("\n--- the Live presets leave the source alone ---")
     presets = p.evaluate("""() => {

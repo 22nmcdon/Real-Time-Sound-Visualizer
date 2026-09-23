@@ -989,12 +989,35 @@ body[data-view="bench"] #menuButton { display: none; }
                 </div>
               </div>
             </div>
+            <div class="menu-row" id="liveKindRow" hidden>
+              <span class="menu-label">What is it</span>
+              <div class="switch" role="radiogroup" aria-label="What is plugged in">
+                <button type="button" class="caps" id="kindMic" role="radio" aria-checked="true">Microphone</button>
+                <button type="button" class="caps" id="kindLine" role="radio" aria-checked="false">Line</button>
+              </div>
+            </div>
+            <label class="check" id="monitorRow" hidden>
+              <input type="checkbox" id="monitorLive"> Hear it through the page
+              <span class="reading" id="monitorLatency"></span>
+            </label>
             <p class="menu-note" id="micNote" hidden><i>Into bands</i> splits what you are
               playing across four crossovers, so one instrument down one input gets four
-              lanes and an X&ndash;Y figure that moves when you move. Live input is never
-              sent to the speakers &mdash; a microphone routed back out of them is a
-              feedback loop &mdash; so <i>solo</i> and <i>mute</i> choose what the screen
-              draws and nothing else.</p>
+              lanes and an X&ndash;Y figure that moves when you move. <i>Solo</i> and
+              <i>mute</i> choose what the screen draws.
+              <br><br>
+              A <i>microphone</i> is never sent to the speakers: what comes out of them
+              goes back into it, and that is a feedback loop. A <i>line</i> input has no
+              ear &mdash; a keyboard does not hear the room &mdash; so it may be monitored,
+              and that is a claim you are making about what is plugged in rather than
+              something the browser can tell. Get it wrong with a microphone selected and
+              the loop is real, so wear headphones the first time.
+              <br><br>
+              What you hear that way has been round the converter twice and through the
+              page's own buffers: the figure given is the browser's own, which is the
+              output side only and a floor rather than the whole trip. Tens of
+              milliseconds is normal and a keyboard player will feel it. The setup that
+              does not suffer it is hearing the instrument directly and letting this page
+              only look. A band split is not monitored at all.</p>
           </div>
 
           <div class="menu-group" id="midiGroup">
@@ -1821,12 +1844,24 @@ body[data-view="bench"] #menuButton { display: none; }
         <span>Under <i>Mic</i>, <i>Lanes &rarr; Into bands</i> puts what you are playing
         through the same four crossovers the stem splitter uses. One instrument down one
         input becomes four lanes, and low end against upper harmonics is an X&ndash;Y figure
-        that moves because you moved. Live input is never sent to the speakers &mdash; a
-        microphone routed back out of them is a feedback loop &mdash; so <i>solo</i> and
-        <i>mute</i> choose what the screen draws and nothing else. The browser's echo
-        cancellation, noise suppression and automatic gain are all turned off: they are
-        built for voice calls and every one of them reshapes the waveform you came here to
-        look at.</span></li>
+        that moves because you moved. <i>Solo</i> and <i>mute</i> choose what the screen
+        draws. The browser's echo cancellation, noise suppression and automatic gain are
+        all turned off: they are built for voice calls and every one of them reshapes the
+        waveform you came here to look at.</span></li>
+
+      <li><b>Microphone or line, and what may be heard</b>
+        <span>A microphone is never sent to the speakers, because what comes out of them
+        goes straight back into it. A line input &mdash; a keyboard, an interface, a
+        mixer's output &mdash; has no ear, so there is no loop to make, and it can be
+        monitored through the page behind an explicit toggle. Which one is plugged in is
+        something you assert and the browser cannot check, so wear headphones the first
+        time you turn it on.
+        <br><br>
+        The cost is latency: what you hear has been through the converter and the page's
+        buffers, which is tens of milliseconds and enough for a keyboard player to feel.
+        The reading beside the toggle is the browser's own figure for the output side, so
+        treat it as a floor. Hearing the instrument directly and letting this page only
+        look is the version with no delay in it at all.</span></li>
 
       <li><b>Stems stack</b>
         <span>Up to six, and six because that is where the paper stops being able to tell one
@@ -2059,6 +2094,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiCC",
                   "micShapeRow", "micWhole", "micBands", "micNote",
+                  "liveKindRow", "kindMic", "kindLine", "monitorRow", "monitorLive",
+                  "monitorLatency",
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
                   "viewScope", "viewBench", "benchRail", "benchBody",
                   "benchSide", "benchScope", "traceSheet", "panes",
@@ -3596,15 +3633,56 @@ async function makeMicSource(deviceId) {
 
   const scratch = [new Float32Array(32768), new Float32Array(32768)];
 
+  /* Monitoring, and the rule it bends. A microphone is never connected to the
+     destination - that is a feedback loop and the rule predates everything
+     else here. What the rule was really about is an ACOUSTIC path back into
+     the input, and a keyboard on a line input has none: nothing it hears comes
+     out of the speakers, because it does not hear.
+
+     So the input carries a kind, the player asserts it, and only a declared
+     line input may be monitored - behind a toggle, off by default, and
+     re-checked here rather than trusted from the UI. Two guards, because one
+     of them is a UI state that a preset or a stray click could move.
+
+     The chain is built when it is wanted and dropped when it is not: a monitor
+     chain connects itself to the destination at construction, so an unused one
+     is a live path to the speakers waiting for a bug. */
+  let chain = null;
+
+  function setMonitor(on) {
+    const want = on === true && state.liveKind === "line";
+    if (want === (chain !== null)) return chain !== null;
+    if (want) {
+      chain = makeMonitorChain(ctx);
+      node.connect(chain.input);
+      syncMonitor();
+    } else {
+      node.disconnect(chain.input);
+      dropMonitorChain(chain);
+      chain = null;
+    }
+    return want;
+  }
+
   return {
     kind: "mic",
+    setMonitor,
+    get monitored() { return chain !== null; },
+    /* What the browser admits to, which is the output side plus its own
+       buffer; the converter's own latency is not in it and neither is the
+       driver's. It is a floor rather than the round trip, and the panel says
+       so - the real number is measured by playing something and listening. */
+    get latencyMs() {
+      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000);
+    },
     get sampleRate() { return ctx.sampleRate; },
     tick() {},
     get channels() { return mono ? 1 : 2; },
     get capacity() { return scratch[0].length; },
     describe() {
       const name = (track && track.label) || "microphone";
-      return mono ? name + " (mono)" : name;
+      const how = chain ? ", monitored" : "";
+      return (mono ? name + " (mono)" : name) + how;
     },
 
     getLatestWindow(n) {
@@ -3623,6 +3701,7 @@ async function makeMicSource(deviceId) {
       // Through the refcount rather than straight at the tracks: the stream may
       // be shared, and stopping it under something else that is still listening
       // would leave that thing drawing a flat line with no way to tell why.
+      if (chain) { dropMonitorChain(chain); chain = null; }
       node.disconnect();
       releaseLiveStream(deviceId);
       ctx.close();
@@ -3869,7 +3948,9 @@ function makeMonitorChain(ctx) {
 }
 
 function dropMonitorChain(chain) {
-  if (chain) monitorChains.delete(chain);
+  if (!chain) return;
+  monitorChains.delete(chain);
+  try { chain.clamp.disconnect(); } catch (error) { /* already closed */ }
 }
 
 /* Written once a frame, and through `setTargetAtTime` rather than by assigning
@@ -4415,6 +4496,12 @@ const state = {
   analyseAt: "post",         // pre | post
   monitorAt: "pre",          // pre | post
   micBands: false,           // whether live input arrives whole or split in four
+  /* What is plugged in, as the player asserts it, and whether they want to
+     hear it. Neither is in a setup code and neither survives a reload, which
+     is deliberate: this is a claim about the room, and the cost of being wrong
+     about someone else's room is a feedback loop in it. */
+  liveKind: "mic",           // mic | line
+  monitorLive: false,
   alignMs: 0,                // how far the backing track is held back to meet the input
 
   positionMod: 0,          // what a source is adding to where the trigger sits
@@ -8057,7 +8144,14 @@ function showSource(pending) {
   buildLfoRows();      // the destination list says which ones this source has
   el.deviceRow.hidden = kind !== "mic";
   el.micShapeRow.hidden = kind !== "mic";
+  el.liveKindRow.hidden = kind !== "mic";
+  el.monitorRow.hidden = kind !== "mic";
   el.micNote.hidden = kind !== "mic";
+  /* Asked again on every source change, and the source is what answers: a
+     band split has no `setMonitor`, so switching to one turns monitoring off
+     and says so by greying the box rather than by leaving it ticked over a
+     graph that is not wired that way. */
+  applyMonitor();
   el.rackRows.hidden = kind !== "rack";
 
   // A rack plays, so it borrows the file's transport - all but the row that
@@ -8269,6 +8363,59 @@ document.addEventListener("drop", (event) => {
 /* Whole or split, on whatever is already open. Nothing is torn down and
    rebuilt beyond the source itself - the stream underneath is shared, so this
    costs one AudioContext and no second permission prompt. */
+/* --- what is plugged in, and whether you hear it --------------------------- */
+
+function syncLive() {
+  el.kindMic.setAttribute("aria-checked", String(state.liveKind === "mic"));
+  el.kindLine.setAttribute("aria-checked", String(state.liveKind === "line"));
+
+  const source = state.source;
+  const able = state.liveKind === "line"
+            && !!(source && typeof source.setMonitor === "function");
+  /* Unavailable rather than inert. A box that can be ticked and does nothing
+     is worse than one that cannot: the player is left wondering whether they
+     are hearing themselves or not, which on a feedback question is exactly the
+     wrong thing to be unsure about. */
+  el.monitorLive.disabled = !able;
+  el.monitorLive.checked = able && state.monitorLive;
+
+  const ms = source && source.latencyMs;
+  el.monitorLatency.textContent = el.monitorLive.checked && ms
+    ? "at least " + ms + " ms late" : "";
+}
+
+/* One place where monitoring is turned on or off, and it asks the source
+   rather than telling it: the source re-checks the kind itself and answers
+   with what it actually did, which is what gets written back into the state.
+   A UI that recorded its own intention would be one stray click away from a
+   panel that says you are monitoring while the graph disagrees. */
+function applyMonitor() {
+  const source = state.source;
+  state.monitorLive = source && typeof source.setMonitor === "function"
+    ? source.setMonitor(state.monitorLive) : false;
+  syncLive();
+  if (source) el.credit.textContent = source.describe();
+}
+
+function setLiveKind(kind) {
+  state.liveKind = kind === "line" ? "line" : "mic";
+  /* And that is the whole of it: `applyMonitor` asks the source, the source
+     refuses anything that is not a declared line input, and what it did is
+     what gets written back. Calling it a microphone therefore takes it off the
+     speakers here, and calling it a line input again starts from off rather
+     than resuming - the wish did not survive the refusal. A separate guard on
+     this line would be a second place to keep in step, and no test could tell
+     it from its absence. */
+  applyMonitor();
+}
+
+el.kindMic.addEventListener("click", () => setLiveKind("mic"));
+el.kindLine.addEventListener("click", () => setLiveKind("line"));
+el.monitorLive.addEventListener("change", () => {
+  state.monitorLive = el.monitorLive.checked;
+  applyMonitor();
+});
+
 function setMicShape(bands) {
   if (state.micBands === bands) return;
   state.micBands = bands;

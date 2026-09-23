@@ -9,6 +9,37 @@ oversampled and none needs to be. Everything else from Stage B on is still a
 plan. `web/tests/miditest.py` and `web/tests/aliastest.py` hold the
 verification A and B1 asked for.
 
+**D8 is built** as well, ahead of the rest of C: an input carries a kind, and a
+declared line input can be monitored through the page with the limiter and the
+clamp still last. That makes the latency question answerable on real hardware,
+which is what decides whether C3 is a browser feature or a JUCE one. What is
+*not* built is the block the two taps are meant to straddle — see the note
+below on what C0 costs.
+
+**C0, before it is implemented.** The pinned order in this plan puts full scale
+and rotation inside the tapped block. Both are display-time operations today:
+`gainOf` is applied per lane in the drawing code, and rotation only in `drawXY`.
+Moving them changes shipped meaning, and the changes should be chosen rather
+than discovered —
+
+- the trigger level is compared against raw source samples today, so putting
+  full scale ahead of the trigger makes the level mean "this height on screen"
+  instead of "this amplitude". Better, probably; different, certainly, and
+  every saved setup with a scale other than 0 dB triggers somewhere new.
+- rotation currently turns the X–Y figure after each lane's own gain and
+  offset. As a signal transform it acts on the pair before either, so a figure
+  drawn with different gains on X and Y turns differently than it did.
+- as a transform it also reaches Y–T, the goniometer and the per-lane
+  measurements, because a rotated lane is a mix of both. That is what makes it
+  the same thing as mid/side, which already behaves that way.
+- mid/side becomes rotation at 45°, and today's ½ scaling is 1/√2 times the
+  rotation's, so the fixed gain has to be kept explicit or every preset using
+  it draws a figure √2 smaller.
+
+None of these is a reason not to do it. They are reasons to do it deliberately,
+with the preset-by-preset comparison the plan's C verification already asks
+for.
+
 One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
 a single sample when the pendulums have run down, which is an audible click the
 moment the generator has an output.

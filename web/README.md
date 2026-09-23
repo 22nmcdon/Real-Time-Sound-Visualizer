@@ -252,6 +252,27 @@ triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
 
+**A microphone is never monitored; a declared line input may be.** The old
+rule — nothing live reaches the destination — was written against an acoustic
+path back into the input, and a keyboard on a line input has none. So an input
+carries a *kind* the player asserts, and `makeMicSource.setMonitor` re-checks
+it rather than trusting the toggle: the UI says what is wanted, the source says
+what it did, and `applyMonitor` records the source's answer. That write-back is
+the whole enforcement — a separate guard in `setLiveKind` was written first and
+removed, because no test could tell it from its absence.
+
+Neither the kind nor the monitor toggle is in a setup code or survives a
+reload. They are a claim about the room, and the cost of being wrong about
+someone else's room is a feedback loop in it.
+
+**Dropping a monitor chain now disconnects it.** `dropMonitorChain` only
+removed the chain from the set, which was enough while a chain lived and died
+with its context. Monitoring can be switched off with the context still open,
+and a forgotten chain still ends at the destination — nothing feeds it, so
+nothing is heard, but the page's one guarantee about the destination is that
+the clamp is the last node before it, and a path nobody is tracking is not a
+guarantee.
+
 **The drawn generators need no oversampling, and that was measured rather
 than assumed.** A figure, a solid and a harmonograph are parametric paths whose
 discontinuities are at no phase anything knows in advance, so polyBLEP cannot
