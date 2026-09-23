@@ -18,6 +18,7 @@ SUITES = [
     ("mod", [sys.executable, "modtest.py"], "the modulation matrix, and the enum it replaces"),
     ("midi", [sys.executable, "miditest.py"], "the keyboard: notes, the dyad, controllers"),
     ("alias", [sys.executable, "aliastest.py"], "band-limiting: what folds back, and what does not"),
+    ("rotate", [sys.executable, "rotatetest.py"], "rotation, mid/side, and what rotation may not reach"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
     ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),

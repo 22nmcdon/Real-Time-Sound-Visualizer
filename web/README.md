@@ -46,6 +46,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
 | `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
+| `rotatetest.py` | rotation and mid/side, and the measurements rotation is not allowed to reach |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
@@ -251,6 +252,37 @@ quieter. Measured at the top of the generator's range the naive triangle put
 triangle's own slope, and it was picked by sweeping 2, 4, 6, 8 and 12 against
 the spectrum rather than read off a paper: 4 wins at every frequency tried, by
 up to 30 dB.
+
+**Mid/side is rotation at 45°, with the gain and the flip kept out in the
+open.** `turnOf` is the one matrix, and the goniometer pane had already been
+drawing M/S that way since it was written. Two constants survive the merge
+rather than being folded in: `MID_SIDE_GAIN` is a half against the rotation's
+1/√2 — fold it in and every preset using mid/side draws a figure 41% bigger —
+and `MID_SIDE_FLIP` is there because the M/S matrix as everyone writes it is a
+*reflection*, determinant −1. Side is L−R and the rotation gives R−L, so
+adopting the rotation's sign silently would mirror every saved figure. There is
+no "rotation and mid/side are mutually exclusive" rule in this page to retire,
+by the way: the exclusivity that exists is with *lag*, because both rewrite
+lane two.
+
+**The X–Y figure is turned before each lane is placed.** Full scale and offset
+say where a lane goes on the screen; rotation says what the pair is. Rotating a
+pair that has already been nudged apart turns the nudge with it, so a figure
+separated for legibility comes back as a diagonal. The cost, stated: with
+different full scales on X and Y, a turned figure is now a circle stretched
+after turning rather than an ellipse turned. No preset can see it — all 39 set
+both lanes alike and turn by nothing, which `rotatetest.py` checks one by one
+rather than assuming.
+
+**Rotation reaches the X–Y figure and nothing else, and that is a decision.**
+Not Y-T, not the trigger, not one number in the readout. A rotated lane in Y-T
+is a blend of two signals with no picture to justify it, and the frequency,
+dBFS and THD readings taken off it would still be labelled as though they
+described the input — the same dishonesty the filter's `analyseAt` tap solved
+once by marking readouts post-filter. Zoom was scoped out of the shared
+transforms for a related reason (D6). Widening rotation into the capture block
+means giving the per-lane measurements their own pre-rotation tap first;
+`rotatetest.py` fails with exactly that list when someone tries it without.
 
 **A microphone is never monitored; a declared line input may be.** The old
 rule — nothing live reaches the destination — was written against an acoustic

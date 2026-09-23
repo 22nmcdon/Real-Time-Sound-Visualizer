@@ -16,29 +16,50 @@ which is what decides whether C3 is a browser feature or a JUCE one. What is
 *not* built is the block the two taps are meant to straddle — see the note
 below on what C0 costs.
 
-**C0, before it is implemented.** The pinned order in this plan puts full scale
-and rotation inside the tapped block. Both are display-time operations today:
-`gainOf` is applied per lane in the drawing code, and rotation only in `drawXY`.
-Moving them changes shipped meaning, and the changes should be chosen rather
-than discovered —
+**C0, split into four, and two of them taken.** The pinned order puts full
+scale and rotation inside the tapped block. Both are display-time operations
+today — `gainOf` per lane in the drawing code, rotation only in `drawXY` — so
+moving them changes shipped meaning in four separate ways. They were separated
+and decided one at a time rather than waved through as a block, on the grounds
+that two of them are "does the picture come out the same" and two are "does the
+number the instrument reports stay true", and only the first pair can be
+settled by comparing pictures.
 
-- the trigger level is compared against raw source samples today, so putting
-  full scale ahead of the trigger makes the level mean "this height on screen"
-  instead of "this amplitude". Better, probably; different, certainly, and
-  every saved setup with a scale other than 0 dB triggers somewhere new.
-- rotation currently turns the X–Y figure after each lane's own gain and
-  offset. As a signal transform it acts on the pair before either, so a figure
-  drawn with different gains on X and Y turns differently than it did.
-- as a transform it also reaches Y–T, the goniometer and the per-lane
-  measurements, because a rotated lane is a mix of both. That is what makes it
-  the same thing as mid/side, which already behaves that way.
-- mid/side becomes rotation at 45°, and today's ½ scaling is 1/√2 times the
-  rotation's, so the fixed gain has to be kept explicit or every preset using
-  it draws a figure √2 smaller.
+**Taken: mid/side becomes rotation at 45°.** One matrix, with the ½-against-1/√2
+gain and the reflection's sign flip kept explicit. A pure regression risk with a
+concrete check, and nothing new to decide. Built; see `rotatetest.py`.
 
-None of these is a reason not to do it. They are reasons to do it deliberately,
-with the preset-by-preset comparison the plan's C verification already asks
-for.
+**Taken: the figure is turned before each lane is placed.** Rotation acts on
+the pair; full scale and offset put the result on the screen. A preset that used
+those knobs to separate two traces would see its separation turned as well, but
+that is display cosmetics and nothing the app reports as a measurement. Built,
+with the same preset-by-preset check — and it turns out no preset can see it at
+all, because all 39 place both lanes alike.
+
+**Held: the trigger level becoming screen-relative.** Full scale moving ahead of
+the trigger is *more* authentic, not less — a bench scope taps its trigger after
+the vertical amplifier, so the front-panel level really is a volts/div-relative
+quantity. But it cannot ship as a side effect of something else moving. It needs
+to be a stated redefinition: the level's stored and displayed units become a
+fraction of full scale rather than a raw amplitude, so its meaning survives a
+full-scale change, and the readout gains the actual triggering amplitude the way
+it already marks a measurement post-filter. Without that, the number means one
+thing before someone nudges full scale and another after, with nothing on screen
+saying so.
+
+**Held: rotation reaching Y–T and the measurements.** Rotation has a clear
+meaning in X–Y and on the goniometer, where it turns a real stereo vector. In
+Y–T a channel is a waveform over time, not one axis of a vector, and a 2×2 mix
+there quietly blends L and R into what is plotted with no visible rotation to
+justify it. Worse, ahead of trigger and slice it reaches every number computed
+downstream: a knob a player reasonably reads as "how the Lissajous is oriented"
+would change the pitch or the THD in an unrelated pane. That is the same class
+of dishonesty `analyseAt` already solved once, and the fix is the same shape —
+the per-lane measurements get their own tap, defaulting to pre-rotation and
+pre-full-scale — or rotation stays scoped to X–Y and the goniometer the way zoom
+already is (D6). Until one of those is built, rotation is scoped, and
+`rotatetest.py` asserts the scope so that widening it fails loudly and names
+what has to move.
 
 One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
 a single sample when the pendulums have run down, which is an audible click the

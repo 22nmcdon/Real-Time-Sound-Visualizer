@@ -4661,6 +4661,46 @@ function filterNow() {
   };
 }
 
+/* --- rotation ----------------------------------------------------------------
+   One 2x2 matrix, and the two things in this page that turn a pair of lanes
+   with it. Turning an X-Y figure and rotating a stereo image are the same
+   operation - which is the surprise worth writing down, because it means a
+   control that exists to make the picture prettier is also a real stereo
+   operation, and it is the function an audio graph would be fed from on the
+   day the picture's transforms become audible.
+
+   Where it is NOT applied is a decision rather than an omission, and the same
+   one zoom got. Rotation stays on the X-Y figure: out of Y-T, out of the
+   per-lane measurements, out of the trigger. A rotated lane in Y-T is a blend
+   of two signals with no picture to justify it, and the frequency, dBFS and
+   THD readings taken from it would quietly stop describing the signal their
+   labels name. Making it a transform for everything is worth doing, but it
+   needs the measurements to get their own tap first - the way the filter's
+   readouts already say "post-filter" when they are about the filtered signal.
+   `rotatetest.py` asserts the scoping, so the day someone widens it the tests
+   say what else has to move.                                                 */
+function turnOf(turns) {
+  const angle = turns * TWO_PI;
+  return { cos: Math.cos(angle), sin: Math.sin(angle) };
+}
+
+/* Mid and side, which is this same rotation at 45 degrees - the goniometer
+   pane has drawn it that way since it was written - with two constants kept
+   out in the open rather than folded into the matrix.
+
+   The GAIN, because a rotation normalises by 1/sqrt(2) and this pair has
+   always been halved. Fold it in and every preset that uses mid/side draws a
+   figure 41 per cent bigger than the one it drew yesterday.
+
+   The FLIP, because the M/S matrix as everyone writes it is a reflection and
+   not a rotation: its determinant is -1. Side is L-R and the rotation gives
+   R-L, so one is the mirror of the other, and adopting the rotation's sign
+   silently would be the difference between the figure someone saved and a
+   figure they did not. */
+const MID_SIDE_TURNS = -0.125;                 // 45 degrees
+const MID_SIDE_GAIN = 1 / Math.SQRT2;          // a half, against the rotation's 1/sqrt 2
+const MID_SIDE_FLIP = -1;                      // side is L-R; the rotation gives R-L
+
 /* --- capture ----------------------------------------------------------------
    Ask for the window plus a span of history, and look for an edge inside a
    region that leaves room on both sides of it: `position` of the window
@@ -4783,11 +4823,12 @@ function capture() {
      different pair of axes, which is why it is a switch rather than a pane. */
   if (state.midSide && channels.length === 2 && state.source.channels === 2) {
     const [left, right] = channels;
+    const { cos, sin } = turnOf(MID_SIDE_TURNS);
     const mid = new Float32Array(left.length);
     const side = new Float32Array(left.length);
     for (let i = 0; i < left.length; i++) {
-      mid[i] = (left[i] + right[i]) / 2;
-      side[i] = (left[i] - right[i]) / 2;
+      mid[i] = (left[i] * cos - right[i] * sin) * MID_SIDE_GAIN;
+      side[i] = (left[i] * sin + right[i] * cos) * MID_SIDE_GAIN * MID_SIDE_FLIP;
     }
     channels[0] = mid;
     channels[1] = side;
@@ -5807,16 +5848,29 @@ function drawXY(frame, fit, elapsed) {
      and skipped altogether at rest so the common path is the one it always
      was. */
   const spin = state.rotate + state.rotateMod;
-  const turn = spin * TWO_PI;
-  const rc = Math.cos(turn), rs = Math.sin(turn);
+  const { cos: rc, sin: rs } = turnOf(spin);
   const turning = spin !== 0;
 
   let n = 0;
   for (let i = 0; i < points && n < BEAM_MAX; i += stride, n++) {
-    const px = left[i] * gainX + offX;
-    const py = right[i] * gainY + offY;
-    beamX[n] = cx + (turning ? px * rc - py * rs : px) * scale;
-    beamY[n] = cy - (turning ? px * rs + py * rc : py) * scale;
+    /* Turned first, placed second, and that order is a decision. Full scale
+       and offset are where a lane is put on the screen rather than what it is:
+       rotating a pair that has already been nudged apart turns the nudge with
+       it, so a figure separated for legibility comes back as a diagonal. The
+       rotation acts on the signal, the placing acts on the picture, and the
+       signal comes first.
+
+       It costs something, and it is worth saying what: with different full
+       scales on X and Y, a turned figure is now a circle squashed after
+       turning rather than an ellipse turned. Presets that set both the same -
+       which is all of them - draw exactly what they drew. */
+    const l = left[i], r = right[i];
+    const rx = turning ? l * rc - r * rs : l;
+    const ry = turning ? l * rs + r * rc : r;
+    const px = rx * gainX + offX;
+    const py = ry * gainY + offY;
+    beamX[n] = cx + px * scale;
+    beamY[n] = cy - py * scale;
     if (n > 0) {
       const dx = beamX[n] - beamX[n - 1], dy = beamY[n] - beamY[n - 1];
       beamL2[n - 1] = dx * dx + dy * dy;
