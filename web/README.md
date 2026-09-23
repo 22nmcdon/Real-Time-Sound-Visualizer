@@ -934,3 +934,56 @@ corners and a note on one of them is not a note about the mismatch. It says
 `speakers on the input` as well now, and neither fires when there is nothing
 switched on for them to differ about, nor the speakers' one when no monitor
 chain exists — the screen is always there, the speakers are not.
+
+**On a scope a filter that is switched on is almost never inert, because phase
+counts.** The readout now names a stage only when that stage measurably changed
+the trace — a stricter standard than reading the switch, and the one the rest of
+Stage C is held to. Finding an example of an inert filter took two wrong
+guesses. A narrow notch parked at 1 kHz, where the test signal has no energy,
+still moves the trace by 5.9e-3 — four times the floor, about a pixel and a
+half — because a notch is unity gain away from its own frequency in *magnitude*
+and not in phase, and a scope draws phase. Swept across the whole range the one
+place the two standards part is a stage parked at the edge of its travel: a
+notch at 20 kHz comes to 2.5e-4. So the stricter test is right, cheap, and
+rarely changes the answer for a filter.
+
+**For the AC coupling the two standards never part, and two guesses at an inert
+case were both wrong.** With an offset the blocker removes it. Without one it is
+still *settling*: half a hertz is a third of a second of time constant and the
+whole fetch at any timebase this page offers is shorter than that, so what a
+difference measurement sees is the transient. Swept over four corners, three
+timebases and two offsets, the smallest difference is 0.010 — ten times the
+floor. `taptest.py` holds that sweep so nobody guesses a third time.
+
+**One place the difference standard cannot be met, and it is structural.** With
+the screen on the input the filter and the coupling were never run — that is the
+switch's whole point — so there is nothing to measure and no way to know what
+they would have done. Running them to decide whether to print a caption would
+be paying for the most expensive thing in `capture` to write eighteen
+characters. That branch is setting-based on purpose: it says a stage is switched
+on and the screen is bypassing it, which is the useful sentence either way.
+
+**A lane is three functions now, and `scratch` is a local.** `read(n)`,
+`frames` and `setMix(value)` are the lane contract; everything that reads a lane
+goes through them. Feeding one is deliberately outside the contract, because
+what goes *into* a lane is specific to what is behind it in a way that reading
+it is not. Moving `scratch` from a property to a closure variable is what makes
+this enforcement rather than convention — going round the contract is now a
+`ReferenceError` instead of a habit.
+
+**The audit found more than `makeLane`.** Three near-identical `getLatestWindow`
+bodies, three `lanes[0].scratch.length` capacity expressions, and `laneMixer`
+reaching into `lane.gain.gain.value`. And the duplication was a latent bug, not
+only repetition: `applyAlignment` writes `delay` on every lane of any source
+that has lanes, and only one of the three readers honoured it — so the day a
+band split or a file wanted alignment it would have done nothing and looked like
+a broken control. Unreachable today because only a rack reports `hasLive`, which
+is what shows the control. One implementation cannot have that bug.
+
+**A test that dies with a stack trace is worse than one that fails.** The
+synthetic-lane check wrapped only its first `laneMixer` call; with the mixer
+reaching for a gain node again, the second call threw out of the whole
+`evaluate`, killed the suite and read as a broken test rather than a broken
+page. Every call is wrapped now and the mutation produces a named failure. The
+same rule as "if it does not name the fault, it is not testing it", one level
+out: if it cannot report the fault, it is not reporting it.

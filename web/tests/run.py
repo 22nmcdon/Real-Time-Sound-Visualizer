@@ -30,6 +30,7 @@ SUITES = [
     ("filter", [sys.executable, "filtertest.py"], "the picture-path filter, against Web Audio's"),
     ("tap", [sys.executable, "taptest.py"], "the two taps, and the block they straddle"),
     ("along", [sys.executable, "alongtest.py"], "a backing track and a live input as lanes"),
+    ("contract", [sys.executable, "contracttest.py"], "the lane contract, and a lane with no audio"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]

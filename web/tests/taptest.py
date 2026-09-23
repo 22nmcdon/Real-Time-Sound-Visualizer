@@ -262,6 +262,124 @@ with sync_playwright() as pw:
           "screen on the input" not in words["bareOnInput"],
           words["bareOnInput"][:60])
 
+    # The difference standard, which is the whole point of measuring rather
+    # than reading the switch - and the first version of this check had the
+    # wrong example, which is worth keeping because the reason is the finding.
+    #
+    # A narrow notch parked at 1 kHz, where this signal has no energy, moves
+    # the trace by 5.9e-3: four times the floor and about a pixel and a half.
+    # A notch is unity gain away from its own frequency in MAGNITUDE and not in
+    # phase, and a scope draws phase. So on this instrument a filter that is
+    # switched on is almost never inert, and the difference standard agrees with
+    # the setting standard nearly everywhere.
+    #
+    # Nearly. Swept across the range, the one place they part is a stage parked
+    # at the edge of its own travel: a notch at 20 kHz comes to 2.5e-4, a
+    # quarter of the floor, because there is no phase left to shift down where
+    # the signal lives. That is the case, and it is a real one - somebody who
+    # has swept a notch up out of the way has a filter switched on that is
+    # doing nothing.
+    inert = p.evaluate("""() => {
+      const was = { src: state.source, run: state.running, see: state.analyseAt,
+                    on: state.filter.on, type: state.filter.type,
+                    cutoff: state.filter.cutoff, res: state.filter.res,
+                    rotate: state.rotate, level: state.level, tb: state.timebase,
+                    acHz: state.acHz, ac: state.channels.map((c) => c.ac) };
+      state.running = false;
+      state.timebase = 5;
+      state.level = 2;
+      state.rotate = 0;
+      state.analyseAt = 'post';
+
+      const readAfter = () => {
+        const f = capture();
+        writeReadout(f);
+        return { filter: f.shaped.filter, ac: f.shaped.ac,
+                 line: el.readoutDetail.textContent };
+      };
+
+      // A notch, swept out of the way and then back onto the fundamental.
+      state.source = window.__standin(44100, 32768, 0);
+      state.channels.forEach((c) => { c.ac = false; });
+      state.filter.on = true;
+      state.filter.type = 'notch';
+      state.filter.res = 100;
+      state.filter.cutoff = 1000;                 // the top of the slider
+      const parked = readAfter();
+      const middling = 1000 * Math.log(220 / 20) / Math.log(20000 / 20);
+      state.filter.cutoff = Math.round(middling);
+      const onTheTone = readAfter();
+      const parkedHz = 0;
+
+      /* And the coupling, which turns out never to part from its switch - two
+         guesses at an inert case were both wrong, for two different real
+         reasons, and the sweep is here so nobody has to guess a third time.
+
+         With an offset the blocker removes it, at every corner and every
+         timebase. Without one it is still settling: a corner of half a hertz
+         is a third of a second of time constant, and the whole fetch at any
+         timebase this page offers is shorter than that, so what the
+         measurement sees is the transient rather than the steady state. Either
+         way it does something. */
+      state.filter.on = false;
+      state.channels.forEach((c) => { c.ac = true; });
+      const sweep = [];
+      for (const offset of [0, 0.25]) {
+        state.source = window.__standin(44100, 32768, offset);
+        for (const hz of [0.5, 2, 10, 20]) {
+          state.acHz = hz;
+          for (const tb of [0, 4, 8]) {
+            state.timebase = tb;
+            sweep.push({ offset, hz, ms: TIMEBASE[tb], did: capture().shaped.ac });
+          }
+        }
+      }
+      state.timebase = 5;
+      state.acHz = 0.5;
+      state.source = window.__standin(44100, 32768, 0.25);
+      const withOffset = readAfter();
+
+      Object.assign(state, { source: was.src, running: was.run, analyseAt: was.see,
+                             rotate: was.rotate, level: was.level, timebase: was.tb,
+                             acHz: was.acHz });
+      state.filter.on = was.on; state.filter.type = was.type;
+      state.filter.cutoff = was.cutoff; state.filter.res = was.res;
+      state.channels.forEach((c, i) => { c.ac = was.ac[i]; });
+      return { parked, onTheTone, sweep, withOffset, floor: SHAPE_FLOOR };
+    }""")
+    print("    a notch swept to the top of its range moved the trace by %.2e"
+          % inert["parked"]["filter"])
+    print("    the same notch on the fundamental: %.3f"
+          % inert["onTheTone"]["filter"])
+    quietest = min(inert["sweep"], key=lambda r: r["did"])
+    print("    the coupling, over %d corner-and-timebase combinations: never "
+          "under %.3f (at %g Hz, %g ms/div, offset %g)"
+          % (len(inert["sweep"]), quietest["did"], quietest["hz"],
+             quietest["ms"], quietest["offset"]))
+    check("a filter swept out of the way really does nothing",
+          inert["parked"]["filter"] < inert["floor"],
+          "%.2e against a floor of %.0e"
+          % (inert["parked"]["filter"], inert["floor"]))
+    check("and the readout does not claim a filter that did nothing",
+          "post-filter" not in inert["parked"]["line"],
+          inert["parked"]["line"][:66])
+    check("the same filter on the tone does plenty, and is named",
+          inert["onTheTone"]["filter"] > 0.05
+          and "post-filter" in inert["onTheTone"]["line"],
+          "%.3f, %s" % (inert["onTheTone"]["filter"],
+                        inert["onTheTone"]["line"][:50]))
+    # For the coupling the two standards never part, and this is the sweep that
+    # says so rather than a claim that they might. It is why reading the switch
+    # would have been adequate for AC and is not for the filter.
+    check("the coupling always does something, at every corner and timebase",
+          all(r["did"] > inert["floor"] for r in inert["sweep"]),
+          "quietest %.3f of %d combinations" % (quietest["did"], len(inert["sweep"])))
+    check("so it is named whenever it is on",
+          inert["withOffset"]["ac"] > 0.05
+          and "AC " in inert["withOffset"]["line"],
+          "%.3f, %s" % (inert["withOffset"]["ac"],
+                        inert["withOffset"]["line"][:50]))
+
     # The mirror, which the first version of this had no note for at all: a
     # sweep on the graticule over a plain tone is the same confusion the other
     # way round.

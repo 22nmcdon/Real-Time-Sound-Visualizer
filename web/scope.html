@@ -5105,6 +5105,12 @@ function makeLane(ctx, name, mix) {
   const gain = ctx.createGain();
   gain.connect(mix);
 
+  /* Local rather than a property on the lane, which is the point: the samples
+     and the node that fills them are what "behind the lane" means, and the
+     contract below is the only way to them. Left as a property, `read` worked
+     and so did every caller that went round it. */
+  const scratch = new Float32Array(32768);
+
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 32768;
   analyser.smoothingTimeConstant = 0;
@@ -5115,7 +5121,6 @@ function makeLane(ctx, name, mix) {
 
   return {
     name, gain, analyser,
-    scratch: new Float32Array(32768),
     level: 0,            // dB of monitor trim
     mute: false,
     solo: false,
@@ -5128,6 +5133,41 @@ function makeLane(ctx, name, mix) {
     delay: 0,
     live: false,         // arriving now rather than playing back
     monitored: true,     // whether anything it makes can reach the speakers
+
+    /* --- the lane contract --------------------------------------------------
+       Everything that READS a lane goes through these three, and nothing
+       outside here touches what is behind it. That is the whole of the change:
+       a lane used to be "an object with an `analyser` and a `scratch`", which
+       is a statement about how this one is built rather than about what a lane
+       is, and three separate `getLatestWindow` bodies had each written the same
+       eight lines against it.
+
+       Feeding a lane is deliberately NOT part of the contract. `analyser`,
+       `gain` and `head` are still reached for directly by the code that builds
+       each kind - a media stream, a buffer source, a crossover tail - because
+       what goes into a lane is specific to what is behind it in a way that
+       reading it is not. A lane with no audio behind it at all supplies these
+       three and is never connected to anything.
+
+       The duplication was also a latent bug rather than only repetition.
+       `applyAlignment` writes `delay` on every lane of any source that has
+       lanes, and two of the three readers ignored it - so the day a band split
+       or a file wanted alignment, it would have done nothing and looked like a
+       broken control. One implementation cannot have that. */
+    get frames() { return scratch.length; },
+
+    read(n) {
+      analyser.getFloatTimeDomainData(scratch);
+      // Ending `delay` samples before the newest, which is what putting this
+      // lane a moment in the past amounts to.
+      const end = Math.max(0, scratch.length - this.delay);
+      const take = Math.min(n, end);
+      const out = new Float32Array(n);
+      out.set(scratch.subarray(end - take, end), n - take);
+      return out;
+    },
+
+    setMix(value) { gain.gain.value = value; },
   };
 }
 
@@ -5141,7 +5181,10 @@ function laneMixer(lanes) {
 
   lanes.forEach((lane) => {
     const heard = soloed ? lane.solo : !lane.mute;
-    lane.gain.gain.value = heard ? Math.pow(10, lane.level / 20) : 0;
+    // Through the lane rather than into its gain node: a lane with nothing
+    // audible behind it has no `gain` to reach for, and the mixer has no
+    // business knowing which kind it is holding.
+    lane.setMix(heard ? Math.pow(10, lane.level / 20) : 0);
   });
 }
 
@@ -5264,7 +5307,7 @@ async function makeRackSource(entries, label, deviceId) {
     suggestedAlignMs,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
-    get capacity() { return lanes[0].scratch.length - deepest(); },
+    get capacity() { return lanes[0].frames - deepest(); },
     get duration() { return duration; },
     get playing() { return nodes.length > 0; },
     get at() { return position(); },
@@ -5300,16 +5343,7 @@ async function makeRackSource(entries, label, deviceId) {
     tick() {},
 
     getLatestWindow(n) {
-      return lanes.map((lane) => {
-        lane.analyser.getFloatTimeDomainData(lane.scratch);
-        // Read ending `delay` samples before the newest, which is what putting
-        // this lane a moment in the past amounts to.
-        const end = Math.max(0, lane.scratch.length - lane.delay);
-        const take = Math.min(n, end);
-        const out = new Float32Array(n);
-        out.set(lane.scratch.subarray(end - take, end), n - take);
-        return out;
-      });
+      return lanes.map((lane) => lane.read(n));
     },
 
     stop() {
@@ -5416,7 +5450,7 @@ async function makeLiveBandSource(deviceId) {
     live: true,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
-    get capacity() { return lanes[0].scratch.length; },
+    get capacity() { return lanes[0].frames; },
 
     describe() {
       const name = (track && track.label) || "live input";
@@ -5427,13 +5461,7 @@ async function makeLiveBandSource(deviceId) {
     tick() {},
 
     getLatestWindow(n) {
-      return lanes.map((lane) => {
-        lane.analyser.getFloatTimeDomainData(lane.scratch);
-        const take = Math.min(n, lane.scratch.length);
-        const out = new Float32Array(n);
-        out.set(lane.scratch.subarray(lane.scratch.length - take), n - take);
-        return out;
-      });
+      return lanes.map((lane) => lane.read(n));
     },
 
     stop() {
@@ -5501,7 +5529,7 @@ async function makeBandSource(data, label) {
     bands: true,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
-    get capacity() { return lanes[0].scratch.length; },
+    get capacity() { return lanes[0].frames; },
     get duration() { return duration; },
     get playing() { return node !== null; },
     get at() { return position(); },
@@ -5532,13 +5560,7 @@ async function makeBandSource(data, label) {
     tick() {},
 
     getLatestWindow(n) {
-      return lanes.map((lane) => {
-        lane.analyser.getFloatTimeDomainData(lane.scratch);
-        const take = Math.min(n, lane.scratch.length);
-        const out = new Float32Array(n);
-        out.set(lane.scratch.subarray(lane.scratch.length - take), n - take);
-        return out;
-      });
+      return lanes.map((lane) => lane.read(n));
     },
 
     stop() {
@@ -6047,6 +6069,35 @@ function timebaseCeiling(source) {
   return best;
 }
 
+/* Whether a stage of the block actually CHANGED the signal, rather than
+   whether its switch is on. Those are not the same test and the difference has
+   already cost this page once: a circle is invisible to rotation, and that was
+   found precisely because "the transform is engaged" and "the transform did
+   something" came apart.
+
+   The same gap is open for the other two. A filter set to allpass at unity
+   gain is on and inert. So is a notch over a signal with no energy at the
+   notch, or a low pass above everything in the source. An AC corner at half a
+   hertz removes almost nothing from a one-millisecond window. In every one of
+   those the setting says "shaped" and the trace is the trace that arrived.
+
+   A quarter of a pixel is the floor: full scale is about 250 px of graticule,
+   so a thousandth of it is under half a pixel and inaudible besides. Probed on
+   one lane over one window's worth of the fetch, every eighth sample - the
+   question is "did anything change", and a stage that changes a signal does not
+   change one sample in eight of it and leave the rest. */
+const SHAPE_FLOOR = 1e-3;
+const SHAPE_STRIDE = 8;
+
+function strayBetween(a, b, from, count, stride) {
+  let worst = 0;
+  for (let i = from; i < from + count; i += stride) {
+    const gap = Math.abs(a[i] - b[i]);
+    if (gap > worst) worst = gap;
+  }
+  return worst;
+}
+
 function capture() {
   const source = state.source;
   const rate = source.sampleRate;
@@ -6110,6 +6161,23 @@ function capture() {
     return out;
   });
 
+  /* The lane the readout is about, and the most recent window's worth of it.
+     Not the whole fetch: the trigger's search span is history nobody is
+     looking at, and a stage that changed only that would be a stage that
+     changed nothing on the screen. */
+  const onScreen = laneCount();
+  const probe = state.trigSource < onScreen && state.channels[state.trigSource]
+                && state.channels[state.trigSource].on ? state.trigSource : 0;
+  const probeLength = raw[probe] ? raw[probe].length : 0;
+  const probeFrom = Math.max(0, probeLength - length);
+  const probeCount = probeLength - probeFrom;
+
+  /* Free when the lane skipped the coupling altogether: the source handed its
+     own array back and the two are the same object. */
+  const shapedAc = full[probe] === raw[probe] ? 0
+    : strayBetween(full[probe], raw[probe], probeFrom, probeCount, SHAPE_STRIDE);
+  let shapedFilter = 0;
+
   /* The filter goes here, and the position in this list is the whole of the
      decision: each lane on its own, after the coupling is taken out and before
      anything is derived from the pair. Mid and side of two filtered lanes
@@ -6122,7 +6190,20 @@ function capture() {
   if (state.filter.on && shaping) {
     const now = filterNow();
     const coefficients = biquadCoefficients(now.type, now.hz, now.q, rate);
-    const lanes = laneCount();
+    const lanes = onScreen;
+
+    /* One strided copy of the probed lane, so what the filter did can be
+       measured rather than assumed. A few hundred floats against a biquad over
+       the whole fetch is nothing, and it is the difference between the readout
+       naming a stage and the readout naming an effect. */
+    let before = null;
+    if (probeCount > 0 && full[probe]) {
+      before = new Float32Array(Math.ceil(probeCount / SHAPE_STRIDE));
+      for (let k = 0, i = probeFrom; i < probeFrom + probeCount; i += SHAPE_STRIDE, k++) {
+        before[k] = full[probe][i];
+      }
+    }
+
     for (let i = 0; i < full.length; i++) {
       /* Only the lanes actually being drawn. The filter is the most expensive
          thing in this function by an order of magnitude - it touches every
@@ -6135,6 +6216,13 @@ function capture() {
       // writes in place.
       if (full[i] === raw[i]) full[i] = Float32Array.from(raw[i]);
       filterInPlace(full[i], coefficients);
+    }
+
+    if (before !== null) {
+      for (let k = 0, i = probeFrom; i < probeFrom + probeCount; i += SHAPE_STRIDE, k++) {
+        const gap = Math.abs(full[probe][i] - before[k]);
+        if (gap > shapedFilter) shapedFilter = gap;
+      }
     }
   }
 
@@ -6262,6 +6350,9 @@ function capture() {
     // Whether the rotation happened in here. `drawXY` turns the figure itself
     // when it did not, and the readout marks the tap when it did.
     turned,
+    /* And how much of a difference the other two stages made, so the readout
+       can name what happened rather than what is switched on. */
+    shaped: { ac: shapedAc, filter: shapedFilter },
     triggered: at !== null,
     // What the level actually came to for this block, which is the number the
     // readout shows and the only place anything downstream should read it.
@@ -8022,22 +8113,43 @@ function writeReadout(frame) {
      With the filter off, nothing turning and no coupling, "screen on the
      input" describes a difference of nothing, which is the same kind of empty
      claim "post-filter" used to make. */
-  const turning = rotateTurns() !== 0 && rotatesSignal();
-  const coupling = state.channels.some((ch, i) => i < laneCount() && ch.ac);
-  const inBlock = state.filter.on || turning || coupling;
   // The speakers' switch only changes something when there are speakers. The
   // screen is always there, so its side of this needs no such test.
   const audible = monitorChains.size > 0;
 
   if (state.analyseAt === "post") {
+    /* Named by what each stage MEASURABLY did, which is a stricter standard
+       than "its switch is on" and the one the rest of this stage is held to.
+       An allpass at unity, a notch over a signal with nothing at the notch, a
+       low pass above everything in the source: all switched on, none of them
+       a thing the trace or the numbers are about. `frame.shaped` is the
+       measurement; a zero angle is exactly the identity so `turned` already
+       is one. */
+    const did = frame.shaped || { ac: 0, filter: 0 };
     const shaped = [];
-    if (state.filter.on) shaped.push("filter");
+    if (did.filter > SHAPE_FLOOR) shaped.push("filter");
     if (frame.turned) shaped.push("rotation");
     if (shaped.length > 0) bits.push("post-" + shaped.join("+"));
-    if (inBlock && audible && state.monitorAt === "pre") {
+    if (did.ac > SHAPE_FLOOR) bits.push("AC " + state.acHz.toFixed(1) + " Hz");
+    if ((shaped.length > 0 || did.ac > SHAPE_FLOOR)
+        && audible && state.monitorAt === "pre") {
       bits.push("speakers on the input");
     }
-  } else if (inBlock) {
+  } else if (state.filter.on || rotateTurns() !== 0
+             || state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
+    /* And here the standard cannot be met, which is worth saying rather than
+       quietly falling back to it. With the screen on the input the filter and
+       the coupling were never run - that is the whole point of the switch - so
+       there is nothing to measure and no way to know what they would have
+       done. Running them to decide whether to print a caption would be paying
+       for the most expensive thing in `capture` to write eighteen characters.
+
+       So this one branch is setting-based: it says a stage is switched on and
+       the screen is not showing it, which is true whether or not that stage
+       would have changed anything. That reading is defensible on its own -
+       "you have a filter on and the trace is bypassing it" is the useful
+       sentence either way - but it is a different test from the one above and
+       the asymmetry is deliberate, not an oversight. */
     bits.push("screen on the input");
   }
 
@@ -8046,12 +8158,6 @@ function writeReadout(frame) {
      noise in a line that is already long. */
   if (frame.turned && state.measureAt === "post") {
     bits.push("post-rotation");
-  }
-
-  // Only when it is reaching the picture, now that the screen's switch can
-  // take the coupling out along with everything else.
-  if (state.analyseAt === "post" && coupling) {
-    bits.push("AC " + state.acHz.toFixed(1) + " Hz");
   }
 
   /* A blank screen with a reason on it. Gated and nothing held is silence,

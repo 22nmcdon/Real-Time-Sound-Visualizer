@@ -249,13 +249,24 @@ be discovered during implementation.
   generator as a lane type. This is the largest remaining refactor in the plan
   and it **depends on nothing**. It is a statement about how sources are
   selected and represented, not about whether the generator emits audio: a
-  silent generator can be a lane today. The one real obstacle is internal
-  rather than sequential — `makeLane` builds every lane around an
-  `AnalyserNode`, so a lane whose samples come from a JS ring has no analyser
-  to read, and the per-lane read has to become a function before a silent
-  generator can sit in a rack. That generalisation is worth making on its own
-  terms; it is also what a file lane, a live lane and a worklet lane already
-  differ by.
+  silent generator can be a lane today.
+
+  **D1a — the lane contract — is built.** The obstacle was internal rather
+  than sequential, and auditing for it found more than expected: not only
+  `makeLane` building every lane around an `AnalyserNode`, but three
+  near-identical `getLatestWindow` bodies, three capacity expressions reaching
+  into `scratch`, and `laneMixer` reaching into a `GainNode`. A lane is now
+  `read(n)`, `frames` and `setMix(value)`; `scratch` is a closure variable, so
+  going round the contract is a `ReferenceError` rather than a habit. Feeding a
+  lane stays outside the contract on purpose. `contracttest.py` puts a lane made
+  of three plain functions through the mixer and through `capture` — which is
+  the load-bearing claim for everything else in D1.
+
+  The duplication was also a latent bug: `applyAlignment` writes `delay` on
+  every lane of any source with lanes, and one reader of three honoured it.
+
+  What is left of D1: the selector itself, the lane budget at selection time,
+  and the generator as a lane type.
 
   **D2 — the generator's sound reaching a lane's speakers.** This is the part
   that needed B3, it is the part that is nearly free, and it is now built.
