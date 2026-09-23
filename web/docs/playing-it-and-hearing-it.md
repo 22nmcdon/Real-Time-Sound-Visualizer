@@ -58,16 +58,12 @@ real amplitude beside it in the dock and a version-2 setup migration for codes
 that stored an amplitude. What is still held is the *reordering* it was blocking
 — see below.
 
-**Still held: full scale inside the captured block.** Full scale moving ahead of
-the trigger is *more* authentic, not less — a bench scope taps its trigger after
-the vertical amplifier, so the front-panel level really is a volts/div-relative
-quantity. But it cannot ship as a side effect of something else moving. It needs
-to be a stated redefinition: the level's stored and displayed units become a
-fraction of full scale rather than a raw amplitude, so its meaning survives a
-full-scale change, and the readout gains the actual triggering amplitude the way
-it already marks a measurement post-filter. Without that, the number means one
-thing before someone nudges full scale and another after, with nothing on screen
-saying so.
+**Still held: full scale inside the captured block.** The redefinition it was
+waiting for is built — the level is a fraction, converted per capture, and the
+dock gives the amplitude beside it. What remains is the move itself, and it is
+held for the same reason rotation is: it changes what the numbers are about.
+See *the measurement tap* below, which is now the single piece of work both
+holds reduce to.
 
 **Held: rotation reaching Y–T and the measurements.** Rotation has a clear
 meaning in X–Y and on the goniometer, where it turns a real stereo vector. In
@@ -82,6 +78,58 @@ pre-full-scale — or rotation stays scoped to X–Y and the goniometer the way 
 already is (D6). Until one of those is built, rotation is scoped, and
 `rotatetest.py` asserts the scope so that widening it fails loudly and names
 what has to move.
+
+### The measurement tap, which is what both holds want
+
+Written down before anyone builds it, because its whole value is in what it
+promises about numbers and that promise is easy to lose in the plumbing.
+
+**What it is.** `capture` produces two sets of lanes rather than one: the lanes
+the screen draws, and the lanes the measurements read. Today they are the same
+array and every number — peak, RMS, Vpp, frequency, THD, the clipping verdict,
+`env.live`, the goniometer's correlation — is taken from what is drawn. That is
+fine while everything in the block is something a measurement should be about.
+Full scale and rotation are not: one is where the trace sits on the graticule,
+the other is how the figure is oriented.
+
+**Where it defaults.** Pre-rotation and pre-full-scale, which is exactly
+today's behaviour, so the change ships with every number unmoved. The switch
+exists for the person who genuinely wants to measure the rotated pair — the
+same shape as `analyseAt`, and marked in the readout the same way.
+
+**Why it cannot usefully be built first.** With rotation and full scale outside
+the block, the measured lanes and the drawn lanes are identical by construction
+and the tap is a second name for one array. It earns its keep only in the same
+change that moves them in. So the work is one piece: move full scale and
+rotation into the block, split the taps, and prove every default-configuration
+number is bit-identical to what it was.
+
+**What has to be true before it lands.**
+
+- Every reading in the dock and every pane is bit-identical with the tap at its
+  default, on a sweep of sources and settings. Not "close" — identical, because
+  the default is meant to be the same arithmetic.
+- The clipping verdict stays about the input. Clipping is a property of what
+  arrived, not of where the graticule is, so it reads the pre-full-scale lanes
+  whatever the tap says.
+- `env.live` stays a source about the signal. A modulation source that moved
+  when a display knob moved would be the same dishonesty one level down, and it
+  would feed back into the picture through the matrix.
+- The readout marks the tap when it is not at the default, the way it already
+  says `post-filter` and `AC 10.0 Hz`.
+- `rotatetest.py`'s scoping checks are rewritten rather than deleted: they
+  currently assert rotation reaches nothing, and would become assertions that
+  it reaches the drawn lanes and not the measured ones.
+- Full scale becomes a continuous gain before it can be a modulation
+  destination. It is a per-lane integer index into a nine-entry dB table today,
+  so `scaleMod` in decibels is a prerequisite of the thing that makes all of
+  this worth doing.
+
+**What it unblocks, in order.** Rotation as a signal transform (#3); full scale
+inside the block (#1's second half); full scale as a modulation destination,
+which is the case the trigger fix was made correct for; and the last two rows
+of C1's table — full scale as a `GainNode`, lag as a `DelayNode` — since both
+need the block to contain them before there is anything to straddle.
 
 One thing B1 turned up for B4: the harmonograph sets its envelope back to 1 in
 a single sample when the pendulums have run down, which is an audible click the
