@@ -894,3 +894,34 @@ changed a setting, slept 120 ms and read `#readoutDetail` failed about one run
 in three — words are rewritten every 200 ms on purpose, because they are read
 rather than watched. It polls for the text it is asserting about now, with a
 generous ceiling, rather than sleeping for a number that happened to work.
+
+**The two taps now straddle the same block.** `Screen reads` used to take out
+the filter and nothing else, while `Speakers get` took out the filter, the AC
+coupling *and* the rotation — so *Input* meant one thing to the eyes and
+another to the ears, on a page whose whole argument is that they are the same
+block. Both straddle all three now, in the pinned order. Only the `pre` setting
+changes meaning: it used to show an AC-coupled, rotated, unfiltered trace and
+now shows the signal as it arrived. The lag is deliberately still outside,
+because the speakers have no lag to bypass — that is C1's last unbuilt row.
+
+**The readout names what is in force, not which switch is thrown.** It used to
+say `post-filter` whenever the screen was on the shaped side and the filter was
+on, which is a claim about a stage rather than about the signal; with nothing
+switched on it now says nothing, and with the screen on the input it says
+`screen on the input` rather than leaving a flat trace under a filtered sound
+as a mystery.
+
+**`frames / 2` is not an array index.** A monitor-chain check compared rendered
+output from `frames / 2` onward — 5512.5, so every read was `undefined`, every
+difference `NaN`, and `Math.max` carried the NaN to the end. All four
+combinations reported "something else" while the graph was behaving perfectly.
+The loop floors its start now and the checks require the result to be finite,
+because otherwise "not turned" and "the arithmetic went wrong" are the same
+answer.
+
+**A suite that never draws cannot test the drawing.** Three of the four
+mutations against the widened tap failed loudly; the fourth — draw-time
+rotation ignoring the switch — survived, because `taptest.py` only captured.
+It draws an X–Y figure now and compares the polyline against the block it came
+from, using a diagonal line rather than the quadrature pair the rest of the
+suite uses: a circle is the one figure whose angle a rotation leaves alone.

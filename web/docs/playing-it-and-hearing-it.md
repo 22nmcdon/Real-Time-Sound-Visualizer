@@ -563,16 +563,27 @@ by construction.
 at the τ values auto-lag picks it can also be a strong, pitch-tracking comb.
 Worth a listening check before shipping it on by default.
 
-### C2 · Widen the taps
+### C2 · Widen the taps — built
 
-`analyseAt` and `monitorAt` move from straddling the filter to straddling the
-whole block. The four combinations keep their meanings; nothing new in the UI
-except that the switch labels stop saying "filter".
+`analyseAt` straddles the filter, the AC coupling and the rotation, which is
+what `monitorAt` already did. The asymmetry was real and nothing had noticed
+it, because nothing tested the combinations: *Input* took the filter out of the
+picture and left the coupling and the rotation in, while taking all three out
+of the speakers. `taptest.py` is the suite that would have.
 
-### C3 · Monitoring a line input (D8)
+Only `pre` changes meaning — it used to show an AC-coupled, rotated, unfiltered
+trace and now shows the signal as it arrived. The default is `post` and is
+untouched. The labels say *Shaped* rather than *Filtered*, and the readout
+names what is actually in force rather than which switch is thrown.
+
+### C3 · Monitoring a line input (D8) — built
 
 Hearing the Nord *through* the transforms means monitoring a live input, which
-the current rule forbids. The rule was written for microphones. Refine it:
+the rule as written forbade. The rule was written for microphones, and it is
+refined as below: an input carries a user-asserted kind, `mic` is never
+connected to the destination, `line` may be behind an explicit toggle, and the
+panel gives the browser's own latency figure with the limiter's lookahead added
+to it. `livetest.py` holds the rule.
 
 - An input has a user-asserted **kind**: `mic` (default) or `line`.
 - `mic` inputs are never connected to the destination — the rule, unchanged.
@@ -602,8 +613,10 @@ holds while it is the final node before the destination.
   asserts the result matches the pinned order and not the other one.
 - Mid/side migration: every preset using mid/side draws the same figure, same
   size, after it becomes rotation.
-- Taps: all four `analyseAt × monitorAt` combinations, on a file source and on
-  the generator.
+- Taps: **done** — all four `analyseAt × monitorAt` combinations, the three
+  transforms each with a fingerprint of their own, and the drawn figure as well
+  as the captured lanes. That last one was added because it was the only
+  mutation of the four that survived.
 - D8: a `mic` input is never connected to the destination regardless of toggles;
   a `line` input only when its toggle is on.
 - Limiter: worst-case resonance + rotation + full-scale gain never exceeds the

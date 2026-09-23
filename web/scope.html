@@ -1444,7 +1444,7 @@ body[data-view="bench"] #menuButton { display: none; }
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="What the screen reads" style="flex:0 0 auto">
                   <button type="button" class="caps" id="seeDry" role="radio" aria-checked="false">Input</button>
-                  <button type="button" class="caps" id="seeWet" role="radio" aria-checked="true">Filtered</button>
+                  <button type="button" class="caps" id="seeWet" role="radio" aria-checked="true">Shaped</button>
                 </div>
               </div>
             </div>
@@ -1469,12 +1469,21 @@ body[data-view="bench"] #menuButton { display: none; }
               screen would make the trace lie about the level. Drop <i>Full scale</i> under
               <i>Vertical</i>, or the amplitude.</p>
             <p class="menu-note">The two switches are separate because they answer different
-              questions. <i>Screen filtered, speakers input</i> is the filter as an
-              instrument for looking. Both shaped is a filter in the ordinary sense.
-              <i>Screen input, speakers shaped</i> lets you watch what you are feeding it.
-              Anything that reaches the speakers passes a limiter first, which is not a
-              taste decision: resonance is something a source can sweep, and a resonant peak
-              swept upward is a loud surprise in a pair of headphones.</p>
+              questions, and they straddle the same block: the <em>filter</em>, the
+              <em>AC coupling</em> and the <em>X&ndash;Y rotation</em>, in that order.
+              <i>Screen shaped, speakers input</i> is the block as an instrument for
+              looking. Both shaped is the ordinary sense. <i>Screen input, speakers
+              shaped</i> lets you watch what you are feeding it, and the readout says
+              <i>screen on the input</i> so a flat trace under a filtered sound is never a
+              mystery. Anything that reaches the speakers passes a limiter first, which is
+              not a taste decision: resonance is something a source can sweep, and a
+              resonant peak swept upward is a loud surprise in a pair of headphones.
+              <br><br>
+              The screen&rsquo;s switch used to straddle the filter alone while the
+              speakers&rsquo; straddled all three, so <i>Input</i> meant one thing to the
+              eyes and another to the ears &mdash; on a page whose argument is that they
+              are the same block. The <i>lag</i> is the one thing still outside it, because
+              the speakers have no lag to bypass yet.</p>
             <p class="menu-note"><i>Shaped</i> is the filter and the X&ndash;Y rotation, and
               the rotation is the interesting one: turning a figure and rotating a stereo
               image are the same 2&times;2 matrix, so the control that exists to make the
@@ -6083,8 +6092,17 @@ function capture() {
      This used to take the mean of the window out instead. That is a different
      operation, not a cheaper one - see `dcBlockerCoefficients`. */
   const acCoefficients = dcBlockerCoefficients(state.acHz, rate);
+  /* And on the shaped side only, which is what "Screen reads" now means. It
+     used to straddle the filter alone while the speakers' switch straddled
+     the filter, the coupling AND the rotation - so "Input" meant one thing to
+     the eyes and another to the ears, on a page whose whole argument is that
+     they are the same block. Both straddle all of it now.
+
+     Lag is the one transform still outside the block, because the speakers
+     have no lag to bypass yet: that is C1's last row. */
+  const shaping = state.analyseAt === "post";
   const full = raw.map((buffer, i) => {
-    if (!state.channels[i] || !state.channels[i].ac) return buffer;
+    if (!shaping || !state.channels[i] || !state.channels[i].ac) return buffer;
     const out = Float32Array.from(buffer);
     filterInPlace(out, acCoefficients);
     return out;
@@ -6099,7 +6117,7 @@ function capture() {
 
      Over the whole fetch rather than the window, because a filter that started
      at the left edge of the screen would ring there. */
-  if (state.filter.on && state.analyseAt === "post") {
+  if (state.filter.on && shaping) {
     const now = filterNow();
     const coefficients = biquadCoefficients(now.type, now.hz, now.q, rate);
     const lanes = laneCount();
@@ -6172,7 +6190,7 @@ function capture() {
      this change was asked to meet. */
   const signal = channels.slice();
   const spin = rotateTurns();
-  const turned = spin !== 0 && channels.length === 2 && rotatesSignal();
+  const turned = shaping && spin !== 0 && channels.length === 2 && rotatesSignal();
   if (turned) {
     const { cos, sin } = turnOf(spin);
     const [left, right] = channels;
@@ -7256,10 +7274,12 @@ function drawXY(frame, fit, elapsed) {
   /* Turned, when something is turning it. Computed once rather than per point,
      and skipped altogether at rest so the common path is the one it always
      was. */
-  /* Only when `capture` has not already done it. On a stereo pair the lanes
-     arrive turned and this is the identity; on a rack rotation is still a way
-     of orienting the figure, and this is the only place it happens. */
-  const spin = frame.turned ? 0 : rotateTurns();
+  /* Only when `capture` has not already done it, and only on the shaped side.
+     On a stereo pair the lanes arrive turned and this is the identity; on a
+     rack rotation is still a way of orienting the figure, and this is the only
+     place it happens. With the screen reading the input there is nothing to
+     orient - the figure is the figure that arrived. */
+  const spin = frame.turned || state.analyseAt === "pre" ? 0 : rotateTurns();
   const { cos: rc, sin: rs } = turnOf(spin);
   const turning = spin !== 0;
 
@@ -7983,11 +8003,21 @@ function writeReadout(frame) {
     bits.push((state.zoom < 10 ? state.zoom.toFixed(1) : Math.round(state.zoom)) + "\u00d7 zoom");
   }
 
-  /* A measurement of a filtered signal is a measurement of a filtered signal,
-     and the numbers along the bottom do not otherwise say which one they are
-     about. */
-  if (state.filter.on && state.analyseAt === "post") {
-    bits.push("post-filter");
+  /* A measurement of a shaped signal is a measurement of a shaped signal, and
+     the numbers along the bottom do not otherwise say which one they are
+     about. Named by what is actually in force rather than by the switch: with
+     the filter off and nothing turning, "post-filter" was a claim about a
+     stage that was not there. */
+  if (state.analyseAt === "post") {
+    const shaped = [];
+    if (state.filter.on) shaped.push("filter");
+    if (frame.turned) shaped.push("rotation");
+    if (shaped.length > 0) bits.push("post-" + shaped.join("+"));
+  } else {
+    // And the other way round, which used to say nothing at all: a screen
+    // reading the input while the speakers are shaped is a useful place to be
+    // and a confusing one to be in silently.
+    bits.push("screen on the input");
   }
 
   /* Only when it is making a difference. The tap can sit on the turned signal
@@ -7997,7 +8027,10 @@ function writeReadout(frame) {
     bits.push("post-rotation");
   }
 
-  if (state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
+  // Only when it is reaching the picture, now that the screen's switch can
+  // take the coupling out along with everything else.
+  if (state.analyseAt === "post"
+      && state.channels.some((ch, i) => i < laneCount() && ch.ac)) {
     bits.push("AC " + state.acHz.toFixed(1) + " Hz");
   }
 
