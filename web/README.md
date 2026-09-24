@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E1 and E2 of E are built (the photocell and the picture's own sources) and F is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E is built (the photocell, the picture's own sources, and the loop through the sound) and F is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -64,6 +64,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
+| `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1364,3 +1365,41 @@ phosphor; `shapetest.py` feeds it a frozen picture, a dot going round, a dot
 spiralling out and never coming back, and a screen full of ink, and requires
 each fixture to get its own verdict and no other's.
 
+**The loop's bound is on the total, and for the generator that means combining
+before the thread boundary.** Three picture sources each inside their reach can
+add up past it, so a destination has one total for everything the picture pushes
+into it. For a picture destination that is a sum and a clamp. For a generator
+parameter the sum happens in the per-sample loop, in the worklet, where nothing
+can be clamped by the page — so the loop's routes into one parameter are
+combined on this side into a single held value, already bounded, and cross as
+one route. `looptest.py` checks it by the pitch the generator plays: three
+sources at full on pitch put all their energy at 220 × 2^0.5 and none at the
+2^1.5 three unbounded routes would reach.
+
+**A stability test has to show the loop moved.** Every bound in the stability
+run is guaranteed by a clamp somewhere, so a run in which the loop did nothing
+at all would pass every one of them. The run also records the range each
+destination covered and fails if the resonance and the pitch did not move —
+the difference between a loop that held and a loop that was never closed.
+
+**Boredom waits for history before it can call anything stuck.** The meter has
+no past for its first couple of seconds and calls everything new, so boredom
+reads almost nothing at two seconds whatever its rate is. The first check of
+its rate read the value at two seconds and could not fail; it reads the steepest
+climb over any quarter second now.
+
+
+**Combining the routes has to keep each destination's law.** The combined route
+into a generator parameter crosses as `unipolar: false`, because it carries the
+total with each part's law already applied. On amplitude that law is the
+duck-only one, and the first version of the tests never put a picture source
+on amplitude, so a total that forgot it survived the mutation pass. It would have
+played full volume with the photocell in the dark and silence with it in the
+light. `looptest.py` now puts two sources on amplitude at full and at nought and
+reads the held value and the level heard.
+
+**A quiet limiter reads nought, and so does a broken one.** The check that the
+page could read its limiters asserted the reading was nought or negative, which
+a `monitorLimiting` that never looked would pass. It now feeds a chain a tone at
+twelve times full scale and requires more than six decibels of reduction — the
+chain reads about 23.

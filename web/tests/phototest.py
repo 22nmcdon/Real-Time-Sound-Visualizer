@@ -255,8 +255,12 @@ with sync_playwright() as pw:
                starts: [...new Set(got.map((r) => r.amount))] };
     }""")
     print("    accepted %s, starting at %s" % (rules["accepted"], rules["starts"]))
-    check("a source reading the picture reaches nothing that can add energy",
-          rules["accepted"] == sorted(["view.rotate", "view.lag", "view.zoom", "trig.position"]),
+    # Stage E1 refused the filter and the generator here, and this check said
+    # so. Stage E3 opens them, with the loop total in place of the refusal -
+    # looptest.py is where that is held to account.
+    check("since E3, a source reading the picture may reach any destination",
+          rules["accepted"] == sorted(["filter.cutoff", "filter.res", "gen.freq", "gen.amp",
+                                       "view.rotate", "view.lag", "view.zoom", "trig.position"]),
           str(rules["accepted"]))
     check("and starts low", rules["starts"] == [0.2], str(rules["starts"]))
 
@@ -280,7 +284,7 @@ with sync_playwright() as pw:
       }
       touchRoutings();
       const stored = r.amount;
-      // A setup code carrying a routing it may not have.
+      // A setup code carrying a routing past the ceiling, to the resonance.
       state.modRoutings.push({ sourceId: 'photo.1', destId: 'filter.res', amount: 0.9 });
       state.resMod = 0; applyModMatrix(capture(), 16);
       const res = state.resMod;
@@ -289,14 +293,14 @@ with sync_playwright() as pw:
       return { most, ratio, stored, res };
     }""")
     print("    amount written as 1: applied %.3f of rotation's span, stored back as %.2f; "
-          "a smuggled resonance routing moved it by %s" % (reach["most"], reach["stored"], reach["res"]))
+          "a resonance routing written at 0.9 moved it by %s" % (reach["most"], reach["stored"], reach["res"]))
     check("an amount past the ceiling is held to it where it is used",
           abs(reach["ratio"] - 0.5) < 1e-9 and reach["most"] > 0.45,
           "applied %.4f of the value, %.4f of the span" % (reach["ratio"], reach["most"]))
     check("and stored back within it, so the control says what applies",
           reach["stored"] == 0.5, str(reach["stored"]))
-    check("a routing to a refused destination does nothing even if it arrives in a code",
-          reach["res"] == 0, str(reach["res"]))
+    check("a routing that arrives in a code past the ceiling moves its destination no further than the ceiling",
+          0 < reach["res"] <= 0.5 * 50 + 1e-9, str(reach["res"]))
 
     print("\n--- a loop that cannot run away ---")
     loop = p.evaluate("""async () => {

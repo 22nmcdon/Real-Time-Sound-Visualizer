@@ -871,8 +871,17 @@ with the arrow keys. `phototest.py` holds it.
 **E2 is built:** Roundness, Coverage, Change, Novelty and Direction come with the
 photocell, under its rules, and the readout names what the loop is doing —
 *listening*, *settled*, *cycling*, *wandering* or *running away* — from the same
-`makePictureMeter` the tests use. `shapetest.py` holds it. E3 (the loop through
-the sound, boredom, the per-destination total) is not built.
+`makePictureMeter` the tests use. `shapetest.py` holds it.
+
+**E3 is built, and Stage E with it.** Picture sources may now reach the filter
+and every generator parameter. What replaces E1's refusal is the set of
+defences working together: each source's reach, the slew, **one total per
+destination** for everything the loop pushes into it (`LOOP_TOTAL`, half a
+span), Boredom with a lower reach and a leak, and the limiter last. For a
+generator parameter the loop's routes are combined into one held value before
+they cross into the audio thread, so the total is bounded there too. The
+verdict's *running away* now includes the limiter held under 6 dB of gain
+reduction. `looptest.py` holds it, including the stability run below.
 
 ### What it is
 
@@ -1132,7 +1141,15 @@ channel.
 - **Stability:** seed the loop from silence and from a full-scale figure, route
   the photocell at maximum allowed amount to the most sensitive destination,
   run for 60 s headless, and assert grid energy and output level stay below a
-  bound. The same shape as the worst-case resonance sweep test.
+  bound. The same shape as the worst-case resonance sweep test. **Built**, as
+  30 s from each seed rather than 60 from one, with every picture source at
+  its most onto resonance (two at once, so the total is what holds it), pitch,
+  the lag, rotation, cutoff and zoom, the generator heard through a resonant
+  filter. Checked every tenth of a second: nothing NaN, the speakers never past
+  full scale, every destination inside the loop's total, the grid inside its
+  range — and that the loop MOVED what it drives, because a loop that did
+  nothing would pass every bound there is. From silence it passed through
+  settled, cycling and wandering on its own.
 - Performance: the Stage 0 beam configuration with two photocells active, against
   the existing baseline.
 - **Continuity**, per source: a fixture perturbed slightly moves the source by no

@@ -310,7 +310,7 @@ with sync_playwright() as pw:
     print("    %s" % live)
     check("the five come with the photocell, under the same rules as it",
           len(live["registered"]) == 6 and live["rules"], str(live["registered"]))
-    check("a picture source may not reach the filter either", live["refused"], "")
+    check("since E3 a picture source may reach the filter too", not live["refused"], "")
     check("the readout says what the loop is doing", "loop settled" in live["readout"], live["readout"])
     check("and they go when the photocell does", live["gone"] == [], str(live["gone"]))
     print("    circle to line: roundness %.3f -> %.3f (raw %.3f); over the slew envelope by %.3f"

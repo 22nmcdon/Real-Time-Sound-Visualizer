@@ -2026,11 +2026,14 @@ body[data-view="bench"] #menuButton { display: none; }
         rotation or zoom and the figure moves itself &mdash; and moves what the photocell sees,
         which is the loop. It fills with its own reading, so you can see what it is seeing.
         <br><br>
-        Three things keep the loop from running away. It can only reach controls that cannot
-        make anything louder &mdash; rotation, zoom, the lag and the trigger position, not
-        the filter and not the generator. It moves any of them at most half as far as another
-        source could. And its reading can change no faster than two full swings a second, so it
-        cannot flip back and forth every frame. Persistence is its memory: long persistence
+        It can reach any control, the filter and the generator included, so the picture can
+        be heard as well as seen. Three things keep that loop from running away. It moves a
+        control at most half as far as another source could, and every source reading the
+        picture on one control shares that half between them &mdash; three of them on the
+        cutoff move it no further than one. Its reading can change no faster than two full
+        swings a second, so it cannot flip back and forth every frame. And the limiter is
+        still last, so a loop that finds a resonance is caught rather than heard at full
+        scale. Persistence is its memory: long persistence
         makes it slow and smooth, short makes it twitchy. Over a spectrogram it reads nothing,
         because no beam draws one. <i>Clear</i>, beside <i>Panes</i>, wipes the screen and
         what the photocell sees, and leaves persistence as it was set.</span></li>
@@ -2043,11 +2046,15 @@ body[data-view="bench"] #menuButton { display: none; }
         the picture moved since the last frame. <i>Novelty</i> is how far the picture is from
         anything it showed in the last fifteen seconds: nought when it keeps coming back,
         high when it has gone somewhere new. <i>Direction</i> is which way round the beam
-        travels, plus or minus.
+        travels, plus or minus. <i>Boredom</i> climbs slowly while the picture neither moves
+        nor goes anywhere new, and drains once it does: put it on something that shakes the
+        figure and a loop that has settled will, after a few seconds, nudge itself out again.
+        It reaches less than the others and can never climb faster than a quarter a second.
         <br><br>
         The readout says what the loop is doing: <i>settled</i> when nothing moves,
         <i>cycling</i> when it keeps coming back to where it has been, <i>wandering</i> when
-        it moves and does not repeat, <i>running away</i> when the screen fills. The
+        it moves and does not repeat, <i>running away</i> when the screen fills or the
+        limiter is working hard to hold the sound down. The
         interesting setups are the wandering ones: two sources crossed onto two controls
         &mdash; say Roundness on the lag, with lag X&ndash;Y on, and Novelty on rotation
         &mdash; and persistence long enough to give it memory.</span></li>
@@ -2823,15 +2830,18 @@ function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
    back, it closes a loop - picture, source, destination, picture - and a loop
    is what rings or runs away.
 
-   Where it may go. The plan said picture-only destinations, and wrote rotation
-   and the lag among them; Stage C has since put both in what the speakers
-   hear, so "picture-only" stopped being the property that keeps a loop safe.
-   The property is whether a destination can ADD ENERGY. A rotation is a turn,
-   which keeps the level; the lag's mix is a crossfade under a ceiling; zoom
-   and the trigger position never reach a sample at all. The filter's
-   resonance can ring, and every generator parameter is a sound being made, so
-   those are marked `energetic` and refused - until Stage E3, which closes the
-   loop through them with a stability test to show it holds.
+   Where it may go: anywhere, since Stage E3. Stage E1 refused every
+   destination that could ADD ENERGY - the filter, whose resonance rings, and
+   every generator parameter, which is a sound being made - and let the loop
+   through rotation, the lag, zoom and the trigger position only, none of which
+   can make anything louder. E3 opens the rest, and what stands in the place of
+   the refusal is the set of defences the plan requires together: the reach
+   below, the slew on every picture source, ONE TOTAL PER DESTINATION for
+   everything the loop pushes into it (`LOOP_TOTAL`), and the limiter last in
+   every monitor chain. `looptest.py` runs the loop at the most every one of
+   them allows, from silence and from full scale, and holds it to its bounds.
+   The `energetic` mark stays on the filter, as a statement of which
+   destinations that test has to try hardest.
 
    And how hard. `reach` is the most of a destination's span such a source may
    move it, lower than anything else's. Enforced where the amount is USED, so no
@@ -2839,10 +2849,16 @@ function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
    round it; and also where it is stored and shown, so the number on the
    control is the number that applies. */
 function routingAllowed(source, dest) {
-  if (!source || !dest) return false;
-  if (!source.fromPicture) return true;
-  return dest.kind === "visual" && dest.energetic !== true;
+  return !!source && !!dest;
 }
+
+/* The most the loop may push into any one destination, summed over every
+   picture source on it - the photocell, the shape sources, boredom. Two
+   pushes each inside their own reach can add up past it, which is why the
+   bound is on the total and not on each. The same number as one source's
+   reach, so three sources on one control move it no further than one could. */
+const LOOP_TOTAL = 0.5;
+const clampLoop = (value) => Math.max(-LOOP_TOTAL, Math.min(LOOP_TOTAL, value));
 
 function routingAmount(source, amount) {
   if (!source || !(source.reach > 0)) return amount;
@@ -3031,14 +3047,17 @@ function applyModMatrix(frame, elapsed) {
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
 
-    let sum = 0;
+    let sum = 0, loop = 0;
     for (const routing of state.modRoutings) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
       if (source && routingAllowed(source, dest)) {
-        sum += source.value() * routingAmount(source, routing.amount);
+        const push = source.value() * routingAmount(source, routing.amount);
+        if (source.fromPicture) loop += push; else sum += push;
       }
     }
+    // Everything the picture pushes here, bounded as one; see `LOOP_TOTAL`.
+    sum += clampLoop(loop);
 
     // Clamped as a value, stored as an offset, so a source cannot push a
     // destination past the range its own control has.
@@ -3082,6 +3101,7 @@ function touchRoutings() {
 
 function compileRoutes() {
   genRoutes.length = 0;
+  const loopBySlot = new Map();
   for (const routing of state.modRoutings) {
     const source = MOD_SOURCES.get(routing.sourceId);
     const dest = MOD_DESTS.get(routing.destId);
@@ -3092,6 +3112,13 @@ function compileRoutes() {
     if (!source || !dest) continue;
     if (dest.kind !== "audio") continue;
     if (!routingAllowed(source, dest)) continue;
+    if (source.fromPicture) {
+      if (!loopBySlot.has(dest.slot)) loopBySlot.set(dest.slot, []);
+      loopBySlot.get(dest.slot).push({
+        source, amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
+      });
+      continue;
+    }
     /* Sources without an `index` used to be dropped here, which meant the
        level and - later - a drawbar could point at the picture and not at the
        generator, silently: the routing existed, the editor drew it, and
@@ -3099,6 +3126,28 @@ function compileRoutes() {
     genRoutes.push({
       index: source.index, source, held: 0, slot: dest.slot,
       amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
+    });
+  }
+  /* The loop's routes into a generator parameter, combined into one before
+     they cross into the per-sample loop, so the total can be bounded there as
+     it is for a picture destination. Each part keeps the law its route would
+     have had - a ducking destination still only ducks - and the combined route
+     carries the bounded sum with an amount of one. It is a held value, like
+     every source that is not an oscillator, and rides the per-frame message
+     into the worklet like the rest of them. */
+  for (const [slot, parts] of loopBySlot) {
+    genRoutes.push({
+      index: undefined, slot, amount: 1, unipolar: false, held: 0, loopTotal: true,
+      source: {
+        value: () => {
+          let total = 0;
+          for (const part of parts) {
+            const v = part.source.value();
+            total += part.unipolar ? part.amount * (1 - v) / 2 : part.amount * v;
+          }
+          return clampLoop(total);
+        },
+      },
     });
   }
   modDirty = false;
@@ -8154,6 +8203,7 @@ const METER_WINDOW = 4;        // seconds the verdict looks back over
 const CHANGE_FLOOR = 0.02;     // below it, the picture is not moving
 const NOVELTY_FLOOR = 0.2;     // below it, the picture has been here before
 const SATURATED = 0.35;        // more of the screen lit than this is running away
+const STRAINED = -6;           // dB of limiting, held, is running away too
 
 function makePictureMeter() {
   const N = PHOSPHOR_N, C = METER_COARSE, B = N / C;
@@ -8162,7 +8212,7 @@ function makePictureMeter() {
   const history = [];
   const recent = [];
   let clock = 0, since = METER_EVERY;
-  const now = { coverage: 0, lit: 0, change: 0, novelty: 1 };
+  const now = { coverage: 0, lit: 0, change: 0, novelty: 1, limiting: 0 };
 
   function coarse(grid) {
     const c = new Float32Array(C * C);
@@ -8194,8 +8244,13 @@ function makePictureMeter() {
     get novelty() { return now.novelty; },
     get depth() { return history.length; },
 
-    update(grid, dt) {
+    /* `limiting` is how hard the monitor chains' limiters are working, in
+       dB of gain reduction - nought, or negative. The plan's other sign of a
+       loop running away, beside a screen full of ink: the sound has hit the
+       ceiling that is last in every chain and is being held there. */
+    update(grid, dt, limiting) {
       clock += dt;
+      now.limiting = limiting || 0;
       /* A soft sum: every cell contributes what it holds, capped at one. A
          count of cells over a threshold would flip whole cells in and out as
          they crossed it, which is the discontinuity the gate forbids. Scaled
@@ -8228,7 +8283,8 @@ function makePictureMeter() {
         if (history.length > METER_DEPTH) history.shift();
       }
 
-      recent.push({ t: clock, change: now.change, novelty: now.novelty, lit: now.lit });
+      recent.push({ t: clock, change: now.change, novelty: now.novelty, lit: now.lit,
+                    limiting: now.limiting });
       while (recent.length && clock - recent[0].t > METER_WINDOW) recent.shift();
     },
 
@@ -8237,7 +8293,7 @@ function makePictureMeter() {
        is enough history for "been here before" to mean anything. */
     verdict() {
       if (clock < METER_WINDOW || history.length <= METER_RECENT + 4) return "listening";
-      if (median("lit") > SATURATED) return "running away";
+      if (median("lit") > SATURATED || median("limiting") < STRAINED) return "running away";
       if (median("change") < CHANGE_FLOOR) return "settled";
       return median("novelty") < NOVELTY_FLOOR ? "cycling" : "wandering";
     },
@@ -8383,17 +8439,52 @@ const SIXTH = "signed";
 /* The values the sources hand out: slewed like the photocell's, so no picture
    source can move faster than the loop's defences allow. */
 const picture = {
-  round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0,
-  raw: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0 },
+  round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0, bored: 0,
+  raw: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0, bored: 0 },
 };
 
+/* BOREDOM: the one source that pushes when nothing else is happening. When
+   the picture stops changing, or keeps coming back to where it has been, it
+   rises; when the picture wanders it drains. That is an energy injection into
+   a loop whose whole risk is running away, so its bounds are its own and not
+   inherited: a reach below every other picture source's, off until someone
+   routes it, the same slew as the rest, counted in each destination's loop
+   total - and a LEAK, so a long stillness cannot wind it up to slam the loop
+   the moment it moves.
+
+   How stuck the picture is, as a number rather than a verdict, so it is
+   continuous: one when change and novelty are both far under their floors,
+   nought once either reaches twice its floor. It rises at a quarter a second
+   and drains toward nought with a five-second time constant, so it reaches
+   about nine tenths after ten seconds of stillness and lets go over a few. */
+const BORED_REACH = 0.3;
+const BORED_RISE = 0.25;       // a second, while fully stuck
+const BORED_LEAK = 0.2;        // a second, always
+let boredLevel = 0;
+
+function monitorLimiting() {
+  let most = 0;
+  for (const chain of monitorChains) {
+    if (chain.limiter && typeof chain.limiter.reduction === "number") {
+      most = Math.min(most, chain.limiter.reduction);
+    }
+  }
+  return most;
+}
+
 function pictureStep(frame, elapsed) {
-  const keys = ["round", "cover", "change", "novelty", "signed", "edge"];
+  const keys = ["round", "cover", "change", "novelty", "signed", "edge", "bored"];
   if (!photo.on || state.display === "spect" || !frame) {
     for (const key of keys) { picture[key] = 0; picture.raw[key] = 0; }
+    boredLevel = 0;
     return;
   }
-  pictureMeter.update(phosphor.grid, Math.max(0, elapsed) / 1000);
+  const dt = Math.max(0, elapsed) / 1000;
+  pictureMeter.update(phosphor.grid, dt, monitorLimiting());
+  const stuck = Math.max(0, Math.min(1, 1 - Math.max(pictureMeter.change / (2 * CHANGE_FLOOR),
+                                                     pictureMeter.novelty / (2 * NOVELTY_FLOOR))));
+  boredLevel += dt * (BORED_RISE * stuck - BORED_LEAK * boredLevel);
+  boredLevel = Math.max(0, Math.min(1, boredLevel));
   const shape = shapeOfPair(frame);
   const raw = picture.raw;
   raw.round = phosphor.moments ? phosphor.moments.roundness() : 0;
@@ -8402,6 +8493,7 @@ function pictureStep(frame, elapsed) {
   raw.cover = pictureMeter.coverage;
   raw.change = pictureMeter.change;
   raw.novelty = pictureMeter.novelty;
+  raw.bored = boredLevel;
   const most = PHOTO_SLEW * Math.max(0, elapsed) / 1000;
   for (const key of keys) {
     picture[key] += Math.max(-most, Math.min(most, raw[key] - picture[key]));
@@ -13577,6 +13669,8 @@ const PICTURE_SOURCES = [
   { id: "picture.change", key: "change", label: "Change", ink: "ch5", bipolar: false },
   { id: "picture.novelty", key: "novelty", label: "Novelty", ink: "ch2", bipolar: false },
   { id: "picture." + SIXTH, key: SIXTH, label: "Direction", ink: "ch1", bipolar: true },
+  { id: "picture.bored", key: "bored", label: "Boredom", ink: "ch6", bipolar: false,
+    reach: BORED_REACH },
 ];
 
 let photoDrag = null;

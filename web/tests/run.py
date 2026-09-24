@@ -37,6 +37,7 @@ SUITES = [
     ("poly", [sys.executable, "polytest.py"], "every held note sounding, and which are drawn"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
+    ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]
