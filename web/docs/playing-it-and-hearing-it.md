@@ -312,10 +312,14 @@ be discovered during implementation.
 
   **D2 — the generator's sound reaching a lane's speakers.** This needed B3,
   and calling it "built" was an overclaim that wants correcting: the generator
-  sounds when it IS the source, which is what B3 delivered. A generator LANE is
-  silent. Giving one an output means a second worklet on the rack's own context
-  feeding the rack's mix, with the monitoring rules that go with it, and that
-  is not built.
+  sounds when it IS the source, which is what B3 delivered. A generator LANE was
+  silent. **Now built:** *Hear the generator* is offered for a lane too, and
+  switches on the same processor on the rack's own context — the tone source's
+  worklet wiring was factored into one `makeGeneratorVoice` that both call, so
+  there is no second copy of it. What reaches the rack's mix is the lane's left
+  channel only, through the lane's own gain, so solo, mute and the trim reach it
+  and what you hear is exactly the lane that is drawn. It stays a drone (D10):
+  heard, it sounds for as long as it is switched on. `voicetest.py` holds it.
 
   **"A second worklet" means the same processor on another context, and this is
   a constraint on the work rather than a description of it.** One piece of
@@ -335,7 +339,9 @@ be discovered during implementation.
   Today they cannot coexist — `state.source` is one thing and adopting a rack
   stops what it replaces — and `contracttest.py` checks that rather than
   assuming it. The day a lane gets its own worklet, that check is the one to
-  extend first.
+  extend first. That day came, and `voicetest.py` extends it: a sounding tone
+  source is silent once a rack replaces it, and a sounding lane is silent once
+  anything replaces its rack.
 
   The practical consequence: D1 can move in parallel with portable-DSP work
   rather than queuing behind the worklet. If the JUCE port is where the

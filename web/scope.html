@@ -2161,10 +2161,11 @@ body[data-view="bench"] #menuButton { display: none; }
         with <i>X&ndash;Y</i> able to pair either against either. Add files to it as well
         if you want them. It is one lane each, which for the generator means its
         <em>left</em> channel: a lane is one signal and the generator makes two, so its own
-        figure is not available while it is a lane. It is silent there for now &mdash; on
-        its own it can be heard, but a lane's worth of it does not yet reach the speakers
-        &mdash; and a keyboard sets its pitch without starting or stopping it, because the
-        envelope lives on the source rather than on a lane. The count beside the box says
+        figure is not available while it is a lane. <i>Hear the generator</i> works there
+        too: what you hear is that left channel, in the rack's mix, so <i>Solo</i> and
+        <i>Mute</i> reach it like any stem. A keyboard sets its pitch without starting or
+        stopping it, because the envelope lives on the source rather than on a lane &mdash;
+        so heard, a lane drones for as long as it is switched on. The count beside the box says
         how many lanes your choice comes to, out of six; the generator takes one of the six
         before any file does.</span></li>
 
@@ -3001,7 +3002,8 @@ function lfoDriver() {
      per-sample loop the tone source does. Asking the source's KIND was right
      while the generator could only be the whole source; it stops being right
      the moment the generator can be one lane of something else. */
-  if (source.lanes && source.lanes.some((lane) => lane.synth)) return "fill";
+  const synth = source.lanes ? source.lanes.find((lane) => lane.synth) : null;
+  if (synth) return synth.audible() ? "worklet" : "fill";
   return "main";
 }
 
@@ -4475,6 +4477,157 @@ function loadGeneratorModule(ctx) {
   return ready;
 }
 
+/* --- the generator's voice ---------------------------------------------------
+   Everything it takes for a generator to be HEARD, in one place, because two
+   things now need it: the tone source, and the generator as a lane of a rack.
+   Written once and called from both rather than copied, for the reason this
+   page keeps relearning - two copies of a worklet's wiring agree the day they
+   are written and drift from then on, and the drift is a sound that is not
+   the picture.
+
+   What differs between the two is passed in rather than branched on. `open`
+   hands over the context to build on: the tone source makes its own, a lane
+   uses the rack's. `wire` connects the voice's output onwards and returns how
+   to undo it: the tone source goes through its own monitor chain as a pair,
+   a lane takes the left channel only into its own gain on the rack's mix.
+   `absorb` is where the samples the worklet posts back are written, because
+   while the voice is sounding they are the only samples there are.
+
+   Silent by default, and that is a decision rather than an unfinished edge. A
+   measuring instrument that made a noise the moment it was opened would be
+   wrong in the way a scope is not allowed to be wrong. What switching it on
+   buys is not only sound: the worklet becomes the only thing generating
+   samples, and the picture is drawn from the ones it posts back - so the trace
+   is the waveform that went to the speakers, sample for sample, rather than a
+   second run of the same arithmetic agreeing with it in character and not in
+   phase. */
+function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
+  let ctx = null, node = null, level = null, unwire = null;
+  let audible = false;
+  let fault = null;
+  /* How many blocks the worklet has handed over. Not a diagnostic count for
+     its own sake: while the generator is sounding this is the ONLY thing
+     writing the samples, so it is the answer to "are the samples on the
+     graticule the ones that went to the speakers" - and unlike comparing a
+     ring against itself, it cannot be fooled by a periodic waveform. */
+  let blocks = 0;
+  /* Where the envelope has got to while the loop is in the worklet, which
+     posts it back. Read through the owner's `envelope`, which knows whether
+     the loop is here or there. */
+  let envelopeNow = 1;
+
+  function hush() {
+    if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
+    if (level) { try { level.disconnect(); } catch (error) { /* gone */ } }
+    if (node) { try { node.disconnect(); } catch (error) { /* gone */ } }
+    if (unwire) { try { unwire(); } catch (error) { /* gone */ } }
+    node = null; level = null; unwire = null;
+    audible = false;
+  }
+
+  /* The routes as numbers, which is the only form that crosses a thread. */
+  function plainRoutes() {
+    if (modDirty) compileRoutes();
+    return genRoutes.map((route) => ({
+      index: route.index,
+      held: route.index === undefined ? route.source.value() : 0,
+      slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
+    }));
+  }
+
+  async function setSound(on) {
+    if (on === audible) return audible;
+    if (!on) { hush(); return false; }
+    try {
+      ctx = await open();
+      if (ctx.state === "suspended") await ctx.resume();
+      await loadGeneratorModule(ctx);
+
+      node = new AudioWorkletNode(ctx, "generator", {
+        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+        processorOptions: {
+          slots: GEN_DESTS.length,
+          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+          tone: JSON.parse(JSON.stringify(core.tone)),
+          routes: plainRoutes(),
+          /* Where the envelope already is. Switching the sound on with a key
+             held down must not arrive with the gate shut, and switching it on
+             with nothing plugged in must not arrive gated at all. */
+          gated: gatedAtStart(),
+        },
+      });
+      node.onprocessorerror = () => {
+        // No message on this event, by specification. All it can say is that
+        // something went wrong in there, which is still better than silence.
+        if (!fault) fault = "the processor stopped";
+        hush();
+      };
+      node.port.onmessage = (event) => {
+        const message = event.data;
+        if (!message) return;
+        if (message.error) { fault = message.error; hush(); return; }
+        if (!message.l) return;
+        blocks++;
+        absorb(message.l, message.r);
+        /* Where the oscillators got to, read back rather than run again. The
+           worklet is their driver while it is producing, so the copies on
+           this side are told their phase instead of finding it - which is the
+           whole of what `lfoDriver` is protecting. */
+        if (message.envelope !== undefined) envelopeNow = message.envelope;
+        if (message.lfos) {
+          for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
+            lfos[i].phase = message.lfos[i].phase;
+            lfos[i].held = message.lfos[i].held;
+            lfos[i].value = message.lfos[i].value;
+          }
+        }
+      };
+
+      /* A ramp in, because connecting a running oscillator to the speakers
+         starts it wherever its phase happens to be and that is a click. */
+      level = ctx.createGain();
+      level.gain.value = 0;
+      node.connect(level);
+      unwire = wire(ctx, level);
+      level.gain.setTargetAtTime(1, ctx.currentTime, 0.02);
+      audible = true;
+      syncMonitor();
+    } catch (error) {
+      fault = String(error && error.message || error);
+      hush();
+    }
+    return audible;
+  }
+
+  return {
+    setSound,
+    hush,
+    get audible() { return audible; },
+    get fault() { return fault; },
+    get blocks() { return blocks; },
+    get envelope() { return envelopeNow; },
+    set envelope(value) { envelopeNow = value; },
+    get latencyMs() {
+      if (!ctx) return 0;
+      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
+                        + MONITOR_LOOKAHEAD_MS);
+    },
+    post(message) { if (node) node.port.postMessage(message); },
+    /* One message a frame, carrying everything that is written on the main
+       thread: the routes, the held value of every source that is not an
+       oscillator, and the oscillators' own settings. Posted on the frame
+       clock because that is when they change; the worklet holds them across
+       its block, the same as the main-thread loop does. */
+    frame() {
+      if (!node) return;
+      node.port.postMessage({
+        routes: plainRoutes(),
+        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+      });
+    },
+  };
+}
+
 /* The rate is an argument so a test can run the whole capture path at 96 kHz
    without a converter that does. Nothing in the page passes one. */
 function makeToneSource(atRate) {
@@ -4494,33 +4647,8 @@ function makeToneSource(atRate) {
   let writePos = 0;
   let lastFill = null;
 
-  /* The audio side, which is all off until somebody asks for it.
-
-     Silent by default, and that is a decision rather than an unfinished
-     edge. A measuring instrument that made a noise the moment it was opened
-     would be wrong in the way a scope is not allowed to be wrong, and the
-     live input already works this way for a related reason. What the switch
-     buys when it is on is not only sound: the worklet becomes the only thing
-     generating samples, and the picture is drawn from the ones it posts
-     back - so the trace is the waveform that went to the speakers, sample for
-     sample, rather than a second run of the same arithmetic agreeing with it
-     in character and not in phase. */
-  let ctx = null, node = null, chain = null, level = null;
-  let audible = false;
-  let workletFault = null;
-  /* How many blocks the worklet has handed over. Not a diagnostic count for
-     its own sake: while the generator is sounding this is the ONLY thing
-     writing the ring, so it is the answer to "are the samples on the
-     graticule the ones that went to the speakers" - and unlike comparing the
-     ring against itself, it cannot be fooled by a periodic waveform. */
-  let blocks = 0;
-  /* Where the envelope has got to, wherever it is running. The core has it
-     directly while the loop is on this thread, and the worklet posts it back
-     when the loop is not - one number either way, read by `env.note`. */
-  let envelopeNow = 1;
-
+  /* The ring, written by the worklet while the generator is sounding. */
   function absorb(l, r) {
-    blocks++;
     let done = 0;
     while (done < l.length) {
       const take = Math.min(l.length - done, CAPACITY - writePos);
@@ -4531,94 +4659,26 @@ function makeToneSource(atRate) {
     }
   }
 
-  function hush() {
-    if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
-    if (level) { try { level.disconnect(); } catch (error) { /* gone */ } }
-    if (node) { try { node.disconnect(); } catch (error) { /* gone */ } }
-    dropMonitorChain(chain);
-    node = null; level = null; chain = null;
-    audible = false;
-  }
-
-  async function setSound(on) {
-    if (on === audible) return audible;
-    if (!on) { hush(); return false; }
-    try {
+  /* Its own context, made the first time the sound is asked for and kept, and
+     out through its own monitor chain as a pair - so the filter, the AC
+     coupling, the rotation and the limiter all reach it. */
+  let ctx = null;
+  const voice = makeGeneratorVoice(core, {
+    async open() {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         noteDeviceRate(ctx.sampleRate);
       }
-      if (ctx.state === "suspended") await ctx.resume();
-      await loadGeneratorModule(ctx);
-
-      node = new AudioWorkletNode(ctx, "generator", {
-        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-        processorOptions: {
-          slots: GEN_DESTS.length,
-          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
-          tone: JSON.parse(JSON.stringify(tone)),
-          routes: plainRoutes(),
-          /* Where the envelope already is. Switching the sound on with a key
-             held down must not arrive with the gate shut, and switching it on
-             with nothing plugged in must not arrive gated at all. */
-          gated: core.gated,
-        },
-      });
-      node.onprocessorerror = () => {
-        // No message on this event, by specification. All it can say is that
-        // something went wrong in there, which is still better than silence.
-        if (!workletFault) workletFault = "the processor stopped";
-        hush();
-      };
-      node.port.onmessage = (event) => {
-        const message = event.data;
-        if (!message) return;
-        if (message.error) { workletFault = message.error; hush(); return; }
-        if (!message.l) return;
-        absorb(message.l, message.r);
-        /* Where the oscillators got to, read back rather than run again. The
-           worklet is their driver while it is producing, so the copies on
-           this side are told their phase instead of finding it - which is the
-           whole of what `lfoDriver` is protecting. */
-        if (message.envelope !== undefined) envelopeNow = message.envelope;
-        if (message.lfos) {
-          for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
-            lfos[i].phase = message.lfos[i].phase;
-            lfos[i].held = message.lfos[i].held;
-            lfos[i].value = message.lfos[i].value;
-          }
-        }
-      };
-
-      /* A ramp in, because connecting a running oscillator to the speakers
-         starts it wherever its phase happens to be and that is a click. Out
-         through the monitor chain, so the filter, the AC coupling, the
-         rotation and the limiter all reach it - which is what Stage C built
-         and has never until now had a generator to act on. */
-      level = ctx.createGain();
-      level.gain.value = 0;
-      chain = makeMonitorChain(ctx);
-      node.connect(level);
+      return ctx;
+    },
+    wire(context, level) {
+      const chain = makeMonitorChain(context);
       level.connect(chain.input);
-      level.gain.setTargetAtTime(1, ctx.currentTime, 0.02);
-      audible = true;
-      syncMonitor();
-    } catch (error) {
-      workletFault = String(error && error.message || error);
-      hush();
-    }
-    return audible;
-  }
-
-  /* The routes as numbers, which is the only form that crosses a thread. */
-  function plainRoutes() {
-    if (modDirty) compileRoutes();
-    return genRoutes.map((route) => ({
-      index: route.index,
-      held: route.index === undefined ? route.source.value() : 0,
-      slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
-    }));
-  }
+      return () => dropMonitorChain(chain);
+    },
+    absorb,
+    gatedAtStart: () => core.gated,
+  });
 
   function fill(nowSeconds) {
     if (lastFill === null) { lastFill = nowSeconds; return; }
@@ -4683,52 +4743,40 @@ function makeToneSource(atRate) {
 
     set(field, value) {
       core.set(field, value);
-      if (node) node.port.postMessage({ tone: { [field]: value } });
+      voice.post({ tone: { [field]: value } });
     },
     reswing() {
       core.reswing();
-      if (node) node.port.postMessage({ reswing: true });
+      voice.post({ reswing: true });
     },
 
     // Whether the worklet is the thing making the samples, which is also the
     // answer to who is driving the oscillators; see `lfoDriver`.
-    audible() { return audible; },
-    setSound(on) { return setSound(on); },
-    get latencyMs() {
-      if (!ctx) return 0;
-      return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
-                        + MONITOR_LOOKAHEAD_MS);
-    },
+    audible() { return voice.audible; },
+    setSound(on) { return voice.setSound(on); },
+    get latencyMs() { return voice.latencyMs; },
     get moduleFrom() { return generatorModuleFrom; },
-    get fault() { return workletFault; },
-    get blocks() { return blocks; },
+    get fault() { return voice.fault; },
+    get blocks() { return voice.blocks; },
 
     /* The gate, as the note stack sees it. Passed on rather than acted on:
        the envelope is in the core, which is the only place that can run it a
        sample at a time, and this is the wire. */
     gate(open, velocity) {
       core.gate(open, velocity);
-      if (node) node.port.postMessage({ gate: { open, velocity } });
+      voice.post({ gate: { open, velocity } });
     },
     setGated(on) {
       core.setGated(on);
-      if (!on) envelopeNow = 1;
-      if (node) node.port.postMessage({ gated: on });
+      if (!on) voice.envelope = 1;
+      voice.post({ gated: on });
     },
     get gated() { return core.gated; },
-    get envelope() { return audible ? envelopeNow : core.envelope; },
+    get envelope() { return voice.audible ? voice.envelope : core.envelope; },
 
     tick(nowSeconds) {
-      if (!audible) { envelopeNow = core.envelope; fill(nowSeconds); return; }
-      /* One message a frame, carrying everything that is written on this
-         thread: the routes, the held value of every source that is not an
-         oscillator, and the oscillators' own settings. Posted on the frame
-         clock because that is when they change; the worklet holds them across
-         its block, the same as this loop used to. */
-      node.port.postMessage({
-        routes: plainRoutes(),
-        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
-      });
+      if (!voice.audible) { voice.envelope = core.envelope; fill(nowSeconds); return; }
+      voice.frame();
     },
 
     getLatestWindow(n) {
@@ -4748,7 +4796,7 @@ function makeToneSource(atRate) {
       });
     },
     stop() {
-      hush();
+      voice.hush();
       if (ctx && ctx.close) { try { ctx.close(); } catch (error) { /* gone */ } }
       ctx = null;
     },
@@ -5491,18 +5539,26 @@ function laneMixer(lanes) {
    generator's own figure - its left against its right - which is not available
    while it is a lane. Put the generator back on its own to see that.
 
-   SILENT, for now, and this is the part of D2 that is not built. The worklet
-   gives the generator an output when it IS the source; giving a LANE an output
-   means a second worklet on the rack's context feeding the rack's mix, and the
-   monitoring rules that go with it. `monitored` is false, the same as the live
-   lane in a play-along rack and for a related reason: this lane is here to be
-   looked at.
+   HEARD when asked, and silent until then, the same as the tone source. It
+   shares the tone source's voice - one worklet wiring, called from two places
+   - on the rack's own context, and what reaches the rack's mix is the LEFT
+   channel only, through this lane's gain, so solo, mute and the level trim
+   reach it like any stem and what you hear is exactly the lane that is drawn.
+   While it sounds, the worklet is the only thing making its samples and the
+   ring is written from the blocks it posts back, so the trace is the waveform
+   that went to the speakers. `monitored` says whether it is sounding, which is
+   what the mixer means by it: a lane nobody can hear cannot be soloed.
+
+   Never gated, which is D10 and still a decision: a lane is a drone that
+   follows pitch. Heard, that means it sounds for as long as it is switched on
+   rather than only while a key is down. Playing the generator on its own is
+   the version with an envelope.
 
    AT MOST ONE of these in a rack, enforced where the rack is built. Two would
    both step the oscillators once a sample and every rate would run at double -
    which `assertLfoDriver` would catch on the first block, but the rack is
    where the answer is knowable rather than where the symptom appears.        */
-function makeSynthLane(name, rate) {
+function makeSynthLane(name, rate, ctx, mix) {
   const core = makeGeneratorCore(rate, GEN_DESTS.length, lfos);
   // What an analyser holds, so putting this lane in a rack never makes it the
   // short one and never quietly shortens the longest timebase.
@@ -5513,12 +5569,61 @@ function makeSynthLane(name, rate) {
   let writePos = 0;
   let lastFill = null;
 
+  /* The lane's own gain onto the rack's mix, which is what the mixer turns.
+     Only when there is a rack to be heard in: a lane built on its own, as a
+     test builds one, has nowhere to sound and says so if asked. */
+  const gain = ctx && mix ? ctx.createGain() : null;
+  if (gain) gain.connect(mix);
+
+  function absorb(l) {
+    let done = 0;
+    while (done < l.length) {
+      const take = Math.min(l.length - done, FRAMES - writePos);
+      ring.set(l.subarray(done, done + take), writePos);
+      writePos = (writePos + take) % FRAMES;
+      done += take;
+    }
+  }
+
+  const voice = makeGeneratorVoice(core, {
+    async open() {
+      if (!gain) throw new Error("this lane is not in a rack that can be heard");
+      return ctx;
+    },
+    wire(context, level) {
+      const split = context.createChannelSplitter(2);
+      level.connect(split);
+      split.connect(gain, 0);
+      return () => split.disconnect();
+    },
+    absorb,
+    gatedAtStart: () => false,
+  });
+
   return {
     name, synth: true, core,
     level: 0, mute: false, solo: false,
     delay: 0,
     live: false,
-    monitored: false,
+    get monitored() { return voice.audible; },
+
+    /* Writes go through the lane, never to `core` directly, because while it
+       is sounding the core that matters is the one in the worklet. */
+    set(field, value) {
+      core.set(field, value);
+      voice.post({ tone: { [field]: value } });
+    },
+    reswing() {
+      core.reswing();
+      voice.post({ reswing: true });
+    },
+    audible() { return voice.audible; },
+    setSound(on) { return voice.setSound(on); },
+    hush() { voice.hush(); },
+    get latencyMs() { return voice.latencyMs; },
+    get moduleFrom() { return generatorModuleFrom; },
+    get fault() { return voice.fault; },
+    get blocks() { return voice.blocks; },
 
     get frames() { return FRAMES; },
 
@@ -5537,10 +5642,14 @@ function makeSynthLane(name, rate) {
       return out;
     },
 
-    // Nothing to hear yet, so nothing to set. Not an oversight - see above.
-    setMix() {},
+    setMix(value) { if (gain) gain.gain.value = value; },
 
     tick(nowSeconds) {
+      /* Sounding, the worklet is filling the ring and driving the oscillators,
+         and this only tells it what changed on this thread. The clock starts
+         again from nothing when it stops, so the main-thread loop does not try
+         to catch up on the time it was not running. */
+      if (voice.audible) { voice.frame(); lastFill = null; return; }
       if (lastFill === null) { lastFill = nowSeconds; return; }
       let needed = Math.floor((nowSeconds - lastFill) * rate);
       if (needed <= 0) return;
@@ -5626,7 +5735,7 @@ async function makeRackSource(entries, label, deviceId) {
   const lanes = list.map((entry) => {
     // A lane with nothing behind it is built by something else entirely, and
     // never touches the context, the mix or the transport.
-    if (entry.synth) return makeSynthLane(entry.name, ctx.sampleRate);
+    if (entry.synth) return makeSynthLane(entry.name, ctx.sampleRate, ctx, mix);
 
     const lane = makeLane(ctx, entry.name, mix);
     if (entry.stream) {
@@ -5786,6 +5895,7 @@ async function makeRackSource(entries, label, deviceId) {
     stop() {
       stopNodes();
       lanes.forEach((lane) => { if (lane.node) lane.node.disconnect(); });
+      lanes.forEach((lane) => { if (lane.hush) lane.hush(); });
       if (wantsLive) releaseLiveStream(deviceId);
       dropMonitorChain(monitor);
       ctx.close();
@@ -9158,7 +9268,7 @@ function genSet(field, value) {
   if (source && source.kind === "tone") { source.set(field, value); return true; }
   const lane = genLane();
   if (!lane) return false;
-  lane.core.set(field, value);
+  lane.set(field, value);
   return true;
 }
 
@@ -9166,7 +9276,16 @@ function genReswing() {
   const source = state.source;
   if (source && source.kind === "tone") { source.reswing(); return; }
   const lane = genLane();
-  if (lane) lane.core.reswing();
+  if (lane) lane.reswing();
+}
+
+/* And where its SOUND is, the same question a fourth time. The tone source
+   answers for itself; a rack answers through its generator lane, which has
+   the same voice. Anything else has no generator to hear. */
+function genVoice() {
+  const source = state.source;
+  if (source && typeof source.setSound === "function") return source;
+  return genLane();
 }
 
 /* --- the generator's three families ------------------------------------- */
@@ -10754,6 +10873,35 @@ function showSource(pending) {
 const playable = () => state.source.kind === "file"
   || (state.source.kind === "rack" && state.source.duration > 0);
 
+/* What the panel says, written into a generator that has just been made. Two
+   things make new generators - choosing Tone, and building a rack with the
+   generator in it - and only the first used to do this. A lane arrived with
+   the core's own defaults while the panel beside it said something else, so
+   the first rebuild of a rack (adding a file, ticking the live input) put the
+   generator back to 220 Hz without a word. Unheard, nobody noticed; heard, it
+   is a pitch that jumps when you add a backing track. */
+function generatorFromPanel(set) {
+  set("freq", Number(el.freq.value));
+  set("amp", Number(el.amp.value) / 100);
+  set("shape", el.shape.value);
+  set("mode", el.genMode.value);
+  set("interval", Number(el.interval.value));
+  set("octaves", 0);
+  set("just", el.tuneJust.getAttribute("aria-checked") === "true");
+  set("phase", Number(el.phase.value) * Math.PI / 180);
+  set("figure", el.figure.value);
+  set("detail", Number(el.detail.value));
+  set("figureRate", Number(el.figureRate.value));
+  set("swingRate", Number(el.swingRate.value) / 10);
+  set("decay", Number(el.decay.value) / 100);
+  set("detune", Number(el.detune.value) / 10000);
+  // The same table the handlers use, so a new generator is built with what
+  // the sliders say rather than with the core's own defaults.
+  for (const [id, field, law] of ENVELOPE_CONTROLS) {
+    set(field, law(Number(el[id].value)));
+  }
+}
+
 function toTone() {
   // Already a tone: there is nothing to build, but the panel may be showing
   // another source's rows and this click is how you get back. Returning here
@@ -10770,25 +10918,7 @@ function toTone() {
      is connected. `stop` hushes the old one, this remembers that it did. */
   state.genSound = false;
   state.source = makeToneSource();
-  state.source.set("freq", Number(el.freq.value));
-  state.source.set("amp", Number(el.amp.value) / 100);
-  state.source.set("shape", el.shape.value);
-  state.source.set("mode", el.genMode.value);
-  state.source.set("interval", Number(el.interval.value));
-  state.source.set("octaves", 0);
-  state.source.set("just", el.tuneJust.getAttribute("aria-checked") === "true");
-  state.source.set("phase", Number(el.phase.value) * Math.PI / 180);
-  state.source.set("figure", el.figure.value);
-  state.source.set("detail", Number(el.detail.value));
-  state.source.set("figureRate", Number(el.figureRate.value));
-  state.source.set("swingRate", Number(el.swingRate.value) / 10);
-  state.source.set("decay", Number(el.decay.value) / 100);
-  state.source.set("detune", Number(el.detune.value) / 10000);
-  // The same table the handlers use, so a new generator is built with what
-  // the sliders say rather than with the core's own defaults.
-  for (const [id, field, law] of ENVELOPE_CONTROLS) {
-    state.source.set(field, law(Number(el[id].value)));
-  }
+  generatorFromPanel((field, value) => state.source.set(field, value));
   syncEnvelopeLabels();
   showSource();
   showGenerator();
@@ -11004,18 +11134,22 @@ el.monitorLive.addEventListener("change", () => {
    comes back as "no", and the checkbox has to show what happened rather than
    what was clicked. */
 async function applyGeneratorSound() {
-  const source = state.source;
-  if (!source || typeof source.setSound !== "function") {
+  const voice = genVoice();
+  if (!voice) {
     state.genSound = false;
   } else {
-    state.genSound = await source.setSound(state.genSound);
+    state.genSound = await voice.setSound(state.genSound);
   }
+  /* A lane that starts or stops sounding changes what the mixer counts as
+     audible - a lane nobody can hear cannot be soloed - so the mix is
+     worked out again rather than left as it was for a silent lane. */
+  if (state.source && state.source.remix) state.source.remix();
   syncGeneratorSound();
 }
 
 function syncGeneratorSound() {
-  const source = state.source;
-  const able = !!source && typeof source.setSound === "function";
+  const source = genVoice();
+  const able = !!source;
 
   /* Read back from the source rather than trusted as a flag. A generator that
      was sounding and has been replaced - by a rack, a file, a microphone - is
@@ -11441,8 +11575,25 @@ async function toBands(file) {
 }
 
 function adoptRack(source, kind) {
+  /* Ticking another box in the rack rebuilds it, and the generator lane in the
+     new one is a new lane. If the old one was sounding, the new one sounds:
+     adding a file or the live input is not a request to stop hearing the
+     generator. Only rack to rack - coming from the tone source is choosing a
+     different source, and switching the speakers on stays an act. */
+  const lane = genLane();
+  const sounding = !!(lane && lane.audible());
   if (state.source && state.source.stop) state.source.stop();
   state.source = source;
+  /* Before the sound, so a voice switched straight back on starts from what
+     the panel says rather than from the core's defaults - the voice takes its
+     settings from the core when it opens. And the notes after, the same as a
+     new tone source: whatever is under your hands is still under them. */
+  const fresh = genLane();
+  if (fresh) {
+    generatorFromPanel((field, value) => fresh.set(field, value));
+    midiApplyNotes();
+  }
+  if (sounding && fresh) { state.genSound = true; applyGeneratorSound(); }
   fitChannels(source.channels);
 
   // Stacked by default, and overlaid for two: see `stacked`.

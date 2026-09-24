@@ -60,6 +60,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
 | `contracttest.py` | the lane contract, the generator as a lane, and a rack with no files in it |
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
+| `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1002,13 +1003,15 @@ own verification asks for exactly this — "X–Y can pair generator-L against
 Nord-L" — and the cost is that the generator's own figure, its left against its
 right, is not available while it is a lane. Put it back on its own to see that.
 
-**A generator lane is silent, and that is the rest of D2 rather than an
-oversight.** The worklet gives the generator an output when it *is* the source;
-giving a lane an output means a second worklet on the rack's context feeding the
-rack's mix, with the monitoring rules that go with it. `monitored` is false, the
-same as the live lane in a play-along rack. A keyboard is also not gated into a
-lane: the gate lives on the source, `midiApplyGate` finds no `setGated` on a
-rack, so a note sets the pitch without starting or stopping it.
+**A generator lane was silent, and is heard now through the tone source's own
+voice.** The worklet wiring — context, module, node, the ramp in, the samples
+posted back, the per-frame message — was factored out of the tone source into
+`makeGeneratorVoice`, and a lane calls the same function on the rack's context.
+What differs is passed in: where the context comes from, where the output goes
+(a lane sends only its left channel, into its own gain on the rack's mix), and
+where the samples land. `monitored` is now whether it is sounding, which is
+what the mixer means by it. A keyboard is still not gated into a lane (D10): a
+note sets the pitch without starting or stopping it, so heard, a lane drones.
 
 **`state.source.kind === "tone"` was asked in thirty places, and it was the
 wrong question.** It is a statement about what the generator *was* — a source or
@@ -1200,4 +1203,43 @@ case, and no check reached it, because every panic in the suite arrived with
 the latched note still on the stack. The first version of the new latch-off
 check was then carried by the state its neighbour left behind, and caught the
 mutation only after it was made to start from a clean slate.
+
+**A new lane was built from the core's defaults, not the panel.** Choosing Tone
+wrote fourteen fields and the envelope from the panel into the new generator;
+building a rack with the generator in it wrote nothing. So the first rebuild of
+a rack — adding a file, ticking the live input — put the lane back to 220 Hz
+while the panel still said what you had played. Silent, nobody could hear it;
+`voicetest.py` found it the first time it rebuilt a rack around a lane that was
+sounding. Both paths call `generatorFromPanel` now.
+
+**The periodic-tone trap, a third time, and caught by its own symptom.** A check
+that a lane is still drawn after its sound is switched off compared two windows
+300 ms apart, and reported the ring frozen. It was moving. At 44.1 kHz a
+220 Hz tone repeats exactly every 2205 samples — eleven cycles in 50 ms — and
+300 ms is six of those, so the two windows were identical by construction. The
+tell was that the "moved by" figure came out identical to ten digits across
+separate runs, which a real measurement of a moving ring does not do. The check
+now uses 223.7 Hz and three different waits; the neighbouring check, which
+waited 350 ms (seven repeats) and passed only on the worklet's block timing,
+was moved off 220 Hz too. **Before reading two windows of a steady tone a time
+apart, work out whether the tone repeats in that time — at 220 Hz and 44.1 kHz
+it repeats every 50 ms.**
+
+**The page's pitch estimator cannot see a pair's slower period.** The first
+version of `voicetest.py` told "left channel only" from "both channels" by
+pitch: 220 Hz on the left, 330 Hz on the right, and the pair repeats only every
+1/110 s. True of the waveform, and invisible to `estimateFrequency`, which counts
+rising zero crossings — the sum of those two crosses upward twice per 110 Hz
+period and reads as 220, exactly like the left alone. The mutation that sent
+both channels to the mix survived. The check measures energy at 330 Hz now,
+which the left channel alone does not have. A property of the signal is not a
+property of the instrument measuring it; the null test is what tells them apart.
+
+**Two mutations of the voice are equivalent, and are left in the record rather
+than chased.** Dropping the `return` after a sounding lane's per-frame message
+changes nothing, because the line before it resets the fill clock and the next
+line returns on a reset clock; dropping the reset as well is caught at once, by
+`assertLfoDriver` throwing. And `toTone` clearing `state.genSound` is redundant
+since `syncGeneratorSound` reads the answer back from the source — the line
+predates the read-back and costs nothing.
 
