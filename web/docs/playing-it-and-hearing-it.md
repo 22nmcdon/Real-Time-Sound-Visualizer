@@ -835,6 +835,104 @@ small bilinear neighbourhood of it.
   `getImageData` on a tiny rectangle under the reticle is the upgrade — measured,
   not assumed.
 
+### What else the picture can say
+
+The reticle reads one thing: brightness at a point. The loop is more
+interesting — and more its own — when it can also read the *shape* of what is
+drawn. Two kinds of measurement are available, and the split matters:
+
+- **Sound in disguise.** Statistics of the two lanes: where the figure sits,
+  how round it is, how much area it encloses. They could be computed from the
+  samples without drawing anything. A loop built only from these is an audio
+  feedback loop wearing a picture — it works, but a synth with internal
+  feedback could do the same.
+- **Only because there is a screen.** Measurements that depend on persistence,
+  on the graticule's edges, on where the beam lingers. This is where the idea
+  is its own.
+
+Both are taken from **what is drawn** — `capture`'s turned pair after rotation
+and zoom, and the phosphor grid — not from the signal before the display, so
+the loop can feel its own display settings. That costs nothing: the turned
+pair already exists.
+
+#### The gate every source passes: continuity
+
+*A small change in the picture must make a small change in the value.* A
+source whose estimator can jump on a small change of input injects exactly the
+instability the clamp and the slew exist to prevent — whatever it is routed
+to, and before either of them sees it. So this is a test rather than a hope:
+perturb a fixture slightly, and assert the source moves by no more than a
+stated bound.
+
+It decides the form of two sources before they are written. **Coverage** is a
+soft sum — capped brightness summed over the grid — and never a count of cells
+over a threshold, because cells flip as they cross it. **Recurrence** is a
+distance to the nearest past frame, never a yes-or-no "has it repeated".
+
+#### The six, provisionally
+
+| Source | Reads | Kind | Range | What it is for |
+|---|---|---|---|---|
+| Brightness at a point (`photo.n`) | the grid, bilinear | screen | 0–1 | the original reticle |
+| Roundness | √(λ_min / λ_max) of the lanes' 2×2 covariance | sound in disguise | 0–1 | a fold built in: in lag X–Y it peaks at τ = a quarter period and falls either side |
+| Coverage | soft sum over the grid, normalised | screen | 0–1 | how much ink: a thin loop low, noise high |
+| Frame change | L1 distance between this grid and the last, over their summed energy (nought when both are dark, rather than 0/0) | screen | 0–1 | motion, as one number |
+| Recurrence | the same distance to the nearest of a history of past grids | screen | 0–1 | memory longer than persistence |
+| *the sixth slot* | decided by measurement — see below | | | |
+
+**Roundness has a blind spot, and it is stated rather than discovered.**
+Second moments cannot see shape: a circle, a square and a symmetric star all
+score 1. It reads how *spread* a figure is across directions, which is what
+the fold needs, and nothing about corners.
+
+**Recurrence has a cost worth a line.** Comparing against a history every frame
+is kept affordable by keeping the history coarse — a 16 × 16 reduction of the
+grid, sampled a few times a second — so sixty past frames is fifteen thousand
+operations a frame, not a quarter of a million.
+
+**The sixth slot.** Signed area was the first choice and is provisionally out.
+For the figures this instrument makes most — two equal-amplitude sines at a
+phase difference φ — roundness is even in φ and signed area is odd, so over a
+symmetric sweep their linear correlation is *zero*. That is why correlation is
+the wrong test: the size of the area is a fixed function of roundness, and the
+two are readings of one variable. The test that matters is whether the loop's
+state gains a dimension, and reading φ twice gains none. The candidates:
+
+- **Signed area** — keeps the one thing no other source has: which channel
+  leads, the direction the beam travels round the figure.
+- **Edge contact** — how much of the figure the screen's edge clips, as a soft
+  measure. The graticule's hard nonlinearity, and a fold in its own right. It is
+  nought until the figure reaches the edge, which is a dead zone to know about.
+
+Decided by measuring, not by argument: the dependence between each candidate and
+the other five across the generator's presets and a detune sweep, **with the
+loop closed**, printed as a survey the way `combtest.py` prints the comb's. The
+candidate that adds most takes the slot. If neither adds anything, it is five
+sources, and the sixth ink stays free.
+
+#### Deferred, each for a reason
+
+- **Lean** (the principal axis's angle) fails the gate. Near roundness 1 the axis
+  is undefined and the angle jumps. A continuous form exists — the covariance's
+  two anisotropy components, (σ_xx − σ_yy, 2σ_xy), rather than their angle —
+  and that is the form it would come back in.
+- **Rotation rate** needs orientation tracked across frames, so it inherits
+  lean's discontinuity. The page already knows the beat from the interval.
+- **Fractal dimension and entropy** fail the gate as usually estimated: over a
+  short, noisy window the estimator can jump on a small input change. This is a
+  deliberate deferral for that reason, not a place in a queue.
+- **Curvature.** *Total turning* is cheap — one cross product per segment, in the
+  walk that already computes beam speed. But it depends on scale: at high pitch
+  there are few samples per cycle and every segment turns sharply, so it
+  measures pitch rather than shape. *Counting corners* is peak-finding. Deferred
+  until a pitch-normalised form exists.
+
+**Dropped: lobes and crossings.** Reading a frequency ratio off the figure's edge
+touches is peak-finding over a buffer, and it only means something when the
+figure closes — exactly the cases where the generator or the note already knows
+the ratio. On a drifting interval there is no stable count to read. Redundant
+where it works, undefined where it doesn't.
+
 ### Stability — the real design work
 
 The loop is audio → picture → grid → source → matrix → audio (or → picture
@@ -848,6 +946,65 @@ Loops like that ring or run away. Defences, all required:
   frame-rate oscillation.
 - **The limiter-last rule** covers the audio side; persistence's own decay
   bounds the picture side.
+- **One clamp per destination, on the total.** The bound applies to the *sum* of
+  everything the loop pushes into a destination — every photocell route and the
+  boredom term together — not to each separately. Two pushes that are each
+  within bounds can add up past the bound.
+- **The continuity gate** on every source, above. A clamp downstream of a
+  discontinuous estimator bounds how far the jump goes, not that it happens.
+
+### Wandering — what the loop is for
+
+A closed loop does one of four things: it **settles** (the picture and the sound
+find a state that agrees with itself and stop), it **breathes** (a slow cycle),
+it **wanders** (never settling, never repeating), or it **runs away** (into a
+clamp). The aim is the third. It can be specified rather than hoped for, because
+wandering rather than settling or cycling needs three things:
+
+1. **A fold.** A measure that rises and then falls as the parameter it drives
+   moves. Roundness against lag is the natural one. A hump like that folds the
+   loop back on itself, which is how the classic simple chaotic systems work.
+2. **Crossed paths that read different things.** Two measures driving two
+   parameters crosswise — A's shape moves B's parameter, and B's result moves A.
+   A single route tends to find a balance. The routes have to read genuinely
+   different state, which is what the sixth slot's measurement tests.
+3. **Memory.** Persistence and the frame of delay supply it. Persistence length
+   becomes the tempo of the wandering.
+
+#### Boredom
+
+When the picture stops changing and keeps recurring, push something. That is an
+energy injection into a loop whose whole risk is running away, so its bounds are
+part of its own specification rather than inherited from context:
+
+- **It is a source, `photo.bored`**, routed with an amount like any other, so
+  what it pushes is the player's choice and it appears on the controls it
+  reaches.
+- **A ceiling on its reach**, lower than the photocell's, and off by default.
+- **A leak.** It accumulates while the picture is stuck and drains when change
+  returns — a leaky integrator, not a pure one — so it cannot wind up during a
+  long stillness and slam the loop when it finally moves.
+- **The same slew limit** as every loop source.
+- **Counted in the per-destination total** in *Stability*, with the photocell
+  routes, not clamped on its own.
+
+#### The wandering classifier
+
+One function, used by both the readout and the stability test, so that "this
+setup wanders" means the same thing on the screen and in the suite:
+
+| Over a window of W seconds | Verdict |
+|---|---|
+| frame change under its floor | **settled** |
+| change over its floor, recurrence distance under its floor | **cycling** — it has been here before |
+| change over its floor, recurrence distance over its floor | **wandering** |
+| the limiter engaged, or the grid saturated | **running away** |
+
+It costs nothing to compute once frame change and recurrence exist. What is new
+is two floors and a window, and those are the same numbers the test uses. The
+readout names the verdict, so a setup can be tuned by eye rather than by
+guessing whether it has quietly locked into a cycle. **It is not routable at
+first:** routing the verdict back in closes a third loop around the other two.
 
 ### Where the loop can close
 
@@ -875,6 +1032,23 @@ channel.
   bound. The same shape as the worst-case resonance sweep test.
 - Performance: the Stage 0 beam configuration with two photocells active, against
   the existing baseline.
+- **Continuity**, per source: a fixture perturbed slightly moves the source by no
+  more than its stated bound. Null-tested with a thresholded coverage, which has
+  to fail it.
+- **Roundness's blind spot**, asserted: a square scores as round as a circle. A
+  check that pins a stated limitation, so that anyone who changes the measure
+  changes the plan's sentence about it too.
+- **The sixth slot's survey**: dependence between each candidate and the other
+  five, with the loop closed, across the presets and a detune sweep. Printed,
+  and the choice recorded against it.
+- **Boredom**: a still picture raises it to its ceiling and no further; change
+  returning drains it; with every photocell route and boredom at their maximum
+  amounts on one destination, the total stays inside the destination's bound.
+- **The classifier**, on constructed sequences before any real loop: a frozen
+  grid is *settled*, a sequence that repeats is *cycling*, a sequence that never
+  repeats is *wandering*. Each null-tested with the other verdicts' fixtures.
+  Once a wandering setup has been found by playing, it is pinned: seeded, run
+  headless for 60 s, and classified *wandering* throughout.
 
 ---
 
@@ -915,6 +1089,11 @@ audio; everything after that is the generator catching up to the Nord.
 - **Per-channel envelopes in dyad mode** — one envelope for the pair, or two?
   Two lets a held lower note sustain under a restruck upper one.
 - **Photocell count** — capped by the six source inks, but is more than two ever
-  useful in practice?
+  useful in practice? The six shape and screen sources above take inks too, so
+  the ceiling is shared, and the sixth slot may be the one that gives way.
+- **The sixth slot** — signed area, edge contact, or nothing; decided by the
+  survey in *E · verification*.
+- **A wandering preset** — found by playing, not designed, and then pinned by the
+  classifier's test.
 - **The two-scope composite** — deferred by D5; revisit only after using the
   two-lane version.
