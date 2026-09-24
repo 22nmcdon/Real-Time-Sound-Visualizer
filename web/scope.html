@@ -2035,6 +2035,23 @@ body[data-view="bench"] #menuButton { display: none; }
         because no beam draws one. <i>Clear</i>, beside <i>Panes</i>, wipes the screen and
         what the photocell sees, and leaves persistence as it was set.</span></li>
 
+      <li><b>What the picture says, and what the loop is doing</b>
+        <span>With the photocell on, five more sources read the whole picture rather than one
+        point, under the same rules. <i>Roundness</i> is one for a circle and nought for a line
+        &mdash; and one for a square too, because it sees how spread a figure is, not its
+        corners. <i>Coverage</i> is how much of the screen is lit. <i>Change</i> is how much
+        the picture moved since the last frame. <i>Novelty</i> is how far the picture is from
+        anything it showed in the last fifteen seconds: nought when it keeps coming back,
+        high when it has gone somewhere new. <i>Direction</i> is which way round the beam
+        travels, plus or minus.
+        <br><br>
+        The readout says what the loop is doing: <i>settled</i> when nothing moves,
+        <i>cycling</i> when it keeps coming back to where it has been, <i>wandering</i> when
+        it moves and does not repeat, <i>running away</i> when the screen fills. The
+        interesting setups are the wandering ones: two sources crossed onto two controls
+        &mdash; say Roundness on the lag, with lag X&ndash;Y on, and Novelty on rotation
+        &mdash; and persistence long enough to give it memory.</span></li>
+
       <li><b>The beam has a brightness</b>
         <span>On a cathode-ray tube the spot's brightness is how long it dwelt on a spot,
         which means it goes as one over its speed. The trace turns bright where it slows to
@@ -3008,6 +3025,7 @@ function applyModMatrix(frame, elapsed) {
   updateEnvelope(frame, elapsed);
   midiSmooth(elapsed);
   photoStep(elapsed);
+  pictureStep(frame, elapsed);
   midiApplyGate();
 
   for (const dest of MOD_DESTS.values()) {
@@ -8011,6 +8029,7 @@ buildBeamRamps();
 const PHOSPHOR_N = 64;
 const phosphor = {
   grid: new Float32Array(PHOSPHOR_N * PHOSPHOR_N),
+  moments: null,             // the beam's path, for roundness; see makeMoments
   frames: 0,                 // fades applied, which is what a decay test counts
   cost: 0,                   // milliseconds of the last frame's deposits
 };
@@ -8018,9 +8037,15 @@ const phosphor = {
 function phosphorFade(resized) {
   phosphor.frames++;
   phosphor.cost = 0;
-  if (state.persistence === 0 || resized) { phosphor.grid.fill(0); return; }
+  if (!phosphor.moments) phosphor.moments = makeMoments();
+  if (state.persistence === 0 || resized) {
+    phosphor.grid.fill(0);
+    phosphor.moments.clear();
+    return;
+  }
   if (state.persistence < 0) return;
   const keep = 1 - state.persistence;
+  phosphor.moments.scale(keep);
   const g = phosphor.grid;
   for (let i = 0; i < g.length; i++) g[i] *= keep;
 }
@@ -8031,6 +8056,10 @@ function phosphorSegment(x0, y0, x1, y1, level) {
   const N = PHOSPHOR_N, g = phosphor.grid;
   const ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
   const bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
+  // The path, in half-widths of the screen, for roundness.
+  if (phosphor.moments) {
+    phosphor.moments.add(ax / N * 2 - 1, 1 - ay / N * 2, bx / N * 2 - 1, 1 - by / N * 2, level);
+  }
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 2));
   for (let s = 0; s <= steps; s++) {
     const t = s / steps;
@@ -8095,6 +8124,288 @@ function photoStep(elapsed) {
   photo.raw = phosphorRead(photo.u, photo.v);
   const most = PHOTO_SLEW * Math.max(0, elapsed) / 1000;
   photo.value += Math.max(-most, Math.min(most, photo.raw - photo.value));
+}
+
+/* --- what the picture says: Stage E2 -----------------------------------------
+   The photocell reads one thing, brightness at a point. These read the shape
+   of what is drawn, which is where a loop through the picture becomes its own
+   thing rather than an audio feedback loop wearing one.
+
+   Every one of them has to pass the gate the plan sets before anything may be
+   routed: a small change in the picture makes a small change in the value. So
+   each is written in the form that passes it, and `shapetest.py` checks that
+   it does - coverage is a soft sum and not a count over a threshold, novelty
+   is a distance and not a yes-or-no, and roundness has a floor under it so
+   that fading to silence is a slope and not a cliff.
+
+   `makePictureMeter` is one object for a reason: the verdict it gives - is the
+   loop settled, cycling or wandering - is read by the readout AND by the
+   tests, and "this setup wanders" has to mean the same thing in both. The page
+   feeds it the phosphor grid; a test feeds it grids it made up. */
+
+const METER_COARSE = 16;       // the history is kept at a sixteenth of the grid
+const METER_EVERY = 0.25;      // seconds between snapshots of it
+const METER_DEPTH = 60;        // fifteen seconds of them
+const METER_RECENT = 8;        // the last two seconds are not "before"
+const METER_WINDOW = 4;        // seconds the verdict looks back over
+/* The verdict's floors. Measured on constructed sequences in `shapetest.py` -
+   a frozen picture, one that repeats and one that never does - and set where
+   they separate, not guessed. */
+const CHANGE_FLOOR = 0.02;     // below it, the picture is not moving
+const NOVELTY_FLOOR = 0.2;     // below it, the picture has been here before
+const SATURATED = 0.35;        // more of the screen lit than this is running away
+
+function makePictureMeter() {
+  const N = PHOSPHOR_N, C = METER_COARSE, B = N / C;
+  const last = new Float32Array(N * N);
+  let hasLast = false;
+  const history = [];
+  const recent = [];
+  let clock = 0, since = METER_EVERY;
+  const now = { coverage: 0, lit: 0, change: 0, novelty: 1 };
+
+  function coarse(grid) {
+    const c = new Float32Array(C * C);
+    for (let y = 0; y < N; y++) {
+      const row = ((y / B) | 0) * C;
+      for (let x = 0; x < N; x++) c[row + ((x / B) | 0)] += grid[y * N + x];
+    }
+    return c;
+  }
+
+  /* L1 distance over the two pictures' summed energy: nought for the same
+     picture, one for two with nothing in common, and nought rather than 0/0
+     when both are dark. */
+  function distance(a, b) {
+    let d = 0, s = 0;
+    for (let i = 0; i < a.length; i++) { d += Math.abs(a[i] - b[i]); s += a[i] + b[i]; }
+    return s > 1e-9 ? d / s : 0;
+  }
+
+  function median(key) {
+    const values = recent.map((row) => row[key]).sort((p, q) => p - q);
+    return values[values.length >> 1];
+  }
+
+  return {
+    get coverage() { return now.coverage; },
+    get lit() { return now.lit; },
+    get change() { return now.change; },
+    get novelty() { return now.novelty; },
+    get depth() { return history.length; },
+
+    update(grid, dt) {
+      clock += dt;
+      /* A soft sum: every cell contributes what it holds, capped at one. A
+         count of cells over a threshold would flip whole cells in and out as
+         they crossed it, which is the discontinuity the gate forbids. Scaled
+         so a quarter of the screen lit reads one - a thin figure is a few per
+         cent of it, and a source that only ever used the bottom tenth of its
+         range would be one nobody could hear moving. */
+      let soft = 0;
+      for (let i = 0; i < grid.length; i++) soft += grid[i] < 1 ? grid[i] : 1;
+      now.lit = soft / grid.length;
+      now.coverage = Math.min(1, now.lit * 4);
+
+      now.change = hasLast ? distance(grid, last) : 0;
+      last.set(grid);
+      hasLast = true;
+
+      /* Novelty is the plan's recurrence, as a distance: how far the picture
+         is from the nearest it has been in the last fifteen seconds, leaving
+         out the last two - anything is near where it was a moment ago, and
+         that is continuity, not recurrence. High means new. */
+      since += dt;
+      if (since >= METER_EVERY) {
+        since = 0;
+        const c = coarse(grid);
+        let nearest = 1;
+        for (let k = 0; k < history.length - METER_RECENT; k++) {
+          nearest = Math.min(nearest, distance(c, history[k]));
+        }
+        now.novelty = nearest;
+        history.push(c);
+        if (history.length > METER_DEPTH) history.shift();
+      }
+
+      recent.push({ t: clock, change: now.change, novelty: now.novelty, lit: now.lit });
+      while (recent.length && clock - recent[0].t > METER_WINDOW) recent.shift();
+    },
+
+    /* The one function the readout and the tests both ask. Medians over the
+       window, so one odd frame does not flip it. Nothing is said until there
+       is enough history for "been here before" to mean anything. */
+    verdict() {
+      if (clock < METER_WINDOW || history.length <= METER_RECENT + 4) return "listening";
+      if (median("lit") > SATURATED) return "running away";
+      if (median("change") < CHANGE_FLOOR) return "settled";
+      return median("novelty") < NOVELTY_FLOOR ? "cycling" : "wandering";
+    },
+
+    reset() {
+      hasLast = false; history.length = 0; recent.length = 0;
+      clock = 0; since = METER_EVERY;
+      now.coverage = 0; now.lit = 0; now.change = 0; now.novelty = 1;
+    },
+  };
+}
+
+const pictureMeter = makePictureMeter();
+
+/* ROUNDNESS is sqrt(smallest / largest) of the figure's second moments: one
+   for a circle, nought for a line. Two attempts before this one, both measured
+   and both wrong:
+
+   - From the capture window, a circle at 1 ms/div read 0.94: the window holds
+     2.2 cycles, a part-cycle skews the moments, and roundness became a
+     function of the timebase.
+   - From the phosphor grid's cells, a 2:1 ellipse read 0.557 upright and 0.610
+     turned: a line rasterised onto a grid lights a different number of cells
+     per unit length depending on its direction, so the moments were not
+     rotation-invariant - and roundness patched to rotation would have fed on
+     its own measurement error.
+
+   So it is taken from the beam's PATH: every segment the phosphor is given
+   adds its exact length-weighted moments to running sums, which fade and clear
+   with the grid. Length does not care about direction, and the sums hold the
+   whole figure as persistence keeps it, whatever the window. In units of the
+   screen's half-width.
+
+   What that costs: a stroke drawn twice counts twice. The capture window is
+   rarely a whole number of cycles, so part of a figure is retraced every
+   frame - at 1 ms/div a circle's window is 2.2 cycles, and on the page it
+   reads 0.93 rather than one. That bias holds still for a given timebase and
+   is exactly the same at every angle. The grid's bias turned WITH the figure,
+   which is the one a loop through rotation would have fed on; the steady one
+   was the one to keep.
+
+   Its blind spot is stated rather than found: a circle, a square and a
+   symmetric star all score one, because second moments see how spread a
+   figure is across directions and nothing about corners. The floor under the
+   largest - 0.002, the spread of a circle a sixteenth of the screen across -
+   keeps silence from being a cliff: a figure shrinking to nothing fades to
+   nought over its last few sizes, instead of reading as a perfect tiny circle
+   until the frame it vanishes. What that costs: a figure that small reads
+   less round than it is. */
+function makeMoments() {
+  let w = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  return {
+    /* The exact integrals along a straight segment, from (x0, y0) to (x1, y1),
+       weighted by its length and by how brightly it was drawn. */
+    add(x0, y0, x1, y1, level) {
+      const len = Math.hypot(x1 - x0, y1 - y0) * level;
+      if (!(len > 0)) return;
+      w += len;
+      sx += len * (x0 + x1) / 2;
+      sy += len * (y0 + y1) / 2;
+      sxx += len * (x0 * x0 + x0 * x1 + x1 * x1) / 3;
+      syy += len * (y0 * y0 + y0 * y1 + y1 * y1) / 3;
+      sxy += len * (2 * x0 * y0 + x0 * y1 + x1 * y0 + 2 * x1 * y1) / 6;
+    },
+    scale(k) { w *= k; sx *= k; sy *= k; sxx *= k; syy *= k; sxy *= k; },
+    clear() { w = 0; sx = 0; sy = 0; sxx = 0; syy = 0; sxy = 0; },
+    roundness() {
+      if (!(w > 1e-9)) return 0;
+      const mx = sx / w, my = sy / w;
+      const vxx = sxx / w - mx * mx, vyy = syy / w - my * my, vxy = sxy / w - mx * my;
+      const middle = (vxx + vyy) / 2;
+      const split = Math.sqrt(((vxx - vyy) / 2) ** 2 + vxy * vxy);
+      return Math.sqrt(Math.max(0, middle - split) / (Math.max(0, middle + split) + 0.002));
+    },
+  };
+}
+
+/* The drawn pair - the two lanes the X-Y screen plots, turned and scaled as
+   they are drawn, so the loop can feel its own display settings - for the two
+   things only the samples know. Strided to a couple of thousand points.
+
+   SIGNED AREA - which way round the beam goes - is the swept area per unit of
+   path, one for a circle travelled anticlockwise, minus one clockwise, nought
+   for a line: the direction of travel, which no picture of the figure holds.
+   EDGE CONTACT is how much of the figure the screen's edge clips, softly, from
+   nine tenths of full scale to the edge, which the grid cannot see because it
+   stops at the edge. Both are candidates for the sixth slot and only one is
+   registered; see `SIXTH`. */
+const shapeX = new Float32Array(2048), shapeY = new Float32Array(2048);
+
+function shapeOfPair(frame) {
+  const [ax, ay] = state.xyPair;
+  const left = frame.channels[ax] || frame.channels[0];
+  const right = frame.channels[ay] || frame.channels[1] || left;
+  if (!left || !right) return { signed: 0, edge: 0 };
+  const gx = gainOf(ax), gy = gainOf(ay);
+  const ox = state.channels[ax] ? state.channels[ax].offset : 0;
+  const oy = state.channels[ay] ? state.channels[ay].offset : 0;
+  const spin = frame.turned || state.analyseAt === "pre" ? 0 : rotateTurns();
+  const { cos: rc, sin: rs } = turnOf(spin);
+  const n = Math.min(left.length, right.length);
+  const stride = Math.max(1, Math.ceil(n / shapeX.length));
+
+  let m = 0, mx = 0, my = 0, edge = 0;
+  for (let i = 0; i < n && m < shapeX.length; i += stride, m++) {
+    const l = left[i], r = right[i];
+    const x = (spin ? l * rc - r * rs : l) * gx + ox;
+    const y = (spin ? l * rs + r * rc : r) * gy + oy;
+    shapeX[m] = x; shapeY[m] = y; mx += x; my += y;
+    const reach = Math.max(Math.abs(x), Math.abs(y)) * state.zoom;
+    edge += Math.max(0, Math.min(1, (reach - 0.9) / 0.1));
+  }
+  if (m < 3) return { signed: 0, edge: 0 };
+  mx /= m; my /= m;
+
+  let swept = 0, path = 0;
+  for (let i = 0; i < m; i++) {
+    const x = shapeX[i] - mx, y = shapeY[i] - my;
+    if (i + 1 < m) {
+      const dx = shapeX[i + 1] - shapeX[i], dy = shapeY[i + 1] - shapeY[i];
+      swept += x * dy - y * dx;
+      path += Math.hypot(x, y) * Math.hypot(dx, dy);
+    }
+  }
+  return {
+    signed: path > 1e-9 ? Math.max(-1, Math.min(1, swept / (path + 1e-6))) : 0,
+    edge: edge / m,
+  };
+}
+
+/* The sixth source, chosen by measurement rather than by argument, as the plan
+   said it would be. `shapetest.py` runs the loop closed across five kinds of
+   picture - lag X-Y with roundness on the lag, a drifting fifth, a
+   harmonograph running down, a traced rose, a tumbling cube - and asks how
+   much each candidate says that none of the other five already does: its own
+   entropy less the most it shares with any one of them. Signed area added 1.6
+   bits and edge contact 0.7, and edge contact sat in its dead zone - nought,
+   because nothing reached the edge - in three of the five. Signed area it is,
+   registered as Direction. Edge contact is still computed, because the survey
+   has to be able to ask the question again. */
+const SIXTH = "signed";
+
+/* The values the sources hand out: slewed like the photocell's, so no picture
+   source can move faster than the loop's defences allow. */
+const picture = {
+  round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0,
+  raw: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, edge: 0 },
+};
+
+function pictureStep(frame, elapsed) {
+  const keys = ["round", "cover", "change", "novelty", "signed", "edge"];
+  if (!photo.on || state.display === "spect" || !frame) {
+    for (const key of keys) { picture[key] = 0; picture.raw[key] = 0; }
+    return;
+  }
+  pictureMeter.update(phosphor.grid, Math.max(0, elapsed) / 1000);
+  const shape = shapeOfPair(frame);
+  const raw = picture.raw;
+  raw.round = phosphor.moments ? phosphor.moments.roundness() : 0;
+  raw.signed = shape.signed;
+  raw.edge = shape.edge;
+  raw.cover = pictureMeter.coverage;
+  raw.change = pictureMeter.change;
+  raw.novelty = pictureMeter.novelty;
+  const most = PHOTO_SLEW * Math.max(0, elapsed) / 1000;
+  for (const key of keys) {
+    picture[key] += Math.max(-most, Math.min(most, raw[key] - picture[key]));
+  }
 }
 
 /* Only resized when the size actually changed. Assigning `canvas.width` wipes
@@ -8659,6 +8970,7 @@ function drawSpectrogram(frame, fit, elapsed) {
   // No beam draws a spectrogram, so the phosphor holds nothing and a photocell
   // reads nothing - said in the cheat sheet rather than faked from pixels.
   phosphor.grid.fill(0);
+  if (phosphor.moments) phosphor.moments.clear();
 
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
@@ -9320,6 +9632,11 @@ function writeReadout(frame) {
       && midi.notes.length === 0) {
     bits.push("gated \u00b7 no note held");
   }
+
+  /* What the loop is doing, while there is a photocell to close one: the same
+     verdict the stability tests ask for, so tuning by eye and tuning by test
+     are one thing. */
+  if (photo.on && state.display !== "spect") bits.push("loop " + pictureMeter.verdict());
 
   /* Said whenever the picture is leaving notes out, because that is the one
      state in which the trace is not the whole of the sound. */
@@ -13230,9 +13547,22 @@ function setPhoto(on) {
       reach: PHOTO_REACH, start: PHOTO_START, fromPicture: true,
       value: () => photo.value,
     });
+    /* The picture's own sources come and go with it: they read the same
+       screen, live under the same rules, and a loop is built from them
+       together. Inks shared with the others, visibly on the chips. */
+    for (const source of PICTURE_SOURCES) {
+      registerSource(Object.assign({
+        order: 31 + PICTURE_SOURCES.indexOf(source), reach: PHOTO_REACH, start: PHOTO_START,
+        fromPicture: true, value: () => picture[source.key],
+      }, source));
+    }
+    pictureMeter.reset();
   } else {
     MOD_SOURCES.delete("photo.1");
-    if (focusSource === "photo.1") focusSource = null;
+    for (const source of PICTURE_SOURCES) MOD_SOURCES.delete(source.id);
+    if (focusSource === "photo.1" || PICTURE_SOURCES.some((s) => s.id === focusSource)) {
+      focusSource = null;
+    }
     photo.value = 0; photo.raw = 0;
   }
   el.photoButton.setAttribute("aria-pressed", String(on));
@@ -13240,6 +13570,14 @@ function setPhoto(on) {
   buildSourceChips();
   touchRoutings();
 }
+
+const PICTURE_SOURCES = [
+  { id: "picture.round", key: "round", label: "Roundness", ink: "ch3", bipolar: false },
+  { id: "picture.cover", key: "cover", label: "Coverage", ink: "ch4", bipolar: false },
+  { id: "picture.change", key: "change", label: "Change", ink: "ch5", bipolar: false },
+  { id: "picture.novelty", key: "novelty", label: "Novelty", ink: "ch2", bipolar: false },
+  { id: "picture." + SIXTH, key: SIXTH, label: "Direction", ink: "ch1", bipolar: true },
+];
 
 let photoDrag = null;
 

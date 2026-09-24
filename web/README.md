@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E1 of E is built (the photocell) and F is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E1 and E2 of E are built (the photocell and the picture's own sources) and F is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -63,6 +63,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
+| `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1339,4 +1340,27 @@ nearest-cell reading jumps as the reticle crosses a cell edge, and a source that
 jumps injects exactly the instability the slew limit and the ceiling are there
 to prevent. `phototest.py` walks the reticle across a stroke in tenths of a cell
 and bounds the biggest step.
+
+**Roundness had to be measured three ways before one was right.** From the
+capture window a circle at 1 ms/div read 0.94: the window was 2.2 cycles and a
+part-cycle skews second moments, so roundness was a function of the timebase.
+From the phosphor grid's cells, the same 2:1 ellipse read 0.557 upright and
+0.610 turned: a rasterised line lights more cells per unit length along an axis
+than across one, so the measure turned with the figure — exactly what a loop
+through rotation would amplify. From the beam's path — each segment's exact,
+length-weighted moments, fading with the grid — it is the same at every angle to
+the sixth decimal. Its own bias is that a retraced stroke counts twice; that one
+holds still, and it is written down where the choice is made.
+
+**A fixture for continuity has to sit where the discontinuity would be.** A
+thresholded coverage flips one cell at a time as the picture moves, and one cell
+is a thousandth of the screen: perturbing a normal figure, it passes. The check
+that tells a soft sum from a count is a faded figure with every lit cell at 0.49,
+nudged to 0.51 — the one place a threshold moves the whole figure at once.
+
+**"Wandering" is one function, asked by the readout and by the tests.**
+`makePictureMeter` takes grids and gives a verdict. The page feeds it the
+phosphor; `shapetest.py` feeds it a frozen picture, a dot going round, a dot
+spiralling out and never coming back, and a screen full of ink, and requires
+each fixture to get its own verdict and no other's.
 

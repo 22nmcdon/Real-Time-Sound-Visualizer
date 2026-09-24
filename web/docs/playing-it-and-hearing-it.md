@@ -866,8 +866,13 @@ far as the competitive survey found, not something any oscilloscope tool does.
 **E1 is built:** the phosphor grid, one reticle, `photo.1`, and the loop closed
 through destinations that cannot add energy. *Photocell* in the header puts the
 reticle on the screen; drag it onto the picture, or move it a cell at a time
-with the arrow keys. `phototest.py` holds it. E2 (the shape sources and the
-wandering classifier) and E3 (the loop through the sound) are not built.
+with the arrow keys. `phototest.py` holds it.
+
+**E2 is built:** Roundness, Coverage, Change, Novelty and Direction come with the
+photocell, under its rules, and the readout names what the loop is doing —
+*listening*, *settled*, *cycling*, *wandering* or *running away* — from the same
+`makePictureMeter` the tests use. `shapetest.py` holds it. E3 (the loop through
+the sound, boredom, the per-destination total) is not built.
 
 ### What it is
 
@@ -942,6 +947,16 @@ distance to the nearest past frame, never a yes-or-no "has it repeated".
 | Recurrence | the same distance to the nearest of a history of past grids | screen | 0–1 | memory longer than persistence |
 | *the sixth slot* | decided by measurement — see below | | | |
 
+**Roundness is taken from the beam's path, and two versions before it were
+measured wrong.** From the capture window, a circle at 1 ms/div read 0.94,
+because the window held 2.2 cycles. From the phosphor grid's cells, a 2:1
+ellipse read 0.557 upright and 0.610 turned, because a rasterised line lights a
+different number of cells per unit length in different directions — a bias that
+turns with the figure, which a loop through rotation would feed on. The path's
+length-weighted moments are exactly rotation-invariant; their cost is that a
+retraced stroke counts twice, so a circle reads 0.93 at 1 ms/div — a bias that
+holds still. The steady one was kept.
+
 **Roundness has a blind spot, and it is stated rather than discovered.**
 Second moments cannot see shape: a circle, a square and a symmetric star all
 score 1. It reads how *spread* a figure is across directions, which is what
@@ -951,6 +966,15 @@ the fold needs, and nothing about corners.
 is kept affordable by keeping the history coarse — a 16 × 16 reduction of the
 grid, sampled a few times a second — so sixty past frames is fifteen thousand
 operations a frame, not a quarter of a million.
+
+**The sixth slot went to signed area, by measurement** — as *Direction*. With the
+loop closed across five kinds of picture, signed area said 1.3 to 1.7 bits that
+none of the other five already did; edge contact said 0.3 to 0.8, and sat at
+nought in three of the five because nothing reached the edge. The worry below
+was real — it shares more with roundness than with anything else — and it still
+adds more than either alternative. `shapetest.py` re-runs the survey and fails
+if the choice ever stops holding. What follows is the reasoning before the
+measurement, kept because the correlation argument is still right.
 
 **The sixth slot.** Signed area was the first choice and is provisionally out.
 For the figures this instrument makes most — two equal-amplitude sines at a
