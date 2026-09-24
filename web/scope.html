@@ -1828,6 +1828,12 @@ body[data-view="bench"] #menuButton { display: none; }
             </div>
           </div>
         </div>
+
+        <div class="field fixed">
+          <span class="eyebrow">&nbsp;</span>
+          <button type="button" class="link-btn caps" id="clearButton"
+                  title="Wipe the screen and start the persistence over">Clear</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2026,7 +2032,8 @@ body[data-view="bench"] #menuButton { display: none; }
         source could. And its reading can change no faster than two full swings a second, so it
         cannot flip back and forth every frame. Persistence is its memory: long persistence
         makes it slow and smooth, short makes it twitchy. Over a spectrogram it reads nothing,
-        because no beam draws one.</span></li>
+        because no beam draws one. <i>Clear</i>, beside <i>Panes</i>, wipes the screen and
+        what the photocell sees, and leaves persistence as it was set.</span></li>
 
       <li><b>The beam has a brightness</b>
         <span>On a cathode-ray tube the spot's brightness is how long it dwelt on a spot,
@@ -2544,7 +2551,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
-                  "photoReticle", "photoButton",
+                  "photoReticle", "photoButton", "clearButton",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiPolyJustRow", "midiPolyJust",
                   "midiDrive", "midiHold", "midiTruth", "midiFollow",
@@ -8114,11 +8121,19 @@ function fitCanvas(canvas) {
 /* The phosphor. Clearing outright when persistence is off, and otherwise
    laying paper over the screen at a low alpha so what was drawn before dims
    towards it instead of vanishing. Infinite lays nothing down at all. */
+/* Asked for by Clear, and honoured by the next frame the way a resize is: the
+   screen and the phosphor grid are wiped together and persistence carries on
+   as it was set. Turning persistence off and back on would do the same to the
+   screen, but for a frame the control would say something it did not mean. */
+let wipeScreen = false;
+
 function clearOrFade(ctx, w, h, resized) {
+  const wipe = resized || wipeScreen;
+  wipeScreen = false;
   // The grid fades here, with the canvas, so the two cannot disagree about
   // how much of a stroke is left.
-  phosphorFade(resized);
-  if (state.persistence === 0 || resized) {
+  phosphorFade(wipe);
+  if (state.persistence === 0 || wipe) {
     ctx.fillStyle = ink.paper;
     ctx.fillRect(0, 0, w, h);
     return;
@@ -13248,6 +13263,14 @@ function movePhoto(u, v) {
 }
 
 el.photoButton.addEventListener("click", () => setPhoto(!photo.on));
+
+/* The next frame wipes rather than fades - the screen, the phosphor grid under
+   the photocell, and the spectrogram's history, which is a picture built up
+   over time in the same way. See `wipeScreen`. */
+el.clearButton.addEventListener("click", () => {
+  wipeScreen = true;
+  clearSpectro();
+});
 
 /* Its own pointer, captured. The reticle sits beside the canvas rather than
    inside it, so the trace's own drag - which moves the trigger level - never

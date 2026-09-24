@@ -379,6 +379,50 @@ with sync_playwright() as pw:
           str(spect))
     check("and the phosphor holds nothing there", spect["grid"] == 0, str(spect["grid"]))
 
+    print("\n--- Clear ---")
+    cleared = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      setDisplay('xy'); genSet('interval', 0); genSet('amp', 0.55);
+      state.persistence = -1; el.persistence.value = '-1';
+      await wait(500);
+      // Where the ring is, on the grid and on the canvas.
+      const N = PHOSPHOR_N, g = phosphor.grid;
+      let x = -1;
+      for (let i = 0; i < N; i++) if (g[32 * N + i] > 0.3) x = i;
+      const dpr = window.devicePixelRatio || 1, ctx = el.trace.getContext('2d');
+      const inkAt = () => {
+        const x0 = Math.round((plot.x + x / N * plot.w) * dpr), y0 = Math.round((plot.y + 32 / N * plot.h) * dpr);
+        const cw = Math.max(1, Math.round(plot.w / N * dpr));
+        const d = ctx.getImageData(x0, y0, cw, cw).data;
+        let least = 255;
+        for (let k = 1; k < d.length; k += 4) least = Math.min(least, d[k]);
+        return 252 - least;
+      };
+      genSet('amp', 0);                         // from now on only a dot is drawn
+      await wait(300);
+      const kept = { grid: g[32 * N + x], ink: inkAt() };
+      el.clearButton.click();
+      await frame(); await frame();
+      const after = { grid: g[32 * N + x], ink: inkAt(), setting: el.persistence.value,
+                      persistence: state.persistence };
+      genSet('amp', 0.55);
+      state.persistence = 0.12; el.persistence.value = '0.12';
+      return { kept, after };
+    }""")
+    print("    ring under infinite persistence: grid %.2f, ink %d; after Clear: grid %.2f, ink %d, setting %s"
+          % (cleared["kept"]["grid"], cleared["kept"]["ink"], cleared["after"]["grid"],
+             cleared["after"]["ink"], cleared["after"]["setting"]))
+    check("with infinite persistence the old figure stays, on the screen and the grid",
+          cleared["kept"]["grid"] > 0.5 and cleared["kept"]["ink"] > 60, str(cleared["kept"]))
+    # The ring's cell sits on the graticule's centre line, which is 35 below
+    # paper in the green channel; the trace is 127. Between them is the test.
+    check("Clear wipes both at once",
+          cleared["after"]["grid"] == 0 and cleared["after"]["ink"] < 60, str(cleared["after"]))
+    check("and leaves persistence as it was set",
+          cleared["after"]["setting"] == "-1" and cleared["after"]["persistence"] == -1,
+          str(cleared["after"]))
+
     print("\n--- off, on, and in a setup code ---")
     cycle = p.evaluate("""() => {
       addRouting('photo.1', 'view.rotate');
