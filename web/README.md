@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E is built (the photocell, the picture's own sources, and the loop through the sound) and F is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -62,6 +62,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
+| `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1403,3 +1404,69 @@ page could read its limiters asserted the reading was nought or negative, which
 a `monitorLimiting` that never looked would pass. It now feeds a chain a tone at
 twelve times full scale and requires more than six decibels of reduction — the
 chain reads about 23.
+
+**A second layer is a second voice pool, not a second generator.** Two cores
+would each step the modulation oscillators once a sample, and every rate would
+run at double with a split on. So layer B lives inside the one core. It is a
+second list of voices with a tone of six fields (shape, level and the four
+envelope times), rendered in the same per-sample loop after the one step of the
+oscillators. Six fields because in a chord the pitch comes from the keys, and
+the phase and the ratio are not applied, so nothing else would do anything.
+`layertest.py` checks the step by how far a 1 Hz oscillator turns in a quarter
+of a second with both layers sounding: a quarter of a turn, never a half.
+
+**One set of controls, two layers: keep A's values aside while B is shown.**
+The panel is layer A's source of truth, and it is also what a new generator is
+built from (`generatorFromPanel`) and what a setup code is read from
+(`snapshot`). Once *Edit B* puts B's level and envelope on the same sliders,
+both of those would quietly take B's values for A's. So showing B keeps A's six
+values aside, and `generatorFromPanel`, `snapshot` and `restore` read or restore
+them from there rather than from whatever the controls show.
+
+**A setup code's envelope never reached the generator.** `restore` wrote the
+four envelope sliders and the glide, then dispatched input events for every
+generator slider *except* those five. So the panel showed the code's release
+while the notes kept whatever they had before. Nothing checked it, because
+nothing had read the envelope back from the generator after a restore. It
+turned up when the layer tests checked that a code from before layers gives
+layer B layer A's envelope: B got A's, and A's was not the code's.
+
+**A rack of only the generator, in X–Y, threw on every frame.** The readout
+asked for the ratio of lanes 0 and 1 in a rack with one lane. The one-lane rack
+had been allowed for a stage, and no test had shown it in X–Y. The layer
+tests' `no page errors` check caught it, and the rack check does exactly that.
+
+**When a source asks for figures, the lag still wins.** With the lag on, the
+screen draws the signal against its delayed self on two lanes. The first version
+drew the layers' two figures over lanes the lag had taken away, and threw.
+`sourceFigures` answers "which figures" in one place, and gives nothing while
+the lag is on or while the lanes it names do not exist yet. The two guards
+look redundant, and a mutation pass said so at first. Turning the lag on by its
+checkbox rebuilds the lanes, so the lanes guard alone refused the figures.
+But a modulation source on the lag time switches it on by its offset and
+rebuilds nothing, so four lanes still exist. The check does it that way now.
+
+**A fallback is invisible when the fixture uses the defaults.** "A code from
+before layers gives layer B layer A's sound" was first checked by restoring
+the defaults, and A's default envelope is the same as the core's. So B falling
+back to A and B keeping its own defaults gave the same 180 ms, and the mutation
+pass left it standing. The fixture now restores a code with a 900 ms release
+and a level of 0.3.
+
+**Beam shading adapts, so compare pictures with it off.** The check that layer
+B's figure is really drawn compares the phosphor with two layouts of the same
+notes. Shaded, the one-layer layout lit nothing at all. The beam's brightness
+reference is kept per figure and adapts slowly, and after the switch it was
+still tuned to the dot that figure had been drawing. The check turns shading
+off, and both layouts light 4.2 per cent of the screen.
+
+**The Bench can overflow sideways, and the no-scroll check cannot see it.** A
+row wider than its column scrolls nothing: it runs over the next column. The
+Draw row's two menus did, by 89 px over the Trigger heading, from the day poly
+landed. The layer rows went in beside them, and a screenshot showed it. The
+menus now shrink (`flex` with `min-width: 0`), and `patchtest.py` measures
+every control in the keyboard section against the column's right edge. One
+overflow outside that section is still there and is older: a modulation dot on
+the frequency or phase row sits 23 px past the generator column in wave and
+harmonograph. It is left alone, because it may be placed in the gutter
+deliberately.

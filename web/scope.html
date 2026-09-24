@@ -544,6 +544,15 @@ body[data-view="bench"] #menuButton { display: none; }
    applying the moment a note is moved into one. */
 .bench-body .menu-note { display: none; }
 .bench-body [data-more] { display: none; }
+/* Layer B has six fields, so the generator panel shows six controls while it
+   is being edited rather than forty of which thirty-four would be writing
+   into layer A. Hidden by a rule rather than by `hidden`, because the kind's
+   own rows already toggle `hidden` and two writers of one flag disagree. */
+#toneRows[data-layer-edit="b"] > :not([data-layer]),
+#toneRows[data-layer-edit="b"] #figureRows,
+#toneRows[data-layer-edit="b"] #wireRows,
+#toneRows[data-layer-edit="b"] #harmoRows { display: none !important; }
+#toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
 
 /* Real columns, not CSS ones.
 
@@ -1147,16 +1156,48 @@ body[data-view="bench"] #menuButton { display: none; }
                 <button type="button" class="caps" id="midiPoly" role="radio" aria-checked="false">Poly</button>
               </div>
             </div>
+            <div class="menu-row" id="midiLayersRow" hidden>
+              <label class="menu-label" for="midiLayers">Layers</label>
+              <div class="grow">
+                <select id="midiLayers" aria-label="Whether a second layer of voices plays"
+                        style="flex:1 1 0; min-width:0">
+                  <option value="off" selected>one</option>
+                  <option value="split">split</option>
+                  <option value="layer">layered</option>
+                </select>
+                <button type="button" class="link-btn caps" id="midiSplitLearn" hidden
+                        title="Press, then play the key layer B starts from">at C4</button>
+              </div>
+            </div>
+            <!-- No label, for the reason the mode switch above has none: the
+                 Bench column cannot fit one beside a switch and a menu. -->
+            <div class="menu-row" id="midiLayerRow" hidden>
+              <div class="switch" role="radiogroup" aria-label="Which layer the panel is editing">
+                <button type="button" class="caps" id="midiEditA" role="radio" aria-checked="true">Edit A</button>
+                <button type="button" class="caps" id="midiEditB" role="radio" aria-checked="false">B</button>
+              </div>
+              <select id="midiLayerPair" aria-label="How the two layers are drawn">
+                <option value="each" selected>a figure each</option>
+                <option value="against">A against B</option>
+              </select>
+            </div>
+            <p class="menu-note" id="midiLayersNote" hidden></p>
             <div class="menu-row" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
               <div class="grow">
-                <select id="midiDrawCount" aria-label="How many notes the picture draws">
+                <!-- Allowed to shrink. At their natural width the two menus ran
+                     89 px out of the Bench's column, over the next section's
+                     heading - since poly, unseen because the Bench's check
+                     measured height and not width. -->
+                <select id="midiDrawCount" aria-label="How many notes the picture draws"
+                        style="flex:1 1 0; min-width:0">
                   <option value="2" selected>2 notes</option><option value="3">3 notes</option>
                   <option value="4">4 notes</option><option value="5">5 notes</option>
                   <option value="6">6 notes</option><option value="7">7 notes</option>
                   <option value="8">8 notes</option>
                 </select>
-                <select id="midiDrawWhich" aria-label="Which notes the picture draws">
+                <select id="midiDrawWhich" aria-label="Which notes the picture draws"
+                        style="flex:2 1 0; min-width:0">
                   <option value="outer" selected>bass and melody</option>
                   <option value="lowest">lowest</option>
                   <option value="highest">highest</option>
@@ -1194,8 +1235,12 @@ body[data-view="bench"] #menuButton { display: none; }
           </div>
 
           <div class="menu-group" id="toneRows">
-            <span class="menu-title">Generator</span>
-              <label class="check" id="genSoundRow">
+            <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
+              <p class="menu-note" id="layerBNote" data-layer="b">Layer B has its own shape,
+                level and envelope, and nothing else: its pitches are the keys it is
+                given, and the kind, the modulation and the heard switch are the
+                generator's. <i>Edit A</i> in the keyboard section puts the panel back.</p>
+              <label class="check" id="genSoundRow" data-layer="b">
                 <input type="checkbox" id="genSound"> Hear the generator
                 <span class="reading" id="genSoundNote"></span>
               </label>
@@ -1217,14 +1262,14 @@ body[data-view="bench"] #menuButton { display: none; }
                   <span class="reading" id="freqValue">220 Hz</span>
                 </div>
               </div>
-              <div class="menu-row" data-mod-dest="gen.amp" data-mod-control="amp">
+              <div class="menu-row" data-mod-dest="gen.amp" data-mod-control="amp" data-layer="b">
                 <label class="menu-label" for="amp">Amplitude</label>
                 <div class="grow">
                   <input type="range" id="amp" min="0" max="140" value="55">
                   <span class="reading" id="ampValue">0.55</span>
                 </div>
               </div>
-              <div class="menu-row">
+              <div class="menu-row" data-layer="b">
                 <label class="menu-label" for="shape">Shape</label>
                 <div class="grow">
                   <select id="shape" style="flex:1 1 auto">
@@ -1325,28 +1370,28 @@ body[data-view="bench"] #menuButton { display: none; }
                   one that needs no retracing at all.</p>
               </div>
 
-              <div class="menu-row" data-more="1">
+              <div class="menu-row" data-more="1" data-layer="b">
                 <label class="menu-label" for="envAttack">Attack</label>
                 <div class="grow">
                   <input type="range" id="envAttack" min="0" max="200" value="8">
                   <span class="reading" id="envAttackValue">8 ms</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1">
+              <div class="menu-row" data-more="1" data-layer="b">
                 <label class="menu-label" for="envDecay">Decay</label>
                 <div class="grow">
                   <input type="range" id="envDecay" min="1" max="1000" value="120">
                   <span class="reading" id="envDecayValue">120 ms</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1">
+              <div class="menu-row" data-more="1" data-layer="b">
                 <label class="menu-label" for="envSustain">Sustain</label>
                 <div class="grow">
                   <input type="range" id="envSustain" min="0" max="100" value="70">
                   <span class="reading" id="envSustainValue">0.70</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1">
+              <div class="menu-row" data-more="1" data-layer="b">
                 <label class="menu-label" for="envRelease">Release</label>
                 <div class="grow">
                   <input type="range" id="envRelease" min="1" max="2000" value="180">
@@ -2348,6 +2393,27 @@ body[data-view="bench"] #menuButton { display: none; }
         published artifact is an iframe that does not grant it, so this works on the GitHub
         Pages copy and not there, and Safari has no Web MIDI at all.</span></li>
 
+      <li><b>Two layers: a split, or one keyboard twice</b>
+        <span>In <i>Poly</i>, <i>Layers</i> gives the waveform generator a second set of
+        voices. <i>Split</i> sends every note from a key upwards to layer B and the rest to
+        layer A &mdash; comping with the left hand, a melody with the right. Press
+        <i>at C4</i> beside it and play the key B should start from. <i>Layered</i> sends every
+        note to both, so each is two voices at once.
+        <br><br>
+        <i>Edit B</i> turns the generator's panel over to layer B, which has its own shape,
+        level and envelope, and its own <i>Draw</i> rule, so the comping can draw three notes
+        while the melody draws one. Its pitches are the keys it is given, and the kind, the
+        modulation and the heard switch are the generator's &mdash; a sweep on the pitch
+        bends both layers. B starts as a copy of A, so a split changes where the notes go
+        and nothing else until you change it.
+        <br><br>
+        By default each layer draws its own figure, overlaid: A in the accent and B in olive,
+        and in Y&ndash;T as four lanes. <i>A against B</i> draws one figure instead: every
+        note layer A draws on X and every note B draws on Y &mdash; the comping against the
+        melody. With a split on, the readout says where, and when a layer is leaving notes
+        out it says which: <i>drawing A 2 of 4, B 1 of 1</i>. A generator in a rack plays one
+        layer: a lane is one signal, and B's picture would have nowhere to go.</span></li>
+
       <li><b>No keyboard? Keys on the screen</b>
         <span><i>Settings &rarr; Keyboard &rarr; Show keys</i> puts two octaves along the
         bottom of the page, and they play exactly what a MIDI keyboard would &mdash; the dyad,
@@ -2577,6 +2643,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "photoReticle", "photoButton", "clearButton",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
+                  "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow", "midiEditA",
+                  "midiEditB", "midiLayerPair", "midiLayersNote", "layerBNote", "genTitle",
                   "midiPolyJustRow", "midiPolyJust",
                   "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiLaneNote", "keysOpen", "screenKeys", "keysBed", "keysDown", "keysUp",
@@ -3351,8 +3419,22 @@ const midi = {
   /* Which held notes the picture draws in poly, and how many. The rest are
      heard and not drawn. `outer` is the bass and the top voices - the melody
      against the bass, which in a solo over comping is the relationship being
-     heard - and it is the default for that reason. */
-  draw: { count: 2, which: "outer" },
+     heard - and it is the default for that reason.
+
+     One rule per LAYER, index 0 for layer A and 1 for B. It was a single
+     `draw` until Stage F, and a split is exactly where one rule stops being
+     enough: comping underneath wants three notes drawn and the melody above
+     wants one. Widened to a list rather than given a sibling field, so the
+     layer is the index and nothing asks which layer it is by name. */
+  draws: [{ count: 2, which: "outer" }, { count: 2, which: "outer" }],
+  /* Stage F: two layers of voices from one keyboard. `mode` is off, `split`
+     (notes from `point` up go to layer B, the rest to A) or `layer` (every
+     note to both). `pair` is how they are drawn: `each` a figure apiece,
+     `against` layer A on X and layer B on Y as one figure. `edit` is which
+     layer the panel is showing, and `learning` means the next key pressed
+     becomes the split point. Only in poly, on the waveform, with the
+     generator on its own - see `layersOn`. */
+  layers: { mode: "off", point: 60, pair: "each", edit: 0, learning: false },
   polyJust: false,              // chords tuned to their lowest note; see `polyHz`
   poly: { sounding: 0, drawn: 0, held: 0 },   // what the readout says
   hold: false,                  // keep the last interval under a single note
@@ -3425,6 +3507,15 @@ function midiPitchHz() {
    everything, because a note held when the tab goes away is held for ever. */
 function midiNoteOn(note, velocity) {
   if (velocity === 0) { midiNoteOff(note); return; }
+  /* The split point is learned from a key rather than typed, because the
+     place a player wants the split is under a finger, not a note name. The
+     key still plays: consuming it would leave a latched screen key and a
+     port's note-off both pointing at a note that never started. */
+  if (midi.layers.learning) {
+    midi.layers.point = note;
+    midi.layers.learning = false;
+    syncMidi();
+  }
   const at = midi.notes.findIndex((held) => held.note === note);
   if (at >= 0) midi.notes.splice(at, 1);
   midi.notes.push({ note, velocity: velocity / 127 });
@@ -3482,27 +3573,68 @@ function polyHz(note, root) {
          * Math.pow(2, Math.floor(semitones / 12));
 }
 
-function polyVoices() {
-  const sounding = midi.notes.slice(-POLY_VOICES);
+/* Whether there are two layers right now. Asked, like `polyWanted`, and for
+   the same reason. Three conditions and each is a decision:
+
+   Poly, on the waveform, because a layer is a second set of voices and only
+   a chord has voices to split.
+
+   The generator ON ITS OWN, which is asked as "can this source lay out two
+   figures" rather than "is this a tone source", so the day a rack's lane can
+   it is one function to write. A lane cannot yet: it is one signal, drawn
+   from the core's left channel, and layer B's picture is a pair of its own
+   with nowhere to go. In a rack a split is kept but not applied, and the
+   split row says so. */
+function layersOn() {
+  const source = state.source;
+  return midi.layers.mode !== "off" && !!source && typeof source.setLayout === "function"
+         && polyWanted();
+}
+
+/* The held notes a layer plays, in the order they were pressed. A layer is
+   a filter over the one stack, never a stack of its own: the gate, the
+   screen keys and the note sources all go on reading `midi.notes`, and a
+   note is in a layer only because of where it is on the keyboard. */
+function layerNotes(layer) {
+  if (!layersOn()) return layer === 1 ? [] : midi.notes;
+  if (midi.layers.mode === "layer") return midi.notes;
+  const upper = layer === 1;
+  return midi.notes.filter((held) => (held.note >= midi.layers.point) === upper);
+}
+
+/* Up to POLY_VOICES notes per layer, so a layer doubles the ceiling: sixteen
+   voices through one per-sample loop at the most, which is still well inside
+   a render quantum. Layered, every note is two voices - that is what a layer
+   is - and each layer's own rule decides which of its notes are drawn.
+
+   Paired A against B, the roles change and nothing else does: every note
+   layer A draws goes on X and every one B draws on Y, so the two pictures
+   add into one pair and the figure is the comping against the melody. */
+function polyVoices(layer) {
+  const which = layer === 1 ? 1 : 0;
+  const sounding = layerNotes(which).slice(-POLY_VOICES);
   if (sounding.length === 0) return [];
   const byPitch = sounding.slice().sort((a, b) => a.note - b.note);
-  const n = Math.min(Math.max(2, midi.draw.count), byPitch.length);
+  const draw = midi.draws[which];
+  const n = Math.min(Math.max(2, draw.count), byPitch.length);
 
   let drawn;
-  if (midi.draw.which === "lowest") drawn = byPitch.slice(0, n);
-  else if (midi.draw.which === "highest") drawn = byPitch.slice(-n);
-  else if (midi.draw.which === "recent") drawn = sounding.slice(-n);
+  if (draw.which === "lowest") drawn = byPitch.slice(0, n);
+  else if (draw.which === "highest") drawn = byPitch.slice(-n);
+  else if (draw.which === "recent") drawn = sounding.slice(-n);
   else drawn = n < 2 ? byPitch.slice(0, 1) : [byPitch[0]].concat(byPitch.slice(-(n - 1)));
 
   const drawnNotes = new Set(drawn.map((held) => held.note));
   const bass = Math.min(...drawn.map((held) => held.note));
   const root = byPitch[0].note;
+  const against = layersOn() && midi.layers.pair === "against";
   return sounding.map((held) => ({
     note: held.note,
     velocity: held.velocity,
     freq: polyHz(held.note, root),
-    role: sounding.length === 1 ? "xy"
-      : !drawnNotes.has(held.note) ? "u"
+    role: !drawnNotes.has(held.note) ? "u"
+      : against ? (which === 1 ? "y" : "x")
+      : sounding.length === 1 ? "xy"
       : held.note === bass ? "x" : "y",
   }));
 }
@@ -3521,12 +3653,22 @@ function polyWanted() {
 }
 
 function midiApplyPoly() {
-  const list = polyVoices();
-  genSet("voices", list);
+  const a = polyVoices(0);
+  genSet("voices", a);
+  const on = layersOn();
+  const b = on ? polyVoices(1) : [];
+  // An empty list rather than null while the layers are on: layer B exists
+  // and is silent, which is different from there being no layer B.
+  if (on) genSet("voices", b, 1);
+  const count = (list) => ({
+    sounding: list.length, drawn: list.filter((voice) => voice.role !== "u").length,
+  });
+  const all = a.concat(b);
   midi.poly = {
-    sounding: list.length,
-    drawn: list.filter((voice) => voice.role !== "u").length,
+    sounding: all.length,
+    drawn: all.filter((voice) => voice.role !== "u").length,
     held: midi.notes.length,
+    layers: on ? [count(a), count(b)] : null,
   };
 }
 
@@ -3536,13 +3678,40 @@ function syncPoly() {
   const want = polyWanted();
   if (!want && tone.voices !== null) genSet("voices", null);
   else if (want && tone.voices === null) midiApplyPoly();
+  syncLayers();
+}
+
+/* The layers, derived every frame the way the chord is. When they come or
+   go, layer A's share of the keyboard changes too - with a split on, A plays
+   only the notes below it - so A is reworked along with B rather than left
+   holding notes that now belong to the other layer. */
+function syncLayers() {
+  syncLayerPanel();
+  const toneB = genSettings(1);
+  if (!toneB) return;
+  const on = layersOn();
+  if (on !== (toneB.voices !== null)) {
+    if (!on) genSet("voices", null, 1);
+    if (polyWanted()) midiApplyPoly();
+    syncMidi();
+  }
+  const source = state.source;
+  if (source && typeof source.setLayout === "function") {
+    const want = !on ? "one" : midi.layers.pair === "against" ? "against" : "each";
+    if (source.layout !== want) {
+      source.setLayout(want);
+      buildLaneRows();
+    }
+  }
 }
 
 /* The notes the picture is not drawing, whatever the mode: in poly the ones
    the draw rule leaves out, in a dyad everything under the pair, in mono
    everything but the newest. What `notes.inner` reads. */
 function midiUndrawn() {
-  if (midi.mode === "poly") return polyVoices().filter((voice) => voice.role === "u");
+  if (midi.mode === "poly") {
+    return polyVoices(0).concat(polyVoices(1)).filter((voice) => voice.role === "u");
+  }
   if (midi.mode === "mono") return midi.notes.slice(0, -1);
   return midi.notes.slice(0, -2);
 }
@@ -4476,6 +4645,32 @@ function makeGeneratorCore(rate, slots, lfos) {
     voices: null,
   };
 
+  /* LAYER B: a second set of voices with a sound of its own, for a keyboard
+     split or a layer (Stage F). Six fields and not forty, and that is the
+     design rather than a first cut. A layer only ever plays a chord, and in
+     a chord the pitch comes from the keys, the phase and the ratio are not
+     applied (see the poly branch below), and the figure, solid and pendulum
+     fields belong to kinds that play no notes. What is left to make two
+     layers sound different is what they are made of and how they speak:
+     shape, level and envelope.
+
+     It is rendered in the SAME per-sample loop as layer A, after the one step
+     of the oscillators, and that is why it lives here rather than in a
+     second core. Two cores would each step the shared LFOs once a sample and
+     every modulation rate would run at double - the fault `assertLfoDriver`
+     throws on. Modulation reaches both layers alike, for the same reason: one
+     accumulator, one law. `voices` null is "no layer B", exactly as it is
+     "no chord" on layer A. */
+  const toneB = {
+    shape: "harmonic",
+    amp: 0.55,
+    attackMs: 8,
+    decayMs: 120,
+    sustain: 0.7,
+    releaseMs: 180,
+    voices: null,
+  };
+
   const wire = makeWireframe();
   const genMod = new Float32Array(slots);
   /* Plain numbers, never the source objects the matrix compiles. A route that
@@ -4532,6 +4727,7 @@ function makeGeneratorCore(rate, slots, lfos) {
      would put a step in both channels at once, which is a click on the
      speakers and a jump on the screen. */
   const voices = [];
+  const voicesB = [];
   /* Releases in flight, at most. A ninth tail cuts the oldest rather than
      letting a fast run of chords pile up voices for the length of a release;
      the cut is the one place a voice can end with a step, and it only
@@ -4541,7 +4737,11 @@ function makeGeneratorCore(rate, slots, lfos) {
   // for every role: see `voices` above for why it is not the picture's.
   const ROLES = { x: [1, 0, 1, 1], y: [0, 1, 1, 1], xy: [1, 1, 1, 1], u: [0, 0, 1, 1] };
 
-  function reconcileVoices(list) {
+  /* Against a pool and the tone its envelopes read, because layer B's notes
+     have envelopes of their own: `makeEnvelope` reads the attack and the
+     release from the tone it is handed, per sample, so a voice built against
+     the wrong tone would speak with the other layer's envelope. */
+  function reconcileVoices(voices, list, tone) {
     if (list === null) { voices.length = 0; return; }
     for (let v = 0; v < voices.length; v++) voices[v].wanted = false;
     for (let k = 0; k < list.length; k++) {
@@ -4577,6 +4777,31 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
 
+  /* One layer's chord into `mix` - picture X, picture Y, heard left, heard
+     right - for one sample. Called for layer A in the poly branch and for
+     layer B after it, so the two layers are one piece of arithmetic rather
+     than two that agree. */
+  const mix = new Float64Array(4);
+  function sound(voices, tone, bend, duck, dt, roleGlide) {
+    mix[0] = 0; mix[1] = 0; mix[2] = 0; mix[3] = 0;
+    for (let v = 0; v < voices.length; v++) {
+      const voice = voices[v];
+      const f = voice.freq * bend;
+      voice.phase += TWO_PI * f * dt;
+      if (voice.phase >= TWO_PI) voice.phase -= TWO_PI;
+      if (voice.phase < 0) voice.phase += TWO_PI;
+      const wave = tone.shape === "noise" ? Math.random() * 2 - 1
+                                          : waveAt(tone.shape, voice.phase, Math.abs(f) / rate);
+      const a = tone.amp * duck * voice.env.step() * wave;
+      const g = voice.gains, t = voice.targets;
+      g[0] += (t[0] - g[0]) * roleGlide;
+      g[1] += (t[1] - g[1]) * roleGlide;
+      g[2] += (t[2] - g[2]) * roleGlide;
+      g[3] += (t[3] - g[3]) * roleGlide;
+      mix[0] += a * g[0]; mix[1] += a * g[1]; mix[2] += a * g[2]; mix[3] += a * g[3];
+    }
+  }
+
   /* `outL` and `outR` are the PICTURE. `heardL` and `heardR`, when given,
      are what goes to the speakers - the worklet passes its output here and
      posts the picture back. They are the same samples in every mode but
@@ -4584,10 +4809,15 @@ function makeGeneratorCore(rate, slots, lfos) {
      and where the heard pair is not clamped: a chord is louder than a note,
      which is what was asked for, and the limiter at the end of the monitor
      chain is what catches it. The picture keeps its clamp, because full scale
-     is the edge of the screen. */
-  function block(outL, outR, n, heardL, heardR) {
+     is the edge of the screen.
+
+     `outBL` and `outBR`, when given, are layer B's picture, kept apart so the
+     page can draw it as a figure of its own or pair it against layer A. Its
+     sound is added to the heard pair, never to A's picture. */
+  function block(outL, outR, n, heardL, heardR, outBL, outBR) {
     const dt = 1 / rate;
     const poly = tone.voices !== null;
+    const layered = toneB.voices !== null;
     const roleGlide = poleFor(4);
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
@@ -4671,25 +4901,8 @@ function makeGeneratorCore(rate, slots, lfos) {
            by the same tremolo, each through its own envelope. The phase and
            ratio destinations are about the pair of a dyad and mean nothing
            to a chord, so they are not applied here. */
-        const bend = Math.pow(2, genMod[0]);
-        const duck = tone.amp * (1 - genMod[1]);
-        l = 0; r = 0; hl = 0; hr = 0;
-        for (let v = 0; v < voices.length; v++) {
-          const voice = voices[v];
-          const f = voice.freq * bend;
-          voice.phase += TWO_PI * f * dt;
-          if (voice.phase >= TWO_PI) voice.phase -= TWO_PI;
-          if (voice.phase < 0) voice.phase += TWO_PI;
-          const wave = tone.shape === "noise" ? Math.random() * 2 - 1
-                                              : waveAt(tone.shape, voice.phase, Math.abs(f) / rate);
-          const a = duck * voice.env.step() * wave;
-          const g = voice.gains, t = voice.targets;
-          g[0] += (t[0] - g[0]) * roleGlide;
-          g[1] += (t[1] - g[1]) * roleGlide;
-          g[2] += (t[2] - g[2]) * roleGlide;
-          g[3] += (t[3] - g[3]) * roleGlide;
-          l += a * g[0]; r += a * g[1]; hl += a * g[2]; hr += a * g[3];
-        }
+        sound(voices, tone, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        l = mix[0]; r = mix[1]; hl = mix[2]; hr = mix[3];
       } else {
         phaseL += TWO_PI * freq * dt;
         phaseR += TWO_PI * freq * ratio * dt;
@@ -4715,20 +4928,36 @@ function makeGeneratorCore(rate, slots, lfos) {
 
       outL[i] = Math.max(-1, Math.min(1, l));
       outR[i] = Math.max(-1, Math.min(1, r));
+
+      /* Layer B, against the same modulation this sample already summed. */
+      let bhl = 0, bhr = 0;
+      if (layered) {
+        sound(voicesB, toneB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        bhl = mix[2]; bhr = mix[3];
+        if (outBL) {
+          outBL[i] = Math.max(-1, Math.min(1, mix[0]));
+          outBR[i] = Math.max(-1, Math.min(1, mix[1]));
+        }
+      } else if (outBL) {
+        outBL[i] = 0; outBR[i] = 0;
+      }
+
       if (heardL) {
-        heardL[i] = hl === null ? outL[i] : hl;
-        heardR[i] = hr === null ? outR[i] : hr;
+        heardL[i] = (hl === null ? outL[i] : hl) + bhl;
+        heardR[i] = (hr === null ? outR[i] : hr) + bhr;
       }
     }
 
     // Voices whose release has finished are gone.
-    for (let v = voices.length - 1; v >= 0; v--) {
-      if (!voices[v].held && voices[v].env.stage === "idle") voices.splice(v, 1);
+    for (const pool of [voices, voicesB]) {
+      for (let v = pool.length - 1; v >= 0; v--) {
+        if (!pool[v].held && pool[v].env.stage === "idle") pool.splice(v, 1);
+      }
     }
   }
 
   return {
-    tone, block,
+    tone, toneB, block,
     /* Copied rather than held by reference, for the same reason the routes
        are numbers: whatever the caller hands over has to survive being posted
        across a thread boundary, and the only way to be sure it would is to
@@ -4743,13 +4972,22 @@ function makeGeneratorCore(rate, slots, lfos) {
         });
       }
     },
-    set(field, value) {
+    /* `layer` 1 is layer B, which keeps only the fields it has: a whole panel
+       written into it (`generatorFromPanel` does exactly that) lands the six
+       that mean something and drops the rest, rather than growing B a
+       frequency nothing reads. */
+    set(field, value, layer) {
+      const into = layer === 1 ? toneB : tone;
       if (field === "voices") {
         // Copied, for the same reason the routes are: this may have crossed a
         // thread, and the core should not be holding the sender's objects.
-        tone.voices = value === null ? null
+        into.voices = value === null ? null
           : value.map((v) => ({ note: v.note, freq: v.freq, velocity: v.velocity, role: v.role }));
-        reconcileVoices(tone.voices);
+        reconcileVoices(layer === 1 ? voicesB : voices, into.voices, into);
+        return;
+      }
+      if (layer === 1) {
+        if (field in toneB) toneB[field] = value;
         return;
       }
       tone[field] = value;
@@ -4777,6 +5015,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (tone.voices !== null) {
         let most = 0;
         for (let v = 0; v < voices.length; v++) most = Math.max(most, voices[v].env.level);
+        for (let v = 0; v < voicesB.length; v++) most = Math.max(most, voicesB[v].env.level);
         return most;
       }
       return gated ? env.level : 1;
@@ -4787,6 +5026,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     get voices() {
       return voices.map((v) => ({ note: v.note, freq: v.freq, held: v.held,
                                   stage: v.env.stage, gains: v.gains.slice() }));
+    },
+    get voicesB() {
+      return voicesB.map((v) => ({ note: v.note, freq: v.freq, held: v.held,
+                                   stage: v.env.stage, gains: v.gains.slice() }));
     },
   };
 }
@@ -4821,6 +5064,9 @@ function generatorProcessor() {
       if (setup.tone) {
         for (const field in setup.tone) this.core.set(field, setup.tone[field]);
       }
+      if (setup.toneB) {
+        for (const field in setup.toneB) this.core.set(field, setup.toneB[field], 1);
+      }
       if (setup.routes) this.core.setRoutes(setup.routes);
 
       /* Samples go back in batches rather than per block. A render quantum is
@@ -4831,13 +5077,17 @@ function generatorProcessor() {
       this.batch = Math.max(256, Math.round(sampleRate * 0.04));
       this.outL = new Float32Array(this.batch);
       this.outR = new Float32Array(this.batch);
+      this.outBL = new Float32Array(this.batch);
+      this.outBR = new Float32Array(this.batch);
       this.filled = 0;
       this.running = true;
 
       this.port.onmessage = (event) => {
         const message = event.data || {};
         if (message.tone) {
-          for (const field in message.tone) this.core.set(field, message.tone[field]);
+          for (const field in message.tone) {
+            this.core.set(field, message.tone[field], message.layer || 0);
+          }
         }
         if (message.routes) this.core.setRoutes(message.routes);
         if (message.lfos) {
@@ -4877,9 +5127,11 @@ function generatorProcessor() {
       if (!this.pictL || this.pictL.length !== n) {
         this.pictL = new Float32Array(n);
         this.pictR = new Float32Array(n);
+        this.pictBL = new Float32Array(n);
+        this.pictBR = new Float32Array(n);
       }
       try {
-        this.core.block(this.pictL, this.pictR, n, out[0], out[1]);
+        this.core.block(this.pictL, this.pictR, n, out[0], out[1], this.pictBL, this.pictBR);
       } catch (error) {
         this.running = false;
         this.port.postMessage({ error: String(error && error.message || error) });
@@ -4894,21 +5146,25 @@ function generatorProcessor() {
       for (let i = 0; i < n; i++) {
         this.outL[this.filled] = this.pictL[i];
         this.outR[this.filled] = this.pictR[i];
+        this.outBL[this.filled] = this.pictBL[i];
+        this.outBR[this.filled] = this.pictBR[i];
         this.filled++;
         if (this.filled === this.batch) {
-          const l = this.outL, r = this.outR;
+          const l = this.outL, r = this.outR, bl = this.outBL, br = this.outBR;
           this.outL = new Float32Array(this.batch);
           this.outR = new Float32Array(this.batch);
+          this.outBL = new Float32Array(this.batch);
+          this.outBR = new Float32Array(this.batch);
           this.filled = 0;
           this.port.postMessage(
             {
-              l, r,
+              l, r, bl, br,
               lfos: this.lfos.map((lfo) => ({ phase: lfo.phase, held: lfo.held, value: lfo.value })),
               // Where the envelope got to, so `env.note` is a source on this
               // side without a second envelope being run to find out.
               envelope: this.core.envelope,
             },
-            [l.buffer, r.buffer]
+            [l.buffer, r.buffer, bl.buffer, br.buffer]
           );
         }
       }
@@ -5070,6 +5326,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
           slots: GEN_DESTS.length,
           lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
           tone: JSON.parse(JSON.stringify(core.tone)),
+          toneB: JSON.parse(JSON.stringify(core.toneB)),
           routes: plainRoutes(),
           /* Where the envelope already is. Switching the sound on with a key
              held down must not arrive with the gate shut, and switching it on
@@ -5089,7 +5346,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
         if (message.error) { fault = message.error; hush(); return; }
         if (!message.l) return;
         blocks++;
-        absorb(message.l, message.r);
+        absorb(message.l, message.r, message.bl, message.br);
         /* Where the oscillators got to, read back rather than run again. The
            worklet is their driver while it is producing, so the copies on
            this side are told their phase instead of finding it - which is the
@@ -5161,20 +5418,39 @@ function makeToneSource(atRate) {
      the frequency and the whole history is recomputed at the new rate, so the
      waveform jumps every frame. A phase you integrate can be; one you
      evaluate cannot. */
+  /* Four channels, always: layer A's picture pair and layer B's. B's two
+     are silence until there is a layer B, and cost two seconds of memory
+     apiece to keep ready - cheaper than a ring that changes shape under a
+     reader when a split is switched on. What the page is OFFERED is decided
+     at read time by `layout`, so switching between two figures and one
+     happens on the next frame and loses no history. */
   const CAPACITY = rate * 2;
-  const buffer = [new Float32Array(CAPACITY), new Float32Array(CAPACITY)];
+  const buffer = [0, 1, 2, 3].map(() => new Float32Array(CAPACITY));
   const CHUNK = Math.ceil(rate * 0.25);
-  const scratch = [new Float32Array(CHUNK), new Float32Array(CHUNK)];
+  const scratch = [0, 1, 2, 3].map(() => new Float32Array(CHUNK));
   let writePos = 0;
   let lastFill = null;
+  /* "one" is layer A alone, as it always was. "each" offers B as two more
+     lanes, drawn as a figure of its own. "against" folds the two pictures
+     into one pair - which is layer A on X and layer B on Y, because in that
+     mode the roles put each layer's drawn notes on one axis only; see
+     `polyVoices`. */
+  let layout = "one";
 
   /* The ring, written by the worklet while the generator is sounding. */
-  function absorb(l, r) {
+  function absorb(l, r, bl, br) {
     let done = 0;
     while (done < l.length) {
       const take = Math.min(l.length - done, CAPACITY - writePos);
       buffer[0].set(l.subarray(done, done + take), writePos);
       buffer[1].set(r.subarray(done, done + take), writePos);
+      if (bl) {
+        buffer[2].set(bl.subarray(done, done + take), writePos);
+        buffer[3].set(br.subarray(done, done + take), writePos);
+      } else {
+        buffer[2].fill(0, writePos, writePos + take);
+        buffer[3].fill(0, writePos, writePos + take);
+      }
       writePos = (writePos + take) % CAPACITY;
       done += take;
     }
@@ -5236,20 +5512,47 @@ function makeToneSource(atRate) {
     let done = 0;
     while (done < needed) {
       const take = Math.min(needed - done, CAPACITY - writePos);
-      core.block(scratch[0], scratch[1], take);
-      buffer[0].set(scratch[0].subarray(0, take), writePos);
-      buffer[1].set(scratch[1].subarray(0, take), writePos);
+      core.block(scratch[0], scratch[1], take, null, null, scratch[2], scratch[3]);
+      for (let c = 0; c < 4; c++) buffer[c].set(scratch[c].subarray(0, take), writePos);
       writePos = (writePos + take) % CAPACITY;
       done += take;
     }
   }
 
+  function ringWindow(channel, n) {
+    const out = new Float32Array(n);
+    const take = Math.min(n, CAPACITY);
+    const from = ((writePos - take) % CAPACITY + CAPACITY) % CAPACITY;
+    if (from + take <= CAPACITY) {
+      out.set(channel.subarray(from, from + take), n - take);
+    } else {
+      const split = CAPACITY - from;
+      out.set(channel.subarray(from), n - take);
+      out.set(channel.subarray(0, take - split), n - take + split);
+    }
+    return out;
+  }
+
   return {
     kind: "tone",
     get sampleRate() { return rate; },
-    get channels() { return 2; },
+    get channels() { return layout === "each" ? 4 : 2; },
     get capacity() { return CAPACITY; },
     get settings() { return tone; },
+    get settingsB() { return core.toneB; },
+
+    get layout() { return layout; },
+    setLayout(next) { layout = next; },
+    /* Names only where the default would be wrong. Two lanes are left and
+       right to everything else on the page, and a pair that is layer A
+       against layer B is not that. */
+    laneNames() {
+      if (layout === "each") return ["A \u00b7 X", "A \u00b7 Y", "B \u00b7 X", "B \u00b7 Y"];
+      if (layout === "against") return ["Layer A", "Layer B"];
+      return null;
+    },
+    // The X-Y figures this source asks for, when it asks for more than one.
+    figures() { return layout === "each" ? [[0, 1], [2, 3]] : null; },
 
     describe() {
       if (tone.mode === "figure") return tone.figure.toLowerCase() + ", traced in X\u2013Y";
@@ -5262,9 +5565,9 @@ function makeToneSource(atRate) {
              + (tone.just ? " just" : " equal");
     },
 
-    set(field, value) {
-      core.set(field, value);
-      voice.post({ tone: { [field]: value } });
+    set(field, value, layer) {
+      core.set(field, value, layer || 0);
+      voice.post({ tone: { [field]: value }, layer: layer || 0 });
     },
     reswing() {
       core.reswing();
@@ -5301,20 +5604,16 @@ function makeToneSource(atRate) {
     },
 
     getLatestWindow(n) {
-      return buffer.map((channel) => {
-        const out = new Float32Array(n);
-        const take = Math.min(n, CAPACITY);
-        const from = ((writePos - take) % CAPACITY + CAPACITY) % CAPACITY;
-
-        if (from + take <= CAPACITY) {
-          out.set(channel.subarray(from, from + take), n - take);
-        } else {
-          const split = CAPACITY - from;
-          out.set(channel.subarray(from), n - take);
-          out.set(channel.subarray(0, take - split), n - take + split);
+      if (layout === "each") return buffer.map((channel) => ringWindow(channel, n));
+      const a = [ringWindow(buffer[0], n), ringWindow(buffer[1], n)];
+      if (layout === "against") {
+        const bl = ringWindow(buffer[2], n), br = ringWindow(buffer[3], n);
+        for (let i = 0; i < n; i++) {
+          a[0][i] = Math.max(-1, Math.min(1, a[0][i] + bl[i]));
+          a[1][i] = Math.max(-1, Math.min(1, a[1][i] + br[i]));
         }
-        return out;
-      });
+      }
+      return a;
     },
     stop() {
       voice.hush();
@@ -6130,9 +6429,9 @@ function makeSynthLane(name, rate, ctx, mix) {
 
     /* Writes go through the lane, never to `core` directly, because while it
        is sounding the core that matters is the one in the worklet. */
-    set(field, value) {
-      core.set(field, value);
-      voice.post({ tone: { [field]: value } });
+    set(field, value, layer) {
+      core.set(field, value, layer || 0);
+      voice.post({ tone: { [field]: value }, layer: layer || 0 });
     },
     reswing() {
       core.reswing();
@@ -6778,8 +7077,25 @@ function laneName(index) {
   const source = state.source;
   if (lagActive()) return index === 0 ? "Signal" : "Delayed";
   if (source && source.lanes && source.lanes[index]) return source.lanes[index].name;
+  const named = source && source.laneNames ? source.laneNames() : null;
+  if (named && named[index]) return named[index];
   if (state.midSide) return index === 0 ? "Mid" : "Side";
   return index === 0 ? "Left" : "Right";
+}
+
+/* The figures a source asks for, when the screen can give them. Not while
+   the lag is on: then the figure is the signal against its delayed self, on
+   two lanes, whatever the source would have drawn - the first version drew
+   the layers' figures over lanes the lag had taken away, and threw on every
+   frame. And only while the lanes they name exist, so the frame between a
+   source changing its layout and the lanes being rebuilt draws the one
+   figure rather than reading past the end. */
+function sourceFigures() {
+  const source = state.source;
+  if (lagActive() || !source || typeof source.figures !== "function") return null;
+  const figures = source.figures();
+  if (!figures) return null;
+  return figures.every(([x, y]) => state.channels[x] && state.channels[y]) ? figures : null;
 }
 
 /* Settings for exactly as many lanes as there are, keeping the ones already
@@ -8881,16 +9197,24 @@ function drawXY(frame, fit, elapsed) {
      the thing the whole feature was worth building for: bass against kick
      tells you whether they are fighting for the same instant, and a vocal
      against a guitar draws the interval between them. */
-  const [ax, ay] = state.xyPair;
-  const left = frame.channels[ax] || frame.channels[0];
-  const right = frame.channels[ay] || frame.channels[1] || left;
-  const gainX = gainOf(ax), gainY = gainOf(ay);
-  const offX = state.channels[ax].offset, offY = state.channels[ay].offset;
+  /* One figure, or one per layer. A source that asks for several - the
+     generator with a split, drawing each layer as a figure of its own - gets
+     them, overlaid, the first in the accent and the rest in their lanes'
+     inks; everything else gets the one pair the X-Y menus chose. Overlaid
+     rather than side by side, because the point of two figures on one
+     graticule is to see them against each other. */
+  const figures = sourceFigures() || [state.xyPair];
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(plot.x, plot.y, size, size);
   ctx.clip();
+
+  figures.forEach(([fx, fy], figure) => {
+  const left = frame.channels[fx] || frame.channels[0];
+  const right = frame.channels[fy] || frame.channels[1] || left;
+  const gainX = gainOf(fx), gainY = gainOf(fy);
+  const offX = state.channels[fx].offset, offY = state.channels[fy].offset;
 
   /* A long timebase can put twenty thousand samples in the window, and past a
      few thousand points the figure gains nothing and the frame rate loses.
@@ -8945,10 +9269,13 @@ function drawXY(frame, fit, elapsed) {
     }
   }
 
-  const colours = state.beamXY ? beamColours("blush-deep") : null;
+  // A second figure takes the ink of its X lane, so it matches that lane in
+  // Y-T and in the legend.
+  const inkName = figure === 0 ? "blush-deep" : "ch" + (fx + 1);
+  const colours = state.beamXY ? beamColours(inkName) : null;
 
   if (colours !== null) {
-    strokeBeam(ctx, "xy", n, colours, elapsed, 1.4);
+    strokeBeam(ctx, figure === 0 ? "xy" : "xy" + figure, n, colours, elapsed, 1.4);
     phosphorDeposit(beamX, beamY, n, beamStepOf);
   } else {
     phosphorDeposit(beamX, beamY, n, null);
@@ -8956,7 +9283,7 @@ function drawXY(frame, fit, elapsed) {
     // both channels at once and belongs to neither. Always the accent: X-Y
     // throws time away, so there is nothing for a trigger to align and
     // nothing for the grey to mean.
-    ctx.strokeStyle = ink["blush-deep"];
+    ctx.strokeStyle = ink[inkName];
     ctx.lineWidth = 1.4;
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -8966,17 +9293,19 @@ function drawXY(frame, fit, elapsed) {
     }
     ctx.stroke();
   }
+  });
   ctx.restore();
 
   ctx.fillStyle = ink["text-soft"];
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillText(laneName(ax) + " \u2192", cx, plot.y + size + 6);
+  const axisName = (which) => figures.map((pair) => laneName(pair[which])).join(", ");
+  ctx.fillText(axisName(0) + " \u2192", cx, plot.y + size + 6);
   ctx.save();
   ctx.translate(plot.x - 10, cy);
   ctx.rotate(-Math.PI / 2);
   ctx.textBaseline = "bottom";
-  ctx.fillText(laneName(ay) + " \u2192", 0, 0);
+  ctx.fillText(axisName(1) + " \u2192", 0, 0);
   ctx.restore();
 }
 
@@ -9618,10 +9947,16 @@ function writeReadout(frame) {
         ? "lag " + state.lagActual.toFixed(2) + " ms" + (state.lagAuto ? ", auto" : "")
         : "lag: no room at this timebase");
     } else if (!drawn) {
-      const a = estimateFrequency(frame.measured[0], frame.rate);
-      const b = estimateFrequency(frame.measured[1], frame.rate);
-      const ratio = ratioText(a, b);
-      if (ratio) bits.push("ratio " + ratio);
+      /* A ratio needs two lanes, and a rack of nothing but the generator has
+         one. This asked for the second anyway and threw on every frame of X-Y
+         - since the rack of one was allowed, and unseen until the layer tests
+         built one while the screen was in X-Y. */
+      if (frame.measured.length >= 2) {
+        const a = estimateFrequency(frame.measured[0], frame.rate);
+        const b = estimateFrequency(frame.measured[1], frame.rate);
+        const ratio = ratioText(a, b);
+        if (ratio) bits.push("ratio " + ratio);
+      }
     } else {
       const shown = state.source.settings.mode;
       bits.push(shown === "figure" ? state.source.settings.figure.toLowerCase()
@@ -9734,10 +10069,19 @@ function writeReadout(frame) {
      state in which the trace is not the whole of the sound. */
   {
     const tone = genSettings();
-    if (tone && tone.voices !== null && midi.poly.sounding > midi.poly.drawn) {
+    const layered = midi.poly.layers;
+    if (layered && (layered[0].sounding > layered[0].drawn || layered[1].sounding > layered[1].drawn)) {
+      // Per layer, because "drawing 3 of 5" across two layers does not say
+      // which picture is missing notes - and with a layer, every note is two.
+      bits.push("drawing A " + layered[0].drawn + " of " + layered[0].sounding
+        + ", B " + layered[1].drawn + " of " + layered[1].sounding);
+    } else if (!layered && tone && tone.voices !== null && midi.poly.sounding > midi.poly.drawn) {
       bits.push("drawing " + midi.poly.drawn + " of " + midi.poly.sounding + " notes"
         + (midi.poly.held > midi.poly.sounding
            ? " \u00b7 " + midi.poly.sounding + " of " + midi.poly.held + " held sound" : ""));
+    }
+    if (layered && midi.layers.mode === "split") {
+      bits.push("split at " + midiNoteName(midi.layers.point));
     }
   }
 
@@ -10265,19 +10609,26 @@ function genLane() {
   return source.lanes.find((lane) => lane.synth) || null;
 }
 
-function genSettings() {
+/* And which LAYER, since Stage F: layer 0 is the generator as it always was,
+   layer 1 is the second set of voices a split or a layer plays. A layer
+   argument rather than a second pair of functions, because "where does this
+   write" is one question with a longer answer now, not two questions. Left
+   out, it is layer A - which is what every caller that predates layers
+   meant, and the only layer the drawn kinds and the rack's lane have. */
+function genSettings(layer) {
   const source = state.source;
-  if (source && source.kind === "tone") return source.settings;
+  if (source && source.kind === "tone") return layer === 1 ? source.settingsB : source.settings;
   const lane = genLane();
-  return lane ? lane.core.tone : null;
+  if (!lane) return null;
+  return layer === 1 ? lane.core.toneB : lane.core.tone;
 }
 
-function genSet(field, value) {
+function genSet(field, value, layer) {
   const source = state.source;
-  if (source && source.kind === "tone") { source.set(field, value); return true; }
+  if (source && source.kind === "tone") { source.set(field, value, layer); return true; }
   const lane = genLane();
   if (!lane) return false;
-  lane.set(field, value);
+  lane.set(field, value, layer);
   return true;
 }
 
@@ -10286,6 +10637,60 @@ function genReswing() {
   if (source && source.kind === "tone") { source.reswing(); return; }
   const lane = genLane();
   if (lane) lane.reswing();
+}
+
+/* Which layer the panel is showing. Layer B only while there IS one: with
+   the layers off, or the generator in a rack, the panel is layer A whatever
+   was last chosen, so no control can write into a layer nobody hears. */
+function editLayer() {
+  return layersOn() && midi.layers.edit === 1 ? 1 : 0;
+}
+
+/* The six controls a layer has, the field each writes and how the control's
+   number becomes the field's value and back. One table, used both ways,
+   for the reason the envelope's is a table: six handlers and six inverses
+   are twelve chances to disagree about a factor of a hundred. */
+const LAYER_CONTROLS = [
+  ["amp", "amp", (v) => v / 100, (v) => v * 100, (v) => (v / 100).toFixed(2), "ampValue"],
+  ["shape", "shape", (v) => v, (v) => v, null, null],
+  ["envAttack", "attackMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "envAttackValue"],
+  ["envDecay", "decayMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "envDecayValue"],
+  ["envSustain", "sustain", (v) => v / 100, (v) => v * 100, (v) => (v / 100).toFixed(2), "envSustainValue"],
+  ["envRelease", "releaseMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "envReleaseValue"],
+];
+
+/* The controls are layer A's, moved between layers rather than copied - one
+   Amplitude slider, not two. So while B is shown, what A's six controls said
+   is kept HERE, and put back when A is shown again, rather than re-read from
+   the generator: the panel is what a new generator is built from
+   (`generatorFromPanel`), and a rack built while B was on screen would
+   otherwise have been built with B's envelope. */
+let panelLayer = 0;
+let panelKeptA = null;
+
+function showLayerOnPanel(layer) {
+  if (layer === panelLayer) return;
+  if (layer === 1) {
+    panelKeptA = {};
+    for (const [id] of LAYER_CONTROLS) panelKeptA[id] = el[id].value;
+    const toneB = genSettings(1);
+    for (const [id, field, , inverse] of LAYER_CONTROLS) {
+      if (toneB) el[id].value = String(inverse(toneB[field]));
+    }
+  } else if (panelKeptA) {
+    for (const [id] of LAYER_CONTROLS) el[id].value = panelKeptA[id];
+    panelKeptA = null;
+  }
+  for (const [id, , , , say, label] of LAYER_CONTROLS) {
+    if (say) el[label].textContent = say(Number(el[id].value));
+  }
+  panelLayer = layer;
+  el.toneRows.dataset.layerEdit = layer === 1 ? "b" : "a";
+  el.genTitle.textContent = layer === 1 ? "Generator \u00b7 layer B" : "Generator";
+}
+
+function syncLayerPanel() {
+  showLayerOnPanel(editLayer());
 }
 
 /* And where its SOUND is, the same question a fourth time. The tone source
@@ -10402,7 +10807,7 @@ for (const [id, field, law, say] of ENVELOPE_CONTROLS) {
   el[id].addEventListener("input", () => {
     const raw = Number(el[id].value);
     el[id + "Value"].textContent = say(raw);
-    genSet(field, law(raw));
+    genSet(field, law(raw), panelLayer);
   });
 }
 
@@ -10793,9 +11198,30 @@ function syncMidi() {
     const tone = genSettings();
     el.midiDrawRow.hidden = !(midi.mode === "poly" && tone && tone.mode === "wave");
     el.midiPolyJustRow.hidden = el.midiDrawRow.hidden;
+    el.midiLayersRow.hidden = el.midiDrawRow.hidden;
+    const on = layersOn();
+    el.midiLayerRow.hidden = !on;
+    el.midiLayers.value = midi.layers.mode;
+    el.midiLayerPair.value = midi.layers.pair;
+    el.midiSplitLearn.hidden = midi.layers.mode !== "split";
+    // Short, because it sits beside the menu in a 255 px column: "split" in
+    // the menu and "at C4" beside it read as one phrase.
+    el.midiSplitLearn.textContent = midi.layers.learning ? "play a key"
+      : "at " + midiNoteName(midi.layers.point);
+    el.midiEditA.setAttribute("aria-checked", String(editLayer() === 0));
+    el.midiEditB.setAttribute("aria-checked", String(editLayer() === 1));
+    /* Kept rather than applied, in a rack: the choice survives the trip, and
+       the page says why nothing is happening instead of a menu that reads
+       "split" over a generator playing one layer. */
+    const kept = !el.midiDrawRow.hidden && midi.layers.mode !== "off" && !on;
+    el.midiLayersNote.hidden = !kept;
+    el.midiLayersNote.textContent = kept
+      ? "A generator in a rack plays one layer: a lane is one signal and layer B's "
+        + "picture has nowhere to go. The split comes back with the generator on its own."
+      : "";
   }
-  el.midiDrawCount.value = String(midi.draw.count);
-  el.midiDrawWhich.value = midi.draw.which;
+  el.midiDrawCount.value = String(midi.draws[editLayer()].count);
+  el.midiDrawWhich.value = midi.draws[editLayer()].which;
   el.midiPolyJust.checked = midi.polyJust;
   el.midiHold.checked = midi.hold;
   el.midiTruth.checked = midi.truth;
@@ -10913,7 +11339,8 @@ el.midiDyad.addEventListener("click", () => setMidiMode("dyad"));
 el.midiMono.addEventListener("click", () => setMidiMode("mono"));
 el.midiPoly.addEventListener("click", () => setMidiMode("poly"));
 el.midiDrawCount.addEventListener("change", () => {
-  midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(el.midiDrawCount.value) || 2));
+  midi.draws[editLayer()].count
+    = Math.max(2, Math.min(POLY_VOICES, Number(el.midiDrawCount.value) || 2));
   midiApplyNotes();
 });
 el.midiPolyJust.addEventListener("change", () => {
@@ -10921,9 +11348,29 @@ el.midiPolyJust.addEventListener("change", () => {
   midiApplyNotes();
 });
 el.midiDrawWhich.addEventListener("change", () => {
-  midi.draw.which = el.midiDrawWhich.value;
+  midi.draws[editLayer()].which = el.midiDrawWhich.value;
   midiApplyNotes();
 });
+
+el.midiLayers.addEventListener("change", () => {
+  midi.layers.mode = el.midiLayers.value;
+  midi.layers.learning = false;
+  syncLayers();
+  syncLayerPanel();
+  syncMidi();
+  midiApplyNotes();
+});
+el.midiSplitLearn.addEventListener("click", () => {
+  midi.layers.learning = !midi.layers.learning;
+  syncMidi();
+});
+el.midiLayerPair.addEventListener("change", () => {
+  midi.layers.pair = el.midiLayerPair.value;
+  syncLayers();
+  midiApplyNotes();
+});
+el.midiEditA.addEventListener("click", () => { midi.layers.edit = 0; syncLayerPanel(); syncMidi(); });
+el.midiEditB.addEventListener("click", () => { midi.layers.edit = 1; syncLayerPanel(); syncMidi(); });
 
 el.midiHold.addEventListener("change", () => { midi.hold = el.midiHold.checked; });
 el.midiTruth.addEventListener("change", () => { midi.truth = el.midiTruth.checked; });
@@ -11191,6 +11638,11 @@ const DEFAULTS = {
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
   midiDrawCount: 2, midiDrawWhich: "outer", midiPolyJust: false,
+  /* Layer B's six fields are deliberately NOT here. A code from before
+     layers has none, and B should then sound like A - which is what a
+     default of its own could not say. `restore` falls back to A's. */
+  midiDrawCountB: 2, midiDrawWhichB: "outer",
+  layers: "off", splitAt: 60, layerPair: "each",
   photoOn: false, photoU: 0.75, photoV: 0.5,
   midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
@@ -11208,14 +11660,33 @@ const DEFAULTS = {
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
 };
 
+/* Layer B's six, in the controls' own units like layer A's, and read from
+   the generator rather than the panel: the panel only holds them while B is
+   the layer being shown. */
+const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: "bDec",
+                     envSustain: "bSus", envRelease: "bRel" };
+
+function snapshotLayerB() {
+  const toneB = genSettings(1);
+  const out = {};
+  for (const [id, field, , inverse] of LAYER_CONTROLS) {
+    out[LAYER_KEYS[id]] = toneB ? inverse(toneB[field]) : (id === "shape" ? el.shape.value : Number(el[id].value));
+  }
+  return out;
+}
+
 function snapshot() {
   const tone = genSettings();
+  // Layer A's controls, wherever they are: on the panel, or kept aside while
+  // the panel shows layer B. A code written with B on screen used to be a
+  // code for layer A with B's envelope.
+  const a = (id) => (panelLayer === 1 && panelKeptA ? panelKeptA[id] : el[id].value);
 
-  return {
+  return Object.assign({
     gen: tone ? tone.mode : DEFAULTS.gen,
-    shape: el.shape.value,
+    shape: a("shape"),
     freq: Number(el.freq.value),
-    amp: Number(el.amp.value),
+    amp: Number(a("amp")),
     interval: Number(el.interval.value),
     just: el.tuneJust.getAttribute("aria-checked") === "true",
     phase: Number(el.phase.value),
@@ -11225,8 +11696,8 @@ function snapshot() {
     swingRate: Number(el.swingRate.value),
     decay: Number(el.decay.value),
     detune: Number(el.detune.value),
-    atk: Number(el.envAttack.value), dec: Number(el.envDecay.value),
-    sus: Number(el.envSustain.value), rel: Number(el.envRelease.value),
+    atk: Number(a("envAttack")), dec: Number(a("envDecay")),
+    sus: Number(a("envSustain")), rel: Number(a("envRelease")),
     glide: Number(el.glide.value),
     model: el.model.value,
     spinX: Number(el.spinX.value), spinY: Number(el.spinY.value),
@@ -11257,7 +11728,9 @@ function snapshot() {
     acHz: Math.round(state.acHz * 10),
     octaves: tone ? tone.octaves : DEFAULTS.octaves,
     midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
-    midiDrawCount: midi.draw.count, midiDrawWhich: midi.draw.which,
+    midiDrawCount: midi.draws[0].count, midiDrawWhich: midi.draws[0].which,
+    midiDrawCountB: midi.draws[1].count, midiDrawWhichB: midi.draws[1].which,
+    layers: midi.layers.mode, splitAt: midi.layers.point, layerPair: midi.layers.pair,
     midiPolyJust: midi.polyJust,
     photoOn: photo.on, photoU: Math.round(photo.u * 1000) / 1000,
     photoV: Math.round(photo.v * 1000) / 1000,
@@ -11276,13 +11749,15 @@ function snapshot() {
     cursors: state.cursors,
     beam: state.beam, beamXY: state.beamXY,
     beamYT: state.beamYT, beamGoni: state.beamGoni,
-  };
+  }, snapshotLayerB());
 }
 
 /* Everything goes back through the same setters the controls use, so the
    screen and the state cannot end up disagreeing about what is loaded. */
 function restore(partial) {
   const s = Object.assign({}, DEFAULTS, partial || {});
+  // The controls say layer A while a setup is being written into them.
+  showLayerOnPanel(0);
 
   el.shape.value = s.shape;
   el.freq.value = String(s.freq);
@@ -11308,8 +11783,14 @@ function restore(partial) {
   el.depth.value = String(s.depth);
   el.genMode.value = s.gen;
 
+  /* The envelope and the glide are in this list since Stage F, and were
+     missing from it before: a code set their sliders and never told the
+     generator, so the panel showed the code's release while the notes kept
+     whatever release they had. Found by the check that layer B falls back to
+     layer A's envelope - it read A's, and A's was not the code's. */
   ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "detune",
-   "spinX", "spinY", "spinZ", "spinRate", "depth"]
+   "spinX", "spinY", "spinZ", "spinRate", "depth",
+   "envAttack", "envDecay", "envSustain", "envRelease", "glide"]
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
   el.shape.dispatchEvent(new Event("change"));
   el.figure.dispatchEvent(new Event("change"));
@@ -11328,9 +11809,25 @@ function restore(partial) {
   // Anything unknown is a dyad, which is what every code written before the
   // other two existed means. Additive fields, so no version bump.
   midi.mode = s.midiMode === "mono" || s.midiMode === "poly" ? s.midiMode : "dyad";
-  midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(s.midiDrawCount) || 2));
-  midi.draw.which = ["outer", "lowest", "highest", "recent"].includes(s.midiDrawWhich)
-    ? s.midiDrawWhich : "outer";
+  const rules = ["outer", "lowest", "highest", "recent"];
+  midi.draws[0].count = Math.max(2, Math.min(POLY_VOICES, Number(s.midiDrawCount) || 2));
+  midi.draws[0].which = rules.includes(s.midiDrawWhich) ? s.midiDrawWhich : "outer";
+  midi.draws[1].count = Math.max(2, Math.min(POLY_VOICES, Number(s.midiDrawCountB) || 2));
+  midi.draws[1].which = rules.includes(s.midiDrawWhichB) ? s.midiDrawWhichB : "outer";
+  midi.layers.mode = ["split", "layer"].includes(s.layers) ? s.layers : "off";
+  midi.layers.point = Number.isInteger(s.splitAt) ? Math.max(0, Math.min(127, s.splitAt)) : 60;
+  midi.layers.pair = s.layerPair === "against" ? "against" : "each";
+  midi.layers.learning = false;
+  // Layer B's sound, or layer A's where the code has none of B's.
+  const given = partial || {};
+  for (const [id, field, law] of LAYER_CONTROLS) {
+    const key = LAYER_KEYS[id];
+    const raw = key in given ? given[key] : s[{ amp: "amp", shape: "shape", envAttack: "atk",
+      envDecay: "dec", envSustain: "sus", envRelease: "rel" }[id]];
+    if (id === "shape" ? typeof raw === "string" : Number.isFinite(Number(raw))) {
+      genSet(field, law(id === "shape" ? raw : Number(raw)), 1);
+    }
+  }
   midi.polyJust = s.midiPolyJust === true;
   // Where the photocell sits and whether it is on: additive fields, so a code
   // from before it existed simply has it off.
@@ -11937,6 +12434,7 @@ const playable = () => state.source.kind === "file"
    generator back to 220 Hz without a word. Unheard, nobody noticed; heard, it
    is a pitch that jumps when you add a backing track. */
 function generatorFromPanel(set) {
+  showLayerOnPanel(0);
   set("freq", Number(el.freq.value));
   set("amp", Number(el.amp.value) / 100);
   set("shape", el.shape.value);
@@ -11974,7 +12472,13 @@ function toTone() {
      is connected. `stop` hushes the old one, this remembers that it did. */
   state.genSound = false;
   state.source = makeToneSource();
-  generatorFromPanel((field, value) => state.source.set(field, value));
+  /* Layer B starts as a copy of A's sound, so switching a split on changes
+     where the notes go and nothing else until you ask it to. The core keeps
+     only the fields B has, so the whole panel can be written into it. */
+  generatorFromPanel((field, value) => {
+    state.source.set(field, value);
+    state.source.set(field, value, 1);
+  });
   syncEnvelopeLabels();
   showSource();
   showGenerator();
@@ -12266,11 +12770,11 @@ el.freq.addEventListener("input", () => {
 el.amp.addEventListener("input", () => {
   const amp = Number(el.amp.value) / 100;
   el.ampValue.textContent = amp.toFixed(2);
-  genSet("amp", amp);
+  genSet("amp", amp, panelLayer);
 });
 
 el.shape.addEventListener("change", () => {
-  if (genSet("shape", el.shape.value)) el.credit.textContent = state.source.describe();
+  if (genSet("shape", el.shape.value, panelLayer)) el.credit.textContent = state.source.describe();
 });
 
 el.phase.addEventListener("input", () => {
@@ -12376,11 +12880,18 @@ function buildTrigSources() {
     button.addEventListener("click", () => setTrigSource(Number(button.dataset.lane)));
   });
 
+  /* Not offered while the source draws its own figures - a split draws each
+     layer against itself, and a pair chosen here would be a choice the
+     screen ignored. Disabled rather than hidden, so the Bench keeps its
+     height when a split is switched on. */
+  const ownFigures = !!sourceFigures();
   [el.xyX, el.xyY].forEach((select, which) => {
     select.innerHTML = state.channels.slice(0, n).map((ch, i) =>
       '<option value="' + i + '"' + (state.xyPair[which] === i ? " selected" : "") + ">"
       + escapeText(laneName(i)) + "</option>"
     ).join("");
+    select.disabled = ownFigures;
+    select.title = ownFigures ? "Each layer is drawn as its own figure" : "";
   });
 }
 

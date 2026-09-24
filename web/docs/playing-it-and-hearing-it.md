@@ -1172,7 +1172,7 @@ channel.
 
 ---
 
-## Stage F — a keyboard split: two generators
+## Stage F — a keyboard split: two generators — built
 
 Proposed while poly was being designed, and deliberately not folded into it.
 Notes above a split point — or all notes, as a layer — go to a *second*
@@ -1203,14 +1203,50 @@ two synth lanes backed by one voice. What changes:
 - **The split point** is learned by pressing the key, and *layer* sends every
   note to both.
 
-### Still to decide before building
+### Decided
 
-- Split or layer first, or both at once.
-- Whether each layer has its own poly draw rule, or the picture's two lanes
-  replace the draw rule entirely (layer A on one lane, B on the other).
-- Whether X–Y defaults to pairing the two layers against each other — the
-  comping against the melody — which may be the most interesting picture this
-  stage can make.
+- **Both at once.** They are one piece of machinery; the only difference is
+  which layer a note goes to, so layer costs one menu entry beside split.
+- **Each layer has its own draw rule.** Comping underneath can draw three
+  notes while the melody above draws one. `midi.draw` became `midi.draws`, a
+  list indexed by layer, rather than gaining a sibling field.
+- **Two figures by default, A against B as the option.** Each layer draws its
+  own figure, overlaid, so adding a layer changes neither picture. *A against
+  B* puts every note layer A draws on X and every note B draws on Y as one
+  figure, which is done by the roles alone: the two pictures then add into one
+  pair.
+
+### F · built
+
+What it came to, and what it cost:
+
+- **One core, two voice pools.** Layer B is six fields (shape, level, the
+  four envelope times) and a voice list, rendered in the per-sample loop after
+  the one step of the oscillators. Six rather than a whole generator, because
+  a layer only plays chords, and in a chord the pitch comes from the keys and
+  the phase and the ratio are not applied. Modulation reaches both layers
+  alike: one accumulator, one law. A layer that wanted its own vibrato would
+  need a destination per layer, and nothing asked for one.
+- **The tone source keeps four channels** and decides at read time what it
+  offers: two (layer A alone), four (`each`, drawn as two figures and four
+  Y–T lanes) or two summed (`against`). Switching loses no history.
+- **The panel shows one layer at a time.** *Edit B* turns the generator
+  section over to layer B and hides every row B does not have. The six
+  controls are layer A's and are moved rather than copied, so A's values are
+  kept aside while B is shown. `generatorFromPanel`, `snapshot` and `restore`
+  read A from there.
+- **Only the generator on its own.** A rack's generator lane is one signal and
+  layer B's picture would have nowhere to go, so in a rack a split is kept but
+  not applied and the panel says so. A lane per layer is the way to lift this,
+  and it needs the one-voice-two-lanes arrangement this stage did not build.
+- **The split point is learned from a key**, which still plays. The setup code
+  carries the mode, the point, the pairing, B's rule and B's sound. B's sound
+  is not in the defaults on purpose: a code from before layers gives B layer
+  A's sound.
+
+Found on the way, both older than this stage: a setup code's envelope had
+never reached the generator, only its sliders, and a rack of only the generator
+threw on every frame of X–Y. Both are fixed, with checks.
 
 ---
 
@@ -1241,6 +1277,7 @@ two synth lanes backed by one voice. What changes:
 5. **C3** — line-input monitoring, if the measured latency allows.
 6. **D** — generator as a lane.
 7. **E, full loop** — photocell into generator and audio destinations.
+8. **F** — a split or a layer: two sets of voices from one core.
 
 Each step leaves the app shippable. The cut lines: after (1) you have a playable
 instrument-driven scope; after (3) the picture's transforms are audible on real

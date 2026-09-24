@@ -266,6 +266,20 @@ with sync_playwright() as pw:
       el.midiPoly.click();
       await settle();
       out['poly+filter+lag'] = fits();
+      // Two more rows with a split on - the Layers menu and the Edit switch -
+      // and a keyboard present, which the layers need and which takes the
+      // bottom of the page. Then with layer B on the panel, whose note is the
+      // one row B adds to the generator section.
+      setScreenKeys(true);
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split+keys'] = fits();
+      el.midiEditB.click();
+      await settle();
+      out['poly+split, editing B'] = fits();
+      el.midiEditA.click();
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      setScreenKeys(false);
       el.midiDyad.click();
       return out;
     }""")
@@ -273,6 +287,36 @@ with sync_playwright() as pw:
         check("%s fits without scrolling" % mode,
               over["body"] <= 0 and over["side"] <= 0,
               "body over by %d, side by %d" % (over["body"], over["side"]))
+
+    # Width, which the check above cannot see: a row wider than its column
+    # does not scroll anything, it runs over the next column. The Draw row's
+    # two menus did, by 89 px over the Trigger heading, from poly onwards.
+    # Measured in the keyboard section, whose rows are the ones that grow.
+    wide = p.evaluate("""async () => {
+      const settle = () => new Promise((d) => setTimeout(d, 260));
+      const over = () => {
+        const group = el.midiGroup.getBoundingClientRect();
+        return Array.from(el.midiGroup.querySelectorAll('input, select, button'))
+          .filter((c) => c.getBoundingClientRect().width > 0)
+          .map((c) => [c.id || c.className, Math.round(c.getBoundingClientRect().right - group.right)])
+          .filter(([, by]) => by > 1);
+      };
+      const out = {};
+      setScreenKeys(true);
+      el.midiPoly.click(); await settle();
+      out.poly = over();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await settle();
+      out.split = over();
+      el.midiSplitLearn.click(); await settle();
+      out.learning = over();
+      el.midiSplitLearn.click();
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      setScreenKeys(false);
+      el.midiDyad.click();
+      return out;
+    }""")
+    for mode, over in wide.items():
+        check("the keyboard section's controls stay inside its column (%s)" % mode, not over, str(over))
 
     p.screenshot(path=f"{SHOTS}/bench-patched.png")
     check("no page errors", not bad, "; ".join(bad[:3]))

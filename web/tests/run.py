@@ -35,6 +35,7 @@ SUITES = [
     ("keys", [sys.executable, "keystest.py"], "the keyboard on the screen, and the letters"),
     ("voice", [sys.executable, "voicetest.py"], "the generator heard as a lane"),
     ("poly", [sys.executable, "polytest.py"], "every held note sounding, and which are drawn"),
+    ("layer", [sys.executable, "layertest.py"], "a split or a layer: two sets of voices from one keyboard"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

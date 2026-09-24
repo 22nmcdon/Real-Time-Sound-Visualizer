@@ -412,12 +412,12 @@ with sync_playwright() as pw:
       el.midiDrawWhich.value = 'highest'; el.midiDrawWhich.dispatchEvent(new Event('change'));
       el.midiPolyJust.checked = true; el.midiPolyJust.dispatchEvent(new Event('change'));
       const snap = snapshot();
-      setMidiMode('dyad'); midi.draw = { count: 2, which: 'outer' }; midi.polyJust = false;
+      setMidiMode('dyad'); midi.draws[0] = { count: 2, which: 'outer' }; midi.polyJust = false;
       restore(snap);
       // Copied: the second restore below writes into the same object.
-      return { mode: midi.mode, draw: { ...midi.draw }, box: el.midiDrawCount.value,
+      return { mode: midi.mode, draw: { ...midi.draws[0] }, box: el.midiDrawCount.value,
                which: el.midiDrawWhich.value, just: midi.polyJust, box2: el.midiPolyJust.checked,
-               old: (() => { restore({ midiMode: 'dyad' }); return { ...midi.draw, just: midi.polyJust }; })() };
+               old: (() => { restore({ midiMode: 'dyad' }); return { ...midi.draws[0], just: midi.polyJust }; })() };
     }""")
     print("    %s" % trip)
     check("poly and its draw rule survive a setup code",
