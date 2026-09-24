@@ -1145,6 +1145,7 @@ body[data-view="bench"] #menuButton { display: none; }
                 </select>
               </div>
             </div>
+            <label class="check" id="midiPolyJustRow" hidden data-more="1"><input type="checkbox" id="midiPolyJust"> Tune a chord to its lowest note</label>
             <p class="menu-note" id="midiLaneNote" hidden></p>
             <label class="check"><input type="checkbox" id="midiDrive"> Notes play this generator</label>
             <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
@@ -2249,8 +2250,10 @@ body[data-view="bench"] #menuButton { display: none; }
         against the bass. <i>Lowest</i>, <i>highest</i> and <i>most recent</i> are the
         other choices, two to eight notes of them. Every note is heard in both ears, drawn or
         not, and the readout says how many are left out of the picture: <i>drawing 2 of 5
-        notes</i>. In just tuning the
-        chord is tuned to its lowest note, so a major triad is 4:5:6 and its figure closes.
+        notes</i>. Each key sounds at its own pitch. <i>Tune a chord to its lowest note</i>,
+        under the section's extra controls, makes a major triad exactly 4:5:6 so its figure
+        closes &mdash; at the price that every note moves a few cents depending on what is
+        under it, which is what just tuning a chord means.
         A chord is louder than a note; the limiter catches it. Four sources follow your
         hands and can be put on any control &mdash; <i>Notes</i>, <i>Spread</i>,
         <i>Melody</i> and <i>Inner</i>, which is how hard you played the notes that are not
@@ -2500,6 +2503,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
+                  "midiPolyJustRow", "midiPolyJust",
                   "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiLaneNote", "keysOpen", "screenKeys", "keysBed", "keysDown", "keysUp",
                   "keysRange", "keysLatch", "keysVelocity", "keysVelocityValue", "keysClose",
@@ -3190,6 +3194,7 @@ const midi = {
      against the bass, which in a solo over comping is the relationship being
      heard - and it is the default for that reason. */
   draw: { count: 2, which: "outer" },
+  polyJust: false,              // chords tuned to their lowest note; see `polyHz`
   poly: { sounding: 0, drawn: 0, held: 0 },   // what the readout says
   hold: false,                  // keep the last interval under a single note
   truth: true,                  // the note sets the lag and the tuner
@@ -3301,13 +3306,18 @@ function midiPanic() {
    decides the rest: the outer voices, the lowest, the highest, or the most
    recently played. The notes left out are heard in both ears and not drawn.
 
-   Tuned to the lowest note that is sounding when the switch says just, so a
-   just major triad is 4:5:6 exactly and its figure closes; equal takes each
-   key as it is. The same switch, meaning the same thing it has always meant
-   for a dyad: an interval snapped to its small whole-number ratio. */
+   EQUAL BY DEFAULT: each key sounds at its own pitch. Just - every note
+   snapped to a small whole-number ratio of the lowest one sounding, so a major
+   triad is exactly 4:5:6 and its figure closes - is a choice of its own, and
+   deliberately not the dyad's Just switch. It was that switch at first, and
+   played it moved the melody: hold a high C and add an A below it, and the A
+   becomes the reference and the C goes up 16 cents to sit a just minor third
+   above it; add an E flat instead and the C goes down 16 cents to a just major
+   sixth. Every note under the melody retuned it by a different amount, which
+   looked like the waveform changing shape for no reason. That is what just
+   intonation IS for a chord, and worth having, but not by surprise. */
 function polyHz(note, root) {
-  const tone = genSettings();
-  if (!tone || !tone.just) return midiHz(note);
+  if (!midi.polyJust) return midiHz(note);
   const semitones = note - root;
   return midiHz(root) * intervalRatio(semitones % 12, true)
          * Math.pow(2, Math.floor(semitones / 12));
@@ -10146,9 +10156,11 @@ function syncMidi() {
   {
     const tone = genSettings();
     el.midiDrawRow.hidden = !(midi.mode === "poly" && tone && tone.mode === "wave");
+    el.midiPolyJustRow.hidden = el.midiDrawRow.hidden;
   }
   el.midiDrawCount.value = String(midi.draw.count);
   el.midiDrawWhich.value = midi.draw.which;
+  el.midiPolyJust.checked = midi.polyJust;
   el.midiHold.checked = midi.hold;
   el.midiTruth.checked = midi.truth;
   el.midiFollow.checked = midi.follow;
@@ -10266,6 +10278,10 @@ el.midiMono.addEventListener("click", () => setMidiMode("mono"));
 el.midiPoly.addEventListener("click", () => setMidiMode("poly"));
 el.midiDrawCount.addEventListener("change", () => {
   midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(el.midiDrawCount.value) || 2));
+  midiApplyNotes();
+});
+el.midiPolyJust.addEventListener("change", () => {
+  midi.polyJust = el.midiPolyJust.checked;
   midiApplyNotes();
 });
 el.midiDrawWhich.addEventListener("change", () => {
@@ -10538,7 +10554,7 @@ const DEFAULTS = {
   acHz: 100,                 // tenths of a hertz, so 10.0
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
-  midiDrawCount: 2, midiDrawWhich: "outer",
+  midiDrawCount: 2, midiDrawWhich: "outer", midiPolyJust: false,
   midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -10605,6 +10621,7 @@ function snapshot() {
     octaves: tone ? tone.octaves : DEFAULTS.octaves,
     midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
     midiDrawCount: midi.draw.count, midiDrawWhich: midi.draw.which,
+    midiPolyJust: midi.polyJust,
     midiFollow: midi.follow,
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     cc: encodeCC(),
@@ -10675,6 +10692,7 @@ function restore(partial) {
   midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(s.midiDrawCount) || 2));
   midi.draw.which = ["outer", "lowest", "highest", "recent"].includes(s.midiDrawWhich)
     ? s.midiDrawWhich : "outer";
+  midi.polyJust = s.midiPolyJust === true;
   midi.hold = s.midiHold === true;
   midi.truth = s.midiTruth !== false;
   midi.follow = s.midiFollow === true;

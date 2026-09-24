@@ -264,22 +264,45 @@ with sync_playwright() as pw:
     p.evaluate("() => midiNoteOff(55)")
 
     print("\n--- tuning ---")
+    # The report this is written against: hold a high C, add an A under it and
+    # the C's waveform changed; add an E flat instead and it changed a different
+    # way. Just intonation tuned to the lowest note did that - the A became the
+    # reference and the C moved 16 cents to sit a just minor third above it -
+    # and it was on by default because it followed the dyad's Just switch,
+    # which is on by default. So this runs with that switch ON.
     tuned = p.evaluate("""() => {
+      setTuning(true);
+      const c5 = () => genSettings().voices.find((v) => v.note === 72).freq;
+      midiNoteOn(72, 100); const alone = c5();
+      midiNoteOn(69, 100); const underA = c5(); midiNoteOff(69);
+      midiNoteOn(63, 100); const underEb = c5(); midiNoteOff(63);
+      midiNoteOff(72);
       for (const n of [48, 52, 55]) midiNoteOn(n, 100);
-      const just = genSettings().voices.map((v) => v.freq);
-      setTuning(false); midiApplyNotes();
       const equal = genSettings().voices.map((v) => v.freq);
-      setTuning(true); midiApplyNotes();
+      el.midiPolyJust.checked = true; el.midiPolyJust.dispatchEvent(new Event('change'));
+      const just = genSettings().voices.map((v) => v.freq);
       for (const n of [48, 52, 55]) midiNoteOff(n);
-      return { just, equal };
+      midiNoteOn(72, 100); midiNoteOn(69, 100); const justUnderA = c5();
+      midiNoteOff(69); midiNoteOff(72);
+      el.midiPolyJust.checked = false; el.midiPolyJust.dispatchEvent(new Event('change'));
+      return { alone, underA, underEb, equal, just, justUnderA, row: !el.midiPolyJustRow.hidden };
     }""")
-    c0 = tuned["just"][0]
-    check("just is the lowest note's ratios exactly - 4:5:6",
-          abs(tuned["just"][1] / c0 - 5 / 4) < 1e-12 and abs(tuned["just"][2] / c0 - 3 / 2) < 1e-12,
-          str(tuned["just"]))
-    check("equal is each key as it is",
+    print("    C5 alone %.2f, over A4 %.2f, over E flat 4 %.2f; triad equal %s, just %s"
+          % (tuned["alone"], tuned["underA"], tuned["underEb"],
+             [round(f, 2) for f in tuned["equal"]], [round(f, 2) for f in tuned["just"]]))
+    check("by default a note under the melody does not retune it, even with Just on",
+          tuned["alone"] == HZ(72) and tuned["underA"] == HZ(72) and tuned["underEb"] == HZ(72),
+          "%.3f, %.3f, %.3f" % (tuned["alone"], tuned["underA"], tuned["underEb"]))
+    check("by default each key is as it is",
           all(abs(f - HZ(n)) < 1e-9 for f, n in zip(tuned["equal"], (48, 52, 55))),
           str(tuned["equal"]))
+    c0 = tuned["just"][0]
+    check("tuned to its lowest note, a triad is 4:5:6 exactly",
+          abs(tuned["just"][1] / c0 - 5 / 4) < 1e-12 and abs(tuned["just"][2] / c0 - 3 / 2) < 1e-12,
+          str(tuned["just"]))
+    check("and then the melody does move with what is under it - which is why it is not the default",
+          abs(tuned["justUnderA"] - HZ(69) * 6 / 5) < 1e-9, "%.3f" % tuned["justUnderA"])
+    check("the choice is offered where a chord plays", tuned["row"], str(tuned["row"]))
 
     print("\n--- the cap ---")
     capped = p.evaluate("""() => {
@@ -387,20 +410,22 @@ with sync_playwright() as pw:
       setMidiMode('poly');
       el.midiDrawCount.value = '4'; el.midiDrawCount.dispatchEvent(new Event('change'));
       el.midiDrawWhich.value = 'highest'; el.midiDrawWhich.dispatchEvent(new Event('change'));
+      el.midiPolyJust.checked = true; el.midiPolyJust.dispatchEvent(new Event('change'));
       const snap = snapshot();
-      setMidiMode('dyad'); midi.draw = { count: 2, which: 'outer' };
+      setMidiMode('dyad'); midi.draw = { count: 2, which: 'outer' }; midi.polyJust = false;
       restore(snap);
       // Copied: the second restore below writes into the same object.
       return { mode: midi.mode, draw: { ...midi.draw }, box: el.midiDrawCount.value,
-               which: el.midiDrawWhich.value,
-               old: (() => { restore({ midiMode: 'dyad' }); return { ...midi.draw }; })() };
+               which: el.midiDrawWhich.value, just: midi.polyJust, box2: el.midiPolyJust.checked,
+               old: (() => { restore({ midiMode: 'dyad' }); return { ...midi.draw, just: midi.polyJust }; })() };
     }""")
     print("    %s" % trip)
     check("poly and its draw rule survive a setup code",
           trip["mode"] == "poly" and trip["draw"] == {"count": 4, "which": "highest"}
-          and trip["box"] == "4" and trip["which"] == "highest", str(trip))
+          and trip["box"] == "4" and trip["which"] == "highest"
+          and trip["just"] is True and trip["box2"] is True, str(trip))
     check("and a code from before poly existed comes back as the defaults",
-          trip["old"] == {"count": 2, "which": "outer"}, str(trip["old"]))
+          trip["old"] == {"count": 2, "which": "outer", "just": False}, str(trip["old"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

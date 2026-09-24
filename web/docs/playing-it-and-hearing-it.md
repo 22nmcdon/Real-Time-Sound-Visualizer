@@ -483,8 +483,15 @@ chord is louder than a note per D14.
   is heard in both ears and the picture has only the drawn ones, each on its
   axis. The worklet sends the heard pair to the
   speakers and posts the picture back.
-- **Just is the lowest sounding note's ratios**, so a just major triad is
-  exactly 4:5:6 and closes; equal takes each key as it is.
+- **Equal by default; just is its own choice.** *Tune a chord to its lowest
+  note* snaps every note to a small whole-number ratio of the lowest one
+  sounding, so a major triad is exactly 4:5:6 and closes. It first followed the
+  dyad's Just switch, which is on by default, and played, the melody moved:
+  hold a high C and add an A below it, and the A becomes the reference and the
+  C goes 16 cents sharp; an E flat instead and it goes 16 cents flat. Every note
+  under the melody retuned it differently, which looked like the waveform
+  changing shape. That is what just intonation does to a chord, so it is
+  offered and not imposed.
 - **Roles glide.** Adding a note above the melody moves the old melody out of
   the picture; its gains move over a few milliseconds rather than stepping,
   which would click on the speakers and jump on the screen.

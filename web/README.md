@@ -1300,3 +1300,16 @@ brings the whole mix down to meet it, and the melody drops with everything else
 — 1.6 dB at five notes. Said here because it sounds like the notes interfering
 with each other, and it is a gain applied to all of them at once.
 
+**Just intonation, applied to a chord by default, moved the melody.** Reported as
+the melody's waveform changing shape when notes were added under it — differently
+for every note, and never the lowest note. It was tuning, not mixing: poly
+followed the dyad's Just switch, which is on by default, and just intonation
+tunes every note to the lowest one sounding. Hold a high C, add an A below it,
+and the A becomes the reference and the C moves to a just minor third above it,
+16 cents sharp; add an E flat instead and the C sits a just major sixth above
+that, 16 cents flat. The lowest note never moves because it is the reference,
+which is exactly what was seen. Chords are equal-tempered by default now, and
+*Tune a chord to its lowest note* is a choice of its own. Worth knowing before
+the next "the waveform changed": a pitch that moves by a few cents looks like a
+shape that changes, on a timebase that shows a few cycles.
+
