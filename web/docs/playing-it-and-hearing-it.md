@@ -219,6 +219,9 @@ be discovered during implementation.
 | D8 | May a live input be monitored? | **Yes, for a declared line input; never for a microphone.** An input carries a user-asserted kind: `mic` (default, never monitored) or `line`. | The existing rule exists to stop acoustic feedback. A Nord on a line input has no acoustic path back into itself. |
 | D10 | Is a generator *lane* a played voice or a drone? | **A drone that follows pitch.** The envelope belongs to the generator as a source; a lane sets its pitch from the keyboard without starting or stopping. | A lane in a rack is expected to be producing signal the way a live input always is — solo, mute and the mixer assume there is something there. A lane going silent between phrases is a lane the rest of the rack has to be told about. Said in the keyboard panel rather than left to be found. |
 | D11 | A generator lane is one signal — which? | **Its left channel.** | A lane is one signal and the generator makes two. D's own verification asks for `generator-L` against `Nord-L`. The cost is that the generator's own figure — and so dyad mode's whole payoff, the interval you can see — is not available while it is a lane. Also said in the keyboard panel. |
+| D12 | Poly: a chord has more notes than the screen has axes — which are drawn? | **The lowest drawn note on X, the other drawn notes summed on Y**, and a rule for which are drawn: *bass and melody* (default), *lowest*, *highest* or *most recent*, two to eight of them, two by default. With two notes held every rule is the dyad. | Bass against harmony is the reading of X–Y that survives more than two notes. The default is the outer voices because over comping the melody is the line that matters, and the melody against the bass is the relationship being heard; a player who wants the chord from the bottom up, the top alone or the last thing played has a switch rather than an argument. |
+| D13 | May the picture leave out notes it plays? | **Yes, and the readout says so** — "drawing 2 of 5 notes". Undrawn notes are heard in both ears. | Five notes on two axes is mud. The cost is real and named: it is the first time the generator's trace is not the whole of its sound. Bounded to poly's undrawn voices; with every held note drawn, the picture is the sound again. |
+| D14 | A chord louder than a note, or normalised? | **Louder.** The heard pair is not clamped; the limiter at the end of the monitor chain catches it. The picture keeps its clamp at full scale. | What a synth does, and what a player expects. Normalising would make a single note quieter the moment poly is switched on, which reads as broken. |
 | D9 | Photocell v1: canvas readback or an intermediate tap? | **A low-resolution shadow phosphor grid** fed by the same segment walk the beam renderer does. Canvas readback only if v1 looks meaningfully wrong. | Nearly free, persistence-aware, and never touches `getImageData`. Measure before paying for the honest version. |
 
 ---
@@ -460,6 +463,41 @@ truth — is exercised by it unchanged. `keystest.py` is its suite. Playing it
 turned up five places that still asked whether the source was the tone source,
 so a note played into a rack reached nothing while the panel said the
 generator lane followed pitch; see `web/README.md`.
+
+### A · Poly — built
+
+Added after Stage A, when the question stopped being "which two notes" and
+became "all of them". *Notes → Poly* sounds every held note, up to eight, each
+with its own envelope, on the waveform generator. The drawn modes are left
+alone: there a note is a ratio applied to a trace rate, and a chord of ratios
+means nothing. What is drawn is D12, what is left out is said per D13, and a
+chord is louder than a note per D14.
+
+- **One core, not a second engine.** The voices live in `makeGeneratorCore`
+  beside everything else, so they run on the main thread while the generator
+  is silent and in the worklet once it is not, from the same text. The ADSR was
+  lifted out into `makeEnvelope` so each voice has one, rather than a second
+  envelope being written for voices.
+- **Two pairs out of one block.** The core writes the picture and, when asked,
+  what is heard. They are the same samples except in poly, where an undrawn
+  voice is in the heard pair only. The worklet sends the heard pair to the
+  speakers and posts the picture back.
+- **Just is the lowest sounding note's ratios**, so a just major triad is
+  exactly 4:5:6 and closes; equal takes each key as it is.
+- **Roles glide.** Adding a note above the melody moves the old melody out of
+  the picture; its gains move over a few milliseconds rather than stepping,
+  which would click on the speakers and jump on the screen.
+- **The hands as sources:** *Notes* (how many, of eight), *Spread* (bottom to
+  top, of two octaves), *Melody* (the top note, C2 to C6) and *Inner* (how hard
+  the undrawn notes were played). Registered with *Key*, unrouted until routed.
+- **Not in poly:** glide, which is a mono idea, and the phase and ratio
+  destinations, which are about the pair of a dyad.
+
+`polytest.py` holds it: the draw rules on a fixture where outer, highest and
+most recent all disagree; what is in the picture and what is heard, at the core
+and again through the worklet; per-voice envelopes; tuning; the cap; the
+sources; and poly ending when the mode, the generator's kind or the keyboard
+stops wanting it.
 
 ### A · verification
 
@@ -1062,6 +1100,48 @@ channel.
 
 ---
 
+## Stage F — a keyboard split: two generators
+
+Proposed while poly was being designed, and deliberately not folded into it.
+Notes above a split point — or all notes, as a layer — go to a *second*
+generator with its own settings: its own shape, envelope and draw rule, drawn in
+its own ink as a second lane. The use it was asked for: comping in one register
+and a melody in another, each with a picture of its own.
+
+### The constraint that makes it a stage
+
+**The modulation LFOs are shared, and exactly one loop may step them.** Two
+generators each running `makeGeneratorCore` would step both oscillators once a
+sample each, and every modulation rate would run at double — the fault
+`assertLfoDriver` exists to throw on, and the reason a rack allows one generator
+lane today. So the second generator cannot be a second core.
+
+The shape that respects it: **one core rendering two layers.** One per-sample
+loop steps the LFOs once and renders both layers' voices, each against its own
+`tone`. In the worklet that is one node with two stereo outputs; as lanes it is
+two synth lanes backed by one voice. What changes:
+
+- **Where the generator is becomes (source or lane, layer).** `genSettings`,
+  `genSet` and `genReswing` answer "which layer" as well as "where" — the rule
+  about a field that stops having one answer. Setup codes store the second
+  layer's settings as additive fields.
+- **One panel, not two.** Controls are moved between views and never copied, so
+  the panel gains a *Layer A / Layer B* switch saying which layer it is editing,
+  rather than a second copy of forty controls.
+- **The split point** is learned by pressing the key, and *layer* sends every
+  note to both.
+
+### Still to decide before building
+
+- Split or layer first, or both at once.
+- Whether each layer has its own poly draw rule, or the picture's two lanes
+  replace the draw rule entirely (layer A on one lane, B on the other).
+- Whether X–Y defaults to pairing the two layers against each other — the
+  comping against the melody — which may be the most interesting picture this
+  stage can make.
+
+---
+
 ## Risks, in the order they're likely to bite
 
 1. **Band-limiting is invisible work that gates the visible kind** (B1). It
@@ -1097,7 +1177,10 @@ audio; everything after that is the generator catching up to the Nord.
 ## Still open
 
 - **Per-channel envelopes in dyad mode** — one envelope for the pair, or two?
-  Two lets a held lower note sustain under a restruck upper one.
+  Two lets a held lower note sustain under a restruck upper one. Poly has one
+  per voice now (`makeEnvelope`), so the machinery exists; dyad still shares
+  one, and changing that is a question about how a dyad should feel rather
+  than about what is possible.
 - **Photocell count** — capped by the six source inks, but is more than two ever
   useful in practice? The six shape and screen sources above take inks too, so
   the ceiling is shared, and the sixth slot may be the one that gives way.

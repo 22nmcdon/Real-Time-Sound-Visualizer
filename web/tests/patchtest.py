@@ -257,6 +257,16 @@ with sync_playwright() as pw:
       el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change'));
       await settle();
       out['filter+lag'] = fits();
+      // Poly adds its Draw row, and the switch that chooses it is three words
+      // wide - which is what first made this panel scroll, by twelve pixels.
+      // On the waveform, which is the only kind a chord plays on and so the
+      // only one that shows the Draw row.
+      el.genMode.value = 'wave';
+      el.genMode.dispatchEvent(new Event('change'));
+      el.midiPoly.click();
+      await settle();
+      out['poly+filter+lag'] = fits();
+      el.midiDyad.click();
       return out;
     }""")
     for mode, over in modes.items():

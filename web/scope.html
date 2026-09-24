@@ -1115,11 +1115,34 @@ body[data-view="bench"] #menuButton { display: none; }
               <span class="menu-label">Playing</span>
               <div class="grow"><span class="reading" id="midiMonitor">nothing held</span></div>
             </div>
+            <!-- No visible label, and that is a cost taken on purpose. Three words
+                 of spaced capitals are 190 px, and beside the 96 px label column
+                 the Bench's 255 px column had 147 left, so the switch wrapped onto
+                 a line of its own and a panel that must never scroll did. Tighter
+                 letter-spacing would fit by three pixels in one font and not in
+                 the fallback; the radiogroup's own name says what it is. -->
             <div class="menu-row">
-              <span class="menu-label">Notes</span>
               <div class="switch" role="radiogroup" aria-label="What held notes do">
                 <button type="button" class="caps" id="midiDyad" role="radio" aria-checked="true">Dyad</button>
                 <button type="button" class="caps" id="midiMono" role="radio" aria-checked="false">Mono</button>
+                <button type="button" class="caps" id="midiPoly" role="radio" aria-checked="false">Poly</button>
+              </div>
+            </div>
+            <div class="menu-row" id="midiDrawRow" hidden>
+              <label class="menu-label" for="midiDrawCount">Draw</label>
+              <div class="grow">
+                <select id="midiDrawCount" aria-label="How many notes the picture draws">
+                  <option value="2" selected>2 notes</option><option value="3">3 notes</option>
+                  <option value="4">4 notes</option><option value="5">5 notes</option>
+                  <option value="6">6 notes</option><option value="7">7 notes</option>
+                  <option value="8">8 notes</option>
+                </select>
+                <select id="midiDrawWhich" aria-label="Which notes the picture draws">
+                  <option value="outer" selected>bass and melody</option>
+                  <option value="lowest">lowest</option>
+                  <option value="highest">highest</option>
+                  <option value="recent">most recent</option>
+                </select>
               </div>
             </div>
             <p class="menu-note" id="midiLaneNote" hidden></p>
@@ -2219,6 +2242,19 @@ body[data-view="bench"] #menuButton { display: none; }
         to the menu; <i>Hold</i> keeps the last interval above a single note, which is how
         you walk a figure up a melody with one finger.
         <br><br>
+        <i>Poly</i> sounds every note you hold, up to eight, each with its own envelope, on
+        the waveform generator. A chord has more notes than the screen has axes, so
+        <i>Draw</i> chooses which: the lowest drawn note goes on X and the others on Y, and
+        by default the drawn ones are the bass and the melody &mdash; over comping, the line
+        against the bass. <i>Lowest</i>, <i>highest</i> and <i>most recent</i> are the
+        other choices, two to eight notes of them. The rest are heard in both ears and not
+        drawn, and the readout says so: <i>drawing 2 of 5 notes</i>. In just tuning the
+        chord is tuned to its lowest note, so a major triad is 4:5:6 and its figure closes.
+        A chord is louder than a note; the limiter catches it. Four sources follow your
+        hands and can be put on any control &mdash; <i>Notes</i>, <i>Spread</i>,
+        <i>Melody</i> and <i>Inner</i>, which is how hard you played the notes that are not
+        drawn.
+        <br><br>
         Tuning applies to what you play: <i>just</i> snaps the interval to its whole-number
         ratio and the figure stands still, <i>equal</i> takes the keys as they are and it
         turns at the rate the interval beats. A tempered fifth turns about three quarters of
@@ -2462,7 +2498,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
-                  "midiDyad", "midiMono", "midiDrive", "midiHold", "midiTruth", "midiFollow",
+                  "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
+                  "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "midiLaneNote", "keysOpen", "screenKeys", "keysBed", "keysDown", "keysUp",
                   "keysRange", "keysLatch", "keysVelocity", "keysVelocityValue", "keysClose",
                   "midiCC",
@@ -3133,6 +3170,12 @@ const CC_SMOOTH = 0.03;
 
 const MIDI_ROOT = 220;          // A3, the pitch a trace rate is measured against
 const MIDI_PERIODS = 4;         // periods of the played note across the screen
+/* How many held notes sound at once in poly. Past it, the oldest held note
+   stops sounding - released normally, not cut - while its key stays down, and
+   the readout says how many are held against how many sound. Eight because a
+   pair of hands is ten and two of them are usually holding a pedal or a
+   phrase, and because the voices run per sample in the audio thread. */
+const POLY_VOICES = 8;
 
 const midi = {
   supported: typeof navigator !== "undefined" && !!navigator.requestMIDIAccess,
@@ -3140,7 +3183,13 @@ const midi = {
   access: null,
   ports: [],
   notes: [],                    // the held stack, most recent last
-  mode: "dyad",                 // dyad | mono
+  mode: "dyad",                 // dyad | mono | poly
+  /* Which held notes the picture draws in poly, and how many. The rest are
+     heard and not drawn. `outer` is the bass and the top voices - the melody
+     against the bass, which in a solo over comping is the relationship being
+     heard - and it is the default for that reason. */
+  draw: { count: 2, which: "outer" },
+  poly: { sounding: 0, drawn: 0, held: 0 },   // what the readout says
   hold: false,                  // keep the last interval under a single note
   truth: true,                  // the note sets the lag and the tuner
   follow: false,                // ... and the timebase
@@ -3243,6 +3292,91 @@ function midiPanic() {
   midiApplyNotes();
 }
 
+/* --- poly: every held note sounding --------------------------------------
+   Which notes are DRAWN is the whole design question, because the screen has
+   two axes and a chord has more notes than that. The lowest drawn note goes on
+   X and the others are summed on Y - the bass against the harmony - and with
+   two notes held that is exactly the dyad, whatever `which` says. `which`
+   decides the rest: the outer voices, the lowest, the highest, or the most
+   recently played. The notes left out are heard in both ears and not drawn.
+
+   Tuned to the lowest note that is sounding when the switch says just, so a
+   just major triad is 4:5:6 exactly and its figure closes; equal takes each
+   key as it is. The same switch, meaning the same thing it has always meant
+   for a dyad: an interval snapped to its small whole-number ratio. */
+function polyHz(note, root) {
+  const tone = genSettings();
+  if (!tone || !tone.just) return midiHz(note);
+  const semitones = note - root;
+  return midiHz(root) * intervalRatio(semitones % 12, true)
+         * Math.pow(2, Math.floor(semitones / 12));
+}
+
+function polyVoices() {
+  const sounding = midi.notes.slice(-POLY_VOICES);
+  if (sounding.length === 0) return [];
+  const byPitch = sounding.slice().sort((a, b) => a.note - b.note);
+  const n = Math.min(Math.max(2, midi.draw.count), byPitch.length);
+
+  let drawn;
+  if (midi.draw.which === "lowest") drawn = byPitch.slice(0, n);
+  else if (midi.draw.which === "highest") drawn = byPitch.slice(-n);
+  else if (midi.draw.which === "recent") drawn = sounding.slice(-n);
+  else drawn = n < 2 ? byPitch.slice(0, 1) : [byPitch[0]].concat(byPitch.slice(-(n - 1)));
+
+  const drawnNotes = new Set(drawn.map((held) => held.note));
+  const bass = Math.min(...drawn.map((held) => held.note));
+  const root = byPitch[0].note;
+  return sounding.map((held) => ({
+    note: held.note,
+    velocity: held.velocity,
+    freq: polyHz(held.note, root),
+    role: sounding.length === 1 ? "xy"
+      : !drawnNotes.has(held.note) ? "u"
+      : held.note === bass ? "x" : "y",
+  }));
+}
+
+/* Whether the generator should be playing a chord right now. Asked, not
+   stored, and asked every frame by `syncPoly` - the same lesson the gate
+   learned: "is the keyboard driving this" moves when the mode changes, the
+   source changes, the keyboard goes away or the generator changes kind, and a
+   flag set on one of those events is wrong after the next. Only the waveform
+   plays chords; in the drawn modes a note is a ratio applied to a trace rate,
+   and a chord of ratios has nothing to mean. */
+function polyWanted() {
+  const tone = genSettings();
+  return midi.mode === "poly" && !!tone && tone.mode === "wave"
+         && midiDrivesGenerator() && keyboardPresent();
+}
+
+function midiApplyPoly() {
+  const list = polyVoices();
+  genSet("voices", list);
+  midi.poly = {
+    sounding: list.length,
+    drawn: list.filter((voice) => voice.role !== "u").length,
+    held: midi.notes.length,
+  };
+}
+
+function syncPoly() {
+  const tone = genSettings();
+  if (!tone) return;
+  const want = polyWanted();
+  if (!want && tone.voices !== null) genSet("voices", null);
+  else if (want && tone.voices === null) midiApplyPoly();
+}
+
+/* The notes the picture is not drawing, whatever the mode: in poly the ones
+   the draw rule leaves out, in a dyad everything under the pair, in mono
+   everything but the newest. What `notes.inner` reads. */
+function midiUndrawn() {
+  if (midi.mode === "poly") return polyVoices().filter((voice) => voice.role === "u");
+  if (midi.mode === "mono") return midi.notes.slice(0, -1);
+  return midi.notes.slice(0, -2);
+}
+
 /* Which two notes the figure is drawn from. The pair is the two most RECENT of
    the stack, so a third note displaces the older of the two and releasing one
    promotes whatever was under it - the same last-note semantics the mono
@@ -3302,6 +3436,10 @@ function midiDrivesGenerator() {
    because a gate left shut behind a source nobody is playing is a screen that
    has gone blank for a reason nothing on the panel explains. */
 function midiApplyGate() {
+  // A chord or not, derived here for the same reason the gate is: see
+  // `polyWanted`. Before the early return, because a rack has no gate and
+  // its generator lane can still play a chord.
+  syncPoly();
   const source = state.source;
   if (!source || typeof source.setGated !== "function") return;
 
@@ -3366,6 +3504,7 @@ function midiApplyNotes() {
   midiApplyGate();
   midiGateNotes();
   if (!midiDrivesGenerator()) return;
+  if (polyWanted()) { midiApplyPoly(); el.credit.textContent = state.source.describe(); return; }
 
   const pair = midiPair();
   if (!pair) return;
@@ -3514,6 +3653,41 @@ function midiRegisterKey() {
   registerSource({
     id: "midi.key", label: "Key", ink: "ch4", bipolar: false, order: 11,
     value: () => midi.key,
+  });
+  /* What the hands are doing, beyond the one note or two that set the pitch.
+     Registered with the key and for the same reason: a source that cannot
+     move is a chip spent on nothing. They share inks with the controllers,
+     visibly, rather than inventing colours nobody could name.
+
+     Written as fractions of a stated range rather than raw numbers, so an
+     amount means the same thing on each: eight notes, two octaves of spread,
+     C2 to C6 for the melody. */
+  const pitches = () => midi.notes.map((held) => held.note);
+  registerSource({
+    id: "notes.count", label: "Notes", ink: "ch5", bipolar: false, order: 12,
+    value: () => Math.min(1, midi.notes.length / POLY_VOICES),
+  });
+  registerSource({
+    id: "notes.spread", label: "Spread", ink: "ch6", bipolar: false, order: 13,
+    value: () => {
+      const p = pitches();
+      return p.length < 2 ? 0 : Math.min(1, (Math.max(...p) - Math.min(...p)) / 24);
+    },
+  });
+  registerSource({
+    id: "notes.top", label: "Melody", ink: "ch3", bipolar: false, order: 14,
+    value: () => {
+      const p = pitches();
+      return p.length === 0 ? 0 : Math.max(0, Math.min(1, (Math.max(...p) - 36) / 48));
+    },
+  });
+  registerSource({
+    id: "notes.inner", label: "Inner", ink: "ch1", bipolar: false, order: 15,
+    value: () => {
+      const undrawn = midiUndrawn();
+      if (undrawn.length === 0) return 0;
+      return undrawn.reduce((sum, held) => sum + held.velocity, 0) / undrawn.length;
+    },
   });
   buildSourceChips();
 }
@@ -3920,6 +4094,135 @@ function noteDeviceRate(rate) {
   deviceRateFrom = "measured";
 }
 
+/* --- the envelope ------------------------------------------------------------
+   One ADSR, as a thing that can be made more than once. The generator's mono
+   and dyad paths have one; every voice of a chord has its own. It was written
+   inside the core while there was only one, and lifted out unchanged when a
+   chord needed eight - the alternative was a second envelope written for the
+   voices, which would have agreed with this one about what a millisecond of
+   attack is until the day one of them was edited.
+
+   A one-pole per stage rather than a line, because a linear attack has a
+   corner at the top of it and a corner is a click of its own. A one-pole
+   never arrives, so the attack aims PAST one and the stage ends when it gets
+   there - which is the usual trick and is also what makes "8 ms" mean eight
+   milliseconds rather than a time constant.
+
+   And the same trick the other way, for both of the falling stages. A
+   one-pole aimed exactly at its target never arrives, so a 200 ms release
+   would be a 200 ms time constant with a second and a half of tail on it -
+   "release" would name the shape and not the duration. Each stage aims a fifth
+   of its own distance past where it is going and stops on arrival, so all
+   three take about 1.8 time constants and all three mean roughly the number on
+   the slider.
+
+   Written as one fraction rather than three numbers, because the thing that
+   matters is that the stages agree with each other about what a millisecond of
+   envelope is.
+
+   It reads its times from `tone` rather than being told them, so a slider
+   moved mid-note reaches every voice that is sounding, and it runs in both
+   places the core does: this is bound into the worklet module by name. */
+function makeEnvelope(rate, tone) {
+  const ENV_REACH = 0.2;
+  let stage = "idle";        // idle | attack | decay | sustain | release
+  let value = 1;
+  let velocity = 1;
+  let target = 0;            // where the pole is aimed, past the end
+  let end = 0;               // where the stage actually stops
+  let span = 1;              // time constants from here to there
+
+  /* The envelope's pole, which is a plain one-pole divided into the number of
+     time constants THIS STAGE needs - so the slider's number is the duration
+     of the stage rather than its time constant. Separate from the core's
+     `poleFor` rather than a flag on it: they were one function for a while,
+     and the glide silently inherited whatever span the envelope happened to be
+     in. A mutation that looked redundant is what turned that up. */
+  function poleFor(ms) {
+    const samples = Math.max(1, ms * rate / 1000);
+    return 1 - Math.exp(-span / samples);
+  }
+
+  /* Entering a stage is where the number on the slider is turned into a
+     curve, and doing it here rather than per sample is what makes the number
+     true. A one-pole aimed a fifth of its journey past the end arrives in
+     `ln((v0 - target) / (end - target))` time constants - 1.79 of them from
+     nought to one, 1.25 from a half to nothing - so the factor is different
+     for every stage and for every sustain level. Worked out once, from where
+     the envelope actually is, so "50 ms" is fifty milliseconds whether the
+     note began in silence or on top of a release that had not finished.
+
+     The DURATION is still read per sample, so a slider moved mid-note takes
+     effect mid-note. Only the shape is fixed at the edge. */
+  function enterStage(next) {
+    stage = next;
+    if (next === "attack") { target = 1 + ENV_REACH; end = 1; }
+    else if (next === "decay") {
+      target = tone.sustain - ENV_REACH * (1 - tone.sustain);
+      end = tone.sustain;
+    } else if (next === "release") { target = -ENV_REACH; end = 0; }
+    else return;
+
+    const from = Math.abs(value - target);
+    const to = Math.abs(end - target);
+    // Already there - a sustain of one has no decay to run - so do not try to
+    // divide a journey of nothing into time constants.
+    if (to <= 1e-9 || from <= to) {
+      value = end;
+      stage = next === "attack" ? "decay" : next === "decay" ? "sustain" : "idle";
+      if (stage === "decay") enterStage("decay");
+      return;
+    }
+    span = Math.log(from / to);
+  }
+
+  return {
+    step() {
+      switch (stage) {
+        case "attack":
+          value += (target - value) * poleFor(tone.attackMs);
+          if (value >= end) { value = end; enterStage("decay"); }
+          break;
+        case "decay":
+          value += (target - value) * poleFor(tone.decayMs);
+          if (value <= end) { value = end; stage = "sustain"; }
+          break;
+        case "release":
+          value += (target - value) * poleFor(tone.releaseMs);
+          if (value <= end) { value = end; stage = "idle"; }
+          break;
+        default:
+          break;                                 // sustain and idle hold
+      }
+      return value * velocity;
+    },
+
+    /* The legato rule lives here, because it is a property of an envelope and
+       not of whatever is counting keys. A note arriving while the envelope is
+       already open changes nothing about the envelope - which is what every
+       mono synth does and what makes a run of notes a phrase rather than a row
+       of attacks. It keeps the velocity of the note that opened it, too: the
+       loudness of a phrase is set by how you started it. */
+    gate(open, vel) {
+      if (!open) {
+        if (stage !== "idle") enterStage("release");
+        return;
+      }
+      if (stage === "idle" || stage === "release") {
+        velocity = vel > 0 ? vel : 1;
+        enterStage("attack");
+      }
+    },
+
+    // Back to rest, at a level: nought for an envelope about to be gated,
+    // one for the wide-open multiply-by-one of a generator nobody is playing.
+    reset(to) { stage = "idle"; value = to; velocity = 1; },
+
+    get level() { return value * velocity; },
+    get stage() { return stage; },
+  };
+}
+
 /* --- the generator's per-sample loop ----------------------------------------
    Everything below runs once per SAMPLE, and none of it may touch the page.
 
@@ -3984,6 +4287,19 @@ function makeGeneratorCore(rate, slots, lfos) {
        assignment: the pitch is written straight in, so nothing rounds and the
        old behaviour is reproduced exactly rather than closely. */
     glideMs: 0,
+
+    /* A chord, or null. Null is every mode this generator has always had: two
+       channels from one pitch and an interval. A list is POLY - every held
+       note sounding, each with its own envelope, and each with a role saying
+       where it goes: `x` or `y` is drawn on that axis and heard on that side,
+       `xy` is a lone note drawn on both (the unison a single key has always
+       drawn), and `u` is heard in both ears and NOT DRAWN. That last one is
+       the first time this generator's picture is not the whole of its sound,
+       and it is a decision: a chord of five notes on two axes is mud, so the
+       player chooses how many are drawn and the readout says how many are
+       not. Who is drawn is worked out on the main thread, from the keyboard;
+       this only plays what it is given. */
+    voices: null,
   };
 
   const wire = makeWireframe();
@@ -4015,33 +4331,10 @@ function makeGeneratorCore(rate, slots, lfos) {
 
   /* The envelope. Idle and WIDE OPEN until something gates it, which is what
      lets this ship without a keyboard changing anything: `gated` is false, the
-     level is one, and the multiply below is a multiply by one.
-
-     A one-pole per stage rather than a line, because a linear attack has a
-     corner at the top of it and a corner is a click of its own. A one-pole
-     never arrives, so the attack aims PAST one and the stage ends when it
-     gets there - which is the usual trick and is also what makes "8 ms" mean
-     eight milliseconds rather than a time constant. */
-
-  /* And the same trick the other way, for both of the falling stages. A
-     one-pole aimed exactly at its target never arrives, so a 200 ms release
-     would be a 200 ms time constant with a second and a half of tail on it -
-     "release" would name the shape and not the duration. Each stage aims a
-     fifth of its own distance past where it is going and stops on arrival, so
-     all three take about 1.8 time constants and all three mean roughly the
-     number on the slider.
-
-     Written as one fraction rather than three numbers, because the thing that
-     matters is that the stages agree with each other about what a millisecond
-     of envelope is. */
-  const ENV_REACH = 0.2;
+     level is one, and the multiply below is a multiply by one. What the
+     envelope does once it is gated is `makeEnvelope`'s business. */
   let gated = false;
-  let envStage = "idle";     // idle | attack | decay | sustain | release
-  let envValue = 1;
-  let envVelocity = 1;
-  let envTarget = 0;         // where the pole is aimed, past the end
-  let envEnd = 0;            // where the stage actually stops
-  let envSpan = 1;           // time constants from here to there
+  const env = makeEnvelope(rate, tone);
   let freqNow = null;        // where the glide has got to
 
   /* A plain one-pole: the coefficient that gets a value 63 per cent of the
@@ -4051,73 +4344,76 @@ function makeGeneratorCore(rate, slots, lfos) {
     return 1 - Math.exp(-1 / samples);
   }
 
-  /* And the envelope's, which is the same thing divided into the number of
-     time constants THIS STAGE needs - so the slider's number is the duration
-     of the stage rather than its time constant. Separate from `poleFor`
-     rather than a flag on it: they were one function for a while, and the
-     glide silently inherited whatever span the envelope happened to be in.
-     A mutation that looked redundant is what turned that up. */
-  function envPoleFor(ms) {
-    const samples = Math.max(1, ms * rate / 1000);
-    return 1 - Math.exp(-envSpan / samples);
-  }
-
-  /* Entering a stage is where the number on the slider is turned into a
-     curve, and doing it here rather than per sample is what makes the number
-     true. A one-pole aimed a fifth of its journey past the end arrives in
-     `ln((v0 - target) / (end - target))` time constants - 1.79 of them from
-     nought to one, 1.25 from a half to nothing - so the factor is different
-     for every stage and for every sustain level. Worked out once, from where
-     the envelope actually is, so "50 ms" is fifty milliseconds whether the
-     note began in silence or on top of a release that had not finished.
-
-     The DURATION is still read per sample, so a slider moved mid-note takes
-     effect mid-note. Only the shape is fixed at the edge. */
-  function enterStage(stage) {
-    envStage = stage;
-    if (stage === "attack") { envTarget = 1 + ENV_REACH; envEnd = 1; }
-    else if (stage === "decay") {
-      envTarget = tone.sustain - ENV_REACH * (1 - tone.sustain);
-      envEnd = tone.sustain;
-    } else if (stage === "release") { envTarget = -ENV_REACH; envEnd = 0; }
-    else return;
-
-    const from = Math.abs(envValue - envTarget);
-    const to = Math.abs(envEnd - envTarget);
-    // Already there - a sustain of one has no decay to run - so do not try to
-    // divide a journey of nothing into time constants.
-    if (to <= 1e-9 || from <= to) {
-      envValue = envEnd;
-      envStage = stage === "attack" ? "decay" : stage === "decay" ? "sustain" : "idle";
-      if (envStage === "decay") enterStage("decay");
-      return;
-    }
-    envSpan = Math.log(from / to);
-  }
-
   function envStep() {
-    if (!gated) return 1;
-    switch (envStage) {
-      case "attack":
-        envValue += (envTarget - envValue) * envPoleFor(tone.attackMs);
-        if (envValue >= envEnd) { envValue = envEnd; enterStage("decay"); }
-        break;
-      case "decay":
-        envValue += (envTarget - envValue) * envPoleFor(tone.decayMs);
-        if (envValue <= envEnd) { envValue = envEnd; envStage = "sustain"; }
-        break;
-      case "release":
-        envValue += (envTarget - envValue) * envPoleFor(tone.releaseMs);
-        if (envValue <= envEnd) { envValue = envEnd; envStage = "idle"; }
-        break;
-      default:
-        break;                                   // sustain and idle hold
-    }
-    return envValue * envVelocity;
+    return gated ? env.step() : 1;
   }
 
-  function block(outL, outR, n) {
+  /* The chord's voices: held ones, and ones still releasing after their key
+     came up. Each has its own phase, its own envelope and its own pair of
+     gains, one for the picture and one for what is heard.
+
+     The gains glide, over a few milliseconds, rather than being assigned.
+     A voice's role changes whenever the chord does - add a note above the
+     melody and the old melody is no longer drawn - and a gain that stepped
+     would put a step in both channels at once, which is a click on the
+     speakers and a jump on the screen. */
+  const voices = [];
+  /* Releases in flight, at most. A ninth tail cuts the oldest rather than
+     letting a fast run of chords pile up voices for the length of a release;
+     the cut is the one place a voice can end with a step, and it only
+     happens to a note that has been released and has faded for the longest. */
+  const POLY_TAILS = 8;
+  // Picture X, picture Y, heard left, heard right.
+  const ROLES = { x: [1, 0, 1, 0], y: [0, 1, 0, 1], xy: [1, 1, 1, 1], u: [0, 0, 1, 1] };
+
+  function reconcileVoices(list) {
+    if (list === null) { voices.length = 0; return; }
+    for (let v = 0; v < voices.length; v++) voices[v].wanted = false;
+    for (let k = 0; k < list.length; k++) {
+      const want = list[k];
+      const gains = ROLES[want.role] || ROLES.u;
+      let voice = null;
+      for (let v = 0; v < voices.length; v++) {
+        if (voices[v].held && voices[v].note === want.note) { voice = voices[v]; break; }
+      }
+      if (!voice) {
+        // A new note starts where its role puts it: its envelope starts at
+        // nought, so there is nothing for a gain glide to smooth yet.
+        voice = {
+          note: want.note, phase: 0, held: true, env: makeEnvelope(rate, tone),
+          gains: gains.slice(), targets: gains.slice(),
+        };
+        voice.env.reset(0);
+        voice.env.gate(true, want.velocity);
+        voices.push(voice);
+      }
+      voice.wanted = true;
+      voice.freq = want.freq;
+      for (let g = 0; g < 4; g++) voice.targets[g] = gains[g];
+    }
+    for (let v = 0; v < voices.length; v++) {
+      const voice = voices[v];
+      if (voice.held && !voice.wanted) { voice.held = false; voice.env.gate(false); }
+    }
+    let tails = 0;
+    for (let v = 0; v < voices.length; v++) if (!voices[v].held) tails++;
+    for (let v = 0; v < voices.length && tails > POLY_TAILS; v++) {
+      if (!voices[v].held) { voices.splice(v, 1); v--; tails--; }
+    }
+  }
+
+  /* `outL` and `outR` are the PICTURE. `heardL` and `heardR`, when given,
+     are what goes to the speakers - the worklet passes its output here and
+     posts the picture back. They are the same samples in every mode but
+     poly, where an undrawn voice is in the heard pair and not in the picture,
+     and where the heard pair is not clamped: a chord is louder than a note,
+     which is what was asked for, and the limiter at the end of the monitor
+     chain is what catches it. The picture keeps its clamp, because full scale
+     is the edge of the screen. */
+  function block(outL, outR, n, heardL, heardR) {
     const dt = 1 / rate;
+    const poly = tone.voices !== null;
+    const roleGlide = poleFor(4);
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
     // loop is `pow` forty-four thousand times a second for one answer.
@@ -4156,7 +4452,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       const tumble = tone.spinRate * Math.pow(3, genMod[5]);
       const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
 
-      let l, r;
+      let l, r, hl = null, hr = null;
 
       if (tone.mode === "figure") {
         figurePhase += tone.figureRate * dt;
@@ -4195,6 +4491,30 @@ function makeGeneratorCore(rate, slots, lfos) {
 
         l = amp * env * fade * (Math.sin(phaseL) + Math.sin(phaseL * k + phase)) / 2;
         r = amp * env * fade * (Math.sin(phaseR + phase) + Math.sin(phaseR * k)) / 2;
+      } else if (poly) {
+        /* Every voice at its own pitch, bent by the same modulation, ducked
+           by the same tremolo, each through its own envelope. The phase and
+           ratio destinations are about the pair of a dyad and mean nothing
+           to a chord, so they are not applied here. */
+        const bend = Math.pow(2, genMod[0]);
+        const duck = tone.amp * (1 - genMod[1]);
+        l = 0; r = 0; hl = 0; hr = 0;
+        for (let v = 0; v < voices.length; v++) {
+          const voice = voices[v];
+          const f = voice.freq * bend;
+          voice.phase += TWO_PI * f * dt;
+          if (voice.phase >= TWO_PI) voice.phase -= TWO_PI;
+          if (voice.phase < 0) voice.phase += TWO_PI;
+          const wave = tone.shape === "noise" ? Math.random() * 2 - 1
+                                              : waveAt(tone.shape, voice.phase, Math.abs(f) / rate);
+          const a = duck * voice.env.step() * wave;
+          const g = voice.gains, t = voice.targets;
+          g[0] += (t[0] - g[0]) * roleGlide;
+          g[1] += (t[1] - g[1]) * roleGlide;
+          g[2] += (t[2] - g[2]) * roleGlide;
+          g[3] += (t[3] - g[3]) * roleGlide;
+          l += a * g[0]; r += a * g[1]; hl += a * g[2]; hr += a * g[3];
+        }
       } else {
         phaseL += TWO_PI * freq * dt;
         phaseR += TWO_PI * freq * ratio * dt;
@@ -4220,6 +4540,15 @@ function makeGeneratorCore(rate, slots, lfos) {
 
       outL[i] = Math.max(-1, Math.min(1, l));
       outR[i] = Math.max(-1, Math.min(1, r));
+      if (heardL) {
+        heardL[i] = hl === null ? outL[i] : hl;
+        heardR[i] = hr === null ? outR[i] : hr;
+      }
+    }
+
+    // Voices whose release has finished are gone.
+    for (let v = voices.length - 1; v >= 0; v--) {
+      if (!voices[v].held && voices[v].env.stage === "idle") voices.splice(v, 1);
     }
   }
 
@@ -4240,27 +4569,23 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
     },
     set(field, value) {
+      if (field === "voices") {
+        // Copied, for the same reason the routes are: this may have crossed a
+        // thread, and the core should not be holding the sender's objects.
+        tone.voices = value === null ? null
+          : value.map((v) => ({ note: v.note, freq: v.freq, velocity: v.velocity, role: v.role }));
+        reconcileVoices(tone.voices);
+        return;
+      }
       tone[field] = value;
       if (field === "model") wire.set(value);
       if (field === "mode" || field === "decay") { swing = 0; relet = 0; }
     },
     reswing() { swing = 0; phaseL = 0; phaseR = 0; relet = 0; wire.reset(); },
 
-    /* The gate, and the legato rule. A note arriving while the envelope is
-       already open changes the pitch and leaves the envelope alone - which is
-       what every mono synth does and what makes a run of notes a phrase
-       rather than a row of attacks. It keeps the velocity of the note that
-       opened it, too: the loudness of a phrase is set by how you started it. */
-    gate(open, velocity) {
-      if (!open) {
-        if (envStage !== "idle") enterStage("release");
-        return;
-      }
-      if (envStage === "idle" || envStage === "release") {
-        envVelocity = velocity > 0 ? velocity : 1;
-        enterStage("attack");
-      }
-    },
+    /* The gate. Passed straight on: the legato rule is the envelope's, and
+       lives in `makeEnvelope` where every envelope gets it. */
+    gate(open, velocity) { env.gate(open, velocity); },
 
     /* Whether the envelope is in force at all. False is the page as it has
        always been - a steady waveform, the multiply by one - and it is what
@@ -4268,13 +4593,26 @@ function makeGeneratorCore(rate, slots, lfos) {
     setGated(on) {
       if (on === gated) return;
       gated = on;
-      envStage = "idle";
-      envValue = on ? 0 : 1;
-      envVelocity = 1;
+      env.reset(on ? 0 : 1);
     },
 
-    get envelope() { return gated ? envValue * envVelocity : 1; },
+    /* In poly, the loudest voice: `env.note` is one number, and the loudest
+       envelope is the one a player hears the chord doing. */
+    get envelope() {
+      if (tone.voices !== null) {
+        let most = 0;
+        for (let v = 0; v < voices.length; v++) most = Math.max(most, voices[v].env.level);
+        return most;
+      }
+      return gated ? env.level : 1;
+    },
     get gated() { return gated; },
+    // What is sounding, for the tests and nothing else: note, whether held,
+    // and where its gains have got to.
+    get voices() {
+      return voices.map((v) => ({ note: v.note, freq: v.freq, held: v.held,
+                                  stage: v.env.stage, gains: v.gains.slice() }));
+    },
   };
 }
 
@@ -4358,22 +4696,29 @@ function generatorProcessor() {
          `onprocessorerror`, which carries no message: the switch says yes, the
          node exists, and no sample ever arrives. Sent back once and then
          stopped, so the panel can say what went wrong rather than nothing. */
+      /* The picture into its own pair and the sound straight into the output.
+         They are the same samples except in poly, where an undrawn voice is
+         heard and not drawn - see `block`. */
+      if (!this.pictL || this.pictL.length !== n) {
+        this.pictL = new Float32Array(n);
+        this.pictR = new Float32Array(n);
+      }
       try {
-        this.core.block(out[0], out[1], n);
+        this.core.block(this.pictL, this.pictR, n, out[0], out[1]);
       } catch (error) {
         this.running = false;
         this.port.postMessage({ error: String(error && error.message || error) });
         return false;
       }
 
-      /* The same samples to the picture, not a second rendering of them.
-         That is the whole point of the generator having an audio path: what
-         is on the graticule is what came out of the speakers, sample for
-         sample, rather than two runs of the same arithmetic that agree in
-         character and not in phase. */
+      /* The same rendering to the picture, not a second one. That is the
+         whole point of the generator having an audio path: what is on the
+         graticule came out of the same arithmetic, in the same phase, as what
+         came out of the speakers - sample for sample, and the whole of it
+         except for a chord's undrawn voices, which the readout counts. */
       for (let i = 0; i < n; i++) {
-        this.outL[this.filled] = out[0][i];
-        this.outR[this.filled] = out[1][i];
+        this.outL[this.filled] = this.pictL[i];
+        this.outR[this.filled] = this.pictR[i];
         this.filled++;
         if (this.filled === this.batch) {
           const l = this.outL, r = this.outR;
@@ -4437,6 +4782,7 @@ function generatorModuleSource() {
     bind("makeWireframe", String(makeWireframe)),
     bind("intervalRatio", String(intervalRatio)),
     bind("lfoStep", String(lfoStep)),
+    bind("makeEnvelope", String(makeEnvelope)),
     bind("makeGeneratorCore", String(makeGeneratorCore)),
     "(" + String(generatorProcessor) + ")();",
   ].join("\n\n");
@@ -8733,6 +9079,17 @@ function writeReadout(frame) {
     bits.push("gated \u00b7 no note held");
   }
 
+  /* Said whenever the picture is leaving notes out, because that is the one
+     state in which the trace is not the whole of the sound. */
+  {
+    const tone = genSettings();
+    if (tone && tone.voices !== null && midi.poly.sounding > midi.poly.drawn) {
+      bits.push("drawing " + midi.poly.drawn + " of " + midi.poly.sounding + " notes"
+        + (midi.poly.held > midi.poly.sounding
+           ? " \u00b7 " + midi.poly.sounding + " of " + midi.poly.held + " held sound" : ""));
+    }
+  }
+
   if (state.starved > 0) {
     bits.push("buffer short by "
       + Math.round(state.starved / frame.rate * 1000) + " ms");
@@ -9776,6 +10133,16 @@ function syncMidi() {
   el.keysOpen.setAttribute("aria-expanded", String(screenKeys.open));
   el.midiDyad.setAttribute("aria-checked", String(midi.mode === "dyad"));
   el.midiMono.setAttribute("aria-checked", String(midi.mode === "mono"));
+  el.midiPoly.setAttribute("aria-checked", String(midi.mode === "poly"));
+  /* Only where a chord can play. In the drawn modes a note is a ratio and
+     poly does nothing, so a Draw row there would be a control for nothing -
+     and it was also the row that made the Bench scroll in wireframe. */
+  {
+    const tone = genSettings();
+    el.midiDrawRow.hidden = !(midi.mode === "poly" && tone && tone.mode === "wave");
+  }
+  el.midiDrawCount.value = String(midi.draw.count);
+  el.midiDrawWhich.value = midi.draw.which;
   el.midiHold.checked = midi.hold;
   el.midiTruth.checked = midi.truth;
   el.midiFollow.checked = midi.follow;
@@ -9817,6 +10184,9 @@ function syncMidi() {
           ? "<b>the interval figure is not available</b>: dyad still sets the "
             + "interval, but the second axis it would be plotted against is not on "
             + "the screen. Put the generator back on its own to see it."
+          : midi.mode === "poly"
+          ? "in <i>poly</i> the lane is the X side of the picture &mdash; the lowest "
+            + "note drawn &mdash; and the rest of the chord is heard, not drawn."
           : "in <i>dyad</i> the interval figure would not be available, because the "
             + "second axis it needs is not on the screen.")
       + " And a note sets its pitch without starting or stopping it: the envelope "
@@ -9887,6 +10257,15 @@ function setMidiMode(mode) {
 }
 el.midiDyad.addEventListener("click", () => setMidiMode("dyad"));
 el.midiMono.addEventListener("click", () => setMidiMode("mono"));
+el.midiPoly.addEventListener("click", () => setMidiMode("poly"));
+el.midiDrawCount.addEventListener("change", () => {
+  midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(el.midiDrawCount.value) || 2));
+  midiApplyNotes();
+});
+el.midiDrawWhich.addEventListener("change", () => {
+  midi.draw.which = el.midiDrawWhich.value;
+  midiApplyNotes();
+});
 
 el.midiHold.addEventListener("change", () => { midi.hold = el.midiHold.checked; });
 el.midiTruth.addEventListener("change", () => { midi.truth = el.midiTruth.checked; });
@@ -10000,7 +10379,7 @@ function setScreenKeys(open) {
   if (!open) screenReleaseAll();
   screenKeys.open = open;
   el.screenKeys.hidden = !open;
-  if (open) buildScreenKeys();
+  if (open) { buildScreenKeys(); midiRegisterKey(); }
   syncMidi();
   midiApplyGate();
 }
@@ -10153,6 +10532,7 @@ const DEFAULTS = {
   acHz: 100,                 // tenths of a hertz, so 10.0
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
+  midiDrawCount: 2, midiDrawWhich: "outer",
   midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -10218,6 +10598,7 @@ function snapshot() {
     acHz: Math.round(state.acHz * 10),
     octaves: tone ? tone.octaves : DEFAULTS.octaves,
     midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
+    midiDrawCount: midi.draw.count, midiDrawWhich: midi.draw.which,
     midiFollow: midi.follow,
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     cc: encodeCC(),
@@ -10282,7 +10663,12 @@ function restore(partial) {
      have moved. It carries their NAMES, which is what a player chose and what
      a shared code should bring with it; whether a drawbar has been touched yet
      is a fact about the room. */
-  midi.mode = s.midiMode === "mono" ? "mono" : "dyad";
+  // Anything unknown is a dyad, which is what every code written before the
+  // other two existed means. Additive fields, so no version bump.
+  midi.mode = s.midiMode === "mono" || s.midiMode === "poly" ? s.midiMode : "dyad";
+  midi.draw.count = Math.max(2, Math.min(POLY_VOICES, Number(s.midiDrawCount) || 2));
+  midi.draw.which = ["outer", "lowest", "highest", "recent"].includes(s.midiDrawWhich)
+    ? s.midiDrawWhich : "outer";
   midi.hold = s.midiHold === true;
   midi.truth = s.midiTruth !== false;
   midi.follow = s.midiFollow === true;

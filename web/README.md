@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in), B and C are built; D is in progress (the generator as a lane, silent) and E is not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard) and E and F are not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -61,6 +61,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `contracttest.py` | the lane contract, the generator as a lane, and a rack with no files in it |
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
+| `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1242,4 +1243,42 @@ line returns on a reset clock; dropping the reset as well is caught at once, by
 `assertLfoDriver` throwing. And `toTone` clearing `state.genSound` is redundant
 since `syncGeneratorSound` reads the answer back from the source — the line
 predates the read-back and costs nothing.
+
+**Poly is the first time the generator's picture is not the whole of its
+sound, and the core says so in its signature.** `block(outL, outR, n, heardL,
+heardR)`: the first pair is the picture, the second, when given, is what goes to
+the speakers. They are the same samples in every mode but poly, where a note
+the draw rule leaves out is in the heard pair only. The worklet passes its
+output as the heard pair and posts the picture back — so "the trace is what the
+speakers got" is still true of every drawn note, and the readout says how many
+are not drawn. The heard pair is also the one place the core does not clamp:
+a chord is louder than a note on purpose, and the limiter catches it.
+
+**The envelope was lifted out of the core rather than written again for the
+voices.** `makeEnvelope` is the same ADSR, the same one-pole-past-the-target
+trick and the same legato rule, now made once per voice as well as once for the
+mono path. It is bound into the worklet module by name like everything else the
+core reaches for; `worklettest.py` would name it if it were missing.
+
+**A fixture for a draw rule has to make the rules disagree.** Five notes pressed
+in their pitch order would make *highest* and *most recent* the same answer, so
+a mutation swapping them would pass. `polytest.py` presses the top note first,
+so bass-and-melody, lowest, highest and most recent all pick different pairs.
+
+**A role change is a gain glide, not an assignment.** Adding a note above the
+melody moves the old melody out of the picture, and a gain that stepped would
+be a click on the speakers and a jump on the screen. Checked with a square wave,
+whose value is near full scale at every instant — with a sine the switch could
+land near a zero crossing and a step would pass for a glide.
+
+**A third button on a switch is a second line in the Bench.** Spaced capitals
+are wide: *Dyad / Mono / Poly* is 190 px, and beside the 96 px label column the
+Bench's 255 px column had 147 left, so the switch wrapped, the row doubled, and
+the panel that must never scroll did — by twelve pixels, caught by `patchtest`.
+The row lost its visible label rather than the switch losing its letter-spacing,
+which would have fitted by three pixels in one font and not in the fallback.
+Then the new Draw row made it scroll again in *wireframe*, where poly does
+nothing at all, so the row now shows only where a chord can play and `patchtest`
+measures poly on the waveform. **Before adding a row or a button to the
+Bench, run `patch`: the columns have tens of pixels to spare, not hundreds.**
 
