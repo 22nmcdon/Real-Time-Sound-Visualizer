@@ -698,16 +698,20 @@ where it is a pure Haas delay and sounds like width rather than a comb. It is
 the mono sum — a laptop speaker, a room — that notches to 1 − *m* and is total
 at the top. So in headphones the worst setting is in the middle of the range,
 and the first draft's ceiling of 0.5 sat exactly on it; `combtest.py` caught it
-before it was committed. The ceiling is 0.4 (right channel −14 dB at the notch,
-room −4.4 dB) and the default 0.25 (−6 dB and −2.5 dB). Both are placeholders
-for a pair of ears; the test asserts the properties — neither null reachable,
-default under ceiling — rather than the numbers, so tuning them does not mean
-editing a test.
+before it was committed. The measured placeholders were 0.4 and 0.25.
 
-What the ceiling costs: the top of the range, past the null, is a real and
-possibly pleasant setting in headphones, and it is out of reach. Getting there
-from the default means sweeping through the hole, so it would want a switch
-rather than a longer slider; nobody has asked for it yet.
+**Then tuned by ear: default 0.2, ceiling 0.5.** The default came down to where
+it is mostly width (−4.4 dB in the right ear at the notch, −1.9 dB in a room).
+The ceiling went up to exactly the headphone null, on purpose: listening, the
+top of the useful range was wanted, and the cost — the right ear's notches
+total at the very top of the slider — is stated where it is set. The test's
+properties changed with it: the slider never goes *past* the null, the room's
+null stays out of reach, and the default is well clear of the headphone null.
+
+What is still out of reach: the range above the null, which is shallower again
+in headphones and possibly pleasant. Getting there from the default means
+sweeping through the hole, so it would want a switch rather than a longer
+slider; nobody has asked for it yet.
 
 Lag is inside the block the two taps straddle now: with the speakers on the
 input it is not heard at all, and switched off the stage is exactly the

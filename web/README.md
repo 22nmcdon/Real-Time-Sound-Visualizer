@@ -1127,6 +1127,9 @@ have found it by reasoning from the plan; `combtest.py` found it by rendering a
 sine at the notch through the real chain across seven mixes. The ceiling is 0.4
 now, and the test asserts that neither null is reachable rather than any
 particular number, because both numbers are waiting to be tuned by ear.
+They since have been, to a default of 0.2 and a ceiling of exactly 0.5: the
+headphone null at the top of the slider is deliberate now, and the test asserts
+that it is never passed rather than never reached.
 
 **A fresh `DelayNode` sits at nought, and an undelayed copy mixed with the
 signal is the signal.** So "with the lag off, the stage is the identity" passed

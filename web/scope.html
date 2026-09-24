@@ -1439,8 +1439,8 @@ body[data-view="bench"] #menuButton { display: none; }
             <div class="menu-row" id="lagMixRow" hidden data-more="1">
               <label class="menu-label" for="lagMix">Heard</label>
               <div class="grow">
-                <input type="range" id="lagMix" min="0" max="40" value="25">
-                <span class="reading" id="lagMixValue">25%</span>
+                <input type="range" id="lagMix" min="0" max="50" value="20">
+                <span class="reading" id="lagMixValue">20%</span>
               </div>
             </div>
             <div class="menu-row" data-more="1">
@@ -1913,8 +1913,9 @@ body[data-view="bench"] #menuButton { display: none; }
         <i>Heard</i> is how much of the delayed copy reaches the right speaker, when the
         speakers are on the shaped side. Heard, a signal plus itself a moment later is a comb
         filter that tracks the pitch. In headphones it cuts deepest at half, and in a room at
-        full, so the slider stops at 40% and starts at 25%: enough to hear the width, short of
-        the setting where a note's own harmonics cancel.</span></li>
+        full. It starts at 20%, which is mostly width, and stops at 50% &mdash; the top of the
+        slider is the setting where, in headphones, the right ear loses some of a note's
+        harmonics entirely. That is allowed on purpose; it is where the effect is strongest.</span></li>
 
       <li><b>AC coupling, and where its corner sits</b>
         <span>Under <i>Vertical</i>, per lane. It blocks what is not moving, so a converter
@@ -2379,21 +2380,26 @@ const LAG_MAX_MS = 40;         // a quarter period at 6.25 Hz - below anything m
    not optional, the photocell's reach is clamped - rather than an on/off
    switch, which would be the one shape inconsistent with both.
 
-   PLACEHOLDERS, set without listening, and to be tuned by ear. What the
-   numbers were chosen from is measured rather than guessed (`combtest.py`),
-   and it does not go the way the plan assumed, which was that more mix means
+   Tuned by ear, after starting as placeholders set from measurement alone
+   (`combtest.py`). The measurement
+   did not go the way the plan assumed, which was that more mix means
    more comb. With mix m the right channel is (1-m) of the signal plus m of the
    delayed copy, so its notch has depth |1-2m|: a total null at m = 0.5, and
    none at all at m = 1, which is a pure Haas delay and sounds like width. The
    mono sum - a laptop speaker, a room - notches to 1-m, total at m = 1. So the
-   worst headphone setting is in the middle of the range, and a ceiling of 0.5
-   would have been exactly on it; the first draft had that. At 0.4 the right
-   channel's notch is -14 dB and the room's is -4.4 dB; at the default 0.25
-   they are -6 dB and -2.5 dB. Above the null the headphone comb gets
-   shallower again, and a setting up there may be worth having for width, but
-   reaching it means passing through the hole, and the slider cannot jump. */
-const LAG_MIX_DEFAULT = 0.25;
-const LAG_MIX_CEILING = 0.4;
+   worst headphone setting is in the middle of the range.
+
+   The ceiling is 0.5, which is EXACTLY that null, and that is a decision made
+   by listening rather than an oversight: the measured placeholder was 0.4
+   (-14 dB in the right ear at the notch), and with a player's ears on it the
+   top of the useful range was wanted. What it costs is stated here so it is
+   not rediscovered: at the very top of the slider, in headphones, the right
+   channel's notches are total. The ceiling does not go past the null, because
+   above it the comb gets shallower again and every setting up there is only
+   reachable by sweeping through the hole. The default is 0.2: -4.4 dB in the
+   right ear and -1.9 dB in a room at the notch, which is width more than comb. */
+const LAG_MIX_DEFAULT = 0.2;
+const LAG_MIX_CEILING = 0.5;
 /* The least search room worth keeping, as a quarter of the room the trigger
    actually wants. It used to be 512 samples, which is a duration written as a
    sample count: 11.6 ms at 44.1 kHz, 5.3 ms at 96 kHz, so the rule quietly

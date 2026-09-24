@@ -28,8 +28,11 @@ and for the other it is exactly backwards:
 
 So there is no single mix that is safe for both, and the worst case for
 headphones is in the middle of the range rather than at the top of it. The
-placeholder ceiling is set from that: below one half, so the headphone null
-cannot be reached, and far enough below one that the room's null cannot either.
+ceiling was first set from that, below one half. It was then tuned by ear to
+exactly one half: the headphone null is reachable, deliberately, at the top of
+the slider and nowhere else. What stays true is that it is never passed -
+above it the comb only gets shallower, so every setting there would mean
+sweeping through the hole - and that the room's null is never reached.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -235,16 +238,21 @@ with sync_playwright() as pw:
     print("\n--- the placeholders, and the ceiling holding ---")
     limits = p.evaluate("() => ({ def: LAG_MIX_DEFAULT, ceiling: LAG_MIX_CEILING })")
     print("    default %.2f, ceiling %.2f" % (limits["def"], limits["ceiling"]))
-    # Properties rather than the numbers, because the numbers are placeholders
-    # waiting for a pair of ears. What must stay true whatever they are tuned
-    # to: neither total null is reachable, and the default is under the ceiling.
-    check("the ceiling keeps the headphone null out of reach",
-          limits["ceiling"] < 0.5 - 0.05,
+    # Properties rather than the numbers, so retuning by ear does not mean
+    # editing a test. The headphone null used to be out of reach; it was put at
+    # the very top of the slider by listening, so what is asserted now is that
+    # the slider never goes PAST it - where the comb only gets shallower again,
+    # reachable only through the hole - that the room's null stays out of
+    # reach, and that the default is well clear of the headphone null rather
+    # than merely under the ceiling.
+    check("the ceiling never goes past the headphone null",
+          limits["ceiling"] <= 0.5 + 1e-9,
           "%.2f, against a null at 0.50" % limits["ceiling"])
-    check("and the room's null too",
+    check("the room's null stays out of reach",
           limits["ceiling"] < 1.0, "%.2f" % limits["ceiling"])
-    check("and the default sits under the ceiling",
-          0 < limits["def"] <= limits["ceiling"], str(limits))
+    check("and the default is well clear of the headphone null",
+          0 < limits["def"] <= limits["ceiling"] and limits["def"] <= 0.5 - 0.15,
+          str(limits))
 
     asked = p.evaluate(RENDER, [{"signal": {"kind": "sine", "hz": notch_hz},
                                  "drive": "sync", "tauMs": NOTCH_TAU, "mix": 1.0,
