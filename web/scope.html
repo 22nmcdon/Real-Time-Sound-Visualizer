@@ -428,6 +428,25 @@ dialog[open] { display: flex; flex-direction: column; }
 .sheet.pane { flex: 1 1 0; min-height: 132px; }
 .sheet canvas { display: block; width: 100%; height: 100%; }
 .sheet.main canvas { cursor: crosshair; }
+
+/* The photocell's reticle, over the trace rather than drawn into it: drawn in,
+   it would be deposited on the phosphor and read itself. It fills with its own
+   reading, so what it is seeing is visible where it is. Terracotta, the ink
+   its chip carries. */
+.photo-reticle {
+  position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  border: 1.5px solid var(--ch6); border-radius: 50%; z-index: 2;
+  background: rgba(166, 85, 45, calc(var(--lit, 0) * 0.55));
+  cursor: grab; touch-action: none;
+}
+.photo-reticle[hidden] { display: none; }
+.photo-reticle:active { cursor: grabbing; }
+.photo-reticle:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.photo-reticle::before, .photo-reticle::after {
+  content: ""; position: absolute; background: var(--ch6);
+}
+.photo-reticle::before { left: 50%; top: -6px; width: 1px; height: 32px; transform: translateX(-0.5px); }
+.photo-reticle::after { top: 50%; left: -6px; height: 1px; width: 32px; transform: translateY(-0.5px); }
 .pane-name {
   position: absolute; top: 8px; left: 10px; z-index: 2;
   text-transform: uppercase; letter-spacing: 0.2em;
@@ -1767,6 +1786,12 @@ body[data-view="bench"] #menuButton { display: none; }
              two display controls because that is what it is. -->
         <div class="field fixed">
           <span class="eyebrow">&nbsp;</span>
+          <button type="button" class="link-btn caps" id="photoButton" aria-pressed="false"
+                  title="A light sensor on the screen, as a modulation source">Photocell</button>
+        </div>
+
+        <div class="field fixed">
+          <span class="eyebrow">&nbsp;</span>
           <div class="menu-wrap">
             <button type="button" class="link-btn caps" id="panesButton"
                     aria-expanded="false" aria-controls="panesPanel">Panes</button>
@@ -1811,7 +1836,7 @@ body[data-view="bench"] #menuButton { display: none; }
 <main class="screen">
   <div class="wrap">
     <div class="panes" id="panes">
-      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas></div>
+      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
       <div class="aside" id="aside">
         <div class="sheet pane" id="goniPane">
           <span class="pane-name">Goniometer</span>
@@ -1985,6 +2010,23 @@ body[data-view="bench"] #menuButton { display: none; }
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
         X&ndash;Y, where the figure is built up a pass at a time.</span></li>
+
+      <li><b>The photocell: the picture moving the controls</b>
+        <span><i>Photocell</i>, above the screen, puts a light sensor on it &mdash; drag the
+        reticle onto the picture, or give it focus and move it a cell at a time with the arrow
+        keys. How bright the phosphor is under it becomes a source, <i>Photocell</i>, which can
+        be put on a control like an LFO: park it on the edge of a figure and it pulses as the
+        beam sweeps past, drop it inside a solid and it reads how dense it is. Point it at
+        rotation or zoom and the figure moves itself &mdash; and moves what the photocell sees,
+        which is the loop. It fills with its own reading, so you can see what it is seeing.
+        <br><br>
+        Three things keep the loop from running away. It can only reach controls that cannot
+        make anything louder &mdash; rotation, zoom, the lag and the trigger position, not
+        the filter and not the generator. It moves any of them at most half as far as another
+        source could. And its reading can change no faster than two full swings a second, so it
+        cannot flip back and forth every frame. Persistence is its memory: long persistence
+        makes it slow and smooth, short makes it twitchy. Over a spectrogram it reads nothing,
+        because no beam draws one.</span></li>
 
       <li><b>The beam has a brightness</b>
         <span>On a cathode-ray tube the spot's brightness is how long it dwelt on a spot,
@@ -2502,6 +2544,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
+                  "photoReticle", "photoButton",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiPolyJustRow", "midiPolyJust",
                   "midiDrive", "midiHold", "midiTruth", "midiFollow",
@@ -2752,6 +2795,36 @@ const MOD_DESTS = new Map();
 function registerSource(entry) { MOD_SOURCES.set(entry.id, entry); return entry; }
 function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
 
+/* The two rules a source that READS THE PICTURE lives under, because routed
+   back, it closes a loop - picture, source, destination, picture - and a loop
+   is what rings or runs away.
+
+   Where it may go. The plan said picture-only destinations, and wrote rotation
+   and the lag among them; Stage C has since put both in what the speakers
+   hear, so "picture-only" stopped being the property that keeps a loop safe.
+   The property is whether a destination can ADD ENERGY. A rotation is a turn,
+   which keeps the level; the lag's mix is a crossfade under a ceiling; zoom
+   and the trigger position never reach a sample at all. The filter's
+   resonance can ring, and every generator parameter is a sound being made, so
+   those are marked `energetic` and refused - until Stage E3, which closes the
+   loop through them with a stability test to show it holds.
+
+   And how hard. `reach` is the most of a destination's span such a source may
+   move it, lower than anything else's. Enforced where the amount is USED, so no
+   path that writes an amount - the drag, the editor, a setup code - can get
+   round it; and also where it is stored and shown, so the number on the
+   control is the number that applies. */
+function routingAllowed(source, dest) {
+  if (!source || !dest) return false;
+  if (!source.fromPicture) return true;
+  return dest.kind === "visual" && dest.energetic !== true;
+}
+
+function routingAmount(source, amount) {
+  if (!source || !(source.reach > 0)) return amount;
+  return Math.max(-source.reach, Math.min(source.reach, amount));
+}
+
 /* The generator's own parameters, and the reason they are a separate kind:
    these are applied once per SAMPLE. A vibrato rewritten sixty times a second
    is a staircase, not a vibrato. Everything else a source can point at is a
@@ -2878,10 +2951,12 @@ const VISUAL_DESTS = [
      range and nothing at the top. */
   {
     id: "filter.cutoff", label: "Filter cutoff", span: 400, min: 0, max: CUTOFF_STEPS,
+    energetic: true,        // it moves a resonant peak through the sound
     base: () => state.filter.cutoff, set: (offset) => { state.cutoffMod = offset; },
   },
   {
     id: "filter.res", label: "Filter resonance", span: 50, min: 0, max: 100,
+    energetic: true,        // resonance rings
     base: () => state.filter.res, set: (offset) => { state.resMod = offset; },
   },
   /* Zoom was built to be modulated - `zoomStep` and `zoomMod` have been
@@ -2925,6 +3000,7 @@ function applyModMatrix(frame, elapsed) {
 
   updateEnvelope(frame, elapsed);
   midiSmooth(elapsed);
+  photoStep(elapsed);
   midiApplyGate();
 
   for (const dest of MOD_DESTS.values()) {
@@ -2934,7 +3010,9 @@ function applyModMatrix(frame, elapsed) {
     for (const routing of state.modRoutings) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
-      if (source) sum += source.value() * routing.amount;
+      if (source && routingAllowed(source, dest)) {
+        sum += source.value() * routingAmount(source, routing.amount);
+      }
     }
 
     // Clamped as a value, stored as an offset, so a source cannot push a
@@ -2963,6 +3041,12 @@ let repaintQueued = false;
 
 function touchRoutings() {
   modDirty = true;
+  // Stored within reach as well as applied within it, so what the control
+  // says is what happens.
+  for (const routing of state.modRoutings) {
+    const source = MOD_SOURCES.get(routing.sourceId);
+    if (source && source.reach > 0) routing.amount = routingAmount(source, routing.amount);
+  }
   // Coalesced: dragging a depth fires this on every pointermove, and rebuilding
   // the rows sixty times a second under the finger doing the dragging would
   // replace the element being dragged out from under it.
@@ -2982,13 +3066,14 @@ function compileRoutes() {
        it was loaded into the wrong mode. */
     if (!source || !dest) continue;
     if (dest.kind !== "audio") continue;
+    if (!routingAllowed(source, dest)) continue;
     /* Sources without an `index` used to be dropped here, which meant the
        level and - later - a drawbar could point at the picture and not at the
        generator, silently: the routing existed, the editor drew it, and
        nothing happened. They are held across the block instead; see `fill`. */
     genRoutes.push({
       index: source.index, source, held: 0, slot: dest.slot,
-      amount: routing.amount, unipolar: dest.unipolar === true,
+      amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
     });
   }
   modDirty = false;
@@ -7893,6 +7978,118 @@ function beamColours(inkName) {
    them, uninitialised. */
 buildBeamRamps();
 
+/* --- the phosphor grid (D9) --------------------------------------------------
+   What the phosphor would hold, kept as numbers the photocell can read, rather
+   than read back off the canvas. 64 by 64 over the graticule, in screen space.
+
+   It is fed by the same segment walks the renderer strokes - the X-Y figure,
+   each Y-T polyline, the peak-detect bars - so it is the beam's own path and
+   not a second idea of where the beam went. Intensity is the beam's own step
+   when the beam is shading, so a fast stroke deposits less than a slow one,
+   exactly as it draws fainter; with the beam off every stroke is full ink.
+
+   A cell keeps the BRIGHTER of what it held and what is laid on it, never the
+   sum. That is the canvas's `darken` compositing written as arithmetic - the
+   renderer's own reason for it holds here: a figure redrawn thirty times a
+   frame at a long timebase would otherwise saturate every cell it touches.
+   And it fades with the canvas, in `clearOrFade`: paper laid over the screen
+   at alpha p leaves (1 - p) of every stroke, so the grid is multiplied by the
+   same. Off clears it; infinite leaves it alone.
+
+   The honesty caveat from the plan stands. This is "what the phosphor would
+   hold", not "what the screen shows after every effect" - the reference trace,
+   the cursors and the graticule are not deposited, because none of them is the
+   beam. If that difference turns out to matter, a tiny `getImageData` under
+   the reticle is the upgrade, measured and not assumed. */
+const PHOSPHOR_N = 64;
+const phosphor = {
+  grid: new Float32Array(PHOSPHOR_N * PHOSPHOR_N),
+  frames: 0,                 // fades applied, which is what a decay test counts
+  cost: 0,                   // milliseconds of the last frame's deposits
+};
+
+function phosphorFade(resized) {
+  phosphor.frames++;
+  phosphor.cost = 0;
+  if (state.persistence === 0 || resized) { phosphor.grid.fill(0); return; }
+  if (state.persistence < 0) return;
+  const keep = 1 - state.persistence;
+  const g = phosphor.grid;
+  for (let i = 0; i < g.length; i++) g[i] *= keep;
+}
+
+/* A segment in canvas pixels, laid into the cells it crosses. Sampled at half a
+   cell, which cannot skip a cell a segment passes through. */
+function phosphorSegment(x0, y0, x1, y1, level) {
+  const N = PHOSPHOR_N, g = phosphor.grid;
+  const ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
+  const bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 2));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    const cx = Math.floor(ax + (bx - ax) * t), cy = Math.floor(ay + (by - ay) * t);
+    if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+    const at = cy * N + cx;
+    if (g[at] < level) g[at] = level;
+  }
+}
+
+/* A polyline in the renderer's scratch arrays. `steps`, when given, is the
+   beam's per-segment step, and a segment deposits what it was drawn at. */
+function phosphorDeposit(xs, ys, count, steps) {
+  const started = performance.now();
+  for (let i = 0; i < count - 1; i++) {
+    const level = steps ? (steps[i] + 1) / BEAM_K : 1;
+    phosphorSegment(xs[i], ys[i], xs[i + 1], ys[i + 1], level);
+  }
+  phosphor.cost += performance.now() - started;
+}
+
+/* Brightness at a point of the graticule, u and v from nought to one. Five
+   bilinear reads - the centre and a cross three quarters of a cell out - so
+   the reading moves smoothly as the reticle does, which is the continuity the
+   plan requires of every source before it may be routed: a single nearest
+   cell would jump as the reticle crossed a cell boundary. */
+function phosphorRead(u, v) {
+  const N = PHOSPHOR_N, g = phosphor.grid;
+  const at = (x, y) => {
+    const fx = x * N - 0.5, fy = y * N - 0.5;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    const cell = (cx, cy) => (cx < 0 || cy < 0 || cx >= N || cy >= N) ? 0 : g[cy * N + cx];
+    return cell(x0, y0) * (1 - tx) * (1 - ty) + cell(x0 + 1, y0) * tx * (1 - ty)
+         + cell(x0, y0 + 1) * (1 - tx) * ty + cell(x0 + 1, y0 + 1) * tx * ty;
+  };
+  const d = 0.75 / N;
+  return (at(u, v) + at(u - d, v) + at(u + d, v) + at(u, v - d) + at(u, v + d)) / 5;
+}
+
+/* --- the photocell --------------------------------------------------------
+   A light sensor taped to the screen, driving the controls: a reticle you park
+   on the picture, whose brightness is a modulation source. Stage E1 - it may
+   only reach destinations that cannot add energy (see `routingAllowed`), so
+   the loop it closes turns and zooms the picture, or moves the heard lag
+   within its ceiling, and never makes a sound louder.
+
+   Three defences, as the plan requires all of them. Its REACH is half what any
+   other source may have. Its value is SLEW-LIMITED, where the controllers are
+   smoothed - upstream of `value()`, so nothing that reads it can see it move
+   faster than two full swings a second, which is what damps a loop that would
+   otherwise flip every frame. And the loop has a frame of delay built in: the
+   grid read here is the one the LAST frame drew, because the matrix is applied
+   before the drawing. */
+const PHOTO_REACH = 0.5;
+const PHOTO_START = 0.2;       // a first routing, low: enough to see, no more
+const PHOTO_SLEW = 2;          // the most it moves in a second, of its whole range
+const photo = { on: false, u: 0.75, v: 0.5, raw: 0, value: 0 };
+
+function photoStep(elapsed) {
+  if (!photo.on || state.display === "spect") { photo.raw = 0; photo.value = 0; return; }
+  photo.raw = phosphorRead(photo.u, photo.v);
+  const most = PHOTO_SLEW * Math.max(0, elapsed) / 1000;
+  photo.value += Math.max(-most, Math.min(most, photo.raw - photo.value));
+}
+
 /* Only resized when the size actually changed. Assigning `canvas.width` wipes
    the canvas, so doing it unconditionally every frame made persistence
    impossible to build at all - there was never anything left to fade. */
@@ -7918,6 +8115,9 @@ function fitCanvas(canvas) {
    laying paper over the screen at a low alpha so what was drawn before dims
    towards it instead of vanishing. Infinite lays nothing down at all. */
 function clearOrFade(ctx, w, h, resized) {
+  // The grid fades here, with the canvas, so the two cannot disagree about
+  // how much of a stroke is left.
+  phosphorFade(resized);
   if (state.persistence === 0 || resized) {
     ctx.fillStyle = ink.paper;
     ctx.fillRect(0, 0, w, h);
@@ -8144,6 +8344,7 @@ function drawMain(frame, elapsed) {
     const offset = state.channels[index].offset;
     const n = visible;
     const perPixel = n / plot.w;
+    let lastX = 0, lastY = 0;
 
     if (perPixel > 2) {
       // More samples than pixels: draw each column's own range, so a
@@ -8160,8 +8361,10 @@ function drawMain(frame, elapsed) {
         }
         if (lo === Infinity) continue;
         const x = plot.x + px;
-        ctx.moveTo(x, yAt(index, hi * gain + offset));
-        ctx.lineTo(x, yAt(index, lo * gain + offset));
+        const yHi = yAt(index, hi * gain + offset), yLo = yAt(index, lo * gain + offset);
+        ctx.moveTo(x, yHi);
+        ctx.lineTo(x, yLo);
+        phosphorSegment(x, yHi, x, yLo, 1);
       }
     } else {
       /* The beam applies here and not above. Peak detect is not a path the
@@ -8184,6 +8387,7 @@ function drawMain(frame, elapsed) {
         // One anchor per lane: lanes sit at different levels and a shared
         // median would shade a quiet stem against a loud one's speed.
         strokeBeam(ctx, "yt" + index, n, colours, elapsed, 1.5);
+        phosphorDeposit(beamX, beamY, n, beamStepOf);
         ctx.restore();
         return;
       }
@@ -8192,6 +8396,8 @@ function drawMain(frame, elapsed) {
         const x = plot.x + (i / (n - 1 || 1)) * plot.w;
         const y = yAt(index, samples[from + i] * gain + offset);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        if (i > 0) phosphorSegment(lastX, lastY, x, y, 1);
+        lastX = x; lastY = y;
       }
     }
     ctx.stroke();
@@ -8325,7 +8531,9 @@ function drawXY(frame, fit, elapsed) {
 
   if (colours !== null) {
     strokeBeam(ctx, "xy", n, colours, elapsed, 1.4);
+    phosphorDeposit(beamX, beamY, n, beamStepOf);
   } else {
+    phosphorDeposit(beamX, beamY, n, null);
     // Drawn in the accent rather than in either channel's ink: the figure is
     // both channels at once and belongs to neither. Always the accent: X-Y
     // throws time away, so there is nothing for a trigger to align and
@@ -8433,6 +8641,9 @@ function spectroColumn(rate) {
 
 function drawSpectrogram(frame, fit, elapsed) {
   const { ctx, w, h } = fit;
+  // No beam draws a spectrogram, so the phosphor holds nothing and a photocell
+  // reads nothing - said in the cheat sheet rather than faked from pixels.
+  phosphor.grid.fill(0);
 
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
@@ -9249,6 +9460,7 @@ function frameLoop(now) {
   updateLanes();
 
   drawMain(frame, elapsed);
+  placeReticle();
   drawGoni(frame);
   drawSpectrum(frame);
   drawHarmonics(frame);
@@ -10555,6 +10767,7 @@ const DEFAULTS = {
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
   midiDrawCount: 2, midiDrawWhich: "outer", midiPolyJust: false,
+  photoOn: false, photoU: 0.75, photoV: 0.5,
   midiDrive: "wave,harmonograph,figure", cc: "",
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -10622,6 +10835,8 @@ function snapshot() {
     midiMode: midi.mode, midiHold: midi.hold, midiTruth: midi.truth,
     midiDrawCount: midi.draw.count, midiDrawWhich: midi.draw.which,
     midiPolyJust: midi.polyJust,
+    photoOn: photo.on, photoU: Math.round(photo.u * 1000) / 1000,
+    photoV: Math.round(photo.v * 1000) / 1000,
     midiFollow: midi.follow,
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     cc: encodeCC(),
@@ -10693,6 +10908,13 @@ function restore(partial) {
   midi.draw.which = ["outer", "lowest", "highest", "recent"].includes(s.midiDrawWhich)
     ? s.midiDrawWhich : "outer";
   midi.polyJust = s.midiPolyJust === true;
+  // Where the photocell sits and whether it is on: additive fields, so a code
+  // from before it existed simply has it off.
+  photo.u = Math.max(0, Math.min(1, Number(s.photoU)));
+  photo.v = Math.max(0, Math.min(1, Number(s.photoV)));
+  if (!Number.isFinite(photo.u)) photo.u = 0.75;
+  if (!Number.isFinite(photo.v)) photo.v = 0.5;
+  if ((s.photoOn === true) !== photo.on) setPhoto(s.photoOn === true);
   midi.hold = s.midiHold === true;
   midi.truth = s.midiTruth !== false;
   midi.follow = s.midiFollow === true;
@@ -12370,13 +12592,16 @@ function routingsFor(destId) {
 
 function addRouting(sourceId, destId) {
   if (!MOD_SOURCES.has(sourceId) || !MOD_DESTS.has(destId)) return;
+  const source = MOD_SOURCES.get(sourceId);
+  if (!routingAllowed(source, MOD_DESTS.get(destId))) return;
+  const start = routingAmount(source, source.start !== undefined ? source.start : MOD_START_AMOUNT);
   const already = state.modRoutings.find(
     (r) => r.sourceId === sourceId && r.destId === destId);
   // Dropping the same source on the same control twice is a nudge, not a
   // second routing: two rows from one source onto one destination would only
   // ever be one row's worth of depth written twice.
-  if (already) { already.amount = MOD_START_AMOUNT; touchRoutings(); return; }
-  state.modRoutings.push({ sourceId, destId, amount: MOD_START_AMOUNT });
+  if (already) { already.amount = start; touchRoutings(); return; }
+  state.modRoutings.push({ sourceId, destId, amount: start });
   touchRoutings();
 }
 
@@ -12611,7 +12836,9 @@ function openModEditor(destId, anchor, reading) {
   if (!dest) return;
 
   openOverlay(anchor, dest.label, reading || "", (body) => {
+    // Only the sources that may reach this destination are offered here.
     const sources = () => Array.from(MOD_SOURCES.values())
+      .filter((source) => routingAllowed(source, dest))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const draw = () => {
@@ -12625,11 +12852,12 @@ function openModEditor(destId, anchor, reading) {
               const ink = source ? source.ink : "unresolved";
               const label = source ? source.label : routing.sourceId + " (not here)";
               const percent = Math.round(routing.amount * 100);
+              const limit = source && source.reach > 0 ? Math.round(source.reach * 100) : 100;
               return '<div class="mod-edit" data-source="' + routing.sourceId
                 + '" style="--pip:var(--' + ink + ')">'
                 + '<span class="dot-sm"></span>'
                 + '<span class="mod-edit-name">' + escapeText(label) + "</span>"
-                + '<input type="range" min="-100" max="100" value="' + percent
+                + '<input type="range" min="-' + limit + '" max="' + limit + '" value="' + percent
                 + '" aria-label="' + escapeText(label) + " depth on "
                 + escapeText(dest.label) + '">'
                 + '<span class="mod-edit-val">' + (percent > 0 ? "+" : "") + percent
@@ -12972,6 +13200,85 @@ el.helpClose.addEventListener("click", () => el.helpDialog.close());
 el.helpDialog.addEventListener("click", (event) => {
   // A click on the backdrop lands on the dialog element itself.
   if (event.target === el.helpDialog) el.helpDialog.close();
+});
+
+/* --- the photocell, as controls -------------------------------------------- */
+
+/* Registered while it is on and not otherwise - a chip for a source that
+   cannot move is a chip spent on nothing. Its routings are skipped while it is
+   off rather than dropped, the rule every unregistered source already has. */
+function setPhoto(on) {
+  photo.on = on;
+  if (on) {
+    registerSource({
+      id: "photo.1", label: "Photocell", ink: "ch6", bipolar: false, order: 30,
+      reach: PHOTO_REACH, start: PHOTO_START, fromPicture: true,
+      value: () => photo.value,
+    });
+  } else {
+    MOD_SOURCES.delete("photo.1");
+    if (focusSource === "photo.1") focusSource = null;
+    photo.value = 0; photo.raw = 0;
+  }
+  el.photoButton.setAttribute("aria-pressed", String(on));
+  placeReticle();
+  buildSourceChips();
+  touchRoutings();
+}
+
+let photoDrag = null;
+
+function placeReticle() {
+  const shown = photo.on && state.display !== "spect";
+  el.photoReticle.hidden = !shown;
+  if (!shown) return;
+  el.photoReticle.style.left = (el.trace.offsetLeft + plot.x + photo.u * plot.w) + "px";
+  el.photoReticle.style.top = (el.trace.offsetTop + plot.y + photo.v * plot.h) + "px";
+  el.photoReticle.style.setProperty("--lit", photo.value.toFixed(3));
+  const percent = Math.round(photo.value * 100);
+  el.photoReticle.setAttribute("aria-valuenow", String(percent));
+  el.photoReticle.setAttribute("aria-valuetext", "reads " + percent + "%, "
+    + Math.round(photo.u * 100) + "% across and " + Math.round(photo.v * 100) + "% down");
+}
+
+function movePhoto(u, v) {
+  photo.u = Math.max(0, Math.min(1, u));
+  photo.v = Math.max(0, Math.min(1, v));
+  placeReticle();
+}
+
+el.photoButton.addEventListener("click", () => setPhoto(!photo.on));
+
+/* Its own pointer, captured. The reticle sits beside the canvas rather than
+   inside it, so the trace's own drag - which moves the trigger level - never
+   sees this pointer whatever happens here; stopping it keeps it from the
+   page-level handlers too, such as the one that closes an open editor. */
+el.photoReticle.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  photoDrag = event.pointerId;
+  try { el.photoReticle.setPointerCapture(event.pointerId); } catch (e) { /* synthetic */ }
+  el.photoReticle.focus();
+});
+el.photoReticle.addEventListener("pointermove", (event) => {
+  if (photoDrag !== event.pointerId) return;
+  const box = el.trace.getBoundingClientRect();
+  movePhoto((event.clientX - box.left - plot.x) / plot.w, (event.clientY - box.top - plot.y) / plot.h);
+});
+["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
+  el.photoReticle.addEventListener(type, () => { photoDrag = null; }));
+
+/* A grid cell a press, four with shift. Stopped here, because the page's own
+   arrow keys move the timebase and the trigger level, and the reticle having
+   focus is somebody placing it. */
+el.photoReticle.addEventListener("keydown", (event) => {
+  const step = (event.shiftKey ? 4 : 1) / PHOSPHOR_N;
+  const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+  const move = moves[event.key];
+  if (!move) return;
+  event.preventDefault();
+  event.stopPropagation();
+  movePhoto(photo.u + move[0], photo.v + move[1]);
 });
 
 /* --- keys ---------------------------------------------------------------------

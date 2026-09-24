@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard) and E and F are not |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E1 of E is built (the photocell) and F is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -62,6 +62,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
+| `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -1312,4 +1313,30 @@ which is exactly what was seen. Chords are equal-tempered by default now, and
 *Tune a chord to its lowest note* is a choice of its own. Worth knowing before
 the next "the waveform changed": a pitch that moves by a few cents looks like a
 shape that changes, on a timebase that shows a few cycles.
+
+**The phosphor grid keeps the brighter pass, never the sum.** It is the canvas's
+`darken` compositing written as arithmetic, for the renderer's own reason: a
+figure is redrawn many times a frame at a long timebase, and a sum would
+saturate every cell it touched. It fades in `clearOrFade`, beside the canvas,
+so the two cannot disagree about how much of a stroke is left — measured, the
+grid loses 0.8800 of itself a frame at medium persistence and the canvas
+0.8794. Only the beam is deposited: the trigger line, the reference trace, the
+cursors and the graticule are not the beam, and the first version of the
+agreement check counted the dashed trigger line as trace and failed the grid
+for leaving it out.
+
+**"Picture-only" stopped being the safe category when Stage C shipped.** The
+plan listed rotation and the lag as destinations a photocell could reach
+without the loop touching audio; C had since put both in the speakers. The
+property that makes a loop safe is whether a destination can add energy, and
+`routingAllowed` asks that. The photocell's reach is half any other source's,
+enforced where the amount is used — a check writes an amount of 1 straight into
+the routing, round every setter, and sees half of it applied.
+
+**A reading that jumps is a loop defence defeated before it starts.** The
+reticle reads five bilinear samples rather than the nearest cell, because a
+nearest-cell reading jumps as the reticle crosses a cell edge, and a source that
+jumps injects exactly the instability the slew limit and the ceiling are there
+to prevent. `phototest.py` walks the reticle across a stroke in tenths of a cell
+and bounds the biggest step.
 

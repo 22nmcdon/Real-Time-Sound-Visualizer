@@ -863,6 +863,12 @@ The pixels feeding back into the sound. A software version of a real, if
 obscure, practice — a light sensor taped to a screen, driving a synth — and as
 far as the competitive survey found, not something any oscilloscope tool does.
 
+**E1 is built:** the phosphor grid, one reticle, `photo.1`, and the loop closed
+through destinations that cannot add energy. *Photocell* in the header puts the
+reticle on the screen; drag it onto the picture, or move it a cell at a time
+with the arrow keys. `phototest.py` holds it. E2 (the shape sources and the
+wandering classifier) and E3 (the loop through the sound) are not built.
+
 ### What it is
 
 A **draggable reticle** on the screen. It reads brightness at its position and
@@ -1064,8 +1070,17 @@ first:** routing the verdict back in closes a third loop around the other two.
 
 ### Where the loop can close
 
-- **Picture-only destinations** (rotation, persistence, lag τ): works today on any
-  source. The loop never touches audio.
+- **Destinations that cannot add energy** — built, as E1. The plan first said
+  *picture-only* and listed rotation and the lag among them; Stage C then put
+  both in what the speakers hear, so "picture-only" stopped being the property
+  that makes a loop safe. The property is whether a destination can add
+  energy. A rotation is a turn and keeps the level; the lag's mix is a
+  crossfade under its ceiling; zoom and the trigger position never reach a
+  sample. So those four are open to the photocell, and the filter (whose
+  resonance rings) and every generator parameter are refused until E3 closes
+  the loop through them with a stability test. Refused in `addRouting`, where
+  the amount is applied, and in the compiled per-sample routes, so a setup code
+  carrying such a routing does nothing rather than something.
 - **Audio destinations on a line input or file** (after C): the loop goes through
   what you hear.
 - **Generator parameters** (after B): the generator's own figure modulates
@@ -1078,6 +1093,14 @@ channel.
 
 ### E · verification
 
+- **Built for E1** (`phototest.py`): the grid against the canvas's own pixels,
+  cell by cell, on a Y-T waveform and a 2:3 figure — never a circle, which is
+  its own transpose and would pass a grid with the axes swapped; the grid's
+  fade against the canvas's, measured over the same frames (0.8800 against
+  0.8794 a frame at medium); the reading's continuity across cell edges; the
+  slew envelope; the ceiling at the point of use; the refused destinations; a
+  loop at full allowed depth for four seconds; the reticle's own drag and keys;
+  and the cost, 0.4 ms a frame on a long-timebase X–Y figure.
 - Grid agreement: with persistence off, the grid's lit cells match the drawn
   segments' cells for a known figure.
 - Decay: with persistence on, the grid decays at the same rate as the canvas

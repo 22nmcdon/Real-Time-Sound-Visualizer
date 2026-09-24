@@ -35,6 +35,7 @@ SUITES = [
     ("keys", [sys.executable, "keystest.py"], "the keyboard on the screen, and the letters"),
     ("voice", [sys.executable, "voicetest.py"], "the generator heard as a lane"),
     ("poly", [sys.executable, "polytest.py"], "every held note sounding, and which are drawn"),
+    ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]
