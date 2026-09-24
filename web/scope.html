@@ -2247,8 +2247,9 @@ body[data-view="bench"] #menuButton { display: none; }
         <i>Draw</i> chooses which: the lowest drawn note goes on X and the others on Y, and
         by default the drawn ones are the bass and the melody &mdash; over comping, the line
         against the bass. <i>Lowest</i>, <i>highest</i> and <i>most recent</i> are the
-        other choices, two to eight notes of them. The rest are heard in both ears and not
-        drawn, and the readout says so: <i>drawing 2 of 5 notes</i>. In just tuning the
+        other choices, two to eight notes of them. Every note is heard in both ears, drawn or
+        not, and the readout says how many are left out of the picture: <i>drawing 2 of 5
+        notes</i>. In just tuning the
         chord is tuned to its lowest note, so a major triad is 4:5:6 and its figure closes.
         A chord is louder than a note; the limiter catches it. Four sources follow your
         hands and can be put on any control &mdash; <i>Notes</i>, <i>Spread</i>,
@@ -4291,10 +4292,14 @@ function makeGeneratorCore(rate, slots, lfos) {
     /* A chord, or null. Null is every mode this generator has always had: two
        channels from one pitch and an interval. A list is POLY - every held
        note sounding, each with its own envelope, and each with a role saying
-       where it goes: `x` or `y` is drawn on that axis and heard on that side,
-       `xy` is a lone note drawn on both (the unison a single key has always
-       drawn), and `u` is heard in both ears and NOT DRAWN. That last one is
-       the first time this generator's picture is not the whole of its sound,
+       where it is DRAWN: `x` or `y` on that axis, `xy` on both (the unison a
+       single key has always drawn), and `u` not at all. Every one of them is
+       heard in both ears, whatever its role. The first version panned the
+       drawn notes the way a dyad does - bass left, melody right, because in
+       a dyad the two notes ARE the two channels - and played, a chord came
+       apart: the root alone in one ear and everything else in the other. A
+       chord is heard as a chord. The undrawn notes are the first time this
+       generator's picture is not the whole of its sound,
        and it is a decision: a chord of five notes on two axes is mud, so the
        player chooses how many are drawn and the readout says how many are
        not. Who is drawn is worked out on the main thread, from the keyboard;
@@ -4363,8 +4368,9 @@ function makeGeneratorCore(rate, slots, lfos) {
      the cut is the one place a voice can end with a step, and it only
      happens to a note that has been released and has faded for the longest. */
   const POLY_TAILS = 8;
-  // Picture X, picture Y, heard left, heard right.
-  const ROLES = { x: [1, 0, 1, 0], y: [0, 1, 0, 1], xy: [1, 1, 1, 1], u: [0, 0, 1, 1] };
+  // Picture X, picture Y, heard left, heard right. The heard half is the same
+  // for every role: see `voices` above for why it is not the picture's.
+  const ROLES = { x: [1, 0, 1, 1], y: [0, 1, 1, 1], xy: [1, 1, 1, 1], u: [0, 0, 1, 1] };
 
   function reconcileVoices(list) {
     if (list === null) { voices.length = 0; return; }

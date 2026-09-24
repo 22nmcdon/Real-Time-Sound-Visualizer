@@ -120,9 +120,11 @@ with sync_playwright() as pw:
     check("the undrawn E is heard in both ears",
           r["hl"][1] > full * 0.5 and r["hr"][1] > full * 0.5,
           "left %.4f, right %.4f" % (r["hl"][1], r["hr"][1]))
-    check("and each drawn note is heard on its own side only",
-          r["hl"][0] > full * 0.5 and r["hl"][2] < full * 0.01
-          and r["hr"][2] > full * 0.5 and r["hr"][0] < full * 0.01,
+    # The first version panned the drawn notes as a dyad does - bass left,
+    # melody right - and this check asserted it. Played, a chord came apart
+    # across the ears: the root alone in one and everything else in the other.
+    check("and every note, drawn or not, is heard in both ears",
+          all(r[side][k] > full * 0.5 for side in ("hl", "hr") for k in range(3)),
           "heard L %s, heard R %s" % (rounded(r["hl"]), rounded(r["hr"])))
 
     # Louder, not normalised - and the picture keeps its edge.

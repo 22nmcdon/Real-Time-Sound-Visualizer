@@ -1282,3 +1282,21 @@ nothing at all, so the row now shows only where a chord can play and `patchtest`
 measures poly on the waveform. **Before adding a row or a button to the
 Bench, run `patch`: the columns have tens of pixels to spare, not hundreds.**
 
+**A chord was panned like a dyad, and played, it came apart.** The first poly
+heard each drawn note on its own side — bass left, melody right — because in a
+dyad the two notes *are* the two channels and the sound has always been the
+picture. With a chord that put the root alone in one ear and every other note
+in the other, which nobody would call a chord. Every poly voice is heard in both
+ears now; only the picture puts them on axes. `polytest.py` had asserted the
+panning, faithfully, which is the reminder that a test written from the design
+checks the design and not whether the design was wanted.
+
+**Adding inner notes turns the melody down, and that is the limiter, not the
+picture.** Measured with a low and a high note held and middle notes added: the
+picture's Y channel has exactly none of the middle notes in it — summing voices
+is linear, so no overtone crosses from one voice to another. What moves is the
+sound after the limiter: a chord is louder than a note (D14), the limiter
+brings the whole mix down to meet it, and the melody drops with everything else
+— 1.6 dB at five notes. Said here because it sounds like the notes interfering
+with each other, and it is a gain applied to all of them at once.
+

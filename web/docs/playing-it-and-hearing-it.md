@@ -220,7 +220,7 @@ be discovered during implementation.
 | D10 | Is a generator *lane* a played voice or a drone? | **A drone that follows pitch.** The envelope belongs to the generator as a source; a lane sets its pitch from the keyboard without starting or stopping. | A lane in a rack is expected to be producing signal the way a live input always is — solo, mute and the mixer assume there is something there. A lane going silent between phrases is a lane the rest of the rack has to be told about. Said in the keyboard panel rather than left to be found. |
 | D11 | A generator lane is one signal — which? | **Its left channel.** | A lane is one signal and the generator makes two. D's own verification asks for `generator-L` against `Nord-L`. The cost is that the generator's own figure — and so dyad mode's whole payoff, the interval you can see — is not available while it is a lane. Also said in the keyboard panel. |
 | D12 | Poly: a chord has more notes than the screen has axes — which are drawn? | **The lowest drawn note on X, the other drawn notes summed on Y**, and a rule for which are drawn: *bass and melody* (default), *lowest*, *highest* or *most recent*, two to eight of them, two by default. With two notes held every rule is the dyad. | Bass against harmony is the reading of X–Y that survives more than two notes. The default is the outer voices because over comping the melody is the line that matters, and the melody against the bass is the relationship being heard; a player who wants the chord from the bottom up, the top alone or the last thing played has a switch rather than an argument. |
-| D13 | May the picture leave out notes it plays? | **Yes, and the readout says so** — "drawing 2 of 5 notes". Undrawn notes are heard in both ears. | Five notes on two axes is mud. The cost is real and named: it is the first time the generator's trace is not the whole of its sound. Bounded to poly's undrawn voices; with every held note drawn, the picture is the sound again. |
+| D13 | May the picture leave out notes it plays? | **Yes, and the readout says so** — "drawing 2 of 5 notes". Every note is heard in both ears, drawn or not — the drawn ones are *not* panned to their axis, which the first version did and which, played, split a chord across the ears. | Five notes on two axes is mud. The cost is real and named: it is the first time the generator's trace is not the whole of its sound. Bounded to poly's undrawn voices; with every held note drawn, the picture is the sound again. |
 | D14 | A chord louder than a note, or normalised? | **Louder.** The heard pair is not clamped; the limiter at the end of the monitor chain catches it. The picture keeps its clamp at full scale. | What a synth does, and what a player expects. Normalising would make a single note quieter the moment poly is switched on, which reads as broken. |
 | D9 | Photocell v1: canvas readback or an intermediate tap? | **A low-resolution shadow phosphor grid** fed by the same segment walk the beam renderer does. Canvas readback only if v1 looks meaningfully wrong. | Nearly free, persistence-aware, and never touches `getImageData`. Measure before paying for the honest version. |
 
@@ -479,8 +479,9 @@ chord is louder than a note per D14.
   lifted out into `makeEnvelope` so each voice has one, rather than a second
   envelope being written for voices.
 - **Two pairs out of one block.** The core writes the picture and, when asked,
-  what is heard. They are the same samples except in poly, where an undrawn
-  voice is in the heard pair only. The worklet sends the heard pair to the
+  what is heard. They are the same samples except in poly, where every voice
+  is heard in both ears and the picture has only the drawn ones, each on its
+  axis. The worklet sends the heard pair to the
   speakers and posts the picture back.
 - **Just is the lowest sounding note's ratios**, so a just major triad is
   exactly 4:5:6 and closes; equal takes each key as it is.
