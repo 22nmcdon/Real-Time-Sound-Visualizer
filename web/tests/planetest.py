@@ -327,7 +327,7 @@ with sync_playwright() as pw:
     print("\n--- the panel, and a source on the radius ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('effects');
       const shown = el.planeGroup.offsetHeight > 0;
       el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change'));
       const mirror = genSettings().planeMirror;
@@ -364,7 +364,7 @@ with sync_playwright() as pw:
     # A diagonal of 0.55: length 0.778. Clipped once at 0.25 it is
     # 0.25 tanh(3.11) = 0.2490; clipped twice, 0.25 tanh(0.996) = 0.1900.
     once = 0.25 * math.tanh(0.55 * math.sqrt(2) / 0.25)
-    check("the section is on the Shape tab and its controls reach the generator - the radius shown and used only with the clip on",
+    check("the section is on the Effects tab and its controls reach the generator - the radius shown and used only with the clip on",
           panel["shown"] and panel["mirror"] == 1 and panel["radiusOff"] == {"core": 0, "row": True}
           and panel["radiusOn"] == {"core": 1, "radius": 0.25, "row": False}
           and panel["os"] == {"core": 4, "aria": "true"}, str(panel))
@@ -381,7 +381,7 @@ with sync_playwright() as pw:
     rest = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('effects');
       set('planeTwist', 25, 'input'); set('planeKaleido', 6, 'change'); set('planeSnap', 3, 'change');
       set('planeScaleX', 150, 'input'); set('planeScaleY', 50, 'input'); set('planeShear', -40, 'input');
       const g = genSettings();

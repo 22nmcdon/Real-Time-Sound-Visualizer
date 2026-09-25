@@ -1944,7 +1944,77 @@ body[data-view="bench"] .dock  { order: 3; }
               each layer has its own registration.</p>
           </div>
 
-          <div class="menu-group" id="planeGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="oscGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title" id="oscTitle">Oscillator</span>
+            <div class="menu-row">
+              <label class="menu-label" for="oscRatio">Ratio</label>
+              <div class="grow"><select id="oscRatio" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row" data-mod-dest="gen.fm" data-mod-control="oscFm">
+              <label class="menu-label" for="oscFm">FM</label>
+              <div class="grow">
+                <input type="range" id="oscFm" min="0" max="100" value="0">
+                <span class="reading" id="oscFmValue">0.0</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="oscRing">Ring</label>
+              <div class="grow">
+                <input type="range" id="oscRing" min="0" max="100" value="0">
+                <span class="reading" id="oscRingValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row" data-mod-dest="gen.sync" data-mod-control="oscSync">
+              <label class="menu-label" for="oscSync">Sync</label>
+              <div class="grow">
+                <input type="range" id="oscSync" min="100" max="800" value="100">
+                <span class="reading" id="oscSyncValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="oscSub">Sub</label>
+              <div class="grow">
+                <input type="range" id="oscSub" min="0" max="100" value="0">
+                <span class="reading" id="oscSubValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="oscUnison">Unison</label>
+              <div class="grow"><select id="oscUnison" style="flex:1 1 auto"><option value="1">Off</option><option value="2">2 copies</option><option value="3">3 copies</option><option value="5">5 copies</option><option value="7">7 copies</option></select></div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="oscSpread">Spread</label>
+              <div class="grow">
+                <input type="range" id="oscSpread" min="0" max="50" value="12">
+                <span class="reading" id="oscSpreadValue">12 cents</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="oscSubOct">Sub octave</label>
+              <div class="grow"><select id="oscSubOct" style="flex:1 1 auto"><option value="1">1 octave down</option><option value="2">2 octaves down</option></select></div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="oscSubShape">Sub shape</label>
+              <div class="grow"><select id="oscSubShape" style="flex:1 1 auto"><option value="square">Square</option><option value="sine">Sine</option></select></div>
+            </div>
+            <p class="menu-note">A second oscillator inside the voice, at <i>Ratio</i> times the note
+              &mdash; the same kind of number as the interval between X and Y, and it is not a
+              coincidence: a 3:2 modulator gives a harmonic sound exactly when a 3:2 figure closes.
+              <i>FM</i> is how far it swings the voice's phase, from pure at nought to bright and
+              then clangorous; above about ten on a sharp shape the top folds back. <i>Ring</i>
+              multiplies the voice by it instead, which removes the note and leaves the sum and the
+              difference. <i>Sync</i> runs the shape faster than the note and restarts it at every
+              note cycle, so the pitch stays and the tone tears; it is for the saw and the square.
+              <i>Sub</i> mixes in a square or a sine an octave or two down. <i>Unison</i> stacks
+              detuned copies, and the figure thickens and shimmers in place: the copies are not
+              spread across left and right, because in X&ndash;Y that would smear one axis into the
+              other. Behind the &ctdot;, the spread and the sub's octave and shape.
+              <br><br>
+              With a split or a layer, this is the layer being edited, like the shape. While
+              sync is on, the voice is one sample late.</p>
+          </div>
+
+          <div class="menu-group" id="planeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Plane</span>
             <div class="menu-row">
               <label class="menu-label" for="planeMirror">Mirror</label>
@@ -2063,7 +2133,7 @@ body[data-view="bench"] .dock  { order: 3; }
               switching one on moves the picture by that much.</p>
           </div>
 
-          <div class="menu-group" id="timeGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="timeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Delay and chorus</span>
             <div class="menu-row">
               <label class="menu-label" for="delayMix">Echo</label>
@@ -2625,8 +2695,21 @@ body[data-view="bench"] .dock  { order: 3; }
         reaches the test tone too &mdash; which is arithmetic and has no audio graph at all.
         Point a source at the cutoff and it sweeps.</span></li>
 
+      <li><b>The voice: a second oscillator inside it</b>
+        <span>Under <i>Oscillator</i>, on the Shape tab. A second oscillator runs at
+        <i>Ratio</i> times the note, and <i>FM</i> swings the voice's phase with it: pure at
+        nought, then brighter, then bells and clangour. A 3:2 ratio sounds harmonic for the same
+        reason a 3:2 figure closes. <i>Ring</i> multiplies by it instead and takes the note
+        away. <i>Sync</i> runs a saw or square faster than the note and restarts it every note
+        cycle, so the pitch holds while the tone tears; put an LFO or the envelope on it for
+        the classic sweep. <i>Sub</i> adds a square or sine an octave or two down, and
+        <i>Unison</i> stacks detuned copies so the figure thickens and shimmers. FM and Sync
+        can take sources. With a split, it is the layer being edited, so the two halves of
+        the keyboard can be two different voices. Nothing gets louder: copies and the sub are
+        mixed, not piled up.</span></li>
+
       <li><b>The plane: what folds the picture folds the sound</b>
-        <span>Under <i>Plane</i>, on the Shape tab, for the generator. <i>Mirror</i> folds the
+        <span>Under <i>Plane</i>, on the Effects tab, for the generator. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
         is full-wave rectification, the octave-up pedal: a mirrored sine is its octave, every
         harmonic even. <i>Radial</i> is what happens at the circle: <i>Clip</i> rounds the
@@ -2650,7 +2733,7 @@ body[data-view="bench"] .dock  { order: 3; }
         wave sits above zero, and AC coupling takes that off what you hear.</span></li>
 
       <li><b>Delay and chorus: echoes you can see</b>
-        <span>Under <i>Delay and chorus</i>, on the Shape tab, after the plane. <i>Echo</i> is
+        <span>Under <i>Delay and chorus</i>, on the Effects tab, after the plane. <i>Echo</i> is
         how loud the repeats are, nought for off; <i>Time</i> is free, or <i>Sync</i> sets it to
         a note value of the tempo and it follows the tempo when that moves. <i>Feedback</i>
         brings each repeat back again, and stops at 0.9 so it always dies away.
@@ -2737,9 +2820,10 @@ body[data-view="bench"] .dock  { order: 3; }
         <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
         nowhere else.
         <br><br>
-        The Bench is five tabs, by task: <i>Play</i> (the source, the keyboard, the
+        The Bench is six tabs, by task: <i>Play</i> (the source, the keyboard, the
         generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger),
-        <i>Shape</i> (the filter), <i>Sources</i> and <i>Measure</i>. Each section's title
+        <i>Shape</i> (the drawbars, the voice's oscillator, the filter), <i>Effects</i> (the
+        plane, the delay and chorus), <i>Sources</i> and <i>Measure</i>. Each section's title
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
         handful of settings reached for rarely. The source chips stay beside the screen on
         every tab, so a chip can be dragged onto a control wherever it is.
@@ -3398,6 +3482,9 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "planeGroup", "planeMirror", "planeRadius", "planeRadiusValue", "planeRadiusRow",
                   "planeTwist", "planeTwistValue", "planeKaleido", "planeLimit", "planeSnap",
                   "planeScaleX", "planeScaleXValue", "planeScaleY", "planeScaleYValue", "planeShear", "planeShearValue",
+                  "oscGroup", "oscTitle", "oscRatio", "oscFm", "oscFmValue", "oscRing", "oscRingValue",
+                  "oscSync", "oscSyncValue", "oscSub", "oscSubValue", "oscUnison", "oscSpread", "oscSpreadValue",
+                  "oscSubOct", "oscSubShape",
                   "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
                   "delayFeedback", "delayFeedbackValue", "delayPingPong", "chorusMix", "chorusMixValue",
                   "chorusRate", "chorusRateValue", "chorusDepth", "chorusDepthValue", "chorusTime", "chorusTimeValue",
@@ -3643,6 +3730,9 @@ const MORPH_SLOT = DRAWBAR_SLOT + 9;
 const RADIUS_SLOT = MORPH_SLOT + 1;
 // And the twist, after the radius.
 const TWIST_SLOT = RADIUS_SLOT + 1;
+// And the voice's FM index and sync ratio (H1), after the twist.
+const FM_SLOT = TWIST_SLOT + 1;
+const SYNC_SLOT = FM_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -4046,6 +4136,18 @@ const GEN_DESTS = [
      range at full depth, so a source swirls the figure a half-turn at most. */
   { id: "gen.twist", label: "Twist", slot: TWIST_SLOT,
     reach: (v, s) => Math.max(-100, Math.min(100, v + s * 50)) },
+  /* The FM index, in tenths: five either way at full depth, which is the
+     whole of the slider's useful range - an index past ten is noise at
+     any ratio. The brightness knob of an FM voice, and the classic thing
+     to put an envelope or an LFO on. */
+  { id: "gen.fm", label: "FM", slot: FM_SLOT,
+    reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
+  /* The sync ratio, in hundredths: 3.5 either way, so a source sweeps the
+     slave across most of its range - the sync sweep, which is what hard
+     sync is for. Stopped at one below, where the slave is the master and
+     the reset does nothing. */
+  { id: "gen.sync", label: "Sync", slot: SYNC_SLOT,
+    reach: (v, s) => Math.max(100, Math.min(800, v + s * 350)) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -5834,6 +5936,26 @@ function makeGeneratorCore(rate, slots, lfos) {
     // Where the morph sits, nought (sine) to three (square); half-way from
     // the triangle to the saw to start, so choosing it shows what it is.
     morph: 1.5,
+    /* Inside the voice (H1), what the layer is made of beyond its shape.
+       A second oscillator at `modRatio` times the note - the same kind of
+       number as the interval between X and Y, which is the point: a 3:2
+       modulator makes a harmonic spectrum exactly when a 3:2 figure
+       closes. `fmIndex` is how far it swings the voice's phase, in
+       radians; `ringMix` how much it multiplies the voice instead. Hard
+       sync resets the voice at the note's own cycle while it runs at
+       `syncRatio` times the note, and one is off - the slave is the
+       master. A sub an octave or two down, and unison: `unison` copies
+       spread over `unisonCents` either way. All nought or one is off, and
+       then the voice is exactly the shape it always was. */
+    modRatio: 1,
+    fmIndex: 0,
+    ringMix: 0,
+    syncRatio: 1,
+    subLevel: 0,
+    subOctave: 1,
+    subShape: "square",
+    unison: 1,
+    unisonCents: 12,
     /* Portamento, off by default. Zero is not a very short glide, it is an
        assignment: the pitch is written straight in, so nothing rounds and the
        old behaviour is reproduced exactly rather than closely. */
@@ -5934,7 +6056,9 @@ function makeGeneratorCore(rate, slots, lfos) {
      The drawbars came later and are the seventh, and they belong for the
      reason the shape does: they are what a layer is made of. It is also what
      the organ this is played from does - two manuals, a set of bars each.
-     The morph's position is the eighth, for the same reason. */
+     The morph's position is the eighth, for the same reason, and the voice's
+     second oscillator, sub and unison (H1) after it: two manuals, two
+     voices, which is what a split is for. */
   const toneB = {
     shape: "harmonic",
     amp: 0.55,
@@ -5944,6 +6068,16 @@ function makeGeneratorCore(rate, slots, lfos) {
     releaseMs: 180,
     bars: DRAWBAR_DEFAULT.slice(),
     morph: 1.5,
+    // Layer A's voice fields, and the same meaning; see `tone`.
+    modRatio: 1,
+    fmIndex: 0,
+    ringMix: 0,
+    syncRatio: 1,
+    subLevel: 0,
+    subOctave: 1,
+    subShape: "square",
+    unison: 1,
+    unisonCents: 12,
     voices: null,
   };
 
@@ -6384,12 +6518,187 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
 
+  /* H1: the voice's oscillator, when anything in it is on. One of these a
+     channel of the dyad and one a poly voice, each holding the phases its
+     copies need: a master a copy (only when there is more than one - a
+     single copy runs on the phase it is handed, so the dyad's two channels
+     stay locked to each other as they always were), a slave for the sync,
+     a modulator for FM and ring, and a sub.
+
+     Order, as the plan pinned it: FM and sync inside each copy, then the
+     copies summed, then the sub. Each copy is `1/n` of the sum and the sub
+     is mixed rather than added, so however much is on the voice stays
+     inside its amplitude - the drawbars' rule, and for the drawbars'
+     reason: full scale is the edge of the screen.
+
+     FM is phase modulation, as on the DX7: the modulator's sine is added to
+     the voice's phase, `fmIndex` radians of it. The band-limiting is asked
+     about the INSTANTANEOUS frequency, the note plus what the modulator is
+     doing to it this sample, so a saw under FM has its corners corrected
+     where they are. Sidebands past Nyquist still fold, as they did on every
+     digital FM synthesiser; with a sine carrier and an index under ten they
+     are small, and it is said where the controls are.
+
+     Sync is the hard part. The slave is reset where the master's cycle
+     begins, which is between samples, and the reset is a jump in the wave
+     that aliases like a saw's. It is band-limited the way a saw's corner
+     is, with a two-sample polyBLEP of the jump's own height - measured from
+     the unbanded wave either side of it, at the instant it happens. Half of
+     that correction belongs to the sample BEFORE the reset, which has been
+     computed already; so while sync is on the voice runs one sample late
+     and pays that sample back.
+
+     That sample may also carry a correction of its own: `waveAt` smooths
+     the slave's natural wrap from both sides, and if the slave was about
+     to wrap when the reset caught it - at every whole ratio, where the two
+     coincide - its half of that wrap's correction is already in. Added to
+     the reset's, the first version corrected twice at exactly the ratios
+     people use most. So the slave's wrap correction on each sample is kept
+     (`r`), and a reset takes it out as it puts its own in. At ratio one the
+     reset and the wrap are the same event, and the voice is the plain wave
+     one sample late, which is what `voicefxtest.py` holds it to. A wrap
+     that happens inside the very sample a reset arrives in is not
+     corrected; it takes a ratio within a sample's width of a whole one.
+
+     A kink - a sine slave reset partway up - is
+     not corrected; the slope's jump aliases far more gently, as the
+     triangle's did, and the controls say sync is for the saw and square. */
+  const UNISON_MAX = 7;
+  function makeOsc() {
+    return { n: 0, p: new Float64Array(UNISON_MAX), s: new Float64Array(UNISON_MAX),
+             m: new Float64Array(UNISON_MAX), cyc: new Float64Array(UNISON_MAX), r: new Float64Array(UNISON_MAX),
+             sub: 0, held: 0 };
+  }
+  /* How far a shape jumps where its cycle wraps, which is what `waveAt`
+     corrects there: the saw falls two, the square rises its 1.8, the morph
+     by as much square as it has in it (its saw station is turned half a
+     cycle, so jumps mid-cycle), and the rest are continuous. */
+  function wrapJump(shape, morph) {
+    if (shape === "ramp") return -2;
+    if (shape === "square") return 1.8;
+    if (shape === "morph") {
+      const at = Math.max(0, Math.min(3, morph || 0)), low = Math.floor(at);
+      return 1.8 * (low === 3 ? 1 : low === 2 ? at - low : 0);
+    }
+    return 0;
+  }
+  // A layer's voice settings as this block will use them, and this sample's
+  // modulated index and sync ratio.
+  function makeVoiceFx() {
+    return { on: false, syncing: false, n: 1, fmI: 0, syncR: 1, det: new Float64Array(UNISON_MAX) };
+  }
+  function voiceFxFor(t, x, fmRouted, syncRouted) {
+    x.n = Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1));
+    x.syncing = t.syncRatio !== 1 || syncRouted;
+    x.on = t.fmIndex > 0 || fmRouted || t.ringMix > 0 || x.syncing || t.subLevel > 0 || x.n > 1;
+    // Spread evenly over the cents either way; an odd count keeps one copy
+    // on the note.
+    for (let k = 0; k < x.n; k++) {
+      x.det[k] = x.n === 1 ? 1 : Math.pow(2, t.unisonCents * (2 * k / (x.n - 1) - 1) / 1200);
+    }
+  }
+  const vxA = makeVoiceFx(), vxB = makeVoiceFx();
+  const oscL = makeOsc(), oscR = makeOsc();
+  /* `base` is the phase the caller keeps for this voice or channel and has
+     already advanced; `offset` is added to it, the dyad's right-channel
+     phase. `hz` is the note at this sample. */
+  function oscStep(o, base, offset, hz, t, bars, morph, x) {
+    const n = x.n;
+    if (o.n !== n) {
+      // Every copy starts where the voice is, so switching unison on
+      // continues the figure and then lets it spread.
+      const at = base + offset;
+      const inCycle = at - TWO_PI * Math.floor(at / TWO_PI);
+      for (let k = 0; k < UNISON_MAX; k++) {
+        // Each phase one step back, because each is advanced before it is
+        // read and `base` already has been: started level, the slave ran a
+        // sample ahead of its master, and at ratio one was the plain wave a
+        // sample early rather than late.
+        const back = TWO_PI * hz * x.det[k] * dtOf;
+        o.p[k] = base - back; o.s[k] = (inCycle - back) * x.syncR; o.r[k] = 0;
+        o.m[k] = ((inCycle - back) * t.modRatio) % TWO_PI; o.cyc[k] = Math.floor(at / TWO_PI);
+      }
+      o.sub = (at / (t.subOctave === 2 ? 4 : 2)) % TWO_PI;
+      o.n = n; o.held = 0;
+    }
+    const fmI = x.fmI, syncR = x.syncR, ring = t.ringMix;
+    const wrapHalf = x.syncing ? wrapJump(t.shape, morph) / 2 : 0;
+    let sum = 0, owe = 0;
+    for (let k = 0; k < n; k++) {
+      const f = hz * x.det[k];
+      let master;
+      if (n === 1) master = base + offset;
+      else {
+        o.p[k] += TWO_PI * f * dtOf;
+        if (o.p[k] >= PHASE_WRAP) o.p[k] -= PHASE_WRAP;
+        if (o.p[k] < 0) o.p[k] += PHASE_WRAP;
+        master = o.p[k] + offset;
+      }
+      o.m[k] += TWO_PI * f * t.modRatio * dtOf;
+      if (o.m[k] >= TWO_PI) o.m[k] -= TWO_PI;
+      if (o.m[k] < 0) o.m[k] += TWO_PI;
+      const pm = fmI > 0 ? fmI * Math.sin(o.m[k]) : 0;
+      const inst = fmI > 0 ? f * (1 + fmI * t.modRatio * Math.cos(o.m[k])) : f;
+      let v;
+      if (x.syncing) {
+        const sHz = f * syncR;
+        o.s[k] += TWO_PI * sHz * dtOf;
+        const cyc = Math.floor(master / TWO_PI);
+        if (cyc !== o.cyc[k]) {
+          o.cyc[k] = cyc;
+          // How long ago, in samples, the master began its cycle.
+          const past = master - cyc * TWO_PI;
+          const tau = Math.min(1, past / Math.max(1e-12, TWO_PI * Math.abs(f) * dtOf));
+          const slaveStep = TWO_PI * sHz * dtOf;
+          // Where the reset caught the slave, from the left: at a whole
+          // ratio that is the very end of its cycle, where a saw is +1 and
+          // not the -1 it would read a hair later.
+          const before = waveAt(t.shape, o.s[k] - tau * slaveStep + pm - 1e-9, 0, bars, morph);
+          const jump = waveAt(t.shape, pm, 0, bars, morph) - before;
+          o.s[k] = tau * slaveStep;
+          owe += jump / 2 * tau * tau - o.r[k];
+          o.r[k] = 0;
+          v = waveAt(t.shape, o.s[k] + pm, 0, bars, morph) + jump / 2 * (2 * tau - tau * tau - 1);
+        } else {
+          if (o.s[k] >= PHASE_WRAP) o.s[k] -= PHASE_WRAP;
+          const step = Math.abs(inst * syncR) / rate;
+          v = waveAt(t.shape, o.s[k] + pm, step, bars, morph);
+          // The half of the wrap's correction `waveAt` has just put in, if
+          // the slave is within a sample of wrapping.
+          const sdt = Math.min(0.49, step), c = cycleOf(o.s[k] + pm);
+          o.r[k] = wrapHalf !== 0 && sdt > 0 && c > 1 - sdt ? wrapHalf * Math.pow((c - 1) / sdt + 1, 2) : 0;
+        }
+      } else {
+        v = waveAt(t.shape, master + pm, Math.abs(inst) / rate, bars, morph);
+      }
+      if (ring > 0) {
+        const g = 1 - ring + ring * Math.sin(o.m[k]);
+        v *= g; o.r[k] *= g;
+      }
+      sum += v;
+    }
+    let total = sum / n;
+    owe /= n;
+    if (t.subLevel > 0) {
+      const div = t.subOctave === 2 ? 4 : 2;
+      o.sub += TWO_PI * hz / div * dtOf;
+      if (o.sub >= TWO_PI) o.sub -= TWO_PI;
+      if (o.sub < 0) o.sub += TWO_PI;
+      const sub = waveAt(t.subShape === "sine" ? "sine" : "square", o.sub, Math.abs(hz) / div / rate);
+      total = (total + t.subLevel * sub) / (1 + t.subLevel);
+      owe /= 1 + t.subLevel;
+    }
+    if (x.syncing) { const out = o.held + owe; o.held = total; return out; }
+    return total;
+  }
+  const dtOf = 1 / rate;
+
   /* One layer's chord into `mix` - picture X, picture Y, heard left, heard
      right - for one sample. Called for layer A in the poly branch and for
      layer B after it, so the two layers are one piece of arithmetic rather
      than two that agree. */
   const mix = new Float64Array(4);
-  function sound(voices, tone, bars, morph, bend, duck, dt, roleGlide) {
+  function sound(voices, tone, bars, morph, bend, duck, dt, roleGlide, vx) {
     mix[0] = 0; mix[1] = 0; mix[2] = 0; mix[3] = 0;
     for (let v = 0; v < voices.length; v++) {
       const voice = voices[v];
@@ -6402,7 +6711,8 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (voice.phase >= PHASE_WRAP) voice.phase -= PHASE_WRAP;
       if (voice.phase < 0) voice.phase += PHASE_WRAP;
       const wave = tone.shape === "noise" ? Math.random() * 2 - 1
-                                          : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, morph);
+        : vx.on ? oscStep(voice.osc || (voice.osc = makeOsc()), voice.phase, 0, f, tone, bars, morph, vx)
+        : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, morph);
       const a = tone.amp * duck * voice.env.step() * wave;
       const g = voice.gains, t = voice.targets;
       g[0] += (t[0] - g[0]) * roleGlide;
@@ -6442,8 +6752,16 @@ function makeGeneratorCore(rate, slots, lfos) {
     linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
     // A routing on the twist turns the stage on with the slider at nought:
     // a controller that swirls the figure from still is the point of it.
-    let twistRouted = false;
-    for (let k = 0; k < routes.length; k++) if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+    let twistRouted = false, fmRouted = false, syncRouted = false;
+    for (let k = 0; k < routes.length; k++) {
+      if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+      if (routes[k].slot === FM_SLOT) fmRouted = true;
+      if (routes[k].slot === SYNC_SLOT) syncRouted = true;
+    }
+    // The voice's oscillator, per layer, on the same rule as the twist: a
+    // routing switches it on with the slider at rest.
+    voiceFxFor(tone, vxA, fmRouted, syncRouted);
+    voiceFxFor(toneB, vxB, fmRouted, syncRouted);
     nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
                   || tone.planeKaleido > 1 || tone.planeSnap > 0;
     timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
@@ -6499,6 +6817,12 @@ function makeGeneratorCore(rate, slots, lfos) {
       // `|| 0` for a core built with fewer slots, as with the bars.
       const morphPush = (genMod[MORPH_SLOT] || 0) * 1.5;
       const morph = Math.max(0, Math.min(3, tone.morph + morphPush));
+      // `|| 0` again. The same push on both layers, from their own bases.
+      const fmPush = (genMod[FM_SLOT] || 0) * 5, syncPush = (genMod[SYNC_SLOT] || 0) * 3.5;
+      vxA.fmI = Math.max(0, Math.min(20, tone.fmIndex + fmPush));
+      vxA.syncR = Math.max(1, Math.min(8, tone.syncRatio + syncPush));
+      vxB.fmI = Math.max(0, Math.min(20, toneB.fmIndex + fmPush));
+      vxB.syncR = Math.max(1, Math.min(8, toneB.syncRatio + syncPush));
 
       let l, r, hl = null, hr = null;
 
@@ -6554,7 +6878,7 @@ function makeGeneratorCore(rate, slots, lfos) {
            by the same tremolo, each through its own envelope. The phase and
            ratio destinations are about the pair of a dyad and mean nothing
            to a chord, so they are not applied here. */
-        sound(voices, tone, bars, morph, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        sound(voices, tone, bars, morph, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide, vxA);
         l = mix[0]; r = mix[1]; hl = mix[2]; hr = mix[3];
       } else {
         // Quantised here, in the waveform only: the harmonograph's pitch is a
@@ -6577,10 +6901,16 @@ function makeGeneratorCore(rate, slots, lfos) {
         const stepL = Math.abs(hz) / rate;
         const stepR = Math.abs(hz * ratio) / rate;
 
-        l = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseL, stepL, bars, morph);
-        r = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseR + phase, stepR, bars, morph);
+        if (tone.shape === "noise") {
+          l = amp * (Math.random() * 2 - 1);
+          r = amp * (Math.random() * 2 - 1);
+        } else if (vxA.on) {
+          l = amp * oscStep(oscL, phaseL, 0, hz, tone, bars, morph, vxA);
+          r = amp * oscStep(oscR, phaseR, phase, hz * ratio, tone, bars, morph, vxA);
+        } else {
+          l = amp * waveAt(tone.shape, phaseL, stepL, bars, morph);
+          r = amp * waveAt(tone.shape, phaseR + phase, stepR, bars, morph);
+        }
       }
 
       if (planeOn) {
@@ -6601,7 +6931,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (layered) {
         const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : null;
         const morphOfB = Math.max(0, Math.min(3, toneB.morph + morphPush));
-        sound(voicesB, toneB, barsOfB, morphOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        sound(voicesB, toneB, barsOfB, morphOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide, vxB);
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
           let bx = mix[0], by = mix[1];
@@ -6696,6 +7026,8 @@ function makeGeneratorCore(rate, slots, lfos) {
         return;
       }
       swing = 0; phaseL = 0; phaseR = 0; relet = 0; striking = false; wire.reset();
+      // The voice's copies start again from the phases just reset.
+      oscL.n = 0; oscR.n = 0;
     },
 
     /* The gate. Passed straight on: the legato rule is the envelope's, and
@@ -6930,6 +7262,8 @@ function generatorModuleSource() {
     bind("MORPH_SLOT", MORPH_SLOT),
     bind("RADIUS_SLOT", RADIUS_SLOT),
     bind("TWIST_SLOT", TWIST_SLOT),
+    bind("FM_SLOT", FM_SLOT),
+    bind("SYNC_SLOT", SYNC_SLOT),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
@@ -12518,7 +12852,32 @@ const LAYER_CONTROLS = [
   ["bars", "bars", (v) => parseRegistration(v) || DRAWBAR_DEFAULT.slice(),
    (v) => v.map((x) => Math.round(x)).join(""), null, null],
   ["morph", "morph", (v) => v / 100, (v) => Math.round(v * 100), (v) => morphReading(v / 100), "morphValue"],
+  // The voice's oscillator (H1), in the controls' units: tenths of an index,
+  // hundredths of a mix or a ratio, cents.
+  ["oscRatio", "modRatio", (v) => v, (v) => v, null, null],
+  ["oscFm", "fmIndex", (v) => v / 10, (v) => Math.round(v * 10), (v) => (v / 10).toFixed(1), "oscFmValue"],
+  ["oscRing", "ringMix", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "oscRingValue"],
+  ["oscSync", "syncRatio", (v) => v / 100, (v) => Math.round(v * 100),
+   (v) => (v > 100 ? (v / 100).toFixed(2) + "\u00d7" : "off"), "oscSyncValue"],
+  ["oscSub", "subLevel", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "oscSubValue"],
+  ["oscSubOct", "subOctave", (v) => v, (v) => v, null, null],
+  ["oscSubShape", "subShape", (v) => v, (v) => v, null, null],
+  ["oscUnison", "unison", (v) => v, (v) => v, null, null],
+  ["oscSpread", "unisonCents", (v) => v, (v) => v, (v) => Math.round(v) + " cents", "oscSpreadValue"],
 ];
+// A mix out of a hundred, and nought says so.
+const mixReading = (v) => (v > 0 ? (v / 100).toFixed(2) : "off");
+/* The ratios the second oscillator is offered: the just table's, under an
+   octave and a few past it, which is where FM's classic sounds live - 1:1
+   and 2:1 the brass and the reed, 7:2 and the inharmonic ones the bells. */
+const OSC_RATIOS = [[1, 2], [1, 1], [5, 4], [4, 3], [3, 2], [5, 3], [2, 1], [5, 2], [3, 1], [7, 2],
+                    [4, 1], [5, 1], [7, 1]];
+el.oscRatio.innerHTML = OSC_RATIOS.map(([p, q]) => {
+  const named = INTERVALS.find(([, a, b]) => a === p && b === q);
+  const name = p === 1 && q === 1 ? " \u00b7 unison" : named && p !== q ? " \u00b7 " + named[0].toLowerCase() : "";
+  return '<option value="' + String(p / q) + '">' + p + ":" + q + name + "</option>";
+}).join("");
+el.oscRatio.value = "1";
 
 /* Where the morph is, in words short enough for a reading: a station's
    name on a detent, and the two either side of it otherwise. Not how far
@@ -13706,6 +14065,8 @@ const DEFAULTS = {
   planeMirror: 0, planeLimit: 0, planeRadius: 40, planeOS: 2,
   planeTwist: 0, planeKaleido: 0, planeSnap: 0, planeScaleX: 100, planeScaleY: 100, planeShear: 0,
   delayMix: 0, delayMs: 375, delaySync: "", delayFeedback: 35, delayPingPong: false,
+  oscRatio: 1, oscFm: 0, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square",
+  oscUnison: 1, oscSpread: 12,
   chorusMix: 0, chorusRate: 60, chorusDepth: 30, chorusTime: 120, chorusFeedback: 0,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -13726,9 +14087,17 @@ const DEFAULTS = {
    the generator rather than the panel: the panel only holds them while B is
    the layer being shown. */
 const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: "bDec",
-                     envSustain: "bSus", envRelease: "bRel", bars: "bBars", morph: "bMorph" };
+                     envSustain: "bSus", envRelease: "bRel", bars: "bBars", morph: "bMorph",
+                     oscRatio: "bRatio", oscFm: "bFm", oscRing: "bRing", oscSync: "bSync", oscSub: "bSub",
+                     oscSubOct: "bSubOct", oscSubShape: "bSubShape", oscUnison: "bUnison", oscSpread: "bSpread" };
 // The controls whose value is text rather than a number.
-const LAYER_TEXT = new Set(["shape", "bars"]);
+const LAYER_TEXT = new Set(["shape", "bars", "oscSubShape"]);
+/* Layer A's oscillator controls in a code, under their own ids, and what a
+   value has to be to be used: a slider's range, or one of a menu's options.
+   Additive fields, so a code from before them has everything off. */
+const OSC_RANGES = { oscFm: [0, 100], oscRing: [0, 100], oscSync: [100, 800], oscSub: [0, 100],
+                     oscSpread: [0, 50] };
+const OSC_MENUS = ["oscRatio", "oscSubOct", "oscSubShape", "oscUnison"];
 
 function snapshotLayerB() {
   const toneB = genSettings(1);
@@ -13752,6 +14121,9 @@ function snapshot() {
     shape: a("shape"),
     bars: a("bars"),
     morph: Number(a("morph")),
+    oscRatio: Number(a("oscRatio")), oscFm: Number(a("oscFm")), oscRing: Number(a("oscRing")),
+    oscSync: Number(a("oscSync")), oscSub: Number(a("oscSub")), oscSubOct: Number(a("oscSubOct")),
+    oscSubShape: a("oscSubShape"), oscUnison: Number(a("oscUnison")), oscSpread: Number(a("oscSpread")),
     freq: Number(el.freq.value),
     amp: Number(a("amp")),
     interval: Number(el.interval.value),
@@ -13885,6 +14257,19 @@ function restore(partial) {
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
   el.shape.dispatchEvent(new Event("change"));
   genSet("bars", parseRegistration(el.bars.value));
+  for (const [id, [lo, hi]] of Object.entries(OSC_RANGES)) {
+    const v = Number(s[id]);
+    el[id].value = String(Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : DEFAULTS[id]);
+  }
+  for (const id of OSC_MENUS) {
+    const want = String(s[id]);
+    el[id].value = Array.from(el[id].options).some((o) => o.value === want) ? want : String(DEFAULTS[id]);
+  }
+  for (const [id, field, law, , say, label] of LAYER_CONTROLS) {
+    if (!(id in OSC_RANGES) && !OSC_MENUS.includes(id)) continue;
+    genSet(field, law(LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value)), 0);
+    if (say) el[label].textContent = say(Number(el[id].value));
+  }
   el.figure.dispatchEvent(new Event("change"));
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
@@ -13915,7 +14300,7 @@ function restore(partial) {
   for (const [id, field, law] of LAYER_CONTROLS) {
     const key = LAYER_KEYS[id];
     let raw = key in given ? given[key] : s[{ amp: "amp", shape: "shape", envAttack: "atk",
-      envDecay: "dec", envSustain: "sus", envRelease: "rel", morph: "morph" }[id]];
+      envDecay: "dec", envSustain: "sus", envRelease: "rel", morph: "morph" }[id] || id];
     /* B's registration falls back to what A's has just been set to - the
        sliders, already made sane - rather than to the code's own text. A code
        whose registration was junk set A to the default and left B on
@@ -14615,6 +15000,9 @@ function generatorFromPanel(set) {
   set("shape", el.shape.value);
   set("bars", parseRegistration(el.bars.value));
   set("morph", Number(el.morph.value) / 100);
+  for (const [id, field, law] of LAYER_CONTROLS) {
+    if (id.startsWith("osc")) set(field, law(LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value)));
+  }
   set("qMask", state.quantise ? keyMask(state.keyRoot, state.keyScale) : 0);
   set("qGlideMs", state.quantiseGlide);
   set("crossOn", cross.on); set("crossX", cross.x); set("crossY", cross.y);
@@ -15216,6 +15604,18 @@ el.quantiseGlide.addEventListener("input", () => {
 el.tempo.addEventListener("input", () => setTempo(Number(el.tempo.value)));
 el.tempoTap.addEventListener("click", () => clockTap(performance.now()));
 
+/* The oscillator's controls write the layer on the panel, as the shape and
+   the morph do; the table says how each one's number becomes the field. */
+for (const [id, field, law, , say, label] of LAYER_CONTROLS) {
+  if (!id.startsWith("osc")) continue;
+  const kind = el[id].tagName === "SELECT" ? "change" : "input";
+  el[id].addEventListener(kind, () => {
+    const v = LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value);
+    if (say) el[label].textContent = say(v);
+    genSet(field, law(v), panelLayer);
+  });
+}
+
 el.morph.addEventListener("input", () => {
   const at = Number(el.morph.value) / 100;
   el.morphValue.textContent = morphReading(at);
@@ -15737,8 +16137,13 @@ let benchGroups = null;      // in the order the popover had them
    is moved while the trigger and the vertical scale are watched, so those
    sit together and the tabs are few. Which sections are on which tab is
    the `data-tab` in the markup; this is their order and their names. */
+/* Six since Stage H. Shape is what the voice is made of - drawbars, its
+   oscillator, and later its drive and filter - and Effects is what is done
+   to the pair afterwards, the plane and the delay: the two filled one tab
+   past a column's height, and a section that would crowd a tab goes to
+   another one. */
 const BENCH_TABS = [
-  ["play", "Play"], ["picture", "Picture"], ["shape", "Shape"],
+  ["play", "Play"], ["picture", "Picture"], ["shape", "Shape"], ["effects", "Effects"],
   ["sources", "Sources"], ["measure", "Measure"],
 ];
 const TAB_KEY = "scope.benchTab";
@@ -16094,6 +16499,9 @@ const SEARCH_SYNONYMS = {
   wavefolder: "radial fold", bitcrusher: "snap", crush: "snap", swirl: "twist", reflect: "kaleidoscope mirror",
   echo: "echo delay", reverb: "delay chorus", flanger: "chorus", width: "scale", balance: "scale",
   crossfeed: "shear",
+  fm: "fm ratio", dx7: "fm ratio", bell: "fm ratio", modulator: "ratio fm ring",
+  ringmod: "ring", am: "ring", suboscillator: "sub", bass: "sub", supersaw: "unison spread",
+  detune: "unison spread", thick: "unison", fat: "unison sub",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

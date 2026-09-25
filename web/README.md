@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, and Stage I (the plane's nine operations with S2, and I1's delay and chorus) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and H1 (the voice's second oscillator, sync, sub and unison) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -76,6 +76,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
+| `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
@@ -2042,3 +2043,78 @@ core first, where seen-is-heard is free. They are upstream of both taps, so
 the screen and the speakers get the same folded figure, and neither can have
 it without the other. That is the cost. A live input gets none of this until
 the S1 worklet is built.
+
+**The voice's oscillator is one function for every voice, and is not there
+until something in it is on.** H1 (FM, ring, sync, sub, unison) is one
+function, `oscStep`, used by:
+
+- each channel of the dyad;
+- every poly voice;
+- each layer, with the layer's own settings, like its shape.
+
+A single copy runs on the phase the caller already keeps, so the dyad's two
+channels stay locked as they always were.
+
+With nothing on the old line runs, and `voicefxtest.py` proves that stays true
+at the other side of the switch. It turns the new path on with a routing
+whose value is nought, and requires the plain wave to the last bit, for a
+dyad and for a chord. The null test is a value of 0.02.
+
+That null test first used a 1:1 modulator, and on the square it moved the wave
+by 8e-6, near enough nothing. At 1:1 the modulator's sine is nought at both of
+the square's edges, which is the only place a square can change. The fixture
+had to be able to show the effect, again, and at 3:2 it can.
+
+**FM is phase modulation, band-limited where FM has taken the note.** At index
+1.5 and 3:2, every sideband of a sine carrier reads Bessel's J_k to 0.000 per
+cent. Every one of them is a harmonic of half the note, with nothing between
+them at −170 dB: a 3:2 modulator makes a harmonic sound for the same reason a
+3:2 figure closes.
+
+A saw under FM asks `waveAt` about its instantaneous frequency, the note plus
+what the modulator is doing to it this sample. At 1.5 kHz, index 1, 1:1, that
+folds back at −44.8 dB. Corrected at the note's own frequency it measured
+−25.8. Sidebands past Nyquist still fold, as on every digital FM synthesiser.
+
+**Hard sync's reset is a jump between samples, band-limited like a saw's
+corner.** It uses a two-sample polyBLEP of the jump's own height, taken from
+the unbanded wave on each side of the reset. Half of that correction belongs
+to the sample before the reset, which has already been made, so while sync is
+on the voice runs one sample late and pays it back. Folded back, for a saw at
+1 kHz:
+
+| ratio | naive reset | band-limited |
+|---|---|---|
+| 2.5 | −32.7 | −45.2 |
+| 2.0 | −34.6 | −51.9 |
+| 3.7 | −31.0 | −47.2 |
+
+Two faults, each caught by one exact check. At ratio one the reset and the
+slave's own wrap are the same event, so the voice must be the plain
+band-limited wave one sample late, to float precision.
+
+- **A double correction, found by reading.** `waveAt` already smooths the
+  slave's wrap from both sides. At every whole ratio the wrap coincides with
+  the reset, and adding the reset's correction on top corrected twice, at
+  exactly the ratios people use most. The core now keeps the wrap's half on
+  each sample and swaps it for the reset's.
+- **One sample early instead of late, found by the check.** The slave is
+  advanced before it is read, and it had been started at the master's
+  already-advanced phase, so it led by a step. The check first read 0.67 of
+  difference at every reset; started a step back, it reads 0.0.
+
+**Unison is not panned, against the plan's text.** In the dyad and in the
+picture the two channels are the figure's axes. Copies spread across left and
+right would smear one axis into the other, and the figure would become a cloud
+around the diagonal instead of itself thickened. Each copy of Y stays at 3:2 of
+its copy of X, to 1e-3.
+
+The copies are mixed, not summed, and the sub is mixed with them, so seven
+copies are never louder than one. That is the drawbars' rule, for the
+drawbars' reason.
+
+**Between two bins an FFT reads a few per cent low.** The first unison check
+read a copy at −20 cents as 0.323 of a third, and the dyad's copies as 6 per
+cent apart. Neither was wrong in the core: that was the window's scalloping,
+with lines that fall between bins. The checks now take the transform at each
+line's exact frequency, and read a third to 1e-4.

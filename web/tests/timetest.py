@@ -240,7 +240,7 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('effects');
       const shown = el.timeGroup.offsetHeight > 0;
       setTempo(120); await wait(30);
       set('delaySync', '1/4', 'change');
@@ -282,7 +282,7 @@ with sync_playwright() as pw:
           abs(page["dotted"] - 375) < 1e-9 and abs(page["followed"][0] - 450) < 1e-9 and page["followed"][1] == "450 ms",
           "%s, %s" % (page["dotted"], page["followed"]))
     check("free, the slider's time", page["free"] == [250, False], str(page["free"]))
-    check("the section is on the Shape tab and every control reaches the generator in its own units",
+    check("the section is on the Effects tab and every control reaches the generator in its own units",
           page["shown"] and page["panel"] == [0.4, 0.6, True, 0.3, 1.5, 2.5, 8, 0.45], str(page["panel"]))
     check("a setup code carries it all back", page["back"] == [0.4, 250, 0.6, True, 0.3, 1.5, 2.5, 8, 0.45], str(page["back"]))
     check("a code from before has both off", page["old"] == [0, 0, 375, False, ""], str(page["old"]))

@@ -97,7 +97,9 @@ with sync_playwright() as pw:
       return { titles, seen, wrong, benchTitles, role: el.benchRail.getAttribute('role') };
     }""")
     print("    tabs:", ", ".join(tabs["titles"]))
-    check("five tabs by task, and a tab list", tabs["titles"] == ["Play", "Picture", "Shape", "Sources", "Measure"]
+    # Six since Stage H put the voice's oscillator on Shape and moved the
+    # plane and the delay to Effects.
+    check("six tabs by task, and a tab list", tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Sources", "Measure"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]

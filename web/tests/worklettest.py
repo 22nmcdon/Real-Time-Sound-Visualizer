@@ -130,6 +130,9 @@ with sync_playwright() as pw:
               and abs(pr["matrix"]["ratio"] - 0.5) < 1e-3
               and pr["delay"]["echoed"] > 0.3 and pr["delay"]["after"] < 1e-6,
               str(pr))
+        vo = report["voice"]
+        check("the voice's oscillator runs in the worklet, everything on at once, inside its amplitude",
+              vo["finite"] and 0.1 < vo["peak"] <= 0.5 + 1e-6, str(vo))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

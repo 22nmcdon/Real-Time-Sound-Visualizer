@@ -9,7 +9,8 @@ G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
 crossings and K2 (see *Built so far* under Stage K), J2's pitched harmonograph
 and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
 plane's nine operations with S2's oversampling, and I1's delay and chorus - for
-the generator (see *Built so far* under Stage I). Nothing else here is.
+the generator (see *Built so far* under Stage I), and H1's second oscillator,
+sub and unison (see *Built so far* under Stage H). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -203,6 +204,32 @@ Order within a voice, pinned now so nobody has to decide it later:
 ```
 oscillator(s) → FM / sync → sub + unison sum → drive / fold → voice filter → envelope (VCA)
 ```
+
+### Built so far
+
+**H1**, in the generator's core, as one oscillator function used by each channel
+of the dyad and by every poly voice, and set per layer like the shape.
+
+- *A second oscillator.* It runs at a ratio chosen from the just table, and it
+  drives both FM (phase modulation, index 0 to 10) and ring.
+- *Hard sync.* The saw or square runs at up to eight times the note and
+  restarts at every note cycle. The reset is band-limited with a two-sample
+  polyBLEP, which costs one sample of delay while sync is on.
+- *Sub and unison.* A sub one or two octaves down, square or sine, and unison
+  of up to seven copies.
+- *Destinations.* FM and Sync are patchable.
+- *Off is exact.* With nothing on, the voice is the plain wave to the last
+  bit.
+
+The panel is the Oscillator section on the Shape tab. The plane and the delay
+moved to a new sixth tab, Effects, to make room.
+
+One departure from the text below: **unison is not panned across the pair.** In
+the dyad and in the picture the two channels are the figure's axes, and copies
+spread between them would smear one axis into the other. The figure thickens in
+place instead, which is the picture the plan wanted.
+
+`voicefxtest.py` holds it. H2 and H3 are not built.
 
 ### H1 · a second oscillator, and what it is for
 
@@ -574,6 +601,13 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
+- **Presets, rebuilt.** Asked for after Stage I. Most of the current presets
+  are not useful, and there are too few kinds of them. The rebuild wants much
+  more breadth, across everything the generator can now be: organ
+  registrations, FM and sync voices, drawn figures, the plane and the delay,
+  the rack and live inputs. Loading one should be a full menu pop-up with
+  sections, rather than one long select. A preset is a setup code, so this is
+  a library and a browser, not a new format.
 - **A second generator lane.** A waveform and a figure together, one of them
   modulating the other at audio rate once J3 exists. Costs a lane of the six.
   Half of this exists as Stage F's layers, which are two sets of voices from one
