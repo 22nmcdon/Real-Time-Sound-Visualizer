@@ -4,7 +4,8 @@ A plan. It follows `playing-it-and-hearing-it.md` and assumes Stages A–F as th
 stand: the generator is an `AudioWorkletNode`, the filter / AC / rotation / lag
 are in the speakers as well as on the screen, the photocell and its picture
 sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
-limiter, and a keyboard can be split into two layers. Nothing here is built.
+limiter, and a keyboard can be split into two layers. **G0 and G1's drawbars
+are built** (see *Built so far* under Stage G); nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -145,6 +146,26 @@ could change the *timbre* of the waveform rather than its pitch or level.
 - **Grab a cycle.** With a MIDI note held the input's period is *known*, not
   estimated — the note-as-truth work already exists. One period of the Nord,
   captured at a zero crossing, becomes a wavetable. Resynthesis in one button.
+
+### Built so far
+
+**G0**: the saw is on the Shape menu. **Drawbars**, with these decisions taken
+on the way:
+
+- **The levels are about 3 dB a step**, as on the organ, not a straight line from
+  nought to eight.
+- **The weights sum to at most one.** One bar at eight is full scale, and
+  pulling out more changes the colour, not the level. That is unlike the
+  organ, and it is deliberate: here full scale is the edge of the screen.
+- **The bars are on the Shape tab**, nine patchable rows. Play shows the
+  registration under the Shape menu, and pressing it goes to the bars.
+- **Each layer has its own registration**, which makes layer B seven fields.
+- **The default is 00 8740 000, not 88 8000 000.** With the 16' out, the
+  readout's frequency is the sound's rather than the key's, and it wanders
+  (see the README).
+
+`drawbartest.py` holds them. Morph, pulse, the supersaw, the wavetable and the
+rest of G1 and G2 are not built.
 
 ### G · verification
 

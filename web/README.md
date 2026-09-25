@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. Not built, and next now the layout is |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw) and G1's drawbars are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -68,6 +68,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `racktest.py` | the rack built a lane at a time: files added beside the others, the right lane taken out, Play along as a membership, builds in flight, the Bench with a rack in it |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
+| `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1587,3 +1588,78 @@ everywhere else, so it is the pedal only while the keys are open, as the letters
 are, and the keydown handler stops it there. Closing the keys lifts the screen's
 pedal when no port is connected. A keyboard's own pedal belongs to the keyboard,
 and lifting it from the screen would contradict the foot still on it.
+
+**The saw was built, tested and unreachable for three stages.** `waveAt` had a
+band-limited ramp, `aliastest.py` measured it, and the LFOs offered it, but the
+generator's Shape menu listed five shapes and not that one. It needed one
+`<option>`. `drawbartest.py` checks that choosing it plays a saw by listening
+for its second harmonic, half the fundamental and 6 dB down. None of the other
+shapes has one.
+
+**The drawbars' weights sum to at most one, which the organ's do not.** On a
+tonewheel organ every bar you pull out is louder. Here, one bar at eight is a
+full-scale sine, and beyond that more bars change the colour and not the level.
+Full scale is the edge of the screen, and a registration that clipped would
+draw the clamp rather than the partials. The cost is that a full registration
+is no louder than one bar. A bar pulled out alone still gets louder as it comes,
+because the total only starts dividing once it passes one. The levels follow the
+organ's law of about 3 dB a step, not a straight line from nought to eight, so
+the low settings are quiet rather than nearly silent. The weights are recomputed
+only when a level moves. That costs nine compares a sample, not nine powers.
+
+**A phase that wraps once a cycle turns the 16' bar into a rectified sine.** The
+16' and 5⅓' bars are below the note, so the sound repeats every two of the
+note's cycles. With the phase wrapped at 2π, `sin(phase / 2)` has the same value
+either side of the wrap but its slope flips, which makes it |sin|. That is a
+different sound an octave up, with a row of harmonics. The core now wraps every
+phase at two cycles (`PHASE_WRAP`), which every other shape cannot tell apart.
+The check is that 16' alone is 110 Hz with nothing at 220.
+
+**The default registration is not 88 8000 000, because the frequency readout
+counts crossings.** `estimatePeriod` counts mean-crossings with hysteresis. That
+is accurate on anything with one crossing a cycle, and not otherwise. Measured on
+a 220 Hz note:
+
+- **88 8000 000** reads 110 Hz at 2 ms/div (right about the sound, an octave
+  under the key). It wanders to 216–249 Hz at 5 and 10 ms/div, and reads nothing
+  at 1.
+- **00 8888 000** reads 430–534 Hz.
+- **00 8740 000** reads 220.0 Hz at every timebase, so it is the default.
+
+This is a known limitation of the readout, not of the drawbars. A Nord through
+the line input shows the same thing on the same registrations. The tuner can take
+the key as read instead. The real fix is an autocorrelation or YIN estimator.
+`estimatePeriod` also feeds the automatic lag, so that change is not a small one.
+
+**Layer B is seven fields now, and the drawbars are one of them.** A
+registration is what a layer is made of, and the organ this is played from has a
+set of bars per manual. The nine sliders appear in `LAYER_CONTROLS` as one
+control, `el.bars`, whose value is the nine-digit registration. The table that
+moves a layer's controls on and off the panel then carries it the way it carries
+the shape. The bars live on the Shape tab and follow the layer there.
+
+**A junk registration left layer B where it was.** A setup code whose
+registration was not nine digits set layer A to the default and did not write B
+at all, so B kept whatever it had been playing. The check for this passed at
+first, because the restore before it had already left the default in place. With
+a code that set 88 8000 000 in front of it, it failed on the real code. B now
+falls back to A's registration after A's has been made sane.
+
+**The registration has a row of its own.** Beside the Shape menu it pushed the
+menu down to 45 px, too narrow to say "Drawbars". It shows only with the drawbars
+chosen. `patchtest.py` checks that Play still fits with it showing, on both
+layers, with the keys open. The status line on the Shape tab, saying why the bars
+are greyed, is deliberately not a `.menu-row`. As one, it was the first thing a
+search for "hammond" found.
+
+**Spectra have to land on a bin.** At 32768 samples a 220 Hz partial is half a
+bin off. Its own main lobe then spilled past the window's edge at −55 dB, which
+read as a bar sounding something it did not. The saw's second harmonic read
+0.6 dB low from scalloping. `drawbartest.py` uses one-second windows, where every
+whole-hertz partial is on a bin, and the "nothing else" floor is −166 dB.
+
+**The worklet harness judged each shape on the previous one's samples.** It
+reused one output block for every shape and never cleared it. A shape whose
+branch threw wrote nothing, and was judged on the samples before it. With
+`DRAWBAR_HARMONICS` left out of the module, the drawbars passed as a saw. The
+block is now cleared per shape, and both of that mutation's forms are caught.

@@ -48,7 +48,7 @@ Watch for two more:
 
 The rule that matters: **write the test against the failure, not the happy
 path.** A test that passes whatever the code does is worse than no test, because
-it is believed. This repository has shipped seven of them, and each is now
+it is believed. This repository has shipped eight of them, and each is now
 commented at the site with what it used to assert and why that was not enough:
 
 - Asserting a modulation offset was *set*, while nothing read it.
@@ -63,6 +63,9 @@ commented at the site with what it used to assert and why that was not enough:
 - Indexing rendered audio from `frames / 2` — 5512.5, so every read was
   `undefined`, every difference `NaN`, and `Math.max` carried the NaN to the
   end while the code under test behaved perfectly.
+- Judging each waveform shape on one output block that was never cleared
+  between shapes, so a shape whose branch threw was judged on the previous
+  shape's samples, and a drawbars branch missing its table passed as a saw.
 
 ### Null-test every new assertion
 

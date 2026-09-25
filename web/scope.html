@@ -578,15 +578,40 @@ body[data-view="bench"] .dock  { order: 3; }
    applying the moment a note is moved into one. */
 .bench-body .menu-note { display: none; }
 .bench-body [data-more] { display: none; }
-/* Layer B has six fields, so the generator panel shows six controls while it
-   is being edited rather than forty of which thirty-four would be writing
-   into layer A. Hidden by a rule rather than by `hidden`, because the kind's
+/* Layer B has seven fields, so the generator panel shows its six controls
+   while it is being edited - the seventh, the drawbars, is on the Shape tab
+   and follows the layer there - rather than forty of which thirty-four would
+   be writing into layer A. Hidden by a rule rather than by `hidden`, because the kind's
    own rows already toggle `hidden` and two writers of one flag disagree. */
 #toneRows[data-layer-edit="b"] > :not([data-layer]),
 #toneRows[data-layer-edit="b"] #figureRows,
 #toneRows[data-layer-edit="b"] #wireRows,
 #toneRows[data-layer-edit="b"] #harmoRows { display: none !important; }
 #toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
+
+/* A drawbar's colour, as on the organ: brown under the note, white for the
+   octaves, black for the fifths and the third. A mark beside the label
+   rather than a coloured slider, so a patched bar looks like every other
+   patched control. */
+.bar-mark {
+  display: inline-block; width: 5px; height: 12px; margin-right: 7px;
+  border-radius: 1px; vertical-align: -1px;
+}
+.bar-mark[data-colour="brown"] { background: var(--rust); }
+.bar-mark[data-colour="white"] { background: var(--paper); box-shadow: inset 0 0 0 1px var(--text-soft); }
+.bar-mark[data-colour="black"] { background: var(--charcoal); }
+/* Greyed, not hidden, while the shape is something else: a section that
+   vanished would be a section nobody could find. */
+#barsGroup[data-idle] .drawbar { opacity: 0.5; }
+#barsGo { font-family: var(--mono); font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+/* Why the bars are greyed, and the way to use them. Not a .menu-row, which
+   would make it a control the search offers: "hammond" found the sentence
+   before it found the bars. */
+.bars-state {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 2px 0 8px;
+}
+.bars-state[hidden] { display: none; }
 
 /* Real columns, not CSS ones.
 
@@ -1323,7 +1348,7 @@ body[data-view="bench"] .dock  { order: 3; }
           <div class="menu-group" id="toneRows" data-tab="play" data-home="bench">
             <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
               <p class="menu-note" id="layerBNote" data-layer="b">Layer B has its own shape,
-                level and envelope, and nothing else: its pitches are the keys it is
+                level, envelope and drawbars, and nothing else: its pitches are the keys it is
                 given, and the kind, the modulation and the heard switch are the
                 generator's. <i>Edit A</i> in the keyboard section puts the panel back.</p>
               <label class="check" id="genSoundRow" data-layer="b">
@@ -1363,8 +1388,21 @@ body[data-view="bench"] .dock  { order: 3; }
                     <option value="sine">Sine</option>
                     <option value="square">Square</option>
                     <option value="triangle">Triangle</option>
+                    <option value="ramp">Saw</option>
+                    <option value="drawbars">Drawbars</option>
                     <option value="noise">Noise</option>
                   </select>
+                </div>
+              </div>
+              <!-- The registration, and the way to it: the nine bars are on the
+                   Shape tab, where the voice's colour lives. A row of its own, shown
+                   only with the drawbars chosen: beside the menu it pushed the
+                   menu down to a width that could not say "Drawbars". -->
+              <div class="menu-row" id="barsGoRow" data-layer="b" hidden>
+                <span class="menu-label">Drawbars</span>
+                <div class="grow">
+                  <button type="button" class="link-btn" id="barsGo"
+                          title="The drawbars, on the Shape tab"></button>
                 </div>
               </div>
               <div class="menu-row" data-mod-dest="gen.ratio" data-mod-control="interval">
@@ -1683,6 +1721,87 @@ body[data-view="bench"] .dock  { order: 3; }
               <i>Clipping</i> verdict stay on the signal either way: one is a modulation
               source and would feed back into the picture, and the other is a claim about the
               input.</p>
+          </div>
+
+          <div class="menu-group" id="barsGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title" id="barsTitle">Drawbars</span>
+            <div class="bars-state" id="barsStateRow">
+              <span class="reading" id="barsState"></span>
+              <button type="button" class="link-btn caps" id="barsUse">Use drawbars</button>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar0" data-mod-control="bar0">
+              <label class="menu-label" for="bar0"><span class="bar-mark" data-colour="brown"></span>16&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar0" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar0Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar1" data-mod-control="bar1">
+              <label class="menu-label" for="bar1"><span class="bar-mark" data-colour="brown"></span>5&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar1" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar1Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar2" data-mod-control="bar2">
+              <label class="menu-label" for="bar2"><span class="bar-mark" data-colour="white"></span>8&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar2" min="0" max="8" step="1" value="8">
+                <span class="reading" id="bar2Value">8</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar3" data-mod-control="bar3">
+              <label class="menu-label" for="bar3"><span class="bar-mark" data-colour="white"></span>4&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar3" min="0" max="8" step="1" value="7">
+                <span class="reading" id="bar3Value">7</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar4" data-mod-control="bar4">
+              <label class="menu-label" for="bar4"><span class="bar-mark" data-colour="black"></span>2&#8532;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar4" min="0" max="8" step="1" value="4">
+                <span class="reading" id="bar4Value">4</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar5" data-mod-control="bar5">
+              <label class="menu-label" for="bar5"><span class="bar-mark" data-colour="white"></span>2&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar5" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar5Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar6" data-mod-control="bar6">
+              <label class="menu-label" for="bar6"><span class="bar-mark" data-colour="black"></span>1&#8535;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar6" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar6Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar7" data-mod-control="bar7">
+              <label class="menu-label" for="bar7"><span class="bar-mark" data-colour="black"></span>1&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar7" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar7Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar8" data-mod-control="bar8">
+              <label class="menu-label" for="bar8"><span class="bar-mark" data-colour="white"></span>1&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar8" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar8Value">0</span>
+              </div>
+            </div>
+            <p class="menu-note">Nine sine partials at the footages of a tonewheel organ,
+              drawn out from nought to eight. <i>8&prime;</i> is the note you play; <i>16&prime;</i>
+              is an octave under it and <i>5&#8531;&prime;</i> a fifth above that, so a
+              registration with either out has a cycle twice the note's. Each step is about
+              three decibels, as on the organ. However many bars are out the wave stays inside
+              the amplitude: one bar at eight is a full-scale sine, and pulling out more changes
+              the colour rather than the level. A partial above half the sample rate is left
+              out rather than folded back. Every bar is a destination, so a drawbar on your
+              keyboard, once it has moved, can be put on the same bar here. With a layer B,
+              each layer has its own registration.</p>
           </div>
 
           <div class="menu-group" data-home="bench" data-tab="shape">
@@ -2476,8 +2595,26 @@ body[data-view="bench"] .dock  { order: 3; }
         measures whatever is being drawn rather than following a key.</span></li>
 
       <li><b>Waveform</b>
-        <span>Sine, square, triangle, noise, and a sine with a third harmonic. The
-        <i>interval</i> sets the right channel against the left.</span></li>
+        <span>Sine, square, triangle, saw, noise, a sine with a third harmonic, and
+        drawbars. The <i>interval</i> sets the right channel against the left.
+        <br><br>
+        <i>Drawbars</i> are the organ's way of making a sound: nine sine partials at the
+        footages of a tonewheel organ, each drawn from nought to eight on the <i>Shape</i>
+        tab. <i>8&prime;</i> is the note; <i>16&prime;</i> is an octave under it and
+        <i>5&#8531;&prime;</i> a fifth above that, and the rest are the octaves, fifths and
+        third above. Each step is about three decibels, as on the organ, and however many
+        bars are out the wave stays inside the amplitude, so pulling more out changes the
+        colour and not the level. With the drawbars chosen, the registration shows under the
+        Shape menu &mdash; <i>00 8740 000</i> to start &mdash; and pressing it goes to the bars.
+        Every bar is a destination: move a drawbar on your keyboard and put it on the same
+        bar here. In X&ndash;Y at an interval the figure shows how the partials line up.
+        <br><br>
+        A registration with the <i>16&prime;</i> out, such as <i>88 8000 000</i>, has a cycle
+        twice the note's, and the readout's frequency is the sound's rather than the key's:
+        an octave under, and it can wander between the two. The frequency readout counts
+        crossings, and a registration with several bars at full can cross more often than
+        once a cycle and read high. The tuner can read the key instead: with a keyboard,
+        tick <i>take the lag and the tuner from the note</i>.</span></li>
 
       <li><b>Intervals draw consonance</b>
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
@@ -2543,7 +2680,7 @@ body[data-view="bench"] .dock  { order: 3; }
         note to both, so each is two voices at once.
         <br><br>
         <i>Edit B</i> turns the generator's panel over to layer B, which has its own shape,
-        level and envelope, and its own <i>Draw</i> rule, so the comping can draw three notes
+        level, envelope and drawbars, and its own <i>Draw</i> rule, so the comping can draw three notes
         while the melody draws one. Its pitches are the keys it is given, and the kind, the
         modulation and the heard switch are the generator's &mdash; a sweep on the pitch
         bends both layers. B starts as a copy of A, so a split changes where the notes go
@@ -2850,6 +2987,49 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "laneLegend"]) {
   el[id] = document.getElementById(id);
 }
+for (const id of ["barsGroup", "barsTitle", "barsStateRow", "barsState", "barsUse", "barsGo",
+                  "barsGoRow"]) {
+  el[id] = document.getElementById(id);
+}
+for (let k = 0; k < 9; k++) {
+  el["bar" + k] = document.getElementById("bar" + k);
+  el["bar" + k + "Value"] = document.getElementById("bar" + k + "Value");
+}
+
+/* A registration as text: nine digits, as a setup code stores it, and
+   88 8000 000 as organists write it - the two under the note, the four
+   octaves and fifths up to 2', and the three at the top. Anything that is
+   not nine digits is not a registration, and says so with null rather than
+   being read as some other one. */
+function parseRegistration(text) {
+  const digits = String(text === undefined || text === null ? "" : text).replace(/[^0-9]/g, "");
+  if (digits.length !== 9) return null;
+  return Array.from(digits, (c) => Math.min(8, Number(c)));
+}
+
+function formatRegistration(levels) {
+  const d = levels.map((v) => String(Math.round(v))).join("");
+  return d.slice(0, 2) + " " + d.slice(2, 6) + " " + d.slice(6);
+}
+
+/* The nine sliders as one control whose value is the registration, so the
+   table that moves a layer's controls on and off the panel (`LAYER_CONTROLS`)
+   can carry them the way it carries the shape: one value, read and written. */
+el.bars = {
+  get value() {
+    let out = "";
+    for (let k = 0; k < 9; k++) out += el["bar" + k].value;
+    return out;
+  },
+  set value(text) {
+    const levels = parseRegistration(text);
+    if (!levels) return;
+    levels.forEach((v, k) => {
+      el["bar" + k].value = String(v);
+      el["bar" + k + "Value"].textContent = String(v);
+    });
+  },
+};
 
 /* --- the trigger ----------------------------------------------------------
    The one piece worth getting exactly right, and a port of the desktop
@@ -2972,14 +3152,79 @@ const cycleOf = (phase) => {
   return t < 0 ? t + 1 : t;
 };
 
+/* The drawbars: nine sine partials at the footages of a tonewheel organ, in
+   the order they sit on the instrument. The 8' bar is the note played; 16'
+   is an octave under it and 5 1/3' a fifth above that, so two of the nine
+   are BELOW the key's pitch - which is why the whole sound's cycle is two of
+   the note's (see `PHASE_WRAP` in the core). The colours are the organ's:
+   brown for the two under the note, white for the octaves, black for the
+   fifths and the third. */
+const DRAWBARS = [
+  { foot: "16\u2032", colour: "brown" },
+  { foot: "5\u2153\u2032", colour: "brown" },
+  { foot: "8\u2032", colour: "white" },
+  { foot: "4\u2032", colour: "white" },
+  { foot: "2\u2154\u2032", colour: "black" },
+  { foot: "2\u2032", colour: "white" },
+  { foot: "1\u2157\u2032", colour: "black" },
+  { foot: "1\u2153\u2032", colour: "black" },
+  { foot: "1\u2032", colour: "white" },
+];
+// Each bar's partial as a multiple of the note: 64 divided by its footage,
+// over the 8' bar's 8.
+const DRAWBAR_HARMONICS = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
+// Where the nine bars' modulation sits in the generator's accumulator; see
+// GEN_DESTS. One constant, because the core and the table must agree.
+const DRAWBAR_SLOT = 7;
+/* The registration a new generator starts on: the 8' with its octave and
+   twelfth tapering off. Not 88 8000 000, the one every organist knows,
+   because that one has the 16' out, so the sound's cycle is two of the
+   note's and the readout's frequency wanders between the two - it is right
+   about the sound and it looks wrong about the key. This one is read as the
+   note at every timebase. See the README. */
+const DRAWBAR_DEFAULT = [0, 0, 8, 7, 4, 0, 0, 0, 0];
+
+/* A bar's level as a gain. About three decibels a step, as on the organ, so
+   a bar at 7 is 0.71 of one at 8 and a bar at 1 is 21 dB down - not the
+   straight line a slider from nought to eight would suggest, and the reason
+   the low settings are useful rather than all nearly silent. Below 1 it is a
+   straight line to nothing, so a modulated bar reaches silence without a step. */
+function drawbarGain(level) {
+  if (!(level > 0)) return 0;
+  const at = Math.min(8, level);
+  return at >= 1 ? Math.pow(10, -3 * (8 - at) / 20) : at * Math.pow(10, -21 / 20);
+}
+
+/* The registration as nine weights that sum to at most one, so however many
+   bars are out the waveform stays inside the amplitude: |sum w sin| is never
+   more than sum w. One bar at 8 is a full-scale sine; pulling out more
+   changes the colour and not the level.
+
+   That is where this parts company with the organ, where every bar pulled
+   is louder, and it is on purpose: full scale here is the edge of the
+   screen, and a registration that clipped the picture would be drawing the
+   clamp rather than the partials. A bar pulled out on its own, with nothing
+   else out, still gets louder as it comes, because the total only starts
+   dividing once it passes one. */
+function drawbarWeights(levels, out) {
+  let total = 0;
+  for (let k = 0; k < 9; k++) { out[k] = drawbarGain(levels[k]); total += out[k]; }
+  const scale = 1 / Math.max(1, total);
+  for (let k = 0; k < 9; k++) out[k] *= scale;
+  return out;
+}
+
 /* One waveform function, shared by the generator and by the LFOs under it -
    a shape is a shape whether it is running at 220 Hz or at a fifth of one.
 
    `step` is how much of a cycle one sample covers, and it is what separates
    the two callers: the generator knows its own frequency and passes it, an LFO
    does not pass it at all, and at nought every line below is what it was
-   before the band-limiting arrived. */
-function waveAt(shape, phase, step) {
+   before the band-limiting arrived.
+
+   `bars` is the drawbars' registration as weights (`drawbarWeights`), and
+   only the drawbars read it. */
+function waveAt(shape, phase, step, bars) {
   const dt = step > 0 ? Math.min(0.49, step) : 0;
   switch (shape) {
     case "sine":     return Math.sin(phase);
@@ -3000,6 +3245,29 @@ function waveAt(shape, phase, step) {
     case "ramp": {
       const t = cycleOf(phase);
       return t * 2 - 1 - polyBlep(t, dt);
+    }
+    case "drawbars": {
+      /* Additive, so band-limited by construction: a partial above Nyquist
+         is left out rather than corrected. Faded over the last twentieth of
+         a cycle a sample, as the harmonic below is, so a note sliding up
+         loses its top bar gradually rather than with a click. The step is
+         taken as given, not clamped: a partial is only worth keeping while
+         it is under half a cycle a sample, and the clamp above would let
+         one past that through at a fifth of its level.
+
+         `phase` has to run over TWO of the note's cycles here. The 16' bar
+         is half the note's frequency, and a phase wrapped at one cycle turns
+         its sine into a rectified one - the same value at the wrap, the
+         slope flipped - which is a different sound an octave up. */
+      let sum = 0;
+      for (let k = 0; k < 9; k++) {
+        const w = bars ? bars[k] : (k === 2 ? 1 : 0);
+        if (w === 0) continue;
+        const m = DRAWBAR_HARMONICS[k];
+        const room = step > 0 ? Math.max(0, Math.min(1, (0.5 - m * step) / 0.05)) : 1;
+        if (room > 0) sum += w * room * Math.sin(m * phase);
+      }
+      return sum;
     }
     default: {
       /* A sine and its third harmonic, and the third is only a harmonic while
@@ -3118,6 +3386,13 @@ const GEN_DESTS = [
     reach: (v, s) => v * Math.pow(3, s) },
   { id: "gen.depth",  label: "Wireframe perspective", slot: 6, modes: ["wireframe"],
     reach: (v, s) => v + s * 50 },                            // slider is hundredths
+  /* The nine drawbars, each a destination, so a drawbar on a keyboard can be
+     put on the same drawbar here. Full depth is the whole bar, nought to
+     eight, and a push past either end stops there. */
+  ...DRAWBARS.map((bar, k) => ({
+    id: "gen.bar" + k, label: "Drawbar " + bar.foot, slot: DRAWBAR_SLOT + k,
+    reach: (v, s) => Math.max(0, Math.min(8, v + s * 8)),
+  })),
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -4845,6 +5120,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     decayMs: 120,
     sustain: 0.7,
     releaseMs: 180,
+    /* The drawbars' levels, nought to eight, read only when the shape is
+       `drawbars`. A copy of the default, never the default itself: this
+       object may be the worklet's, and the table is shared. */
+    bars: DRAWBAR_DEFAULT.slice(),
     /* Portamento, off by default. Zero is not a very short glide, it is an
        assignment: the pitch is written straight in, so nothing rounds and the
        old behaviour is reproduced exactly rather than closely. */
@@ -4883,7 +5162,11 @@ function makeGeneratorCore(rate, slots, lfos) {
      every modulation rate would run at double - the fault `assertLfoDriver`
      throws on. Modulation reaches both layers alike, for the same reason: one
      accumulator, one law. `voices` null is "no layer B", exactly as it is
-     "no chord" on layer A. */
+     "no chord" on layer A.
+
+     The drawbars came later and are the seventh, and they belong for the
+     reason the shape does: they are what a layer is made of. It is also what
+     the organ this is played from does - two manuals, a set of bars each. */
   const toneB = {
     shape: "harmonic",
     amp: 0.55,
@@ -4891,8 +5174,33 @@ function makeGeneratorCore(rate, slots, lfos) {
     decayMs: 120,
     sustain: 0.7,
     releaseMs: 180,
+    bars: DRAWBAR_DEFAULT.slice(),
     voices: null,
   };
+
+  /* Where each layer's registration has got to, with its modulation, and
+     the weights that come of it. Recomputed only when a level moves, which
+     without a routing on a bar is never: nine compares a sample rather than
+     nine powers. */
+  const barsA = { at: new Float64Array(9).fill(-1), weights: new Float64Array(9) };
+  const barsB = { at: new Float64Array(9).fill(-1), weights: new Float64Array(9) };
+  function registration(t, into) {
+    let moved = false;
+    for (let k = 0; k < 9; k++) {
+      // `|| 0` for a core built with fewer slots than there are bars.
+      const push = genMod[DRAWBAR_SLOT + k] || 0;
+      const level = Math.max(0, Math.min(8, t.bars[k] + push * 8));
+      if (level !== into.at[k]) { into.at[k] = level; moved = true; }
+    }
+    if (moved) drawbarWeights(into.at, into.weights);
+    return into.weights;
+  }
+
+  /* Where a phase wraps: two of the note's cycles, not one. Every shape but
+     the drawbars repeats once a cycle and cannot tell the difference; the
+     drawbars' 16' and 5 1/3' bars repeat once every two, and wrapped at one
+     their sines fold over into something else (see `waveAt`). */
+  const PHASE_WRAP = 2 * TWO_PI;
 
   const wire = makeWireframe();
   const genMod = new Float32Array(slots);
@@ -5005,16 +5313,16 @@ function makeGeneratorCore(rate, slots, lfos) {
      layer B after it, so the two layers are one piece of arithmetic rather
      than two that agree. */
   const mix = new Float64Array(4);
-  function sound(voices, tone, bend, duck, dt, roleGlide) {
+  function sound(voices, tone, bars, bend, duck, dt, roleGlide) {
     mix[0] = 0; mix[1] = 0; mix[2] = 0; mix[3] = 0;
     for (let v = 0; v < voices.length; v++) {
       const voice = voices[v];
       const f = voice.freq * bend;
       voice.phase += TWO_PI * f * dt;
-      if (voice.phase >= TWO_PI) voice.phase -= TWO_PI;
-      if (voice.phase < 0) voice.phase += TWO_PI;
+      if (voice.phase >= PHASE_WRAP) voice.phase -= PHASE_WRAP;
+      if (voice.phase < 0) voice.phase += PHASE_WRAP;
       const wave = tone.shape === "noise" ? Math.random() * 2 - 1
-                                          : waveAt(tone.shape, voice.phase, Math.abs(f) / rate);
+                                          : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars);
       const a = tone.amp * duck * voice.env.step() * wave;
       const g = voice.gains, t = voice.targets;
       g[0] += (t[0] - g[0]) * roleGlide;
@@ -5079,6 +5387,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       const detail = tone.detail + genMod[4] * 4;
       const tumble = tone.spinRate * Math.pow(3, genMod[5]);
       const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
+      const bars = tone.shape === "drawbars" ? registration(tone, barsA) : null;
 
       let l, r, hl = null, hr = null;
 
@@ -5124,14 +5433,14 @@ function makeGeneratorCore(rate, slots, lfos) {
            by the same tremolo, each through its own envelope. The phase and
            ratio destinations are about the pair of a dyad and mean nothing
            to a chord, so they are not applied here. */
-        sound(voices, tone, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        sound(voices, tone, bars, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
         l = mix[0]; r = mix[1]; hl = mix[2]; hr = mix[3];
       } else {
         phaseL += TWO_PI * freq * dt;
         phaseR += TWO_PI * freq * ratio * dt;
-        if (phaseL >= TWO_PI) phaseL -= TWO_PI;
-        if (phaseR >= TWO_PI) phaseR -= TWO_PI;
-        if (phaseR < 0) phaseR += TWO_PI;
+        if (phaseL >= PHASE_WRAP) phaseL -= PHASE_WRAP;
+        if (phaseR >= PHASE_WRAP) phaseR -= PHASE_WRAP;
+        if (phaseR < 0) phaseR += PHASE_WRAP;
 
         /* What one sample is worth of each channel's cycle, which is all the
            band-limiting needs to know. Taken from the MODULATED frequency, so
@@ -5144,9 +5453,9 @@ function makeGeneratorCore(rate, slots, lfos) {
         const stepR = Math.abs(freq * ratio) / rate;
 
         l = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseL, stepL);
+                                   : amp * waveAt(tone.shape, phaseL, stepL, bars);
         r = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
-                                   : amp * waveAt(tone.shape, phaseR + phase, stepR);
+                                   : amp * waveAt(tone.shape, phaseR + phase, stepR, bars);
       }
 
       outL[i] = Math.max(-1, Math.min(1, l));
@@ -5155,7 +5464,8 @@ function makeGeneratorCore(rate, slots, lfos) {
       /* Layer B, against the same modulation this sample already summed. */
       let bhl = 0, bhr = 0;
       if (layered) {
-        sound(voicesB, toneB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
+        const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : null;
+        sound(voicesB, toneB, barsOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
           outBL[i] = Math.max(-1, Math.min(1, mix[0]));
@@ -5196,7 +5506,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
     },
     /* `layer` 1 is layer B, which keeps only the fields it has: a whole panel
-       written into it (`generatorFromPanel` does exactly that) lands the six
+       written into it (`generatorFromPanel` does exactly that) lands the seven
        that mean something and drops the rest, rather than growing B a
        frequency nothing reads. */
     set(field, value, layer) {
@@ -5207,6 +5517,13 @@ function makeGeneratorCore(rate, slots, lfos) {
         into.voices = value === null ? null
           : value.map((v) => ({ note: v.note, freq: v.freq, velocity: v.velocity, role: v.role }));
         reconcileVoices(layer === 1 ? voicesB : voices, into.voices, into);
+        return;
+      }
+      if (field === "bars") {
+        // Copied and clamped, and a registration that is not nine numbers
+        // is ignored rather than half applied.
+        if (!value || value.length !== 9) return;
+        into.bars = Array.from(value, (v) => Math.max(0, Math.min(8, Number(v) || 0)));
         return;
       }
       if (layer === 1) {
@@ -5431,6 +5748,11 @@ function generatorModuleSource() {
     bind("polyBlep", String(polyBlep)),
     bind("polyBlamp", String(polyBlamp)),
     bind("cycleOf", String(cycleOf)),
+    bind("DRAWBAR_HARMONICS", JSON.stringify(DRAWBAR_HARMONICS)),
+    bind("DRAWBAR_SLOT", DRAWBAR_SLOT),
+    bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
+    bind("drawbarGain", String(drawbarGain)),
+    bind("drawbarWeights", String(drawbarWeights)),
     bind("waveAt", String(waveAt)),
     bind("figureAt", String(figureAt)),
     bind("makeWireframe", String(makeWireframe)),
@@ -10870,10 +11192,12 @@ function editLayer() {
   return layersOn() && midi.layers.edit === 1 ? 1 : 0;
 }
 
-/* The six controls a layer has, the field each writes and how the control's
-   number becomes the field's value and back. One table, used both ways,
-   for the reason the envelope's is a table: six handlers and six inverses
-   are twelve chances to disagree about a factor of a hundred. */
+/* The seven controls a layer has, the field each writes and how the
+   control's number becomes the field's value and back. One table, used both
+   ways, for the reason the envelope's is a table: seven handlers and seven
+   inverses are fourteen chances to disagree about a factor of a hundred.
+   The drawbars are one entry, not nine: `el.bars` is the nine sliders read
+   and written as one registration. */
 const LAYER_CONTROLS = [
   ["amp", "amp", (v) => v / 100, (v) => v * 100, (v) => (v / 100).toFixed(2), "ampValue"],
   ["shape", "shape", (v) => v, (v) => v, null, null],
@@ -10881,10 +11205,12 @@ const LAYER_CONTROLS = [
   ["envDecay", "decayMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "envDecayValue"],
   ["envSustain", "sustain", (v) => v / 100, (v) => v * 100, (v) => (v / 100).toFixed(2), "envSustainValue"],
   ["envRelease", "releaseMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "envReleaseValue"],
+  ["bars", "bars", (v) => parseRegistration(v) || DRAWBAR_DEFAULT.slice(),
+   (v) => v.map((x) => Math.round(x)).join(""), null, null],
 ];
 
 /* The controls are layer A's, moved between layers rather than copied - one
-   Amplitude slider, not two. So while B is shown, what A's six controls said
+   Amplitude slider, not two. So while B is shown, what A's seven controls said
    is kept HERE, and put back when A is shown again, rather than re-read from
    the generator: the panel is what a new generator is built from
    (`generatorFromPanel`), and a rack built while B was on screen would
@@ -10911,6 +11237,25 @@ function showLayerOnPanel(layer) {
   panelLayer = layer;
   el.toneRows.dataset.layerEdit = layer === 1 ? "b" : "a";
   el.genTitle.textContent = layer === 1 ? "Generator \u00b7 layer B" : "Generator";
+  syncBars();
+}
+
+/* The drawbars section and the registration beside the Shape menu: which
+   layer they are, and whether anything is listening to them. The panel's
+   shape is the layer being edited, which is the one that matters here. */
+function syncBars() {
+  const tone = genSettings();
+  const wave = !!tone && tone.mode === "wave";
+  const chosen = el.shape.value === "drawbars";
+  const heard = wave && chosen;
+  el.barsGoRow.hidden = !heard;
+  el.barsGo.textContent = formatRegistration(parseRegistration(el.bars.value)) + " \u203a";
+  el.barsGroup.toggleAttribute("data-idle", !heard);
+  el.barsStateRow.hidden = heard;
+  el.barsState.textContent = !tone ? "Only the generator has drawbars."
+    : !wave ? "Only a waveform has drawbars." : "Heard when the shape is Drawbars.";
+  el.barsUse.hidden = !wave || chosen;
+  el.barsTitle.textContent = panelLayer === 1 ? "Drawbars \u00b7 layer B" : "Drawbars";
 }
 
 function syncLayerPanel() {
@@ -10953,6 +11298,7 @@ function showGenerator() {
   // What a note does is a per-kind decision, so the box that states it has to
   // be re-read whenever the kind changes.
   syncMidi();
+  syncBars();
   el.credit.textContent = state.source.describe();
 }
 
@@ -11929,7 +12275,7 @@ window.addEventListener("keyup", (event) => {
    settings behind.                                                          */
 
 const DEFAULTS = {
-  gen: "wave", shape: "harmonic", freq: 220, amp: 55,
+  gen: "wave", shape: "harmonic", bars: DRAWBAR_DEFAULT.join(""), freq: 220, amp: 55,
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
   swingRate: 21, decay: 12, detune: 40,
@@ -11955,7 +12301,7 @@ const DEFAULTS = {
   octaves: 0,
   midiMode: "dyad", midiHold: false, midiTruth: true, midiFollow: false,
   midiDrawCount: 2, midiDrawWhich: "outer", midiPolyJust: false,
-  /* Layer B's six fields are deliberately NOT here. A code from before
+  /* Layer B's seven fields are deliberately NOT here. A code from before
      layers has none, and B should then sound like A - which is what a
      default of its own could not say. `restore` falls back to A's. */
   midiDrawCountB: 2, midiDrawWhichB: "outer",
@@ -11977,17 +12323,20 @@ const DEFAULTS = {
   beam: "moderate", beamXY: true, beamYT: false, beamGoni: false,
 };
 
-/* Layer B's six, in the controls' own units like layer A's, and read from
+/* Layer B's seven, in the controls' own units like layer A's, and read from
    the generator rather than the panel: the panel only holds them while B is
    the layer being shown. */
 const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: "bDec",
-                     envSustain: "bSus", envRelease: "bRel" };
+                     envSustain: "bSus", envRelease: "bRel", bars: "bBars" };
+// The controls whose value is text rather than a number.
+const LAYER_TEXT = new Set(["shape", "bars"]);
 
 function snapshotLayerB() {
   const toneB = genSettings(1);
   const out = {};
   for (const [id, field, , inverse] of LAYER_CONTROLS) {
-    out[LAYER_KEYS[id]] = toneB ? inverse(toneB[field]) : (id === "shape" ? el.shape.value : Number(el[id].value));
+    out[LAYER_KEYS[id]] = toneB ? inverse(toneB[field])
+      : (LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value));
   }
   return out;
 }
@@ -12002,6 +12351,7 @@ function snapshot() {
   return Object.assign({
     gen: tone ? tone.mode : DEFAULTS.gen,
     shape: a("shape"),
+    bars: a("bars"),
     freq: Number(el.freq.value),
     amp: Number(a("amp")),
     interval: Number(el.interval.value),
@@ -12077,6 +12427,8 @@ function restore(partial) {
   showLayerOnPanel(0);
 
   el.shape.value = s.shape;
+  // Additive: a code from before the drawbars has none, and gets the default.
+  el.bars.value = parseRegistration(s.bars) ? s.bars : DEFAULTS.bars;
   el.freq.value = String(s.freq);
   el.amp.value = String(s.amp);
   el.interval.value = String(s.interval);
@@ -12110,6 +12462,7 @@ function restore(partial) {
    "envAttack", "envDecay", "envSustain", "envRelease", "glide"]
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
   el.shape.dispatchEvent(new Event("change"));
+  genSet("bars", parseRegistration(el.bars.value));
   el.figure.dispatchEvent(new Event("change"));
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
@@ -12139,11 +12492,18 @@ function restore(partial) {
   const given = partial || {};
   for (const [id, field, law] of LAYER_CONTROLS) {
     const key = LAYER_KEYS[id];
-    const raw = key in given ? given[key] : s[{ amp: "amp", shape: "shape", envAttack: "atk",
+    let raw = key in given ? given[key] : s[{ amp: "amp", shape: "shape", envAttack: "atk",
       envDecay: "dec", envSustain: "sus", envRelease: "rel" }[id]];
-    if (id === "shape" ? typeof raw === "string" : Number.isFinite(Number(raw))) {
-      genSet(field, law(id === "shape" ? raw : Number(raw)), 1);
-    }
+    /* B's registration falls back to what A's has just been set to - the
+       sliders, already made sane - rather than to the code's own text. A code
+       whose registration was junk set A to the default and left B on
+       whatever it had been playing, because junk was "not usable" and B was
+       simply not written. */
+    if (id === "bars" && parseRegistration(raw) === null) raw = el.bars.value;
+    const text = LAYER_TEXT.has(id);
+    const usable = id === "bars" ? parseRegistration(raw) !== null
+      : text ? typeof raw === "string" : Number.isFinite(Number(raw));
+    if (usable) genSet(field, law(text ? raw : Number(raw)), 1);
   }
   midi.polyJust = s.midiPolyJust === true;
   // Where the photocell sits and whether it is on: additive fields, so a code
@@ -12776,6 +13136,7 @@ function generatorFromPanel(set) {
   set("freq", Number(el.freq.value));
   set("amp", Number(el.amp.value) / 100);
   set("shape", el.shape.value);
+  set("bars", parseRegistration(el.bars.value));
   set("mode", el.genMode.value);
   set("interval", Number(el.interval.value));
   set("octaves", 0);
@@ -13119,6 +13480,21 @@ el.amp.addEventListener("input", () => {
 
 el.shape.addEventListener("change", () => {
   if (genSet("shape", el.shape.value, panelLayer)) el.credit.textContent = state.source.describe();
+  syncBars();
+});
+
+for (let k = 0; k < 9; k++) {
+  el["bar" + k].addEventListener("input", () => {
+    el["bar" + k + "Value"].textContent = el["bar" + k].value;
+    genSet("bars", parseRegistration(el.bars.value), panelLayer);
+    syncBars();
+  });
+}
+// To the 8' bar, which is the note, and brings the Shape tab with it.
+el.barsGo.addEventListener("click", () => showControl("bar2"));
+el.barsUse.addEventListener("click", () => {
+  el.shape.value = "drawbars";
+  el.shape.dispatchEvent(new Event("change"));
 });
 
 el.phase.addEventListener("input", () => {
@@ -13974,7 +14350,9 @@ function showControl(node) {
    The words a player might use that the page does not are the synonyms. */
 const SEARCH_SYNONYMS = {
   lfo: "oscillators oscillator lfo", adsr: "envelope attack decay sustain release",
-  midi: "keyboard midi", cc: "controllers controller", drawbar: "controllers controller",
+  midi: "keyboard midi", cc: "controllers controller",
+  drawbar: "drawbars controllers controller", hammond: "drawbars", organ: "drawbars",
+  tonewheel: "drawbars", sawtooth: "saw", registration: "drawbars",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

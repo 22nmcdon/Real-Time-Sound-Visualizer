@@ -292,6 +292,15 @@ with sync_playwright() as pw:
       el.midiEditB.click();
       await settle();
       out['poly+split, editing B'] = fits();
+      // The drawbars add the registration row under the menu, on both layers.
+      el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split, editing B, drawbars'] = fits();
+      el.midiEditA.click();
+      el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split+keys, drawbars'] = fits();
+      el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
       el.midiEditA.click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       setScreenKeys(false);
