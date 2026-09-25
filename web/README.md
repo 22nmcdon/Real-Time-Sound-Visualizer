@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph and S8's *Play the figure* are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, and Stage I's mirror and radial clip with S2 are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -75,6 +75,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
+| `planetest.py` | the plane as an effect: mirror and radial clip to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1870,3 +1871,45 @@ cycles of 220 Hz. On 20 ms windows it is within 1 per cent. The same slip read
 the star's partials: at 2 Hz bins, the Blackman-Harris main lobe spreads 8 Hz
 either side of 440. Read to 1 per cent of a multiple of the note, 436 and 444
 looked like partials that were not there.
+
+**The plane's operations run inside an oversampler, only while they are on.**
+Mirror (x to |x|) is full-wave rectification, and the radial clip,
+r tanh(|v| / r) on the pair's length, is a clipper that keeps the image's
+direction. Both are non-linear, so both put energy above Nyquist. S2 runs them
+at 2x or 4x, between a windowed-sinc lowpass up (polyphase) and down,
+Blackman-Harris with 32 taps per step of the factor. Measured below 10 kHz,
+dB under the loudest:
+
+| | 1x | 2x | 4x |
+|---|---|---|---|
+| mirror, 2 kHz | −50.2 | −64.0 | −76.7 |
+| mirror, 4 kHz | −39.9 | −52.0 | −64.9 |
+| clip, 2 kHz | −50.6 | −103.0 | −155.6 |
+| clip, 4 kHz | −26.7 | −55.3 | −107.7 |
+
+The page already lives with the band-limited square's floor, −58.5 at 2 kHz
+and −46.2 at 4. So 2x, which clears it for both, is the default, as the plan
+asked: measure 2x first. The mirror gains about 12 dB a doubling, because a
+rectified sine's harmonics fall as 1/n²; the clip's fall faster. Sixteen voices
+over two layers with both operations at 4x cost 191 ms per second of audio.
+
+The oversampler delays the pair by (n − factor)/factor base samples, 31 at
+either factor, which is 0.7 ms. The code's first comment said 31.5 and 31.75.
+That counts two filters of (n − 1)/2, and forgets that the decimator reads its
+newest oversampled sample, factor − 1 steps ahead of the input's own place.
+`planetest.py` measured 31.00 at both. Off, the pair goes straight through, so
+switching an operation on moves the picture by that much.
+
+**The plane applies to every pair the generator makes, once each.** Those are
+layer A's picture, layer B's picture, and the heard pair (the plan's I0).
+Outside poly the heard pair is the picture pair, and is not done twice. In poly
+the heard pair is nearly mono, and a mirror or a clip still does to it what it
+is named for. The crossings' notes are added after. A mutant that clips before
+mirroring survives, and is equivalent: the clip scales a pair by a function of
+its length, and a fold never changes a length.
+
+**The clip's radius is shown only with the clip on.** At first it was always
+on show, and moved nothing while the clip was off. `modtest.py` moves every
+visible destination's own control and requires the output to change, and it
+failed there, correctly: a slider that does nothing looks broken. It now appears
+with the clip, as the morph's row appears with the morph.

@@ -46,6 +46,7 @@ SUITES = [
     ("cross", [sys.executable, "crosstest.py"], "crossings: the interval as a rhythm, the drift in equal temperament, the notes heard and not drawn"),
     ("pitch", [sys.executable, "pitchtest.py"], "the pitch estimator: rich registrations, the range, two periods or nothing, noise, the readout and Autoset"),
     ("play", [sys.executable, "playtest.py"], "the drawings played: the pitched harmonograph, its strike, Play the figure"),
+    ("plane", [sys.executable, "planetest.py"], "the plane as an effect: mirror and radial clip, their arithmetic, aliasing at 1x, 2x and 4x, every pair once"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

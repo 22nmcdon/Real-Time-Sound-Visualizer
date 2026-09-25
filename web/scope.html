@@ -1935,6 +1935,56 @@ body[data-view="bench"] .dock  { order: 3; }
               each layer has its own registration.</p>
           </div>
 
+          <div class="menu-group" id="planeGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title">Plane</span>
+            <div class="menu-row">
+              <label class="menu-label" for="planeMirror">Mirror</label>
+              <div class="grow">
+                <select id="planeMirror" style="flex:1 1 auto">
+                  <option value="0">Off</option>
+                  <option value="1">X onto its right half</option>
+                  <option value="2">Y onto its top half</option>
+                  <option value="3">Both</option>
+                </select>
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" id="planeClip"> Radial clip</label>
+            <!-- Shown with the clip on, as the morph's row is with the morph: a
+                 radius slider with nothing to clip was a control that moved
+                 nothing, which modtest.py treats as a bug, and was right to. -->
+            <div class="menu-row" id="planeRadiusRow" data-mod-dest="gen.radius" data-mod-control="planeRadius" hidden>
+              <label class="menu-label" for="planeRadius">Radius</label>
+              <div class="grow">
+                <input type="range" id="planeRadius" min="2" max="100" value="40">
+                <span class="reading" id="planeRadiusValue">0.40</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <span class="menu-label">Oversampling</span>
+              <div class="switch" role="radiogroup" aria-label="Oversampling">
+                <button type="button" class="caps" id="planeOS1" role="radio" aria-checked="false">1&times;</button>
+                <button type="button" class="caps" id="planeOS2" role="radio" aria-checked="true">2&times;</button>
+                <button type="button" class="caps" id="planeOS4" role="radio" aria-checked="false">4&times;</button>
+              </div>
+            </div>
+            <p class="menu-note">Things done to the picture of the generator's pair that turn out
+              to be things done to its sound. <i>Mirror</i> folds the figure onto one half of
+              itself, and to the ear it is full-wave rectification, the octave-up pedal: every
+              harmonic even, the note an octave higher. The folded wave sits above zero, and
+              the speakers get that offset unless AC coupling, under Vertical, takes it off.
+              <i>Radial clip</i> holds the figure inside a circle of the radius and keeps every
+              point's direction, so it is a clipper that does not bend the stereo image: loud
+              parts are rounded off towards the circle, and quiet ones are nearly untouched.
+              Both work on the picture and on what you hear, and in poly on the nearly-mono
+              chord that you hear as well as on the pair that is drawn.
+              <br><br>
+              They run at twice the rate by default so that what they add above half the sample
+              rate is filtered off rather than folded back as notes that are not in the key.
+              Four times is cleaner still and costs twice as much; once is the arithmetic on
+              its own. While either is on the pair is about 0.7 ms later, and switching one on
+              moves the picture by that much.</p>
+          </div>
+
           <div class="menu-group" data-home="bench" data-tab="shape">
             <span class="menu-title">Filter</span>
             <label class="check">
@@ -2417,6 +2467,23 @@ body[data-view="bench"] .dock  { order: 3; }
         pass is maximally flat. It runs on the samples rather than in the audio graph, so it
         reaches the test tone too &mdash; which is arithmetic and has no audio graph at all.
         Point a source at the cutoff and it sweeps.</span></li>
+
+      <li><b>The plane: what folds the picture folds the sound</b>
+        <span>Under <i>Plane</i>, on the Shape tab, for the generator. <i>Mirror</i> folds the
+        figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
+        is full-wave rectification, the octave-up pedal: a mirrored sine is its octave, every
+        harmonic even. <i>Radial clip</i> holds the figure inside a circle and rounds the loud
+        parts off towards it, keeping every point's direction, so it is a clipper that does
+        not bend the stereo image. Its radius can take a source. Both act on what is drawn and
+        on what is heard, and in poly on the chord you hear as well as the notes that are
+        drawn.
+        <br><br>
+        They run at twice the sample rate, so that what they add above half the rate is
+        filtered away rather than folded back as notes that are nowhere in the key. At 4 kHz
+        the clip's worst stray tone is 27 dB down at once, 55 at twice and 108 at four times.
+        Behind the section's &ctdot; you can choose once or four times. While either is on,
+        the picture and sound are 0.7 ms later. A mirrored wave sits above zero, and AC
+        coupling takes that off what you hear.</span></li>
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
@@ -3152,6 +3219,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
                   "seeDry", "seeWet", "hearDry", "hearWet",
+                  "planeGroup", "planeMirror", "planeClip", "planeRadius", "planeRadiusValue", "planeRadiusRow",
+                  "planeOS1", "planeOS2", "planeOS4",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
@@ -3388,6 +3457,8 @@ const DRAWBAR_HARMONICS = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
 const DRAWBAR_SLOT = 7;
 // And the morph's, one slot after the last bar.
 const MORPH_SLOT = DRAWBAR_SLOT + 9;
+// And the radial clip's radius, after the morph.
+const RADIUS_SLOT = MORPH_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -3777,6 +3848,11 @@ const GEN_DESTS = [
      there to avoid. The slider is hundredths of a station. */
   { id: "gen.morph", label: "Morph", slot: MORPH_SLOT,
     reach: (v, s) => Math.max(0, Math.min(300, v + s * 150)) },
+  /* How tight the radial clip holds the figure, in hundredths of full scale.
+     Half the range at full depth. Only while the clip is on; a radius with
+     nothing to clip is a slider moving nothing. */
+  { id: "gen.radius", label: "Clip radius", slot: RADIUS_SLOT,
+    reach: (v, s) => Math.max(2, Math.min(100, v + s * 50)) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -5591,6 +5667,16 @@ function makeGeneratorCore(rate, slots, lfos) {
     crossDecayMs: 180,
     crossLevel: 0.4,
 
+    /* The X-Y plane as an effect (Stage I): things done to the picture of
+       a stereo pair that turn out to be things done to its sound. Page-wide,
+       and applied to every pair the generator makes - see `block`.
+       `planeMirror` is a bitmask, 1 folding X onto its positive half and 2
+       folding Y; `planeRadius` is the radial clip's radius, 0 for off;
+       `planeOS` how many times over the non-linear stage runs (S2). */
+    planeMirror: 0,
+    planeRadius: 0,
+    planeOS: 2,
+
     /* A chord, or null. Null is every mode this generator has always had: two
        channels from one pitch and an interval. A list is POLY - every held
        note sounding, each with its own envelope, and each with a role saying
@@ -5665,6 +5751,92 @@ function makeGeneratorCore(rate, slots, lfos) {
      drawbars' 16' and 5 1/3' bars repeat once every two, and wrapped at one
      their sines fold over into something else (see `waveAt`). */
   const PHASE_WRAP = 2 * TWO_PI;
+
+  /* --- the plane (Stage I) -------------------------------------------------
+     One function of one sample pair, applied to the picture pair, layer B's
+     picture pair and the heard pair, each as it is (the plan's I0). Outside
+     poly the heard pair IS the picture pair and is not done twice. In poly
+     the heard pair is nearly mono - every note in both ears - and a mirror
+     or a clip still does to it what it is named for, while anything that
+     turns the pair would do little: the truth about a mono signal.
+
+     Mirror is full-wave rectification: x to |x| folds the figure onto one
+     half of itself, and on the ear it is the octave-up pedal, every
+     harmonic even. The radial clip is a soft clipper on the pair's length
+     rather than on each channel, r tanh(|v| / r), so a loud figure is held
+     inside a circle of radius r and every point keeps its direction: the
+     stereo image is not bent, where two clippers, one a channel, would pull
+     every figure towards the diagonals. The two can be done in either order
+     with the same result: the clip scales a pair by a function of its
+     length, and a fold never changes a length. */
+  let opX = 0, opY = 0, pMirror = 0, pRadius = 0;
+  function planeOp(x, y) {
+    if (pMirror & 1) x = Math.abs(x);
+    if (pMirror & 2) y = Math.abs(y);
+    if (pRadius > 0) {
+      const m = Math.sqrt(x * x + y * y);
+      if (m > 0) { const k = pRadius * Math.tanh(m / pRadius) / m; x *= k; y *= k; }
+    }
+    opX = x; opY = y;
+  }
+
+  /* S2: the non-linear stage run at two or four times the rate, so what it
+     puts above the base Nyquist is filtered off rather than folded back.
+     A windowed-sinc lowpass (Blackman-Harris, 32 taps per step of the
+     factor) up and down, polyphase on the way up. Linear phase, so it
+     delays the pair: two filters of (n - 1) / 2 each, less the factor - 1
+     oversampled steps by which the newest one the decimator reads is ahead
+     of the input it came from. (n - factor) / factor base samples, which is
+     31 at either factor, 0.7 ms - worked out first as 31.5 and 31.75, which
+     forgot the second term, and measured - but only while an operation is
+     on: off, the pair
+     goes straight through, and switching one on moves the picture by that
+     much. At 1x the operation is applied as it is, which is what the tests
+     hold its arithmetic to. */
+  function makeOversampler(factor) {
+    const n = 32 * factor, per = 32;
+    const h = new Float64Array(n);
+    const centre = (n - 1) / 2, fc = 0.5 / factor;
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i - centre;
+      const sinc = t === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * t) / (Math.PI * t);
+      const a = 2 * Math.PI * i / (n - 1);
+      h[i] = sinc * (0.35875 - 0.48829 * Math.cos(a) + 0.14128 * Math.cos(2 * a) - 0.01168 * Math.cos(3 * a));
+      sum += h[i];
+    }
+    for (let i = 0; i < n; i++) h[i] /= sum;
+    const inX = new Float64Array(per), inY = new Float64Array(per);   // base rate, newest first
+    const upX = new Float64Array(n), upY = new Float64Array(n);       // oversampled, a ring
+    let at = 0;
+    const out = { x: 0, y: 0 };
+    return {
+      factor, out,
+      step(x, y) {
+        for (let k = per - 1; k > 0; k--) { inX[k] = inX[k - 1]; inY[k] = inY[k - 1]; }
+        inX[0] = x; inY[0] = y;
+        for (let p = 0; p < factor; p++) {
+          let ux = 0, uy = 0;
+          for (let k = 0; k < per; k++) { const c = h[p + k * factor]; ux += c * inX[k]; uy += c * inY[k]; }
+          planeOp(ux * factor, uy * factor);
+          upX[at] = opX; upY[at] = opY;
+          at = at + 1 === n ? 0 : at + 1;
+        }
+        let dx = 0, dy = 0, j = at;
+        for (let k = 0; k < n; k++) {
+          j = j === 0 ? n - 1 : j - 1;
+          dx += h[k] * upX[j]; dy += h[k] * upY[j];
+        }
+        out.x = dx; out.y = dy;
+      },
+    };
+  }
+  // One for each pair: layer A's picture, layer B's, and the heard pair.
+  let planeFactor = 0, osA = null, osB = null, osHeard = null;
+  function planeStep(os, x, y) {
+    if (os === null) { planeOp(x, y); return; }
+    os.step(x, y); opX = os.out.x; opY = os.out.y;
+  }
 
   /* The quantiser: a pitch in, the nearest note of the key out, in hertz.
      Worked in MIDI note numbers, where a semitone is one, and applied to
@@ -5935,6 +6107,17 @@ function makeGeneratorCore(rate, slots, lfos) {
     const poly = tone.voices !== null;
     const layered = toneB.voices !== null;
     const roleGlide = poleFor(4);
+    // The plane's oversamplers, rebuilt when the factor changes - and only
+    // then, since a rebuild empties their histories.
+    const wantFactor = tone.planeOS === 4 ? 4 : tone.planeOS === 1 ? 1 : 2;
+    if (wantFactor !== planeFactor) {
+      planeFactor = wantFactor;
+      osA = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+      osB = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+      osHeard = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+    }
+    const planeOn = tone.planeMirror !== 0 || tone.planeRadius > 0;
+    pMirror = tone.planeMirror;
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -6066,6 +6249,11 @@ function makeGeneratorCore(rate, slots, lfos) {
                                    : amp * waveAt(tone.shape, phaseR + phase, stepR, bars, morph);
       }
 
+      if (planeOn) {
+        pRadius = tone.planeRadius > 0
+          ? Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5)) : 0;
+        planeStep(osA, l, r); l = opX; r = opY;
+      }
       outL[i] = Math.max(-1, Math.min(1, l));
       outR[i] = Math.max(-1, Math.min(1, r));
 
@@ -6077,8 +6265,10 @@ function makeGeneratorCore(rate, slots, lfos) {
         sound(voicesB, toneB, barsOfB, morphOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
-          outBL[i] = Math.max(-1, Math.min(1, mix[0]));
-          outBR[i] = Math.max(-1, Math.min(1, mix[1]));
+          let bx = mix[0], by = mix[1];
+          if (planeOn) { planeStep(osB, bx, by); bx = opX; by = opY; }
+          outBL[i] = Math.max(-1, Math.min(1, bx));
+          outBR[i] = Math.max(-1, Math.min(1, by));
         }
       } else if (outBL) {
         outBL[i] = 0; outBR[i] = 0;
@@ -6097,8 +6287,14 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
 
       if (heardL) {
-        heardL[i] = (hl === null ? outL[i] : hl) + bhl + pluck;
-        heardR[i] = (hr === null ? outR[i] : hr) + bhr + pluck;
+        /* The heard pair through the plane too, as the whole pair - both
+           layers - and only when it is not already the picture pair, which
+           has been through it. The crossings' notes are added after: they
+           are what the figure plays, not part of it. */
+        let hx = (hl === null ? outL[i] : hl) + bhl, hy = (hr === null ? outR[i] : hr) + bhr;
+        if (planeOn && hl !== null) { planeStep(osHeard, hx, hy); hx = opX; hy = opY; }
+        heardL[i] = hx + pluck;
+        heardR[i] = hy + pluck;
       }
     }
 
@@ -6393,6 +6589,7 @@ function generatorModuleSource() {
     bind("DRAWBAR_HARMONICS", JSON.stringify(DRAWBAR_HARMONICS)),
     bind("DRAWBAR_SLOT", DRAWBAR_SLOT),
     bind("MORPH_SLOT", MORPH_SLOT),
+    bind("RADIUS_SLOT", RADIUS_SLOT),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
@@ -13163,6 +13360,7 @@ const DEFAULTS = {
   midiDrive: "wave,harmonograph,figure", cc: "",
   // Additive: a code from before these plays no drawing at its note's pitch.
   midiPlay: "", ring: 600,
+  planeMirror: 0, planeClip: false, planeRadius: 40, planeOS: 2,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
   lagMix: Math.round(LAG_MIX_DEFAULT * 100),
@@ -13270,6 +13468,8 @@ function snapshot() {
     midiFollow: midi.follow,
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     midiPlay: Object.keys(midi.play).filter((kind) => midi.play[kind]).join(","),
+    planeMirror: plane.mirror, planeClip: plane.clip, planeRadius: Math.round(plane.radius * 100),
+    planeOS: plane.os,
     ring: Number(el.ringTime.value),
     cc: encodeCC(),
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
@@ -13423,6 +13623,12 @@ function restore(partial) {
   cross.level = within(s.crossLevel, 0, 100, 40) / 100;
   syncCrossPanel();
   syncCrossings();
+  plane.mirror = [0, 1, 2, 3].includes(s.planeMirror) ? s.planeMirror : 0;
+  plane.clip = s.planeClip === true;
+  plane.radius = within(s.planeRadius, 2, 100, 40) / 100;
+  plane.os = [1, 2, 4].includes(s.planeOS) ? s.planeOS : 2;
+  syncPlanePanel();
+  syncPlane();
 
   /* The routing list when the setup has one, and the old enum when it does
      not. Checked against what was actually passed in rather than the merged
@@ -14036,6 +14242,8 @@ function generatorFromPanel(set) {
   set("crossHzX", noteHz(cross.noteX)); set("crossHzY", noteHz(cross.noteY));
   set("crossDecayMs", cross.decayMs); set("crossLevel", cross.level);
   set("ringMs", Number(el.ringTime.value));
+  set("planeMirror", plane.mirror); set("planeRadius", plane.clip ? plane.radius : 0);
+  set("planeOS", plane.os);
   set("pitched", el.genMode.value === "harmonograph" && midi.play.harmonograph && midi.drive.harmonograph);
   set("mode", el.genMode.value);
   set("interval", Number(el.interval.value));
@@ -14461,6 +14669,40 @@ el.crossLevel.addEventListener("input", () => {
   syncCrossings();
 });
 syncCrossPanel();
+
+/* The plane section. */
+const plane = { mirror: 0, clip: false, radius: 0.4, os: 2 };
+
+function syncPlane() {
+  genSet("planeMirror", plane.mirror);
+  genSet("planeRadius", plane.clip ? plane.radius : 0);
+  genSet("planeOS", plane.os);
+}
+
+function syncPlanePanel() {
+  el.planeMirror.value = String(plane.mirror);
+  el.planeClip.checked = plane.clip;
+  el.planeRadiusRow.hidden = !plane.clip;
+  el.planeRadius.value = String(Math.round(plane.radius * 100));
+  el.planeRadiusValue.textContent = plane.radius.toFixed(2);
+  for (const k of [1, 2, 4]) el["planeOS" + k].setAttribute("aria-checked", String(plane.os === k));
+}
+
+el.planeMirror.addEventListener("change", () => { plane.mirror = Number(el.planeMirror.value); syncPlane(); });
+el.planeClip.addEventListener("change", () => {
+  plane.clip = el.planeClip.checked;
+  el.planeRadiusRow.hidden = !plane.clip;
+  syncPlane();
+});
+el.planeRadius.addEventListener("input", () => {
+  plane.radius = Number(el.planeRadius.value) / 100;
+  el.planeRadiusValue.textContent = plane.radius.toFixed(2);
+  syncPlane();
+});
+for (const k of [1, 2, 4]) {
+  el["planeOS" + k].addEventListener("click", () => { plane.os = k; syncPlanePanel(); syncPlane(); });
+}
+syncPlanePanel();
 
 /* The key and tempo section. */
 el.keyRoot.innerHTML = KEY_NAMES.map((name, i) => '<option value="' + i + '">' + name + "</option>").join("");
@@ -15374,6 +15616,8 @@ const SEARCH_SYNONYMS = {
   quantize: "quantise", bpm: "tempo", scale: "key", sync: "tempo clock sync",
   metronome: "tempo", tap: "tempo tap",
   rhythm: "crossings", polyrhythm: "crossings", beat: "crossings tempo", pluck: "crossings",
+  rectify: "mirror", rectifier: "mirror", distortion: "clip mirror", overdrive: "clip",
+  clipper: "clip", saturation: "clip", oversample: "oversampling", aliasing: "oversampling",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

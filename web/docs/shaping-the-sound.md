@@ -7,8 +7,9 @@ sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
 limiter, and a keyboard can be split into two layers. **Built so far:** G0,
 G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
 crossings and K2 (see *Built so far* under Stage K), J2's pitched harmonograph
-and S8's *Play the figure* (see *Built so far* under Stage J). Nothing else here
-is.
+and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I's mirror
+and radial clip with S2's oversampling (see *Built so far* under Stage I).
+Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -283,6 +284,22 @@ the screen it is the figure folded onto one half of itself — the same operatio
 recognisable in both places. *Twist* is the one that probably does not exist
 anywhere else as a sound: it only makes sense if you were looking at the stereo
 pair as a picture first.
+
+### Built so far
+
+**Mirror and radial clip**, in the generator's core, applied as I0 proposes to
+layer A's picture, layer B's and the heard pair. The clip is soft,
+r tanh(|v| / r), which meets "never above r, direction unchanged" exactly.
+
+**S2**, run around them only while one is on:
+- 2x by default, 4x selectable, and 1x for the bare arithmetic.
+- 2x clears the page's square-wave floor for both operations, so it stayed the
+  default.
+- It costs 31 base samples of delay (0.7 ms) at either factor, and 191 ms per
+  second of audio for sixteen voices at 4x.
+
+`planetest.py` holds them. Scale, shear, fold, twist, snap and the kaleidoscope,
+I1's delay and chorus, and the S1 worklet for live inputs are not built.
 
 ### I0 · the plane in poly
 

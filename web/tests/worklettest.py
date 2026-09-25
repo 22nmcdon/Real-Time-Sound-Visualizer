@@ -115,6 +115,9 @@ with sync_playwright() as pw:
         ph = report["pitched"]
         check("the pitched harmonograph runs in the worklet, at the note's pitch, and strikes cleanly",
               ph["finite"] and ph["peak"] > 0.1 and abs(ph["pitch"] - 220) < 1e-9, str(ph))
+        pl = report["plane"]
+        check("the plane runs in the worklet at 1x, 2x and 4x: mirrored and held inside the radius",
+              all(v["finite"] and v["low"] > -0.02 and 0.15 < v["high"] <= 0.31 for v in pl.values()), str(pl))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

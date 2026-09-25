@@ -182,6 +182,25 @@ try {
   report.pitched = { pitch: node.core.pitch, peak: pitchedPeak, finite: pitchedFinite };
   node.port.onmessage({ data: { tone: { mode: "wave", pitched: false } } });
 
+  /* The plane, at each factor, in the thread it runs in: a mirrored sine
+     has no negative half left, whatever the filters do to its corners. */
+  report.plane = {};
+  for (const os of [1, 2, 4]) {
+    node.port.onmessage({ data: { tone: { mode: "wave", shape: "sine", freq: 220, amp: 0.5,
+                                          planeMirror: 3, planeRadius: 0.3, planeOS: os } } });
+    let low = Infinity, high = -Infinity, finite = true;
+    for (let round = 0; round < 40; round++) {
+      node.process([], [out], {});
+      if (round < 5) continue;
+      for (let i = 0; i < 128; i++) {
+        if (!Number.isFinite(out[0][i])) finite = false;
+        low = Math.min(low, out[0][i]); high = Math.max(high, out[0][i]);
+      }
+    }
+    report.plane[os] = { low, high, finite };
+  }
+  node.port.onmessage({ data: { tone: { planeMirror: 0, planeRadius: 0 } } });
+
   // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });
   for (let round = 0; round < 800; round++) node.process([], [out], {});
