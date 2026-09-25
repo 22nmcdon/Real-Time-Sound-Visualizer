@@ -4,8 +4,9 @@ A plan. It follows `playing-it-and-hearing-it.md` and assumes Stages A–F as th
 stand: the generator is an `AudioWorkletNode`, the filter / AC / rotation / lag
 are in the speakers as well as on the screen, the photocell and its picture
 sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
-limiter, and a keyboard can be split into two layers. **G0, and G1's drawbars
-and morph, are built** (see *Built so far* under Stage G); nothing else here is.
+limiter, and a keyboard can be split into two layers. **Built so far:** G0,
+G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, and
+K2 (see *Built so far* under Stage K). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -448,6 +449,30 @@ stop and on `visibilitychange`, and the readout says when notes are being sent.
 Cheap once the clock exists, and it earns its place because of the picture:
 each step of an arpeggio over a held dyad or chord redraws the figure, so the
 screen cycles through the shapes of the chord's intervals in time.
+
+### Built so far
+
+**S5**: one key and scale for the page, C chromatic by default, in a *Key and
+tempo* section on the Sources tab.
+
+**S6**, all but an internal start and stop:
+- a tempo slider;
+- tap tempo, which also restarts the locked oscillators;
+- MIDI clock in, read as a mean over two dozen ticks, with Start restarting the
+  locked oscillators and Continue not;
+- a *Sync* on each oscillator, from four bars to a semiquaver, with triplets.
+
+**K2**, the quantiser, which takes the pitch after modulation to the key.
+- It has hysteresis of a tenth of a semitone and a rate limit of forty steps a
+  second, which is the S3 gate for this one event source.
+- It has a glide of its own.
+- It is page-wide, applying to both layers and every poly voice. Not per
+  routing: the plan's "a stage between any source and a pitch destination" would
+  need a note to count steps from, and the README says why that was not the
+  choice.
+
+`keytest.py` and `clocktest.py` hold them. K1's crossings, K3 to K5, and S3 in
+general are not built.
 
 ### K · verification
 

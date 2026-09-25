@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and G1's morph are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock) and K2 (the quantiser) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -70,6 +70,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
+| `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
+| `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1689,3 +1691,60 @@ will not shrink below 80 px and the reading is what gives. It now names the
 pair, "tri→saw", and leaves how far across to the slider. The morph's slider may
 shrink to 64 px, so "saw→sqr" fits. `morphtest.py` checks every reading against
 the right edge of its row, at every station and half-station.
+
+**The quantiser snaps the pitch after modulation, not the modulation.** It
+takes base, glide and every routing on the frequency together to the nearest
+note of the key, as a quantiser after a mixer of control voltages would. That
+is what makes a photocell on the pitch play a melody in the key. The cost is
+that a key you hold outside the scale is moved too. Quantising only the
+modulation was the alternative, but it needs a note to count scale steps from,
+and the base pitch is not the key's root unless someone has made it so. It is
+applied in the waveform only, to the dyad's pitch and to every poly voice in
+both layers, and not to the harmonograph, whose two hertz are a pendulum's. The
+right channel keeps its interval over a moved left.
+
+**The quantiser's hysteresis was half what its comment said.** The rule
+compares the distances to the two notes, so a margin of 0.1 between them is
+only a twentieth of a semitone past half-way. A vibrato of a twentieth resting
+on the line flicked between two notes nineteen times in two seconds. The margin
+is 0.2 now, a tenth of a semitone. `keytest.py` checks both sides: a twentieth
+does not step, and three twentieths does, on every swing. That second check is
+there because a quantiser that never moved would pass the first.
+
+**A tie in floating point is noise unless you say what a tie is.** C sharp in C
+major is exactly between C and D. It arrives as 60.999999999 or 61.000000001
+depending on how its hertz were rounded. The chord check used 277.18 Hz, a hair
+flat of C sharp, so it was nearer C whichever way ties went, and the tie rule
+was never tested. Distances within a billionth of a semitone are now a tie,
+which the lower note wins. The check computes C sharp exactly.
+
+**The clock must not write the rate of an oscillator it is not locking.** The
+first `clockStep` set every oscillator's rate each frame, from the slider for an
+unlocked one. So anything else that set a rate had it put back sixty times a
+second. `worklettest.py`'s "a 2 Hz oscillator goes round twice a second" found
+it, because it sets the rate directly. Now the clock writes only locked rates.
+`free` holds the slider's rate while an oscillator is locked, and goes back when
+it is let go. A setup code saves that rate, not the locked one, so a code opened
+at another tempo still says where the slider was.
+
+**A restart reaches the worklet as a count, not a flag.** The worklet steps its
+own copies of the oscillators, and the one message that already goes every frame
+carries their settings. A restart from Start or a tap increments `epoch`, and
+the worklet resets a phase when the count it is sent differs from its own. A
+flag would be lost if a frame was, and would restart on every frame that
+repeated it.
+
+**MIDI real-time bytes can arrive inside another message, and the parser said
+it handled that and did not.** It skipped a real-time byte where a status was
+expected. But it took a note's two data bytes blindly, so a clock tick between a
+note and its velocity became a velocity of 248, the tick was lost, and the real
+velocity was dropped as stray data. `clocktest.py`'s check for it was written
+for the clock and found the note. The data bytes are now read past real-time
+bytes, each taken as its own message.
+
+**The tempo from MIDI clock is a mean over two dozen ticks.** USB delivers them
+in bunches, and a tempo read from the last gap jumped by a tenth. The clock is
+taken as stopped half a second after its last tick, which hands the tempo back
+to the slider. Start restarts the locked oscillators and Continue does not.
+There is no internal start and stop yet. Nothing needs one until the score or
+the arpeggiator. Tap restarts the locked oscillators instead.

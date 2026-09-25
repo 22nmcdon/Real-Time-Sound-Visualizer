@@ -155,6 +155,29 @@ try {
     report.figures[figure] = { worst, finite };
   }
 
+  /* The quantiser, in the thread it runs in: 225 Hz is 0.39 of a semitone
+     above A3, so chromatic takes it to 220 exactly, and off leaves it. */
+  node.port.onmessage({ data: { routes: [] } });      // nothing else moving the pitch
+  node.port.onmessage({ data: { tone: { mode: "wave", shape: "sine", freq: 225, octaves: 0, qMask: 4095 } } });
+  for (let round = 0; round < 20; round++) node.process([], [out], {});
+  report.quantised = { on: node.core.pitch };
+  node.port.onmessage({ data: { tone: { qMask: 0 } } });
+  for (let round = 0; round < 5; round++) node.process([], [out], {});
+  report.quantised.off = node.core.pitch;
+
+  /* A restart counted on the main thread reaching the oscillators here: a
+     new count puts the phase back to nought, and the same count sent again
+     - which every frame does - leaves it alone. */
+  const lfoAt = (epoch) => ({ lfos: [{ shape: "sine", rate: 3, depth: 1, epoch }] });
+  node.port.onmessage({ data: lfoAt(0) });
+  for (let round = 0; round < 50; round++) node.process([], [out], {});
+  const before = node.lfos[0].phase;
+  node.port.onmessage({ data: lfoAt(1) });
+  const reset = node.lfos[0].phase;
+  for (let round = 0; round < 50; round++) node.process([], [out], {});
+  node.port.onmessage({ data: lfoAt(1) });
+  report.epoch = { before, reset, again: node.lfos[0].phase };
+
   report.posted = node.posted;
   report.ok = true;
 } catch (error) {

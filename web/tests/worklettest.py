@@ -109,6 +109,12 @@ with sync_playwright() as pw:
               str({k: round(v["worst"], 3) for k, v in report["figures"].items()}))
         check("and it posts its samples back rather than only playing them",
               report["posted"] > 0, str(report["posted"]))
+        q = report["quantised"]
+        check("the quantiser runs in the worklet: 225 Hz to A3, 220 exactly, and left alone when off",
+              abs(q["on"] - 220) < 1e-9 and abs(q["off"] - 225) < 1e-9, str(q))
+        e = report["epoch"]
+        check("a restart reaches the worklet's oscillators, and a repeated count does not restart them again",
+              e["before"] > 0.1 and e["reset"] == 0 and e["again"] > 0.1, str(e))
 
     print("\n--- where the module is served from ---")
     served = p.evaluate("""async () => {

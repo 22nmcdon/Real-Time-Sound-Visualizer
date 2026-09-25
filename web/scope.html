@@ -1611,6 +1611,59 @@ body[data-view="bench"] .dock  { order: 3; }
             <div id="srcDetail"></div>
           </div>
 
+          <!-- Beside the sources because it is what two of them answer to: the
+               quantiser takes whatever is on the pitch to the key, and a locked
+               oscillator takes its rate from the tempo. -->
+          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="sources">
+            <span class="menu-title">Key and tempo</span>
+            <!-- Two rows, not one: side by side in a Bench column the scale's menu
+                 was cut to "Chroma". -->
+            <div class="menu-row">
+              <label class="menu-label" for="keyRoot">Key</label>
+              <div class="grow"><select id="keyRoot" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="keyScale">Scale</label>
+              <div class="grow"><select id="keyScale" style="flex:1 1 auto"></select></div>
+            </div>
+            <label class="check"><input type="checkbox" id="quantise"> Quantise the generator's pitch</label>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="quantiseGlide">Glide</label>
+              <div class="grow">
+                <input type="range" id="quantiseGlide" min="0" max="300" value="0">
+                <span class="reading" id="quantiseGlideValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="tempo">Tempo</label>
+              <div class="grow">
+                <input type="range" id="tempo" min="30" max="300" value="120">
+                <span class="reading" id="tempoValue">120 BPM</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <span class="menu-label">Clock</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="tempoTap">Tap</button>
+                <span class="reading" id="clockFrom">internal</span>
+              </div>
+            </div>
+            <p class="menu-note">One key and one tempo for the page. <i>Quantise</i> takes the
+              generator's pitch, after everything patched onto it, to the nearest note of the key:
+              put a slow oscillator or the photocell on the frequency and it plays a melody in the
+              key instead of a siren. A key you play that is outside the scale is moved too, which
+              is what a quantiser does. It waits a tenth of a semitone past half-way before it
+              steps, and never steps faster than forty times a second, so a pitch resting between
+              two notes does not flicker. <i>Glide</i> slides between the steps. Chromatic, the
+              default, quantises to the nearest semitone. The harmonograph and the figures are not
+              quantised: a pendulum's two hertz is not a note.
+              <br><br>
+              An oscillator's <i>Sync</i>, on the Sources tab, locks its rate to the tempo in note
+              values. <i>Tap</i> sets the tempo from your taps and starts the locked oscillators on
+              the last one. A keyboard or a sequencer sending MIDI clock sets the tempo while it
+              runs, and its Start restarts them.</p>
+          </div>
+
           <div class="menu-group" data-fold="1" data-home="settings">
             <span class="menu-title">Presets</span>
             <div class="menu-row">
@@ -2400,6 +2453,23 @@ body[data-view="bench"] .dock  { order: 3; }
         oscillator's shape and rate are there, and a controller can be renamed or
         forgotten there. Choosing a source also makes every control it is on, on every
         tab, draw its sweep.</span></li>
+
+      <li><b>Key, tempo and the quantiser</b>
+        <span>The <i>Key and tempo</i> section, on the Sources tab, is one key, one scale and one
+        tempo for the whole page. <i>Quantise the generator's pitch</i> takes the pitch, after
+        everything patched onto it, to the nearest note of the key, so a slow oscillator or the
+        photocell on the frequency plays a melody in D dorian rather than a siren. A key you
+        play outside the scale is moved too, and a note exactly between two goes down.
+        It waits a tenth of a semitone past half-way before it steps, and never steps more than
+        forty times a second, so a pitch resting between two notes does not flicker.
+        <i>Glide</i>, behind the section's &ctdot;, slides between steps. The harmonograph and
+        the figures are not quantised.
+        <br><br>
+        An oscillator's <i>Sync</i> locks its rate to the tempo in note values, from four bars to
+        a semiquaver, with triplets. <i>Tap</i> sets the tempo from the last four taps and starts
+        the locked oscillators on the beat you tapped. A keyboard or sequencer sending MIDI clock
+        sets the tempo while it runs, and hands it back half a second after it stops. Its
+        <i>Start</i> restarts the locked oscillators, and <i>Continue</i> does not.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -2977,6 +3047,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
+                  "keyGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
+                  "tempo", "tempoValue", "tempoTap", "clockFrom",
                   "srcGroup", "srcGrid", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
@@ -3340,9 +3412,145 @@ const TWO_PI = Math.PI * 2;
 /* Two low-frequency oscillators, whose whole job is to make the picture move.
    Each is a phase, a shape and somewhere to point. */
 const lfos = [
-  { shape: "sine", rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
-  { shape: "sine", rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
+  { shape: "sine", rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0, free: 0.2, sync: "", epoch: 0 },
+  { shape: "sine", rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0, free: 0.5, sync: "", epoch: 0 },
 ];
+/* `rate` is what the oscillator runs at, and what is posted to the worklet
+   every frame. While it is locked to the clock (`sync`, a note value, ""
+   for free) `clockStep` writes the rate from the tempo, and `free` keeps
+   the Rate slider's for when it is let go. Unlocked, the clock does not
+   touch it: the first version wrote `free` into `rate` every frame, and
+   anything that set a rate directly - a test, or any later code - had it
+   put back sixty times a second.
+   `epoch` counts restarts: the worklet steps its own copies, and a phase
+   reset has to reach them through the one message that already goes every
+   frame rather than a second channel of its own. */
+
+/* --- the page's key and its clock (S5, S6) -----------------------------------
+   One key and scale for the page, and one tempo, because the quantiser, the
+   score and the arpeggiator would each otherwise have their own and they
+   would disagree within a week. Chromatic by default, which quantises to
+   the nearest semitone and nothing more. */
+const SCALES = [
+  ["chromatic", "Chromatic", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
+  ["major", "Major", [0, 2, 4, 5, 7, 9, 11]],
+  ["minor", "Minor", [0, 2, 3, 5, 7, 8, 10]],
+  ["dorian", "Dorian", [0, 2, 3, 5, 7, 9, 10]],
+  ["phrygian", "Phrygian", [0, 1, 3, 5, 7, 8, 10]],
+  ["lydian", "Lydian", [0, 2, 4, 6, 7, 9, 11]],
+  ["mixolydian", "Mixolydian", [0, 2, 4, 5, 7, 9, 10]],
+  ["locrian", "Locrian", [0, 1, 3, 5, 6, 8, 10]],
+  ["harmonic", "Harmonic minor", [0, 2, 3, 5, 7, 8, 11]],
+  ["pentatonic", "Major pentatonic", [0, 2, 4, 7, 9]],
+  ["minorpent", "Minor pentatonic", [0, 3, 5, 7, 10]],
+  ["blues", "Blues", [0, 3, 5, 6, 7, 10]],
+  ["whole", "Whole tone", [0, 2, 4, 6, 8, 10]],
+];
+const KEY_NAMES = ["C", "C\u266f", "D", "E\u266d", "E", "F", "F\u266f", "G", "A\u266d", "A", "B\u266d", "B"];
+
+/* The key as the twelve bits the generator's quantiser reads: bit n is
+   pitch class n, C being nought, with the root already added in. */
+function keyMask(root, scale) {
+  const found = SCALES.find(([id]) => id === scale) || SCALES[0];
+  let mask = 0;
+  for (const degree of found[2]) mask |= 1 << ((root + degree) % 12);
+  return mask;
+}
+
+/* Note values an oscillator can lock to, as beats a cycle (a beat is a
+   crotchet, four to the bar). */
+const LFO_SYNC = [
+  ["", "Free", 0], ["4", "4 bars", 16], ["2", "2 bars", 8], ["1", "1 bar", 4],
+  ["1/2", "1/2", 2], ["1/4", "1/4", 1], ["1/8", "1/8", 0.5], ["1/16", "1/16", 0.25],
+  ["1/4t", "1/4 triplet", 2 / 3], ["1/8t", "1/8 triplet", 1 / 3],
+];
+const syncBeats = (sync) => { const s = LFO_SYNC.find(([id]) => id === sync); return s ? s[2] : 0; };
+
+const transport = {
+  bpm: 120,          // the tempo in force: the slider's, or the MIDI clock's
+  set: 120,          // the slider's, kept while a MIDI clock is overriding it
+  from: "internal",
+  ticks: [],         // recent MIDI clock ticks, in milliseconds
+  taps: [],          // recent taps, in milliseconds
+};
+// A MIDI clock that has not ticked for this long has stopped, and the tempo
+// goes back to the slider's.
+const CLOCK_TIMEOUT_MS = 500;
+
+/* A tick of MIDI clock, 24 to the crotchet. The tempo is the mean of the
+   last two dozen gaps rather than the last one: USB MIDI delivers ticks in
+   bunches, and a tempo read from one gap jumps by a tenth. */
+function clockTick(at) {
+  const ticks = transport.ticks;
+  if (ticks.length && at - ticks[ticks.length - 1] > CLOCK_TIMEOUT_MS) ticks.length = 0;
+  ticks.push(at);
+  if (ticks.length > 25) ticks.shift();
+  if (ticks.length >= 3) {
+    const gap = (ticks[ticks.length - 1] - ticks[0]) / (ticks.length - 1);
+    if (gap > 0) transport.bpm = Math.max(20, Math.min(400, 60000 / (gap * 24)));
+    transport.from = "midi";
+  }
+}
+
+// A restart, from a MIDI Start or a tap: every locked oscillator back to the
+// top of its cycle, so the sweep lands on the beat it was started on.
+function clockRestart() {
+  for (const lfo of lfos) {
+    if (!lfo.sync) continue;
+    lfo.phase = 0;
+    lfo.epoch++;
+  }
+}
+
+/* Tap tempo: the mean of the gaps between the last four taps, and a pause
+   of two seconds starts again. Each tap after the first also restarts the
+   locked oscillators, on the tap. */
+function clockTap(at) {
+  const taps = transport.taps;
+  if (taps.length && at - taps[taps.length - 1] > 2000) taps.length = 0;
+  taps.push(at);
+  if (taps.length > 4) taps.shift();
+  if (taps.length >= 2) {
+    const gap = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
+    setTempo(Math.round(60000 / gap));
+    clockRestart();
+  }
+}
+
+function setTempo(bpm) {
+  transport.set = Math.max(30, Math.min(300, Math.round(bpm)));
+  if (transport.from === "internal") transport.bpm = transport.set;
+  if (el.tempo) {
+    el.tempo.value = String(transport.set);
+    syncClockPanel();
+  }
+}
+
+/* Once a frame: whether a MIDI clock is still running, and every locked
+   oscillator's rate from the tempo. Before the oscillators are stepped. */
+function clockStep(now) {
+  if (transport.from === "midi" && (transport.ticks.length === 0
+      || now - transport.ticks[transport.ticks.length - 1] > CLOCK_TIMEOUT_MS)) {
+    transport.from = "internal";
+    transport.bpm = transport.set;
+    transport.ticks.length = 0;
+  }
+  for (const lfo of lfos) {
+    const beats = syncBeats(lfo.sync);
+    if (beats > 0) lfo.rate = transport.bpm / 60 / beats;
+  }
+  // The panel follows a MIDI clock arriving, drifting and going, but only
+  // when there is something new to say.
+  const said = transport.from + Math.round(transport.bpm);
+  if (said !== transport.said && typeof syncClockPanel === "function" && el.tempo) {
+    transport.said = said;
+    syncClockPanel();
+    for (let i = 0; i < lfos.length; i++) {
+      const reading = document.getElementById("lfoRateValue" + i);
+      if (reading) reading.textContent = lfoRateReading(lfos[i]);
+    }
+  }
+}
 
 /* --- the modulation matrix --------------------------------------------------
    A source, a destination and a depth, in a list. What this replaces was a
@@ -3588,6 +3796,7 @@ function applyModMatrix(frame, elapsed) {
      the generator's loop was the only per-sample loop there was; once that
      loop can be in a worklet instead, "is the source a tone" stops being the
      question and "is anyone else already stepping these" starts being it. */
+  clockStep(performance.now());
   if (lfoDriver() === "main") {
     assertLfoDriver("main");
     const perSecond = 1000 / Math.max(1, elapsed);
@@ -4595,11 +4804,21 @@ function midiRegisterKey() {
    valid message into a note that never arrives. */
 let midiRunning = 0;
 
-function midiBytes(data) {
+/* A real-time message: no data, and it may arrive in the middle of another
+   message. Clock is the tempo; Start restarts the locked oscillators and
+   Continue does not; Stop needs nothing, because the clock stopping ticking
+   is what hands the tempo back. */
+function midiRealtime(status, at) {
+  const when = at === undefined ? performance.now() : at;
+  if (status === 0xf8) clockTick(when);
+  else if (status === 0xfa) clockRestart();
+}
+
+function midiBytes(data, at) {
   for (let i = 0; i < data.length;) {
     let status = data[i];
 
-    if (status >= 0xf8) { i++; continue; }          // clock, start, stop: no data
+    if (status >= 0xf8) { midiRealtime(status, at); i++; continue; }
     if (status >= 0x80) {
       i++;
       // A channel message sets running status; a system common one cancels it.
@@ -4610,12 +4829,27 @@ function midiBytes(data) {
     }
 
     const kind = status & 0xf0;
-    if (kind === 0xc0 || kind === 0xd0) { i += 1; continue; }     // one data byte
     if (kind < 0x80) { i += 1; continue; }
 
-    if (i + 1 >= data.length) return;               // truncated: half a message is none
-    const a = data[i], b = data[i + 1];
-    i += 2;
+    /* The data bytes, taking any real-time byte found among them as a
+       message of its own and the running status left alone. The first
+       version took the next two bytes whatever they were, and a clock tick
+       between a note and its velocity became a velocity of 248, the tick was
+       lost, and the real velocity was dropped as stray data. */
+    const need = kind === 0xc0 || kind === 0xd0 ? 1 : 2;
+    const got = [];
+    while (got.length < need && i < data.length) {
+      const d = data[i];
+      if (d >= 0xf8) { midiRealtime(d, at); i++; continue; }
+      if (d >= 0x80) break;                         // a new status: this one ended short
+      got.push(d); i++;
+    }
+    if (got.length < need) {                        // truncated: half a message is none
+      if (i >= data.length) return;
+      continue;
+    }
+    if (need === 1) continue;                       // program change, pressure: unused
+    const a = got[0], b = got[1];
 
     /* Every channel, rather than one. The Electro sends its two manuals on
        different channels and there is nothing here that wants them apart. */
@@ -4653,7 +4887,7 @@ function midiWire() {
   if (!inputs) return;
 
   const take = (port) => {
-    port.onmidimessage = (event) => midiBytes(event.data);
+    port.onmidimessage = (event) => midiBytes(event.data, event.timeStamp);
     midi.ports.push(port.name || "input");
   };
   // A MIDIInputMap is map-like rather than a Map, and old implementations
@@ -5192,6 +5426,15 @@ function makeGeneratorCore(rate, slots, lfos) {
        old behaviour is reproduced exactly rather than closely. */
     glideMs: 0,
 
+    /* The quantiser (K2), page-wide rather than per layer: the pitch classes
+       of the page's key and scale as twelve bits, C the lowest, and nought
+       for off. The root is folded in on the main thread, so this only ever
+       asks "is this note allowed". `qGlideMs` is its portamento between
+       steps, which is a different glide from `glideMs`: that one smooths
+       the base pitch, this one the steps the quantiser takes. */
+    qMask: 0,
+    qGlideMs: 0,
+
     /* A chord, or null. Null is every mode this generator has always had: two
        channels from one pitch and an interval. A list is POLY - every held
        note sounding, each with its own envelope, and each with a role saying
@@ -5266,6 +5509,64 @@ function makeGeneratorCore(rate, slots, lfos) {
      drawbars' 16' and 5 1/3' bars repeat once every two, and wrapped at one
      their sines fold over into something else (see `waveAt`). */
   const PHASE_WRAP = 2 * TWO_PI;
+
+  /* The quantiser: a pitch in, the nearest note of the key out, in hertz.
+     Worked in MIDI note numbers, where a semitone is one, and applied to
+     the pitch AFTER modulation - base, glide and every routing on the
+     frequency together - which is what a quantiser after a mixer of control
+     voltages does. So a key the player holds that is outside the scale is
+     moved too, and that is a decision: the alternative, quantising only the
+     modulation, needs a note to count scale steps from, and the base pitch
+     is not the key's root unless someone has made it so.
+
+     Two defences against chatter, because the thing feeding it is usually
+     a slow source - a photocell, an oscillator at a fraction of a hertz -
+     and a pitch that sits on the line between two notes would otherwise
+     flick between them as fast as noise can. A step is taken only once the
+     pitch is a tenth of a semitone past the half-way point (hysteresis), and
+     never sooner than 25 ms after the last one (a rate limit, forty steps a
+     second). The plan's S3 asks both of any event source, and a quantised
+     pitch is one. */
+  /* In the difference of the two distances, so twice the distance past
+     half-way: 0.2 is a tenth of a semitone. It was 0.1 at first, which is a
+     twentieth, and a vibrato of a twentieth resting on the line flicked
+     between the two notes nineteen times in two seconds. */
+  const Q_HYSTERESIS = 0.2;
+  const qHold = Math.max(1, Math.round(0.025 * rate));
+  let qGlide = 1, qMaskNow = 0;
+  const quantiserFor = () => ({ note: null, at: 0, held: 0 });
+  const qA = quantiserFor();
+  let lastHz = 0;            // what layer A's dyad last played, for the tests
+
+  function nearestAllowed(m, mask) {
+    let best = null, gap = Infinity;
+    const from = Math.floor(m) - 6;
+    for (let n = from; n <= from + 13; n++) {
+      if (!(mask & (1 << (((n % 12) + 12) % 12)))) continue;
+      const d = Math.abs(m - n);
+      /* Ties go to the lower note, and a tie is within a billionth of a
+         semitone: a key exactly between two notes of the scale - C sharp in
+         C major - arrives as 60.999999999 or 61.000000001 depending on how
+         its hertz were rounded, and which way it went would be noise. */
+      if (d < gap - 1e-9) { gap = d; best = n; }
+    }
+    return best;
+  }
+
+  function quantise(q, hz, mask) {
+    if (!(hz > 0)) return hz;
+    const m = 69 + 12 * Math.log2(hz / 440);
+    const want = nearestAllowed(m, mask);
+    if (want === null) return hz;
+    if (q.note === null) { q.note = want; q.at = want; q.held = 0; }
+    else if (want !== q.note && q.held >= qHold
+             && Math.abs(m - want) + Q_HYSTERESIS < Math.abs(m - q.note)) {
+      q.note = want; q.held = 0;
+    }
+    q.held++;
+    q.at += (q.note - q.at) * qGlide;
+    return 440 * Math.pow(2, (q.at - 69) / 12);
+  }
 
   const wire = makeWireframe();
   const genMod = new Float32Array(slots);
@@ -5382,7 +5683,11 @@ function makeGeneratorCore(rate, slots, lfos) {
     mix[0] = 0; mix[1] = 0; mix[2] = 0; mix[3] = 0;
     for (let v = 0; v < voices.length; v++) {
       const voice = voices[v];
-      const f = voice.freq * bend;
+      // Each voice its own quantiser, so a chord's notes each land on the key
+      // and each glide on their own.
+      const f = qMaskNow
+        ? quantise(voice.q || (voice.q = quantiserFor()), voice.freq * bend, qMaskNow)
+        : voice.freq * bend;
       voice.phase += TWO_PI * f * dt;
       if (voice.phase >= PHASE_WRAP) voice.phase -= PHASE_WRAP;
       if (voice.phase < 0) voice.phase += PHASE_WRAP;
@@ -5415,6 +5720,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     const poly = tone.voices !== null;
     const layered = toneB.voices !== null;
     const roleGlide = poleFor(4);
+    // The quantiser's settings are layer A's and apply to both layers, like
+    // the modulation: one key for the page.
+    qMaskNow = tone.qMask;
+    qGlide = tone.qGlideMs > 0 ? poleFor(tone.qGlideMs) : 1;
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
     // loop is `pow` forty-four thousand times a second for one answer.
@@ -5504,8 +5813,12 @@ function makeGeneratorCore(rate, slots, lfos) {
         sound(voices, tone, bars, morph, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide);
         l = mix[0]; r = mix[1]; hl = mix[2]; hr = mix[3];
       } else {
-        phaseL += TWO_PI * freq * dt;
-        phaseR += TWO_PI * freq * ratio * dt;
+        // Quantised here, in the waveform only: the harmonograph's pitch is a
+        // pendulum's, a couple of hertz, and a figure has none.
+        const hz = qMaskNow ? quantise(qA, freq, qMaskNow) : freq;
+        lastHz = hz;
+        phaseL += TWO_PI * hz * dt;
+        phaseR += TWO_PI * hz * ratio * dt;
         if (phaseL >= PHASE_WRAP) phaseL -= PHASE_WRAP;
         if (phaseR >= PHASE_WRAP) phaseR -= PHASE_WRAP;
         if (phaseR < 0) phaseR += PHASE_WRAP;
@@ -5517,8 +5830,8 @@ function makeGeneratorCore(rate, slots, lfos) {
            deep enough modulation of the ratio can invert it, and clamped
            because past half the sample rate the correction windows overlap and
            there is nothing left to band-limit anyway. */
-        const stepL = Math.abs(freq) / rate;
-        const stepR = Math.abs(freq * ratio) / rate;
+        const stepL = Math.abs(hz) / rate;
+        const stepR = Math.abs(hz * ratio) / rate;
 
         l = tone.shape === "noise" ? amp * (Math.random() * 2 - 1)
                                    : amp * waveAt(tone.shape, phaseL, stepL, bars, morph);
@@ -5630,6 +5943,8 @@ function makeGeneratorCore(rate, slots, lfos) {
       return gated ? env.level : 1;
     },
     get gated() { return gated; },
+    // The pitch layer A's waveform last played, quantised or not.
+    get pitch() { return lastHz; },
     // What is sounding, for the tests and nothing else: note, whether held,
     // and where its gains have got to.
     get voices() {
@@ -5667,6 +5982,7 @@ function generatorProcessor() {
       this.lfos = (setup.lfos || []).map((lfo) => ({
         shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
         phase: lfo.phase || 0, held: lfo.held || 0, value: lfo.value || 0,
+        epoch: lfo.epoch || 0,
       }));
       this.core = makeGeneratorCore(sampleRate, setup.slots || 8, this.lfos);
       if (setup.gated) this.core.setGated(true);
@@ -5706,6 +6022,13 @@ function generatorProcessor() {
             this.lfos[i].shape = message.lfos[i].shape;
             this.lfos[i].rate = message.lfos[i].rate;
             this.lfos[i].depth = message.lfos[i].depth;
+            // A restart on the main thread, counted rather than flagged, so a
+            // frame that goes missing cannot lose one.
+            const epoch = message.lfos[i].epoch;
+            if (epoch !== undefined && epoch !== this.lfos[i].epoch) {
+              this.lfos[i].epoch = epoch;
+              this.lfos[i].phase = 0;
+            }
           }
         }
         if (message.reswing) this.core.reswing();
@@ -5939,7 +6262,8 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
         processorOptions: {
           slots: GEN_DESTS.length,
-          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
+                                     epoch: lfo.epoch })),
           tone: JSON.parse(JSON.stringify(core.tone)),
           toneB: JSON.parse(JSON.stringify(core.toneB)),
           routes: plainRoutes(),
@@ -6015,7 +6339,8 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
       if (!node) return;
       node.port.postMessage({
         routes: plainRoutes(),
-        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth })),
+        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
+                                   epoch: lfo.epoch })),
       });
     },
   };
@@ -7558,6 +7883,11 @@ async function makeBandSource(data, label) {
 const state = {
   source: null,
   running: true,
+  // The page's key (S5) and the quantiser that reads it (K2).
+  keyRoot: 0,                // C
+  keyScale: "chromatic",
+  quantise: false,
+  quantiseGlide: 0,          // milliseconds
   mode: "auto",              // auto | normal | single
   armed: false,              // single, waiting for its edge
   level: 0,
@@ -11702,6 +12032,13 @@ function selectSource(id) {
   paintRoutings();
 }
 
+/* What an oscillator's rate reading says: its hertz, and the note value it
+   is locked to when it is. */
+function lfoRateReading(lfo) {
+  const sync = LFO_SYNC.find(([id]) => id === lfo.sync);
+  return lfo.rate.toFixed(2) + " Hz" + (sync && sync[0] ? " \u00b7 " + sync[1] : "");
+}
+
 function buildSourceDetail() {
   if (!el.srcDetail) return;
   if (!MOD_SOURCES.has(selectedSource)) selectedSource = "lfo1";
@@ -11730,11 +12067,18 @@ function buildSourceDetail() {
         + LFO_SHAPES.map(([v, t]) => '<option value="' + v + '"'
             + (v === lfo.shape ? " selected" : "") + ">" + t + "</option>").join("")
         + "</select></div></div>"
+        + '<div class="menu-row"><label class="menu-label" for="lfoSync' + lfoIndex
+        + '">Sync</label><div class="grow"><select id="lfoSync' + lfoIndex
+        + '" style="flex:1 1 auto">'
+        + LFO_SYNC.map(([v, t]) => '<option value="' + v + '"'
+            + (v === lfo.sync ? " selected" : "") + ">" + t + "</option>").join("")
+        + "</select></div></div>"
         + '<div class="menu-row"><label class="menu-label" for="lfoRate' + lfoIndex
         + '">Rate</label><div class="grow"><input type="range" id="lfoRate' + lfoIndex
-        + '" min="1" max="800" value="' + Math.round(lfo.rate * 100) + '">'
-        + '<span class="reading" id="lfoRateValue' + lfoIndex + '">' + lfo.rate.toFixed(2)
-        + " Hz</span></div></div>" : "")
+        + '" min="1" max="800" value="' + Math.round((lfo.sync ? lfo.free : lfo.rate) * 100) + '"'
+        + (lfo.sync ? " disabled" : "") + ">"
+        + '<span class="reading" id="lfoRateValue' + lfoIndex + '">' + lfoRateReading(lfo)
+        + "</span></div></div>" : "")
     + (cc ? '<div class="menu-row"><label class="menu-label" for="srcDetail-name">Name</label>'
         + '<div class="grow"><input type="text" class="cc-name" id="srcDetail-name" value="'
         + escapeText(cc.name) + '"><button type="button" class="link-btn caps" '
@@ -11770,8 +12114,19 @@ function buildSourceDetail() {
       .addEventListener("change", (e) => { lfo.shape = e.target.value; });
     const rate = document.getElementById("lfoRate" + lfoIndex);
     rate.addEventListener("input", () => {
-      lfo.rate = Number(rate.value) / 100;
-      document.getElementById("lfoRateValue" + lfoIndex).textContent = lfo.rate.toFixed(2) + " Hz";
+      lfo.free = Number(rate.value) / 100;
+      if (!lfo.sync) lfo.rate = lfo.free;
+      document.getElementById("lfoRateValue" + lfoIndex).textContent = lfoRateReading(lfo);
+    });
+    document.getElementById("lfoSync" + lfoIndex).addEventListener("change", (e) => {
+      if (!lfo.sync) lfo.free = lfo.rate;        // what to go back to
+      lfo.sync = e.target.value;
+      if (!lfo.sync) lfo.rate = lfo.free;
+      clockStep(performance.now());
+      // Locked, it starts on the beat rather than wherever it had got to.
+      if (lfo.sync) { lfo.phase = 0; lfo.epoch++; }
+      rate.disabled = !!lfo.sync;
+      document.getElementById("lfoRateValue" + lfoIndex).textContent = lfoRateReading(lfo);
     });
   }
   if (cc) {
@@ -12373,6 +12728,8 @@ const DEFAULTS = {
   // existed names its destination with the old enum's word.
   l0d: "none", l0s: "sine", l0r: 20, l0a: 50,
   l1d: "none", l1s: "sine", l1r: 50, l1a: 30,
+  // Additive, so a code from before them gets these and no version bump.
+  l0y: "", l1y: "", keyRoot: 0, keyScale: "chromatic", quant: false, qGlide: 0, bpm: 120,
   mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
@@ -12455,9 +12812,16 @@ function snapshot() {
     spinZ: Number(el.spinZ.value), spinRate: Number(el.spinRate.value),
     depth: Number(el.depth.value),
     l0s: lfos[0].shape,
-    l0r: Math.round(lfos[0].rate * 100), l0a: Math.round(lfos[0].depth * 100),
+    l0r: Math.round((lfos[0].sync ? lfos[0].free : lfos[0].rate) * 100),
+    l0a: Math.round(lfos[0].depth * 100),
     l1s: lfos[1].shape,
-    l1r: Math.round(lfos[1].rate * 100), l1a: Math.round(lfos[1].depth * 100),
+    l1r: Math.round((lfos[1].sync ? lfos[1].free : lfos[1].rate) * 100),
+    l1a: Math.round(lfos[1].depth * 100),
+    // The slider's rate, not the locked one: a code opened at another tempo
+    // should still say where the slider was.
+    l0y: lfos[0].sync, l1y: lfos[1].sync,
+    keyRoot: state.keyRoot, keyScale: state.keyScale, quant: state.quantise,
+    qGlide: state.quantiseGlide, bpm: transport.set,
     mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
@@ -12613,9 +12977,18 @@ function restore(partial) {
   [0, 1].forEach((i) => {
     const lfo = lfos[i], key = "l" + i;
     lfo.shape = s[key + "s"];
-    lfo.rate = s[key + "r"] / 100;
+    lfo.free = lfo.rate = s[key + "r"] / 100;
     lfo.depth = s[key + "a"] / 100;
+    lfo.sync = syncBeats(s[key + "y"]) > 0 ? s[key + "y"] : "";
   });
+  state.keyRoot = Number.isInteger(s.keyRoot) ? ((s.keyRoot % 12) + 12) % 12 : 0;
+  state.keyScale = SCALES.some(([id]) => id === s.keyScale) ? s.keyScale : "chromatic";
+  state.quantise = s.quant === true;
+  state.quantiseGlide = Math.max(0, Math.min(300, Number(s.qGlide) || 0));
+  setTempo(Number(s.bpm) || 120);
+  clockStep(performance.now());
+  syncKeyPanel();
+  syncQuantiser();
 
   /* The routing list when the setup has one, and the old enum when it does
      not. Checked against what was actually passed in rather than the merged
@@ -13223,6 +13596,8 @@ function generatorFromPanel(set) {
   set("shape", el.shape.value);
   set("bars", parseRegistration(el.bars.value));
   set("morph", Number(el.morph.value) / 100);
+  set("qMask", state.quantise ? keyMask(state.keyRoot, state.keyScale) : 0);
+  set("qGlideMs", state.quantiseGlide);
   set("mode", el.genMode.value);
   set("interval", Number(el.interval.value));
   set("octaves", 0);
@@ -13576,6 +13951,45 @@ for (let k = 0; k < 9; k++) {
     syncBars();
   });
 }
+/* The key and tempo section. */
+el.keyRoot.innerHTML = KEY_NAMES.map((name, i) => '<option value="' + i + '">' + name + "</option>").join("");
+el.keyScale.innerHTML = SCALES.map(([id, name]) => '<option value="' + id + '">' + name + "</option>").join("");
+
+// What the generator is told: the key's twelve bits, or nought while the
+// quantiser is off, and its glide.
+function syncQuantiser() {
+  const mask = state.quantise ? keyMask(state.keyRoot, state.keyScale) : 0;
+  genSet("qMask", mask);
+  genSet("qGlideMs", state.quantiseGlide);
+}
+
+function syncClockPanel() {
+  const midiClock = transport.from === "midi";
+  el.tempo.disabled = midiClock;
+  el.tempoValue.textContent = Math.round(midiClock ? transport.bpm : transport.set) + " BPM";
+  el.clockFrom.textContent = midiClock ? "from MIDI clock" : "internal";
+}
+
+function syncKeyPanel() {
+  el.keyRoot.value = String(state.keyRoot);
+  el.keyScale.value = state.keyScale;
+  el.quantise.checked = state.quantise;
+  el.quantiseGlide.value = String(state.quantiseGlide);
+  el.quantiseGlideValue.textContent = state.quantiseGlide > 0 ? state.quantiseGlide + " ms" : "off";
+  syncClockPanel();
+}
+
+el.keyRoot.addEventListener("change", () => { state.keyRoot = Number(el.keyRoot.value); syncQuantiser(); });
+el.keyScale.addEventListener("change", () => { state.keyScale = el.keyScale.value; syncQuantiser(); });
+el.quantise.addEventListener("change", () => { state.quantise = el.quantise.checked; syncQuantiser(); });
+el.quantiseGlide.addEventListener("input", () => {
+  state.quantiseGlide = Number(el.quantiseGlide.value);
+  el.quantiseGlideValue.textContent = state.quantiseGlide > 0 ? state.quantiseGlide + " ms" : "off";
+  syncQuantiser();
+});
+el.tempo.addEventListener("input", () => setTempo(Number(el.tempo.value)));
+el.tempoTap.addEventListener("click", () => clockTap(performance.now()));
+
 el.morph.addEventListener("input", () => {
   const at = Number(el.morph.value) / 100;
   el.morphValue.textContent = morphReading(at);
@@ -14446,6 +14860,8 @@ const SEARCH_SYNONYMS = {
   drawbar: "drawbars controllers controller", hammond: "drawbars", organ: "drawbars",
   tonewheel: "drawbars", sawtooth: "saw", registration: "drawbars",
   timbre: "morph shape drawbars", blend: "morph", crossfade: "morph",
+  quantize: "quantise", bpm: "tempo", scale: "key", sync: "tempo clock sync",
+  metronome: "tempo", tap: "tempo tap",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

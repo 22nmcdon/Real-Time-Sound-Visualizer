@@ -41,6 +41,8 @@ SUITES = [
     ("pedal", [sys.executable, "pedaltest.py"], "the sustain pedal: holding notes, and a source"),
     ("drawbar", [sys.executable, "drawbartest.py"], "the saw on the menu, and the drawbars: footages, Nyquist, the level law, layers"),
     ("morph", [sys.executable, "morphtest.py"], "the morph: its stations, its crossfade, the fundamental it keeps, layers, setups"),
+    ("key", [sys.executable, "keytest.py"], "the page's key and the quantiser: only the key's notes, no chatter, the rate limit, chords"),
+    ("clock", [sys.executable, "clocktest.py"], "the clock: locked oscillators, tap tempo, MIDI clock, Start and Continue"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),
