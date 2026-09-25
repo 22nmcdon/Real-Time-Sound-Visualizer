@@ -533,8 +533,10 @@ with sync_playwright() as pw:
 
     print("\n--- the bench with a keyboard plugged in ---")
     # The one list on the bench whose length the page does not decide: nine
-    # drawbars, a swell pedal and a rotary switch is an ordinary evening, and
-    # the side column has about twenty pixels of slack.
+    # drawbars, a swell pedal and a rotary switch is an ordinary evening. The
+    # side column used to hold the oscillators under the chips and had about
+    # twenty pixels of slack, so the chip rail was made to scroll; the
+    # oscillators are on the Sources tab now and the chips have the room.
     p.evaluate("""() => {
       setView('bench');
       for (let n = 16; n <= 24; n++) midiLearn(n);
@@ -554,26 +556,33 @@ with sync_playwright() as pw:
     }""")
     check("eleven controllers do not make either bench panel scroll",
           room["side"] <= 0 and room["body"] <= 0, str(room))
-    check("the chip rail gives instead, and still holds them all",
-          room["rail"] is True and room["chips"] >= 14, str(room))
+    check("and the chip rail holds them all", room["chips"] >= 14, str(room))
 
-    # Behind the dots is not the same as gone: renaming a drawbar is the whole
-    # reason those rows exist, and on the bench the dots are the only way to
-    # them.
-    p.locator("#midiGroup .more-dots").click()
-    p.wait_for_timeout(300)
+    # Renaming a drawbar is the whole reason those rows exist. They live in
+    # Settings, under MIDI, in plain view since the controllers stopped being
+    # rows behind the Keyboard section's dots - and the Sources tab renames
+    # the one selected.
+    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(200)
     detail = p.evaluate("""() => {
-      const field = document.querySelector('.over-body #ccName16');
+      const field = document.getElementById('ccName16');
+      const reachable = !!field && field.offsetWidth > 0;
       if (field) { field.value = 'Bottom drawbar'; field.dispatchEvent(new Event('input')); }
-      return { title: document.querySelector('.over-title').textContent,
-               reachable: !!field && field.offsetWidth > 0,
-               named: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label };
+      const out = { title: groupTitle(field.closest('.menu-group')), reachable,
+                    named: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label };
+      setMenuOpen(false);
+      setBenchTab('sources'); selectSource('cc.17');
+      const there = document.getElementById('srcDetail-name');
+      there.value = 'Second drawbar'; there.dispatchEvent(new Event('input'));
+      out.fromTab = MOD_SOURCES.get('cc.17').label;
+      out.listSays = document.getElementById('ccName17').value;
+      setBenchTab('play');
+      return out;
     }""")
-    p.keyboard.press("Escape")
-    p.wait_for_timeout(300)
-    check("the section's dots reach the controllers, and renaming works there",
-          detail["reachable"] is True and detail["named"] == "Bottom drawbar",
-          str(detail))
+    check("the controllers are in Settings, under MIDI, and renaming works there",
+          detail["reachable"] is True and detail["title"] == "MIDI"
+          and detail["named"] == "Bottom drawbar", str(detail))
+    check("and the Sources tab renames one too, and the list follows",
+          detail["fromTab"] == "Second drawbar" and detail["listSays"] == "Second drawbar", str(detail))
     p.evaluate("""() => {
       for (let n = 16; n <= 24; n++) midiForget(n);
       midiForget(11); midiForget(108); midiForget(77);

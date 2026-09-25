@@ -33,10 +33,11 @@ def close(a, b, tol=1e-6):
 
 
 def section(page, name):
+    # The section's tab brought forward: the rail names tasks, not sections,
+    # since the Bench became tabs.
     page.evaluate("""(want) => {
-      for (const button of document.querySelectorAll('#benchRail button')) {
-        if (button.textContent === want) { button.click(); return; }
-      }
+      const group = settingsGroups().find((g) => groupTitle(g) === want);
+      if (group) showBenchFor(group);
     }""", name)
     page.wait_for_timeout(180)
 
@@ -318,35 +319,30 @@ with sync_playwright() as pw:
     p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
     section(p, "Display")
 
-    print("\n--- and the oscillator panel agrees with the controls ---")
-    agree = p.evaluate("""() => {
+    # The Sources tab, where the oscillator's one-destination menu was. That
+    # menu had to stand down, disabled, once a source went to two places;
+    # a list of destinations has no such case - two are two rows.
+    print("\n--- and the Sources tab agrees with the controls ---")
+    p.evaluate("""() => {
+      setBenchTab('sources'); selectSource('lfo1');
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.42 }];
       touchRoutings();
-      return null;
     }"""); p.wait_for_timeout(350)
-    one = p.evaluate("""() => ({
-      dest: document.getElementById('lfoDest0').value,
-      disabled: document.getElementById('lfoDest0').disabled,
-      depth: document.getElementById('lfoDepth0').value,
-    })""")
-    check("a drag updates the oscillator's own destination menu",
-          one["dest"] == "view.rotate", str(one))
-    check("and its depth slider", one["depth"] == "42", str(one))
-
+    rows = lambda: p.evaluate("""() => Array.from(el.srcDetail.querySelectorAll('.mod-edit'))
+      .map((r) => [r.dataset.dest, r.querySelector('input').value])""")
+    one = rows()
+    check("a routing made anywhere is a row on the source's tab, with its depth",
+          one == [["view.rotate", "42"]], str(one))
     p.evaluate("""() => {
       state.modRoutings = [
         { sourceId: 'lfo1', destId: 'view.rotate', amount: 0.4 },
-        { sourceId: 'lfo1', destId: 'gen.freq', amount: 0.4 },
+        { sourceId: 'lfo1', destId: 'gen.freq', amount: -0.25 },
       ];
       touchRoutings();
     }"""); p.wait_for_timeout(300)
-    two = p.evaluate("""() => ({
-      disabled: document.getElementById('lfoDest0').disabled,
-      text: document.getElementById('lfoDest0').options[0].textContent,
-    })""")
-    check("past one destination it stops offering to replace them",
-          two["disabled"] is True, str(two))
-    check("and says how many there are", "2 destinations" in two["text"], str(two))
+    two = rows()
+    check("and two destinations are two rows, each at its own depth",
+          sorted(two) == [["gen.freq", "-25"], ["view.rotate", "40"]], str(two))
 
     p.screenshot(path=f"{SHOTS}/dual.png")
     check("no page errors", not bad, "; ".join(bad[:3]))

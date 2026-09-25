@@ -93,7 +93,7 @@ with sync_playwright() as pw:
     check("adding one patches it", p.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"],
           str(p.evaluate(ROUTES)))
     row = p.evaluate("""() => {
-      const line = document.querySelector('.mod-edit');
+      const line = document.querySelector('.over .mod-edit');
       const slider = line.querySelector('input[type=range]');
       return { name: line.querySelector('.mod-edit-name').textContent,
                kind: slider.type, value: slider.value,
@@ -108,15 +108,15 @@ with sync_playwright() as pw:
           "%s, %d offered of %d" % (row["name"], row["offered"], every))
 
     print("\n--- the slider is the depth ---")
-    p.locator(".mod-edit input[type=range]").fill("-80")
+    p.locator(".over .mod-edit input[type=range]").fill("-80")
     p.wait_for_timeout(250)
     check("dragging it sets the routing",
           abs(p.evaluate("() => state.modRoutings[0].amount") + 0.8) < 1e-6,
           str(p.evaluate("() => state.modRoutings[0].amount")))
     check("and the readout follows",
-          p.evaluate("() => document.querySelector('.mod-edit-val').textContent") == "-80%")
+          p.evaluate("() => document.querySelector('.over .mod-edit-val').textContent") == "-80%")
     # A keyboard gets this for nothing, which neither earlier design managed.
-    p.locator(".mod-edit input[type=range]").focus()
+    p.locator(".over .mod-edit input[type=range]").focus()
     p.keyboard.press("ArrowRight"); p.wait_for_timeout(200)
     check("arrows work on it because it is a real input",
           abs(p.evaluate("() => state.modRoutings[0].amount") + 0.79) < 1e-6,
@@ -130,7 +130,7 @@ with sync_playwright() as pw:
     while p.locator(".mod-add-one").count() > 0:
         p.locator(".mod-add-one").first.click(); p.wait_for_timeout(200)
     many = p.evaluate("""() => ({
-      rows: document.querySelectorAll('.mod-edit').length,
+      rows: document.querySelectorAll('.over .mod-edit').length,
       add: document.querySelectorAll('.mod-add-one').length,
       routings: state.modRoutings.length,
     })""")
@@ -140,7 +140,7 @@ with sync_playwright() as pw:
     check("with nothing left to offer", many["add"] == 0, str(many))
 
     before = p.evaluate(ROUTES)
-    p.locator(".mod-edit .mod-edit-off").first.click(); p.wait_for_timeout(250)
+    p.locator(".over .mod-edit .mod-edit-off").first.click(); p.wait_for_timeout(250)
     after = p.evaluate(ROUTES)
     # One fewer, and the one whose cross was pressed - rather than a count,
     # which said two and meant "the three that were here when this was
@@ -178,7 +178,11 @@ with sync_playwright() as pw:
     check("and the button counts them", shape["pips"] == 3, str(shape["pips"]))
 
     print("\n--- dragging a chip is the quick way ---")
-    p.evaluate("() => { state.modRoutings = []; paintRoutings(); }"); p.wait_for_timeout(250)
+    # From the chips beside the screen onto a control on another tab than
+    # the one the patch began on: the chips stay in the side column on every
+    # tab so that this works wherever the control is.
+    p.evaluate("() => { state.modRoutings = []; setBenchTab('picture'); paintRoutings(); }")
+    p.wait_for_timeout(350)
     chip = p.locator('.mod-chip[data-source="lfo1"]')
     target = p.locator('[data-mod-dest="view.rotate"]')
     cb, tb = chip.bounding_box(), target.bounding_box()
@@ -196,6 +200,7 @@ with sync_playwright() as pw:
     # is that ALL of a section's secondary content moves and none of it stays
     # behind - not that the filter has two paragraphs, which is a fact about
     # today's prose and changed the first time a paragraph was added.
+    p.evaluate("() => setBenchTab('shape')"); p.wait_for_timeout(200)
     had = p.evaluate("""() => ({
       notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
       rows: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
@@ -241,10 +246,20 @@ with sync_playwright() as pw:
     # rows, since those are where it would first give way.
     modes = p.evaluate("""async () => {
       const settle = () => new Promise((d) => setTimeout(d, 260));
+      /* Every tab, since the Bench became tabs: a mode's extra rows land on
+         whichever tab their section is on, and the rule is that no tab
+         scrolls - the worst of them is the answer. */
       const fits = () => {
-        const body = el.benchBody, side = el.benchSide;
-        return { body: body.scrollHeight - body.clientHeight,
-                 side: side.scrollHeight - side.clientHeight };
+        const body = el.benchBody, side = el.benchSide, was = benchTab;
+        let worst = -Infinity, sideWorst = -Infinity, at = '';
+        for (const [tab] of BENCH_TABS) {
+          setBenchTab(tab);
+          const over = body.scrollHeight - body.clientHeight;
+          if (over > worst) { worst = over; at = tab; }
+          sideWorst = Math.max(sideWorst, side.scrollHeight - side.clientHeight);
+        }
+        setBenchTab(was);
+        return { body: worst, side: sideWorst, at };
       };
       const out = {};
       for (const kind of ['wave', 'harmonograph', 'figure', 'wireframe']) {
@@ -302,6 +317,7 @@ with sync_playwright() as pw:
           .filter(([, by]) => by > 1);
       };
       const out = {};
+      setBenchTab('play');
       setScreenKeys(true);
       el.midiPoly.click(); await settle();
       out.poly = over();
@@ -343,7 +359,7 @@ with sync_playwright() as pw:
     t.locator('.mod-add-one[data-add="lfo1"]').tap(); t.wait_for_timeout(300)
     check("and a source can be added with one tap",
           t.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"], str(t.evaluate(ROUTES)))
-    t.locator(".mod-edit-off").tap(); t.wait_for_timeout(300)
+    t.locator(".over .mod-edit-off").tap(); t.wait_for_timeout(300)
     check("and taken off with another", t.evaluate(ROUTES) == [], str(t.evaluate(ROUTES)))
 
     t.locator(".over-close").tap(); t.wait_for_timeout(250)

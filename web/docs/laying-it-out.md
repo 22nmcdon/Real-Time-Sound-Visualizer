@@ -1,4 +1,4 @@
-# Laying it out
+# Laying it out — built
 
 A plan for the layout, which has stopped being navigable. It comes before
 `shaping-the-sound.md` because that plan adds dozens of controls, and the layout
@@ -60,14 +60,17 @@ vanishes cannot be found.
 
 | Tab | Sections |
 |---|---|
-| Play | Input, Lanes, Keyboard, Generator |
-| Picture | Display, Vertical, Trigger |
+| Play | Input, Keyboard, Generator |
+| Picture | Lanes, Display, Vertical, Trigger |
 | Shape | Filter — and, later, the voice's drive and fold and the plane's operations |
 | Sources | the source grid and the selected source's detail |
 | Measure | Measure |
 
-One tab at a time fits: the heaviest, Play with a rack of six, is about 1,050 px
-against the 1,350 px three columns hold. On a narrow screen the rail already
+One tab at a time fits. Lanes went to Picture rather than Play when it was
+measured: Play with a rack of six had four sections for three columns, and the
+generator and keyboard together were 488 px of a 426 px column. What is in the
+lane list is mostly the screen's anyway - shown or not, stacked or overlaid,
+which pair is the X–Y. On a narrow screen the rail already
 scrolls sideways, which works unchanged as a tab strip.
 
 ## R3 · the Sources tab
@@ -122,6 +125,19 @@ Results carry a breadcrumb — *Generator › Attack (behind ⋯)* — and choos
   behind ⋯, scrolls to it and highlights it for a moment;
 - a Settings row opens Settings and scrolls to it;
 - a source opens the Sources tab with it selected.
+
+## Built
+
+All five, with two changes from the plan. **Lanes went to Picture**, measured:
+Play with a rack of six had four sections for three columns. And **the Measure
+section no longer folds**: on a tab of its own it has nothing to fold away
+from, and with Presets and Beam in Settings the Bench has no folded sections at
+all. The fold machinery is left in place for the day a section needs it.
+
+`layouttest.py` holds the Sources tab, `showControl` and the search;
+`benchtest.py` the homes and the tabs; `patchtest.py` and `racktest.py` that
+no tab scrolls. Two bugs were found on the way: the Sources grid went stale
+when a source came or went, and a forgotten controller stayed in the panel.
 
 ## R5 · what has to be rewritten
 

@@ -167,9 +167,22 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **A control's appearance must not depend on how many modulation sources are on
   it.** Two designs failed here. `patchtest.py` measures the row's height and
   box with nought, one, two and three sources and requires all four identical.
-- **Neither bench panel may scroll.** Also a test, across every generator mode.
-- **Controls are moved between views, never copied.** Two elements with one id
-  is how the dock's readout line silently stopped displaying for weeks.
+- **No Bench tab may scroll.** The Bench is five tabs by task (Play, Picture,
+  Shape, Sources, Measure), and one tab at a time must fit. `patchtest.py`
+  measures every tab across every generator mode; `racktest.py` does it with a
+  rack of six lanes. This replaced "every section on show at once, and neither
+  panel scrolls", which held for the tone and never for a rack - and is why a
+  section that would crowd a tab goes to another one (Lanes is on Picture
+  because Play had four sections for three columns).
+- **Every section has one home.** `data-home` is `settings` (set once and left:
+  MIDI, Audio, Presets, Beam) or `bench` (everything played or tuned), and a
+  section stays in its home in both views. Settings and the Bench used to hold
+  the same sections, which made neither a place for anything. To reach a
+  control from code - a search result, a test - use `showControl(id)`; do not
+  assume the Settings popover holds it.
+- **Controls are moved, never copied.** Between a tab and the hidden store,
+  into a section's detail overlay and back. Two elements with one id is how the
+  dock's readout line silently stopped displaying for weeks.
 
 ## Before saying you are done
 

@@ -37,6 +37,7 @@ SUITES = [
     ("poly", [sys.executable, "polytest.py"], "every held note sounding, and which are drawn"),
     ("layer", [sys.executable, "layertest.py"], "a split or a layer: two sets of voices from one keyboard"),
     ("rack", [sys.executable, "racktest.py"], "the rack built a lane at a time, and taken apart the same way"),
+    ("layout", [sys.executable, "layouttest.py"], "the Sources tab, reaching any control, and search"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

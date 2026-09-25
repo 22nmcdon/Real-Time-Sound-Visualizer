@@ -228,7 +228,7 @@ with sync_playwright() as pw:
 
     # Six lanes is the worst case the page allows, and the one where a
     # per-sample filter could stop being affordable.
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#rackInput").set_input_files(
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
@@ -335,7 +335,7 @@ with sync_playwright() as pw:
         return real.call(this, dest, ...rest);
       };
     }""")
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
     p.wait_for_timeout(2200)

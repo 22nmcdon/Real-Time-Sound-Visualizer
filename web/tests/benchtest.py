@@ -1,6 +1,8 @@
-"""The Bench: one set of controls, two places to put them.
+"""The Bench and Settings: every section in its home, the Bench as tabs.
 
-The thing most likely to go wrong here is duplication - a control copied into
+Each section lives in one place in both views - Settings for what is set once,
+the Bench for everything played - and the Bench shows one task's sections at
+a time. The thing most likely to go wrong is still duplication - a control copied into
 the bench instead of moved gives two elements one id, and getElementById
 silently returns the first. That has already cost this page one readout line,
 so it is the first thing asserted.
@@ -44,138 +46,105 @@ with sync_playwright() as pw:
     p.locator("#viewBench").click(); p.wait_for_timeout(400)
     check("no duplicate ids in Bench", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
 
-    moved = p.evaluate("""() => {
-      const inBench = document.querySelectorAll('#benchBody .bench-col > .menu-group').length;
-      const inSide = document.querySelectorAll('#benchSide > .menu-group').length;
-      const inPanel = document.querySelectorAll('#menuPanel > .menu-group').length;
-      return { inBench, inSide, inPanel, total: settingsGroups().length };
+    # Every section has a home now and stays in it in both views: Settings
+    # holds what is set once and left, the Bench everything played. This
+    # used to assert the opposite - every group moved to the Bench and every
+    # group came back - which is what made the two views identical.
+    homes = p.evaluate("""() => {
+      const where = () => settingsGroups().map((g) => ({
+        title: groupTitle(g), home: g.dataset.home,
+        inPanel: g.parentElement === el.menuPanel, onBench: !!g.closest('#bench') }));
+      const bench = where();
+      setView('scope');
+      const scope = where();
+      return { bench, scope,
+               menuInScope: getComputedStyle(el.menuButton).display !== 'none',
+               panelTitles: Array.from(el.menuPanel.querySelectorAll(':scope > .menu-group')).map(groupTitle) };
     }""")
-    check("every group moved, none left behind",
-          moved["inBench"] + moved["inSide"] == moved["total"] and moved["inPanel"] == 0,
-          str(moved))
-    check("and the oscillators went to the side column, not the body",
-          moved["inSide"] == 1, str(moved))
-
-    p.locator("#viewScope").click(); p.wait_for_timeout(300)
-    back = p.evaluate("""() => ({
-      inBench: document.querySelectorAll('#benchBody .menu-group').length,
-      inPanel: document.querySelectorAll('#menuPanel > .menu-group').length,
-      allShown: settingsGroups().every((g) => !g.hidden || g.dataset.off !== undefined),
-    })""")
-    check("and every group comes back", back["inPanel"] > 0 and back["inBench"] == 0, str(back))
-    check("with none left hidden by the rail", back["allShown"], str(back))
+    misplaced = [g["title"] + " in " + view for view in ("bench", "scope") for g in homes[view]
+                 if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]]
+    check("every section is in its home in both views", misplaced == [], str(misplaced))
+    check("Settings holds only the settings: MIDI, audio, presets and the beam",
+          sorted(homes["panelTitles"]) == ["Audio", "Beam", "MIDI", "Presets"], str(homes["panelTitles"]))
+    p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
+    check("and Settings opens from the Bench as well as from Scope",
+          homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
     check("still no duplicates after a round trip", p.evaluate(DUPES) == [])
+    dev = p.evaluate("() => ({ shown: !el.deviceRow.hidden, disabled: el.device.disabled, why: el.device.title })")
+    check("the device picker is there over the tone, greyed with the reason",
+          dev["shown"] and dev["disabled"] and "Mic" in dev["why"], str(dev))
 
-    print("\n--- the rail ---")
-    p.locator("#viewBench").click(); p.wait_for_timeout(400)
-    rail = p.evaluate("""() => ({
-      titles: Array.from(document.querySelectorAll('#benchRail button')).map((b) => b.textContent),
-      // Sections that apply: `data-off` is a section that does not (the
-      // Lanes section with no rack loaded), which the rail leaves out too.
-      // Counted without that, the first off section to live in the body made
-      // this read 11 of 10.
-      inBody: settingsGroups().filter(
-        (g) => !g.hidden && g.dataset.off === undefined && g.closest('.bench-col') !== null).length,
-      open: settingsGroups().filter(
-        (g) => g.closest('.bench-col') !== null && g.dataset.off === undefined
-               && !g.classList.contains('folded')).length,
-      folded: settingsGroups().filter((g) => g.classList.contains('folded'))
-        .map((g) => groupTitle(g)),
-      modShown: !el.lfoGroup.hidden && el.lfoGroup.dataset.off === undefined,
-    })""")
-    print("    sections:", ", ".join(rail["titles"]))
-    check("a button per available section", len(rail["titles"]) >= 6, str(len(rail["titles"])))
-    # The point of the redesign: no section is behind another one.
-    check("every body section is on show at once",
-          rail["inBody"] == len(rail["titles"]), "%d of %d" % (rail["inBody"], len(rail["titles"])))
-    check("all but a select few are open",
-          rail["open"] == rail["inBody"] - 3, "%d open, folded: %s" % (rail["open"], rail["folded"]))
-    check("and the folded ones are the set-once sections",
-          sorted(rail["folded"]) == ["Beam", "Measure", "Presets"], str(rail["folded"]))
-    check("Modulation is not one of the rail's sections",
-          "Modulation" not in rail["titles"], str(rail["titles"]))
-    check("it is on show beside them instead", rail["modShown"], str(rail))
-
-    # The rail is a table of contents now, not a switch: clicking an entry
-    # takes you to the section and opens it if it was folded. What it must
-    # never do is hide any of the others.
-    wrong = p.evaluate("""() => {
-      const bad = [];
-      const buttons = Array.from(document.querySelectorAll('#benchRail button'));
-      const shown = () => settingsGroups().filter(
-        (g) => !g.hidden && g.closest('.bench-col') !== null).length;
-      const all = shown();
-      for (const button of buttons) {
+    print("\n--- the tabs ---")
+    # Tabs again, on the evidence: the rail was a table of contents with every
+    # section on show at once, and a rack could not fit that way.
+    tabs = p.evaluate("""() => {
+      const titles = Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.textContent);
+      const seen = {}, wrong = [];
+      for (const button of el.benchRail.querySelectorAll('[role=tab]')) {
         button.click();
-        const mine = benchable()[Number(button.dataset.section)];
-        if (shown() !== all) bad.push(button.textContent + ' hid something');
-        if (mine.classList.contains('folded')) bad.push(button.textContent + ' left folded');
-        if (button.getAttribute('aria-current') !== 'true') {
-          bad.push(button.textContent + ' not marked');
+        const id = button.dataset.tab;
+        const shown = Array.from(el.benchBody.querySelectorAll('.menu-group'))
+          .filter((g) => g.dataset.off === undefined);
+        for (const g of shown) {
+          if (g.dataset.tab !== id) wrong.push(groupTitle(g) + ' on ' + id);
+          seen[groupTitle(g)] = (seen[groupTitle(g)] || 0) + 1;
         }
+        const marked = el.benchRail.querySelector('[aria-selected=true]');
+        if (!marked || marked.dataset.tab !== id) wrong.push(id + ' not marked');
+        if (el.benchBody.scrollHeight > el.benchBody.clientHeight + 2) wrong.push(id + ' scrolls');
       }
-      return bad;
+      const benchTitles = benchable().map(groupTitle);
+      return { titles, seen, wrong, benchTitles, role: el.benchRail.getAttribute('role') };
     }""")
-    check("a rail entry opens its section and hides none", wrong == [], str(wrong))
-
-    print("\n--- folds ---")
-    fold = p.evaluate("""() => {
-      const group = benchable().find((g) => groupTitle(g) === 'Beam');
-      const title = group.querySelector(':scope > .menu-title');
-      const rowsShown = () => group.querySelectorAll('.menu-row, .check').length
-        && getComputedStyle(group.querySelector('.check')).display !== 'none';
-      title.click();                       // Beam was opened by the rail sweep: shut it
-      const shut = { folded: group.classList.contains('folded'), rows: rowsShown(),
-                     said: title.getAttribute('aria-expanded') };
-      title.click();
-      const open = { folded: group.classList.contains('folded'), rows: rowsShown(),
-                     said: title.getAttribute('aria-expanded') };
-      return { shut, open };
+    print("    tabs:", ", ".join(tabs["titles"]))
+    check("five tabs by task, and a tab list", tabs["titles"] == ["Play", "Picture", "Shape", "Sources", "Measure"]
+          and tabs["role"] == "tablist", str(tabs["titles"]))
+    check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
+    missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
+    check("every Bench section is on exactly one tab", missing == [], str(missing) + " " + str(tabs["seen"]))
+    check("Modulation is gone: the oscillators are sources, on the Sources tab",
+          "Modulation" not in tabs["seen"] and tabs["seen"].get("Sources") == 1, str(tabs["seen"]))
+    keys = p.evaluate("""() => {
+      setBenchTab('play');
+      const tb = el.timebase.value;
+      const tab = document.getElementById('benchTab-play');
+      tab.focus();
+      tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      return { tab: benchTab, focused: document.activeElement.id, timebase: el.timebase.value === tb };
     }""")
-    check("a fold hides its own rows and nothing else",
-          fold["shut"]["folded"] is True and fold["shut"]["rows"] is False, str(fold["shut"]))
-    check("and says so", fold["shut"]["said"] == "false", str(fold["shut"]))
-    check("clicking again opens it",
-          fold["open"]["folded"] is False and fold["open"]["said"] == "true", str(fold["open"]))
+    check("the arrow keys walk the tabs, and do not also move the timebase",
+          keys["tab"] == "picture" and keys["focused"] == "benchTab-picture" and keys["timebase"], str(keys))
+    check("no section starts folded: a tab has room for all of it",
+          p.evaluate("() => benchable().filter((g) => g.classList.contains('folded')).length") == 0)
 
     print("\n--- columns hold still ---")
-    # CSS multi-column re-balances the whole flow whenever one section changes
-    # height, and a section changes height whenever a fold opens. The first
-    # drag of the first build teleported the control being dragged into the
-    # next column while the pointer was still down on it.
+    # CSS multi-column re-balanced the whole flow whenever a section changed
+    # height, and the first drag of the first build teleported the control
+    # being dragged into the next column. A patch must not re-deal the tab.
     steady = p.evaluate("""() => {
+      setBenchTab('play');
       const cols = document.querySelectorAll('.bench-col').length;
       const where = () => Array.from(document.querySelectorAll('.bench-col'))
         .map((c) => Array.from(c.children).map((g) => groupTitle(g)).join(',')).join('|');
       const before = where();
       const x = () => Math.round(document.getElementById('freq').getBoundingClientRect().x);
       const xBefore = x();
-      // The thing that moved it: a patch, and a fold opening above it.
       addRouting('lfo1', 'gen.freq');
-      const group = benchable().find((g) => groupTitle(g) === 'Presets');
-      group.classList.remove('folded');
       return { cols, before, after: where(), xBefore, xAfter: x() };
     }"""); p.wait_for_timeout(300)
     check("the body is in real columns", steady["cols"] >= 2, str(steady["cols"]))
-    check("a patch and a fold do not re-deal the sections",
-          steady["before"] == steady["after"], steady["after"])
-    check("and do not move the control being patched",
-          steady["xBefore"] == steady["xAfter"],
+    check("a patch does not re-deal the sections", steady["before"] == steady["after"], steady["after"])
+    check("and does not move the control being patched", steady["xBefore"] == steady["xAfter"],
           "%d -> %d" % (steady["xBefore"], steady["xAfter"]))
     p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
 
     print("\n--- the controls still work from the bench ---")
     live = p.evaluate("""() => {
-      // Pick the Trigger section and drive a control that lives in it.
-      const buttons = Array.from(document.querySelectorAll('#benchRail button'));
-      const trig = buttons.find((b) => b.textContent === 'Trigger');
-      if (trig) trig.click();
+      // The Picture tab, and a slider and a checkbox that live on it.
+      setBenchTab('picture');
       el.holdoff.value = '30';
       el.holdoff.dispatchEvent(new Event('input'));
       const a = state.holdoffMs;
-
-      const vert = buttons.find((b) => b.textContent === 'Vertical');
-      if (vert) vert.click();
       el.lagOn.checked = true;
       el.lagOn.dispatchEvent(new Event('change'));
       const b = { lag: state.lagOn, lanes: laneCount() };
@@ -247,28 +216,31 @@ with sync_playwright() as pw:
     # parameter. It is wrong now: an LFO on the filter cutoff or the rotation
     # is the same patch whatever the signal came from. What withdraws on a
     # live source is the generator half of the DESTINATION list, per entry.
+    # Read from the Sources tab's Add menu now, which is where a destination
+    # is chosen since the one-destination dropdown went.
     mod = p.evaluate("""() => {
+      setBenchTab('sources'); selectSource('lfo1');
+      const options = () => Array.from(document.getElementById('srcDetail-add').options).slice(1);
       showSource('mic');                       // just the panel, no stream
       const live = {
-        off: el.lfoGroup.dataset.off,
-        hidden: el.lfoGroup.hidden,
+        off: el.srcGroup.dataset.off,
+        hidden: el.srcGroup.hidden,
         rate: !!document.getElementById('lfoRate0'),
-        genDead: Array.from(document.getElementById('lfoDest0').options)
-          .filter((o) => o.value.startsWith('gen.')).every((o) => o.disabled),
-        viewAlive: Array.from(document.getElementById('lfoDest0').options)
-          .filter((o) => o.value.startsWith('view.')).every((o) => !o.disabled),
+        genDead: options().filter((o) => o.value.startsWith('gen.')).every((o) => o.disabled),
+        viewAlive: options().filter((o) => o.value.startsWith('view.')).every((o) => !o.disabled),
+        some: options().filter((o) => o.value.startsWith('gen.')).length,
       };
       showSource(null);
       const tone = {
-        genAlive: Array.from(document.getElementById('lfoDest0').options)
-          .filter((o) => o.value.startsWith('gen.')).every((o) => !o.disabled),
+        genAlive: options().filter((o) => o.value.startsWith('gen.')).every((o) => !o.disabled),
       };
       return { live, tone };
     }""")
     check("the oscillators stay on a live source",
           mod["live"]["off"] is None and mod["live"]["hidden"] is False, str(mod["live"]))
     check("with their rate and depth still reachable", mod["live"]["rate"])
-    check("generator destinations grey out instead", mod["live"]["genDead"], str(mod["live"]))
+    check("generator destinations grey out instead",
+          mod["live"]["genDead"] and mod["live"]["some"] > 0, str(mod["live"]))
     check("while the ones that apply stay live", mod["live"]["viewAlive"], str(mod["live"]))
     check("and the generator's come back with the tone", mod["tone"]["genAlive"],
           str(mod["tone"]))
@@ -276,8 +248,9 @@ with sync_playwright() as pw:
     print("\n--- the view is remembered ---")
     p.reload(); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    kept = p.evaluate("() => document.body.dataset.view")
-    check("bench survives a reload", kept == "bench", kept)
+    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab })")
+    check("the bench and its tab survive a reload",
+          kept["view"] == "bench" and kept["tab"] == "sources", str(kept))
     check("no errors after reload", not bad, "; ".join(bad[:3]))
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
 

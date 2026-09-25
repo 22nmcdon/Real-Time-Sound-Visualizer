@@ -50,7 +50,7 @@ with sync_playwright() as pw:
       };
     }""")
 
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(200)
     p.locator("#alongInput").set_input_files(f"{STEMS}/other.wav")
     p.wait_for_timeout(3000)
@@ -187,7 +187,7 @@ with sync_playwright() as pw:
           str(p.evaluate("() => liveStreams.size")))
 
     print("\n--- the panel ---")
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#alongInput").set_input_files(f"{STEMS}/bass.wav")
     p.wait_for_timeout(2800)
     panel = p.evaluate("""() => ({

@@ -157,22 +157,28 @@ with sync_playwright() as pw:
     check("still loads, and points where it said",
           legacy == ["lfo1>gen.phase@1", "lfo2>gen.ratio@0.2"], str(legacy))
 
-    print("\n--- the dropdown is a view of the list ---")
+    # The Sources tab is the view of the list now, where the one-destination
+    # dropdown was: Add makes a routing, its row's slider is its depth, and
+    # the row's cross removes it.
+    print("\n--- the Sources tab is a view of the list ---")
     ui = p.evaluate("""() => {
       applyPreset('b:Pure sine');
-      const select = document.getElementById('lfoDest0');
-      select.value = 'gen.ratio';
-      select.dispatchEvent(new Event('change'));
+      setView('bench'); setBenchTab('sources'); selectSource('lfo1');
+      const add = document.getElementById('srcDetail-add');
+      add.value = 'gen.ratio';
+      add.dispatchEvent(new Event('change'));
       const after = state.modRoutings.map((r) => r.destId);
-      const depth = document.getElementById('lfoDepth0');
+      const depth = el.srcDetail.querySelector('.mod-edit[data-dest="gen.ratio"] input');
       depth.value = '35'; depth.dispatchEvent(new Event('input'));
       const amount = lfoRouting(0) ? lfoRouting(0).amount : null;
-      select.value = ''; select.dispatchEvent(new Event('change'));
-      return { after, amount, cleared: state.modRoutings.length };
+      el.srcDetail.querySelector('.mod-edit[data-dest="gen.ratio"] .mod-edit-off').click();
+      const out = { after, amount, cleared: state.modRoutings.length };
+      setView('scope');
+      return out;
     }""")
-    check("choosing a destination makes the routing", ui["after"] == ["gen.ratio"], str(ui["after"]))
-    check("the depth slider sets its amount", abs((ui["amount"] or 0) - 0.35) < 1e-9, str(ui["amount"]))
-    check("and off removes it", ui["cleared"] == 0, str(ui["cleared"]))
+    check("adding a destination makes the routing", ui["after"] == ["gen.ratio"], str(ui["after"]))
+    check("its depth slider sets its amount", abs((ui["amount"] or 0) - 0.35) < 1e-9, str(ui["amount"]))
+    check("and its cross removes it", ui["cleared"] == 0, str(ui["cleared"]))
 
     print("\n--- the picture is a destination too ---")
     # A unison at zero phase draws a 45 degree diagonal. Turning it by an
@@ -289,7 +295,7 @@ with sync_playwright() as pw:
     onTone = cycles()
     check("2 Hz is 2 Hz on the tone source", abs(onTone - 4) <= 1, "%d cycles in 2 s" % onTone)
 
-    p.locator("#menuButton").click(); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
     p.wait_for_timeout(1800)
@@ -333,10 +339,15 @@ with sync_playwright() as pw:
          screen in wireframe. */
       const seen = new Set();
       const dead = [];
+      /* And every Bench tab: a control counts only if it can be seen, and
+         since the Bench became tabs only one tab's controls can be at once. */
+      setView('bench');
       for (const kind of ['wave', 'figure', 'wireframe', 'harmonograph']) {
         el.genMode.value = kind;
         el.genMode.dispatchEvent(new Event('change'));
 
+      for (const [tab] of BENCH_TABS) {
+      setBenchTab(tab);
       for (const row of document.querySelectorAll('[data-mod-dest]')) {
         const input = row.querySelector('input[type=range]');
         if (!input || input.offsetWidth === 0) continue;
@@ -358,6 +369,8 @@ with sync_playwright() as pw:
         if (before === after) dead.push(row.dataset.modDest + ' (#' + input.id + ')');
       }
       }
+      }
+      setBenchTab('play'); setView('scope');
       el.genMode.value = 'wave';
       el.genMode.dispatchEvent(new Event('change'));
       return { dead, checked: seen.size };

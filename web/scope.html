@@ -486,7 +486,7 @@ body[data-view="bench"] .bench { display: flex; flex: 1 1 auto; min-height: 0; }
 body[data-view="bench"] .screen { display: none; }
 body[data-view="bench"] .bench { order: 2; }
 body[data-view="bench"] .dock  { order: 3; }
-body[data-view="bench"] #menuButton { display: none; }
+/* Settings opens from both views: its sections live there and nowhere else. */
 
 /* The bench is a workbench, not a page: it takes the window rather than the
    1180px reading measure the rest of the app is set in. With a side column of
@@ -497,18 +497,44 @@ body[data-view="bench"] #menuButton { display: none; }
   padding-block: 14px 16px; max-width: none;
 }
 
-.bench-rail {
-  flex: 0 0 148px; display: flex; flex-direction: column; gap: 1px;
-  border-right: 1px solid var(--line); padding-right: 12px; min-height: 0;
-  overflow-y: auto;
+.bench-left {
+  flex: 0 0 160px; display: flex; flex-direction: column; gap: 10px; min-height: 0;
+  border-right: 1px solid var(--line); padding-right: 12px;
 }
+.bench-rail {
+  display: flex; flex-direction: column; gap: 1px; min-height: 0; overflow-y: auto;
+}
+.bench-search { position: relative; }
+.bench-search input {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--paper); color: var(--charcoal);
+}
+/* Over the body rather than in the rail, so a long list pushes nothing. */
+.bench-results {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; width: 340px;
+  max-height: 60vh; overflow-y: auto; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  padding: 4px;
+}
+.bench-results button {
+  display: block; width: 100%; text-align: left; background: none; border: 0;
+  padding: 6px 8px; border-radius: 4px; cursor: pointer; color: var(--charcoal);
+  font-family: var(--sans); font-size: 12.5px;
+}
+.bench-results button[aria-selected="true"], .bench-results button:hover { background: var(--cream-2); }
+.bench-results .crumb { display: block; font-size: 10.5px; color: var(--text-soft); }
+.bench-results .none { padding: 6px 8px; font-size: 12px; color: var(--text-soft); margin: 0; }
+/* Where a search landed, for a moment. */
+.search-hit { outline: 2px solid var(--blush-deep); outline-offset: 3px; border-radius: 3px;
+              transition: outline-color 0.6s; }
 .bench-rail button {
   background: none; border: none; border-left: 2px solid transparent;
   text-align: left; padding: 7px 10px; color: var(--text-soft);
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500;
 }
 .bench-rail button:hover { color: var(--blush-deep); }
-.bench-rail button[aria-current="true"] {
+.bench-rail button[aria-selected="true"] {
   color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
 }
 
@@ -619,6 +645,8 @@ body[data-view="bench"] #menuButton { display: none; }
   /* The rail becomes a row of chips above the body, because 148px of section
      names down the side of a phone is most of the phone. */
   .bench-wrap { flex-direction: column; gap: 10px; }
+  .bench-left { flex: 0 0 auto; border-right: 0; padding-right: 0; min-width: 0; }
+  .bench-results { width: 100%; }
   .bench-rail {
     flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: visible;
     border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px;
@@ -628,15 +656,14 @@ body[data-view="bench"] #menuButton { display: none; }
     min-width: 0;
   }
   .bench-rail button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
-  .bench-rail button[aria-current="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
+  .bench-rail button[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
 
-  /* The column stops being a column and its three parts join the stack, so the
-     screen can sit at the top where it is worth looking at while the sources
-     and the oscillators go to the bottom. */
+  /* The column stops being a column and its parts join the stack, so the
+     screen can sit at the top where it is worth looking at while the source
+     chips go to the bottom. */
   .bench-side { display: contents; }
   .bench-scope { order: -1; width: 100%; max-width: 340px; margin-inline: auto; }
   .bench-sources { order: 3; border-top: 1px solid var(--line); padding-top: 10px; }
-  #lfoGroup { order: 4; }
   .bench-side .menu-label { flex: 0 0 96px; }
 }
 
@@ -782,6 +809,27 @@ body[data-view="bench"] #menuButton { display: none; }
    and the sources not on it yet as buttons underneath. Nothing here needs a
    steady hand, which is the whole of what was wrong with the two before it. */
 .mod-edit { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+/* The Sources tab. One row per family, the family named small; a family
+   with nothing in it says how to get something rather than vanishing. */
+.src-family { margin: 0 0 12px; }
+.src-family-name {
+  display: block; font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-soft); margin-bottom: 6px;
+}
+.src-family-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.src-family-chips .mod-chip { cursor: pointer; }
+.src-empty { font-size: 12px; color: var(--text-soft); margin: 0; }
+.src-desc { font-size: 13px; line-height: 1.5; color: var(--charcoal); margin: 0 0 10px; }
+.src-meter {
+  position: relative; flex: 1 1 auto; height: 6px; border-radius: 3px;
+  background: var(--line); overflow: hidden;
+}
+.src-meter-fill { position: absolute; top: 0; bottom: 0; background: var(--pip); }
+#srcDetail .mod-edit-name { flex-basis: 96px; }
+.src-sub {
+  display: block; font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-soft); margin: 14px 0 2px;
+}
 .mod-edit .dot-sm { flex: 0 0 auto; background: var(--pip); }
 .mod-edit-name { flex: 0 0 58px; font-size: 12px; color: var(--charcoal); }
 .mod-edit input[type="range"] { flex: 1 1 auto; max-width: none; min-width: 60px; }
@@ -957,7 +1005,7 @@ body[data-view="bench"] #menuButton { display: none; }
             <button type="button" class="close-btn" id="menuClose" aria-label="Close">&times;</button>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-home="bench" data-tab="play">
             <span class="menu-title">Input</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1066,10 +1114,6 @@ body[data-view="bench"] #menuButton { display: none; }
                 <i>Solo</i> and <i>mute</i> are the monitor mix; <i>show</i> is the screen.
                 Nothing is uploaded.</p>
             </div>
-            <div class="menu-row" id="deviceRow" hidden>
-              <label class="menu-label" for="device">Device</label>
-              <div class="grow"><select id="device" style="flex:1 1 auto"></select></div>
-            </div>
             <div class="menu-row" id="micShapeRow" hidden>
               <!-- "Split" rather than "Lanes", which is the source switch's word
                    for a rack now, and one control per name. -->
@@ -1081,43 +1125,22 @@ body[data-view="bench"] #menuButton { display: none; }
                 </div>
               </div>
             </div>
-            <div class="menu-row" id="liveKindRow" hidden>
-              <span class="menu-label">What is it</span>
-              <div class="switch" role="radiogroup" aria-label="What is plugged in">
-                <button type="button" class="caps" id="kindMic" role="radio" aria-checked="true">Microphone</button>
-                <button type="button" class="caps" id="kindLine" role="radio" aria-checked="false">Line</button>
-              </div>
-            </div>
-            <label class="check" id="monitorRow" hidden>
-              <input type="checkbox" id="monitorLive"> Hear it through the page
-              <span class="reading" id="monitorLatency"></span>
-            </label>
             <p class="menu-note" id="micNote" hidden><i>Into bands</i> splits what you are
               playing across four crossovers, so one instrument down one input gets four
               lanes and an X&ndash;Y figure that moves when you move. <i>Solo</i> and
-              <i>mute</i> choose what the screen draws.
-              <br><br>
-              A <i>microphone</i> is never sent to the speakers: what comes out of them
-              goes back into it, and that is a feedback loop. A <i>line</i> input has no
-              ear &mdash; a keyboard does not hear the room &mdash; so it may be monitored,
-              and that is a claim you are making about what is plugged in rather than
-              something the browser can tell. Get it wrong with a microphone selected and
-              the loop is real, so wear headphones the first time.
-              <br><br>
-              What you hear that way has been round the converter twice and through the
-              page's own buffers: the figure given is the browser's own, which is the
-              output side only and a floor rather than the whole trip. Tens of
-              milliseconds is normal and a keyboard player will feel it. The setup that
-              does not suffer it is hearing the instrument directly and letting this page
-              only look. A band split is not monitored at all.</p>
+              <i>mute</i> choose what the screen draws.</p>
           </div>
 
           <!-- Its own section rather than rows under Input. A rack of five
                lanes made Input 145 px taller than the Bench, which must never
                scroll, and no dealing of whole sections into columns can fit
-               one section taller than a column. Split in two, the Bench can
-               put the lanes beside the rack's membership. -->
-          <div class="menu-group" id="laneGroup" data-off="1">
+               one section taller than a column. On the Picture tab, because
+               what it holds is mostly the screen's - which lanes are shown,
+               stacked or overlaid, which pair is the X-Y - and because Play
+               with a rack of six had four sections for three columns: the
+               generator and the keyboard together were 488 px of a 426 px
+               column. What goes into the rack is still chosen on Play. -->
+          <div class="menu-group" id="laneGroup" data-tab="picture" data-home="bench" data-off="1">
             <span class="menu-title">Lanes</span>
             <div id="laneList"></div>
             <div class="menu-row">
@@ -1139,15 +1162,8 @@ body[data-view="bench"] #menuButton { display: none; }
             </div>
           </div>
 
-          <div class="menu-group" id="midiGroup">
+          <div class="menu-group" id="midiGroup" data-tab="play" data-home="bench">
             <span class="menu-title">Keyboard</span>
-            <div class="menu-row">
-              <span class="menu-label">MIDI in</span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="midiConnect">Connect</button>
-                <span class="reading" id="midiStatus">off</span>
-              </div>
-            </div>
             <div class="menu-row">
               <span class="menu-label">On screen</span>
               <div class="grow">
@@ -1227,15 +1243,65 @@ body[data-view="bench"] #menuButton { display: none; }
             <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
             <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note</label>
             <label class="check"><input type="checkbox" id="midiFollow"> &hellip; and the timebase</label>
-            <div id="midiCC" data-more="1"></div>
             <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
               under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
               a third walks. <i>Dyad</i> reads the two most recent notes and puts the lower on
               X; <i>mono</i> takes the newest note as the pitch and leaves the interval to the
               menu. A note is also the one pitch on this page that is not estimated, which is
               why the lag, the tuner and the timebase can be told to take it as read.
+              The port and the learned controllers are under <i>Settings &rarr; MIDI</i>.</p>
+          </div>
+
+          <!-- Where sound comes in and whether you hear it: set once for the room
+               you are in, so its home is Settings. Visible whatever is loaded -
+               a setting that vanishes when the source changes cannot be found -
+               and greyed, with the reason, where it does not apply. -->
+          <div class="menu-group" id="audioGroup" data-home="settings">
+            <span class="menu-title">Audio</span>
+            <div class="menu-row" id="deviceRow">
+              <label class="menu-label" for="device">Device</label>
+              <div class="grow"><select id="device" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row" id="liveKindRow">
+              <span class="menu-label">What is it</span>
+              <div class="switch" role="radiogroup" aria-label="What is plugged in">
+                <button type="button" class="caps" id="kindMic" role="radio" aria-checked="true">Microphone</button>
+                <button type="button" class="caps" id="kindLine" role="radio" aria-checked="false">Line</button>
+              </div>
+            </div>
+            <label class="check" id="monitorRow">
+              <input type="checkbox" id="monitorLive"> Hear it through the page
+              <span class="reading" id="monitorLatency"></span>
+            </label>
+            <p class="menu-note" id="audioNote">A <i>microphone</i> is never sent to the speakers: what comes out of them
+              goes back into it, and that is a feedback loop. A <i>line</i> input has no
+              ear &mdash; a keyboard does not hear the room &mdash; so it may be monitored,
+              and that is a claim you are making about what is plugged in rather than
+              something the browser can tell. Get it wrong with a microphone selected and
+              the loop is real, so wear headphones the first time.
               <br><br>
-              Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
+              What you hear that way has been round the converter twice and through the
+              page's own buffers: the figure given is the browser's own, which is the
+              output side only and a floor rather than the whole trip. Tens of
+              milliseconds is normal and a keyboard player will feel it. The setup that
+              does not suffer it is hearing the instrument directly and letting this page
+              only look. A band split is not monitored at all.</p>
+          </div>
+
+          <!-- The half of the keyboard that is set once and left: the port and the
+               controllers it has learned. Its home is Settings, in both views;
+               the half you play is the Keyboard section on the Bench. -->
+          <div class="menu-group" id="midiSetGroup" data-home="settings">
+            <span class="menu-title">MIDI</span>
+            <div class="menu-row">
+              <span class="menu-label">MIDI in</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="midiConnect">Connect</button>
+                <span class="reading" id="midiStatus">off</span>
+              </div>
+            </div>
+            <div id="midiCC"></div>
+            <p class="menu-note">Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
               and right line outs go to a stereo line input &mdash; that is the organ itself,
               and the rotary, chorus and vibrato are genuinely stereo, so X&ndash;Y draws a
               moving figure rather than the diagonal a mono microphone gives. On the keyboard,
@@ -1250,7 +1316,7 @@ body[data-view="bench"] #menuButton { display: none; }
               works on the GitHub Pages copy and not there. Safari has no Web MIDI at all.</p>
           </div>
 
-          <div class="menu-group" id="toneRows">
+          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench">
             <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
               <p class="menu-note" id="layerBNote" data-layer="b">Layer B has its own shape,
                 level and envelope, and nothing else: its pitches are the keys it is
@@ -1471,16 +1537,24 @@ body[data-view="bench"] #menuButton { display: none; }
               </div>
           </div>
 
-          <div class="menu-group" id="lfoGroup">
-            <span class="menu-title">Modulation</span>
-            <p class="menu-note" style="margin-top:0">Two oscillators with nothing to do
-              until you point them at something. Drag one onto any control that takes a
-              dotted frame &mdash; the generator, the filter, the rotation, the zoom.
-              <i>Rate</i> is how fast, <i>depth</i> is how far.</p>
-            <div id="lfoRows"></div>
+          <!-- The Sources tab: every source, by family, and the one selected.
+               It replaces the Modulation section, which gave the two oscillators
+               a home and every other source a chip with no explanation. -->
+          <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
+            <span class="menu-title">Sources</span>
+            <div id="srcGrid"></div>
+            <p class="menu-note">A source is anything that can move a control by itself: an
+              oscillator, how loud the input is, what your hands are doing, the picture on
+              the screen. Choose one to see what it is and where it goes; the controls it
+              is on, on every tab, then draw its sweep. Press the dots on any control to
+              patch from that side, or drag a chip from beside the screen onto one.</p>
+          </div>
+          <div class="menu-group" id="srcDetailGroup" data-home="bench" data-tab="sources">
+            <span class="menu-title" id="srcDetailTitle">Source</span>
+            <div id="srcDetail"></div>
           </div>
 
-          <div class="menu-group" data-fold="1">
+          <div class="menu-group" data-fold="1" data-home="settings">
             <span class="menu-title">Presets</span>
             <div class="menu-row">
               <label class="menu-label" for="presetName">Save as</label>
@@ -1520,7 +1594,7 @@ body[data-view="bench"] #menuButton { display: none; }
               copy it, send it, paste it back.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Vertical</span>
             <div id="laneRows" data-more="1"></div>
             <label class="check" style="margin-top:10px">
@@ -1567,7 +1641,7 @@ body[data-view="bench"] #menuButton { display: none; }
               drop it to open up a quiet signal.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Display</span>
             <div class="menu-row" data-mod-dest="view.rotate" data-mod-control="rotate">
               <label class="menu-label" for="rotate">X&ndash;Y rotation</label>
@@ -1607,7 +1681,7 @@ body[data-view="bench"] #menuButton { display: none; }
               input.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-home="bench" data-tab="shape">
             <span class="menu-title">Filter</span>
             <label class="check">
               <input type="checkbox" id="filterOn"> Filter the trace
@@ -1695,7 +1769,7 @@ body[data-view="bench"] #menuButton { display: none; }
               which the limiter and the clamp are still the last things before.</p>
           </div>
 
-          <div class="menu-group">
+          <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Trigger</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1721,7 +1795,7 @@ body[data-view="bench"] #menuButton { display: none; }
               settles a waveform crossing the level more than once a cycle.</p>
           </div>
 
-          <div class="menu-group" data-fold="1">
+          <div class="menu-group" data-fold="1" data-home="settings">
             <span class="menu-title">Beam</span>
             <div class="menu-row">
               <label class="menu-label" for="beamLevel">Intensity</label>
@@ -1749,7 +1823,7 @@ body[data-view="bench"] #menuButton { display: none; }
               dimming the steep edge of a square wave fights the job Y&ndash;T is for.</p>
           </div>
 
-          <div class="menu-group" data-fold="1">
+          <div class="menu-group" data-home="bench" data-tab="measure">
             <span class="menu-title">Measure</span>
             <label class="check"><input type="checkbox" id="cursorsOn"> Cursors</label>
             <div class="menu-row" style="margin-top:10px">
@@ -1951,12 +2025,24 @@ body[data-view="bench"] #menuButton { display: none; }
 
 <!-- Empty on purpose: the control groups AND the screen are moved in from
      elsewhere in this page, never copied. #benchScope takes the trace sheet;
-     #lfoGroup is moved in under the sources so the oscillators are never
-     behind a tab. -->
+     the side column keeps it and the source chips on every tab, so a chip can
+     be dragged onto a control whichever tab the control is on. -->
 <section class="bench" id="bench">
   <div class="wrap bench-wrap">
-    <nav class="bench-rail" id="benchRail" aria-label="Jump to a section"></nav>
-    <div class="bench-body" id="benchBody"></div>
+    <div class="bench-left">
+      <!-- Above the tabs, and reached with / from anywhere. -->
+      <div class="bench-search">
+        <input type="search" id="benchSearch" placeholder="Find a control  /"
+               aria-label="Find a control" aria-controls="benchResults" autocomplete="off">
+        <div class="bench-results" id="benchResults" role="listbox" hidden></div>
+      </div>
+      <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench"></nav>
+    </div>
+    <div class="bench-body" id="benchBody" role="tabpanel"></div>
+    <!-- The sections of the tabs not showing. Kept in the document rather than
+         detached, so every id still resolves and every listener is still bound:
+         a control on another tab is out of sight, not gone. -->
+    <div id="benchStore" hidden></div>
     <aside class="bench-side" id="benchSide">
       <div class="bench-scope" id="benchScope"></div>
       <div class="bench-sources" id="benchSources"></div>
@@ -2015,7 +2101,7 @@ body[data-view="bench"] #menuButton { display: none; }
       <li><b>One input has no second axis &mdash; so lag makes one</b>
         <span>A single instrument down a single input gives two identical channels, and
         identical channels draw a diagonal line and nothing else, whatever the preset. <i>Lag
-        X&ndash;Y</i>, in <i>Settings &rarr; Vertical</i>, plots the signal against itself a
+        X&ndash;Y</i>, on the Bench under <i>Picture &rarr; Vertical</i>, plots the signal against itself a
         moment earlier instead. A held note becomes a closed loop whose shape is its harmonic
         content, and it moves when you move.
         <br><br>
@@ -2139,22 +2225,38 @@ body[data-view="bench"] #menuButton { display: none; }
         <span>What sits down the right-hand side. Turn them all off and the trace takes the
         whole width.</span></li>
 
-      <li><b>Scope and Bench are the same instrument</b>
-        <span>In <i>Scope</i> the screen has the window and the controls are behind
-        <i>Settings</i>. In <i>Bench</i> they change places: the controls take the window
-        &mdash; every section at once, in columns, with nothing to scroll &mdash; and the
-        screen becomes a small square in the right-hand column, still running, still the
-        same canvas, so you can watch a figure answer with your hand on the control. The
-        oscillators and the sources share that column and are never folded away, because
-        they are what you are holding while you work everything else.
+      <li><b>Scope, the Bench and Settings</b>
+        <span><i>Scope</i> is for watching and playing: the screen has the window, and the
+        strip along the top keeps the trigger, the timebase, the zoom and persistence.
+        The <i>Bench</i> is where everything is tuned: the controls take the window and the
+        screen becomes a small square beside them, still running, so you can watch a
+        figure answer with your hand on the control. <i>Settings</i> opens from either
+        and holds what you set once and leave &mdash; <i>MIDI</i>, <i>Audio</i>,
+        <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
+        nowhere else.
         <br><br>
-        What is on show is the controls. Each section's title carries <b>&ctdot;</b>, and
-        behind it is that section's explanation and the handful of settings you reach for
-        rarely. <i>Presets</i>, <i>Beam</i> and <i>Measure</i> are shut altogether until
-        their titles are pressed. The list down the left is a table of contents, not a
-        switch &mdash; it takes you to a section rather than hiding the others. Nothing is
-        duplicated between the two views, so a setting made in one is made in the other.
-        <b>B</b> switches, and the choice is remembered.</span></li>
+        The Bench is five tabs, by task: <i>Play</i> (the source, the keyboard, the
+        generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger),
+        <i>Shape</i> (the filter), <i>Sources</i> and <i>Measure</i>. Each section's title
+        carries <b>&ctdot;</b>, and behind it is that section's explanation and the
+        handful of settings reached for rarely. The source chips stay beside the screen on
+        every tab, so a chip can be dragged onto a control wherever it is.
+        <br><br>
+        Press <b>/</b> to find any control by name &mdash; it knows a few other words for
+        things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
+        choosing a result takes you to it, opening whatever it is behind. <b>B</b>
+        switches between Scope and the Bench, and the view and the tab are
+        remembered.</span></li>
+
+      <li><b>The Sources tab</b>
+        <span>Every source, by family: the oscillators, the signal's level and envelope,
+        your hands on the keyboard, the controllers you have moved, and the picture itself.
+        A family with nothing in it says how to get something. Choose one and it says what
+        it is, shows where it is right now, and lists every control it is on with its own
+        depth and a cross to take it off; <i>Add a destination</i> puts it on another. An
+        oscillator's shape and rate are there, and a controller can be renamed or
+        forgotten there. Choosing a source also makes every control it is on, on every
+        tab, draw its sweep.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -2202,13 +2304,13 @@ body[data-view="bench"] #menuButton { display: none; }
         touches a number here. <i>X&ndash;Y rotation</i> is the one shared transform that
         does reach the samples &mdash; on a stereo pair it turns the lanes themselves, and
         the speakers with them &mdash; so these numbers read the signal as it arrived unless
-        you say otherwise. <i>Numbers read &rarr; Turned</i>, under <i>Settings &rarr;
-        Display</i>, points them at what is on the screen instead, and the readout says
+        you say otherwise. <i>Numbers read &rarr; Turned</i>, on the Bench under
+        <i>Picture &rarr; Display</i>, points them at what is on the screen instead, and the readout says
         <i>post-rotation</i> so you can tell. The level meter and the <i>Clipping</i>
         verdict stay on the signal either way.</span></li>
 
       <li><b>Cursors are draggable</b>
-        <span>Turn them on under <i>Settings &rarr; Measure</i>. Two in time and two in
+        <span>Turn them on under the Bench's <i>Measure</i> tab. Two in time and two in
         amplitude; the readout gives the difference between each pair, and &Delta;t as a
         frequency.</span></li>
 
@@ -2232,7 +2334,7 @@ body[data-view="bench"] #menuButton { display: none; }
         the arithmetic that drew it.</span></li>
 
       <li><b>A reference trace</b>
-        <span><i>Settings &rarr; Measure &rarr; Save reference</i> freezes what is on screen
+        <span><i>Measure &rarr; Save reference</i>, on the Bench, freezes what is on screen
         and keeps it dashed behind the live trace, so you can see what changed.</span></li>
 
       <li><b>The goniometer</b>
@@ -2242,7 +2344,7 @@ body[data-view="bench"] #menuButton { display: none; }
 
     <ul class="help-list" id="panelSignal" hidden>
       <li class="help-lede">Four sources, and a generator with four minds of its own.
-        <i>Settings &rarr; Input</i>.</li>
+        <i>Play &rarr; Input</i>, on the Bench.</li>
 
       <li><b>Tone, Mic, File &mdash; or Lanes</b>
         <span>The tone is arithmetic, and runs the moment the page opens. <i>Mic</i> asks the
@@ -2375,7 +2477,7 @@ body[data-view="bench"] #menuButton { display: none; }
         the interval beats.</span></li>
 
       <li><b>Play it: a MIDI keyboard</b>
-        <span><i>Settings &rarr; Keyboard &rarr; Connect</i>. Two held notes become the two
+        <span><i>Settings &rarr; MIDI &rarr; Connect</i>. Two held notes become the two
         channels, so the interval under your hands is the figure on the screen: hold a fifth
         and 2:3 stands still, walk through thirds and the figure walks with you. The lower
         note goes on X and the higher on Y whichever finger landed first, so the picture
@@ -2438,7 +2540,7 @@ body[data-view="bench"] #menuButton { display: none; }
         layer: a lane is one signal, and B's picture would have nowhere to go.</span></li>
 
       <li><b>No keyboard? Keys on the screen</b>
-        <span><i>Settings &rarr; Keyboard &rarr; Show keys</i> puts two octaves along the
+        <span><i>Show keys</i>, in the Bench's <i>Play</i> tab, puts two octaves along the
         bottom of the page, and they play exactly what a MIDI keyboard would &mdash; the dyad,
         <i>Hold</i>, the envelope and the note-as-truth all work from them, and they work in
         the published artifact and in Safari, where MIDI does not. Drag across them for a
@@ -2481,10 +2583,12 @@ body[data-view="bench"] #menuButton { display: none; }
         to take it off, and the sources not on it yet as buttons to add. That is the whole
         gesture, and it is the same with a mouse, a thumb or a keyboard.
         <br><br>
-        The sources are two low-frequency oscillators, <i>Level</i> &mdash; how hard you
-        are playing &mdash; <i>Key</i>, and every MIDI controller you have moved since the
-        keyboard was connected. Dragging one of their chips from the side column straight onto a
-        control is the quick way when you already know where it goes.</span></li>
+        The sources are the two low-frequency oscillators, <i>Level</i> &mdash; how hard
+        you are playing &mdash; what your hands are doing on a keyboard, every controller you
+        have moved since it was connected, and with the photocell on, the picture itself.
+        The <i>Sources</i> tab explains each one. Dragging a chip from beside the screen
+        straight onto a control is the quick way when you already know where it
+        goes.</span></li>
 
       <li><b>The lane under a slider is the reading</b>
         <span>It only reads &mdash; there is nothing to aim at. The bar runs from the value
@@ -2658,7 +2762,9 @@ const FULL_SCALE_DB = [0, -3, -6, -12, -18, -24, -30, -40, -50];
 
 const el = {};
 for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "menuClose",
-                  "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows",
+                  "srcTone", "srcMic", "srcFile", "deviceRow", "device", "toneRows", "benchStore",
+                  "benchSearch", "benchResults",
+                  "audioGroup", "midiSetGroup", "audioNote",
                   "fileRows", "fileInput", "filePlay", "fileLoop", "fileSeek",
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
@@ -2691,7 +2797,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "xyX", "xyY",
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
-                  "lfoGroup", "lfoRows", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
+                  "srcGroup", "srcGrid", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
@@ -3033,6 +3139,8 @@ function updateEnvelope(frame, elapsed) {
 
 registerSource({
   id: "env.live", label: "Level", ink: "ch3", bipolar: false, order: 10,
+  family: "signal",
+  description: "How loud the signal on the screen is right now. Works on any input.",
   value: () => Math.min(1, envLive / ENV_FULL),
 });
 
@@ -3052,6 +3160,9 @@ registerSource({
    shape, and it would be the one the picture answered to. */
 registerSource({
   id: "env.note", label: "Envelope", ink: "ch2", bipolar: false, order: 11,
+  family: "signal",
+  description: "Where the generator's attack, decay, sustain and release have got to - "
+    + "in poly, the loudest note's. It moves only while a keyboard is playing the generator.",
   value: () => {
     const source = state.source;
     return source && source.kind === "tone" && source.gated ? source.envelope : 0;
@@ -3326,6 +3437,9 @@ lfos.forEach((lfo, i) => registerSource({
   order: i,
   index: i,                       // the per-sample path reads this
   ink: "ch" + (i + 1),
+  family: "oscillators",
+  description: "A repeating wave that sweeps whatever it is on back and forth by itself. "
+    + "Rate is how fast; each destination has its own depth.",
   value: () => lfo.value,
 }));
 
@@ -3963,6 +4077,9 @@ function midiLearn(number, name) {
     get label() { return entry.name; },
     ink: CC_INKS[(midi.cc.size - 1) % CC_INKS.length],
     bipolar: false,
+    family: "controllers",
+    description: "A knob, drawbar or pedal on your keyboard, learned the first time it moved. "
+      + "Rename it here or in Settings, under MIDI.",
     order: 20 + number / 1000,
     value: () => entry.value,
   });
@@ -4014,6 +4131,8 @@ function midiRegisterKey() {
   if (MOD_SOURCES.has("midi.key")) return;
   registerSource({
     id: "midi.key", label: "Key", ink: "ch4", bipolar: false, order: 11,
+    family: "keyboard",
+    description: "How hard you struck the last key; nought when nothing is held.",
     value: () => midi.key,
   });
   /* What the hands are doing, beyond the one note or two that set the pitch.
@@ -4027,10 +4146,14 @@ function midiRegisterKey() {
   const pitches = () => midi.notes.map((held) => held.note);
   registerSource({
     id: "notes.count", label: "Notes", ink: "ch5", bipolar: false, order: 12,
+    family: "keyboard",
+    description: "How many keys are held, full at eight.",
     value: () => Math.min(1, midi.notes.length / POLY_VOICES),
   });
   registerSource({
     id: "notes.spread", label: "Spread", ink: "ch6", bipolar: false, order: 13,
+    family: "keyboard",
+    description: "How far apart your lowest and highest held notes are, full at two octaves.",
     value: () => {
       const p = pitches();
       return p.length < 2 ? 0 : Math.min(1, (Math.max(...p) - Math.min(...p)) / 24);
@@ -4038,6 +4161,8 @@ function midiRegisterKey() {
   });
   registerSource({
     id: "notes.top", label: "Melody", ink: "ch3", bipolar: false, order: 14,
+    family: "keyboard",
+    description: "How high your top note is, from C2 at nought to C6 at full.",
     value: () => {
       const p = pitches();
       return p.length === 0 ? 0 : Math.max(0, Math.min(1, (Math.max(...p) - 36) / 48));
@@ -4045,6 +4170,8 @@ function midiRegisterKey() {
   });
   registerSource({
     id: "notes.inner", label: "Inner", ink: "ch1", bipolar: false, order: 15,
+    family: "keyboard",
+    description: "How hard you played the notes the picture is not drawing.",
     value: () => {
       const undrawn = midiUndrawn();
       if (undrawn.length === 0) return 0;
@@ -10249,6 +10376,7 @@ function frameLoop(now) {
      to move on its own, so it moves with the picture rather than on a timer of
      its own. Costs nothing when nothing is patched. */
   updateLanes();
+  updateSourceMeter();
 
   drawMain(frame, elapsed);
   placeReticle();
@@ -10978,46 +11106,6 @@ function setLfoDest(index, destId) {
   touchRoutings();
 }
 
-/* The dropdown is a one-destination window onto a source that can now point at
-   several things at once, and the two have to be kept honest about each other.
-   Dragging a chip onto a second control used to leave this menu reading the
-   first one - which mattered little while it was buried in a popover and
-   matters a great deal now the oscillators are on screen the whole time.
-
-   Past one destination the menu stops offering to change anything, because
-   what it would do is REPLACE: choosing from it wipes every other routing that
-   source has. Saying how many there are and standing down is the honest
-   behaviour; the controls themselves, and the chip's own clear, are where a
-   set of routings is edited. */
-function syncLfoRows() {
-  lfos.forEach((lfo, i) => {
-    const select = document.getElementById("lfoDest" + i);
-    if (!select) return;
-
-    const list = state.modRoutings.filter((r) => r.sourceId === "lfo" + (i + 1));
-    const many = list.length > 1;
-    if (many !== (select.dataset.many === "1")) {
-      select.dataset.many = many ? "1" : "0";
-      select.disabled = many;
-      select.innerHTML = many ? "<option></option>" : destOptions("");
-    }
-    if (many) select.options[0].textContent = list.length + " destinations";
-    else select.value = list.length ? list[0].destId : "";
-
-    // And the depth slider, which is the same number the lower half of a
-    // thumb is showing somewhere else on the page.
-    const depth = document.getElementById("lfoDepth" + i);
-    const reading = document.getElementById("lfoDepthValue" + i);
-    if (depth && list.length === 1) {
-      const percent = Math.round(list[0].amount * 100);
-      if (depth.value !== String(percent)) {
-        depth.value = String(percent);
-        if (reading) reading.textContent = percent + "%";
-      }
-    }
-  });
-}
-
 function setLfoDepth(index, amount) {
   // Kept on the oscillator as well, so a depth set before a destination is
   // chosen is the depth the routing gets when one is.
@@ -11050,57 +11138,171 @@ function destOptions(selected) {
   return out;
 }
 
-function buildLfoRows() {
-  el.lfoRows.innerHTML = lfos.map((lfo, i) => {
-    const routing = lfoRouting(i);
-    return `
-    <div class="menu-row">
-      <span class="menu-label">LFO ${i + 1}</span>
-      <div class="grow">
-        <select id="lfoDest${i}" style="flex:1 1 auto" aria-label="LFO ${i + 1} destination">
-          ${destOptions(routing ? routing.destId : "")}
-        </select>
-        <select id="lfoShape${i}" style="flex:0 0 auto" aria-label="LFO ${i + 1} shape">
-          ${LFO_SHAPES.map(([v, t]) =>
-            `<option value="${v}"${v === lfo.shape ? " selected" : ""}>${t}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-    <div class="menu-row">
-      <label class="menu-label" for="lfoRate${i}">Rate</label>
-      <div class="grow">
-        <input type="range" id="lfoRate${i}" min="1" max="800" value="${Math.round(lfo.rate * 100)}">
-        <span class="reading" id="lfoRateValue${i}">${lfo.rate.toFixed(2)} Hz</span>
-      </div>
-    </div>
-    <div class="menu-row">
-      <label class="menu-label" for="lfoDepth${i}">Depth</label>
-      <div class="grow">
-        <input type="range" id="lfoDepth${i}" min="0" max="100" value="${Math.round(lfo.depth * 100)}">
-        <span class="reading" id="lfoDepthValue${i}">${Math.round(lfo.depth * 100)}%</span>
-      </div>
-    </div>
-  `; }).join("");
+/* --- the Sources tab ------------------------------------------------------------
+   Every source, by family, and the one selected: what it is, where it is now,
+   its own controls, and where it goes. It replaces the Modulation section,
+   which gave the two oscillators a home and every other source a chip with
+   no explanation - and a one-destination dropdown that had to stand down,
+   disabled, once a source went to two places. */
+const SOURCE_FAMILIES = [
+  ["oscillators", "Oscillators", ""],
+  ["signal", "Signal", ""],
+  ["keyboard", "Keyboard",
+   "Connect a keyboard under Settings, MIDI, or press Show keys on the Play tab."],
+  ["controllers", "Controllers",
+   "Move a knob, drawbar or pedal on a connected keyboard and it appears here."],
+  ["picture", "Picture",
+   "Turn on the Photocell, above the screen, and the picture's own sources appear here."],
+];
+let selectedSource = "lfo1";
 
-  lfos.forEach((lfo, i) => {
-    document.getElementById("lfoDest" + i)
-      .addEventListener("change", (e) => { setLfoDest(i, e.target.value); });
-    document.getElementById("lfoShape" + i)
+function sourcesInFamily(family) {
+  return Array.from(MOD_SOURCES.values())
+    .filter((source) => (source.family || "other") === family)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+function buildSourceGrid() {
+  if (!el.srcGrid) return;
+  const families = SOURCE_FAMILIES.slice();
+  // Anything registered without a family - a test's stand-in, say - still shows.
+  if (sourcesInFamily("other").length) families.push(["other", "Other", ""]);
+  el.srcGrid.innerHTML = families.map(([id, name, hint]) => {
+    const list = sourcesInFamily(id);
+    return '<div class="src-family" data-family="' + id + '">'
+      + '<span class="src-family-name">' + name + "</span>"
+      + (list.length === 0
+        ? '<p class="src-empty">' + escapeText(hint) + "</p>"
+        : '<div class="src-family-chips">' + list.map((source) => {
+            const count = state.modRoutings.filter((r) => r.sourceId === source.id).length;
+            return '<button type="button" class="mod-chip" data-select="' + source.id + '"'
+              + ' aria-pressed="' + (source.id === selectedSource) + '">'
+              + '<span class="dot-sm" style="background:var(--' + source.ink + ')"></span>'
+              + escapeText(source.label)
+              + (count ? '<span class="count">' + count + "</span>" : "") + "</button>";
+          }).join("") + "</div>")
+      + "</div>";
+  }).join("");
+  el.srcGrid.querySelectorAll("[data-select]").forEach((chip) => {
+    chip.addEventListener("click", () => selectSource(chip.dataset.select));
+  });
+}
+
+/* Selecting a source also focuses it, so every control it is on - on every
+   tab - draws its sweep. That was already what a chip did; the tab only
+   gives it somewhere to explain itself. */
+function selectSource(id) {
+  if (!MOD_SOURCES.has(id)) return;
+  selectedSource = id;
+  focusSource = id;
+  buildSourceGrid();
+  buildSourceDetail();
+  paintRoutings();
+}
+
+function buildSourceDetail() {
+  if (!el.srcDetail) return;
+  if (!MOD_SOURCES.has(selectedSource)) selectedSource = "lfo1";
+  const source = MOD_SOURCES.get(selectedSource);
+  if (!source) { el.srcDetail.innerHTML = ""; return; }
+  el.srcDetailTitle.textContent = source.label;
+
+  const routings = state.modRoutings.filter((r) => r.sourceId === source.id);
+  const taken = new Set(routings.map((r) => r.destId));
+  const tone = shownKind === "tone";
+  const addable = Array.from(MOD_DESTS.values()).filter((dest) =>
+    !taken.has(dest.id) && routingAllowed(source, dest));
+  const lfoIndex = source.index;
+  const lfo = lfoIndex !== undefined ? lfos[lfoIndex] : null;
+  const cc = source.id.startsWith("cc.") ? midi.cc.get(Number(source.id.slice(3))) : null;
+
+  el.srcDetail.innerHTML =
+    '<p class="src-desc">' + escapeText(source.description || "") + "</p>"
+    + '<div class="menu-row"><span class="menu-label">Now</span><div class="grow">'
+    + '<span class="src-meter" style="--pip:var(--' + source.ink + ')">'
+    + '<span class="src-meter-fill" id="srcMeter"></span></span>'
+    + '<span class="reading" id="srcMeterValue"></span></div></div>'
+    + (lfo ? '<div class="menu-row"><label class="menu-label" for="lfoShape' + lfoIndex
+        + '">Shape</label><div class="grow"><select id="lfoShape' + lfoIndex
+        + '" style="flex:1 1 auto">'
+        + LFO_SHAPES.map(([v, t]) => '<option value="' + v + '"'
+            + (v === lfo.shape ? " selected" : "") + ">" + t + "</option>").join("")
+        + "</select></div></div>"
+        + '<div class="menu-row"><label class="menu-label" for="lfoRate' + lfoIndex
+        + '">Rate</label><div class="grow"><input type="range" id="lfoRate' + lfoIndex
+        + '" min="1" max="800" value="' + Math.round(lfo.rate * 100) + '">'
+        + '<span class="reading" id="lfoRateValue' + lfoIndex + '">' + lfo.rate.toFixed(2)
+        + " Hz</span></div></div>" : "")
+    + (cc ? '<div class="menu-row"><label class="menu-label" for="srcDetail-name">Name</label>'
+        + '<div class="grow"><input type="text" class="cc-name" id="srcDetail-name" value="'
+        + escapeText(cc.name) + '"><button type="button" class="link-btn caps" '
+        + 'id="srcDetail-forget">Forget</button></div></div>' : "")
+    + '<span class="src-sub">Destinations</span>'
+    + (routings.length === 0
+      ? '<p class="mod-empty">Not on anything yet.</p>'
+      : routings.map((routing) => {
+          const dest = MOD_DESTS.get(routing.destId);
+          const label = dest ? dest.label : routing.destId + " (not here)";
+          return depthRowHTML(routing, label, source.ink, source.label + " depth on " + label);
+        }).join(""))
+    + '<div class="menu-row"><div class="grow"><select id="srcDetail-add" style="flex:1 1 auto"'
+    + ' aria-label="Add a destination for ' + escapeText(source.label) + '">'
+    + '<option value="">Add a destination\u2026</option>'
+    + addable.map((dest) => {
+        // Greyed rather than dropped, as the old dropdown did: a generator
+        // parameter over a live input is a destination a setup can name.
+        const dead = dest.kind === "audio" && !tone;
+        return '<option value="' + dest.id + '"' + (dead ? " disabled" : "") + ">"
+          + escapeText(dest.label) + (dead ? " \u2014 test tone only" : "") + "</option>";
+      }).join("")
+    + "</select></div></div>";
+
+  wireDepthRows(el.srcDetail, buildSourceDetail);
+  const add = document.getElementById("srcDetail-add");
+  add.addEventListener("change", () => {
+    if (add.value) addRouting(source.id, add.value);
+    buildSourceDetail();
+  });
+  if (lfo) {
+    document.getElementById("lfoShape" + lfoIndex)
       .addEventListener("change", (e) => { lfo.shape = e.target.value; });
-
-    const rate = document.getElementById("lfoRate" + i);
+    const rate = document.getElementById("lfoRate" + lfoIndex);
     rate.addEventListener("input", () => {
       lfo.rate = Number(rate.value) / 100;
-      document.getElementById("lfoRateValue" + i).textContent = lfo.rate.toFixed(2) + " Hz";
+      document.getElementById("lfoRateValue" + lfoIndex).textContent = lfo.rate.toFixed(2) + " Hz";
     });
+  }
+  if (cc) {
+    const name = document.getElementById("srcDetail-name");
+    name.addEventListener("input", () => {
+      cc.name = name.value || "CC " + cc.number;
+      el.srcDetailTitle.textContent = source.label;
+      buildSourceChips();
+      buildMidiRows();
+    });
+    document.getElementById("srcDetail-forget")
+      .addEventListener("click", () => midiForget(cc.number));
+  }
+  updateSourceMeter();
+}
 
-    const depth = document.getElementById("lfoDepth" + i);
-    depth.addEventListener("input", () => {
-      setLfoDepth(i, Number(depth.value) / 100);
-      document.getElementById("lfoDepthValue" + i).textContent =
-        Math.round(lfo.depth * 100) + "%";
-    });
-  });
+/* The selected source's value, once a frame, while the tab is showing. */
+function updateSourceMeter() {
+  if (document.body.dataset.view !== "bench" || benchTab !== "sources") return;
+  const fill = document.getElementById("srcMeter");
+  const source = MOD_SOURCES.get(selectedSource);
+  if (!fill || !source) return;
+  const v = Math.max(-1, Math.min(1, source.value()));
+  // A bipolar source grows from the middle; the rest from the left.
+  if (source.bipolar) {
+    fill.style.left = (50 + Math.min(0, v) * 50) + "%";
+    fill.style.width = Math.abs(v) * 50 + "%";
+  } else {
+    fill.style.left = "0";
+    fill.style.width = Math.max(0, v) * 100 + "%";
+  }
+  const reading = document.getElementById("srcMeterValue");
+  if (reading) reading.textContent = (v > 0 && source.bipolar ? "+" : "") + v.toFixed(2);
 }
 
 function syncPanes() {
@@ -11896,7 +12098,7 @@ function restore(partial) {
     });
   }
   touchRoutings();
-  buildLfoRows();
+  buildSourceDetail();
 
   el.timebase.value = String(s.timebase);
   state.timebase = s.timebase;
@@ -12396,20 +12598,21 @@ function showSource(pending) {
      the screen and not steer. */
   if (genSettings()) delete el.toneRows.dataset.off;
   else el.toneRows.dataset.off = "1";
-  /* The oscillators stay, whatever the source is. They were switched off
-     wholesale on anything but the test tone, which was right when every
-     destination they had was a generator parameter and is wrong now: an LFO on
-     the filter cutoff, or on the rotation, or on the zoom, is the same patch
-     whether the signal came from arithmetic or a microphone. What does not
-     apply on a live input is the generator half of the destination list, and
-     that greys out per entry - see `destOptions`. */
-  delete el.lfoGroup.dataset.off;
-  buildLfoRows();      // the destination list says which ones this source has
-  el.deviceRow.hidden = kind !== "mic";
-  el.micShapeRow.hidden = kind !== "mic";
-  el.liveKindRow.hidden = kind !== "mic";
-  el.monitorRow.hidden = kind !== "mic";
-  el.micNote.hidden = kind !== "mic";
+  /* The oscillators stay, whatever the source is: an LFO on the filter cutoff,
+     the rotation or the zoom is the same patch whether the signal came from
+     arithmetic or a microphone. What does not apply on a live input is the
+     generator half of the destination list, and that greys out per entry in
+     the Sources tab's Add menu. */
+  buildSourceDetail(); // the destination list says which ones this source has
+  /* The device picker lives in Settings now, in both views, so it is greyed
+     rather than hidden when there is no live input: a setting that vanishes
+     with the source cannot be found. Choosing a device opens that input, so
+     over the tone it would be a source change made from the wrong place. */
+  const live = kind === "mic";
+  el.device.disabled = !live;
+  el.device.title = live ? "" : "Choose Mic under Input first";
+  el.micShapeRow.hidden = !live;
+  el.micNote.hidden = !live;
   /* Asked again on every source change, and the source is what answers: a
      band split has no `setMonitor`, so switching to one turns monitoring off
      and says so by greying the box rather than by leaving it ticked over a
@@ -13330,7 +13533,21 @@ el.srcRack.addEventListener("click", () => {
 
 const VIEW_KEY = "scope.view";
 let benchGroups = null;      // in the order the popover had them
-let benchSection = 0;
+/* The Bench's tabs, by task rather than one per section: a generator slider
+   is moved while the trigger and the vertical scale are watched, so those
+   sit together and the tabs are few. Which sections are on which tab is
+   the `data-tab` in the markup; this is their order and their names. */
+const BENCH_TABS = [
+  ["play", "Play"], ["picture", "Picture"], ["shape", "Shape"],
+  ["sources", "Sources"], ["measure", "Measure"],
+];
+const TAB_KEY = "scope.benchTab";
+let benchTab = "play";
+try {
+  const saved = window.localStorage.getItem(TAB_KEY);
+  if (BENCH_TABS.some(([id]) => id === saved)) benchTab = saved;
+} catch (error) { /* private window */ }
+const tabOf = (group) => group.dataset.tab || "play";
 
 function settingsGroups() {
   if (benchGroups === null) {
@@ -13356,47 +13573,71 @@ function groupTitle(group) {
    beside the screen and stay there - the rail is left holding what you set
    once and leave. Anything else that earns permanent residency goes in this
    list and is excluded from the rotation by the same line. */
-const SIDE_GROUPS = ["lfoGroup"];
+/* Empty since the oscillators got the Sources tab. The side column keeps the
+   screen and the source chips on every tab, and nothing else. */
+const SIDE_GROUPS = [];
 const inSide = (group) => SIDE_GROUPS.indexOf(group.id) >= 0;
 
+/* Where a section lives. Every section has one home, `data-home`, and stays
+   there in both views: Settings holds what is set once and left, the Bench
+   everything played or tuned. It used to be that every section moved between
+   the two, so Settings and the Bench had identical contents and neither was
+   a place for anything in particular. */
+const homeOf = (group) => (group.dataset.home === "settings" ? "settings" : "bench");
+const benchGroupsAll = () => settingsGroups().filter((g) => homeOf(g) === "bench");
+
 const benchable = () =>
-  settingsGroups().filter((g) => !inSide(g) && g.dataset.off === undefined);
+  benchGroupsAll().filter((g) => !inSide(g) && g.dataset.off === undefined);
 
+/* Tabs again, and this time on the evidence. The rail was made a table of
+   contents - every section on show at once, the rail only scrolling you to
+   one - because hiding six sections to show a seventh made the list the only
+   map of the instrument. That held while there was a tone to show. A rack of
+   the generator and the live input scrolled it by 52 px at 1400x900 and a rack
+   of files still did, and the sound plan after this adds dozens of controls.
+   Tabs by task keep the map - five of them, named for what you are doing -
+   and one tab always fits. */
 function buildBenchRail() {
-  const shown = benchable();
-  if (shown.length === 0) return;
-  if (benchSection >= shown.length) benchSection = 0;
-
-  el.benchRail.innerHTML = shown.map((group, i) =>
-    '<button type="button" data-section="' + i + '" aria-current="'
-    + (i === benchSection) + '">' + escapeText(groupTitle(group)) + "</button>").join("");
+  el.benchRail.innerHTML = BENCH_TABS.map(([id, label]) =>
+    '<button type="button" role="tab" id="benchTab-' + id + '" data-tab="' + id + '"'
+    + ' aria-selected="' + (id === benchTab) + '" aria-controls="benchBody"'
+    + ' tabindex="' + (id === benchTab ? 0 : -1) + '">' + label + "</button>").join("");
 
   el.benchRail.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => showBenchSection(Number(button.dataset.section)));
+    button.addEventListener("click", () => setBenchTab(button.dataset.tab));
+    // Arrow keys along the strip, the way a tab list is walked.
+    button.addEventListener("keydown", (event) => {
+      const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1
+                 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      // The page's own arrows move the timebase and the trigger level.
+      event.stopPropagation();
+      const at = BENCH_TABS.findIndex(([id]) => id === benchTab);
+      const next = BENCH_TABS[(at + step + BENCH_TABS.length) % BENCH_TABS.length][0];
+      setBenchTab(next);
+      const focus = document.getElementById("benchTab-" + next);
+      if (focus) focus.focus();
+    });
   });
-  markRail();
 }
 
-function markRail() {
-  el.benchRail.querySelectorAll("button").forEach((button) => {
-    button.setAttribute("aria-current",
-      String(Number(button.dataset.section) === benchSection));
-  });
+function setBenchTab(id) {
+  if (!BENCH_TABS.some(([tab]) => tab === id)) return;
+  benchTab = id;
+  try { window.localStorage.setItem(TAB_KEY, id); } catch (error) { /* private window */ }
+  if (document.body.dataset.view === "bench") {
+    layoutBenchBody();
+    buildBenchRail();
+    requestAnimationFrame(paintRoutings);
+  }
 }
 
-/* Not a switch any more. Every section is on show at once, so the rail is a
-   table of contents: it says what there is and takes you to one. Hiding six
-   sections to reveal a seventh made the list the only place the shape of the
-   thing was visible, which is a map standing in for the territory. */
-function showBenchSection(index) {
-  const shown = benchable();
-  if (shown.length === 0) return;
-  benchSection = Math.max(0, Math.min(index, shown.length - 1));
-
-  const group = shown[benchSection];
-  unfold(group);
-  if (group.scrollIntoView) group.scrollIntoView({ block: "nearest" });
-  markRail();
+/* The tab a section is on, brought forward - what a search result and
+   `showControl` need, and nothing else. */
+function showBenchFor(group) {
+  if (homeOf(group) !== "bench" || inSide(group)) return;
+  if (tabOf(group) !== benchTab) setBenchTab(tabOf(group));
 }
 
 /* Folding. Three sections - the presets, the beam, the measuring tools - are
@@ -13438,7 +13679,11 @@ function benchColumns() {
 
 function layoutBenchBody() {
   const want = benchColumns();
-  const groups = settingsGroups().filter((g) => !inSide(g));
+  const all = benchGroupsAll().filter((g) => !inSide(g));
+  // The other tabs' sections into the store first, so clearing the body
+  // below detaches nothing that is not about to be put back.
+  for (const group of all) if (tabOf(group) !== benchTab) el.benchStore.appendChild(group);
+  const groups = all.filter((g) => tabOf(g) === benchTab);
 
   const cols = [];
   el.benchBody.innerHTML = "";
@@ -13537,7 +13782,7 @@ function applyFolds(bench) {
      you come back to it. Stripping it here is what made every fold spring open
      after a trip to Scope and back. */
   if (!bench) return;
-  for (const group of settingsGroups()) {
+  for (const group of benchGroupsAll()) {
     const title = group.querySelector(":scope > .menu-title");
     if (!title) continue;
     decorateGroup(group);
@@ -13571,12 +13816,15 @@ function setView(view) {
   el.viewScope.setAttribute("aria-checked", String(!bench));
   el.viewBench.setAttribute("aria-checked", String(bench));
 
+  /* Each section to its home, whichever view is showing. A Bench section
+     stays on the Bench while Scope is up - hidden with it - so Scope is for
+     watching and playing, and Settings holds only settings. */
   const groups = settingsGroups();
   for (const group of groups) {
-    (bench ? (inSide(group) ? el.benchSide : el.benchBody) : el.menuPanel)
-      .appendChild(group);
+    if (homeOf(group) === "settings") el.menuPanel.appendChild(group);
+    else if (inSide(group)) el.benchSide.appendChild(group);
+    else if (!group.closest("#bench")) el.benchBody.appendChild(group);
   }
-  if (!bench) el.benchBody.innerHTML = "";
 
   /* The screen moves too, and it is the same argument as the controls: a
      second canvas would be a second thing to resize, a second set of cursor
@@ -13604,6 +13852,215 @@ function setView(view) {
   try { window.localStorage.setItem(VIEW_KEY, document.body.dataset.view); }
   catch (error) { /* private window */ }
 }
+
+/* Show a control, wherever it lives: open the Bench, or Settings, and bring
+   its section into view. Search jumps with it, and so do the tests - which
+   is the point of it being one function. A test that opened Settings and
+   clicked the frequency slider was relying on every section being in the
+   popover, and that stopped being true when each section got a home. */
+function showControl(node) {
+  const target = typeof node === "string" ? document.getElementById(node) : node;
+  if (!target) return false;
+  const group = target.closest(".menu-group");
+  if (!group) return false;
+  if (homeOf(group) === "settings") {
+    setMenuOpen(true);        // over either view
+  } else {
+    if (document.body.dataset.view !== "bench") setView("bench");
+    if (typeof showBenchFor === "function") showBenchFor(group);
+    unfold(group);
+  }
+  if (target.scrollIntoView) target.scrollIntoView({ block: "nearest" });
+  return true;
+}
+
+/* --- search ---------------------------------------------------------------------
+   Read from the page when a search starts, never kept. It is a few hundred
+   rows, and an index kept up to date has to be told about every row that comes
+   and goes - the layer rows, poly's Draw row, a rack's lanes, a learned
+   controller - and one it was not told about is a result that goes nowhere.
+   The words a player might use that the page does not are the synonyms. */
+const SEARCH_SYNONYMS = {
+  lfo: "oscillators oscillator lfo", adsr: "envelope attack decay sustain release",
+  midi: "keyboard midi", cc: "controllers controller", drawbar: "controllers controller",
+  pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
+  mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
+  envelope: "envelope attack decay sustain release",
+};
+
+function rowText(row) {
+  const label = row.querySelector(".menu-label");
+  const named = row.querySelector("[aria-label]");
+  const text = (label && label.textContent.trim())
+    || (row.matches("label.check") && row.textContent.trim())
+    || (named && named.getAttribute("aria-label"))
+    || row.textContent.trim();
+  return text.replace(/\s+/g, " ").slice(0, 60);
+}
+
+// Hidden by its own block - a kind's rows while another kind is chosen - as
+// opposed to hidden with a tab or behind the dots, which a search opens.
+function rowIsLive(row, group) {
+  for (let node = row; node && node !== group; node = node.parentElement) {
+    if (node.hidden) return false;
+  }
+  return group.dataset.off === undefined;
+}
+
+/* What a row says, for matching: its label, what its buttons and readings
+   say, and the choices in its menus - so "notch" finds the filter's type and
+   "fifth" the interval. The menus that made that noisy were the destination
+   lists, where "cutoff" is an option on every one; those live in the Sources
+   tab's panel now, which is searched as sources rather than as rows. The
+   label still ranks first, so a row found by its menu comes after one named
+   for the word. */
+function rowWords(row, label, section) {
+  const said = Array.from(row.querySelectorAll("button, .reading, [aria-label], option"))
+    .map((node) => node.getAttribute("aria-label") || node.textContent).join(" ");
+  return (label + " " + section + " " + said).toLowerCase();
+}
+
+// The Sources tab's own sections are sources, and searched as sources. Its
+// Add menu lists every destination, so as rows they would answer everything.
+const SEARCH_SKIP = ["srcGroup", "srcDetailGroup"];
+
+function searchEntries() {
+  const out = [];
+  for (const group of settingsGroups()) {
+    if (SEARCH_SKIP.includes(group.id)) continue;
+    const section = groupTitle(group);
+    for (const row of group.querySelectorAll(".menu-row, label.check")) {
+      if (row.parentElement.closest(".menu-row")) continue;     // a row inside a row
+      if (!rowIsLive(row, group)) continue;
+      const label = rowText(row);
+      if (!label) continue;
+      const behind = row.closest("[data-more]") !== null;
+      out.push({ kind: "row", row, group, label,
+                 crumb: (homeOf(group) === "settings" ? "Settings \u203a " : "")
+                   + section + (behind ? " (behind \u22ef)" : ""),
+                 hay: rowWords(row, label, section) });
+    }
+  }
+  // The strip along the top, which is in neither Settings nor the Bench.
+  for (const field of document.querySelectorAll(".transport .field")) {
+    const eyebrow = field.querySelector(".eyebrow");
+    const label = eyebrow ? eyebrow.textContent.trim() : "";
+    if (!label) continue;
+    out.push({ kind: "strip", row: field, label, crumb: "Along the top",
+               hay: rowWords(field, label, "top") });
+  }
+  for (const source of MOD_SOURCES.values()) {
+    const family = (SOURCE_FAMILIES.find(([id]) => id === source.family) || [0, "Other"])[1];
+    out.push({ kind: "source", id: source.id, label: source.label,
+               crumb: "Sources \u203a " + family,
+               hay: (source.label + " " + family + " " + (source.description || "")).toLowerCase() });
+  }
+  return out;
+}
+
+function searchFor(query) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  // Each word must be found, as itself or as one of its synonyms.
+  const alts = words.map((w) => [w].concat(SEARCH_SYNONYMS[w] ? SEARCH_SYNONYMS[w].split(" ") : []));
+  const scored = [];
+  /* At the start of a word, not anywhere in one: "rate" is a rate and not
+     the middle of "separate", which put the beam's Intensity first. */
+  const words_ = (text) => " " + text.replace(/[^a-z0-9]+/g, " ") + " ";
+  for (const entry of searchEntries()) {
+    const hay = words_(entry.hay);
+    if (!alts.every((set) => set.some((w) => hay.includes(" " + w)))) continue;
+    const label = entry.label.toLowerCase();
+    const score = alts.reduce((sum, set) => sum
+      + (set.some((w) => label.startsWith(w)) ? 3 : set.some((w) => label.includes(w)) ? 2 : 0), 0);
+    scored.push([score, entry]);
+  }
+  scored.sort((a, b) => b[0] - a[0]);
+  return scored.slice(0, 12).map(([, entry]) => entry);
+}
+
+let searchShown = [];
+let searchAt = 0;
+
+function showSearch() {
+  const query = el.benchSearch.value.trim();
+  if (!query) { el.benchResults.hidden = true; searchShown = []; return; }
+  searchShown = searchFor(query);
+  searchAt = 0;
+  el.benchResults.innerHTML = searchShown.length === 0
+    ? '<p class="none">Nothing called that.</p>'
+    : searchShown.map((entry, i) =>
+        '<button type="button" role="option" data-at="' + i + '" aria-selected="' + (i === 0) + '">'
+        + escapeText(entry.label) + '<span class="crumb">' + escapeText(entry.crumb) + "</span></button>")
+      .join("");
+  el.benchResults.hidden = false;
+  el.benchResults.querySelectorAll("button").forEach((button) => {
+    // Pointer down rather than click: the input's blur closes the list first.
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      chooseSearch(searchShown[Number(button.dataset.at)]);
+    });
+  });
+}
+
+function flash(node) {
+  node.classList.add("search-hit");
+  setTimeout(() => node.classList.remove("search-hit"), 1400);
+}
+
+function chooseSearch(entry) {
+  if (!entry) return;
+  el.benchResults.hidden = true;
+  el.benchSearch.value = "";
+  if (entry.kind === "source") {
+    if (document.body.dataset.view !== "bench") setView("bench");
+    setBenchTab("sources");
+    selectSource(entry.id);
+    const chip = el.srcGrid.querySelector('[data-select="' + entry.id + '"]');
+    if (chip) { chip.focus(); flash(chip); }
+    return;
+  }
+  if (entry.kind === "strip") {
+    flash(entry.row);
+    const control = entry.row.querySelector("input, select, button");
+    if (control) control.focus();
+    return;
+  }
+  showControl(entry.row);
+  /* Behind the dots: open the section's detail, where the row is moved to.
+     In Settings there are no dots; the popover shows everything. */
+  if (homeOf(entry.group) === "bench" && entry.row.closest("[data-more]")) {
+    const dots = entry.group.querySelector(":scope > .menu-title .more-dots");
+    if (dots) openGroupDetail(entry.group, dots);
+  }
+  requestAnimationFrame(() => {
+    if (entry.row.scrollIntoView) entry.row.scrollIntoView({ block: "nearest" });
+    flash(entry.row);
+    const control = entry.row.querySelector("input, select, button");
+    if (control) control.focus({ preventScroll: true });
+  });
+}
+
+el.benchSearch.addEventListener("input", showSearch);
+el.benchSearch.addEventListener("keydown", (event) => {
+  const buttons = el.benchResults.querySelectorAll("button");
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    event.stopPropagation();
+    if (buttons.length === 0) return;
+    searchAt = (searchAt + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+    buttons.forEach((b, i) => b.setAttribute("aria-selected", String(i === searchAt)));
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    chooseSearch(searchShown[searchAt]);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    el.benchSearch.value = "";
+    el.benchResults.hidden = true;
+    el.benchSearch.blur();
+  }
+});
+el.benchSearch.addEventListener("blur", () => { el.benchResults.hidden = true; });
 
 el.viewScope.addEventListener("click", () => setView("scope"));
 el.viewBench.addEventListener("click", () => setView("bench"));
@@ -13684,6 +14141,14 @@ function buildSourceChips() {
     + "</div>"
     + '<p class="bench-hint">Press the dots on a control to put one of these on it. '
     + 'Dragging a chip onto one is the quick way.</p>';
+
+  /* The Sources tab from the same moment. This is what every place a source
+     comes or goes already calls - a controller learned or forgotten, the
+     photocell on or off, a keyboard arriving - and the tab's grid was left
+     to the next repaint of the routings, so it went on listing sources that
+     had gone and missing ones that had come. */
+  buildSourceGrid();
+  if (!MOD_SOURCES.has(selectedSource)) buildSourceDetail();
 
   el.benchSources.querySelectorAll(".mod-chip").forEach((chip) => {
     const id = chip.dataset.source;
@@ -13871,6 +14336,53 @@ function openGroupDetail(group, anchor) {
 
    It is also the only place assignment happens now, which means one gesture to
    learn - press the dots - rather than a mode to enter first.               */
+/* One routing's depth, as a row: the dot, a name, a slider bounded by the
+   source's reach, the value and a remove button. The control's editor
+   names the source on each row and the Sources tab names the destination,
+   and both build the row here and wire it below - one law for a depth, not
+   two that agree until one of them is changed. */
+function depthRowHTML(routing, label, ink, aria) {
+  const source = MOD_SOURCES.get(routing.sourceId);
+  const percent = Math.round(routing.amount * 100);
+  const limit = source && source.reach > 0 ? Math.round(source.reach * 100) : 100;
+  return '<div class="mod-edit" data-source="' + routing.sourceId + '" data-dest="'
+    + routing.destId + '" style="--pip:var(--' + ink + ')">'
+    + '<span class="dot-sm"></span>'
+    + '<span class="mod-edit-name">' + escapeText(label) + "</span>"
+    + '<input type="range" min="-' + limit + '" max="' + limit + '" value="' + percent
+    + '" aria-label="' + escapeText(aria) + '">'
+    + '<span class="mod-edit-val">' + (percent > 0 ? "+" : "") + percent + "%</span>"
+    + '<button type="button" class="mod-edit-off" aria-label="Remove '
+    + escapeText(label) + '">×</button>'
+    + "</div>";
+}
+
+function wireDepthRows(container, redraw) {
+  container.querySelectorAll(".mod-edit").forEach((line) => {
+    const sourceId = line.dataset.source, destId = line.dataset.dest;
+    const slider = line.querySelector("input");
+    const value = line.querySelector(".mod-edit-val");
+    slider.addEventListener("input", () => {
+      const routing = state.modRoutings.find(
+        (r) => r.sourceId === sourceId && r.destId === destId);
+      if (!routing) return;
+      const percent = Number(slider.value);
+      routing.amount = percent / 100;
+      value.textContent = (percent > 0 ? "+" : "") + percent + "%";
+      modDirty = true;
+      // In place: a redraw here would replace the slider under the finger.
+      updateLanes();
+      repaintOpeners();
+    });
+    // The rebuild is safe once the drag is over, and the lane wants it.
+    slider.addEventListener("change", () => { touchRoutings(); });
+    line.querySelector(".mod-edit-off").addEventListener("click", () => {
+      dropRouting(sourceId, destId);
+      redraw();
+    });
+  });
+}
+
 function openModEditor(destId, anchor, reading) {
   const dest = MOD_DESTS.get(destId);
   if (!dest) return;
@@ -13889,22 +14401,9 @@ function openModEditor(destId, anchor, reading) {
           ? '<p class="mod-empty">Nothing is moving this yet.</p>'
           : list.map((routing) => {
               const source = MOD_SOURCES.get(routing.sourceId);
-              const ink = source ? source.ink : "unresolved";
               const label = source ? source.label : routing.sourceId + " (not here)";
-              const percent = Math.round(routing.amount * 100);
-              const limit = source && source.reach > 0 ? Math.round(source.reach * 100) : 100;
-              return '<div class="mod-edit" data-source="' + routing.sourceId
-                + '" style="--pip:var(--' + ink + ')">'
-                + '<span class="dot-sm"></span>'
-                + '<span class="mod-edit-name">' + escapeText(label) + "</span>"
-                + '<input type="range" min="-' + limit + '" max="' + limit + '" value="' + percent
-                + '" aria-label="' + escapeText(label) + " depth on "
-                + escapeText(dest.label) + '">'
-                + '<span class="mod-edit-val">' + (percent > 0 ? "+" : "") + percent
-                + "%</span>"
-                + '<button type="button" class="mod-edit-off" aria-label="Remove '
-                + escapeText(label) + '">×</button>'
-                + "</div>";
+              return depthRowHTML(routing, label, source ? source.ink : "unresolved",
+                                  label + " depth on " + dest.label);
             }).join(""))
         + '<div class="mod-add-list">'
         + sources().filter((s) => !on.has(s.id)).map((source) =>
@@ -13913,31 +14412,7 @@ function openModEditor(destId, anchor, reading) {
             + '<span class="dot-sm"></span>' + escapeText(source.label) + "</button>").join("")
         + "</div>";
 
-      body.querySelectorAll(".mod-edit").forEach((line) => {
-        const sourceId = line.dataset.source;
-        const slider = line.querySelector("input");
-        const value = line.querySelector(".mod-edit-val");
-
-        slider.addEventListener("input", () => {
-          const routing = state.modRoutings.find(
-            (r) => r.sourceId === sourceId && r.destId === destId);
-          if (!routing) return;
-          const percent = Number(slider.value);
-          routing.amount = percent / 100;
-          value.textContent = (percent > 0 ? "+" : "") + percent + "%";
-          modDirty = true;
-          // In place: a redraw here would replace the slider under the finger.
-          updateLanes();
-          repaintOpeners();
-        });
-        // The rebuild is safe once the drag is over, and the lane wants it.
-        slider.addEventListener("change", () => { touchRoutings(); });
-
-        line.querySelector(".mod-edit-off").addEventListener("click", () => {
-          dropRouting(sourceId, destId);
-          draw();
-        });
-      });
+      wireDepthRows(body, draw);
 
       body.querySelectorAll("[data-add]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -14156,8 +14631,11 @@ function paintRoutings() {
   }
 
   updateLanes();
-  syncLfoRows();
-  buildSourceChips();
+  buildSourceChips();            // and the Sources tab's grid with it
+  // Not while a depth in it is being dragged: the rebuild would replace the
+  // slider under the finger.
+  if (!(document.activeElement && el.srcDetail && el.srcDetail.contains(document.activeElement)
+        && document.activeElement.type === "range")) buildSourceDetail();
 }
 
 
@@ -14252,6 +14730,9 @@ function setPhoto(on) {
   if (on) {
     registerSource({
       id: "photo.1", label: "Photocell", ink: "ch6", bipolar: false, order: 30,
+      family: "picture",
+      description: "How bright the screen is under the reticle, like a light sensor on the "
+        + "glass. Drag the reticle onto the picture to aim it.",
       reach: PHOTO_REACH, start: PHOTO_START, fromPicture: true,
       value: () => photo.value,
     });
@@ -14261,6 +14742,7 @@ function setPhoto(on) {
     for (const source of PICTURE_SOURCES) {
       registerSource(Object.assign({
         order: 31 + PICTURE_SOURCES.indexOf(source), reach: PHOTO_REACH, start: PHOTO_START,
+        family: "picture",
         fromPicture: true, value: () => picture[source.key],
       }, source));
     }
@@ -14280,13 +14762,21 @@ function setPhoto(on) {
 }
 
 const PICTURE_SOURCES = [
-  { id: "picture.round", key: "round", label: "Roundness", ink: "ch3", bipolar: false },
-  { id: "picture.cover", key: "cover", label: "Coverage", ink: "ch4", bipolar: false },
-  { id: "picture.change", key: "change", label: "Change", ink: "ch5", bipolar: false },
-  { id: "picture.novelty", key: "novelty", label: "Novelty", ink: "ch2", bipolar: false },
-  { id: "picture." + SIXTH, key: SIXTH, label: "Direction", ink: "ch1", bipolar: true },
+  { id: "picture.round", key: "round", label: "Roundness", ink: "ch3", bipolar: false,
+    description: "How spread the figure is: one for a circle, nought for a line - and one "
+      + "for a square too, because it sees spread rather than corners." },
+  { id: "picture.cover", key: "cover", label: "Coverage", ink: "ch4", bipolar: false,
+    description: "How much of the screen the trace lights up." },
+  { id: "picture.change", key: "change", label: "Change", ink: "ch5", bipolar: false,
+    description: "How much the picture moved since the last frame." },
+  { id: "picture.novelty", key: "novelty", label: "Novelty", ink: "ch2", bipolar: false,
+    description: "How unlike anything in the last fifteen seconds the picture is." },
+  { id: "picture." + SIXTH, key: SIXTH, label: "Direction", ink: "ch1", bipolar: true,
+    description: "Which way round the beam travels: plus one way, minus the other." },
   { id: "picture.bored", key: "bored", label: "Boredom", ink: "ch6", bipolar: false,
-    reach: BORED_REACH },
+    reach: BORED_REACH,
+    description: "Climbs while the picture neither moves nor goes anywhere new, and drains "
+      + "once it does - never faster than a quarter a second." },
 ];
 
 let photoDrag = null;
@@ -14382,6 +14872,13 @@ document.addEventListener("keydown", (event) => {
       event.preventDefault();
       setView(document.body.dataset.view === "bench" ? "scope" : "bench");
       break;
+    /* Find a control, from either view: the search lives on the Bench, so
+       from Scope it opens the Bench first. */
+    case "/":
+      event.preventDefault();
+      if (document.body.dataset.view !== "bench") setView("bench");
+      el.benchSearch.focus();
+      break;
     case "1": event.preventDefault(); setDisplay("yt"); break;
     case "2": event.preventDefault(); setDisplay("xy"); break;
     case "3": event.preventDefault(); setDisplay("spect"); break;
@@ -14403,7 +14900,7 @@ const watchSize = new ResizeObserver(() => { /* the next frame refits */ });
 [el.trace, el.goni, el.spectrum].forEach((c) => watchSize.observe(c.parentElement));
 
 registerLaneDests(state.channels.length);
-buildLfoRows();
+buildSourceDetail();
 fillIntervals();
 toTone();
 fillPresets();

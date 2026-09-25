@@ -72,7 +72,7 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate(SETUP)
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
 
     print("\n--- Lanes, with nothing in the rack ---")
     empty = p.evaluate("""async () => {
@@ -104,8 +104,11 @@ with sync_playwright() as pw:
       await addRackFiles([__wav('three', 440)]);
       const three = __names();
       el.rackLive.checked = true; await setRackLive(true);
+      showControl('laneList');          // its tab, which is Picture
+      const section = el.laneGroup.offsetHeight > 0 && el.laneList.offsetHeight > 0;
+      setBenchTab('play');
       return { two, three, all: __names(), budget: el.rackBudget.textContent, removable: __removable(),
-               section: el.laneGroup.offsetHeight > 0 && el.laneList.offsetHeight > 0 };
+               section };
     }""")
     print("    %s" % order)
     check("files are added beside the ones already in, not instead",
@@ -254,8 +257,19 @@ with sync_playwright() as pw:
       el.rackSynth.checked = true; state.rackSynth = false; await setRackSynth(true);
       el.rackLive.checked = true; state.rackLive = false; await setRackLive(true);
       showSource('rack'); setView('bench'); await __wait(900);
-      const over = () => el.benchBody.scrollHeight - el.benchBody.clientHeight;
+      // The worst tab, since the Bench became tabs: a rack's rows land on
+      // Play (what is in it) and Picture (its lanes).
+      const over = () => {
+        let worst = -Infinity;
+        for (const [tab] of BENCH_TABS) {
+          setBenchTab(tab);
+          worst = Math.max(worst, el.benchBody.scrollHeight - el.benchBody.clientHeight);
+        }
+        setBenchTab('play');
+        return worst;
+      };
       const wide = () => ['srcRack', 'laneList'].flatMap((id) => {
+        showControl(id);
         const group = el[id].closest('.menu-group'), right = group.getBoundingClientRect().right;
         return Array.from(group.querySelectorAll('input, select, button, .reading'))
           .filter((c) => c.getBoundingClientRect().width > 0)
@@ -281,6 +295,10 @@ with sync_playwright() as pw:
           fit["two"]["mark"] == "lanes", fit["two"]["mark"])
     check("and they come back once there is a file",
           fit["six"]["transport"] and fit["six"]["align"], str(fit["six"]))
+    # The known limit the rack builder left - a rack of files scrolled the
+    # Bench by 50 to 190 px - is what the tabs were for.
+    check("and a rack of six fits the Bench on every tab, since the Bench became tabs",
+          fit["six"]["lanes"] == 6 and fit["six"]["over"] <= 0, str(fit["six"]))
     check("nothing in the rack's sections runs out of its column, with two lanes or six",
           fit["two"]["wide"] == [] and fit["six"]["lanes"] == 6 and fit["six"]["wide"] == [], str(fit))
 

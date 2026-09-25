@@ -14,8 +14,8 @@ graph and a canvas and the Qt app has neither in the same shape; see
 | note | what it covers |
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
-| `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Not built yet, and next |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. Not built; it waits on the layout |
+| `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. Not built, and next now the layout is |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -64,6 +64,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
+| `layouttest.py` | the layout: source families and their hints, the selected source's panel and meter, reaching any control, search and where it lands |
 | `racktest.py` | the rack built a lane at a time: files added beside the others, the right lane taken out, Play along as a membership, builds in flight, the Bench with a rack in it |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
@@ -1501,7 +1502,10 @@ ran 119 px into the next column with any rack at all. Those are gone, and the
 lane list, layout and X–Y pair are a *Lanes* section of their own so the Bench
 can deal them into a different column. The two-lane rack now fits.
 
-**A known limit: a rack with files still scrolls the Bench at 1400×900.** A
+**A known limit, since resolved: a rack with files scrolled the Bench at 1400×900.**
+The layout revamp's tabs fixed it: one task's sections at a time fits a rack of
+six, and `racktest.py` now requires it on every tab. What follows is why it
+could not be fixed before. A
 file brings the transport back, and every lane is a row. Three lanes are about
 50 px over and six about 190 px, against three columns that together hold
 roughly 1,350 px. Dealing whole sections cannot fix that. It would take folding
@@ -1514,3 +1518,36 @@ the limit cannot quietly get worse.
 over a rack or a file too. It only showed once *Lanes* could bring a rack back,
 so the mic was refused over a rack rather than over the tone. The credit now
 says what is still playing.
+
+**Every section has a home, and a test cannot assume the popover.** Thirteen
+suites opened Settings and clicked a control in it, because Settings used to
+hold every section. Since the revamp, Settings holds MIDI, Audio, Presets and
+Beam, and everything else is on a Bench tab. So `showControl(id)` opens
+whichever is right and brings the tab forward. The search uses it to jump,
+and tests should use it rather than open Settings and hope.
+
+**Lanes is on Picture because Play did not fit.** The plan put the lane list on
+Play beside the rack's membership. Measured with a rack of six, Play had four
+sections for three columns, and Generator plus Keyboard in one column was
+488 px of a 426 px column. No dealing can fix four indivisible sections in
+three columns. Lanes moved to Picture, where most of what it holds belongs
+anyway: which lanes are shown, stacked or overlaid, which pair is the X–Y.
+
+**The Sources tab's grid went stale.** The grid was first rebuilt only when the
+routings repainted. Learning a controller or turning on the photocell called
+the chip builder, as every such change always has, but not the grid, so the
+tab kept listing sources that had gone. The grid is now rebuilt with the chips,
+and so is the detail panel if its source has gone. `layouttest.py` found both.
+
+**Two copies of the depth row made test selectors ambiguous.** The Sources
+tab's destination rows are the same `.mod-edit` rows as a control's
+modulation editor, built by one `depthRowHTML`. The detail panel is always in
+the document, even on another tab, so `document.querySelector('.mod-edit')`
+now finds it first. Tests that mean the editor say `.over .mod-edit`.
+
+**The search index is read, not kept.** It is a few hundred rows, read from the
+page when a search starts. A row's words include its menus' choices, so
+"notch" finds the filter's type. The first version left them out, because
+counted they made "cutoff" land on every destination menu. But those menus live
+in the Sources panel now, which search skips, and a mutation pass showed the
+exclusion guarding nothing.

@@ -30,7 +30,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: "+m.text) if m.type=="error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    p.locator("#menuButton").click(); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
 
     tone_visible = lambda: p.locator("#genMode").is_visible()
     # The rack's own rows, by the box that puts the generator in it. It was the

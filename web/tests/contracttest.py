@@ -86,7 +86,7 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     # The source buttons live inside the menu, and a click on a hidden control
     # waits thirty seconds and then says "not visible" rather than saying that.
-    p.locator("#menuButton").click(); p.wait_for_timeout(200)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(200)
 
     print("\n--- every lane of every source that has lanes ---")
     # A rack of stems, and the same files as one band-split source: the two

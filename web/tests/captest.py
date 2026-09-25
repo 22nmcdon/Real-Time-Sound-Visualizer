@@ -25,7 +25,7 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
-    p.locator("#menuButton").click(); p.wait_for_timeout(150)
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
     p.wait_for_timeout(2000)
