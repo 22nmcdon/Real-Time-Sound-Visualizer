@@ -311,43 +311,44 @@ with sync_playwright() as pw:
           % (min(spread or [0]), max(spread or [0])))
 
     # The one that matters, measured rather than asserted - and the first
-    # draft of this got the pitch wrong by reasoning instead of measuring. At
-    # 30 Hz the old 8192-sample probe locks perfectly well even at 96 kHz:
-    # 85 ms is two and a half periods, which on a clean sine is three
-    # crossings, two gaps, and a jitter of exactly nought.
+    # draft of this got the pitch wrong by reasoning instead of measuring.
     #
-    # Sweeping it downward says where it really breaks. From 21 to 25 Hz at
-    # 96 kHz the old probe gets one gap and `estimatePeriod` reports infinite
-    # jitter - "no evidence at all", which is the honest answer and which
-    # `lagLockUpdate` rejects. At 44.1 kHz the same pitches lock cleanly. So
-    # the boundary the change moves sits between 25 and 30 Hz on a fast
-    # converter, and 25 is where this stands.
+    # It stood at 25 Hz while the estimator counted crossings: from 21 to
+    # 25 Hz at 96 kHz the old 8192-sample probe got one gap and reported
+    # infinite jitter, and at 44.1 kHz the same pitches locked. The estimator
+    # is YIN now, which needs two periods rather than three crossings, and it
+    # reads 25 Hz from the old probe at every rate - so at 25 the contrast
+    # below could not fail and the check was carrying nothing. It moved to
+    # 21 Hz, where one period is 4571 samples at 96 kHz: more than half of
+    # 8192, which no estimator that needs two periods can read, and at
+    # 44.1 kHz 2100, which it can. The point is unchanged - a probe sized in
+    # samples is not the same probe on every converter.
     lock = p.evaluate("""([rates, frames]) => rates.map((rate) => {
-      const src = window.__standin(rate, frames, 25);
+      const src = window.__standin(rate, frames, 21);
       const now = Math.round(LAG_PROBE_SECONDS * rate);
       const old = 8192;
       const at = (n) => {
         const got = estimatePeriod(src.getLatestWindow(Math.min(n, frames))[0], rate);
-        return got === null ? null : { hz: got.hz, jitter: got.jitter };
+        return got === null ? null : { hz: got.hz, aperiodicity: got.aperiodicity };
       };
-      return { rate, now: at(now), old: at(old), max: LAG_JITTER_MAX };
+      return { rate, now: at(now), old: at(old), max: LAG_APERIODIC_MAX };
     })""", [RATES, ANALYSER_FRAMES])
     for row in lock:
         print("    %5d Hz: as a duration %s, as 8192 samples %s"
               % (row["rate"],
                  "no lock" if row["now"] is None
-                 else "%.2f Hz, jitter %.4f" % (row["now"]["hz"], row["now"]["jitter"]),
+                 else "%.2f Hz, aperiodicity %.4f" % (row["now"]["hz"], row["now"]["aperiodicity"]),
                  "no lock" if row["old"] is None
-                 else "%.2f Hz, jitter %.4f" % (row["old"]["hz"], row["old"]["jitter"])))
+                 else "%.2f Hz, aperiodicity %.4f" % (row["old"]["hz"], row["old"]["aperiodicity"])))
     good = [r for r in lock if r["now"] is not None
-            and abs(r["now"]["hz"] - 25) < 1 and r["now"]["jitter"] <= r["max"]]
-    check("a 25 Hz tone locks at every rate now",
+            and abs(r["now"]["hz"] - 21) < 1 and r["now"]["aperiodicity"] <= r["max"]]
+    check("a 21 Hz tone locks at every rate now",
           len(good) == len(RATES), "%d of %d" % (len(good), len(RATES)))
     fast = next(r for r in lock if r["rate"] == 96000)
     slow = next(r for r in lock if r["rate"] == 44100)
     check("and the old sample-count probe could not, at 96 kHz but not at 44.1",
-          (fast["old"] is None or fast["old"]["jitter"] > fast["max"])
-          and slow["old"] is not None and slow["old"]["jitter"] <= slow["max"],
+          (fast["old"] is None or fast["old"]["aperiodicity"] > fast["max"])
+          and slow["old"] is not None and slow["old"]["aperiodicity"] <= slow["max"],
           "96 kHz %s, 44.1 kHz %s" % (fast["old"], slow["old"]))
 
     print("\n--- the audio graph, rendered at four rates ---")

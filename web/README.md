@@ -73,6 +73,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note |
 | `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
+| `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1635,6 +1636,11 @@ the line input shows the same thing on the same registrations. The tuner can tak
 the key as read instead. The real fix is an autocorrelation or YIN estimator.
 `estimatePeriod` also feeds the automatic lag, so that change is not a small one.
 
+*Since fixed:* the estimator is YIN now (see *The pitch is YIN's* below), and
+00 8888 000 reads 220 and 88 8000 000 reads 110 at every timebase that holds two
+of their periods. The default registration stayed. A default that changes moves
+every setup code written without the field.
+
 **Layer B is seven fields now, and the drawbars are one of them.** A
 registration is what a layer is made of, and the organ this is played from has a
 set of bars per manual. The nine sliders appear in `LAYER_CONTROLS` as one
@@ -1777,3 +1783,54 @@ moved it a pixel over. It now reads three columns and keeps the strongest,
 through the context's own transform. The check is zoomed to 1.41, because at
 1x a line placed without the zoom lands in the same place and the mutation pass
 found the check could not tell.
+
+**The pitch is YIN's, not a count of crossings.** One estimator feeds the
+readout, the tuner, the X–Y ratio, Autoset and the automatic lag. It used to
+count mean-crossings, which is exact on a wave that crosses once a cycle and
+wrong on anything else. Most drawbar registrations were wrong, and so was any
+rich live input. YIN asks at what lag the signal nearly repeats, which is the
+figure's own question. The differences at every lag come from one
+autocorrelation through the FFT, and a 16384-sample window costs about 5 ms,
+paid each frame the tuner is open. Several things were got wrong on the way, and
+each is now a check in `pitchtest.py`:
+
+- **The threshold.** At 0.15, a dip of 0.11 where the 1′ bar nearly repeats came
+  before the real period, and 00 8000 008 read 250.9 Hz. At 0.1, the paper's
+  value, it reads 220. Every true period measured is under 0.01.
+- **Precision.** A 4 kHz tone is eleven samples a period, and one dip alone read
+  0.4 per cent high. The period is refined at two, four, eight periods and so on.
+  Jumping straight to the furthest, 200 × 10.97 landed on the 199th dip and read
+  4020. Doubling keeps each step's estimate good enough to find the right dip.
+  The worst error from 30 Hz to 4 kHz is now 0.0003 per cent.
+- **Summing over a shrinking overlap.** The difference at each lag was a sum
+  over the samples that overlap, and there are fewer of them the further out the
+  lag goes. So every long lag looked like a better match than it was, and a
+  147 Hz tone under noise read 10.5 Hz, then 49 once the fallback preferred the
+  earliest good dip. Each lag's difference is a mean now, as YIN's fixed
+  integration window would make it, and the same tone reads 147.08.
+- **The edge of the range.** A pitch needs two periods on screen. A bottom at
+  the end of the lag range is a period longer than that, and no answer, whether
+  it is reached as the deepest point or by walking down from a dip. The first
+  version checked only the first, and a 191.7 Hz tone in 441 samples read 200.5.
+- **Slow signals.** A window over 16384 samples is looked at twice: the latest
+  16384 at full rate, and only if that finds nothing, the whole window thinned
+  to 16384. That is how a harmonograph at 2.1 Hz on a two-second window reads
+  2.10.
+
+The confidence changed with it. The automatic lag gated on the crossing
+count's `jitter`, the spread of the gaps, at 0.08. It gates on YIN's
+aperiodicity now, at 0.15, under the new name `LAG_APERIODIC_MAX`. The meaning
+changed, so the name did. One behaviour crossed the line: a chord in equal
+temperament reads as periodic (0.008) at the long period its notes share, where
+the crossing count's ragged gaps used to refuse it.
+
+`ratetest.py`'s lag-probe check stood at 25 Hz, where the crossing count needed
+more than 8192 samples at 96 kHz. YIN reads 25 Hz from 8192 at every rate, so
+the check could not fail. It moved to 21 Hz, whose period at 96 kHz is more than
+half of 8192. Run against the committed page, the new suite failed on every
+registration the crossing count misread and on Autoset, and passed where the
+old estimator was already right. So the checks that pass are there to hold the
+new estimator to the old one's standard. A mutant that keeps the mean survives,
+and is equivalent: the difference at each lag is blind to an offset, and the
+mean comes off only so that an input with nothing but an offset counts as
+silence.

@@ -2577,7 +2577,15 @@ body[data-view="bench"] .dock  { order: 3; }
       <li><b>The numbers</b>
         <span>Peak and RMS in dBFS, peak-to-peak, frequency, period, the nearest note, duty
         cycle, and total harmonic distortion. <i>fs</i> is the level that reaches the top of
-        the graticule.</span></li>
+        the graticule.
+        <br><br>
+        The frequency is the sound's period: the shortest time after which the wave nearly
+        repeats itself, however many times it crosses the middle on the way. So a rich
+        registration or a harmonic-heavy organ reads its note, and a sound built from the
+        second and third harmonics alone reads the fundamental it is missing. It needs two
+        periods on screen; with fewer, or with nothing periodic there, it shows a dash rather
+        than a guess. The tuner, the X&ndash;Y ratio, <i>Autoset</i> and the automatic lag all
+        read the same number.</span></li>
 
       <li><b>They are about the signal, not about the picture</b>
         <span>Full scale and zoom are where the trace sits and how big it is, and neither
@@ -2771,10 +2779,9 @@ body[data-view="bench"] .dock  { order: 3; }
         <br><br>
         A registration with the <i>16&prime;</i> out, such as <i>88 8000 000</i>, has a cycle
         twice the note's, and the readout's frequency is the sound's rather than the key's:
-        an octave under, and it can wander between the two. The frequency readout counts
-        crossings, and a registration with several bars at full can cross more often than
-        once a cycle and read high. The tuner can read the key instead: with a keyboard,
-        tick <i>take the lag and the tuner from the note</i>.</span></li>
+        an octave under. At 1 ms/div the screen holds less than two of those cycles, and the
+        readout says nothing rather than guess. The tuner can read the key instead: with a
+        keyboard, tick <i>take the lag and the tuner from the note</i>.</span></li>
 
       <li><b>Intervals draw consonance</b>
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
@@ -3035,11 +3042,19 @@ const LAG_MIX_CEILING = 0.5;
    stable trigger. */
 const LAG_MIN_SPAN_SECONDS = SEARCH_SECONDS / 4;
 const LAG_LOCK_SECONDS = 1;    // how long the automatic lag takes to follow a new note
-const LAG_JITTER_MAX = 0.08;   // crossing spread above which the pitch is not trusted
+/* The aperiodicity above which the pitch is not trusted enough to move the
+   figure. It was `LAG_JITTER_MAX`, 0.08 of crossing spread, until the
+   estimator stopped counting crossings; YIN's number is on another scale.
+   Measured: every periodic tone and registration under 0.01, noise 0.65.
+   One thing moved across the line with the change: a chord in equal
+   temperament now reads as periodic, 0.008, at the long common period its
+   notes share, where the crossing count found its gaps ragged and refused
+   it. The lag follows that period now, which is the chord's own. */
+const LAG_APERIODIC_MAX = 0.15;
 /* How long the automatic lock listens for, whatever the timebase. Also a
    duration that used to be written as 8192 samples - 186 ms at 44.1 kHz but
    only 85 ms at 96 kHz, which is under two periods of the lowest pitch the
-   lock will accept and not enough crossings for `estimatePeriod` to report
+   lock will accept and not enough of it for `estimatePeriod` to report
    any confidence in. Said as what it needs instead: four periods of 20 Hz,
    which is where `lagLockUpdate` stops believing the answer. */
 const LAG_PROBE_SECONDS = 4 / 20;
@@ -3350,9 +3365,10 @@ const MORPH_SHORT = ["sine", "tri", "saw", "sqr"];
 /* The registration a new generator starts on: the 8' with its octave and
    twelfth tapering off. Not 88 8000 000, the one every organist knows,
    because that one has the 16' out, so the sound's cycle is two of the
-   note's and the readout's frequency wanders between the two - it is right
-   about the sound and it looks wrong about the key. This one is read as the
-   note at every timebase. See the README. */
+   note's and the readout reads it an octave under the key - right about the
+   sound, and it looks wrong. Chosen while the readout counted crossings and
+   wandered as well; it no longer wanders, and the default stayed, because a
+   default that changes moves every setup code written without the field. */
 const DRAWBAR_DEFAULT = [0, 0, 8, 7, 4, 0, 0, 0, 0];
 
 /* A bar's level as a gain. About three decibels a step, as on the organ, so
@@ -8880,73 +8896,168 @@ function noteFor(hz) {
 
 const dbfs = (v) => (v <= 1e-7 ? "−∞" : (20 * Math.log10(v)).toFixed(1));
 
-/* Period from level crossings, gated by amplitude so one cycle counts once.
+/* The period, and how much to believe it: YIN (de Cheveigne and Kawahara,
+   2002). For each lag, how different the signal is from itself that much
+   later, normalised by the average difference at shorter lags; the period is
+   the first lag at which the signal nearly repeats. What the figure asks
+   "does it repeat, and how often" is exactly that question, so it measures
+   the sound's own period whatever the wave looks like on the way round.
 
-   Cheap, and accurate to a fraction of a percent on anything periodic, which
-   is what this instrument is pointed at. A bare mean-crossing count would
-   read double on any waveform that crosses the mean twice a cycle - which the
-   default test tone does - so a crossing only counts once the signal has been
-   properly below the mean since the last one. */
-/* The pitch, and how much to believe it. `jitter` is the spread of the gaps
-   between crossings against their mean: near zero for anything periodic, large
-   for noise, a chord or a transient. Two crossings give one gap and therefore
-   no evidence at all, so that case reports no confidence rather than perfect
-   confidence - the automatic lag asks for the number, and a wrong lock is
-   worse than none. */
-function estimatePeriod(x, rate) {
-  const n = x.length;
-  if (n < 8) return null;
+   It replaces a count of mean-crossings, which was accurate on anything that
+   crossed its mean once a cycle and wrong on anything that did not. On the
+   drawbars that was most registrations: 00 8888 000 on a 220 Hz note read
+   430 to 534 Hz and 88 8000 000 wandered between 110 and 249 with the
+   timebase, and any rich live input would have done the same. Measured again
+   in `pitchtest.py`, they read 220 and 110 at every timebase that holds two
+   of their periods.
 
-  let mean = 0, lo = Infinity, hi = -Infinity;
-  for (let i = 0; i < n; i++) {
-    mean += x[i];
-    if (x[i] < lo) lo = x[i];
-    if (x[i] > hi) hi = x[i];
+   What it costs. The difference at every lag is got from one autocorrelation
+   through the FFT rather than a double loop - on 16384 samples that is two
+   transforms rather than a hundred million multiplies - and the energy terms
+   come from running sums. Lags up to half the window are searched, so, as
+   before, a pitch needs two periods on screen to be read. Windows longer
+   than 16384 samples are looked at twice: the latest 16384 at the full
+   rate, where a note is found precisely, and only if that finds nothing, the
+   whole window thinned to 16384, where a pendulum of two hertz is.
+
+   `aperiodicity` is YIN's own confidence: the normalised difference at the
+   chosen lag, nought for a perfect repeat and about one for noise. It is
+   what the automatic lag gates on, where the crossing count's `jitter` used
+   to be - a different number with a different scale, so a different name. */
+const PITCH_MAX_WINDOW = 16384;
+/* YIN's threshold: the first dip below it is the period. The paper's 0.1,
+   and 0.15 was tried first: on 00 8000 008 - the 8' and 1' bars alone - a
+   dip of 0.11 where the 1' nearly repeats came before the real period and
+   the note read 250.9 Hz. Every true period measured sits below 0.01. */
+const PITCH_DIP = 0.1;
+const PITCH_TRUST = 0.35;     // above this the readout says nothing rather than a guess
+
+function pitchPass(x, from, count, step, rate) {
+  /* `count` samples, every `step`th from `from`, as a zero-mean block. The
+     difference at each lag is blind to an offset anyway; the mean comes off
+     so that an input with nothing on it but an offset counts as silence. */
+  const w = count;
+  let mean = 0;
+  const y = new Float64Array(w);
+  for (let i = 0; i < w; i++) {
+    let v = 0;
+    for (let k = 0; k < step; k++) v += x[from + i * step + k];
+    y[i] = v / step;
+    mean += y[i];
   }
-  mean /= n;
+  mean /= w;
+  let energy = 0;
+  for (let i = 0; i < w; i++) { y[i] -= mean; energy += y[i] * y[i]; }
+  if (energy / w < 1e-9) return null;              // nothing there to measure
 
-  const swing = Math.max(hi - mean, mean - lo);
-  if (swing < 1e-4) return null;
+  let size = 1;
+  while (size < 2 * w) size <<= 1;
+  const re = new Float64Array(size), im = new Float64Array(size);
+  re.set(y);
+  fft(re, im);
+  for (let i = 0; i < size; i++) { re[i] = re[i] * re[i] + im[i] * im[i]; im[i] = 0; }
+  fft(re, im);                                     // real and even, so forward is inverse
+  // re[t] / size is now sum over j of y[j] y[j + t], the linear autocorrelation.
 
-  const arm = mean - 0.25 * swing;
-  const crossings = [];
-  let ready = false;
+  const cum = new Float64Array(w + 1);
+  for (let i = 0; i < w; i++) cum[i + 1] = cum[i] + y[i] * y[i];
 
-  for (let i = 1; i < n; i++) {
-    if (x[i] < arm) ready = true;
-    else if (ready && x[i - 1] < mean && x[i] >= mean) {
-      // Interpolated, so the estimate is not quantised to whole samples.
-      const t = (mean - x[i - 1]) / (x[i] - x[i - 1]);
-      crossings.push(i - 1 + t);
-      ready = false;
+  const fs = rate / step;
+  const tauMin = Math.max(2, Math.floor(fs / 8000));
+  const tauMax = Math.floor(w / 2);
+  if (tauMax <= tauMin + 2) return null;
+  const dn = new Float64Array(tauMax + 2);
+  let running = 0;
+  dn[0] = 1;
+  for (let t = 1; t <= tauMax + 1; t++) {
+    /* A mean over the samples that overlap at this lag, not a sum. There
+       are fewer of them the further out the lag, so a sum made every long
+       lag look like a better match than it was: with noise on a tone the
+       deepest point drifted out to thousands of samples and a 147 Hz note
+       read 10.5 Hz. YIN proper integrates the same number of samples at
+       every lag; this is the same thing for a window of fixed length. */
+    const d = (cum[w - t] + (cum[w] - cum[t]) - 2 * re[t] / size) / (w - t);
+    running += d;
+    dn[t] = running > 0 ? d * t / running : 1;
+  }
+
+  /* The first dip below the threshold, followed to the bottom; else the
+     deepest point. Either way, a bottom at the end of the range is a period
+     longer than the range, and no answer. The first version only asked that
+     of the deepest point, and a dip followed downhill could walk to the end
+     just as well: a 191.7 Hz tone in 441 samples - its period 230, the range
+     220 - read as 200.5, the range's own edge. */
+  let tau = -1;
+  for (let t = tauMin; t <= tauMax; t++) {
+    if (dn[t] < PITCH_DIP) {
+      while (t + 1 <= tauMax && dn[t + 1] < dn[t]) t++;
+      if (t >= tauMax - 1) return null;
+      tau = t;
+      break;
     }
   }
-
-  if (crossings.length < 2) return null;
-
-  // Measured across the whole window rather than pair by pair, so one ragged
-  // crossing moves the answer by a fraction of what it otherwise would.
-  const spread = crossings[crossings.length - 1] - crossings[0];
-  if (spread <= 0) return null;
-
-  let jitter = Infinity;
-  if (crossings.length >= 3) {
-    const gaps = crossings.length - 1;
-    const mean = spread / gaps;
-    let variance = 0;
-    for (let i = 1; i < crossings.length; i++) {
-      const d = (crossings[i] - crossings[i - 1]) - mean;
-      variance += d * d;
+  if (tau < 0) {
+    let best = tauMin;
+    for (let t = tauMin; t <= tauMax; t++) if (dn[t] < dn[best]) best = t;
+    if (best >= tauMax - 1) return null;
+    /* The earliest dip nearly as deep as the deepest, rather than the
+       deepest. The normalisation lets the curve sag at long lags when there
+       is noise, and the deepest point then sits thousands of samples out: a
+       147 Hz tone under noise as loud as itself read 10.5 Hz. The period is
+       the first place it nearly repeats, which is the whole idea. */
+    const enough = dn[best] * 1.25 + 0.02;
+    for (let t = tauMin + 1; t < best; t++) {
+      if (dn[t] <= enough && dn[t] <= dn[t - 1] && dn[t] <= dn[t + 1]) { best = t; break; }
     }
-    jitter = mean > 0 ? Math.sqrt(variance / gaps) / mean : Infinity;
+    tau = best;
   }
 
-  return { hz: rate * (crossings.length - 1) / spread, jitter };
+  // Between samples, by the parabola through a dip and its neighbours.
+  const vertex = (t) => {
+    const a = dn[t - 1], b = dn[t], c = dn[t + 1];
+    const bend = a - 2 * b + c;
+    return t + (bend > 0 ? Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / bend)) : 0);
+  };
+  let period = vertex(tau);
+  /* And then further out, at two periods, four, eight and so on as far as
+     the range goes, where the same fraction of a sample of error is shared
+     among all of them. A 4 kHz tone is eleven samples a period, and its dip
+     alone read 4015.5 Hz - 0.4 per cent, where the crossing count it
+     replaced was exact.
+
+     Doubling, not jumping straight to the furthest. The first version went
+     to two hundred periods at once, and 200 x 10.97 lands on the 199th dip,
+     so it divided by the wrong number and read 4020. Each doubling starts
+     from a period good enough that the next dip it looks for is the right
+     one. */
+  for (let m = 2; m * period <= tauMax - 1; m *= 2) {
+    let at = Math.round(m * period);
+    for (let t = Math.max(tauMin, at - 2); t <= Math.min(tauMax - 1, at + 2); t++) if (dn[t] < dn[at]) at = t;
+    if (at <= 1 || at >= tauMax) break;
+    period = vertex(at) / m;
+  }
+  return { hz: fs / period, aperiodicity: Math.max(0, dn[tau]) };
 }
 
+function estimatePeriod(x, rate) {
+  const n = x.length;
+  if (n < 16) return null;
+  const w = Math.min(n, PITCH_MAX_WINDOW);
+  const near = pitchPass(x, n - w, w, 1, rate);
+  if (near !== null && near.aperiodicity <= PITCH_TRUST) return near;
+  if (n <= PITCH_MAX_WINDOW) return near;
+  const step = Math.ceil(n / PITCH_MAX_WINDOW);
+  const count = Math.floor(n / step);
+  const far = pitchPass(x, n - count * step, count, step, rate);
+  if (far === null) return near;
+  if (near === null) return far;
+  return far.aperiodicity < near.aperiodicity ? far : near;
+}
+
+// A frequency to print, or null when there is nothing periodic to name.
 function estimateFrequency(x, rate) {
   const found = estimatePeriod(x, rate);
-  return found === null ? null : found.hz;
+  return found === null || found.aperiodicity > PITCH_TRUST ? null : found.hz;
 }
 
 function measure(samples, rate) {
@@ -10992,7 +11103,7 @@ function lagLockUpdate(frame) {
   const want = Math.round(LAG_PROBE_SECONDS * frame.rate);
   const probe = Math.min(want, source.capacity || want);
   const found = estimatePeriod(source.getLatestWindow(probe)[0], frame.rate);
-  if (found === null || found.jitter > LAG_JITTER_MAX) return;
+  if (found === null || found.aperiodicity > LAG_APERIODIC_MAX) return;
   if (found.hz < 20 || found.hz > 5000) return;
 
   const target = 0.25 / found.hz;              // a quarter period, in seconds
