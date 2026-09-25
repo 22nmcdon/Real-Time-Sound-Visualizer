@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and H1 (the voice's second oscillator, sync, sub and unison) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and H1 and H2 (the voice's second oscillator, sync, sub and unison; drive, fold and crush) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -76,6 +76,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
+| `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
 | `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
@@ -2118,3 +2119,54 @@ read a copy at −20 cents as 0.323 of a third, and the dyad's copies as 6 per
 cent apart. Neither was wrong in the core: that was the window's scalloping,
 with lines that fall between bins. The checks now take the transform at each
 line's exact frequency, and read a third to 1e-4.
+
+**Shaping is in each voice, before its envelope, and both of those are checked
+rather than assumed.**
+
+- *Each voice.* Two notes a major third apart, each driven hard, show no
+  difference tones at all: −132 dB. The same two notes driven as one sum,
+  worked out in the test as its null, have them at −10 dB. A check that could
+  not tell the two apart would pass whichever way the code went.
+- *Before the envelope.* A note's third harmonic stands at 0.3240 of its
+  fundamental while held, and at 0.3240 while it fades to 0.29 of its level.
+  Shaped after the envelope, the drive would ease off as the note died.
+
+**The curves are checked against their own mathematics.**
+
+- *Drive* is tanh(g x) / tanh(g), so full scale stays full scale. As g falls
+  towards nought the curve tends to a straight line, so the travel starts from
+  no change rather than from a step. A driven sine's odd harmonics match a
+  transform of the curve itself to 0.000 per cent.
+- *Fold* is sin(g x). On a sine its harmonics are exactly 2 J(2k+1)(g), and
+  they read Bessel's to 0.0000 of full scale, folded or gently curved.
+
+**Oversampling is worth what the shape needs, and a fixture has to reach where
+it is needed.** The first fixture, a fold of 0.3 at 2 kHz, measured −163.5 dB
+folded back. That was true, and useless: its Bessel terms die long before any
+could fold back under 10 kHz, so it could not show what the oversampling buys.
+At full fold they reach 40 kHz:
+
+| | none | 2x | 4x |
+|---|---|---|---|
+| full fold, 2 kHz | −4.1 | −97.5 | |
+| drive 0.8, 4 kHz | −19.8 | −30.4 | −46.3 |
+
+A hard drive is a square, whose harmonics fall only as 1/k. So 2x, the
+default, leaves it well short of the page's band-limited square (−46.2 at
+4 kHz), and 4x reaches it. Four times costs 700 ms a second for sixteen shaped
+voices over two layers, against 410 at twice, which is most of a core. So 4x is
+a page-wide choice behind the Shaping section's ⋯, for a few voices. The crusher
+is not oversampled: its steps are what it is for.
+
+The dyad's two channels and a chord's voices have separate shapers, and every
+aliasing check was first written against the dyad. A mutation that shaped a
+chord's voices at the base rate passed all of them, so a single poly voice is
+now held to the same −95 dB.
+
+**Shaped, the voice can pass its amplitude by the overshoot a band-limited
+square has.** The worklet check was first written as "inside its amplitude",
+which is true of the oscillator and was not of the shaper. Band-limiting a
+driven sine's squared-off corners overshoots by about 9 per cent (Gibbs), and a
+crusher's step can round that up again: 0.5625 of 0.5, measured. The output's
+clamp at full scale still holds the picture. The check now says what is true
+of each.

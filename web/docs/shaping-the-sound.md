@@ -229,7 +229,19 @@ the dyad and in the picture the two channels are the figure's axes, and copies
 spread between them would smear one axis into the other. The figure thickens in
 place instead, which is the picture the plan wanted.
 
-`voicefxtest.py` holds it. H2 and H3 are not built.
+`voicefxtest.py` holds it.
+
+**H2**, the same way: a drive, a sine fold and a crusher, in each voice,
+before its envelope, and per layer.
+
+- *Drive* is tanh(g x)/tanh(g) and *fold* is sin(g x), and both are
+  destinations.
+- They run in S2's oversampling, a shaper a voice, at 2x by default and 4x
+  on request. The README has the table, and why 4x is not the default.
+- *Crush* is a bit depth and a held sample rate, at the base rate on
+  purpose.
+
+`drivetest.py` holds it. H3 is not built.
 
 ### H1 · a second oscillator, and what it is for
 

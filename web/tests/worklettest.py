@@ -133,6 +133,12 @@ with sync_playwright() as pw:
         vo = report["voice"]
         check("the voice's oscillator runs in the worklet, everything on at once, inside its amplitude",
               vo["finite"] and 0.1 < vo["peak"] <= 0.5 + 1e-6, str(vo))
+        # Shaped, the ceiling is the curve's full scale plus what band-limiting
+        # a squared-off wave overshoots by - Gibbs, about 9 per cent - and a
+        # crusher's step on top: 0.5625 of 0.5, measured.
+        sh = report["shaped"]
+        check("and with drive, fold and crush on it too, within the overshoot a band-limited square has",
+              sh["finite"] and 0.1 < sh["peak"] <= 0.5 * 1.15, str(sh))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

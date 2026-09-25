@@ -2014,6 +2014,55 @@ body[data-view="bench"] .dock  { order: 3; }
               sync is on, the voice is one sample late.</p>
           </div>
 
+          <div class="menu-group" id="shpGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title">Shaping</span>
+            <div class="menu-row" data-mod-dest="gen.drive" data-mod-control="shpDrive">
+              <label class="menu-label" for="shpDrive">Drive</label>
+              <div class="grow">
+                <input type="range" id="shpDrive" min="0" max="100" value="0">
+                <span class="reading" id="shpDriveValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row" data-mod-dest="gen.fold" data-mod-control="shpFold">
+              <label class="menu-label" for="shpFold">Fold</label>
+              <div class="grow">
+                <input type="range" id="shpFold" min="0" max="100" value="0">
+                <span class="reading" id="shpFoldValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="shpBits">Crush</label>
+              <div class="grow"><select id="shpBits" style="flex:1 1 auto">
+                <option value="0">Off</option><option value="8">8 bits</option><option value="6">6 bits</option>
+                <option value="4">4 bits</option><option value="3">3 bits</option><option value="2">2 bits</option>
+                <option value="1">1 bit</option></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="shpRate">Rate</label>
+              <div class="grow"><select id="shpRate" style="flex:1 1 auto">
+                <option value="0">Off</option><option value="11025">11 kHz</option><option value="8000">8 kHz</option>
+                <option value="4000">4 kHz</option><option value="2000">2 kHz</option><option value="1000">1 kHz</option>
+                <option value="500">500 Hz</option></select></div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="shpOS">Oversampling</label>
+              <div class="grow"><select id="shpOS" style="flex:1 1 auto">
+                <option value="2">2&times;</option><option value="4">4&times;, for few voices</option></select></div>
+            </div>
+            <p class="menu-note">Distortion inside the voice, before its envelope, so a note keeps its
+              character as it fades. <i>Drive</i> pushes the wave into a soft ceiling: a sine
+              rounds towards a square, and the reading is how much the quiet parts are lifted.
+              <i>Fold</i> bends the wave back on itself each time it would pass full scale &mdash;
+              on Y&ndash;T the peaks fold into the wave, in X&ndash;Y the figure grows petals,
+              and it can take a source, so an LFO opens and closes them. Both are worked at twice
+              the rate, so what they add above half the rate is filtered off; behind the &ctdot;,
+              four times is cleaner for a hard drive on a high note, and costs twice as much for
+              every voice, so it is for a few voices rather than a chord on two layers. Either way
+              a shaped voice is 0.7 ms later. <i>Crush</i> and
+              <i>Rate</i> are the opposite on purpose: fewer levels and fewer samples, the steps
+              and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
+          </div>
+
           <div class="menu-group" id="planeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Plane</span>
             <div class="menu-row">
@@ -2708,6 +2757,18 @@ body[data-view="bench"] .dock  { order: 3; }
         the keyboard can be two different voices. Nothing gets louder: copies and the sub are
         mixed, not piled up.</span></li>
 
+      <li><b>Shaping: drive, fold and crush, in every note</b>
+        <span>Under <i>Shaping</i>, on the Shape tab. <i>Drive</i> pushes the wave into a soft
+        ceiling, so a sine rounds towards a square; the reading is how much the quiet parts
+        are lifted. <i>Fold</i> bends the wave back on itself each time it would pass full
+        scale: the peaks fold into the wave, and in X&ndash;Y the figure grows petals. Put an
+        LFO on it and they open and close. <i>Crush</i> takes the wave down to a few levels
+        and <i>Rate</i> holds each sample, for the steps and the folding-back of a lo-fi
+        sampler. It is done to each note on its own, before its envelope, so a chord stays a
+        chord rather than turning to mud, and a note keeps its colour as it dies away. Behind
+        the &ctdot;, four times oversampling is cleaner for a hard drive on a high note, and
+        costs twice as much.</span></li>
+
       <li><b>The plane: what folds the picture folds the sound</b>
         <span>Under <i>Plane</i>, on the Effects tab, for the generator. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
@@ -2822,7 +2883,7 @@ body[data-view="bench"] .dock  { order: 3; }
         <br><br>
         The Bench is six tabs, by task: <i>Play</i> (the source, the keyboard, the
         generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger),
-        <i>Shape</i> (the drawbars, the voice's oscillator, the filter), <i>Effects</i> (the
+        <i>Shape</i> (the drawbars, the voice's oscillator and shaping, the filter), <i>Effects</i> (the
         plane, the delay and chorus), <i>Sources</i> and <i>Measure</i>. Each section's title
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
         handful of settings reached for rarely. The source chips stay beside the screen on
@@ -3485,6 +3546,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "oscGroup", "oscTitle", "oscRatio", "oscFm", "oscFmValue", "oscRing", "oscRingValue",
                   "oscSync", "oscSyncValue", "oscSub", "oscSubValue", "oscUnison", "oscSpread", "oscSpreadValue",
                   "oscSubOct", "oscSubShape",
+                  "shpGroup", "shpDrive", "shpDriveValue", "shpFold", "shpFoldValue", "shpBits", "shpRate", "shpOS",
                   "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
                   "delayFeedback", "delayFeedbackValue", "delayPingPong", "chorusMix", "chorusMixValue",
                   "chorusRate", "chorusRateValue", "chorusDepth", "chorusDepthValue", "chorusTime", "chorusTimeValue",
@@ -3733,6 +3795,9 @@ const TWIST_SLOT = RADIUS_SLOT + 1;
 // And the voice's FM index and sync ratio (H1), after the twist.
 const FM_SLOT = TWIST_SLOT + 1;
 const SYNC_SLOT = FM_SLOT + 1;
+// And its drive and fold (H2).
+const DRIVE_SLOT = SYNC_SLOT + 1;
+const FOLD_SLOT = DRIVE_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -4148,6 +4213,13 @@ const GEN_DESTS = [
      the reset does nothing. */
   { id: "gen.sync", label: "Sync", slot: SYNC_SLOT,
     reach: (v, s) => Math.max(100, Math.min(800, v + s * 350)) },
+  /* Drive and fold, in hundredths of their travel: half of it either way.
+     A fold that breathes with an LFO is the petals of the figure opening
+     and closing, which is the reason fold is a destination at all. */
+  { id: "gen.drive", label: "Drive", slot: DRIVE_SLOT,
+    reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
+  { id: "gen.fold", label: "Fold", slot: FOLD_SLOT,
+    reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -5956,6 +6028,17 @@ function makeGeneratorCore(rate, slots, lfos) {
     subShape: "square",
     unison: 1,
     unisonCents: 12,
+    /* Shaping (H2), after the oscillator and before the envelope. `drive`
+       and `fold` are nought to one, nought off; `crushBits` is a depth, and
+       `crushHz` a rate to hold samples at, nought each for off. */
+    drive: 0,
+    fold: 0,
+    crushBits: 0,
+    crushHz: 0,
+    // How many times over drive and fold run, 2 or 4: page-wide, like the
+    // plane's, because it is what the page can afford rather than what a
+    // layer is made of.
+    shapeOS: 2,
     /* Portamento, off by default. Zero is not a very short glide, it is an
        assignment: the pitch is written straight in, so nothing rounds and the
        old behaviour is reproduced exactly rather than closely. */
@@ -6078,6 +6161,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     subShape: "square",
     unison: 1,
     unisonCents: 12,
+    drive: 0,
+    fold: 0,
+    crushBits: 0,
+    crushHz: 0,
     voices: null,
   };
 
@@ -6236,8 +6323,8 @@ function makeGeneratorCore(rate, slots, lfos) {
      goes straight through, and switching one on moves the picture by that
      much. At 1x the operation is applied as it is, which is what the tests
      hold its arithmetic to. */
-  function makeOversampler(factor) {
-    const n = 32 * factor, per = 32;
+  function lowpassTaps(factor) {
+    const n = 32 * factor;
     const h = new Float64Array(n);
     const centre = (n - 1) / 2, fc = 0.5 / factor;
     let sum = 0;
@@ -6249,6 +6336,11 @@ function makeGeneratorCore(rate, slots, lfos) {
       sum += h[i];
     }
     for (let i = 0; i < n; i++) h[i] /= sum;
+    return h;
+  }
+  function makeOversampler(factor) {
+    const n = 32 * factor, per = 32;
+    const h = lowpassTaps(factor);
     const inX = new Float64Array(per), inY = new Float64Array(per);   // base rate, newest first
     const upX = new Float64Array(n), upY = new Float64Array(n);       // oversampled, a ring
     let at = 0;
@@ -6585,9 +6677,12 @@ function makeGeneratorCore(rate, slots, lfos) {
   // A layer's voice settings as this block will use them, and this sample's
   // modulated index and sync ratio.
   function makeVoiceFx() {
-    return { on: false, syncing: false, n: 1, fmI: 0, syncR: 1, det: new Float64Array(UNISON_MAX) };
+    return { on: false, syncing: false, shaping: false, crushing: false, n: 1, fmI: 0, syncR: 1,
+             det: new Float64Array(UNISON_MAX) };
   }
-  function voiceFxFor(t, x, fmRouted, syncRouted) {
+  function voiceFxFor(t, x, fmRouted, syncRouted, shapeRouted) {
+    x.shaping = t.drive > 0 || t.fold > 0 || shapeRouted;
+    x.crushing = t.crushBits > 0 || t.crushHz > 0;
     x.n = Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1));
     x.syncing = t.syncRatio !== 1 || syncRouted;
     x.on = t.fmIndex > 0 || fmRouted || t.ringMix > 0 || x.syncing || t.subLevel > 0 || x.n > 1;
@@ -6598,6 +6693,78 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
   const vxA = makeVoiceFx(), vxB = makeVoiceFx();
+
+  /* H2: shaping, after the oscillator and before the envelope, so the
+     envelope sets the level of a sound whose character stays put - drive
+     that eased off as a note died would be a different instrument.
+
+     Drive is tanh(g x) / tanh(g): a gain before and the gain after that
+     puts full scale back at full scale, so the edge of the screen is still
+     the edge. As g falls towards nought the curve tends to a straight line,
+     so the travel starts from no change at all rather than from a step.
+     Fold is sin(g x), divided by sin(g) while g is under a quarter-turn and
+     it is still a gentle curve: a sine fold, not reflection, for fewer
+     corners, and on a sine its harmonics are exactly 2 J(2k+1)(g), which
+     is what `drivetest.py` holds it to. Both run in the S2 oversampling, a
+     shaper a voice, made when the voice is first shaped. Twice the rate by
+     default and four times on request: a hard drive at 4 kHz folds back at
+     -30 dB at twice and -46 at four times, the page's square, but sixteen
+     shaped voices over two layers cost 400 ms a second at twice and 700 at
+     four times, and the second is most of a core.
+     Crush does not: its steps are what it is for, and it runs at the base
+     rate after them. */
+  let shDrive = 0, shDriveNorm = 1, shFold = 0, shFoldNorm = 1;
+  function shapeSample(x) {
+    if (shDrive > 0) x = Math.tanh(shDrive * x) * shDriveNorm;
+    if (shFold > 0) x = Math.sin(shFold * x) * shFoldNorm;
+    return x;
+  }
+  function setShaping(t, drivePush, foldPush) {
+    const d = Math.max(0, Math.min(1, t.drive + drivePush));
+    const f = Math.max(0, Math.min(1, t.fold + foldPush));
+    shDrive = 30 * d * d;
+    shDriveNorm = shDrive > 0 ? 1 / Math.tanh(shDrive) : 1;
+    shFold = 6 * Math.PI * f;
+    shFoldNorm = shFold > 0 && shFold < Math.PI / 2 ? 1 / Math.sin(shFold) : 1;
+  }
+  const shapeTaps = { 2: lowpassTaps(2), 4: lowpassTaps(4) };
+  let shapeFactor = 2;
+  function makeShaper() {
+    const factor = shapeFactor, n = 32 * factor, per = 32, h = shapeTaps[factor];
+    const inX = new Float64Array(per), up = new Float64Array(n);
+    let at = 0;
+    return {
+      factor,
+      step(x) {
+        for (let k = per - 1; k > 0; k--) inX[k] = inX[k - 1];
+        inX[0] = x;
+        for (let p = 0; p < factor; p++) {
+          let u = 0;
+          for (let k = 0; k < per; k++) u += h[p + k * factor] * inX[k];
+          up[at] = shapeSample(u * factor);
+          at = at + 1 === n ? 0 : at + 1;
+        }
+        let d = 0, j = at;
+        for (let k = 0; k < n; k++) { j = j === 0 ? n - 1 : j - 1; d += h[k] * up[j]; }
+        return d;
+      },
+    };
+  }
+  // Crush: a sample held at `crushHz`, then a depth of `crushBits`.
+  function makeCrush() { return { acc: 1, held: 0 }; }
+  function crushStep(c, x, t) {
+    if (t.crushHz > 0) {
+      c.acc += t.crushHz / rate;
+      if (c.acc >= 1) { c.acc -= Math.floor(c.acc); c.held = x; }
+      x = c.held;
+    }
+    if (t.crushBits > 0) { const q = Math.pow(2, t.crushBits - 1); x = Math.round(x * q) / q; }
+    return x;
+  }
+  let shapeL = makeShaper(), shapeR = makeShaper();
+  const crushL = makeCrush(), crushR = makeCrush();
+  // A voice's shaper, remade when the factor has changed since it was made.
+  const shaperOf = (voice) => (voice.shp && voice.shp.factor === shapeFactor ? voice.shp : (voice.shp = makeShaper()));
   const oscL = makeOsc(), oscR = makeOsc();
   /* `base` is the phase the caller keeps for this voice or channel and has
      already advanced; `offset` is added to it, the dyad's right-channel
@@ -6713,7 +6880,10 @@ function makeGeneratorCore(rate, slots, lfos) {
       const wave = tone.shape === "noise" ? Math.random() * 2 - 1
         : vx.on ? oscStep(voice.osc || (voice.osc = makeOsc()), voice.phase, 0, f, tone, bars, morph, vx)
         : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, morph);
-      const a = tone.amp * duck * voice.env.step() * wave;
+      let w = wave;
+      if (vx.shaping) w = shaperOf(voice).step(w);
+      if (vx.crushing) w = crushStep(voice.cr || (voice.cr = makeCrush()), w, tone);
+      const a = tone.amp * duck * voice.env.step() * w;
       const g = voice.gains, t = voice.targets;
       g[0] += (t[0] - g[0]) * roleGlide;
       g[1] += (t[1] - g[1]) * roleGlide;
@@ -6752,16 +6922,19 @@ function makeGeneratorCore(rate, slots, lfos) {
     linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
     // A routing on the twist turns the stage on with the slider at nought:
     // a controller that swirls the figure from still is the point of it.
-    let twistRouted = false, fmRouted = false, syncRouted = false;
+    let twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false;
     for (let k = 0; k < routes.length; k++) {
       if (routes[k].slot === TWIST_SLOT) twistRouted = true;
       if (routes[k].slot === FM_SLOT) fmRouted = true;
       if (routes[k].slot === SYNC_SLOT) syncRouted = true;
+      if (routes[k].slot === DRIVE_SLOT || routes[k].slot === FOLD_SLOT) shapeRouted = true;
     }
     // The voice's oscillator, per layer, on the same rule as the twist: a
     // routing switches it on with the slider at rest.
-    voiceFxFor(tone, vxA, fmRouted, syncRouted);
-    voiceFxFor(toneB, vxB, fmRouted, syncRouted);
+    voiceFxFor(tone, vxA, fmRouted, syncRouted, shapeRouted);
+    const wantShape = tone.shapeOS === 4 ? 4 : 2;
+    if (wantShape !== shapeFactor) { shapeFactor = wantShape; shapeL = makeShaper(); shapeR = makeShaper(); }
+    voiceFxFor(toneB, vxB, fmRouted, syncRouted, shapeRouted);
     nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
                   || tone.planeKaleido > 1 || tone.planeSnap > 0;
     timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
@@ -6823,6 +6996,8 @@ function makeGeneratorCore(rate, slots, lfos) {
       vxA.syncR = Math.max(1, Math.min(8, tone.syncRatio + syncPush));
       vxB.fmI = Math.max(0, Math.min(20, toneB.fmIndex + fmPush));
       vxB.syncR = Math.max(1, Math.min(8, toneB.syncRatio + syncPush));
+      const drivePush = (genMod[DRIVE_SLOT] || 0) * 0.5, foldPush = (genMod[FOLD_SLOT] || 0) * 0.5;
+      if (vxA.shaping) setShaping(tone, drivePush, foldPush);
 
       let l, r, hl = null, hr = null;
 
@@ -6901,16 +7076,21 @@ function makeGeneratorCore(rate, slots, lfos) {
         const stepL = Math.abs(hz) / rate;
         const stepR = Math.abs(hz * ratio) / rate;
 
+        let wl, wr;
         if (tone.shape === "noise") {
-          l = amp * (Math.random() * 2 - 1);
-          r = amp * (Math.random() * 2 - 1);
+          wl = Math.random() * 2 - 1;
+          wr = Math.random() * 2 - 1;
         } else if (vxA.on) {
-          l = amp * oscStep(oscL, phaseL, 0, hz, tone, bars, morph, vxA);
-          r = amp * oscStep(oscR, phaseR, phase, hz * ratio, tone, bars, morph, vxA);
+          wl = oscStep(oscL, phaseL, 0, hz, tone, bars, morph, vxA);
+          wr = oscStep(oscR, phaseR, phase, hz * ratio, tone, bars, morph, vxA);
         } else {
-          l = amp * waveAt(tone.shape, phaseL, stepL, bars, morph);
-          r = amp * waveAt(tone.shape, phaseR + phase, stepR, bars, morph);
+          wl = waveAt(tone.shape, phaseL, stepL, bars, morph);
+          wr = waveAt(tone.shape, phaseR + phase, stepR, bars, morph);
         }
+        if (vxA.shaping) { wl = shapeL.step(wl); wr = shapeR.step(wr); }
+        if (vxA.crushing) { wl = crushStep(crushL, wl, tone); wr = crushStep(crushR, wr, tone); }
+        l = amp * wl;
+        r = amp * wr;
       }
 
       if (planeOn) {
@@ -6931,6 +7111,9 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (layered) {
         const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : null;
         const morphOfB = Math.max(0, Math.min(3, toneB.morph + morphPush));
+        if (vxB.shaping) {
+          setShaping(toneB, (genMod[DRIVE_SLOT] || 0) * 0.5, (genMod[FOLD_SLOT] || 0) * 0.5);
+        }
         sound(voicesB, toneB, barsOfB, morphOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide, vxB);
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
@@ -7264,6 +7447,8 @@ function generatorModuleSource() {
     bind("TWIST_SLOT", TWIST_SLOT),
     bind("FM_SLOT", FM_SLOT),
     bind("SYNC_SLOT", SYNC_SLOT),
+    bind("DRIVE_SLOT", DRIVE_SLOT),
+    bind("FOLD_SLOT", FOLD_SLOT),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
@@ -12864,7 +13049,20 @@ const LAYER_CONTROLS = [
   ["oscSubShape", "subShape", (v) => v, (v) => v, null, null],
   ["oscUnison", "unison", (v) => v, (v) => v, null, null],
   ["oscSpread", "unisonCents", (v) => v, (v) => v, (v) => Math.round(v) + " cents", "oscSpreadValue"],
+  // Shaping (H2): hundredths of each travel, and the crusher's menus.
+  ["shpDrive", "drive", (v) => v / 100, (v) => Math.round(v * 100), (v) => driveReading(v / 100), "shpDriveValue"],
+  ["shpFold", "fold", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "shpFoldValue"],
+  ["shpBits", "crushBits", (v) => v, (v) => v, null, null],
+  ["shpRate", "crushHz", (v) => v, (v) => v, null, null],
 ];
+/* The drive as the gain it gives a quiet signal, which is the number that
+   says how hard it is being pushed: tanh(g x) / tanh(g) near nought is
+   g / tanh(g) times x. */
+function driveReading(d) {
+  if (!(d > 0)) return "off";
+  const g = 30 * d * d;
+  return "+" + (20 * Math.log10(g / Math.tanh(g))).toFixed(1) + " dB";
+}
 // A mix out of a hundred, and nought says so.
 const mixReading = (v) => (v > 0 ? (v / 100).toFixed(2) : "off");
 /* The ratios the second oscillator is offered: the just table's, under an
@@ -14066,7 +14264,7 @@ const DEFAULTS = {
   planeTwist: 0, planeKaleido: 0, planeSnap: 0, planeScaleX: 100, planeScaleY: 100, planeShear: 0,
   delayMix: 0, delayMs: 375, delaySync: "", delayFeedback: 35, delayPingPong: false,
   oscRatio: 1, oscFm: 0, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square",
-  oscUnison: 1, oscSpread: 12,
+  oscUnison: 1, oscSpread: 12, shpDrive: 0, shpFold: 0, shpBits: 0, shpRate: 0, shpOS: 2,
   chorusMix: 0, chorusRate: 60, chorusDepth: 30, chorusTime: 120, chorusFeedback: 0,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -14089,15 +14287,18 @@ const DEFAULTS = {
 const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: "bDec",
                      envSustain: "bSus", envRelease: "bRel", bars: "bBars", morph: "bMorph",
                      oscRatio: "bRatio", oscFm: "bFm", oscRing: "bRing", oscSync: "bSync", oscSub: "bSub",
-                     oscSubOct: "bSubOct", oscSubShape: "bSubShape", oscUnison: "bUnison", oscSpread: "bSpread" };
+                     oscSubOct: "bSubOct", oscSubShape: "bSubShape", oscUnison: "bUnison", oscSpread: "bSpread",
+                     shpDrive: "bDrive", shpFold: "bFold", shpBits: "bBits", shpRate: "bRate" };
 // The controls whose value is text rather than a number.
 const LAYER_TEXT = new Set(["shape", "bars", "oscSubShape"]);
 /* Layer A's oscillator controls in a code, under their own ids, and what a
    value has to be to be used: a slider's range, or one of a menu's options.
    Additive fields, so a code from before them has everything off. */
 const OSC_RANGES = { oscFm: [0, 100], oscRing: [0, 100], oscSync: [100, 800], oscSub: [0, 100],
-                     oscSpread: [0, 50] };
-const OSC_MENUS = ["oscRatio", "oscSubOct", "oscSubShape", "oscUnison"];
+                     oscSpread: [0, 50], shpDrive: [0, 100], shpFold: [0, 100] };
+const OSC_MENUS = ["oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate"];
+// The voice's controls in the layer table: the oscillator's and the shaping's.
+const isVoiceControl = (id) => id.startsWith("osc") || id.startsWith("shp");
 
 function snapshotLayerB() {
   const toneB = genSettings(1);
@@ -14124,6 +14325,8 @@ function snapshot() {
     oscRatio: Number(a("oscRatio")), oscFm: Number(a("oscFm")), oscRing: Number(a("oscRing")),
     oscSync: Number(a("oscSync")), oscSub: Number(a("oscSub")), oscSubOct: Number(a("oscSubOct")),
     oscSubShape: a("oscSubShape"), oscUnison: Number(a("oscUnison")), oscSpread: Number(a("oscSpread")),
+    shpDrive: Number(a("shpDrive")), shpFold: Number(a("shpFold")), shpBits: Number(a("shpBits")),
+    shpRate: Number(a("shpRate")), shpOS: Number(el.shpOS.value),
     freq: Number(el.freq.value),
     amp: Number(a("amp")),
     interval: Number(el.interval.value),
@@ -14261,6 +14464,8 @@ function restore(partial) {
     const v = Number(s[id]);
     el[id].value = String(Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : DEFAULTS[id]);
   }
+  el.shpOS.value = s.shpOS === 4 ? "4" : "2";
+  genSet("shapeOS", Number(el.shpOS.value));
   for (const id of OSC_MENUS) {
     const want = String(s[id]);
     el[id].value = Array.from(el[id].options).some((o) => o.value === want) ? want : String(DEFAULTS[id]);
@@ -15001,8 +15206,9 @@ function generatorFromPanel(set) {
   set("bars", parseRegistration(el.bars.value));
   set("morph", Number(el.morph.value) / 100);
   for (const [id, field, law] of LAYER_CONTROLS) {
-    if (id.startsWith("osc")) set(field, law(LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value)));
+    if (isVoiceControl(id)) set(field, law(LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value)));
   }
+  set("shapeOS", Number(el.shpOS.value));
   set("qMask", state.quantise ? keyMask(state.keyRoot, state.keyScale) : 0);
   set("qGlideMs", state.quantiseGlide);
   set("crossOn", cross.on); set("crossX", cross.x); set("crossY", cross.y);
@@ -15607,7 +15813,7 @@ el.tempoTap.addEventListener("click", () => clockTap(performance.now()));
 /* The oscillator's controls write the layer on the panel, as the shape and
    the morph do; the table says how each one's number becomes the field. */
 for (const [id, field, law, , say, label] of LAYER_CONTROLS) {
-  if (!id.startsWith("osc")) continue;
+  if (!isVoiceControl(id)) continue;
   const kind = el[id].tagName === "SELECT" ? "change" : "input";
   el[id].addEventListener(kind, () => {
     const v = LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value);
@@ -15615,6 +15821,9 @@ for (const [id, field, law, , say, label] of LAYER_CONTROLS) {
     genSet(field, law(v), panelLayer);
   });
 }
+
+// Page-wide, so layer A's tone: the core reads it from there for both.
+el.shpOS.addEventListener("change", () => genSet("shapeOS", Number(el.shpOS.value)));
 
 el.morph.addEventListener("input", () => {
   const at = Number(el.morph.value) / 100;
@@ -16494,9 +16703,11 @@ const SEARCH_SYNONYMS = {
   quantize: "quantise", bpm: "tempo", scale: "key", sync: "tempo clock sync",
   metronome: "tempo", tap: "tempo tap",
   rhythm: "crossings", polyrhythm: "crossings", beat: "crossings tempo", pluck: "crossings",
-  rectify: "mirror", rectifier: "mirror", distortion: "clip mirror", overdrive: "clip",
-  clipper: "clip", saturation: "clip", oversample: "oversampling", aliasing: "oversampling",
-  wavefolder: "radial fold", bitcrusher: "snap", crush: "snap", swirl: "twist", reflect: "kaleidoscope mirror",
+  rectify: "mirror", rectifier: "mirror",
+  clipper: "clip", oversample: "oversampling", aliasing: "oversampling",
+  wavefolder: "fold radial", bitcrusher: "crush snap", crush: "crush snap",
+  distortion: "drive fold clip mirror", overdrive: "drive clip", saturation: "drive clip",
+  lofi: "crush rate", decimate: "rate", samplerate: "rate", swirl: "twist", reflect: "kaleidoscope mirror",
   echo: "echo delay", reverb: "delay chorus", flanger: "chorus", width: "scale", balance: "scale",
   crossfeed: "shear",
   fm: "fm ratio", dx7: "fm ratio", bell: "fm ratio", modulator: "ratio fm ring",

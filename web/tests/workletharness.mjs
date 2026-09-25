@@ -258,19 +258,23 @@ try {
      FM, ring, a synced saw, a sub and five copies. Read for being finite,
      sounding, and inside its amplitude - the mix rule - at 0.5. */
   runFor({}, 5);
-  node.port.onmessage({ data: { tone: { shape: "ramp", fmIndex: 2, modRatio: 1.5, ringMix: 0.3, syncRatio: 2.5,
-                                        subLevel: 0.5, unison: 5, unisonCents: 15 } } });
-  let voiceFinite = true, voicePeak = 0;
-  for (let round = 0; round < 60; round++) {
-    node.process([], [out], {});
-    for (let i = 0; i < 128; i++) {
-      if (!Number.isFinite(out[0][i]) || !Number.isFinite(out[1][i])) voiceFinite = false;
-      voicePeak = Math.max(voicePeak, Math.abs(out[0][i]), Math.abs(out[1][i]));
+  const voiceRun = (tone) => {
+    node.port.onmessage({ data: { tone } });
+    let finite = true, peak = 0;
+    for (let round = 0; round < 60; round++) {
+      node.process([], [out], {});
+      for (let i = 0; i < 128; i++) {
+        if (!Number.isFinite(out[0][i]) || !Number.isFinite(out[1][i])) finite = false;
+        peak = Math.max(peak, Math.abs(out[0][i]), Math.abs(out[1][i]));
+      }
     }
-  }
-  report.voice = { finite: voiceFinite, peak: voicePeak };
+    return { finite, peak };
+  };
+  report.voice = voiceRun({ shape: "ramp", fmIndex: 2, modRatio: 1.5, ringMix: 0.3, syncRatio: 2.5,
+                            subLevel: 0.5, unison: 5, unisonCents: 15 });
+  report.shaped = voiceRun({ drive: 0.5, fold: 0.3, crushBits: 6, crushHz: 8000 });
   node.port.onmessage({ data: { tone: { shape: "sine", fmIndex: 0, modRatio: 1, ringMix: 0, syncRatio: 1,
-                                        subLevel: 0, unison: 1 } } });
+                                        subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0 } } });
 
   // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });

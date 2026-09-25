@@ -47,6 +47,7 @@ SUITES = [
     ("pitch", [sys.executable, "pitchtest.py"], "the pitch estimator: rich registrations, the range, two periods or nothing, noise, the readout and Autoset"),
     ("play", [sys.executable, "playtest.py"], "the drawings played: the pitched harmonograph, its strike, Play the figure"),
     ("plane", [sys.executable, "planetest.py"], "the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap, their arithmetic, aliasing at 1x, 2x and 4x, every pair once"),
+    ("drive", [sys.executable, "drivetest.py"], "shaping inside the voice: the drive's curve, the fold's Bessel harmonics, each voice on its own, before the envelope, crush, layers, the cost"),
     ("voicefx", [sys.executable, "voicefxtest.py"], "inside the voice: FM against Bessel, ring, sync band-limited and corrected once, the sub, unison, layers, setup codes"),
     ("time", [sys.executable, "timetest.py"], "delay and chorus: repeats to the sample, ping-pong, feedback held, the tempo, sidebands, every pair once"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
