@@ -151,6 +151,15 @@ with sync_playwright() as pw:
         # times, and Y - a quarter cycle on - 8 or 9.
         check("the crossings run in the worklet: a 4 Hz beam over 2.1 s fires each line eight times or so",
               8 <= c["x"] <= 9 and 8 <= c["y"] <= 9, str(c))
+        fx = report.get("fx")
+        print("    effects processor: %s" % fx)
+        check("the effects processor is in the module too, and with nothing on it is an exact copy of its input",
+              fx is not None and fx["copy"] == 0 and fx["mono"] == 0, str(fx))
+        # The input goes to -0.8, so a copy could not pass this; the fold is
+        # compared sample for sample with |x|, so a clamp at nought could not.
+        check("told to mirror, it folds both channels to their absolute values, and silence in is finite",
+              fx is not None and fx["inLow"] < -0.7 and fx["low"] >= 0 and fx["folded"] < 1e-6
+              and fx["silentFinite"], str(fx))
         e = report["epoch"]
         check("a restart reaches the worklet's oscillators, and a repeated count does not restart them again",
               e["before"] > 0.1 and e["reset"] == 0 and e["again"] > 0.1, str(e))

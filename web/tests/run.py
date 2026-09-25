@@ -51,6 +51,7 @@ SUITES = [
     ("vcf", [sys.executable, "vcftest.py"], "the voice filter: Web Audio's biquad to 0.01 dB, swept at audio rate, key tracking, its envelope per note"),
     ("voicefx", [sys.executable, "voicefxtest.py"], "inside the voice: FM against Bessel, ring, sync band-limited and corrected once, the sub, unison, layers, setup codes"),
     ("time", [sys.executable, "timetest.py"], "delay and chorus: repeats to the sample, ping-pong, feedback held, the tempo, sidebands, every pair once"),
+    ("livefx", [sys.executable, "livefxtest.py"], "the plane and the delay on a live input: drawn and heard, the generator's arithmetic, a routing on a mono input, a file's repeats, where it does not go"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

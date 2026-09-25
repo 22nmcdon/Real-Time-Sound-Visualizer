@@ -705,6 +705,9 @@ body[data-view="bench"] .dock  { order: 3; }
   margin: 2px 0 8px;
 }
 .bars-state[hidden] { display: none; }
+/* What the effects are acting on, under each effects section's title: the
+   generator, your input, or - on a rack - only its generator lane. */
+.fx-where { font-size: 12px; line-height: 1.4; color: var(--text-soft); margin: -4px 0 8px; }
 
 /* Real columns, not CSS ones.
 
@@ -2221,6 +2224,7 @@ body[data-view="bench"] .dock  { order: 3; }
 
           <div class="menu-group" id="planeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Plane</span>
+            <p class="fx-where" id="planeWhere"></p>
             <div class="menu-row">
               <label class="menu-label" for="planeMirror">Mirror</label>
               <div class="grow">
@@ -2310,8 +2314,8 @@ body[data-view="bench"] .dock  { order: 3; }
                 <button type="button" class="caps" id="planeOS4" role="radio" aria-checked="false">4&times;</button>
               </div>
             </div>
-            <p class="menu-note">Things done to the picture of the generator's pair that turn out
-              to be things done to its sound. <i>Mirror</i> folds the figure onto one half of
+            <p class="menu-note">Things done to the picture of a stereo pair, the generator's or
+              your input's, that turn out to be things done to its sound. <i>Mirror</i> folds the figure onto one half of
               itself, and to the ear it is full-wave rectification, the octave-up pedal: every
               harmonic even, the note an octave higher. The folded wave sits above zero, and
               the speakers get that offset unless AC coupling, under Vertical, takes it off.
@@ -2340,6 +2344,7 @@ body[data-view="bench"] .dock  { order: 3; }
 
           <div class="menu-group" id="timeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Delay and chorus</span>
+            <p class="fx-where" id="timeWhere"></p>
             <div class="menu-row">
               <label class="menu-label" for="delayMix">Echo</label>
               <div class="grow">
@@ -2962,7 +2967,8 @@ body[data-view="bench"] .dock  { order: 3; }
         tab is a different thing: it filters the whole trace, for looking.</span></li>
 
       <li><b>The plane: what folds the picture folds the sound</b>
-        <span>Under <i>Plane</i>, on the Effects tab, for the generator. <i>Mirror</i> folds the
+        <span>Under <i>Plane</i>, on the Effects tab, for the generator and for a microphone, a
+        line input or a file. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
         is full-wave rectification, the octave-up pedal: a mirrored sine is its octave, every
         harmonic even. <i>Radial</i> is what happens at the circle: <i>Clip</i> rounds the
@@ -2983,10 +2989,18 @@ body[data-view="bench"] .dock  { order: 3; }
         four times. The fold and the snap are rougher at any rate, which is their character.
         Behind the section's &ctdot; you can choose once or four times. While any of them is
         on, the picture and sound are 0.7 ms later; scale and shear cost nothing. A mirrored
-        wave sits above zero, and AC coupling takes that off what you hear.</span></li>
+        wave sits above zero, and AC coupling takes that off what you hear.
+        <br><br>
+        On a microphone, a line input or a file the plane works on what comes in, before
+        anything draws it or plays it: what you see is what a monitored line input sends to
+        the speakers. A mono input becomes two lanes while an effect is on, because what the
+        effect makes of it is a pair. A rack's stems and a band split do not get it: their
+        lanes are not one stereo pair. The line under the section's title says which it is
+        doing.</span></li>
 
       <li><b>Delay and chorus: echoes you can see</b>
-        <span>Under <i>Delay and chorus</i>, on the Effects tab, after the plane. <i>Echo</i> is
+        <span>Under <i>Delay and chorus</i>, on the Effects tab, after the plane, and on a live
+        input or a file as well as the generator. <i>Echo</i> is
         how loud the repeats are, nought for off; <i>Time</i> is free, or <i>Sync</i> sets it to
         a note value of the tempo and it follows the tempo when that moves. <i>Feedback</i>
         brings each repeat back again, and stops at 0.9 so it always dies away.
@@ -3755,6 +3769,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "vcfGroup", "vcfType", "vcfCut", "vcfCutValue", "vcfRes", "vcfResValue", "vcfTrack", "vcfTrackValue",
                   "vcfEnvAmt", "vcfEnvAmtValue", "vcfAtk", "vcfAtkValue", "vcfDec", "vcfDecValue", "vcfSus",
                   "vcfSusValue", "vcfRel", "vcfRelValue",
+                  "planeWhere", "timeWhere",
                   "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
                   "delayFeedback", "delayFeedbackValue", "delayPingPong", "chorusMix", "chorusMixValue",
                   "chorusRate", "chorusRateValue", "chorusDepth", "chorusDepthValue", "chorusTime", "chorusTimeValue",
@@ -4306,7 +4321,10 @@ function clockStep(now) {
   // A delay in note values follows the tempo too, when it moves.
   if (typeof echo !== "undefined" && echo.sync) {
     const ms = delayTimeMs();
-    if (ms !== echo.sent) { echo.sent = ms; genSet("delayMs", ms); if (el.delayMsValue) syncEchoPanel(); }
+    if (ms !== echo.sent) {
+      echo.sent = ms; genSet("delayMs", ms);
+      if (el.delayMsValue) { syncEchoPanel(); postLiveFx(); }
+    }
   }
   // The panel follows a MIDI clock arriving, drifting and going, but only
   // when there is something new to say.
@@ -6638,6 +6656,40 @@ function makeGeneratorCore(rate, slots, lfos) {
   const fxA = makeTimeFx(), fxB = makeTimeFx(), fxHeard = makeTimeFx();
   let linearOn = false, nonlinearOn = false, timeOn = false;
   let chorusSin = 0, chorusCos = 1;
+  /* What the plane will do this block, worked out once: which stages are
+     on, the oversamplers rebuilt if the factor has changed - and only then,
+     since a rebuild empties their histories - and the settings the per-pair
+     step reads. Shared by `block`, where the pairs are the generator's, and
+     `effect`, where the pair is a live input (S1): one plane, two callers. */
+  function planeSetup(twistRouted) {
+    const wantFactor = tone.planeOS === 4 ? 4 : tone.planeOS === 1 ? 1 : 2;
+    if (wantFactor !== planeFactor) {
+      planeFactor = wantFactor;
+      osA = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+      osB = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+      osHeard = wantFactor > 1 ? makeOversampler(wantFactor) : null;
+    }
+    linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
+    nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
+                  || tone.planeKaleido > 1 || tone.planeSnap > 0;
+    timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
+    pMirror = tone.planeMirror;
+    pLimit = tone.planeLimit;
+    pKaleido = tone.planeKaleido;
+    pSnap = tone.planeSnap > 0 ? 2 / Math.pow(2, tone.planeSnap) : 0;
+    return linearOn || nonlinearOn || timeOn;
+  }
+  // This sample's modulated radius and twist, and the chorus's sweep.
+  function planeTick(dt) {
+    pRadius = Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5));
+    pTwist = Math.max(-TWO_PI, Math.min(TWO_PI, tone.planeTwist + (genMod[TWIST_SLOT] || 0) * Math.PI));
+    if (tone.chorusMix > 0) {
+      chorusPhase += TWO_PI * tone.chorusRate * dt;
+      if (chorusPhase >= TWO_PI) chorusPhase -= TWO_PI;
+      chorusSin = Math.sin(chorusPhase); chorusCos = Math.cos(chorusPhase);
+    }
+  }
+
   /* A pair through the whole of it: the matrix, then the non-linear stage
      inside the oversampling, then the chorus and the delay. */
   function planeStep(os, fx, x, y) {
@@ -7215,6 +7267,47 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
 
+  /* Every routing pointed at a generator parameter, summed into its slot.
+     Then each parameter applies its own law once - octaves for frequency,
+     powers of three for spin rate, radians for phase - which is why the
+     accumulator holds a plain sum and not a value. */
+  function sumRoutes() {
+    genMod.fill(0);
+    for (let k = 0; k < routes.length; k++) {
+      const route = routes[k];
+      const value = route.index === undefined ? route.held : lfos[route.index].value;
+      genMod[route.slot] += route.unipolar
+        ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
+        : route.amount * value;
+    }
+  }
+
+  /* S1: a live input through the plane, the same plane the generator's pairs
+     go through - `planeSetup`, `planeTick` and `planeStep` - so an effect is
+     written once and a microphone, a line input and a file get the one the
+     generator has. The oscillators are stepped here, because a routing on the
+     twist or the radius reads them; the worklet that calls this has its own
+     copies, as the generator's does. Nothing is clamped: a live input's level
+     is its own, and the speakers have their limiter. */
+  function effect(inL, inR, outL, outR, n) {
+    const dt = 1 / rate;
+    let twistRouted = false;
+    for (let k = 0; k < routes.length; k++) if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+    const planeOn = planeSetup(twistRouted);
+    for (let i = 0; i < n; i++) {
+      lfoStep(lfos[0], rate);
+      lfoStep(lfos[1], rate);
+      sumRoutes();
+      if (planeOn) {
+        planeTick(dt);
+        planeStep(osA, fxA, inL[i], inR[i]);
+        outL[i] = opX; outR[i] = opY;
+      } else {
+        outL[i] = inL[i]; outR[i] = inR[i];
+      }
+    }
+  }
+
   /* `outL` and `outR` are the PICTURE. `heardL` and `heardR`, when given,
      are what goes to the speakers - the worklet passes its output here and
      posts the picture back. They are the same samples in every mode but
@@ -7232,16 +7325,6 @@ function makeGeneratorCore(rate, slots, lfos) {
     const poly = tone.voices !== null;
     const layered = toneB.voices !== null;
     const roleGlide = poleFor(4);
-    // The plane's oversamplers, rebuilt when the factor changes - and only
-    // then, since a rebuild empties their histories.
-    const wantFactor = tone.planeOS === 4 ? 4 : tone.planeOS === 1 ? 1 : 2;
-    if (wantFactor !== planeFactor) {
-      planeFactor = wantFactor;
-      osA = wantFactor > 1 ? makeOversampler(wantFactor) : null;
-      osB = wantFactor > 1 ? makeOversampler(wantFactor) : null;
-      osHeard = wantFactor > 1 ? makeOversampler(wantFactor) : null;
-    }
-    linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
     // A routing on the twist turns the stage on with the slider at nought:
     // a controller that swirls the figure from still is the point of it.
     let twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false;
@@ -7257,14 +7340,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     const wantShape = tone.shapeOS === 4 ? 4 : 2;
     if (wantShape !== shapeFactor) { shapeFactor = wantShape; shapeL = makeShaper(); shapeR = makeShaper(); }
     voiceFxFor(toneB, vxB, fmRouted, syncRouted, shapeRouted);
-    nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
-                  || tone.planeKaleido > 1 || tone.planeSnap > 0;
-    timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
-    const planeOn = linearOn || nonlinearOn || timeOn;
-    pMirror = tone.planeMirror;
-    pLimit = tone.planeLimit;
-    pKaleido = tone.planeKaleido;
-    pSnap = tone.planeSnap > 0 ? 2 / Math.pow(2, tone.planeSnap) : 0;
+    const planeOn = planeSetup(twistRouted);
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -7282,18 +7358,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       lfoStep(lfos[0], rate);
       lfoStep(lfos[1], rate);
 
-      /* Every routing pointed at a generator parameter, summed into its slot.
-         Then each parameter applies its own law once - octaves for frequency,
-         powers of three for spin rate, radians for phase - which is why the
-         accumulator holds a plain sum and not a value. */
-      genMod.fill(0);
-      for (let k = 0; k < routes.length; k++) {
-        const route = routes[k];
-        const value = route.index === undefined ? route.held : lfos[route.index].value;
-        genMod[route.slot] += route.unipolar
-          ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
-          : route.amount * value;
-      }
+      sumRoutes();
 
       /* The glide is on the BASE pitch, and the modulation rides on top of
          where the glide has got to. The other way round, a vibrato would be
@@ -7424,13 +7489,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
 
       if (planeOn) {
-        pRadius = Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5));
-        pTwist = Math.max(-TWO_PI, Math.min(TWO_PI, tone.planeTwist + (genMod[TWIST_SLOT] || 0) * Math.PI));
-        if (tone.chorusMix > 0) {
-          chorusPhase += TWO_PI * tone.chorusRate * dt;
-          if (chorusPhase >= TWO_PI) chorusPhase -= TWO_PI;
-          chorusSin = Math.sin(chorusPhase); chorusCos = Math.cos(chorusPhase);
-        }
+        planeTick(dt);
         planeStep(osA, fxA, l, r); l = opX; r = opY;
       }
       outL[i] = Math.max(-1, Math.min(1, l));
@@ -7489,7 +7548,7 @@ function makeGeneratorCore(rate, slots, lfos) {
   }
 
   return {
-    tone, toneB, block,
+    tone, toneB, block, effect,
     /* Copied rather than held by reference, for the same reason the routes
        are numbers: whatever the caller hands over has to survive being posted
        across a thread boundary, and the only way to be sure it would is to
@@ -7598,6 +7657,68 @@ function makeGeneratorCore(rate, slots, lfos) {
    is, and why `worklettest.py` runs the module against stub globals in Node -
    a name that only resolves on the main thread has to fail as a
    `ReferenceError` naming it, rather than as a generator that stays silent. */
+/* S1: the effects worklet. A live input's pair in, the same pair through the
+   generator's plane out - `makeGeneratorCore`'s `effect`, so the kaleidoscope
+   a microphone goes through is the generator's kaleidoscope, not a second one
+   written to agree with it. In the same module as the generator, because it
+   is the same code; its own processor, because it has an input and makes
+   nothing of its own. Its oscillators are copies, stepped here for a routing
+   on the twist or the radius, and restarted when the page's are. */
+function fxProcessor() {
+  class FxProcessor extends AudioWorkletProcessor {
+    constructor(options) {
+      super();
+      const setup = (options && options.processorOptions) || {};
+      this.lfos = (setup.lfos || []).map((lfo) => ({
+        shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
+        phase: lfo.phase || 0, held: lfo.held || 0, value: lfo.value || 0, epoch: lfo.epoch || 0,
+      }));
+      this.core = makeGeneratorCore(sampleRate, setup.slots || 8, this.lfos);
+      for (const field in setup.tone || {}) this.core.set(field, setup.tone[field]);
+      if (setup.routes) this.core.setRoutes(setup.routes);
+      this.silence = new Float32Array(128);
+      this.running = true;
+      this.port.onmessage = (event) => {
+        const message = event.data || {};
+        if (message.tone) for (const field in message.tone) this.core.set(field, message.tone[field]);
+        if (message.routes) this.core.setRoutes(message.routes);
+        if (message.lfos) {
+          for (let i = 0; i < message.lfos.length && i < this.lfos.length; i++) {
+            this.lfos[i].shape = message.lfos[i].shape;
+            this.lfos[i].rate = message.lfos[i].rate;
+            this.lfos[i].depth = message.lfos[i].depth;
+            const epoch = message.lfos[i].epoch;
+            if (epoch !== undefined && epoch !== this.lfos[i].epoch) {
+              this.lfos[i].epoch = epoch;
+              this.lfos[i].phase = 0;
+            }
+          }
+        }
+        if (message.stop) this.running = false;
+      };
+    }
+
+    process(inputs, outputs) {
+      const out = outputs[0];
+      if (!out || out.length < 2) return this.running;
+      const n = out[0].length;
+      if (this.silence.length < n) this.silence = new Float32Array(n);
+      // Nothing connected - a file paused - is silence in, and the echoes
+      // still ring out rather than stopping dead.
+      const input = inputs[0] || [];
+      const l = input[0] || this.silence, r = input[1] || l;
+      try {
+        this.core.effect(l, r, out[0], out[1], n);
+      } catch (error) {
+        this.port.postMessage({ error: String(error && error.message || error) });
+        this.running = false;
+      }
+      return this.running;
+    }
+  }
+  registerProcessor("scope-fx", FxProcessor);
+}
+
 function generatorProcessor() {
   class GeneratorProcessor extends AudioWorkletProcessor {
     constructor(options) {
@@ -7794,6 +7915,7 @@ function generatorModuleSource() {
     bind("makeEnvelope", String(makeEnvelope)),
     bind("makeGeneratorCore", String(makeGeneratorCore)),
     "(" + String(generatorProcessor) + ")();",
+    "(" + String(fxProcessor) + ")();",
   ].join("\n\n");
 }
 
@@ -7830,6 +7952,17 @@ function loadGeneratorModule(ctx) {
     .then(() => { URL.revokeObjectURL(blob); });
   generatorModules.set(ctx, ready);
   return ready;
+}
+
+/* The routes as numbers, which is the only form that crosses a thread:
+   the generator's worklet takes them, and so does the effects worklet. */
+function workletRoutes() {
+  if (modDirty) compileRoutes();
+  return genRoutes.map((route) => ({
+    index: route.index,
+    held: route.index === undefined ? route.source.value() : 0,
+    slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
+  }));
 }
 
 /* --- the generator's voice ---------------------------------------------------
@@ -7881,15 +8014,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
     audible = false;
   }
 
-  /* The routes as numbers, which is the only form that crosses a thread. */
-  function plainRoutes() {
-    if (modDirty) compileRoutes();
-    return genRoutes.map((route) => ({
-      index: route.index,
-      held: route.index === undefined ? route.source.value() : 0,
-      slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
-    }));
-  }
+  const plainRoutes = workletRoutes;
 
   async function setSound(on) {
     if (on === audible) return audible;
@@ -8298,6 +8423,99 @@ function releaseLiveStream(deviceId) {
   }
 }
 
+/* --- S1: the effects insert ------------------------------------------------
+   Between a live source and everything that listens to it: the analysers the
+   picture is drawn from, and the monitor chain the speakers are fed from. So
+   what is drawn and what is heard are the same samples, by construction, the
+   property the generator has always had.
+
+   Two gain nodes and nothing between them while no effect is on - a gain of
+   one is an exact copy, so a source with the effects off is the source it
+   was, sample for sample. The worklet is built the first time an effect is
+   wanted and dropped when none is, the way the monitor chain is: an idle node
+   in the path is a cost for nothing and a place for a bug. The output is two
+   channels, speakers-style, so a mono input comes out as its two identical
+   halves, and an effect that works between the channels - a twist, a
+   kaleidoscope, ping-pong - has two to work between.
+
+   Where it sits, and what it costs, said plainly: upstream of both taps, as
+   the plane is on the generator, so "Screen reads the input" still means
+   before the filter, the AC coupling, the rotation and the lag, and not
+   before the effects. A microphone, a line input and a file have it; a rack's
+   stems and a band split do not, because their two lanes on the screen are
+   not one stereo signal, and twisting one stem into another is not a thing a
+   pair of speakers could be doing. */
+function makeFxInsert(ctx) {
+  const input = ctx.createGain();
+  const output = ctx.createGain();
+  output.channelCount = 2;
+  output.channelCountMode = "explicit";
+  output.channelInterpretation = "speakers";
+  input.connect(output);
+  let node = null, wanted = false, building = false, fault = null;
+
+  async function build() {
+    building = true;
+    try {
+      await loadGeneratorModule(ctx);
+      if (!wanted || node) return;
+      node = new AudioWorkletNode(ctx, "scope-fx", {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+        channelCount: 2, channelCountMode: "explicit", channelInterpretation: "speakers",
+        processorOptions: {
+          slots: GEN_DESTS.length,
+          lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
+                                     phase: lfo.phase, epoch: lfo.epoch })),
+          tone: liveFxFields(),
+          routes: workletRoutes(),
+        },
+      });
+      node.onprocessorerror = () => { fault = fault || "the effects stopped"; unbuild(); };
+      node.port.onmessage = (event) => {
+        if (event.data && event.data.error) { fault = event.data.error; unbuild(); }
+      };
+      input.disconnect(output);
+      input.connect(node);
+      node.connect(output);
+    } catch (error) {
+      fault = String(error && error.message || error);
+    } finally {
+      building = false;
+    }
+  }
+
+  function unbuild() {
+    if (!node) return;
+    try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ }
+    try { input.disconnect(node); } catch (error) { /* gone */ }
+    try { node.disconnect(); } catch (error) { /* gone */ }
+    node = null;
+    input.connect(output);
+  }
+
+  return {
+    input, output,
+    get active() { return node !== null; },
+    get fault() { return fault; },
+    set(on) {
+      wanted = on === true;
+      if (wanted && !node && !building && !fault) build();
+      if (!wanted) unbuild();
+    },
+    post(message) { if (node) node.port.postMessage(message); },
+    // One message a frame, as the generator's voice sends: the routes, with
+    // every held value in them, and the oscillators' settings.
+    frame() {
+      if (!node) return;
+      node.port.postMessage({
+        routes: workletRoutes(),
+        lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth, epoch: lfo.epoch })),
+      });
+    },
+    drop() { wanted = false; unbuild(); },
+  };
+}
+
 async function makeMicSource(deviceId) {
   const stream = await openLiveStream(deviceId);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -8311,7 +8529,12 @@ async function makeMicSource(deviceId) {
 
   const node = ctx.createMediaStreamSource(stream);
   const splitter = ctx.createChannelSplitter(2);
-  node.connect(splitter);
+  // Through the effects insert, which is an exact copy while no effect is
+  // on, and whose output is always two channels - a mono input as its two
+  // identical halves, so each analyser takes its own.
+  const insert = makeFxInsert(ctx);
+  node.connect(insert.input);
+  insert.output.connect(splitter);
 
   // The analyser's time-domain buffer IS the ring buffer: it holds the most
   // recent fftSize samples, which is exactly the question this interface
@@ -8320,7 +8543,7 @@ async function makeMicSource(deviceId) {
   analysers.forEach((a, i) => {
     a.fftSize = 32768;              // the largest allowed: ~0.74 s at 44.1 kHz
     a.smoothingTimeConstant = 0;
-    splitter.connect(a, mono ? 0 : i);
+    splitter.connect(a, i);
   });
 
   const scratch = [new Float32Array(32768), new Float32Array(32768)];
@@ -8346,10 +8569,10 @@ async function makeMicSource(deviceId) {
     if (want === (chain !== null)) return chain !== null;
     if (want) {
       chain = makeMonitorChain(ctx);
-      node.connect(chain.input);
+      insert.output.connect(chain.input);
       syncMonitor();
     } else {
-      node.disconnect(chain.input);
+      insert.output.disconnect(chain.input);
       dropMonitorChain(chain);
       chain = null;
     }
@@ -8358,8 +8581,11 @@ async function makeMicSource(deviceId) {
 
   return {
     kind: "mic",
+    fx: insert,
     setMonitor,
     get monitored() { return chain !== null; },
+    // What the speakers are handed, for a test to listen to.
+    get monitorChain() { return chain; },
     /* What the browser admits to, which is the output side plus its own
        buffer; the converter's own latency is not in it and neither is the
        driver's. It is a floor rather than the round trip, and the panel says
@@ -8369,8 +8595,9 @@ async function makeMicSource(deviceId) {
                         + MONITOR_LOOKAHEAD_MS);
     },
     get sampleRate() { return ctx.sampleRate; },
-    tick() {},
-    get channels() { return mono ? 1 : 2; },
+    tick() { insert.frame(); },
+    // Two once an effect is on: what it has made of a mono input is a pair.
+    get channels() { return mono && !insert.active ? 1 : 2; },
     get capacity() { return scratch[0].length; },
     describe() {
       const name = (track && track.label) || "microphone";
@@ -8395,6 +8622,7 @@ async function makeMicSource(deviceId) {
       // be shared, and stopping it under something else that is still listening
       // would leave that thing drawing a flat line with no way to tell why.
       if (chain) { dropMonitorChain(chain); chain = null; }
+      insert.drop();
       node.disconnect();
       releaseLiveStream(deviceId);
       ctx.close();
@@ -8424,11 +8652,16 @@ async function makeFileSource(data, name) {
 
   const monitor = makeMonitorChain(ctx);
   const splitter = ctx.createChannelSplitter(2);
+  // The player feeds the insert, and the insert feeds the picture and the
+  // speakers alike: see `makeFxInsert`.
+  const insert = makeFxInsert(ctx);
+  insert.output.connect(splitter);
+  insert.output.connect(monitor.input);
   const analysers = [ctx.createAnalyser(), ctx.createAnalyser()];
   analysers.forEach((a, i) => {
     a.fftSize = 32768;
     a.smoothingTimeConstant = 0;
-    splitter.connect(a, mono ? 0 : i);
+    splitter.connect(a, i);
   });
 
   const scratch = [new Float32Array(32768), new Float32Array(32768)];
@@ -8459,8 +8692,7 @@ async function makeFileSource(data, name) {
     node = ctx.createBufferSource();
     node.buffer = buffer;
     node.loop = loop;
-    node.connect(splitter);
-    node.connect(monitor.input);     // so you hear what you are looking at
+    node.connect(insert.input);      // drawn and heard, through the one insert
     node.onended = () => { node = null; offset = 0; };
     node.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
     startedAt = ctx.currentTime;
@@ -8475,8 +8707,11 @@ async function makeFileSource(data, name) {
   return {
     kind: "file",
     name: name,
+    fx: insert,
+    get monitorChain() { return monitor; },
+    tick() { insert.frame(); },
     get sampleRate() { return ctx.sampleRate; },
-    get channels() { return mono ? 1 : 2; },
+    get channels() { return mono && !insert.active ? 1 : 2; },
     get capacity() { return scratch[0].length; },
     get duration() { return buffer.duration; },
     get playing() { return node !== null; },
@@ -8506,8 +8741,6 @@ async function makeFileSource(data, name) {
       if (node !== null) node.loop = on;
     },
 
-    tick() {},
-
     getLatestWindow(n) {
       return analysers.map((a, i) => {
         a.getFloatTimeDomainData(scratch[i]);
@@ -8520,6 +8753,7 @@ async function makeFileSource(data, name) {
 
     stop() {
       stopNode();
+      insert.drop();
       dropMonitorChain(monitor);
       ctx.close();
     },
@@ -12881,6 +13115,9 @@ function frameLoop(now) {
   // The generator runs on its own clock and fills its buffer here; the
   // microphone's is filled by the audio thread and has nothing to do.
   if (state.running) state.source.tick(now / 1000);
+  // Whether a live input's effects should be there, every frame and running
+  // or not: a switch thrown while the scope is stopped still takes.
+  syncLiveFx();
 
   if (state.running) {
     const fresh = capture();
@@ -16430,6 +16667,7 @@ function syncPlane() {
   genSet("planeScaleX", plane.scaleX);
   genSet("planeScaleY", plane.scaleY);
   genSet("planeShear", plane.shear);
+  postLiveFx();
 }
 
 function syncEcho() {
@@ -16442,6 +16680,62 @@ function syncEcho() {
   genSet("chorusDepthMs", echo.depthMs);
   genSet("chorusMs", echo.centreMs);
   genSet("chorusFeedback", echo.chorusFeedback);
+  postLiveFx();
+}
+
+/* S1: the same settings for a live input's effects insert, in the core's
+   units - the generator's own fields, because it is the generator's code. */
+function liveFxFields() {
+  return {
+    planeMirror: plane.mirror, planeLimit: plane.limit, planeRadius: plane.radius, planeOS: plane.os,
+    planeTwist: plane.twist * TWO_PI, planeKaleido: plane.kaleido, planeSnap: plane.snap,
+    planeScaleX: plane.scaleX, planeScaleY: plane.scaleY, planeShear: plane.shear,
+    delayMix: echo.mix, delayMs: delayTimeMs(), delayFeedback: echo.feedback, delayPingPong: echo.pingPong,
+    chorusMix: echo.chorus, chorusRate: echo.rate, chorusDepthMs: echo.depthMs, chorusMs: echo.centreMs,
+    chorusFeedback: echo.chorusFeedback,
+  };
+}
+// Whether any of it is on - a routing on the twist counts, as in the core.
+function liveFxWanted() {
+  return plane.mirror !== 0 || plane.limit !== 0 || plane.twist !== 0 || plane.kaleido > 1 || plane.snap > 0
+      || plane.scaleX !== 1 || plane.scaleY !== 1 || plane.shear !== 0 || echo.mix > 0 || echo.chorus > 0
+      || state.modRoutings.some((r) => r.destId === "gen.twist");
+}
+function fxWhereText() {
+  const source = state.source;
+  if (!source) return "";
+  if (source.fx) {
+    const what = source.kind === "file" ? "the file" : "your input";
+    if (source.kind === "file" || source.monitored) return "On " + what + ", drawn and heard.";
+    return "On " + what + ", drawn; heard too once it is a monitored line input.";
+  }
+  if (source.kind === "tone") return "On the generator.";
+  return genLane() ? "On the generator lane only: a rack's stems are not one stereo pair to work on."
+                   : "Not on a rack's lanes or a band split: they are not one stereo pair to work on.";
+}
+/* Told what to do, and whether to be there at all. The lanes follow: a mono
+   input is two lanes while an effect is on, because what the effect has made
+   of it is a pair, and one again when none is. */
+function syncLiveFx() {
+  const where = fxWhereText();
+  if (el.planeWhere.textContent !== where) {
+    el.planeWhere.textContent = where;
+    el.timeWhere.textContent = where;
+  }
+  const source = state.source;
+  if (!source || !source.fx) return;
+  source.fx.set(liveFxWanted());
+  if (source.lanesSeen !== undefined && source.lanesSeen !== source.channels) {
+    fitChannels(source.channels);
+    state.xyPair = [0, Math.min(1, source.channels - 1)];
+    buildLaneRows();
+  }
+  source.lanesSeen = source.channels;
+}
+function postLiveFx() {
+  const source = state.source;
+  if (source && source.fx) source.fx.post({ tone: liveFxFields() });
+  syncLiveFx();
 }
 
 const twistText = (t) => Math.round(t * 360) + "\u00b0";

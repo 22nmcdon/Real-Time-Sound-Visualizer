@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -2044,8 +2044,8 @@ speakers shaped* would work for every operation. These operations are in the
 generator's core instead, as S1's review asked: new processing goes to the
 core first, where seen-is-heard is free. They are upstream of both taps, so
 the screen and the speakers get the same folded figure, and neither can have
-it without the other. That is the cost. A live input gets none of this until
-the S1 worklet is built.
+it without the other. That is the cost. A live input has it too, since S1:
+see *The plane and the delay on a live input* below.
 
 **The voice's oscillator is one function for every voice, and is not there
 until something in it is on.** H1 (FM, ring, sync, sub, unison) is one
@@ -2279,3 +2279,76 @@ It found a fifth that is not a bug: *Bands, low against high* names the band
 split's third lane, and the tone has two. That preset is for the band split,
 and falls back correctly on anything else. So the check skips a lane choice
 only when the source has not got that lane, and says why.
+
+**The plane and the delay on a live input.** A microphone, a line input and a
+file now go through an *effects insert* before anything listens to them. That
+means the analysers the picture is drawn from and the monitor chain the
+speakers are fed from, so what is drawn and what is heard are one set of
+samples, as they are for the generator.
+
+- *One copy of the arithmetic.* The insert's worklet runs the generator's own
+  core through a method, `effect`, that takes a pair in. It shares
+  `planeSetup`, `planeTick` and `planeStep` with the generator's block. A
+  second implementation would agree with the first the day it was written and
+  drift from then on.
+- *An exact copy while nothing is on.* The insert is two gain nodes of one
+  until an effect is wanted, and goes back to that when none is. A mono input
+  is one lane until then and two while an effect is on.
+- *Not on a rack or a band split,* whose two lanes are not one stereo signal.
+  The Plane and Time sections have a line saying where the effects are
+  working, and why not when they are not.
+- *The cost.* "Screen reads the input" means before the filter, the AC
+  coupling, the rotation and the lag, but after the effects. There is no
+  *screen dry, speakers shaped* for any of the plane.
+
+**The first version of its test read a silent microphone and blamed the
+twist.** The fixture opens a fresh stub stream for each microphone, and to
+stop the page handing it the previous one it cleared the page's stream cache
+by hand. The page then stopped the old microphone, and its release looked the
+stream up by its key, `""` - and found the *new* one, filed under the same key
+a moment before. The holder count went to nought and the new stream's tracks
+were stopped.
+
+So every microphone after the first was silent. The check on a twist routing
+read nought and failed. Its other half, "the diagonal has not moved before the
+routing", passed, because silence has not moved either.
+
+- *The fix.* The fixture leaves the old microphone by way of the tone, so its
+  release finds its own entry.
+- *The check.* It now requires a level before it believes a stillness.
+- *Why the page is fine.* In the page there is never a second entry under one
+  key: a second open of the same device joins the first entry, and the count
+  goes to two.
+
+The general point: a test fixture that reaches into the page's caches can
+break the page's own bookkeeping, and the result looks like the code under
+test.
+
+**Two of the insert's mutants survived a passing test, for reasons worth
+knowing.**
+
+- *Settings sent while it runs.* With the post from the Plane section taken
+  out, the kaleidoscope check still passed. It turned the mirror off and the
+  kaleidoscope on, and the first of those dropped the node, whose rebuild was
+  handed the new settings at construction. So a change was never sent to a
+  running node at all. The check that holds it now changes the mirror from
+  both axes to X alone, which keeps the node up throughout.
+- *The mono lanes.* With the refit taken out, the lane check still passed. It
+  read the source's `channels`, a getter over the insert that is right by
+  construction; the refit exists for the lane rows under *Lanes*, which
+  nothing read. `state.channels` could not show it either, because the page
+  keeps at least two channel records whatever the source. The check counts
+  the rows now.
+
+Both are the same mistake: a check that reads the thing the code is *given*
+rather than the thing the code *makes*.
+
+**The worklet harness kept the last processor a module registered.** That
+was the generator until S1 put the effects processor in the same module,
+after it. From then on the harness built the effects processor, handed it
+the generator's settings, and every generator check in `worklettest.py` read
+silence. It was caught only because those checks were already written
+against silence. The harness keeps them by name now, runs the generator as
+before, and gives the effects processor checks of its own: an exact copy with
+nothing on, a mono input as two identical halves, a mirror that is |x| sample
+for sample, and silence in when nothing is connected.

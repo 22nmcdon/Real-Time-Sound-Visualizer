@@ -9,7 +9,8 @@ G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
 crossings and K2 (see *Built so far* under Stage K), J2's pitched harmonograph
 and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
 plane's nine operations with S2's oversampling, and I1's delay and chorus - for
-the generator (see *Built so far* under Stage I), and H1's second oscillator,
+the generator and, through S1's effects worklet, for a microphone, a line input
+and a file (see *Built so far* under Stage I), and H1's second oscillator,
 sub and unison (see *Built so far* under Stage H). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
@@ -320,7 +321,8 @@ natural things to do to a *picture* of a stereo pair and turn out to be
 musical things to do to its *sound*.
 
 Each is a pure function of one sample pair `(x, y) → (x′, y′)`: one
-implementation, in the S1 worklet, for every source.
+implementation, in the generator's core, which S1's effects worklet runs for a
+live input or a file.
 
 | Operation on the picture | The same thing as audio | Linear? |
 |---|---|---|
@@ -379,13 +381,38 @@ carries it over.
   clamped the same way.
 - Neither feedback is a destination.
 
-**I2 does not apply, by decision.** These are in the generator's core, as S1's
-review asked, so they sit upstream of both taps: the screen and the speakers
-get the same result, and *screen dry, speakers shaped* is not available for
-them. A live input gets none of Stage I until the S1 worklet is built, which is
-the part of this stage still open.
+**S1: the same plane on a live input.** A microphone, a line input and a
+file go through an *effects insert* on their way to everything that listens:
+the analysers the picture is drawn from and the monitor chain the speakers are
+fed from.
 
-`planetest.py` and `timetest.py` hold it.
+- *One implementation.* The insert's worklet runs the generator's own core,
+  through a method, `effect`, that takes a pair in rather than making one. It
+  uses the same `planeSetup`, `planeTick` and `planeStep` as the generator's
+  block, so there is still one copy of every operation.
+- *Nothing there until it is wanted.* With every effect off, the insert is two
+  gain nodes of one, an exact copy. The worklet is built the first time an
+  effect is wanted, and dropped when none is. A routing on the twist counts as
+  wanted, as it does in the core.
+- *Mono becomes two.* A mono input is one lane with the effects off and two
+  while one is on. What the effect has made of it is a pair, and a twist or a
+  kaleidoscope needs two channels to work between.
+- *Modulation.* The worklet has copies of the two oscillators, and the page
+  sends it the routes every frame, as it does the generator's voice.
+- *Not on a rack or a band split.* Their two lanes on the screen are not one
+  stereo signal, and twisting one stem into another is not something a pair
+  of speakers could be doing. The Plane and Time sections say where the
+  effects are working, and say this when they are not.
+
+**I2 does not apply, by decision, and that now covers live inputs too.** The
+plane is upstream of both taps on the generator, as S1's review asked, and
+the insert is upstream of both on a live input. So the screen and the speakers
+get the same result, and *screen dry, speakers shaped* is not available for
+any of Stage I. The cost for a live input is that "Screen reads the input"
+means before the filter, the AC coupling, the rotation and the lag, but after
+the effects.
+
+`planetest.py`, `timetest.py` and `livefxtest.py` hold it.
 
 ### I0 · the plane in poly
 
@@ -652,7 +679,7 @@ Smaller things, each worth doing on its own and none blocking the others.
 laying-it-out.md (the layout) ─► everything below
 G (shapes) ───────────────────────────────┐
 H (voice) ── S2 oversampling ─────────────┤
-I (plane) ── S2 (S1 only for live inputs) ┼──► L
+I (plane) ── S2, S1 for live inputs ──────┼──► L
 J1 (sources) ─► J2 (per mode) ─► J3 (S7) ─┤
 S5 scale + S6 clock ─► K1 … K5 ───────────┘
 ```
@@ -671,4 +698,4 @@ S5 scale + S6 clock ─► K1 … K5 ───────────┘
    then **J3**, then **K3**, **K4** and L as wanted.
 
 The piece of invisible work to size first is S2: most of I and all of H2 wait
-on it. S1 is only needed once an effect is wanted on a live input.
+on it. S1 was needed once an effect was wanted on a live input, and is built.

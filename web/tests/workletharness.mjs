@@ -25,8 +25,17 @@ globalThis.sampleRate = 48000;
 globalThis.currentFrame = 0;
 globalThis.currentTime = 0;
 
+/* Every processor the module registers, by name. The generator is the one
+   the rest of this file runs; S1's effects processor is in the same module
+   and is run at the end. Keeping only the last registered, as this did,
+   ran the effects processor as though it were the generator once it
+   existed, and every check below read silence. */
+const processors = new Map();
 let registered = null;
-globalThis.registerProcessor = (name, cls) => { registered = { name, cls }; };
+globalThis.registerProcessor = (name, cls) => {
+  processors.set(name, cls);
+  if (name === "generator" || !registered) registered = { name, cls };
+};
 globalThis.AudioWorkletProcessor = class {
   constructor() {
     this.posted = 0;
@@ -298,6 +307,38 @@ try {
   for (let round = 0; round < 50; round++) node.process([], [out], {});
   node.port.onmessage({ data: lfoAt(1) });
   report.epoch = { before, reset, again: node.lfos[0].phase };
+
+  /* S1's effects processor, in the thread it runs in. With nothing on it is
+     an exact copy of its input; told to mirror, it folds both channels; a
+     mono input is its two identical halves; and nothing connected at all -
+     a file paused - is silence in, not a throw. At 1x, so the mirror is the
+     bare arithmetic and adds no delay to compare around. */
+  const Fx = processors.get("scope-fx");
+  if (Fx) {
+    const fx = new Fx({ processorOptions: {
+      slots, lfos: [{ shape: "sine", rate: 2, depth: 0.5 }, { shape: "sine", rate: 1, depth: 0.5 }],
+      tone: { planeOS: 1 }, routes: [],
+    } });
+    const inL = new Float32Array(128), inR = new Float32Array(128);
+    for (let i = 0; i < 128; i++) {
+      inL[i] = 0.8 * Math.sin(2 * Math.PI * i / 32);
+      inR[i] = 0.8 * Math.sin(2 * Math.PI * i / 48 + 1);
+    }
+    const fo = [new Float32Array(128), new Float32Array(128)];
+    const gap = (a, b) => { let m = 0; for (let i = 0; i < 128; i++) m = Math.max(m, Math.abs(a[i] - b[i])); return m; };
+    fx.process([[inL, inR]], [fo], {});
+    const copy = Math.max(gap(fo[0], inL), gap(fo[1], inR));
+    fx.process([[inL]], [fo], {});
+    const mono = Math.max(gap(fo[0], inL), gap(fo[1], inL));
+    fx.port.onmessage({ data: { tone: { planeMirror: 3 } } });
+    fx.process([[inL, inR]], [fo], {});
+    const low = Math.min(...fo[0], ...fo[1]);
+    const folded = Math.max(gap(fo[0], inL.map(Math.abs)), gap(fo[1], inR.map(Math.abs)));
+    let silentFinite = true;
+    fx.process([], [fo], {});
+    for (const ch of fo) for (const v of ch) if (!Number.isFinite(v)) silentFinite = false;
+    report.fx = { copy, mono, low, folded, silentFinite, inLow: Math.min(...inL, ...inR) };
+  }
 
   report.posted = node.posted;
   report.ok = true;
