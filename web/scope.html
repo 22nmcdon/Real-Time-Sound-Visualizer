@@ -488,13 +488,18 @@ body[data-view="bench"] .bench { order: 2; }
 body[data-view="bench"] .dock  { order: 3; }
 /* Settings opens from both views: its sections live there and nowhere else. */
 
-/* The bench is a workbench, not a page: it takes the window rather than the
-   1180px reading measure the rest of the app is set in. With a side column of
-   its own there is otherwise not room for two columns of controls on a laptop,
-   and the point of the whole view is that they are all on show. */
+/* Wider than the 1180px measure the rest of the app is set in, and no wider
+   than three columns of controls need. It took the whole window while every
+   section had to be on show at once; with tabs it only has to hold one task,
+   and on a wide screen the columns were stretched to half a metre of slider
+   with most of the Bench empty. 1420 is the rail, three columns at a
+   comfortable 250 and the side column: narrower drops to two columns, and
+   Play with a rack of six does not fit in two. Centred, so the empty margin
+   is either side rather than all on the right. */
 .bench-wrap {
   flex: 1 1 auto; display: flex; gap: 22px; min-height: 0; min-width: 0;
-  padding-block: 14px 16px; max-width: none;
+  padding-block: 14px 16px; max-width: 1420px; margin-inline: auto; width: 100%;
+  box-sizing: border-box;
 }
 
 .bench-left {
@@ -613,12 +618,11 @@ body[data-view="bench"] .dock  { order: 3; }
   border-left: 1px solid var(--line); padding-left: 16px;
   min-height: 0; overflow-y: auto;
 }
-/* Small, and capped rather than given the column's width. "Enough to see the
-   figure answer while your hand is on the control" is what this has to be, and
-   past about two hundred pixels it starts taking the room the oscillators need
-   to be on screen at the same time. */
+/* The column's width. It was capped at 158px so the oscillators under it
+   could be on screen at the same time; they have the Sources tab now, and the
+   column under a small square was the emptiest part of the Bench. */
 .bench-scope {
-  flex: 0 0 auto; width: min(100%, 158px); aspect-ratio: 1 / 1;
+  flex: 0 0 auto; width: 100%; aspect-ratio: 1 / 1;
   display: flex; margin-inline: auto;
 }
 .bench-scope > .sheet { flex: 1 1 auto; min-width: 0; min-height: 0; }
@@ -2058,11 +2062,15 @@ body[data-view="bench"] .dock  { order: 3; }
     <span class="reading" id="keysRange">C3&ndash;C5</span>
     <button type="button" class="link-btn caps" id="keysUp" aria-label="Up an octave">Octave &rarr;</button>
     <label class="check"><input type="checkbox" id="keysLatch"> Latch</label>
+    <!-- A toggle, because a mouse is one finger and cannot hold a pedal and
+         play at once; the space bar is the one you hold. -->
+    <button type="button" class="link-btn caps" id="keysPedal" aria-pressed="false"
+            title="Sustain pedal: click to press and again to lift, or hold the space bar">Pedal</button>
     <label class="keys-velocity" for="keysVelocity">Velocity
       <input type="range" id="keysVelocity" min="1" max="127" value="100">
       <span class="reading" id="keysVelocityValue">100</span></label>
     <span class="keys-hint">Type <kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>E</kbd> <kbd>D</kbd>&hellip; to play,
-      <kbd>Z</kbd> <kbd>X</kbd> for octaves</span>
+      <kbd>Z</kbd> <kbd>X</kbd> for octaves, hold <kbd>Space</kbd> for the pedal</span>
     <button type="button" class="close-btn" id="keysClose" aria-label="Hide the keyboard">&times;</button>
   </div>
   <div class="keys-bed" id="keysBed"></div>
@@ -2228,9 +2236,10 @@ body[data-view="bench"] .dock  { order: 3; }
       <li><b>Scope, the Bench and Settings</b>
         <span><i>Scope</i> is for watching and playing: the screen has the window, and the
         strip along the top keeps the trigger, the timebase, the zoom and persistence.
-        The <i>Bench</i> is where everything is tuned: the controls take the window and the
-        screen becomes a small square beside them, still running, so you can watch a
-        figure answer with your hand on the control. <i>Settings</i> opens from either
+        The <i>Bench</i> is where everything is tuned: the controls take the middle of the
+        window and the screen sits beside them, still running, so you can watch a figure
+        answer with your hand on the control. On a wide window the Bench stops at the width
+        three columns need rather than spreading them apart. <i>Settings</i> opens from either
         and holds what you set once and leave &mdash; <i>MIDI</i>, <i>Audio</i>,
         <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
         nowhere else.
@@ -2513,6 +2522,14 @@ body[data-view="bench"] .dock  { order: 3; }
         settling. The tuner then reads the gap between the key you pressed and the pitch that
         came back, which on an organ is a real number rather than an error.
         <br><br>
+        A <b>sustain pedal</b> works as a pedal does: keys let go while it is down go on
+        sounding until it lifts, and a key struck again under it and still held stays when
+        it does. It is also a source, <i>Sustain</i>, with the keyboard's: half-way down
+        reads a half, and it glides rather than steps, so a pedal on the level swells
+        instead of clicking. The notes it is holding are held from the moment it passes
+        half-way, as the MIDI specification has it for a switch. It is not learned as a
+        controller beside that, so it shows once.
+        <br><br>
         Move a drawbar, a pedal or the swell and it becomes a source you can put on any
         control. Web MIDI needs a secure page and permission from whatever embeds it: the
         published artifact is an iframe that does not grant it, so this works on the GitHub
@@ -2549,7 +2566,9 @@ body[data-view="bench"] .dock  { order: 3; }
         software does it &mdash; <b>A</b> is C, <b>W</b> C&#9839;, <b>S</b> D and so on along
         two rows &mdash; with <b>Z</b> and <b>X</b> for octaves. While the keys are open those
         letters play notes rather than their shortcuts; close the keys to have the shortcuts
-        back. With the keys open the waveform waits for a note, as it does with a keyboard
+        back. <i>Pedal</i>, at the end of the keys, is a sustain pedal that stays down until
+        pressed again, and holding <b>Space</b> while the keys are open is one you hold with
+        your thumb. Closing the keys lifts it. With the keys open the waveform waits for a note, as it does with a keyboard
         plugged in.</span></li>
 
       <li><b>Harmonograph</b>
@@ -2642,7 +2661,8 @@ body[data-view="bench"] .dock  { order: 3; }
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
         <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet.
         With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
-        <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave.</span></li>
+        <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave, and <b>Space</b> held is the
+        sustain pedal.</span></li>
     </ul>
   </div>
 </dialog>
@@ -2769,7 +2789,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "lagMixRow", "lagMix", "lagMixValue",
-                  "midiGroup", "laneGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
+                  "midiGroup", "laneGroup", "midiConnect", "keysPedal", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "photoReticle", "photoButton", "clearButton",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow", "midiEditA",
@@ -3575,6 +3595,13 @@ const midi = {
   polyJust: false,              // chords tuned to their lowest note; see `polyHz`
   poly: { sounding: 0, drawn: 0, held: 0 },   // what the readout says
   hold: false,                  // keep the last interval under a single note
+  /* The sustain pedal. `pedalTarget` is where it is, from nought to one - a
+     continuous pedal sends half-pedal - and `pedal` walks towards it the way a
+     controller does, for the source. `sustain` is whether it is holding, from
+     the unsmoothed position: a pedal that took a quarter of a second to catch
+     would drop the first note of every phrase. `sustained` is the notes whose
+     keys came up while it was down and which are still sounding because of it. */
+  pedal: 0, pedalTarget: 0, sustain: false, sustained: new Set(),
   truth: true,                  // the note sets the lag and the tuner
   follow: false,                // ... and the timebase
   /* Per generator kind, because a note means something different in each. In
@@ -3608,6 +3635,7 @@ const screenKeys = {
   pointers: new Map(),          // pointerId -> the note that pointer holds
   typed: new Map(),             // KeyboardEvent.code -> the note it holds
   latched: new Set(),
+  spacePedal: false,            // the space bar is holding the pedal down
 };
 
 /* Whether there is a keyboard to wait for, which is the question the gate was
@@ -3644,6 +3672,9 @@ function midiPitchHz() {
    everything, because a note held when the tab goes away is held for ever. */
 function midiNoteOn(note, velocity) {
   if (velocity === 0) { midiNoteOff(note); return; }
+  // Struck again under the pedal: held by a finger now, so lifting the pedal
+  // must not take it away.
+  midi.sustained.delete(note);
   /* The split point is learned from a key rather than typed, because the
      place a player wants the split is under a finger, not a note name. The
      key still plays: consuming it would leave a latched screen key and a
@@ -3668,8 +3699,33 @@ function midiNoteOff(note) {
   screenKeys.latched.delete(note);
   const at = midi.notes.findIndex((held) => held.note === note);
   if (at < 0) return;
+  /* Under the pedal the key comes up and the note does not: it stays in the
+     stack, so the gate, the chord, the layers and everything else that reads
+     the stack go on hearing it - which is all a sustain pedal is - and it goes
+     when the pedal does. */
+  if (midi.sustain) { midi.sustained.add(note); midiSayMonitor(); return; }
   midi.notes.splice(at, 1);
   midiApplyNotes();
+}
+
+/* The pedal, from anywhere: a keyboard's CC 64, the button on the screen's
+   keys, or the space bar while they are open. Half-way and past is down, as
+   the MIDI specification has it for a switch - 64 of 127 and above. */
+function midiSetPedal(value) {
+  midi.pedalTarget = Math.max(0, Math.min(1, value));
+  const down = midi.pedalTarget >= 64 / 127;
+  if (down !== midi.sustain) {
+    midi.sustain = down;
+    if (!down && midi.sustained.size > 0) {
+      for (let i = midi.notes.length - 1; i >= 0; i--) {
+        if (midi.sustained.has(midi.notes[i].note)) midi.notes.splice(i, 1);
+      }
+      midi.sustained.clear();
+      midiApplyNotes();
+    }
+  }
+  if (el.keysPedal) el.keysPedal.setAttribute("aria-pressed", String(midi.sustain));
+  midiSayMonitor();
 }
 
 function midiPanic() {
@@ -3680,6 +3736,9 @@ function midiPanic() {
   screenKeys.pointers.clear();
   screenKeys.typed.clear();
   screenKeys.latched.clear();
+  // What the pedal was holding goes too; the pedal itself stays where the
+  // foot has it.
+  midi.sustained.clear();
   if (midi.notes.length === 0) { paintScreenKeys(); return; }
   midi.notes.length = 0;
   midiApplyNotes();
@@ -4049,6 +4108,10 @@ function midiControl(number, raw) {
      some keyboards a patch change. Learning them as controllers would hang the
      notes they exist to release. */
   if (number === 120 || number === 123) { midiPanic(); return; }
+  /* 64 is the sustain pedal, which is a pedal before it is a controller: it
+     holds notes, and it is a source of its own (Sustain, with the keyboard's
+     sources) rather than a learned "CC 64" beside it. */
+  if (number === 64) { midiSetPedal(raw / 127); return; }
 
   const entry = midi.cc.get(number) || midiLearn(number);
   entry.raw = raw;
@@ -4109,8 +4172,11 @@ function midiForget(number) {
    for a minute after - so what the message writes is a target and this is what
    walks toward it. */
 function midiSmooth(elapsed) {
-  if (midi.cc.size === 0) return;
   const a = 1 - Math.exp(-(Math.max(0, elapsed) / 1000) / CC_SMOOTH);
+  // The pedal as a source walks like a controller: a step onto the amplitude
+  // is a click, and a switch pedal is nothing but steps.
+  midi.pedal += (midi.pedalTarget - midi.pedal) * a;
+  if (midi.cc.size === 0) return;
   for (const entry of midi.cc.values()) {
     entry.value += (entry.target - entry.value) * a;
   }
@@ -4134,6 +4200,13 @@ function midiRegisterKey() {
     family: "keyboard",
     description: "How hard you struck the last key; nought when nothing is held.",
     value: () => midi.key,
+  });
+  registerSource({
+    id: "midi.pedal", label: "Sustain", ink: "ch2", bipolar: false, order: 16,
+    family: "keyboard",
+    description: "How far down the sustain pedal is - a pedal that sends half-pedal "
+      + "reads in between. Half-way and past, it also holds the notes you let go of.",
+    value: () => midi.pedal,
   });
   /* What the hands are doing, beyond the one note or two that set the pitch.
      Registered with the key and for the same reason: a source that cannot
@@ -11548,7 +11621,8 @@ function syncMidiValues() {
 
 function midiSayMonitor(text) {
   const held = midi.notes.map((note) => midiNoteName(note.note)).join(" ");
-  midi.last = (text ? text + "  ·  " : "") + (held || "nothing held");
+  midi.last = (text ? text + "  ·  " : "") + (held || "nothing held")
+    + (midi.sustain ? "  ·  pedal" + (midi.sustained.size ? ", holding " + midi.sustained.size : "") : "");
   if (el.midiMonitor) say(el.midiMonitor, midi.last);
   paintScreenKeys();
 }
@@ -11706,7 +11780,11 @@ function screenReleaseAll() {
 
 function setScreenKeys(open) {
   if (screenKeys.open === open) return;
-  if (!open) screenReleaseAll();
+  if (!open) {
+    // The screen's pedal goes with its keys; a keyboard's own pedal is its own.
+    if (midi.sustain && midi.access === null) midiSetPedal(0);
+    screenReleaseAll();
+  }
   screenKeys.open = open;
   el.screenKeys.hidden = !open;
   if (open) { buildScreenKeys(); midiRegisterKey(); }
@@ -11720,6 +11798,7 @@ function shiftScreenKeys(octaves) {
 }
 
 el.keysOpen.addEventListener("click", () => setScreenKeys(!screenKeys.open));
+el.keysPedal.addEventListener("click", () => midiSetPedal(midi.sustain ? 0 : 1));
 el.keysClose.addEventListener("click", () => setScreenKeys(false));
 el.keysDown.addEventListener("click", () => shiftScreenKeys(-1));
 el.keysUp.addEventListener("click", () => shiftScreenKeys(1));
@@ -11804,6 +11883,14 @@ function takesText(target) {
 window.addEventListener("keydown", (event) => {
   if (!screenKeys.open || event.metaKey || event.ctrlKey || event.altKey) return;
   if (el.helpDialog.open || takesText(event.target)) return;
+  /* Space is the pedal while the keys are open, and run and stop again once
+     they close - the same trade the letters make. Held, like a pedal. */
+  if (event.code === "Space") {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) { screenKeys.spacePedal = true; midiSetPedal(1); }
+    return;
+  }
   const at = TYPED_KEYS.indexOf(event.code);
   const octave = event.code === "KeyZ" ? -1 : event.code === "KeyX" ? 1 : 0;
   if (at < 0 && octave === 0) return;
@@ -11818,6 +11905,11 @@ window.addEventListener("keydown", (event) => {
 }, true);
 
 window.addEventListener("keyup", (event) => {
+  if (event.code === "Space" && screenKeys.spacePedal) {
+    screenKeys.spacePedal = false;
+    midiSetPedal(0);
+    return;
+  }
   if (!screenKeys.typed.has(event.code)) return;
   const note = screenKeys.typed.get(event.code);
   screenKeys.typed.delete(event.code);

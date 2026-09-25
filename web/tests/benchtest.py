@@ -254,6 +254,34 @@ with sync_playwright() as pw:
     check("no errors after reload", not bad, "; ".join(bad[:3]))
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
 
+    print("\n--- wide ---")
+    # The Bench stops at what three columns need rather than taking the window:
+    # on a wide screen it used to stretch every slider to half a metre with
+    # most of the Bench empty. Three columns still, on every tab, and centred.
+    p.set_viewport_size({"width": 1920, "height": 1080}); p.wait_for_timeout(500)
+    wide = p.evaluate("""() => {
+      const box = document.querySelector('.bench-wrap').getBoundingClientRect();
+      const cols = {};
+      for (const [tab] of BENCH_TABS) {
+        setBenchTab(tab);
+        cols[tab] = [document.querySelectorAll('.bench-col').length,
+                     el.benchBody.scrollHeight - el.benchBody.clientHeight];
+      }
+      setBenchTab('play');
+      const scope = el.benchScope.getBoundingClientRect(), side = el.benchSide.getBoundingClientRect();
+      return { width: Math.round(box.width), left: Math.round(box.left),
+               right: Math.round(window.innerWidth - box.right), cols,
+               scope: Math.round(scope.width), column: Math.round(side.width) };
+    }""")
+    print("    %s" % wide)
+    check("on a wide screen the Bench stops at 1420 px, centred",
+          wide["width"] == 1420 and abs(wide["left"] - wide["right"]) <= 1, str(wide))
+    check("and every tab is still three columns that fit",
+          all(c == [3, 0] or (c[0] == 3 and c[1] <= 0) for c in wide["cols"].values()), str(wide["cols"]))
+    check("the screen beside them fills its column, now the oscillators are not under it",
+          wide["scope"] >= wide["column"] - 20 and wide["scope"] > 250, str(wide))
+    p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
+
     print("\n--- narrow ---")
     p.set_viewport_size({"width": 430, "height": 900}); p.wait_for_timeout(500)
     narrow = p.evaluate("""() => ({

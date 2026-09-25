@@ -67,6 +67,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `layouttest.py` | the layout: source families and their hints, the selected source's panel and meter, reaching any control, search and where it lands |
 | `racktest.py` | the rack built a lane at a time: files added beside the others, the right lane taken out, Play along as a membership, builds in flight, the Bench with a rack in it |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
+| `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1551,3 +1552,38 @@ page when a search starts. A row's words include its menus' choices, so
 counted they made "cutoff" land on every destination menu. But those menus live
 in the Sources panel now, which search skips, and a mutation pass showed the
 exclusion guarding nothing.
+
+**The Bench stops at 1420 px.** It took the whole window while every section
+had to be on show at once, and with tabs it only holds one task, so on a
+1920 px screen the three columns were stretched into long sliders with most
+of the Bench empty. 1420 is the rail, three columns at about 250 px and the side
+column. Narrower would drop to two columns, and Play with a rack of six does not
+fit in two, so a narrower cap would bring back the scroll the tabs removed. The
+screen in the side column grew into the room: it was capped at 158 px so the
+oscillators could sit under it, and they have the Sources tab now.
+`benchtest.py` checks at 1920×1080 that the Bench is 1420 px and centred, that
+every tab is still three columns that fit, and that the screen fills its column.
+
+**The sustain pedal keeps notes in the stack rather than holding the voices.**
+A released key under the pedal simply stays in `midi.notes`, and is recorded in
+`midi.sustained`. Everything downstream (the dyad, poly's draw rule, the layers,
+the envelope, the sources that count notes) sees a held note and needs no pedal
+logic of its own. The alternative, holding the voices' envelopes open in the core,
+would have been one change in the worklet and a dozen in the picture, which
+would still have dropped the note. Two details matter. A key struck again
+under the pedal leaves `sustained`, because a finger now holds it, so lifting
+the pedal must not take it away. The obvious version, which only remembers
+"released while the pedal was down", gets that wrong, and `pedaltest.py` keeps
+that key down through the lift. The second is that the pedal is two things at two speeds. The hold is
+an unsmoothed switch at 64 of 127, the MIDI specification's point for a switch,
+and the *Sustain* source is the smoothed value, so a pedal on the level swells
+rather than clicks. CC 64 goes to the pedal before controller learning sees it.
+Otherwise it would appear a second time as a *CC 64* chip, and patching that chip
+would be patching the pedal under another name.
+
+**The screen's pedal is a toggle; the space bar is the one you hold.** A mouse
+is one finger and cannot hold a pedal and play at once. Space is run and stop
+everywhere else, so it is the pedal only while the keys are open, as the letters
+are, and the keydown handler stops it there. Closing the keys lifts the screen's
+pedal when no port is connected. A keyboard's own pedal belongs to the keyboard,
+and lifting it from the screen would contradict the foot still on it.
