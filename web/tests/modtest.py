@@ -37,7 +37,11 @@ with sync_playwright() as pw:
         for (const [name, setup] of entries) {
           applyPreset('b:' + name);
           const want = [];
-          for (const i of [0, 1]) {
+          // A routing list when the preset has one - as a setup code does -
+          // and the old enum when it does not.
+          if (setup.mod !== undefined) {
+            for (const r of decodeRoutings(setup.mod)) want.push(r.sourceId + '>' + r.destId);
+          } else for (const i of [0, 1]) {
             const legacy = setup['l' + i + 'd'];
             const destId = LEGACY_DESTS[legacy === undefined ? 'none' : legacy];
             if (destId) want.push('lfo' + (i + 1) + '>' + destId);

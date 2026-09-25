@@ -629,7 +629,9 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt.** Asked for after Stage I. Most of the current presets
+- **Presets, rebuilt. Built.** 104 presets in sixteen sections, in a browser
+  with a card and a line for each. The README says how it works and what its
+  first check found. Asked for after Stage I. Most of the current presets
   are not useful, and there are too few kinds of them. The rebuild wants much
   more breadth, across everything the generator can now be: organ
   registrations, FM and sync voices, drawn figures, the plane and the delay,

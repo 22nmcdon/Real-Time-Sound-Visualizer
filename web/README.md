@@ -83,6 +83,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
+| `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
@@ -2237,3 +2238,44 @@ that could not show the fault:
   and passed with the filter missing from the worklet altogether: its fallback
   plays the plain sine, at exactly 0.5. It now has to show the resonance's
   lift, 0.546.
+
+**The presets are a library in a browser, not a list in a select.** There
+are 104 of them in sixteen sections, from *Start here* and *Organ* through
+*Keys and leads*, *Bells and metal*, *Grit*, *The plane* and *Echoes* to
+*Rhythm and key*, *Live* and *Analysis*.
+
+- *The browser.* The strip's Preset button opens a dialog with the sections
+  down the side and a card for each preset. Each card has a line on what to
+  listen for and what to look at.
+- *Choosing.* A card loads its preset and leaves the browser open, so they
+  can be listened through. Enter or a double-click loads and closes.
+- *Moving and finding.* The arrows move by the grid's own rows and columns,
+  and a search looks across every section, every word required.
+- *Saved setups.* They are a section of their own. Saving and sharing stay
+  where they were, under Settings → Presets.
+
+The old names are all still there, in the sections they fit, because tests
+and people find presets by name.
+
+A preset still never switches the source. A section says what it plays on,
+the generator or the display. When a generator section is opened with
+nothing playing that has a generator, the browser says so and offers the
+test tone: one click, and never behind your back.
+
+**The first check on the library found four bugs in it.** Every field a
+preset names has to come back out of `snapshot()` at the value it names. A
+misspelt key is not in the snapshot, and a value past its control's end
+comes back clamped. Each of these loaded without complaint and was quietly
+not what its description said:
+
+- a chorus rate of 6.5 Hz, where the slider stops at 5;
+- a 300 ms attack, where the slider stops at 200;
+- two bell decays of 2 and 3 seconds, where the slider stops at 1.
+
+The check's null feeds it a misspelt key and an out-of-range value, and
+both are caught.
+
+It found a fifth that is not a bug: *Bands, low against high* names the band
+split's third lane, and the tone has two. That preset is for the band split,
+and falls back correctly on anything else. So the check skips a lane choice
+only when the source has not got that lane, and says why.

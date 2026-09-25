@@ -378,6 +378,87 @@ dialog {
   box-shadow: 0 24px 60px rgba(36, 31, 29, 0.24);
 }
 dialog::backdrop { background: rgba(36, 31, 29, 0.42); }
+
+/* The preset browser: a rail of sections, and a grid of cards that say what
+   each one is for. Replaced a single long select with every preset in it,
+   which could hold names and nothing else, and stopped being usable once
+   there were ninety of them. */
+.preset-button {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-width: 190px; max-width: 250px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 1px; padding: 4px 8px; font-family: var(--sans); font-size: 13px;
+  color: var(--charcoal); cursor: pointer; text-align: left;
+}
+.preset-button:hover { border-color: var(--blush); }
+.preset-button .caret { color: var(--text-soft); font-size: 10px; flex: 0 0 auto; }
+#presetCurrent { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#presetDialog { width: min(1060px, calc(100vw - 32px)); height: min(88dvh, 780px); }
+.preset-find {
+  margin-left: auto; align-self: center; width: min(260px, 38vw); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 1px; padding: 5px 8px; font-family: var(--sans);
+  font-size: 13px; color: var(--charcoal); min-width: 0;
+}
+.preset-where { margin: 12px 24px 0; font-size: 13px; color: var(--text-soft); }
+/* The search sits beside the close button rather than half-way across: the
+   button's own left margin is automatic too, and two of them split the room. */
+#presetDialog .close-btn { margin-left: 12px; }
+.preset-foot .link-btn { white-space: nowrap; flex: 0 0 auto; }
+.preset-where[hidden] { display: none; }
+.preset-where .link-btn { margin-left: 8px; }
+.preset-body {
+  display: flex; flex: 1 1 auto; min-height: 0; margin-top: 14px; border-top: 1px solid var(--line);
+}
+.preset-rail {
+  flex: 0 0 196px; overflow-y: auto; padding: 10px 0; border-right: 1px solid var(--line);
+}
+.preset-section {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
+  background: none; border: 0; border-left: 2px solid transparent; padding: 7px 14px 7px 22px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-soft);
+  text-align: left; cursor: pointer;
+}
+.preset-section:hover { color: var(--charcoal); }
+.preset-section[aria-selected="true"] {
+  color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
+}
+.preset-section .count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; opacity: 0.7; }
+.preset-main { flex: 1 1 auto; overflow-y: auto; padding: 16px 24px 24px; min-width: 0; }
+.preset-about { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--text-soft); max-width: 72ch; }
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.preset-heading {
+  grid-column: 1 / -1; margin: 10px 0 0; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.18em; color: var(--blush-deep);
+}
+.preset-heading:first-child { margin-top: 0; }
+.preset-card {
+  display: flex; flex-direction: column; gap: 5px; text-align: left; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px 11px; cursor: pointer;
+  font-family: var(--sans); color: var(--charcoal);
+}
+.preset-card:hover { border-color: var(--blush); }
+.preset-card:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 1px; }
+.preset-card[aria-pressed="true"] { border-color: var(--blush-deep); box-shadow: inset 3px 0 0 var(--blush-deep); }
+.preset-name { font-size: 14px; font-weight: 600; }
+.preset-blurb { font-size: 12.5px; line-height: 1.45; color: var(--text-soft); }
+.preset-empty { grid-column: 1 / -1; font-size: 13.5px; color: var(--text-soft); margin: 0; }
+.preset-foot {
+  display: flex; gap: 16px; align-items: center; justify-content: space-between; flex: 0 0 auto;
+  padding: 10px 24px 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-soft);
+}
+/* On a phone the rail turns into a row of tabs above the cards. */
+@media (max-width: 700px) {
+  .preset-body { flex-direction: column; }
+  .preset-rail { flex: 0 0 auto; display: flex; overflow-x: auto; overflow-y: hidden; padding: 0;
+                 border-right: 0; border-bottom: 1px solid var(--line); }
+  .preset-section { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent;
+                    padding: 10px 12px; }
+  .preset-section[aria-selected="true"] { border-bottom-color: var(--blush-deep); }
+  .preset-main { padding: 14px 16px 20px; }
+  .preset-foot > span { display: none; }
+  .dialog-head { flex-wrap: wrap; }
+  .preset-find { order: 3; width: 100%; margin-left: 0; }
+  #presetDialog .close-btn { margin-left: auto; }
+}
 dialog[open] { display: flex; flex-direction: column; }
 
 .dialog-head { display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px 0; flex: 0 0 auto; }
@@ -2500,7 +2581,9 @@ body[data-view="bench"] .dock  { order: 3; }
       <div class="group tight">
         <div class="field fixed">
           <span class="eyebrow" id="presetLabel">Preset</span>
-          <select id="preset" aria-labelledby="presetLabel"></select>
+          <button type="button" class="preset-button" id="preset" value="" aria-haspopup="dialog"
+                  aria-labelledby="presetLabel presetCurrent"><span id="presetCurrent">Custom</span><span
+                  class="caret" aria-hidden="true">&#9662;</span></button>
         </div>
       </div>
 
@@ -2726,6 +2809,31 @@ body[data-view="bench"] .dock  { order: 3; }
   </div>
   <div class="keys-bed" id="keysBed"></div>
 </section>
+
+<dialog id="presetDialog" aria-labelledby="presetTitle">
+  <div class="dialog-head">
+    <div>
+      <div class="bar-label">Oscilloscope</div>
+      <div class="dialog-title" id="presetTitle">Presets</div>
+    </div>
+    <input type="search" id="presetFind" class="preset-find" placeholder="Find a preset"
+           aria-label="Find a preset" autocomplete="off" spellcheck="false">
+    <button type="button" class="close-btn" id="presetClose" aria-label="Close">&times;</button>
+  </div>
+  <p class="preset-where" id="presetWhere" hidden></p>
+  <div class="preset-body">
+    <div class="preset-rail" id="presetRail" role="tablist" aria-label="Sections"></div>
+    <div class="preset-main" id="presetMain">
+      <p class="preset-about" id="presetAbout"></p>
+      <div class="preset-grid" id="presetGrid"></div>
+    </div>
+  </div>
+  <div class="preset-foot">
+    <span>Choosing one loads it and leaves this open, so you can listen through them; double-click one,
+      or press Enter, to load it and close.</span>
+    <button type="button" class="link-btn caps" id="presetManage">Save or share this setup</button>
+  </div>
+</dialog>
 
 <dialog id="helpDialog">
   <div class="dialog-head">
@@ -3442,9 +3550,22 @@ body[data-view="bench"] .dock  { order: 3; }
     </ul>
 
     <ul class="help-list" id="panelKeys" hidden>
-      <li class="help-lede">Presets are the front door &mdash; grouped, on the left of the
-        strip. The <i>Live</i> group names nothing about the generator, so those land on
-        whatever you are playing rather than replacing it.</li>
+      <li class="help-lede">Presets are the front door. Press <i>Preset</i>, on the left of the
+        strip, for a browser of a hundred of them in sixteen sections &mdash; organ and FM
+        keys, basses and pads, bells, grit, figures, the plane, echoes, drawings, rhythm &mdash;
+        each with a line on what to listen for and what to look at.</li>
+
+      <li><b>Browsing</b>
+        <span>Choosing one loads it and leaves the browser open, so you can listen through a
+        section; double-click one, or press <b>Enter</b>, to load it and close. The arrows move
+        between the cards, and <i>Find a preset</i> looks through every section at once. Your
+        saved setups are the last section.</span></li>
+
+      <li><b>What they play on</b>
+        <span>Most set the generator, and land on it wherever it is &mdash; the test tone, or a
+        rack's generator lane. The <i>Live</i> section sets the display only, for whatever you
+        are playing. A preset never switches the source: if nothing playing has a generator,
+        the browser says so and offers the test tone.</span></li>
 
       <li><b>Each one sets everything</b>
         <span>Including its timebase, because in X&ndash;Y the window decides how much of the
@@ -3663,7 +3784,9 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "helpButton", "helpDialog", "helpClose",
                   "tabScreen", "tabTrigger", "tabMeasure", "tabSignal", "tabKeys",
                   "panelScreen", "panelTrigger", "panelMeasure", "panelSignal", "panelKeys",
-                  "preset", "presetName", "presetSave", "presetDelete",
+                  "preset", "presetCurrent", "presetDialog", "presetFind", "presetClose", "presetWhere",
+                  "presetRail", "presetMain", "presetAbout", "presetGrid", "presetManage",
+                  "presetName", "presetSave", "presetDelete",
                   "presetCode", "presetCopy", "presetLoad", "presetNote",
                   "harmonicsOn", "tunerOn", "harmonicsPane", "tunerPane", "harmonics", "tuner",
                   /* No per-lane or trigger-source ids here: those rows are
@@ -14949,140 +15072,365 @@ function restore(partial) {
   setRunning(true);
 }
 
-/* The built-ins. Each one is a thing the instrument can do that you would
-   otherwise have to already know about to find. */
-/* The built-ins.
+/* The built-ins, in sections, each with a line saying what to listen for
+   and what to look at. A section's third entry says what it plays on:
+   "generator" presets set the generator and land on it wherever it is (the
+   tone, or a rack's generator lane); "display" presets name nothing about
+   the generator and land on whatever is playing. A preset has never
+   switched the source - `restore` reaches the generator only through
+   `genSet` - and the browser says so rather than doing it behind your back.
 
-   Every one of them names a timebase, and that is not housekeeping. In Y-T
-   the window decides how many cycles are on screen; in X-Y it decides how
-   much of the figure is drawn in a single frame, so a window shorter than one
+   Every preset names a timebase, and that is not housekeeping. In Y-T the
+   window decides how many cycles are on screen; in X-Y it decides how much
+   of the figure is drawn in a single frame, so a window shorter than one
    period of the figure draws a permanently unfinished shape. The ratio sets
-   that period: a fifth closes in two turns of the left channel, a major third
-   in four, so they want different windows to draw the same way. Left at one
-   default they were all wrong by different amounts.
+   that period: a fifth closes in two turns of the left channel, a major
+   third in four, so they want different windows to draw the same way.
 
    TIMEBASE is [0.1 0.2 0.5 1 2 5 10 20 50] ms per division, ten divisions
-   across, so index 2 is a 5 ms window and index 5 is 50 ms. */
+   across, so index 2 is a 5 ms window and index 5 is 50 ms. The voice
+   filter's cutoff is in the slider's steps, 1000 log10(f / 20) / 3: 333 is
+   200 Hz, 466 is 500, 566 is 1 kHz, 667 is 2 kHz. Modulation to anything
+   the old two-oscillator enum did not name goes in `mod`, as a setup code
+   carries it, with the oscillator's rate and shape in `l0r` and `l0s`.
+
+   The names from before the library grew are kept, in the sections they
+   fit: tests, and people, find them by name. */
+const XY = { display: "xy", persistence: "0.12" };
 const PRESETS = [
-  ["Waveform", [
-    ["Harmonic tone", { timebase: 3 }],
-    ["Pure sine", { shape: "sine", freq: 440, timebase: 3 }],
-    ["Square wave", { shape: "square", freq: 110, timebase: 4, pHarm: true }],
+  ["Start here", [
+    ["Harmonic tone", { timebase: 3 },
+     "The default: a sine with a little of its third harmonic, the colour of a flute or a soft organ pipe."],
+    ["Pure sine", { shape: "sine", freq: 440, timebase: 3 },
+     "One frequency, A above middle C, and nothing else on the spectrum."],
+    ["Square wave", { shape: "square", freq: 110, timebase: 4, pHarm: true },
+     "Odd harmonics only, falling as one over n: hollow, like a clarinet. The harmonics pane counts them."],
+    ["Saw wave", { shape: "ramp", freq: 110, timebase: 4, pHarm: true },
+     "Every harmonic, falling as one over n: bright and buzzy, the raw material of most synthesiser sounds."],
+    ["Triangle", { shape: "triangle", freq: 220, timebase: 3 },
+     "Odd harmonics falling as one over n squared: nearly a sine, and a little hollow."],
+    ["Morphing shape", { shape: "morph", freq: 110, timebase: 4, mod: "lfo1>gen.morph@1.000",
+                         l0s: "triangle", l0r: 8 },
+     "One shape sliding from sine to triangle to saw to square and back, with its fundamental held steady."],
     // Zoom's own demonstration: the capture is 20 ms and the screen is
     // showing about a millisecond of it, right at the edge.
-    ["Edge, magnified", { shape: "square", freq: 110, timebase: 4, zoom: 16 }],
-  ]],
+    ["Edge, magnified", { shape: "square", freq: 110, timebase: 4, zoom: 16 },
+     "A square's edge, magnified until the ripple of its band-limiting shows."],
+    ["Noise", { shape: "noise", display: "spect", span: "5", timebase: 4 },
+     "Every frequency at once: a flat grey wash across the spectrogram."],
+  ], "generator"],
+
+  ["Organ", [
+    ["Jazz organ", { shape: "drawbars", bars: "888000000", freq: 220, timebase: 5 },
+     "88 8000 000: sub-octave, fundamental and fifth, the most played registration there is. Its cycle is two of the note's."],
+    ["Full organ", { shape: "drawbars", bars: "888888888", freq: 220, timebase: 5 },
+     "Every bar out: the brightest registration a tonewheel organ has, and still inside the screen."],
+    ["Flute", { shape: "drawbars", bars: "008000000", freq: 440, timebase: 3 },
+     "The 8' bar alone: a single sine, the plainest stop."],
+    ["Flute and piccolo", { shape: "drawbars", bars: "008000008", freq: 440, timebase: 3 },
+     "The 8' and the 1', three octaves apart: a whistle riding on a flute."],
+    ["Ballad", { shape: "drawbars", bars: "688600000", freq: 220, timebase: 5 },
+     "Soft and full: the low bars out and the top ones in."],
+    ["Organ with chorus", { shape: "drawbars", bars: "888000000", freq: 220, timebase: 5,
+                            chorusMix: 45, chorusRate: 500, chorusDepth: 8, chorusTime: 30 },
+     "The jazz registration through a fast, shallow chorus at five a second: the tonewheel organ's scanner, near enough."],
+    ["Breathing drawbars", { shape: "drawbars", bars: "008540000", freq: 220, timebase: 5,
+                             mod: "lfo1>gen.bar3@0.600;lfo2>gen.bar4@0.600", l0r: 13, l1r: 21 },
+     "Two slow oscillators pulling the 4' and the 2 2/3' in and out: the colour changes and the level does not."],
+  ], "generator"],
+
+  ["Keys and leads", [
+    ["FM electric piano", { shape: "sine", oscRatio: 1, oscFm: 16, freq: 220, timebase: 4, midiMode: "poly",
+                            atk: 2, dec: 900, sus: 20, rel: 400 },
+     "Two operators at 1:1, index 1.6: the tine and bark of an electric piano. Play it; the envelope needs keys."],
+    ["FM brass", { shape: "sine", oscRatio: 1, oscFm: 30, freq: 220, timebase: 4, midiMode: "poly",
+                   vcfType: 1, vcfCut: 667, vcfEnvAmt: 15, vcfAtk: 60, vcfDec: 400, vcfSus: 40,
+                   atk: 40, dec: 300, sus: 80, rel: 200 },
+     "FM at 1:1 through a filter that opens as each note starts: a brass swell."],
+    ["Sync lead", { shape: "ramp", oscSync: 250, freq: 220, timebase: 4, midiMode: "mono", vcfType: 1, vcfCut: 725,
+                    shpDrive: 20, mod: "lfo1>gen.sync@0.600", l0r: 30 },
+     "A saw restarted at every cycle of the note while an LFO sweeps it faster and slower: the pitch holds, the tone tears."],
+    ["Square lead", { shape: "square", freq: 440, timebase: 3, midiMode: "mono", vcfType: 1, vcfCut: 667, vcfRes: 40,
+                      delayMix: 25, delaySync: "1/8d", delayFeedback: 35 },
+     "A square through a resonant low pass, with a dotted-eighth echo."],
+    ["Wah", { shape: "ramp", freq: 110, timebase: 4, vcfType: 2, vcfCut: 566, vcfRes: 75,
+              mod: "lfo1>gen.vcf@0.550", l0r: 150 },
+     "A narrow band pass swept up and down by an LFO: the vowel of a wah pedal."],
+    ["Five-saw lead", { shape: "ramp", freq: 220, timebase: 4, midiMode: "mono", oscUnison: 5, oscSpread: 10,
+                        vcfType: 1, vcfCut: 699, delayMix: 20, delaySync: "1/4", delayFeedback: 30 },
+     "Five saws a few cents apart: thick, and moving inside itself."],
+    ["Hollow reed", { shape: "square", freq: 220, timebase: 4, oscSub: 30, oscSubShape: "sine",
+                      vcfType: 1, vcfCut: 593, vcfRes: 30, vcfTrack: 100 },
+     "A square, a little sub, and a filter that follows the note so every key is equally bright."],
+  ], "generator"],
+
+  ["Bass", [
+    ["Sub bass", { shape: "sine", freq: 55, timebase: 6, midiMode: "mono", oscSub: 60, oscSubShape: "sine" },
+     "A sine and another an octave under it: felt more than heard."],
+    ["Acid", { shape: "ramp", freq: 55, timebase: 6, midiMode: "mono", vcfType: 1, vcfCut: 392, vcfRes: 85,
+               vcfEnvAmt: 30, vcfAtk: 1, vcfDec: 200, vcfSus: 0, atk: 1, mod: "lfo1>gen.vcf@0.500", l0r: 25 },
+     "A saw through a low pass on the edge of whistling, the cutoff wandering: squelch."],
+    ["Reese", { shape: "ramp", freq: 55, timebase: 6, midiMode: "mono", oscUnison: 2, oscSpread: 18,
+                vcfType: 1, vcfCut: 466, vcfRes: 20, shpDrive: 25 },
+     "Two saws detuned against each other, beating slowly, through a low pass and a little drive."],
+    ["Driven square", { shape: "square", freq: 82, timebase: 6, midiMode: "mono", shpDrive: 55,
+                        vcfType: 1, vcfCut: 534 },
+     "A square pushed into the ceiling and rounded off by a low pass: an overdriven bass amp."],
+    ["FM bass", { shape: "sine", freq: 55, timebase: 6, midiMode: "mono", oscRatio: 1, oscFm: 25,
+                  vcfType: 1, vcfCut: 625 },
+     "A sine modulated at 1:1, index 2.5: a round, woody bass."],
+  ], "generator"],
+
+  ["Pads", [
+    ["Supersaw", Object.assign({ shape: "ramp", freq: 220, interval: 7, timebase: 4, midiMode: "poly",
+                                 oscUnison: 7, oscSpread: 25, chorusMix: 40, vcfType: 1, vcfCut: 767 }, XY),
+     "Seven saws spread a quarter-tone wide on a fifth: the figure turns to a shimmering cloud of itself."],
+    ["Warm pad", Object.assign({ shape: "triangle", freq: 220, interval: 7, timebase: 4, midiMode: "poly",
+                                 oscUnison: 5, oscSpread: 12, vcfType: 1, vcfCut: 600, chorusMix: 30,
+                                 delayMix: 25, delaySync: "1/4", delayFeedback: 40, atk: 200, rel: 1200 }, XY),
+     "Five triangles, a low pass, a chorus and an echo: soft, slow and wide."],
+    ["Strings", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", oscUnison: 3, oscSpread: 8,
+                  vcfType: 1, vcfCut: 699, chorusMix: 50, chorusDepth: 40, atk: 200, rel: 800 },
+     "Three saws, gently detuned, through a filter and an ensemble chorus: a string section."],
+    ["Glass", Object.assign({ shape: "sine", freq: 440, interval: 7, timebase: 3, oscRatio: 5, oscFm: 8,
+                              delayMix: 35, delaySync: "1/8d", delayFeedback: 45, delayPingPong: true }, XY),
+     "A sine with a faint 5:1 modulator, ping-ponging: bright, brittle and spacious."],
+    ["Slow shimmer", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, oscUnison: 5,
+                                     oscSpread: 4, chorusMix: 30 }, XY),
+     "A fifth in five nearly-identical copies: the figure trembles, slowly, without ever quite blurring."],
+  ], "generator"],
+
+  ["Bells and metal", [
+    ["Bell", { shape: "sine", freq: 440, timebase: 4, midiMode: "poly", oscRatio: 3.5, oscFm: 30,
+               atk: 1, dec: 1000, sus: 10, rel: 2000, delayMix: 20, delayFeedback: 30 },
+     "FM at 7:2: sidebands that are not harmonics of anything, which is what makes a bell a bell."],
+    ["Ring modulator", { shape: "sine", freq: 440, timebase: 4, oscRatio: 1.25, oscRing: 100 },
+     "The note removed and only the sum and difference left: clangorous, and no longer in any key."],
+    ["Tubular bell", { shape: "sine", freq: 220, timebase: 4, midiMode: "poly", oscRatio: 7, oscFm: 18,
+                       atk: 1, dec: 1000, sus: 15, rel: 2000 },
+     "A high 7:1 modulator on a sine: a long, pure metallic ring."],
+    ["Gong", { shape: "sine", freq: 110, timebase: 5, oscRatio: 5 / 3, oscFm: 50, shpDrive: 20 },
+     "A deep index at 5:3, with a little drive: a mass of inharmonic partials."],
+    ["Clang", { shape: "square", freq: 220, timebase: 4, oscRatio: 7, oscFm: 45, vcfType: 1, vcfCut: 725 },
+     "A square under heavy FM, tamed by a low pass: struck metal."],
+  ], "generator"],
+
+  ["Grit", [
+    ["Overdrive", { shape: "harmonic", freq: 110, timebase: 4, shpDrive: 55, pHarm: true },
+     "The default tone pushed into a soft ceiling: odd harmonics pile up, and the sine squares off."],
+    ["Wavefolder", { shape: "sine", freq: 110, timebase: 4, shpFold: 45, mod: "lfo1>gen.fold@0.600", l0r: 15 },
+     "A sine folded back on itself again and again, the folds opening and closing: watch the peaks fold into the wave."],
+    ["Folded petals", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, shpFold: 30,
+                                      mod: "lfo1>gen.fold@0.500", l0r: 8 }, XY),
+     "A 3:2 figure through the wavefolder: it grows petals, and an LFO opens and closes them."],
+    ["Eight-bit", { shape: "square", freq: 220, timebase: 4, shpBits: 3, shpRate: 8000 },
+     "Four levels a side and eight thousand samples a second: a game console."],
+    ["Telephone", { shape: "harmonic", freq: 220, timebase: 4, vcfType: 2, vcfCut: 625, vcfRes: 20,
+                    shpBits: 6, shpRate: 8000 },
+     "A narrow band of mid frequencies, coarsely sampled: a voice down a phone line."],
+    ["Crushed saw", { shape: "ramp", freq: 110, timebase: 4, shpBits: 2, shpRate: 4000 },
+     "Two bits and four kilohertz: every step of the staircase audible, and the folding-back too."],
+    ["Fuzz", { shape: "square", freq: 110, timebase: 4, shpDrive: 90, shpFold: 10, vcfType: 1, vcfCut: 725 },
+     "Drive past the ceiling and a touch of fold: a fuzz pedal on a square."],
+  ], "generator"],
+
   ["Lissajous", [
-    ["Circle", { shape: "sine", display: "xy", persistence: "0.12", timebase: 3 }],
-    ["Figure eight", { shape: "sine", interval: 12, display: "xy",
-                       persistence: "0.12", timebase: 3 }],
-    ["Perfect fifth, just", { shape: "sine", interval: 7, just: true,
-                              display: "xy", persistence: "0.12", timebase: 3 }],
-    ["Perfect fifth, equal", { shape: "sine", interval: 7, just: false,
-                               display: "xy", persistence: "0.12", timebase: 3 }],
-    ["Major third", { shape: "sine", interval: 4, display: "xy",
-                      persistence: "0.12", timebase: 4 }],
-    ["Tritone", { shape: "sine", interval: 6, display: "xy",
-                  persistence: "0.04", timebase: 6 }],
-  ]],
+    ["Circle", Object.assign({ shape: "sine", timebase: 3 }, XY),
+     "Two sines a quarter-cycle apart: X against Y is a circle."],
+    ["Figure eight", Object.assign({ shape: "sine", interval: 12, timebase: 3 }, XY),
+     "An octave: one channel twice as fast as the other."],
+    ["Perfect fifth, just", Object.assign({ shape: "sine", interval: 7, just: true, timebase: 3 }, XY),
+     "Exactly 3:2: the figure closes and stands still."],
+    ["Perfect fifth, equal", Object.assign({ shape: "sine", interval: 7, just: false, timebase: 3 }, XY),
+     "The piano's fifth, a hair narrow of 3:2: the same figure, slowly turning."],
+    ["Major third", Object.assign({ shape: "sine", interval: 4, timebase: 4 }, XY),
+     "5:4: a longer loop, and it takes a longer window to draw."],
+    ["Tritone", { shape: "sine", interval: 6, display: "xy", persistence: "0.04", timebase: 6 },
+     "45:32: so long a cycle the figure is nearly a filled square."],
+    ["Square lattice", Object.assign({ shape: "square", interval: 5, timebase: 4 }, XY),
+     "Two squares at 4:3: the beam jumps between a lattice of points."],
+    ["Thickened circle", Object.assign({ shape: "sine", timebase: 3, oscUnison: 3, oscSpread: 6 }, XY),
+     "Three copies of the circle a few cents apart: it breathes, thickening and thinning."],
+    ["FM figure", Object.assign({ shape: "sine", interval: 7, timebase: 4, oscRatio: 1.5, oscFm: 10 }, XY),
+     "A 3:2 figure with a 3:2 modulator: harmonic, so the figure still closes, but it has grown loops."],
+  ], "generator"],
+
+  ["The plane", [
+    ["Mirrored fifth", Object.assign({ shape: "sine", interval: 7, timebase: 4, planeMirror: 1 }, XY),
+     "The figure folded onto its right half; on the ear, X is an octave up."],
+    ["Soft-clipped", Object.assign({ shape: "harmonic", interval: 4, amp: 90, timebase: 4, planeLimit: 1,
+                                     planeRadius: 40 }, XY),
+     "A loud figure held inside a circle, every point keeping its direction: a clipper that does not bend the image."],
+    ["Radial fold", Object.assign({ shape: "sine", interval: 7, amp: 90, timebase: 4, planeLimit: 2,
+                                    planeRadius: 35 }, XY),
+     "The figure reflected back in each time it reaches the circle: a stereo wavefolder."],
+    ["Swirl", Object.assign({ shape: "sine", interval: 7, timebase: 4, mod: "lfo1>gen.twist@0.800", l0r: 10 }, XY),
+     "The loud parts turned further than the quiet ones, by an amount that comes and goes."],
+    ["Kaleidoscope", Object.assign({ shape: "sine", interval: 4, timebase: 4, planeKaleido: 6 }, XY),
+     "Every point's angle folded into one wedge of six: the figure becomes its own reflections."],
+    ["Pixels", Object.assign({ shape: "sine", timebase: 3, planeSnap: 4 }, XY),
+     "Both channels snapped to a grid of sixteen: a circle drawn in pixels, and a bitcrusher on the ear."],
+    ["Wide and leaning", Object.assign({ shape: "sine", interval: 7, timebase: 4, planeScaleX: 150,
+                                         planeScaleY: 60, planeShear: 30 }, XY),
+     "The figure stretched, squashed and sheared: balance, width and crossfeed, exactly."],
+  ], "generator"],
+
+  ["Echoes", [
+    ["Ping-pong", Object.assign({ shape: "sine", interval: 7, timebase: 4, delayMix: 50, delaySync: "1/8d",
+                                  delayFeedback: 50, delayPingPong: true }, XY),
+     "Echoes that alternate sides: in X-Y the ghosts swap between the figure and its mirror image."],
+    ["Dub echo", { shape: "harmonic", freq: 220, timebase: 5, delayMix: 60, delaySync: "1/4", delayFeedback: 75,
+                   vcfType: 1, vcfCut: 667 },
+     "Long feedback on a quarter note: each repeat a little quieter, for a long time."],
+    ["Chorus", Object.assign({ shape: "sine", interval: 7, timebase: 4, chorusMix: 60, chorusDepth: 40 }, XY),
+     "Two slowly swinging copies, one per side: the figure breathes and turns."],
+    ["Flanger", { shape: "ramp", freq: 110, timebase: 4, chorusMix: 100, chorusTime: 20, chorusDepth: 15,
+                  chorusFeedback: 70, chorusRate: 20, display: "spect", span: "10" },
+     "A very short swinging delay with feedback: the jet-plane sweep, drawn as comb teeth on the spectrogram."],
+    ["Ghost figure", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12", timebase: 5,
+                       delayMix: 60, delayMs: 200, delayFeedback: 60 },
+     "A rose followed by fading copies of itself."],
+  ], "generator"],
+
   ["Motion", [
-    ["Tumbling", { shape: "sine", interval: 7, display: "xy", persistence: "0.12",
-                   timebase: 4, l0d: "phase", l0r: 120, l0a: 100,
-                   l1d: "ratio", l1r: 13, l1a: 20 }],
+    ["Tumbling", Object.assign({ shape: "sine", interval: 7, timebase: 4, l0d: "phase", l0r: 120, l0a: 100,
+                                 l1d: "ratio", l1r: 13, l1a: 20 }, XY),
+     "The phase between the channels swinging while the ratio drifts: a figure turning in space."],
     ["Interference", { shape: "sine", display: "xy", persistence: "0.04", timebase: 4,
-                       l0d: "phase", l0r: 70, l0a: 100,
-                       l1d: "freq", l1r: 11, l1a: 15 }],
+                       l0d: "phase", l0r: 70, l0a: 100, l1d: "freq", l1r: 11, l1a: 15 },
+     "Phase and pitch moving at unrelated rates: patterns that never quite repeat."],
     ["Jitter", { shape: "sine", display: "xy", persistence: "0.3", timebase: 3,
-                 l0d: "ratio", l0s: "random", l0r: 300, l0a: 40 }],
-    ["Morphing rose", { gen: "figure", figure: "Rose", detail: 3,
-                        display: "xy", persistence: "0.04", timebase: 5,
-                        l0d: "detail", l0r: 6, l0a: 45 }],
-    ["Unstable orbit", { gen: "figure", figure: "Spirograph", detail: 7,
-                         display: "xy", persistence: "0.04", timebase: 5,
-                         l0d: "detail", l0r: 4, l0a: 30, pGoni: false, pSpec: false }],
-    ["Square lattice", { shape: "square", interval: 5, display: "xy",
-                         persistence: "0.12", timebase: 4 }],
-    ["Ringing", { gen: "harmonograph", interval: 7, detune: 90, decay: 22,
-                  display: "xy", persistence: "-1", timebase: 5,
-                  pGoni: false, pSpec: false }],
-  ]],
+                 l0d: "ratio", l0s: "random", l0r: 300, l0a: 40 },
+     "A random ratio, picked three hundred times a minute: the figure can never settle."],
+    ["Morphing rose", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.04", timebase: 5,
+                        l0d: "detail", l0r: 6, l0a: 45 },
+     "A rose whose number of petals is always changing."],
+    ["Unstable orbit", { gen: "figure", figure: "Spirograph", detail: 7, display: "xy", persistence: "0.04",
+                         timebase: 5, l0d: "detail", l0r: 4, l0a: 30, pGoni: false, pSpec: false },
+     "A spirograph whose gears keep changing size."],
+    ["Ringing", { gen: "harmonograph", interval: 7, detune: 90, decay: 22, display: "xy", persistence: "-1",
+                  timebase: 5, pGoni: false, pSpec: false },
+     "Two pendulums slightly out of tune, dying away: the figure winds itself in."],
+    ["Breathing FM", Object.assign({ shape: "sine", interval: 7, timebase: 4, oscRatio: 1.5,
+                                     mod: "lfo1>gen.fm@0.600", l0r: 12 }, XY),
+     "An FM index rising and falling: brightness that breathes, and a figure that grows loops and loses them."],
+    ["Filter sweep", { shape: "ramp", freq: 110, timebase: 4, vcfType: 1, vcfCut: 534, vcfRes: 60,
+                       mod: "lfo1>gen.vcf@0.700", l0r: 10, display: "spect", span: "10" },
+     "A resonant low pass sweeping a saw's harmonics: each one lights up as the peak passes it."],
+  ], "generator"],
+
+  ["Drawings", [
+    ["Harmonograph", { gen: "harmonograph", interval: 4, detune: 30, decay: 20, display: "xy", persistence: "-1",
+                       timebase: 5, pGoni: false, pSpec: false },
+     "Two pendulums at 5:4, drawing and running down, then starting again."],
+    ["Plucked harmonograph", { gen: "harmonograph", interval: 7, display: "xy", persistence: "0.04", timebase: 4,
+                               midiPlay: "harmonograph", ring: 900, pGoni: false },
+     "Play it: each key strikes the pendulums at that note's pitch, and the drawing is the note."],
+    ["Pentagram", { gen: "figure", figure: "Star", detail: 5, display: "xy", persistence: "0.12", timebase: 5 },
+     "A five-pointed star, drawn forty times a second."],
+    ["Rose", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12", timebase: 5 },
+     "A three-petalled rose curve."],
+    ["Spirograph", { gen: "figure", figure: "Spirograph", detail: 7, display: "xy", persistence: "0.12",
+                     timebase: 5 },
+     "A gear rolling inside a ring."],
+    ["Heart", { gen: "figure", figure: "Heart", display: "xy", persistence: "0.12", timebase: 5 },
+     "A heart, traced by the beam."],
+    // Short window, endless memory: you watch the beam draw it.
+    ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3, display: "xy", persistence: "-1", timebase: 3 },
+     "The heart three times a second, with endless persistence: watch the beam draw it."],
+  ], "generator"],
+
   ["Solids", [
     // pGoni off for the same reason the harmonograph turns it off: correlation
     // between two axes of one projection is a measurement of nothing.
-    ["Tumbling cube", { gen: "wireframe", model: "Cube", display: "xy",
-                        persistence: "0.12", timebase: 5, pGoni: false }],
-    ["Octahedron", { gen: "wireframe", model: "Octahedron", spinX: 7, spinY: 23,
-                     display: "xy", persistence: "0.12", timebase: 5, pGoni: false }],
+    ["Tumbling cube", { gen: "wireframe", model: "Cube", display: "xy", persistence: "0.12", timebase: 5,
+                        pGoni: false },
+     "A wireframe cube, turning, drawn in one stroke of the beam."],
+    ["Octahedron", { gen: "wireframe", model: "Octahedron", spinX: 7, spinY: 23, display: "xy",
+                     persistence: "0.12", timebase: 5, pGoni: false },
+     "Eight faces, spinning about two axes."],
     // A short eye distance and a slow roll: the near face swings wide while
     // the far one barely moves, which is the whole of what perspective is.
-    ["Deep perspective", { gen: "wireframe", model: "Cube", depth: 92,
-                           spinX: 5, spinY: 13, spinZ: 3, display: "xy",
-                           persistence: "0.12", timebase: 6, pGoni: false }],
+    ["Deep perspective", { gen: "wireframe", model: "Cube", depth: 92, spinX: 5, spinY: 13, spinZ: 3,
+                           display: "xy", persistence: "0.12", timebase: 6, pGoni: false },
+     "A cube seen from close up: the near face swings wide while the far one barely moves."],
     /* Slow enough to watch the beam walk the route, retraced edges and all -
        which means it must barely turn. Infinite persistence plus a real spin
        accumulates every intermediate attitude into a scribble, so this is a
        long tail rather than an endless one, and a rotation of one turn a
        minute. */
-    ["Drawn by hand", { gen: "wireframe", model: "Tetrahedron", figureRate: 4,
-                        spinX: 2, spinY: 3, display: "xy", persistence: "0.04",
-                        timebase: 4, pGoni: false, pSpec: false }],
-    ["Wobbling", { gen: "wireframe", model: "Octahedron", display: "xy",
-                   persistence: "0.12", timebase: 5, pGoni: false,
-                   l0d: "tumble", l0r: 14, l0a: 70,
-                   l1d: "depth", l1r: 9, l1a: 60 }],
-  ]],
-  ["Drawing", [
-    ["Harmonograph", { gen: "harmonograph", interval: 4, detune: 30, decay: 20,
-                       display: "xy", persistence: "-1", timebase: 5,
-                       pGoni: false, pSpec: false }],
-    ["Pentagram", { gen: "figure", figure: "Star", detail: 5,
-                    display: "xy", persistence: "0.12", timebase: 5 }],
-    ["Rose", { gen: "figure", figure: "Rose", detail: 3,
-               display: "xy", persistence: "0.12", timebase: 5 }],
-    ["Spirograph", { gen: "figure", figure: "Spirograph", detail: 7,
-                     display: "xy", persistence: "0.12", timebase: 5 }],
-    // Short window, endless memory: you watch the beam draw it.
-    ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3,
-                    display: "xy", persistence: "-1", timebase: 3 }],
-  ]],
+    ["Drawn by hand", { gen: "wireframe", model: "Tetrahedron", figureRate: 4, spinX: 2, spinY: 3,
+                        display: "xy", persistence: "0.04", timebase: 4, pGoni: false, pSpec: false },
+     "A tetrahedron traced four times a second: you can follow the beam round its edges."],
+    ["Wobbling", { gen: "wireframe", model: "Octahedron", display: "xy", persistence: "0.12", timebase: 5,
+                   pGoni: false, l0d: "tumble", l0r: 14, l0a: 70, l1d: "depth", l1r: 9, l1a: 60 },
+     "An octahedron whose spin and perspective are both being pushed about."],
+  ], "generator"],
+
+  ["Rhythm and key", [
+    ["Three against two", { gen: "harmonograph", interval: 7, just: true, decay: 2, display: "xy",
+                            persistence: "0.04", timebase: 6, crossOn: true, pGoni: false },
+     "Slow pendulums at 3:2, with a note each time the beam crosses a line: the interval, heard as a rhythm."],
+    ["Four against three", { gen: "harmonograph", interval: 5, just: true, decay: 2, display: "xy",
+                             persistence: "0.04", timebase: 6, crossOn: true, crossNoteY: 65, pGoni: false },
+     "The same at 4:3: a longer, lopsided pattern."],
+    ["Drifting fifth", { gen: "harmonograph", interval: 7, just: false, decay: 2, display: "xy",
+                         persistence: "0.04", timebase: 6, crossOn: true, pGoni: false },
+     "An equal-tempered fifth is not quite 3:2, so the rhythm slides slowly out of step with itself."],
+    ["Pentatonic wander", { shape: "sine", freq: 440, timebase: 3, mod: "lfo1>gen.freq@0.600", l0s: "random",
+                            l0r: 400, quant: true, keyRoot: 9, keyScale: "pentatonic",
+                            delayMix: 30, delaySync: "1/8d", delayFeedback: 40 },
+     "A random pitch four times a second, held to A major pentatonic: a melody out of nothing, no keyboard needed."],
+    ["Scale climb", { shape: "triangle", freq: 262, timebase: 3, mod: "lfo1>gen.freq@1.000", l0s: "ramp",
+                      l0r: 25, quant: true, keyRoot: 0, keyScale: "major" },
+     "A ramp two octaves wide, quantised to C major: a scale climbing and falling back."],
+    ["Minor glide", { shape: "ramp", freq: 220, timebase: 4, mod: "lfo1>gen.freq@0.800", l0s: "sine", l0r: 20,
+                      quant: true, keyRoot: 9, keyScale: "minor", qGlide: 60, vcfType: 1, vcfCut: 667 },
+     "A slow wave of pitch through A minor, gliding between its notes rather than stepping."],
+  ], "generator"],
+
   /* These name nothing about the generator, so they land on whatever is
-     already playing. A preset has never switched the source - `restore` only
-     reaches the generator through `genSet`, which writes wherever the
-     generator is and nowhere else - which is what makes a display-only group
-     possible at all. */
+     already playing. */
   ["Live", [
-    ["Playing, waveform", { display: "yt", timebase: 5, persistence: "0",
-                            trigMode: "auto", level: 20 }],
-    ["Playing, lag X\u2013Y", { display: "xy", lagOn: true, lagAuto: true,
-                                persistence: "0.12", timebase: 4 }],
+    ["Playing, waveform", { display: "yt", timebase: 5, persistence: "0", trigMode: "auto", level: 20 },
+     "Your signal as a waveform, triggered, at a window that shows a few cycles of a note."],
+    ["Playing, lag X–Y", { display: "xy", lagOn: true, lagAuto: true, persistence: "0.12", timebase: 4 },
+     "Your signal against itself a moment later: a figure out of one channel, its shape the note's."],
     // A long tail, so a phrase leaves the whole of itself on the screen.
-    ["Playing, long tail", { display: "xy", lagOn: true, lagAuto: true,
-                             persistence: "0.04", timebase: 5 }],
+    ["Playing, long tail", { display: "xy", lagOn: true, lagAuto: true, persistence: "0.04", timebase: 5 },
+     "The same, with a long tail: a phrase leaves the whole of itself on the screen."],
     /* For the band split: low end across, upper harmonics up. Correlation
        between two bands of one instrument is not a stereo measurement, so the
        goniometer goes away. */
-    ["Bands, low against high", { display: "xy", xy0: 0, xy1: 2,
-                                  persistence: "0.12", timebase: 5, pGoni: false }],
-    ["Bands, stacked", { display: "yt", timebase: 6, persistence: "0",
-                         pGoni: false, pSpec: false }],
-    ["Playing, spectrogram", { display: "spect", span: "10", timebase: 5 }],
+    ["Bands, low against high", { display: "xy", xy0: 0, xy1: 2, persistence: "0.12", timebase: 5, pGoni: false },
+     "For the band split: the low end across, the upper harmonics up."],
+    ["Bands, stacked", { display: "yt", timebase: 6, persistence: "0", pGoni: false, pSpec: false },
+     "For the band split: each band on its own row."],
+    ["Playing, spectrogram", { display: "spect", span: "10", timebase: 5 },
+     "Ten seconds of what you play, as frequencies over time."],
     // Twenty milliseconds a division: slow enough that what you see is the
     // shape of the note rather than the shape of the waveform.
-    ["Playing, envelope", { display: "yt", timebase: 7, persistence: "0.12",
-                            pSpec: false, pGoni: false }],
-  ]],
+    ["Playing, envelope", { display: "yt", timebase: 7, persistence: "0.12", pSpec: false, pGoni: false },
+     "A slow window: the shape of each note, its attack and its fade, rather than its waveform."],
+  ], "display"],
 
   ["Analysis", [
-    ["Harmonics and THD", { shape: "square", freq: 110, timebase: 4,
-                            pHarm: true, pGoni: false }],
-    ["Frequency sweep", { shape: "sine", display: "spect", span: "10", timebase: 4,
-                          l0d: "freq", l0r: 25, l0a: 80 }],
+    ["Harmonics and THD", { shape: "square", freq: 110, timebase: 4, pHarm: true, pGoni: false },
+     "A square wave with the harmonics pane open: each odd harmonic's level, and the distortion they add up to."],
+    ["Frequency sweep", { shape: "sine", display: "spect", span: "10", timebase: 4, l0d: "freq", l0r: 25, l0a: 80 },
+     "A sine gliding up and down: a single line tracing the sweep on the spectrogram."],
     // Every harmonic of the square sweeps in parallel: a ladder, climbing.
-    ["Harmonic ladder", { shape: "square", freq: 110, display: "spect", span: "10",
-                          timebase: 4, l0d: "freq", l0r: 20, l0a: 60 }],
-    ["Tuning", { shape: "sine", freq: 440, timebase: 3, pTune: true, pGoni: false }],
-    ["Measuring with cursors", { shape: "sine", freq: 1000, timebase: 2, cursors: true }],
-  ]],
+    ["Harmonic ladder", { shape: "square", freq: 110, display: "spect", span: "10", timebase: 4,
+                          l0d: "freq", l0r: 20, l0a: 60 },
+     "The same sweep on a square: every harmonic moving in parallel, a ladder climbing."],
+    ["Tuning", { shape: "sine", freq: 440, timebase: 3, pTune: true, pGoni: false },
+     "The tuner pane on a pure A."],
+    ["Measuring with cursors", { shape: "sine", freq: 1000, timebase: 2, cursors: true },
+     "A 1 kHz sine with the cursors out: drag them to read time and level differences."],
+    ["Noise through a filter", { shape: "noise", display: "spect", span: "10", timebase: 4, vcfType: 2,
+                                 vcfCut: 566, vcfRes: 60, mod: "lfo1>gen.vcf@0.700", l0r: 15 },
+     "White noise through a swept band pass: the filter's own shape, drawn by the noise."],
+  ], "generator"],
 ];
 
 /* --- saved setups ----------------------------------------------------------
@@ -15200,24 +15548,137 @@ function migrateSetup(setup) {
 // What was last loaded, so the picker can say when you have moved off it.
 let loadedSetup = null;
 
+/* What each section is for, above its cards. */
+const PRESET_ABOUT = {
+  "Start here": "The generator's shapes one at a time: what each one sounds like, and what it looks like.",
+  "Organ": "The drawbars: nine sine partials at the footages of a tonewheel organ, pulled out in "
+    + "registrations organists use.",
+  "Keys and leads": "Instruments to play, from FM, sync and the voice filter. Most want a keyboard, and "
+    + "the on-screen one will do; without one they sound as a held note.",
+  "Bass": "Low voices: subs, filters and drive, set to play one note at a time.",
+  "Pads": "Wide and slow: unison, chorus and echo. Several are drawn in X\u2013Y, where the width is a figure.",
+  "Bells and metal": "FM and ring modulation at ratios that are not harmonic, which is what makes metal "
+    + "sound like metal.",
+  "Grit": "Drive, the wavefolder and the crusher, inside every note.",
+  "Lissajous": "Two channels against each other: the interval between them is the figure's shape.",
+  "The plane": "Things done to the picture of a stereo pair that turn out to be things done to its sound.",
+  "Echoes": "Delay and chorus. In X\u2013Y the repeats are ghost figures trailing the live one.",
+  "Motion": "The low-frequency oscillators, pointed at the figure: it turns, drifts, breathes.",
+  "Drawings": "The generator as a pen: figures traced by the beam, and pendulums that draw and run down.",
+  "Solids": "Wireframe solids, turning, each drawn in a single stroke of the beam.",
+  "Rhythm and key": "Crossings turn an interval into a rhythm; the quantiser turns a wandering pitch into "
+    + "a melody. None of these needs a keyboard.",
+  "Live": "For a microphone, a line input or a file. These set the display only, and land on whatever is "
+    + "playing.",
+  "Analysis": "The measuring side: harmonics, the tuner, cursors and the spectrogram.",
+  "Saved": "Your own, saved in this browser. Save the current setup, or share it as a code, from "
+    + "Settings \u2192 Presets.",
+};
+const SECTION_KEY = "scope.presetSection";
+let presetSection = 0;
+try {
+  const saved = Number(window.localStorage.getItem(SECTION_KEY));
+  if (Number.isInteger(saved) && saved >= 0 && saved <= PRESETS.length) presetSection = saved;
+} catch (error) { /* private window */ }
+
+// The name the strip shows: the preset's, or Custom once you have moved off one.
+function setPresetValue(value) {
+  el.preset.value = value;
+  el.presetCurrent.textContent = value ? value.slice(2) : "Custom";
+  el.preset.title = value ? value.slice(2) : "Custom: moved off a preset, or none loaded";
+  for (const card of el.presetGrid.querySelectorAll(".preset-card")) {
+    card.setAttribute("aria-pressed", String(card.dataset.value === value));
+  }
+}
+
+// Every card for one list of entries: [value, name, blurb].
+function presetCards(entries) {
+  return entries.map(([value, name, blurb]) =>
+    '<button type="button" class="preset-card" data-value="' + escapeText(value) + '" aria-pressed="'
+    + String(value === el.preset.value) + '"><span class="preset-name">' + escapeText(name)
+    + '</span><span class="preset-blurb">' + escapeText(blurb) + "</span></button>").join("");
+}
+
+function sectionEntries(i) {
+  if (i === PRESETS.length) {
+    return Object.keys(readSaved()).sort().map((n) => ["s:" + n, n, "Saved in this browser."]);
+  }
+  return PRESETS[i][1].map(([name, , blurb]) => ["b:" + name, name, blurb || ""]);
+}
+
+function renderPresetBrowser() {
+  const titles = PRESETS.map(([title]) => title).concat(["Saved"]);
+  el.presetRail.innerHTML = titles.map((title, i) =>
+    '<button type="button" class="preset-section" role="tab" data-section="' + i + '" aria-selected="'
+    + String(i === presetSection) + '"><span>' + escapeText(title) + '</span><span class="count">'
+    + sectionEntries(i).length + "</span></button>").join("");
+
+  // A search looks across every section, headed by section; otherwise the
+  // chosen section alone.
+  const words = el.presetFind.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length) {
+    let html = "";
+    titles.forEach((title, i) => {
+      const hits = sectionEntries(i).filter(([, name, blurb]) => {
+        const text = (name + " " + blurb + " " + title).toLowerCase();
+        return words.every((w) => text.includes(w));
+      });
+      if (hits.length) html += '<p class="preset-heading">' + escapeText(title) + "</p>" + presetCards(hits);
+    });
+    el.presetAbout.textContent = "";
+    el.presetGrid.innerHTML = html || '<p class="preset-empty">No preset matches that.</p>';
+  } else {
+    const entries = sectionEntries(presetSection);
+    el.presetAbout.textContent = PRESET_ABOUT[titles[presetSection]] || "";
+    el.presetGrid.innerHTML = entries.length ? presetCards(entries)
+      : '<p class="preset-empty">Nothing saved yet.</p>';
+  }
+  sayPresetWhere();
+}
+
+/* A preset never switches the source, so a generator preset chosen while
+   nothing playing has a generator changes nothing you can hear. Say so, and
+   offer the one click that makes it audible, rather than switching behind
+   your back. */
+function sayPresetWhere() {
+  const kind = presetSection < PRESETS.length ? PRESETS[presetSection][2] : "";
+  const searching = el.presetFind.value.trim() !== "";
+  if (!searching && kind === "generator" && !genSettings()) {
+    el.presetWhere.innerHTML = "These set the generator, and nothing playing now has one."
+      + '<button type="button" class="link-btn caps" id="presetToTone">Play the test tone</button>';
+    el.presetWhere.hidden = false;
+    document.getElementById("presetToTone").addEventListener("click", () => {
+      toTone();
+      renderPresetBrowser();
+    });
+  } else if (!searching && kind === "display") {
+    el.presetWhere.textContent = "These change the display only, and land on whatever is playing.";
+    el.presetWhere.hidden = false;
+  } else {
+    el.presetWhere.hidden = true;
+  }
+}
+
+function openPresets() {
+  setMenuOpen(false);
+  // Open on the section of the preset in use, if there is one.
+  const value = el.preset.value;
+  if (value.startsWith("b:")) {
+    const at = PRESETS.findIndex(([, entries]) => entries.some(([name]) => name === value.slice(2)));
+    if (at >= 0) presetSection = at;
+  } else if (value.startsWith("s:")) {
+    presetSection = PRESETS.length;
+  }
+  el.presetFind.value = "";
+  renderPresetBrowser();
+  if (!el.presetDialog.open) el.presetDialog.showModal();
+  const current = el.presetGrid.querySelector('[aria-pressed="true"]') || el.presetGrid.querySelector(".preset-card");
+  if (current) current.focus();
+}
+
+// Kept for the saved setups, which change the list.
 function fillPresets() {
-  const saved = readSaved();
-  const names = Object.keys(saved).sort();
-
-  const builtIn = PRESETS.map(([group, entries]) =>
-    '<optgroup label="' + group + '">'
-    + entries.map(([name]) => '<option value="b:' + name + '">' + name + "</option>").join("")
-    + "</optgroup>").join("");
-
-  const mine = names.length
-    ? '<optgroup label="Saved">'
-      + names.map((n) => '<option value="s:' + n + '">' + n + "</option>").join("")
-      + "</optgroup>"
-    : "";
-
-  // A disabled first entry rather than a real one: Custom is something the
-  // picker reports, never something you choose.
-  el.preset.innerHTML = '<option value="" disabled>Custom</option>' + builtIn + mine;
+  if (el.presetDialog.open) renderPresetBrowser();
 }
 
 function findPreset(value) {
@@ -15239,22 +15700,69 @@ function applyPreset(value) {
 
   restore(setup);
   loadedSetup = { value: value, snap: snapshot() };
-  el.preset.value = value;
+  setPresetValue(value);
 }
 
 /* Checked from the readout, at its slower rate. Cheaper than hooking forty
    controls, and it cannot miss one the way hooking them by hand would. */
 function markPresetDirty() {
-  if (loadedSetup === null) { el.preset.value = ""; return; }
+  if (loadedSetup === null) { if (el.preset.value) setPresetValue(""); return; }
 
   const now = snapshot();
   const same = Object.keys(now).every((k) => now[k] === loadedSetup.snap[k]);
-  el.preset.value = same ? loadedSetup.value : "";
+  const value = same ? loadedSetup.value : "";
+  if (value !== el.preset.value) setPresetValue(value);
 }
 
-el.preset.addEventListener("change", () => {
-  applyPreset(el.preset.value);
-  setMenuOpen(false);
+el.preset.addEventListener("click", openPresets);
+el.presetClose.addEventListener("click", () => el.presetDialog.close());
+el.presetDialog.addEventListener("click", (event) => {
+  // A click on the backdrop lands on the dialog element itself.
+  if (event.target === el.presetDialog) { el.presetDialog.close(); return; }
+  const section = event.target.closest(".preset-section");
+  if (section) {
+    presetSection = Number(section.dataset.section);
+    try { window.localStorage.setItem(SECTION_KEY, String(presetSection)); } catch (error) { /* private */ }
+    el.presetFind.value = "";
+    renderPresetBrowser();
+    el.presetMain.scrollTop = 0;
+    return;
+  }
+  const card = event.target.closest(".preset-card");
+  if (card) applyPreset(card.dataset.value);
+});
+el.presetGrid.addEventListener("dblclick", (event) => {
+  if (event.target.closest(".preset-card")) el.presetDialog.close();
+});
+el.presetFind.addEventListener("input", renderPresetBrowser);
+/* Arrows between the cards, by rows and columns as the grid lays them out;
+   Enter loads the one with the focus and closes. */
+el.presetDialog.addEventListener("keydown", (event) => {
+  const card = event.target.closest && event.target.closest(".preset-card");
+  if (event.key === "ArrowDown" && event.target === el.presetFind) {
+    const first = el.presetGrid.querySelector(".preset-card");
+    if (first) { event.preventDefault(); first.focus(); }
+    return;
+  }
+  if (!card) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    applyPreset(card.dataset.value);
+    el.presetDialog.close();
+    return;
+  }
+  const cards = Array.from(el.presetGrid.querySelectorAll(".preset-card"));
+  const at = cards.indexOf(card);
+  const columns = Math.max(1, getComputedStyle(el.presetGrid).gridTemplateColumns.split(" ").length);
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns }[event.key];
+  if (step === undefined) return;
+  event.preventDefault();
+  const next = cards[Math.max(0, Math.min(cards.length - 1, at + step))];
+  if (next) next.focus();
+});
+el.presetManage.addEventListener("click", () => {
+  el.presetDialog.close();
+  showControl("presetName");
 });
 
 const PRESET_HELP = "Saved setups live in this browser and nowhere else. A <i>setup code</i> "
@@ -15287,7 +15795,7 @@ el.presetSave.addEventListener("click", () => {
 
   fillPresets();
   loadedSetup = { value: "s:" + name, snap: snapshot() };
-  el.preset.value = loadedSetup.value;
+  setPresetValue(loadedSetup.value);
   el.presetName.value = "";
   sayPreset("Saved as " + name + ".");
 });
@@ -15301,7 +15809,7 @@ el.presetDelete.addEventListener("click", () => {
   writeSaved(all);
   fillPresets();
   loadedSetup = null;
-  el.preset.value = "";
+  setPresetValue("");
   sayPreset("Deleted.");
 });
 
@@ -15325,7 +15833,7 @@ el.presetLoad.addEventListener("click", () => {
 
   restore(setup);
   loadedSetup = null;
-  el.preset.value = "";
+  setPresetValue("");
   sayPreset("Loaded.");
   setMenuOpen(false);
 });
@@ -17931,6 +18439,7 @@ function typingInto(target) {
 document.addEventListener("keydown", (event) => {
   if (typingInto(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
   if (el.helpDialog.open && event.key !== "?" ) return;
+  if (el.presetDialog.open) return;
 
   const step = (input, by) => {
     input.value = String(Number(input.value) + by);

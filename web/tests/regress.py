@@ -33,7 +33,7 @@ with sync_playwright() as pw:
     check("triggers", p.evaluate("capture().triggered"))
 
     print("-- every preset applies --")
-    values = p.evaluate("Array.from(el.preset.options).map(o=>o.value).filter(v=>v)")
+    values = p.evaluate("PRESETS.flatMap(([, entries]) => entries.map(([name]) => 'b:' + name))")
     for v in values:
         p.evaluate(f"applyPreset({v!r})")
     p.wait_for_timeout(400)

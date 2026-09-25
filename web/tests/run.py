@@ -54,6 +54,7 @@ SUITES = [
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),
+    ("preset", [sys.executable, "presettest.py"], "the preset library and its browser: every preset what it says, sections, search, keys, saved, where it lands"),
     ("regress", [sys.executable, "regress.py"], "presets, displays, source switching"),
     ("sources", [sys.executable, "sources.py"], "rack, file, tone, and a denied mic"),
 ]

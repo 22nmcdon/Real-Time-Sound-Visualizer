@@ -184,6 +184,12 @@ Do not re-litigate these without a reason; each replaced something that failed.
   the same sections, which made neither a place for anything. To reach a
   control from code - a search result, a test - use `showControl(id)`; do not
   assume the Settings popover holds it.
+- **Presets are a library in a browser, not a list.** A dialog of sections
+  and described cards, opened from the strip's Preset button; `presettest.py`
+  requires every field a preset names to come back out of the setup it makes,
+  so a new preset with a misspelt key or an out-of-range value fails there
+  rather than loading quietly as something else. Add a preset to the section
+  it fits, with a line that says what to listen for and what to look at.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.
