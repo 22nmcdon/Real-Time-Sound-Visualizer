@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and H1 and H2 (the voice's second oscillator, sync, sub and unison; drive, fold and crush) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -77,6 +77,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
+| `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
 | `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
@@ -2170,3 +2171,69 @@ driven sine's squared-off corners overshoots by about 9 per cent (Gibbs), and a
 crusher's step can round that up again: 0.5625 of 0.5, measured. The output's
 clamp at full scale still holds the picture. The check now says what is true
 of each.
+
+**The voice filter is Web Audio's biquad at a fixed cutoff, and a
+state-variable filter when it moves.** It uses Simper's topology-preserving
+form, for two reasons:
+
+- *Stable when it moves.* It stays stable with the cutoff changing every
+  sample. A biquad whose coefficients are recomputed each sample does not,
+  because its state is in the wrong units for the new ones.
+- *Identical when it doesn't.* At a fixed cutoff it is the bilinear
+  transform of the cookbook's prototype, and it matches the browser's
+  `BiquadFilterNode` to 0.00013 dB: 36 settings, 40 frequencies each.
+
+The comparison minds one trap in the spec: a low or high pass takes its Q in
+decibels, and a band pass or notch as a ratio. Its null test hands the low
+pass its Q as a ratio and must miss, and it misses by 10 dB, so the
+comparison can see Q.
+
+Swept from 50 Hz to 18 kHz three thousand times a second at Q 20, it stays
+finite and under 11. Key tracking is checked harmonic by harmonic, a saw's
+filtered level over its unfiltered, against the cookbook response at the
+cutoff the note should have moved it to. It agrees to 0.0001 dB.
+
+**The filter's envelope is a second `makeEnvelope`, reading the layer's four
+filter times through a view with the names it asks for.** Each note of a chord
+has its own, from its own start, and releases with its own key. The dyad has
+one, gated with the amplifier's. Layer B's runs on B's times.
+
+**The coefficient is cached, which is exactly what could go stale.** A
+tangent and two powers per voice per sample were a quarter of what sixteen
+voices on two layers cost. So each filter keeps its coefficient and works it
+out again only when something it depends on has moved.
+
+- *The risk.* A cutoff moved during a sustained note, with nothing else
+  moving, would be ignored if the cache missed that input.
+- *The check.* `vcftest.py` moves it there and requires the new cutoff's
+  response to 1e-3.
+
+The shaper's oversampler was rewritten for cost in the same pass. Both of its
+histories are now rings written twice, and the way down uses the filter's
+symmetry, for half the multiplies. Everything on, over sixteen voices and two
+layers: 404 ms a second at 2x (best of three) and 682 at 4x.
+
+**A check has to be able to see the case it is named for.** The panel check
+that switching to layer B shows B's filter rows first ran with layer A's
+filter on as well. The rows showed whether the switch looked again or not. It
+now switches from A with the filter off to B with it on, and back.
+
+**The trace's filter moved to the Picture tab.** With the voice filter, Shape
+had five sections, and a rack of six put it 6 px over. The trace's filter is
+the measuring one, for looking, and the voice filter is the instrument's: they
+are different jobs, and Picture is where the other looking controls are.
+Shape is now what the voice is made of and nothing else.
+
+Three more checks passed mutants the same way, each written against a case
+that could not show the fault:
+
+- *Key tracking* was checked at nought and at one. A mutant that tracks all the
+  way whenever tracking is on agrees with the real law at both. It is now
+  checked half-way too.
+- *The cached coefficient* was checked with the note's filter envelope still
+  decaying. Its level changed every sample and refreshed the cache regardless.
+  The envelope now settles before the cutoff moves.
+- *The worklet* was asked only for a finite, audible voice through the filter,
+  and passed with the filter missing from the worklet altogether: its fallback
+  plays the plain sine, at exactly 0.5. It now has to show the resonance's
+  lift, 0.546.

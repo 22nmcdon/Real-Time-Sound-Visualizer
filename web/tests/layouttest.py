@@ -140,7 +140,7 @@ with sync_playwright() as pw:
       setMenuOpen(false);
       return { bench, settings };
     }""")
-    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "shape", "seen": True},
+    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "picture", "seen": True},
           str(reach["bench"]))
     check("and a setting opens Settings over the view you were in",
           reach["settings"] == {"view": "scope", "open": True, "seen": True}, str(reach["settings"]))
@@ -159,8 +159,9 @@ with sync_playwright() as pw:
     check("the Sources panel's destination menu is not searched as rows: cutoff is the Filter's",
           cutoff == [["Cutoff", "Filter"]], str(cutoff))
     notch = search("notch")
-    check("but a menu's own choices find it: notch is the filter's type",
-          notch == [["Type", "Filter"]], str(notch))
+    # Two since the voice filter (H3): its Type offers a notch too.
+    check("but a menu's own choices find it: notch is a type of the trace's filter and of the voice's",
+          sorted(notch) == [["Type", "Filter"], ["Type", "Voice filter"]], str(notch))
     adsr = search("adsr")
     # The Envelope source comes after them, fairly: its description names them.
     check("synonyms: adsr is the four envelope times first, behind the Generator's dots",

@@ -273,8 +273,12 @@ try {
   report.voice = voiceRun({ shape: "ramp", fmIndex: 2, modRatio: 1.5, ringMix: 0.3, syncRatio: 2.5,
                             subLevel: 0.5, unison: 5, unisonCents: 15 });
   report.shaped = voiceRun({ drive: 0.5, fold: 0.3, crushBits: 6, crushHz: 8000 });
+  // And through the voice filter, resonant, its envelope and its tracking on.
+  report.filtered = voiceRun({ drive: 0, fold: 0, crushBits: 0, crushHz: 0, vcfType: 1, vcfCutoff: 800, vcfQ: 8,
+                               vcfTrack: 1, vcfEnv: 3 });
   node.port.onmessage({ data: { tone: { shape: "sine", fmIndex: 0, modRatio: 1, ringMix: 0, syncRatio: 1,
-                                        subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0 } } });
+                                        subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0,
+                                        vcfType: 0 } } });
 
   // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });

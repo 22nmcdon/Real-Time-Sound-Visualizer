@@ -2063,6 +2063,81 @@ body[data-view="bench"] .dock  { order: 3; }
               and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
           </div>
 
+          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title">Voice filter</span>
+            <div class="menu-row">
+              <label class="menu-label" for="vcfType">Type</label>
+              <div class="grow"><select id="vcfType" style="flex:1 1 auto">
+                <option value="0">Off</option><option value="1">Low pass</option><option value="2">Band pass</option>
+                <option value="3">High pass</option><option value="4">Notch</option></select></div>
+            </div>
+            <div class="menu-row vcf-on" data-mod-dest="gen.vcf" data-mod-control="vcfCut">
+              <label class="menu-label" for="vcfCut">Cutoff</label>
+              <div class="grow">
+                <input type="range" id="vcfCut" min="0" max="1000" value="667">
+                <span class="reading" id="vcfCutValue">2.0 kHz</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on">
+              <label class="menu-label" for="vcfRes">Resonance</label>
+              <div class="grow">
+                <input type="range" id="vcfRes" min="0" max="100" value="0">
+                <span class="reading" id="vcfResValue">Q 0.71</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on">
+              <label class="menu-label" for="vcfTrack">Key track</label>
+              <div class="grow">
+                <input type="range" id="vcfTrack" min="0" max="100" value="0">
+                <span class="reading" id="vcfTrackValue">0%</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on">
+              <label class="menu-label" for="vcfEnvAmt">Envelope</label>
+              <div class="grow">
+                <input type="range" id="vcfEnvAmt" min="-40" max="40" value="0">
+                <span class="reading" id="vcfEnvAmtValue">0.0 oct</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on" data-more="1">
+              <label class="menu-label" for="vcfAtk">Attack</label>
+              <div class="grow">
+                <input type="range" id="vcfAtk" min="0" max="1000" value="5">
+                <span class="reading" id="vcfAtkValue">5 ms</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on" data-more="1">
+              <label class="menu-label" for="vcfDec">Decay</label>
+              <div class="grow">
+                <input type="range" id="vcfDec" min="1" max="2000" value="300">
+                <span class="reading" id="vcfDecValue">300 ms</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on" data-more="1">
+              <label class="menu-label" for="vcfSus">Sustain</label>
+              <div class="grow">
+                <input type="range" id="vcfSus" min="0" max="100" value="30">
+                <span class="reading" id="vcfSusValue">0.30</span>
+              </div>
+            </div>
+            <div class="menu-row vcf-on" data-more="1">
+              <label class="menu-label" for="vcfRel">Release</label>
+              <div class="grow">
+                <input type="range" id="vcfRel" min="1" max="2000" value="300">
+                <span class="reading" id="vcfRelValue">300 ms</span>
+              </div>
+            </div>
+            <p class="menu-note">A filter in every note, after its shaping and before its level, so a
+              low note and a high note can be equally bright and each note opens as it starts. It
+              is the instrument's filter; the one called <i>Filter</i> is for looking, on the
+              whole trace. <i>Key track</i> is how far the cutoff follows the note, all the way
+              at a hundred, from middle C. <i>Envelope</i> is how many octaves its own envelope
+              moves the cutoff, up or down; behind the &ctdot; are that envelope's four, which
+              work like the amplifier's and follow the keys the same way. The cutoff can take a
+              source. On the dyad the two channels are filtered alike, each following its own
+              pitch.</p>
+          </div>
+
           <div class="menu-group" id="planeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Plane</span>
             <div class="menu-row">
@@ -2261,7 +2336,7 @@ body[data-view="bench"] .dock  { order: 3; }
               fed back, it rings.</p>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="shape">
+          <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Filter</span>
             <label class="check">
               <input type="checkbox" id="filterOn"> Filter the trace
@@ -2769,6 +2844,15 @@ body[data-view="bench"] .dock  { order: 3; }
         the &ctdot;, four times oversampling is cleaner for a hard drive on a high note, and
         costs twice as much.</span></li>
 
+      <li><b>The voice filter: one in every note</b>
+        <span>Under <i>Voice filter</i>, on the Shape tab. A low, band or high pass or a notch
+        in each note, after its shaping and before its level. <i>Key track</i> makes the
+        cutoff follow the note, so a high note is not duller than a low one. <i>Envelope</i>
+        sweeps the cutoff up or down by that many octaves with the filter's own envelope,
+        whose four are behind the &ctdot;: a note that opens bright and closes, or a
+        resonant wah, per note. The cutoff can take a source. The <i>Filter</i> on the Picture
+        tab is a different thing: it filters the whole trace, for looking.</span></li>
+
       <li><b>The plane: what folds the picture folds the sound</b>
         <span>Under <i>Plane</i>, on the Effects tab, for the generator. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
@@ -2882,8 +2966,8 @@ body[data-view="bench"] .dock  { order: 3; }
         nowhere else.
         <br><br>
         The Bench is six tabs, by task: <i>Play</i> (the source, the keyboard, the
-        generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger),
-        <i>Shape</i> (the drawbars, the voice's oscillator and shaping, the filter), <i>Effects</i> (the
+        generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger, the trace filter),
+        <i>Shape</i> (the drawbars, the voice's oscillator, shaping and filter), <i>Effects</i> (the
         plane, the delay and chorus), <i>Sources</i> and <i>Measure</i>. Each section's title
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
         handful of settings reached for rarely. The source chips stay beside the screen on
@@ -3547,6 +3631,9 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "oscSync", "oscSyncValue", "oscSub", "oscSubValue", "oscUnison", "oscSpread", "oscSpreadValue",
                   "oscSubOct", "oscSubShape",
                   "shpGroup", "shpDrive", "shpDriveValue", "shpFold", "shpFoldValue", "shpBits", "shpRate", "shpOS",
+                  "vcfGroup", "vcfType", "vcfCut", "vcfCutValue", "vcfRes", "vcfResValue", "vcfTrack", "vcfTrackValue",
+                  "vcfEnvAmt", "vcfEnvAmtValue", "vcfAtk", "vcfAtkValue", "vcfDec", "vcfDecValue", "vcfSus",
+                  "vcfSusValue", "vcfRel", "vcfRelValue",
                   "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
                   "delayFeedback", "delayFeedbackValue", "delayPingPong", "chorusMix", "chorusMixValue",
                   "chorusRate", "chorusRateValue", "chorusDepth", "chorusDepthValue", "chorusTime", "chorusTimeValue",
@@ -3798,6 +3885,8 @@ const SYNC_SLOT = FM_SLOT + 1;
 // And its drive and fold (H2).
 const DRIVE_SLOT = SYNC_SLOT + 1;
 const FOLD_SLOT = DRIVE_SLOT + 1;
+// And the voice filter's cutoff (H3).
+const VCF_SLOT = FOLD_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -3840,6 +3929,32 @@ function drawbarWeights(levels, out) {
   const scale = 1 / Math.max(1, total);
   for (let k = 0; k < 9; k++) out[k] *= scale;
   return out;
+}
+
+/* H3: the voice filter, a state-variable filter in the topology-preserving
+   form (Simper's). Low, band, high and notch from one structure, and stable
+   while its cutoff moves every sample - which a biquad whose coefficients are
+   recomputed each sample is not, because its state is in the wrong units for
+   the new coefficients. At a fixed cutoff it is the bilinear transform of the
+   same analogue prototype the cookbook biquad is, so its response is Web
+   Audio's `BiquadFilterNode`'s to the last few decimals: `vcftest.py` holds
+   it there. The band output is scaled by k, to the cookbook's constant 0 dB
+   peak, which is Web Audio's "bandpass".
+
+   `s` is the state, `g` is tan(pi fc / rate) (`svfG`), `k` is 1/Q, and
+   `type` is 1 low, 2 band, 3 high, 4 notch. Top level, and bound into the
+   worklet, so a test can drive it with nothing else in the way. */
+function svfG(fc, rate) {
+  return Math.tan(Math.PI * Math.min(fc, 0.49 * rate) / rate);
+}
+function svfStep(s, x, g, k, type) {
+  const a1 = 1 / (1 + g * (g + k)), a2 = g * a1, a3 = g * a2;
+  const v3 = x - s.ic2;
+  const v1 = a1 * s.ic1 + a2 * v3;
+  const v2 = s.ic2 + a2 * s.ic1 + a3 * v3;
+  s.ic1 = 2 * v1 - s.ic1;
+  s.ic2 = 2 * v2 - s.ic2;
+  return type === 1 ? v2 : type === 2 ? k * v1 : type === 3 ? x - k * v1 - v2 : x - k * v1;
 }
 
 /* One waveform function, shared by the generator and by the LFOs under it -
@@ -4220,6 +4335,11 @@ const GEN_DESTS = [
     reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
   { id: "gen.fold", label: "Fold", slot: FOLD_SLOT,
     reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
+  /* The voice filter's cutoff, three octaves either way at full depth - in
+     the slider's steps, where an octave is a thousand over log2(1000). The
+     filter sweep, which is the other thing everyone puts an envelope on. */
+  { id: "gen.vcf", label: "Voice cutoff", slot: VCF_SLOT,
+    reach: (v, s) => Math.max(0, Math.min(CUTOFF_STEPS, v + s * 3 * CUTOFF_STEPS / Math.log2(1000))) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -6035,6 +6155,21 @@ function makeGeneratorCore(rate, slots, lfos) {
     fold: 0,
     crushBits: 0,
     crushHz: 0,
+    /* The voice filter (H3), after the shaping and before the amplifier's
+       envelope. `vcfType` nought is off; `vcfCutoff` hertz, `vcfQ` its Q.
+       `vcfTrack` is how far the cutoff follows the note, nought to one, one
+       being all the way (an octave up the keyboard is an octave up the
+       cutoff), from middle C. `vcfEnv` is octaves the filter's own envelope
+       moves it at full, either way; the envelope's four are in `f...`. */
+    vcfType: 0,
+    vcfCutoff: 2000,
+    vcfQ: 0.7071,
+    vcfTrack: 0,
+    vcfEnv: 0,
+    fAttackMs: 5,
+    fDecayMs: 300,
+    fSustain: 0.3,
+    fReleaseMs: 300,
     // How many times over drive and fold run, 2 or 4: page-wide, like the
     // plane's, because it is what the page can afford rather than what a
     // layer is made of.
@@ -6165,6 +6300,15 @@ function makeGeneratorCore(rate, slots, lfos) {
     fold: 0,
     crushBits: 0,
     crushHz: 0,
+    vcfType: 0,
+    vcfCutoff: 2000,
+    vcfQ: 0.7071,
+    vcfTrack: 0,
+    vcfEnv: 0,
+    fAttackMs: 5,
+    fDecayMs: 300,
+    fSustain: 0.3,
+    fReleaseMs: 300,
     voices: null,
   };
 
@@ -6561,6 +6705,40 @@ function makeGeneratorCore(rate, slots, lfos) {
      speakers and a jump on the screen. */
   const voices = [];
   const voicesB = [];
+  /* The filter's envelope reads its four times from the layer, through a
+     view with the names `makeEnvelope` asks for - one envelope function,
+     two sets of numbers. */
+  const fenvView = (t) => ({
+    get attackMs() { return t.fAttackMs; }, get decayMs() { return t.fDecayMs; },
+    get sustain() { return t.fSustain; }, get releaseMs() { return t.fReleaseMs; },
+  });
+  const fviewA = fenvView(tone), fviewB = fenvView(toneB);
+  const fenv = makeEnvelope(rate, fviewA);
+  fenv.reset(0);
+  const vcfL = makeVcf(), vcfR = makeVcf();
+  // Middle C: where key tracking leaves the cutoff where the slider says.
+  const KEY_REF = 261.63;
+  function vcfHz(t, noteHz, envLevel, push) {
+    let fc = t.vcfCutoff * Math.pow(2, t.vcfEnv * envLevel + push);
+    if (t.vcfTrack > 0 && noteHz > 0) fc *= Math.pow(noteHz / KEY_REF, t.vcfTrack);
+    return Math.max(10, Math.min(0.45 * rate, fc));
+  }
+  /* The coefficient for a filter's state `s`, worked out again only when
+     something it depends on has moved. Through most of a note - its
+     sustain, with nothing patched onto the cutoff - nothing has, and a
+     tangent and two powers a voice a sample were a quarter of what sixteen
+     voices on two layers cost. */
+  function vcfCoef(s, t, noteHz, envLevel, push) {
+    if (envLevel !== s.lv || push !== s.lp || noteHz !== s.lf || t.vcfCutoff !== s.lc
+        || t.vcfEnv !== s.le || t.vcfTrack !== s.lt) {
+      s.lv = envLevel; s.lp = push; s.lf = noteHz; s.lc = t.vcfCutoff; s.le = t.vcfEnv; s.lt = t.vcfTrack;
+      s.g = svfG(vcfHz(t, noteHz, envLevel, push), rate);
+    }
+    return s.g;
+  }
+  function makeVcf() {
+    return { ic1: 0, ic2: 0, g: 0, lv: NaN, lp: NaN, lf: NaN, lc: NaN, le: NaN, lt: NaN };
+  }
   /* Releases in flight, at most. A ninth tail cuts the oldest rather than
      letting a fast run of chords pile up voices for the length of a release;
      the cut is the one place a voice can end with a step, and it only
@@ -6589,10 +6767,13 @@ function makeGeneratorCore(rate, slots, lfos) {
         // nought, so there is nothing for a gain glide to smooth yet.
         voice = {
           note: want.note, phase: 0, held: true, env: makeEnvelope(rate, tone),
+          fenv: makeEnvelope(rate, tone === toneB ? fviewB : fviewA),
           gains: gains.slice(), targets: gains.slice(),
         };
         voice.env.reset(0);
         voice.env.gate(true, want.velocity);
+        voice.fenv.reset(0);
+        voice.fenv.gate(true, want.velocity);
         voices.push(voice);
       }
       voice.wanted = true;
@@ -6601,7 +6782,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
     for (let v = 0; v < voices.length; v++) {
       const voice = voices[v];
-      if (voice.held && !voice.wanted) { voice.held = false; voice.env.gate(false); }
+      if (voice.held && !voice.wanted) { voice.held = false; voice.env.gate(false); voice.fenv.gate(false); }
     }
     let tails = 0;
     for (let v = 0; v < voices.length; v++) if (!voices[v].held) tails++;
@@ -6677,10 +6858,13 @@ function makeGeneratorCore(rate, slots, lfos) {
   // A layer's voice settings as this block will use them, and this sample's
   // modulated index and sync ratio.
   function makeVoiceFx() {
-    return { on: false, syncing: false, shaping: false, crushing: false, n: 1, fmI: 0, syncR: 1,
+    return { on: false, syncing: false, shaping: false, crushing: false, filtering: false, vcfK: 1, vcfPush: 0,
+             n: 1, fmI: 0, syncR: 1,
              det: new Float64Array(UNISON_MAX) };
   }
   function voiceFxFor(t, x, fmRouted, syncRouted, shapeRouted) {
+    x.filtering = t.vcfType > 0;
+    x.vcfK = 1 / Math.max(0.1, t.vcfQ);
     x.shaping = t.drive > 0 || t.fold > 0 || shapeRouted;
     x.crushing = t.crushBits > 0 || t.crushHz > 0;
     x.n = Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1));
@@ -6729,23 +6913,34 @@ function makeGeneratorCore(rate, slots, lfos) {
   }
   const shapeTaps = { 2: lowpassTaps(2), 4: lowpassTaps(4) };
   let shapeFactor = 2;
+  /* The plane's oversampler, written for one voice and for cost: there
+     are thirty-two of these at once and one pair of the plane's. Both
+     histories are rings written twice, a buffer's length apart, so the
+     newest `per` samples are always one unbroken run - no shifting along
+     and no wrapping inside the loops - and the way down uses the filter's
+     symmetry, h[k] = h[n - 1 - k], for half the multiplies. The same
+     arithmetic as the plane's but for rounding; together these took a third
+     off what sixteen shaped voices on two layers cost. */
   function makeShaper() {
-    const factor = shapeFactor, n = 32 * factor, per = 32, h = shapeTaps[factor];
-    const inX = new Float64Array(per), up = new Float64Array(n);
-    let at = 0;
+    const factor = shapeFactor, n = 32 * factor, per = 32, h = shapeTaps[factor], half = n / 2;
+    const inX = new Float64Array(2 * per), up = new Float64Array(2 * n);
+    let pos = 0, at = 0;
     return {
       factor,
       step(x) {
-        for (let k = per - 1; k > 0; k--) inX[k] = inX[k - 1];
-        inX[0] = x;
+        pos = pos === 0 ? per - 1 : pos - 1;
+        inX[pos] = x; inX[pos + per] = x;
         for (let p = 0; p < factor; p++) {
           let u = 0;
-          for (let k = 0; k < per; k++) u += h[p + k * factor] * inX[k];
-          up[at] = shapeSample(u * factor);
+          for (let k = 0; k < per; k++) u += h[p + k * factor] * inX[pos + k];
+          const y = shapeSample(u * factor);
+          up[at] = y; up[at + n] = y;
           at = at + 1 === n ? 0 : at + 1;
         }
-        let d = 0, j = at;
-        for (let k = 0; k < n; k++) { j = j === 0 ? n - 1 : j - 1; d += h[k] * up[j]; }
+        // The k-th newest oversampled sample is at + n - 1 - k, in one piece.
+        const base = at + n - 1;
+        let d = 0;
+        for (let k = 0; k < half; k++) d += h[k] * (up[base - k] + up[base - n + 1 + k]);
         return d;
       },
     };
@@ -6883,6 +7078,10 @@ function makeGeneratorCore(rate, slots, lfos) {
       let w = wave;
       if (vx.shaping) w = shaperOf(voice).step(w);
       if (vx.crushing) w = crushStep(voice.cr || (voice.cr = makeCrush()), w, tone);
+      if (vx.filtering) {
+        const s = voice.vcf || (voice.vcf = makeVcf());
+        w = svfStep(s, w, vcfCoef(s, tone, f, voice.fenv.step(), vx.vcfPush), vx.vcfK, tone.vcfType);
+      }
       const a = tone.amp * duck * voice.env.step() * w;
       const g = voice.gains, t = voice.targets;
       g[0] += (t[0] - g[0]) * roleGlide;
@@ -6997,6 +7196,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       vxB.fmI = Math.max(0, Math.min(20, toneB.fmIndex + fmPush));
       vxB.syncR = Math.max(1, Math.min(8, toneB.syncRatio + syncPush));
       const drivePush = (genMod[DRIVE_SLOT] || 0) * 0.5, foldPush = (genMod[FOLD_SLOT] || 0) * 0.5;
+      vxA.vcfPush = vxB.vcfPush = (genMod[VCF_SLOT] || 0) * 3;
       if (vxA.shaping) setShaping(tone, drivePush, foldPush);
 
       let l, r, hl = null, hr = null;
@@ -7089,6 +7289,13 @@ function makeGeneratorCore(rate, slots, lfos) {
         }
         if (vxA.shaping) { wl = shapeL.step(wl); wr = shapeR.step(wr); }
         if (vxA.crushing) { wl = crushStep(crushL, wl, tone); wr = crushStep(crushR, wr, tone); }
+        if (vxA.filtering) {
+          // One envelope for the pair, gated as the amplifier's is; each
+          // channel tracks its own pitch.
+          const fl = gated ? fenv.step() : 0;
+          wl = svfStep(vcfL, wl, vcfCoef(vcfL, tone, hz, fl, vxA.vcfPush), vxA.vcfK, tone.vcfType);
+          wr = svfStep(vcfR, wr, vcfCoef(vcfR, tone, hz * ratio, fl, vxA.vcfPush), vxA.vcfK, tone.vcfType);
+        }
         l = amp * wl;
         r = amp * wr;
       }
@@ -7215,7 +7422,7 @@ function makeGeneratorCore(rate, slots, lfos) {
 
     /* The gate. Passed straight on: the legato rule is the envelope's, and
        lives in `makeEnvelope` where every envelope gets it. */
-    gate(open, velocity) { env.gate(open, velocity); },
+    gate(open, velocity) { env.gate(open, velocity); fenv.gate(open, velocity); },
 
     /* Whether the envelope is in force at all. False is the page as it has
        always been - a steady waveform, the multiply by one - and it is what
@@ -7224,6 +7431,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (on === gated) return;
       gated = on;
       env.reset(on ? 0 : 1);
+      fenv.reset(0);
     },
 
     /* In poly, the loudest voice: `env.note` is one number, and the loudest
@@ -7449,6 +7657,9 @@ function generatorModuleSource() {
     bind("SYNC_SLOT", SYNC_SLOT),
     bind("DRIVE_SLOT", DRIVE_SLOT),
     bind("FOLD_SLOT", FOLD_SLOT),
+    bind("VCF_SLOT", VCF_SLOT),
+    bind("svfStep", String(svfStep)),
+    bind("svfG", String(svfG)),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
@@ -13054,7 +13265,31 @@ const LAYER_CONTROLS = [
   ["shpFold", "fold", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "shpFoldValue"],
   ["shpBits", "crushBits", (v) => v, (v) => v, null, null],
   ["shpRate", "crushHz", (v) => v, (v) => v, null, null],
+  // The voice filter (H3): the cutoff on the trace filter's law, resonance
+  // as a Q from 0.71 to 20, and its envelope's four in the amplifier's units.
+  ["vcfType", "vcfType", (v) => v, (v) => v, null, null],
+  ["vcfCut", "vcfCutoff", (v) => cutoffHz(v), (v) => Math.round(CUTOFF_STEPS * Math.log(v / 20) / Math.log(1000)),
+   (v) => hzReading(cutoffHz(v)), "vcfCutValue"],
+  ["vcfRes", "vcfQ", (v) => resonanceQ(v), (v) => Math.round(100 * Math.log(v / Math.SQRT1_2) / Math.log(20 / Math.SQRT1_2)),
+   (v) => "Q " + resonanceQ(v).toFixed(2), "vcfResValue"],
+  ["vcfTrack", "vcfTrack", (v) => v / 100, (v) => Math.round(v * 100), (v) => Math.round(v) + "%", "vcfTrackValue"],
+  ["vcfEnvAmt", "vcfEnv", (v) => v / 10, (v) => Math.round(v * 10),
+   (v) => (v > 0 ? "+" : "") + (v / 10).toFixed(1) + " oct", "vcfEnvAmtValue"],
+  ["vcfAtk", "fAttackMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "vcfAtkValue"],
+  ["vcfDec", "fDecayMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "vcfDecValue"],
+  ["vcfSus", "fSustain", (v) => v / 100, (v) => Math.round(v * 100), (v) => (v / 100).toFixed(2), "vcfSusValue"],
+  ["vcfRel", "fReleaseMs", (v) => v, (v) => v, (v) => Math.round(v) + " ms", "vcfRelValue"],
 ];
+// Resonance as a Q: 0.71, the flattest, at nought, and 20 at a hundred, evenly
+// in ratio between.
+const resonanceQ = (v) => Math.SQRT1_2 * Math.pow(20 / Math.SQRT1_2, v / 100);
+const hzReading = (hz) => (hz >= 1000 ? (hz / 1000).toFixed(1) + " kHz" : Math.round(hz) + " Hz");
+// The filter's rows other than its menu are shown only while it is on: a
+// cutoff with nothing to cut is a slider moving nothing.
+function syncVcfRows() {
+  const on = el.vcfType.value !== "0";
+  for (const row of el.vcfGroup.querySelectorAll(".vcf-on")) row.hidden = !on;
+}
 /* The drive as the gain it gives a quiet signal, which is the number that
    says how hard it is being pushed: tanh(g x) / tanh(g) near nought is
    g / tanh(g) times x. */
@@ -13117,6 +13352,7 @@ function showLayerOnPanel(layer) {
   el.toneRows.dataset.layerEdit = layer === 1 ? "b" : "a";
   el.genTitle.textContent = layer === 1 ? "Generator \u00b7 layer B" : "Generator";
   syncBars();
+  syncVcfRows();
 }
 
 /* The drawbars section and the registration beside the Shape menu: which
@@ -14265,6 +14501,7 @@ const DEFAULTS = {
   delayMix: 0, delayMs: 375, delaySync: "", delayFeedback: 35, delayPingPong: false,
   oscRatio: 1, oscFm: 0, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square",
   oscUnison: 1, oscSpread: 12, shpDrive: 0, shpFold: 0, shpBits: 0, shpRate: 0, shpOS: 2,
+  vcfType: 0, vcfCut: 667, vcfRes: 0, vcfTrack: 0, vcfEnvAmt: 0, vcfAtk: 5, vcfDec: 300, vcfSus: 30, vcfRel: 300,
   chorusMix: 0, chorusRate: 60, chorusDepth: 30, chorusTime: 120, chorusFeedback: 0,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
@@ -14288,17 +14525,21 @@ const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: 
                      envSustain: "bSus", envRelease: "bRel", bars: "bBars", morph: "bMorph",
                      oscRatio: "bRatio", oscFm: "bFm", oscRing: "bRing", oscSync: "bSync", oscSub: "bSub",
                      oscSubOct: "bSubOct", oscSubShape: "bSubShape", oscUnison: "bUnison", oscSpread: "bSpread",
-                     shpDrive: "bDrive", shpFold: "bFold", shpBits: "bBits", shpRate: "bRate" };
+                     shpDrive: "bDrive", shpFold: "bFold", shpBits: "bBits", shpRate: "bRate",
+                     vcfType: "bVcf", vcfCut: "bVcfCut", vcfRes: "bVcfRes", vcfTrack: "bVcfTrack",
+                     vcfEnvAmt: "bVcfEnv", vcfAtk: "bVcfAtk", vcfDec: "bVcfDec", vcfSus: "bVcfSus", vcfRel: "bVcfRel" };
 // The controls whose value is text rather than a number.
 const LAYER_TEXT = new Set(["shape", "bars", "oscSubShape"]);
 /* Layer A's oscillator controls in a code, under their own ids, and what a
    value has to be to be used: a slider's range, or one of a menu's options.
    Additive fields, so a code from before them has everything off. */
 const OSC_RANGES = { oscFm: [0, 100], oscRing: [0, 100], oscSync: [100, 800], oscSub: [0, 100],
-                     oscSpread: [0, 50], shpDrive: [0, 100], shpFold: [0, 100] };
-const OSC_MENUS = ["oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate"];
-// The voice's controls in the layer table: the oscillator's and the shaping's.
-const isVoiceControl = (id) => id.startsWith("osc") || id.startsWith("shp");
+                     oscSpread: [0, 50], shpDrive: [0, 100], shpFold: [0, 100],
+                     vcfCut: [0, 1000], vcfRes: [0, 100], vcfTrack: [0, 100], vcfEnvAmt: [-40, 40],
+                     vcfAtk: [0, 1000], vcfDec: [1, 2000], vcfSus: [0, 100], vcfRel: [1, 2000] };
+const OSC_MENUS = ["oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"];
+// The voice's controls in the layer table: its oscillator, shaping and filter.
+const isVoiceControl = (id) => id.startsWith("osc") || id.startsWith("shp") || id.startsWith("vcf");
 
 function snapshotLayerB() {
   const toneB = genSettings(1);
@@ -14327,6 +14568,9 @@ function snapshot() {
     oscSubShape: a("oscSubShape"), oscUnison: Number(a("oscUnison")), oscSpread: Number(a("oscSpread")),
     shpDrive: Number(a("shpDrive")), shpFold: Number(a("shpFold")), shpBits: Number(a("shpBits")),
     shpRate: Number(a("shpRate")), shpOS: Number(el.shpOS.value),
+    vcfType: Number(a("vcfType")), vcfCut: Number(a("vcfCut")), vcfRes: Number(a("vcfRes")),
+    vcfTrack: Number(a("vcfTrack")), vcfEnvAmt: Number(a("vcfEnvAmt")), vcfAtk: Number(a("vcfAtk")),
+    vcfDec: Number(a("vcfDec")), vcfSus: Number(a("vcfSus")), vcfRel: Number(a("vcfRel")),
     freq: Number(el.freq.value),
     amp: Number(a("amp")),
     interval: Number(el.interval.value),
@@ -14475,6 +14719,7 @@ function restore(partial) {
     genSet(field, law(LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value)), 0);
     if (say) el[label].textContent = say(Number(el[id].value));
   }
+  syncVcfRows();
   el.figure.dispatchEvent(new Event("change"));
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
@@ -15819,8 +16064,10 @@ for (const [id, field, law, , say, label] of LAYER_CONTROLS) {
     const v = LAYER_TEXT.has(id) ? el[id].value : Number(el[id].value);
     if (say) el[label].textContent = say(v);
     genSet(field, law(v), panelLayer);
+    if (id === "vcfType") syncVcfRows();
   });
 }
+syncVcfRows();
 
 // Page-wide, so layer A's tone: the core reads it from there for both.
 el.shpOS.addEventListener("change", () => genSet("shapeOS", Number(el.shpOS.value)));
@@ -16707,7 +16954,8 @@ const SEARCH_SYNONYMS = {
   clipper: "clip", oversample: "oversampling", aliasing: "oversampling",
   wavefolder: "fold radial", bitcrusher: "crush snap", crush: "crush snap",
   distortion: "drive fold clip mirror", overdrive: "drive clip", saturation: "drive clip",
-  lofi: "crush rate", decimate: "rate", samplerate: "rate", swirl: "twist", reflect: "kaleidoscope mirror",
+  lofi: "crush rate", vcf: "voice filter cutoff", sweep: "cutoff envelope", tracking: "track",
+  keytrack: "track", brightness: "cutoff", wah: "cutoff voice filter", decimate: "rate", samplerate: "rate", swirl: "twist", reflect: "kaleidoscope mirror",
   echo: "echo delay", reverb: "delay chorus", flanger: "chorus", width: "scale", balance: "scale",
   crossfeed: "shear",
   fm: "fm ratio", dx7: "fm ratio", bell: "fm ratio", modulator: "ratio fm ring",

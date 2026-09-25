@@ -139,6 +139,13 @@ with sync_playwright() as pw:
         sh = report["shaped"]
         check("and with drive, fold and crush on it too, within the overshoot a band-limited square has",
               sh["finite"] and 0.1 < sh["peak"] <= 0.5 * 1.15, str(sh))
+        fl = report["filtered"]
+        # A 220 Hz sine under a resonant low pass tracked to 673 Hz comes out
+        # lifted, 0.546 of a sine at 0.5. The first version asked only for a
+        # finite, audible peak, and passed with the filter missing from the
+        # worklet altogether, on the plain sine at exactly 0.5.
+        check("and through the voice filter, whose resonance lifts the sine: 0.546, not the plain 0.5",
+              fl["finite"] and 0.53 < fl["peak"] < 0.56, str(fl))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

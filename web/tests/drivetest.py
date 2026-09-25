@@ -229,14 +229,23 @@ with sync_playwright() as pw:
       const v = [];
       for (let k = 0; k < 8; k++) v.push({ note: 48 + k * 3, freq: 130.81 * Math.pow(2, k / 4), velocity: 1, role: k ? 'u' : 'x' });
       core.set('voices', v); core.set('voices', v, 1); core.set('shape', 'ramp', 1);
-      for (const layer of [0, 1]) { core.set('drive', 0.5, layer); core.set('fold', 0.3, layer); core.set('crushBits', 6, layer); }
+      for (const layer of [0, 1]) {
+        core.set('drive', 0.5, layer); core.set('fold', 0.3, layer); core.set('crushBits', 6, layer);
+        core.set('vcfType', 1, layer); core.set('vcfTrack', 1, layer); core.set('vcfEnv', 2, layer);
+      }
       const n = 44100, a = new Float32Array(n), b = new Float32Array(n);
       const c = new Float32Array(n), d = new Float32Array(n), e = new Float32Array(n), f = new Float32Array(n);
       core.block(a, b, 4410, c, d, e, f);
-      const t0 = performance.now(); core.block(a, b, n, c, d, e, f); return performance.now() - t0;
+      // The best of three: what the code costs, rather than what else the
+      // machine was doing during one of them.
+      let best = Infinity;
+      for (let r = 0; r < 3; r++) {
+        const t0 = performance.now(); core.block(a, b, n, c, d, e, f); best = Math.min(best, performance.now() - t0);
+      }
+      return best;
     }""")
-    print("    one second of sixteen voices over two layers, driven, folded and crushed: %.0f ms" % cost)
-    check("sixteen shaped voices over two layers run in under half of real time", cost < 500, "%.0f ms" % cost)
+    print("    one second of sixteen voices over two layers, driven, folded, crushed and filtered, best of three: %.0f ms" % cost)
+    check("sixteen shaped and filtered voices over two layers run in under half of real time", cost < 500, "%.0f ms" % cost)
 
     print("\n--- the panel and setup codes ---")
     page = p.evaluate("""async () => {

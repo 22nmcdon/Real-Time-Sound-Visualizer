@@ -200,7 +200,7 @@ with sync_playwright() as pw:
     # is that ALL of a section's secondary content moves and none of it stays
     # behind - not that the filter has two paragraphs, which is a fact about
     # today's prose and changed the first time a paragraph was added.
-    p.evaluate("() => setBenchTab('shape')"); p.wait_for_timeout(200)
+    p.evaluate("() => setBenchTab('picture')"); p.wait_for_timeout(200)
     had = p.evaluate("""() => ({
       notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
       rows: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
@@ -310,6 +310,12 @@ with sync_playwright() as pw:
       await settle();
       out['poly+split+keys, morph, a radial limit'] = fits();
       el.planeLimit.value = '0'; el.planeLimit.dispatchEvent(new Event('change'));
+      // The voice filter's rows, shown only while it is on, on the Shape tab
+      // with the morph's row and four other sections.
+      el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split+keys, morph, the voice filter on'] = fits();
+      el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change'));
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
       el.midiEditA.click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));

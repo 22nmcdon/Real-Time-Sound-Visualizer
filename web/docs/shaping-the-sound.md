@@ -241,7 +241,23 @@ before its envelope, and per layer.
 - *Crush* is a bit depth and a held sample rate, at the base rate on
   purpose.
 
-`drivetest.py` holds it. H3 is not built.
+`drivetest.py` holds it.
+
+**H3**, the same way: a filter in every note, after its shaping and before its
+level, per layer.
+
+- *The filter.* A state-variable filter (Simper's topology-preserving form)
+  with low, band, high and notch outputs. At a fixed cutoff it is Web Audio's
+  biquad to 0.00013 dB, and it stays stable swept at audio rate.
+- *Key tracking.* From middle C.
+- *Its own envelope.* A second ADSR per note, with an amount in octaves
+  either way.
+- *A destination.* The cutoff can take a source.
+
+The lane filter is unchanged and is still the measuring filter. The
+filter's rows show only while it is on.
+
+`vcftest.py` holds it. Stage H is built.
 
 ### H1 · a second oscillator, and what it is for
 
