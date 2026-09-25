@@ -3565,9 +3565,12 @@ body[data-view="bench"] .dock  { order: 3; }
 
     <ul class="help-list" id="panelKeys" hidden>
       <li class="help-lede">Presets are the front door. Press <i>Preset</i>, on the left of the
-        strip, for a browser of a hundred of them in sixteen sections &mdash; organ and FM
+        strip, for a browser of over a hundred of them in twenty sections &mdash; organ and FM
         keys, basses and pads, bells, grit, figures, the plane, echoes, drawings, rhythm &mdash;
-        each with a line on what to listen for and what to look at.</li>
+        each with a line on what to listen for and what to look at. Three sections are for
+        playing: chords, splits and layers, and the wheel, the pedal and the strike of a key
+        routed onto the sound. <i>Live effects</i> puts the plane and the echoes on your
+        microphone, line input or file.</li>
 
       <li><b>Browsing</b>
         <span>Choosing one loads it and leaves the browser open, so you can listen through a
@@ -15437,6 +15440,85 @@ const PRESETS = [
      "A fifth in five nearly-identical copies: the figure trembles, slowly, without ever quite blurring."],
   ], "generator"],
 
+  /* Playing it: presets that are about the hands as much as the sound. Each
+     routes something a keyboard does - how hard a key is struck, how many
+     notes are held and how far apart, how high the melody is, the wheel, the
+     pedal, the envelope - onto something the voice does. A routing whose
+     source is not registered yet (the key, the notes, a controller that has
+     not moved) waits rather than being dropped, so these load on a page with
+     no keyboard and come alive the moment one is played. */
+  ["Poly keys", [
+    ["Struck FM piano", { shape: "sine", oscRatio: 1, oscFm: 10, freq: 220, timebase: 4, midiMode: "poly",
+                          atk: 2, dec: 1000, sus: 15, rel: 500, mod: "midi.key>gen.fm@0.500" },
+     "An electric piano that brightens with how hard you strike: the key's velocity lifts the FM index. Play it."],
+    ["Blooming folds", { shape: "triangle", freq: 220, timebase: 4, midiMode: "poly", shpFold: 5,
+                         atk: 5, dec: 700, sus: 30, rel: 400, mod: "env.note>gen.fold@0.600" },
+     "The wavefolder follows the envelope: each chord blooms bright as it is struck and folds back to round as it fades. Play it."],
+    ["Chords darken", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", oscUnison: 3, oscSpread: 10,
+                        vcfType: 1, vcfCut: 767, atk: 10, rel: 400, mod: "notes.count>gen.vcf@-0.600" },
+     "One note is bright and a full chord is dark: the filter closes as notes are added, so a big voicing stays clear. Play it."],
+    ["Melody-lit strings", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", oscUnison: 3, oscSpread: 8,
+                             vcfType: 1, vcfCut: 600, chorusMix: 40, atk: 150, rel: 900,
+                             mod: "notes.top>gen.vcf@0.500" },
+     "The higher your top note, the brighter the whole chord: strings that open up as the melody climbs. Play it."],
+    ["Hidden voices", { shape: "sine", freq: 220, timebase: 4, midiMode: "poly", midiDrawCount: 2, oscRatio: 2,
+                        atk: 5, dec: 800, sus: 40, rel: 500, mod: "notes.inner>gen.fm@0.700" },
+     "Two notes are drawn; how hard you play the others turns up the FM on all of them. The inner voices colour the chord you see. Play it."],
+    ["Spread swirl", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, midiMode: "dyad",
+                                     atk: 20, rel: 600, mod: "notes.spread>gen.twist@0.600" }, XY),
+     "Two notes, one in each ear. Close together the figure is still; spread your hands and it swirls, and so does the stereo image. Play it."],
+  ], "generator"],
+
+  ["Split and layer", [
+    ["Bass and keys", { shape: "sine", freq: 110, timebase: 5, midiMode: "poly", layers: "split", splitAt: 55,
+                        oscRatio: 1, oscFm: 25, oscSub: 40, atk: 2, dec: 400, sus: 70, rel: 120,
+                        bShape: "sine", bRatio: 1, bFm: 12, bSub: 0, bAtk: 2, bDec: 1000, bSus: 20, bRel: 400,
+                        mod: "midi.key>gen.fm@0.300" },
+     "Split at G3: an FM bass with a sub under the left hand, an electric piano under the right, both brighter the harder you strike. Play it."],
+    ["Pad under a bell", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", layers: "layer",
+                           oscUnison: 5, oscSpread: 12, vcfType: 1, vcfCut: 600, atk: 200, rel: 1500, chorusMix: 30,
+                           bShape: "sine", bRatio: 3.5, bFm: 20, bUnison: 1, bVcf: 0,
+                           bAtk: 1, bDec: 1000, bSus: 0, bRel: 1500, mod: "midi.pedal>gen.vcf@0.500" },
+     "Every key plays twice: a saw pad swelling underneath and a 7:2 FM bell struck on top. The pedal opens the pad's filter; the bell has none. Play it."],
+    ["Left hand against right", Object.assign({ shape: "triangle", freq: 220, timebase: 4, midiMode: "poly",
+                                                layers: "split", splitAt: 60, layerPair: "against",
+                                                midiDrawCount: 3, midiDrawWhichB: "highest", bShape: "sine",
+                                                atk: 10, rel: 300, mod: "notes.spread>gen.twist@0.400" }, XY),
+     "The comping drawn on X against the melody's top two notes on Y: the figure is the harmony between your hands, and it swirls as they move apart. Play it."],
+    ["Sub under a sync lead", { shape: "sine", freq: 110, timebase: 5, midiMode: "poly", layers: "split", splitAt: 60,
+                                oscSub: 60, bShape: "ramp", bSub: 0, bSync: 250, bVcf: 1, bVcfCut: 700, bVcfRes: 30,
+                                delayMix: 20, delaySync: "1/8d", delayFeedback: 30, mod: "cc.1>gen.vcf@0.600" },
+     "A sine and its sub for the left hand; a torn sync saw for the right, whose filter the mod wheel opens. The bass has no filter for it to move. Play it."],
+    ["Organ over strings", { shape: "drawbars", bars: "888000000", freq: 220, timebase: 5, midiMode: "poly",
+                             layers: "layer", chorusMix: 25, bShape: "ramp", bUnison: 3, bSpread: 8, bVcf: 1,
+                             bVcfCut: 650, bAtk: 200, bRel: 900, bAmp: 60, mod: "cc.1>gen.bar3@0.600" },
+     "Jazz-organ drawbars with a slow string layer on every key: the strings swell in behind each chord, and the mod wheel pulls out the organ's 4' bar. Play it."],
+  ], "generator"],
+
+  ["Hands on the sound", [
+    ["Wheel wah", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", vcfType: 2, vcfCut: 466, vcfRes: 70,
+                    mod: "cc.1>gen.vcf@0.700" },
+     "A narrow band pass on every note, swept by the mod wheel: a wah played with the left hand. Play it, and move the wheel."],
+    ["Wheel into the fold", { shape: "triangle", freq: 220, timebase: 4, midiMode: "poly", delayMix: 25,
+                              delaySync: "1/8d", delayFeedback: 40, mod: "cc.1>gen.fold@0.900" },
+     "The mod wheel folds every note back on itself, from a clean triangle to a buzz, with dotted-eighth echoes. Play it, and move the wheel."],
+    ["Pedal into drive", { shape: "square", freq: 220, timebase: 4, midiMode: "poly", shpDrive: 10,
+                           vcfType: 1, vcfCut: 650, mod: "midi.pedal>gen.drive@0.800" },
+     "The sustain pedal holds the notes and pushes them into overdrive: lift it and the chord is clean again. Play it."],
+    ["Struck echo lead", { shape: "square", freq: 440, timebase: 3, midiMode: "mono", vcfType: 1, vcfCut: 600,
+                           vcfRes: 40, delayMix: 35, delaySync: "1/8d", delayFeedback: 45, delayPingPong: true,
+                           mod: "midi.key>gen.vcf@0.500" },
+     "A square lead whose filter opens with how hard you strike, echoing from side to side in dotted eighths. Play it."],
+    ["Twist on the wheel", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, midiMode: "dyad",
+                                           delayMix: 30, delaySync: "1/4", delayFeedback: 40, delayPingPong: true,
+                                           mod: "cc.1>gen.twist@0.800" }, XY),
+     "Two notes as a figure; the mod wheel swirls it, and the echoes trail the swirl as ghosts. Play it, and move the wheel."],
+    ["Struck kaleidoscope", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, midiMode: "dyad",
+                                            planeKaleido: 6, atk: 5, dec: 600, sus: 40, rel: 500,
+                                            mod: "env.note>gen.twist@0.500" }, XY),
+     "A kaleidoscope of six, and the envelope on the twist: each note strikes a turn into the pattern that unwinds as it fades. Play it."],
+  ], "generator"],
+
   ["Bells and metal", [
     ["Bell", { shape: "sine", freq: 440, timebase: 4, midiMode: "poly", oscRatio: 3.5, oscFm: 30,
                atk: 1, dec: 1000, sus: 10, rel: 2000, delayMix: 20, delayFeedback: 30 },
@@ -15651,6 +15733,30 @@ const PRESETS = [
      "A slow window: the shape of each note, its attack and its fade, rather than its waveform."],
   ], "display"],
 
+  /* The plane and the echoes on what comes in (S1). Display presets in the
+     sense that matters here - they name nothing about the generator and land
+     on whatever is playing - but they change the sound as well as the
+     picture, which is the point: on a monitored line input or a file, what
+     is drawn is what is heard. On the tone they do the same to the tone. */
+  ["Live effects", [
+    ["Octave up, on your input", { display: "yt", timebase: 5, persistence: "0", trigMode: "auto", planeMirror: 3 },
+     "Your signal folded onto its positive half: to the ear, the octave-up pedal. The waveform shows every trough turned into a peak."],
+    ["Your level, swirling", { display: "xy", timebase: 5, persistence: "0.12", mod: "env.live>gen.twist@0.600" },
+     "The louder you play, the further the figure turns into itself: your own level on the twist. A mono input starts as a diagonal."],
+    ["Your input, kaleidoscope", { display: "xy", timebase: 5, persistence: "0.12", planeKaleido: 6 },
+     "Six wedges of reflections of whatever comes in, heard as a harmonic smear tied to the six."],
+    ["Ghost echoes", { display: "xy", timebase: 5, persistence: "0.12", delayMix: 50, delaySync: "1/4",
+                       delayFeedback: 50, delayPingPong: true },
+     "Quarter-note echoes, side to side. On a stereo input each repeat is a ghost of the figure mirrored across the diagonal; a mono one has no sides to swap, and its ghosts trail along its line."],
+    ["Ensemble", { display: "xy", timebase: 5, persistence: "0.12", chorusMix: 50, chorusDepth: 50 },
+     "A chorus in quadrature: one voice becomes a breathing, turning figure, and the sound widens with it."],
+    ["Crushed input", { display: "yt", timebase: 5, persistence: "0", trigMode: "auto", planeSnap: 3 },
+     "Three bits: your signal on a coarse grid, staircase and all, heard as the grit of an early sampler."],
+    ["Folding at the edge", { display: "xy", timebase: 5, persistence: "0.12", planeLimit: 2, planeRadius: 30,
+                              mod: "lfo1>gen.radius@0.300", l0r: 10 },
+     "A stereo wavefolder at a radius that breathes: quiet playing stays clean, loud playing folds back into petals."],
+  ], "display"],
+
   ["Analysis", [
     ["Harmonics and THD", { shape: "square", freq: 110, timebase: 4, pHarm: true, pGoni: false },
      "A square wave with the harmonics pane open: each odd harmonic's level, and the distortion they add up to."],
@@ -15794,6 +15900,12 @@ const PRESET_ABOUT = {
     + "the on-screen one will do; without one they sound as a held note.",
   "Bass": "Low voices: subs, filters and drive, set to play one note at a time.",
   "Pads": "Wide and slow: unison, chorus and echo. Several are drawn in X\u2013Y, where the width is a figure.",
+  "Poly keys": "Chords with somewhere to go: how hard you strike, how many notes you hold, how far apart "
+    + "and how high, each routed onto the sound. They wait for a keyboard, and the on-screen one will do.",
+  "Split and layer": "Two sets of voices from one keyboard: a split for the left hand and the right, or a "
+    + "layer that plays both on every key.",
+  "Hands on the sound": "The mod wheel, the sustain pedal and the strike of a key, patched onto filter, fold, "
+    + "drive and twist. A routing from a controller waits for the first time that controller moves.",
   "Bells and metal": "FM and ring modulation at ratios that are not harmonic, which is what makes metal "
     + "sound like metal.",
   "Grit": "Drive, the wavefolder and the crusher, inside every note.",
@@ -15807,6 +15919,8 @@ const PRESET_ABOUT = {
     + "a melody. None of these needs a keyboard.",
   "Live": "For a microphone, a line input or a file. These set the display only, and land on whatever is "
     + "playing.",
+  "Live effects": "For a microphone, a line input or a file: the plane and the echoes on what comes in, "
+    + "drawn and heard alike. They land on whatever is playing; a rack's stems and a band split are left alone.",
   "Analysis": "The measuring side: harmonics, the tuner, cursors and the spectrogram.",
   "Saved": "Your own, saved in this browser. Save the current setup, or share it as a code, from "
     + "Settings \u2192 Presets.",

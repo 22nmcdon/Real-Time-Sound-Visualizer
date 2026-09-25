@@ -2240,9 +2240,10 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 104 of them in sixteen sections, from *Start here* and *Organ* through
-*Keys and leads*, *Bells and metal*, *Grit*, *The plane* and *Echoes* to
-*Rhythm and key*, *Live* and *Analysis*.
+are 128 of them in twenty sections, from *Start here* and *Organ* through
+*Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
+*Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
+*Live*, *Live effects* and *Analysis*.
 
 - *The browser.* The strip's Preset button opens a dialog with the sections
   down the side and a card for each preset. Each card has a line on what to
@@ -2352,3 +2353,28 @@ against silence. The harness keeps them by name now, runs the generator as
 before, and gives the effects processor checks of its own: an exact copy with
 nothing on, a mono input as two identical halves, a mirror that is |x| sample
 for sample, and silence in when nothing is connected.
+
+**Presets for playing, and presets for what you play.** Four sections were
+added once live inputs could take effects (S1), because most of the library
+was about the generator on its own. *Poly keys*, *Split and layer* and
+*Hands on the sound* each route something a keyboard does onto the voice:
+how hard a key is struck, how many notes are held, how far apart and how
+high, the envelope, the mod wheel, the pedal. *Live effects* puts the plane
+and the echoes on a microphone, a line input or a file.
+
+- *Why a routing the page cannot resolve is a risk here.* The matrix keeps a
+  routing whose source is not registered, so a preset loaded before the
+  keyboard comes alive when it does. The same rule keeps a misspelt source
+  forever, silently. `performtest.py` plays a wide chord, struck hard, under
+  the pedal with the wheel up, and requires every routing in these sections
+  to compile, to be at rest before and to move when played. Its null is a
+  misspelt source put through the same measurement.
+- *What the first draft got wrong.* Four of the five split and layer presets
+  routed nothing a hand moves; each has a routing now. Layer B cannot draw
+  fewer than two notes, so a draw count of one came back as two; that preset
+  draws B's top two. And *Ghost echoes* promised figures mirrored across the
+  diagonal, which a mono input cannot give: ping-pong swaps the sides, and a
+  mono input's sides are the same. Its line now says so.
+- *Delay is not a destination*, so no preset routes a hand onto it; the ones
+  that want echoes set them. Its feedback is kept off the matrix on purpose,
+  and its mix and time could be added.
