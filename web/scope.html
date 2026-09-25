@@ -288,6 +288,15 @@ select, input[type="number"] {
 .menu-row:first-of-type { margin-top: 0; }
 .menu-label { font-size: 12.5px; color: var(--text-soft); flex: 0 0 96px; }
 .menu-row .grow { flex: 1 1 110px; min-width: 0; display: flex; align-items: center; gap: 8px; }
+/* A select is as wide as its longest option and a slider has a width of its
+   own, and a flex item will not shrink below either unless told: the
+   Interval menu pushed its patch ring 23 px out of its column. */
+.menu-row .grow > select, .menu-row .grow > input[type="range"] { min-width: 0; }
+/* The lag's Auto and Set, its slider and its reading are more than one
+   line of a column: the slider and reading go under the switch rather than
+   over the next section, which they did by 115 px. */
+#lagRow .grow { flex-wrap: wrap; row-gap: 6px; }
+#lagRow .grow > input[type="range"] { flex: 1 1 60px; }
 .menu-note { font-size: 12.5px; color: var(--text-soft); margin: 8px 0 0; max-width: 62ch; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .check input { accent-color: var(--blush-deep); margin: 0; }
@@ -611,7 +620,7 @@ body[data-view="bench"] .dock  { order: 3; }
    would make it a control the search offers: "hammond" found the sentence
    before it found the bars. */
 .bars-state {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px;
   margin: 2px 0 8px;
 }
 .bars-state[hidden] { display: none; }
@@ -1948,15 +1957,74 @@ body[data-view="bench"] .dock  { order: 3; }
                 </select>
               </div>
             </div>
-            <label class="check"><input type="checkbox" id="planeClip"> Radial clip</label>
-            <!-- Shown with the clip on, as the morph's row is with the morph: a
-                 radius slider with nothing to clip was a control that moved
+            <div class="menu-row" data-mod-dest="gen.twist" data-mod-control="planeTwist">
+              <label class="menu-label" for="planeTwist">Twist</label>
+              <div class="grow">
+                <input type="range" id="planeTwist" min="-100" max="100" value="0">
+                <span class="reading" id="planeTwistValue">0&deg;</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="planeKaleido">Kaleidoscope</label>
+              <div class="grow">
+                <select id="planeKaleido" style="flex:1 1 auto">
+                  <option value="0">Off</option>
+                  <option value="2">2 wedges</option><option value="3">3 wedges</option>
+                  <option value="4">4 wedges</option><option value="5">5 wedges</option>
+                  <option value="6">6 wedges</option><option value="8">8 wedges</option>
+                </select>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="planeLimit">Radial</label>
+              <div class="grow">
+                <select id="planeLimit" style="flex:1 1 auto">
+                  <option value="0">Off</option>
+                  <option value="1">Clip at the radius</option>
+                  <option value="2">Fold at the radius</option>
+                </select>
+              </div>
+            </div>
+            <!-- Shown with the clip or fold on, as the morph's row is with the
+                 morph: a radius with nothing at it was a control that moved
                  nothing, which modtest.py treats as a bug, and was right to. -->
             <div class="menu-row" id="planeRadiusRow" data-mod-dest="gen.radius" data-mod-control="planeRadius" hidden>
               <label class="menu-label" for="planeRadius">Radius</label>
               <div class="grow">
                 <input type="range" id="planeRadius" min="2" max="100" value="40">
                 <span class="reading" id="planeRadiusValue">0.40</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="planeSnap">Snap</label>
+              <div class="grow">
+                <select id="planeSnap" style="flex:1 1 auto">
+                  <option value="0">Off</option>
+                  <option value="6">6 bits</option><option value="5">5 bits</option>
+                  <option value="4">4 bits</option><option value="3">3 bits</option>
+                  <option value="2">2 bits</option><option value="1">1 bit</option>
+                </select>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="planeScaleX">Scale X</label>
+              <div class="grow">
+                <input type="range" id="planeScaleX" min="0" max="200" value="100">
+                <span class="reading" id="planeScaleXValue">1.00</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="planeScaleY">Scale Y</label>
+              <div class="grow">
+                <input type="range" id="planeScaleY" min="0" max="200" value="100">
+                <span class="reading" id="planeScaleYValue">1.00</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="planeShear">Shear</label>
+              <div class="grow">
+                <input type="range" id="planeShear" min="-100" max="100" value="0">
+                <span class="reading" id="planeShearValue">0.00</span>
               </div>
             </div>
             <div class="menu-row" data-more="1">
@@ -1978,11 +2046,100 @@ body[data-view="bench"] .dock  { order: 3; }
               Both work on the picture and on what you hear, and in poly on the nearly-mono
               chord that you hear as well as on the pair that is drawn.
               <br><br>
+              <i>Twist</i> turns each point by an angle in proportion to how far it is from the
+              middle: the loud parts swirl and the quiet middle stays still, a stereo rotation
+              that depends on level. <i>Kaleidoscope</i> folds every point's angle into one wedge
+              either side of the X axis, keeping its length, so the figure becomes its own
+              reflections. <i>Fold at the radius</i> reflects the figure back in each time it
+              reaches the circle, a stereo-linked wavefolder. <i>Snap</i> puts both channels on a
+              grid, a bitcrusher on the ear and pixels on the screen. Behind this section's
+              &ctdot;, <i>Scale X</i> and <i>Scale Y</i> are balance and width, and <i>Shear</i>
+              feeds some of Y into X; those three are exact, and add no delay.
+              <br><br>
               They run at twice the rate by default so that what they add above half the sample
               rate is filtered off rather than folded back as notes that are not in the key.
               Four times is cleaner still and costs twice as much; once is the arithmetic on
-              its own. While either is on the pair is about 0.7 ms later, and switching one on
-              moves the picture by that much.</p>
+              its own. While any of the bending ones is on the pair is about 0.7 ms later, and
+              switching one on moves the picture by that much.</p>
+          </div>
+
+          <div class="menu-group" id="timeGroup" data-home="bench" data-tab="shape">
+            <span class="menu-title">Delay and chorus</span>
+            <div class="menu-row">
+              <label class="menu-label" for="delayMix">Echo</label>
+              <div class="grow">
+                <input type="range" id="delayMix" min="0" max="100" value="0">
+                <span class="reading" id="delayMixValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="delayMs">Time</label>
+              <div class="grow">
+                <input type="range" id="delayMs" min="10" max="2000" value="375">
+                <span class="reading" id="delayMsValue">375 ms</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="delaySync">Sync</label>
+              <div class="grow"><select id="delaySync" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="delayFeedback">Feedback</label>
+              <div class="grow">
+                <input type="range" id="delayFeedback" min="0" max="90" value="35">
+                <span class="reading" id="delayFeedbackValue">0.35</span>
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" id="delayPingPong"> Ping-pong</label>
+            <div class="menu-row">
+              <label class="menu-label" for="chorusMix">Chorus</label>
+              <div class="grow">
+                <input type="range" id="chorusMix" min="0" max="100" value="0">
+                <span class="reading" id="chorusMixValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="chorusRate">Rate</label>
+              <div class="grow">
+                <input type="range" id="chorusRate" min="5" max="500" value="60">
+                <span class="reading" id="chorusRateValue">0.60 Hz</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="chorusDepth">Depth</label>
+              <div class="grow">
+                <input type="range" id="chorusDepth" min="0" max="100" value="30">
+                <span class="reading" id="chorusDepthValue">3.0 ms</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="chorusTime">Centre</label>
+              <div class="grow">
+                <input type="range" id="chorusTime" min="10" max="300" value="120">
+                <span class="reading" id="chorusTimeValue">12.0 ms</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="chorusFeedback">Feedback</label>
+              <div class="grow">
+                <input type="range" id="chorusFeedback" min="0" max="90" value="0">
+                <span class="reading" id="chorusFeedbackValue">0.00</span>
+              </div>
+            </div>
+            <p class="menu-note">After the plane, on the generator's figure and on what you hear.
+              <i>Echo</i> is how loud the repeats are, and nought is off. In X&ndash;Y they are
+              ghost figures trailing the live one; with <i>Ping-pong</i> each repeat comes back on
+              the other channel, so the ghosts alternate between the figure and its reflection
+              across the diagonal. <i>Sync</i> sets the time in note values from the tempo, on
+              the Sources tab, and follows it. <i>Feedback</i> stops short of one, and nothing
+              can be patched onto it: feedback that a source could push towards one would be a
+              loop inside the loop. The longest time is two seconds.
+              <br><br>
+              <i>Chorus</i> is a copy of the pair a few milliseconds late, the lateness swinging
+              at <i>Rate</i>, one channel's with a sine and the other's with its cosine, so the
+              figure breathes and turns. Behind the &ctdot;, <i>Depth</i> is how far it swings,
+              <i>Centre</i> how late it sits, and <i>Feedback</i> makes it a flanger: short, and
+              fed back, it rings.</p>
           </div>
 
           <div class="menu-group" data-home="bench" data-tab="shape">
@@ -2472,18 +2629,37 @@ body[data-view="bench"] .dock  { order: 3; }
         <span>Under <i>Plane</i>, on the Shape tab, for the generator. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
         is full-wave rectification, the octave-up pedal: a mirrored sine is its octave, every
-        harmonic even. <i>Radial clip</i> holds the figure inside a circle and rounds the loud
-        parts off towards it, keeping every point's direction, so it is a clipper that does
-        not bend the stereo image. Its radius can take a source. Both act on what is drawn and
-        on what is heard, and in poly on the chord you hear as well as the notes that are
-        drawn.
+        harmonic even. <i>Radial</i> is what happens at the circle: <i>Clip</i> rounds the
+        loud parts off towards it, keeping every point's direction, so it is a clipper that
+        does not bend the stereo image; <i>Fold</i> reflects them back in, a wavefolder on
+        both channels at once. The radius can take a source. <i>Twist</i> turns each point by
+        an angle in proportion to its distance from the middle, so the loud parts swirl and
+        the quiet ones stay put &mdash; a stereo rotation that depends on level, and it can
+        take a source too. <i>Kaleidoscope</i> folds the figure into a wedge of its own
+        reflections. <i>Snap</i> puts both channels on a grid: a bitcrusher, and pixels.
+        Behind the &ctdot;, <i>Scale X</i> and <i>Scale Y</i> are balance and width, and
+        <i>Shear</i> leaks one channel into the other. All of it acts on what is drawn and on
+        what is heard, and in poly on the chord you hear as well as the notes that are drawn.
         <br><br>
-        They run at twice the sample rate, so that what they add above half the rate is
-        filtered away rather than folded back as notes that are nowhere in the key. At 4 kHz
-        the clip's worst stray tone is 27 dB down at once, 55 at twice and 108 at four times.
-        Behind the section's &ctdot; you can choose once or four times. While either is on,
-        the picture and sound are 0.7 ms later. A mirrored wave sits above zero, and AC
-        coupling takes that off what you hear.</span></li>
+        The bending ones run at twice the sample rate, so that what they add above half the
+        rate is filtered away rather than folded back as notes that are nowhere in the key.
+        At 4 kHz the clip's worst stray tone is 27 dB down at once, 55 at twice and 108 at
+        four times. The fold and the snap are rougher at any rate, which is their character.
+        Behind the section's &ctdot; you can choose once or four times. While any of them is
+        on, the picture and sound are 0.7 ms later; scale and shear cost nothing. A mirrored
+        wave sits above zero, and AC coupling takes that off what you hear.</span></li>
+
+      <li><b>Delay and chorus: echoes you can see</b>
+        <span>Under <i>Delay and chorus</i>, on the Shape tab, after the plane. <i>Echo</i> is
+        how loud the repeats are, nought for off; <i>Time</i> is free, or <i>Sync</i> sets it to
+        a note value of the tempo and it follows the tempo when that moves. <i>Feedback</i>
+        brings each repeat back again, and stops at 0.9 so it always dies away.
+        <i>Ping-pong</i> sends each repeat to the other side, so on the screen the ghost
+        figures alternate between the figure and its mirror image across the diagonal.
+        <i>Chorus</i> is a short delay whose time swings, one side on a sine and the other on
+        its cosine, so the figure breathes and turns; with <i>Feedback</i> behind the &ctdot;
+        it is a flanger. Neither feedback can take a source: a loop inside a loop is how a
+        patch runs away.</span></li>
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
@@ -3219,7 +3395,13 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "filterOn", "filterType", "filterCutoff", "filterCutoffValue",
                   "filterRes", "filterResValue",
                   "seeDry", "seeWet", "hearDry", "hearWet",
-                  "planeGroup", "planeMirror", "planeClip", "planeRadius", "planeRadiusValue", "planeRadiusRow",
+                  "planeGroup", "planeMirror", "planeRadius", "planeRadiusValue", "planeRadiusRow",
+                  "planeTwist", "planeTwistValue", "planeKaleido", "planeLimit", "planeSnap",
+                  "planeScaleX", "planeScaleXValue", "planeScaleY", "planeScaleYValue", "planeShear", "planeShearValue",
+                  "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
+                  "delayFeedback", "delayFeedbackValue", "delayPingPong", "chorusMix", "chorusMixValue",
+                  "chorusRate", "chorusRateValue", "chorusDepth", "chorusDepthValue", "chorusTime", "chorusTimeValue",
+                  "chorusFeedback", "chorusFeedbackValue",
                   "planeOS1", "planeOS2", "planeOS4",
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
@@ -3457,8 +3639,10 @@ const DRAWBAR_HARMONICS = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
 const DRAWBAR_SLOT = 7;
 // And the morph's, one slot after the last bar.
 const MORPH_SLOT = DRAWBAR_SLOT + 9;
-// And the radial clip's radius, after the morph.
+// And the radial limit's radius, after the morph.
 const RADIUS_SLOT = MORPH_SLOT + 1;
+// And the twist, after the radius.
+const TWIST_SLOT = RADIUS_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -3726,6 +3910,11 @@ function clockStep(now) {
     const beats = syncBeats(lfo.sync);
     if (beats > 0) lfo.rate = transport.bpm / 60 / beats;
   }
+  // A delay in note values follows the tempo too, when it moves.
+  if (typeof echo !== "undefined" && echo.sync) {
+    const ms = delayTimeMs();
+    if (ms !== echo.sent) { echo.sent = ms; genSet("delayMs", ms); if (el.delayMsValue) syncEchoPanel(); }
+  }
   // The panel follows a MIDI clock arriving, drifting and going, but only
   // when there is something new to say.
   const said = transport.from + Math.round(transport.bpm);
@@ -3848,11 +4037,15 @@ const GEN_DESTS = [
      there to avoid. The slider is hundredths of a station. */
   { id: "gen.morph", label: "Morph", slot: MORPH_SLOT,
     reach: (v, s) => Math.max(0, Math.min(300, v + s * 150)) },
-  /* How tight the radial clip holds the figure, in hundredths of full scale.
-     Half the range at full depth. Only while the clip is on; a radius with
-     nothing to clip is a slider moving nothing. */
-  { id: "gen.radius", label: "Clip radius", slot: RADIUS_SLOT,
+  /* Where the radial clip or fold acts, in hundredths of full scale. Half
+     the range at full depth. Shown only while a limit is chosen; a radius
+     with nothing at it is a slider moving nothing. */
+  { id: "gen.radius", label: "Radius", slot: RADIUS_SLOT,
     reach: (v, s) => Math.max(2, Math.min(100, v + s * 50)) },
+  /* The twist, in hundredths of a full turn per unit of length: half the
+     range at full depth, so a source swirls the figure a half-turn at most. */
+  { id: "gen.twist", label: "Twist", slot: TWIST_SLOT,
+    reach: (v, s) => Math.max(-100, Math.min(100, v + s * 50)) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -5671,11 +5864,37 @@ function makeGeneratorCore(rate, slots, lfos) {
        a stereo pair that turn out to be things done to its sound. Page-wide,
        and applied to every pair the generator makes - see `block`.
        `planeMirror` is a bitmask, 1 folding X onto its positive half and 2
-       folding Y; `planeRadius` is the radial clip's radius, 0 for off;
+       folding Y; `planeRadius` is where `planeLimit` acts;
        `planeOS` how many times over the non-linear stage runs (S2). */
     planeMirror: 0,
-    planeRadius: 0,
+    planeRadius: 0.4,
     planeOS: 2,
+    /* The rest of the plane. `planeLimit` is what happens at the radius:
+       0 nothing, 1 the clip, 2 the fold - it was `planeRadius > 0` meaning
+       "clip" until there were two things it could mean. The linear three
+       are a matrix, exact and outside the oversampling; twist is radians of
+       turn per unit of length; the kaleidoscope folds into a wedge of 1/n
+       of a turn (0 off); snap is a grid of 2^bits steps (0 off). */
+    planeLimit: 0,
+    planeScaleX: 1,
+    planeScaleY: 1,
+    planeShear: 0,
+    planeTwist: 0,
+    planeKaleido: 0,
+    planeSnap: 0,
+    /* I1, time: a delay and a chorus, after the plane, on every pair. Mix
+       nought is off. Feedback is clamped below one here, whatever arrives,
+       and neither is a destination: a feedback coefficient a source could
+       push towards one is a loop inside the loop (S4). */
+    delayMix: 0,
+    delayMs: 375,
+    delayFeedback: 0.35,
+    delayPingPong: false,
+    chorusMix: 0,
+    chorusRate: 0.6,
+    chorusDepthMs: 3,
+    chorusMs: 12,
+    chorusFeedback: 0,
 
     /* A chord, or null. Null is every mode this generator has always had: two
        channels from one pitch and an interval. A list is POLY - every held
@@ -5769,13 +5988,103 @@ function makeGeneratorCore(rate, slots, lfos) {
      every figure towards the diagonals. The two can be done in either order
      with the same result: the clip scales a pair by a function of its
      length, and a fold never changes a length. */
-  let opX = 0, opY = 0, pMirror = 0, pRadius = 0;
+  let opX = 0, opY = 0, pMirror = 0, pRadius = 0, pLimit = 0;
+  let pTwist = 0, pKaleido = 0, pSnap = 0;
   function planeOp(x, y) {
     if (pMirror & 1) x = Math.abs(x);
     if (pMirror & 2) y = Math.abs(y);
-    if (pRadius > 0) {
+    /* Twist: each point turned by an angle in proportion to its length, so
+       the loud parts of the figure swirl and the quiet middle stays put - a
+       level-dependent stereo rotation, which probably exists nowhere as a
+       sound because it only makes sense if you were looking at the pair as
+       a picture first. On a figure of constant length it IS a rotation. */
+    if (pTwist !== 0) {
+      const a = pTwist * Math.sqrt(x * x + y * y), c = Math.cos(a), s = Math.sin(a);
+      const tx = x * c - y * s;
+      y = x * s + y * c; x = tx;
+    }
+    /* Kaleidoscope: every point's angle folded into one wedge of 1/n of a
+       turn either side of +X, its length kept. The figure becomes a wedge
+       of reflections; the sound, a non-linearity whose harmonics are
+       related to n. */
+    if (pKaleido > 1) {
       const m = Math.sqrt(x * x + y * y);
-      if (m > 0) { const k = pRadius * Math.tanh(m / pRadius) / m; x *= k; y *= k; }
+      if (m > 0) {
+        const wedge = TWO_PI / pKaleido;
+        let a = Math.atan2(y, x) % wedge;
+        if (a < 0) a += wedge;
+        if (a > wedge / 2) a = wedge - a;
+        x = m * Math.cos(a); y = m * Math.sin(a);
+      }
+    }
+    // At the radius: the clip rounds the length off towards it; the fold
+    // reflects it back in, again and again, a stereo-linked wavefolder.
+    if (pLimit !== 0) {
+      const m = Math.sqrt(x * x + y * y);
+      if (m > 0) {
+        let to;
+        if (pLimit === 1) to = pRadius * Math.tanh(m / pRadius);
+        else { const t = m % (2 * pRadius); to = t <= pRadius ? t : 2 * pRadius - t; }
+        const k = to / m; x *= k; y *= k;
+      }
+    }
+    // Snap: both channels to a grid, a bitcrusher; last, so the grid is
+    // what comes out.
+    if (pSnap > 0) { x = Math.round(x / pSnap) * pSnap; y = Math.round(y / pSnap) * pSnap; }
+    opX = x; opY = y;
+  }
+
+  /* I1: a chorus and a delay, one of each for each pair, made the first
+     time they are wanted - a two-second delay line is 350 KB a pair.
+
+     The delay is a line a channel. Ping-pong crosses the feedback, so the
+     echoes of the left come back on the right and then the left: in X-Y
+     the ghosts of the figure alternate between its mirror images across
+     the diagonal. The read position glides over 50 ms when the time
+     changes - a tempo change, say - rather than jumping, which would click.
+
+     The chorus is a short line read at two places that move in quadrature,
+     one a sine and the other its cosine, so the two channels' delays swing
+     against each other and the figure breathes and turns. With feedback it
+     is a flanger. */
+  const DELAY_MAX = Math.ceil(2 * rate) + 4;
+  const CHORUS_MAX = Math.ceil(0.05 * rate) + 4;
+  const delayGlide = poleFor(50);
+  let chorusPhase = 0;
+  function makeTimeFx() {
+    return { dl: null, dr: null, dw: 0, dNow: -1, cl: null, cr: null, cw: 0 };
+  }
+  function readLine(buf, w, d, size) {
+    let at = w - d;
+    while (at < 0) at += size;
+    const i = Math.floor(at), f = at - i;
+    const j = i + 1 === size ? 0 : i + 1;
+    return buf[i] + (buf[j] - buf[i]) * f;
+  }
+  function timeStep(fx, x, y, cSin, cCos) {
+    if (tone.chorusMix > 0) {
+      if (fx.cl === null) { fx.cl = new Float32Array(CHORUS_MAX); fx.cr = new Float32Array(CHORUS_MAX); }
+      const base = tone.chorusMs * rate / 1000, depth = tone.chorusDepthMs * rate / 1000;
+      const lim = CHORUS_MAX - 3;
+      const wl = readLine(fx.cl, fx.cw, Math.max(1, Math.min(lim, base + depth * cSin)), CHORUS_MAX);
+      const wr = readLine(fx.cr, fx.cw, Math.max(1, Math.min(lim, base + depth * cCos)), CHORUS_MAX);
+      const fb = Math.max(0, Math.min(0.9, tone.chorusFeedback));
+      fx.cl[fx.cw] = x + fb * wl; fx.cr[fx.cw] = y + fb * wr;
+      fx.cw = fx.cw + 1 === CHORUS_MAX ? 0 : fx.cw + 1;
+      const m = tone.chorusMix;
+      x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
+    }
+    if (tone.delayMix > 0) {
+      if (fx.dl === null) { fx.dl = new Float32Array(DELAY_MAX); fx.dr = new Float32Array(DELAY_MAX); }
+      const want = Math.max(1, Math.min(DELAY_MAX - 3, tone.delayMs * rate / 1000));
+      fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide;
+      const echoL = readLine(fx.dl, fx.dw, fx.dNow, DELAY_MAX);
+      const echoR = readLine(fx.dr, fx.dw, fx.dNow, DELAY_MAX);
+      const fb = Math.max(0, Math.min(0.9, tone.delayFeedback));
+      if (tone.delayPingPong) { fx.dl[fx.dw] = x + fb * echoR; fx.dr[fx.dw] = y + fb * echoL; }
+      else { fx.dl[fx.dw] = x + fb * echoL; fx.dr[fx.dw] = y + fb * echoR; }
+      fx.dw = fx.dw + 1 === DELAY_MAX ? 0 : fx.dw + 1;
+      x += tone.delayMix * echoL; y += tone.delayMix * echoR;
     }
     opX = x; opY = y;
   }
@@ -5831,11 +6140,25 @@ function makeGeneratorCore(rate, slots, lfos) {
       },
     };
   }
-  // One for each pair: layer A's picture, layer B's, and the heard pair.
+  // One of each for each pair: layer A's picture, layer B's, and the heard pair.
   let planeFactor = 0, osA = null, osB = null, osHeard = null;
-  function planeStep(os, x, y) {
-    if (os === null) { planeOp(x, y); return; }
-    os.step(x, y); opX = os.out.x; opY = os.out.y;
+  const fxA = makeTimeFx(), fxB = makeTimeFx(), fxHeard = makeTimeFx();
+  let linearOn = false, nonlinearOn = false, timeOn = false;
+  let chorusSin = 0, chorusCos = 1;
+  /* A pair through the whole of it: the matrix, then the non-linear stage
+     inside the oversampling, then the chorus and the delay. */
+  function planeStep(os, fx, x, y) {
+    if (linearOn) {
+      const sx = tone.planeScaleX, sy = tone.planeScaleY;
+      const sheared = x + tone.planeShear * y;
+      x = sx * sheared; y = sy * y;
+    }
+    if (nonlinearOn) {
+      if (os === null) { planeOp(x, y); x = opX; y = opY; }
+      else { os.step(x, y); x = os.out.x; y = os.out.y; }
+    }
+    if (timeOn) { timeStep(fx, x, y, chorusSin, chorusCos); x = opX; y = opY; }
+    opX = x; opY = y;
   }
 
   /* The quantiser: a pitch in, the nearest note of the key out, in hertz.
@@ -6116,8 +6439,19 @@ function makeGeneratorCore(rate, slots, lfos) {
       osB = wantFactor > 1 ? makeOversampler(wantFactor) : null;
       osHeard = wantFactor > 1 ? makeOversampler(wantFactor) : null;
     }
-    const planeOn = tone.planeMirror !== 0 || tone.planeRadius > 0;
+    linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
+    // A routing on the twist turns the stage on with the slider at nought:
+    // a controller that swirls the figure from still is the point of it.
+    let twistRouted = false;
+    for (let k = 0; k < routes.length; k++) if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+    nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
+                  || tone.planeKaleido > 1 || tone.planeSnap > 0;
+    timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
+    const planeOn = linearOn || nonlinearOn || timeOn;
     pMirror = tone.planeMirror;
+    pLimit = tone.planeLimit;
+    pKaleido = tone.planeKaleido;
+    pSnap = tone.planeSnap > 0 ? 2 / Math.pow(2, tone.planeSnap) : 0;
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -6250,9 +6584,14 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
 
       if (planeOn) {
-        pRadius = tone.planeRadius > 0
-          ? Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5)) : 0;
-        planeStep(osA, l, r); l = opX; r = opY;
+        pRadius = Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5));
+        pTwist = Math.max(-TWO_PI, Math.min(TWO_PI, tone.planeTwist + (genMod[TWIST_SLOT] || 0) * Math.PI));
+        if (tone.chorusMix > 0) {
+          chorusPhase += TWO_PI * tone.chorusRate * dt;
+          if (chorusPhase >= TWO_PI) chorusPhase -= TWO_PI;
+          chorusSin = Math.sin(chorusPhase); chorusCos = Math.cos(chorusPhase);
+        }
+        planeStep(osA, fxA, l, r); l = opX; r = opY;
       }
       outL[i] = Math.max(-1, Math.min(1, l));
       outR[i] = Math.max(-1, Math.min(1, r));
@@ -6266,7 +6605,7 @@ function makeGeneratorCore(rate, slots, lfos) {
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
           let bx = mix[0], by = mix[1];
-          if (planeOn) { planeStep(osB, bx, by); bx = opX; by = opY; }
+          if (planeOn) { planeStep(osB, fxB, bx, by); bx = opX; by = opY; }
           outBL[i] = Math.max(-1, Math.min(1, bx));
           outBR[i] = Math.max(-1, Math.min(1, by));
         }
@@ -6292,7 +6631,7 @@ function makeGeneratorCore(rate, slots, lfos) {
            has been through it. The crossings' notes are added after: they
            are what the figure plays, not part of it. */
         let hx = (hl === null ? outL[i] : hl) + bhl, hy = (hr === null ? outR[i] : hr) + bhr;
-        if (planeOn && hl !== null) { planeStep(osHeard, hx, hy); hx = opX; hy = opY; }
+        if (planeOn && hl !== null) { planeStep(osHeard, fxHeard, hx, hy); hx = opX; hy = opY; }
         heardL[i] = hx + pluck;
         heardR[i] = hy + pluck;
       }
@@ -6590,6 +6929,7 @@ function generatorModuleSource() {
     bind("DRAWBAR_SLOT", DRAWBAR_SLOT),
     bind("MORPH_SLOT", MORPH_SLOT),
     bind("RADIUS_SLOT", RADIUS_SLOT),
+    bind("TWIST_SLOT", TWIST_SLOT),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
@@ -12235,8 +12575,11 @@ function syncBars() {
   el.barsGo.textContent = formatRegistration(parseRegistration(el.bars.value)) + " \u203a";
   el.barsGroup.toggleAttribute("data-idle", !heard);
   el.barsStateRow.hidden = heard;
+  // Short enough to share a line with Use drawbars beside it, in a column a
+  // third of the Bench: the longer sentence wrapped the button onto a line
+  // of its own, and that line put a rack of six over the Shape tab by 3 px.
   el.barsState.textContent = !tone ? "Only the generator has drawbars."
-    : !wave ? "Only a waveform has drawbars." : "Heard when the shape is Drawbars.";
+    : !wave ? "Only a waveform has drawbars." : "Not playing.";
   el.barsUse.hidden = !wave || chosen;
   el.barsTitle.textContent = panelLayer === 1 ? "Drawbars \u00b7 layer B" : "Drawbars";
 }
@@ -13360,7 +13703,10 @@ const DEFAULTS = {
   midiDrive: "wave,harmonograph,figure", cc: "",
   // Additive: a code from before these plays no drawing at its note's pitch.
   midiPlay: "", ring: 600,
-  planeMirror: 0, planeClip: false, planeRadius: 40, planeOS: 2,
+  planeMirror: 0, planeLimit: 0, planeRadius: 40, planeOS: 2,
+  planeTwist: 0, planeKaleido: 0, planeSnap: 0, planeScaleX: 100, planeScaleY: 100, planeShear: 0,
+  delayMix: 0, delayMs: 375, delaySync: "", delayFeedback: 35, delayPingPong: false,
+  chorusMix: 0, chorusRate: 60, chorusDepth: 30, chorusTime: 120, chorusFeedback: 0,
   lagOn: false, lagMs: 5, lagAuto: true, rotate: 0,
   // Percent. Additive, so no version bump: an older code gets the default.
   lagMix: Math.round(LAG_MIX_DEFAULT * 100),
@@ -13468,8 +13814,15 @@ function snapshot() {
     midiFollow: midi.follow,
     midiDrive: Object.keys(midi.drive).filter((kind) => midi.drive[kind]).join(","),
     midiPlay: Object.keys(midi.play).filter((kind) => midi.play[kind]).join(","),
-    planeMirror: plane.mirror, planeClip: plane.clip, planeRadius: Math.round(plane.radius * 100),
-    planeOS: plane.os,
+    planeMirror: plane.mirror, planeLimit: plane.limit, planeRadius: Math.round(plane.radius * 100),
+    planeOS: plane.os, planeTwist: Math.round(plane.twist * 100), planeKaleido: plane.kaleido,
+    planeSnap: plane.snap, planeScaleX: Math.round(plane.scaleX * 100),
+    planeScaleY: Math.round(plane.scaleY * 100), planeShear: Math.round(plane.shear * 100),
+    delayMix: Math.round(echo.mix * 100), delayMs: echo.ms, delaySync: echo.sync,
+    delayFeedback: Math.round(echo.feedback * 100), delayPingPong: echo.pingPong,
+    chorusMix: Math.round(echo.chorus * 100), chorusRate: Math.round(echo.rate * 100),
+    chorusDepth: Math.round(echo.depthMs * 10), chorusTime: Math.round(echo.centreMs * 10),
+    chorusFeedback: Math.round(echo.chorusFeedback * 100),
     ring: Number(el.ringTime.value),
     cc: encodeCC(),
     lagOn: state.lagOn, lagMs: state.lagMs, lagAuto: state.lagAuto,
@@ -13624,11 +13977,29 @@ function restore(partial) {
   syncCrossPanel();
   syncCrossings();
   plane.mirror = [0, 1, 2, 3].includes(s.planeMirror) ? s.planeMirror : 0;
-  plane.clip = s.planeClip === true;
+  plane.limit = [0, 1, 2].includes(s.planeLimit) ? s.planeLimit : 0;
   plane.radius = within(s.planeRadius, 2, 100, 40) / 100;
   plane.os = [1, 2, 4].includes(s.planeOS) ? s.planeOS : 2;
+  plane.twist = within(s.planeTwist, -100, 100, 0) / 100;
+  plane.kaleido = [0, 2, 3, 4, 5, 6, 8].includes(s.planeKaleido) ? s.planeKaleido : 0;
+  plane.snap = [0, 1, 2, 3, 4, 5, 6].includes(s.planeSnap) ? s.planeSnap : 0;
+  plane.scaleX = within(s.planeScaleX, 0, 200, 100) / 100;
+  plane.scaleY = within(s.planeScaleY, 0, 200, 100) / 100;
+  plane.shear = within(s.planeShear, -100, 100, 0) / 100;
   syncPlanePanel();
   syncPlane();
+  echo.mix = within(s.delayMix, 0, 100, 0) / 100;
+  echo.ms = Math.round(within(s.delayMs, 10, 2000, 375));
+  echo.sync = DELAY_SYNC.some(([id]) => id === s.delaySync) ? s.delaySync : "";
+  echo.feedback = within(s.delayFeedback, 0, 90, 35) / 100;
+  echo.pingPong = s.delayPingPong === true;
+  echo.chorus = within(s.chorusMix, 0, 100, 0) / 100;
+  echo.rate = within(s.chorusRate, 5, 500, 60) / 100;
+  echo.depthMs = within(s.chorusDepth, 0, 100, 30) / 10;
+  echo.centreMs = within(s.chorusTime, 10, 300, 120) / 10;
+  echo.chorusFeedback = within(s.chorusFeedback, 0, 90, 0) / 100;
+  syncEchoPanel();
+  syncEcho();
 
   /* The routing list when the setup has one, and the old enum when it does
      not. Checked against what was actually passed in rather than the merged
@@ -13914,7 +14285,7 @@ function writeSaved(all) {
    same treatment the modulation enum got, and for the same reason: a stored
    number whose meaning changed is not something to fix up quietly at the point
    of use. */
-const SETUP_VERSION = 3;
+const SETUP_VERSION = 4;
 
 function encodeSetup(snap) {
   const diff = { v: SETUP_VERSION };
@@ -13975,6 +14346,14 @@ function migrateSetup(setup) {
       if (stored === undefined) continue;
       setup[key] = FULL_SCALE_DB[stored] !== undefined ? FULL_SCALE_DB[stored] : 0;
     }
+  }
+
+  /* Version 4: the radial clip was a yes or no, `planeClip`, and became
+     `planeLimit` once the radius could fold as well as clip - nought off,
+     one the clip, two the fold. A code that said yes means the clip. */
+  if (!(setup.v >= 4)) {
+    if (setup.planeClip === true) setup.planeLimit = 1;
+    delete setup.planeClip;
   }
 
   setup.v = SETUP_VERSION;
@@ -14242,8 +14621,13 @@ function generatorFromPanel(set) {
   set("crossHzX", noteHz(cross.noteX)); set("crossHzY", noteHz(cross.noteY));
   set("crossDecayMs", cross.decayMs); set("crossLevel", cross.level);
   set("ringMs", Number(el.ringTime.value));
-  set("planeMirror", plane.mirror); set("planeRadius", plane.clip ? plane.radius : 0);
-  set("planeOS", plane.os);
+  set("planeMirror", plane.mirror); set("planeLimit", plane.limit); set("planeRadius", plane.radius);
+  set("planeOS", plane.os); set("planeTwist", plane.twist * TWO_PI); set("planeKaleido", plane.kaleido);
+  set("planeSnap", plane.snap); set("planeScaleX", plane.scaleX); set("planeScaleY", plane.scaleY);
+  set("planeShear", plane.shear);
+  set("delayMix", echo.mix); set("delayMs", delayTimeMs()); set("delayFeedback", echo.feedback);
+  set("delayPingPong", echo.pingPong); set("chorusMix", echo.chorus); set("chorusRate", echo.rate);
+  set("chorusDepthMs", echo.depthMs); set("chorusMs", echo.centreMs); set("chorusFeedback", echo.chorusFeedback);
   set("pitched", el.genMode.value === "harmonograph" && midi.play.harmonograph && midi.drive.harmonograph);
   set("mode", el.genMode.value);
   set("interval", Number(el.interval.value));
@@ -14670,39 +15054,128 @@ el.crossLevel.addEventListener("input", () => {
 });
 syncCrossPanel();
 
-/* The plane section. */
-const plane = { mirror: 0, clip: false, radius: 0.4, os: 2 };
+/* The plane section, and delay and chorus. The panel's values are kept
+   here in the controls' own terms and written to the generator whole. */
+const plane = { mirror: 0, limit: 0, radius: 0.4, os: 2, twist: 0, kaleido: 0, snap: 0,
+                scaleX: 1, scaleY: 1, shear: 0 };
+const echo = { mix: 0, ms: 375, sync: "", feedback: 0.35, pingPong: false,
+               chorus: 0, rate: 0.6, depthMs: 3, centreMs: 12, chorusFeedback: 0 };
+// Note values a delay can take, as beats; a dotted quaver is the classic.
+const DELAY_SYNC = [["", "Free", 0], ["1/2", "1/2", 2], ["1/4", "1/4", 1], ["1/8d", "dotted 1/8", 0.75],
+                    ["1/8", "1/8", 0.5], ["1/4t", "1/4 triplet", 2 / 3], ["1/8t", "1/8 triplet", 1 / 3],
+                    ["1/16", "1/16", 0.25]];
+el.delaySync.innerHTML = DELAY_SYNC.map(([v, t]) => '<option value="' + v + '">' + t + "</option>").join("");
+
+// The delay's time in force: the slider's, or the tempo's note value.
+function delayTimeMs() {
+  const s = DELAY_SYNC.find(([id]) => id === echo.sync);
+  return s && s[2] > 0 ? Math.min(2000, s[2] * 60000 / transport.bpm) : echo.ms;
+}
 
 function syncPlane() {
   genSet("planeMirror", plane.mirror);
-  genSet("planeRadius", plane.clip ? plane.radius : 0);
+  genSet("planeLimit", plane.limit);
+  genSet("planeRadius", plane.radius);
   genSet("planeOS", plane.os);
+  genSet("planeTwist", plane.twist * TWO_PI);
+  genSet("planeKaleido", plane.kaleido);
+  genSet("planeSnap", plane.snap);
+  genSet("planeScaleX", plane.scaleX);
+  genSet("planeScaleY", plane.scaleY);
+  genSet("planeShear", plane.shear);
 }
 
+function syncEcho() {
+  genSet("delayMix", echo.mix);
+  genSet("delayMs", delayTimeMs());
+  genSet("delayFeedback", echo.feedback);
+  genSet("delayPingPong", echo.pingPong);
+  genSet("chorusMix", echo.chorus);
+  genSet("chorusRate", echo.rate);
+  genSet("chorusDepthMs", echo.depthMs);
+  genSet("chorusMs", echo.centreMs);
+  genSet("chorusFeedback", echo.chorusFeedback);
+}
+
+const twistText = (t) => Math.round(t * 360) + "\u00b0";
 function syncPlanePanel() {
   el.planeMirror.value = String(plane.mirror);
-  el.planeClip.checked = plane.clip;
-  el.planeRadiusRow.hidden = !plane.clip;
+  el.planeLimit.value = String(plane.limit);
+  el.planeRadiusRow.hidden = plane.limit === 0;
   el.planeRadius.value = String(Math.round(plane.radius * 100));
   el.planeRadiusValue.textContent = plane.radius.toFixed(2);
+  el.planeTwist.value = String(Math.round(plane.twist * 100));
+  el.planeTwistValue.textContent = twistText(plane.twist);
+  el.planeKaleido.value = String(plane.kaleido);
+  el.planeSnap.value = String(plane.snap);
+  el.planeScaleX.value = String(Math.round(plane.scaleX * 100));
+  el.planeScaleXValue.textContent = plane.scaleX.toFixed(2);
+  el.planeScaleY.value = String(Math.round(plane.scaleY * 100));
+  el.planeScaleYValue.textContent = plane.scaleY.toFixed(2);
+  el.planeShear.value = String(Math.round(plane.shear * 100));
+  el.planeShearValue.textContent = plane.shear.toFixed(2);
   for (const k of [1, 2, 4]) el["planeOS" + k].setAttribute("aria-checked", String(plane.os === k));
 }
 
-el.planeMirror.addEventListener("change", () => { plane.mirror = Number(el.planeMirror.value); syncPlane(); });
-el.planeClip.addEventListener("change", () => {
-  plane.clip = el.planeClip.checked;
-  el.planeRadiusRow.hidden = !plane.clip;
-  syncPlane();
-});
-el.planeRadius.addEventListener("input", () => {
-  plane.radius = Number(el.planeRadius.value) / 100;
-  el.planeRadiusValue.textContent = plane.radius.toFixed(2);
-  syncPlane();
-});
+function syncEchoPanel() {
+  el.delayMix.value = String(Math.round(echo.mix * 100));
+  el.delayMixValue.textContent = echo.mix > 0 ? echo.mix.toFixed(2) : "off";
+  el.delayMs.value = String(echo.ms);
+  el.delayMs.disabled = echo.sync !== "";
+  el.delayMsValue.textContent = Math.round(delayTimeMs()) + " ms";
+  el.delaySync.value = echo.sync;
+  el.delayFeedback.value = String(Math.round(echo.feedback * 100));
+  el.delayFeedbackValue.textContent = echo.feedback.toFixed(2);
+  el.delayPingPong.checked = echo.pingPong;
+  el.chorusMix.value = String(Math.round(echo.chorus * 100));
+  el.chorusMixValue.textContent = echo.chorus > 0 ? echo.chorus.toFixed(2) : "off";
+  el.chorusRate.value = String(Math.round(echo.rate * 100));
+  el.chorusRateValue.textContent = echo.rate.toFixed(2) + " Hz";
+  el.chorusDepth.value = String(Math.round(echo.depthMs * 10));
+  el.chorusDepthValue.textContent = echo.depthMs.toFixed(1) + " ms";
+  el.chorusTime.value = String(Math.round(echo.centreMs * 10));
+  el.chorusTimeValue.textContent = echo.centreMs.toFixed(1) + " ms";
+  el.chorusFeedback.value = String(Math.round(echo.chorusFeedback * 100));
+  el.chorusFeedbackValue.textContent = echo.chorusFeedback.toFixed(2);
+}
+
+/* One handler per control, from a table of which field it writes and how
+   its number becomes the value: twenty handlers written out would be twenty
+   chances to scale one of them wrongly. */
+const PLANE_CONTROLS = [
+  [el.planeMirror, "change", (v) => { plane.mirror = v; }],
+  [el.planeLimit, "change", (v) => { plane.limit = v; }],
+  [el.planeRadius, "input", (v) => { plane.radius = v / 100; }],
+  [el.planeTwist, "input", (v) => { plane.twist = v / 100; }],
+  [el.planeKaleido, "change", (v) => { plane.kaleido = v; }],
+  [el.planeSnap, "change", (v) => { plane.snap = v; }],
+  [el.planeScaleX, "input", (v) => { plane.scaleX = v / 100; }],
+  [el.planeScaleY, "input", (v) => { plane.scaleY = v / 100; }],
+  [el.planeShear, "input", (v) => { plane.shear = v / 100; }],
+];
+for (const [input, kind, write] of PLANE_CONTROLS) {
+  input.addEventListener(kind, () => { write(Number(input.value)); syncPlanePanel(); syncPlane(); });
+}
 for (const k of [1, 2, 4]) {
   el["planeOS" + k].addEventListener("click", () => { plane.os = k; syncPlanePanel(); syncPlane(); });
 }
+const ECHO_CONTROLS = [
+  [el.delayMix, "input", (v) => { echo.mix = v / 100; }],
+  [el.delayMs, "input", (v) => { echo.ms = v; }],
+  [el.delayFeedback, "input", (v) => { echo.feedback = v / 100; }],
+  [el.chorusMix, "input", (v) => { echo.chorus = v / 100; }],
+  [el.chorusRate, "input", (v) => { echo.rate = v / 100; }],
+  [el.chorusDepth, "input", (v) => { echo.depthMs = v / 10; }],
+  [el.chorusTime, "input", (v) => { echo.centreMs = v / 10; }],
+  [el.chorusFeedback, "input", (v) => { echo.chorusFeedback = v / 100; }],
+];
+for (const [input, kind, write] of ECHO_CONTROLS) {
+  input.addEventListener(kind, () => { write(Number(input.value)); syncEchoPanel(); syncEcho(); });
+}
+el.delaySync.addEventListener("change", () => { echo.sync = el.delaySync.value; syncEchoPanel(); syncEcho(); });
+el.delayPingPong.addEventListener("change", () => { echo.pingPong = el.delayPingPong.checked; syncEcho(); });
 syncPlanePanel();
+syncEchoPanel();
 
 /* The key and tempo section. */
 el.keyRoot.innerHTML = KEY_NAMES.map((name, i) => '<option value="' + i + '">' + name + "</option>").join("");
@@ -15618,6 +16091,9 @@ const SEARCH_SYNONYMS = {
   rhythm: "crossings", polyrhythm: "crossings", beat: "crossings tempo", pluck: "crossings",
   rectify: "mirror", rectifier: "mirror", distortion: "clip mirror", overdrive: "clip",
   clipper: "clip", saturation: "clip", oversample: "oversampling", aliasing: "oversampling",
+  wavefolder: "radial fold", bitcrusher: "snap", crush: "snap", swirl: "twist", reflect: "kaleidoscope mirror",
+  echo: "echo delay", reverb: "delay chorus", flanger: "chorus", width: "scale", balance: "scale",
+  crossfeed: "shear",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

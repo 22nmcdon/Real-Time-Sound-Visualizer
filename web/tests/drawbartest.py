@@ -375,7 +375,7 @@ with sync_playwright() as pw:
     }""")
     print("    %s" % panel)
     check("with another shape the registration row is not on Play, and the bars say why they are greyed",
-          panel["sine"] == {"row": True, "idle": True, "why": "Heard when the shape is Drawbars.", "use": True},
+          panel["sine"] == {"row": True, "idle": True, "why": "Not playing.", "use": True},
           str(panel["sine"]))
     check("Use drawbars chooses them, and the row under the menu shows the registration",
           panel["used"] == {"shape": "drawbars", "heard": "drawbars", "row": False,

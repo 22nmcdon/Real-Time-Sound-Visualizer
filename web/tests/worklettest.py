@@ -118,6 +118,18 @@ with sync_playwright() as pw:
         pl = report["plane"]
         check("the plane runs in the worklet at 1x, 2x and 4x: mirrored and held inside the radius",
               all(v["finite"] and v["low"] > -0.02 and 0.15 < v["high"] <= 0.31 for v in pl.values()), str(pl))
+        pr = report["planeRest"]
+        # The diagonal of 0.5 is 0.707 long: folded at 0.2, never past it.
+        # Snapped at two bits, at 1x, every X is a whole number of halves.
+        check("the rest of the plane and the time effects run in the worklet, each doing what it alone would",
+              all(v.get("finite", True) for v in pr.values()) and pr["plain"]["apart"] < 1e-6
+              and pr["fold"]["peak"] <= 0.2 + 1e-6 and pr["fold"]["peak"] > 0.1
+              and pr["snap"]["offGrid"] < 1e-6 and pr["snap"]["peak"] > 0.3
+              and pr["twist"]["apart"] > 0.1 and pr["kaleido"]["apart"] > 0.1 and pr["kaleido"]["lowY"] > -0.02
+              and pr["chorus"]["apart"] > 0.1
+              and abs(pr["matrix"]["ratio"] - 0.5) < 1e-3
+              and pr["delay"]["echoed"] > 0.3 and pr["delay"]["after"] < 1e-6,
+              str(pr))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

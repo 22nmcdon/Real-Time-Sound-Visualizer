@@ -7,9 +7,9 @@ sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
 limiter, and a keyboard can be split into two layers. **Built so far:** G0,
 G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
 crossings and K2 (see *Built so far* under Stage K), J2's pitched harmonograph
-and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I's mirror
-and radial clip with S2's oversampling (see *Built so far* under Stage I).
-Nothing else here is.
+and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
+plane's nine operations with S2's oversampling, and I1's delay and chorus - for
+the generator (see *Built so far* under Stage I). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -298,8 +298,39 @@ r tanh(|v| / r), which meets "never above r, direction unchanged" exactly.
 - It costs 31 base samples of delay (0.7 ms) at either factor, and 191 ms per
   second of audio for sixteen voices at 4x.
 
-`planetest.py` holds them. Scale, shear, fold, twist, snap and the kaleidoscope,
-I1's delay and chorus, and the S1 worklet for live inputs are not built.
+**The rest of the table**, the same way:
+- scale X, scale Y and shear, done exactly outside S2, where they add no delay;
+- twist, the kaleidoscope, and a fold as the radial limit's third state beside
+  *Off* and *Clip*;
+- snap, from one bit to six.
+
+Inside S2 they run in a fixed order: mirror, twist, kaleidoscope, limit, snap.
+A code from before version 4 had a checkbox for the clip, and a decode pass
+carries it over.
+
+- *Aliasing.* At 2x the twist and the kaleidoscope clear the square's floor as
+  the mirror and the clip do. The fold and the snap do not, because a
+  wavefolder's corners and a bitcrusher's steps are what they are for. Both are
+  pinned where they measured, and the README has the table.
+- *Twist as a destination.* Twist is patchable, and a controller on it swirls a
+  figure whose slider is at nought.
+
+**I1: a delay and a chorus**, one line of each for each pair.
+
+- *The delay.* Free or synced to a note value of the clock, with ping-pong.
+  The time glides when it changes, and the feedback is clamped at 0.9 in the
+  core.
+- *The chorus.* Two taps in quadrature, and a flanger with feedback, which is
+  clamped the same way.
+- Neither feedback is a destination.
+
+**I2 does not apply, by decision.** These are in the generator's core, as S1's
+review asked, so they sit upstream of both taps: the screen and the speakers
+get the same result, and *screen dry, speakers shaped* is not available for
+them. A live input gets none of Stage I until the S1 worklet is built, which is
+the part of this stage still open.
+
+`planetest.py` and `timetest.py` hold it.
 
 ### I0 · the plane in poly
 

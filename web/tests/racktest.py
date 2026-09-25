@@ -259,11 +259,15 @@ with sync_playwright() as pw:
       showSource('rack'); setView('bench'); await __wait(900);
       // The worst tab, since the Bench became tabs: a rack's rows land on
       // Play (what is in it) and Picture (its lanes).
+      // Which tab was worst, for the message: a failure that says only
+      // "over by 3" leaves the reader to go and find it.
+      let overAt = '';
       const over = () => {
         let worst = -Infinity;
         for (const [tab] of BENCH_TABS) {
           setBenchTab(tab);
-          worst = Math.max(worst, el.benchBody.scrollHeight - el.benchBody.clientHeight);
+          const by = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+          if (by > worst) { worst = by; overAt = tab; }
         }
         setBenchTab('play');
         return worst;
@@ -281,7 +285,7 @@ with sync_playwright() as pw:
                     mark: el.sourceMark.textContent.trim().toLowerCase() };
       await addRackFiles([1, 2, 3, 4].map((i) => __wav('f' + i, 200 + i * 60)));
       await __wait(900);
-      const six = { lanes: state.source.lanes.length, over: over(), wide: wide(),
+      const six = { lanes: state.source.lanes.length, over: over(), at: overAt, wide: wide(),
                     transport: !el.fileRows.hidden, align: !el.alignRow.hidden };
       setView('scope');
       return { two, six };

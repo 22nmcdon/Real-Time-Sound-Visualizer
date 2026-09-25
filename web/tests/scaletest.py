@@ -228,8 +228,10 @@ with sync_playwright() as pw:
     check("a version 3 setup is left alone entirely",
           migrated["v3"]["level"] == 250 and migrated["v3"]["c0s"] == -12
           and migrated["v3"]["c1s"] == -30, str(migrated["v3"]))
-    check("and everything comes out saying version 3",
-          all(migrated[k]["v"] == 3 for k in ("v1", "v2", "v3")),
+    # Version 4 is the plane's limit menu (planetest.py); a scale code passes
+    # through its pass untouched and comes out saying the current version.
+    check("and everything comes out saying version 4",
+          all(migrated[k]["v"] == 4 for k in ("v1", "v2", "v3")),
           str([migrated[k]["v"] for k in ("v1", "v2", "v3")]))
 
     trip = p.evaluate("""() => {

@@ -304,6 +304,12 @@ with sync_playwright() as pw:
       el.shape.value = 'morph'; el.shape.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split+keys, morph'] = fits();
+      // The plane's radius row, shown only while a limit is chosen, on the
+      // Shape tab with the morph's row and three other sections.
+      el.planeLimit.value = '2'; el.planeLimit.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split+keys, morph, a radial limit'] = fits();
+      el.planeLimit.value = '0'; el.planeLimit.dispatchEvent(new Event('change'));
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
       el.midiEditA.click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -346,6 +352,37 @@ with sync_playwright() as pw:
     }""")
     for mode, over in wide.items():
         check("the keyboard section's controls stay inside its column (%s)" % mode, not over, str(over))
+
+    # And every section on every tab, which the keyboard's own check could
+    # not see: the Drawbars section's Use drawbars button sat over the
+    # Plane's Mirror label from the day it was added, a note and a button
+    # on one line that would not fit a column.
+    spill = p.evaluate("""async () => {
+      const out = {};
+      // The lag's row is shown only with the lag on, and the drawbars' note
+      // only with another shape playing: both on, rather than trusting the
+      // sections above to have left them so.
+      el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change'));
+      el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
+      for (const [tab] of BENCH_TABS) {
+        setBenchTab(tab);
+        await new Promise((d) => setTimeout(d, 60));
+        for (const g of document.querySelectorAll('.menu-group[data-home="bench"]')) {
+          const box = g.getBoundingClientRect();
+          if (box.width === 0) continue;
+          for (const c of g.querySelectorAll('input, select, button, .reading, .menu-label')) {
+            const r = c.getBoundingClientRect();
+            if (r.width === 0) continue;
+            const by = Math.round(r.right - box.right);
+            if (by > 1) (out[tab] = out[tab] || []).push([g.id, c.id || c.className, by]);
+          }
+        }
+      }
+      el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
+      setBenchTab('play');
+      return out;
+    }""")
+    check("no control, reading or label runs past its section's edge, on any tab", not spill, str(spill))
 
     p.screenshot(path=f"{SHOTS}/bench-patched.png")
     check("no page errors", not bad, "; ".join(bad[:3]))

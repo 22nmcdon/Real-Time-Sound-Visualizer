@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, and Stage I's mirror and radial clip with S2 are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, and Stage I (the plane's nine operations with S2, and I1's delay and chorus) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -75,7 +75,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
-| `planetest.py` | the plane as an effect: mirror and radial clip to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost |
+| `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
+| `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1913,3 +1914,131 @@ on show, and moved nothing while the clip was off. `modtest.py` moves every
 visible destination's own control and requires the output to change, and it
 failed there, correctly: a slider that does nothing looks broken. It now appears
 with the clip, as the morph's row appears with the morph.
+
+**The rest of the plane: the matrix outside the oversampler, the rest inside,
+in a fixed order.** Scale X, scale Y and shear are linear, so they cannot alias
+and are done exactly at the base rate, before S2, adding no delay. The rest
+run inside S2 in this order: mirror, twist, kaleidoscope, the radial limit
+(clip or fold), then snap. The snap is last so that the grid is what comes
+out. `planetest.py` checks each one point by point on the 3:2 figure, and all
+five together against a model written in that order.
+
+The radial clip became one of three states: *Off*, *Clip* or *Fold*. A code
+from before version 4 stored a checkbox, `planeClip`, and a radius. The v4
+decode pass turns a ticked box into `planeLimit: 1` and drops the field.
+
+**The output's clamp is part of the arithmetic, and it sits outside the
+oversampler.** Two measurements went wrong on it before the code did:
+
+- The kaleidoscope's point-by-point check missed by 0.05. The figure reaches
+  1.08, and turned onto the X axis that is past full scale, so the clamp at 1
+  acted. The expected value now includes the clamp.
+- Twist and kaleidoscope measured −55 dB of aliasing at 1x, 2x and 4x alike, as
+  if the oversampling did nothing. A pair of 0.8s turned off the diagonal is
+  past full scale on one axis, and the clamp runs at the base rate. At 0.6:
+
+| | 1x | 2x | 4x |
+|---|---|---|---|
+| twist, 2 kHz | −62.2 | −82.4 | −101.5 |
+| twist, 4 kHz | −41.7 | −64.8 | −83.7 |
+| kaleidoscope, 2 kHz | −50.2 | −64.0 | −76.7 |
+| kaleidoscope, 4 kHz | −39.9 | −52.0 | −64.9 |
+| fold, 2 kHz | −31.5 | −41.1 | −53.0 |
+| fold, 4 kHz | −19.3 | −35.7 | −41.1 |
+| snap, 2 kHz | −43.7 | −44.3 | −50.6 |
+| snap, 4 kHz | −40.9 | −44.7 | −45.4 |
+
+The kaleidoscope matches the mirror to the decimal. On a diagonal it is
+piecewise linear, with one corner at nought, and that corner is all a mirror
+is.
+
+The fold and the snap do not clear the square's floor at 2x, and are pinned
+where they measured rather than held to it:
+
+- The fold's reflections are corners in the wave. Its harmonics fall as 1/n²,
+  and a figure folded twice has two corners every half-cycle.
+- The snap is a quantiser, with a step at every level it crosses, and
+  oversampling is worth almost nothing to it.
+
+That edge is what a wavefolder and a bitcrusher are bought for.
+
+**A switch computed from the slider misses the modulation.** The plane stage
+switches itself on only when some operation is on, so that a page with none
+pays nothing. The first version asked only whether the twist *slider* was away
+from nought. A controller patched onto Twist, with the slider at nought, then
+did nothing at all. The routing was summed and the twist computed, but inside
+a stage that never ran. The switch now also asks whether any routing is on the
+twist's slot. The radius needs no such rule: it only matters with a limit on,
+and a limit is a menu, not a destination. `planetest.py` holds it with the
+slider at nought and a controller at full: the diagonal goes from exactly x = y
+to 0.82 apart.
+
+**Delay and chorus live in the core, one line of each per pair, made the first
+time they are wanted.** Two seconds of delay is 350 KB a pair, and there are
+three pairs: layer A's picture, layer B's, and the heard pair.
+
+- *Feedback.* Clamped at 0.9 in the core, whatever is asked for, and neither
+  feedback is a destination (S4). `timetest.py` asks for 5 and reads 0.9 as
+  the ratio of two repeats.
+- *The delay time.* The read position glides over 50 ms when the time changes,
+  on a tempo change for instance. A jump would land mid-wave and click.
+- *The chorus.* Its two taps move in quadrature, one on a sine and the other on
+  its cosine, so a diagonal comes out with its channels apart. The gap swings
+  between nought and the whole wet half at the rate.
+- *The sidebands.* The chorus's sidebands are checked against Bessel's
+  function, J1(0.691)/2 = 0.1627, read as 0.1627. A delay that did not move,
+  or a chorus that wobbled the level instead, could not produce that number.
+
+**A lag found by correlation is biased towards whole samples.** The 375 ms
+default is 16537.5 samples, so it is read by interpolation. The first check
+found the lag by sliding the burst against the repeat, and read 16537.0.
+Interpolating a repeat that is already interpolated smooths it a second time
+and costs it energy, so the whole-sample lag won. The delay was right. The
+model is exact, so the check now compares exactly: each sample of the repeat
+against the mean of two neighbours of the burst.
+
+**A fixture whose answer is the value already there cannot fail.** The
+setup-code check restored a delay synced to an eighth, and expected 300 ms at
+100 BPM. It read 250, which looked like a bug. It was not: a code carries its
+tempo, which is 120 unless it says, and an eighth at 120 is 250. But 250 was
+also the free time the previous step had left, so the check could not tell a
+synced delay from one that ignored the sync. It uses a quarter triplet now,
+333 ms, which nothing before it has set.
+
+**The worklet harness is one long sequence, and its sections inherit each
+other's state.** The new section ran a diagonal, and the diagonal wasn't
+there. An earlier section had set `octaves: 1` and left the two oscillators'
+phases apart. Setting the octave back was not enough; the phases needed a
+reswing too. The section now resets both and requires the plain run to be an
+exact diagonal before reading anything else. Without that baseline, a "twist
+takes the figure off the diagonal" check would have passed on the figure
+alone.
+
+**No control may run past its section's edge, on any tab.** `patchtest.py`
+checked width only in the keyboard section. Widened to every section on every
+tab, it found three overruns:
+
+- the Drawbars section's *Use drawbars*, on top of the Plane's Mirror label
+  since the day drawbars landed;
+- the lag's Delay row, 115 px into the Display column with the lag on;
+- the Interval menu's patch ring, 23 px out of its column.
+
+All three had the same cause. A flex item will not shrink below its own
+intrinsic width unless told, and a select is as wide as its longest option.
+The fix: `min-width: 0` on a row's selects and sliders, and wrapping for the
+two rows that are more than one line.
+
+Wrapping has a cost in height. With the drawbars' note on a line of its own, a
+rack of six went 3 px over the Shape tab (`racktest.py` now names the worst
+tab). So the note was shortened instead, from "Heard when the shape is
+Drawbars." to "Not playing.", which shares a line with its button. The wrap is
+left in for screens narrower than this one.
+
+**I2 does not apply to what is built, and it went that way on purpose.** The
+plan put the plane between the analyser and monitor taps, so that *screen dry,
+speakers shaped* would work for every operation. These operations are in the
+generator's core instead, as S1's review asked: new processing goes to the
+core first, where seen-is-heard is free. They are upstream of both taps, so
+the screen and the speakers get the same folded figure, and neither can have
+it without the other. That is the cost. A live input gets none of this until
+the S1 worklet is built.

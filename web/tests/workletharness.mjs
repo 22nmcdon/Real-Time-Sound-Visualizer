@@ -187,7 +187,7 @@ try {
   report.plane = {};
   for (const os of [1, 2, 4]) {
     node.port.onmessage({ data: { tone: { mode: "wave", shape: "sine", freq: 220, amp: 0.5,
-                                          planeMirror: 3, planeRadius: 0.3, planeOS: os } } });
+                                          planeMirror: 3, planeRadius: 0.3, planeLimit: 1, planeOS: os } } });
     let low = Infinity, high = -Infinity, finite = true;
     for (let round = 0; round < 40; round++) {
       node.process([], [out], {});
@@ -199,7 +199,60 @@ try {
     }
     report.plane[os] = { low, high, finite };
   }
-  node.port.onmessage({ data: { tone: { planeMirror: 0, planeRadius: 0 } } });
+  node.port.onmessage({ data: { tone: { planeMirror: 0, planeLimit: 0 } } });
+
+  /* The rest of the plane and the time effects, each on a diagonal - one
+     signal in both channels - and each read for what it alone would do:
+     the fold holds the pair inside its radius, the snap puts it on a grid,
+     the twist, the kaleidoscope and the chorus take it off the diagonal,
+     the matrix halves X, and the delay goes on after the tone stops. */
+  const PLANE_OFF = { planeTwist: 0, planeKaleido: 0, planeLimit: 0, planeSnap: 0, planeScaleX: 1,
+                      chorusMix: 0, delayMix: 0, planeOS: 2, amp: 0.5 };
+  const runFor = (tone, rounds) => {
+    node.port.onmessage({ data: { tone: Object.assign({ mode: "wave", shape: "sine", freq: 220, interval: 0,
+                                                        octaves: 0, phase: 0 }, PLANE_OFF, tone) } });
+    // Both oscillators back to nought: earlier here Y ran an octave above
+    // X, and the two phases were left apart - no diagonal without this.
+    node.port.onmessage({ data: { reswing: true } });
+    const r = { finite: true, peak: 0, apart: 0, offGrid: 0, lowY: Infinity, ratio: 0 };
+    for (let round = 0; round < rounds; round++) {
+      node.process([], [out], {});
+      if (round < 5) continue;
+      for (let i = 0; i < 128; i++) {
+        const x = out[0][i], y = out[1][i];
+        if (!Number.isFinite(x) || !Number.isFinite(y)) r.finite = false;
+        r.peak = Math.max(r.peak, Math.hypot(x, y));
+        r.apart = Math.max(r.apart, Math.abs(x - y));
+        r.offGrid = Math.max(r.offGrid, Math.abs(x * 2 - Math.round(x * 2)));
+        r.lowY = Math.min(r.lowY, y);
+        if (Math.abs(y) > 0.1) r.ratio = Math.max(r.ratio, Math.abs(x / y));
+      }
+    }
+    return r;
+  };
+  report.planeRest = {
+    plain: runFor({}, 40),
+    fold: runFor({ planeLimit: 2, planeRadius: 0.2 }, 40),
+    snap: runFor({ planeSnap: 2, planeOS: 1 }, 40),
+    twist: runFor({ planeTwist: 3 }, 40),
+    kaleido: runFor({ planeKaleido: 3 }, 40),
+    matrix: runFor({ planeScaleX: 0.5 }, 40),
+    chorus: runFor({ chorusMix: 1, chorusDepthMs: 3, chorusMs: 12, chorusRate: 2, chorusFeedback: 0 }, 80),
+  };
+  // 50 ms at 48 kHz is 2400 samples, under 19 blocks: the tone stops and
+  // the repeat is still coming for that long, then nothing.
+  runFor({ delayMix: 1, delayMs: 50, delayFeedback: 0 }, 40);
+  node.port.onmessage({ data: { tone: { amp: 0 } } });
+  let echoed = 0, after = 0;
+  for (let round = 0; round < 40; round++) {
+    node.process([], [out], {});
+    for (let i = 0; i < 128; i++) {
+      if (round < 17) echoed = Math.max(echoed, Math.abs(out[0][i]));
+      else if (round > 20) after = Math.max(after, Math.abs(out[0][i]));
+    }
+  }
+  report.planeRest.delay = { echoed, after };
+  node.port.onmessage({ data: { tone: PLANE_OFF } });
 
   // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });

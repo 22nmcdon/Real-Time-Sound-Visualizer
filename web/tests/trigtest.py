@@ -316,7 +316,7 @@ with sync_playwright() as pw:
       return after;
     }""")
     check("a setup saved now comes back unchanged",
-          abs(trip["level"] - 0.4) < 1e-9 and trip["scale"] == -6 and trip["v"] == 3,
+          abs(trip["level"] - 0.4) < 1e-9 and trip["scale"] == -6 and trip["v"] == 4,
           str(trip))
 
     print("\n--- and the lanes are still the lanes ---")
