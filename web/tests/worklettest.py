@@ -112,6 +112,11 @@ with sync_playwright() as pw:
         q = report["quantised"]
         check("the quantiser runs in the worklet: 225 Hz to A3, 220 exactly, and left alone when off",
               abs(q["on"] - 220) < 1e-9 and abs(q["off"] - 225) < 1e-9, str(q))
+        c = report["crossings"]
+        # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
+        # times, and Y - a quarter cycle on - 8 or 9.
+        check("the crossings run in the worklet: a 4 Hz beam over 2.1 s fires each line eight times or so",
+              8 <= c["x"] <= 9 and 8 <= c["y"] <= 9, str(c))
         e = report["epoch"]
         check("a restart reaches the worklet's oscillators, and a repeated count does not restart them again",
               e["before"] > 0.1 and e["reset"] == 0 and e["again"] > 0.1, str(e))

@@ -165,6 +165,12 @@ try {
   for (let round = 0; round < 5; round++) node.process([], [out], {});
   report.quantised.off = node.core.pitch;
 
+  // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
+  node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });
+  for (let round = 0; round < 800; round++) node.process([], [out], {});
+  report.crossings = node.core.crossings;
+  node.port.onmessage({ data: { tone: { crossOn: false } } });
+
   /* A restart counted on the main thread reaching the oscillators here: a
      new count puts the phase back to nought, and the same count sent again
      - which every frame does - leaves it alone. */

@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock) and K2 (the quantiser) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings and K2 (the quantiser) are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -72,6 +72,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note |
+| `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1748,3 +1749,31 @@ taken as stopped half a second after its last tick, which hands the tempo back
 to the slider. Start restarts the locked oscillators and Continue does not.
 There is no internal start and stop yet. Nothing needs one until the score or
 the arpeggiator. Tap restarts the locked oscillators instead.
+
+**Crossings are lines, not points, which the plan asked for and could not have
+kept its promise with.** The plan put a crossing where the beam passes within a
+radius of a point, and said two of them on a 3:2 Lissajous would fire three
+against two. They do not in general. How often a figure passes a point depends
+on where the point sits, and on a 3:2 figure it is three against two only for
+points that happen to be placed for it. A line at X = c is crossed going right exactly once per
+cycle of X, wherever the figure is. So the X line keeps X's time, the Y line
+keeps Y's, and the interval is the rhythm by construction. `crosstest.py`
+checks it to the block:
+- a just fifth at 2 Hz fires twenty against thirty in ten seconds, every gap
+  the same;
+- the equal-tempered one lags the just grid by 11.8 ms after ten seconds,
+  against a predicted 11.6, steadily later with every crossing.
+
+The crossings are read from the beam's samples in the core, as they are made,
+not from the phosphor grid, which is looked at sixty times a second. The notes
+go to the heard pair only. Drawn into the picture, they would be a buzz across
+the figure they are playing.
+
+**A 1 px line is not in the column you think.** The first check for the lines
+on the screen read one pixel column at the line's position and found nothing.
+The line at 515.7 is anti-aliased across two columns at half strength each, and
+the probe was scaled by the canvas's width over its CSS width (846/844), which
+moved it a pixel over. It now reads three columns and keeps the strongest,
+through the context's own transform. The check is zoomed to 1.41, because at
+1x a line placed without the zoom lands in the same place and the mutation pass
+found the check could not tell.

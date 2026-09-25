@@ -1664,6 +1664,58 @@ body[data-view="bench"] .dock  { order: 3; }
               runs, and its Start restarts them.</p>
           </div>
 
+          <div class="menu-group" id="crossGroup" data-home="bench" data-tab="sources">
+            <span class="menu-title">Crossings</span>
+            <label class="check"><input type="checkbox" id="crossOn"> Play a note when the beam crosses a line
+              <span class="reading" id="crossCount"></span></label>
+            <div class="menu-row">
+              <label class="menu-label" for="crossX">X line</label>
+              <div class="grow">
+                <input type="range" id="crossX" min="-100" max="100" value="0">
+                <span class="reading" id="crossXValue">0.00</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="crossNoteX">X plays</label>
+              <div class="grow"><select id="crossNoteX" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="crossY">Y line</label>
+              <div class="grow">
+                <input type="range" id="crossY" min="-100" max="100" value="0">
+                <span class="reading" id="crossYValue">0.00</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="crossNoteY">Y plays</label>
+              <div class="grow"><select id="crossNoteY" style="flex:1 1 auto"></select></div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="crossDecay">Decay</label>
+              <div class="grow">
+                <input type="range" id="crossDecay" min="20" max="1000" value="180">
+                <span class="reading" id="crossDecayValue">180 ms</span>
+              </div>
+            </div>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="crossLevel">Level</label>
+              <div class="grow">
+                <input type="range" id="crossLevel" min="0" max="100" value="40">
+                <span class="reading" id="crossLevelValue">0.40</span>
+              </div>
+            </div>
+            <p class="menu-note">A line across each axis of the picture, drawn on the X&ndash;Y
+              screen, and a plucked note each time the beam crosses one going up. The X line is
+              crossed once a cycle of the X channel wherever the figure is, and the Y line once a
+              cycle of Y, so the interval on the screen is the rhythm you hear: a 3:2 figure plays
+              three against two, and a tempered fifth drifts in and out of step. It is a rhythm
+              only when the drawing is slow &mdash; the harmonograph, or a figure traced a few
+              times a second. At audio pitch the notes are held to twenty-five a second and
+              buzz. The notes are heard, not drawn, and only with <i>Hear the generator</i> on;
+              the count beside the switch says the lines are firing either way. The generator's
+              beam only: a microphone's figure has no lines yet.</p>
+          </div>
+
           <div class="menu-group" data-fold="1" data-home="settings">
             <span class="menu-title">Presets</span>
             <div class="menu-row">
@@ -2470,6 +2522,21 @@ body[data-view="bench"] .dock  { order: 3; }
         the locked oscillators on the beat you tapped. A keyboard or sequencer sending MIDI clock
         sets the tempo while it runs, and hands it back half a second after it stops. Its
         <i>Start</i> restarts the locked oscillators, and <i>Continue</i> does not.</span></li>
+
+      <li><b>Crossings: the picture as a rhythm</b>
+        <span><i>Crossings</i>, on the Sources tab, puts a line across each axis of the X&ndash;Y
+        screen and plays a plucked note each time the beam crosses one going up. The X line is
+        crossed once for every cycle of the X channel, wherever the figure is, and the Y line once
+        for every cycle of Y. So the interval on the screen is the rhythm you hear: a just fifth
+        plays three against two exactly, and a tempered one drifts slowly out of step and back.
+        Each line has its note, C4 and G4 to start, with a decay and a level behind the
+        section's &ctdot;. The lines flash when they fire.
+        <br><br>
+        It is a rhythm only when the drawing is slow: the harmonograph, or a figure traced a few
+        times a second. At audio pitch the notes are limited to twenty-five a second and buzz.
+        The notes are heard and not drawn, and only with <i>Hear the generator</i> on. The count
+        beside the switch shows the lines firing either way. The lines follow the generator's own
+        beam, not a microphone's, and are not drawn while the figure is rotated.</span></li>
     </ul>
 
     <ul class="help-list" id="panelTrigger" hidden>
@@ -3049,6 +3116,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
                   "keyGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
                   "tempo", "tempoValue", "tempoTap", "clockFrom",
+                  "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
+                  "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
                   "srcGroup", "srcGrid", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
@@ -3806,6 +3875,7 @@ function applyModMatrix(frame, elapsed) {
 
   updateEnvelope(frame, elapsed);
   midiSmooth(elapsed);
+  crossStepPanel(performance.now());
   photoStep(elapsed);
   pictureStep(frame, elapsed);
   midiApplyGate();
@@ -5435,6 +5505,18 @@ function makeGeneratorCore(rate, slots, lfos) {
     qMask: 0,
     qGlideMs: 0,
 
+    /* Crossings (K1): a line across each axis of the picture, and a plucked
+       note each time the beam crosses one going up. Page-wide, like the key.
+       The positions are in the picture's own units, full scale being one;
+       the notes are hertz. */
+    crossOn: false,
+    crossX: 0,
+    crossY: 0,
+    crossHzX: 261.63,
+    crossHzY: 392,
+    crossDecayMs: 180,
+    crossLevel: 0.4,
+
     /* A chord, or null. Null is every mode this generator has always had: two
        channels from one pitch and an interval. A list is POLY - every held
        note sounding, each with its own envelope, and each with a role saying
@@ -5537,6 +5619,57 @@ function makeGeneratorCore(rate, slots, lfos) {
   const quantiserFor = () => ({ note: null, at: 0, held: 0 });
   const qA = quantiserFor();
   let lastHz = 0;            // what layer A's dyad last played, for the tests
+
+  /* Crossings. A line and not a point, and that is the plan changed: a
+     point on a Lissajous figure is passed a number of times a period that
+     depends on where it sits, so two of them on a 3:2 figure do not in
+     general fire three against two. A line at X = c is crossed going
+     rightwards exactly once a cycle of X, wherever the figure is, so the
+     X line keeps X's time and the Y line Y's, and the interval on the
+     screen is the rhythm by construction.
+
+     Read from the beam's own samples, here, as they are made - not from the
+     phosphor grid, which is looked at sixty times a second while a figure
+     can pass a line hundreds of times in that. Armed once the beam has been
+     a twentieth of full scale below the line, fired when it reaches it, and
+     never twice inside 40 ms: the hysteresis is so a beam idling on the line
+     does not rattle, and the rate limit, 25 a second, is so a figure at
+     audio pitch buzzes at a rhythm's rate rather than screaming at its own.
+     It is only a rhythm when the drawing is slow, and the panel says so. */
+  const CROSS_HYSTERESIS = 0.05;
+  const crossHold = Math.max(1, Math.round(0.04 * rate));
+  const crossAttack = 1 / Math.max(1, Math.round(0.002 * rate));
+  const crossLineFor = () => ({ armed: false, wait: 0, count: 0,
+                                env: 0, attacking: false, phase: 0 });
+  const crossLines = [crossLineFor(), crossLineFor()];
+  let crossFade = 0;
+
+  function crossStep(line, beam, at) {
+    if (line.wait > 0) line.wait--;
+    if (beam < at - CROSS_HYSTERESIS) line.armed = true;
+    else if (line.armed && beam >= at && line.wait === 0) {
+      line.armed = false;
+      line.wait = crossHold;
+      line.count++;
+      line.attacking = true;
+    }
+  }
+
+  /* The note a line plays: a sine that rises over 2 ms and dies away, with
+     its phase left running between notes. Restarting the phase would put a
+     step in the wave whenever a note arrived while the last was sounding;
+     a 2 ms rise instead of a jump is what stops the start being a click. */
+  function crossVoice(line, hz) {
+    if (line.attacking) {
+      line.env += crossAttack;
+      if (line.env >= 1) { line.env = 1; line.attacking = false; }
+    } else {
+      line.env *= crossFade;
+    }
+    line.phase += TWO_PI * hz / rate;
+    if (line.phase >= TWO_PI) line.phase -= TWO_PI;
+    return line.env * Math.sin(line.phase);
+  }
 
   function nearestAllowed(m, mask) {
     let best = null, gap = Infinity;
@@ -5724,6 +5857,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
     qGlide = tone.qGlideMs > 0 ? poleFor(tone.qGlideMs) : 1;
+    // The decay as a time constant: a note is 1/e of its peak after it.
+    crossFade = Math.exp(-1 / Math.max(1, tone.crossDecayMs * rate / 1000));
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
     // loop is `pow` forty-four thousand times a second for one answer.
@@ -5857,9 +5992,21 @@ function makeGeneratorCore(rate, slots, lfos) {
         outBL[i] = 0; outBR[i] = 0;
       }
 
+      /* The crossings read the beam as drawn - clamped, the edge of the
+         screen being the edge - and their notes go to the ears only. The
+         figure is the slow thing being drawn; the notes are what it plays,
+         and drawn into it they would be a buzz across the picture. */
+      let pluck = 0;
+      if (tone.crossOn) {
+        crossStep(crossLines[0], outL[i], tone.crossX);
+        crossStep(crossLines[1], outR[i], tone.crossY);
+        pluck = tone.crossLevel * (crossVoice(crossLines[0], tone.crossHzX)
+                                   + crossVoice(crossLines[1], tone.crossHzY)) / 2;
+      }
+
       if (heardL) {
-        heardL[i] = (hl === null ? outL[i] : hl) + bhl;
-        heardR[i] = (hr === null ? outR[i] : hr) + bhr;
+        heardL[i] = (hl === null ? outL[i] : hl) + bhl + pluck;
+        heardR[i] = (hr === null ? outR[i] : hr) + bhr + pluck;
       }
     }
 
@@ -5945,6 +6092,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     get gated() { return gated; },
     // The pitch layer A's waveform last played, quantised or not.
     get pitch() { return lastHz; },
+    // How many times each line has fired, since the core was made.
+    get crossings() { return { x: crossLines[0].count, y: crossLines[1].count }; },
     // What is sounding, for the tests and nothing else: note, whether held,
     // and where its gains have got to.
     get voices() {
@@ -6095,6 +6244,9 @@ function generatorProcessor() {
               // Where the envelope got to, so `env.note` is a source on this
               // side without a second envelope being run to find out.
               envelope: this.core.envelope,
+              // And the crossings, so the lines on the screen can flash when
+              // the notes they play are heard.
+              crossings: this.core.crossings,
             },
             [l.buffer, r.buffer, bl.buffer, br.buffer]
           );
@@ -6230,6 +6382,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
      posts it back. Read through the owner's `envelope`, which knows whether
      the loop is here or there. */
   let envelopeNow = 1;
+  let crossingsNow = { x: 0, y: 0 };
 
   function hush() {
     if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
@@ -6291,6 +6444,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
            this side are told their phase instead of finding it - which is the
            whole of what `lfoDriver` is protecting. */
         if (message.envelope !== undefined) envelopeNow = message.envelope;
+        if (message.crossings !== undefined) crossingsNow = message.crossings;
         if (message.lfos) {
           for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
             lfos[i].phase = message.lfos[i].phase;
@@ -6324,6 +6478,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
     get blocks() { return blocks; },
     get envelope() { return envelopeNow; },
     set envelope(value) { envelopeNow = value; },
+    get crossings() { return crossingsNow; },
     get latencyMs() {
       if (!ctx) return 0;
       return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
@@ -6537,6 +6692,8 @@ function makeToneSource(atRate) {
     },
     get gated() { return core.gated; },
     get envelope() { return voice.audible ? voice.envelope : core.envelope; },
+    // From whichever core is making the picture: the worklet's while heard.
+    get crossings() { return voice.audible ? voice.crossings : core.crossings; },
 
     tick(nowSeconds) {
       if (!voice.audible) { voice.envelope = core.envelope; fill(nowSeconds); return; }
@@ -10239,6 +10396,26 @@ function drawXY(frame, fit, elapsed) {
     ctx.stroke();
   }
   });
+
+  /* The crossing lines, over the generator's own pair. Dashed while they
+     wait and solid for a moment after they fire, so the rhythm can be seen
+     landing where it is heard. Not drawn under a rotation: they live in the
+     signal's own axes, and a turned figure would cross them somewhere the
+     drawing did not show. */
+  if (cross.on && state.source && state.source.kind === "tone" && rotateTurns() === 0) {
+    const now = performance.now();
+    const lineX = cx + (cross.x * gainOf(0) + state.channels[0].offset) * radius * state.zoom;
+    const lineY = cy - (cross.y * gainOf(1) + state.channels[1].offset) * radius * state.zoom;
+    const draw = (x0, y0, x1, y1, lit) => {
+      ctx.strokeStyle = ink["blush-deep"];
+      ctx.lineWidth = lit ? 2.5 : 1;
+      ctx.setLineDash(lit ? [] : [4, 4]);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    };
+    draw(lineX, plot.y, lineX, plot.y + size, now - crossSeen.flashX < 120);
+    draw(plot.x, lineY, plot.x + size, lineY, now - crossSeen.flashY < 120);
+    ctx.setLineDash([]);
+  }
   ctx.restore();
 
   ctx.fillStyle = ink["text-soft"];
@@ -12730,6 +12907,7 @@ const DEFAULTS = {
   l1d: "none", l1s: "sine", l1r: 50, l1a: 30,
   // Additive, so a code from before them gets these and no version bump.
   l0y: "", l1y: "", keyRoot: 0, keyScale: "chromatic", quant: false, qGlide: 0, bpm: 120,
+  crossOn: false, crossX: 0, crossY: 0, crossNoteX: 60, crossNoteY: 67, crossDecay: 180, crossLevel: 40,
   mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
@@ -12822,6 +13000,9 @@ function snapshot() {
     l0y: lfos[0].sync, l1y: lfos[1].sync,
     keyRoot: state.keyRoot, keyScale: state.keyScale, quant: state.quantise,
     qGlide: state.quantiseGlide, bpm: transport.set,
+    crossOn: cross.on, crossX: Math.round(cross.x * 100), crossY: Math.round(cross.y * 100),
+    crossNoteX: cross.noteX, crossNoteY: cross.noteY, crossDecay: cross.decayMs,
+    crossLevel: Math.round(cross.level * 100),
     mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
@@ -12989,6 +13170,16 @@ function restore(partial) {
   clockStep(performance.now());
   syncKeyPanel();
   syncQuantiser();
+  const within = (v, lo, hi, dflt) => (Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Number(v))) : dflt);
+  cross.on = s.crossOn === true;
+  cross.x = within(s.crossX, -100, 100, 0) / 100;
+  cross.y = within(s.crossY, -100, 100, 0) / 100;
+  cross.noteX = Math.round(within(s.crossNoteX, 36, 84, 60));
+  cross.noteY = Math.round(within(s.crossNoteY, 36, 84, 67));
+  cross.decayMs = Math.round(within(s.crossDecay, 20, 1000, 180));
+  cross.level = within(s.crossLevel, 0, 100, 40) / 100;
+  syncCrossPanel();
+  syncCrossings();
 
   /* The routing list when the setup has one, and the old enum when it does
      not. Checked against what was actually passed in rather than the merged
@@ -13598,6 +13789,9 @@ function generatorFromPanel(set) {
   set("morph", Number(el.morph.value) / 100);
   set("qMask", state.quantise ? keyMask(state.keyRoot, state.keyScale) : 0);
   set("qGlideMs", state.quantiseGlide);
+  set("crossOn", cross.on); set("crossX", cross.x); set("crossY", cross.y);
+  set("crossHzX", noteHz(cross.noteX)); set("crossHzY", noteHz(cross.noteY));
+  set("crossDecayMs", cross.decayMs); set("crossLevel", cross.level);
   set("mode", el.genMode.value);
   set("interval", Number(el.interval.value));
   set("octaves", 0);
@@ -13951,6 +14145,78 @@ for (let k = 0; k < 9; k++) {
     syncBars();
   });
 }
+/* The crossings section. A note by name - C4 is middle C - and in hertz
+   for the generator, which knows nothing of names. */
+const noteName = (n) => KEY_NAMES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+const noteHz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+for (const select of [el.crossNoteX, el.crossNoteY]) {
+  let options = "";
+  for (let n = 36; n <= 84; n++) options += '<option value="' + n + '">' + noteName(n) + "</option>";
+  select.innerHTML = options;
+}
+
+const cross = { on: false, x: 0, y: 0, noteX: 60, noteY: 67, decayMs: 180, level: 0.4 };
+
+function syncCrossings() {
+  genSet("crossOn", cross.on);
+  genSet("crossX", cross.x);
+  genSet("crossY", cross.y);
+  genSet("crossHzX", noteHz(cross.noteX));
+  genSet("crossHzY", noteHz(cross.noteY));
+  genSet("crossDecayMs", cross.decayMs);
+  genSet("crossLevel", cross.level);
+}
+
+function syncCrossPanel() {
+  el.crossOn.checked = cross.on;
+  el.crossX.value = String(Math.round(cross.x * 100));
+  el.crossY.value = String(Math.round(cross.y * 100));
+  el.crossXValue.textContent = cross.x.toFixed(2);
+  el.crossYValue.textContent = cross.y.toFixed(2);
+  el.crossNoteX.value = String(cross.noteX);
+  el.crossNoteY.value = String(cross.noteY);
+  el.crossDecay.value = String(cross.decayMs);
+  el.crossDecayValue.textContent = cross.decayMs + " ms";
+  el.crossLevel.value = String(Math.round(cross.level * 100));
+  el.crossLevelValue.textContent = cross.level.toFixed(2);
+  el.crossCount.textContent = "";
+}
+
+/* The count beside the switch, once a frame when it changes, and when each
+   line last fired, for the flash on the screen. From whichever core is
+   making the picture - the worklet's while the generator is heard. */
+const crossSeen = { x: 0, y: 0, flashX: 0, flashY: 0, said: "" };
+function crossStepPanel(now) {
+  const source = state.source;
+  const counts = cross.on && source && source.kind === "tone" && source.crossings;
+  if (!counts) {
+    if (crossSeen.said !== "") { crossSeen.said = ""; el.crossCount.textContent = ""; }
+    return;
+  }
+  if (counts.x !== crossSeen.x) { crossSeen.x = counts.x; crossSeen.flashX = now; }
+  if (counts.y !== crossSeen.y) { crossSeen.y = counts.y; crossSeen.flashY = now; }
+  const said = "X " + counts.x + " \u00b7 Y " + counts.y;
+  if (said !== crossSeen.said) { crossSeen.said = said; el.crossCount.textContent = said; }
+}
+
+el.crossOn.addEventListener("change", () => { cross.on = el.crossOn.checked; syncCrossings(); });
+el.crossX.addEventListener("input", () => {
+  cross.x = Number(el.crossX.value) / 100; el.crossXValue.textContent = cross.x.toFixed(2); syncCrossings();
+});
+el.crossY.addEventListener("input", () => {
+  cross.y = Number(el.crossY.value) / 100; el.crossYValue.textContent = cross.y.toFixed(2); syncCrossings();
+});
+el.crossNoteX.addEventListener("change", () => { cross.noteX = Number(el.crossNoteX.value); syncCrossings(); });
+el.crossNoteY.addEventListener("change", () => { cross.noteY = Number(el.crossNoteY.value); syncCrossings(); });
+el.crossDecay.addEventListener("input", () => {
+  cross.decayMs = Number(el.crossDecay.value); el.crossDecayValue.textContent = cross.decayMs + " ms"; syncCrossings();
+});
+el.crossLevel.addEventListener("input", () => {
+  cross.level = Number(el.crossLevel.value) / 100; el.crossLevelValue.textContent = cross.level.toFixed(2);
+  syncCrossings();
+});
+syncCrossPanel();
+
 /* The key and tempo section. */
 el.keyRoot.innerHTML = KEY_NAMES.map((name, i) => '<option value="' + i + '">' + name + "</option>").join("");
 el.keyScale.innerHTML = SCALES.map(([id, name]) => '<option value="' + id + '">' + name + "</option>").join("");
@@ -14862,6 +15128,7 @@ const SEARCH_SYNONYMS = {
   timbre: "morph shape drawbars", blend: "morph", crossfade: "morph",
   quantize: "quantise", bpm: "tempo", scale: "key", sync: "tempo clock sync",
   metronome: "tempo", tap: "tempo tap",
+  rhythm: "crossings", polyrhythm: "crossings", beat: "crossings tempo", pluck: "crossings",
   pitch: "frequency pitch", volume: "amplitude level volume", loudness: "amplitude level",
   mic: "microphone mic input device", speakers: "hear monitor", octave: "frequency interval",
   envelope: "envelope attack decay sustain release",

@@ -5,8 +5,8 @@ stand: the generator is an `AudioWorkletNode`, the filter / AC / rotation / lag
 are in the speakers as well as on the screen, the photocell and its picture
 sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
 limiter, and a keyboard can be split into two layers. **Built so far:** G0,
-G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, and
-K2 (see *Built so far* under Stage K). Nothing else here is.
+G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
+crossings and K2 (see *Built so far* under Stage K). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -471,8 +471,15 @@ tempo* section on the Sources tab.
   need a note to count steps from, and the README says why that was not the
   choice.
 
-`keytest.py` and `clocktest.py` hold them. K1's crossings, K3 to K5, and S3 in
-general are not built.
+`keytest.py` and `clocktest.py` hold them.
+
+**K1's crossings**, changed from the plan: two lines, one across each axis,
+rather than points. A line at X = c is crossed once per cycle of X, so a 3:2
+figure fires three against two exactly. A point is passed a number of times that
+depends on where it sits, and does not keep that promise. Each line plays a
+plucked note in the heard pair only. There is 0.05 of full scale of hysteresis
+and a limit of 25 notes a second. `crosstest.py` holds them. K1's thresholds,
+K3 to K5, and S3 in general are not built.
 
 ### K · verification
 
