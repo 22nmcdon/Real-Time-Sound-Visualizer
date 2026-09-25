@@ -300,6 +300,10 @@ with sync_playwright() as pw:
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split+keys, drawbars'] = fits();
+      // And the morph's row, which is a slider rather than a line of text.
+      el.shape.value = 'morph'; el.shape.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split+keys, morph'] = fits();
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
       el.midiEditA.click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));

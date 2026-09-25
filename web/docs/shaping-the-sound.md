@@ -4,8 +4,8 @@ A plan. It follows `playing-it-and-hearing-it.md` and assumes Stages A–F as th
 stand: the generator is an `AudioWorkletNode`, the filter / AC / rotation / lag
 are in the speakers as well as on the screen, the photocell and its picture
 sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
-limiter, and a keyboard can be split into two layers. **G0 and G1's drawbars
-are built** (see *Built so far* under Stage G); nothing else here is.
+limiter, and a keyboard can be split into two layers. **G0, and G1's drawbars
+and morph, are built** (see *Built so far* under Stage G); nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -164,8 +164,17 @@ on the way:
   readout's frequency is the sound's rather than the key's, and it wanders
   (see the README).
 
-`drawbartest.py` holds them. Morph, pulse, the supersaw, the wavetable and the
-rest of G1 and G2 are not built.
+`drawbartest.py` holds them.
+
+**Morph**: one position, 0 to 3, through sine, triangle, saw and square.
+- It crossfades between the band-limited shapes, and is exact on each station.
+- It is a destination, and full depth on it is a station and a half.
+- Each layer has its own position, which makes layer B eight fields.
+- Its saw is the menu's half a cycle later, or the triangle-to-saw crossfade
+  cancels the fundamental.
+
+`morphtest.py` holds it. Pulse, the supersaw, the wavetable, the noises, the
+stepped shape and G2 are not built.
 
 ### G · verification
 

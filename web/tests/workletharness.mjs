@@ -98,7 +98,7 @@ try {
   // `waveAt` and the band-limiting is only on three of them.
   node.port.onmessage({ data: { tone: { mode: "wave" } } });
   report.shapes = {};
-  for (const shape of ["sine", "harmonic", "triangle", "square", "ramp", "drawbars", "noise"]) {
+  for (const shape of ["sine", "harmonic", "triangle", "square", "ramp", "drawbars", "morph", "noise"]) {
     node.port.onmessage({ data: { tone: { shape } } });
     /* Cleared first. The block is shared between shapes, and a shape whose
        branch throws writes nothing into it - so the samples it was judged on

@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw) and G1's drawbars are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and G1's morph are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -69,6 +69,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
+| `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1663,3 +1664,28 @@ reused one output block for every shape and never cleared it. A shape whose
 branch threw wrote nothing, and was judged on the samples before it. With
 `DRAWBAR_HARMONICS` left out of the module, the drawbars passed as a saw. The
 block is now cleared per shape, and both of that mutation's forms are caught.
+
+**The morph's saw is the menu's saw half a cycle later.** The menu's saw rises
+from −1 at the top of the cycle, so its fundamental is the sine's upside down.
+The triangle's, the square's and the sine's are all the right way up. A plain
+crossfade from the triangle to that saw cancelled the note. Half-way, the
+fundamental measured 0.09 of the sine's, the note all but gone into its own
+harmonics. With the saw turned round it measures 0.72, and it goes smoothly from
+one station to the next along the whole range. The lowest point is the saw's own
+0.64. The cost is that "saw" on the morph and Saw on the menu draw the same wave
+half a cycle apart. `morphtest.py` measures the fundamental at every quarter
+station.
+
+**Velocity in the core is a fraction.** Two tests handed voices `velocity: 127`,
+as MIDI would, where the keyboard code hands over 0 to 1. Both layers were
+driven into the picture's clamp, and a sine came out a square. The drawbars'
+layer check passed anyway, because it only asked where the loudest partial was,
+and a square keeps its fundamental. It now also requires nothing else in either
+layer's picture, and fails on the old fixture.
+
+**A reading beside a slider has about 55 px.** The morph's first reading was
+"tri→saw 50%". In a Bench column it was cut off at "5", because a range input
+will not shrink below 80 px and the reading is what gives. It now names the
+pair, "tri→saw", and leaves how far across to the slider. The morph's slider may
+shrink to 64 px, so "saw→sqr" fits. `morphtest.py` checks every reading against
+the right edge of its row, at every station and half-station.

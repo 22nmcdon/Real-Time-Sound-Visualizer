@@ -279,17 +279,22 @@ with sync_playwright() as pw:
       core.set('shape', 'drawbars'); core.set('bars', [0, 0, 8, 0, 0, 0, 0, 0, 0]);
       core.set('shape', 'drawbars', 1); core.set('bars', [8, 0, 0, 0, 0, 0, 0, 0, 0], 1);
       core.set('amp', 0.9, 1);
-      const v = [{ note: 57, freq: 220, velocity: 127, role: 'xy' }];
+      // Velocity is a fraction here, as the keyboard hands it over; 127 drove
+      // both layers into the clamp and a sine came out square.
+      const v = [{ note: 57, freq: 220, velocity: 1, role: 'xy' }];
       core.set('voices', v); core.set('voices', v, 1);
       const n = 52292, L = new Float32Array(n), R = new Float32Array(n);
       const BL = new Float32Array(n), BR = new Float32Array(n);
       core.block(L, R, n, null, null, BL, BR);
       return { a: Array.from(L.subarray(8192)), b: Array.from(BL.subarray(8192)) };
     }""")
-    fa, _ = partials(heard["a"])
-    fb, _ = partials(heard["b"])
-    check("and B sounds its own: B's picture is its 16' at 110 Hz while A's is its 8' at 220",
-          abs(fb - 110) < 3 and abs(fa - 220) < 3, "A %.1f Hz, B %.1f Hz" % (fa, fb))
+    fa, ra = partials(heard["a"])
+    fb, rb = partials(heard["b"])
+    # And nothing else in either: the loudest partial alone passed with both
+    # layers clipped into squares, because a square keeps its fundamental.
+    check("and B sounds its own: B's picture is its 16' at 110 Hz while A's is its 8' at 220, each alone",
+          abs(fb - 110) < 3 and abs(fa - 220) < 3 and ra < -100 and rb < -100,
+          "A %.1f Hz (rest %.0f dB), B %.1f Hz (rest %.0f dB)" % (fa, ra, fb, rb))
     p.evaluate("""() => { el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
                           setMidiMode('dyad'); setScreenKeys(false); }""")
 
