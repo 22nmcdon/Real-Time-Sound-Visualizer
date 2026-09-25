@@ -230,9 +230,12 @@ select, input[type="number"] {
    One row per lane, and the row is mostly its name. The swatch is the only
    place a lane's ink is stated in the interface rather than on the screen,
    which is what lets the stacked display leave its labels in text. */
+/* Tight, because a rack of six is six of these in a Bench that must not
+   scroll: three pixels a side rather than five is twenty-four pixels over a
+   full rack, and the buttons are still a comfortable target. */
 .lane {
   display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; border-bottom: 1px solid var(--line);
+  padding: 3px 0; border-bottom: 1px solid var(--line);
 }
 .lane:last-child { border-bottom: 0; }
 .lane-swatch {
@@ -962,7 +965,7 @@ body[data-view="bench"] #menuButton { display: none; }
                 <button type="button" class="caps" id="srcTone" role="radio" aria-checked="true">Tone</button>
                 <button type="button" class="caps" id="srcMic" role="radio" aria-checked="false">Mic</button>
                 <button type="button" class="caps" id="srcFile" role="radio" aria-checked="false">File</button>
-                <button type="button" class="caps" id="srcRack" role="radio" aria-checked="false">Stems</button>
+                <button type="button" class="caps" id="srcRack" role="radio" aria-checked="false">Lanes</button>
               </div>
             </div>
 
@@ -999,20 +1002,27 @@ body[data-view="bench"] #menuButton { display: none; }
               </label>
               <label class="check" id="rackLiveRow">
                 <input type="checkbox" id="rackLive"> Add the live input as a lane
-                <span class="reading" id="rackBudget"></span>
               </label>
+              <!-- The count on this row rather than the live input's, where it
+                   wrapped the label onto a second line. -->
               <div class="menu-row">
-                <span class="menu-label">Stems</span>
+                <span class="menu-label">Files</span>
                 <div class="grow">
-                  <label class="link-btn caps" for="rackInput" style="cursor:pointer">Choose files</label>
+                  <label class="link-btn caps" for="rackInput" style="cursor:pointer">Add files</label>
                   <input type="file" id="rackInput" accept="audio/*" multiple hidden>
+                  <span class="reading" id="rackBudget"></span>
                 </div>
               </div>
+              <!-- The two ways to a rack in one go, on one row with no label:
+                   a row each was forty pixels the Bench did not have. -->
               <div class="menu-row">
-                <span class="menu-label">Play along</span>
                 <div class="grow">
-                  <label class="link-btn caps" for="alongInput" style="cursor:pointer">With a track</label>
+                  <label class="link-btn caps" for="alongInput" style="cursor:pointer"
+                         title="A backing track and your live input, as two lanes">Play along</label>
                   <input type="file" id="alongInput" accept="audio/*" hidden>
+                  <label class="link-btn caps" for="bandInput" style="cursor:pointer"
+                         title="One file, split into frequency bands, a lane each">Split into bands</label>
+                  <input type="file" id="bandInput" accept="audio/*" hidden>
                 </div>
               </div>
               <div class="menu-row" id="alignRow" hidden>
@@ -1035,31 +1045,9 @@ body[data-view="bench"] #menuButton { display: none; }
                 the page counts at its own &mdash; so over a long session the alignment
                 walks and wants nudging again. That is a known limit rather than something
                 handled.</p>
-              <div class="menu-row">
-                <span class="menu-label">Or split one</span>
-                <div class="grow">
-                  <label class="link-btn caps" for="bandInput" style="cursor:pointer">Into bands</label>
-                  <input type="file" id="bandInput" accept="audio/*" hidden>
-                </div>
-              </div>
-              <div class="menu-row">
-                <span class="menu-label">Layout</span>
-                <div class="switch" role="radiogroup" aria-label="Lane layout">
-                  <button type="button" class="caps" id="layStack" role="radio" aria-checked="true">Stacked</button>
-                  <button type="button" class="caps" id="layOver" role="radio" aria-checked="false">Overlaid</button>
-                </div>
-              </div>
-              <div class="menu-row">
-                <span class="menu-label">X&ndash;Y pair</span>
-                <div class="grow">
-                  <select id="xyX" style="flex:1 1 auto"></select>
-                  <span class="reading">against</span>
-                  <select id="xyY" style="flex:1 1 auto"></select>
-                </div>
-              </div>
-              <div id="laneList"></div>
               <p class="menu-note" id="rackNote2">A rack is whatever you tick plus whatever
-              files you choose, and the two boxes are the parts that are not files. The
+              files you add, and the two boxes are the parts that are not files. Files go in
+              beside the ones already there; the &times; on a lane takes it out again. The
               <i>generator</i> and the <i>live input</i> together, with no track between
               them, is what you want for playing along with something the page is making
               &mdash; and <i>X&ndash;Y</i> can pair either against either.
@@ -1067,14 +1055,13 @@ body[data-view="bench"] #menuButton { display: none; }
               Each is one lane, which for the generator means its <em>left</em> channel: a
               lane is one signal and the generator makes two, so its own figure is not
               available while it is a lane, and a note sets its pitch without starting or
-              stopping it. It is silent as a lane too &mdash; on its own it can be heard,
-              but a lane's worth of it does not yet reach the speakers. Neither does the
-              input, which is the microphone rule unchanged.
+              stopping it. <i>Hear the generator</i> sends that left channel to the rack's
+              mix. The input is never heard, which is the microphone rule unchanged.
               <br><br>
-              The count beside the boxes is how many lanes your choice comes to, out of six;
-              the two boxes take their places before any file does.</p>
-            <p class="menu-note" id="rackNote">Drop several files at once and each becomes a
-                lane. They share one clock and one timebase &mdash; lanes on different
+              The count beside <i>Add files</i> is how many lanes your choice comes to, out of
+              six; the two boxes take their places before any file does.</p>
+            <p class="menu-note" id="rackNote">Add files, or drop them on the page, and each
+                becomes a lane. They share one clock and one timebase &mdash; lanes on different
                 timebases cannot be compared, which is the only reason to stack them.
                 <i>Solo</i> and <i>mute</i> are the monitor mix; <i>show</i> is the screen.
                 Nothing is uploaded.</p>
@@ -1084,7 +1071,9 @@ body[data-view="bench"] #menuButton { display: none; }
               <div class="grow"><select id="device" style="flex:1 1 auto"></select></div>
             </div>
             <div class="menu-row" id="micShapeRow" hidden>
-              <span class="menu-label">Lanes</span>
+              <!-- "Split" rather than "Lanes", which is the source switch's word
+                   for a rack now, and one control per name. -->
+              <span class="menu-label">Split</span>
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="Live input lanes" style="flex:0 0 auto">
                   <button type="button" class="caps" id="micWhole" role="radio" aria-checked="true">Whole</button>
@@ -1121,6 +1110,33 @@ body[data-view="bench"] #menuButton { display: none; }
               milliseconds is normal and a keyboard player will feel it. The setup that
               does not suffer it is hearing the instrument directly and letting this page
               only look. A band split is not monitored at all.</p>
+          </div>
+
+          <!-- Its own section rather than rows under Input. A rack of five
+               lanes made Input 145 px taller than the Bench, which must never
+               scroll, and no dealing of whole sections into columns can fit
+               one section taller than a column. Split in two, the Bench can
+               put the lanes beside the rack's membership. -->
+          <div class="menu-group" id="laneGroup" data-off="1">
+            <span class="menu-title">Lanes</span>
+            <div id="laneList"></div>
+            <div class="menu-row">
+              <span class="menu-label">Layout</span>
+              <div class="switch" role="radiogroup" aria-label="Lane layout">
+                <button type="button" class="caps" id="layStack" role="radio" aria-checked="true">Stacked</button>
+                <button type="button" class="caps" id="layOver" role="radio" aria-checked="false">Overlaid</button>
+              </div>
+            </div>
+            <div class="menu-row">
+              <span class="menu-label">X&ndash;Y pair</span>
+              <div class="grow">
+                <!-- Allowed to shrink: at their natural width the two menus and
+                     the word between them ran 119 px into the next column. -->
+                <select id="xyX" style="flex:1 1 0; min-width:0"></select>
+                <span class="reading">against</span>
+                <select id="xyY" style="flex:1 1 0; min-width:0"></select>
+              </div>
+            </div>
           </div>
 
           <div class="menu-group" id="midiGroup">
@@ -2228,14 +2244,21 @@ body[data-view="bench"] #menuButton { display: none; }
       <li class="help-lede">Four sources, and a generator with four minds of its own.
         <i>Settings &rarr; Input</i>.</li>
 
-      <li><b>Tone, Mic, File, Stems</b>
+      <li><b>Tone, Mic, File &mdash; or Lanes</b>
         <span>The tone is arithmetic, and runs the moment the page opens. <i>Mic</i> asks the
         browser for your input. <i>File</i> takes a WAV or MP3 &mdash; or drop one anywhere on
-        the page &mdash; and plays it as it draws. Drop <i>several</i> files at once and each
-        becomes a lane.</span></li>
+        the page &mdash; and plays it as it draws. Each of those is <em>one</em> signal, in
+        stereo, so X&ndash;Y draws its left against its right.
+        <br><br>
+        <i>Lanes</i> is several signals on one graticule, each of them one lane in mono, and
+        X&ndash;Y draws any lane against any other. You build it: tick the generator or the
+        live input, add files, and take any lane out again with the &times; beside it. Choosing
+        Lanes with nothing in it changes nothing on the screen until you add something, and
+        coming back to it after the tone brings back what you had. Drop several files on the
+        page and they become a rack of their own, or join the one that is loaded.</span></li>
 
       <li><b>Playing along with a track</b>
-        <span><i>Stems &rarr; Play along &rarr; With a track</i> opens a backing track and
+        <span><i>Lanes &rarr; Play along</i> opens a backing track and
         your microphone as two lanes of one rack &mdash; so X&ndash;Y is the track against
         you, which is the figure worth having. Your playing is drawn and never sent to the
         speakers: the track is already going into the same microphone and sending that back
@@ -2251,7 +2274,7 @@ body[data-view="bench"] #menuButton { display: none; }
         setting.</span></li>
 
       <li><b>Playing live: split the input into bands</b>
-        <span>Under <i>Mic</i>, <i>Lanes &rarr; Into bands</i> puts what you are playing
+        <span>Under <i>Mic</i>, <i>Split &rarr; Into bands</i> puts what you are playing
         through the same four crossovers the stem splitter uses. One instrument down one
         input becomes four lanes, and low end against upper harmonics is an X&ndash;Y figure
         that moves because you moved. <i>Solo</i> and <i>mute</i> choose what the screen
@@ -2273,8 +2296,8 @@ body[data-view="bench"] #menuButton { display: none; }
         treat it as a floor. Hearing the instrument directly and letting this page only
         look is the version with no delay in it at all.</span></li>
 
-      <li><b>Stems stack</b>
-        <span>Up to six, and six because that is where the paper stops being able to tell one
+      <li><b>Up to six lanes</b>
+        <span>Six because that is where the paper stops being able to tell one
         trace from the next &mdash; it is also what the largest stem separator produces. They
         share one clock: every lane starts at one scheduled instant, so what you are comparing
         is the same moment of the track. Nothing is uploaded; the files are decoded here.</span></li>
@@ -2297,7 +2320,7 @@ body[data-view="bench"] #menuButton { display: none; }
         goniometer follows the same pair.</span></li>
 
       <li><b>The generator and your playing, on one graticule</b>
-        <span>Under <i>Stems</i>, tick <i>Add the generator as a lane</i> and <i>Add the
+        <span>Under <i>Lanes</i>, tick <i>Add the generator as a lane</i> and <i>Add the
         live input as a lane</i>. No backing track needed: that combination is the whole
         point &mdash; what the page is making and what you are playing, on one graticule,
         with <i>X&ndash;Y</i> able to pair either against either. Add files to it as well
@@ -2640,7 +2663,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "srcRack", "rackRows", "rackInput", "bandInput", "rackNote",
                   "rackSynthRow", "rackSynth", "rackLiveRow", "rackLive", "rackBudget",
                   "lagMixRow", "lagMix", "lagMixValue",
-                  "midiGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
+                  "midiGroup", "laneGroup", "midiConnect", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "photoReticle", "photoButton", "clearButton",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow", "midiEditA",
@@ -12393,10 +12416,26 @@ function showSource(pending) {
      graph that is not wired that way. */
   applyMonitor();
   el.rackRows.hidden = kind !== "rack";
+  // The lanes of whatever is loaded, and only while a rack is: a section
+  // that does not apply is off in both views, not an empty heading.
+  if (loaded === "rack" && kind === "rack") delete el.laneGroup.dataset.off;
+  else el.laneGroup.dataset.off = "1";
+  /* Lanes chosen with nothing in the rack yet changes the panel and not the
+     screen, and says so rather than leaving the old source's picture under a
+     switch that reads Lanes. */
+  if (kind === "rack" && loaded !== "rack" && !rackRemembered()) {
+    sayRack("Nothing in the rack yet, so the screen is still showing the "
+      + (loaded === "tone" ? "generator" : loaded === "mic" ? "input" : "file")
+      + ". Tick the generator or the live input, or add files, and each becomes a lane.");
+  }
 
   // A rack plays, so it borrows the file's transport - all but the row that
   // loads one file, which is the one thing it does differently.
-  el.fileRows.hidden = kind !== "file" && kind !== "rack";
+  /* And only a rack with something in it to play: the generator and the live
+     input have no transport, and the rows were a Pause and a Position that
+     did nothing, fifty pixels of a Bench that had none to spare. */
+  el.fileRows.hidden = kind !== "file"
+    && !(kind === "rack" && loaded === "rack" && playable());
   el.fileChooseRow.hidden = kind === "rack";
   el.fileNote.hidden = kind === "rack";
 
@@ -12405,8 +12444,12 @@ function showSource(pending) {
   // listening to.
   el.sourceMark.textContent = loaded === "tone" ? "Test tone"
                             : loaded === "file" ? "File"
-                            : loaded === "rack" ? (state.source.hasLive ? "Play along"
-                                                 : state.source.bands ? "Bands" : "Stems")
+                            // Playing along means something to play along to: the
+                            // generator and you alone are lanes, not a play-along.
+                            : loaded === "rack" ? (state.source.hasLive && state.source.duration > 0
+                                                 ? "Play along"
+                                                 : state.source.bands ? "Bands"
+                                                 : state.source.duration > 0 ? "Stems" : "Lanes")
                             : state.source.live ? "Live bands"
                             : "Live input";
   el.credit.textContent = state.source.describe();
@@ -12457,6 +12500,7 @@ function generatorFromPanel(set) {
 }
 
 function toTone() {
+  rackBuild++;   // a rack still being built is no longer what was asked for
   // Already a tone: there is nothing to build, but the panel may be showing
   // another source's rows and this click is how you get back. Returning here
   // without repairing it is what made Stems a one-way door - open the picker,
@@ -12490,6 +12534,7 @@ function toTone() {
 }
 
 async function toMic(deviceId) {
+  rackBuild++;
   el.status.textContent = "asking";
   el.status.dataset.state = "loading";
 
@@ -12519,7 +12564,8 @@ async function toMic(deviceId) {
     showSource();
     el.credit.textContent = error && error.name === "NotAllowedError"
       ? "microphone blocked — allow it in the address bar, then press Mic again"
-      : "no microphone available — the test tone still works";
+      : "no microphone available — " + (state.source.kind === "tone"
+        ? "the test tone still works" : "what was playing still is");
   }
 }
 
@@ -12540,6 +12586,7 @@ async function listDevices() {
 }
 
 async function toFile(file) {
+  rackBuild++;
   if (!file) { el.fileInput.click(); return; }
 
   el.status.textContent = "reading";
@@ -12629,7 +12676,9 @@ document.addEventListener("drop", (event) => {
   const files = event.dataTransfer && event.dataTransfer.files;
   if (!files || files.length === 0) return;
   // One file is a file; several are a rack. Nothing to choose beforehand.
-  if (files.length > 1) toRack(files); else toFile(files[0]);
+  // Onto a rack you are building, they go into it.
+  if (state.source && state.source.kind === "rack" && rackKind === "stems") addRackFiles(files);
+  else if (files.length > 1) toRack(files); else toFile(files[0]);
 });
 
 /* Whole or split, on whatever is already open. Nothing is torn down and
@@ -12924,6 +12973,12 @@ function buildLaneList() {
     + lane.solo + '">Solo</button>'
     + '<button type="button" data-lane="' + i + '" data-act="mute" aria-pressed="'
     + lane.mute + '">Mute</button>'
+    /* Not on the last lane: a rack of nothing is not a source, and choosing
+       another source is how to leave one. Not on a band split, whose lanes
+       are one file through a crossover rather than things put in. */
+    + (rackKind === "stems" && source.lanes.length > 1
+      ? '<button type="button" data-lane="' + i + '" data-act="remove" aria-label="Remove '
+        + escapeText(lane.name) + '" title="Take this lane out">&times;</button>' : "")
     + "</span></div>"
   ).join("");
 
@@ -12931,6 +12986,7 @@ function buildLaneList() {
     button.addEventListener("click", () => {
       const i = Number(button.dataset.lane);
       const lane = source.lanes[i];
+      if (button.dataset.act === "remove") { removeRackLane(i); return; }
       if (button.dataset.act === "show") {
         state.channels[i].on = !state.channels[i].on;
         if (el["ch" + (i + 1) + "On"]) el["ch" + (i + 1) + "On"].checked = state.channels[i].on;
@@ -12988,7 +13044,15 @@ async function readAll(files) {
    them costs nothing, and `setMicShape` set the precedent: a switch that
    changes what a source IS rebuilds the source. */
 let rackFiles = null;
-let rackAlong = null;
+/* Which build is the latest. Building decodes files and may open the
+   microphone, so two builds can be in flight at once - Lanes restoring the
+   last rack while a file is added to it - and without this the one that
+   finished last won, which is not the same as the one asked for last. */
+let rackBuild = 0;
+/* What the loaded rack was built as. Only a rack built from its membership
+   can have lanes taken out of it one at a time; a band split is one file
+   seen through a crossover, and its lanes are not separable things. */
+let rackKind = null;
 
 /* How many lanes a choice would come to, and what has to go. The generator
    takes one of six, so this is said BEFORE anything is decoded rather than
@@ -13008,7 +13072,7 @@ function rackExtras() {
 
 function sayBudget() {
   const files = rackFiles ? rackFiles.length : 0;
-  const extras = rackExtras() + (rackAlong ? 1 : 0);
+  const extras = rackExtras();
   if (files === 0 && extras === 0) { el.rackBudget.textContent = ""; return; }
   const budget = laneBudget(files, extras);
   el.rackBudget.textContent = budget.over > 0
@@ -13017,10 +13081,15 @@ function sayBudget() {
   el.rackBudget.dataset.state = budget.over > 0 ? "over" : "";
 }
 
-async function toRack(files) {
+/* The rack you have built: the generator, the live input and files, each in
+   or out. Everything that changes what is in it comes here - the two boxes,
+   Add files, a lane's remove button, Play along, and Lanes bringing the last
+   rack back - so there is one way a rack is made and one order its lanes
+   come in: the generator, then the files, then you. */
+async function toRack(files, { suggestAlign = false } = {}) {
   const all = Array.from(files);
-  rackAlong = null;
   rackFiles = all;
+  const build = ++rackBuild;
 
   // The lanes that are not files take their places first, so the files are cut
   // to what is left rather than to six.
@@ -13038,11 +13107,25 @@ async function toRack(files) {
     : "Opening the input…");
   try {
     const entries = await readAll(list);
-    if (state.rackLive) entries.unshift({ name: "You", stream: true });
+    if (state.rackLive) entries.push({ name: "You", stream: true });
     if (state.rackSynth) entries.unshift({ name: "Generator", synth: true });
-    const source = await makeRackSource(entries, list.length + " stems",
+    /* Called playing along whenever you are in it with something to play
+       along to, which is what Play along always built - it is now a quicker
+       way to the same membership rather than a rack of its own kind. */
+    const along = state.rackLive && list.length > 0;
+    const wasAlong = !!(state.source && state.source.hasLive && state.source.duration > 0);
+    const source = await makeRackSource(entries, along ? "play along" : list.length + " stems",
                                         el.device.value || undefined);
+    if (build !== rackBuild) { source.stop(); return; }
     adoptRack(source, "stems");
+    /* The alignment starts from the context's own guess the moment a rack
+       becomes one you play along to, and is left where you trimmed it after. */
+    if (along && (!wasAlong || suggestAlign)) {
+      state.alignMs = source.suggestedAlignMs;
+      el.align.value = String(state.alignMs);
+      applyAlignment();
+      syncLabels();
+    }
     if (state.rackLive) await listDevices();
     sayRack(budget.over > 0
       ? "Six lanes is the most the screen can tell apart, so the first "
@@ -13063,7 +13146,6 @@ async function setRackLive(on) {
   state.rackLive = on;
   el.rackLive.checked = on;
   sayBudget();
-  if (rackAlong) { await toPlayAlong(rackAlong); return; }
   await toRack(rackFiles || []);
 }
 
@@ -13076,8 +13158,34 @@ async function setRackSynth(on) {
   state.rackSynth = on;
   el.rackSynth.checked = on;
   sayBudget();
-  if (rackAlong) { await toPlayAlong(rackAlong); return; }
   await toRack(rackFiles || []);
+}
+
+/* Files into the rack you are building, after the ones already in it. */
+async function addRackFiles(files) {
+  await toRack((rackFiles || []).concat(Array.from(files)));
+}
+
+/* One lane out, by what it is: the generator and the live input are their
+   boxes unticked, a file is that file dropped from the list. The file lanes
+   come in the order the files do, so the k-th file lane is the k-th file. */
+async function removeRackLane(index) {
+  const source = state.source;
+  if (!source || !source.lanes || rackKind !== "stems") return;
+  const lane = source.lanes[index];
+  if (!lane) return;
+  if (lane.synth) { await setRackSynth(false); return; }
+  if (lane.live) { await setRackLive(false); return; }
+  const k = source.lanes.slice(0, index).filter((l) => !l.synth && !l.live).length;
+  const files = (rackFiles || []).slice();
+  files.splice(k, 1);
+  await toRack(files);
+}
+
+/* Whether there is a rack to come back to: something in it, and it is not
+   what is loaded. */
+function rackRemembered() {
+  return (!!rackFiles && rackFiles.length > 0) || state.rackSynth || state.rackLive;
 }
 
 /* Positive holds the track back to meet a late input, which is the usual
@@ -13095,42 +13203,30 @@ function applyAlignment() {
 }
 
 function showAlign() {
-  const live = !!(state.source && state.source.hasLive);
+  // Something to align against, as well as you: the generator and the input
+  // alone are both arriving now, and the row was a slider for nothing.
+  const live = !!(state.source && state.source.hasLive && state.source.duration > 0);
   el.alignRow.hidden = !live;
   el.alignNote.hidden = !live;
 }
 
+/* A track and you, which is a membership rather than a kind of rack: the
+   track as the one file, the live input ticked, the generator as it was.
+   It used to build a rack of its own that the boxes could not see, so
+   ticking the live input over it did nothing and a lane could not be taken
+   out of it. */
 async function toPlayAlong(file) {
   if (!file) return;
-  rackFiles = null;
-  rackAlong = file;
+  state.rackLive = true;
+  el.rackLive.checked = true;
   sayBudget();
-  sayRack("Opening the microphone and decoding \u201c" + file.name + "\u201d\u2026");
-
-  try {
-    const entries = [
-      { name: laneNameFor(file), data: await file.arrayBuffer() },
-      { name: "You", stream: true },
-    ];
-    if (state.rackSynth) entries.unshift({ name: "Generator", synth: true });
-    const source = await makeRackSource(entries, "play along", el.device.value || undefined);
-    adoptRack(source, "along");
-
-    state.alignMs = source.suggestedAlignMs;
-    el.align.value = String(state.alignMs);
-    applyAlignment();
-    syncLabels();
-    await listDevices();
-    sayRack(null);
-  } catch (error) {
-    sayRack(error && error.name === "NotAllowedError"
-      ? "The microphone was blocked \u2014 allow it in the address bar and try again."
-      : "That would not open: " + error.message);
-  }
+  // A new track is a new alignment to find, whatever was loaded before.
+  await toRack([file], { suggestAlign: true });
 }
 
 async function toBands(file) {
   if (!file) return;
+  rackBuild++;
   sayRack("Splitting “" + file.name + "”…");
   try {
     const source = await makeBandSource(await file.arrayBuffer(), laneNameFor(file));
@@ -13142,6 +13238,7 @@ async function toBands(file) {
 }
 
 function adoptRack(source, kind) {
+  rackKind = kind;
   /* Ticking another box in the rack rebuilds it, and the generator lane in the
      new one is a new lane. If the old one was sounding, the new one sounds:
      adding a file or the live input is not a request to stop hearing the
@@ -13191,13 +13288,15 @@ function sayRack(message) {
   el.rackNote.innerHTML = message === null ? RACK_HELP : escapeText(message);
 }
 
-const RACK_HELP = "Drop several files at once and each becomes a lane. They share one "
+const RACK_HELP = "Add files, or drop them on the page, and each becomes a lane. They share one "
   + "clock and one timebase &mdash; lanes on different timebases cannot be compared, "
   + "which is the only reason to stack them. <i>Solo</i> and <i>mute</i> are the monitor "
   + "mix; <i>show</i> is the screen. Nothing is uploaded.";
 
 el.rackInput.addEventListener("change", () => {
-  if (el.rackInput.files.length) toRack(el.rackInput.files);
+  if (el.rackInput.files.length) addRackFiles(el.rackInput.files);
+  // Cleared, so choosing the same file again is a change and adds it again.
+  el.rackInput.value = "";
 });
 el.bandInput.addEventListener("change", () => {
   if (el.bandInput.files.length) toBands(el.bandInput.files[0]);
@@ -13210,9 +13309,15 @@ el.align.addEventListener("input", () => {
   applyAlignment();
   syncLabels();
 });
+/* Lanes shows the rack you are building, and brings it back if you have been
+   somewhere else: the boxes and the files are remembered, so leaving for the
+   tone and coming back is not starting again. With nothing in it yet it
+   opens nothing - no file picker - because the generator and the live input
+   together, with no file at all, is the rack Stage D is for, and a picker
+   that opened first was a dialog to cancel on the way to it. */
 el.srcRack.addEventListener("click", () => {
   showSource("rack");
-  el.rackInput.click();
+  if (state.source.kind !== "rack" && rackRemembered()) toRack(rackFiles || []);
 });
 
 /* --- the bench ---------------------------------------------------------------

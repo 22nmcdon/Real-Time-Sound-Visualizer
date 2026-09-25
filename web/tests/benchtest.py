@@ -70,10 +70,15 @@ with sync_playwright() as pw:
     p.locator("#viewBench").click(); p.wait_for_timeout(400)
     rail = p.evaluate("""() => ({
       titles: Array.from(document.querySelectorAll('#benchRail button')).map((b) => b.textContent),
+      // Sections that apply: `data-off` is a section that does not (the
+      // Lanes section with no rack loaded), which the rail leaves out too.
+      // Counted without that, the first off section to live in the body made
+      // this read 11 of 10.
       inBody: settingsGroups().filter(
-        (g) => !g.hidden && g.closest('.bench-col') !== null).length,
+        (g) => !g.hidden && g.dataset.off === undefined && g.closest('.bench-col') !== null).length,
       open: settingsGroups().filter(
-        (g) => g.closest('.bench-col') !== null && !g.classList.contains('folded')).length,
+        (g) => g.closest('.bench-col') !== null && g.dataset.off === undefined
+               && !g.classList.contains('folded')).length,
       folded: settingsGroups().filter((g) => g.classList.contains('folded'))
         .map((g) => groupTitle(g)),
       modShown: !el.lfoGroup.hidden && el.lfoGroup.dataset.off === undefined,

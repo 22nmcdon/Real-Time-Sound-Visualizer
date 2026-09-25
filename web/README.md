@@ -13,7 +13,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 
 | note | what it covers |
 |---|---|
-| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is in progress (the generator as a lane, heard), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
+| `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -62,6 +62,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
 | `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
+| `racktest.py` | the rack built a lane at a time: files added beside the others, the right lane taken out, Play along as a membership, builds in flight, the Bench with a rack in it |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
@@ -1470,3 +1471,44 @@ overflow outside that section is still there and is older: a modulation dot on
 the frequency or phase row sits 23 px past the generator column in wave and
 harmonograph. It is left alone, because it may be placed in the gutter
 deliberately.
+
+**A rack is a membership, built one way.** The generator box, the live-input
+box and a list of files are the whole of what a rack is. The boxes, *Add
+files*, a lane's × button, *Play along* and *Lanes* coming back all change
+that membership and then call the one `toRack`. The lanes always come in one
+order: the generator, the files, then you. *Play along* used to build a rack of
+its own kind that the boxes could not see. Ticking the live input over it did
+nothing, and no lane could be taken out of it. It is now the track as the one
+file with the live input ticked, and the alignment suggestion is taken whenever
+a rack becomes one you play along to.
+
+**Builds overlap, so the latest request has to win, not the last to finish.**
+A build decodes files and may open the microphone, so *Lanes* bringing a rack
+back and a file being added to it can both be in flight. So can a build and a
+click on *Tone*. `rackBuild` counts requests: a build that finishes after a
+newer one, or after another source was chosen, stops what it made and leaves
+the screen alone.
+
+**The Bench had never fitted a rack.** The rule is that neither Bench panel
+scrolls, and `patchtest.py` holds it for every generator mode, all of them
+with the tone loaded. With a rack of just the generator and the live input, the
+committed page scrolled by 52 px at 1400×900. The Input section carried a Pause
+and a Position with nothing to play, an Alignment with nothing to align, and a
+lane count that wrapped the live-input label onto a second line. The X–Y menus
+ran 119 px into the next column with any rack at all. Those are gone, and the
+lane list, layout and X–Y pair are a *Lanes* section of their own so the Bench
+can deal them into a different column. The two-lane rack now fits.
+
+**A known limit: a rack with files still scrolls the Bench at 1400×900.** A
+file brings the transport back, and every lane is a row. Three lanes are about
+50 px over and six about 190 px, against three columns that together hold
+roughly 1,350 px. Dealing whole sections cannot fix that. It would take folding
+more sections in rack mode, or letting a rack scroll the Bench by design, and
+that is a decision rather than a fix. `racktest.py` holds what does fit (the
+two-lane rack, and no control running out of its column with six lanes), so
+the limit cannot quietly get worse.
+
+**A refused microphone always said the test tone still worked.** It said it
+over a rack or a file too. It only showed once *Lanes* could bring a rack back,
+so the mic was refused over a rack rather than over the tone. The credit now
+says what is still playing.

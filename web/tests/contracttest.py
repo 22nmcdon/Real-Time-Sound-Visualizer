@@ -44,6 +44,13 @@ import fixtures
 fixtures.ensure()
 
 fails = []
+def load_stems(p, paths):
+    """A rack of exactly these files. Adding files adds them, since the rack
+    became something built a lane at a time, and each check here wants the
+    files it names and no others - so the ones already in go first."""
+    p.evaluate("() => { rackFiles = null; }")
+    p.locator("#rackInput").set_input_files(paths)
+
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
@@ -88,7 +95,7 @@ with sync_playwright() as pw:
     # `no_wait_after`, because choosing Stems opens a file picker and the click
     # does not settle until something is chosen.
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(300)
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other")])
     p.wait_for_timeout(1500)
     rack = p.evaluate(CONTRACT)
@@ -256,7 +263,7 @@ with sync_playwright() as pw:
     # files, reached through the real checkbox.
     p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
     p.wait_for_timeout(200)
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass")])
     p.wait_for_timeout(1800)
     withSynth = p.evaluate("""() => {
@@ -350,7 +357,7 @@ with sync_playwright() as pw:
 
     # Six stems and the generator: the files give way, not the generator, and
     # the rack says what it took.
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
     p.wait_for_timeout(1800)
     over = p.evaluate("""() => {
@@ -385,7 +392,7 @@ with sync_playwright() as pw:
     # fits comfortably. Six chosen, five taken, the generator keeping its one.
     p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
     p.wait_for_timeout(200)
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in
          ("drums", "bass", "other", "vocals", "drums", "bass")])
     p.wait_for_timeout(2200)
@@ -409,7 +416,7 @@ with sync_playwright() as pw:
           crowded["note"][:80])
 
     # Back to something small for the checks below.
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
     p.wait_for_timeout(1800)
 
@@ -550,7 +557,7 @@ with sync_playwright() as pw:
       await setRackSynth(true);
       return out;
     }""")
-    p.locator("#rackInput").set_input_files(
+    load_stems(p, 
         [f"{STEMS}/{n}.wav" for n in ("drums", "bass")])
     p.wait_for_timeout(2000)
     swapped = p.evaluate("""() => ({

@@ -298,7 +298,18 @@ be discovered during implementation.
   the live input — are what make a rack's membership a choice rather than a
   consequence of which button opened it.
 
-  **What is left of D1: the selector itself, and nothing saved.** Tone / Mic /
+  **D1e — the selector — is built**, as a rack you build rather than a fourth
+  kind of source. *Stems* became *Lanes*. It shows the rack's membership (the
+  two boxes and the files), opens no file picker, and brings the last rack back
+  when you return to it. Files are added beside the ones already in, every lane
+  has a × that takes it out, and *Play along* is the track plus the live input
+  ticked rather than a rack of its own kind. Tone, Mic and File stay single
+  stereo sources, and the cheat sheet now says why the two are different: one
+  signal drawn left against right, or several drawn lane against lane. A rack
+  with files still scrolls the Bench at 1400×900; the README says by how much
+  and why that is a decision rather than a fix.
+
+  **What was left of D1: the selector itself, and nothing saved.** Tone / Mic /
   File / Stems is still a mutually exclusive radiogroup. An earlier version of
   this note said the setup code stores one source kind and so needed a
   migration; it does not — `snapshot()` records the generator's mode and the
