@@ -6,7 +6,9 @@ are in the speakers as well as on the screen, the photocell and its picture
 sources are in the matrix, the loop is bounded by `LOOP_TOTAL`, the slew and the
 limiter, and a keyboard can be split into two layers. **Built so far:** G0,
 G1's drawbars and morph (see *Built so far* under Stage G), S5, most of S6, K1's
-crossings and K2 (see *Built so far* under Stage K). Nothing else here is.
+crossings and K2 (see *Built so far* under Stage K), J2's pitched harmonograph
+and S8's *Play the figure* (see *Built so far* under Stage J). Nothing else here
+is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -372,6 +374,21 @@ damped sinusoids, and a sum of damped sinusoids is a struck or plucked tone. At
 and a note-on reswinging it, it is a plucked voice whose decay is the drawing
 running down, and whose detune is the beating between strings. The relet fade
 that fixed the click is already the right tool for a retrigger.
+
+### Built so far
+
+**The pitched harmonograph and *Play the figure***, as one switch per kind in the
+Keyboard section:
+- A note sets the drawing's own rate to its pitch.
+- The harmonograph rings away over a time constant of its own, and does not
+  restart itself.
+- A key strikes it without a click: the gain glides back up while the phases
+  keep running.
+- A figure or solid is traced at the note's frequency, so its shape is the
+  timbre.
+
+`playtest.py` holds them. The rest of J2 (the sound driving the drawings, and
+the swing phase and attitude as sources), J1 and J3 are not built.
 
 ### J3 · audio rate (S7, second half)
 

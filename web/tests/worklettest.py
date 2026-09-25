@@ -112,6 +112,9 @@ with sync_playwright() as pw:
         q = report["quantised"]
         check("the quantiser runs in the worklet: 225 Hz to A3, 220 exactly, and left alone when off",
               abs(q["on"] - 220) < 1e-9 and abs(q["off"] - 225) < 1e-9, str(q))
+        ph = report["pitched"]
+        check("the pitched harmonograph runs in the worklet, at the note's pitch, and strikes cleanly",
+              ph["finite"] and ph["peak"] > 0.1 and abs(ph["pitch"] - 220) < 1e-9, str(ph))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

@@ -165,6 +165,23 @@ try {
   for (let round = 0; round < 5; round++) node.process([], [out], {});
   report.quantised.off = node.core.pitch;
 
+  /* The pitched harmonograph, and a strike, in the thread they run in: at
+     220 Hz it sounds, and a reswing while it sounds is a strike rather than
+     a restart from nothing. */
+  node.port.onmessage({ data: { tone: { mode: "harmonograph", pitched: true, freq: 220, ringMs: 400,
+                                        interval: 0, octaves: 0, crossOn: false } } });
+  let pitchedPeak = 0, pitchedFinite = true;
+  for (let round = 0; round < 200; round++) {
+    if (round === 100) node.port.onmessage({ data: { reswing: true } });
+    node.process([], [out], {});
+    for (let i = 0; i < 128; i++) {
+      if (!Number.isFinite(out[0][i])) pitchedFinite = false;
+      pitchedPeak = Math.max(pitchedPeak, Math.abs(out[0][i]));
+    }
+  }
+  report.pitched = { pitch: node.core.pitch, peak: pitchedPeak, finite: pitchedFinite };
+  node.port.onmessage({ data: { tone: { mode: "wave", pitched: false } } });
+
   // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });
   for (let round = 0; round < 800; round++) node.process([], [out], {});

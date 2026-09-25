@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings and K2 (the quantiser) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph and S8's *Play the figure* are built; the rest is not |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -74,6 +74,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note |
 | `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
+| `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
@@ -1834,3 +1835,38 @@ new estimator to the old one's standard. A mutant that keeps the mean survives,
 and is equivalent: the difference at each lag is blind to an offset, and the
 mean comes off only so that an input with nothing but an offset counts as
 silence.
+
+**The drawings play at the note's pitch through one switch per kind.** J2's
+pitched harmonograph and S8's *Play the figure* are the same idea: a note sets
+the drawing's own rate to its pitch. So they are one box in the Keyboard
+section. Its words are the kind's own, and its answer is kept per kind in
+`midi.play`, as `midi.drive` keeps whether notes play the kind at all. A pitched
+harmonograph nobody can strike is a note played once at load, so it is pitched
+only while notes play the harmonograph.
+
+**The pitched harmonograph has a ring time, not its decay.** The drawing's
+*Decay* is a rate from 0.02 to 0.6 a second, a run-down of 1.7 to 50 seconds. A
+pluck needs a hundredth of that. Rather than one field read two ways by mode,
+it has `ringMs`, a time constant from 20 ms to 4 s, and the panel shows *Ring*
+in place of *Swing* and *Decay* while it is pitched. It does not let itself go
+again once it has run down, as the drawing does, because a plucked note that
+restarted itself would be a drone.
+
+**A strike glides the gain back up, and leaves the phases alone.** The drawing's
+restart fades in from nothing, which is right after it has run down. Struck
+while a note still sounds, fading from nothing cuts the old note off at
+whatever it was, which is a click. So a strike glides the gain from where it is
+to full over the same ten milliseconds, and the pendulums keep swinging, so the
+wave has no step. `playtest.py` checks the largest step near a strike against
+the tone's own largest step. It took three fixtures to make that check able to
+fail. At 150 ms a strike that reset the phases changed nothing, because 150 ms
+is a whole 33 cycles of 220 Hz. At 151.1 ms, by chance, it changed the wave by
+0.02. At half a cycle, where the pendulums are at −1 and a reset would land on
++1, it doubles the level, and the mutation pass catches it.
+
+**An RMS over a part-cycle is a few per cent off.** The strike's "back to full"
+check read 0.377 against a predicted 0.385 on 441-sample windows, which are 2.2
+cycles of 220 Hz. On 20 ms windows it is within 1 per cent. The same slip read
+the star's partials: at 2 Hz bins, the Blackman-Harris main lobe spreads 8 Hz
+either side of 440. Read to 1 per cent of a multiple of the note, 436 and 444
+looked like partials that were not there.
