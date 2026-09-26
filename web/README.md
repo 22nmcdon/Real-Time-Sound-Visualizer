@@ -2835,3 +2835,39 @@ another stroke, and the beam retraces the lot.
   and was a pixel and more once the screen was zoomed in at a low full
   scale, some 1700 pixels to the unit; the turned check found a drawing
   0.9 px off its line, against a limit of one. It is 0.1 now.
+
+**A second generator (Stage L).** The plan's "second generator lane": a
+figure beside the first, drawn on lanes three and four, that can modulate
+the first at audio rate. Under Input into the generator, *From: A second
+generator*, with its figure and its rate.
+
+- *Built on two things already here.* The tone source has kept four
+  channels since Stage F, and offers three and four as a second figure
+  when layer B is drawn; and J3 made the generator take an input, a sample
+  at a time, through FM, Ride and Clock. The second generator writes its
+  pair where layer B's picture goes and its X where the live input's
+  samples go, so the modulation is J3's and needed nothing new.
+- *What it is not, said where you meet it.* It modulates the first and not
+  the other way round; it is drawn and heard only in what it does to the
+  first; a split or layered keyboard takes lanes three and four when it
+  plays, and the note under the title says so; and it is on the test tone
+  only, since a rack's generator lane is one channel - off the tone its
+  rows are hidden. It needs no device and no worklet, so unlike a live
+  input it works whether or not the generator is heard.
+- *No size control, for room.* With its rows open the Input section put the
+  Effects tab 12 px over; shortening the note was not enough, and the size
+  row went - Depth already sets how hard it pushes, so its size only set how
+  big it was drawn, and it is drawn at a half. The tab has 17 px to spare
+  with the rows open, and the Bench is shorter then, since four lanes need
+  more room above it.
+- *The checks are against references built in the test,* not against the
+  page: the second generator is its figure sample for sample, FM runs the
+  first's trace at its rate times (1 + 4 depth x), a ride scales each sample
+  by (1 + 2 depth x), and a clock holds the first still every 441 samples at
+  100 Hz. The first check of the layers set their switch on a figure with no
+  keyboard - where the layers are rightly off, and the second generator
+  rightly kept its lanes; it sets up real layers now.
+- *The mutation pass left three of sixteen,* all paths nothing tried: a
+  device opened while heard, a new generator built from the panel, and the
+  rate slider reaching the core. Each has a check seen to fail on its
+  mutant; 16 of 16.

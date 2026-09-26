@@ -110,6 +110,10 @@ with sync_playwright() as pw:
         fprints = [f["print"] for f in report["figures"].values()]
         check("and each figure is its own, not the circle under another name",
               len(set(fprints)) == len(fprints), str(dict(zip(report["figures"], fprints))))
+        sec = report["second"]
+        check("the second generator draws its pair at its size, and FM through it changes what the first draws",
+              sec["off"]["finite"] and sec["fm"]["finite"] and abs(sec["off"]["pair"] - 0.4) < 1e-6
+              and sec["off"]["print"] != sec["fm"]["print"], str(sec))
         check("and it posts its samples back rather than only playing them",
               report["posted"] > 0, str(report["posted"]))
         q = report["quantised"]

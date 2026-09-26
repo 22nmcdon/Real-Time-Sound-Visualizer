@@ -177,6 +177,27 @@ try {
     report.figures[figure] = { worst, finite, print: Math.round(fingerprint * 1e6) / 1e6 };
   }
 
+  /* The second generator, in the thread it runs in: its pair drawn on lanes
+     three and four at its size, and FM through it changing what the first
+     draws - measured against the same blocks with the mode off. */
+  const second = (mode) => {
+    node.port.onmessage({ data: { tone: { mode: "figure", figure: "Circle", figPath: null, inputFrom: "gen2",
+      gen2Figure: "Square", gen2Rate: 90, gen2Amp: 0.4, inputMode: mode, inputDepth: 0.5 } } });
+    node.port.onmessage({ data: { reswing: true } });
+    let pair = 0, finite = true, print = 0;
+    for (let round = 0; round < 20; round++) {
+      node.process([], [out], {});
+      for (let i = 0; i < 128; i++) {
+        pair = Math.max(pair, Math.abs(node.pictBL[i]), Math.abs(node.pictBR[i]));
+        if (!Number.isFinite(out[0][i]) || !Number.isFinite(node.pictBL[i])) finite = false;
+        print += out[0][i] * out[0][i];
+      }
+    }
+    return { pair, finite, print: Math.round(print * 1e6) / 1e6 };
+  };
+  report.second = { off: second(0), fm: second(1) };
+  node.port.onmessage({ data: { tone: { inputFrom: "live", inputMode: 0 } } });
+
   /* The quantiser, in the thread it runs in: 225 Hz is 0.39 of a semitone
      above A3, so chromatic takes it to 220 exactly, and off leaves it. */
   node.port.onmessage({ data: { routes: [] } });      // nothing else moving the pitch

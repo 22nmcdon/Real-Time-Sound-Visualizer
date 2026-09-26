@@ -794,7 +794,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   not built yet, so this came first. *Your drawing* on the Figure menu: strokes
   drawn with the pointer on the X–Y screen, taken back through the screen's
   mapping so the beam retraces them exactly where they were drawn.
-- **Presets, rebuilt. Built.** 161 presets in twenty-three sections, in a browser
+- **Presets, rebuilt. Built.** 163 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's
@@ -809,7 +809,13 @@ Smaller things, each worth doing on its own and none blocking the others.
   modulating the other at audio rate once J3 exists. Costs a lane of the six.
   Half of this exists as Stage F's layers, which are two sets of voices from one
   core; what is not there is a *drawn* mode beside a waveform, since layer B is
-  always a waveform.
+  always a waveform. **Built, as a second generator in the
+  core.** A figure beside the first, drawn on lanes three and four, and the one
+  input J3 can take that needs no device: *From: A second generator*, under
+  Input into the generator, and FM, Ride and Clock then carry its X into the
+  first at audio rate. It modulates the first and not the other way round; it
+  is drawn and not heard on its own; the layers take its lanes when they want
+  them; and it is on the test tone only, as J3 is.
 
 ---
 

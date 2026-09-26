@@ -2573,6 +2573,25 @@ body[data-view="bench"] .dock  { order: 3; }
             <span class="menu-title">Input into the generator</span>
             <p class="fx-where" id="inputWhere"></p>
             <div class="menu-row">
+              <label class="menu-label" for="inputFrom">From</label>
+              <div class="grow"><select id="inputFrom" style="flex:1 1 auto">
+                <option value="live">Your input</option>
+                <option value="gen2">A second generator</option></select></div>
+            </div>
+            <div id="gen2Rows" hidden>
+              <div class="menu-row">
+                <label class="menu-label" for="gen2Figure">Its figure</label>
+                <div class="grow"><select id="gen2Figure" style="flex:1 1 auto"></select></div>
+              </div>
+              <div class="menu-row">
+                <label class="menu-label" for="gen2Rate">Its rate</label>
+                <div class="grow">
+                  <input type="range" id="gen2Rate" min="1" max="1000" value="110">
+                  <span class="reading" id="gen2RateValue">110 Hz</span>
+                </div>
+              </div>
+            </div>
+            <div class="menu-row">
               <label class="menu-label" for="inputMode">Input</label>
               <div class="grow"><select id="inputMode" style="flex:1 1 auto">
                 <option value="0">Off</option><option value="1">FM</option>
@@ -2585,11 +2604,12 @@ body[data-view="bench"] .dock  { order: 3; }
                 <span class="reading" id="inputDepthValue">0.50</span>
               </div>
             </div>
-            <p class="menu-note">Your microphone or line input, into the generator itself.
-              <i>FM</i> speeds and slows the trace with the input's waveform. <i>Ride</i>
-              scales the figure by it, so the sound rides on the outline. <i>Clock</i>
-              traces the figure, or plays the waveform, at the input's own pitch, so the
-              input holds the picture still.</p>
+            <!-- Short, and the long form is in the cheat sheet: with the second
+                 generator's rows open, a longer note put this tab 12 px over. -->
+            <p class="menu-note"><i>FM</i> speeds and slows the trace with the input,
+              <i>Ride</i> scales the figure by it, and <i>Clock</i> runs the generator at the
+              input's pitch. A second generator is drawn beside the first and heard only in
+              what it does to it.</p>
           </div>
 
           <!-- K3: the phosphor grid read as a score. -->
@@ -3289,7 +3309,15 @@ body[data-view="bench"] .dock  { order: 3; }
         on a waveform, the generator plays at your pitch, locked to each of your cycles, and
         a fifth or an octave above it if the interval says so. When you stop, it goes back to
         its own. It works on the test tone while <i>Hear the generator</i> is ticked, and the
-        line under the title says when it is not reaching it.</span></li>
+        line under the title says when it is not reaching it.
+        <br><br>
+        <i>From</i> can be <i>A second generator</i> instead: a figure of its own, traced at
+        its own rate, drawn beside the first on lanes three and four and needing no device.
+        The same three modes carry it into the first &mdash; slowly, a figure pulled faster
+        and slower as you watch; at audio rates, FM between two generators, the sidebands
+        on the spectrogram. It is heard only in what it does to the first, it works whether
+        or not the generator is heard, and a split or layered keyboard takes its lanes while
+        it plays.</span></li>
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
@@ -4155,6 +4183,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
                   "figTextRow", "figText", "figPathRow", "figPathD", "figPathFile", "figPathNote",
                   "figDrawRow", "figDrawOn", "figDrawClear",
+                  "inputFrom", "gen2Rows", "gen2Figure", "gen2Rate", "gen2RateValue",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
@@ -6172,7 +6201,8 @@ function syncLayers() {
   }
   const source = state.source;
   if (source && typeof source.setLayout === "function") {
-    const want = !on ? "one" : midi.layers.pair === "against" ? "against" : "each";
+    const want = !on ? (genInput.from === "gen2" ? "each" : "one")
+      : midi.layers.pair === "against" ? "against" : "each";
     if (source.layout !== want) {
       source.setLayout(want);
       buildLaneRows();
@@ -7520,6 +7550,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     swingDrive: 0,           // harmonograph: energy put back in, nought to one (J2)
     inputMode: 0,            // J3: 0 off, 1 FM, 2 ride, 3 clock
     inputDepth: 0.5,         // J3: how much of it, nought to one
+    /* Stage L: where the input comes from - "live", the device, or "gen2", a
+       second generator in this core - and that generator's figure, rate in
+       hertz and size. */
+    inputFrom: "live", gen2Figure: "Circle", gen2Rate: 110, gen2Amp: 0.5,
     /* The pitched harmonograph (J2): the pendulums swing at the note's pitch
        rather than at `swingRate`, and die away over `ringMs` - a time
        constant, not `decay`'s per-second rate, because a pluck and a drawing
@@ -8168,6 +8202,16 @@ function makeGeneratorCore(rate, slots, lfos) {
      on its outline; and CLOCK, the trace taken to the input's own phase, from
      its upward crossings, so the input holds the picture still. */
   let inBuf = null;
+  /* The second generator (Stage L): a figure beside the first, traced at its
+     own rate, and the one input that needs no device. Its X is what the first
+     hears when the input comes from it, through the same three modes a live
+     input has - which is the plan's "one of them modulating the other at
+     audio rate", with J3's machinery doing the modulating. Its pair is drawn
+     on lanes three and four, which layer B uses when there is one; the layers
+     win those, and the second generator still modulates undrawn. It is not
+     heard on its own: it is heard in what it does to the first. Only this
+     way round - the first does not modulate the second. */
+  let gen2Phase = 0;
   const CLOCK_HYST = 0.01;            // either side of nought, against noise
   const clock = { low: true, since: 0, period: 0 };
 
@@ -8704,7 +8748,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     const glide = tone.glideMs > 0 ? poleFor(tone.glideMs) : 1;
     const kickFriction = Math.exp(-dt / KICK_TAU);
     if (freqNow === null) freqNow = tone.freq;
-    const inMode = inBuf && inBuf.length >= n ? (tone.inputMode | 0) : 0;
+    const fromGen2 = tone.inputFrom === "gen2";
+    const inMode = fromGen2 || (inBuf && inBuf.length >= n) ? (tone.inputMode | 0) : 0;
     const inDepth = tone.inputDepth;
 
     for (let i = 0; i < n; i++) {
@@ -8745,8 +8790,16 @@ function makeGeneratorCore(rate, slots, lfos) {
       // input last crossed nought going up, and holds its lock for two of
       // its own periods before letting the generator run free again.
       let xin = 0, fmIn = 1, clockHz = 0, clockReset = false;
+      let g2x = 0, g2y = 0;
+      if (fromGen2) {
+        gen2Phase += tone.gen2Rate * dt;
+        if (gen2Phase >= 1) gen2Phase -= Math.floor(gen2Phase);
+        const at2 = figureAt(tone.gen2Figure, gen2Phase, 5, null);
+        g2x = tone.gen2Amp * at2[0];
+        g2y = tone.gen2Amp * at2[1];
+      }
       if (inMode !== 0) {
-        xin = inBuf[i];
+        xin = fromGen2 ? g2x : inBuf[i];
         if (inMode === 1) fmIn = Math.max(0, 1 + inDepth * 4 * xin);
         else if (inMode === 3) {
           clock.since++;
@@ -8905,7 +8958,8 @@ function makeGeneratorCore(rate, slots, lfos) {
           outBR[i] = Math.max(-1, Math.min(1, by));
         }
       } else if (outBL) {
-        outBL[i] = 0; outBR[i] = 0;
+        outBL[i] = fromGen2 ? Math.max(-1, Math.min(1, g2x)) : 0;
+        outBR[i] = fromGen2 ? Math.max(-1, Math.min(1, g2y)) : 0;
       }
 
       /* The crossings read the beam as drawn - clamped, the edge of the
@@ -9707,6 +9761,9 @@ function makeToneSource(atRate) {
        right to everything else on the page, and a pair that is layer A
        against layer B is not that. */
     laneNames() {
+      if (layout === "each" && core.toneB.voices === null && tone.inputFrom === "gen2") {
+        return ["X", "Y", "Second \u00b7 X", "Second \u00b7 Y"];
+      }
       if (layout === "each") return ["A \u00b7 X", "A \u00b7 Y", "B \u00b7 X", "B \u00b7 Y"];
       if (layout === "against") return ["Layer A", "Layer B"];
       return null;
@@ -15291,6 +15348,8 @@ function fillIntervals() {
   el.interval.innerHTML = INTERVALS.map(([name, p, q], i) =>
     '<option value="' + i + '">' + name + "  \u00b7  " + p + ":" + q + "</option>").join("");
   el.figure.innerHTML = FIGURES.map((f) => '<option value="' + f + '">' + (FIGURE_LABELS[f] || f) + "</option>").join("");
+  el.gen2Figure.innerHTML = FIGURES.filter((f) => !["Text", "Path", "Drawn"].includes(f))
+    .map((f) => '<option value="' + f + '">' + f + "</option>").join("");
   el.filterType.innerHTML = FILTER_TYPES.map(([v, t]) =>
     '<option value="' + v + '">' + t + "</option>").join("");
   el.model.innerHTML = MODELS.map((m) =>
@@ -15583,6 +15642,34 @@ el.inputDepth.addEventListener("input", () => {
   el.inputDepthValue.textContent = genInput.depth.toFixed(2);
   genSet("inputDepth", genInput.depth);
 });
+
+/* The second generator (Stage L). Choosing it shows its rows, sends it to
+   the core and offers its pair as lanes three and four; choosing the live
+   input again takes them away. Its figures are the ones written as formulas:
+   text, an imported path and a drawing each keep one table, and that table
+   is the first generator's. */
+function syncGen2() {
+  const on = genInput.from === "gen2";
+  el.inputFrom.value = genInput.from;
+  el.gen2Rows.hidden = !on;
+  genSet("inputFrom", genInput.from);
+  syncLayers();
+  syncGenInput();
+}
+el.inputFrom.addEventListener("change", () => {
+  genInput.from = el.inputFrom.value === "gen2" ? "gen2" : "live";
+  genInput.fault = null;
+  syncGen2();
+});
+el.gen2Figure.addEventListener("change", () => genSet("gen2Figure", el.gen2Figure.value));
+el.gen2Rate.addEventListener("input", () => {
+  el.gen2RateValue.textContent = el.gen2Rate.value + " Hz";
+  genSet("gen2Rate", Number(el.gen2Rate.value));
+});
+/* No size control, and that was a choice made for room: with its rows open
+   the Input section put this tab 12 px over. Depth already says how hard
+   the second generator pushes the first, so its size only changes how big it
+   is drawn - a half, which the core keeps. */
 
 el.reswing.addEventListener("click", () => {
   genReswing();
@@ -16561,6 +16648,8 @@ const DEFAULTS = {
   figText: "HELLO", figPath: "", figDrawn: "",
   swingRate: 21, decay: 12, detune: 40, swingDrive: 0,
   inputMode: 0, inputDepth: 50,
+  // Additive: a code from before the second generator takes its input live.
+  inputFrom: "live", gen2Figure: "Circle", gen2Rate: 110,
   /* The envelope, in the units its sliders use. New fields rather than
      changed ones, so a code written before the generator could be played
      simply has none of them, gets these, and sounds and draws what it always
@@ -16688,6 +16777,7 @@ function snapshot() {
     decay: Number(el.decay.value),
     swingDrive: Number(el.swingDrive.value),
     inputMode: Number(el.inputMode.value), inputDepth: Number(el.inputDepth.value),
+    inputFrom: genInput.from, gen2Figure: el.gen2Figure.value, gen2Rate: Number(el.gen2Rate.value),
     detune: Number(el.detune.value),
     atk: Number(a("envAttack")), dec: Number(a("envDecay")),
     sus: Number(a("envSustain")), rel: Number(a("envRelease")),
@@ -16800,6 +16890,13 @@ function restore(partial) {
   el.swingDrive.value = String(s.swingDrive);
   el.inputMode.value = String([0, 1, 2, 3].includes(s.inputMode) ? s.inputMode : 0);
   el.inputDepth.value = String(s.inputDepth);
+  genInput.from = s.inputFrom === "gen2" ? "gen2" : "live";
+  el.gen2Figure.value = FIGURES.includes(s.gen2Figure) && !["Text", "Path", "Drawn"].includes(s.gen2Figure)
+    ? s.gen2Figure : "Circle";
+  el.gen2Rate.value = String(Math.round(Math.max(1, Math.min(1000, Number(s.gen2Rate) || 110))));
+  el.gen2Figure.dispatchEvent(new Event("change"));
+  el.gen2Rate.dispatchEvent(new Event("input"));
+  syncGen2();
   el.inputMode.dispatchEvent(new Event("change"));
   el.detune.value = String(s.detune);
   el.envAttack.value = String(s.atk);
@@ -17346,6 +17443,10 @@ const PRESETS = [
      "A deep index at 5:3, with a little drive: a mass of inharmonic partials."],
     ["Clang", { shape: "square", freq: 220, timebase: 4, oscRatio: 7, oscFm: 45, vcfType: 1, vcfCut: 725 },
      "A square under heavy FM, tamed by a low pass: struck metal."],
+    // At audio rate: the second generator is the modulator, the first the carrier.
+    ["Generator into generator", { shape: "sine", freq: 220, timebase: 4, inputFrom: "gen2", gen2Figure: "Circle",
+                                   gen2Rate: 330, inputMode: 1, inputDepth: 40, display: "spect", span: "5" },
+     "A second generator at 330 Hz frequency-modulating the first at 220: at 3:2 the partials are sidebands, and the spectrogram shows them."],
   ], "generator"],
 
   ["Grit", [
@@ -17438,6 +17539,11 @@ const PRESETS = [
     ["Morphing rose", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.04", timebase: 5,
                         l0d: "detail", l0r: 6, l0a: 45 },
      "A rose whose number of petals is always changing."],
+    // The second generator, slow enough to watch it pull the first.
+    ["Pulled by a second figure", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.04",
+                                    timebase: 5, pGoni: false, inputFrom: "gen2", gen2Figure: "Circle", gen2Rate: 2,
+                                    inputMode: 1, inputDepth: 30 },
+     "A rose whose trace a second generator speeds and slows twice a second: the second is the circle beside it, and FM is the pull."],
     ["Unstable orbit", { gen: "figure", figure: "Spirograph", detail: 7, display: "xy", persistence: "0.04",
                          timebase: 5, l0d: "detail", l0r: 4, l0a: 30, pGoni: false, pSpec: false },
      "A spirograph whose gears keep changing size."],
@@ -18275,6 +18381,9 @@ function generatorFromPanel(set) {
   set("swingDrive", Number(el.swingDrive.value) / 100);
   set("inputMode", Number(el.inputMode.value) || 0);
   set("inputDepth", Number(el.inputDepth.value) / 100);
+  set("inputFrom", genInput.from);
+  set("gen2Figure", el.gen2Figure.value);
+  set("gen2Rate", Number(el.gen2Rate.value));
   set("detune", Number(el.detune.value) / 10000);
   // The same table the handlers use, so a new generator is built with what
   // the sliders say rather than with the core's own defaults.
@@ -19075,15 +19184,22 @@ function syncLiveFx() {
    block at a time; the core on this thread has no audio to be handed. The
    stream is the live device's own, shared with a microphone source by the
    same count, so asking for it here never asks the browser twice. */
-const genInput = { mode: 0, depth: 0.5, stream: null, device: undefined, opening: false, fault: null };
+const genInput = { mode: 0, depth: 0.5, stream: null, device: undefined, opening: false, fault: null, from: "live" };
 function genInputWanted() {
   const source = state.source;
-  return genInput.mode > 0 && !!source && source.kind === "tone" && source.audible();
+  return genInput.from === "live" && genInput.mode > 0 && !!source && source.kind === "tone" && source.audible();
 }
 function genInputWhere() {
   const source = state.source;
   if (!source || source.kind !== "tone") {
     return "On the test tone only: a rack's generator lane is one channel, and a figure needs two.";
+  }
+  /* The second generator needs no device and no worklet: it is in the core,
+     on this thread and in the worklet alike, so it works heard or not. */
+  if (genInput.from === "gen2") {
+    const drawn = layersOn() ? " Not drawn while the keyboard is split or layered: the layers use its lanes."
+      : " Drawn on lanes three and four.";
+    return (genInput.mode === 0 ? "The second generator, not into the first yet." : "The second generator, into the first.") + drawn;
   }
   if (genInput.mode === 0) return "Off: the generator makes its own.";
   if (!source.audible()) return "Heard only: tick Hear the generator, on Play, and your input reaches it.";
@@ -19114,6 +19230,9 @@ async function syncGenInput() {
   if (source && source.setInput) source.setInput(genInputWanted() ? genInput.stream : null);
   const where = genInputWhere();
   if (el.inputWhere.textContent !== where) el.inputWhere.textContent = where;
+  // The second generator's rows only where it can be: on the test tone.
+  const rows = !(genInput.from === "gen2" && state.source && state.source.kind === "tone");
+  if (el.gen2Rows.hidden !== rows) el.gen2Rows.hidden = rows;
 }
 
 function postLiveFx() {
