@@ -1433,6 +1433,13 @@ body[data-view="bench"] .dock  { order: 3; }
                 <span class="reading" id="midiStatus">off</span>
               </div>
             </div>
+            <div class="menu-row">
+              <label class="menu-label" for="midiOut">MIDI out</label>
+              <div class="grow"><select id="midiOut" style="flex:1 1 0; min-width:0">
+                <option value="">Off</option></select>
+                <select id="midiOutCh" aria-label="MIDI out channel" style="flex:0 0 auto"></select>
+                <span class="reading" id="midiOutStatus">off</span></div>
+            </div>
             <div id="midiCC"></div>
             <p class="menu-note">Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
               and right line outs go to a stereo line input &mdash; that is the organ itself,
@@ -2458,6 +2465,37 @@ body[data-view="bench"] .dock  { order: 3; }
               input holds the picture still.</p>
           </div>
 
+          <!-- K3: the phosphor grid read as a score. -->
+          <div class="menu-group" id="scoreGroup" data-home="bench" data-tab="picture">
+            <span class="menu-title">Score</span>
+            <div class="menu-row">
+              <span class="menu-label"></span>
+              <label class="check"><input type="checkbox" id="scoreOn"> Play the picture</label>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="scoreStep">Step</label>
+              <div class="grow"><select id="scoreStep" style="flex:1 1 0; min-width:0">
+                <option value="1/16">1/16</option><option value="1/8">1/8</option>
+                <option value="1/4">1/4</option></select>
+                <select id="scoreVoices" aria-label="How many notes a step" style="flex:1 1 0; min-width:0">
+                <option value="1">1 note</option><option value="2">2 notes</option>
+                <option value="3">3 notes</option><option value="4">4 notes</option></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="scoreLow">From</label>
+              <div class="grow"><select id="scoreLow" style="flex:1 1 0; min-width:0">
+                <option value="36">C2</option><option value="48">C3</option>
+                <option value="60">C4</option></select>
+                <select id="scoreOctaves" aria-label="How many octaves the rows cover" style="flex:1 1 0; min-width:0">
+                <option value="1">1 octave</option><option value="2">2 octaves</option>
+                <option value="3">3 octaves</option><option value="4">4 octaves</option></select></div>
+            </div>
+            <p class="menu-note">A playhead crosses the screen at the tempo and plays what it
+              passes: low on the screen is low in pitch, in the page's key, and the brightest
+              points are the notes, the brightness how hard. Heard in the generator's voice;
+              sent out too, if MIDI out has a port.</p>
+          </div>
+
           <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Filter</span>
             <label class="check">
@@ -3049,6 +3087,22 @@ body[data-view="bench"] .dock  { order: 3; }
         nought, so what comes back is what you just played; on the time, a source stretches
         it an octave either way, and the repeats bend in pitch as it moves, like tape.
         Neither feedback can take one: a loop inside a loop is how a patch runs away.</span></li>
+
+      <li><b>The picture as a score</b>
+        <span>Tick <i>Play the picture</i>, under <i>Score</i> on the Picture tab, and a playhead
+        crosses the screen at the tempo, playing what it passes. Low on the screen is low in
+        pitch, in the page's key, over the octaves you choose; the brightest points in each
+        column are the notes, up to four at once, and the brighter the harder. Draw a figure and
+        it plays itself; turn it and the melody inverts. A long persistence is a score that
+        lingers. The notes are heard in the generator's voice while it is heard, and never
+        drawn, so the score cannot play itself into what it is reading.</span></li>
+
+      <li><b>MIDI out</b>
+        <span>Under Settings, MIDI, choose a port and a channel, and the score's notes and the
+        crossings' go out to it. With a synth on <i>Local Off</i> the picture plays it, and its
+        line outs coming back in close the loop through a real instrument. At most forty notes
+        a second; every note is ended when the scope stops, the page is hidden, or the port
+        changes; the readout says <i>sending</i> while they go.</span></li>
 
       <li><b>Your input, into the generator</b>
         <span>Under <i>Input into the generator</i>, on the Effects tab: your microphone or line
@@ -3866,6 +3920,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
+                  "scoreGroup", "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
+                  "midiOut", "midiOutCh", "midiOutStatus",
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
@@ -4982,6 +5038,8 @@ function applyModMatrix(frame, elapsed) {
   hearingStep(elapsed);
   midiSmooth(elapsed);
   crossStepPanel(performance.now());
+  scoreTick(performance.now());
+  syncMidiOut();
   photoStep(elapsed);
   pictureStep(frame, elapsed);
   midiApplyGate();
@@ -6114,6 +6172,7 @@ function midiWire() {
   // offer only the iterator.
   if (typeof inputs.forEach === "function") inputs.forEach(take);
   else for (const port of inputs.values()) take(port);
+  buildMidiOut();
   syncMidi();
 }
 
@@ -6722,6 +6781,11 @@ function makeGeneratorCore(rate, slots, lfos) {
     crossHzY: 392,
     crossDecayMs: 180,
     crossLevel: 0.4,
+    /* The score's voice (K3): notes struck from the page, heard and never
+       drawn, like the crossings' - a figure that played its own notes into
+       itself would be a buzz across the picture it is reading. */
+    scoreDecayMs: 400,
+    scoreLevel: 0.4,
 
     /* The X-Y plane as an effect (Stage I): things done to the picture of
        a stereo pair that turn out to be things done to its sound. Page-wide,
@@ -7148,6 +7212,28 @@ function makeGeneratorCore(rate, slots, lfos) {
                                 env: 0, attacking: false, phase: 0 });
   const crossLines = [crossLineFor(), crossLineFor()];
   let crossFade = 0;
+  /* K3: four struck voices, the crossings' sine with its 2 ms rise, each at
+     the pitch and velocity it was struck with. A fifth note takes the one
+     furthest into its decay. */
+  const SCORE_VOICES = 4;
+  const scoreVoices = Array.from({ length: SCORE_VOICES }, () => ({
+    hz: 0, vel: 0, env: 0, phase: 0, attacking: false, age: 0,
+  }));
+  let scoreFade = 0, scoreStruck = 0;
+  function scoreVoice(v) {
+    if (v.attacking) {
+      v.env += crossAttack;
+      if (v.env >= 1) { v.env = 1; v.attacking = false; }
+    } else if (v.env > 0) {
+      v.env *= scoreFade;
+      if (v.env < 1e-5) v.env = 0;
+    }
+    v.age++;
+    if (v.env === 0) return 0;
+    v.phase += TWO_PI * v.hz / rate;
+    if (v.phase >= TWO_PI) v.phase -= TWO_PI;
+    return v.vel * v.env * Math.sin(v.phase);
+  }
 
   function crossStep(line, beam, at) {
     if (line.wait > 0) line.wait--;
@@ -7765,6 +7851,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     qGlide = tone.qGlideMs > 0 ? poleFor(tone.qGlideMs) : 1;
     // The decay as a time constant: a note is 1/e of its peak after it.
     crossFade = Math.exp(-1 / Math.max(1, tone.crossDecayMs * rate / 1000));
+    scoreFade = Math.exp(-1 / Math.max(1, tone.scoreDecayMs * rate / 1000));
 
     // Hoisted: neither changes inside a block, and `pow` in the per-sample
     // loop is `pow` forty-four thousand times a second for one answer.
@@ -7987,6 +8074,15 @@ function makeGeneratorCore(rate, slots, lfos) {
         pluck = tone.crossLevel * (crossVoice(crossLines[0], tone.crossHzX)
                                    + crossVoice(crossLines[1], tone.crossHzY)) / 2;
       }
+      if (scoreStruck > 0) {
+        let sum = 0, live = 0;
+        for (let k = 0; k < SCORE_VOICES; k++) {
+          sum += scoreVoice(scoreVoices[k]);
+          if (scoreVoices[k].env > 0) live++;
+        }
+        pluck += tone.scoreLevel * sum / 2;
+        if (live === 0) scoreStruck = 0;
+      }
 
       if (heardL) {
         /* The heard pair through the plane too, as the whole pair - both
@@ -8059,6 +8155,17 @@ function makeGeneratorCore(rate, slots, lfos) {
     },
     // J3: the next block's input, or null for none.
     setInput(samples) { inBuf = samples || null; },
+    /* K3: strike a note in the score's voice. The phase runs on from where
+       the voice left it, as the crossings' does, so a restrike is no click. */
+    strike(hz, velocity) {
+      let pick = scoreVoices[0];
+      for (const v of scoreVoices) {
+        if (v.env === 0) { pick = v; break; }
+        if (v.age > pick.age) pick = v;
+      }
+      pick.hz = hz; pick.vel = Math.max(0, Math.min(1, velocity)); pick.attacking = true; pick.age = 0;
+      scoreStruck = 1;
+    },
     // Read by the tests: the kick's multiplier on the spin, and the swing's
     // envelope, each where the last block left it.
     get spinKick() { return kick; },
@@ -8253,6 +8360,7 @@ function generatorProcessor() {
         }
         if (message.reswing) this.core.reswing();
         if (message.kick) this.core.kick(message.kick);
+        if (message.strike) for (const [hz, velocity] of message.strike) this.core.strike(hz, velocity);
         if (message.gated !== undefined) this.core.setGated(message.gated);
         /* A gate is an EVENT, not a setting, so it is sent as one and applied
            the moment it lands. A note held for a tenth of a second is fifty
@@ -8786,6 +8894,10 @@ function makeToneSource(atRate) {
     kick(amount) {
       core.kick(amount);
       voice.post({ kick: amount });
+    },
+    strike(notes) {
+      for (const [hz, velocity] of notes) core.strike(hz, velocity);
+      voice.post({ strike: notes });
     },
 
     // J3: the input into the worklet, and whether it is connected there.
@@ -9769,6 +9881,10 @@ function makeSynthLane(name, rate, ctx, mix) {
     kick(amount) {
       core.kick(amount);
       voice.post({ kick: amount });
+    },
+    strike(notes) {
+      for (const [hz, velocity] of notes) core.strike(hz, velocity);
+      voice.post({ strike: notes });
     },
     audible() { return voice.audible; },
     setSound(on) { return voice.setSound(on); },
@@ -13686,6 +13802,7 @@ function frameLoop(now) {
   updateSourceMeter();
 
   drawMain(frame, elapsed);
+  drawScorePlayhead();
   placeReticle();
   drawGoni(frame);
   drawSpectrum(frame);
@@ -13754,6 +13871,9 @@ el.trace.addEventListener("pointercancel", () => { dragging = null; });
 /* --- controls ---------------------------------------------------------------- */
 
 function setRunning(on) {
+  // Stopping the scope stops everything it sent (K4). Guarded, because this
+  // can run before the score's own state is declared, when nothing was sent.
+  if (!on && state.running) { try { scoreStop(); midiOutPanic(); } catch (error) { /* not yet */ } }
   state.running = on;
   el.run.dataset.running = String(on);
   el.runLabel.textContent = on ? "Stop" : "Run";
@@ -14095,6 +14215,13 @@ function genReswing() {
   if (source && source.kind === "tone") { source.reswing(); return; }
   const lane = genLane();
   if (lane) lane.reswing();
+}
+// Notes in the score's voice, wherever the generator is: [hz, velocity] pairs.
+function genStrike(notes) {
+  const source = state.source;
+  if (source && source.kind === "tone") { source.strike(notes); return; }
+  const lane = genLane();
+  if (lane) lane.strike(notes);
 }
 // A kick to a wireframe's spin, wherever the generator is.
 function genKick(amount) {
@@ -15118,9 +15245,9 @@ el.ringTime.addEventListener("input", () => {
    Both events, because they are not the same - a tab switch hides without
    blurring in some browsers and a click into another window blurs without
    hiding. */
-window.addEventListener("blur", midiPanic);
+window.addEventListener("blur", () => { midiPanic(); midiOutPanic(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") midiPanic();
+  if (document.visibilityState !== "visible") { midiPanic(); midiOutPanic(); }
 });
 
 /* --- the keyboard, on the screen -------------------------------------------
@@ -15378,6 +15505,7 @@ const DEFAULTS = {
   // Additive, so a code from before them gets these and no version bump.
   l0y: "", l1y: "", keyRoot: 0, keyScale: "chromatic", quant: false, qGlide: 0, bpm: 120,
   crossOn: false, crossX: 0, crossY: 0, crossNoteX: 60, crossNoteY: 67, crossDecay: 180, crossLevel: 40,
+  scoreOn: false, scoreStep: "1/16", scoreVoices: 2, scoreLow: 48, scoreOctaves: 3,
   mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
@@ -15507,6 +15635,8 @@ function snapshot() {
     crossOn: cross.on, crossX: Math.round(cross.x * 100), crossY: Math.round(cross.y * 100),
     crossNoteX: cross.noteX, crossNoteY: cross.noteY, crossDecay: cross.decayMs,
     crossLevel: Math.round(cross.level * 100),
+    scoreOn: score.on, scoreStep: score.step, scoreVoices: score.voices, scoreLow: score.low,
+    scoreOctaves: score.octaves,
     mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
@@ -15719,6 +15849,15 @@ function restore(partial) {
   cross.level = within(s.crossLevel, 0, 100, 40) / 100;
   syncCrossPanel();
   syncCrossings();
+  // The score (K3): additive fields, so a code from before it has it off.
+  score.on = s.scoreOn === true;
+  score.step = SCORE_STEPS.some(([id]) => id === s.scoreStep) ? s.scoreStep : "1/16";
+  score.voices = Math.round(within(s.scoreVoices, 1, 4, 2));
+  score.low = [36, 48, 60].includes(s.scoreLow) ? s.scoreLow : 48;
+  score.octaves = Math.round(within(s.scoreOctaves, 1, 4, 3));
+  el.scoreOn.checked = score.on; el.scoreStep.value = score.step; el.scoreVoices.value = String(score.voices);
+  el.scoreLow.value = String(score.low); el.scoreOctaves.value = String(score.octaves);
+  if (!score.on) scoreStop();
   plane.mirror = [0, 1, 2, 3].includes(s.planeMirror) ? s.planeMirror : 0;
   plane.limit = [0, 1, 2].includes(s.planeLimit) ? s.planeLimit : 0;
   plane.radius = within(s.planeRadius, 2, 100, 40) / 100;
@@ -16279,6 +16418,18 @@ const PRESETS = [
   ], "generator"],
 
   ["Rhythm and key", [
+    /* K3: the screen read as a score. Heard in the generator's voice while it
+       is heard, and sent out if MIDI out has a port. */
+    ["The star plays itself", { gen: "figure", figure: "Star", detail: 5, display: "xy", persistence: "0.04",
+                                timebase: 5, scoreOn: true, scoreVoices: 3, keyScale: "pentatonic" },
+     "A playhead crosses the star and plays its points as a pentatonic chord, low on the screen low in pitch; turn the star and the tune inverts."],
+    ["The pendulums' score", { gen: "harmonograph", interval: 4, detune: 30, decay: 20, display: "xy",
+                               persistence: "-1", timebase: 5, pGoni: false, scoreOn: true, scoreStep: "1/8",
+                               scoreVoices: 2, keyScale: "dorian", keyRoot: 2 },
+     "The harmonograph draws and the playhead reads what it has drawn so far, in D dorian: a score that writes itself as it runs down."],
+    ["A sine, sung", { gen: "wave", shape: "sine", freq: 220, timebase: 2, persistence: "0.12", scoreOn: true,
+                       scoreVoices: 1, scoreOctaves: 2, keyScale: "major" },
+     "A waveform read as a melody: the playhead follows the sine's height across the screen, up and down a major scale."],
     ["Three against two", { gen: "harmonograph", interval: 7, just: true, decay: 2, display: "xy",
                             persistence: "0.04", timebase: 6, crossOn: true, pGoni: false },
      "Slow pendulums at 3:2, with a note each time the beam crosses a line: the interval, heard as a rhythm."],
@@ -17349,18 +17500,196 @@ function syncCrossPanel() {
    line last fired, for the flash on the screen. From whichever core is
    making the picture - the worklet's while the generator is heard. */
 const crossSeen = { x: 0, y: 0, flashX: 0, flashY: 0, said: "" };
+const crossOffs = [];
+function crossOut(note, now) {
+  if (midiOutNote(note, 0.8, now)) crossOffs.push([note, now + 100]);
+}
 function crossStepPanel(now) {
+  for (let k = crossOffs.length - 1; k >= 0; k--) {
+    if (now >= crossOffs[k][1]) { midiOutOff(crossOffs[k][0]); crossOffs.splice(k, 1); }
+  }
   const source = state.source;
   const counts = cross.on && source && source.kind === "tone" && source.crossings;
   if (!counts) {
     if (crossSeen.said !== "") { crossSeen.said = ""; el.crossCount.textContent = ""; }
     return;
   }
-  if (counts.x !== crossSeen.x) { crossSeen.x = counts.x; crossSeen.flashX = now; }
-  if (counts.y !== crossSeen.y) { crossSeen.y = counts.y; crossSeen.flashY = now; }
+  /* A count that has gone up is a crossing, and goes out as a note as well
+     (K4), ended a tenth of a second later. Up, not merely changed: a new
+     generator starts its count again from nought, and that is not a note. */
+  if (counts.x !== crossSeen.x) {
+    if (counts.x > crossSeen.x) crossOut(cross.noteX, now);
+    crossSeen.x = counts.x; crossSeen.flashX = now;
+  }
+  if (counts.y !== crossSeen.y) {
+    if (counts.y > crossSeen.y) crossOut(cross.noteY, now);
+    crossSeen.y = counts.y; crossSeen.flashY = now;
+  }
   const said = "X " + counts.x + " \u00b7 Y " + counts.y;
   if (said !== crossSeen.said) { crossSeen.said = said; el.crossCount.textContent = said; }
 }
+
+/* --- MIDI out: Stage K4 (S9) --------------------------------------------------
+   One port and one channel, chosen under Settings; nothing is sent until a
+   port is. What goes out is the events this page makes of the picture - the
+   score's notes and the crossings' - so with a synth on Local Off the picture
+   plays it, and its line outs coming back in close the loop through a real
+   instrument.
+
+   Three defences, as S9 asks. A rate limit: note-ons past forty a second are
+   dropped, and counted, while a note-off is never dropped, because a
+   dropped note-off is a note that sounds until someone finds the panic
+   button. All notes off - every note this page has sent, then CC 123 - when
+   the scope stops, when the page is hidden or loses focus, when the port or
+   the channel changes, and when the score is switched off. And the readout
+   says when notes are going out. */
+const MIDI_OUT_RATE = 40;               // note-ons a second, at most
+const midiOut = { port: null, channel: 0, sounding: new Map(), times: [], dropped: 0, last: -Infinity };
+
+function midiOutPorts() {
+  const outputs = midi.access && midi.access.outputs;
+  if (!outputs) return [];
+  const list = [];
+  if (typeof outputs.forEach === "function") outputs.forEach((port) => list.push(port));
+  else for (const port of outputs.values()) list.push(port);
+  return list;
+}
+function buildMidiOut() {
+  const ports = midiOutPorts(), was = el.midiOut.value;
+  el.midiOut.innerHTML = '<option value="">Off</option>' + ports.map((port) =>
+    '<option value="' + escapeText(port.id) + '">' + escapeText(port.name || "output") + "</option>").join("");
+  el.midiOut.value = ports.some((port) => port.id === was) ? was : "";
+  el.midiOut.disabled = ports.length === 0;
+  if (el.midiOutCh.options.length === 0) {
+    el.midiOutCh.innerHTML = Array.from({ length: 16 }, (_, i) =>
+      '<option value="' + i + '">ch ' + (i + 1) + "</option>").join("");
+  }
+  midiOutChoose();
+}
+function midiOutChoose() {
+  midiOutPanic();
+  const id = el.midiOut.value;
+  midiOut.port = id ? midiOutPorts().find((port) => port.id === id) || null : null;
+  midiOut.channel = Number(el.midiOutCh.value) || 0;
+  syncMidiOut();
+}
+function midiOutSend(bytes) {
+  if (!midiOut.port) return;
+  try { midiOut.port.send(bytes); } catch (error) { /* a port gone mid-send */ }
+}
+function midiOutNote(note, velocity, now) {
+  if (!midiOut.port) return false;
+  midiOut.times = midiOut.times.filter((t) => now - t < 1000);
+  if (midiOut.times.length >= MIDI_OUT_RATE) { midiOut.dropped++; return false; }
+  midiOut.times.push(now);
+  // A note already sounding is ended first, so the synth hears a new strike.
+  if (midiOut.sounding.has(note)) midiOutSend([0x80 | midiOut.channel, note, 0]);
+  midiOutSend([0x90 | midiOut.channel, note, Math.max(1, Math.min(127, Math.round(velocity * 127)))]);
+  midiOut.sounding.set(note, now);
+  midiOut.last = now;
+  return true;
+}
+function midiOutOff(note) {
+  if (!midiOut.sounding.has(note)) return;
+  midiOutSend([0x80 | midiOut.channel, note, 0]);
+  midiOut.sounding.delete(note);
+}
+function midiOutPanic() {
+  for (const note of midiOut.sounding.keys()) midiOutSend([0x80 | midiOut.channel, note, 0]);
+  midiOut.sounding.clear();
+  midiOutSend([0xb0 | midiOut.channel, 123, 0]);
+}
+function syncMidiOut() {
+  const now = performance.now();
+  const said = !midiOut.port ? "off" : now - midiOut.last < 500 ? "sending" : "ready";
+  if (el.midiOutStatus.textContent !== said) el.midiOutStatus.textContent = said;
+}
+
+/* --- the score: Stage K3 --------------------------------------------------------
+   The phosphor grid read as a graphical score, in the line of Oramics and the
+   ANS: a playhead crosses its 64 columns at the page's tempo, one a step; the
+   rows are the notes of the page's key over a chosen range, low at the bottom;
+   the brightest few in a column are the chord, and brightness is how hard.
+   Draw a figure and it plays itself; turn it and the melody inverts.
+
+   The grid is the one the photocell reads, already bounded and already
+   faded by the persistence, so a long persistence is a score that lingers
+   and none is a score of this frame only. Notes are heard in the generator's
+   score voice - heard, never drawn, so the score cannot play itself into the
+   picture it is reading - and go out as MIDI with the crossings'. */
+const SCORE_STEPS = [["1/16", 0.25], ["1/8", 0.5], ["1/4", 1]];
+const SCORE_FLOOR = 0.15;               // brightness a note needs, of one
+const score = { on: false, step: "1/16", voices: 2, low: 48, octaves: 3,
+                col: -1, start: null, steps: 0, notes: [] };
+
+// The pitches the rows can play: the page's key from `low`, `octaves` up.
+function scorePitches(low, octaves, mask) {
+  const out = [];
+  for (let m = low; m < low + 12 * octaves; m++) if (mask & (1 << (m % 12))) out.push(m);
+  return out;
+}
+/* One column of the grid as notes: each pitch owns a band of rows, bottom
+   up, and is as bright as its brightest row; the `voices` brightest over the
+   floor are the chord, loudest first. Pure, so a test can hand it a grid. */
+function scoreColumn(grid, n, col, pitches, voices) {
+  const bright = new Float32Array(pitches.length);
+  for (let row = 0; row < n; row++) {
+    const g = grid[row * n + col];
+    if (g <= 0) continue;
+    const band = Math.min(pitches.length - 1, Math.floor((n - 1 - row) * pitches.length / n));
+    if (g > bright[band]) bright[band] = g;
+  }
+  const picked = [];
+  for (let k = 0; k < pitches.length; k++) if (bright[k] >= SCORE_FLOOR) picked.push([pitches[k], bright[k]]);
+  picked.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+  return picked.slice(0, voices);
+}
+function scoreStepMs() {
+  const found = SCORE_STEPS.find(([id]) => id === score.step) || SCORE_STEPS[0];
+  return found[1] * 60000 / transport.bpm;
+}
+/* A frame's worth of playhead: the steps due since the last frame, of which
+   only the newest is played - a frame late is a note late, and two notes in
+   one frame would be a flam. The last step's notes end as the next begins. */
+function scoreTick(now) {
+  if (!score.on || !state.running) { if (score.start !== null) scoreStop(); return; }
+  if (score.start === null) { score.start = now; score.steps = 0; score.col = -1; }
+  const due = Math.floor((now - score.start) / scoreStepMs());
+  if (due < score.steps) return;
+  score.steps = due + 1;
+  score.col = due % PHOSPHOR_N;
+  for (const [note] of score.notes) midiOutOff(note);
+  const mask = keyMask(state.keyRoot, state.keyScale);
+  score.notes = scoreColumn(phosphor.grid, PHOSPHOR_N, score.col,
+                            scorePitches(score.low, score.octaves, mask), score.voices);
+  if (score.notes.length === 0) return;
+  genStrike(score.notes.map(([note, velocity]) => [midiHz(note), velocity]));
+  for (const [note, velocity] of score.notes) midiOutNote(note, velocity, now);
+}
+function scoreStop() {
+  for (const [note] of score.notes) midiOutOff(note);
+  score.notes = []; score.start = null; score.col = -1;
+}
+// The playhead, over the picture, where the column it is reading lies.
+function drawScorePlayhead() {
+  if (!score.on || score.col < 0 || state.display === "spect") return;
+  const ctx = el.trace.getContext("2d");
+  const x = plot.x + (score.col + 0.5) / PHOSPHOR_N * plot.w;
+  ctx.save();
+  ctx.strokeStyle = ink["blush-deep"];
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); ctx.stroke();
+  ctx.restore();
+}
+
+el.scoreOn.addEventListener("change", () => { score.on = el.scoreOn.checked; if (!score.on) scoreStop(); });
+el.scoreStep.addEventListener("change", () => { score.step = el.scoreStep.value; score.start = null; });
+el.scoreVoices.addEventListener("change", () => { score.voices = Number(el.scoreVoices.value) || 1; });
+el.scoreLow.addEventListener("change", () => { score.low = Number(el.scoreLow.value) || 48; });
+el.scoreOctaves.addEventListener("change", () => { score.octaves = Number(el.scoreOctaves.value) || 3; });
+el.midiOut.addEventListener("change", midiOutChoose);
+el.midiOutCh.addEventListener("change", midiOutChoose);
 
 el.crossOn.addEventListener("change", () => { cross.on = el.crossOn.checked; syncCrossings(); });
 el.crossX.addEventListener("input", () => {

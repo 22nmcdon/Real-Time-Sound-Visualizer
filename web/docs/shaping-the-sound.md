@@ -13,8 +13,8 @@ the generator and, through S1's effects worklet, for a microphone, a line input
 and a file (see *Built so far* under Stage I), and H1's second oscillator,
 sub and unison (see *Built so far* under Stage H), and J1's sources, the
 first of J2's "sound drives the drawing" with S3's events, and J3's live
-audio into the generator (see *Built so far* under Stage J). Nothing else
-here is.
+audio into the generator (see *Built so far* under Stage J), and K3's score
+and K4's MIDI out (see *Built so far* under Stage K). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -701,8 +701,26 @@ rather than points. A line at X = c is crossed once per cycle of X, so a 3:2
 figure fires three against two exactly. A point is passed a number of times that
 depends on where it sits, and does not keep that promise. Each line plays a
 plucked note in the heard pair only. There is 0.05 of full scale of hysteresis
-and a limit of 25 notes a second. `crosstest.py` holds them. K1's thresholds,
-K3 to K5, and S3 in general are not built.
+and a limit of 25 notes a second. `crosstest.py` holds them.
+
+**K3, the score**, in a *Score* section on the Picture tab. A playhead
+crosses the phosphor grid's 64 columns at the page's tempo, a semiquaver,
+quaver or crotchet a step. The rows are the notes of the page's key over one
+to four octaves from C2, C3 or C4, low at the bottom, each pitch owning a
+band of rows and as bright as its brightest; the brightest one to four above
+a floor of 0.15 are the chord, and brightness is the velocity. Only the
+newest step due in a frame is played, since two in one frame would be a
+flam. The notes are struck in a voice of their own in the core - four of the
+crossings' sines - heard and never drawn, so the score cannot play itself
+into the picture it is reading.
+
+**K4, MIDI out (S9)**: a port and a channel under Settings, MIDI. The score's
+notes and the crossings' go out; note-ons past forty a second are dropped
+and counted, note-offs never are, and every note sent is ended, then CC 123,
+when the scope stops, the page is hidden or loses focus, or the port, the
+channel or the score changes. The readout says *sending* while notes go out.
+
+`scoretest.py` holds them. K1's thresholds and K5 are not built.
 
 ### K · verification
 
@@ -732,7 +750,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 146 presets in twenty-three sections, in a browser
+- **Presets, rebuilt. Built.** 149 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

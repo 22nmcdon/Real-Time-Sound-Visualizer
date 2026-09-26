@@ -2240,7 +2240,7 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 146 of them in twenty-three sections, from *Start here* and *Organ* through
+are 149 of them in twenty-three sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
 *Live*, *Live effects*, *Listening* and *Analysis*.
@@ -2531,3 +2531,37 @@ repeats every 441 samples to nought.
   of 1.0 to 1.1 ms against a limit of "under one", and it fails the same way
   on the commit before any of this. It is left as it is: it is that
   feature's budget, and the reading is at the clock's 0.1 ms resolution.
+
+**The picture as a score, and MIDI out (K3, K4).** The phosphor grid the
+photocell reads is also a graphical score: a playhead crosses its columns at
+the tempo and plays the brightest rows as notes of the page's key. The notes
+are struck in a voice of their own, heard and never drawn, and go out as MIDI
+with the crossings' notes if a port is chosen.
+
+- *A pure function for the column.* `scoreColumn(grid, n, col, pitches,
+  voices)` takes a grid it is handed, so `scoretest.py` checks it on grids
+  made to answer: a single lit row is one note, a diagonal climbs every note
+  of the range in order, and in D dorian nothing outside D dorian.
+- *The playhead is ticked with times, not frames.* `scoreTick(now)` is called
+  each frame with the clock, and the test calls it with a second of
+  synthetic times, synchronously, so no real frame can step it in between:
+  nine steps at 120 BPM in semiquavers, five at 60. A separate check ticks
+  the box on the page and lets real frames play it.
+- *Only the newest step due is played.* A slow frame could owe two steps;
+  playing both would be a flam, a note a frame late is only late.
+- *A note-off is never rate-limited.* Note-ons past forty a second are
+  dropped. Dropping a note-off would leave a note sounding on the synth until
+  someone found its panic button.
+- *A crossing is a count that went up.* The crossings' counts reset to
+  nought with a new generator, and "changed" would have sent a note for it.
+- *The first check of the note order was wrong, not the page.* Two identical
+  note-on messages made `list.index` find the first for both, so the test
+  said the note-off came after the second note-on when it came before. It
+  compares the whole sequence now.
+- *Two checks passed a mutant because they agreed with themselves.* The D
+  dorian check compared the score's notes with a list the same function had
+  made, so a key that was ignored matched itself; it compares with the
+  scale written out now. And a single lit row plays the same note every
+  step, where a note-on for a note already sounding ends it first anyway, so
+  nothing needed the step's own note-off; a check of two alternating rows,
+  whose notes differ, does.
