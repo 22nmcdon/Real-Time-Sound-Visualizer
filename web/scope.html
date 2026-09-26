@@ -936,10 +936,10 @@ body[data-view="bench"] .dock  { order: 3; }
 .mod-edit { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 /* The Sources tab. One row per family, the family named small; a family
    with nothing in it says how to get something rather than vanishing. */
-.src-family { margin: 0 0 10px; }
+.src-family { margin: 0 0 8px; }
 .src-family-name {
   display: block; font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--text-soft); margin-bottom: 6px;
+  text-transform: uppercase; color: var(--text-soft); margin-bottom: 4px;
 }
 .src-family-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 /* Tighter than the rail's chips beside the screen, which are dragged and
@@ -1603,6 +1603,10 @@ body[data-view="bench"] .dock  { order: 3; }
                     <span class="reading" id="depthValue">0.45</span>
                   </div>
                 </div>
+                <div class="menu-row" data-mod-dest="gen.kick">
+                  <span class="menu-label"></span>
+                  <button type="button" class="link-btn caps" id="kickSpin">Kick</button>
+                </div>
                 <p class="menu-note">A solid, turned and flattened onto the two channels.
                   The beam draws one unbroken line, so edges it cannot reach without lifting
                   are retraced rather than jumped &mdash; a doubled line is the same pixels,
@@ -1691,7 +1695,14 @@ body[data-view="bench"] .dock  { order: 3; }
                     <span class="reading" id="detuneValue">0.0040</span>
                   </div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.swing" data-mod-control="swingDrive">
+                  <label class="menu-label" for="swingDrive">Energy</label>
+                  <div class="grow">
+                    <input type="range" id="swingDrive" min="0" max="100" value="0">
+                    <span class="reading" id="swingDriveValue">none</span>
+                  </div>
+                </div>
+                <div class="menu-row" data-mod-dest="gen.reswing">
                   <span class="menu-label"></span>
                   <button type="button" class="link-btn caps" id="reswing">Swing again</button>
                 </div>
@@ -3125,7 +3136,14 @@ body[data-view="bench"] .dock  { order: 3; }
         the two channels are, one for mono. <i>Flux</i> jumps on each new note or hit and
         stays low on a held one. None of them can jump: a new note glides there in an eighth
         of a second an octave. Pointed back at the generator they are hearing, they are a
-        loop, and held to the picture's reach like the photocell.</span></li>
+        loop, and held to the picture's reach like the photocell.
+        <br><br>
+        <i>Onset</i> is different: a moment, not a value. It fires once when a note or a hit
+        begins, never on a release, and never faster than twelve times a second, and it can
+        only strike things: the harmonograph's <i>Swing again</i> and a solid's <i>Kick</i>.
+        To have your playing strike the generator, put your input and the generator in a rack
+        and the trigger on your input's lane; an onset that would hear the generator it
+        strikes is refused, since every strike would be the next onset.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, on the Sources tab, is one key, one scale and one
@@ -3581,7 +3599,7 @@ body[data-view="bench"] .dock  { order: 3; }
 
     <ul class="help-list" id="panelKeys" hidden>
       <li class="help-lede">Presets are the front door. Press <i>Preset</i>, on the left of the
-        strip, for a browser of over a hundred of them in twenty-one sections &mdash; organ and FM
+        strip, for a browser of over a hundred of them in twenty-two sections &mdash; organ and FM
         keys, basses and pads, bells, grit, figures, the plane, echoes, drawings, rhythm &mdash;
         each with a line on what to listen for and what to look at. Three sections are for
         playing: chords, splits and layers, and the wheel, the pedal and the strike of a key
@@ -3811,6 +3829,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "spinZ", "spinZValue", "depth", "depthValue",
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
+                  "swingDrive", "swingDriveValue", "kickSpin",
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
@@ -4047,6 +4066,8 @@ const VCF_SLOT = FOLD_SLOT + 1;
 // And the echo's level and time (I1), after the filter.
 const ECHO_SLOT = VCF_SLOT + 1;
 const ECHO_TIME_SLOT = ECHO_SLOT + 1;
+// And the harmonograph's energy in (J2), after the echo.
+const SWING_SLOT = ECHO_TIME_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -4405,7 +4426,18 @@ function registerDest(entry) { MOD_DESTS.set(entry.id, entry); return entry; }
    round it; and also where it is stored and shown, so the number on the
    control is the number that applies. */
 function routingAllowed(source, dest) {
-  return !!source && !!dest;
+  if (!source || !dest) return false;
+  /* S3: an EVENT source - a hit, an onset - reaches only an event
+     destination, one that is struck rather than set, and a value never
+     reaches one. A trigger routed to a cutoff would be the step this matrix
+     exists to keep out, and a level routed to "swing again" has no moment. */
+  if ((source.event === true) !== (dest.kind === "event")) return false;
+  /* And an event hearing the generator it would strike is refused outright.
+     A reswing makes an attack, the attack is an onset, the onset reswings:
+     the rate limit would only set how fast it stuttered. A continuous loop
+     has LOOP_TOTAL to bound it; an event loop has nothing to bound. */
+  if (source.event === true && source.fromPicture) return false;
+  return true;
 }
 
 /* The most the loop may push into any one destination, summed over every
@@ -4518,6 +4550,11 @@ const GEN_DESTS = [
      rather than zippering. */
   { id: "gen.echoTime", label: "Echo time", slot: ECHO_TIME_SLOT,
     reach: (v, s) => Math.max(10, Math.min(2000, v * Math.pow(2, s))) },
+  /* The pendulums' energy in, in hundredths: half the travel either way. The
+     level on it is J2's "energy in instead of only running down" - play and
+     the drawing keeps swinging, stop and it runs down as it always did. */
+  { id: "gen.swing", label: "Energy", slot: SWING_SLOT, modes: ["harmonograph"],
+    reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -4598,11 +4635,20 @@ const hearing = {
   prev: null, re: null, im: null, hann: null, gen: null, cost: 0,
 };
 
-// Whether what is being heard is the generator: the tone, or a rack with a
-// generator lane in it, which is counted whole rather than lane by lane.
+/* Whether what is being heard is the generator: the tone, or a rack whose
+   lane these read - the trigger lane, as the level's - is the generator's.
+   Lane by lane rather than the rack whole: counting any rack with a
+   generator in it would refuse an onset from a microphone lane the moment
+   the generator was playing beside it, which is the play-along J2 is for.
+   The width reads the X-Y pair and can include the generator's lane with
+   the trigger on another; it is continuous and bounded, and left so. */
 function hearsGenerator() {
   const source = state.source;
-  return !!source && (source.kind === "tone" || (!!source.lanes && !!genLane()));
+  if (!source) return false;
+  if (source.kind === "tone") return true;
+  if (!source.lanes) return false;
+  const lane = source.lanes[state.trigSource] || source.lanes[0];
+  return !!(lane && lane.synth);
 }
 
 function hearingFollow(now, want, elapsed) {
@@ -4670,6 +4716,7 @@ function hearingStep(elapsed) {
   hearing.prev = mags;
   hearing.fluxRaw = total > 1e-9 ? Math.min(1, rise / total) : 0;
   hearing.flux = hearingFollow(hearing.flux, rms < HEAR_FLOOR ? 0 : hearing.fluxRaw, elapsed);
+  onsetStep(rms, late > early);
 
   if (rms >= HEAR_FLOOR) {
     // Brightness: the centroid, placed on a log scale from 100 Hz to 8 kHz.
@@ -4748,6 +4795,47 @@ HEARING_SOURCES.forEach((entry, i) => {
     get start() { return hearsGenerator() ? PHOTO_START : undefined; },
   });
 });
+
+/* Onset (J1's event source, built with J2's destinations): a new note or a
+   hit, as a moment rather than a value. From the raw flux - a share of the
+   spectrum that is new since the last frame - with the two defences S3 asks
+   of every event: hysteresis, so one attack fires once however many frames
+   its window takes to fill, and a minimum gap, so nothing fires more than
+   twelve times a second. Below -60 dBFS nothing fires. Its value is only a
+   flash for the eye, a hundred and fifty milliseconds long; what a
+   destination reads is the count. */
+const ONSET_ON = 0.3, ONSET_OFF = 0.12, ONSET_GAP = 80;
+const onset = { count: 0, last: -Infinity, armed: true };
+/* And the energy must be rising: the newer half of the window louder than
+   the older. A note cut off in one sample is a click, broadband and a real
+   rise in flux, and without this every staccato note was two onsets - eight
+   strikes counted sixteen. At a cut-off the newer half is the silence. */
+function onsetStep(rms, rising) {
+  const now = performance.now();
+  if (onset.armed && rising && rms >= HEAR_FLOOR && hearing.fluxRaw > ONSET_ON
+      && now - onset.last >= ONSET_GAP) {
+    onset.count++; onset.last = now; onset.armed = false;
+  } else if (!onset.armed && hearing.fluxRaw < ONSET_OFF) {
+    onset.armed = true;
+  }
+}
+registerSource({
+  id: "hear.onset", label: "Onset", ink: "ch2", bipolar: false, family: "hearing", order: 48,
+  event: true,
+  description: "A new note or a hit, as a moment: it strikes things rather than moving them - "
+    + "the harmonograph's Swing again, a solid's Kick. Refused while it is hearing the generator "
+    + "it would strike, since every strike would be heard as the next onset.",
+  value: () => Math.max(0, 1 - (performance.now() - onset.last) / 150),
+  get count() { return onset.count; },
+  get fromPicture() { return hearsGenerator(); },
+});
+
+/* The event destinations (S3): struck, not set. Each carries `fire`, and the
+   routing's depth is how hard - for a reswing, anything above nought. */
+registerDest({ id: "gen.reswing", kind: "event", label: "Swing again", modes: ["harmonograph"],
+               fire: () => genReswing() });
+registerDest({ id: "gen.kick", kind: "event", label: "Kick", modes: ["wireframe"],
+               fire: (amount) => genKick(amount) });
 
 /* The note envelope, beside the level meter and quite unlike it.
 
@@ -4853,6 +4941,7 @@ function applyModMatrix(frame, elapsed) {
   photoStep(elapsed);
   pictureStep(frame, elapsed);
   midiApplyGate();
+  fireEvents();
 
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
@@ -4882,6 +4971,24 @@ function applyModMatrix(frame, elapsed) {
 
   // And the half of the matrix that has to be glided rather than assigned.
   syncMonitor();
+}
+
+/* S3's events, once a frame: a routing fires its destination once for each
+   new count its source reaches, and never for the count it found when it
+   was made - loading a preset is not a hit. Remembered per routing object,
+   off the stored setup, so nothing about it is saved. */
+const eventSeen = new WeakMap();
+function fireEvents() {
+  for (const routing of state.modRoutings) {
+    const dest = MOD_DESTS.get(routing.destId);
+    if (!dest || dest.kind !== "event") continue;
+    const source = MOD_SOURCES.get(routing.sourceId);
+    if (!source || source.event !== true) continue;
+    const seen = eventSeen.get(routing), now = source.count;
+    eventSeen.set(routing, now);
+    if (seen === undefined || seen === now) continue;
+    if (routing.amount !== 0 && routingAllowed(source, dest)) dest.fire(routing.amount);
+  }
 }
 
 /* Compiled once per change rather than walked per sample. The per-sample loop
@@ -6462,6 +6569,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     figureRate: 40,          // how many times a second the figure is traced
     swingRate: 2.1,          // harmonograph: pendulum hertz, not audio hertz
     decay: 0.12,             // harmonograph: how fast the pendulums run down
+    swingDrive: 0,           // harmonograph: energy put back in, nought to one (J2)
     /* The pitched harmonograph (J2): the pendulums swing at the note's pitch
        rather than at `swingRate`, and die away over `ringMs` - a time
        constant, not `decay`'s per-second rate, because a pluck and a drawing
@@ -7062,6 +7170,19 @@ function makeGeneratorCore(rate, slots, lfos) {
 
   let phaseL = 0, phaseR = 0, figurePhase = 0;
   let swing = 0;             // harmonograph: seconds since the pendulums were let go
+  /* J2: energy in. While a drive is on, the swing's envelope is a state
+     rather than a function of time - d(env)/dt = -decay env + rate drive
+     (1 - env) - so a steady drive holds it at drive rate / (decay + drive
+     rate), and the moment the drive stops it runs down from where it is.
+     `swing` is kept equal to the time the plain decay would have taken to
+     get there, so the closed form picks up without a step. */
+  const SWING_DRIVE_RATE = 3;         // per second at full drive
+  let swingEnv = 1;
+  /* J2: a kick to a wireframe's spin, and friction on it. A multiplier on
+     the spin rate that an event adds to and that decays back to nought over
+     KICK_TAU - so hits spin it and it coasts down. */
+  const KICK_SIZE = 6, KICK_TAU = 1.2, KICK_MOST = 20;
+  let kick = 0;
 
   /* The pendulums being let go again, as a fade rather than a step.
 
@@ -7593,6 +7714,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     // loop is `pow` forty-four thousand times a second for one answer.
     const octave = Math.pow(2, tone.octaves);
     const glide = tone.glideMs > 0 ? poleFor(tone.glideMs) : 1;
+    const kickFriction = Math.exp(-dt / KICK_TAU);
     if (freqNow === null) freqNow = tone.freq;
 
     for (let i = 0; i < n; i++) {
@@ -7637,21 +7759,30 @@ function makeGeneratorCore(rate, slots, lfos) {
         l = amp * at[0];
         r = amp * at[1];
       } else if (tone.mode === "wireframe") {
+        const spun = kick === 0 ? tumble : tumble * (1 + kick);
+        if (kick !== 0) { kick *= kickFriction; if (Math.abs(kick) < 1e-4) kick = 0; }
         const at = wire.step(dt, tone.figureRate, depth, [
-          tone.spin[0] * tumble, tone.spin[1] * tumble, tone.spin[2] * tumble,
+          tone.spin[0] * spun, tone.spin[1] * spun, tone.spin[2] * spun,
         ]);
         l = amp * at[0];
         r = amp * at[1];
       } else if (tone.mode === "harmonograph") {
         swing += dt;
-        const env = tone.pitched ? Math.exp(-swing * 1000 / Math.max(1, tone.ringMs))
-                                 : Math.exp(-tone.decay * swing);
+        const drive = tone.pitched ? 0
+          : Math.max(0, Math.min(1, tone.swingDrive + (genMod[SWING_SLOT] || 0) * 0.5));
+        let env;
+        if (tone.pitched) env = Math.exp(-swing * 1000 / Math.max(1, tone.ringMs));
+        else if (drive > 0) {
+          swingEnv += (-tone.decay * swingEnv + SWING_DRIVE_RATE * drive * (1 - swingEnv)) * dt;
+          env = swingEnv;
+          swing = -Math.log(Math.max(1e-9, env)) / Math.max(1e-6, tone.decay);
+        } else { env = Math.exp(-tone.decay * swing); swingEnv = env; }
 
         // Let it go again once it has run down, so the screen is never just
         // a dot waiting for someone to notice - faded rather than stepped;
         // see `relet`. Not when pitched: a plucked note that restarted itself
         // would be a drone, and the next note is what strikes it.
-        if (env < 0.015 && !tone.pitched) { swing = 0; phaseL = 0; phaseR = 0; relet = reletSamples; }
+        if (env < 0.015 && !tone.pitched) { swing = 0; swingEnv = 1; phaseL = 0; phaseR = 0; relet = reletSamples; }
 
         /* Pitched, the pendulums swing at the generator's pitch - the note,
            its glide and everything patched onto the frequency - and are
@@ -7831,14 +7962,22 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
       tone[field] = value;
       if (field === "model") wire.set(value);
-      if (field === "mode" || field === "decay") { swing = 0; relet = 0; striking = false; }
+      if (field === "mode" || field === "decay") { swing = 0; swingEnv = 1; relet = 0; striking = false; }
     },
+    // J2: a kick to the spin, from an event; see KICK_SIZE.
+    kick(amount) {
+      kick = Math.max(-KICK_MOST, Math.min(KICK_MOST, kick + amount * KICK_SIZE));
+    },
+    // Read by the tests: the kick's multiplier on the spin, and the swing's
+    // envelope, each where the last block left it.
+    get spinKick() { return kick; },
+    get swingLevel() { return swingEnv; },
     reswing() {
       if (tone.mode === "harmonograph" && tone.pitched) {
         strikeFrom = lastGain; striking = true; swing = 0; relet = reletSamples;
         return;
       }
-      swing = 0; phaseL = 0; phaseR = 0; relet = 0; striking = false; wire.reset();
+      swing = 0; swingEnv = 1; phaseL = 0; phaseR = 0; relet = 0; striking = false; wire.reset();
       // The voice's copies start again from the phases just reset.
       oscL.n = 0; oscR.n = 0;
     },
@@ -8022,6 +8161,7 @@ function generatorProcessor() {
           }
         }
         if (message.reswing) this.core.reswing();
+        if (message.kick) this.core.kick(message.kick);
         if (message.gated !== undefined) this.core.setGated(message.gated);
         /* A gate is an EVENT, not a setting, so it is sent as one and applied
            the moment it lands. A note held for a tenth of a second is fifty
@@ -8145,6 +8285,7 @@ function generatorModuleSource() {
     bind("VCF_SLOT", VCF_SLOT),
     bind("ECHO_SLOT", ECHO_SLOT),
     bind("ECHO_TIME_SLOT", ECHO_TIME_SLOT),
+    bind("SWING_SLOT", SWING_SLOT),
     bind("svfStep", String(svfStep)),
     bind("svfG", String(svfG)),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
@@ -8526,6 +8667,10 @@ function makeToneSource(atRate) {
     reswing() {
       core.reswing();
       voice.post({ reswing: true });
+    },
+    kick(amount) {
+      core.kick(amount);
+      voice.post({ kick: amount });
     },
 
     // Whether the worklet is the thing making the samples, which is also the
@@ -9501,6 +9646,10 @@ function makeSynthLane(name, rate, ctx, mix) {
     reswing() {
       core.reswing();
       voice.post({ reswing: true });
+    },
+    kick(amount) {
+      core.kick(amount);
+      voice.post({ kick: amount });
     },
     audible() { return voice.audible; },
     setSound(on) { return voice.setSound(on); },
@@ -13827,6 +13976,13 @@ function genReswing() {
   const lane = genLane();
   if (lane) lane.reswing();
 }
+// A kick to a wireframe's spin, wherever the generator is.
+function genKick(amount) {
+  const source = state.source;
+  if (source && source.kind === "tone") { source.kick(amount); return; }
+  const lane = genLane();
+  if (lane) lane.kick(amount);
+}
 
 /* Which layer the panel is showing. Layer B only while there IS one: with
    the layers off, or the generator in a rack, the panel is layer A whatever
@@ -14078,6 +14234,14 @@ el.decay.addEventListener("input", () => {
   genSet("decay", decay);
 });
 
+// Energy in (J2): how hard the pendulums are kept going. Said as where a
+// steady drive would hold the swing, against a decay that is also set.
+el.swingDrive.addEventListener("input", () => {
+  const drive = Number(el.swingDrive.value) / 100;
+  el.swingDriveValue.textContent = drive > 0 ? drive.toFixed(2) : "none";
+  genSet("swingDrive", drive);
+});
+
 el.detune.addEventListener("input", () => {
   const detune = Number(el.detune.value) / 10000;
   el.detuneValue.textContent = detune.toFixed(4);
@@ -14114,6 +14278,8 @@ el.swingRate.addEventListener("input", () => {
   el.swingRateValue.textContent = hz.toFixed(1) + " Hz";
   if (genSet("swingRate", hz)) el.credit.textContent = state.source.describe();
 });
+
+el.kickSpin.addEventListener("click", () => genKick(1));
 
 el.reswing.addEventListener("click", () => {
   genReswing();
@@ -15064,7 +15230,7 @@ const DEFAULTS = {
   gen: "wave", shape: "harmonic", bars: DRAWBAR_DEFAULT.join(""), morph: 150, freq: 220, amp: 55,
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
-  swingRate: 21, decay: 12, detune: 40,
+  swingRate: 21, decay: 12, detune: 40, swingDrive: 0,
   /* The envelope, in the units its sliders use. New fields rather than
      changed ones, so a code written before the generator could be played
      simply has none of them, gets these, and sounds and draws what it always
@@ -15184,6 +15350,7 @@ function snapshot() {
     figureRate: Number(el.figureRate.value),
     swingRate: Number(el.swingRate.value),
     decay: Number(el.decay.value),
+    swingDrive: Number(el.swingDrive.value),
     detune: Number(el.detune.value),
     atk: Number(a("envAttack")), dec: Number(a("envDecay")),
     sus: Number(a("envSustain")), rel: Number(a("envRelease")),
@@ -15282,6 +15449,7 @@ function restore(partial) {
   el.figureRate.value = String(s.figureRate);
   el.swingRate.value = String(s.swingRate);
   el.decay.value = String(s.decay);
+  el.swingDrive.value = String(s.swingDrive);
   el.detune.value = String(s.detune);
   el.envAttack.value = String(s.atk);
   el.envDecay.value = String(s.dec);
@@ -15301,7 +15469,7 @@ function restore(partial) {
      generator, so the panel showed the code's release while the notes kept
      whatever release they had. Found by the check that layer B falls back to
      layer A's envelope - it read A's, and A's was not the code's. */
-  ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "detune",
+  ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "swingDrive", "detune",
    "spinX", "spinY", "spinZ", "spinRate", "depth",
    "envAttack", "envDecay", "envSustain", "envRelease", "glide", "morph"]
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
@@ -15932,6 +16100,31 @@ const PRESETS = [
      "An octahedron whose spin and perspective are both being pushed about."],
   ], "generator"],
 
+  /* J2: the drawings answering what is played. They set the generator and
+     land on it, in a rack beside the input they listen to: the hearing
+     sources read the trigger lane, so the trigger has to be on the input's
+     lane - on the tone alone they hear the generator, and an onset is
+     refused there, since every strike would be heard as the next. */
+  ["Drawn by your playing", [
+    ["Hits restart the pendulums", { gen: "harmonograph", interval: 4, detune: 30, decay: 30, display: "xy",
+                                     persistence: "0.04", timebase: 5, pGoni: false,
+                                     mod: "hear.onset>gen.reswing@1.000" },
+     "Every hit or new note lets the pendulums go again, so a rhythm is a drawing started over on each beat."],
+    ["Playing keeps it swinging", { gen: "harmonograph", interval: 7, detune: 20, decay: 40, display: "xy",
+                                    persistence: "0.04", timebase: 5, pGoni: false,
+                                    mod: "env.live>gen.swing@1.000" },
+     "Your level is the pendulums' energy: play and they keep swinging, stop and they run down as they always did."],
+    ["Hits spin the solid", { gen: "wireframe", model: "Cube", spinRate: 40, display: "xy", persistence: "0.12",
+                              timebase: 5, pGoni: false, mod: "hear.onset>gen.kick@0.600" },
+     "Each hit kicks the cube into a spin that coasts down with friction, which reads as something with weight."],
+    ["Bass turns the solid", { gen: "wireframe", model: "Octahedron", display: "xy", persistence: "0.12",
+                               timebase: 5, pGoni: false, mod: "hear.band1>gen.tumble@0.600" },
+     "The bass band on the spin rate: a low note speeds the octahedron up, and it slows as the note dies."],
+    ["Brightness adds points", { gen: "figure", figure: "Star", detail: 4, display: "xy", persistence: "0.12",
+                                 timebase: 5, mod: "hear.bright>gen.detail@0.600" },
+     "The brighter the sound, the more points the star has: a filter opening or a harder attack draws more."],
+  ], "generator"],
+
   ["Rhythm and key", [
     ["Three against two", { gen: "harmonograph", interval: 7, just: true, decay: 2, display: "xy",
                             persistence: "0.04", timebase: 6, crossOn: true, pGoni: false },
@@ -16187,6 +16380,9 @@ const PRESET_ABOUT = {
   "Motion": "The low-frequency oscillators, pointed at the figure: it turns, drifts, breathes.",
   "Drawings": "The generator as a pen: figures traced by the beam, and pendulums that draw and run down.",
   "Solids": "Wireframe solids, turning, each drawn in a single stroke of the beam.",
+  "Drawn by your playing": "The drawings answering a microphone or a file: hits restart and spin them, your "
+    + "level keeps them swinging, your brightness and bass reshape them. Put your input and the generator in "
+    + "a rack, with the trigger on your input's lane.",
   "Rhythm and key": "Crossings turn an interval into a rhythm; the quantiser turns a wandering pitch into "
     + "a melody. None of these needs a keyboard.",
   "Live": "For a microphone, a line input or a file. These set the display only, and land on whatever is "
@@ -16611,6 +16807,7 @@ function generatorFromPanel(set) {
   set("figureRate", Number(el.figureRate.value));
   set("swingRate", Number(el.swingRate.value) / 10);
   set("decay", Number(el.decay.value) / 100);
+  set("swingDrive", Number(el.swingDrive.value) / 100);
   set("detune", Number(el.detune.value) / 10000);
   // The same table the handlers use, so a new generator is built with what
   // the sliders say rather than with the core's own defaults.

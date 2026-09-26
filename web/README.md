@@ -2240,7 +2240,7 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 137 of them in twenty-one sections, from *Start here* and *Organ* through
+are 142 of them in twenty-two sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
 *Live*, *Live effects*, *Listening* and *Analysis*.
@@ -2435,6 +2435,9 @@ width reads one, minus one and nought for mono, inverted and a fifth apart.
   is playing now, and the page recompiles the routes when it flips.
   `Object.assign` of a getter copies its value once, which would have frozen
   the answer at load. The Level source predates this and is not treated so.
+  In a rack, the lane that counts is the trigger lane, the one these read;
+  see J2 below for why the first version, which counted any rack with a
+  generator in it, was wrong.
 - *A reach that varies must not be clamped in storage.* The page stores a
   routing's amount clamped to its source's reach, so the depth control shows
   what happens. For these that lost the amount for good: `presettest.py`
@@ -2449,3 +2452,44 @@ width reads one, minus one and nought for mono, inverted and a fifth apart.
   their size; the empty families' hints are one line each; the note under the
   grid is two lines. With a rack of six it fits with nothing to spare, so the
   next family added here will need another answer, probably a second column.
+
+**Events, and the sound striking the drawings (S3 and J2).** Some sources are
+moments, not values: *Onset* fires when a note or a hit begins. An event
+source reaches only a destination that is struck - *Swing again* on the
+harmonograph, *Kick* on a solid - and no value reaches those. `routingAllowed`
+says so in one place, so the editor never offers the pairing and a dropped
+chip makes no routing. A routing fires once per new count its source
+reaches, never on the count it found when it was made: loading a preset is
+not a hit.
+
+- *Every staccato note was two onsets.* Eight strikes counted sixteen. Each
+  note was cut off in one sample, and a cut-off is a click: broadband, a real
+  rise in flux, and past the threshold. Onset now also requires the energy to
+  be rising, the newer half of the window louder than the older, which a
+  cut-off never is. The same rule would have been wrong for flux, which is
+  a measure, not an event, and it was left alone there.
+- *The gap could not be tested by playing.* Struck every 40 ms, hysteresis
+  smeared the strikes into two onsets in two seconds, so a check against the
+  80 ms gap passed whatever the gap was. The check feeds the detector a flux
+  that flickers every millisecond instead, and requires at least four
+  onsets, so a detector that never fired cannot pass it either.
+- *Hysteresis survived the first mutation pass for the same reason.* Played
+  notes let the flux fall fast enough that the gap alone gave one onset an
+  attack. It matters on a swell, a flux held high for longer than the gap,
+  so the check holds one high for 400 ms and requires one onset, then a
+  second once it has fallen below the re-arming level and risen again.
+- *An onset hearing the generator it would strike is refused.* The strike
+  is heard as the next onset, and the gap would only set how fast it
+  stuttered; a continuous loop has `LOOP_TOTAL`, an event loop has nothing.
+  Which lane counts is the trigger lane. J1 first counted any rack with a
+  generator in it as hearing the generator, which would have refused an
+  onset from a microphone lane playing beside the generator - the one case
+  J2 exists for.
+- *Energy in keeps the closed form for its absence.* With no drive the
+  harmonograph's envelope is `exp(-decay t)` as it always was; with one, it
+  is integrated, and `swing` is kept equal to the time the plain decay would
+  have taken to reach it, so a drive that stops hands back without a step.
+  The first draft of that check wanted 0.52 and the clock alone gave 0.14.
+- *The Sources tab again.* Onset's chip wrapped a row and put a rack of six
+  11 px over. The gaps between families went from ten pixels to eight, and
+  the names' from six to four. It fits with nothing to spare.

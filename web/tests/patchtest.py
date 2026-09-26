@@ -84,7 +84,10 @@ with sync_playwright() as pw:
     # then the note envelope became a source and three tests in this file said
     # the page was broken. What the panel promises is "every source you have",
     # not "three".
-    every = p.evaluate("() => MOD_SOURCES.size")
+    # Every source that may reach a value: an event source - the onset -
+    # strikes things and is never offered on a slider (S3), which the counts
+    # below would otherwise call a missing row.
+    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true).length")
     check("nothing on it yet, so every source is offered",
           len(opened["add"]) == every, "%d offered of %d registered"
           % (len(opened["add"]), every))

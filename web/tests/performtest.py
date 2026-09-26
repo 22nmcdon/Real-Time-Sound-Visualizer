@@ -216,6 +216,20 @@ with sync_playwright() as pw:
     check("every Listening preset routes a source that hears, and on a microphone it is live and no loop",
           len(listen) >= 5 and wrong == [], str(wrong[:3]))
 
+    # J2's: each routes something that listens onto a destination of the
+    # drawing it sets - a reswing is nothing to a solid - and each is allowed
+    # from the microphone this page is on, event or value.
+    drawn = p.evaluate("""() => PRESETS.find(([s]) => s === 'Drawn by your playing')[1].map(([preset, setup]) =>
+      decodeRoutings(setup.mod).map((r) => {
+        const src = MOD_SOURCES.get(r.sourceId), dest = MOD_DESTS.get(r.destId);
+        return { preset, source: r.sourceId, listens: !!src && ['hearing', 'signal'].includes(src.family),
+                 mode: !!dest && (!dest.modes || dest.modes.includes(setup.gen)),
+                 allowed: routingAllowed(src, dest) };
+      })).flat()""")
+    wrong = [r for r in drawn if not (r["listens"] and r["mode"] and r["allowed"])]
+    check("every Drawn by your playing preset routes what it hears onto its own drawing, allowed from a microphone",
+          len(drawn) >= 5 and wrong == [], str(wrong[:3] or [(r["preset"], r["source"]) for r in drawn]))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

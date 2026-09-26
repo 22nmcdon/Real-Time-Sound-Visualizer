@@ -11,8 +11,9 @@ and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
 plane's nine operations with S2's oversampling, and I1's delay and chorus - for
 the generator and, through S1's effects worklet, for a microphone, a line input
 and a file (see *Built so far* under Stage I), and H1's second oscillator,
-sub and unison (see *Built so far* under Stage H), and J1's continuous sources
-(see *Built so far* under Stage J). Nothing else here is.
+sub and unison (see *Built so far* under Stage H), and J1's sources with the
+first of J2's "sound drives the drawing" and S3's events (see *Built so far*
+under Stage J). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -543,10 +544,34 @@ crossovers), Width and Flux.
   routing.
 
 `hearingtest.py` holds them, each against a fixture with a known answer.
-*Onset*, the event source, is not built. It needs S3's event destinations,
-reswing first, and goes with J2's "sound drives the drawing". The rest of
-J2 (the sound driving the drawings, and the swing phase and attitude as
-sources) and J3 are not built either.
+
+**S3's events, Onset, and the first of J2.**
+- *Events.* A source marked as an event reaches only a destination that is
+  struck, and a value never reaches one; `routingAllowed` is the one place
+  that says so, so the editor never offers the pairing and a drop makes no
+  routing. A routing fires once for each new count its source reaches, never
+  for the count it found when it was made.
+- *Onset.* From the raw flux, with hysteresis (on above 0.3, re-armed below
+  0.12), a minimum gap of 80 ms, and rising energy, the newer half of the
+  window louder than the older. Without that last rule every note cut off
+  dead was two onsets, because a cut-off is a click.
+- *The event loop is refused outright.* An onset hearing the generator it
+  would strike would retrigger itself, since each strike is heard as the next
+  onset, and the gap would only set how fast. Which lane counts as the
+  generator is the trigger lane's: in a rack with a microphone, an onset from
+  the microphone's lane may strike the generator beside it.
+- *Swing again* restarts the harmonograph. *Kick* is an angular impulse on a
+  solid: six times its spin at once, decaying with a time constant of 1.2 s,
+  capped at twenty, so hits spin it and it coasts down.
+- *Energy*, a new control and destination on the harmonograph, is the
+  pendulums' energy in: a drive against the decay, held at 3 / (3 + decay) at
+  full, and when the drive stops the swing runs down from where it is.
+
+`drawingtest.py` holds them. Still not built: the rest of the J2 table
+(input pitch onto the harmonograph's ratio works already, through the
+ratio destination; the rose's k from a dyad, and bands onto separate spin
+axes, do not), the drawings as sources (the swing's envelope and phase, a
+solid's attitude), and J3.
 
 ### J3 · audio rate (S7, second half)
 
@@ -684,7 +709,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 137 presets in twenty-one sections, in a browser
+- **Presets, rebuilt. Built.** 142 presets in twenty-two sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

@@ -96,8 +96,9 @@ with sync_playwright() as pw:
       const fam = el.srcGrid.querySelector('[data-family="hearing"]');
       return { ids, chips: fam ? fam.querySelectorAll('.mod-chip').length : 0 };
     }""")
-    check("eight sources that hear, in a family of their own on the Sources tab",
-          len(reg["ids"]) == 8 and reg["chips"] == 8, str(reg))
+    # Eight values and one event, the onset, which drawingtest.py holds.
+    check("nine sources that hear, eight values and the onset, in a family of their own on the Sources tab",
+          len(reg["ids"]) == 9 and reg["chips"] == 9 and reg["ids"][-1] == "hear.onset", str(reg))
 
     p.evaluate("() => __mic()")
     print("\n--- pitch ---")

@@ -53,6 +53,7 @@ SUITES = [
     ("time", [sys.executable, "timetest.py"], "delay and chorus: repeats to the sample, ping-pong, feedback held, the tempo, sidebands, every pair once"),
     ("livefx", [sys.executable, "livefxtest.py"], "the plane and the delay on a live input: drawn and heard, the generator's arithmetic, a routing on a mono input, a file's repeats, where it does not go"),
     ("hearing", [sys.executable, "hearingtest.py"], "the sound as sources: pitch, brightness, bands, width, flux, their continuity, and the loop"),
+    ("drawing", [sys.executable, "drawingtest.py"], "the sound driving the drawings: energy in, a kick and its friction, events only to what is struck, onset, firing"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

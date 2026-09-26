@@ -293,6 +293,10 @@ try {
   node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });
   for (let round = 0; round < 800; round++) node.process([], [out], {});
   report.crossings = node.core.crossings;
+  // A kick is an event sent by message, as a reswing is; it has to land in
+  // the worklet's own core, which is the one drawing while the voice sounds.
+  node.port.onmessage({ data: { kick: 1 } });
+  report.kicked = node.core.spinKick;
   node.port.onmessage({ data: { tone: { crossOn: false } } });
 
   /* A restart counted on the main thread reaching the oscillators here: a
