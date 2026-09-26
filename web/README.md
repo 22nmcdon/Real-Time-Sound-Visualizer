@@ -2240,7 +2240,7 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 142 of them in twenty-two sections, from *Start here* and *Organ* through
+are 146 of them in twenty-three sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
 *Live*, *Live effects*, *Listening* and *Analysis*.
@@ -2493,3 +2493,41 @@ not a hit.
 - *The Sources tab again.* Onset's chip wrapped a row and put a rack of six
   11 px over. The gaps between families went from ten pixels to eight, and
   the names' from six to four. It fits with nothing to spare.
+
+**Live audio into the generator (J3).** The generator's worklet now has an
+input, fed from the live device. *FM* makes the input a factor on the trace's
+rate, *Ride* scales the pair by it, and *Clock* takes the trace to the input's
+own phase. Each is held exactly in `inputtest.py`: a steady quarter at full
+depth draws what twice the rate draws, a ride is the plain output times
+1 + 2 depth x to float precision, and a 40 Hz figure clocked by 100 Hz
+repeats every 441 samples to nought.
+
+- *Why the tone and not a rack.* A rack would have put the input and the
+  generator in one context for free, but a rack's generator lane is one
+  channel, and a figure needs two: the figure the input was meant to move
+  would not be there. The tone source opens the live stream in its own
+  context instead, sharing it with any microphone source by the same count.
+- *Why only while heard.* The input reaches the core a block at a time, in
+  the worklet. The core on the main thread has no audio to be handed, so
+  with the generator silent the section says so and opens nothing.
+- *A clock that repeats is not a clock that restarts.* Fed a steady 100 Hz,
+  a clocked waveform repeats every 441 samples whether or not each of the
+  input's crossings restarts its cycle, since its frequency is the input's
+  exactly. What the restart buys is alignment, so the check is that a
+  clocked sine rises through nought where the input does, to a sample.
+- *The stream cache's size is not a count of streams.* One stream is filed
+  under the empty key and under the name the browser gives the device, so
+  `liveStreams.size` reads two for one open stream. The checks count
+  distinct entries.
+- *The hearing sources were too expensive on a slower machine.* On a
+  container about 1.7 times slower they cost 2.0 to 2.6 ms a frame, and four
+  fifths of it was the pitch estimator. It now runs every other frame and
+  sets a target, and the slew moves toward it every frame. The first try
+  moved the value itself every other frame, twice as far each time: the same
+  glide on average, and a thirty-hertz staircase that the continuity check
+  read as a slope of eight a second against a limit of four. It costs 1.3 to
+  1.4 ms now.
+- *The photocell grid's cost check fails on that machine too*, at a median
+  of 1.0 to 1.1 ms against a limit of "under one", and it fails the same way
+  on the commit before any of this. It is left as it is: it is that
+  feature's budget, and the reading is at the clock's 0.1 ms resolution.

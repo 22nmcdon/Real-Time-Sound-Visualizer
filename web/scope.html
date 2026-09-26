@@ -2434,6 +2434,30 @@ body[data-view="bench"] .dock  { order: 3; }
               fed back, it rings.</p>
           </div>
 
+          <!-- J3: live audio into the generator, in the audio thread. -->
+          <div class="menu-group" id="inputGroup" data-home="bench" data-tab="effects">
+            <span class="menu-title">Input into the generator</span>
+            <p class="fx-where" id="inputWhere"></p>
+            <div class="menu-row">
+              <label class="menu-label" for="inputMode">Input</label>
+              <div class="grow"><select id="inputMode" style="flex:1 1 auto">
+                <option value="0">Off</option><option value="1">FM</option>
+                <option value="2">Ride</option><option value="3">Clock</option></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="inputDepth">Depth</label>
+              <div class="grow">
+                <input type="range" id="inputDepth" min="0" max="100" value="50">
+                <span class="reading" id="inputDepthValue">0.50</span>
+              </div>
+            </div>
+            <p class="menu-note">Your microphone or line input, into the generator itself.
+              <i>FM</i> speeds and slows the trace with the input's waveform. <i>Ride</i>
+              scales the figure by it, so the sound rides on the outline. <i>Clock</i>
+              traces the figure, or plays the waveform, at the input's own pitch, so the
+              input holds the picture still.</p>
+          </div>
+
           <div class="menu-group" data-home="bench" data-tab="picture">
             <span class="menu-title">Filter</span>
             <label class="check">
@@ -3026,6 +3050,17 @@ body[data-view="bench"] .dock  { order: 3; }
         it an octave either way, and the repeats bend in pitch as it moves, like tape.
         Neither feedback can take one: a loop inside a loop is how a patch runs away.</span></li>
 
+      <li><b>Your input, into the generator</b>
+        <span>Under <i>Input into the generator</i>, on the Effects tab: your microphone or line
+        input fed into the generator itself. <i>FM</i> speeds and slows the trace with your
+        waveform, so a figure is drawn faster and slower within every cycle you play.
+        <i>Ride</i> scales the figure by it, so the sound rides on its outline. <i>Clock</i>
+        traces the figure at your pitch instead of its own, so a held note holds it still;
+        on a waveform, the generator plays at your pitch, locked to each of your cycles, and
+        a fifth or an octave above it if the interval says so. When you stop, it goes back to
+        its own. It works on the test tone while <i>Hear the generator</i> is ticked, and the
+        line under the title says when it is not reaching it.</span></li>
+
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
         X&ndash;Y, where the figure is built up a pass at a time.</span></li>
@@ -3599,7 +3634,7 @@ body[data-view="bench"] .dock  { order: 3; }
 
     <ul class="help-list" id="panelKeys" hidden>
       <li class="help-lede">Presets are the front door. Press <i>Preset</i>, on the left of the
-        strip, for a browser of over a hundred of them in twenty-two sections &mdash; organ and FM
+        strip, for a browser of over a hundred of them in twenty-three sections &mdash; organ and FM
         keys, basses and pads, bells, grit, figures, the plane, echoes, drawings, rhythm &mdash;
         each with a line on what to listen for and what to look at. Three sections are for
         playing: chords, splits and layers, and the wheel, the pedal and the strike of a key
@@ -3830,6 +3865,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
+                  "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
@@ -4633,6 +4669,7 @@ const PITCH_REF = 261.6256;       // C4, the pitch source's nought
 const hearing = {
   pitch: 0, bright: 0, bands: [0, 0, 0, 0], width: 1, flux: 0, fluxRaw: 0,
   prev: null, re: null, im: null, hann: null, gen: null, cost: 0,
+  frame: 0, pitchWant: null,
 };
 
 /* Whether what is being heard is the generator: the tone, or a rack whose
@@ -4734,16 +4771,23 @@ function hearingStep(elapsed) {
        that half a semitone flat and passed its own gate doing it; the attack
        of a note is the same problem the other way round. Octaves from middle
        C over two either way. */
-    const held = midi.notes.length ? midiPitchHz() : null;
-    let hz = held;
-    if (hz === null && steady) {
-      const found = estimatePeriod(x, rate);
-      if (found !== null && found.aperiodicity <= PITCH_TRUST) hz = found.hz;
+    /* The estimator every other frame, the slew every frame. The estimator
+       is four fifths of this function's cost - 1.7 ms of 2.1 on a slower
+       machine - and thirty readings a second are plenty for a target. The
+       first version moved the value itself every other frame, twice as far
+       each time: the same glide on average and a thirty-hertz staircase on
+       the way, which the continuity check read as a slope of eight a second
+       against a limit of four. */
+    if ((hearing.frame++ & 1) === 0) {
+      const held = midi.notes.length ? midiPitchHz() : null;
+      let hz = held;
+      if (hz === null && steady) {
+        const found = estimatePeriod(x, rate);
+        if (found !== null && found.aperiodicity <= PITCH_TRUST) hz = found.hz;
+      }
+      if (hz !== null && hz > 0) hearing.pitchWant = Math.max(-1, Math.min(1, Math.log2(hz / PITCH_REF) / 2));
     }
-    if (hz !== null && hz > 0) {
-      const want = Math.max(-1, Math.min(1, Math.log2(hz / PITCH_REF) / 2));
-      hearing.pitch = hearingSlew(hearing.pitch, want, elapsed);
-    }
+    if (hearing.pitchWant !== null) hearing.pitch = hearingSlew(hearing.pitch, hearing.pitchWant, elapsed);
     // Width: the correlation of the pair the X-Y view draws; one lane is mono.
     const a = lanes[state.xyPair[0]], b = lanes[state.xyPair[1]];
     const want = a && b && a !== b ? correlation(a, b) : 1;
@@ -6570,6 +6614,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     swingRate: 2.1,          // harmonograph: pendulum hertz, not audio hertz
     decay: 0.12,             // harmonograph: how fast the pendulums run down
     swingDrive: 0,           // harmonograph: energy put back in, nought to one (J2)
+    inputMode: 0,            // J3: 0 off, 1 FM, 2 ride, 3 clock
+    inputDepth: 0.5,         // J3: how much of it, nought to one
     /* The pitched harmonograph (J2): the pendulums swing at the note's pitch
        rather than at `swingRate`, and die away over `ringMs` - a time
        constant, not `decay`'s per-second rate, because a pluck and a drawing
@@ -7183,6 +7229,16 @@ function makeGeneratorCore(rate, slots, lfos) {
      KICK_TAU - so hits spin it and it coasts down. */
   const KICK_SIZE = 6, KICK_TAU = 1.2, KICK_MOST = 20;
   let kick = 0;
+  /* J3: live audio into the generator, a block at a time from the worklet's
+     input - nothing on this thread has one, so a core that is not in the
+     worklet simply has no input and every mode is off. Three uses of it:
+     FM, the input scaling the rate the trace moves at; RIDE, the input
+     scaling the pair's length, so the figure is drawn with the sound riding
+     on its outline; and CLOCK, the trace taken to the input's own phase, from
+     its upward crossings, so the input holds the picture still. */
+  let inBuf = null;
+  const CLOCK_HYST = 0.01;            // either side of nought, against noise
+  const clock = { low: true, since: 0, period: 0 };
 
   /* The pendulums being let go again, as a fade rather than a step.
 
@@ -7716,6 +7772,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     const glide = tone.glideMs > 0 ? poleFor(tone.glideMs) : 1;
     const kickFriction = Math.exp(-dt / KICK_TAU);
     if (freqNow === null) freqNow = tone.freq;
+    const inMode = inBuf && inBuf.length >= n ? (tone.inputMode | 0) : 0;
+    const inDepth = tone.inputDepth;
 
     for (let i = 0; i < n; i++) {
       lfoStep(lfos[0], rate);
@@ -7750,10 +7808,30 @@ function makeGeneratorCore(rate, slots, lfos) {
       vxA.vcfPush = vxB.vcfPush = (genMod[VCF_SLOT] || 0) * 3;
       if (vxA.shaping) setShaping(tone, drivePush, foldPush);
 
+      // J3: this sample of the input, and what it does. FM is a factor on
+      // the rate, never below nought; the clock counts samples since the
+      // input last crossed nought going up, and holds its lock for two of
+      // its own periods before letting the generator run free again.
+      let xin = 0, fmIn = 1, clockHz = 0, clockReset = false;
+      if (inMode !== 0) {
+        xin = inBuf[i];
+        if (inMode === 1) fmIn = Math.max(0, 1 + inDepth * 4 * xin);
+        else if (inMode === 3) {
+          clock.since++;
+          if (clock.low && xin > CLOCK_HYST) {
+            clock.low = false;
+            if (clock.since >= 2) { clock.period = clock.since; clockReset = true; }
+            clock.since = 0;
+          } else if (xin < -CLOCK_HYST) clock.low = true;
+          if (clock.period > 0 && clock.since <= 2 * clock.period) clockHz = rate / clock.period;
+        }
+      }
+
       let l, r, hl = null, hr = null;
 
       if (tone.mode === "figure") {
-        figurePhase += tone.figureRate * dt;
+        if (clockHz > 0) figurePhase = (clock.since / clock.period) % 1;
+        else figurePhase += tone.figureRate * fmIn * dt;
         if (figurePhase >= 1) figurePhase -= 1;
         const at = figureAt(tone.figure, figurePhase, detail);
         l = amp * at[0];
@@ -7761,7 +7839,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       } else if (tone.mode === "wireframe") {
         const spun = kick === 0 ? tumble : tumble * (1 + kick);
         if (kick !== 0) { kick *= kickFriction; if (Math.abs(kick) < 1e-4) kick = 0; }
-        const at = wire.step(dt, tone.figureRate, depth, [
+        const at = wire.step(dt, tone.figureRate * fmIn, depth, [
           tone.spin[0] * spun, tone.spin[1] * spun, tone.spin[2] * spun,
         ]);
         l = amp * at[0];
@@ -7788,8 +7866,8 @@ function makeGeneratorCore(rate, slots, lfos) {
            its glide and everything patched onto the frequency - and are
            quantised with it, since at the note's pitch they are a note. */
         const k = 1 + tone.detune;
-        const swingHz = !tone.pitched ? tone.swingRate
-          : qMaskNow ? quantise(qA, freq, qMaskNow) : freq;
+        const swingHz = (!tone.pitched ? tone.swingRate
+          : qMaskNow ? quantise(qA, freq, qMaskNow) : freq) * fmIn;
         if (tone.pitched) lastHz = swingHz;
         phaseL += TWO_PI * swingHz * dt;
         phaseR += TWO_PI * swingHz * ratio * dt;
@@ -7818,8 +7896,11 @@ function makeGeneratorCore(rate, slots, lfos) {
       } else {
         // Quantised here, in the waveform only: the harmonograph's pitch is a
         // pendulum's, a couple of hertz, and a figure has none.
-        const hz = qMaskNow ? quantise(qA, freq, qMaskNow) : freq;
+        // Clocked, the input's pitch is the note and each of its upward
+        // crossings restarts the cycle, as a hard sync to the input would.
+        const hz = (clockHz > 0 ? clockHz : qMaskNow ? quantise(qA, freq, qMaskNow) : freq) * fmIn;
         lastHz = hz;
+        if (clockReset) { phaseL = 0; phaseR = 0; }
         phaseL += TWO_PI * hz * dt;
         phaseR += TWO_PI * hz * ratio * dt;
         if (phaseL >= PHASE_WRAP) phaseL -= PHASE_WRAP;
@@ -7858,6 +7939,14 @@ function makeGeneratorCore(rate, slots, lfos) {
         }
         l = amp * wl;
         r = amp * wr;
+      }
+
+      // J3's ride: the pair's length scaled by the input, so the sound rides
+      // on the outline rather than shifting the figure along the diagonal.
+      if (inMode === 2) {
+        const g = 1 + inDepth * 2 * xin;
+        l *= g; r *= g;
+        if (hl !== null) { hl *= g; hr *= g; }
       }
 
       if (planeOn) {
@@ -7968,6 +8057,8 @@ function makeGeneratorCore(rate, slots, lfos) {
     kick(amount) {
       kick = Math.max(-KICK_MOST, Math.min(KICK_MOST, kick + amount * KICK_SIZE));
     },
+    // J3: the next block's input, or null for none.
+    setInput(samples) { inBuf = samples || null; },
     // Read by the tests: the kick's multiplier on the spin, and the swing's
     // envelope, each where the last block left it.
     get spinKick() { return kick; },
@@ -8192,6 +8283,8 @@ function generatorProcessor() {
         this.pictBL = new Float32Array(n);
         this.pictBR = new Float32Array(n);
       }
+      const input = inputs && inputs[0] && inputs[0][0];
+      this.core.setInput(input && input.length >= n ? input : null);
       try {
         this.core.block(this.pictL, this.pictR, n, out[0], out[1], this.pictBL, this.pictBR);
       } catch (error) {
@@ -8375,6 +8468,16 @@ function workletRoutes() {
    phase. */
 function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
   let ctx = null, node = null, level = null, unwire = null;
+  /* J3's input: the stream asked for, and its node in this context while
+     the worklet exists. The stream outlives a rebuild of the worklet, so
+     switching the sound off and on again reconnects what was asked for. */
+  let inputStream = null, inputNode = null;
+  function attachInput() {
+    if (inputNode) { try { inputNode.disconnect(); } catch (error) { /* gone */ } inputNode = null; }
+    if (!node || !ctx || !inputStream) return;
+    inputNode = ctx.createMediaStreamSource(inputStream);
+    inputNode.connect(node);
+  }
   let audible = false;
   let fault = null;
   /* How many blocks the worklet has handed over. Not a diagnostic count for
@@ -8392,6 +8495,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
   function hush() {
     if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
     if (level) { try { level.disconnect(); } catch (error) { /* gone */ } }
+    if (inputNode) { try { inputNode.disconnect(); } catch (error) { /* gone */ } inputNode = null; }
     if (node) { try { node.disconnect(); } catch (error) { /* gone */ } }
     if (unwire) { try { unwire(); } catch (error) { /* gone */ } }
     node = null; level = null; unwire = null;
@@ -8408,8 +8512,11 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
       if (ctx.state === "suspended") await ctx.resume();
       await loadGeneratorModule(ctx);
 
+      /* One input, mono: J3's, and nothing is connected to it unless an input
+         mode is on. Two channels summed, since the modes want one signal. */
       node = new AudioWorkletNode(ctx, "generator", {
-        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+        channelCount: 1, channelCountMode: "explicit", channelInterpretation: "speakers",
         processorOptions: {
           slots: GEN_DESTS.length,
           lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
@@ -8458,6 +8565,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
       node.connect(level);
       unwire = wire(ctx, level);
       level.gain.setTargetAtTime(1, ctx.currentTime, 0.02);
+      attachInput();
       audible = true;
       syncMonitor();
     } catch (error) {
@@ -8470,6 +8578,13 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
   return {
     setSound,
     hush,
+    // Asked every frame, so a no-op unless something changed.
+    setInput(stream) {
+      if (stream === inputStream && (!!inputNode === !!(stream && node))) return;
+      inputStream = stream || null;
+      attachInput();
+    },
+    get inputConnected() { return !!inputNode; },
     get audible() { return audible; },
     get fault() { return fault; },
     get blocks() { return blocks; },
@@ -8672,6 +8787,10 @@ function makeToneSource(atRate) {
       core.kick(amount);
       voice.post({ kick: amount });
     },
+
+    // J3: the input into the worklet, and whether it is connected there.
+    setInput(stream) { voice.setInput(stream); },
+    get inputConnected() { return voice.inputConnected; },
 
     // Whether the worklet is the thing making the samples, which is also the
     // answer to who is driving the oscillators; see `lfoDriver`.
@@ -13510,6 +13629,7 @@ function frameLoop(now) {
   // Whether a live input's effects should be there, every frame and running
   // or not: a switch thrown while the scope is stopped still takes.
   syncLiveFx();
+  syncGenInput();
 
   if (state.running) {
     const fresh = capture();
@@ -14280,6 +14400,18 @@ el.swingRate.addEventListener("input", () => {
 });
 
 el.kickSpin.addEventListener("click", () => genKick(1));
+
+el.inputMode.addEventListener("change", () => {
+  genInput.mode = Number(el.inputMode.value) || 0;
+  genInput.fault = null;              // chosen afresh: worth asking again
+  genSet("inputMode", genInput.mode);
+  syncGenInput();
+});
+el.inputDepth.addEventListener("input", () => {
+  genInput.depth = Number(el.inputDepth.value) / 100;
+  el.inputDepthValue.textContent = genInput.depth.toFixed(2);
+  genSet("inputDepth", genInput.depth);
+});
 
 el.reswing.addEventListener("click", () => {
   genReswing();
@@ -15231,6 +15363,7 @@ const DEFAULTS = {
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
   swingRate: 21, decay: 12, detune: 40, swingDrive: 0,
+  inputMode: 0, inputDepth: 50,
   /* The envelope, in the units its sliders use. New fields rather than
      changed ones, so a code written before the generator could be played
      simply has none of them, gets these, and sounds and draws what it always
@@ -15351,6 +15484,7 @@ function snapshot() {
     swingRate: Number(el.swingRate.value),
     decay: Number(el.decay.value),
     swingDrive: Number(el.swingDrive.value),
+    inputMode: Number(el.inputMode.value), inputDepth: Number(el.inputDepth.value),
     detune: Number(el.detune.value),
     atk: Number(a("envAttack")), dec: Number(a("envDecay")),
     sus: Number(a("envSustain")), rel: Number(a("envRelease")),
@@ -15450,6 +15584,9 @@ function restore(partial) {
   el.swingRate.value = String(s.swingRate);
   el.decay.value = String(s.decay);
   el.swingDrive.value = String(s.swingDrive);
+  el.inputMode.value = String([0, 1, 2, 3].includes(s.inputMode) ? s.inputMode : 0);
+  el.inputDepth.value = String(s.inputDepth);
+  el.inputMode.dispatchEvent(new Event("change"));
   el.detune.value = String(s.detune);
   el.envAttack.value = String(s.atk);
   el.envDecay.value = String(s.dec);
@@ -15469,7 +15606,7 @@ function restore(partial) {
      generator, so the panel showed the code's release while the notes kept
      whatever release they had. Found by the check that layer B falls back to
      layer A's envelope - it read A's, and A's was not the code's. */
-  ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "swingDrive", "detune",
+  ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "swingDrive", "inputDepth", "detune",
    "spinX", "spinY", "spinZ", "spinRate", "depth",
    "envAttack", "envDecay", "envSustain", "envRelease", "glide", "morph"]
     .forEach((id) => el[id].dispatchEvent(new Event("input")));
@@ -16125,6 +16262,22 @@ const PRESETS = [
      "The brighter the sound, the more points the star has: a filter opening or a harder attack draws more."],
   ], "generator"],
 
+  /* J3: the live input fed into the generator itself, on the test tone and
+     while it is heard - the input reaches the core in the worklet. */
+  ["Played into the drawing", [
+    ["Your note holds the star", Object.assign({ gen: "figure", figure: "Star", detail: 5, inputMode: 3 }, XY,
+                                               { timebase: 5 }),
+     "The star traced at your input's pitch rather than its own: hold a note and it stands still; move and it turns."],
+    ["The sound rides the circle", Object.assign({ gen: "figure", figure: "Circle", inputMode: 2, inputDepth: 40 },
+                                                 XY, { timebase: 5 }),
+     "A circle whose size is your waveform: the sound rides on its outline, and the organ's tone is the edge."],
+    ["Your playing bends the trace", Object.assign({ gen: "figure", figure: "Rose", detail: 3, inputMode: 1,
+                                                     inputDepth: 25 }, XY, { timebase: 5 }),
+     "Your waveform on the speed of the pen: the rose is drawn faster and slower within every cycle you play."],
+    ["A fifth above your note", { gen: "wave", shape: "ramp", interval: 7, inputMode: 3, timebase: 4 },
+     "The generator plays at your input's pitch, locked to it, and its right channel a fifth above: harmony that follows you."],
+  ], "generator"],
+
   ["Rhythm and key", [
     ["Three against two", { gen: "harmonograph", interval: 7, just: true, decay: 2, display: "xy",
                             persistence: "0.04", timebase: 6, crossOn: true, pGoni: false },
@@ -16383,6 +16536,8 @@ const PRESET_ABOUT = {
   "Drawn by your playing": "The drawings answering a microphone or a file: hits restart and spin them, your "
     + "level keeps them swinging, your brightness and bass reshape them. Put your input and the generator in "
     + "a rack, with the trigger on your input's lane.",
+  "Played into the drawing": "Your microphone or line input fed into the generator itself: it bends, rides or "
+    + "clocks what the generator draws. On the test tone, with Hear the generator ticked.",
   "Rhythm and key": "Crossings turn an interval into a rhythm; the quantiser turns a wandering pitch into "
     + "a melody. None of these needs a keyboard.",
   "Live": "For a microphone, a line input or a file. These set the display only, and land on whatever is "
@@ -16808,6 +16963,8 @@ function generatorFromPanel(set) {
   set("swingRate", Number(el.swingRate.value) / 10);
   set("decay", Number(el.decay.value) / 100);
   set("swingDrive", Number(el.swingDrive.value) / 100);
+  set("inputMode", Number(el.inputMode.value) || 0);
+  set("inputDepth", Number(el.inputDepth.value) / 100);
   set("detune", Number(el.detune.value) / 10000);
   // The same table the handlers use, so a new generator is built with what
   // the sliders say rather than with the core's own defaults.
@@ -17318,6 +17475,53 @@ function syncLiveFx() {
   }
   source.lanesSeen = source.channels;
 }
+/* J3: live audio into the generator. Only the test tone takes it: a rack's
+   generator lane is one channel, its left, and a figure needs two. And only
+   while it is heard, because the input reaches the core in the worklet, a
+   block at a time; the core on this thread has no audio to be handed. The
+   stream is the live device's own, shared with a microphone source by the
+   same count, so asking for it here never asks the browser twice. */
+const genInput = { mode: 0, depth: 0.5, stream: null, device: undefined, opening: false, fault: null };
+function genInputWanted() {
+  const source = state.source;
+  return genInput.mode > 0 && !!source && source.kind === "tone" && source.audible();
+}
+function genInputWhere() {
+  const source = state.source;
+  if (!source || source.kind !== "tone") {
+    return "On the test tone only: a rack's generator lane is one channel, and a figure needs two.";
+  }
+  if (genInput.mode === 0) return "Off: the generator makes its own.";
+  if (!source.audible()) return "Heard only: tick Hear the generator, on Play, and your input reaches it.";
+  if (genInput.fault) return "Your input could not be opened.";
+  if (genInput.opening || !source.inputConnected) return "Opening your input\u2026";
+  return "Your input, into the generator.";
+}
+async function syncGenInput() {
+  const want = genInputWanted();
+  if (want && !genInput.stream && !genInput.opening && !genInput.fault) {
+    genInput.opening = true;
+    const device = el.device.value || undefined;
+    try {
+      genInput.stream = await openLiveStream(device);
+      genInput.device = device;
+    } catch (error) {
+      genInput.fault = String(error && error.message || error);
+    }
+    genInput.opening = false;
+  }
+  // Released the moment it is not wanted, and asked again only once the
+  // mode is chosen afresh after a refusal.
+  if (!genInputWanted() && genInput.stream) {
+    releaseLiveStream(genInput.device);
+    genInput.stream = null;
+  }
+  const source = state.source;
+  if (source && source.setInput) source.setInput(genInputWanted() ? genInput.stream : null);
+  const where = genInputWhere();
+  if (el.inputWhere.textContent !== where) el.inputWhere.textContent = where;
+}
+
 function postLiveFx() {
   const source = state.source;
   if (source && source.fx) source.fx.post({ tone: liveFxFields() });

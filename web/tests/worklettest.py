@@ -167,6 +167,9 @@ with sync_playwright() as pw:
               fx is not None and abs(fx["echoRouted"] - 0.25) < 1e-6 and fx["echoUnrouted"] == 0, str(fx))
         check("a kick sent by message lands in the worklet's core: six times the spin",
               abs(report.get("kicked", 0) - 6) < 1e-9, str(report.get("kicked")))
+        inp = report.get("input", {})
+        check("the generator's worklet reads its input: a ride at half depth on a steady half is 1.5 times the output",
+              inp.get("energy", 0) > 1 and inp.get("worst", 1) < 1e-6, str(inp))
         e = report["epoch"]
         check("a restart reaches the worklet's oscillators, and a repeated count does not restart them again",
               e["before"] > 0.1 and e["reset"] == 0 and e["again"] > 0.1, str(e))

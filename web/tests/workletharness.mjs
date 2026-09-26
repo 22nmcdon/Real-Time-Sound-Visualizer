@@ -297,6 +297,22 @@ try {
   // the worklet's own core, which is the one drawing while the voice sounds.
   node.port.onmessage({ data: { kick: 1 } });
   report.kicked = node.core.spinKick;
+
+  /* J3: the generator reads its input. Two processors built alike, with a
+     ride at half depth; one is handed a steady half on its input and one
+     nothing. The first's output must be the second's times 1.5, sample for
+     sample. */
+  const twin = () => new registered.cls({ processorOptions: {
+    slots, lfos: [{ shape: "sine", rate: 2, depth: 0 }, { shape: "sine", rate: 1, depth: 0 }],
+    tone: { mode: "wave", shape: "sine", freq: 220, amp: 0.4, inputMode: 2, inputDepth: 0.5 }, routes: [],
+  } });
+  const fed = twin(), bare = twin();
+  const half = new Float32Array(128).fill(0.5);
+  const oFed = [new Float32Array(128), new Float32Array(128)], oBare = [new Float32Array(128), new Float32Array(128)];
+  fed.process([[half]], [oFed], {}); bare.process([[]], [oBare], {});
+  let worst = 0, energy = 0;
+  for (let i = 0; i < 128; i++) { worst = Math.max(worst, Math.abs(oFed[0][i] - 1.5 * oBare[0][i])); energy += Math.abs(oBare[0][i]); }
+  report.input = { worst, energy };
   node.port.onmessage({ data: { tone: { crossOn: false } } });
 
   /* A restart counted on the main thread reaching the oscillators here: a

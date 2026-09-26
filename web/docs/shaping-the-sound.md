@@ -11,9 +11,10 @@ and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
 plane's nine operations with S2's oversampling, and I1's delay and chorus - for
 the generator and, through S1's effects worklet, for a microphone, a line input
 and a file (see *Built so far* under Stage I), and H1's second oscillator,
-sub and unison (see *Built so far* under Stage H), and J1's sources with the
-first of J2's "sound drives the drawing" and S3's events (see *Built so far*
-under Stage J). Nothing else here is.
+sub and unison (see *Built so far* under Stage H), and J1's sources, the
+first of J2's "sound drives the drawing" with S3's events, and J3's live
+audio into the generator (see *Built so far* under Stage J). Nothing else
+here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -571,7 +572,29 @@ crossovers), Width and Flux.
 (input pitch onto the harmonograph's ratio works already, through the
 ratio destination; the rose's k from a dyad, and bands onto separate spin
 axes, do not), the drawings as sources (the swing's envelope and phase, a
-solid's attitude), and J3.
+solid's attitude).
+
+**J3: live audio into the generator.** The generator's worklet has an input,
+fed from the live device, in an *Input into the generator* section on the
+Effects tab. Three modes, each with a depth:
+- *FM.* The input is a factor on the rate the trace moves at, never below
+  nought: a steady input of a quarter at full depth is exactly twice the
+  rate. It reaches the figure, the solid, the harmonograph's swing and the
+  waveform.
+- *Ride.* Every sample of the pair is scaled by 1 + 2 depth x, so the sound
+  rides on the figure's outline rather than shifting it along the diagonal.
+- *Clock.* The trace is taken to the input's own phase, from its upward
+  crossings, so the input holds a figure still; a waveform plays at the
+  input's pitch and restarts at each of its crossings, a hard sync to the
+  input. With no crossing for two of the input's periods it lets go and the
+  generator runs at its own pitch again.
+
+It is the test tone's alone, and only while the generator is heard. A rack's
+generator lane is one channel, its left, and a figure needs two; and the
+input reaches the core a block at a time in the worklet, where the core on
+the main thread has no audio to be handed. Poly voices and layer B are not
+moved by FM or the clock; the ride scales them with everything else.
+`inputtest.py` holds it.
 
 ### J3 · audio rate (S7, second half)
 
@@ -709,7 +732,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 142 presets in twenty-two sections, in a browser
+- **Presets, rebuilt. Built.** 146 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's
