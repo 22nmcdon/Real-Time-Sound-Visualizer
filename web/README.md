@@ -2594,3 +2594,53 @@ event that can strike *Swing again*, *Kick* or the new *Pluck*.
   not nine, and the note under the grid moved to the detail column.
 - *Pluck sounds only where the generator is.* On a microphone alone there is
   no score voice to strike, and a pluck is MIDI out only.
+
+**Record (Stage L).** A clip of the screen and what it sounds like: Record
+along the top, and the finished clip under a Clip button beside it, with a
+preview, Save and Discard.
+
+- *The picture is one canvas, and that is why this was simple.* The
+  graticule, the trace, the phosphor and the score's playhead are all
+  painted into `#trace`, so its `captureStream` is the screen, persistence
+  included. The panes beside it and the photocell's reticle, which is laid
+  over the canvas rather than painted into it, are not in the clip.
+- *The sound is what the speakers play, plus a live input they do not.* This
+  could have gone the other way. A microphone is drawn and never heard, so a
+  clip of the speakers alone would be a clip of somebody playing with no
+  sound; each source that draws an input and sends it nowhere says so with
+  `unheard`, and the recorder takes that too. Monitored, it is taken once,
+  through the speakers. The cost: a microphone in a room where the speakers
+  play a backing track records that track a second time, late. Headphones
+  avoid it. A silent generator is not recorded, because its sound is a
+  switch the player has left off, and the clip's note says what puts it in.
+- *Mixed in the recorder's own context.* The speakers are fed from a context
+  per source - the tone keeps one, each file or rack makes its own - and the
+  source can change while the clip runs. Each tap crosses over as a
+  `MediaStream`, which costs a few tens of milliseconds, so the sound in a
+  clip trails its picture by that much. The taps follow what is sounding
+  once a frame, by node rather than by chain, so a chain rebuilt in the same
+  context is a new tap and not a stale one.
+- *Chrome's webm has no length.* A recorder writes the header before it
+  knows, so the file says nothing, and a player shows no duration and will
+  not seek - most of what anyone does with a clip they have been sent.
+  `webmWithDuration` finds the Segment's Info and rebuilds it with a Duration
+  after what it held. It refuses, rather than handles, the two cases where
+  something else would move: a Segment of known size, and a SeekHead. Chrome
+  writes neither while it streams.
+- *The first picture check could not tell the screen from its mirror image.*
+  A mean difference over every pixel came out 4.3 against 6.8, because the
+  graticule and the paper are their own mirror images and there is far more
+  of them than of trace. It judges only the pixels where the screen and its
+  mirror disagree now. And even then a running scope read 78 per cent,
+  because the trace moved between the clip's last frame and the moment the
+  canvas was read; the check records a stopped scope.
+- *The monitored input is louder in the clip than the unmonitored one*, 0.63
+  against 0.50: the speakers' limiter is a `DynamicsCompressor`, and Chrome
+  gives it make-up gain. The check that it is taken once, not twice, is
+  drawn between those and the 1.1 that twice would be.
+- *The mutation pass found one tap nobody checked the removal of.* Leaving
+  a no-longer-wanted tap in place changed nothing any check could hear,
+  because a dropped chain or a closed context goes silent by itself. The
+  one tap that keeps sounding is a microphone's own when monitoring is
+  switched on mid-clip: kept, the second half carries the input twice, 1.0
+  against 0.61. A check does that now; 18 of 18 mutants are killed.

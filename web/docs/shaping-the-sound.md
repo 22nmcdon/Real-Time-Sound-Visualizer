@@ -757,8 +757,15 @@ and sends nothing. MIDI out: all-notes-off is sent on stop, and on page hide.
 
 Smaller things, each worth doing on its own and none blocking the others.
 
-- **Record.** `MediaRecorder` on the canvas stream plus the output audio: a clip
+- **Record. Built.** `MediaRecorder` on the canvas stream plus the output audio: a clip
   of the scope and its sound, which is what someone will want to share first.
+  A Record button along the top, and the clip waits under a Clip button with
+  a preview, Save and Discard. The picture is the trace canvas, which holds
+  everything the screen paints; the sound is every chain into the speakers,
+  mixed in a context of the recorder's own so that it survives a change of
+  source, and a live input that reaches no speaker is recorded too. The webm
+  is given its length afterwards, which the browser's recording leaves out.
+  Three minutes at most, because the clip is held in memory.
 - **Morph between setups.** Two setup codes and a crossfader over every
   continuous field — a macro that the matrix can also drive.
 - **Macros.** User-named sources with no oscillator behind them: one knob, many
