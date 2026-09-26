@@ -135,9 +135,11 @@ with sync_playwright() as pw:
                rotate: offered('view.rotate').includes('hear.onset'), dropped };
     }""")
     print("    %s" % s3)
-    check("an onset reaches only Swing again and Kick, and only an onset reaches them",
-          s3["reswing"] == ["hear.onset"] and s3["kick"] == ["hear.onset"]
-          and s3["onset"] == ["gen.kick", "gen.reswing"] and not s3["rotate"], str(s3))
+    # The events, written out: the onset and the threshold (K1), and the three
+    # things they strike - Pluck came with the threshold.
+    check("an onset reaches only what is struck - Swing again, Kick, Pluck - and only events reach those",
+          sorted(s3["reswing"]) == ["hear.onset", "threshold"] and sorted(s3["kick"]) == ["hear.onset", "threshold"]
+          and s3["onset"] == ["gen.kick", "gen.pluck", "gen.reswing"] and not s3["rotate"], str(s3))
     check("and dropping an event on a value, or a value on an event, makes no routing", s3["dropped"] == 0,
           str(s3["dropped"]))
 

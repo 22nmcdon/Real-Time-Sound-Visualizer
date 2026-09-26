@@ -13,8 +13,9 @@ the generator and, through S1's effects worklet, for a microphone, a line input
 and a file (see *Built so far* under Stage I), and H1's second oscillator,
 sub and unison (see *Built so far* under Stage H), and J1's sources, the
 first of J2's "sound drives the drawing" with S3's events, and J3's live
-audio into the generator (see *Built so far* under Stage J), and K3's score
-and K4's MIDI out (see *Built so far* under Stage K). Nothing else here is.
+audio into the generator (see *Built so far* under Stage J), and the rest of
+Stage K - its thresholds, the score, MIDI out and the arpeggiator (see *Built
+so far* under Stage K). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -720,7 +721,26 @@ and counted, note-offs never are, and every note sent is ended, then CC 123,
 when the scope stops, the page is hidden or loses focus, or the port, the
 channel or the score changes. The readout says *sending* while notes go out.
 
-`scoretest.py` holds them. K1's thresholds and K5 are not built.
+`scoretest.py` holds them.
+
+**K1's thresholds.** A *Threshold* event source, in the Signal family, watches
+any other source and fires when it rises through a level chosen on the
+Sources tab: hysteresis of 0.05 below the level, and a gap of 80 ms. It is a
+loop when what it watches is one, so it may not strike the generator it
+hears. What it can strike: *Swing again*, *Kick*, and a new *Pluck*, a note
+of chosen pitch in the score's voice and out as MIDI, the depth its velocity
+- which an onset can strike too. `thresholdtest.py` holds them.
+
+**K5, the arpeggiator**, in the Keyboard section: up, down, up-down, as played
+or random, a crotchet to a semiquaver triplet, over one to three octaves.
+The hands' stack is left alone - the notes sources, the pedal and the keys
+on the screen read your hands - and the generator is shown the step. In the
+dyad each step pairs the lowest held note with the arpeggio's, so the figure
+steps through the chord's intervals. Each step is struck, the gate closed
+and opened; the first waits 25 ms for the rest of the chord; the steps are
+counted from the clock so they cannot drift, and land up to a frame late,
+since notes reach the generator by message. The notes go out as MIDI.
+`arptest.py` holds it. Stage K is built.
 
 ### K · verification
 
@@ -750,7 +770,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 149 presets in twenty-three sections, in a browser
+- **Presets, rebuilt. Built.** 152 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

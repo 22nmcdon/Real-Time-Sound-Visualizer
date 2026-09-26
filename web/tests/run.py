@@ -56,6 +56,8 @@ SUITES = [
     ("drawing", [sys.executable, "drawingtest.py"], "the sound driving the drawings: energy in, a kick and its friction, events only to what is struck, onset, firing"),
     ("input", [sys.executable, "inputtest.py"], "live audio into the generator: off is off, FM a factor on the rate, the ride a scale, the clock a lock, and the stream opened only while it can be used"),
     ("score", [sys.executable, "scoretest.py"], "the picture as a score, and MIDI out: rows to notes, the playhead at the tempo, the voice heard and not drawn, channels, all-notes-off, the rate limit"),
+    ("arp", [sys.executable, "arptest.py"], "the arpeggiator: the orders, struck steps, the hands kept, the tempo, the dyad's intervals, letting go"),
+    ("threshold", [sys.executable, "thresholdtest.py"], "thresholds and Pluck: rising through a level, hysteresis, the gap, loops refused, the note struck and sent"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),
     ("loop", [sys.executable, "looptest.py"], "the loop through the sound, and its bounds held"),

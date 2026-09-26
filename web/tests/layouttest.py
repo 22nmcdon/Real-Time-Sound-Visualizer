@@ -67,7 +67,7 @@ with sync_playwright() as pw:
           [r["id"] for r in fam["before"]] == ["oscillators", "signal", "hearing", "keyboard", "controllers", "picture"],
           str([r["id"] for r in fam["before"]]))
     check("each source is under its own family",
-          before["oscillators"]["chips"] == ["lfo1", "lfo2"] and before["signal"]["chips"] == ["env.live", "env.note"],
+          before["oscillators"]["chips"] == ["lfo1", "lfo2"] and before["signal"]["chips"] == ["env.live", "env.note", "threshold"],
           str(before))
     check("an empty family says how to get something rather than vanishing",
           before["controllers"]["chips"] == [] and "keyboard" in before["controllers"]["hint"]

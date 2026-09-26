@@ -2240,7 +2240,7 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 149 of them in twenty-three sections, from *Start here* and *Organ* through
+are 152 of them in twenty-three sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
 *Live*, *Live effects*, *Listening* and *Analysis*.
@@ -2565,3 +2565,32 @@ with the crossings' notes if a port is chosen.
   step, where a note-on for a note already sounding ends it first anyway, so
   nothing needed the step's own note-off; a check of two alternating rows,
   whose notes differ, does.
+
+**The arpeggiator, and thresholds (K5, K1).** Hold a chord and the arpeggiator
+plays it a note at a time at the tempo; a Threshold turns any value into an
+event that can strike *Swing again*, *Kick* or the new *Pluck*.
+
+- *The generator is shown the step; the stack stays your hands.* Everything
+  that reads the held notes - the notes sources, the pedal, the keys on the
+  screen - still reads the chord. `arpApply` swaps the step in for as long as
+  it takes to apply it and puts the stack back, and the chord's own
+  bookkeeping (`midiApplyPoly`, reached from `syncPoly`) is routed through
+  the arpeggiator too, or a mode change would hand the generator the whole
+  chord between steps. That route survived the first mutation pass, because
+  no check changed the layers or the mode mid-arpeggio; one does now.
+- *The first step waits for the chord.* Struck on the first key down, C E G
+  played "down" came out C, E, C, G: G landed eight milliseconds after C and
+  the first step had gone. It waits 25 ms, and a timer strikes it rather than
+  the next frame.
+- *A 120 BPM check cannot see a tempo that is ignored*, since 120 is also
+  the page's default; the arpeggiator is checked at 90 as well.
+- *A synthetic clock left in the page is a trap for the next check.* The
+  threshold's gap was checked on times a million milliseconds on, and the
+  check after it, on the real clock, saw nothing fire for a thousand
+  seconds. It resets the time of the last firing first.
+- *The Sources tab held its ninth chip in a row by seven pixels.* The
+  Threshold wrapped Level, Envelope and itself onto two rows, and a rack of
+  six went sixteen pixels over; the tab's chips now have seven pixels a side,
+  not nine, and the note under the grid moved to the detail column.
+- *Pluck sounds only where the generator is.* On a microphone alone there is
+  no score voice to strike, and a pluck is MIDI out only.

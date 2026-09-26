@@ -945,8 +945,11 @@ body[data-view="bench"] .dock  { order: 3; }
 /* Tighter than the rail's chips beside the screen, which are dragged and
    want the room. These are only chosen, and the tab has to hold every family
    at once without scrolling - with the eight that hear, the keyboard's and a
-   moved controller, it did not at the rail's size. */
-.src-family-chips .mod-chip { cursor: pointer; padding: 3px 9px; gap: 6px; font-size: 12px; }
+   moved controller, it did not at the rail's size. Seven pixels a side, not
+   nine, so Level, Envelope and the Threshold share a row: at nine they were
+   seven pixels too wide, and the row they wrapped onto put a rack of six
+   sixteen pixels past the Bench. */
+.src-family-chips .mod-chip { cursor: pointer; padding: 3px 7px; gap: 6px; font-size: 12px; }
 .src-empty { font-size: 12px; color: var(--text-soft); margin: 0; }
 .src-desc { font-size: 13px; line-height: 1.5; color: var(--charcoal); margin: 0 0 10px; }
 .src-meter {
@@ -1315,6 +1318,26 @@ body[data-view="bench"] .dock  { order: 3; }
                 <button type="button" class="caps" id="midiDyad" role="radio" aria-checked="true">Dyad</button>
                 <button type="button" class="caps" id="midiMono" role="radio" aria-checked="false">Mono</button>
                 <button type="button" class="caps" id="midiPoly" role="radio" aria-checked="false">Poly</button>
+              </div>
+            </div>
+            <!-- K5: the arpeggiator. Three menus that may shrink, as the Draw
+                 row's do, because the column is 255 px. -->
+            <div class="menu-row">
+              <label class="menu-label" for="arpMode">Arp</label>
+              <div class="grow">
+                <select id="arpMode" style="flex:2 1 0; min-width:0">
+                  <option value="off">off</option><option value="up">up</option>
+                  <option value="down">down</option><option value="updown">up-down</option>
+                  <option value="played">as played</option><option value="random">random</option>
+                </select>
+                <select id="arpRate" aria-label="Arpeggio step" style="flex:1 1 0; min-width:0">
+                  <option value="1/4">1/4</option><option value="1/8" selected>1/8</option>
+                  <option value="1/16">1/16</option><option value="1/8t">1/8t</option>
+                  <option value="1/16t">1/16t</option>
+                </select>
+                <select id="arpOctaves" aria-label="Octaves the arpeggio climbs" style="flex:1 1 0; min-width:0">
+                  <option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option>
+                </select>
               </div>
             </div>
             <div class="menu-row" id="midiLayersRow" hidden>
@@ -1726,12 +1749,15 @@ body[data-view="bench"] .dock  { order: 3; }
           <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
             <span class="menu-title">Sources</span>
             <div id="srcGrid"></div>
-            <p class="menu-note">Choose one to see what it is and where it goes. Press the dots
-              on a control, or drag a chip onto one.</p>
           </div>
+          <!-- The note is here rather than under the grid: the grid's column is
+               the tallest on the tab, and with a rack of six the Bench is 427 px
+               high, which the Threshold's chip took the grid 16 px past. -->
           <div class="menu-group" id="srcDetailGroup" data-home="bench" data-tab="sources">
             <span class="menu-title" id="srcDetailTitle">Source</span>
             <div id="srcDetail"></div>
+            <p class="menu-note">Choose a source to see what it is and where it goes. Press the
+              dots on a control, or drag a chip onto one.</p>
           </div>
 
           <!-- Beside the sources because it is what two of them answer to: the
@@ -2490,6 +2516,10 @@ body[data-view="bench"] .dock  { order: 3; }
                 <option value="1">1 octave</option><option value="2">2 octaves</option>
                 <option value="3">3 octaves</option><option value="4">4 octaves</option></select></div>
             </div>
+            <div class="menu-row" data-mod-dest="gen.pluck">
+              <label class="menu-label" for="pluckNote">Pluck</label>
+              <div class="grow"><select id="pluckNote" style="flex:1 1 auto"></select></div>
+            </div>
             <p class="menu-note">A playhead crosses the screen at the tempo and plays what it
               passes: low on the screen is low in pitch, in the page's key, and the brightest
               points are the notes, the brightness how hard. Heard in the generator's voice;
@@ -3096,6 +3126,23 @@ body[data-view="bench"] .dock  { order: 3; }
         it plays itself; turn it and the melody inverts. A long persistence is a score that
         lingers. The notes are heard in the generator's voice while it is heard, and never
         drawn, so the score cannot play itself into what it is reading.</span></li>
+
+      <li><b>The arpeggiator</b>
+        <span><i>Arp</i>, in the Keyboard section, plays a held chord a note at a time at the tempo:
+        up, down, up and back, in the order you played it, or at random, from a crotchet to a
+        semiquaver triplet, over one to three octaves. In the dyad each step pairs your lowest
+        note with the next, so the figure steps through the shapes of the chord's intervals in
+        time. Every note is struck afresh, and the first waits a moment for the rest of the chord.
+        Letting go stops it; switching it off with keys down gives the generator the whole chord.
+        Its notes go out through MIDI out.</span></li>
+
+      <li><b>Thresholds, and Pluck</b>
+        <span><i>Threshold</i>, among the Signal sources, is a moment made from any other source:
+        choose what it watches and a level on the Sources tab, and it fires each time that source
+        rises through the level. It strikes things, not sliders: the harmonograph's <i>Swing
+        again</i>, a solid's <i>Kick</i>, or <i>Pluck</i>, a note of the pitch set under
+        <i>Score</i>, played in the generator's voice and sent out as MIDI. An onset can pluck
+        too, so every hit can play a note.</span></li>
 
       <li><b>MIDI out</b>
         <span>Under Settings, MIDI, choose a port and a channel, and the score's notes and the
@@ -3921,6 +3968,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
                   "scoreGroup", "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
+                  "arpMode", "arpRate", "arpOctaves", "pluckNote",
                   "midiOut", "midiOutCh", "midiOutStatus",
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
@@ -4930,12 +4978,49 @@ registerSource({
   get fromPicture() { return hearsGenerator(); },
 });
 
+/* K1's thresholds: any source that is a value made into an event, by rising
+   through a level - Change spiking, Coverage filling, the bass arriving. The
+   same two defences as the onset: hysteresis of 0.05 below the level before
+   it can fire again, and a gap of 80 ms. It is a loop when what it watches is
+   one, so an event loop through a threshold is refused as the onset's is. */
+const THRESH_HYST = 0.05, THRESH_GAP = 80;
+const thresh = { watch: "env.live", level: 0.5, count: 0, last: -Infinity, armed: false, flash: -Infinity };
+function thresholdStep(now) {
+  const watched = MOD_SOURCES.get(thresh.watch);
+  if (!watched || watched.event === true) { thresh.armed = false; return; }
+  const v = watched.value();
+  if (v < thresh.level - THRESH_HYST) thresh.armed = true;
+  else if (thresh.armed && v >= thresh.level && now - thresh.last >= THRESH_GAP) {
+    thresh.armed = false; thresh.count++; thresh.last = now; thresh.flash = now;
+  }
+}
+registerSource({
+  id: "threshold", label: "Threshold", ink: "ch5", bipolar: false, family: "signal", order: 12,
+  event: true,
+  description: "A moment made from any other source: it fires when the source it watches rises "
+    + "through the level, and again only once it has fallen back below. Choose what it watches here.",
+  value: () => Math.max(0, 1 - (performance.now() - thresh.flash) / 150),
+  get count() { return thresh.count; },
+  get fromPicture() { const w = MOD_SOURCES.get(thresh.watch); return !!(w && w.fromPicture); },
+});
+
 /* The event destinations (S3): struck, not set. Each carries `fire`, and the
    routing's depth is how hard - for a reswing, anything above nought. */
 registerDest({ id: "gen.reswing", kind: "event", label: "Swing again", modes: ["harmonograph"],
                fire: () => genReswing() });
 registerDest({ id: "gen.kick", kind: "event", label: "Kick", modes: ["wireframe"],
                fire: (amount) => genKick(amount) });
+/* A note, struck in the score's voice and sent out as MIDI, at the pitch
+   chosen beside the score and the routing's depth as its velocity: K1's
+   "Coverage fills can gate a note", and an onset's too. */
+const pluck = { note: 60, offs: [] };
+registerDest({ id: "gen.pluck", kind: "event", label: "Pluck",
+               fire: (amount) => pluckFire(Math.max(0, Math.min(1, Math.abs(amount)))) });
+function pluckFire(velocity) {
+  const now = performance.now();
+  genStrike([[midiHz(pluck.note), velocity]]);
+  if (midiOutNote(pluck.note, velocity, now)) pluck.offs.push([pluck.note, now + 150]);
+}
 
 /* The note envelope, beside the level meter and quite unlike it.
 
@@ -5039,11 +5124,16 @@ function applyModMatrix(frame, elapsed) {
   midiSmooth(elapsed);
   crossStepPanel(performance.now());
   scoreTick(performance.now());
+  arpTick(performance.now());
   syncMidiOut();
   photoStep(elapsed);
   pictureStep(frame, elapsed);
   midiApplyGate();
+  thresholdStep(performance.now());
   fireEvents();
+  for (let k = pluck.offs.length - 1; k >= 0; k--) {
+    if (performance.now() >= pluck.offs[k][1]) { midiOutOff(pluck.offs[k][0]); pluck.offs.splice(k, 1); }
+  }
 
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
@@ -5660,6 +5750,9 @@ function polyWanted() {
 }
 
 function midiApplyPoly() {
+  // Asked for from the chord's own bookkeeping, with the arpeggiator on, this
+  // is the arpeggio's note rather than the whole of what is held.
+  if (arpActive() && !arp.stepping) { arpApply(); return; }
   const a = polyVoices(0);
   genSet("voices", a);
   const on = layersOn();
@@ -5844,7 +5937,21 @@ function midiGateNotes() {
    would be a picture that vanished when you lifted your hands. The gate is
    `midi.key`, which is registered as a source and can be pointed at anything
    that should answer to it; the envelope proper arrives with the audio path. */
+/* K5: with the arpeggiator on, the hands' stack is not what the generator
+   plays. The stack stays as it is - the notes sources, the pedal, the keys on
+   the screen all read it and go on reading your hands - and the generator is
+   shown the arpeggio's note instead, swapped in for as long as it takes to
+   apply it; see `arpApply`. */
 function midiApplyNotes() {
+  if (arpActive() && !arp.stepping) {
+    midi.key = midi.notes.length ? midi.notes[midi.notes.length - 1].velocity : 0;
+    midiSayMonitor();
+    arpHeld();
+    return;
+  }
+  midiApplyNotesTo();
+}
+function midiApplyNotesTo() {
   midi.key = midi.notes.length ? midi.notes[midi.notes.length - 1].velocity : 0;
   midiSayMonitor();
   midiApplyGate();
@@ -14788,6 +14895,9 @@ function buildSourceDetail() {
   const lfoIndex = source.index;
   const lfo = lfoIndex !== undefined ? lfos[lfoIndex] : null;
   const cc = source.id.startsWith("cc.") ? midi.cc.get(Number(source.id.slice(3))) : null;
+  const isThresh = source.id === "threshold";
+  const watchable = isThresh ? Array.from(MOD_SOURCES.values()).filter((s) => s.event !== true)
+    .sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
 
   el.srcDetail.innerHTML =
     '<p class="src-desc">' + escapeText(source.description || "") + "</p>"
@@ -14813,6 +14923,13 @@ function buildSourceDetail() {
         + (lfo.sync ? " disabled" : "") + ">"
         + '<span class="reading" id="lfoRateValue' + lfoIndex + '">' + lfoRateReading(lfo)
         + "</span></div></div>" : "")
+    + (isThresh ? '<div class="menu-row"><label class="menu-label" for="threshWatch">Watches</label>'
+        + '<div class="grow"><select id="threshWatch" style="flex:1 1 auto">'
+        + watchable.map((s) => '<option value="' + s.id + '"' + (s.id === thresh.watch ? " selected" : "") + ">"
+            + escapeText(s.label) + "</option>").join("") + "</select></div></div>"
+        + '<div class="menu-row"><label class="menu-label" for="threshLevel">Level</label><div class="grow">'
+        + '<input type="range" id="threshLevel" min="5" max="95" value="' + Math.round(thresh.level * 100) + '">'
+        + '<span class="reading" id="threshLevelValue">' + thresh.level.toFixed(2) + "</span></div></div>" : "")
     + (cc ? '<div class="menu-row"><label class="menu-label" for="srcDetail-name">Name</label>'
         + '<div class="grow"><input type="text" class="cc-name" id="srcDetail-name" value="'
         + escapeText(cc.name) + '"><button type="button" class="link-btn caps" '
@@ -14861,6 +14978,16 @@ function buildSourceDetail() {
       if (lfo.sync) { lfo.phase = 0; lfo.epoch++; }
       rate.disabled = !!lfo.sync;
       document.getElementById("lfoRateValue" + lfoIndex).textContent = lfoRateReading(lfo);
+    });
+  }
+  if (isThresh) {
+    document.getElementById("threshWatch").addEventListener("change", (e) => {
+      thresh.watch = e.target.value; thresh.armed = false; touchRoutings();
+    });
+    const level = document.getElementById("threshLevel");
+    level.addEventListener("input", () => {
+      thresh.level = Number(level.value) / 100;
+      document.getElementById("threshLevelValue").textContent = thresh.level.toFixed(2);
     });
   }
   if (cc) {
@@ -15506,6 +15633,8 @@ const DEFAULTS = {
   l0y: "", l1y: "", keyRoot: 0, keyScale: "chromatic", quant: false, qGlide: 0, bpm: 120,
   crossOn: false, crossX: 0, crossY: 0, crossNoteX: 60, crossNoteY: 67, crossDecay: 180, crossLevel: 40,
   scoreOn: false, scoreStep: "1/16", scoreVoices: 2, scoreLow: 48, scoreOctaves: 3,
+  arpMode: "off", arpRate: "1/8", arpOctaves: 1,
+  threshWatch: "env.live", threshLevel: 50, pluckNote: 60,
   mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
@@ -15637,6 +15766,8 @@ function snapshot() {
     crossLevel: Math.round(cross.level * 100),
     scoreOn: score.on, scoreStep: score.step, scoreVoices: score.voices, scoreLow: score.low,
     scoreOctaves: score.octaves,
+    arpMode: arp.mode, arpRate: arp.rate, arpOctaves: arp.octaves,
+    threshWatch: thresh.watch, threshLevel: Math.round(thresh.level * 100), pluckNote: pluck.note,
     mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
@@ -15858,6 +15989,17 @@ function restore(partial) {
   el.scoreOn.checked = score.on; el.scoreStep.value = score.step; el.scoreVoices.value = String(score.voices);
   el.scoreLow.value = String(score.low); el.scoreOctaves.value = String(score.octaves);
   if (!score.on) scoreStop();
+  // The arpeggiator (K5): additive too.
+  el.arpMode.value = ["off", "up", "down", "updown", "played", "random"].includes(s.arpMode) ? s.arpMode : "off";
+  el.arpRate.value = ARP_RATES.some(([id]) => id === s.arpRate) ? s.arpRate : "1/8";
+  el.arpOctaves.value = String(Math.round(within(s.arpOctaves, 1, 3, 1)));
+  arpSet();
+  /* The threshold and the pluck (K1): what it watches is kept by name, as a
+     routing's source is, so a code watching a controller not yet moved keeps
+     it until it is. */
+  thresh.watch = typeof s.threshWatch === "string" && s.threshWatch ? s.threshWatch : "env.live";
+  thresh.level = within(s.threshLevel, 5, 95, 50) / 100; thresh.armed = false;
+  pluck.note = Math.round(within(s.pluckNote, 36, 84, 60)); el.pluckNote.value = String(pluck.note);
   plane.mirror = [0, 1, 2, 3].includes(s.planeMirror) ? s.planeMirror : 0;
   plane.limit = [0, 1, 2].includes(s.planeLimit) ? s.planeLimit : 0;
   plane.radius = within(s.planeRadius, 2, 100, 40) / 100;
@@ -16151,6 +16293,14 @@ const PRESETS = [
     ["Spread swirl", Object.assign({ shape: "sine", freq: 220, interval: 7, timebase: 4, midiMode: "dyad",
                                      atk: 20, rel: 600, mod: "notes.spread>gen.twist@0.600" }, XY),
      "Two notes, one in each ear. Close together the figure is still; spread your hands and it swirls, and so does the stereo image. Play it."],
+    ["Arpeggiated chords", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", arpMode: "up", arpRate: "1/16",
+                             arpOctaves: 2, vcfType: 1, vcfCut: 667, vcfEnvAmt: 20, vcfDec: 150, vcfSus: 20,
+                             atk: 1, dec: 200, sus: 30, rel: 150, delayMix: 25, delaySync: "1/8d",
+                             delayFeedback: 35, mod: "midi.key>gen.vcf@0.400" },
+     "Hold a chord and it runs up two octaves in semiquavers at the tempo, each note plucked through a filter that opens the harder you struck, with a dotted echo. Play it."],
+    ["Intervals in turn", Object.assign({ shape: "sine", freq: 220, timebase: 4, midiMode: "dyad", arpMode: "updown",
+                                          arpRate: "1/8", mod: "notes.spread>gen.twist@0.300" }, XY),
+     "Hold a chord and each step pairs its lowest note with the next: the figure steps through the shapes of the chord's intervals in time, swirling more the wider the chord. Play it."],
   ], "generator"],
 
   ["Split and layer", [
@@ -16332,6 +16482,11 @@ const PRESETS = [
     ["Harmonograph", { gen: "harmonograph", interval: 4, detune: 30, decay: 20, display: "xy", persistence: "-1",
                        timebase: 5, pGoni: false, pSpec: false },
      "Two pendulums at 5:4, drawing and running down, then starting again."],
+    // K1: a threshold on the level, striking a note each time it passes.
+    ["Pendulums ring a bell", { gen: "harmonograph", interval: 7, detune: 20, decay: 45, display: "xy",
+                                persistence: "0.04", timebase: 5, pGoni: false, threshWatch: "env.live",
+                                threshLevel: 40, pluckNote: 72, mod: "threshold>gen.pluck@0.800" },
+     "Each time the pendulums are let go again their swing passes a threshold, and it strikes a bell: the drawing keeps its own time."],
     ["Plucked harmonograph", { gen: "harmonograph", interval: 7, display: "xy", persistence: "0.04", timebase: 4,
                                midiPlay: "harmonograph", ring: 900, pGoni: false },
      "Play it: each key strikes the pendulums at that note's pitch, and the drawing is the note."],
@@ -17682,6 +17837,112 @@ function drawScorePlayhead() {
   ctx.beginPath(); ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); ctx.stroke();
   ctx.restore();
 }
+
+/* --- the arpeggiator: Stage K5 --------------------------------------------------
+   Hold a chord and it is played a note at a time at the tempo. It earns its
+   place because of the picture: in the dyad each step pairs the lowest held
+   note with the arpeggio's, so the figure steps through the shapes of the
+   chord's intervals - unison, third, fifth - in time. In mono and poly the
+   step is the one note, and the figure is its own.
+
+   Each step closes the gate and opens it again, so every note is struck
+   rather than slid into: an arpeggio is repeated attacks. The steps are
+   counted from when the first key went down, on the clock rather than by
+   adding a frame's time each frame, so they cannot drift - though each one
+   lands on the first frame after it is due, up to a frame late, since the
+   notes reach the generator by message and not by sample. */
+const ARP_RATES = [["1/4", 1], ["1/8", 0.5], ["1/16", 0.25], ["1/8t", 1 / 3], ["1/16t", 1 / 6]];
+/* How long the first key waits for the rest of the chord. Struck on the first
+   key, the pattern began on whichever key happened to land first: C E G
+   played "down" came out C, E, C, G, because G arrived eight milliseconds
+   after C and the first step had gone. A struck chord is spread over a few
+   milliseconds; 25 gathers it and is under what a player hears as late. */
+const ARP_GATHER = 25;
+const arp = { mode: "off", rate: "1/8", octaves: 1, current: [], index: -1, start: null, steps: 0,
+              stepping: false, sent: [] };
+
+function arpActive() { return arp.mode !== "off" && midiDrivesGenerator(); }
+function arpStepMs() {
+  const found = ARP_RATES.find(([id]) => id === arp.rate) || ARP_RATES[1];
+  return found[1] * 60000 / transport.bpm;
+}
+// The notes the arpeggio walks, from what is held.
+function arpSequence() {
+  const base = arp.mode === "played" ? midi.notes.slice() : midi.notes.slice().sort((a, b) => a.note - b.note);
+  const seq = [];
+  for (let o = 0; o < arp.octaves; o++) for (const held of base) seq.push({ note: held.note + 12 * o, velocity: held.velocity });
+  if (arp.mode === "down") seq.reverse();
+  // Up and back without playing either end twice in a row.
+  if (arp.mode === "updown" && seq.length > 2) seq.push(...seq.slice(1, -1).reverse());
+  return seq;
+}
+// The generator shown the step, struck: nothing, then the step's notes.
+function arpApply() {
+  const held = midi.notes;
+  arp.stepping = true;
+  try {
+    midi.notes = [];
+    midiApplyNotesTo();
+    midi.notes = arp.current.slice();
+    midiApplyNotesTo();
+  } finally {
+    midi.notes = held;
+    arp.stepping = false;
+  }
+}
+function arpStep(now) {
+  const seq = arpSequence();
+  if (seq.length === 0) return;
+  arp.index = arp.mode === "random" ? Math.floor(Math.random() * seq.length) : (arp.index + 1) % seq.length;
+  const pick = seq[arp.index];
+  let low = midi.notes[0];
+  for (const held of midi.notes) if (held.note < low.note) low = held;
+  arp.current = midi.mode === "dyad" && pick.note !== low.note ? [low, pick] : [pick];
+  arpApply();
+  for (const note of arp.sent) midiOutOff(note);
+  arp.sent = midiOutNote(pick.note, pick.velocity, now) ? [pick.note] : [];
+}
+function arpStop() {
+  arp.start = null; arp.index = -1; arp.current = [];
+  for (const note of arp.sent) midiOutOff(note);
+  arp.sent = [];
+  arpApply();
+}
+// The hands changed: start after the first key has gathered its chord, stop
+// on the last. The first step is struck by a timer rather than by the next
+// frame, which would add up to another frame to the wait.
+function arpHeld() {
+  if (midi.notes.length === 0) { if (arp.start !== null) arpStop(); else arpApply(); return; }
+  if (arp.start === null) {
+    arp.start = performance.now() + ARP_GATHER; arp.steps = 0; arp.index = -1;
+    setTimeout(() => arpTick(performance.now()), ARP_GATHER);
+  }
+}
+function arpTick(now) {
+  if (!arpActive() || arp.start === null) return;
+  if (midi.notes.length === 0) { arpStop(); return; }
+  if (now < arp.start) return;
+  const due = Math.floor((now - arp.start) / arpStepMs());
+  if (due < arp.steps) return;
+  arp.steps = due + 1;
+  arpStep(now);
+}
+// Switched on or off with keys down: the generator is given what it should
+// now have, the arpeggio's first note or the whole of what is held.
+function arpSet() {
+  arp.mode = el.arpMode.value; arp.rate = el.arpRate.value;
+  arp.octaves = Number(el.arpOctaves.value) || 1;
+  if (arp.start !== null) { for (const note of arp.sent) midiOutOff(note); arp.sent = []; arp.start = null; }
+  arp.index = -1; arp.current = [];
+  midiApplyNotes();
+}
+el.arpMode.addEventListener("change", arpSet);
+el.pluckNote.innerHTML = Array.from({ length: 49 }, (_, i) => 36 + i).map((m) =>
+  '<option value="' + m + '">' + KEY_NAMES[m % 12] + (Math.floor(m / 12) - 1) + "</option>").join("");
+el.pluckNote.value = "60";
+el.pluckNote.addEventListener("change", () => { pluck.note = Number(el.pluckNote.value) || 60; });
+el.arpRate.addEventListener("change", () => { arp.rate = el.arpRate.value; });
+el.arpOctaves.addEventListener("change", () => { arp.octaves = Number(el.arpOctaves.value) || 1; });
 
 el.scoreOn.addEventListener("change", () => { score.on = el.scoreOn.checked; if (!score.on) scoreStop(); });
 el.scoreStep.addEventListener("change", () => { score.step = el.scoreStep.value; score.start = null; });
