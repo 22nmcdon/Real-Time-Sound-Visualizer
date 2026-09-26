@@ -150,9 +150,17 @@ try {
 
   node.port.onmessage({ data: { tone: { mode: "figure" } } });
   report.figures = {};
+  /* Text and Path draw a table of points the main thread compiles; here each
+     is handed one, as it would be - a square for the one and a triangle for
+     the other, so their fingerprints differ from each other's and the
+     circle's. Without one they draw a dot, which "worst > 0.01" catches. */
+  const TABLES = {
+    Text: { xy: [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5], at: [0, 0.25, 0.5, 0.75, 1] },
+    Path: { xy: [0, 0.8, -0.7, -0.4, 0.7, -0.4, 0, 0.8], at: [0, 1 / 3, 2 / 3, 1] },
+  };
   for (const figure of ["Circle", "Square", "Polygon", "Star", "Rose", "Heart",
-                        "Infinity", "Spiral", "Spirograph", "Butterfly"]) {
-    node.port.onmessage({ data: { tone: { figure } } });
+                        "Infinity", "Spiral", "Spirograph", "Butterfly", "Text", "Path"]) {
+    node.port.onmessage({ data: { tone: { figure, figPath: TABLES[figure] || null } } });
     let worst = 0, finite = true, fingerprint = 0;
     for (let round = 0; round < 20; round++) {
       node.process([], [out], {});

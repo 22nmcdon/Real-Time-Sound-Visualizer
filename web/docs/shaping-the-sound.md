@@ -777,18 +777,21 @@ Smaller things, each worth doing on its own and none blocking the others.
 - **Macros. Built.** User-named sources with no oscillator behind them: one knob, many
   destinations. The matrix already does the fan-out. Four, on the Sources tab
   with the morph; Crossings moved to Effects to make the room.
-- **More figures and solids. Built, but for text and import.** Butterfly
+- **More figures and solids. Built.** Butterfly
   curve, Lissajous knot, *n*-gon; the dodecahedron, icosahedron and a torus.
   The polygon and the butterfly are figures; the knot is a solid, because a
   knot is a thing in three dimensions and only the solids can be turned to
   show it. The new solids' routes are built by `eulerRoute` rather than
-  written out. Still to do from this item: **Text**: single-stroke
+  written out. **Text**: single-stroke
   (Hershey-style) glyph paths, so the scope can write a word. **Import**: an SVG path as a
   figure. Each needs an entry in the worklet harness's figure loop and a
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
-  statement about the drawn generators.
+  statement about the drawn generators. Both built as the Text and SVG path
+  figures, on a font drawn for the page rather than Hershey's own, with the
+  beam travelling fast between strokes rather than jumping; `aliastest.py`
+  measures a word at 40 and 200 Hz and a drawing at 40.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 158 presets in twenty-three sections, in a browser
+- **Presets, rebuilt. Built.** 160 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

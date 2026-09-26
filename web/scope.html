@@ -1652,6 +1652,21 @@ body[data-view="bench"] .dock  { order: 3; }
                   <label class="menu-label" for="figure">Figure</label>
                   <div class="grow"><select id="figure" style="flex:1 1 auto"></select></div>
                 </div>
+                <div class="menu-row" id="figTextRow" hidden>
+                  <label class="menu-label" for="figText">Words</label>
+                  <div class="grow"><input type="text" class="cc-name" id="figText" maxlength="24"
+                       spellcheck="false" value="HELLO"></div>
+                </div>
+                <div class="menu-row" id="figPathRow" hidden>
+                  <label class="menu-label" for="figPathD">SVG</label>
+                  <div class="grow">
+                    <input type="text" class="cc-name" id="figPathD" spellcheck="false"
+                           placeholder="a path's d, pasted">
+                    <label class="link-btn caps" for="figPathFile" style="cursor:pointer">File</label>
+                    <input type="file" id="figPathFile" accept=".svg,image/svg+xml" hidden>
+                  </div>
+                </div>
+                <p class="menu-note" id="figPathNote" hidden></p>
                 <div class="menu-row" data-mod-dest="gen.detail" data-mod-control="detail">
                   <label class="menu-label" for="detail">Detail</label>
                   <div class="grow">
@@ -3803,6 +3818,12 @@ body[data-view="bench"] .dock  { order: 3; }
         is Temple Fay's curve, twelve loops of wing drawn in one closed stroke; it is the
         longest path of them all, so slow it down to follow it.
         <br><br>
+        <i>Text</i> writes what you type under <i>Words</i>, up to twenty-four letters, in
+        single strokes; <i>SVG path</i> draws a path's <i>d</i> pasted under <i>SVG</i>, or
+        every path in an SVG file you choose. The beam cannot lift like a pen, so between
+        strokes it moves fast, and those moves show as faint lines &mdash; brighter the longer
+        the persistence. A path that cannot be read leaves the last drawing and says why.
+        <br><br>
         <i>Trace the figure at the note's pitch</i>, in the Keyboard section, plays it: a key
         sets the trace rate to the note's own frequency, A3 tracing the figure 220 times a
         second, and the envelope starts and stops it. The figure's shape is then its timbre:
@@ -4117,6 +4138,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "spinX", "spinXValue", "spinY", "spinYValue",
                   "spinZ", "spinZValue", "depth", "depthValue",
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
+                  "figTextRow", "figText", "figPathRow", "figPathD", "figPathFile", "figPathNote",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
@@ -6673,12 +6695,32 @@ function decodeCC(text) {
    on a rose, loops on a spirograph - which is one control rather than three
    that are blank most of the time. */
 const FIGURES = ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph",
-                 "Butterfly"];
+                 "Butterfly", "Text", "Path"];
+// What the menu calls them, where that is not the name.
+const FIGURE_LABELS = { Path: "SVG path" };
 
-function figureAt(name, t, detail) {
+/* `path` is the text or the imported drawing, compiled on the main thread by
+   `compilePath` into points and the fraction of the lap at which the beam
+   reaches each - plain arrays, because the worklet's first settings cross as
+   JSON and a typed array does not survive that. */
+function figureAt(name, t, detail, path) {
   const turn = t * 2 * Math.PI;
 
   switch (name) {
+    case "Text":
+    case "Path": {
+      // Nothing to draw is a dot in the middle: silence, rather than a
+      // circle nobody asked for.
+      if (!path || !path.at || path.at.length < 2) return [0, 0];
+      const at = path.at, xy = path.xy, u = t - Math.floor(t);
+      let lo = 0, hi = at.length - 1;
+      while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1;
+        if (at[mid] <= u) lo = mid; else hi = mid;
+      }
+      const span = at[hi] - at[lo], f = span > 0 ? (u - at[lo]) / span : 0;
+      return [xy[2 * lo] + (xy[2 * hi] - xy[2 * lo]) * f, xy[2 * lo + 1] + (xy[2 * hi + 1] - xy[2 * lo + 1]) * f];
+    }
     case "Square": {
       const side = (t % 1) * 4;
       const k = Math.floor(side), f = side - k;
@@ -6753,6 +6795,217 @@ function figureAt(name, t, detail) {
     default:
       return [Math.cos(turn), Math.sin(turn)];
   }
+}
+
+/* --- text and drawings: figures made of strokes -----------------------------
+   A word, or an SVG path, as a figure. Both are strokes - lines the pen draws
+   without lifting - and the beam cannot lift, so between one stroke and the
+   next it has to travel. It travels fast: eight times the speed it draws at,
+   which on a real tube is what makes those moves faint, and here puts the
+   light in the letters and not in the joins. Not a jump, which is a step in
+   the signal and broadband noise every lap; a fast line is continuous, and
+   aliastest measures what it costs. The beam also travels from the last
+   stroke back to the first, so the lap closes.
+
+   The cost of it, said where you will see it: the travel is still drawn,
+   faintly, and at infinite persistence it builds up into lines between the
+   letters. Blanking is what a real scope would do, and an audio pair has no
+   third channel to blank with. */
+const TRAVEL_SPEED = 8;
+
+/* A single-stroke font, drawn for this page in the spirit of Hershey's: every
+   glyph on a grid four wide and six tall, as strokes of points written as
+   pairs of digits, x then y, strokes parted by a bar. Capitals, digits and a
+   little punctuation; lower case is drawn as capitals and anything else as a
+   space. Round letters are octagons, which at scope sizes read as round and
+   keep every stroke a few straight lines. */
+const STROKE_FONT = {
+  A: "002640|1333", B: "00063645443303|3342413000", C: "4536160501103041",
+  D: "00062644422000", E: "46060040|0333", F: "460600|0333",
+  G: "45361605011030414323", H: "0006|4640|0343", I: "1636|2620|1030",
+  J: "4641301001", K: "0006|4602|1340", L: "060040", M: "0006234640",
+  N: "00064046", O: "103041453616050110", P: "00063645443303",
+  Q: "103041453616050110|2240", R: "00063645443303|2340",
+  S: "453616050413334241301001", T: "0646|2620", U: "060110304146", V: "062046",
+  W: "0610233046", X: "0046|0640", Y: "062346|2320", Z: "06460040",
+  0: "103041453616050110|0145", 1: "152620|1030", 2: "05163645440040",
+  3: "051636454433|13334241301001", 4: "30360242", 5: "460603334241301001",
+  6: "453616050110304142331302", 7: "064610", 8: "13040516364544331302011030414233",
+  9: "443313040516364541301001",
+  ".": "2021", ",": "2110", "!": "2623|2021", "?": "05163645442322|2021", "-": "1333",
+  "+": "1333|2224", "'": "2625", ":": "2425|2021", "/": "0046", "=": "0444|0242", " ": "",
+};
+const TEXT_MAX = 24;
+
+// A word as strokes, laid out on one line and scaled to the screen's width.
+function textStrokes(text) {
+  const strokes = [];
+  const chars = Array.from(String(text).toUpperCase()).slice(0, TEXT_MAX);
+  const width = chars.length * 6 - 2;
+  if (width <= 0) return strokes;
+  const scale = 1.9 / Math.max(width, 6);
+  chars.forEach((ch, k) => {
+    const glyph = STROKE_FONT[ch] === undefined ? "" : STROKE_FONT[ch];
+    for (const part of glyph.split("|")) {
+      if (part.length < 4) continue;
+      const stroke = [];
+      for (let i = 0; i + 1 < part.length; i += 2) {
+        stroke.push([(k * 6 + Number(part[i]) - width / 2) * scale, (Number(part[i + 1]) - 3) * scale]);
+      }
+      strokes.push(stroke);
+    }
+  });
+  return strokes;
+}
+
+/* An SVG path's `d` as strokes: every command in the specification, curves
+   and arcs flattened into short lines, each subpath a stroke. Written as a
+   cursor over the text rather than a split on spaces, because the grammar
+   allows "1.5.5" for two numbers and an arc's two flags run together as
+   "011" - both of which a split reads as one. Throws on what it cannot read,
+   so the panel can say so rather than drawing half a picture. */
+const PATH_POINTS_MOST = 6000;
+function svgStrokes(d) {
+  const text = String(d);
+  let i = 0;
+  const skip = () => { while (i < text.length && /[\s,]/.test(text[i])) i++; };
+  const number = () => {
+    skip();
+    const m = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/.exec(text.slice(i));
+    if (!m) throw new Error("expected a number at character " + i);
+    i += m[0].length;
+    return Number(m[0]);
+  };
+  const flag = () => {
+    skip();
+    const c = text[i];
+    if (c !== "0" && c !== "1") throw new Error("expected an arc flag at character " + i);
+    i++;
+    return c === "1";
+  };
+  const more = () => { skip(); return i < text.length && /[-+.\d]/.test(text[i]); };
+
+  const strokes = [];
+  let stroke = null, x = 0, y = 0, sx = 0, sy = 0, cmd = "", lastC = null, lastQ = null;
+  const to = (nx, ny) => { if (!stroke) { stroke = [[x, y]]; strokes.push(stroke); } stroke.push([nx, ny]); x = nx; y = ny; };
+  const STEPS = 16;
+  while (true) {
+    skip();
+    if (i >= text.length) break;
+    if (/[A-Za-z]/.test(text[i])) cmd = text[i++];
+    else if (!cmd) throw new Error("a path starts with a command");
+    const rel = cmd === cmd.toLowerCase(), c = cmd.toUpperCase();
+    const ox = rel ? x : 0, oy = rel ? y : 0;
+    if (c === "Z") {
+      if (stroke) to(sx, sy);
+      stroke = null; lastC = lastQ = null;
+      continue;
+    }
+    if (c === "M") {
+      x = number() + ox; y = number() + oy; sx = x; sy = y;
+      stroke = [[x, y]]; strokes.push(stroke);
+      cmd = rel ? "l" : "L";          // further pairs are lines
+      lastC = lastQ = null;
+      continue;
+    }
+    if (c === "L") { to(number() + ox, number() + oy); lastC = lastQ = null; }
+    else if (c === "H") { to(number() + ox, y); lastC = lastQ = null; }
+    else if (c === "V") { to(x, number() + (rel ? y : 0)); lastC = lastQ = null; }
+    else if (c === "C" || c === "S") {
+      let x1, y1;
+      if (c === "C") { x1 = number() + ox; y1 = number() + oy; }
+      else if (lastC) { x1 = 2 * x - lastC[0]; y1 = 2 * y - lastC[1]; }
+      else { x1 = x; y1 = y; }
+      const x2 = number() + ox, y2 = number() + oy, ex = number() + ox, ey = number() + oy;
+      const x0 = x, y0 = y;
+      for (let k = 1; k <= STEPS; k++) {
+        const t = k / STEPS, u = 1 - t;
+        to(u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * ex,
+           u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * ey);
+      }
+      lastC = [x2, y2]; lastQ = null;
+    } else if (c === "Q" || c === "T") {
+      let x1, y1;
+      if (c === "Q") { x1 = number() + ox; y1 = number() + oy; }
+      else if (lastQ) { x1 = 2 * x - lastQ[0]; y1 = 2 * y - lastQ[1]; }
+      else { x1 = x; y1 = y; }
+      const ex = number() + ox, ey = number() + oy, x0 = x, y0 = y;
+      for (let k = 1; k <= STEPS; k++) {
+        const t = k / STEPS, u = 1 - t;
+        to(u * u * x0 + 2 * u * t * x1 + t * t * ex, u * u * y0 + 2 * u * t * y1 + t * t * ey);
+      }
+      lastQ = [x1, y1]; lastC = null;
+    } else if (c === "A") {
+      // The endpoint form converted to a centre and two angles, as the
+      // specification's appendix does it, radii grown if they cannot reach.
+      let rx = Math.abs(number()), ry = Math.abs(number());
+      const phi = number() * Math.PI / 180, large = flag(), sweep = flag();
+      const ex = number() + ox, ey = number() + oy, x0 = x, y0 = y;
+      if (rx === 0 || ry === 0) to(ex, ey);
+      else {
+        const cs = Math.cos(phi), sn = Math.sin(phi);
+        const dx = (x0 - ex) / 2, dy = (y0 - ey) / 2;
+        const x1 = cs * dx + sn * dy, y1 = -sn * dx + cs * dy;
+        const grow = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
+        if (grow > 1) { rx *= Math.sqrt(grow); ry *= Math.sqrt(grow); }
+        const num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
+        const den = rx * rx * y1 * y1 + ry * ry * x1 * x1;
+        const k = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, num / den));
+        const cx1 = k * rx * y1 / ry, cy1 = -k * ry * x1 / rx;
+        const cx = cs * cx1 - sn * cy1 + (x0 + ex) / 2, cy = sn * cx1 + cs * cy1 + (y0 + ey) / 2;
+        const angle = (ux, uy, vx, vy) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+        const a0 = angle(1, 0, (x1 - cx1) / rx, (y1 - cy1) / ry);
+        let da = angle((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry);
+        if (!sweep && da > 0) da -= 2 * Math.PI;
+        if (sweep && da < 0) da += 2 * Math.PI;
+        const n = Math.max(2, Math.ceil(Math.abs(da) / (Math.PI / 16)));
+        for (let s = 1; s <= n; s++) {
+          const a = a0 + da * s / n, px = rx * Math.cos(a), py = ry * Math.sin(a);
+          to(s === n ? ex : cs * px - sn * py + cx, s === n ? ey : sn * px + cs * py + cy);
+        }
+      }
+      lastC = lastQ = null;
+    } else throw new Error("no such command: " + cmd);
+    if (!more() && i < text.length && !/[A-Za-z]/.test(text[i])) throw new Error("unexpected character at " + i);
+  }
+  const count = strokes.reduce((n, s) => n + s.length, 0);
+  if (count > PATH_POINTS_MOST) throw new Error("too detailed: " + count + " points, and the most is " + PATH_POINTS_MOST);
+  /* Fitted to the screen: the drawing's box scaled to 1.9 across its longer
+     side and centred, and turned the right way up - SVG's y runs down. */
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const s of strokes) for (const [px, py] of s) {
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  }
+  const size = Math.max(x1 - x0, y1 - y0);
+  if (!(size > 0)) return [];
+  const scale = 1.9 / size, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return strokes.filter((s) => s.length > 1).map((s) => s.map(([px, py]) => [(px - cx) * scale, (cy - py) * scale]));
+}
+
+/* Strokes into what `figureAt` reads: the points in drawing order, and for
+   each the fraction of the lap at which the beam arrives - by length along a
+   stroke, and by length over TRAVEL_SPEED between strokes and back to the
+   start. So the beam moves at one speed wherever it draws. */
+function compilePath(strokes) {
+  const xy = [], weight = [0];
+  let total = 0, prev = null;
+  for (const stroke of strokes) {
+    stroke.forEach(([px, py], k) => {
+      if (prev) {
+        const len = Math.hypot(px - prev[0], py - prev[1]);
+        total += k === 0 ? len / TRAVEL_SPEED : len;
+        weight.push(total);
+      }
+      xy.push(px, py);
+      prev = [px, py];
+    });
+  }
+  if (xy.length < 4) return null;
+  total += Math.hypot(xy[0] - prev[0], xy[1] - prev[1]) / TRAVEL_SPEED;
+  weight.push(total);
+  xy.push(xy[0], xy[1]);
+  if (!(total > 0)) return null;
+  return { xy, at: weight.map((w) => w / total) };
 }
 
 /* --- wireframes ---------------------------------------------------------------
@@ -8495,7 +8748,7 @@ function makeGeneratorCore(rate, slots, lfos) {
         if (clockHz > 0) figurePhase = (clock.since / clock.period) % 1;
         else figurePhase += tone.figureRate * fmIn * dt;
         if (figurePhase >= 1) figurePhase -= 1;
-        const at = figureAt(tone.figure, figurePhase, detail);
+        const at = figureAt(tone.figure, figurePhase, detail, tone.figPath);
         l = amp * at[0];
         r = amp * at[1];
       } else if (tone.mode === "wireframe") {
@@ -15020,7 +15273,7 @@ function showGenerator() {
 function fillIntervals() {
   el.interval.innerHTML = INTERVALS.map(([name, p, q], i) =>
     '<option value="' + i + '">' + name + "  \u00b7  " + p + ":" + q + "</option>").join("");
-  el.figure.innerHTML = FIGURES.map((f) => '<option value="' + f + '">' + f + "</option>").join("");
+  el.figure.innerHTML = FIGURES.map((f) => '<option value="' + f + '">' + (FIGURE_LABELS[f] || f) + "</option>").join("");
   el.filterType.innerHTML = FILTER_TYPES.map(([v, t]) =>
     '<option value="' + v + '">' + t + "</option>").join("");
   el.model.innerHTML = MODELS.map((m) =>
@@ -15052,7 +15305,65 @@ el.tuneEqual.addEventListener("click", () => setTuning(false));
 
 el.figure.addEventListener("change", () => {
   if (genSet("figure", el.figure.value)) el.credit.textContent = state.source.describe();
+  syncFigurePath();
 });
+
+/* The strokes behind the Text and Path figures, compiled from what their rows
+   say, sent to the generator, and shown only while one of them is chosen.
+   The imported drawing keeps the last `d` that could be read: a paste that
+   fails leaves the picture as it was and says why, rather than blanking it. */
+const figDrawing = { text: null, path: null, pathD: "", fault: "" };
+function figurePathFor(name) {
+  return name === "Text" ? figDrawing.text : name === "Path" ? figDrawing.path : null;
+}
+function setFigureText(text) {
+  el.figText.value = String(text).slice(0, TEXT_MAX);
+  figDrawing.text = compilePath(textStrokes(el.figText.value));
+}
+function setFigurePathD(d) {
+  el.figPathD.value = d;
+  if (!String(d).trim()) { figDrawing.path = null; figDrawing.pathD = ""; figDrawing.fault = ""; return; }
+  try {
+    const strokes = svgStrokes(d);
+    figDrawing.path = compilePath(strokes);
+    figDrawing.pathD = String(d);
+    figDrawing.fault = figDrawing.path ? "" : "Nothing in that path to draw.";
+  } catch (error) {
+    figDrawing.fault = "That path could not be read: " + error.message + ".";
+  }
+}
+function syncFigurePath() {
+  const name = el.figure.value;
+  el.figTextRow.hidden = name !== "Text";
+  el.figPathRow.hidden = name !== "Path";
+  genSet("figPath", figurePathFor(name));
+  let note = "";
+  if (name === "Path") {
+    const p = figDrawing.path;
+    note = figDrawing.fault || (p ? (p.xy.length / 2 - 1) + " points. Paste another path's d, or choose an "
+      + "SVG file; every path in it is drawn." : "Paste an SVG path's d above, or choose an SVG file.");
+  }
+  el.figPathNote.hidden = !note;
+  el.figPathNote.textContent = note;
+}
+el.figText.addEventListener("input", () => { setFigureText(el.figText.value); syncFigurePath(); });
+el.figPathD.addEventListener("change", () => { setFigurePathD(el.figPathD.value); syncFigurePath(); });
+el.figPathFile.addEventListener("change", async () => {
+  const file = el.figPathFile.files && el.figPathFile.files[0];
+  el.figPathFile.value = "";
+  if (!file) return;
+  /* Every path in the file, one after another as one drawing. Read with the
+     browser's own parser, which never runs anything in it - an SVG can carry
+     script, and nothing here puts the file into the page. Shapes other than
+     paths (a circle element, a rect) are not read; the note says how many
+     paths there were. */
+  const doc = new DOMParser().parseFromString(await file.text(), "image/svg+xml");
+  const ds = Array.from(doc.querySelectorAll("path")).map((path) => path.getAttribute("d") || "").filter(Boolean);
+  setFigurePathD(ds.join(" "));
+  if (!ds.length) figDrawing.fault = "No paths in that file: only path elements are read.";
+  syncFigurePath();
+});
+setFigureText(el.figText.value);
 
 el.detail.addEventListener("input", () => {
   el.detailValue.textContent = el.detail.value;
@@ -16103,6 +16414,8 @@ const DEFAULTS = {
   gen: "wave", shape: "harmonic", bars: DRAWBAR_DEFAULT.join(""), morph: 150, freq: 220, amp: 55,
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
+  // Additive: the words and the drawing behind the Text and Path figures.
+  figText: "HELLO", figPath: "",
   swingRate: 21, decay: 12, detune: 40, swingDrive: 0,
   inputMode: 0, inputDepth: 50,
   /* The envelope, in the units its sliders use. New fields rather than
@@ -16225,6 +16538,7 @@ function snapshot() {
     just: el.tuneJust.getAttribute("aria-checked") === "true",
     phase: Number(el.phase.value),
     figure: el.figure.value,
+    figText: el.figText.value, figPath: figDrawing.pathD,
     detail: Number(el.detail.value),
     figureRate: Number(el.figureRate.value),
     swingRate: Number(el.swingRate.value),
@@ -16385,6 +16699,8 @@ function restore(partial) {
     if (say) el[label].textContent = say(Number(el[id].value));
   }
   syncVcfRows();
+  setFigureText(typeof s.figText === "string" ? s.figText : DEFAULTS.figText);
+  setFigurePathD(typeof s.figPath === "string" ? s.figPath : "");
   el.figure.dispatchEvent(new Event("change"));
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
@@ -17016,6 +17332,14 @@ const PRESETS = [
      "Temple Fay's butterfly curve, twenty times a second: its wings are twelve loops, and it closes without a jump."],
     ["Hexagon", { gen: "figure", figure: "Polygon", detail: 6, display: "xy", persistence: "0.12", timebase: 5 },
      "Six sides, forty times a second; Detail is the number of sides, three to twelve."],
+    // The travel between letters shows at long persistence, so this is short.
+    ["Written on the screen", { gen: "figure", figure: "Text", figText: "HELLO", figureRate: 25, display: "xy",
+                                persistence: "0.12", timebase: 5, pGoni: false },
+     "A word in single strokes, written twenty-five times a second. Type another under Words; the faint lines are the beam moving between letters."],
+    ["A note, imported", { gen: "figure", figure: "Path", figureRate: 30, display: "xy", persistence: "0.12",
+                           timebase: 5, pGoni: false,
+                           figPath: "M 30 80 a 12 9 -20 1 1 0.1 0 M 42 78 L 42 20 C 50 30 62 34 58 52" },
+     "An SVG path - an ellipse, a stem and a curved flag - drawn by the beam. Paste your own path's d under SVG, or choose a file."],
     // Short window, endless memory: you watch the beam draw it.
     ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3, display: "xy", persistence: "-1", timebase: 3 },
      "The heart three times a second, with endless persistence: watch the beam draw it."],
@@ -17793,6 +18117,7 @@ function generatorFromPanel(set) {
   set("just", el.tuneJust.getAttribute("aria-checked") === "true");
   set("phase", Number(el.phase.value) * Math.PI / 180);
   set("figure", el.figure.value);
+  set("figPath", figurePathFor(el.figure.value));
   set("detail", Number(el.detail.value));
   set("figureRate", Number(el.figureRate.value));
   set("swingRate", Number(el.swingRate.value) / 10);

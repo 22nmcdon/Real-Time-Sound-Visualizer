@@ -2743,3 +2743,51 @@ Lissajous knot among the solids.
   frequencies was still a closed loop of 210 edges with a picture of its
   own; the check computes the (3, 2, 7) curve independently now and holds
   every point to it. 14 of 14 killed.
+
+**Text and imported drawings (Stage L).** Two more figures: *Text*, a word
+of up to twenty-four characters in single strokes, and *SVG path*, a
+path's `d` pasted in or read from a file.
+
+- *A font drawn for the page, not Hershey's.* The plan named Hershey's
+  single-stroke fonts, and their data was not to hand; this is one in their
+  spirit, every glyph a few strokes on a grid four wide and six tall, round
+  letters as octagons. Capitals, digits and a little punctuation; lower case
+  is drawn as capitals, anything else as a space.
+- *The beam travels between strokes; it does not jump.* A pen lifts and a
+  beam cannot, so between strokes it moves at eight times its drawing speed
+  and back to the start at the end of the lap. A jump would be a step in
+  the signal every lap. The cost is that the travel is drawn, faintly, and
+  builds into lines between letters at long persistence; a real scope would
+  blank the beam, and a pair of audio channels has no third to blank with.
+  Measured, it costs little: a word at 40 Hz is -89 dB, and at 200 -62,
+  which is held to the solids' floor because a word turns forty corners a
+  lap to a star's five.
+- *The points travel as plain arrays.* The worklet's first settings are
+  copied through JSON, which turns a typed array into an object of numbered
+  keys, so the compiled drawing is `{ xy, at }` of ordinary arrays - which
+  survive both that and `postMessage`.
+- *The path reader is a cursor over the text, not a split.* The grammar
+  allows "1.5.5" for two numbers and an arc's two flags written "011", and
+  a split on spaces reads each as one number. Every command is read, arcs by
+  the specification's own endpoint-to-centre conversion; what cannot be read
+  is refused with the reason, and the last drawing stays.
+- *A file is read by the browser's parser and never shown.* An SVG can carry
+  script; `DOMParser` never runs it and nothing puts the file into the page.
+  Only `path` elements are read, all of them, as one drawing.
+- *The first checks of the traversal had my arithmetic wrong, not the
+  page's.* The expected lap fractions used a travel of the square root of
+  two where the travel back was a unit; the arc's middle was asked to stand
+  past 0.5 when a half circle scaled to fit stands at exactly 0.475; and a
+  path's point count was remembered from another path. Each is written out
+  from the geometry now, and the arc's check also says which side a sweep of
+  one takes.
+- *The mutation pass left six of twenty-six, and three were fixtures that
+  could not show the effect* - the rule this file keeps relearning. A cubic
+  whose first control point sat at x = 0, so a wrong coefficient on it
+  multiplied nothing; a smooth quadratic checked for symmetry, which
+  survives re-centring whether or not the second hump is right; and a
+  relative `v` taken at y = 0, where relative and absolute are the same
+  point. Each is now a fixture off zero held to exact values. The other
+  three were untested paths - a relative move's further pairs, radii too
+  small to reach their end, and a new generator built from the panel - and
+  have checks of their own. 26 of 26.

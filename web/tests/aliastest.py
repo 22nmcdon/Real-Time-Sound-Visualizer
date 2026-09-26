@@ -211,6 +211,28 @@ with sync_playwright() as pw:
       el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
     }""", 200, -70)
 
+    # Text and an imported drawing: strokes with fast travel between them,
+    # the one kind of figure whose path has anything like a jump in it. The
+    # travel is continuous, not a step, and measured it costs little: a word
+    # at 40 is -89 dB and a drawing -87, held to the figures' -70. At 200 a
+    # word is -62 - worse than the star, since "SCOPE" turns forty corners a
+    # lap to the star's five, and held to the -42 the solids are, whose
+    # corners it has more in common with.
+    drawn("a word written 40 times a second", """() => {
+      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
+      el.figure.value = 'Text'; el.figure.dispatchEvent(new Event('change'));
+      setFigureText('SCOPE'); syncFigurePath();
+      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 40, -70)
+    drawn("a word written 200 times a second", """() => {
+      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 200, -42)
+    drawn("an imported drawing at 40", """() => {
+      el.figure.value = 'Path'; el.figure.dispatchEvent(new Event('change'));
+      setFigurePathD('M 30 80 a 12 9 -20 1 1 0.1 0 M 42 78 L 42 20 C 50 30 62 34 58 52'); syncFigurePath();
+      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 40, -70)
+
     drawn("a cube tumbling at 40", """() => {
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
       el.model.value = 'Cube'; el.model.dispatchEvent(new Event('change'));
