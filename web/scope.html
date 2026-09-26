@@ -3796,6 +3796,13 @@ body[data-view="bench"] .dock  { order: 3; }
         <span>A path written into the two channels, so X&ndash;Y traces a picture. Slow the
         trace rate right down and you watch the beam draw it.
         <br><br>
+        <i>Detail</i> is whatever the figure has a count of: the sides of a <i>Polygon</i>,
+        the points of a <i>Star</i>, the petals of a <i>Rose</i> (a fraction makes it turn),
+        the loops of a <i>Spiral</i> or a <i>Spirograph</i>. The circle, the square, the heart,
+        the infinity sign and the <i>Butterfly</i> have no count and ignore it. The butterfly
+        is Temple Fay's curve, twelve loops of wing drawn in one closed stroke; it is the
+        longest path of them all, so slow it down to follow it.
+        <br><br>
         <i>Trace the figure at the note's pitch</i>, in the Keyboard section, plays it: a key
         sets the trace rate to the note's own frequency, A3 tracing the figure 220 times a
         second, and the envelope starts and stops it. The figure's shape is then its timbre:
@@ -3809,7 +3816,14 @@ body[data-view="bench"] .dock  { order: 3; }
         channels &mdash; which is how oscilloscope music has always done 3D. Nothing carries
         the depth but the shape of the projection. <i>Spin X/Y/Z</i> are turns per second;
         set them to values that are not simple multiples of each other or the solid returns
-        to the same attitude every few seconds and reads as a loop.</span></li>
+        to the same attitude every few seconds and reads as a loop.
+        <br><br>
+        Seven solids: the cube, the tetrahedron, the octahedron, the dodecahedron and the
+        icosahedron &mdash; the five regular ones &mdash; and a torus and a knot. The knot is
+        a Lissajous figure given a third axis, which makes it a real knot rather than a curve
+        crossing itself; turn it and it never comes undone. The torus has 144 edges and the
+        knot 210 segments, so at the usual trace rate each edge is a few samples and they draw
+        as a haze; slow the rate to see them.</span></li>
 
       <li><b>Why some edges get drawn twice</b>
         <span>The beam draws one unbroken line, and a cube is twelve separate edges meeting
@@ -3818,7 +3832,10 @@ body[data-view="bench"] .dock  { order: 3; }
         permanent chord across the middle of the solid: at infinite persistence it never
         fades. A doubled line costs nothing, because drawing the same pixels twice looks
         identical. The octahedron meets four edges at every corner, so it needs no retracing
-        at all.</span></li>
+        at all, and nor do the torus, where every corner meets four, or the knot, which is
+        one closed line. The dodecahedron's twenty corners each meet three edges, so ten are
+        retraced; the icosahedron's twelve meet five, so six are. Each is the fewest any
+        unbroken route could manage.</span></li>
 
       <li><b>Every control that can be moved says so</b>
         <span>At the right-hand end of a slider: a small hollow ring means nothing is on
@@ -6655,7 +6672,8 @@ function decodeCC(text) {
    `detail` means whatever the figure needs it to - points on a star, petals
    on a rose, loops on a spirograph - which is one control rather than three
    that are blank most of the time. */
-const FIGURES = ["Circle", "Square", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph"];
+const FIGURES = ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph",
+                 "Butterfly"];
 
 function figureAt(name, t, detail) {
   const turn = t * 2 * Math.PI;
@@ -6667,6 +6685,16 @@ function figureAt(name, t, detail) {
       const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
       const [ax, ay] = corners[k % 4], [bx, by] = corners[(k + 1) % 4];
       return [ax + (bx - ax) * f, ay + (by - ay) * f];
+    }
+    case "Polygon": {
+      // The star's plain sibling: n corners joined in order, three at the
+      // least, so Detail is the number of sides.
+      const n = Math.max(3, Math.round(detail));
+      const seg = (t % 1) * n;
+      const k = Math.floor(seg), f = seg - k;
+      const a0 = k * 2 * Math.PI / n, a1 = (k + 1) * 2 * Math.PI / n;
+      return [Math.cos(a0) + (Math.cos(a1) - Math.cos(a0)) * f,
+              Math.sin(a0) + (Math.sin(a1) - Math.sin(a0)) * f];
     }
     case "Star": {
       // A star polygon: n points joined every `step`, which is what makes a
@@ -6705,6 +6733,23 @@ function figureAt(name, t, detail) {
       return [(1 - r) * Math.cos(turn) + r * Math.cos((1 - r) / r * turn),
               (1 - r) * Math.sin(turn) - r * Math.sin((1 - r) / r * turn)];
     }
+    case "Butterfly": {
+      /* Temple Fay's butterfly, r = e^cos(th) - 2 cos(4 th) - sin^5(th / 12),
+         once round is twelve half-turns of th, and it closes exactly: the
+         last term is sin(pi)^5 at the end, nought as at the start, so there
+         is no jump for the beam to make. Centred and scaled by its measured
+         extent - x within 2.9063, y from -1.807 to 3.130 - so it fills the
+         screen the way the circle does, and divided by 2.907 rather than
+         2.906, which left its widest point a ten-thousandth past full scale. The literals are here rather than
+         named because this function is copied into the worklet by its text
+         and must reach for nothing outside itself. Detail does nothing: the
+         curve has no count in it to change. Its path is fifty-seven times
+         the circle's length, so it is the figure with the most in it above
+         the trace rate - aliastest measures it at the fastest rate there is. */
+      const th = turn * 6;
+      const r = Math.exp(Math.cos(th)) - 2 * Math.cos(4 * th) - Math.pow(Math.sin(th / 12), 5);
+      return [Math.sin(th) * r / 2.907, (Math.cos(th) * r - 0.661) / 2.907];
+    }
     default:
       return [Math.cos(turn), Math.sin(turn)];
   }
@@ -6733,10 +6778,20 @@ function figureAt(name, t, detail) {
 
    Which edges to double is the classic route-inspection problem - pair up the
    odd vertices, duplicate a path between each pair, and the graph becomes
-   Eulerian. For three fixed solids the answer is four short tables rather than
-   a matching solver. That is also where the technique stops: an arbitrary mesh
-   would need Hierholzer plus a minimum-weight T-join, and if this ever grows
-   past a fixed list that is the rewrite.                                     */
+   Eulerian. For the first three solids the answer is three short tables
+   rather than a matching solver, and they are still written out below.
+
+   The list grew past them in Stage L, and the rewrite the old note promised
+   is `eulerRoute`: it pairs the odd vertices along single edges, doubles
+   those, and walks the result with Hierholzer's algorithm. Pairing along
+   single edges is not the general T-join - that would allow a path between a
+   pair - but it is optimal wherever a perfect matching of the odd vertices
+   exists among the edges, because no route can double fewer edges than half
+   the odd vertices. The dodecahedron and icosahedron both have one, which
+   the page checks by building them: it throws if there is none, rather than
+   drawing a solid with an edge missing. The torus and the knot need no pairs
+   at all - every vertex of a torus meets four edges and every point on a
+   curve two - so they are drawn without a single retrace.                  */
 
 const MODELS = [
   {
@@ -6762,6 +6817,99 @@ const MODELS = [
     route: [0,2,1,3,0,4,2,5,1,4,3,5,0],
   },
 ];
+
+/* A closed route over every edge, drawing none twice except those it must.
+   Deterministic - the same solid always gives the same route - because the
+   fingerprints in worklettest compare solids by what they draw. */
+function eulerRoute(count, edges) {
+  const degree = new Array(count).fill(0);
+  for (const [a, b] of edges) { degree[a]++; degree[b]++; }
+  const pair = (left) => {
+    if (left.length === 0) return [];
+    const a = left[0];
+    for (const [x, y] of edges) {
+      const b = x === a ? y : y === a ? x : -1;
+      if (b < 0 || !left.includes(b)) continue;
+      const rest = pair(left.filter((v) => v !== a && v !== b));
+      if (rest) return [[a, b]].concat(rest);
+    }
+    return null;
+  };
+  const doubled = pair(degree.map((d, v) => (d % 2 ? v : -1)).filter((v) => v >= 0));
+  if (!doubled) throw new Error("no way to pair this solid's odd corners along its edges");
+  const all = edges.concat(doubled);
+  const unused = all.map(() => true);
+  const at = Array.from({ length: count }, () => []);
+  all.forEach(([a, b], k) => { at[a].push(k); at[b].push(k); });
+  const stack = [0], route = [];
+  while (stack.length) {
+    const v = stack[stack.length - 1];
+    const k = at[v].find((e) => unused[e]);
+    if (k === undefined) { route.push(stack.pop()); continue; }
+    unused[k] = false;
+    stack.push(all[k][0] === v ? all[k][1] : all[k][0]);
+  }
+  return route.reverse();
+}
+
+// The edges of a regular solid: every pair of corners at the shortest distance.
+function nearestEdges(v) {
+  let least = Infinity;
+  for (let i = 0; i < v.length; i++) for (let j = i + 1; j < v.length; j++) {
+    least = Math.min(least, Math.hypot(v[i][0] - v[j][0], v[i][1] - v[j][1], v[i][2] - v[j][2]));
+  }
+  const edges = [];
+  for (let i = 0; i < v.length; i++) for (let j = i + 1; j < v.length; j++) {
+    const d = Math.hypot(v[i][0] - v[j][0], v[i][1] - v[j][1], v[i][2] - v[j][2]);
+    if (d < least * 1.001) edges.push([i, j]);
+  }
+  return edges;
+}
+
+function builtSolid(name, v, edges) {
+  return { name, v, edges, route: eulerRoute(v.length, edges) };
+}
+
+{
+  const g = (1 + Math.sqrt(5)) / 2, h = 1 / g;
+  const signs = [-1, 1];
+  /* The dodecahedron: twenty corners, each meeting three edges, so ten edges
+     are doubled and the lap is forty segments. */
+  const dodeca = [];
+  for (const x of signs) for (const y of signs) for (const z of signs) dodeca.push([x, y, z]);
+  for (const a of signs) for (const b of signs) {
+    dodeca.push([0, a * h, b * g], [a * h, b * g, 0], [a * g, 0, b * h]);
+  }
+  /* The icosahedron: twelve corners of five edges each, six doubled, thirty-
+     six segments. */
+  const icosa = [];
+  for (const a of signs) for (const b of signs) icosa.push([0, a, b * g], [a, b * g, 0], [a * g, 0, b]);
+  /* A torus as twelve rings of six: every vertex meets four edges, so the lap
+     is all 144 of them once each. Coarser than a torus wants, because every
+     segment is a few samples at a trace rate of forty and a finer mesh draws
+     as fuzz; slow the rate to see it drawn. */
+  const torus = [], torusEdges = [], M = 12, N = 6;
+  for (let i = 0; i < M; i++) for (let j = 0; j < N; j++) {
+    const u = i / M * 2 * Math.PI, w = j / N * 2 * Math.PI;
+    torus.push([(1 + 0.45 * Math.cos(w)) * Math.cos(u), (1 + 0.45 * Math.cos(w)) * Math.sin(u), 0.45 * Math.sin(w)]);
+    torusEdges.push([i * N + j, ((i + 1) % M) * N + j], [i * N + j, i * N + (j + 1) % N]);
+  }
+  /* A Lissajous knot, (3, 2, 7): a Lissajous figure given a third axis,
+     which is a real knot rather than a curve crossing itself. The plan had it
+     with the figures; it is here because a knot is a thing in three
+     dimensions, and only the solids can be turned to show it. 210 points, a
+     single closed loop, so its route is the loop. */
+  const knot = [], knotEdges = [], K = 210;
+  for (let i = 0; i < K; i++) {
+    const t = i / K * 2 * Math.PI;
+    knot.push([Math.cos(3 * t + 0.7), Math.cos(2 * t + 0.2), Math.cos(7 * t)]);
+    knotEdges.push([i, (i + 1) % K]);
+  }
+  MODELS.push(builtSolid("Dodecahedron", dodeca, nearestEdges(dodeca)),
+              builtSolid("Icosahedron", icosa, nearestEdges(icosa)),
+              builtSolid("Torus", torus, torusEdges),
+              builtSolid("Knot", knot, knotEdges));
+}
 
 // Scaled to a unit radius on the way in, so one normalisation constant covers
 // every model and the figure does not change size when you switch solids.
@@ -16863,6 +17011,11 @@ const PRESETS = [
      "A gear rolling inside a ring."],
     ["Heart", { gen: "figure", figure: "Heart", display: "xy", persistence: "0.12", timebase: 5 },
      "A heart, traced by the beam."],
+    ["Butterfly", { gen: "figure", figure: "Butterfly", figureRate: 20, display: "xy", persistence: "0.04",
+                    timebase: 5, pGoni: false },
+     "Temple Fay's butterfly curve, twenty times a second: its wings are twelve loops, and it closes without a jump."],
+    ["Hexagon", { gen: "figure", figure: "Polygon", detail: 6, display: "xy", persistence: "0.12", timebase: 5 },
+     "Six sides, forty times a second; Detail is the number of sides, three to twelve."],
     // Short window, endless memory: you watch the beam draw it.
     ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3, display: "xy", persistence: "-1", timebase: 3 },
      "The heart three times a second, with endless persistence: watch the beam draw it."],
@@ -16893,6 +17046,18 @@ const PRESETS = [
     ["Wobbling", { gen: "wireframe", model: "Octahedron", display: "xy", persistence: "0.12", timebase: 5,
                    pGoni: false, l0d: "tumble", l0r: 14, l0a: 70, l1d: "depth", l1r: 9, l1a: 60 },
      "An octahedron whose spin and perspective are both being pushed about."],
+    ["Dodecahedron", { gen: "wireframe", model: "Dodecahedron", spinX: 5, spinY: 11, display: "xy",
+                       persistence: "0.12", timebase: 5, pGoni: false },
+     "Twelve pentagons, turning. Every corner meets three edges, so ten are drawn twice and the rest once."],
+    ["Icosahedron", { gen: "wireframe", model: "Icosahedron", spinX: 9, spinY: 4, spinZ: 3, display: "xy",
+                      persistence: "0.12", timebase: 5, pGoni: false },
+     "Twenty triangles about three axes: the solid that looks most like a ball."],
+    ["Torus", { gen: "wireframe", model: "Torus", figureRate: 15, spinX: 6, spinY: 2, depth: 70, display: "xy",
+                persistence: "0.04", timebase: 5, pGoni: false },
+     "A ring of rings, traced fifteen times a second, every one of its 144 edges once and none twice."],
+    ["Lissajous knot", { gen: "wireframe", model: "Knot", figureRate: 20, spinX: 3, spinY: 7, depth: 60,
+                         display: "xy", persistence: "0.04", timebase: 5, pGoni: false },
+     "A Lissajous figure given a third axis, which makes it a real knot: turning, it never comes undone."],
   ], "generator"],
 
   /* J2: the drawings answering what is played. They set the generator and

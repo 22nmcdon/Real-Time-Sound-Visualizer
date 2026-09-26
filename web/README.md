@@ -2703,3 +2703,43 @@ oscillator can move the whole sound.
   something - which looks for a change in `state` - found it inert. It was
   not wired wrongly, but its base was the one destination base kept
   outside `state`, where the others (`state.rotate`, `state.lagMs`) live.
+
+**More figures and solids (Stage L).** A polygon and Temple Fay's butterfly
+among the figures; the dodecahedron, the icosahedron, a torus and a
+Lissajous knot among the solids.
+
+- *The routes are built now, not written out.* The first three solids'
+  routes were tables, and the comment above them promised a rewrite if the
+  list grew. `eulerRoute` pairs the odd corners along single edges, doubles
+  those edges and walks the result with Hierholzer's algorithm. That is not
+  the general T-join, which may double a path between a pair; it is optimal
+  wherever a perfect matching of the odd corners exists among the edges,
+  since no closed route can retrace fewer edges than half the odd corners,
+  and it throws where there is none rather than drawing a solid short of an
+  edge. The dodecahedron doubles ten edges and the icosahedron six; the
+  torus, all of whose corners meet four edges, and the knot, one closed
+  line, double none.
+- *The knot is a solid.* The plan put it with the figures, but a knot is
+  three-dimensional, and a figure is x and y alone; as a solid it turns, and
+  the perspective shows which strand passes over which.
+- *The butterfly closes exactly.* Its last term is sin(th / 12) to the
+  fifth, nought at both ends of twelve half-turns. It is scaled by its
+  measured extent, and the first divisor, 2.906, left its widest point a
+  ten-thousandth past full scale; it is 2.907, and the check requires every
+  point inside.
+- *A figure check that could not see a misspelling.* The worklet harness
+  checked each figure was finite and loud, and every figure peaks at the same
+  amplitude - while a name `figureAt` does not know falls through to the
+  circle. Figures carry a fingerprint now, as the solids already did.
+- *And the same mistake again, on the page.* The first check that each new
+  solid draws its own picture compared windows of a spinning solid, so two
+  looks at the cube differed as much as two solids did, and a misspelt solid
+  that kept the cube passed. The solid is held still and measured over
+  exactly four laps, and the cube measured twice must agree with itself.
+- *Aliasing, measured.* The butterfly at 200 Hz is -96.7 dB, a smooth curve
+  with nothing to fold; the torus and the knot at 40 Hz are about -52.5,
+  better than the cube's corners. Each is held to its kind's existing floor.
+- *The mutation pass found the knot was any knot.* A knot of other
+  frequencies was still a closed loop of 210 edges with a picture of its
+  own; the check computes the (3, 2, 7) curve independently now and holds
+  every point to it. 14 of 14 killed.

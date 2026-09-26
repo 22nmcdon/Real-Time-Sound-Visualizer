@@ -201,10 +201,33 @@ with sync_playwright() as pw:
       el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
     }""", 200, -70)
 
+    # The butterfly is the longest path of any figure - fifty-seven times the
+    # circle's - so it has the most above its trace rate, and it is measured
+    # at the fastest rate there is. It is a smooth curve with no corner, and
+    # measured at -96.7 dB; held to the star's -70, the figures' floor.
+    drawn("a butterfly traced 200 times a second", """() => {
+      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
+      el.figure.value = 'Butterfly'; el.figure.dispatchEvent(new Event('change'));
+      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 200, -70)
+
     drawn("a cube tumbling at 40", """() => {
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
       el.model.value = 'Cube'; el.model.dispatchEvent(new Event('change'));
       el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 40, -42)
+
+    # The torus and the knot are the solids with the most segments a lap, 144
+    # and 210, and so the most corners a second for the beam to turn. Both
+    # measured near -52.5 dB, better than the cube, whose corners are
+    # sharper; held to the cube's -42, the solids' floor.
+    drawn("a torus tumbling at 40", """() => {
+      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
+      el.model.value = 'Torus'; el.model.dispatchEvent(new Event('change'));
+      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
+    }""", 40, -42)
+    drawn("a knot tumbling at 40", """() => {
+      el.model.value = 'Knot'; el.model.dispatchEvent(new Event('change'));
     }""", 40, -42)
 
     # The harmonograph's partials are two hertz apart, which no window can

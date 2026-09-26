@@ -127,7 +127,7 @@ try {
 
   node.port.onmessage({ data: { tone: { mode: "wireframe" } } });
   report.models = {};
-  for (const model of ["Cube", "Tetrahedron", "Octahedron"]) {
+  for (const model of ["Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"]) {
     node.port.onmessage({ data: { tone: { model } } });
     node.port.onmessage({ data: { reswing: true } });   // from the same attitude
     let worst = 0, finite = true, fingerprint = 0;
@@ -150,18 +150,22 @@ try {
 
   node.port.onmessage({ data: { tone: { mode: "figure" } } });
   report.figures = {};
-  for (const figure of ["Circle", "Square", "Star", "Rose", "Heart",
-                        "Infinity", "Spiral", "Spirograph"]) {
+  for (const figure of ["Circle", "Square", "Polygon", "Star", "Rose", "Heart",
+                        "Infinity", "Spiral", "Spirograph", "Butterfly"]) {
     node.port.onmessage({ data: { tone: { figure } } });
-    let worst = 0, finite = true;
+    let worst = 0, finite = true, fingerprint = 0;
     for (let round = 0; round < 20; round++) {
       node.process([], [out], {});
       for (let i = 0; i < 128; i++) for (const channel of out) {
         if (!Number.isFinite(channel[i])) finite = false;
         worst = Math.max(worst, Math.abs(channel[i]));
+        fingerprint += channel[i] * channel[i];
       }
     }
-    report.figures[figure] = { worst, finite };
+    /* A fingerprint, as the solids have. Every figure peaks at the same
+       amplitude, and a name `figureAt` does not know falls through to the
+       circle - so a misspelt figure was "finite and loud" and nothing more. */
+    report.figures[figure] = { worst, finite, print: Math.round(fingerprint * 1e6) / 1e6 };
   }
 
   /* The quantiser, in the thread it runs in: 225 Hz is 0.39 of a semitone

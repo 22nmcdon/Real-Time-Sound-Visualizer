@@ -59,6 +59,7 @@ SUITES = [
     ("arp", [sys.executable, "arptest.py"], "the arpeggiator: the orders, struck steps, the hands kept, the tempo, the dyad's intervals, letting go"),
     ("threshold", [sys.executable, "thresholdtest.py"], "thresholds and Pluck: rising through a level, hysteresis, the gap, loops refused, the note struck and sent"),
     ("macro", [sys.executable, "macrotest.py"], "macros and the morph between sliders: fan-out, names in codes, a geometric pitch, menus left alone, the hand respected, a macro on the fader"),
+    ("solid", [sys.executable, "solidtest.py"], "the new figures and solids: every route closed along its edges with the fewest retraces, the polygon and the butterfly exact"),
     ("record", [sys.executable, "recordtest.py"], "Record: the clip is the screen and the speakers, across a change of source, an unheard input once, its length written in"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),

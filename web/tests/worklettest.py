@@ -107,6 +107,9 @@ with sync_playwright() as pw:
               all(f["finite"] and f["worst"] > 0.01
                   for f in report["figures"].values()),
               str({k: round(v["worst"], 3) for k, v in report["figures"].items()}))
+        fprints = [f["print"] for f in report["figures"].values()]
+        check("and each figure is its own, not the circle under another name",
+              len(set(fprints)) == len(fprints), str(dict(zip(report["figures"], fprints))))
         check("and it posts its samples back rather than only playing them",
               report["posted"] > 0, str(report["posted"]))
         q = report["quantised"]
