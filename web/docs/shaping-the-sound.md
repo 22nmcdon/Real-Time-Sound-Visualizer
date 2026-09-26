@@ -150,9 +150,13 @@ could change the *timbre* of the waveform rather than its pitch or level.
 
 ### G2 · shapes you make
 
-- **Draw a cycle.** A pane where one period is drawn with the pointer, stored as
+- **Draw a cycle. Built.** A pane where one period is drawn with the pointer, stored as
   a 2048-point table and band-limited like any wavetable. The picture literally
-  becomes the sound.
+  becomes the sound. *Drawn cycle* on the Shape menu, drawn on the Shape tab.
+  What is drawn is 256 points - all a pane that wide can take - so 127
+  harmonics; they are resynthesised into eight 2048-point tables, each with
+  half the harmonics of the one before, and the note reads whichever has
+  nothing over Nyquist, crossfading as it climbs.
 - **Grab a cycle.** With a MIDI note held the input's period is *known*, not
   estimated — the note-as-truth work already exists. One period of the Nord,
   captured at a zero crossing, becomes a wavetable. Resynthesis in one button.
@@ -794,7 +798,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   not built yet, so this came first. *Your drawing* on the Figure menu: strokes
   drawn with the pointer on the X–Y screen, taken back through the screen's
   mapping so the beam retraces them exactly where they were drawn.
-- **Presets, rebuilt. Built.** 163 presets in twenty-three sections, in a browser
+- **Presets, rebuilt. Built.** 164 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

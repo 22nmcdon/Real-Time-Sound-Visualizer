@@ -107,22 +107,29 @@ try {
   // `waveAt` and the band-limiting is only on three of them.
   node.port.onmessage({ data: { tone: { mode: "wave" } } });
   report.shapes = {};
-  for (const shape of ["sine", "harmonic", "triangle", "square", "ramp", "drawbars", "morph", "noise"]) {
-    node.port.onmessage({ data: { tone: { shape } } });
+  /* G2's drawn cycle needs its tables, which the main thread builds: a small
+     one is handed over here, a cycle that rises and falls in straight lines,
+     so the branch that reads them runs in this thread. */
+  const CYCLE = { most: 2, levels: [[0, 1, 0, -1], [0, 0.7, 0, -0.7]] };
+  for (const shape of ["sine", "harmonic", "triangle", "square", "ramp", "drawbars", "morph", "drawn", "noise"]) {
+    node.port.onmessage({ data: { tone: { shape, cycle: shape === "drawn" ? CYCLE : null } } });
     /* Cleared first. The block is shared between shapes, and a shape whose
        branch throws writes nothing into it - so the samples it was judged on
        were the previous shape's, and a drawbars branch with its table
        missing from the module passed as a saw. */
     for (const channel of out) channel.fill(0);
-    let worst = 0, finite = true;
+    let worst = 0, finite = true, print = 0;
     for (let round = 0; round < 20; round++) {
       node.process([], [out], {});
       for (let i = 0; i < 128; i++) for (const channel of out) {
         if (!Number.isFinite(channel[i])) finite = false;
         worst = Math.max(worst, Math.abs(channel[i]));
+        print += channel[i] * channel[i];
       }
     }
-    report.shapes[shape] = { worst, finite };
+    // A fingerprint, for the drawn cycle: a branch missing from the module
+    // falls through to the default, and a sine peaks where the cycle does.
+    report.shapes[shape] = { worst, finite, print: Math.round(print * 1e6) / 1e6 };
   }
 
   node.port.onmessage({ data: { tone: { mode: "wireframe" } } });

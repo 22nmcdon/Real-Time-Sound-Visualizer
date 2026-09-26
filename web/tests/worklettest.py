@@ -89,6 +89,9 @@ with sync_playwright() as pw:
               all(sh["finite"] and sh["worst"] > 0.01
                   for sh in report["shapes"].values()),
               str({k: round(v["worst"], 3) for k, v in report["shapes"].items()}))
+        check("and the drawn cycle is its tables, not a sine by default",
+              report["shapes"]["drawn"]["print"] != report["shapes"]["sine"]["print"],
+              "%s against %s" % (report["shapes"]["drawn"]["print"], report["shapes"]["sine"]["print"]))
         # Each of these is a table lookup of its own, and the model lookup is
         # the one that was missing from the module: `MODEL_BY_NAME` is a Map,
         # which `JSON.stringify` turns into `{}`.

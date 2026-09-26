@@ -285,6 +285,9 @@ select, input[type="number"] {
   background: var(--paper); border: 1px solid var(--line); border-radius: 1px;
   padding: 2px 6px; font-family: var(--sans); font-size: 12.5px; color: var(--charcoal); }
 #morphPos { min-width: 60px; }
+/* The drawn cycle's pane: the paper, a line through the middle, the cycle. */
+.cycle-canvas { display: block; width: 100%; height: 84px; background: var(--paper);
+  border: 1px solid var(--line); touch-action: none; cursor: crosshair; }
 .cc-name { flex: 1 1 auto; min-width: 0; background: var(--paper); border: 1px solid var(--line);
   border-radius: 1px; padding: 3px 6px; font-family: var(--sans); font-size: 12.5px;
   color: var(--charcoal); }
@@ -1597,6 +1600,7 @@ body[data-view="bench"] .dock  { order: 3; }
                     <option value="ramp">Saw</option>
                     <option value="drawbars">Drawbars</option>
                     <option value="morph">Morph</option>
+                    <option value="drawn">Drawn cycle</option>
                     <option value="noise">Noise</option>
                   </select>
                 </div>
@@ -1614,6 +1618,13 @@ body[data-view="bench"] .dock  { order: 3; }
                 <div class="grow">
                   <input type="range" id="morph" min="0" max="300" value="150">
                   <span class="reading" id="morphValue">tri&rarr;saw</span>
+                </div>
+              </div>
+              <div class="menu-row" id="cycleGoRow" data-layer="b" hidden>
+                <span class="menu-label">Cycle</span>
+                <div class="grow">
+                  <button type="button" class="link-btn" id="cycleGo"
+                          title="The drawn cycle, on the Shape tab">Draw it &rsaquo;</button>
                 </div>
               </div>
               <div class="menu-row" id="barsGoRow" data-layer="b" hidden>
@@ -2091,6 +2102,21 @@ body[data-view="bench"] .dock  { order: 3; }
               <i>Clipping</i> verdict stay on the signal either way: one is a modulation
               source and would feed back into the picture, and the other is a claim about the
               input.</p>
+          </div>
+
+          <!-- G2: one period, drawn. Shown only while it is the shape: the
+               Shape tab has a dozen pixels to spare with a rack of six, and a
+               pane nobody is using would take more than that. -->
+          <div class="menu-group" id="cycleGroup" data-home="bench" data-tab="shape" hidden>
+            <span class="menu-title">Drawn cycle</span>
+            <canvas id="cycleCanvas" class="cycle-canvas" aria-label="One cycle of the wave: draw on it"></canvas>
+            <div class="menu-row">
+              <span class="menu-label"></span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="cycleSine">Sine</button>
+                <button type="button" class="link-btn caps" id="cycleSmooth">Smooth</button>
+              </div>
+            </div>
           </div>
 
           <div class="menu-group" id="barsGroup" data-home="bench" data-tab="shape">
@@ -3712,7 +3738,15 @@ body[data-view="bench"] .dock  { order: 3; }
 
       <li><b>Waveform</b>
         <span>Sine, square, triangle, saw, noise, a sine with a third harmonic,
-        drawbars and morph. The <i>interval</i> sets the right channel against the left.
+        drawbars, morph and a cycle you draw. The <i>interval</i> sets the right channel
+        against the left.
+        <br><br>
+        <i>Drawn cycle</i> is one period of the wave, drawn with the pointer in the pane on
+        the <i>Shape</i> tab: whatever you draw is what you hear, and what the trace shows.
+        <i>Sine</i> starts again and <i>Smooth</i> rounds the corners. It keeps every
+        harmonic under the top of the audible range at any pitch, so a sharp drawing is
+        bright low down and gentler high up, as a real instrument is, and never gains the
+        whistles a naive wavetable does.
         <br><br>
         <i>Morph</i> is one slider through sine, triangle, saw and square, crossfading
         between each pair, so the shape is something a source can move: put an oscillator,
@@ -4184,6 +4218,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "figTextRow", "figText", "figPathRow", "figPathD", "figPathFile", "figPathNote",
                   "figDrawRow", "figDrawOn", "figDrawClear",
                   "inputFrom", "gen2Rows", "gen2Figure", "gen2Rate", "gen2RateValue",
+                  "cycleGoRow", "cycleGo", "cycleGroup", "cycleCanvas", "cycleSine", "cycleSmooth",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
@@ -4385,6 +4420,57 @@ const cycleOf = (phase) => {
   return t < 0 ? t + 1 : t;
 };
 
+/* --- a drawn cycle (G2) --------------------------------------------------------
+   One period drawn with the pointer, kept as CYCLE_POINTS values and played as
+   a wavetable. The plan asked for a 2048-point table; what is drawn is 256
+   points, because a pane some 250 pixels wide cannot draw more, and 2048
+   points of a 256-point drawing are only its 256 again with interpolation in
+   between. So it holds 127 harmonics, not 1024: a drawing's sharpest corner is
+   rounded at the bottom of the keyboard, and at 110 Hz its top harmonic is
+   14 kHz. The tables it plays from are 2048 points each, so reading between
+   their points costs nothing a listener could find.
+
+   Band-limited by resynthesis. The drawing's harmonics are measured once,
+   when a stroke ends, and eight tables are built from them: every harmonic,
+   then half, a quarter, and so on to the fundamental alone. `waveAt` reads
+   whichever has nothing over Nyquist at the note being played. Built on the
+   main thread and sent: building in the worklet would be a few milliseconds
+   in a thread whose whole block is three. */
+const CYCLE_POINTS = 256;
+const CYCLE_TABLE = 2048;
+function cycleTables(points) {
+  const n = points.length, top = n / 2 - 1;          // leave out the Nyquist term, which has no phase
+  const a = new Float64Array(top + 1), b = new Float64Array(top + 1);
+  for (let k = 1; k <= top; k++) {
+    let sa = 0, sb = 0;
+    for (let i = 0; i < n; i++) {
+      const th = 2 * Math.PI * k * i / n;
+      sa += points[i] * Math.cos(th);
+      sb += points[i] * Math.sin(th);
+    }
+    a[k] = 2 * sa / n; b[k] = 2 * sb / n;
+  }
+  const most = n / 2, levels = [];
+  for (let limit = most; limit >= 1; limit >>= 1) {
+    const table = new Array(CYCLE_TABLE);
+    const upto = Math.min(top, limit);
+    for (let i = 0; i < CYCLE_TABLE; i++) {
+      let v = 0;
+      const th = 2 * Math.PI * i / CYCLE_TABLE;
+      for (let k = 1; k <= upto; k++) v += a[k] * Math.cos(k * th) + b[k] * Math.sin(k * th);
+      table[i] = v;
+    }
+    levels.push(table);
+  }
+  /* One scale for every table, the richest's peak, so a note does not change
+     level as it climbs into a sparser one; and no DC, which the loop above
+     never put in. */
+  let peak = 0;
+  for (const v of levels[0]) peak = Math.max(peak, Math.abs(v));
+  if (peak > 0) for (const table of levels) for (let i = 0; i < table.length; i++) table[i] /= peak;
+  return { most, levels };
+}
+
 /* The drawbars: nine sine partials at the footages of a tonewheel organ, in
    the order they sit on the instrument. The 8' bar is the note played; 16'
    is an octave under it and 5 1/3' a fifth above that, so two of the nine
@@ -4507,11 +4593,37 @@ function svfStep(s, x, g, k, type) {
    before the band-limiting arrived.
 
    `bars` is the drawbars' registration as weights (`drawbarWeights`), and
-   only the drawbars read it; `morph` is the morph's position, nought to three,
-   and only the morph reads that. */
+   only the drawbars read it - or, for a drawn cycle, its tables
+   (`cycleTables`); `morph` is the morph's position, nought to three, and only
+   the morph reads that. */
 function waveAt(shape, phase, step, bars, morph) {
   const dt = step > 0 ? Math.min(0.49, step) : 0;
   switch (shape) {
+    case "drawn": {
+      /* G2's drawn cycle, as a set of tables each holding half the harmonics
+         of the one before (`cycleTables`), read with the step: the richest
+         table whose top harmonic is under Nyquist, crossfaded towards the
+         next as the pitch rises, so that it has moved over entirely by the
+         moment its own top harmonic would reach Nyquist. Band-limited like
+         the drawbars, by leaving out what would fold, and without a step in
+         the sound as a note slides through the tables. No tables, a sine. */
+      const c = bars;
+      if (!c || !c.levels || !c.levels.length) return Math.sin(phase);
+      const t = cycleOf(phase), levels = c.levels, top = levels.length - 1;
+      let lo = 0, w = 0;
+      if (step > 0) {
+        const f = Math.log2(c.most * 2 * step);    // where the table with room for exactly Nyquist would be
+        lo = Math.max(0, Math.min(top, Math.ceil(f)));
+        w = lo < top ? Math.max(0, Math.min(1, f - lo + 1)) : 0;
+      }
+      const read = (tab) => {
+        const x = t * tab.length, i = Math.floor(x), fr = x - i;
+        const a = tab[i % tab.length], b2 = tab[(i + 1) % tab.length];
+        return a + (b2 - a) * fr;
+      };
+      const a = read(levels[lo]);
+      return w > 0 ? a + (read(levels[lo + 1]) - a) * w : a;
+    }
     case "sine":     return Math.sin(phase);
     case "triangle": {
       const t = cycleOf(phase);
@@ -7554,6 +7666,7 @@ function makeGeneratorCore(rate, slots, lfos) {
        second generator in this core - and that generator's figure, rate in
        hertz and size. */
     inputFrom: "live", gen2Figure: "Circle", gen2Rate: 110, gen2Amp: 0.5,
+    cycle: null,             // G2: the drawn cycle's tables, from `cycleTables`
     /* The pitched harmonograph (J2): the pendulums swing at the note's pitch
        rather than at `swingRate`, and die away over `ringMs` - a time
        constant, not `decay`'s per-second rate, because a pluck and a drawing
@@ -8771,7 +8884,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       const detail = tone.detail + genMod[4] * 4;
       const tumble = tone.spinRate * Math.pow(3, genMod[5]);
       const depth = Math.max(0, Math.min(1, tone.depth + genMod[6] * 0.5));
-      const bars = tone.shape === "drawbars" ? registration(tone, barsA) : null;
+      const bars = tone.shape === "drawbars" ? registration(tone, barsA) : tone.shape === "drawn" ? tone.cycle : null;
       // `|| 0` for a core built with fewer slots, as with the bars.
       const morphPush = (genMod[MORPH_SLOT] || 0) * 1.5;
       const morph = Math.max(0, Math.min(3, tone.morph + morphPush));
@@ -8944,7 +9057,8 @@ function makeGeneratorCore(rate, slots, lfos) {
       /* Layer B, against the same modulation this sample already summed. */
       let bhl = 0, bhr = 0;
       if (layered) {
-        const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : null;
+        // One drawn cycle for the page: layer B draws with layer A's.
+        const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : toneB.shape === "drawn" ? tone.cycle : null;
         const morphOfB = Math.max(0, Math.min(3, toneB.morph + morphPush));
         if (vxB.shaping) {
           setShaping(toneB, (genMod[DRIVE_SLOT] || 0) * 0.5, (genMod[FOLD_SLOT] || 0) * 0.5);
@@ -15288,6 +15402,12 @@ function syncBars() {
   const heard = wave && chosen;
   el.morphRow.hidden = !(wave && el.shape.value === "morph");
   el.barsGoRow.hidden = !heard;
+  const drawnHeard = wave && el.shape.value === "drawn";
+  el.cycleGoRow.hidden = !drawnHeard;
+  if (el.cycleGroup.hidden === drawnHeard) {
+    el.cycleGroup.hidden = !drawnHeard;
+    if (drawnHeard) requestAnimationFrame(paintCycle);
+  }
   el.barsGo.textContent = formatRegistration(parseRegistration(el.bars.value)) + " \u203a";
   el.barsGroup.toggleAttribute("data-idle", !heard);
   el.barsStateRow.hidden = heard;
@@ -16650,6 +16770,8 @@ const DEFAULTS = {
   inputMode: 0, inputDepth: 50,
   // Additive: a code from before the second generator takes its input live.
   inputFrom: "live", gen2Figure: "Circle", gen2Rate: 110,
+  // Additive: a code from before the drawn cycle draws a sine with it.
+  cycle: "",
   /* The envelope, in the units its sliders use. New fields rather than
      changed ones, so a code written before the generator could be played
      simply has none of them, gets these, and sounds and draws what it always
@@ -16778,6 +16900,9 @@ function snapshot() {
     swingDrive: Number(el.swingDrive.value),
     inputMode: Number(el.inputMode.value), inputDepth: Number(el.inputDepth.value),
     inputFrom: genInput.from, gen2Figure: el.gen2Figure.value, gen2Rate: Number(el.gen2Rate.value),
+    // Only once drawn: a sine says nothing.
+    cycle: drawnCycle.points.every((v, i) => Math.abs(v - Math.sin(2 * Math.PI * i / CYCLE_POINTS)) < 1 / 254)
+      ? "" : encodeCycle(drawnCycle.points),
     detune: Number(el.detune.value),
     atk: Number(a("envAttack")), dec: Number(a("envDecay")),
     sus: Number(a("envSustain")), rel: Number(a("envRelease")),
@@ -16891,6 +17016,9 @@ function restore(partial) {
   el.inputMode.value = String([0, 1, 2, 3].includes(s.inputMode) ? s.inputMode : 0);
   el.inputDepth.value = String(s.inputDepth);
   genInput.from = s.inputFrom === "gen2" ? "gen2" : "live";
+  drawnCycle.points = decodeCycle(s.cycle) || drawnCycle.points.map((_, i) => Math.sin(2 * Math.PI * i / CYCLE_POINTS));
+  cycleSend();
+  paintCycle();
   el.gen2Figure.value = FIGURES.includes(s.gen2Figure) && !["Text", "Path", "Drawn"].includes(s.gen2Figure)
     ? s.gen2Figure : "Circle";
   el.gen2Rate.value = String(Math.round(Math.max(1, Math.min(1000, Number(s.gen2Rate) || 110))));
@@ -17255,6 +17383,9 @@ const PRESETS = [
      "A square's edge, magnified until the ripple of its band-limiting shows."],
     ["Noise", { shape: "noise", display: "spect", span: "5", timebase: 4 },
      "Every frequency at once: a flat grey wash across the spectrogram."],
+    // G2: a cycle drawn by hand - here a rounded wave with a lean to it.
+    ["A drawn cycle", { shape: "drawn", freq: 165, timebase: 4, cycle: "JSktMTQ3Oj1AQ0VHSUtNTk9QUVJTU1NTU1NTUlJRUE9OTUxLSklHRkVEQkFAPz08Ozo5ODc3NjU0NDMzMjIyMjExMTExMTExMjIyMjIyMjIyMjIyMjIyMjExMTAwLy4uLSwrKikoJyYkIyIgHx0cGhkXFhQTERAODQwKCQcGBQQCAQD//v38/Pv6+fn49/f29vX19PTz8/Ly8fDw7+7u7ezr6unn5uXj4uDe3NrY1tTSz83KyMXDwL26uLWyr6yqp6Sin5yamJaUkpCOjYuKiYiIiIeHiIiJiouMjpCSlJaZnJ+ipqmtsbW5vsLHzNDV2t/k6e7z+P0CBgsQFBkdIQ==" },
+     "One period drawn by hand and played as a wave: open Shape and draw over it, or press Sine to start again. The tables keep every harmonic under Nyquist at any pitch."],
   ], "generator"],
 
   ["Organ", [
@@ -18384,6 +18515,7 @@ function generatorFromPanel(set) {
   set("inputFrom", genInput.from);
   set("gen2Figure", el.gen2Figure.value);
   set("gen2Rate", Number(el.gen2Rate.value));
+  set("cycle", drawnCycle.tables);
   set("detune", Number(el.detune.value) / 10000);
   // The same table the handlers use, so a new generator is built with what
   // the sliders say rather than with the core's own defaults.
@@ -19388,6 +19520,96 @@ el.morph.addEventListener("input", () => {
 
 // To the 8' bar, which is the note, and brings the Shape tab with it.
 el.barsGo.addEventListener("click", () => showControl("bar2"));
+
+/* The drawn cycle's pane. Drawing sets the points under the pointer, and the
+   ones between two moves, so a quick stroke leaves no gaps; the tables are
+   rebuilt a few times a second while drawing, so the note follows the pen,
+   and once more when it lifts. */
+const drawnCycle = { points: Array.from({ length: CYCLE_POINTS }, (_, i) => Math.sin(2 * Math.PI * i / CYCLE_POINTS)),
+                     tables: null, last: null, sent: 0 };
+function cycleSend() {
+  drawnCycle.tables = cycleTables(drawnCycle.points);
+  genSet("cycle", drawnCycle.tables);
+  genSet("cycle", drawnCycle.tables, 1);
+}
+function paintCycle() {
+  const canvas = el.cycleCanvas;
+  const box = canvas.getBoundingClientRect();
+  if (box.width === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(box.width * dpr); canvas.height = Math.round(box.height * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = box.width, h = box.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = ink.line || "#ccc"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+  ctx.strokeStyle = ink["blush-deep"]; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  drawnCycle.points.forEach((v, i) => {
+    const x = (i + 0.5) / CYCLE_POINTS * w, y = h / 2 - v * (h / 2 - 3);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+function cycleAt(event) {
+  const box = el.cycleCanvas.getBoundingClientRect();
+  const i = Math.max(0, Math.min(CYCLE_POINTS - 1, Math.floor((event.clientX - box.left) / box.width * CYCLE_POINTS)));
+  const v = Math.max(-1, Math.min(1, 1 - 2 * (event.clientY - box.top) / box.height));
+  return [i, v];
+}
+function cyclePaintStroke(event) {
+  const [i, v] = cycleAt(event);
+  const [i0, v0] = drawnCycle.last || [i, v];
+  const from = Math.min(i0, i), to = Math.max(i0, i);
+  for (let k = from; k <= to; k++) {
+    const f = to === from ? 1 : (k - i0) / (i - i0);
+    drawnCycle.points[k] = v0 + (v - v0) * f;
+  }
+  drawnCycle.last = [i, v];
+  paintCycle();
+  if (performance.now() - drawnCycle.sent > 120) { drawnCycle.sent = performance.now(); cycleSend(); }
+}
+el.cycleCanvas.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  el.cycleCanvas.setPointerCapture(event.pointerId);
+  drawnCycle.last = null;
+  cyclePaintStroke(event);
+});
+el.cycleCanvas.addEventListener("pointermove", (event) => { if (drawnCycle.last) cyclePaintStroke(event); });
+const cycleLift = () => { if (!drawnCycle.last) return; drawnCycle.last = null; cycleSend(); };
+el.cycleCanvas.addEventListener("pointerup", cycleLift);
+el.cycleCanvas.addEventListener("pointercancel", cycleLift);
+el.cycleSine.addEventListener("click", () => {
+  drawnCycle.points = drawnCycle.points.map((_, i) => Math.sin(2 * Math.PI * i / CYCLE_POINTS));
+  paintCycle(); cycleSend();
+});
+// Each point to the mean of itself and its neighbours, round the cycle: the
+// corners soften, and the top harmonics with them.
+el.cycleSmooth.addEventListener("click", () => {
+  const p = drawnCycle.points, n = p.length;
+  drawnCycle.points = p.map((v, i) => (p[(i + n - 1) % n] + 2 * v + p[(i + 1) % n]) / 4);
+  paintCycle(); cycleSend();
+});
+el.cycleGo.addEventListener("click", () => showControl("cycleCanvas"));
+/* In a setup code: the 256 points, a byte each, in base 64 - 344 characters.
+   Nought is a sine, which is also what a code from before this means. */
+function encodeCycle(points) {
+  const bytes = new Uint8Array(points.length);
+  points.forEach((v, i) => { bytes[i] = (Math.round(Math.max(-1, Math.min(1, v)) * 127) + 256) % 256; });
+  let text = "";
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return btoa(text);
+}
+function decodeCycle(text) {
+  if (typeof text !== "string" || !text) return null;
+  try {
+    const raw = atob(text);
+    if (raw.length !== CYCLE_POINTS) return null;
+    return Array.from(raw, (ch) => { const b = ch.charCodeAt(0); return (b > 127 ? b - 256 : b) / 127; });
+  } catch (error) { return null; }
+}
+cycleSend();
 el.barsUse.addEventListener("click", () => {
   el.shape.value = "drawbars";
   el.shape.dispatchEvent(new Event("change"));

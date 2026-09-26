@@ -2871,3 +2871,43 @@ generator*, with its figure and its rate.
   device opened while heard, a new generator built from the panel, and the
   rate slider reaching the core. Each has a check seen to fail on its
   mutant; 16 of 16.
+
+**A drawn cycle (G2).** *Drawn cycle* on the Shape menu: one period drawn
+with the pointer in a pane on the Shape tab, played as a wave and shown as
+the trace.
+
+- *256 points, not the plan's 2048.* A pane some 250 pixels wide cannot
+  draw more, and 2048 points of a 256-point drawing are its 256 with
+  interpolation between. So it holds 127 harmonics: a sharp drawing is
+  rounded at the bottom of the keyboard, and at 110 Hz its top harmonic is
+  14 kHz. The tables it plays from are 2048 points each, so reading between
+  their points is inaudible.
+- *Band-limited by resynthesis, not by correction.* The drawing's harmonics
+  are measured once, when a stroke ends, and eight tables are built - all
+  the harmonics, then half, a quarter, down to the fundamental. The note
+  reads the richest with nothing over Nyquist and crossfades towards the
+  next as it climbs, moving over entirely by the time its top harmonic
+  would reach Nyquist, so a slide has no step. Measured, a drawn square
+  folds back at -99 dB at 440, 2000 and 4000 Hz, against -17 to -37 for the
+  richest table read everywhere; that is better than the corrected square,
+  because nothing is left to correct. Every table is scaled by the richest
+  one's peak, so a note keeps its level as it climbs into sparser ones.
+- *Built on the main thread and sent.* A few milliseconds of building in a
+  worklet whose block is three would be a gap in the sound; so the tables
+  travel, as plain arrays for the worklet's JSON-copied first settings.
+- *One drawn cycle for the page.* Layer B plays layer A's.
+- *The pane only when chosen.* The Shape tab has a dozen pixels to spare
+  with a rack of six, and a pane nobody was using would take more; with it
+  showing, the tallest column is 410 of 427.
+- *The worklet's shape check could not see a missing branch.* It asked
+  each shape to be finite and loud, and a drawn cycle falling through to
+  the default is a sine at the same peak; the shapes carry a fingerprint
+  now.
+- *A threshold I guessed.* Smooth was first held to cutting the largest
+  step below six tenths, and a drawn edge the mouse had already put a point
+  in the middle of fell only to 0.62. It is held to its rule instead: each
+  point becomes (left + 2 itself + right) / 4.
+- *The mutation pass left two of sixteen,* both untested paths: layer B's
+  drawn cycle and a new generator built from the panel. A third was killed
+  only by a crash - a code that decoded to nothing threw inside the check -
+  which now fails by name. 16 of 16.

@@ -63,6 +63,7 @@ SUITES = [
     ("text", [sys.executable, "texttest.py"], "text and SVG paths as figures: the beam's speed, the font, every path command, the panel, drawn on the path, in codes"),
     ("sketch", [sys.executable, "sketchtest.py"], "drawing a figure on the screen: it lands under the pointer turned and zoomed, the pen, the limit, the cursors wait, in codes"),
     ("second", [sys.executable, "secondtest.py"], "the second generator: its figure exactly, FM, ride and clock into the first against references, lanes, layers, codes"),
+    ("cycle", [sys.executable, "cycletest.py"], "the drawn cycle: tables band-limited by numpy's FFT, scaled alike, no step at a hand-over, drawn with the mouse, played, in codes"),
     ("record", [sys.executable, "recordtest.py"], "Record: the clip is the screen and the speakers, across a change of source, an unheard input once, its length written in"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),

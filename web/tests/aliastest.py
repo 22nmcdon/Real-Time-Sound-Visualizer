@@ -117,6 +117,29 @@ with sync_playwright() as pw:
                   % (shape, f0), audible - naive_audible <= -20,
                   "was %.1f dB, now %.1f" % (naive_audible, audible))
 
+    # G2's drawn cycle, a square drawn at 0.9, band-limited by its tables
+    # rather than corrected at its edges. Measured at -99 dB wherever it is
+    # played, against -17 to -37 for the richest table read at every pitch -
+    # which is what the step of nought gives, and so the control. Held to -90,
+    # and to fifty decibels better than that control.
+    DRAWN = """([f0, n, rate]) => {
+      const tables = cycleTables(Array.from({ length: CYCLE_POINTS }, (_, i) => i < CYCLE_POINTS / 2 ? 0.9 : -0.9));
+      const inc = TWO_PI * f0 / rate, dt = f0 / rate, limited = [], naive = [];
+      let a = 0, c = 0;
+      for (let i = 0; i < n; i++) {
+        limited.push(waveAt('drawn', a, dt, tables)); a += inc; if (a >= TWO_PI) a -= TWO_PI;
+        naive.push(waveAt('drawn', c, 0, tables)); c += inc; if (c >= TWO_PI) c -= TWO_PI;
+      }
+      return { limited, naive };
+    }"""
+    for f0 in (440, 2000, 4000):
+        pair = p.evaluate(DRAWN, [f0, N, RATE])
+        peak, audible = alias_floors(pair["limited"], f0)
+        npeak, naudible = alias_floors(pair["naive"], f0)
+        check("a drawn square at %d Hz folds back at -90 dB or less, fifty better than its richest table" % f0,
+              peak <= -90 and audible - naudible <= -50,
+              "%.1f dB anywhere, %.1f below 10 kHz; the richest table %.1f" % (peak, audible, naudible))
+
     print("\n--- the LFOs are left alone ---")
     # A shape is a shape whether it runs at 220 Hz or at a fifth of one, and an
     # oscillator at 0.2 Hz has no aliasing to correct: a correction applied to
