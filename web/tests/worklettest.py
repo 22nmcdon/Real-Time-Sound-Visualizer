@@ -54,7 +54,7 @@ with sync_playwright() as pw:
 
     print("\n--- the module, run in Node against a worklet's globals ---")
     built = p.evaluate("""() => ({
-      text: generatorModuleSource(), slots: GEN_DESTS.length,
+      text: generatorModuleSource(), slots: GEN_DESTS.length, echoSlot: ECHO_SLOT,
     })""")
     module_path = os.path.join(tempfile.gettempdir(), "generator-module.js")
     with open(module_path, "w", encoding="utf-8") as f:
@@ -63,7 +63,7 @@ with sync_playwright() as pw:
           % (len(built["text"]), built["slots"]))
     run = subprocess.run(
         [sys.executable and "node", os.path.join(HERE, "workletharness.mjs"),
-         module_path, str(built["slots"])],
+         module_path, str(built["slots"]), str(built["echoSlot"])],
         capture_output=True, text=True)
     try:
         report = json.loads(run.stdout or "{}")
@@ -160,6 +160,11 @@ with sync_playwright() as pw:
         check("told to mirror, it folds both channels to their absolute values, and silence in is finite",
               fx is not None and fx["inLow"] < -0.7 and fx["low"] >= 0 and fx["folded"] < 1e-6
               and fx["silentFinite"], str(fx))
+        # An impulse into a 2 ms delay, 96 samples at 48 kHz, with the echo's
+        # slider at nought: only the routing can put a repeat at 96, and with
+        # the routing gone there is none.
+        check("and a routing on the echo's level turns its delay on from nought: the impulse repeats 96 samples on",
+              fx is not None and abs(fx["echoRouted"] - 0.25) < 1e-6 and fx["echoUnrouted"] == 0, str(fx))
         e = report["epoch"]
         check("a restart reaches the worklet's oscillators, and a repeated count does not restart them again",
               e["before"] > 0.1 and e["reset"] == 0 and e["again"] > 0.1, str(e))

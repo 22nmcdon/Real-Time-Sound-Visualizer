@@ -2345,14 +2345,14 @@ body[data-view="bench"] .dock  { order: 3; }
           <div class="menu-group" id="timeGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Delay and chorus</span>
             <p class="fx-where" id="timeWhere"></p>
-            <div class="menu-row">
+            <div class="menu-row" data-mod-dest="gen.echo" data-mod-control="delayMix">
               <label class="menu-label" for="delayMix">Echo</label>
               <div class="grow">
                 <input type="range" id="delayMix" min="0" max="100" value="0">
                 <span class="reading" id="delayMixValue">off</span>
               </div>
             </div>
-            <div class="menu-row">
+            <div class="menu-row" data-mod-dest="gen.echoTime" data-mod-control="delayMs">
               <label class="menu-label" for="delayMs">Time</label>
               <div class="grow">
                 <input type="range" id="delayMs" min="10" max="2000" value="375">
@@ -3008,8 +3008,11 @@ body[data-view="bench"] .dock  { order: 3; }
         figures alternate between the figure and its mirror image across the diagonal.
         <i>Chorus</i> is a short delay whose time swings, one side on a sine and the other on
         its cosine, so the figure breathes and turns; with <i>Feedback</i> behind the &ctdot;
-        it is a flanger. Neither feedback can take a source: a loop inside a loop is how a
-        patch runs away.</span></li>
+        it is a flanger. <i>Echo</i> and <i>Time</i> can take a source: on the echo, a pedal
+        or a wheel brings repeats in from none, and the delay keeps listening while it is at
+        nought, so what comes back is what you just played; on the time, a source stretches
+        it an octave either way, and the repeats bend in pitch as it moves, like tape.
+        Neither feedback can take one: a loop inside a loop is how a patch runs away.</span></li>
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
@@ -4028,6 +4031,9 @@ const DRIVE_SLOT = SYNC_SLOT + 1;
 const FOLD_SLOT = DRIVE_SLOT + 1;
 // And the voice filter's cutoff (H3).
 const VCF_SLOT = FOLD_SLOT + 1;
+// And the echo's level and time (I1), after the filter.
+const ECHO_SLOT = VCF_SLOT + 1;
+const ECHO_TIME_SLOT = ECHO_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -4484,6 +4490,21 @@ const GEN_DESTS = [
      filter sweep, which is the other thing everyone puts an envelope on. */
   { id: "gen.vcf", label: "Voice cutoff", slot: VCF_SLOT,
     reach: (v, s) => Math.max(0, Math.min(CUTOFF_STEPS, v + s * 3 * CUTOFF_STEPS / Math.log2(1000))) },
+  /* The echo's level, in hundredths: half the travel either way, and a
+     routing turns the delay on with its slider at nought, as one on the
+     twist does, so a pedal or a wheel can bring repeats in from none. Its
+     feedback stays off the matrix: a loop inside a loop is how a patch runs
+     away, and a feedback that a source could hold at the top would never
+     die away. */
+  { id: "gen.echo", label: "Echo", slot: ECHO_SLOT,
+    reach: (v, s) => Math.max(0, Math.min(100, v + s * 50)) },
+  /* The echo's time, an octave either way at full depth: half and double,
+     which on a synced delay is the note value below and above. The read
+     position glides over 50 ms, so a slow source bends the repeats' pitch as
+     a tape machine's wow does, and a fast one is smoothed to that glide
+     rather than zippering. */
+  { id: "gen.echoTime", label: "Echo time", slot: ECHO_TIME_SLOT,
+    reach: (v, s) => Math.max(10, Math.min(2000, v * Math.pow(2, s))) },
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -6583,9 +6604,9 @@ function makeGeneratorCore(rate, slots, lfos) {
       const m = tone.chorusMix;
       x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
     }
-    if (tone.delayMix > 0) {
+    if (delayOn) {
       if (fx.dl === null) { fx.dl = new Float32Array(DELAY_MAX); fx.dr = new Float32Array(DELAY_MAX); }
-      const want = Math.max(1, Math.min(DELAY_MAX - 3, tone.delayMs * rate / 1000));
+      const want = Math.max(1, Math.min(DELAY_MAX - 3, pEchoMs * rate / 1000));
       fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide;
       const echoL = readLine(fx.dl, fx.dw, fx.dNow, DELAY_MAX);
       const echoR = readLine(fx.dr, fx.dw, fx.dNow, DELAY_MAX);
@@ -6593,7 +6614,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (tone.delayPingPong) { fx.dl[fx.dw] = x + fb * echoR; fx.dr[fx.dw] = y + fb * echoL; }
       else { fx.dl[fx.dw] = x + fb * echoL; fx.dr[fx.dw] = y + fb * echoR; }
       fx.dw = fx.dw + 1 === DELAY_MAX ? 0 : fx.dw + 1;
-      x += tone.delayMix * echoL; y += tone.delayMix * echoR;
+      x += pEcho * echoL; y += pEcho * echoR;
     }
     opX = x; opY = y;
   }
@@ -6657,14 +6678,14 @@ function makeGeneratorCore(rate, slots, lfos) {
   // One of each for each pair: layer A's picture, layer B's, and the heard pair.
   let planeFactor = 0, osA = null, osB = null, osHeard = null;
   const fxA = makeTimeFx(), fxB = makeTimeFx(), fxHeard = makeTimeFx();
-  let linearOn = false, nonlinearOn = false, timeOn = false;
-  let chorusSin = 0, chorusCos = 1;
+  let linearOn = false, nonlinearOn = false, timeOn = false, delayOn = false;
+  let chorusSin = 0, chorusCos = 1, pEcho = 0, pEchoMs = 375;
   /* What the plane will do this block, worked out once: which stages are
      on, the oversamplers rebuilt if the factor has changed - and only then,
      since a rebuild empties their histories - and the settings the per-pair
      step reads. Shared by `block`, where the pairs are the generator's, and
      `effect`, where the pair is a live input (S1): one plane, two callers. */
-  function planeSetup(twistRouted) {
+  function planeSetup(twistRouted, echoRouted) {
     const wantFactor = tone.planeOS === 4 ? 4 : tone.planeOS === 1 ? 1 : 2;
     if (wantFactor !== planeFactor) {
       planeFactor = wantFactor;
@@ -6675,7 +6696,11 @@ function makeGeneratorCore(rate, slots, lfos) {
     linearOn = tone.planeScaleX !== 1 || tone.planeScaleY !== 1 || tone.planeShear !== 0;
     nonlinearOn = tone.planeMirror !== 0 || tone.planeLimit !== 0 || tone.planeTwist !== 0 || twistRouted
                   || tone.planeKaleido > 1 || tone.planeSnap > 0;
-    timeOn = tone.delayMix > 0 || tone.chorusMix > 0;
+    // A routing on the echo's level keeps the line running at nought, so
+    // repeats brought back in are of what was played just now, not of
+    // whatever the line held when it last stopped.
+    delayOn = tone.delayMix > 0 || echoRouted === true;
+    timeOn = delayOn || tone.chorusMix > 0;
     pMirror = tone.planeMirror;
     pLimit = tone.planeLimit;
     pKaleido = tone.planeKaleido;
@@ -6686,6 +6711,11 @@ function makeGeneratorCore(rate, slots, lfos) {
   function planeTick(dt) {
     pRadius = Math.max(0.02, Math.min(1, tone.planeRadius + (genMod[RADIUS_SLOT] || 0) * 0.5));
     pTwist = Math.max(-TWO_PI, Math.min(TWO_PI, tone.planeTwist + (genMod[TWIST_SLOT] || 0) * Math.PI));
+    if (delayOn) {
+      pEcho = Math.max(0, Math.min(1, tone.delayMix + (genMod[ECHO_SLOT] || 0) * 0.5));
+      const push = genMod[ECHO_TIME_SLOT] || 0;
+      pEchoMs = push === 0 ? tone.delayMs : tone.delayMs * Math.pow(2, push);
+    }
     if (tone.chorusMix > 0) {
       chorusPhase += TWO_PI * tone.chorusRate * dt;
       if (chorusPhase >= TWO_PI) chorusPhase -= TWO_PI;
@@ -7294,9 +7324,12 @@ function makeGeneratorCore(rate, slots, lfos) {
      is its own, and the speakers have their limiter. */
   function effect(inL, inR, outL, outR, n) {
     const dt = 1 / rate;
-    let twistRouted = false;
-    for (let k = 0; k < routes.length; k++) if (routes[k].slot === TWIST_SLOT) twistRouted = true;
-    const planeOn = planeSetup(twistRouted);
+    let twistRouted = false, echoRouted = false;
+    for (let k = 0; k < routes.length; k++) {
+      if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+      if (routes[k].slot === ECHO_SLOT) echoRouted = true;
+    }
+    const planeOn = planeSetup(twistRouted, echoRouted);
     for (let i = 0; i < n; i++) {
       lfoStep(lfos[0], rate);
       lfoStep(lfos[1], rate);
@@ -7330,9 +7363,10 @@ function makeGeneratorCore(rate, slots, lfos) {
     const roleGlide = poleFor(4);
     // A routing on the twist turns the stage on with the slider at nought:
     // a controller that swirls the figure from still is the point of it.
-    let twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false;
+    let twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false, echoRouted = false;
     for (let k = 0; k < routes.length; k++) {
       if (routes[k].slot === TWIST_SLOT) twistRouted = true;
+      if (routes[k].slot === ECHO_SLOT) echoRouted = true;
       if (routes[k].slot === FM_SLOT) fmRouted = true;
       if (routes[k].slot === SYNC_SLOT) syncRouted = true;
       if (routes[k].slot === DRIVE_SLOT || routes[k].slot === FOLD_SLOT) shapeRouted = true;
@@ -7343,7 +7377,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     const wantShape = tone.shapeOS === 4 ? 4 : 2;
     if (wantShape !== shapeFactor) { shapeFactor = wantShape; shapeL = makeShaper(); shapeR = makeShaper(); }
     voiceFxFor(toneB, vxB, fmRouted, syncRouted, shapeRouted);
-    const planeOn = planeSetup(twistRouted);
+    const planeOn = planeSetup(twistRouted, echoRouted);
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -7905,6 +7939,8 @@ function generatorModuleSource() {
     bind("DRIVE_SLOT", DRIVE_SLOT),
     bind("FOLD_SLOT", FOLD_SLOT),
     bind("VCF_SLOT", VCF_SLOT),
+    bind("ECHO_SLOT", ECHO_SLOT),
+    bind("ECHO_TIME_SLOT", ECHO_TIME_SLOT),
     bind("svfStep", String(svfStep)),
     bind("svfG", String(svfG)),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
@@ -15517,6 +15553,12 @@ const PRESETS = [
                                             planeKaleido: 6, atk: 5, dec: 600, sus: 40, rel: 500,
                                             mod: "env.note>gen.twist@0.500" }, XY),
      "A kaleidoscope of six, and the envelope on the twist: each note strikes a turn into the pattern that unwinds as it fades. Play it."],
+    ["Pedal echoes", { shape: "triangle", freq: 220, timebase: 4, midiMode: "poly", delaySync: "1/8d",
+                       delayFeedback: 45, delayPingPong: true, mod: "midi.pedal>gen.echo@1.000" },
+     "Echoes only while the sustain pedal is down: press it and the chord repeats side to side in dotted eighths; lift it and they are gone. Play it."],
+    ["Stretched echoes", { shape: "sine", freq: 440, timebase: 3, midiMode: "mono", oscRatio: 2, oscFm: 15,
+                           delayMix: 45, delayMs: 250, delayFeedback: 55, mod: "cc.1>gen.echoTime@1.000" },
+     "The mod wheel stretches the echo from a quarter of a second to half; the repeats already in the line bend in pitch as it moves, like a tape machine slowing. Play it, and move the wheel."],
   ], "generator"],
 
   ["Bells and metal", [
@@ -15755,6 +15797,12 @@ const PRESETS = [
     ["Folding at the edge", { display: "xy", timebase: 5, persistence: "0.12", planeLimit: 2, planeRadius: 30,
                               mod: "lfo1>gen.radius@0.300", l0r: 10 },
      "A stereo wavefolder at a radius that breathes: quiet playing stays clean, loud playing folds back into petals."],
+    ["Echoes that come and go", { display: "xy", timebase: 5, persistence: "0.12", delaySync: "1/4",
+                                  delayFeedback: 40, mod: "lfo1>gen.echo@1.000", l0r: 10 },
+     "A slow oscillator on the echo's level, from nought: for five seconds in ten your playing repeats in quarter notes, then it is dry."],
+    ["Tape wobble", { display: "xy", timebase: 5, persistence: "0.12", delayMix: 40, delayMs: 300, delayFeedback: 30,
+                      mod: "lfo1>gen.echoTime@0.080", l0r: 40 },
+     "An echo whose time drifts a few per cent either way, slowly: the repeats waver in pitch like worn tape, and the ghost figures wobble."],
   ], "display"],
 
   ["Analysis", [
@@ -16809,11 +16857,12 @@ function liveFxFields() {
     chorusFeedback: echo.chorusFeedback,
   };
 }
-// Whether any of it is on - a routing on the twist counts, as in the core.
+// Whether any of it is on - a routing on the twist or the echo's level
+// counts, as in the core.
 function liveFxWanted() {
   return plane.mirror !== 0 || plane.limit !== 0 || plane.twist !== 0 || plane.kaleido > 1 || plane.snap > 0
       || plane.scaleX !== 1 || plane.scaleY !== 1 || plane.shear !== 0 || echo.mix > 0 || echo.chorus > 0
-      || state.modRoutings.some((r) => r.destId === "gen.twist");
+      || state.modRoutings.some((r) => r.destId === "gen.twist" || r.destId === "gen.echo");
 }
 function fxWhereText() {
   const source = state.source;
@@ -16875,7 +16924,10 @@ function syncPlanePanel() {
 function syncEchoPanel() {
   el.delayMix.value = String(Math.round(echo.mix * 100));
   el.delayMixValue.textContent = echo.mix > 0 ? echo.mix.toFixed(2) : "off";
-  el.delayMs.value = String(echo.ms);
+  /* The synced time on the slider while it is synced, not the free time
+     kept under it: the slider is where a routing's lane is drawn from, and a
+     lane around a time the delay is not using would be a picture of nothing. */
+  el.delayMs.value = String(echo.sync !== "" ? Math.round(delayTimeMs()) : echo.ms);
   el.delayMs.disabled = echo.sync !== "";
   el.delayMsValue.textContent = Math.round(delayTimeMs()) + " ms";
   el.delaySync.value = echo.sync;

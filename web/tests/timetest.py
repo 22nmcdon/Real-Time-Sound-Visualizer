@@ -12,6 +12,10 @@ What would go wrong, and what is checked for it:
 - a feedback that runs away: asked for five, it is held at 0.9 - measured
   as the ratio of two repeats, and a quiet flanger asked for five stays
   quiet. No feedback is a modulation destination (S4);
+- a routing on the echo's level or time that does not do what the slider
+  does: each is compared, sample for sample, with the slider set to where
+  the routing puts it, and a routing on the level keeps the line running at
+  nought so what it brings back in is what was just played;
 - a time change that jumps, which clicks: the read position glides;
 - the tempo: a quarter at 120 BPM is 500 ms, and follows the tempo;
 - the chorus: its sidebands are at the carrier plus and minus the rate and
@@ -68,6 +72,7 @@ CORE = """(setup) => {
   for (const step of setup.steps) {
     for (const k in step.tone || {}) core.set(k, step.tone[k]);
     for (const k in step.toneB || {}) core.set(k, step.toneB[k], 1);
+    if (step.routes) core.setRoutes(step.routes);
     const n = step.n, L = new Float32Array(n), R = new Float32Array(n);
     const HL = new Float32Array(n), HR = new Float32Array(n), BL = new Float32Array(n), BR = new Float32Array(n);
     core.block(L, R, n, HL, HR, BL, BR);
@@ -152,8 +157,59 @@ with sync_playwright() as pw:
     check("a flanger asked for a feedback of 5 is held at 0.9 and stays quiet over two seconds",
           np.abs(fl["L"]).max() < 0.3 and np.isfinite(fl["L"]).all(), "loudest %.3f" % np.abs(fl["L"]).max())
     dests = p.evaluate("() => [...MOD_DESTS.keys()]")
-    timeish = [d for d in dests if any(w in d.lower() for w in ("delay", "feedback", "chorus", "echo"))]
-    check("no delay, chorus or feedback is a modulation destination (S4)", not timeish and len(dests) > 10, str(timeish))
+    # S4 keeps feedback off the matrix: a coefficient a source could hold near
+    # one is a loop inside the loop. This check used to refuse every time
+    # parameter, which went further than the decision; the echo's level and
+    # time were made destinations when asked for, and they are the only ones.
+    timeish = sorted(d for d in dests if any(w in d.lower() for w in ("delay", "feedback", "chorus", "echo")))
+    check("no feedback or chorus setting is a modulation destination (S4): the echo's level and time only",
+          timeish == ["gen.echo", "gen.echoTime"] and len(dests) > 10, str(timeish))
+
+    print("\n--- the echo's level and time, patched ---")
+    # The same burst as above, into a 100 ms delay with no feedback. A held
+    # source at one on the level, at full depth, is half the travel: the same
+    # as the slider at 0.5. On the time, an octave: the slider at 200 ms.
+    base = {"freq": 1000, "interval": 0, "amp": 0.5, "delayFeedback": 0, "delayMs": 100}
+    held = lambda slot, amount, value=1: [{"held": value, "slot": slot, "amount": amount, "unipolar": False}]
+    slots = p.evaluate("() => [ECHO_SLOT, ECHO_TIME_SLOT]")
+    burst_off = {"amp": 0}
+    def burst(tone, routes=None, then_routes=None):
+        first = {"tone": dict(base, **tone), "n": 2000}
+        if routes is not None: first["routes"] = routes
+        second = {"tone": burst_off, "n": 16000}
+        if then_routes is not None: second["routes"] = then_routes
+        return run(first, second)
+    static_mix = burst({"delayMix": 0.5})
+    routed_mix = burst({"delayMix": 0}, held(slots[0], 1))
+    unrouted = burst({"delayMix": 0})
+    gap_mix = np.abs(routed_mix["L"] - static_mix["L"]).max()
+    print("    level: routed against the slider at 0.5, largest difference %.2e; unrouted, %.3f"
+          % (gap_mix, np.abs(unrouted["L"] - static_mix["L"]).max()))
+    check("a routing on the echo's level from nought gives the repeats the slider at 0.5 gives, sample for sample",
+          gap_mix < 1e-6 and np.abs(unrouted["L"] - static_mix["L"]).max() > 0.1,
+          "%.2e" % gap_mix)
+    static_long = burst({"delayMix": 0.5, "delayMs": 200})
+    routed_long = burst({"delayMix": 0.5}, held(slots[1], 1))
+    static_short = burst({"delayMix": 0.5, "delayMs": 50})
+    routed_short = burst({"delayMix": 0.5}, held(slots[1], -1))
+    gap_long = np.abs(routed_long["L"] - static_long["L"]).max()
+    gap_short = np.abs(routed_short["L"] - static_short["L"]).max()
+    print("    time: an octave up against 200 ms, %.2e; an octave down against 50 ms, %.2e; against the 100 ms "
+          "it came from, %.3f" % (gap_long, gap_short, np.abs(routed_long["L"] - static_mix["L"]).max()))
+    check("and on its time, an octave either way at full depth: 100 ms becomes 200 and 50, sample for sample",
+          gap_long < 1e-6 and gap_short < 1e-6 and np.abs(routed_long["L"] - static_mix["L"]).max() > 0.1,
+          "%.2e, %.2e" % (gap_long, gap_short))
+    # Held at nought through the burst, then brought up: the repeat that
+    # follows is of the burst, because the line kept listening while the
+    # level was at nought. Stopped at nought, the line would be empty.
+    late = burst({"delayMix": 0}, held(slots[0], 1, 0), held(slots[0], 1, 1))
+    # The burst is samples 0-1999 and its repeat 4410-6409, inside the second
+    # step, where the level has been brought up.
+    gap_late = np.abs(late["L"][2000:] - static_mix["L"][2000:]).max()
+    repeat = np.abs(late["L"][4410:6410]).max()
+    print("    brought in after the burst: repeat peak %.3f, difference from the slider %.2e" % (repeat, gap_late))
+    check("and a level brought up after the playing still repeats it: the line runs while a routing holds it at nought",
+          repeat > 0.2 and gap_late < 1e-6, "peak %.3f, %.2e" % (repeat, gap_late))
 
     print("\n--- a new time glides ---")
     # 100 ms to 133 ms under a steady tone: 1455 samples more, 7.26 cycles
@@ -245,6 +301,9 @@ with sync_playwright() as pw:
       setTempo(120); await wait(30);
       set('delaySync', '1/4', 'change');
       const quarter = [genSettings().delayMs, el.delayMs.disabled, el.delayMsValue.textContent];
+      // The slider shows the time in use, which is where a routing's lane
+      // is drawn from; the free time under it is 375 and would be a lie.
+      const slid = el.delayMs.value;
       set('delaySync', '1/8d', 'change');
       const dotted = genSettings().delayMs;
       setTempo(100); await wait(300);
@@ -273,11 +332,13 @@ with sync_playwright() as pw:
       restore({ delaySync: '1/4t', delayMix: 20 }); await wait(30);
       const synced = genSettings().delayMs;
       restore({}); setTempo(120); await wait(30);
-      return { shown, quarter, dotted, followed, free, panel, old, back, synced };
+      return { shown, quarter, slid, dotted, followed, free, panel, old, back, synced };
     }""")
     print("    %s" % page)
     check("a quarter at 120 BPM is 500 ms, the slider standing aside for it",
           page["quarter"] == [500, True, "500 ms"], str(page["quarter"]))
+    check("and the slider stands at the 500 ms in use, not the free time kept under it, so a lane is drawn from it",
+          page["slid"] == "500", page["slid"])
     check("a dotted eighth is 375, and at 100 BPM the delay follows the tempo to 450",
           abs(page["dotted"] - 375) < 1e-9 and abs(page["followed"][0] - 450) < 1e-9 and page["followed"][1] == "450 ms",
           "%s, %s" % (page["dotted"], page["followed"]))

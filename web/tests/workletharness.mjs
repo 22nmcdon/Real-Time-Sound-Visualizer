@@ -17,7 +17,7 @@
 */
 import fs from "node:fs";
 
-const [, , path, slotsText] = process.argv;
+const [, , path, slotsText, echoSlotText] = process.argv;
 const text = fs.readFileSync(path, "utf8");
 const slots = Number(slotsText) || 8;
 
@@ -338,6 +338,20 @@ try {
     fx.process([], [fo], {});
     for (const ch of fo) for (const v of ch) if (!Number.isFinite(v)) silentFinite = false;
     report.fx = { copy, mono, low, folded, silentFinite, inLow: Math.min(...inL, ...inR) };
+    // The echo's level from a routing alone, on a fresh processor each way.
+    const echoAt = (routes) => {
+      const e = new Fx({ processorOptions: {
+        slots, lfos: [{ shape: "sine", rate: 2, depth: 0.5 }, { shape: "sine", rate: 1, depth: 0.5 }],
+        tone: { planeOS: 1, delayMix: 0, delayFeedback: 0, delayMs: 2 }, routes,
+      } });
+      const imp = new Float32Array(128); imp[0] = 0.5;
+      const eo = [new Float32Array(128), new Float32Array(128)];
+      e.process([[imp, imp]], [eo], {});
+      return eo[0][96];
+    };
+    const slot = Number(echoSlotText);
+    report.fx.echoRouted = echoAt([{ held: 1, slot, amount: 1, unipolar: false }]);
+    report.fx.echoUnrouted = echoAt([]);
   }
 
   report.posted = node.posted;

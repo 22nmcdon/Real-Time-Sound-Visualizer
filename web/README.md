@@ -2240,7 +2240,7 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 128 of them in twenty sections, from *Start here* and *Organ* through
+are 132 of them in twenty sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
 *Live*, *Live effects* and *Analysis*.
@@ -2375,6 +2375,38 @@ and the echoes on a microphone, a line input or a file.
   draws B's top two. And *Ghost echoes* promised figures mirrored across the
   diagonal, which a mono input cannot give: ping-pong swaps the sides, and a
   mono input's sides are the same. Its line now says so.
-- *Delay is not a destination*, so no preset routes a hand onto it; the ones
-  that want echoes set them. Its feedback is kept off the matrix on purpose,
-  and its mix and time could be added.
+- *The echo's level and time became destinations afterwards*, below, and
+  *Pedal echoes*, *Stretched echoes*, *Echoes that come and go* and *Tape
+  wobble* use them.
+
+**The echo's level and time are destinations; its feedback is not.** A
+routing on the level, `gen.echo`, is half the slider's travel either way, and
+it turns the delay on with the slider at nought, as a routing on the twist
+does. A routing on the time, `gen.echoTime`, is an octave either way at full
+depth: half and double, which on a synced delay is the note value below and
+above. The read position still glides over 50 ms, so a slow source bends
+the repeats' pitch like tape and a fast one is smoothed to the glide.
+
+- *The line keeps running while a routing holds the level at nought.* A delay
+  that stopped writing at nought would, when a pedal brought the level back
+  up, repeat whatever it held when it last stopped. `timetest.py` holds the
+  level at nought through a burst, brings it up after, and requires the
+  repeat of the burst.
+- *Each is checked against its slider, sample for sample.* A held source at
+  full depth on the level is the slider at 0.5, and on the time 100 ms
+  becomes exactly 200 and 50. The difference is nought, not small.
+- *A routing on the level counts as wanting the live insert*, as one on the
+  twist does, and the worklet harness requires an impulse to repeat from a
+  routing alone.
+- *The slider shows the synced time while the delay is synced.* It used to
+  keep showing the free time under it, which did not matter until a lane was
+  drawn from it: a lane around 375 ms on a delay using 500 would have been a
+  picture of nothing.
+
+`timetest.py` had a check that no delay, chorus or feedback setting was a
+destination, and it failed the moment these existed. That check went further
+than the decision it cited: S4 keeps *feedback* off the matrix, because a
+coefficient a source could hold near one is a loop inside the loop, and says
+nothing against the level or the time. It now requires the echo's level and
+time to be the only time destinations, so feedback or the chorus arriving
+there would still fail it.
