@@ -766,10 +766,17 @@ Smaller things, each worth doing on its own and none blocking the others.
   source, and a live input that reaches no speaker is recorded too. The webm
   is given its length afterwards, which the browser's recording leaves out.
   Three minutes at most, because the clip is held in memory.
-- **Morph between setups.** Two setup codes and a crossfader over every
-  continuous field — a macro that the matrix can also drive.
-- **Macros.** User-named sources with no oscillator behind them: one knob, many
-  destinations. The matrix already does the fan-out.
+- **Morph between setups. Built, over the sliders rather than whole setups.**
+  Two setup codes and a crossfader over every
+  continuous field — a macro that the matrix can also drive. What was built
+  stores every slider as A and as B and writes the blend back through each
+  slider's own handler, because loading a setup is `restore`, which rebuilds
+  panels and restarts the harmonograph and cannot run sixty times a second.
+  Menus and switches are not morphed, and the note under the fader says so.
+  A macro or an oscillator on the fader moves every slider.
+- **Macros. Built.** User-named sources with no oscillator behind them: one knob, many
+  destinations. The matrix already does the fan-out. Four, on the Sources tab
+  with the morph; Crossings moved to Effects to make the room.
 - **More figures and solids.** Butterfly curve, Lissajous knot, *n*-gon; the
   dodecahedron, icosahedron and a torus. **Text**: single-stroke (Hershey-style)
   glyph paths, so the scope can write a word. **Import**: an SVG path as a

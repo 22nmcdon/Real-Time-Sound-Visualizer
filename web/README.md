@@ -2644,3 +2644,62 @@ preview, Save and Discard.
   one tap that keeps sounding is a microphone's own when monitoring is
   switched on mid-clip: kept, the second half carries the input twice, 1.0
   against 0.61. A check does that now; 18 of 18 mutants are killed.
+
+**Macros and the morph (Stage L).** Four knobs of your own, each a source you
+can name and point at as many controls as you like; and a fader between two
+stored sets of sliders, which is itself a destination, so a macro or an
+oscillator can move the whole sound.
+
+- *The morph's ends are the sliders, not setups.* The plan said two setup
+  codes and a crossfader, and loading a setup is `restore`: it rebuilds
+  panels, restarts the harmonograph's swing and re-applies the notes under
+  your hands. Sixty of those a second under a modulated fader would be a
+  stutter. A slider already has a path built to be driven at pointer rate -
+  its own input handler - so the fader writes the blend into each slider that
+  differs and fires that. The costs, each said where a reader meets it: menus
+  and switches are not morphed; a slider moved by hand keeps its value until
+  the fader moves again; with layer B on the panel, the voice's sliders are
+  B's.
+- *Only when the fader moves.* Applied every frame, a morph at rest would
+  take back every slider the hand touched; it compares where it stands with
+  where it last applied.
+- *Storing an end puts the fader at that end.* Otherwise storing B with the
+  fader at nought would put every slider back to A on the next frame.
+- *Frequency is blended geometrically.* The slider is in hertz; halfway
+  between 220 and 880 is 440, an octave from each, and a straight line would
+  have said 550. Everything else is already in the units its law wants.
+- *Some sliders are never stored.* Where a file is up to, the macro knobs (a
+  macro on the fader and the fader on the macro would be a loop), the fader
+  itself, the on-screen keys' strike, and the rack's alignment, which is a
+  measurement of your equipment rather than part of a sound.
+- *A code stores differences.* Both ends in full came to 2.9 KB for a morph
+  of two sliders. A is stored against each slider's value in the page as
+  written, which nothing at run time changes, and B against A: 656
+  characters, and nothing lost. A leading `=` marks an end as stored, since an
+  A with every slider at its default differs from nothing.
+- *Where they live, and what moved for them.* Play was the first home, and
+  put a harmonograph 6 px over, a wireframe 30 and a rack of six 49. Sources
+  is where a macro is patched, so they went there - and a row of four macro
+  chips in its grid put a rack of six 21 px over, so the Macros section is
+  their chips instead: touching a knob or a name chooses that macro.
+  Crossings made the room by moving off Sources. Picture, beside the Score,
+  was tried first and fitted a rack of six by nought to four pixels depending
+  on where the section sat in the page, which the next section would break;
+  it is on Effects, which has forty to spare.
+- *A check that could not fail.* "The generator hears it" first compared the
+  amplitude with itself times nought; it compares with 0.78 now.
+- *The mutation pass found a fixture that could not show a wrong reference.*
+  Storing B against the defaults and reading it back against A came out
+  the same, because every slider A had moved, B had moved too. What tells
+  them apart is a slider A moved off its default and B left on it; the check
+  stores the phase at 45 in A and 90 in B now. 20 of 20 killed.
+- *The first draft of this test overwrote another.* It was written as
+  `morphtest.py`, which is the shape morph's - sine through square - and the
+  write replaced it without a word, leaving `run.py` running the new one
+  twice under the same name and the shape morph not at all. It is
+  `macrotest.py`. Before writing a test file, look for one by that name.
+- *The fader's position is `state.morphPos`.* It began on the morph's own
+  object, and `modtest.py`'s check that every destination's control drives
+  something - which looks for a change in `state` - found it inert. It was
+  not wired wrongly, but its base was the one destination base kept
+  outside `state`, where the others (`state.rotate`, `state.lagMs`) live.

@@ -184,7 +184,8 @@ with sync_playwright() as pw:
     print("\n--- the panel and the screen ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setView('bench'); setBenchTab('sources');
+      // On Effects since Stage L; see crossGroup.
+      setView('bench'); setBenchTab('effects');
       const shown = el.crossGroup.offsetHeight > 0;
       el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change'));
       el.crossNoteX.value = '57'; el.crossNoteX.dispatchEvent(new Event('change'));

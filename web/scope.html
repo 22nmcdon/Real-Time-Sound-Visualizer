@@ -278,6 +278,13 @@ select, input[type="number"] {
 }
 .menu-head { display: none; align-items: center; }
 .menu-group + .menu-group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* A macro's name stands where a row's label does, and is as wide: typed
+   into rather than read, so it looks like the CC names beside the MIDI
+   rows rather than like a label. */
+.macro-name { flex: 0 0 96px; width: 96px; min-width: 0; box-sizing: border-box;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 1px;
+  padding: 2px 6px; font-family: var(--sans); font-size: 12.5px; color: var(--charcoal); }
+#morphPos { min-width: 60px; }
 .cc-name { flex: 1 1 auto; min-width: 0; background: var(--paper); border: 1px solid var(--line);
   border-radius: 1px; padding: 3px 6px; font-family: var(--sans); font-size: 12.5px;
   color: var(--charcoal); }
@@ -1492,6 +1499,58 @@ body[data-view="bench"] .dock  { order: 3; }
               works on the GitHub Pages copy and not there. Safari has no Web MIDI at all.</p>
           </div>
 
+          <!-- Knobs of your own, and the fader between two sets of sliders.
+               Together because the morph is a macro too: one control that
+               moves many, which the matrix can drive like any other. On the
+               Sources tab, where a macro is patched: Play has no room for it
+               in a harmonograph, a wireframe or a rack of six. -->
+          <div class="menu-group" id="macroGroup" data-tab="sources" data-home="bench">
+            <span class="menu-title">Macros</span>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName1" value="Macro 1" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 1">
+              <div class="grow">
+                <input type="range" id="macro1" min="0" max="100" value="0" aria-label="Macro 1">
+                <span class="reading" id="macro1Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName2" value="Macro 2" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 2">
+              <div class="grow">
+                <input type="range" id="macro2" min="0" max="100" value="0" aria-label="Macro 2">
+                <span class="reading" id="macro2Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName3" value="Macro 3" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 3">
+              <div class="grow">
+                <input type="range" id="macro3" min="0" max="100" value="0" aria-label="Macro 3">
+                <span class="reading" id="macro3Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName4" value="Macro 4" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 4">
+              <div class="grow">
+                <input type="range" id="macro4" min="0" max="100" value="0" aria-label="Macro 4">
+                <span class="reading" id="macro4Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos">
+              <label class="menu-label" for="morphPos">Morph</label>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
+                        title="Store every slider as A">A</button>
+                <input type="range" id="morphPos" min="0" max="100" value="0">
+                <button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
+                        title="Store every slider as B">B</button>
+              </div>
+            </div>
+            <p class="menu-note" id="morphNote"></p>
+          </div>
+
           <div class="menu-group" id="toneRows" data-tab="play" data-home="bench">
             <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
               <p class="menu-note" id="layerBNote" data-layer="b">Layer B has its own shape,
@@ -1826,7 +1885,13 @@ body[data-view="bench"] .dock  { order: 3; }
               runs, and its Start restarts them.</p>
           </div>
 
-          <div class="menu-group" id="crossGroup" data-home="bench" data-tab="sources">
+          <!-- On Effects since the macros took its room on Sources: with the
+               plane, the echo and your input, what is added to the sound
+               beyond the voice. Picture, beside the Score, was the first
+               choice and fitted a rack of six by between nought and four
+               pixels depending on where it sat in the page - a fit the next
+               section would break. -->
+          <div class="menu-group" id="crossGroup" data-home="bench" data-tab="effects">
             <span class="menu-title">Crossings</span>
             <label class="check"><input type="checkbox" id="crossOn"> Play a note when the beam crosses a line
               <span class="reading" id="crossCount"></span></label>
@@ -3313,6 +3378,20 @@ body[data-view="bench"] .dock  { order: 3; }
         forgotten there. Choosing a source also makes every control it is on, on every
         tab, draw its sweep.</span></li>
 
+      <li><b>Macros: one knob, many controls</b>
+        <span>Four knobs of your own, under <i>Macros</i> on the Sources tab. Each is a source
+        like an oscillator, except that nothing moves it but you: touch one and it is chosen,
+        then <i>Add a destination</i> as many times as you like, and that one knob moves them
+        all, each by its own depth. Type over its name to call it what it does; the name is
+        what every control it is on shows, and a setup code keeps it.
+        <br><br>
+        <i>Morph</i>, under them, slides between two sounds. Press <i>A</i> to store every
+        slider, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
+        pitch by octaves, everything else in a straight line. Menus and switches are not
+        morphed: a shape or a mode stays as you left it. A slider you move by hand keeps its
+        place until the fader moves again. The fader is a control like any other, so a macro
+        or an oscillator on it moves the whole sound at once. Loading a preset clears it.</span></li>
+
       <li><b>Hearing: what you play, as sources</b>
         <span>The <i>Hearing</i> family reads the sound itself, from a microphone, a line
         input, a file or the generator. <i>Pitch</i> is the note, nought at middle C and one
@@ -3350,7 +3429,7 @@ body[data-view="bench"] .dock  { order: 3; }
         <i>Start</i> restarts the locked oscillators, and <i>Continue</i> does not.</span></li>
 
       <li><b>Crossings: the picture as a rhythm</b>
-        <span><i>Crossings</i>, on the Sources tab, puts a line across each axis of the X&ndash;Y
+        <span><i>Crossings</i>, on the Effects tab, puts a line across each axis of the X&ndash;Y
         screen and plays a plucked note each time the beam crosses one going up. The X line is
         crossed once for every cycle of the X channel, wherever the figure is, and the Y line once
         for every cycle of Y. So the interval on the screen is the rhythm you hear: a just fifth
@@ -3961,6 +4040,10 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "laneGroup", "midiConnect", "keysPedal", "midiStatus", "midiPlayingRow", "midiMonitor",
                   "photoReticle", "photoButton", "clearButton",
+                  "macroGroup", "macroName1", "macroName2", "macroName3", "macroName4",
+                  "macro1", "macro2", "macro3", "macro4",
+                  "macro1Value", "macro2Value", "macro3Value", "macro4Value",
+                  "morphPos", "morphStoreA", "morphStoreB", "morphNote",
                   "recordButton", "recordLabel", "recordClip", "recordPanel", "recordClose",
                   "recordVideo", "recordNote", "recordSave", "recordDiscard",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
@@ -5155,6 +5238,188 @@ const VISUAL_DESTS = [
 
 for (const dest of VISUAL_DESTS) registerDest(Object.assign({ kind: "visual" }, dest));
 
+/* --- macros and the morph (Stage L) ----------------------------------------
+   A macro is a source with nothing behind it but a knob: point it at as many
+   controls as you like and one hand moves them all. The matrix already does
+   the fan-out, so a macro is only the knob, a name, and a value from nought
+   to one - unipolar, like a pedal, so a knob at rest moves nothing and the
+   sign of each routing says which way its control goes.
+
+   Four, which is what most instruments with macros settle on and what the
+   Sources tab has room for with a rack of six on the Bench. */
+const MACROS = 4;
+const macros = Array.from({ length: MACROS }, (_, i) => ({ name: "Macro " + (i + 1), value: 0 }));
+macros.forEach((macro, i) => registerSource({
+  id: "macro." + (i + 1),
+  // A getter, as a controller's is: a rename reaches the chips, the depth
+  // editor and the lanes without any of them knowing a rename happened.
+  get label() { return macro.name; },
+  ink: ["ch2", "ch4", "ch5", "ch6"][i],
+  bipolar: false,
+  family: "macros",
+  description: "A knob of your own, under Macros on this tab. Point it at as many controls as "
+    + "you like, and one hand moves them all. Rename it there.",
+  order: i,
+  value: () => macro.value,
+}));
+
+function setMacro(i, value) {
+  macros[i].value = Math.max(0, Math.min(1, value));
+  el["macro" + (i + 1)].value = String(Math.round(macros[i].value * 100));
+  el["macro" + (i + 1) + "Value"].textContent = Math.round(macros[i].value * 100) + "%";
+}
+function nameMacro(i, name) {
+  /* The bar is the separator in a setup code, and an empty name would leave a
+     chip with nothing on it; either comes back as the default. */
+  const clean = String(name).replace(/\|/g, "").trim().slice(0, 16);
+  macros[i].name = clean || "Macro " + (i + 1);
+  el["macroName" + (i + 1)].value = macros[i].name;
+}
+
+/* The morph: two sets of sliders and a fader between them. The plan asked for
+   "two setup codes and a crossfader over every continuous field", and what was
+   built differs in one way that has to be said: the ends are the SLIDERS, not
+   whole setups.
+
+   Loading a setup is `restore`, and `restore` is a load - it rebuilds panels,
+   restarts the harmonograph's swing, re-applies the notes under your hands.
+   Sixty of those a second under a fader an LFO is moving would be a stutter,
+   not a morph. A slider, though, already has a path built to be driven at the
+   pointer's rate: its own input handler, which is what a hand dragging it
+   calls. So the fader writes the blend into every slider that differs and
+   fires that handler, and the generator, the picture and the modulation lanes
+   hear about it the way they hear about a hand. Everything goes back through
+   the setters the controls use, as `restore` itself insists.
+
+   What that costs: menus and switches are not morphed - a shape, a mode, a
+   figure stay as they are - and the note under the fader says so. A slider a
+   hand moves while the fader stands still keeps the hand's value until the
+   fader moves again. And the sliders are the panel's: with layer B on the
+   panel, the voice's sliders are B's.
+
+   Which sliders: every range input in the page as it was written, taken once
+   at load, less the ones that are not part of a sound - where a file is up
+   to, the macro knobs (a macro on the morph and the morph on a macro would be
+   a loop), the fader itself, the on-screen keys' strike and the rack's
+   alignment, which is a measurement of your equipment. */
+const MORPH_SKIP = new Set(["morphPos", "macro1", "macro2", "macro3", "macro4",
+                            "fileSeek", "keysVelocity", "align"]);
+/* Frequency in hertz on a linear slider: halfway between 220 and 880 should be
+   440, an octave from each, not 550. Everything else here is already in the
+   units its law wants, so a straight line is the right line. */
+const MORPH_GEOMETRIC = new Set(["freq"]);
+const MORPH_IDS = Array.from(document.querySelectorAll('input[type="range"][id]'))
+  .map((input) => input.id).filter((id) => !MORPH_SKIP.has(id));
+/* Where the fader stands is `state.morphPos`, beside the other destinations'
+   bases; this is the rest of it. */
+const morph = { a: null, b: null, mod: 0, applied: null };
+
+function morphCapture() {
+  const out = {};
+  for (const id of MORPH_IDS) out[id] = Number(document.getElementById(id).value);
+  return out;
+}
+// The sliders that will move: in both ends, and not the same in each.
+function morphMoving() {
+  if (!morph.a || !morph.b) return [];
+  return MORPH_IDS.filter((id) => id in morph.a && id in morph.b && morph.a[id] !== morph.b[id]);
+}
+function morphApply(t) {
+  for (const id of morphMoving()) {
+    const a = morph.a[id], b = morph.b[id];
+    const want = MORPH_GEOMETRIC.has(id) && a > 0 && b > 0 ? a * Math.pow(b / a, t) : a + (b - a) * t;
+    const input = document.getElementById(id);
+    const before = input.value;
+    input.value = String(want);
+    // Snapped to the slider's step by the browser; a slider already there is
+    // told nothing, so a slow fader does not fire eighty handlers a frame.
+    if (input.value !== before) input.dispatchEvent(new Event("input"));
+  }
+}
+/* Once a frame, after the matrix: only when where it stands has changed, so a
+   fader at rest leaves the sliders to the hand. */
+function morphStep() {
+  if (!morph.a || !morph.b) return;
+  const t = Math.max(0, Math.min(1, state.morphPos + morph.mod));
+  if (morph.applied !== null && Math.abs(t - morph.applied) < 1e-4) return;
+  morph.applied = t;
+  morphApply(t);
+}
+/* Storing an end puts the fader at that end, so storing moves nothing: the
+   sliders ARE that end. The other way round, storing B with the fader at A
+   would snap every slider back to A the next frame. */
+function morphStore(end) {
+  morph[end] = morphCapture();
+  state.morphPos = end === "a" ? 0 : 1;
+  morph.applied = state.morphPos + morph.mod;
+  el.morphPos.value = String(state.morphPos * 100);
+  syncMorphPanel();
+}
+function syncMorphPanel() {
+  el.morphStoreA.setAttribute("aria-pressed", String(!!morph.a));
+  el.morphStoreB.setAttribute("aria-pressed", String(!!morph.b));
+  const moving = morphMoving().length;
+  el.morphNote.textContent = !morph.a && !morph.b
+    ? "Store A, change the sound, store B, then slide between them."
+    : !morph.a || !morph.b
+      ? (morph.a ? "A" : "B") + " is stored. Change the sound and store " + (morph.a ? "B." : "A.")
+      : moving === 0 ? "A and B are the same: nothing to move."
+      : (moving === 1 ? "One slider moves" : moving + " sliders move")
+        + " between A and B. Menus and switches stay as they are.";
+}
+/* In a setup code, as differences: A from where each slider starts in the page
+   as written, B from A. Both ends in full were 2.9 KB of code for a morph of
+   two sliders. Nothing is lost, because the reference is fixed - the markup's
+   own value, which nothing at run time changes - and B is rebuilt on A. The
+   leading "=" says an end is stored, since an A with every slider at its
+   default differs from nothing and would otherwise read as no A at all. */
+const morphHome = (id) => Number(document.getElementById(id).defaultValue);
+function encodeMorphEnd(end, ref) {
+  if (!end) return "";
+  return "=" + MORPH_IDS.filter((id) => id in end && end[id] !== ref(id))
+    .map((id) => id + ":" + end[id]).join(",");
+}
+function decodeMorphEnd(text, ref) {
+  if (typeof text !== "string" || text[0] !== "=") return null;
+  const given = {};
+  for (const part of text.slice(1).split(",")) {
+    const [id, value] = part.split(":");
+    if (MORPH_IDS.includes(id) && Number.isFinite(Number(value))) given[id] = Number(value);
+  }
+  const out = {};
+  for (const id of MORPH_IDS) out[id] = id in given ? given[id] : ref(id);
+  return out;
+}
+
+registerDest({
+  id: "morph.pos", kind: "visual", label: "Morph", span: 1, min: 0, max: 1,
+  base: () => state.morphPos, set: (offset) => { morph.mod = offset; },
+});
+
+/* A macro's row is its chip: touching the knob or the name chooses it, so the
+   detail beside says where it goes and every control it is on draws its
+   sweep while the knob moves. */
+function pickMacro(i) {
+  if (selectedSource !== "macro." + (i + 1)) selectSource("macro." + (i + 1));
+}
+for (let i = 0; i < MACROS; i++) {
+  el["macro" + (i + 1)].addEventListener("input", (event) => {
+    setMacro(i, Number(event.target.value) / 100);
+    pickMacro(i);
+  });
+  el["macroName" + (i + 1)].addEventListener("focus", () => pickMacro(i));
+  el["macroName" + (i + 1)].addEventListener("change", (event) => {
+    nameMacro(i, event.target.value);
+    buildSourceGrid();
+    buildSourceDetail();
+    touchRoutings();
+  });
+}
+el.morphPos.addEventListener("input", () => { state.morphPos = Number(el.morphPos.value) / 100; });
+el.morphStoreA.addEventListener("click", () => morphStore("a"));
+el.morphStoreB.addEventListener("click", () => morphStore("b"));
+syncMorphPanel();
+
 /* Advanced in exactly one place. The tone source steps the oscillators once a
    sample inside `fill`, because a vibrato written sixty times a second is a
    staircase; every other source has no per-sample loop at all, so they are
@@ -5209,6 +5474,8 @@ function applyModMatrix(frame, elapsed) {
     const want = Math.max(dest.min, Math.min(dest.max, base + sum * dest.span));
     dest.set(want - base);
   }
+  // After the matrix, so a source on the fader is already counted.
+  morphStep();
 
   // Zoom is read as a magnification rather than as a step, so the one that is
   // derived gets recomputed here rather than by whoever last touched a slider.
@@ -10605,6 +10872,7 @@ const state = {
   // The X-Y figure, turned. A little by hand, and as much as you like by a
   // source pointed at it.
   rotate: 0,                 // turns
+  morphPos: 0,               // the macro fader, nought A to one B
   rotateMod: 0,
   hoverY: null,              // where the pointer is reading a frequency
   midSide: false,
@@ -14893,6 +15161,10 @@ const SOURCE_FAMILIES = [
   ["keyboard", "Keyboard", "Connect one, or Show keys on Play."],
   ["controllers", "Controllers", "Move a knob on a connected keyboard."],
   ["picture", "Picture", "Turn on the Photocell, above the screen."],
+  /* Listed for search and for a macro's crumb, and not drawn in the grid:
+     the Macros section beside it is their chips, and a row of four more in
+     the grid put a rack of six 21 px over. */
+  ["macros", "Macros", "", "own"],
 ];
 let selectedSource = "lfo1";
 
@@ -14907,7 +15179,7 @@ function buildSourceGrid() {
   const families = SOURCE_FAMILIES.slice();
   // Anything registered without a family - a test's stand-in, say - still shows.
   if (sourcesInFamily("other").length) families.push(["other", "Other", ""]);
-  el.srcGrid.innerHTML = families.map(([id, name, hint]) => {
+  el.srcGrid.innerHTML = families.filter((family) => family[3] !== "own").map(([id, name, hint]) => {
     const list = sourcesInFamily(id);
     return '<div class="src-family" data-family="' + id + '">'
       + '<span class="src-family-name">' + name + "</span>"
@@ -15702,6 +15974,8 @@ const DEFAULTS = {
   scoreOn: false, scoreStep: "1/16", scoreVoices: 2, scoreLow: 48, scoreOctaves: 3,
   arpMode: "off", arpRate: "1/8", arpOctaves: 1,
   threshWatch: "env.live", threshLevel: 50, pluckNote: 60,
+  // Additive: a code from before macros has them at rest, with their own names.
+  mac1: 0, mac2: 0, mac3: 0, mac4: 0, macroNames: "", morphA: "", morphB: "", morphPos: 0,
   mod: "",
   display: "yt", persistence: "0", span: "5", zoom: 0,
   timebase: TIMEBASE_DEFAULT, level: 0, edge: RISING, trig: 0,
@@ -15835,6 +16109,13 @@ function snapshot() {
     scoreOctaves: score.octaves,
     arpMode: arp.mode, arpRate: arp.rate, arpOctaves: arp.octaves,
     threshWatch: thresh.watch, threshLevel: Math.round(thresh.level * 100), pluckNote: pluck.note,
+    mac1: Math.round(macros[0].value * 100), mac2: Math.round(macros[1].value * 100),
+    mac3: Math.round(macros[2].value * 100), mac4: Math.round(macros[3].value * 100),
+    // Only when one has been renamed, so a code with the default names says nothing.
+    macroNames: macros.some((m, i) => m.name !== "Macro " + (i + 1)) ? macros.map((m) => m.name).join("|") : "",
+    morphA: encodeMorphEnd(morph.a, morphHome),
+    morphB: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
+    morphPos: Math.round(state.morphPos * 100),
     mod: encodeRoutings(state.modRoutings),
     display: state.display,
     persistence: el.persistence.value,
@@ -16067,6 +16348,22 @@ function restore(partial) {
   thresh.watch = typeof s.threshWatch === "string" && s.threshWatch ? s.threshWatch : "env.live";
   thresh.level = within(s.threshLevel, 5, 95, 50) / 100; thresh.armed = false;
   pluck.note = Math.round(within(s.pluckNote, 36, 84, 60)); el.pluckNote.value = String(pluck.note);
+  /* Macros and the morph. A code without a morph clears it - a preset is a
+     whole sound, and ends stored for another one would drag this one toward
+     it the moment the fader moved. With one, the next frame puts the sliders
+     where the fader says, which is where they were when the code was made. */
+  const names = typeof s.macroNames === "string" ? s.macroNames.split("|") : [];
+  for (let i = 0; i < MACROS; i++) {
+    setMacro(i, within(s["mac" + (i + 1)], 0, 100, 0) / 100);
+    nameMacro(i, names[i] || "");
+  }
+  morph.a = decodeMorphEnd(s.morphA, morphHome);
+  morph.b = decodeMorphEnd(s.morphB, (id) => (morph.a ? morph.a[id] : morphHome(id)));
+  state.morphPos = within(s.morphPos, 0, 100, 0) / 100;
+  el.morphPos.value = String(Math.round(state.morphPos * 100));
+  morph.applied = null;
+  syncMorphPanel();
+  buildSourceGrid();
   plane.mirror = [0, 1, 2, 3].includes(s.planeMirror) ? s.planeMirror : 0;
   plane.limit = [0, 1, 2].includes(s.planeLimit) ? s.planeLimit : 0;
   plane.radius = within(s.planeRadius, 2, 100, 40) / 100;
