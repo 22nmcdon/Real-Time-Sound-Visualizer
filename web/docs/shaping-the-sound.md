@@ -11,7 +11,8 @@ and S8's *Play the figure* (see *Built so far* under Stage J), and Stage I - the
 plane's nine operations with S2's oversampling, and I1's delay and chorus - for
 the generator and, through S1's effects worklet, for a microphone, a line input
 and a file (see *Built so far* under Stage I), and H1's second oscillator,
-sub and unison (see *Built so far* under Stage H). Nothing else here is.
+sub and unison (see *Built so far* under Stage H), and J1's continuous sources
+(see *Built so far* under Stage J). Nothing else here is.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -520,8 +521,32 @@ Keyboard section:
 - A figure or solid is traced at the note's frequency, so its shape is the
   timbre.
 
-`playtest.py` holds them. The rest of J2 (the sound driving the drawings, and
-the swing phase and attitude as sources), J1 and J3 are not built.
+`playtest.py` holds them.
+
+**J1's continuous sources**, in a *Hearing* family on the Sources tab: Pitch,
+Brightness, four bands (Bass, Low mid, High mid, Treble, at the band split's
+crossovers), Width and Flux.
+- *Where they read.* The signal lane the Level reads, never the drawn one, and
+  a 93 ms window of their own, so no display setting changes what they say.
+- *Continuity.* Pitch, brightness and width are slew-limited, at four units a
+  second: an octave of pitch takes an eighth of a second. The bands and the
+  flux run through the level's attack and release.
+- *Silence and transients.* Below -60 dBFS nothing is measured; pitch,
+  brightness and width hold, and the bands and flux fall away. Pitch is also
+  measured only on a steady window, both halves of it within a factor of two
+  in energy, because a note stopped dead read half a semitone flat on the
+  way out.
+- *Pitch.* A held key wins over the estimator, as the table says. Nought is
+  middle C and one is two octaves either way.
+- *The loop.* Hearing the generator, they take the picture's reach and join
+  `LOOP_TOTAL`, and a change of source changes that without touching a
+  routing.
+
+`hearingtest.py` holds them, each against a fixture with a known answer.
+*Onset*, the event source, is not built. It needs S3's event destinations,
+reswing first, and goes with J2's "sound drives the drawing". The rest of
+J2 (the sound driving the drawings, and the swing phase and attitude as
+sources) and J3 are not built either.
 
 ### J3 · audio rate (S7, second half)
 
@@ -659,7 +684,7 @@ Smaller things, each worth doing on its own and none blocking the others.
   finiteness check; any with a jump in its path re-runs `aliastest.py`'s
   statement about the drawn generators.
 - **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 132 presets in twenty sections, in a browser
+- **Presets, rebuilt. Built.** 137 presets in twenty-one sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

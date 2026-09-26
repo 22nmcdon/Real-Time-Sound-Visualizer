@@ -2240,10 +2240,10 @@ that could not show the fault:
   lift, 0.546.
 
 **The presets are a library in a browser, not a list in a select.** There
-are 132 of them in twenty sections, from *Start here* and *Organ* through
+are 137 of them in twenty-one sections, from *Start here* and *Organ* through
 *Keys and leads*, *Poly keys*, *Split and layer*, *Hands on the sound*,
 *Bells and metal*, *Grit*, *The plane* and *Echoes* to *Rhythm and key*,
-*Live*, *Live effects* and *Analysis*.
+*Live*, *Live effects*, *Listening* and *Analysis*.
 
 - *The browser.* The strip's Preset button opens a dialog with the sections
   down the side and a card for each preset. Each card has a line on what to
@@ -2410,3 +2410,42 @@ coefficient a source could hold near one is a loop inside the loop, and says
 nothing against the level or the time. It now requires the echo's level and
 time to be the only time destinations, so feedback or the chorus arriving
 there would still fail it.
+
+**The sound as sources (J1).** Eight sources in a *Hearing* family: Pitch,
+Brightness, the four bands of the band split, Width and Flux. They read the
+signal, as Level does, over a 93 ms window of their own; on a timebase of a
+millisecond a division the frame itself is 441 samples, which holds no bass
+at all. Each is checked in `hearingtest.py` against a fixture with a known
+answer: 440 and 110 Hz read their octaves to a hundredth of a semitone, a
+60 Hz sine fills the Bass band at its own level and leaves the rest empty,
+width reads one, minus one and nought for mono, inverted and a fifth apart.
+
+- *A note that stops dead read half a semitone flat on its way out.* For a
+  few frames the window is half tone and half silence, and the estimator read
+  that off-pitch while passing its own confidence gate. Pitch is now measured
+  only when both halves of the window carry energy within a factor of two of
+  each other; otherwise it holds. The attack of a note is the same problem
+  the other way round and is held the same way.
+- *Flux counts rising energy only*, so a note ending is not an event. The
+  first check of that failed at 0.30, and the page was right: the fixture
+  cut its tone off in one sample, which is a click, broadband and a genuine
+  rise. With an 80 ms release, which is how notes end, it peaks at 0.07.
+- *Hearing the generator is a loop.* They take the picture's reach and join
+  `LOOP_TOTAL`. The answer is a getter, not a copy, because it depends on what
+  is playing now, and the page recompiles the routes when it flips.
+  `Object.assign` of a getter copies its value once, which would have frozen
+  the answer at load. The Level source predates this and is not treated so.
+- *A reach that varies must not be clamped in storage.* The page stores a
+  routing's amount clamped to its source's reach, so the depth control shows
+  what happens. For these that lost the amount for good: `presettest.py`
+  loads every preset on the tone, where *Brightness swirls it* is a loop, and
+  its 0.6 was stored as 0.5, and stayed 0.5 on the microphone it was written
+  for. Sources marked `reachVaries` keep what was asked and are clamped only
+  where applied, and the depth control shows the applied amount instead of
+  the stored one, which comes to the same thing for every other source.
+- *The Sources tab had no room for them.* Eight more chips made it scroll,
+  41 px on the tone and 73 with a rack of six, where the Bench is shorter. The
+  tab's chips are now tighter than the rail's, which are dragged and keep
+  their size; the empty families' hints are one line each; the note under the
+  grid is two lines. With a rack of six it fits with nothing to spare, so the
+  next family added here will need another answer, probably a second column.

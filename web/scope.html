@@ -936,13 +936,17 @@ body[data-view="bench"] .dock  { order: 3; }
 .mod-edit { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 /* The Sources tab. One row per family, the family named small; a family
    with nothing in it says how to get something rather than vanishing. */
-.src-family { margin: 0 0 12px; }
+.src-family { margin: 0 0 10px; }
 .src-family-name {
   display: block; font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--text-soft); margin-bottom: 6px;
 }
-.src-family-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.src-family-chips .mod-chip { cursor: pointer; }
+.src-family-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+/* Tighter than the rail's chips beside the screen, which are dragged and
+   want the room. These are only chosen, and the tab has to hold every family
+   at once without scrolling - with the eight that hear, the keyboard's and a
+   moved controller, it did not at the rail's size. */
+.src-family-chips .mod-chip { cursor: pointer; padding: 3px 9px; gap: 6px; font-size: 12px; }
 .src-empty { font-size: 12px; color: var(--text-soft); margin: 0; }
 .src-desc { font-size: 13px; line-height: 1.5; color: var(--charcoal); margin: 0 0 10px; }
 .src-meter {
@@ -1704,11 +1708,8 @@ body[data-view="bench"] .dock  { order: 3; }
           <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
             <span class="menu-title">Sources</span>
             <div id="srcGrid"></div>
-            <p class="menu-note">A source is anything that can move a control by itself: an
-              oscillator, how loud the input is, what your hands are doing, the picture on
-              the screen. Choose one to see what it is and where it goes; the controls it
-              is on, on every tab, then draw its sweep. Press the dots on any control to
-              patch from that side, or drag a chip from beside the screen onto one.</p>
+            <p class="menu-note">Choose one to see what it is and where it goes. Press the dots
+              on a control, or drag a chip onto one.</p>
           </div>
           <div class="menu-group" id="srcDetailGroup" data-home="bench" data-tab="sources">
             <span class="menu-title" id="srcDetailTitle">Source</span>
@@ -3106,13 +3107,25 @@ body[data-view="bench"] .dock  { order: 3; }
 
       <li><b>The Sources tab</b>
         <span>Every source, by family: the oscillators, the signal's level and envelope,
-        your hands on the keyboard, the controllers you have moved, and the picture itself.
+        what the sound is doing, your hands on the keyboard, the controllers you have moved, and the picture itself.
         A family with nothing in it says how to get something. Choose one and it says what
         it is, shows where it is right now, and lists every control it is on with its own
         depth and a cross to take it off; <i>Add a destination</i> puts it on another. An
         oscillator's shape and rate are there, and a controller can be renamed or
         forgotten there. Choosing a source also makes every control it is on, on every
         tab, draw its sweep.</span></li>
+
+      <li><b>Hearing: what you play, as sources</b>
+        <span>The <i>Hearing</i> family reads the sound itself, from a microphone, a line
+        input, a file or the generator. <i>Pitch</i> is the note, nought at middle C and one
+        two octaves up, from a held key if there is one and otherwise from the sound; it holds
+        when you stop. <i>Brightness</i> is where the energy sits, low for a dark tone and
+        high for a bright one. <i>Bass</i>, <i>Low mid</i>, <i>High mid</i> and <i>Treble</i>
+        are how loud each band is, at the band split's crossovers. <i>Width</i> is how alike
+        the two channels are, one for mono. <i>Flux</i> jumps on each new note or hit and
+        stays low on a held one. None of them can jump: a new note glides there in an eighth
+        of a second an octave. Pointed back at the generator they are hearing, they are a
+        loop, and held to the picture's reach like the photocell.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, on the Sources tab, is one key, one scale and one
@@ -3568,12 +3581,12 @@ body[data-view="bench"] .dock  { order: 3; }
 
     <ul class="help-list" id="panelKeys" hidden>
       <li class="help-lede">Presets are the front door. Press <i>Preset</i>, on the left of the
-        strip, for a browser of over a hundred of them in twenty sections &mdash; organ and FM
+        strip, for a browser of over a hundred of them in twenty-one sections &mdash; organ and FM
         keys, basses and pads, bells, grit, figures, the plane, echoes, drawings, rhythm &mdash;
         each with a line on what to listen for and what to look at. Three sections are for
         playing: chords, splits and layers, and the wheel, the pedal and the strike of a key
         routed onto the sound. <i>Live effects</i> puts the plane and the echoes on your
-        microphone, line input or file.</li>
+        microphone, line input or file, and <i>Listening</i> lets what you play move them.</li>
 
       <li><b>Browsing</b>
         <span>Choosing one loads it and leaves the browser open, so you can listen through a
@@ -4551,6 +4564,191 @@ registerSource({
   value: () => Math.min(1, envLive / ENV_FULL),
 });
 
+/* --- what it hears: Stage J1 ---------------------------------------------------
+   The sound as sources beyond its level: its pitch, where its energy sits, how
+   loud each of four bands is, how alike its two channels are, and how fast its
+   spectrum is changing. A microphone, a line input or a file can then move the
+   voice and the picture by what is being played, not only by how loudly.
+
+   Read from the SIGNAL, as the level is - never the drawn lanes - and from a
+   window of its own, about 93 ms, rather than the frame the screen shows: a
+   timebase of a millisecond a division is 441 samples, which holds no bass at
+   all, and a source whose reading changed with a display setting would be a
+   display setting.
+
+   Every value is continuous, which is the gate the plan puts in front of any
+   source. The pitch, the brightness and the width are slew-limited, so a new
+   note is a glide of an eighth of a second an octave rather than a step. The
+   bands and the flux run through the level's own attack and release, which is
+   continuous already. Below -60 dBFS nothing is measured: the pitch, the
+   brightness and the width HOLD, because a note that has ended has not gone
+   to middle C, and the bands and the flux fall away as the level does.
+
+   And the loop. When what is on the screen is the generator, these are
+   hearing its own output, which is a loop exactly as the picture's sources
+   are: they take the picture's reach, and their pushes on anything go into
+   the one bounded total (`LOOP_TOTAL`). The Level source predates this and is
+   not treated so; a known limitation, left alone because presets rely on it. */
+const HEAR_N = 4096;
+const HEAR_SLEW = 4;              // the most a value moves in a second, in its own units
+const HEAR_FLOOR = 0.001;         // RMS: -60 dBFS
+const PITCH_REF = 261.6256;       // C4, the pitch source's nought
+const hearing = {
+  pitch: 0, bright: 0, bands: [0, 0, 0, 0], width: 1, flux: 0, fluxRaw: 0,
+  prev: null, re: null, im: null, hann: null, gen: null, cost: 0,
+};
+
+// Whether what is being heard is the generator: the tone, or a rack with a
+// generator lane in it, which is counted whole rather than lane by lane.
+function hearsGenerator() {
+  const source = state.source;
+  return !!source && (source.kind === "tone" || (!!source.lanes && !!genLane()));
+}
+
+function hearingFollow(now, want, elapsed) {
+  const tau = want > now ? ENV_ATTACK : ENV_RELEASE;
+  return now + (want - now) * (1 - Math.exp(-(elapsed / 1000) / tau));
+}
+function hearingSlew(now, want, elapsed) {
+  const most = HEAR_SLEW * Math.max(0, elapsed) / 1000;
+  return now + Math.max(-most, Math.min(most, want - now));
+}
+
+function hearingStep(elapsed) {
+  const source = state.source;
+  if (!source || !source.getLatestWindow || !state.running) return;
+  const started = performance.now();
+  // A source switch changes whether these are a loop, and the compiled
+  // routes carry that decision; recompile when it flips.
+  const gen = hearsGenerator();
+  if (gen !== hearing.gen) { hearing.gen = gen; touchRoutings(); }
+
+  const lanes = source.getLatestWindow(HEAR_N);
+  const x = lanes && (lanes[state.trigSource] || lanes[0]);
+  if (!x || x.length < 256) return;
+  const n = x.length, rate = source.sampleRate || 44100;
+  if (!hearing.re || hearing.re.length !== n) {
+    hearing.re = new Float64Array(n); hearing.im = new Float64Array(n); hearing.hann = new Float64Array(n);
+    for (let i = 0; i < n; i++) hearing.hann[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1));
+    hearing.prev = null;
+  }
+  const re = hearing.re, im = hearing.im, w = hearing.hann;
+  let sum = 0, w2 = 0, early = 0;
+  for (let i = 0; i < n; i++) {
+    re[i] = x[i] * w[i]; im[i] = 0; sum += x[i] * x[i]; w2 += w[i] * w[i];
+    if (i === (n >> 1) - 1) early = sum;
+  }
+  const rms = Math.sqrt(sum / n);
+  // Whether the window is one steady sound, or a note starting or stopping
+  // part-way through it: the two halves' energies within a factor of two.
+  const late = sum - early;
+  const steady = early > 0 && late > 0 && late / early < 2 && early / late < 2;
+  fft(re, im);
+  const half = n >> 1, binHz = rate / n;
+  const mags = new Float64Array(half);
+  for (let k = 0; k < half; k++) mags[k] = Math.hypot(re[k], im[k]);
+
+  /* The bands, by Parseval: a one-sided power spectrum summed over a band is
+     that band's share of the windowed signal's energy. Scaled so a full-scale
+     sine wholly inside one band reads one there, as the level does. */
+  for (let b = 0; b < BANDS.length; b++) {
+    const lo = Math.max(1, Math.ceil(BANDS[b].from / binHz));
+    const hi = BANDS[b].to > 0 ? Math.min(half, Math.ceil(BANDS[b].to / binHz)) : half;
+    let power = 0;
+    for (let k = lo; k < hi; k++) power += mags[k] * mags[k];
+    const bandRms = Math.sqrt(2 * power / (n * w2));
+    hearing.bands[b] = hearingFollow(hearing.bands[b], Math.min(1, bandRms / ENV_FULL), elapsed);
+  }
+
+  // Flux: how much of this spectrum is new since the last, rising energy
+  // only, as a share of the whole - so it is one at the first frame of a
+  // note out of silence and near nought on a held one, whatever the level.
+  let rise = 0, total = 0;
+  if (hearing.prev) {
+    for (let k = 1; k < half; k++) { rise += Math.max(0, mags[k] - hearing.prev[k]); total += mags[k]; }
+  }
+  hearing.prev = mags;
+  hearing.fluxRaw = total > 1e-9 ? Math.min(1, rise / total) : 0;
+  hearing.flux = hearingFollow(hearing.flux, rms < HEAR_FLOOR ? 0 : hearing.fluxRaw, elapsed);
+
+  if (rms >= HEAR_FLOOR) {
+    // Brightness: the centroid, placed on a log scale from 100 Hz to 8 kHz.
+    let weighted = 0, mass = 0;
+    for (let k = 1; k < half; k++) { weighted += k * binHz * mags[k]; mass += mags[k]; }
+    if (mass > 1e-12) {
+      const centroid = weighted / mass;
+      const want = Math.max(0, Math.min(1, Math.log2(Math.max(1, centroid) / 100) / Math.log2(80)));
+      hearing.bright = hearingSlew(hearing.bright, want, elapsed);
+    }
+    /* Pitch: a held key if there is one, as the plan asks - it is what the
+       player means - else the estimator, and only past its own confidence
+       gate and only on a steady window. A note stopped dead leaves a window
+       half tone and half silence for a few frames, and the estimator read
+       that half a semitone flat and passed its own gate doing it; the attack
+       of a note is the same problem the other way round. Octaves from middle
+       C over two either way. */
+    const held = midi.notes.length ? midiPitchHz() : null;
+    let hz = held;
+    if (hz === null && steady) {
+      const found = estimatePeriod(x, rate);
+      if (found !== null && found.aperiodicity <= PITCH_TRUST) hz = found.hz;
+    }
+    if (hz !== null && hz > 0) {
+      const want = Math.max(-1, Math.min(1, Math.log2(hz / PITCH_REF) / 2));
+      hearing.pitch = hearingSlew(hearing.pitch, want, elapsed);
+    }
+    // Width: the correlation of the pair the X-Y view draws; one lane is mono.
+    const a = lanes[state.xyPair[0]], b = lanes[state.xyPair[1]];
+    const want = a && b && a !== b ? correlation(a, b) : 1;
+    hearing.width = hearingSlew(hearing.width, want, elapsed);
+  }
+  hearing.cost = performance.now() - started;
+}
+
+const HEARING_SOURCES = [
+  { id: "hear.pitch", label: "Pitch", ink: "ch4", bipolar: true, value: () => hearing.pitch,
+    description: "The note being played: a held key if there is one, else the pitch of what is heard, "
+      + "held while there is nothing periodic to name. Nought at middle C, one two octaves above, minus "
+      + "one two octaves below." },
+  { id: "hear.bright", label: "Brightness", ink: "ch3", bipolar: false, value: () => hearing.bright,
+    description: "Where the sound's energy sits - its spectral centroid - from 100 Hz at nought to 8 kHz "
+      + "at full. A filter opening moves it up; so does a harder attack on most instruments." },
+  ...hearingBands().map((band, i) => ({
+    id: "hear.band" + (i + 1), label: band.name, ink: ["ch1", "ch2", "ch5", "ch6"][i],
+    bipolar: false, value: () => hearing.bands[i],
+    description: "How loud the sound is " + band.span + ", at the band split's own crossovers. Full is "
+      + "a full-scale sine inside the band.",
+  })),
+  { id: "hear.width", label: "Width", ink: "ch5", bipolar: true, value: () => hearing.width,
+    description: "How alike the two channels the X\u2013Y view draws are: one for mono, nought for two "
+      + "unrelated signals, minus one for one channel the other upside down. The goniometer's number." },
+  { id: "hear.flux", label: "Flux", ink: "ch6", bipolar: false, value: () => hearing.flux,
+    description: "How fast the spectrum is changing: high on the attack of a note or a hit, low on a "
+      + "held tone. It falls away as the level does." },
+];
+// The bands' names and spans, written out here because BANDS is declared
+// further down the page than this runs.
+function hearingBands() {
+  return [
+    { name: "Bass", span: "below 120 Hz" },
+    { name: "Low mid", span: "from 120 to 800 Hz" },
+    { name: "High mid", span: "from 800 Hz to 4 kHz" },
+    { name: "Treble", span: "above 4 kHz" },
+  ];
+}
+HEARING_SOURCES.forEach((entry, i) => {
+  // Getters, not copies: whether these are a loop is a fact about what is
+  // playing now, and `Object.assign` would freeze the answer at load.
+  registerSource({
+    id: entry.id, label: entry.label, ink: entry.ink, bipolar: entry.bipolar,
+    description: entry.description, family: "hearing", order: 40 + i, value: entry.value,
+    reachVaries: true,
+    get fromPicture() { return hearsGenerator(); },
+    get reach() { return hearsGenerator() ? PHOTO_REACH : undefined; },
+    get start() { return hearsGenerator() ? PHOTO_START : undefined; },
+  });
+});
+
 /* The note envelope, beside the level meter and quite unlike it.
 
    `env.live` is a measurement - how loud the thing being drawn actually is,
@@ -4649,6 +4847,7 @@ function applyModMatrix(frame, elapsed) {
   }
 
   updateEnvelope(frame, elapsed);
+  hearingStep(elapsed);
   midiSmooth(elapsed);
   crossStepPanel(performance.now());
   photoStep(elapsed);
@@ -4696,11 +4895,16 @@ let repaintQueued = false;
 
 function touchRoutings() {
   modDirty = true;
-  // Stored within reach as well as applied within it, so what the control
-  // says is what happens.
+  /* Stored within reach as well as applied within it, so what the control
+     says is what happens - except for a source whose reach depends on what is
+     playing (the hearing sources, a loop only on the generator). Clamping
+     those in storage lost the amount for good: a preset of 0.6 loaded on the
+     tone was saved as 0.5, and stayed 0.5 on the microphone it was for. They
+     keep what was asked, are applied within the reach of the moment, and
+     their depth control shows the amount that is applied. */
   for (const routing of state.modRoutings) {
     const source = MOD_SOURCES.get(routing.sourceId);
-    if (source && source.reach > 0) routing.amount = routingAmount(source, routing.amount);
+    if (source && source.reach > 0 && !source.reachVaries) routing.amount = routingAmount(source, routing.amount);
   }
   // Coalesced: dragging a depth fires this on every pointermove, and rebuilding
   // the rows sixty times a second under the finger doing the dragging would
@@ -14084,12 +14288,12 @@ function destOptions(selected) {
 const SOURCE_FAMILIES = [
   ["oscillators", "Oscillators", ""],
   ["signal", "Signal", ""],
-  ["keyboard", "Keyboard",
-   "Connect a keyboard under Settings, MIDI, or press Show keys on the Play tab."],
-  ["controllers", "Controllers",
-   "Move a knob, drawbar or pedal on a connected keyboard and it appears here."],
-  ["picture", "Picture",
-   "Turn on the Photocell, above the screen, and the picture's own sources appear here."],
+  ["hearing", "Hearing", ""],
+  // One line each: the tab holds every family at once, and with a rack of
+  // six the Bench is shorter than for the tone.
+  ["keyboard", "Keyboard", "Connect one, or Show keys on Play."],
+  ["controllers", "Controllers", "Move a knob on a connected keyboard."],
+  ["picture", "Picture", "Turn on the Photocell, above the screen."],
 ];
 let selectedSource = "lfo1";
 
@@ -15805,6 +16009,26 @@ const PRESETS = [
      "An echo whose time drifts a few per cent either way, slowly: the repeats waver in pitch like worn tape, and the ghost figures wobble."],
   ], "display"],
 
+  /* The sound's own qualities as sources (J1): what you play moving the
+     picture and the effects, not only how loudly. For a live input; on the
+     generator these same routings are a loop and take the picture's reach. */
+  ["Listening", [
+    ["Pitch turns the figure", { display: "xy", lagOn: true, lagAuto: true, persistence: "0.12", timebase: 4,
+                                 mod: "hear.pitch>view.rotate@0.500" },
+     "Your own pitch on the rotation: play higher and the figure turns one way, lower and it turns the other. Middle C sits square."],
+    ["Brightness swirls it", { display: "xy", timebase: 5, persistence: "0.12", mod: "hear.bright>gen.twist@0.600" },
+     "The brighter the sound, the further the figure swirls into itself: open a filter, or dig in harder."],
+    ["Bass zooms in", { display: "yt", timebase: 6, persistence: "0", trigMode: "auto",
+                        mod: "hear.band1>view.zoom@0.500" },
+     "The bass band on the zoom: every low note pushes the waveform in towards you, and it eases back as the note dies."],
+    ["Hits throw echoes", { display: "xy", timebase: 5, persistence: "0.12", delaySync: "1/8", delayFeedback: 45,
+                            delayPingPong: true, mod: "hear.flux>gen.echo@1.000" },
+     "The echo's level on the flux: each hit or new note throws eighth-note repeats that fall away within a quarter of a second; a held note stays dry."],
+    ["Width opens the fold", { display: "xy", timebase: 5, persistence: "0.12", planeLimit: 2, planeRadius: 60,
+                               mod: "hear.width>gen.radius@0.600" },
+     "A stereo wavefolder whose radius follows how alike your channels are: mono stays open and clean, a wide or out-of-phase sound folds."],
+  ], "display"],
+
   ["Analysis", [
     ["Harmonics and THD", { shape: "square", freq: 110, timebase: 4, pHarm: true, pGoni: false },
      "A square wave with the harmonics pane open: each odd harmonic's level, and the distortion they add up to."],
@@ -15969,6 +16193,8 @@ const PRESET_ABOUT = {
     + "playing.",
   "Live effects": "For a microphone, a line input or a file: the plane and the echoes on what comes in, "
     + "drawn and heard alike. They land on whatever is playing; a rack's stems and a band split are left alone.",
+  "Listening": "For a microphone, a line input or a file: your pitch, brightness, bass, attacks and width "
+    + "moving the picture and the effects. They land on whatever is playing.",
   "Analysis": "The measuring side: harmonics, the tuner, cursors and the spectrogram.",
   "Saved": "Your own, saved in this browser. Save the current setup, or share it as a code, from "
     + "Settings \u2192 Presets.",
@@ -18389,7 +18615,9 @@ function openGroupDetail(group, anchor) {
    two that agree until one of them is changed. */
 function depthRowHTML(routing, label, ink, aria) {
   const source = MOD_SOURCES.get(routing.sourceId);
-  const percent = Math.round(routing.amount * 100);
+  // What is applied, which for a source of varying reach can be less than
+  // what is stored; see `touchRoutings`.
+  const percent = Math.round(routingAmount(source, routing.amount) * 100);
   const limit = source && source.reach > 0 ? Math.round(source.reach * 100) : 100;
   return '<div class="mod-edit" data-source="' + routing.sourceId + '" data-dest="'
     + routing.destId + '" style="--pip:var(--' + ink + ')">'

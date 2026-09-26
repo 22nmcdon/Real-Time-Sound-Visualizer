@@ -11,7 +11,9 @@ browser, and does nothing a player could hear change:
   really an LFO preset;
 - a split or a layer that sends every note to one layer;
 - a live-effects preset that never builds the effects insert, and so draws
-  and plays the input exactly as it came in.
+  and plays the input exactly as it came in;
+- a Listening preset whose source does not hear, or is treated as a loop on a
+  microphone and so held to the picture's reach for no reason.
 
 `presettest.py` holds the library as a whole: that every field comes back at
 the value it names, that each preset is unique and described.
@@ -190,6 +192,29 @@ with sync_playwright() as pw:
           octave is not None and octave["low"] > -0.02 and swirl is not None and swirl["apart"] > 0.1
           and live["plain"]["apart"] < 1e-3,
           "%s; %s; plain %s" % (octave, swirl, live["plain"]))
+
+    print("\n--- listening, on the same microphone ---")
+    listen = p.evaluate("""async () => {
+      const out = [];
+      for (const [preset] of PRESETS.find(([s]) => s === 'Listening')[1]) {
+        applyPreset('b:' + preset); await __wait(300);
+        if (modDirty) compileRoutes();
+        for (const r of state.modRoutings) {
+          const src = MOD_SOURCES.get(r.sourceId), dest = MOD_DESTS.get(r.destId);
+          const live = !!src && !!dest && (dest.kind === 'visual'
+            || genRoutes.some((g) => g.source === src && !g.loopTotal));
+          out.push({ preset, source: r.sourceId, hears: !!src && src.family === 'hearing',
+                     loop: !!src && src.fromPicture, live });
+        }
+      }
+      return out;
+    }""")
+    for row in listen:
+        print("    %-26s %-12s hears %s, loop %s, live %s" % (row["preset"], row["source"], row["hears"],
+                                                             row["loop"], row["live"]))
+    wrong = [r for r in listen if not (r["hears"] and not r["loop"] and r["live"])]
+    check("every Listening preset routes a source that hears, and on a microphone it is live and no loop",
+          len(listen) >= 5 and wrong == [], str(wrong[:3]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -64,7 +64,7 @@ with sync_playwright() as pw:
     before, after = by(fam["before"]), by(fam["after"])
     print("    before:", {k: (v["chips"] or v["hint"][:30]) for k, v in before.items()})
     check("the families come in their order, the oscillators first",
-          [r["id"] for r in fam["before"]] == ["oscillators", "signal", "keyboard", "controllers", "picture"],
+          [r["id"] for r in fam["before"]] == ["oscillators", "signal", "hearing", "keyboard", "controllers", "picture"],
           str([r["id"] for r in fam["before"]]))
     check("each source is under its own family",
           before["oscillators"]["chips"] == ["lfo1", "lfo2"] and before["signal"]["chips"] == ["env.live", "env.note"],
