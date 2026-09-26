@@ -2791,3 +2791,47 @@ path's `d` pasted in or read from a file.
   three were untested paths - a relative move's further pairs, radii too
   small to reach their end, and a new generator built from the panel - and
   have checks of their own. 26 of 26.
+
+**Your drawing (Stage L).** A figure drawn with the pointer on the X–Y
+screen: press *On the screen* under Draw and draw; each lift starts
+another stroke, and the beam retraces the lot.
+
+- *It lands where it was drawn.* Each point goes back through the
+  screen's own mapping - zoom, full scale, offset, the rotation - and is
+  divided by the generator's amplitude, so the drawing is kept in the
+  figure's units and the beam retraces it under the pointer; the check
+  sends every stored point forward again and finds it within half a
+  pixel, turned and zoomed as well as plain. What is not undone: the
+  plane and the echo, which act on the figure after it is drawn.
+- *While drawing, the pointer draws.* A capture-phase handler on the
+  screen takes the pointer before the measuring cursors' own, which wait;
+  drawing is only on while the figure is Your drawing and the screen is
+  X–Y, and choosing another figure turns it off.
+- *A pen with a step and a limit.* A move shorter than a hundredth of the
+  figure's half-width adds nothing, so a steady hand does not become
+  thousands of points; a tap is not a stroke; and three thousand points is
+  the most. One short of it, a drawing stays one short: no stroke fits in
+  one point.
+- *A fix that was not one.* The first check of the limit expected a
+  drawing one point short to reach it, failed, and I changed the page so a
+  stroke would not start without room for two. The mutation pass then
+  showed the old line surviving: both end one short and say they are full,
+  because nothing can reach the limit from there. The change was reverted
+  and the check corrected; the bug was in my expectation.
+- *The landing checks were blind at the identity, three times over.* At an
+  amplitude of one, an offset of nought and a full scale of nought
+  decibels, a mapping that forgot any of them lands under the pointer all
+  the same, and the mutation pass showed the offset and the gain surviving
+  just so. The checks run at 0.8 and 1.2, with offsets and full scales off
+  nought in the turned case.
+- *One equivalent mutant.* Drawing stops the pointer twice - its press, so
+  the measuring cursors never take it, and every move, so they could not
+  move if they had. Either alone holds the cursors still, so removing the
+  first changes nothing a test can see; both stay, since a future press on
+  the screen would need the first. Of eighteen mutants, one became the
+  page's own code when the limit change was reverted, and one is that
+  equivalent; the other sixteen are killed.
+- *Points are kept to a ten-thousandth.* A thousandth made shorter codes
+  and was a pixel and more once the screen was zoomed in at a low full
+  scale, some 1700 pixels to the unit; the turned check found a drawing
+  0.9 px off its line, against a limit of one. It is 0.1 now.

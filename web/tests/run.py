@@ -61,6 +61,7 @@ SUITES = [
     ("macro", [sys.executable, "macrotest.py"], "macros and the morph between sliders: fan-out, names in codes, a geometric pitch, menus left alone, the hand respected, a macro on the fader"),
     ("solid", [sys.executable, "solidtest.py"], "the new figures and solids: every route closed along its edges with the fewest retraces, the polygon and the butterfly exact"),
     ("text", [sys.executable, "texttest.py"], "text and SVG paths as figures: the beam's speed, the font, every path command, the panel, drawn on the path, in codes"),
+    ("sketch", [sys.executable, "sketchtest.py"], "drawing a figure on the screen: it lands under the pointer turned and zoomed, the pen, the limit, the cursors wait, in codes"),
     ("record", [sys.executable, "recordtest.py"], "Record: the clip is the screen and the speakers, across a change of source, an unheard input once, its length written in"),
     ("photo", [sys.executable, "phototest.py"], "the photocell: the phosphor grid, the reticle, the loop"),
     ("shape", [sys.executable, "shapetest.py"], "what the picture says: five sources and a verdict"),

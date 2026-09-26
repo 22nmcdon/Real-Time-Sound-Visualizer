@@ -157,9 +157,10 @@ try {
   const TABLES = {
     Text: { xy: [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5], at: [0, 0.25, 0.5, 0.75, 1] },
     Path: { xy: [0, 0.8, -0.7, -0.4, 0.7, -0.4, 0, 0.8], at: [0, 1 / 3, 2 / 3, 1] },
+    Drawn: { xy: [-0.8, 0, 0, 0.6, 0.8, 0, 0, -0.3, -0.8, 0], at: [0, 0.3, 0.6, 0.8, 1] },
   };
   for (const figure of ["Circle", "Square", "Polygon", "Star", "Rose", "Heart",
-                        "Infinity", "Spiral", "Spirograph", "Butterfly", "Text", "Path"]) {
+                        "Infinity", "Spiral", "Spirograph", "Butterfly", "Text", "Path", "Drawn"]) {
     node.port.onmessage({ data: { tone: { figure, figPath: TABLES[figure] || null } } });
     let worst = 0, finite = true, fingerprint = 0;
     for (let round = 0; round < 20; round++) {

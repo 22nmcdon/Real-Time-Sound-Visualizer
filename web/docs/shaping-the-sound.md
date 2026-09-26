@@ -790,8 +790,11 @@ Smaller things, each worth doing on its own and none blocking the others.
   figures, on a font drawn for the page rather than Hershey's own, with the
   beam travelling fast between strokes rather than jumping; `aliastest.py`
   measures a word at 40 and 200 Hz and a drawing at 40.
-- **Draw a figure**, the X–Y sibling of G2's drawn cycle.
-- **Presets, rebuilt. Built.** 160 presets in twenty-three sections, in a browser
+- **Draw a figure. Built.** The X–Y sibling of G2's drawn cycle - which is itself
+  not built yet, so this came first. *Your drawing* on the Figure menu: strokes
+  drawn with the pointer on the X–Y screen, taken back through the screen's
+  mapping so the beam retraces them exactly where they were drawn.
+- **Presets, rebuilt. Built.** 161 presets in twenty-three sections, in a browser
   with a card and a line for each. The README says how it works and what its
   first check found. Three sections are for playing - poly, split and layer,
   and the hands' own sources routed onto the voice - and one puts S1's

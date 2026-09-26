@@ -1666,6 +1666,14 @@ body[data-view="bench"] .dock  { order: 3; }
                     <input type="file" id="figPathFile" accept=".svg,image/svg+xml" hidden>
                   </div>
                 </div>
+                <div class="menu-row" id="figDrawRow" hidden>
+                  <span class="menu-label">Draw</span>
+                  <div class="grow">
+                    <button type="button" class="link-btn caps" id="figDrawOn" aria-pressed="false"
+                            title="Draw on the screen with the pointer">On the screen</button>
+                    <button type="button" class="link-btn caps" id="figDrawClear">Clear</button>
+                  </div>
+                </div>
                 <p class="menu-note" id="figPathNote" hidden></p>
                 <div class="menu-row" data-mod-dest="gen.detail" data-mod-control="detail">
                   <label class="menu-label" for="detail">Detail</label>
@@ -3824,6 +3832,13 @@ body[data-view="bench"] .dock  { order: 3; }
         strokes it moves fast, and those moves show as faint lines &mdash; brighter the longer
         the persistence. A path that cannot be read leaves the last drawing and says why.
         <br><br>
+        <i>Your drawing</i> is drawn by you: press <i>On the screen</i> under <i>Draw</i> and
+        draw on the X&ndash;Y screen with the pointer. Each time you lift it a new stroke
+        starts, and the beam retraces the lot exactly where you drew it &mdash; through the
+        zoom and the rotation too. While drawing is on the pointer does nothing else; press
+        it again, or choose another figure, to have the pointer back. <i>Clear</i> starts
+        again, and a drawing holds three thousand points.
+        <br><br>
         <i>Trace the figure at the note's pitch</i>, in the Keyboard section, plays it: a key
         sets the trace rate to the note's own frequency, A3 tracing the figure 220 times a
         second, and the envelope starts and stops it. The figure's shape is then its timbre:
@@ -4139,6 +4154,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "spinZ", "spinZValue", "depth", "depthValue",
                   "figure", "detail", "detailValue", "figureRate", "figureRateValue",
                   "figTextRow", "figText", "figPathRow", "figPathD", "figPathFile", "figPathNote",
+                  "figDrawRow", "figDrawOn", "figDrawClear",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
@@ -6695,9 +6711,9 @@ function decodeCC(text) {
    on a rose, loops on a spirograph - which is one control rather than three
    that are blank most of the time. */
 const FIGURES = ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph",
-                 "Butterfly", "Text", "Path"];
+                 "Butterfly", "Text", "Path", "Drawn"];
 // What the menu calls them, where that is not the name.
-const FIGURE_LABELS = { Path: "SVG path" };
+const FIGURE_LABELS = { Path: "SVG path", Drawn: "Your drawing" };
 
 /* `path` is the text or the imported drawing, compiled on the main thread by
    `compilePath` into points and the fraction of the lap at which the beam
@@ -6708,7 +6724,8 @@ function figureAt(name, t, detail, path) {
 
   switch (name) {
     case "Text":
-    case "Path": {
+    case "Path":
+    case "Drawn": {
       // Nothing to draw is a dot in the middle: silence, rather than a
       // circle nobody asked for.
       if (!path || !path.at || path.at.length < 2) return [0, 0];
@@ -15312,9 +15329,10 @@ el.figure.addEventListener("change", () => {
    say, sent to the generator, and shown only while one of them is chosen.
    The imported drawing keeps the last `d` that could be read: a paste that
    fails leaves the picture as it was and says why, rather than blanking it. */
-const figDrawing = { text: null, path: null, pathD: "", fault: "" };
+const figDrawing = { text: null, path: null, pathD: "", fault: "", strokes: [], drawn: null, on: false, full: false };
 function figurePathFor(name) {
-  return name === "Text" ? figDrawing.text : name === "Path" ? figDrawing.path : null;
+  return name === "Text" ? figDrawing.text : name === "Path" ? figDrawing.path
+    : name === "Drawn" ? figDrawing.drawn : null;
 }
 function setFigureText(text) {
   el.figText.value = String(text).slice(0, TEXT_MAX);
@@ -15336,8 +15354,17 @@ function syncFigurePath() {
   const name = el.figure.value;
   el.figTextRow.hidden = name !== "Text";
   el.figPathRow.hidden = name !== "Path";
+  el.figDrawRow.hidden = name !== "Drawn";
+  if (name !== "Drawn" && figDrawing.on) setDrawing(false);
   genSet("figPath", figurePathFor(name));
   let note = "";
+  if (name === "Drawn") {
+    const points = figDrawing.strokes.reduce((n, s) => n + s.length, 0);
+    note = figDrawing.full ? "That is as much as a drawing holds: " + DRAWN_MOST + " points. Clear it to start again."
+      : points ? points + " points in " + figDrawing.strokes.length
+        + (figDrawing.strokes.length === 1 ? " stroke." : " strokes.") + " Lift the pointer to start another."
+      : "Press On the screen, then draw on the X\u2013Y screen with the pointer.";
+  }
   if (name === "Path") {
     const p = figDrawing.path;
     note = figDrawing.fault || (p ? (p.xy.length / 2 - 1) + " points. Paste another path's d, or choose an "
@@ -15364,6 +15391,122 @@ el.figPathFile.addEventListener("change", async () => {
   syncFigurePath();
 });
 setFigureText(el.figText.value);
+
+/* --- your own drawing --------------------------------------------------------
+   The X-Y sibling of a drawn wave: strokes drawn with the pointer on the
+   screen become the figure. Each point is taken back through the screen's own
+   mapping - zoom, full scale, offset and the rotation - and divided by the
+   generator's amplitude, so the beam retraces the line exactly where the
+   pointer drew it. Change the zoom or the amplitude afterwards and the drawing
+   grows or shrinks with them, as any figure would: the stroke is kept in the
+   figure's own units, not in pixels.
+
+   What it does not undo: the plane's folds and mirrors, and the echo. They
+   act after the figure and on it, so a mirrored drawing is drawn once and
+   shown twice, which is what the plane is for.
+
+   While drawing is on, the pointer on the screen draws and does nothing else
+   - the measuring cursors wait - and it is only on while the figure is Your
+   drawing and the screen is X-Y. */
+const DRAWN_MOST = 3000;       // points, all strokes together
+const DRAWN_STEP = 0.01;       // the least a point moves the pen, in figure units
+function screenToFigure(x, y) {
+  const cx = plot.x + plot.w / 2, cy = plot.y + plot.h / 2, scale = (plot.w / 2) * state.zoom;
+  const [fx, fy] = state.xyPair;
+  const px = (x - cx) / scale, py = (cy - y) / scale;
+  const rx = (px - state.channels[fx].offset) / gainOf(fx), ry = (py - state.channels[fy].offset) / gainOf(fy);
+  const spin = state.analyseAt === "pre" ? 0 : rotateTurns();
+  const { cos, sin } = turnOf(spin);
+  const tone = genSettings();
+  const amp = tone && tone.amp > 0 ? tone.amp : 1;
+  // The inverse of the turn the screen applies: the transpose of its matrix.
+  const clamp = (v) => Math.max(-2, Math.min(2, v));
+  return [clamp((rx * cos + ry * sin) / amp), clamp((-rx * sin + ry * cos) / amp)];
+}
+function drawnCompile() {
+  figDrawing.drawn = compilePath(figDrawing.strokes.filter((s) => s.length > 1));
+}
+function setDrawing(on) {
+  figDrawing.on = on;
+  el.figDrawOn.setAttribute("aria-pressed", String(on));
+  el.trace.style.cursor = on ? "crosshair" : "";
+  if (on && state.display !== "xy") setDisplay("xy");
+}
+function drawingLive() {
+  return figDrawing.on && el.figure.value === "Drawn" && state.display === "xy";
+}
+let drawStroke = null, drawSent = 0;
+function drawAdd(event) {
+  const { x, y } = canvasPoint(event);
+  const at = screenToFigure(x, y);
+  const last = drawStroke[drawStroke.length - 1];
+  if (last && Math.hypot(at[0] - last[0], at[1] - last[1]) < DRAWN_STEP) return;
+  /* Full is full. With one point to spare a stroke takes it and is then
+     refused the rest, and `drawEnd` drops a one-point stroke as a tap - so a
+     drawing one short of the limit ends one short, which is right: no stroke
+     fits in one point. */
+  if (figDrawing.strokes.reduce((n, s) => n + s.length, 0) >= DRAWN_MOST) { figDrawing.full = true; return; }
+  /* A ten-thousandth of the figure's half-width. A thousandth was the first
+     choice, for shorter codes, and is a pixel and more once the screen is
+     zoomed in and at a low full scale - some 1700 pixels to the unit - so a
+     drawing made there came back beside the line it was drawn on. */
+  drawStroke.push([Math.round(at[0] * 10000) / 10000, Math.round(at[1] * 10000) / 10000]);
+}
+el.trace.addEventListener("pointerdown", (event) => {
+  if (!drawingLive()) return;
+  // First, and alone: the cursors' own handler is registered later.
+  event.stopImmediatePropagation();
+  event.preventDefault();
+  el.trace.setPointerCapture(event.pointerId);
+  drawStroke = [];
+  figDrawing.strokes.push(drawStroke);
+  drawAdd(event);
+}, true);
+el.trace.addEventListener("pointermove", (event) => {
+  if (!drawStroke) return;
+  event.stopImmediatePropagation();
+  drawAdd(event);
+  // Sent while it is being drawn, a few times a second, so the beam follows
+  // the pointer; every move would post the whole drawing sixty times a second.
+  if (performance.now() - drawSent > 80) { drawSent = performance.now(); drawnCompile(); syncFigurePath(); }
+}, true);
+const drawEnd = () => {
+  if (!drawStroke) return;
+  // A tap is not a stroke: one point draws nothing but a dot.
+  if (drawStroke.length < 2) figDrawing.strokes.pop();
+  drawStroke = null;
+  drawnCompile();
+  syncFigurePath();
+};
+el.trace.addEventListener("pointerup", drawEnd, true);
+el.trace.addEventListener("pointercancel", drawEnd, true);
+el.figDrawOn.addEventListener("click", () => setDrawing(!figDrawing.on));
+el.figDrawClear.addEventListener("click", () => {
+  figDrawing.strokes = []; figDrawing.full = false;
+  drawnCompile();
+  syncFigurePath();
+});
+// In a setup code: "x,y x,y;x,y ..." - strokes by semicolons, points by spaces.
+function encodeDrawn(strokes) {
+  return strokes.map((s) => s.map(([x, y]) => x + "," + y).join(" ")).join(";");
+}
+function decodeDrawn(text) {
+  if (typeof text !== "string" || !text) return [];
+  const out = [];
+  let count = 0;
+  for (const part of text.split(";")) {
+    const stroke = [];
+    for (const pair of part.trim().split(/\s+/)) {
+      const [x, y] = pair.split(",").map(Number);
+      if (Number.isFinite(x) && Number.isFinite(y) && count < DRAWN_MOST) {
+        stroke.push([Math.max(-2, Math.min(2, x)), Math.max(-2, Math.min(2, y))]);
+        count++;
+      }
+    }
+    if (stroke.length > 1) out.push(stroke);
+  }
+  return out;
+}
 
 el.detail.addEventListener("input", () => {
   el.detailValue.textContent = el.detail.value;
@@ -16414,8 +16557,8 @@ const DEFAULTS = {
   gen: "wave", shape: "harmonic", bars: DRAWBAR_DEFAULT.join(""), morph: 150, freq: 220, amp: 55,
   interval: 0, just: true, phase: 90,
   figure: "Circle", detail: 5, figureRate: 40,
-  // Additive: the words and the drawing behind the Text and Path figures.
-  figText: "HELLO", figPath: "",
+  // Additive: the words and the drawings behind the Text, Path and Drawn figures.
+  figText: "HELLO", figPath: "", figDrawn: "",
   swingRate: 21, decay: 12, detune: 40, swingDrive: 0,
   inputMode: 0, inputDepth: 50,
   /* The envelope, in the units its sliders use. New fields rather than
@@ -16538,7 +16681,7 @@ function snapshot() {
     just: el.tuneJust.getAttribute("aria-checked") === "true",
     phase: Number(el.phase.value),
     figure: el.figure.value,
-    figText: el.figText.value, figPath: figDrawing.pathD,
+    figText: el.figText.value, figPath: figDrawing.pathD, figDrawn: encodeDrawn(figDrawing.strokes),
     detail: Number(el.detail.value),
     figureRate: Number(el.figureRate.value),
     swingRate: Number(el.swingRate.value),
@@ -16701,6 +16844,9 @@ function restore(partial) {
   syncVcfRows();
   setFigureText(typeof s.figText === "string" ? s.figText : DEFAULTS.figText);
   setFigurePathD(typeof s.figPath === "string" ? s.figPath : "");
+  figDrawing.strokes = decodeDrawn(s.figDrawn);
+  figDrawing.full = false;
+  drawnCompile();
   el.figure.dispatchEvent(new Event("change"));
   el.model.dispatchEvent(new Event("change"));
   el.interval.dispatchEvent(new Event("change"));
@@ -17340,6 +17486,10 @@ const PRESETS = [
                            timebase: 5, pGoni: false,
                            figPath: "M 30 80 a 12 9 -20 1 1 0.1 0 M 42 78 L 42 20 C 50 30 62 34 58 52" },
      "An SVG path - an ellipse, a stem and a curved flag - drawn by the beam. Paste your own path's d under SVG, or choose a file."],
+    ["Draw your own", { gen: "figure", figure: "Drawn", figureRate: 30, display: "xy", persistence: "0.12",
+                        timebase: 5, pGoni: false,
+                        figDrawn: "-0.5,-0.5 0.5,-0.5 0.5,0.2 0,0.6 -0.5,0.2 -0.5,-0.5;-0.15,-0.5 -0.15,-0.1 0.15,-0.1 0.15,-0.5" },
+     "A house, drawn by hand and traced by the beam. Press On the screen under Draw and add to it with the pointer, or Clear it and draw your own."],
     // Short window, endless memory: you watch the beam draw it.
     ["Slow beam", { gen: "figure", figure: "Heart", figureRate: 3, display: "xy", persistence: "-1", timebase: 3 },
      "The heart three times a second, with endless persistence: watch the beam draw it."],
