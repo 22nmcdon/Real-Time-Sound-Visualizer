@@ -89,6 +89,13 @@ with sync_playwright() as pw:
               all(sh["finite"] and sh["worst"] > 0.01
                   for sh in report["shapes"].values()),
               str({k: round(v["worst"], 3) for k, v in report["shapes"].items()}))
+        # The pulse at its quarter, which is not the square's half: a width
+        # the worklet never read, or a branch missing from it, would play
+        # the square or the default's sine.
+        check("and the pulse is a quarter's, neither the square's nor a sine by default",
+              report["shapes"]["pulse"]["print"] not in (report["shapes"]["square"]["print"], report["shapes"]["sine"]["print"]),
+              "%s against %s and %s" % (report["shapes"]["pulse"]["print"], report["shapes"]["square"]["print"],
+                                        report["shapes"]["sine"]["print"]))
         check("and the drawn cycle is its tables, not a sine by default",
               report["shapes"]["drawn"]["print"] != report["shapes"]["sine"]["print"],
               "%s against %s" % (report["shapes"]["drawn"]["print"], report["shapes"]["sine"]["print"]))

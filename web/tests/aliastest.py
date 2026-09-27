@@ -140,6 +140,32 @@ with sync_playwright() as pw:
               peak <= -90 and audible - naudible <= -50,
               "%.1f dB anywhere, %.1f below 10 kHz; the richest table %.1f" % (peak, audible, naudible))
 
+    # The pulse, with the square's correction at both edges. At a half it is
+    # the square, checked in pulsetest.py; narrower, its fundamental is
+    # weaker - sin(pi w) of the square's - and against that fundamental the
+    # same correction reads higher. Measured when it landed, in dB below the
+    # fundamental below 10 kHz, and held with 3 dB of slack; and at least 20
+    # better than the pulse uncorrected, which measured 23 to 32 better.
+    PULSE = """([w, f0, n, rate]) => {
+      const inc = TWO_PI * f0 / rate, dt = f0 / rate, limited = [], naive = [];
+      let a = 0, c = 0;
+      for (let i = 0; i < n; i++) {
+        limited.push(waveAt('pulse', a, dt, null, w)); a += inc; if (a >= TWO_PI) a -= TWO_PI;
+        naive.push(waveAt('pulse', c, 0, null, w)); c += inc; if (c >= TWO_PI) c -= TWO_PI;
+      }
+      return { limited, naive };
+    }"""
+    PULSE_WANT = {(0.25, 440): -58.1, (0.25, 2000): -49.4, (0.25, 4000): -46.2,
+                  (0.1, 440): -55.5, (0.1, 2000): -46.8, (0.1, 4000): -46.2,
+                  (0.05, 440): -55.2, (0.05, 2000): -44.4, (0.05, 4000): -30.1}
+    for (w, f0), want in PULSE_WANT.items():
+        pair = p.evaluate(PULSE, [w, f0, N, RATE])
+        peak, audible = alias_floors(pair["limited"], f0)
+        npeak, naudible = alias_floors(pair["naive"], f0)
+        check("a pulse of %d%% at %d Hz folds back at %.0f dB or less, 20 better than uncorrected" % (w * 100, f0, want),
+              audible <= want + 3 and audible - naudible <= -20,
+              "%.1f dB below 10 kHz; uncorrected %.1f" % (audible, naudible))
+
     print("\n--- the LFOs are left alone ---")
     # A shape is a shape whether it runs at 220 Hz or at a fifth of one, and an
     # oscillator at 0.2 Hz has no aliasing to correct: a correction applied to

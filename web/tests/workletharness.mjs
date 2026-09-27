@@ -111,7 +111,7 @@ try {
      one is handed over here, a cycle that rises and falls in straight lines,
      so the branch that reads them runs in this thread. */
   const CYCLE = { most: 2, levels: [[0, 1, 0, -1], [0, 0.7, 0, -0.7]] };
-  for (const shape of ["sine", "harmonic", "triangle", "square", "ramp", "drawbars", "morph", "drawn", "noise"]) {
+  for (const shape of ["sine", "harmonic", "triangle", "square", "pulse", "ramp", "drawbars", "morph", "drawn", "noise"]) {
     node.port.onmessage({ data: { tone: { shape, cycle: shape === "drawn" ? CYCLE : null } } });
     /* Cleared first. The block is shared between shapes, and a shape whose
        branch throws writes nothing into it - so the samples it was judged on

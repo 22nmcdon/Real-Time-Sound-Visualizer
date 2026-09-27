@@ -2969,3 +2969,40 @@ playing becomes the drawn cycle, to play under the keyboard or to edit.
   one grab in a hundred, so a distance that did not wrap round passed too.
   The choice is its own function now, `cycleCrossing`, handed a cycle that
   crosses twice and one that crosses at the end of the table. 32 of 32.
+
+**Pulse (G1).** *Pulse* on the Shape menu, with a *Width* row shown only
+while it is chosen, 5 to 95 per cent, and a *Pulse width* destination - an
+oscillator on it is pulse-width modulation.
+
+- *Its middle taken out, and scaled to the larger excursion.* A pulse with its
+  DC left in holds the trace off the middle of the screen and the speaker
+  cone off its rest, and one scaled to keep its step at the square's 1.8
+  clips once it is narrower than a half. So the larger of its two excursions
+  is the square's 0.9, and a half is the square to the last bit, band-limiting
+  included. What that costs: a narrow pulse is up to 5.6 dB quieter than one
+  with its DC in, so a swept width breathes in level a little as well as in
+  colour.
+- *The shape's own number, not a sixth argument.* `waveAt`'s fifth argument
+  was the morph's position and nothing else read it; it is now the shape's
+  amount, the morph's position or the pulse's width, and `shapeAmount` in the
+  core says which a layer's shape wants. The two stay separate fields in the
+  tone, each answering one question, and nothing through the voice's
+  oscillators had to grow an argument only one shape reads.
+- *Checked against the formula, not against itself.* A pulse of width w has
+  its n-th harmonic in proportion to |sin(pi n w)| / n, so a quarter has no
+  fourth, eighth or twelfth and a third no third or sixth; the generator's
+  harmonics are held to that to 0.3 dB, and they meet it to 0.1. A square
+  passes none of it at a quarter.
+- *Hard sync needs the pulse's own jump.* At the wrap it rises by its step,
+  which is 1.8 only at a half; given the square's, the reset was corrected
+  by the wrong amount, and sync at ratio one stopped being the plain wave.
+- *Layer B took a code's numbers raw.* A code with a width of 400 left A at
+  95 per cent - A's values go in through the sliders, which clamp - and B at
+  a width of four, since B's went straight to the generator. The check
+  looked at A alone, and the fault was in the printed detail beside a pass.
+  Every one of B's sliders is now held to that slider's own range, which
+  fixes the morph, the envelope and the rest the same way.
+- *The mutation pass left two of twenty-five.* A clamp on the pushed width
+  in the core was a third clamp after `waveAt`'s and `wrapJump`'s, and it has
+  gone; and the core's own starting width is only seen by a core built bare,
+  as the worklet and the checks build one, so that has a check. 25 of 25.

@@ -192,8 +192,14 @@ on the way:
 - Its saw is the menu's half a cycle later, or the triangle-to-saw crossfade
   cancels the fundamental.
 
-`morphtest.py` holds it. Pulse, the supersaw, the wavetable, the noises, the
-stepped shape and G2 are not built.
+`morphtest.py` holds it. **Pulse** is built: *Pulse* on the Shape menu with a
+*Width* row, 5 to 95 per cent, patchable as *Pulse width* - 45 per cent either
+way at full depth - and each layer its own. Its middle is taken out and its
+larger excursion is the square's 0.9, so a half is the square exactly, and a
+narrow one neither clips nor carries a direct current, at the cost of being
+up to 5.6 dB quieter than one with its DC left in. `pulsetest.py` holds it.
+The supersaw, the wavetable, the noises and the stepped shape are not built;
+G2 is.
 
 ### G · verification
 
