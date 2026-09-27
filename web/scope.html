@@ -2115,8 +2115,17 @@ body[data-view="bench"] .dock  { order: 3; }
               <div class="grow">
                 <button type="button" class="link-btn caps" id="cycleSine">Sine</button>
                 <button type="button" class="link-btn caps" id="cycleSmooth">Smooth</button>
+                <button type="button" class="link-btn caps" id="cycleGrab"
+                        title="One cycle of what is playing, as the drawn cycle">Grab</button>
+                <span class="reading" id="cycleNote" hidden></span>
               </div>
             </div>
+            <p class="menu-note"><i>Grab</i> takes one cycle of what is playing: the
+              trigger lane, or in a rack whose trigger is on the generator, the first
+              other lane with sound in it. Hold the same note on the keyboard and the
+              period is the note's, exact; without one it is measured, and a few
+              cents out is a cycle that does not quite close. The reading beside it
+              says which, and its tooltip says the rest.</p>
           </div>
 
           <div class="menu-group" id="barsGroup" data-home="bench" data-tab="shape">
@@ -3743,7 +3752,11 @@ body[data-view="bench"] .dock  { order: 3; }
         <br><br>
         <i>Drawn cycle</i> is one period of the wave, drawn with the pointer in the pane on
         the <i>Shape</i> tab: whatever you draw is what you hear, and what the trace shows.
-        <i>Sine</i> starts again and <i>Smooth</i> rounds the corners. It keeps every
+        <i>Sine</i> starts again and <i>Smooth</i> rounds the corners. <i>Grab</i> takes one
+        cycle of what is playing instead: play a note into a rack's live lane, hold the same
+        note on the keyboard, press it, and the generator plays that sound's cycle under your
+        hands. Without a note held the pitch is measured, and the reading beside the button
+        says which. It keeps every
         harmonic under the top of the audible range at any pitch, so a sharp drawing is
         bright low down and gentler high up, as a real instrument is, and never gains the
         whistles a naive wavetable does.
@@ -4219,6 +4232,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "figDrawRow", "figDrawOn", "figDrawClear",
                   "inputFrom", "gen2Rows", "gen2Figure", "gen2Rate", "gen2RateValue",
                   "cycleGoRow", "cycleGo", "cycleGroup", "cycleCanvas", "cycleSine", "cycleSmooth",
+                  "cycleGrab", "cycleNote",
                   "swingRate", "swingRateValue", "decay", "decayValue", "detune", "detuneValue", "reswing",
                   "swingDrive", "swingDriveValue", "kickSpin",
                   "inputGroup", "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
@@ -19528,6 +19542,9 @@ el.barsGo.addEventListener("click", () => showControl("bar2"));
 const drawnCycle = { points: Array.from({ length: CYCLE_POINTS }, (_, i) => Math.sin(2 * Math.PI * i / CYCLE_POINTS)),
                      tables: null, last: null, sent: 0 };
 function cycleSend() {
+  // Whatever changed the cycle, a note about how the last one was grabbed
+  // no longer describes it. Grab writes its own note after sending.
+  el.cycleNote.hidden = true;
   drawnCycle.tables = cycleTables(drawnCycle.points);
   genSet("cycle", drawnCycle.tables);
   genSet("cycle", drawnCycle.tables, 1);
@@ -19592,6 +19609,149 @@ el.cycleSmooth.addEventListener("click", () => {
   paintCycle(); cycleSend();
 });
 el.cycleGo.addEventListener("click", () => showControl("cycleCanvas"));
+
+/* Grab (G2's second half): one cycle of what is playing, as the drawn cycle.
+   Resynthesis in one button - play a note into the input with the same note
+   held on the keyboard, press Grab, and the generator plays that sound's
+   cycle under your hands.
+
+   The period is the held note's, which is the point: with a note held the
+   period is known, not estimated, and the note-as-truth work already knows
+   it. Without one, the scope's own measure of the pitch stands in, and the
+   note says so, because an estimate a few cents out is a cycle that does not
+   quite close. Read from the trigger lane - unless that is the generator's
+   own lane in a rack, which is where the trigger starts, and then from the
+   first other lane with sound in it, since grabbing the generator back into
+   itself is not what anyone pressing Grab beside a live lane means. With the
+   tone alone there is no other lane, and Grab takes the generator's own
+   output, effects and all: resampling, which is worth having too.
+
+   GRAB_CYCLES whole periods are averaged into one - resampled at the period
+   exactly, fractions of a sample and all - so noise and the player's small
+   wobbles average down while the cycle itself adds up. Then its middle is
+   taken out, and it is turned to start at its steepest upward crossing of
+   nought and scaled to the pane.
+
+   The crossing is found in the average, not in the signal, and that order
+   is the second version. The first took the last upward crossing in the raw
+   input and averaged from there, which is exact on a clean tone and wrong
+   on a real one: noise of a twentieth of full scale puts little upward
+   crossings wherever the wave passes near nought, the downward crossing
+   included, and a third of grabs of a noisy lane came back half a cycle
+   out. It sounded the same - turning a cycle round does not change its
+   sound - but it drew wrong. So: average from anywhere, find the crossing
+   where the noise has gone, then average again from that exact place in the
+   input, rather than turning the 256 points, which would smooth them. */
+/* Where in a cycle of CYCLE_POINTS it starts, in points, fractions and all.
+   On its own so that a test can hand it a cycle with two upward crossings,
+   or one straddling the end of the table, which a grab timed off a live
+   input would reach only by chance. */
+function cycleCrossing(cycle) {
+  /* Which crossing: the steepest upward one of the cycle's first eight
+     harmonics, then the average's own crossing nearest to it. The steepest
+     crossing of the average itself was the first try and failed one grab in
+     three on a noisy lane: what noise is left after four cycles is rough from
+     one point to the next, and a wiggle of it near the downward crossing was
+     steeper, point to point, than the real upward one. Eight harmonics are
+     smooth enough to have no wiggles and close enough to the wave to cross
+     where it does. */
+  const smooth = new Array(CYCLE_POINTS).fill(0);
+  for (let h = 1; h <= 8; h++) {
+    let re = 0, im = 0;
+    for (let j = 0; j < CYCLE_POINTS; j++) {
+      const a = 2 * Math.PI * h * j / CYCLE_POINTS;
+      re += cycle[j] * Math.cos(a); im += cycle[j] * Math.sin(a);
+    }
+    for (let j = 0; j < CYCLE_POINTS; j++) {
+      const a = 2 * Math.PI * h * j / CYCLE_POINTS;
+      smooth[j] += 2 / CYCLE_POINTS * (re * Math.cos(a) + im * Math.sin(a));
+    }
+  }
+  const upward = (w) => {
+    const out = [];
+    for (let j = 0; j < CYCLE_POINTS; j++) {
+      const a = w[j], b = w[(j + 1) % CYCLE_POINTS];
+      if (a < 0 && b >= 0) out.push({ at: j + (-a) / (b - a), slope: b - a });
+    }
+    return out;
+  };
+  let near = null;
+  for (const c of upward(smooth)) if (!near || c.slope > near.slope) near = c;
+  let turn = near ? near.at : 0, gap = 8;
+  for (const c of upward(cycle)) {
+    const d = Math.abs(((c.at - turn) % CYCLE_POINTS + 1.5 * CYCLE_POINTS) % CYCLE_POINTS - CYCLE_POINTS / 2);
+    if (d < gap) { gap = d; near = c; }
+  }
+  if (near) turn = near.at;
+  return turn;
+}
+const GRAB_CYCLES = 4;
+function grabCycle() {
+  /* A few words beside the button, and the sentence in its tooltip: notes are
+     hidden on the Bench, and the Shape tab has a dozen pixels to spare with a
+     rack of six, which a sentence wrapping under the buttons would take. */
+  const say = (short, long) => {
+    el.cycleNote.textContent = short; el.cycleNote.title = long; el.cycleNote.hidden = !short;
+    return false;
+  };
+  const source = state.source;
+  if (!source) return say("nothing playing", "Nothing is playing to grab from.");
+  const rate = source.sampleRate;
+  const n = Math.min(source.capacity || rate, Math.round(rate * 0.25));
+  const windows = source.getLatestWindow(n);
+  const heard = (w) => { let power = 0; for (let i = 0; i < n; i++) power += w[i] * w[i]; return Math.sqrt(power / n) >= 0.003; };
+  let lane = Math.max(0, Math.min(source.channels - 1, state.trigSource || 0));
+  const gen = genLane();
+  if (gen && source.lanes[lane] === gen) {
+    const other = source.lanes.findIndex((l, i) => l !== gen && heard(windows[i]));
+    if (other < 0) return say("only the generator", "Nothing to grab: every lane but the generator is silent.");
+    lane = other;
+  }
+  const x = windows[lane];
+  if (!heard(x)) return say("silent", "Nothing to grab: the input is silent.");
+  const held = midiPitchHz();
+  const hz = held || measure(x, rate).hz;
+  if (!(hz > 0)) return say("no pitch", "Nothing with a pitch to grab. Hold its note on the keyboard, or play something steadier.");
+  const period = rate / hz;
+  // One period spare, for the second pass to start up to a period later.
+  const cycles = Math.min(GRAB_CYCLES, Math.floor((n - 2) / period) - 1);
+  if (cycles < 1) return say("too low", "Too low to grab: a cycle is longer than the scope keeps.");
+  const average = (start) => {
+    const points = new Array(CYCLE_POINTS).fill(0);
+    for (let c = 0; c < cycles; c++) {
+      for (let j = 0; j < CYCLE_POINTS; j++) {
+        const at = start + (c + j / CYCLE_POINTS) * period, i = Math.floor(at), f = at - i;
+        points[j] += (x[i] + (x[i + 1] - x[i]) * f) / cycles;
+      }
+    }
+    const mean = points.reduce((s, v) => s + v, 0) / CYCLE_POINTS;
+    return points.map((v) => v - mean);
+  };
+  const first = Math.floor(n - (cycles + 1) * period - 2);
+  const rough = average(first);
+  let peak = 0;
+  for (const v of rough) peak = Math.max(peak, Math.abs(v));
+  /* Not "exactly nought": a steady level with a ripple of a couple of bits
+     in it is loud enough to pass as heard, and scaled to the pane its ripple
+     would be ten thousand times louder than it was. A ten-thousandth, about
+     three bits of a 16-bit file, is where a cycle starts. */
+  if (peak < 1e-4) return say("flat", "Nothing to grab: the cycle is flat.");
+  const turn = cycleCrossing(rough);
+  const points = average(first + turn / CYCLE_POINTS * period);
+  peak = 0;
+  for (const v of points) peak = Math.max(peak, Math.abs(v));
+  drawnCycle.points = points.map((v) => v / peak * 0.95);
+  paintCycle();
+  cycleSend();
+  const from = source.lanes && source.lanes[lane] ? " from " + source.lanes[lane].name : "";
+  const pitch = (hz < 1000 ? hz.toFixed(1) : String(Math.round(hz))) + " Hz";
+  say(pitch + ", " + (held ? "key held" : "measured"),
+      "Grabbed" + from + " at " + pitch + ", " + cycles + " cycles averaged, "
+      + (held ? "the period from the note you are holding."
+              : "the period measured - hold the note on the keyboard for the exact one."));
+  return true;
+}
+el.cycleGrab.addEventListener("click", () => grabCycle());
 /* In a setup code: the 256 points, a byte each, in base 64 - 344 characters.
    Nought is a sine, which is also what a code from before this means. */
 function encodeCycle(points) {

@@ -157,9 +157,14 @@ could change the *timbre* of the waveform rather than its pitch or level.
   harmonics; they are resynthesised into eight 2048-point tables, each with
   half the harmonics of the one before, and the note reads whichever has
   nothing over Nyquist, crossfading as it climbs.
-- **Grab a cycle.** With a MIDI note held the input's period is *known*, not
+- **Grab a cycle. Built.** With a MIDI note held the input's period is *known*, not
   estimated — the note-as-truth work already exists. One period of the Nord,
   captured at a zero crossing, becomes a wavetable. Resynthesis in one button.
+  *Grab* on the drawn cycle's pane: four periods of the trigger lane averaged
+  into one, turned to start at its upward crossing, and then yours to edit.
+  In a rack whose trigger is on the generator it looks past it, to the first
+  other lane with sound in it; with no note held the scope's measured pitch
+  stands in, and the reading beside the button says which.
 
 ### Built so far
 

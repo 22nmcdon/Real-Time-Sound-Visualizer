@@ -2911,3 +2911,61 @@ the trace.
   drawn cycle and a new generator built from the panel. A third was killed
   only by a crash - a code that decoded to nothing threw inside the check -
   which now fails by name. 16 of 16.
+
+**Grab a cycle (G2).** *Grab* on the drawn cycle's pane: one cycle of what is
+playing becomes the drawn cycle, to play under the keyboard or to edit.
+
+- *The period is the held note's.* With a key held it is known, not
+  estimated; without one the scope's measured pitch stands in, and the
+  reading beside the button says which - *220.0 Hz, key held* or *220.0 Hz,
+  measured*. The test holds B flat over an A and gets a visibly worse cycle,
+  which is how it knows the note is what is used, and not a measure that
+  happened to agree.
+- *Which lane.* The trigger lane - except in a rack whose trigger is on the
+  generator, which is where a rack's trigger starts: pressing Grab there
+  first took the generator's own output back into itself. It now looks past
+  the generator to the first other lane with sound in it. With the tone
+  alone there is no other lane, and Grab takes the generator's own output,
+  effects and all, which is resampling and worth having.
+- *A reading, not a note.* The first version said what it had done in a
+  `.menu-note`, and notes are hidden on the Bench by design, so it never
+  showed. A few words beside the button, the sentence in its tooltip.
+- *The crossing is found in the average, and in its first eight harmonics.*
+  Taken from the raw input, a third of grabs of a noisy lane came back half a
+  cycle out, since noise puts little upward crossings wherever the wave
+  passes near nought. Taken as the steepest crossing of the four-cycle
+  average, one grab in twelve still did: noise left in the average is rough
+  from point to point, and a wiggle can be steeper than the real crossing.
+  The steepest crossing of eight harmonics has no wiggles; the average's own
+  crossing nearest to it is where the cycle starts, and a second pass
+  averages from that exact place in the input rather than turning the 256
+  points, which would smooth them. Turning a cycle does not change its
+  sound, so none of this was audible - only drawn wrong.
+- *A fixture has to be able to show each step.* A clean tone of three
+  harmonics could not show the averaging (one cycle of it is as good as
+  four), nor the step from eight harmonics to the wave's own crossing (eight
+  harmonics were the whole wave). So a noisy copy, judged on its mean error
+  over twelve grabs - 0.026 against one cycle's 0.056 - and a twelfth
+  harmonic, which moves the eight's crossing 0.8 of a point off the wave's.
+  And the silent lane sits between the generator and the tone, or looking
+  past the generator without asking whether a lane had sound passed too.
+- *Checked against a comparison that could not see the start.* The first
+  version of the test turned the expected cycle through its 256 points and
+  kept the best; the true start falls between points, which alone was 0.0125
+  of error - more than Grab got wrong - and hid where it started. The
+  expected cycle now starts at its own crossing, found by bisection, and is
+  compared point for point: 0.0014.
+- *A threshold held by a fixture that could not reach it.* The flat refusal
+  is a ten-thousandth, not exactly nought, and a steady level averaged to
+  exactly nought, so the mutation pass could not tell them apart. The level
+  lane has a ripple of two bits now, which exactly-nought would blow up to
+  full scale.
+- *Grab reads the scope's quarter-second.* So it will not grab below about
+  8 Hz, and says *too low*.
+- *The mutation pass left three of thirty-two.* The flat threshold, above;
+  and two in choosing the crossing that timed grabs could not reach - the
+  file's eight harmonics cross upward once, so *first* passed for
+  *steepest*, and a crossing straddling the end of the table comes up about
+  one grab in a hundred, so a distance that did not wrap round passed too.
+  The choice is its own function now, `cycleCrossing`, handed a cycle that
+  crosses twice and one that crosses at the end of the table. 32 of 32.
