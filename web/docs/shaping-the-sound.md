@@ -198,8 +198,17 @@ way at full depth - and each layer its own. Its middle is taken out and its
 larger excursion is the square's 0.9, so a half is the square exactly, and a
 narrow one neither clips nor carries a direct current, at the cost of being
 up to 5.6 dB quieter than one with its DC left in. `pulsetest.py` holds it.
-The supersaw, the wavetable, the noises and the stepped shape are not built;
-G2 is.
+**The supersaw is the voice's unison** (H1) on the saw - seven copies
+detuned by *Spread* - which is what a supersaw is; a shape of its own would
+have been a second unison, so it is the *Supersaw* preset instead. **The
+noises are built**: *White*, *Pink* (3 dB an octave, Kellet's filter) and
+*Brown* (6 dB an octave, a leaky sum with its corner at 14 Hz), both at an
+RMS of 0.28, and *Stepped (S&H)* - a random level each cycle of the note,
+held, so pitched, with each step band-limited as the square's edges are.
+They keep a memory, so they are made in the core beside each voice rather
+than in `waveAt`, and like white noise they go round the voice's oscillator
+(FM, sync, unison) rather than through it; the shaping and the filter still
+act on them. `noisetest.py` holds them. The wavetable is not built; G2 is.
 
 ### G · verification
 

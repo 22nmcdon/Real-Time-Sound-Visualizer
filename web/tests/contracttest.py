@@ -130,7 +130,15 @@ with sync_playwright() as pw:
     # which proves the shift and is a poor witness that anything happened. The
     # property is asserted on all four; the witness comes from whichever lane
     # can actually show it.
-    delayed = p.evaluate("""() => state.source.lanes.map((lane, index) => {
+    # With the audio held still. A lane here reads an AnalyserNode, which
+    # the audio thread refills on its own schedule, not between the page's
+    # tasks - so two reads in one breath can straddle a block. Under the full
+    # suite's load they did, and a shift exact to the sample came out 0.19
+    # out; suspended, the two reads see the same buffer.
+    delayed = p.evaluate("""async () => {
+     const ctx = state.source.lanes[0].analyser.context;
+     await ctx.suspend();
+     const rows = state.source.lanes.map((lane, index) => {
       const was = lane.delay;
       const plain = lane.read(4096);
       lane.delay = 1000;
@@ -147,7 +155,10 @@ with sync_playwright() as pw:
         moved = Math.max(moved, Math.abs(held[i] - plain[i]));
       }
       return { index, name: lane.name, worst, moved };
-    })""")
+     });
+     await ctx.resume();
+     return rows;
+    }""")
     for row in delayed:
         print("    lane %d (%s): shift exact to %.2e, window moved by %.4f"
               % (row["index"], row["name"], row["worst"], row["moved"]))

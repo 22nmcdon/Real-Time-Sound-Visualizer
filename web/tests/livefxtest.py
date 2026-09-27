@@ -200,8 +200,16 @@ with sync_playwright() as pw:
       const swirled = apart(), lanes1 = [state.source.channels, __rows()], active = state.source.fx.active;
       // The amount to nought with the routing kept, so the node stays: what
       // the worklet does now it has only from the per-frame message.
-      state.modRoutings[0].amount = 0; touchRoutings(); await __wait(400);
-      const zeroed = apart(), stillActive = state.source.fx.active;
+      /* Read until it stops, up to four seconds, not after a fixed 400 ms.
+         The page tells the worklet once a frame and the window read holds
+         the audio before that, and under the full suite's load 400 ms came
+         out still swirling at 1.2. A worklet that never heard would swirl
+         past the four seconds, which is the failure this is for. */
+      state.modRoutings[0].amount = 0; touchRoutings();
+      const began = performance.now();
+      let zeroed = apart();
+      while (zeroed >= 1e-3 && performance.now() - began < 4000) { await __wait(100); zeroed = apart(); }
+      const stillActive = state.source.fx.active;
       state.modRoutings = []; touchRoutings(); await __wait(600);
       return { level, still, swirled, zeroed, stillActive, lanes0, lanes1, active, lanes2: [state.source.channels, __rows()],
                activeAfter: state.source.fx.active };

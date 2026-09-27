@@ -133,7 +133,25 @@ with sync_playwright() as pw:
     check("brightness puts a 200 Hz sine low and a 4 kHz one high, at one level, where the centroid says",
           abs(dull["bright"] - BRIGHT(200)) < 0.03 and abs(keen["bright"] - BRIGHT(4000)) < 0.03,
           "%.3f, %.3f" % (dull["bright"], keen["bright"]))
-    low, mid = at(60, settle=1200), at(2000, settle=1200)
+    # Settled by the reading, not by the clock. The followers advance by the
+    # frame's time, capped at 250 ms a frame so a tab coming back does not
+    # jump them, and under the full suite's load frames came further apart
+    # than that: 1.2 s of waiting was 0.65 s of the follower's, and the tone
+    # before still had 0.06 left in another band. Read until nothing moves.
+    def steady(hz):
+        return p.evaluate("""async (hz) => {
+          __play(hz, 'same', 0.8);
+          const began = performance.now();
+          let last = __read();
+          while (true) {
+            await __wait(150);
+            const now = __read();
+            const moved = Math.max(...now.bands.map((v, i) => Math.abs(v - last.bands[i])));
+            last = now;
+            if ((performance.now() - began > 1200 && moved < 0.002) || performance.now() - began > 8000) return now;
+          }
+        }""", hz)
+    low, mid = steady(60), steady(2000)
     print("    60 Hz bands %s; 2 kHz bands %s" % (["%.3f" % v for v in low["bands"]],
                                                    ["%.3f" % v for v in mid["bands"]]))
     empty = lambda bands, i: all(v < 0.05 for j, v in enumerate(bands) if j != i)

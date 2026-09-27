@@ -1602,7 +1602,10 @@ body[data-view="bench"] .dock  { order: 3; }
                     <option value="drawbars">Drawbars</option>
                     <option value="morph">Morph</option>
                     <option value="drawn">Drawn cycle</option>
-                    <option value="noise">Noise</option>
+                    <option value="noise">White noise</option>
+                    <option value="pink">Pink noise</option>
+                    <option value="brown">Brown noise</option>
+                    <option value="stepped">Stepped (S&amp;H)</option>
                   </select>
                 </div>
               </div>
@@ -3757,7 +3760,7 @@ body[data-view="bench"] .dock  { order: 3; }
         measures whatever is being drawn rather than following a key.</span></li>
 
       <li><b>Waveform</b>
-        <span>Sine, square, pulse, triangle, saw, noise, a sine with a third harmonic,
+        <span>Sine, square, pulse, triangle, saw, four noises, a sine with a third harmonic,
         drawbars, morph and a cycle you draw. The <i>interval</i> sets the right channel
         against the left.
         <br><br>
@@ -3766,6 +3769,13 @@ body[data-view="bench"] .dock  { order: 3; }
         multiples of one over its width - a quarter has no fourth or eighth. Put an oscillator
         on <i>Pulse width</i> and it moves: pulse-width modulation, the slow shimmer of every
         analogue string pad.
+        <br><br>
+        The noises: <i>white</i> is every frequency alike, a hiss; <i>pink</i> falls 3 dB an
+        octave, so every octave carries the same power, like rain; <i>brown</i> falls 6, a
+        rumble like surf. <i>Stepped</i> is sample and hold: a new random level every cycle of
+        the note, held until the next, so it is noise with a pitch - the trace a staircase, the
+        spectrum a hole at the note and every harmonic. For a supersaw, put the saw through
+        <i>Unison</i> with some <i>Spread</i>, or load the preset.
         <br><br>
         <i>Drawn cycle</i> is one period of the wave, drawn with the pointer in the pane on
         the <i>Shape</i> tab: whatever you draw is what you hear, and what the trace shows.
@@ -8578,6 +8588,65 @@ function makeGeneratorCore(rate, slots, lfos) {
      A kink - a sine slave reset partway up - is
      not corrected; the slope's jump aliases far more gently, as the
      triangle's did, and the controls say sync is for the saw and square. */
+  /* The noises (G1), which are shapes with a memory, and so live here with
+     the voice rather than in `waveAt`, which has none: white, and white
+     filtered to pink and to brown, and a random level held for each cycle of
+     the note. Each voice and each channel its own, so a chord's notes and the
+     two sides of the figure are not one noise twice. */
+  const NOISES = new Set(["noise", "pink", "brown", "stepped"]);
+  /* To an RMS of 0.28 each, worked out rather than tuned: Kellet's sum of a
+     uniform white comes out at an RMS of 1.77, measured over two million
+     samples; a leaky sum's variance is g^2 (1/3) / (1 - 0.998^2), which is
+     0.28 squared at g = 0.0307. Half of white's 0.58, so a Gaussian's rare
+     peaks - 3.6 of its RMS once in ten thousand - reach the clamp seldom. */
+  const PINK_GAIN = 0.28 / 1.767, BROWN_GAIN = 0.0307;
+  function makeNoise() {
+    return { b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, b6: 0, brown: 0,
+             prev: 0, cur: 0, next: Math.random() * 1.8 - 0.9, last: 1 };
+  }
+  function noiseStep(z, shape, phase, step) {
+    const white = Math.random() * 2 - 1;
+    if (shape === "pink") {
+      /* Paul Kellet's filter: six first-order sections a decade or so apart
+         whose sum falls at 3 dB an octave, to a twentieth of a decibel from
+         9 Hz up at 44.1 kHz - at 48 it is a hair steeper, which nobody
+         hears. Scaled to an RMS of about 0.28, so it seldom reaches the
+         clamp. */
+      z.b0 = 0.99886 * z.b0 + white * 0.0555179;
+      z.b1 = 0.99332 * z.b1 + white * 0.0750759;
+      z.b2 = 0.96900 * z.b2 + white * 0.1538520;
+      z.b3 = 0.86650 * z.b3 + white * 0.3104856;
+      z.b4 = 0.55000 * z.b4 + white * 0.5329522;
+      z.b5 = -0.7616 * z.b5 - white * 0.0168980;
+      const pink = z.b0 + z.b1 + z.b2 + z.b3 + z.b4 + z.b5 + z.b6 + white * 0.5362;
+      z.b6 = white * 0.115926;
+      return pink * PINK_GAIN;
+    }
+    if (shape === "brown") {
+      /* White summed, with a leak so it cannot wander off for good: 6 dB an
+         octave down to a corner at (1 - 0.998) fs / 2 pi, 14 Hz, below which
+         it is flat. The leak is the corner, and a faster one - 0.98 is the
+         usual - put it at 140 Hz, where half the keyboard's bass would have
+         heard pink instead. */
+      z.brown = 0.998 * z.brown + white * BROWN_GAIN;
+      return z.brown;
+    }
+    if (shape === "stepped") {
+      /* Sample and hold, clocked by the note: a new level each cycle, held
+         until the next. It is pitched - the spectrum has a hole at the note
+         and at every harmonic of it, since a level held for exactly one
+         period has none of them - and it is noise between the holes. Each
+         step is band-limited with the square's correction, which needs the
+         step before it happens as well as after, so the next level is drawn
+         a cycle early. */
+      const t = cycleOf(phase), dt = step > 0 ? Math.min(0.49, step) : 0;
+      if (t < z.last) { z.prev = z.cur; z.cur = z.next; z.next = Math.random() * 1.8 - 0.9; }
+      z.last = t;
+      const jump = t < 0.5 ? z.cur - z.prev : z.next - z.cur;
+      return z.cur + jump / 2 * polyBlep(t, dt);
+    }
+    return white;
+  }
   const UNISON_MAX = 7;
   function makeOsc() {
     return { n: 0, p: new Float64Array(UNISON_MAX), s: new Float64Array(UNISON_MAX),
@@ -8719,6 +8788,7 @@ function makeGeneratorCore(rate, slots, lfos) {
   // A voice's shaper, remade when the factor has changed since it was made.
   const shaperOf = (voice) => (voice.shp && voice.shp.factor === shapeFactor ? voice.shp : (voice.shp = makeShaper()));
   const oscL = makeOsc(), oscR = makeOsc();
+  const noiseL = makeNoise(), noiseR = makeNoise();
   /* `base` is the phase the caller keeps for this voice or channel and has
      already advanced; `offset` is added to it, the dyad's right-channel
      phase. `hz` is the note at this sample. */
@@ -8830,7 +8900,7 @@ function makeGeneratorCore(rate, slots, lfos) {
       voice.phase += TWO_PI * f * dt;
       if (voice.phase >= PHASE_WRAP) voice.phase -= PHASE_WRAP;
       if (voice.phase < 0) voice.phase += PHASE_WRAP;
-      const wave = tone.shape === "noise" ? Math.random() * 2 - 1
+      const wave = NOISES.has(tone.shape) ? noiseStep(voice.nz || (voice.nz = makeNoise()), tone.shape, voice.phase, Math.abs(f) / rate)
         : vx.on ? oscStep(voice.osc || (voice.osc = makeOsc()), voice.phase, 0, f, tone, bars, amount, vx)
         : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, amount);
       let w = wave;
@@ -9098,9 +9168,9 @@ function makeGeneratorCore(rate, slots, lfos) {
         const stepR = Math.abs(hz * ratio) / rate;
 
         let wl, wr;
-        if (tone.shape === "noise") {
-          wl = Math.random() * 2 - 1;
-          wr = Math.random() * 2 - 1;
+        if (NOISES.has(tone.shape)) {
+          wl = noiseStep(noiseL, tone.shape, phaseL, stepL);
+          wr = noiseStep(noiseR, tone.shape, phaseR + phase, stepR);
         } else if (vxA.on) {
           wl = oscStep(oscL, phaseL, 0, hz, tone, bars, amount, vxA);
           wr = oscStep(oscR, phaseR, phase, hz * ratio, tone, bars, amount, vxA);
@@ -17484,6 +17554,11 @@ const PRESETS = [
      "A square's edge, magnified until the ripple of its band-limiting shows."],
     ["Noise", { shape: "noise", display: "spect", span: "5", timebase: 4 },
      "Every frequency at once: a flat grey wash across the spectrogram."],
+    // G1's coloured noises and the stepped one.
+    ["Pink noise", { shape: "pink", display: "spect", span: "5", timebase: 4 },
+     "Noise falling at 3 dB an octave, so every octave carries the same power: rain rather than hiss. On the spectrogram the wash darkens towards the top."],
+    ["Sample and hold", { shape: "stepped", freq: 55, timebase: 5 },
+     "A new random level each cycle of the note, held until the next: the trace is a staircase, and the sound a pitched rattle whose spectrum has a hole at the note and at every harmonic of it."],
     // G2: a cycle drawn by hand - here a rounded wave with a lean to it.
     ["A drawn cycle", { shape: "drawn", freq: 165, timebase: 4, cycle: "JSktMTQ3Oj1AQ0VHSUtNTk9QUVJTU1NTU1NTUlJRUE9OTUxLSklHRkVEQkFAPz08Ozo5ODc3NjU0NDMzMjIyMjExMTExMTExMjIyMjIyMjIyMjIyMjIyMjExMTAwLy4uLSwrKikoJyYkIyIgHx0cGhkXFhQTERAODQwKCQcGBQQCAQD//v38/Pv6+fn49/f29vX19PTz8/Ly8fDw7+7u7ezr6unn5uXj4uDe3NrY1tTSz83KyMXDwL26uLWyr6yqp6Sin5yamJaUkpCOjYuKiYiIiIeHiIiJiouMjpCSlJaZnJ+ipqmtsbW5vsLHzNDV2t/k6e7z+P0CBgsQFBkdIQ==" },
      "One period drawn by hand and played as a wave: open Shape and draw over it, or press Sine to start again. The tables keep every harmonic under Nyquist at any pitch."],

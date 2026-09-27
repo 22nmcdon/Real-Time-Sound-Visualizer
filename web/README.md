@@ -3006,3 +3006,58 @@ oscillator on it is pulse-width modulation.
   in the core was a third clamp after `waveAt`'s and `wrapJump`'s, and it has
   gone; and the core's own starting width is only seen by a core built bare,
   as the worklet and the checks build one, so that has a check. 25 of 25.
+
+**The noises (G1).** *White*, *Pink* and *Brown noise*, and *Stepped (S&H)*,
+on the Shape menu. The supersaw the plan listed beside them is the voice's
+unison on the saw, which is what a supersaw is, and is the *Supersaw* preset
+rather than a second unison.
+
+- *Made beside the voice, not in `waveAt`.* A filter and a held level have a
+  memory, and `waveAt` has none; so they are made in the core, a state for
+  each voice and each channel, where white noise already was. Like white
+  noise they go round the voice's oscillator - FM, sync and unison mean
+  nothing to them - and through its shaping and filter.
+- *Pink is Kellet's filter; brown is a leaky sum with its corner at 14 Hz.*
+  The usual leak, 0.98, puts the corner at 140 Hz, where half the bass
+  keyboard would have heard pink. Both at an RMS of 0.28, worked out rather
+  than tuned: Kellet's sum measured at 1.77 over two million samples, and a
+  leaky sum's variance is g^2 (1/3) / (1 - a^2).
+- *Stepped is clocked by the note.* A new level each cycle, held, so its
+  spectrum has a hole at the note and every harmonic - the test's handle on
+  it, since they move when the note does. Each step has the square's
+  correction, which needs the step before it happens, so the next level is
+  drawn a cycle early. At 4 kHz the holes stay at -59 to -73 dB; uncorrected,
+  what folds back fills them to -34.
+- *A check on a noise has to allow for how little of it there is.* Brown is
+  nearly all below 30 Hz, so ten seconds of it are a few hundred independent
+  samples, and left against right correlated at -0.07 by chance; the check
+  correlates first differences, which are white. And the colours were first
+  judged octave by octave to 0.4 dB, where each step is two band levels'
+  difference: pink's lowest came out at -3.46 on a mutation run that had not
+  touched it. They are judged by the line through all the octaves now, to
+  0.2, over twenty seconds, with each octave held loosely to catch a bend.
+- *Two survivors were fixtures that could not show the effect.* A right
+  channel clocked by the left steps with it at a unison whatever it reads,
+  so the right is a fifth up now; and at 220 Hz one uncorrected step is
+  inaudible to the holes, so the chord's path is checked at 4 kHz as the
+  dyad's is. 12 of 12.
+- *A wait by the clock is not a wait by the follower.* The full suite with
+  these checks in it failed the hearing test's band check once: a 60 Hz sine
+  read 0.06 in the next band up. The followers advance by the frame's time,
+  capped at 250 ms a frame, and under the suite's load frames came further
+  apart than that, so the test's 1.2 s were 0.65 s of the follower's and the
+  tone before had not died away. It now reads until nothing moves, and passes
+  beside two other heavy checks running at once.
+- *Two reads of a lane are not one instant.* The next full run failed the
+  contract test's alignment check instead: a band lane shifted by the delay
+  came out 0.19 off where it is exact. Those lanes read an AnalyserNode,
+  which the audio thread refills on its own schedule rather than between the
+  page's tasks, so two reads in one function can straddle a block - more
+  often the slower the machine. The check now suspends the audio for the two
+  reads. The page never needs two reads to agree, so nothing in it changed.
+- *And the run after that, a third.* The live-effects check waited a fixed
+  400 ms for a routing turned to nought to stop swirling the input; the page
+  tells the worklet once a frame, and loaded, it was still swirling at 1.2.
+  It reads until it stops now, up to four seconds - a worklet that never
+  heard still fails it, which was run to be sure. Three runs, three checks,
+  one cause: a wait by the wall clock for something that moves by frames.
