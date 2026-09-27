@@ -601,11 +601,16 @@ crossovers), Width and Flux.
   pendulums' energy in: a drive against the decay, held at 3 / (3 + decay) at
   full, and when the drive stops the swing runs down from where it is.
 
-`drawingtest.py` holds them. Still not built: the rest of the J2 table
-(input pitch onto the harmonograph's ratio works already, through the
-ratio destination; the rose's k from a dyad, and bands onto separate spin
-axes, do not), the drawings as sources (the swing's envelope and phase, a
-solid's attitude).
+`drawingtest.py` holds them. **The rest of J2 is built.** A dyad played
+on a rose sets its k to the dyad's ratio, just or tempered as the generator
+is, so a just fifth closes in two turns and a tempered one turns slowly -
+which needed the rose's angle to run on across turns rather than go back to
+nought each one. A solid's spin about each axis is a destination (*Spin X*,
+*Y* and *Z*), so the bands - or anything else - can turn it each its own
+way; a routing says it rather than a mode. And the drawings are sources,
+under *Picture*, shown only while their drawing plays: the harmonograph's
+*Swing* and *Pendulum*, and a solid's *Tilt*, *Turn*, *Roll* and *Facing*.
+`drawnplaytest.py` holds them.
 
 **J3: live audio into the generator.** The generator's worklet has an input,
 fed from the live device, in an *Input into the generator* section on the

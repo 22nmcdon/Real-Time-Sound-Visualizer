@@ -3095,3 +3095,48 @@ bank of four, scanned by *Position*, with a slot switch on the pane.
   is built from the panel, and without the bank it plays a sine until
   someone draws; the check reads the lane's bank as well as its position,
   which is set off its default first so the default could not pass for it.
+
+**The rest of J2.** A dyad closes a rose, a solid's three spins are
+destinations, and the drawings are sources.
+
+- *The rose never precessed.* Its comment said a fractional k made it
+  precess, and its angle was taken from the figure's phase, which goes back
+  to nought every turn - so a rose of k = 3/2 drew half of itself and jumped.
+  The core keeps whole turns for the rose now, wrapped at 10080, a multiple
+  of every just ratio's denominator including the tritone's 32, so a just
+  rose closes where it should and never meets the wrap; a tempered one jumps
+  once in that many turns, four minutes at 40 Hz. With that, a dyad's p/q is
+  the rose's k and consonance closes it, as it closes a Lissajous: the ratio
+  is `intervalRatio`, the same number the X-Y figure is drawn at.
+- *Bands onto the spins is a routing.* The plan asked for the bands on the
+  three spin axes; the three axes became destinations and the bands - or an
+  oscillator, or the pedal - reach them by the matrix, rather than a mode
+  that hard-wired one pairing.
+- *The drawings' readings come back with the samples,* as the envelope's
+  do: the worklet posts them with each batch, and the page's core answers
+  while the generator is not heard. The turns are the sine of each angle,
+  since an angle wraps from a full turn to nought in one step; facing is
+  cos x cos y, where the solid's forward axis points after its rotations.
+  From the tone or a rack's generator lane - unlike the envelope, which is
+  the tone's alone.
+- *Where they sit decided what they are called.* In the signal family they
+  wrapped it onto a third line and put the Sources tab over with a rack of
+  six; with a keyboard as well, a fourth. Under *Picture* they take the line
+  the Photocell's hint uses while it is off, which is what they are - the
+  picture's own properties - and *Tilt*, *Turn* and *Roll* rather than *Turn
+  X*, *Y* and *Z* keep four chips on one line.
+- *Two layouts that were already over.* A rack of six put the Play tab 30 px
+  over with a solid and 6 with a harmonograph before any of this: the rack's
+  layout check only ever used a waveform. Frequency and Phase were shown
+  where they moved nothing - Shape and Interval had been hidden for a figure
+  and a solid for exactly that reason, and these two missed - and hiding them
+  there made room for the spins' modulation lanes as well. The check now
+  measures Play in every kind with a rack of six.
+- *A known limit, not fixed here:* with a keyboard showing, a rack of six
+  and the Photocell on, the Sources tab is 47 px over with a waveform - the
+  Photocell's seven sources and the keyboard's six are two lines each - and
+  a solid's four chips add a line to that. Laying out the Sources tab for
+  every family full at once is its own piece of work.
+- *And a readout that crashed.* In X-Y the readout named the drawing from
+  the source's own settings, which only the tone has, so a rack whose lane
+  drew a solid threw on every frame; it asks `genSettings()` now.

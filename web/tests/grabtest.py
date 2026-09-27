@@ -244,12 +244,18 @@ with sync_playwright() as pw:
     }""")
     fits = [turned(g, cycle) for g in noisy]
     print("    noisy lane: %s" % ", ".join("%.4f at %+.2f points" % f for f in fits))
+    # Where each starts, to 3.5 points. It was 2, and a full run caught a
+    # grab at 2.05: what noise is left in the average moves the crossing by
+    # its level over the wave's slope there, about 0.7 of a point, so 2 was
+    # under three of those and twelve grabs met it one run in twenty. What
+    # the check is for is a start half a cycle out - 128 points - and five
+    # of them is still nothing like that.
     # The mean over the twelve, not each: what noise is left after four
     # cycles varies from grab to grab, and one of them reached 0.039 in a run
     # whose mean was 0.027. One cycle's mean is 0.04 and more.
     mean = sum(f[0] for f in fits) / len(fits)
     check("on a noisy lane, four cycles averaged bring the noise down, and every grab starts at the crossing",
-          mean < 0.033 and all(abs(f[1]) < 2 for f in fits),
+          mean < 0.033 and all(abs(f[1]) < 3.5 for f in fits),
           "mean RMS %.4f; turns %s" % (mean, [round(f[1], 2) for f in fits]))
 
     refused = p.evaluate("""async () => {

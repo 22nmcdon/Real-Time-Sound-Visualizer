@@ -1576,7 +1576,7 @@ body[data-view="bench"] .dock  { order: 3; }
                   </select>
                 </div>
               </div>
-              <div class="menu-row" data-mod-dest="gen.freq" data-mod-control="freq">
+              <div class="menu-row" id="freqRow" data-mod-dest="gen.freq" data-mod-control="freq">
                 <label class="menu-label" for="freq">Frequency</label>
                 <div class="grow">
                   <input type="range" id="freq" min="30" max="4000" step="1" value="220">
@@ -1671,7 +1671,7 @@ body[data-view="bench"] .dock  { order: 3; }
                   <button type="button" class="caps" id="tuneEqual" role="radio" aria-checked="false">Equal</button>
                 </div>
               </div>
-              <div class="menu-row" data-mod-dest="gen.phase" data-mod-control="phase">
+              <div class="menu-row" id="phaseRow" data-mod-dest="gen.phase" data-mod-control="phase">
                 <label class="menu-label" for="phase">Phase</label>
                 <div class="grow">
                   <input type="range" id="phase" min="0" max="360" value="90">
@@ -1730,21 +1730,21 @@ body[data-view="bench"] .dock  { order: 3; }
                   <label class="menu-label" for="model">Solid</label>
                   <div class="grow"><select id="model" style="flex:1 1 auto"></select></div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.spinX" data-mod-control="spinX">
                   <label class="menu-label" for="spinX">Spin X</label>
                   <div class="grow">
                     <input type="range" id="spinX" min="-60" max="60" value="11">
                     <span class="reading" id="spinXValue">0.11 Hz</span>
                   </div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.spinY" data-mod-control="spinY">
                   <label class="menu-label" for="spinY">Spin Y</label>
                   <div class="grow">
                     <input type="range" id="spinY" min="-60" max="60" value="17">
                     <span class="reading" id="spinYValue">0.17 Hz</span>
                   </div>
                 </div>
-                <div class="menu-row">
+                <div class="menu-row" data-mod-dest="gen.spinZ" data-mod-control="spinZ">
                   <label class="menu-label" for="spinZ">Spin Z</label>
                   <div class="grow">
                     <input type="range" id="spinZ" min="-60" max="60" value="0">
@@ -3531,7 +3531,14 @@ body[data-view="bench"] .dock  { order: 3; }
         only strike things: the harmonograph's <i>Swing again</i> and a solid's <i>Kick</i>.
         To have your playing strike the generator, put your input and the generator in a rack
         and the trigger on your input's lane; an onset that would hear the generator it
-        strikes is refused, since every strike would be the next onset.</span></li>
+        strikes is refused, since every strike would be the next onset.
+        <br><br>
+        The bands can spin a solid about each of its axes: <i>Spin X</i>, <i>Y</i> and <i>Z</i>
+        are destinations, so put <i>Bass</i> on one and <i>Treble</i> on another and the low end
+        and the top turn it different ways. And the drawings answer back, under <i>Picture</i>
+        while they play: the harmonograph's <i>Swing</i> and <i>Pendulum</i>, and a solid's
+        <i>Tilt</i>, <i>Turn</i>, <i>Roll</i> and <i>Facing</i> - so the way a solid is turned
+        can open a filter, or the pendulum can be an oscillator locked to the drawing.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, on the Sources tab, is one key, one scale and one
@@ -3950,7 +3957,9 @@ body[data-view="bench"] .dock  { order: 3; }
         trace rate right down and you watch the beam draw it.
         <br><br>
         <i>Detail</i> is whatever the figure has a count of: the sides of a <i>Polygon</i>,
-        the points of a <i>Star</i>, the petals of a <i>Rose</i> (a fraction makes it turn),
+        the points of a <i>Star</i>, the petals of a <i>Rose</i> (a fraction makes it turn, and
+        two notes played on it set the fraction to their ratio: a fifth closes the rose in two
+        turns, a tempered one never quite does),
         the loops of a <i>Spiral</i> or a <i>Spirograph</i>. The circle, the square, the heart,
         the infinity sign and the <i>Butterfly</i> have no count and ignore it. The butterfly
         is Temple Fay's curve, twelve loops of wing drawn in one closed stroke; it is the
@@ -4325,7 +4334,8 @@ for (const id of ["midiPlayRow", "midiPlay", "midiPlayLabel", "ringRow", "ringTi
   el[id] = document.getElementById(id);
 }
 for (const id of ["barsGroup", "barsTitle", "barsStateRow", "barsState", "barsUse", "barsGo",
-                  "barsGoRow", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue"]) {
+                  "barsGoRow", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue",
+                  "freqRow", "phaseRow"]) {
   el[id] = document.getElementById(id);
 }
 for (let k = 0; k < 9; k++) {
@@ -4612,6 +4622,8 @@ const SWING_SLOT = ECHO_TIME_SLOT + 1;
 const WIDTH_SLOT = SWING_SLOT + 1;
 // And the wavetable's position (G1), after the width.
 const TABLE_SLOT = WIDTH_SLOT + 1;
+// And a solid's spin about each of its three axes (J2), after the position.
+const SPIN_SLOT = TABLE_SLOT + 1;
 // The morph's four stations, in order: their names on a detent, and shorter
 // ones for the pair either side of a position between two.
 const MORPH_NAMES = ["sine", "triangle", "saw", "square"];
@@ -5155,6 +5167,16 @@ const GEN_DESTS = [
      one step is the jump a crossfade is there to avoid. */
   { id: "gen.table", label: "Wavetable position", slot: TABLE_SLOT,
     reach: (v, s) => Math.max(0, Math.min(300, v + s * 150)) },
+  /* A solid's spin about each axis, in hundredths of a hertz like the
+     sliders: 0.6 Hz at full depth, the whole of a slider's reach from
+     nought, and stopped at its ends. Three, so the bands of what is heard can
+     each turn the solid its own way - the low end about one axis, the middle
+     about another - which is J2's "bands onto the X, Y and Z spin"; a
+     routing is how it is said rather than a mode that says it for you. */
+  ...["X", "Y", "Z"].map((axis, k) => ({
+    id: "gen.spin" + axis, label: "Spin " + axis, slot: SPIN_SLOT + k, modes: ["wireframe"],
+    reach: (v, s) => Math.max(-60, Math.min(60, v + s * 60)),
+  })),
 ];
 
 for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));
@@ -5506,6 +5528,42 @@ registerSource({
     return source && source.kind === "tone" && source.gated ? source.envelope : 0;
   },
 });
+
+/* The drawings as sources (J2): what the harmonograph and a solid are doing,
+   read from the core that draws them, as the envelope is. In the signal
+   family beside the envelope rather than a family of their own, and shown
+   only while their drawing is the one playing: a row of six more chips put
+   the Sources tab over with a rack of six, and a turn of a solid means
+   nothing to a waveform. From the test tone or a rack's generator lane,
+   whichever is the generator - unlike the envelope, which is the tone's. */
+const drawingNow = () => {
+  const source = state.source;
+  if (source && source.kind === "tone") return source.drawing || null;
+  const lane = genLane();
+  return lane ? lane.drawing : null;
+};
+[
+  { id: "draw.swing", label: "Swing", modes: ["harmonograph"], bipolar: false, read: (d) => d.swing,
+    description: "How far the harmonograph's pendulums are swinging, from one at a fresh swing to nought as they run down." },
+  { id: "draw.pendulum", label: "Pendulum", modes: ["harmonograph"], bipolar: true, read: (d) => d.pendulum,
+    description: "Where the first pendulum is in its swing, side to side: an oscillator at the swing's rate, locked to the drawing." },
+  /* Tilt, Turn and Roll rather than Turn X, Y and Z: the solid's own three
+     chips wrapped the signal family onto a third line, and put the Sources
+     tab 16 px over with a rack of six; four letters each keep it to two.
+     They are the words for the three axes anyway - nodding forward, turning
+     round, and rolling in the plane of the screen. */
+  ...[["X", "Tilt", "tilt forward and back, about its X axis"], ["Y", "Turn", "turn round, about its upright Y axis"],
+      ["Z", "Roll", "roll in the plane of the screen, about its Z axis"]].map(([axis, label, how], k) => ({
+    id: "draw.turn" + axis, label, modes: ["wireframe"], bipolar: true, read: (d) => d.turn[k],
+    description: "The solid's " + how + ", as the sine of the angle: once round is once up and down.",
+  })),
+  { id: "draw.facing", label: "Facing", modes: ["wireframe"], bipolar: true, read: (d) => d.facing,
+    description: "How squarely the solid faces you: one face-on, nought edge-on, minus one turned away." },
+].forEach((entry, i) => registerSource({
+  id: entry.id, label: entry.label, ink: "ch2", bipolar: entry.bipolar, order: 12 + i, family: "picture",
+  modes: entry.modes, description: entry.description,
+  value: () => { const d = drawingNow(); return d ? entry.read(d) : 0; },
+}));
 
 /* Properties of the picture rather than of the signal, so they are written
    once a frame.
@@ -6646,6 +6704,17 @@ function midiApplyNotesTo() {
       : Math.max(1, Math.min(200, Number(el.figureRate.value) * hz / MIDI_ROOT));
     genSet("figureRate", rate);
     el.figureRateValue.textContent = Math.round(rate) + " Hz";
+    /* J2: a dyad played on a rose sets its petals, k = p/q, the dyad's own
+       ratio - the one the X-Y figure is drawn at, just or tempered as the
+       generator is - so consonance closes the rose the way it closes a
+       Lissajous: a just fifth is k = 3/2 and closes in two turns, a tempered
+       one never quite does and turns slowly. One note held, or a mono mode,
+       and the slider has it back. */
+    if (tone.mode === "figure" && tone.figure === "Rose") {
+      const k = roseDetail();
+      genSet("detail", k);
+      el.detailValue.textContent = Number.isInteger(k) ? String(k) : k.toFixed(3);
+    }
   } else if (tone.mode === "harmonograph" && midi.play.harmonograph) {
     // The pitched harmonograph swings at the generator's pitch, so the note
     // sets that, as it does for a waveform.
@@ -6663,8 +6732,19 @@ function midiApplyNotesTo() {
    never moved, and the frequency slider was moved along with the pitch, so
    re-reading the panel is the whole of it and what the panel says is what the
    generator is doing either way. */
+/* The rose's k while a dyad is played on it: the dyad's ratio, octaves and
+   all, just or tempered as the generator is - `intervalRatio`, the number the
+   X-Y figure is drawn at. A unison is no dyad, and the slider has it. */
+function roseDetail() {
+  const iv = midi.interval, tone = genSettings();
+  if (midi.mode !== "dyad" || !iv || (iv.index === 0 && iv.octaves === 0)) return Number(el.detail.value);
+  return intervalRatio(iv.index, !tone || tone.just !== false) * Math.pow(2, iv.octaves);
+}
+
 function midiUndrive() {
   if (!genSettings()) return;
+  genSet("detail", Number(el.detail.value));
+  el.detailValue.textContent = el.detail.value;
   genSet("freq", Number(el.freq.value));
   genSet("figureRate", Number(el.figureRate.value));
   genSet("interval", Number(el.interval.value));
@@ -7525,6 +7605,9 @@ function makeWireframe() {
     },
 
     reset() { spin = [0, 0, 0]; leg = 0; along = 0; since = WIRE_REPROJECT; },
+
+    // Where it has turned to about each axis, in radians - read as sources.
+    get angles() { return spin; },
 
     /* One sample. `rate` is laps per second, and the beam is paced by distance
        on the screen rather than by edge, so it moves at a constant speed all
@@ -8434,6 +8517,16 @@ function makeGeneratorCore(rate, slots, lfos) {
   const routes = [];
 
   let phaseL = 0, phaseR = 0, figurePhase = 0;
+  /* Whole turns of the figure, kept for the rose alone: r = cos(k theta) with
+     k = p/q closes only after q turns, and with theta taken from the phase
+     alone it went back to nought every turn - a fractional rose drew part of
+     itself and jumped, where its comment said it precessed. Wrapped at 10080,
+     a multiple of every just ratio's denominator (the tritone's 32 among
+     them), so the wrap is invisible to a just rose; a tempered one, whose k
+     has no denominator, jumps once in that many turns - four minutes at
+     40 Hz. */
+  let figureTurns = 0;
+  const ROSE_TURNS = 10080;
   let swing = 0;             // harmonograph: seconds since the pendulums were let go
   /* J2: energy in. While a drive is on, the swing's envelope is a state
      rather than a function of time - d(env)/dt = -decay env + rate drive
@@ -9150,15 +9243,18 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (tone.mode === "figure") {
         if (clockHz > 0) figurePhase = (clock.since / clock.period) % 1;
         else figurePhase += tone.figureRate * fmIn * dt;
-        if (figurePhase >= 1) figurePhase -= 1;
-        const at = figureAt(tone.figure, figurePhase, detail, tone.figPath);
+        if (figurePhase >= 1) { figurePhase -= 1; figureTurns = (figureTurns + 1) % ROSE_TURNS; }
+        const at = figureAt(tone.figure, tone.figure === "Rose" ? figurePhase + figureTurns : figurePhase, detail, tone.figPath);
         l = amp * at[0];
         r = amp * at[1];
       } else if (tone.mode === "wireframe") {
         const spun = kick === 0 ? tumble : tumble * (1 + kick);
         if (kick !== 0) { kick *= kickFriction; if (Math.abs(kick) < 1e-4) kick = 0; }
+        // `|| 0` for a core built with fewer slots, as with the bars.
         const at = wire.step(dt, tone.figureRate * fmIn, depth, [
-          tone.spin[0] * spun, tone.spin[1] * spun, tone.spin[2] * spun,
+          (tone.spin[0] + (genMod[SPIN_SLOT] || 0) * 0.6) * spun,
+          (tone.spin[1] + (genMod[SPIN_SLOT + 1] || 0) * 0.6) * spun,
+          (tone.spin[2] + (genMod[SPIN_SLOT + 2] || 0) * 0.6) * spun,
         ]);
         l = amp * at[0];
         r = amp * at[1];
@@ -9404,6 +9500,24 @@ function makeGeneratorCore(rate, slots, lfos) {
     // envelope, each where the last block left it.
     get spinKick() { return kick; },
     get swingLevel() { return swingEnv; },
+    /* The drawing as sources (J2): the harmonograph's swing - the gain it is
+       drawn at, relet and all - and its first pendulum's place, and a
+       solid's turn about each axis and how squarely it faces you. Each is
+       nought while its drawing is not the one playing. The turns are the
+       sine of each angle rather than the angle, which wraps from a full turn
+       to nought in one step; facing is where the solid's own forward axis
+       points after the three rotations, cos x cos y, one face-on and minus
+       one turned away. */
+    get drawing() {
+      const swinging = tone.mode === "harmonograph", solid = tone.mode === "wireframe";
+      const a = wire.angles;
+      return {
+        swing: swinging ? lastGain : 0,
+        pendulum: swinging ? Math.sin(phaseL) : 0,
+        turn: solid ? [Math.sin(a[0]), Math.sin(a[1]), Math.sin(a[2])] : [0, 0, 0],
+        facing: solid ? Math.cos(a[0]) * Math.cos(a[1]) : 0,
+      };
+    },
     reswing() {
       if (tone.mode === "harmonograph" && tone.pitched) {
         strikeFrom = lastGain; striking = true; swing = 0; relet = reletSamples;
@@ -9663,6 +9777,8 @@ function generatorProcessor() {
               // And the crossings, so the lines on the screen can flash when
               // the notes they play are heard.
               crossings: this.core.crossings,
+              // And the drawing's own readings, for the sources that read it.
+              drawing: this.core.drawing,
             },
             [l.buffer, r.buffer, bl.buffer, br.buffer]
           );
@@ -9723,6 +9839,7 @@ function generatorModuleSource() {
     bind("SWING_SLOT", SWING_SLOT),
     bind("WIDTH_SLOT", WIDTH_SLOT),
     bind("TABLE_SLOT", TABLE_SLOT),
+    bind("SPIN_SLOT", SPIN_SLOT),
     bind("svfStep", String(svfStep)),
     bind("svfG", String(svfG)),
     bind("DRAWBAR_DEFAULT", JSON.stringify(DRAWBAR_DEFAULT)),
@@ -9836,6 +9953,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
      the loop is here or there. */
   let envelopeNow = 1;
   let crossingsNow = { x: 0, y: 0 };
+  let drawingNow = null;
 
   function hush() {
     if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
@@ -9894,6 +10012,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
            whole of what `lfoDriver` is protecting. */
         if (message.envelope !== undefined) envelopeNow = message.envelope;
         if (message.crossings !== undefined) crossingsNow = message.crossings;
+        if (message.drawing !== undefined) drawingNow = message.drawing;
         if (message.lfos) {
           for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
             lfos[i].phase = message.lfos[i].phase;
@@ -9936,6 +10055,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
     get envelope() { return envelopeNow; },
     set envelope(value) { envelopeNow = value; },
     get crossings() { return crossingsNow; },
+    get drawing() { return drawingNow; },
     get latencyMs() {
       if (!ctx) return 0;
       return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
@@ -10169,6 +10289,7 @@ function makeToneSource(atRate) {
     get envelope() { return voice.audible ? voice.envelope : core.envelope; },
     // From whichever core is making the picture: the worklet's while heard.
     get crossings() { return voice.audible ? voice.crossings : core.crossings; },
+    get drawing() { return voice.audible && voice.drawing ? voice.drawing : core.drawing; },
 
     tick(nowSeconds) {
       if (!voice.audible) { voice.envelope = core.envelope; fill(nowSeconds); return; }
@@ -11138,6 +11259,8 @@ function makeSynthLane(name, rate, ctx, mix) {
     get moduleFrom() { return generatorModuleFrom; },
     get fault() { return voice.fault; },
     get blocks() { return voice.blocks; },
+    // The drawing's readings, from the worklet's core while heard, as the tone's.
+    get drawing() { return voice.audible && voice.drawing ? voice.drawing : core.drawing; },
 
     get frames() { return FRAMES; },
 
@@ -14781,9 +14904,12 @@ function writeReadout(frame) {
         if (ratio) bits.push("ratio " + ratio);
       }
     } else {
-      const shown = state.source.settings.mode;
-      bits.push(shown === "figure" ? state.source.settings.figure.toLowerCase()
-              : shown === "wireframe" ? state.source.settings.model.toLowerCase()
+      /* `generating`, which is wherever the generator lives. This read the
+         source's own settings, which only the tone has: a rack whose lane
+         drew a solid threw here on every frame of X-Y. */
+      const shown = generating.mode;
+      bits.push(shown === "figure" ? generating.figure.toLowerCase()
+              : shown === "wireframe" ? generating.model.toLowerCase()
               : "harmonograph");
     }
 
@@ -15694,6 +15820,8 @@ function showGenerator() {
   el.figureRows.hidden = mode !== "figure";
   el.harmoRows.hidden = mode !== "harmonograph";
   el.wireRows.hidden = mode !== "wireframe";
+  // The drawing's own sources are shown only while their drawing plays.
+  buildSourceGrid();
 
   // Both of the drawn modes are paced by it, so the row belongs to neither.
   el.traceRateRow.hidden = mode !== "figure" && mode !== "wireframe";
@@ -15704,6 +15832,13 @@ function showGenerator() {
   const drawn = mode === "figure" || mode === "wireframe";
   el.shape.parentElement.parentElement.hidden = drawn;
   el.interval.parentElement.parentElement.hidden = drawn;
+  /* And the phase, for the same reason, which was missed when the other two
+     went: a figure and a solid write both channels themselves, so the right
+     channel's phase moved nothing. Its room is what the spin axes' lanes
+     needed - a rack of six put a solid's Play tab 30 px over before they
+     were destinations, and 54 after. The frequency is `syncMidi`'s, since
+     whether a harmonograph has one depends on the keyboard. */
+  el.phaseRow.hidden = drawn;
   // What a note does is a per-kind decision, so the box that states it has to
   // be re-read whenever the kind changes.
   syncMidi();
@@ -16225,8 +16360,11 @@ const SOURCE_FAMILIES = [
 let selectedSource = "lfo1";
 
 function sourcesInFamily(family) {
+  // A source of one drawing is shown only while that drawing plays.
+  const tone = genSettings();
   return Array.from(MOD_SOURCES.values())
     .filter((source) => (source.family || "other") === family)
+    .filter((source) => !source.modes || (tone && source.modes.includes(tone.mode)))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
@@ -16746,6 +16884,11 @@ function syncPlay() {
   el.ringRow.hidden = !pitched;
   el.swingRow.hidden = pitched;
   el.decayRow.hidden = pitched;
+  /* The frequency moves a waveform and a pitched harmonograph and nothing
+     else: a figure and a solid are paced by the trace rate, and a harmonograph
+     swinging on its own by the swing rate beside it. Shown where it moved
+     nothing, it put the harmonograph's Play tab 6 px over with a rack of six. */
+  el.freqRow.hidden = !(kind === "wave" || pitched || kind === null);
 }
 
 el.midiPlay.addEventListener("change", () => {
@@ -17982,6 +18125,12 @@ const PRESETS = [
      "A five-pointed star, drawn forty times a second."],
     ["Rose", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12", timebase: 5 },
      "A three-petalled rose curve."],
+    // J2: the dyad's ratio is the rose's k. With the drawings, not the
+    // keyboard sections, which ask for a routing a hand moves and this has none:
+    // the notes set the petals themselves.
+    ["The chord's rose", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12", timebase: 5,
+                           midiMode: "dyad", midiHold: true },
+     "Play two notes: their ratio becomes the rose's petals. A fifth closes in two turns, a third in four, a tritone takes thirty-two; switch the tuning to equal and the same fifth never quite closes, and slowly turns. Hold keeps the last interval, so one finger can walk the rose up a melody. Play it."],
     ["Spirograph", { gen: "figure", figure: "Spirograph", detail: 7, display: "xy", persistence: "0.12",
                      timebase: 5 },
      "A gear rolling inside a ring."],
