@@ -169,6 +169,17 @@ with sync_playwright() as pw:
         # worklet altogether, on the plain sine at exactly 0.5.
         check("and through the voice filter, whose resonance lifts the sine: 0.546, not the plain 0.5",
               fl["finite"] and 0.53 < fl["peak"] < 0.56, str(fl))
+        # Eight saws of seven copies with FM, sync and drive at four times
+        # are over S10's budget: the four times goes, then copies, and the
+        # message the page reads is where the readout learns it.
+        bu = report["budget"]
+        # `get`: a message without the field drops it in JSON, and a KeyError
+        # here ended the script before any check could say what was missing.
+        got = bu.get("budget") or {}
+        check("S10 runs in the worklet: a dear chord gives up four times and some unison, and the posted message says so",
+              bu["posts"] > 0 and got.get("askedFactor") == 4 and got.get("factor") == 2
+              and got.get("asked", [0])[0] == 7 and 1 < got.get("unison", [7])[0] < 7
+              and got.get("units", 1e9) <= got.get("most", 0), str(bu))
         c = report["crossings"]
         # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
         # times, and Y - a quarter cycle on - 8 or 9.

@@ -39,7 +39,7 @@ globalThis.registerProcessor = (name, cls) => {
 globalThis.AudioWorkletProcessor = class {
   constructor() {
     this.posted = 0;
-    this.port = { onmessage: null, postMessage: () => { this.posted++; } };
+    this.port = { onmessage: null, postMessage: (message) => { this.posted++; this.last = message; } };
   }
 };
 
@@ -419,6 +419,21 @@ try {
     const slot = Number(echoSlotText);
     report.fx.echoRouted = echoAt([{ held: 1, slot, amount: 1, unipolar: false }]);
     report.fx.echoUnrouted = echoAt([]);
+  }
+
+  /* S10 in the thread it runs in: a chord too dear for the budget gives up
+     its unison, and what was given up is in the message the page reads - so
+     the readout can say it while the worklet, not this side's core, is the
+     one sounding. */
+  {
+    const chord = [];
+    for (let k = 0; k < 8; k++) chord.push({ note: 48 + k * 3, freq: 130.81 * Math.pow(2, k / 4), velocity: 1, role: "u" });
+    node.port.onmessage({ data: { tone: { mode: "wave", shape: "ramp", unison: 7, fmIndex: 2, syncRatio: 1.5,
+                                          drive: 0.5, shapeOS: 4, voices: chord } } });
+    const before = node.posted;
+    for (let round = 0; round < 40; round++) node.process([], [out], {});
+    report.budget = { posts: node.posted - before, budget: node.last && node.last.budget };
+    node.port.onmessage({ data: { tone: { voices: null, unison: 1, fmIndex: 0, syncRatio: 1, drive: 0, shapeOS: 2 } } });
   }
 
   report.posted = node.posted;

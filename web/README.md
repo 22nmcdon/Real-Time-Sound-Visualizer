@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built; the rest is not |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, and S10's voice budget. What is not: S6's internal start and stop |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -83,6 +83,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
+| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and a rack of six, keyboard and Photocell on and off, every kind, ten learned controllers |
+| `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
@@ -3171,3 +3173,65 @@ with a Nord's ten controllers learned - 102 cases each. It found:
   locks, and in a performance the macro knobs are a tab away from the other
   sources - Macros had already moved once for room, from Play, and it is the
   move most worth reconsidering if the Sources tab ever gains a column.
+
+**What the voices cost (S10).** Every feature of the voice had a cost check of
+its own, and each passed it: sixteen voices driven, or filtered, or through
+the plane at four times, each in under half of real time. Nothing measured
+them together. With everything on at once - sixteen held notes over two
+layers, seven copies each, FM, sync and a sub, drive and fold at four times,
+the crusher and the filter - one second of sound took 1.7 seconds of work,
+which is a glitch on any machine; and a chord struck over the releases of the
+last could double the voices. The plan's S10 asked for a budget "stated and
+measured" and for the page to thin the unison before it drops a voice.
+`budgettest.py` holds what was built:
+
+- *A cost model, in the core.* Each voice is costed from its layer's settings,
+  in units of about a millisecond of work a second of sound on the test
+  container, and fitted to sixteen-voice runs of each feature alone and in
+  combination. It is held there relatively: each case's measured cost over
+  its modelled cost, against the median of all of them, which is the
+  machine's speed and divides out. The fit came in at 0.8 to 1.2 of the
+  median; the check allows half to 1.6, lopsided on purpose, because a
+  feature costed dearer than it is only gives up a copy early and one costed
+  cheaper is a glitch.
+- *The budget is 350*, a third of real time where it was measured, and the
+  worst case governed measures about 300 ms a second. It is a guess at a
+  mid-range laptop rather than a measurement on one, and it is the one number
+  to change if a real machine says otherwise.
+- *The order things are given up in*: drive and fold's four times, for twice
+  (the menu always said four was for few voices); unison, a copy at a time
+  from whichever layer has more; releases in flight, oldest first; and held
+  notes nobody can see - the undrawn inner voices - before drawn ones. Never
+  the last voice. A note let go fades over ten milliseconds and is silent
+  until its key comes up, and the readout says *voice budget:* and what it
+  took.
+- *No preset is touched.* Every one, under a chord of eight on each layer it
+  plays, fits: the dearest, *Reese*, is 238. The budget bites extreme hand-made
+  patches and chords struck over long releases, not ordinary playing.
+
+Found on the way:
+
+- *The caps come down on their own and go back up only when asked.* A copy
+  taken away re-phases the voice's copies, which is heard as the chorus
+  closing up and spreading again, so a cap that rose each time a release
+  died away would re-phase a held chord for no reason anyone could hear. The
+  caps rise when the chord changes or the settings asked for change, and the
+  check holds both halves.
+- *Reported is not the same as done.* The first test read the budget's own
+  report of what it had given up. A core that reported twice and ran four
+  would have passed, and the timing check could not see it - it is 13 ms a
+  voice. So a chord of driven voices on one 4 kHz note, all in step, is
+  measured for what it aliases to: two voices keep four times and read the
+  -46 dB `drivetest.py` measures there, twelve are governed to twice and read
+  its -30.
+- *The crusher worked out a power a voice a sample* for a depth that never
+  moves within a block; it is worked out once a block now.
+- *The first preset scan passed while reading nothing.* It loaded each preset
+  by its bare name, `applyPreset` wants the `b:` in front, and it measured
+  the default tone 169 times - no preset governed, whatever the budget. It
+  was caught by printing the dearest, which were all the same number; the
+  check now also requires the scan to have seen more than six shapes.
+- *A release let go is gone before it can be counted.* Counted after a whole
+  block, the fade had finished and the voice had been taken out of the pool,
+  so the fade check saw nothing let go and would have passed a hard cut. It
+  counts inside the fade now.

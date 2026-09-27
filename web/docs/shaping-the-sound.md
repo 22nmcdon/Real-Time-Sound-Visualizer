@@ -15,7 +15,10 @@ sub and unison (see *Built so far* under Stage H), and J1's sources, the
 first of J2's "sound drives the drawing" with S3's events, and J3's live
 audio into the generator (see *Built so far* under Stage J), and the rest of
 Stage K - its thresholds, the score, MIDI out and the arpeggiator (see *Built
-so far* under Stage K). Nothing else here is.
+so far* under Stage K). Since then, the rest of G (the pulse, the noises, the
+wavetable, and G2's drawn and grabbed cycles), the rest of J2, the breadth of
+L, and S10's voice budget (below, and *What the voices cost* in the README).
+What is not built is S6's internal start and stop.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -109,7 +112,7 @@ Marked **proposed** until confirmed, as before.
 | S7 | Live audio into the generator | **Control-rate first** (per 128-sample block, analysis values posted in), **audio-rate second** (the worklet gains an input port). | Control rate covers every "sound drives the picture" idea except FM and warping by the input, which genuinely need samples. |
 | S8 | Are drawn modes gated by the envelope? | **Opt-in, per mode: *Play the figure*.** Off, they draw continuously as now. On, a note sets the trace rate to the note's pitch and the envelope gates the amplitude. | The earlier decision not to blank the screen between phrases stays the default; this adds the instrument without taking the drawing away. |
 | S9 | Does anything send MIDI out? | **Yes, opt-in, one port and channel,** rate-limited, all-notes-off on stop and on page hide. | The picture playing the Nord is the most literal "image alters sound" this project can do. |
-| S10 | CPU budget | **Stated and measured**: voices × unison × oversampling must hold under a stated worklet load on a mid-range laptop. The UI reduces unison before it drops a voice. | Voices means both layers: up to eight each, so sixteen. Unison 7 × 16 × 4× is 448 oscillators a sample; this needs a number, not a hope. |
+| S10 | CPU budget | **Stated and measured**: voices × unison × oversampling must hold under a stated worklet load on a mid-range laptop. The UI reduces unison before it drops a voice. | Voices means both layers: up to eight each, so sixteen. Unison 7 × 16 × 4× is 448 oscillators a sample; this needs a number, not a hope. **Built:** everything on measured 1.7 s of work a second; a cost model in the core now gives up four times, then unison, then releases, then undrawn held notes, to a budget of a third of real time as measured on the test container - which stands in for the laptop, and says so. |
 
 ---
 
@@ -830,8 +833,8 @@ Smaller things, each worth doing on its own and none blocking the others.
   figures, on a font drawn for the page rather than Hershey's own, with the
   beam travelling fast between strokes rather than jumping; `aliastest.py`
   measures a word at 40 and 200 Hz and a drawing at 40.
-- **Draw a figure. Built.** The X–Y sibling of G2's drawn cycle - which is itself
-  not built yet, so this came first. *Your drawing* on the Figure menu: strokes
+- **Draw a figure. Built.** The X–Y sibling of G2's drawn cycle - which was
+  not built yet then, so this came first. *Your drawing* on the Figure menu: strokes
   drawn with the pointer on the X–Y screen, taken back through the screen's
   mapping so the beam retraces them exactly where they were drawn.
 - **Presets, rebuilt. Built.** 164 presets in twenty-three sections, in a browser

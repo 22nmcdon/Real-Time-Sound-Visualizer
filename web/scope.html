@@ -2390,7 +2390,8 @@ body[data-view="bench"] .dock  { order: 3; }
               and it can take a source, so an LFO opens and closes them. Both are worked at twice
               the rate, so what they add above half the rate is filtered off; behind the &ctdot;,
               four times is cleaner for a hard drive on a high note, and costs twice as much for
-              every voice, so it is for a few voices rather than a chord on two layers. Either way
+              every voice, so it is for a few voices rather than a chord on two layers, and a
+              chord too big for it is worked at twice anyway, which the readout says. Either way
               a shaped voice is 0.7 ms later. <i>Crush</i> and
               <i>Rate</i> are the opposite on purpose: fewer levels and fewer samples, the steps
               and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
@@ -3311,7 +3312,7 @@ body[data-view="bench"] .dock  { order: 3; }
         sampler. It is done to each note on its own, before its envelope, so a chord stays a
         chord rather than turning to mud, and a note keeps its colour as it dies away. Behind
         the &ctdot;, four times oversampling is cleaner for a hard drive on a high note, and
-        costs twice as much.</span></li>
+        costs twice as much, so a big chord gives it up first; see <i>The voice budget</i>.</span></li>
 
       <li><b>The voice filter: one in every note</b>
         <span>Under <i>Voice filter</i>, on the Shape tab. A low, band or high pass or a notch
@@ -3321,6 +3322,20 @@ body[data-view="bench"] .dock  { order: 3; }
         whose four are behind the &ctdot;: a note that opens bright and closes, or a
         resonant wah, per note. The cutoff can take a source. The <i>Filter</i> on the Picture
         tab is a different thing: it filters the whole trace, for looking.</span></li>
+
+      <li><b>The voice budget: what a big chord gives up</b>
+        <span>Every copy, every shaped note and every filter costs the computer something,
+        and sixteen notes with everything turned up would cost more than it has &mdash; the
+        sound would break up. So the page keeps a budget, and when a chord would go over it
+        gives things up in the order they are missed least: first the four times
+        oversampling for twice, then unison copies, then notes still fading after you let
+        go, and only then held notes you cannot see &mdash; the inner voices of a chord, before
+        any drawn one, and never the last note. A note given up fades out rather than
+        clicking and stays silent until you lift its key. The readout says
+        <i>voice budget:</i> and what it took, and the copies come back when you play the
+        next chord or change what you asked for. No preset gets near it with eight notes on
+        each layer; it is for patches built with everything on, and chords struck over long
+        releases.</span></li>
 
       <li><b>The plane: what folds the picture folds the sound</b>
         <span>Under <i>Plane</i>, on the Effects tab, for the generator and for a microphone, a
@@ -8696,6 +8711,7 @@ function makeGeneratorCore(rate, slots, lfos) {
      release from the tone it is handed, per sample, so a voice built against
      the wrong tone would speak with the other layer's envelope. */
   function reconcileVoices(voices, list, tone) {
+    chordMoved = true;
     if (list === null) { voices.length = 0; return; }
     for (let v = 0; v < voices.length; v++) voices[v].wanted = false;
     for (let k = 0; k < list.length; k++) {
@@ -8711,7 +8727,7 @@ function makeGeneratorCore(rate, slots, lfos) {
         voice = {
           note: want.note, phase: 0, held: true, env: makeEnvelope(rate, tone),
           fenv: makeEnvelope(rate, tone === toneB ? fviewB : fviewA),
-          gains: gains.slice(), targets: gains.slice(),
+          gains: gains.slice(), targets: gains.slice(), born: ++births, fade: 0, gone: false,
         };
         voice.env.reset(0);
         voice.env.gate(true, want.velocity);
@@ -8877,7 +8893,7 @@ function makeGeneratorCore(rate, slots, lfos) {
   // modulated index and sync ratio.
   function makeVoiceFx() {
     return { on: false, syncing: false, shaping: false, crushing: false, filtering: false, vcfK: 1, vcfPush: 0,
-             n: 1, fmI: 0, syncR: 1,
+             n: 1, fmI: 0, syncR: 1, crushQ: 0, cap: UNISON_MAX,
              det: new Float64Array(UNISON_MAX) };
   }
   function voiceFxFor(t, x, fmRouted, syncRouted, shapeRouted) {
@@ -8885,7 +8901,9 @@ function makeGeneratorCore(rate, slots, lfos) {
     x.vcfK = 1 / Math.max(0.1, t.vcfQ);
     x.shaping = t.drive > 0 || t.fold > 0 || shapeRouted;
     x.crushing = t.crushBits > 0 || t.crushHz > 0;
-    x.n = Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1));
+    x.crushQ = t.crushBits > 0 ? Math.pow(2, t.crushBits - 1) : 0;
+    // As many copies as asked, or as S10's budget allows; see `govern`.
+    x.n = Math.min(unisonAsked(t), x.cap);
     x.syncing = t.syncRatio !== 1 || syncRouted;
     x.on = t.fmIndex > 0 || fmRouted || t.ringMix > 0 || x.syncing || t.subLevel > 0 || x.n > 1;
     // Spread evenly over the cents either way; an odd count keeps one copy
@@ -8895,6 +8913,138 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
   const vxA = makeVoiceFx(), vxB = makeVoiceFx();
+  function unisonAsked(t) { return Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1)); }
+
+  /* S10: what the voices cost, and what is given up when it is too much.
+
+     Everything turned up at once - sixteen held notes over two layers, seven
+     copies each, FM and sync and a sub, drive and fold at four times, the
+     crusher and the filter - measured 1.4 to 1.7 seconds of work for each
+     second of sound, which on any machine is a glitch rather than a chord,
+     and releases in flight could double the voices. Nothing had measured the
+     features together; each had a check of its own and passed it.
+
+     So each voice is costed from the layer's settings, in units of roughly
+     a millisecond of work per second of sound on the machine the tests run
+     on, and while the total is over VOICE_BUDGET things are given up in the
+     order they would be missed least:
+       1. drive and fold's four times oversampling, for twice - the menu has
+          always said four is for few voices;
+       2. unison, a copy at a time, from whichever layer has more;
+       3. notes still releasing, oldest first;
+       4. held notes nobody can see - the undrawn inner voices - oldest
+          first, and only then drawn ones. Never the last voice.
+     A voice let go fades over ten milliseconds and is silent until its key
+     comes up; the readout says how many are.
+
+     The budget is 350, a third of real time where it was measured, so the
+     page, the picture and a slower laptop have the rest. That is a guess at
+     "a mid-range laptop", stated rather than measured on one, and the one
+     number to change if a real machine says otherwise.
+
+     What it costs: a copy taken away re-phases the voice's copies, which is
+     heard as the chorus closing up and spreading again. That is why the caps
+     only ever come down on their own: they go back up when the chord changes
+     or when the settings asked for change, never because a release has died
+     away mid-phrase, which would re-phase a held chord for no reason anyone
+     could hear. The plane is costed and not governed - it is one pass per
+     pair rather than one per voice, and planetest holds it on its own. */
+  const VOICE_BUDGET = 350;
+  /* Fitted to 16-voice runs of each feature alone and in combination, and
+     held to them by `budgettest.py`. `copy` is a unison copy in the voice's
+     oscillator; `single` is the plain path, taken when nothing in the
+     oscillator is on - the drawbars and the morph are dearer there than a
+     copy is, which is measured rather than understood. */
+  const VOICE_COST = {
+    voice: 2.5, osc: 2.3, fm: 1.9, sync: 1.6, ring: 1.3, sub: 2.5, noise: 3,
+    copy: { morph: 6.8, drawbars: 5.3, pulse: 2.8, wavetable: 2.2 }, anyCopy: 2,
+    single: { morph: 7, drawbars: 5.5, pulse: 2.4, wavetable: 2.5 }, anySingle: 2,
+    shaper: { 2: 17, 4: 30 }, crush: 2, vcf: 4,
+    plane: { 1: 3.3, 2: 30, 4: 60 }, time: 5.3,
+  };
+  function voiceCost(t, n, factor, fmRouted, syncRouted, shapeRouted) {
+    const k = VOICE_COST;
+    let c = k.voice;
+    if (NOISES.has(t.shape)) c += k.noise;
+    else {
+      const fm = t.fmIndex > 0 || fmRouted, sync = t.syncRatio !== 1 || syncRouted;
+      const ring = t.ringMix > 0, sub = t.subLevel > 0;
+      if (fm || sync || ring || sub || n > 1) {
+        const copy = k.copy[t.shape] || k.anyCopy;
+        c += k.osc + n * (copy + (fm ? k.fm : 0) + (sync ? k.sync : 0) + (ring ? k.ring : 0)) + (sub ? k.sub : 0);
+      } else c += k.single[t.shape] || k.anySingle;
+    }
+    if (t.drive > 0 || t.fold > 0 || shapeRouted) c += k.shaper[factor];
+    if (t.crushBits > 0 || t.crushHz > 0) c += k.crush;
+    if (t.vcfType > 0) c += k.vcf;
+    return c;
+  }
+  const CUT_SAMPLES = Math.max(1, Math.round(rate * 0.01));
+  let chordMoved = true, govFactor = 4, births = 0, askedCostA = -1, askedCostB = -1, askedFixed = -1;
+  const budget = { units: 0, asked: [1, 1], unison: [1, 1], askedFactor: 2, factor: 2, silenced: 0 };
+  const cutting = (v) => v.gone === true || v.fade > 0;
+  function liveIn(pool) {
+    let n = 0;
+    for (let v = 0; v < pool.length; v++) if (!cutting(pool[v])) n++;
+    return n;
+  }
+  // Releasing before held, undrawn before drawn, and the oldest of a rank.
+  function victim(pools) {
+    let best = null, bestRank = Infinity;
+    for (const pool of pools) {
+      for (let v = 0; v < pool.length; v++) {
+        const voice = pool[v];
+        if (cutting(voice)) continue;
+        const rank = (!voice.held ? 0 : voice.targets[0] === 0 && voice.targets[1] === 0 ? 1 : 2) * 1e9 + voice.born;
+        if (rank < bestRank) { bestRank = rank; best = voice; }
+      }
+    }
+    return best;
+  }
+  function govern(fmRouted, syncRouted, shapeRouted, planeOn) {
+    const waving = tone.mode !== "figure" && tone.mode !== "wireframe" && tone.mode !== "harmonograph";
+    const poly = tone.voices !== null, layered = toneB.voices !== null;
+    const pools = [];
+    if (waving && poly) pools.push(voices);
+    if (layered) pools.push(voicesB);
+    let countA = !waving ? 0 : poly ? liveIn(voices) : 2;
+    let countB = layered ? liveIn(voicesB) : 0;
+    const askedA = unisonAsked(tone), askedB = unisonAsked(toneB), askedF = tone.shapeOS === 4 ? 4 : 2;
+    const passes = 1 + (poly ? 1 : 0) + (layered ? 1 : 0);
+    const fixed = !planeOn ? 0
+      : passes * ((nonlinearOn ? VOICE_COST.plane[planeFactor] || 0 : 0) + (timeOn ? VOICE_COST.time : 0));
+    // What a voice would cost as asked: when that moves, the player moved
+    // something, and the caps may go back up as well as down.
+    const costA = voiceCost(tone, askedA, askedF, fmRouted, syncRouted, shapeRouted);
+    const costB = voiceCost(toneB, askedB, askedF, fmRouted, syncRouted, shapeRouted);
+    const free = chordMoved || costA !== askedCostA || costB !== askedCostB || fixed !== askedFixed;
+    chordMoved = false; askedCostA = costA; askedCostB = costB; askedFixed = fixed;
+    let nA = askedA, nB = askedB, factor = askedF;
+    if (!free) { nA = Math.min(nA, vxA.cap); nB = Math.min(nB, vxB.cap); factor = Math.min(factor, govFactor); }
+    const total = () => fixed
+      + countA * voiceCost(tone, nA, factor, fmRouted, syncRouted, shapeRouted)
+      + countB * voiceCost(toneB, nB, factor, fmRouted, syncRouted, shapeRouted);
+    if (factor === 4 && total() > VOICE_BUDGET) factor = 2;
+    // Only from a layer with voices to spend it on: B's seven copies cost
+    // nothing while no note is on B.
+    while (total() > VOICE_BUDGET) {
+      const canA = countA > 0 && nA > 1, canB = countB > 0 && nB > 1;
+      if (!canA && !canB) break;
+      if (canA && (!canB || nA >= nB)) nA--; else nB--;
+    }
+    while (total() > VOICE_BUDGET && countA + countB > 1) {
+      const voice = victim(pools);
+      if (!voice) break;
+      voice.fade = CUT_SAMPLES;
+      if (voices.includes(voice)) countA--; else countB--;
+    }
+    vxA.cap = nA; vxB.cap = nB; govFactor = factor;
+    let silenced = 0;
+    for (const pool of pools) for (let v = 0; v < pool.length; v++) if (pool[v].held && cutting(pool[v])) silenced++;
+    budget.units = total(); budget.asked[0] = askedA; budget.asked[1] = askedB;
+    budget.unison[0] = nA; budget.unison[1] = nB; budget.askedFactor = askedF; budget.factor = factor;
+    budget.silenced = silenced;
+  }
 
   /* H2: shaping, after the oscillator and before the envelope, so the
      envelope sets the level of a sound whose character stays put - drive
@@ -8965,13 +9115,16 @@ function makeGeneratorCore(rate, slots, lfos) {
   }
   // Crush: a sample held at `crushHz`, then a depth of `crushBits`.
   function makeCrush() { return { acc: 1, held: 0 }; }
-  function crushStep(c, x, t) {
+  /* The depth's step is the layer's `crushQ`, worked out once a block: a
+     `pow` a voice a sample was four milliseconds a second a voice, a
+     sixth of what a crushed chord cost, for an answer that never moved. */
+  function crushStep(c, x, t, vx) {
     if (t.crushHz > 0) {
       c.acc += t.crushHz / rate;
       if (c.acc >= 1) { c.acc -= Math.floor(c.acc); c.held = x; }
       x = c.held;
     }
-    if (t.crushBits > 0) { const q = Math.pow(2, t.crushBits - 1); x = Math.round(x * q) / q; }
+    if (vx.crushQ > 0) x = Math.round(x * vx.crushQ) / vx.crushQ;
     return x;
   }
   let shapeL = makeShaper(), shapeR = makeShaper();
@@ -9083,6 +9236,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     mix[0] = 0; mix[1] = 0; mix[2] = 0; mix[3] = 0;
     for (let v = 0; v < voices.length; v++) {
       const voice = voices[v];
+      if (voice.gone) continue;
       // Each voice its own quantiser, so a chord's notes each land on the key
       // and each glide on their own.
       const f = qMaskNow
@@ -9096,12 +9250,18 @@ function makeGeneratorCore(rate, slots, lfos) {
         : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, amount);
       let w = wave;
       if (vx.shaping) w = shaperOf(voice).step(w);
-      if (vx.crushing) w = crushStep(voice.cr || (voice.cr = makeCrush()), w, tone);
+      if (vx.crushing) w = crushStep(voice.cr || (voice.cr = makeCrush()), w, tone, vx);
       if (vx.filtering) {
         const s = voice.vcf || (voice.vcf = makeVcf());
         w = svfStep(s, w, vcfCoef(s, tone, f, voice.fenv.step(), vx.vcfPush), vx.vcfK, tone.vcfType);
       }
-      const a = tone.amp * duck * voice.env.step() * w;
+      let a = tone.amp * duck * voice.env.step() * w;
+      // S10's cut, raised-cosine, as the relet is: a straight fade has a
+      // corner at each end.
+      if (voice.fade > 0) {
+        a *= 0.5 - 0.5 * Math.cos(Math.PI * voice.fade / CUT_SAMPLES);
+        if (--voice.fade === 0) voice.gone = true;
+      }
       const g = voice.gains, t = voice.targets;
       g[0] += (t[0] - g[0]) * roleGlide;
       g[1] += (t[1] - g[1]) * roleGlide;
@@ -9182,13 +9342,14 @@ function makeGeneratorCore(rate, slots, lfos) {
       if (routes[k].slot === SYNC_SLOT) syncRouted = true;
       if (routes[k].slot === DRIVE_SLOT || routes[k].slot === FOLD_SLOT) shapeRouted = true;
     }
+    const planeOn = planeSetup(twistRouted, echoRouted);
+    govern(fmRouted, syncRouted, shapeRouted, planeOn);
     // The voice's oscillator, per layer, on the same rule as the twist: a
     // routing switches it on with the slider at rest.
     voiceFxFor(tone, vxA, fmRouted, syncRouted, shapeRouted);
-    const wantShape = tone.shapeOS === 4 ? 4 : 2;
+    const wantShape = tone.shapeOS === 4 && govFactor === 4 ? 4 : 2;
     if (wantShape !== shapeFactor) { shapeFactor = wantShape; shapeL = makeShaper(); shapeR = makeShaper(); }
     voiceFxFor(toneB, vxB, fmRouted, syncRouted, shapeRouted);
-    const planeOn = planeSetup(twistRouted, echoRouted);
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -9375,7 +9536,7 @@ function makeGeneratorCore(rate, slots, lfos) {
           wr = waveAt(tone.shape, phaseR + phase, stepR, bars, amount);
         }
         if (vxA.shaping) { wl = shapeL.step(wl); wr = shapeR.step(wr); }
-        if (vxA.crushing) { wl = crushStep(crushL, wl, tone); wr = crushStep(crushR, wr, tone); }
+        if (vxA.crushing) { wl = crushStep(crushL, wl, tone, vxA); wr = crushStep(crushR, wr, tone, vxA); }
         if (vxA.filtering) {
           // One envelope for the pair, gated as the amplifier's is; each
           // channel tracks its own pitch.
@@ -9458,10 +9619,11 @@ function makeGeneratorCore(rate, slots, lfos) {
       }
     }
 
-    // Voices whose release has finished are gone.
+    // Voices whose release has finished are gone, and so are ones S10 let
+    // go once their key is up.
     for (const pool of [voices, voicesB]) {
       for (let v = pool.length - 1; v >= 0; v--) {
-        if (!pool[v].held && pool[v].env.stage === "idle") pool.splice(v, 1);
+        if (!pool[v].held && (pool[v].env.stage === "idle" || pool[v].gone)) pool.splice(v, 1);
       }
     }
   }
@@ -9594,11 +9756,19 @@ function makeGeneratorCore(rate, slots, lfos) {
     // and where its gains have got to.
     get voices() {
       return voices.map((v) => ({ note: v.note, freq: v.freq, held: v.held,
-                                  stage: v.env.stage, gains: v.gains.slice() }));
+                                  stage: v.env.stage, gains: v.gains.slice(), cut: cutting(v) }));
     },
     get voicesB() {
       return voicesB.map((v) => ({ note: v.note, freq: v.freq, held: v.held,
-                                   stage: v.env.stage, gains: v.gains.slice() }));
+                                   stage: v.env.stage, gains: v.gains.slice(), cut: cutting(v) }));
+    },
+    /* S10: what the last block cost by the model, what was asked and what
+       was allowed, and how many held notes have been let go. Copied, since
+       it is posted across the thread. */
+    get budget() {
+      return { units: budget.units, asked: budget.asked.slice(), unison: budget.unison.slice(),
+               askedFactor: budget.askedFactor, factor: budget.factor, silenced: budget.silenced,
+               most: VOICE_BUDGET };
     },
   };
 }
@@ -9811,6 +9981,8 @@ function generatorProcessor() {
               crossings: this.core.crossings,
               // And the drawing's own readings, for the sources that read it.
               drawing: this.core.drawing,
+              // And what S10's budget has given up, for the readout.
+              budget: this.core.budget,
             },
             [l.buffer, r.buffer, bl.buffer, br.buffer]
           );
@@ -9986,6 +10158,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
   let envelopeNow = 1;
   let crossingsNow = { x: 0, y: 0 };
   let drawingNow = null;
+  let budgetNow = null;
 
   function hush() {
     if (node) { try { node.port.postMessage({ stop: true }); } catch (error) { /* gone */ } }
@@ -10045,6 +10218,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
         if (message.envelope !== undefined) envelopeNow = message.envelope;
         if (message.crossings !== undefined) crossingsNow = message.crossings;
         if (message.drawing !== undefined) drawingNow = message.drawing;
+        if (message.budget !== undefined) budgetNow = message.budget;
         if (message.lfos) {
           for (let i = 0; i < message.lfos.length && i < lfos.length; i++) {
             lfos[i].phase = message.lfos[i].phase;
@@ -10088,6 +10262,7 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
     set envelope(value) { envelopeNow = value; },
     get crossings() { return crossingsNow; },
     get drawing() { return drawingNow; },
+    get budget() { return budgetNow; },
     get latencyMs() {
       if (!ctx) return 0;
       return Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000
@@ -10322,6 +10497,7 @@ function makeToneSource(atRate) {
     // From whichever core is making the picture: the worklet's while heard.
     get crossings() { return voice.audible ? voice.crossings : core.crossings; },
     get drawing() { return voice.audible && voice.drawing ? voice.drawing : core.drawing; },
+    get budget() { return voice.audible && voice.budget ? voice.budget : core.budget; },
 
     tick(nowSeconds) {
       if (!voice.audible) { voice.envelope = core.envelope; fill(nowSeconds); return; }
@@ -11293,6 +11469,7 @@ function makeSynthLane(name, rate, ctx, mix) {
     get blocks() { return voice.blocks; },
     // The drawing's readings, from the worklet's core while heard, as the tone's.
     get drawing() { return voice.audible && voice.drawing ? voice.drawing : core.drawing; },
+    get budget() { return voice.audible && voice.budget ? voice.budget : core.budget; },
 
     get frames() { return FRAMES; },
 
@@ -15064,6 +15241,8 @@ function writeReadout(frame) {
     if (layered && midi.layers.mode === "split") {
       bits.push("split at " + midiNoteName(midi.layers.point));
     }
+    const said = budgetSaid(genBudget(), !!layered);
+    if (said) bits.push(said);
   }
 
   if (state.starved > 0) {
@@ -15621,6 +15800,28 @@ function genSet(field, value, layer) {
   if (!lane) return false;
   lane.set(field, value, layer);
   return true;
+}
+
+// S10's budget, from wherever the generator is: the worklet's while heard.
+function genBudget() {
+  const source = state.source;
+  if (source && source.kind === "tone") return source.budget;
+  const lane = genLane();
+  return lane ? lane.budget : null;
+}
+
+/* What the budget has given up, in the readout's words, or nothing. Said
+   whenever it is holding the voice back, because a chorus that thins or a
+   key that falls silent with no reason given reads as a fault. */
+function budgetSaid(b, layered) {
+  if (!b) return "";
+  const parts = [], thin = [];
+  if (b.unison[0] < b.asked[0]) thin.push((layered ? "A " : "") + b.unison[0] + " of " + b.asked[0]);
+  if (layered && b.unison[1] < b.asked[1]) thin.push("B " + b.unison[1] + " of " + b.asked[1]);
+  if (thin.length) parts.push("unison " + thin.join(", "));
+  if (b.factor < b.askedFactor) parts.push("shaping at " + b.factor + "\u00d7");
+  if (b.silenced > 0) parts.push(b.silenced + " held note" + (b.silenced === 1 ? "" : "s") + " let go");
+  return parts.length ? "voice budget: " + parts.join(" \u00b7 ") : "";
 }
 
 function genReswing() {
