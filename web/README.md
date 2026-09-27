@@ -3060,4 +3060,38 @@ rather than a second unison.
   tells the worklet once a frame, and loaded, it was still swirling at 1.2.
   It reads until it stops now, up to four seconds - a worklet that never
   heard still fails it, which was run to be sure. Three runs, three checks,
-  one cause: a wait by the wall clock for something that moves by frames.
+  one cause: a wait by the wall clock for something that moves by frames. The
+  wavetable's full run found a fourth, the flux's release check, which waited
+  a fixed 1.2 s for the strikes before it to die away; it now waits at least
+  that and then until the flux is under a hundredth, and reads the release
+  at 0.04 to 0.05 alone, as before, and 0.08 loaded.
+
+**The wavetable (G1).** *Wavetable* on the Shape menu: the drawn cycle's
+bank of four, scanned by *Position*, with a slot switch on the pane.
+
+- *A field that stopped having one answer.* The drawn cycle was one set of
+  points and one set of tables; with a wavetable it is four, so it became a
+  bank, with `points` now the slot being drawn - which is why drawing, Sine,
+  Smooth and Grab needed no change to act on the slot chosen. Slot one is
+  the drawn cycle's own, and the setup field `cycle` still means it: slots
+  two to four are a new field, `cycles`, each empty while it is its default,
+  so the migration is none. With the drawn cycle chosen the pane always
+  draws slot one, whatever the switch was left on, since drawing a slot the
+  shape does not play would change nothing you can hear.
+- *The default bank is not the morph's.* Slot one's sine, then an organ's
+  three partials, a saw and a pulse of a quarter: a path from pure to
+  hollow. The organ and the saw share a second and a third, so the check
+  tells them apart by the fourth.
+- *The drawn cycle's reading lifted out.* `cycleRead` is the drawn cycle's
+  table reading as a function of its own, bound into the worklet beside
+  `waveAt`, and the wavetable reads two of them and mixes, as the morph mixes
+  two stations. At a whole position it is that slot to the last bit.
+- *Found on the way, in my own edit:* the section title holds its dots
+  button, and setting the title's text for *Wavetable* took the button
+  away. The words are a span of their own now. And cycletest compared
+  against the old `drawnCycle.tables`, which no longer exists - the expected
+  wave fell back to a sine and read 0.91; it reads the bank's slot one now.
+- *A built generator has to be handed the bank.* A rack's lane or a new tone
+  is built from the panel, and without the bank it plays a sine until
+  someone draws; the check reads the lane's bank as well as its position,
+  which is set off its default first so the default could not pass for it.

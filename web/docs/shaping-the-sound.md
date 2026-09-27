@@ -208,7 +208,15 @@ held, so pitched, with each step band-limited as the square's edges are.
 They keep a memory, so they are made in the core beside each voice rather
 than in `waveAt`, and like white noise they go round the voice's oscillator
 (FM, sync, unison) rather than through it; the shaping and the filter still
-act on them. `noisetest.py` holds them. The wavetable is not built; G2 is.
+act on them. `noisetest.py` holds them. **The wavetable is built**, and it is
+G2's drawn cycle four times over rather than a bank of stock tables: the
+drawn cycle became a bank of four slots, slot one the drawn cycle as it
+always was, and *Wavetable* on the Shape menu scans them with a *Position*
+(0 to 3, a slot and a half either way at full depth, each layer its own).
+The pane gains a switch for which slot it draws, and Grab fills the slot
+chosen - four sounds grabbed into four slots and scanned by an oscillator,
+the macro or the photocell. Each slot is band-limited by its own tables, as
+the drawn cycle is. `wavetabletest.py` holds it. G1 and G2 are built.
 
 ### G · verification
 

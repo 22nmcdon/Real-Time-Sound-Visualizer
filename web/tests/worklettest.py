@@ -96,6 +96,12 @@ with sync_playwright() as pw:
               report["shapes"]["pulse"]["print"] not in (report["shapes"]["square"]["print"], report["shapes"]["sine"]["print"]),
               "%s against %s and %s" % (report["shapes"]["pulse"]["print"], report["shapes"]["square"]["print"],
                                         report["shapes"]["sine"]["print"]))
+        # Between a square and the cycle, which is neither alone - a branch
+        # missing from the module, or a bank it never read, would be the sine.
+        check("and the wavetable is its bank, not the drawn cycle nor a sine by default",
+              report["shapes"]["wavetable"]["print"] not in (report["shapes"]["drawn"]["print"], report["shapes"]["sine"]["print"]),
+              "%s against %s and %s" % (report["shapes"]["wavetable"]["print"], report["shapes"]["drawn"]["print"],
+                                        report["shapes"]["sine"]["print"]))
         check("and the drawn cycle is its tables, not a sine by default",
               report["shapes"]["drawn"]["print"] != report["shapes"]["sine"]["print"],
               "%s against %s" % (report["shapes"]["drawn"]["print"], report["shapes"]["sine"]["print"]))

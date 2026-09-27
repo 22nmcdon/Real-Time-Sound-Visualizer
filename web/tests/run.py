@@ -65,6 +65,7 @@ SUITES = [
     ("second", [sys.executable, "secondtest.py"], "the second generator: its figure exactly, FM, ride and clock into the first against references, lanes, layers, codes"),
     ("cycle", [sys.executable, "cycletest.py"], "the drawn cycle: tables band-limited by numpy's FFT, scaled alike, no step at a hand-over, drawn with the mouse, played, in codes"),
     ("pulse", [sys.executable, "pulsetest.py"], "the pulse: a pulse's harmonics at a quarter, a third and a tenth, the square at a half, no DC or clip, the width read, patched, per layer, synced, in codes"),
+    ("wavetable", [sys.executable, "wavetabletest.py"], "the wavetable: each slot the drawn cycle's read exactly, the mix between, the default bank's harmonics, the position patched and per layer, the pane and Grab on the slot chosen, codes, a rack of six"),
     ("noise", [sys.executable, "noisetest.py"], "the noises: white flat, pink -3 and brown -6 dB an octave, their levels, each channel its own, sample and hold held, pitched and band-limited, the chord's path and layer B"),
     ("grab", [sys.executable, "grabtest.py"], "grab a cycle: a known file lane's cycle point for point with its note held, worse with the wrong note, measured without one, averaged on noise, the right lane, refusals, no scroll"),
     ("record", [sys.executable, "recordtest.py"], "Record: the clip is the screen and the speakers, across a change of source, an unheard input once, its length written in"),

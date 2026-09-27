@@ -111,8 +111,14 @@ try {
      one is handed over here, a cycle that rises and falls in straight lines,
      so the branch that reads them runs in this thread. */
   const CYCLE = { most: 2, levels: [[0, 1, 0, -1], [0, 0.7, 0, -0.7]] };
-  for (const shape of ["sine", "harmonic", "triangle", "square", "pulse", "ramp", "drawbars", "morph", "drawn", "noise", "pink", "brown", "stepped"]) {
-    node.port.onmessage({ data: { tone: { shape, cycle: shape === "drawn" ? CYCLE : null } } });
+  // And a bank for the wavetable, whose position starts between its second
+  // and third slots: a square there against the cycle, so the mix is neither.
+  const SQUARE = { most: 1, levels: [[0.9, 0.9, -0.9, -0.9]] };
+  const BANK = [CYCLE, SQUARE, CYCLE, SQUARE];
+  for (const shape of ["sine", "harmonic", "triangle", "square", "pulse", "ramp", "drawbars", "morph", "drawn", "wavetable",
+                       "noise", "pink", "brown", "stepped"]) {
+    node.port.onmessage({ data: { tone: { shape, cycle: shape === "drawn" ? CYCLE : null,
+                                          wavetable: shape === "wavetable" ? BANK : null } } });
     /* Cleared first. The block is shared between shapes, and a shape whose
        branch throws writes nothing into it - so the samples it was judged on
        were the previous shape's, and a drawbars branch with its table

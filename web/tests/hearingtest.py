@@ -179,7 +179,17 @@ with sync_playwright() as pw:
       return peak;
     }""")
     stopped = p.evaluate("""async () => {
-      __play(330, 'same', 0.8); await __wait(1200);
+      /* Until the strikes' flux has gone, not for a fixed 1.2 s: under the
+         full suite's load that was less of the follower's own time - it
+         advances by the frame, capped at 250 ms - and what was left of the
+         strikes read as a rise at the release, 0.338. Up to eight seconds;
+         a flux that never falls fails the check it is waiting for. */
+      __play(330, 'same', 0.8);
+      const quiet = performance.now();
+      // Never less than the 1.2 s it was: ending the wait at the first dip
+      // under 0.02 read the release at 0.06 to 0.08, against 0.04 to 0.05.
+      await __wait(1200);
+      while (hearing.flux > 0.01 && performance.now() - quiet < 8000) await __wait(50);
       // Released over 80 ms, as a note ends. Cut off in one sample it is a
       // click, which is broadband and a real rise; this checks the release.
       let peak = 0;

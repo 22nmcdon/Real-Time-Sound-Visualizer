@@ -129,7 +129,7 @@ with sync_playwright() as pw:
       const n = Math.round(rate / hz) * 4;
       const got = Array.from(state.source.getLatestWindow(n)[0]);
       const want = [];
-      for (let i = 0; i < n; i++) want.push(waveAt('drawn', TWO_PI * i * step, step, drawnCycle.tables));
+      for (let i = 0; i < n; i++) want.push(waveAt('drawn', TWO_PI * i * step, step, drawnCycle.bank[0]));
       return { first: pts.slice(8, 120), second: pts.slice(136, 248), sent, got, want };
     }""")
     check("the pane shows with the drawn cycle chosen, and a square drawn with the mouse is a square in the points",
@@ -171,7 +171,7 @@ with sync_playwright() as pw:
       return (async () => {
       await toFile(new File([buf], 'x.wav', { type: 'audio/wav' }));
       el.srcTone.click(); await new Promise((r) => setTimeout(r, 300));
-      const fresh = state.source.kind === 'tone' && JSON.stringify(genSettings().cycle) === JSON.stringify(drawnCycle.tables);
+      const fresh = state.source.kind === 'tone' && JSON.stringify(genSettings().cycle) === JSON.stringify(drawnCycle.bank[0]);
       el.cycleSine.click();
       const sine = Math.max(...drawnCycle.points.map((v, i) => Math.abs(v - Math.sin(2 * Math.PI * i / CYCLE_POINTS))));
       return { smooth, codeLength: code.length, worst, bare, back, sine, sineCode: snapshot().cycle, fresh };
