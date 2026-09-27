@@ -714,7 +714,9 @@ screen cycles through the shapes of the chord's intervals in time.
 ### Built so far
 
 **S5**: one key and scale for the page, C chromatic by default, in a *Key and
-tempo* section on the Sources tab.
+tempo* section on the Sources tab. (Since moved to Measure, with the
+macros, when a sweep of every layout found Sources over with a rack of six and
+the Photocell on; see *Every tab, in every combination* in the README.)
 
 **S6**, all but an internal start and stop:
 - a tempo slider;
@@ -813,7 +815,8 @@ Smaller things, each worth doing on its own and none blocking the others.
   A macro or an oscillator on the fader moves every slider.
 - **Macros. Built.** User-named sources with no oscillator behind them: one knob, many
   destinations. The matrix already does the fan-out. Four, on the Sources tab
-  with the morph; Crossings moved to Effects to make the room.
+  with the morph; Crossings moved to Effects to make the room. They are on
+  Measure now, for the reason given under S5.
 - **More figures and solids. Built.** Butterfly
   curve, Lissajous knot, *n*-gon; the dodecahedron, icosahedron and a torus.
   The polygon and the butterfly are figures; the knot is a solid, because a

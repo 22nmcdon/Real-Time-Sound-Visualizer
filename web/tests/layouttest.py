@@ -50,8 +50,9 @@ with sync_playwright() as pw:
     print("\n--- the Sources tab: families ---")
     fam = p.evaluate("""() => {
       setView('bench'); setBenchTab('sources');
-      const families = () => Array.from(el.srcGrid.querySelectorAll('.src-family')).map((f) => ({
-        id: f.dataset.family,
+      // Both grids, in order: the first section's families, then "More sources".
+      const families = () => Array.from(document.querySelectorAll('#srcGrid .src-family, #srcGrid2 .src-family')).map((f) => ({
+        id: f.dataset.family, grid: f.parentElement.id,
         chips: Array.from(f.querySelectorAll('[data-select]')).map((c) => c.dataset.select),
         hint: (f.querySelector('.src-empty') || { textContent: '' }).textContent }));
       const before = families();
@@ -63,9 +64,14 @@ with sync_playwright() as pw:
     by = lambda rows: {r["id"]: r for r in rows}
     before, after = by(fam["before"]), by(fam["after"])
     print("    before:", {k: (v["chips"] or v["hint"][:30]) for k, v in before.items()})
-    check("the families come in their order, the oscillators first",
-          [r["id"] for r in fam["before"]] == ["oscillators", "signal", "hearing", "keyboard", "controllers", "picture"],
-          str([r["id"] for r in fam["before"]]))
+    # In two sections since a rack of six with a keyboard and the Photocell put
+    # one grid 56 px past its column: the families of a known size, then the
+    # two that grow with every knob learned and with the Photocell on.
+    check("the families come in their order, the oscillators first, in two sections",
+          [(r["grid"], r["id"]) for r in fam["before"]] == [("srcGrid", "oscillators"), ("srcGrid", "signal"),
+                                                          ("srcGrid", "hearing"), ("srcGrid", "keyboard"),
+                                                          ("srcGrid2", "controllers"), ("srcGrid2", "picture")],
+          str([(r["grid"], r["id"]) for r in fam["before"]]))
     check("each source is under its own family",
           before["oscillators"]["chips"] == ["lfo1", "lfo2"] and before["signal"]["chips"] == ["env.live", "env.note", "threshold"],
           str(before))
@@ -83,7 +89,7 @@ with sync_playwright() as pw:
                        description: 'Only for the test.', bipolar: true, value: () => window.__v });
       window.__v = 0.3;
       buildSourceGrid();
-      el.srcGrid.querySelector('[data-select="test.meter"]').click();
+      document.querySelector('#srcGrid [data-select="test.meter"]').click();
       const read = () => { updateSourceMeter();
         const f = document.getElementById('srcMeter');
         return [parseFloat(f.style.left), parseFloat(f.style.width), document.getElementById('srcMeterValue').textContent]; };
@@ -92,7 +98,7 @@ with sync_playwright() as pw:
       const down = read();
       const out = { title: el.srcDetailTitle.textContent, desc: el.srcDetail.querySelector('.src-desc').textContent,
                     focus: focusSource, up, down,
-                    pressed: el.srcGrid.querySelector('[aria-pressed=true]').dataset.select };
+                    pressed: document.querySelector('#srcGrid [aria-pressed=true], #srcGrid2 [aria-pressed=true]').dataset.select };
       addRouting('test.meter', 'view.rotate');
       // The panel follows on the next frame, the way every routing change
       // repaints, rather than inside the call.

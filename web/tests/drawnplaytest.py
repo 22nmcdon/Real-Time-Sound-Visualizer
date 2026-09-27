@@ -227,7 +227,7 @@ with sync_playwright() as pw:
           pitched == [False, True], str(pitched))
 
     grid = p.evaluate("""async () => {
-      const chips = () => [...el.srcGrid.querySelectorAll('[data-family="picture"] [data-select]')].map((c) => c.dataset.select).filter((id) => id.startsWith('draw.'));
+      const chips = () => [...el.srcGrid2.querySelectorAll('[data-family="picture"] [data-select]')].map((c) => c.dataset.select).filter((id) => id.startsWith('draw.'));
       const out = {};
       for (const mode of ['wave', 'harmonograph', 'wireframe']) {
         el.genMode.value = mode; el.genMode.dispatchEvent(new Event('change'));

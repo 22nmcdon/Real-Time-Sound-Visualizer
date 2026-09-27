@@ -749,6 +749,13 @@ body[data-view="bench"] .dock  { order: 3; }
 /* Kept in step with BENCH_GAP, which the column count is derived from. */
 .bench-col { flex: 1 1 0; min-width: 0; }
 .bench-col:empty { display: none; }
+/* Except while the sections are being measured, when the empty columns have
+   to keep their share: hidden, the first column took the whole width, 822 px
+   where it would be 251, so every section was measured at three times its
+   width and anything that wraps came out short - the Sources grid 175 px
+   tall where it was 229 when dealt, and the dealer paired sections that could
+   not fit together. */
+.bench-body.dealing .bench-col:empty { display: block; }
 
 /* --- the side column -------------------------------------------------------
    The screen, and the things you point at it. Neither is ever behind a fold.
@@ -1503,57 +1510,6 @@ body[data-view="bench"] .dock  { order: 3; }
               works on the GitHub Pages copy and not there. Safari has no Web MIDI at all.</p>
           </div>
 
-          <!-- Knobs of your own, and the fader between two sets of sliders.
-               Together because the morph is a macro too: one control that
-               moves many, which the matrix can drive like any other. On the
-               Sources tab, where a macro is patched: Play has no room for it
-               in a harmonograph, a wireframe or a rack of six. -->
-          <div class="menu-group" id="macroGroup" data-tab="sources" data-home="bench">
-            <span class="menu-title">Macros</span>
-            <div class="menu-row macro-row">
-              <input type="text" class="macro-name" id="macroName1" value="Macro 1" maxlength="16"
-                     spellcheck="false" aria-label="Name of macro 1">
-              <div class="grow">
-                <input type="range" id="macro1" min="0" max="100" value="0" aria-label="Macro 1">
-                <span class="reading" id="macro1Value">0%</span>
-              </div>
-            </div>
-            <div class="menu-row macro-row">
-              <input type="text" class="macro-name" id="macroName2" value="Macro 2" maxlength="16"
-                     spellcheck="false" aria-label="Name of macro 2">
-              <div class="grow">
-                <input type="range" id="macro2" min="0" max="100" value="0" aria-label="Macro 2">
-                <span class="reading" id="macro2Value">0%</span>
-              </div>
-            </div>
-            <div class="menu-row macro-row">
-              <input type="text" class="macro-name" id="macroName3" value="Macro 3" maxlength="16"
-                     spellcheck="false" aria-label="Name of macro 3">
-              <div class="grow">
-                <input type="range" id="macro3" min="0" max="100" value="0" aria-label="Macro 3">
-                <span class="reading" id="macro3Value">0%</span>
-              </div>
-            </div>
-            <div class="menu-row macro-row">
-              <input type="text" class="macro-name" id="macroName4" value="Macro 4" maxlength="16"
-                     spellcheck="false" aria-label="Name of macro 4">
-              <div class="grow">
-                <input type="range" id="macro4" min="0" max="100" value="0" aria-label="Macro 4">
-                <span class="reading" id="macro4Value">0%</span>
-              </div>
-            </div>
-            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos">
-              <label class="menu-label" for="morphPos">Morph</label>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
-                        title="Store every slider as A">A</button>
-                <input type="range" id="morphPos" min="0" max="100" value="0">
-                <button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
-                        title="Store every slider as B">B</button>
-              </div>
-            </div>
-            <p class="menu-note" id="morphNote"></p>
-          </div>
 
           <div class="menu-group" id="toneRows" data-tab="play" data-home="bench">
             <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
@@ -1878,9 +1834,79 @@ body[data-view="bench"] .dock  { order: 3; }
           <!-- The Sources tab: every source, by family, and the one selected.
                It replaces the Modulation section, which gave the two oscillators
                a home and every other source a chip with no explanation. -->
+          <!-- Knobs of your own, and the fader between two sets of sliders.
+               Together because the morph is a macro too: one control that
+               moves many, which the matrix can drive like any other. On the
+               Measure tab, with the key and tempo: the Sources tab was its home,
+               where a macro is patched, and a rack of six with a keyboard, the
+               Photocell and a Nord's ten learned controllers put that tab past
+               its columns in any arrangement while Macros stayed. What it costs:
+               in a performance the knobs are a tab away from the other sources.
+               Play has no room for it in a harmonograph, a wireframe or a rack of
+               six. -->
+          <div class="menu-group" id="macroGroup" data-tab="measure" data-home="bench">
+            <span class="menu-title">Macros</span>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName1" value="Macro 1" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 1">
+              <div class="grow">
+                <input type="range" id="macro1" min="0" max="100" value="0" aria-label="Macro 1">
+                <span class="reading" id="macro1Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName2" value="Macro 2" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 2">
+              <div class="grow">
+                <input type="range" id="macro2" min="0" max="100" value="0" aria-label="Macro 2">
+                <span class="reading" id="macro2Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName3" value="Macro 3" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 3">
+              <div class="grow">
+                <input type="range" id="macro3" min="0" max="100" value="0" aria-label="Macro 3">
+                <span class="reading" id="macro3Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row macro-row">
+              <input type="text" class="macro-name" id="macroName4" value="Macro 4" maxlength="16"
+                     spellcheck="false" aria-label="Name of macro 4">
+              <div class="grow">
+                <input type="range" id="macro4" min="0" max="100" value="0" aria-label="Macro 4">
+                <span class="reading" id="macro4Value">0%</span>
+              </div>
+            </div>
+            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos">
+              <label class="menu-label" for="morphPos">Morph</label>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
+                        title="Store every slider as A">A</button>
+                <input type="range" id="morphPos" min="0" max="100" value="0">
+                <button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
+                        title="Store every slider as B">B</button>
+              </div>
+            </div>
+            <p class="menu-note" id="morphNote"></p>
+          </div>
+
+          <!-- The grid in two sections, split by what grows: the oscillators,
+               the signal, the hearing and the keyboard, whose sizes are known,
+               and the controllers and the picture, which grow with every knob
+               learned and with the Photocell on (see SECOND_GRID). One section
+               could not fit a column: with a rack of six, a keyboard and the
+               Photocell it was 483 px of a 427 px column, and no dealing of whole
+               sections can fit one taller than a column - the reason Lanes left
+               Input. With the source detail these are three sections for three
+               columns, and Macros and Key and tempo are on Measure. -->
           <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
             <span class="menu-title">Sources</span>
             <div id="srcGrid"></div>
+          </div>
+          <div class="menu-group" id="srcGroup2" data-home="bench" data-tab="sources">
+            <span class="menu-title">Controllers and picture</span>
+            <div id="srcGrid2"></div>
           </div>
           <!-- The note is here rather than under the grid: the grid's column is
                the tallest on the tab, and with a rack of six the Bench is 427 px
@@ -1892,10 +1918,16 @@ body[data-view="bench"] .dock  { order: 3; }
               dots on a control, or drag a chip onto one.</p>
           </div>
 
-          <!-- Beside the sources because it is what two of them answer to: the
-               quantiser takes whatever is on the pitch to the key, and a locked
-               oscillator takes its rate from the tempo. -->
-          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="sources">
+          <!-- On Measure, beside the cursors: the page's one clock and its one
+               key, which is to say its measure. It was beside the sources, since
+               two of them answer to it - the quantiser takes the pitch to the
+               key, and a locked oscillator takes its rate from the tempo - and
+               that cost the Sources tab its fit: with a rack of six, a keyboard
+               and the Photocell the tab's five sections could not be dealt into
+               three columns of 427 px in any order, and Measure had 100 px of
+               three columns in use. What it costs: the tempo is a tab away from
+               the oscillators it locks. -->
+          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="measure">
             <span class="menu-title">Key and tempo</span>
             <!-- Two rows, not one: side by side in a Bench column the scale's menu
                  was cut to "Chroma". -->
@@ -2628,7 +2660,7 @@ body[data-view="bench"] .dock  { order: 3; }
               ghost figures trailing the live one; with <i>Ping-pong</i> each repeat comes back on
               the other channel, so the ghosts alternate between the figure and its reflection
               across the diagonal. <i>Sync</i> sets the time in note values from the tempo, on
-              the Sources tab, and follows it. <i>Feedback</i> stops short of one, and nothing
+              the Measure tab, and follows it. <i>Feedback</i> stops short of one, and nothing
               can be patched onto it: feedback that a source could push towards one would be a
               loop inside the loop. The longest time is two seconds.
               <br><br>
@@ -3501,7 +3533,7 @@ body[data-view="bench"] .dock  { order: 3; }
         tab, draw its sweep.</span></li>
 
       <li><b>Macros: one knob, many controls</b>
-        <span>Four knobs of your own, under <i>Macros</i> on the Sources tab. Each is a source
+        <span>Four knobs of your own, under <i>Macros</i> on the Measure tab. Each is a source
         like an oscillator, except that nothing moves it but you: touch one and it is chosen,
         then <i>Add a destination</i> as many times as you like, and that one knob moves them
         all, each by its own depth. Type over its name to call it what it does; the name is
@@ -3541,7 +3573,7 @@ body[data-view="bench"] .dock  { order: 3; }
         can open a filter, or the pendulum can be an oscillator locked to the drawing.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
-        <span>The <i>Key and tempo</i> section, on the Sources tab, is one key, one scale and one
+        <span>The <i>Key and tempo</i> section, on the Measure tab, is one key, one scale and one
         tempo for the whole page. <i>Quantise the generator's pitch</i> takes the pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
         photocell on the frequency plays a melody in D dorian rather than a siren. A key you
@@ -4284,7 +4316,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "tempo", "tempoValue", "tempoTap", "clockFrom",
                   "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
                   "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
-                  "srcGroup", "srcGrid", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
+                  "srcGroup", "srcGrid", "srcGroup2", "srcGrid2", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
@@ -16368,12 +16400,18 @@ function sourcesInFamily(family) {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
+/* The second grid, "Controllers and picture": the two families with no fixed
+   size - a chip for every knob learned, and the Photocell's seven with the
+   drawing's four - so that what grows has a column to itself. The first grid's
+   families are all of a known size and come to about 305 px at most. */
+const SECOND_GRID = new Set(["controllers", "picture"]);
+
 function buildSourceGrid() {
   if (!el.srcGrid) return;
   const families = SOURCE_FAMILIES.slice();
   // Anything registered without a family - a test's stand-in, say - still shows.
   if (sourcesInFamily("other").length) families.push(["other", "Other", ""]);
-  el.srcGrid.innerHTML = families.filter((family) => family[3] !== "own").map(([id, name, hint]) => {
+  const html = (list) => list.filter((family) => family[3] !== "own").map(([id, name, hint]) => {
     const list = sourcesInFamily(id);
     return '<div class="src-family" data-family="' + id + '">'
       + '<span class="src-family-name">' + name + "</span>"
@@ -16389,9 +16427,13 @@ function buildSourceGrid() {
           }).join("") + "</div>")
       + "</div>";
   }).join("");
-  el.srcGrid.querySelectorAll("[data-select]").forEach((chip) => {
-    chip.addEventListener("click", () => selectSource(chip.dataset.select));
-  });
+  el.srcGrid.innerHTML = html(families.filter(([id]) => !SECOND_GRID.has(id)));
+  el.srcGrid2.innerHTML = html(families.filter(([id]) => SECOND_GRID.has(id)));
+  for (const grid of [el.srcGrid, el.srcGrid2]) {
+    grid.querySelectorAll("[data-select]").forEach((chip) => {
+      chip.addEventListener("click", () => selectSource(chip.dataset.select));
+    });
+  }
 }
 
 /* Selecting a source also focuses it, so every control it is on - on every
@@ -20900,6 +20942,7 @@ function unfold(group) {
    rather than in CSS - stable, because nothing moves again until the window
    does. */
 let benchCols = 0;
+let benchMeasured = new Map();
 
 /* A label is 96px and a slider will not go below 80, so a section is legible
    down to about 240 - and it has to be allowed to go that narrow, because the
@@ -20938,9 +20981,14 @@ function layoutBenchBody() {
   benchCols = want;
 
   // Measured at the width they will actually have: the columns are flex items
-  // with a basis of zero, so an empty one is still its full share wide.
+  // with a basis of zero, so an empty one is still its full share wide - but
+  // only while `dealing` keeps the empty ones shown; see the stylesheet.
+  el.benchBody.classList.add("dealing");
   for (const group of groups) cols[0].appendChild(group);
   const heights = groups.map((g) => g.offsetHeight);
+  el.benchBody.classList.remove("dealing");
+  // Kept for the checks: what each section measured, to set beside what it is.
+  benchMeasured = new Map(groups.map((g, i) => [g, heights[i]]));
   for (const group of groups) benchWatch.observe(group);
 
   const filled = cols.map(() => 0);
@@ -21277,7 +21325,9 @@ function chooseSearch(entry) {
     if (document.body.dataset.view !== "bench") setView("bench");
     setBenchTab("sources");
     selectSource(entry.id);
-    const chip = el.srcGrid.querySelector('[data-select="' + entry.id + '"]');
+    // In either grid: a keyboard's or the picture's chip is in the second.
+    const chip = (el.srcGrid.querySelector('[data-select="' + entry.id + '"]')
+      || el.srcGrid2.querySelector('[data-select="' + entry.id + '"]'));
     if (chip) { chip.focus(); flash(chip); }
     return;
   }

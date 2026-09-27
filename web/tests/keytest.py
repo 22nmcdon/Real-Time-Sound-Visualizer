@@ -193,7 +193,8 @@ with sync_playwright() as pw:
 
     print("\n--- the panel, and setup codes ---")
     panel = p.evaluate("""() => {
-      setView('bench'); setBenchTab('sources');
+      // On Measure since the Sources tab needed its room; see the markup.
+      setView('bench'); setBenchTab('measure');
       const shown = el.keyGroup.offsetHeight > 0;
       // Wide enough for "Major pentatonic", the longest: it was cut to "Chroma".
       const probe = document.createElement('canvas').getContext('2d');
@@ -213,7 +214,7 @@ with sync_playwright() as pw:
       return { shown, roomy, before, on, glide, off, code: snapshot() };
     }""")
     print("    %s" % {k: v for k, v in panel.items() if k != "code"})
-    check("the section is on the Sources tab, and the key reaches the generator only while Quantise is on",
+    check("the section is on the Measure tab, and the key reaches the generator only while Quantise is on",
           panel["shown"] and panel["before"] == 0 and panel["on"] == 2741 and panel["off"] == 0, str(panel["on"]))
     check("and so does its glide", panel["glide"] == {"core": 80, "reading": "80 ms"}, str(panel["glide"]))
     check("the scale's menu is wide enough to say the longest scale", panel["roomy"], str(panel["roomy"]))

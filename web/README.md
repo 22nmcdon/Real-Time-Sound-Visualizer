@@ -3132,11 +3132,42 @@ destinations, and the drawings are sources.
   and a solid for exactly that reason, and these two missed - and hiding them
   there made room for the spins' modulation lanes as well. The check now
   measures Play in every kind with a rack of six.
-- *A known limit, not fixed here:* with a keyboard showing, a rack of six
-  and the Photocell on, the Sources tab is 47 px over with a waveform - the
-  Photocell's seven sources and the keyboard's six are two lines each - and
-  a solid's four chips add a line to that. Laying out the Sources tab for
-  every family full at once is its own piece of work.
+- *A limit found here, since fixed:* with a keyboard showing, a rack of six
+  and the Photocell on, the Sources tab was 47 px over with a waveform. See
+  *Every tab, in every combination* below.
 - *And a readout that crashed.* In X-Y the readout named the drawing from
   the source's own settings, which only the tone has, so a rack whose lane
   drew a solid threw on every frame; it asks `genSettings()` now.
+
+**Every tab, in every combination.** *No Bench tab may scroll* was measured
+tab by tab, as each changed, in whatever state that change's own test set
+up. A tab's height also depends on things set elsewhere - the kind of
+generator, a rack or the tone, a keyboard showing, the Photocell on, knobs
+learned - and nothing measured them together. `fittest.py` does now: every
+tab, on the tone and on a rack of six, with and without the keyboard's and
+the Photocell's sources, for each of the four kinds, and the worst of those
+with a Nord's ten controllers learned - 102 cases each. It found:
+
+- *The dealer measured every section three times too wide.* It stacks the
+  sections in the first column to measure them, on the understanding that an
+  empty column still takes its share; and `.bench-col:empty` was `display:
+  none`, so the first column was the whole Bench, 822 px where it would be
+  251. Everything that wraps measured short - the Sources grid 175 px tall
+  where it was 229 dealt - and the dealer paired sections that could not fit
+  together. The empty columns are kept while it measures, and the check holds
+  each section's measured height to its dealt one.
+- *The Sources tab did not fit a rack of six with the Photocell on* - 18 px
+  over, 74 with a keyboard and a solid. The source grid was one section, 483
+  px of a 427 px column at worst, and no dealing of whole sections fits one
+  taller than a column; so it is two, split by what grows: the oscillators,
+  the signal, the hearing and the keyboard, of known size, and *Controllers
+  and picture*, which grow with every knob learned and the Photocell on, and
+  have a column to themselves. That holds about twenty learned controllers
+  in the worst state.
+- *And the tab held more than three columns.* With the grid in two, its five
+  sections could not be dealt into three columns of 427 px in any order, and
+  Measure had one column in use. So *Key and tempo* and *Macros* are on
+  Measure. What that costs: the tempo is a tab away from the oscillators it
+  locks, and in a performance the macro knobs are a tab away from the other
+  sources - Macros had already moved once for room, from Play, and it is the
+  move most worth reconsidering if the Sources tab ever gains a column.

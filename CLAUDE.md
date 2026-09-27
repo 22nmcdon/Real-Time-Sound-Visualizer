@@ -177,7 +177,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   panel scrolls", which held for the tone and never for a rack - and is why a
   section that would crowd a tab goes to another one (Lanes is on Picture
   because Play had four sections for three columns, and Effects exists because
-  the voice's oscillator made Shape five).
+  the voice's oscillator made Shape five). `fittest.py` measures every tab in
+  every combination of generator kind, tone or rack of six, keyboard and
+  Photocell, which is how Macros and Key and tempo came to be on Measure.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, Presets, Beam) or `bench` (everything played or tuned), and a
   section stays in its home in both views. Settings and the Bench used to hold
