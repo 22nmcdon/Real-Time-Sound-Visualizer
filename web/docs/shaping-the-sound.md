@@ -17,8 +17,9 @@ audio into the generator (see *Built so far* under Stage J), and the rest of
 Stage K - its thresholds, the score, MIDI out and the arpeggiator (see *Built
 so far* under Stage K). Since then, the rest of G (the pulse, the noises, the
 wavetable, and G2's drawn and grabbed cycles), the rest of J2, the breadth of
-L, and S10's voice budget (below, and *What the voices cost* in the README).
-What is not built is S6's internal start and stop.
+L, S10's voice budget (below, and *What the voices cost* in the README), and
+S6's start and stop (*One bar for the page* in the README). The plan is
+built.
 Stage letters continue from F so that a reference like "Stage H2" is never
 ambiguous across the two documents.
 
@@ -721,7 +722,9 @@ tempo* section on the Sources tab. (Since moved to Measure, with the
 macros, when a sweep of every layout found Sources over with a rack of six and
 the Photocell on; see *Every tab, in every combination* in the README.)
 
-**S6**, all but an internal start and stop:
+**S6**, and its start and stop since, as one bar for the page that the score
+reads, Start and Stop set, and a MIDI clock counts in ticks (see *One bar for
+the page* in the README):
 - a tempo slider;
 - tap tempo, which also restarts the locked oscillators;
 - MIDI clock in, read as a mean over two dozen ticks, with Start restarting the

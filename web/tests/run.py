@@ -42,7 +42,7 @@ SUITES = [
     ("drawbar", [sys.executable, "drawbartest.py"], "the saw on the menu, and the drawbars: footages, Nyquist, the level law, layers"),
     ("morph", [sys.executable, "morphtest.py"], "the morph: its stations, its crossfade, the fundamental it keeps, layers, setups"),
     ("key", [sys.executable, "keytest.py"], "the page's key and the quantiser: only the key's notes, no chatter, the rate limit, chords"),
-    ("clock", [sys.executable, "clocktest.py"], "the clock: locked oscillators, tap tempo, MIDI clock, Start and Continue"),
+    ("clock", [sys.executable, "clocktest.py"], "the clock: locked oscillators, tap tempo, MIDI clock, Start and Continue; the bar, Stop and Start, the score on it, a MIDI clock counted in ticks"),
     ("cross", [sys.executable, "crosstest.py"], "crossings: the interval as a rhythm, the drift in equal temperament, the notes heard and not drawn"),
     ("pitch", [sys.executable, "pitchtest.py"], "the pitch estimator: rich registrations, the range, two periods or nothing, noise, the readout and Autoset"),
     ("play", [sys.executable, "playtest.py"], "the drawings played: the pitched harmonograph, its strike, Play the figure"),

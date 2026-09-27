@@ -1961,6 +1961,13 @@ body[data-view="bench"] .dock  { order: 3; }
                 <span class="reading" id="clockFrom">internal</span>
               </div>
             </div>
+            <div class="menu-row">
+              <span class="menu-label">Bar</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="transportPlay">Stop</button>
+                <span class="reading" id="transportAt">1.1</span>
+              </div>
+            </div>
             <p class="menu-note">One key and one tempo for the page. <i>Quantise</i> takes the
               generator's pitch, after everything patched onto it, to the nearest note of the key:
               put a slow oscillator or the photocell on the frequency and it plays a melody in the
@@ -1974,7 +1981,14 @@ body[data-view="bench"] .dock  { order: 3; }
               An oscillator's <i>Sync</i>, on the Sources tab, locks its rate to the tempo in note
               values. <i>Tap</i> sets the tempo from your taps and starts the locked oscillators on
               the last one. A keyboard or a sequencer sending MIDI clock sets the tempo while it
-              runs, and its Start restarts them.</p>
+              runs, and its Start restarts them.
+              <br><br>
+              <i>Bar</i> is where the page is in the music, counted in fours: the score reads its
+              columns from it, so its first column is always a downbeat. <i>Stop</i> holds it and
+              silences the score; <i>Start</i> puts it back to the one and restarts the locked
+              oscillators with it. A tap is the one while it runs. A device's Start, Stop and
+              Continue do the same, on its first tick, and under its clock the bar counts its
+              ticks. The arpeggiator follows your hands, not the bar.</p>
           </div>
 
           <!-- On Effects since the macros took its room on Sources: with the
@@ -3392,7 +3406,9 @@ body[data-view="bench"] .dock  { order: 3; }
         column are the notes, up to four at once, and the brighter the harder. Draw a figure and
         it plays itself; turn it and the melody inverts. A long persistence is a score that
         lingers. The notes are heard in the generator's voice while it is heard, and never
-        drawn, so the score cannot play itself into what it is reading.</span></li>
+        drawn, so the score cannot play itself into what it is reading. The playhead is on the
+        page's bar, so its first column is always a downbeat and <i>Stop</i> under <i>Key and
+        tempo</i> silences it; see below.</span></li>
 
       <li><b>The arpeggiator</b>
         <span><i>Arp</i>, in the Keyboard section, plays a held chord a note at a time at the tempo:
@@ -3602,7 +3618,22 @@ body[data-view="bench"] .dock  { order: 3; }
         a semiquaver, with triplets. <i>Tap</i> sets the tempo from the last four taps and starts
         the locked oscillators on the beat you tapped. A keyboard or sequencer sending MIDI clock
         sets the tempo while it runs, and hands it back half a second after it stops. Its
-        <i>Start</i> restarts the locked oscillators, and <i>Continue</i> does not.</span></li>
+        <i>Start</i> restarts the locked oscillators, and <i>Continue</i> does not.
+        <br><br>
+        <i>Bar</i> says where the page is in the music, in fours: <i>3.2</i> is the third bar's
+        second beat. The score's playhead reads its columns from it, so switched on mid-bar it
+        joins where the bar is, and its first column always lands on a downbeat.
+        <i>Stop</i> holds the bar and silences the score; <i>Start</i> puts the bar back to the
+        one and restarts the locked oscillators with it, so a synced sweep and the score begin
+        together. While it runs, a tap is the one as well as the tempo. A device's Start, Stop
+        and Continue work the bar the same way - Start on the device's first tick, as MIDI says
+        it should - and while its clock runs the bar counts its ticks, so it keeps the device's
+        place and not only its tempo. If the clock stops without a Stop, the bar carries on
+        from where the clock would have had it. Two things do not follow the bar: the
+        arpeggiator, which starts from your hands, because a first note held back to the next
+        step would feel like lag; and a song position from the device, which is not read, so a
+        Continue from the middle of a song carries on from wherever this page's bar
+        stood.</span></li>
 
       <li><b>Crossings: the picture as a rhythm</b>
         <span><i>Crossings</i>, on the Effects tab, puts a line across each axis of the X&ndash;Y
@@ -4328,7 +4359,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "fileAt", "fileNote", "fileChooseRow", "dropHint",
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
                   "keyGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
-                  "tempo", "tempoValue", "tempoTap", "clockFrom",
+                  "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
                   "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
                   "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
                   "srcGroup", "srcGrid", "srcGroup2", "srcGrid2", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
@@ -4940,6 +4971,12 @@ const transport = {
   from: "internal",
   ticks: [],         // recent MIDI clock ticks, in milliseconds
   taps: [],          // recent taps, in milliseconds
+  // Where the bar is (S6's start and stop): `base` beats at `baseAt`, and
+  // moving at the tempo from there while it runs; see `transportBeat`.
+  running: true,
+  base: 0,
+  baseAt: 0,
+  onTicks: false,    // the base is a MIDI clock tick's, and waits for the next
 };
 // A MIDI clock that has not ticked for this long has stopped, and the tempo
 // goes back to the slider's.
@@ -4953,11 +4990,85 @@ function clockTick(at) {
   if (ticks.length && at - ticks[ticks.length - 1] > CLOCK_TIMEOUT_MS) ticks.length = 0;
   ticks.push(at);
   if (ticks.length > 25) ticks.shift();
+  // The bar, while it runs, moves a twenty-fourth of a beat a tick: the
+  // first tick of a run takes up from where the bar had got to, and each
+  // after it adds its own.
+  if (transport.running) {
+    transport.base = transport.onTicks ? transport.base + 1 / 24 : transportBeat(at);
+    transport.baseAt = at;
+    transport.onTicks = true;
+  }
   if (ticks.length >= 3) {
     const gap = (ticks[ticks.length - 1] - ticks[0]) / (ticks.length - 1);
     if (gap > 0) transport.bpm = Math.max(20, Math.min(400, 60000 / (gap * 24)));
     transport.from = "midi";
   }
+}
+
+/* S6's start and stop. One bar for the page: the score reads its columns
+   from it, and Start puts it back to the one together with every locked
+   oscillator, so a sweep and the score's bars begin on the same beat. They
+   used to have an origin each - the score from when it was switched on, the
+   oscillators from the last tap - and nothing lined them up.
+
+   The bar is worked out from `now` rather than stepped each frame: `base`
+   beats at `baseAt`, moving at the tempo from there, and re-based whenever
+   the tempo changes so that it never jumps. So it cannot drift from the
+   clock it is read against, and a test can ask where it is at any time.
+   Under a MIDI clock each tick is exactly a twenty-fourth of a beat, and
+   between ticks it guesses ahead at the clock's tempo but never past the
+   next tick, so it cannot run ahead of the device and have to step back.
+
+   The bar is in fours: the reading's bar and beat assume 4/4, and nothing
+   else does. What does not follow it, on purpose: the arpeggiator, which
+   starts from your hands - locked to the bar its first note could be a
+   step late, which reads as lag - and the locked oscillators between
+   starts, which are started on it and run at its tempo but are not read
+   back from it, so over a long run they can drift by as much as the audio
+   clock and the page's clock disagree: milliseconds over minutes. */
+function transportBeat(now) {
+  if (!transport.running) return transport.base;
+  const since = Math.max(0, now - transport.baseAt) * transport.bpm / 60000;
+  return transport.base + (transport.onTicks ? Math.min(since, 1 / 24) : since);
+}
+function transportRebase(now) {
+  transport.base = transportBeat(now);
+  transport.baseAt = now;
+  transport.onTicks = false;
+}
+// The one, now: the bar to nought and the score to its first column.
+function transportAnchor(now) {
+  transport.base = 0; transport.baseAt = now; transport.onTicks = false;
+  if (typeof score !== "undefined") { score.last = -1; score.steps = 0; }
+}
+/* Start, from the button or a MIDI Start. A MIDI Start waits for the clock:
+   the device plays its one on the first tick after the Start, so the bar is
+   held a tick short of nought and the first tick is the downbeat. */
+function transportStart(now, onClock) {
+  transportAnchor(now);
+  if (onClock) { transport.base = -1 / 24; transport.onTicks = true; }
+  transport.running = true;
+  clockRestart();
+  if (el.transportPlay) syncClockPanel();
+}
+// Stop: the bar stands where it is and the score lets go of its notes.
+function transportStop(now) {
+  transport.base = transportBeat(now);
+  transport.running = false;
+  if (typeof scoreStop === "function") scoreStop();
+  if (el.transportPlay) syncClockPanel();
+}
+// Continue, from a MIDI Continue: on from where it stood, at the next tick.
+function transportContinue(now) {
+  if (transport.running) return;
+  transport.base -= 1 / 24; transport.baseAt = now; transport.onTicks = true;
+  transport.running = true;
+  if (el.transportPlay) syncClockPanel();
+}
+// "3.2": the bar and the beat, in fours, from one.
+function transportSaid(now) {
+  const beat = Math.max(0, transportBeat(now));
+  return (Math.floor(beat / 4) + 1) + "." + (Math.floor(beat % 4) + 1);
 }
 
 // A restart, from a MIDI Start or a tap: every locked oscillator back to the
@@ -4980,14 +5091,22 @@ function clockTap(at) {
   if (taps.length > 4) taps.shift();
   if (taps.length >= 2) {
     const gap = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
-    setTempo(Math.round(60000 / gap));
+    setTempo(Math.round(60000 / gap), at);
     clockRestart();
+    // And the tap is the downbeat, if the bar is running: tapping is how a
+    // player says where the one is. Stopped, it sets the tempo and waits.
+    if (transport.running) transportAnchor(at);
   }
 }
 
-function setTempo(bpm) {
+// `at`, the moment of the change, is for the tests; everything else means now.
+function setTempo(bpm, at) {
   transport.set = Math.max(30, Math.min(300, Math.round(bpm)));
-  if (transport.from === "internal") transport.bpm = transport.set;
+  if (transport.from === "internal" && transport.bpm !== transport.set) {
+    // Where the bar has got to at the old tempo, before the new one moves it.
+    transportRebase(at === undefined ? performance.now() : at);
+    transport.bpm = transport.set;
+  }
   if (el.tempo) {
     el.tempo.value = String(transport.set);
     syncClockPanel();
@@ -4997,8 +5116,21 @@ function setTempo(bpm) {
 /* Once a frame: whether a MIDI clock is still running, and every locked
    oscillator's rate from the tempo. Before the oscillators are stepped. */
 function clockStep(now) {
+  /* A bar waiting on a clock that has not ticked for the timeout lets go of
+     it, and goes on from the last tick - or from a Start that no clock
+     followed - to where the clock would have had it at the tempo it was
+     going at. First written as a re-base from where the bar stood, which
+     is at most a tick past the last one: a clock pulled out left the bar
+     half a second behind for good, and a Start with no clock after it held
+     the bar a tick short of the one for ever. */
+  if (transport.onTicks && now - transport.baseAt > CLOCK_TIMEOUT_MS) {
+    transport.onTicks = false;
+    transportRebase(now);
+  }
   if (transport.from === "midi" && (transport.ticks.length === 0
       || now - transport.ticks[transport.ticks.length - 1] > CLOCK_TIMEOUT_MS)) {
+    // At the slider's tempo from here on, from where the bar is now.
+    transportRebase(now);
     transport.from = "internal";
     transport.bpm = transport.set;
     transport.ticks.length = 0;
@@ -5017,7 +5149,7 @@ function clockStep(now) {
   }
   // The panel follows a MIDI clock arriving, drifting and going, but only
   // when there is something new to say.
-  const said = transport.from + Math.round(transport.bpm);
+  const said = transport.from + Math.round(transport.bpm) + transportSaid(now);
   if (said !== transport.said && typeof syncClockPanel === "function" && el.tempo) {
     transport.said = said;
     syncClockPanel();
@@ -6962,13 +7094,18 @@ function midiRegisterKey() {
 let midiRunning = 0;
 
 /* A real-time message: no data, and it may arrive in the middle of another
-   message. Clock is the tempo; Start restarts the locked oscillators and
-   Continue does not; Stop needs nothing, because the clock stopping ticking
-   is what hands the tempo back. */
+   message. Clock is the tempo and moves the bar; Start is the page's Start,
+   on the next tick, and restarts the locked oscillators; Continue carries on
+   from where the bar stood and restarts nothing; Stop is the page's Stop.
+   The tempo still goes back to the slider when the ticks stop, whether or
+   not a Stop came first. Song position is not read: a Continue from the
+   middle of a song carries on from wherever this page's bar stood. */
 function midiRealtime(status, at) {
   const when = at === undefined ? performance.now() : at;
   if (status === 0xf8) clockTick(when);
-  else if (status === 0xfa) clockRestart();
+  else if (status === 0xfa) transportStart(when, true);
+  else if (status === 0xfb) transportContinue(when);
+  else if (status === 0xfc) transportStop(when);
 }
 
 function midiBytes(data, at) {
@@ -19692,7 +19829,7 @@ function syncMidiOut() {
 const SCORE_STEPS = [["1/16", 0.25], ["1/8", 0.5], ["1/4", 1]];
 const SCORE_FLOOR = 0.15;               // brightness a note needs, of one
 const score = { on: false, step: "1/16", voices: 2, low: 48, octaves: 3,
-                col: -1, start: null, steps: 0, notes: [] };
+                col: -1, last: -1, steps: 0, notes: [] };
 
 // The pitches the rows can play: the page's key from `low`, `octaves` up.
 function scorePitches(low, octaves, mask) {
@@ -19716,20 +19853,26 @@ function scoreColumn(grid, n, col, pitches, voices) {
   picked.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   return picked.slice(0, voices);
 }
-function scoreStepMs() {
-  const found = SCORE_STEPS.find(([id]) => id === score.step) || SCORE_STEPS[0];
-  return found[1] * 60000 / transport.bpm;
-}
-/* A frame's worth of playhead: the steps due since the last frame, of which
-   only the newest is played - a frame late is a note late, and two notes in
-   one frame would be a flam. The last step's notes end as the next begins. */
+/* A frame's worth of playhead: the step the bar is on, if it has moved since
+   the last frame - only the newest, since a frame late is a note late and
+   two notes in one frame would be a flam. The last step's notes end as the
+   next begins. The column is the bar's, not the score's own: switched on
+   mid-bar it joins where the bar is, so column nought is always a downbeat,
+   and Start brings it back there. Stopped, or with the scope stopped, it
+   plays nothing. */
 function scoreTick(now) {
-  if (!score.on || !state.running) { if (score.start !== null) scoreStop(); return; }
-  if (score.start === null) { score.start = now; score.steps = 0; score.col = -1; }
-  const due = Math.floor((now - score.start) / scoreStepMs());
-  if (due < score.steps) return;
-  score.steps = due + 1;
-  score.col = due % PHOSPHOR_N;
+  if (!score.on || !state.running || !transport.running) {
+    if (score.last !== -1 || score.notes.length) scoreStop();
+    return;
+  }
+  const found = SCORE_STEPS.find(([id]) => id === score.step) || SCORE_STEPS[0];
+  // A hair over, so a step due on the exact millisecond is not a frame late
+  // for want of the last bit of a division.
+  const step = Math.floor(transportBeat(now) / found[1] + 1e-9);
+  if (step < 0 || step === score.last) return;
+  score.last = step;
+  score.steps++;
+  score.col = step % PHOSPHOR_N;
   for (const [note] of score.notes) midiOutOff(note);
   const mask = keyMask(state.keyRoot, state.keyScale);
   score.notes = scoreColumn(phosphor.grid, PHOSPHOR_N, score.col,
@@ -19740,7 +19883,7 @@ function scoreTick(now) {
 }
 function scoreStop() {
   for (const [note] of score.notes) midiOutOff(note);
-  score.notes = []; score.start = null; score.col = -1;
+  score.notes = []; score.last = -1; score.steps = 0; score.col = -1;
 }
 // The playhead, over the picture, where the column it is reading lies.
 function drawScorePlayhead() {
@@ -19862,7 +20005,7 @@ el.arpRate.addEventListener("change", () => { arp.rate = el.arpRate.value; });
 el.arpOctaves.addEventListener("change", () => { arp.octaves = Number(el.arpOctaves.value) || 1; });
 
 el.scoreOn.addEventListener("change", () => { score.on = el.scoreOn.checked; if (!score.on) scoreStop(); });
-el.scoreStep.addEventListener("change", () => { score.step = el.scoreStep.value; score.start = null; });
+el.scoreStep.addEventListener("change", () => { score.step = el.scoreStep.value; });
 el.scoreVoices.addEventListener("change", () => { score.voices = Number(el.scoreVoices.value) || 1; });
 el.scoreLow.addEventListener("change", () => { score.low = Number(el.scoreLow.value) || 48; });
 el.scoreOctaves.addEventListener("change", () => { score.octaves = Number(el.scoreOctaves.value) || 3; });
@@ -20145,6 +20288,9 @@ function syncClockPanel() {
   el.tempo.disabled = midiClock;
   el.tempoValue.textContent = Math.round(midiClock ? transport.bpm : transport.set) + " BPM";
   el.clockFrom.textContent = midiClock ? "from MIDI clock" : "internal";
+  el.transportPlay.textContent = transport.running ? "Stop" : "Start";
+  el.transportPlay.setAttribute("aria-pressed", transport.running ? "true" : "false");
+  el.transportAt.textContent = (transport.running ? "" : "stopped at ") + transportSaid(performance.now());
 }
 
 function syncKeyPanel() {
@@ -20166,6 +20312,10 @@ el.quantiseGlide.addEventListener("input", () => {
 });
 el.tempo.addEventListener("input", () => setTempo(Number(el.tempo.value)));
 el.tempoTap.addEventListener("click", () => clockTap(performance.now()));
+el.transportPlay.addEventListener("click", () => {
+  if (transport.running) transportStop(performance.now());
+  else transportStart(performance.now());
+});
 
 /* The oscillator's controls write the layer on the panel, as the shape and
    the morph do; the table says how each one's number becomes the field. */

@@ -15,7 +15,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 |---|---|
 | `docs/playing-it-and-hearing-it.md` | the staged plan, with the decisions taken. Stages A (MIDI in, and poly since), B and C are built; D is built (the generator as a lane, heard, and a rack you build a lane at a time), E is built (the photocell, the picture's own sources, and the loop through the sound), and so is F (a keyboard split or layer: two sets of voices from one core) |
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
-| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, and S10's voice budget. What is not: S6's internal start and stop |
+| `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, S10's voice budget and S6's start and stop. The plan is built |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
 
@@ -71,7 +71,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
-| `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note |
+| `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
 | `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
@@ -1762,8 +1762,8 @@ bytes, each taken as its own message.
 in bunches, and a tempo read from the last gap jumped by a tenth. The clock is
 taken as stopped half a second after its last tick, which hands the tempo back
 to the slider. Start restarts the locked oscillators and Continue does not.
-There is no internal start and stop yet. Nothing needs one until the score or
-the arpeggiator. Tap restarts the locked oscillators instead.
+There was no internal start and stop at first, and Tap restarted the locked
+oscillators instead; see *One bar for the page* below for the start and stop.
 
 **Crossings are lines, not points, which the plan asked for and could not have
 kept its promise with.** The plan put a crossing where the beam passes within a
@@ -3235,3 +3235,58 @@ Found on the way:
   block, the fade had finished and the voice had been taken out of the pool,
   so the fade check saw nothing let go and would have passed a hard cut. It
   counts inside the fade now.
+
+**One bar for the page (S6's start and stop).** The clock had a tempo and no
+place. The score counted its columns from when it was switched on, the locked
+oscillators from the last tap or MIDI Start, and the arpeggiator from the
+first key, so a synced sweep and the score's bars began wherever each
+happened to begin, and nothing could bring them together again. A MIDI clock
+set the tempo and nothing else: a sequencer's Stop was ignored, and its place
+in the music was never read. There is now one bar. The score reads its
+columns from it, so column nought is always a downbeat. *Start* puts the bar
+back to the one and restarts the locked oscillators with it, and *Stop* holds
+the bar and silences the score. A device's Start, Stop and Continue work the
+same bar. `clocktest.py` holds all of it.
+
+- *The bar is a function of the time, not a count kept by the frames.* It is
+  `base` beats at `baseAt`, moving at the tempo from there, and it is
+  re-based whenever the tempo changes, so it never jumps. Nothing adds up a
+  frame at a time, so nothing drifts, and a check can ask where the bar is
+  at any millisecond without waiting for one. A second at 120 is exactly two
+  beats.
+- *Under a clock it counts ticks.* Each tick is a twenty-fourth of a beat
+  exactly, so 48 ticks jittered by 4 ms are still two beats; counted in time,
+  the jitter would be in the position. Between ticks the bar guesses ahead
+  at the clock's tempo but never past the next tick, so it cannot run ahead
+  of the device and have to step back.
+- *A MIDI Start waits for the first tick*, which is where MIDI puts the
+  device's one: the bar is held a tick short of nought, and the first tick
+  is the downbeat. A Continue goes on from where the bar stood, at the next
+  tick, and restarts nothing.
+- *Found while writing the checks: a clock that stops let the bar fall
+  behind for good.* The first version handed a stopped clock's bar back to
+  the slider from where it stood, which is at most a tick past the last one,
+  so pulling the cable out left the bar half a second behind the music.
+  Worse, a Start that no clock followed held the bar a tick short of the one
+  forever. A bar waiting on a clock that has been silent for the timeout now
+  carries on from the last tick to where the clock would have had it.
+- *A tap is the one*, while the bar runs; stopped, taps set the tempo and
+  start nothing.
+- *The score's meaning changed*, and `scoretest.py` with it. Its checks
+  restarted the score by clearing the score's own start; they now start the
+  bar at their synthetic origin, and afterwards put it back on the page's
+  own time, or the page's frames find a bar started a hundred seconds from
+  now, which stands still until then.
+
+What does not follow the bar, on purpose:
+- *The arpeggiator* starts from your hands. Locked to the bar, its first
+  note could wait most of a step, which a player hears as lag.
+- *The locked oscillators* are started on the bar and run at its tempo, but
+  they are not read back from it. Over a long run they can drift by as much
+  as the audio clock and the page's clock disagree, which is milliseconds
+  over minutes.
+- *A device's song position* is not read, so a Continue from the middle of a
+  song carries on from wherever this page's bar stood.
+- *Setups* do not carry the transport: loading one leaves the bar playing or
+  stopped as it was.
+- *Nothing sends clock out.* The Nord does not follow the page's Start.

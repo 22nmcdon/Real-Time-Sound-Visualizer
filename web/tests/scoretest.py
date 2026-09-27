@@ -102,8 +102,10 @@ with sync_playwright() as pw:
       const src = state.source, strike = src.strike.bind(src), got = [];
       src.strike = (notes) => { got.push(notes.map((n) => n[0])); strike(notes); };
       const run = (bpm) => {
-        setTempo(bpm); got.length = 0; score.on = true; score.start = null;
-        const t0 = 100000, cols = [];
+        // The bar started at t0: the score's columns are the bar's now, and
+        // it used to be enough to clear the score's own start.
+        setTempo(bpm); got.length = 0; score.on = true;
+        const t0 = 100000, cols = []; transportStart(t0);
         for (let t = 0; t <= 1000; t += 10) { scoreTick(t0 + t); cols.push(score.col); }
         score.on = false; scoreStop();
         return { strikes: got.length, lastCol: cols[cols.length - 1], hz: got[0] && got[0][0] };
@@ -112,6 +114,9 @@ with sync_playwright() as pw:
       // An empty grid, played for the same second: nothing struck.
       phosphor.grid.fill(0); const none = run(120);
       phosphor.grid.set(saved); src.strike = strike; setTempo(120);
+      // Back on the page's own time, or its frames find the bar started a
+      // hundred seconds from now and stood still until then.
+      transportStart(performance.now());
       return { fast, slow, none };
     }""")
     print("    %s" % tick)
@@ -155,7 +160,7 @@ with sync_playwright() as pw:
       __sent.length = 0;
       const saved = phosphor.grid.slice(), N = PHOSPHOR_N;
       phosphor.grid.fill(0); for (let c = 0; c < N; c++) phosphor.grid[40 * N + c] = 1;
-      setTempo(120); score.on = true; score.start = null;
+      setTempo(120); score.on = true; transportStart(200000);
       scoreTick(200000); scoreTick(200130);
       const played = __sent.map((m) => m.slice());
       /* Two rows in turn, so each step's note differs from the last: the
@@ -164,12 +169,12 @@ with sync_playwright() as pw:
       score.on = false; scoreStop(); __sent.length = 0;
       phosphor.grid.fill(0);
       for (let c = 0; c < N; c++) phosphor.grid[(c % 2 ? 10 : 50) * N + c] = 1;
-      score.on = true; score.start = null;
+      score.on = true; transportStart(210000);
       scoreTick(210000); scoreTick(210130);
       const turns = __sent.map((m) => m.slice());
       score.on = false; scoreStop();
       phosphor.grid.fill(0); for (let c = 0; c < N; c++) phosphor.grid[40 * N + c] = 1;
-      score.on = true; score.start = null; scoreTick(220000);
+      score.on = true; transportStart(220000); scoreTick(220000);
       // Stopping the scope ends what was sent.
       __sent.length = 0; setRunning(false);
       const stopped = __sent.map((m) => m.slice());
@@ -188,11 +193,12 @@ with sync_playwright() as pw:
       const burst = { ons: __sent.filter((m) => (m[0] & 0xf0) === 0x90).length, dropped: midiOut.dropped };
       midiOutPanic();
       // An empty grid, played: nothing sent.
-      phosphor.grid.fill(0); __sent.length = 0; score.on = true; score.start = null;
+      phosphor.grid.fill(0); __sent.length = 0; score.on = true; transportStart(300000);
       for (let k = 0; k < 20; k++) scoreTick(300000 + k * 60);
       const quiet = __sent.filter((m) => (m[0] & 0xf0) === 0x90).length;
       score.on = false; scoreStop(); phosphor.grid.set(saved);
       const status = el.midiOutStatus.textContent;
+      transportStart(performance.now());
       return { played, turns, stopped, hidden, burst, quiet, status };
     }""")
     print("    played %s; stopped %s; hidden %s; burst %s; empty grid sent %d" %
