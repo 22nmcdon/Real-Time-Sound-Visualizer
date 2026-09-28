@@ -3471,3 +3471,66 @@ did nothing would pass any bound, as looptest says of its own run - and none
 to end running away. Its null tests: a preset with the photocell left off, a
 reticle moved back into the dark, the wandering loop tamed, and the runaway
 filter put in the section, each caught by the check written for it.
+
+**Fading a routing, and gliding into a preset.** A routing was all or
+nothing: patched, and its whole depth was on the sound the same frame; taken
+off, or a preset loaded, and it was gone the same frame - on a big depth a
+jump in the sound and a snap in the picture. *Fade*, under the families on the
+Sources tab, eases a routing in when it is patched, out when it is taken off,
+or both, over a time from a tenth of a second to ten. With it on, loading a
+preset also glides every slider from where it was to the preset's value, so
+the picture morphs into the new one; menus and switches still change at once,
+as under the morph fader. `fadetest.py` holds it.
+
+- *A fade on one path is a sound that fades on the tone and not in a rack.*
+  The depth reaches a picture destination through the matrix, and the
+  generator through `genRoutes` - sent on from three places, which each
+  repeated the compile and the held reads. They are one function now,
+  `stepRoutes`, and the fade is in it. A picture source into the sound is
+  folded into one bounded route whose parts live in a closure, and each part
+  is faded there, or the photocell would have been the one source that
+  snapped.
+- *An unseen pair counts as nought.* A routing made between two frames is
+  compiled before the fade has seen it; counted whole until then, it was
+  heard at full depth for one block before fading in, which is the click the
+  fade exists to stop.
+- *The gain is per source-and-destination pair, not per routing object.*
+  Loading replaces every object, so keyed on the object a pair in both
+  presets would dip to nought and back on every load.
+- *A routing fading out is a ghost:* its last object, heard and drawn, not in
+  `state.modRoutings`, so never saved and never shown as patched. Put back
+  half-way, it carries on from where it had got to. The live effects count
+  ghosts too, or a microphone's picture would stop swirling at once when a
+  routing on the twist was taken off.
+- *It is a preference, not a sound.* It was nearly a setup field, which would
+  have undone itself: every preset load is a `restore`, and `restore` would
+  have put the fade back to off before the preset's routings could fade. It
+  is kept in this browser, like the preset section.
+- *A disabled slider is not a value.* The glide drives sliders through their
+  own input handlers, as the morph fader does, and the first version landed
+  *Pianist's piano* as something else: its echo is locked to the tempo, so
+  the echo-time slider is disabled and shows the locked time, and driving it
+  wrote that time back as the free one. Disabled sliders are left out of the
+  glide, and the test glides into every preset in the library in turn and
+  requires each to end as itself. The morph fader has the same exposure and
+  has not been changed.
+- What it does not fade: an event routing, which fires or does not; a depth
+  you drag, which should answer the hand; and a slider you touch during a
+  glide, which is dropped from it.
+
+**Five sources and more.** Four presets with five or more sources, two of
+them the picture's among many others. *Eight things your hands do* (Many
+sources) has every hand source there is, each on its own control; *Split,
+six hands* puts six on a split. *The light and both hands* (Played with the
+picture) is four picture sources under five of your hands'. *The whole
+picture, listening to itself* (The picture plays itself) is nine sources and
+nothing played: six the picture's, its own brightness and two slow
+oscillators. Built on a closed fifth that stands still until the light moves
+it, and with the oscillators only on the drive and the echo's time, it reads
+wandering for the whole run with its loop and settled for the whole run
+without - as causal as anything in the section. Its brightness closes its
+filter rather than opening it, so the sound steadies itself instead of
+running up. `picturepresettest.py` counts picture sources and the rest
+separately, and its null - the two mixed presets with their other sources
+taken off - fails it, because six picture sources alone are not "the picture
+and many other sources".

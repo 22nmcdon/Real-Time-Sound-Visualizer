@@ -66,6 +66,7 @@ SUITES = [
     ("cycle", [sys.executable, "cycletest.py"], "the drawn cycle: tables band-limited by numpy's FFT, scaled alike, no step at a hand-over, drawn with the mouse, played, in codes"),
     ("pulse", [sys.executable, "pulsetest.py"], "the pulse: a pulse's harmonics at a quarter, a third and a tenth, the square at a half, no DC or clip, the width read, patched, per layer, synced, in codes"),
     ("fit", [sys.executable, "fittest.py"], "no Bench tab scrolls: every tab on the tone and a rack of six, keyboard and Photocell on and off, every kind, and ten learned controllers; each section dealt at the height it measured"),
+    ("fade", [sys.executable, "fadetest.py"], "routings fading in and out on the sound, the picture and the picture's own sources, ghosts heard and never saved, and every preset gliding into itself"),
     ("picturepresets", [sys.executable, "picturepresettest.py"], "the picture playing itself: every preset turns the photocell on and routes the picture, every loop moves and none runs away, the wandering loop wanders, and presets that use several sources"),
     ("budget", [sys.executable, "budgettest.py"], "S10: sixteen voices and their releases, everything on, under half of real time; the model against the machine; the order things are given up in; caps that do not creep; a cut that fades; the readout; no preset governed"),
     ("drawnplay", [sys.executable, "drawnplaytest.py"], "the rest of J2: a dyad closes the rose, the solid's axes as destinations, the drawings as sources, Play fitting a rack of six in every kind"),

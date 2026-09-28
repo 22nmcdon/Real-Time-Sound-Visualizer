@@ -1946,6 +1946,20 @@ body[data-view="bench"] .dock  { order: 3; }
           <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
             <span class="menu-title">Sources</span>
             <div id="srcFamilies" role="tablist" aria-label="Families of sources"></div>
+            <!-- Under the families, since it is about every routing at once
+                 rather than one source; see `fade` in the script. -->
+            <div class="menu-row" id="fadeRow">
+              <label class="menu-label" for="fadeMode">Fade</label>
+              <div class="grow"><select id="fadeMode" style="flex:1 1 auto"
+                title="Whether a routing eases in when you patch it and out when you take it off. Loading a preset glides its sliders over the same time."></select></div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="fadeTime">Over</label>
+              <div class="grow">
+                <input type="range" id="fadeTime" min="1" max="100" value="20">
+                <span class="reading" id="fadeTimeValue">2.0 s</span>
+              </div>
+            </div>
           </div>
           <div class="menu-group" id="srcGroup2" data-home="bench" data-tab="sources">
             <span class="menu-title" id="srcListTitle">Oscillators</span>
@@ -3519,9 +3533,10 @@ body[data-view="bench"] .dock  { order: 3; }
         beam sweeps past, drop it inside a solid and it reads how dense it is. Point it at
         rotation or zoom and the figure moves itself &mdash; and moves what the photocell sees,
         which is the loop. It fills with its own reading, so you can see what it is seeing.
-        The presets under <i>Pictures and sounds &rarr; The picture plays itself</i> are fifteen
-        of these loops set up and running, and <i>Playing live &rarr; Played with the picture</i>
-        puts your hands on top of four more. A loop needs its reticle on the trace of the
+        The presets under <i>Pictures and sounds &rarr; The picture plays itself</i> are sixteen
+        of these loops set up and running &mdash; the last with nine sources and no hands &mdash;
+        and <i>Playing live &rarr; Played with the picture</i> puts your hands on top of five
+        more. A loop needs its reticle on the trace of the
         figure at rest: in the dark it reads nought, nought moves nothing, and nothing ever
         lights it.
         <br><br>
@@ -3615,7 +3630,16 @@ body[data-view="bench"] .dock  { order: 3; }
         destination</i> to put it on another. An oscillator's shape and rate are there, and
         a controller can be renamed or forgotten there. The tab opens on <i>In use</i> when
         anything is patched. Choosing a source also makes every control it is on, on every
-        tab, draw its sweep.</span></li>
+        tab, draw its sweep.
+        <br><br>
+        <i>Fade</i>, under the families, is for when a routing should not arrive or leave all
+        at once. <i>In</i> eases a routing in when you patch it, <i>Out</i> eases it away when
+        you take it off, and <i>In and out</i> does both. <i>Over</i> sets how long it takes. With
+        any of them on, loading a preset glides its sliders from where they were, so the
+        picture morphs into the new one instead of jumping; its menus and switches still change
+        at once. A depth you drag answers your hand straight away, and a slider you touch during
+        a glide is left where you put it. The fade is kept in this browser and is not part of a
+        setup code, so loading a preset does not turn it off.</span></li>
 
       <li><b>Macros: one knob, many controls</b>
         <span>Four knobs of your own, under <i>Macros</i> on the Measure tab. Each is a source
@@ -4424,7 +4448,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
                   "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
                   "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
-                  "srcGroup", "srcFamilies", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
+                  "srcGroup", "srcFamilies", "fadeMode", "fadeTime", "fadeTimeValue", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
@@ -5926,7 +5950,7 @@ function nameMacro(i, name) {
    a loop), the fader itself, the on-screen keys' strike and the rack's
    alignment, which is a measurement of your equipment. */
 const MORPH_SKIP = new Set(["morphPos", "macro1", "macro2", "macro3", "macro4",
-                            "fileSeek", "keysVelocity", "align"]);
+                            "fileSeek", "keysVelocity", "align", "fadeTime"]);
 /* Frequency in hertz on a linear slider: halfway between 220 and 880 should be
    440, an octave from each, not 550. Everything else here is already in the
    units its law wants, so a straight line is the right line. */
@@ -5948,16 +5972,19 @@ function morphMoving() {
   return MORPH_IDS.filter((id) => id in morph.a && id in morph.b && morph.a[id] !== morph.b[id]);
 }
 function morphApply(t) {
-  for (const id of morphMoving()) {
-    const a = morph.a[id], b = morph.b[id];
-    const want = MORPH_GEOMETRIC.has(id) && a > 0 && b > 0 ? a * Math.pow(b / a, t) : a + (b - a) * t;
-    const input = document.getElementById(id);
-    const before = input.value;
-    input.value = String(want);
-    // Snapped to the slider's step by the browser; a slider already there is
-    // told nothing, so a slow fader does not fire eighty handlers a frame.
-    if (input.value !== before) input.dispatchEvent(new Event("input"));
-  }
+  for (const id of morphMoving()) blendSlider(id, morph.a[id], morph.b[id], t);
+}
+// One slider a share of the way from a to b; the preset glide uses it too.
+function blendSlider(id, a, b, t) {
+  setSliderTo(id, MORPH_GEOMETRIC.has(id) && a > 0 && b > 0 ? a * Math.pow(b / a, t) : a + (b - a) * t);
+}
+function setSliderTo(id, want) {
+  const input = document.getElementById(id);
+  const before = input.value;
+  input.value = String(want);
+  // Snapped to the slider's step by the browser; a slider already there is
+  // told nothing, so a slow fader does not fire eighty handlers a frame.
+  if (input.value !== before) input.dispatchEvent(new Event("input"));
 }
 /* Once a frame, after the matrix: only when where it stands has changed, so a
    fader at rest leaves the sliders to the hand. */
@@ -6043,6 +6070,154 @@ el.morphStoreA.addEventListener("click", () => morphStore("a"));
 el.morphStoreB.addEventListener("click", () => morphStore("b"));
 syncMorphPanel();
 
+/* --- fading a routing in and out -----------------------------------------
+   A routing used to be all or nothing: patched, and the whole depth was on
+   the sound the same frame; taken off, or a preset loaded, and it was gone
+   the same frame, which on a big depth is a jump in the sound and a snap in
+   the picture. So a routing can ease in when it arrives and out when it
+   leaves, over a time you choose, and loading a preset glides its sliders
+   from where they were - the picture morphs into the new one.
+
+   The gain is kept per source-and-destination pair, off the routing objects,
+   because loading a preset replaces every object: a pair in both the old and
+   the new preset keeps its gain and does not dip. A routing taken away is
+   remembered as its last object while it fades - a ghost, heard and drawn
+   but not in `state.modRoutings`, so it is never saved and the Sources tab
+   does not show it.
+
+   A preference, not a sound: it is not in a setup code. It was nearly one,
+   and that would have undone itself - every preset load is a `restore`, which
+   would have put the fade back to its default before the preset's routings
+   had a chance to fade. So it is kept in this browser, like the preset
+   section you were on.
+
+   What it does not fade: an event routing, which fires or does not, and a
+   depth you drag, which is your hand and should answer it. Menus and switches
+   in a preset change at once, as they do under the morph. */
+const FADE_MODES = [["off", "Off"], ["in", "In"], ["out", "Out"], ["both", "In and out"]];
+const FADE_KEY = "scope.fade";
+const fade = { mode: "off", seconds: 2, gains: new Map() };
+const routeKey = (routing) => routing.sourceId + ">" + routing.destId;
+const fadesIn = () => fade.mode === "in" || fade.mode === "both";
+const fadesOut = () => fade.mode === "out" || fade.mode === "both";
+// Eased at both ends, so a fade neither starts nor lands with a corner in it.
+const fadeEase = (g) => g * g * (3 - 2 * g);
+
+/* How much of a routing is on: nought to one. A pair not yet seen by
+   `fadeStep` arrived since the last frame, and is nought if routings fade
+   in - otherwise a routing made between two frames would be heard at full
+   depth for one block before its fade began, which is the click this is
+   here to stop. */
+function fadeGain(key) {
+  if (fade.mode === "off") return 1;
+  const entry = fade.gains.get(key);
+  if (!entry) return fadesIn() ? 0 : 1;
+  return fadeEase(entry.g);
+}
+
+// Every routing that is heard: the ones in the setup, and those fading out.
+function routingsHeard() {
+  if (!fadesOut() || fade.gains.size === 0) return state.modRoutings;
+  const here = new Set(state.modRoutings.map(routeKey));
+  const out = state.modRoutings.slice();
+  for (const [key, entry] of fade.gains) if (!here.has(key) && entry.g > 0) out.push(entry.routing);
+  return out;
+}
+
+/* Once a frame. Each pair in the setup rises towards one and each ghost
+   falls towards nought, by the frame's share of the fade time. A ghost that
+   reaches nought is forgotten and the routes recompiled without it. */
+function fadeStep(elapsed) {
+  if (fade.mode === "off") return;
+  const step = elapsed / (fade.seconds * 1000);
+  const here = new Set();
+  for (const routing of state.modRoutings) {
+    const key = routeKey(routing);
+    here.add(key);
+    let entry = fade.gains.get(key);
+    if (!entry) { entry = { g: fadesIn() ? 0 : 1, routing }; fade.gains.set(key, entry); }
+    entry.routing = routing;
+    entry.g = Math.min(1, entry.g + step);
+  }
+  for (const [key, entry] of fade.gains) {
+    if (here.has(key)) continue;
+    entry.g = fadesOut() ? entry.g - step : 0;
+    if (entry.g <= 0) { fade.gains.delete(key); modDirty = true; }
+  }
+}
+
+/* Changing the mode starts from where things are: every routing in the setup
+   is taken as fully on, and nothing is left fading, so turning the fade on
+   does not fade in what was already playing. */
+function setFade(mode, seconds) {
+  if (Number.isFinite(Number(seconds))) fade.seconds = Math.max(0.1, Math.min(10, Number(seconds)));
+  // A new time only changes the rate: a fade under way carries on at it.
+  if (FADE_MODES.some(([id]) => id === mode) && mode !== fade.mode) {
+    fade.mode = mode;
+    fade.gains.clear();
+    for (const routing of state.modRoutings) fade.gains.set(routeKey(routing), { g: 1, routing });
+    modDirty = true;
+  }
+  try { window.localStorage.setItem(FADE_KEY, JSON.stringify({ mode: fade.mode, seconds: fade.seconds })); }
+  catch (error) { /* private window */ }
+}
+
+/* A preset's sliders, glided. Through the sliders' own input handlers, as
+   the morph fader drives them and for the same reason (see `morphApply`):
+   `restore` is a load, and a slider is the path built to be moved sixty
+   times a second. The preset is loaded, its sliders read, and then put back
+   where they were and walked to the new values. A slider your hand moves
+   during the glide is dropped from it. */
+const glide = { ids: null, from: null, to: null, at: 0, ms: 0 };
+function glideFrom(before) {
+  const to = morphCapture();
+  /* Not a disabled slider: it is showing a value derived from something else
+     - the echo's time while it is locked to the tempo - and its handler,
+     driven, wrote that shown time back as the free one, so a preset landed as
+     something other than itself and the strip said Custom. */
+  const ids = MORPH_IDS.filter((id) => id in before && before[id] !== to[id]
+                               && !document.getElementById(id).disabled);
+  glide.ids = ids.length ? ids : null;
+  if (!glide.ids) return;
+  glide.from = before; glide.to = to;
+  glide.at = performance.now(); glide.ms = fade.seconds * 1000;
+  glideStep(glide.at);
+}
+function glideStep(now) {
+  if (!glide.ids) return;
+  const t = Math.min(1, (now - glide.at) / glide.ms);
+  for (const id of glide.ids) {
+    // Landed on the value itself, not on a blend that rounds near it.
+    if (t >= 1) setSliderTo(id, glide.to[id]);
+    else blendSlider(id, glide.from[id], glide.to[id], fadeEase(t));
+  }
+  if (t >= 1) glide.ids = null;
+}
+document.addEventListener("input", (event) => {
+  // Only a hand: the glide's own writes are dispatched, and are not trusted.
+  if (!glide.ids || !event.isTrusted || !event.target || !event.target.id) return;
+  glide.ids = glide.ids.filter((id) => id !== event.target.id);
+  if (!glide.ids.length) glide.ids = null;
+}, true);
+
+function syncFadePanel() {
+  el.fadeMode.value = fade.mode;
+  el.fadeTime.value = String(Math.round(fade.seconds * 10));
+  el.fadeTimeValue.textContent = fade.seconds.toFixed(1) + " s";
+  el.fadeTime.disabled = fade.mode === "off";
+}
+for (const [id, label] of FADE_MODES) el.fadeMode.add(new Option(label, id));
+try {
+  const saved = JSON.parse(window.localStorage.getItem(FADE_KEY) || "null");
+  if (saved) {
+    if (FADE_MODES.some(([id]) => id === saved.mode)) fade.mode = saved.mode;
+    if (Number.isFinite(saved.seconds)) fade.seconds = Math.max(0.1, Math.min(10, saved.seconds));
+  }
+} catch (error) { /* private window, or something else stored there */ }
+el.fadeMode.addEventListener("change", () => { setFade(el.fadeMode.value); syncFadePanel(); });
+el.fadeTime.addEventListener("input", () => { setFade(fade.mode, Number(el.fadeTime.value) / 10); syncFadePanel(); });
+syncFadePanel();
+
 /* Advanced in exactly one place. The tone source steps the oscillators once a
    sample inside `fill`, because a vibrato written sixty times a second is a
    staircase; every other source has no per-sample loop at all, so they are
@@ -6053,6 +6228,9 @@ function applyModMatrix(frame, elapsed) {
      loop can be in a worklet instead, "is the source a tone" stops being the
      question and "is anyone else already stepping these" starts being it. */
   clockStep(performance.now());
+  // Before anything reads a routing's depth or a slider's value this frame.
+  fadeStep(elapsed);
+  glideStep(performance.now());
   if (lfoDriver() === "main") {
     assertLfoDriver("main");
     const perSecond = 1000 / Math.max(1, elapsed);
@@ -6076,15 +6254,16 @@ function applyModMatrix(frame, elapsed) {
     if (performance.now() >= pluck.offs[k][1]) { midiOutOff(pluck.offs[k][0]); pluck.offs.splice(k, 1); }
   }
 
+  const heard = routingsHeard();
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
 
     let sum = 0, loop = 0;
-    for (const routing of state.modRoutings) {
+    for (const routing of heard) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
       if (source && routingAllowed(source, dest)) {
-        const push = source.value() * routingAmount(source, routing.amount);
+        const push = source.value() * routingAmount(source, routing.amount) * fadeGain(routeKey(routing));
         if (source.fromPicture) loop += push; else sum += push;
       }
     }
@@ -6159,7 +6338,7 @@ function touchRoutings() {
 function compileRoutes() {
   genRoutes.length = 0;
   const loopBySlot = new Map();
-  for (const routing of state.modRoutings) {
+  for (const routing of routingsHeard()) {
     const source = MOD_SOURCES.get(routing.sourceId);
     const dest = MOD_DESTS.get(routing.destId);
     /* A routing whose source or destination is not currently registered is
@@ -6172,7 +6351,7 @@ function compileRoutes() {
     if (source.fromPicture) {
       if (!loopBySlot.has(dest.slot)) loopBySlot.set(dest.slot, []);
       loopBySlot.get(dest.slot).push({
-        source, amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
+        source, key: routeKey(routing), amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
       });
       continue;
     }
@@ -6180,9 +6359,10 @@ function compileRoutes() {
        level and - later - a drawbar could point at the picture and not at the
        generator, silently: the routing existed, the editor drew it, and
        nothing happened. They are held across the block instead; see `fill`. */
+    const amount = routingAmount(source, routing.amount);
     genRoutes.push({
-      index: source.index, source, held: 0, slot: dest.slot,
-      amount: routingAmount(source, routing.amount), unipolar: dest.unipolar === true,
+      index: source.index, source, held: 0, slot: dest.slot, key: routeKey(routing),
+      full: amount, amount, unipolar: dest.unipolar === true,
     });
   }
   /* The loop's routes into a generator parameter, combined into one before
@@ -6194,13 +6374,13 @@ function compileRoutes() {
      into the worklet like the rest of them. */
   for (const [slot, parts] of loopBySlot) {
     genRoutes.push({
-      index: undefined, slot, amount: 1, unipolar: false, held: 0, loopTotal: true,
+      index: undefined, slot, full: 1, amount: 1, unipolar: false, held: 0, loopTotal: true,
       source: {
         value: () => {
           let total = 0;
           for (const part of parts) {
-            const v = part.source.value();
-            total += part.unipolar ? part.amount * (1 - v) / 2 : part.amount * v;
+            const v = part.source.value(), amount = part.amount * fadeGain(part.key);
+            total += part.unipolar ? amount * (1 - v) / 2 : amount * v;
           }
           return clampLoop(total);
         },
@@ -6208,6 +6388,20 @@ function compileRoutes() {
     });
   }
   modDirty = false;
+}
+
+/* The routes as they are this block: compiled if anything changed, each held
+   source read, and each depth at its fade. Once per block, in every place
+   the routes leave for the generator - the three used to repeat the first
+   two steps, and a fade added to two of them would have been a sound that
+   fades on the tone and not in a rack. */
+function stepRoutes() {
+  if (modDirty) compileRoutes();
+  for (let k = 0; k < genRoutes.length; k++) {
+    const route = genRoutes[k];
+    if (route.index === undefined) route.held = route.source.value();
+    route.amount = route.key === undefined ? route.full : route.full * fadeGain(route.key);
+  }
 }
 
 /* Everything a source points at, as text: "lfo1>gen.phase@1" joined by
@@ -10299,10 +10493,10 @@ function loadGeneratorModule(ctx) {
 /* The routes as numbers, which is the only form that crosses a thread:
    the generator's worklet takes them, and so does the effects worklet. */
 function workletRoutes() {
-  if (modDirty) compileRoutes();
+  stepRoutes();
   return genRoutes.map((route) => ({
     index: route.index,
-    held: route.index === undefined ? route.source.value() : 0,
+    held: route.index === undefined ? route.held : 0,
     slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
   }));
 }
@@ -10570,17 +10764,12 @@ function makeToneSource(atRate) {
        both would run every rate at double". */
     assertLfoDriver("fill");
 
-    if (modDirty) compileRoutes();
-
     /* The sources that are not oscillators - a controller, the level, a key -
        are written on the main thread at frame rate, so they are read once here
        and HELD across the block. Stepping them per sample would interpolate
        between two samples of a number that only moved once, and holding them
        is what the worklet has to do anyway, for the same reason. */
-    for (let k = 0; k < genRoutes.length; k++) {
-      const route = genRoutes[k];
-      if (route.index === undefined) route.held = route.source.value();
-    }
+    stepRoutes();
     core.setRoutes(genRoutes);
 
     /* Generated into a flat scratch and copied into the ring, rather than
@@ -11705,11 +11894,7 @@ function makeSynthLane(name, rate, ctx, mix) {
       // reason: this is a per-sample loop stepping the shared oscillators.
       assertLfoDriver("fill");
 
-      if (modDirty) compileRoutes();
-      for (let k = 0; k < genRoutes.length; k++) {
-        const route = genRoutes[k];
-        if (route.index === undefined) route.held = route.source.value();
-      }
+      stepRoutes();
       core.setRoutes(genRoutes);
 
       let done = 0;
@@ -18369,6 +18554,19 @@ const PRESETS = [
                                                    timebase: 5, photoOn: true, photoU: 0.6, photoV: 0.35,
                                                    mod: "photo.1>gen.bar3@0.500;picture.novelty>gen.bar4@0.500" }, XY),
      "A flute stop drawn as a slowly turning fifth, whose picture pulls out drawbars: as the figure passes the reticle the 4' comes out, and whenever it finds a shape it has not shown lately the 2 2/3' joins it. Left to turn it would only cycle; the loop makes it wander, and the readout says so."],
+    /* Nine sources and nothing played: everything the picture says, its own
+       brightness, and two slow oscillators. Built on the closed fifth of
+       Something new each time, which stands still until the light turns its
+       phase, so the loop is what sets it going; the oscillators only lean on
+       the drive and the echo's time, which change how it looks without
+       turning it. Its own brightness closes its filter rather than opening
+       it, so the sound steadies itself instead of running up. */
+    ["The whole picture, listening to itself", Object.assign({ shape: "sine", interval: 7, timebase: 4, oscRatio: 1.5,
+                                                               photoOn: true, photoU: 0.575, photoV: 0.375, vcfType: 1,
+                                                               vcfCut: 800, delaySync: "1/8d", delayFeedback: 35,
+                                                               l0s: "sine", l0r: 5, l1s: "triangle", l1r: 3,
+                                                               mod: "photo.1>gen.phase@0.300;picture.round>gen.fm@0.300;picture.cover>gen.fold@0.300;picture.change>gen.echo@0.400;picture.novelty>gen.twist@0.300;picture.bored>gen.ratio@0.200;hear.bright>gen.vcf@-0.300;lfo1>gen.drive@0.300;lfo2>gen.echoTime@0.200" }, XY),
+     "Nine sources and no hands: the light at the reticle turns the phase, roundness is FM, coverage folds it, change echoes it, novelty swirls it, boredom detunes it, its own brightness closes its filter, and two slow oscillators lean on the drive and the echo's time. Watch it find a shape, tire of it, and move on."],
   ], "generator"],
 
   ["Organ", [
@@ -18729,6 +18927,16 @@ const PRESETS = [
                                                   oscRatio: 2, atk: 10, rel: 500,
                                                   mod: "notes.inner>gen.fm@0.500;notes.top>gen.twist@0.400;notes.spread>gen.fold@0.400;env.note>gen.phase@0.300" }, XY),
      "Four readings of the voicing on the figure: the inner voices' strength is FM, the melody's height turns it, the chord's width folds it, and each strike nudges the phase. Play it."],
+    ["Eight things your hands do", Object.assign({ shape: "pulse", width: 40, freq: 220, timebase: 4, midiMode: "poly",
+                                                  oscRatio: 1.5, vcfType: 1, vcfCut: 520, atk: 5, rel: 400,
+                                                  delaySync: "1/8d", delayFeedback: 35,
+                                                  mod: "midi.key>gen.fm@0.400;cc.1>gen.fold@0.500;midi.pedal>gen.echo@1.000;notes.spread>gen.twist@0.300;notes.top>gen.vcf@0.400;notes.inner>gen.drive@0.300;notes.count>gen.width@-0.300;env.note>gen.phase@0.200" }, XY),
+     "Every hand source on its own control: strike harder for FM, the wheel folds, the pedal echoes, wide hands swirl the figure, the melody opens the filter, the inner voices drive it, a fuller chord narrows the pulse, and each strike nudges the phase. Play it."],
+    ["Split, six hands", { shape: "sine", freq: 110, timebase: 5, midiMode: "poly", layers: "split", splitAt: 55,
+                           oscRatio: 1, oscFm: 15, oscSub: 40, bShape: "ramp", bVcf: 1, bVcfCut: 600, bVcfRes: 30,
+                           delaySync: "1/8d", delayFeedback: 35,
+                           mod: "midi.key>gen.fm@0.400;cc.1>gen.vcf@0.600;notes.spread>gen.echo@0.600;midi.pedal>gen.drive@0.400;notes.top>gen.fold@0.300;notes.count>gen.twist@0.300" },
+     "Split at G3, six sources: how hard you strike barks the bass, the wheel opens the right hand's filter, wide hands echo, the pedal drives, the melody folds, and a fuller chord swirls. Play it with both hands."],
   ], "generator"],
 
   ["Played with the picture", [
@@ -18750,6 +18958,12 @@ const PRESETS = [
                                  timebase: 5, photoOn: true, photoU: 0.7, photoV: 0.45, scoreOn: true, scoreVoices: 2,
                                  keyScale: "pentatonic", mod: "photo.1>gen.detail@0.500;cc.1>gen.twist@0.500" },
      "The rose rewriting itself from the light and the score playing it, while the wheel swirls the rose into new tunes. Ride the wheel against what it plays."],
+    ["The light and both hands", Object.assign({ shape: "sine", interval: 7, just: false, timebase: 4, oscRatio: 1.5,
+                                                 midiMode: "poly", atk: 10, rel: 500, vcfType: 1, vcfCut: 800,
+                                                 delaySync: "1/8d", delayFeedback: 35, photoOn: true, photoU: 0.6,
+                                                 photoV: 0.35,
+                                                 mod: "photo.1>gen.phase@0.400;picture.change>gen.echo@0.400;picture.novelty>gen.fold@0.300;picture.round>gen.vcf@-0.300;midi.key>gen.fm@0.500;cc.1>gen.twist@0.500;midi.pedal>gen.echo@0.600;notes.spread>gen.drive@0.300;env.note>gen.fold@0.200" }, XY),
+     "Nine sources: the turning fifth breathes open in its own light, echoes when it changes, folds when it is new and darkens when it is round; over that, strike harder for FM, swirl with the wheel, echo with the pedal, drive with wide hands, and fold with each strike."],
   ], "generator"],
 
   ["Macros", [
@@ -19423,7 +19637,7 @@ const PRESET_ABOUT = {
   "Chords drawn": "Chords in X\u2013Y: which of the notes you hold are drawn, and against what. The rest are still heard. Each has something your hands move. They wait for a keyboard, and the on-screen one will do.",
   "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab, or put a controller on them.",
   "The picture plays itself": "The screen as a source: the photocell reads the brightness under its reticle, and the picture's own sources read its shape, coverage, change and novelty, and each is patched back onto what draws the picture or makes the sound. So what the beam draws alters what it draws, and how it sounds. Drag the reticle anywhere; the readout says whether the loop is settled, cycling or wandering, and every loop is held to its bounds.",
-  "Many sources": "Everything your hands do at once, each on a different control: how hard, how many notes, how far apart, the melody, the inner voices, the envelope, the wheel and the pedal, three to five in every preset. They wait for a keyboard, and the on-screen one will do.",
+  "Many sources": "Everything your hands do at once, each on a different control: how hard, how many notes, how far apart, the melody, the inner voices, the envelope, the wheel and the pedal, three to eight in every preset. They wait for a keyboard, and the on-screen one will do.",
   "Played with the picture": "Your hands and the picture on one sound: the photocell keeps a loop going on its own, and what you play pushes it somewhere else. They sound before you play; the keyboard adds to them.",
   "Hands on the sound": "The mod wheel, the sustain pedal and the strike of a key, patched onto filter, fold, "
     + "drive and twist. A routing from a controller waits for the first time that controller moves.",
@@ -19650,15 +19864,20 @@ function applyPreset(value) {
   const setup = findPreset(value);
   if (setup === null) return;
 
+  const before = fade.mode !== "off" ? morphCapture() : null;
   restore(setup);
+  // Taken before the glide puts the sliders back, so it is the preset's.
   loadedSetup = { value: value, snap: snapshot() };
   setPresetValue(value);
+  if (before) glideFrom(before);
 }
 
 /* Checked from the readout, at its slower rate. Cheaper than hooking forty
    controls, and it cannot miss one the way hooking them by hand would. */
 function markPresetDirty() {
   if (loadedSetup === null) { if (el.preset.value) setPresetValue(""); return; }
+  // Mid-glide the sliders are on their way to the preset, not off it.
+  if (glide.ids) return;
 
   const now = snapshot();
   const same = Object.keys(now).every((k) => now[k] === loadedSetup.snap[k]);
@@ -20736,7 +20955,7 @@ function liveFxFields() {
 function liveFxWanted() {
   return plane.mirror !== 0 || plane.limit !== 0 || plane.twist !== 0 || plane.kaleido > 1 || plane.snap > 0
       || plane.scaleX !== 1 || plane.scaleY !== 1 || plane.shear !== 0 || echo.mix > 0 || echo.chorus > 0
-      || state.modRoutings.some((r) => r.destId === "gen.twist" || r.destId === "gen.echo");
+      || routingsHeard().some((r) => r.destId === "gen.twist" || r.destId === "gen.echo");
 }
 function fxWhereText() {
   const source = state.source;

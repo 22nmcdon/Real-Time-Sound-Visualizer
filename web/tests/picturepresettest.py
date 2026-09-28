@@ -31,7 +31,9 @@ them, the failures to guard against are:
   its null showed wandering with its loop replaced by nothing - pendulums
   that run down and start again wander on their own;
 - and presets that use one source each, which was the complaint: the library
-  has to have many with two sources and a good number with three or more.
+  has to have many with two sources and a good number with three or more;
+  and then four with five or more, two of them the picture's sources among
+  at least three others.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -84,6 +86,17 @@ with sync_playwright() as pw:
       out.two = all.filter(([, s]) => distinct(s) >= 2).length;
       out.three = all.filter(([, s]) => distinct(s) >= 3).length;
       out.most = Math.max(...all.map(([, s]) => distinct(s)));
+      /* Five or more, and among them the picture with many others: the next
+         ask after "some that use multiple sources". Counted as picture
+         sources and the rest separately, so nine picture sources alone would
+         not pass as "the picture and many other sources". */
+      const sources = (setup) => [...new Set(decodeRoutings(setup.mod || '').map((r) => r.sourceId))];
+      const five = all.filter(([, s]) => distinct(s) >= 5);
+      out.five = five.map(([n]) => n);
+      out.mixed = five.filter(([, s]) => {
+        const ids = sources(s);
+        return ids.filter((id) => picture.test(id)).length >= 2 && ids.filter((id) => !picture.test(id)).length >= 3;
+      }).map(([n]) => n);
       // The null for the count: the same count over the one-source presets alone.
       out.nullTwo = all.filter(([, s]) => distinct(s) === 1).filter(([, s]) => distinct(s) >= 2).length;
       return out;
@@ -94,6 +107,10 @@ with sync_playwright() as pw:
           and shape["counts"]["Played with the picture"] >= 4, str(shape))
     check("every preset in them turns the photocell on and routes something the picture says",
           shape["unpictured"] == [] and shape["circle"] is False, str(shape["unpictured"]))
+    print("    five or more: %s; the picture with others: %s" % (shape["five"], shape["mixed"]))
+    check("four presets use five sources or more, and two of them the picture's with at least three others",
+          len(shape["five"]) >= 4 and len(shape["mixed"]) >= 2 and shape["most"] >= 8,
+          "%d with five, %d mixed, at most %d" % (len(shape["five"]), len(shape["mixed"]), shape["most"]))
     check("the library uses sources together: thirty with two or more, twelve with three or more",
           shape["two"] >= 30 and shape["three"] >= 12 and shape["most"] >= 4 and shape["nullTwo"] == 0,
           "%d with two, %d with three, at most %d" % (shape["two"], shape["three"], shape["most"]))
