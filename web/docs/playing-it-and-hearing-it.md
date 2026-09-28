@@ -1306,7 +1306,9 @@ audio; everything after that is the generator catching up to the Nord.
   the ceiling is shared, and the sixth slot may be the one that gives way.
 - **The sixth slot** — signed area, edge contact, or nothing; decided by the
   survey in *E · verification*.
-- **A wandering preset** — found by playing, not designed, and then pinned by the
-  classifier's test.
+- ~~**A wandering preset** — found by playing, not designed, and then pinned by the
+  classifier's test.~~ **Found**, by a search over loops rather than by playing:
+  *The organ registers itself*, in *The picture plays itself*, pinned by
+  `picturepresettest.py`: wandering with its loop, cycling without it.
 - **The two-scope composite** — deferred by D5; revisit only after using the
   two-lane version.

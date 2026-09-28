@@ -3393,3 +3393,81 @@ the drawings gained a few each.
   has to sound both layers from it. That rules out the macros and an
   expression pedal as sources there, and is why the macro presets have a
   section outside the check.
+
+**The picture plays itself: presets for the loop, and presets with many
+sources.** No preset used the photocell or any of the picture's own sources,
+which is the one thing this instrument has that others do not; and every
+preset outside Macros and Motion used one source. So there is a section,
+*The picture plays itself*, second in *Pictures and sounds*, of fifteen loops
+in which what the beam draws alters what it draws and how it sounds; *Played
+with the picture*, four more with your hands on top; and *Many sources*, ten
+presets each with three to five of your hands' sources on different controls.
+The library now has 31 presets with two or more sources, 17 with three or
+more, and the most in one is four sources - *Everything the hands do* has
+velocity, the wheel, the pedal and the spread of your hands on four controls,
+and *Wheel and pedal, two jobs each* puts three sources on five;
+`picturepresettest.py` holds all of it.
+
+What it took to make a loop that is alive, found by measuring candidates
+headless for the photocell's range and the meter's verdict rather than by
+guessing:
+
+- *A loop needs the reticle on the trace of the figure at rest.* Three of the
+  first section's presets loaded dead, reading nought for ever: the reticle
+  had been placed while the loop was already running, on a figure the loop
+  had made, and at rest - the loop's routings not yet having moved anything -
+  it sat in the dark. Dark reads nought, nought moves nothing, and nothing
+  moving leaves it dark: a fixed point. Every reticle is now placed on the
+  resting figure.
+- *The routing has to change what is under the reticle.* Pitch through a
+  Lissajous figure does nothing to its shape, so a loop onto the frequency
+  there is a constant; a rotation can come to rest at an angle where the
+  reading stops changing, and did, one run in three. The loops that live
+  reshape the figure: its ratio, phase, petals, spin, FM, fold.
+- *A closed figure can be too still to loop through.* A just fifth moved by
+  the drawbars barely changed, and the organ presets sat still; an equal
+  fifth turns by itself, the light at the reticle rises and falls as it turns,
+  and the bars follow. The same cure made the FM figure and *Your hands and
+  the light* reliable. And a just fifth never bored the meter at all: a star
+  does, which is what *Never still for long* is drawn on now.
+- *A resonant filter on the photocell ran away*, and is not a preset.
+- *The wandering preset the plan asked for exists.* The plan's open list had
+  "a wandering preset - found by playing, not designed, and then pinned by the
+  classifier's test". Found by a search over loops rather than by playing:
+  *The organ registers itself*, a turning fifth whose picture pulls out its
+  own drawbars. The test pins it causally - wandering most with its loop, and
+  cycling without it. The first pin was on a harmonograph named *The
+  wandering loop*, and its null test survived: with the loop replaced by
+  nothing it still wandered, because pendulums that run down and start again
+  wander on their own. It is *Pendulums bent by the light* now, and makes no
+  claim about the readout.
+- *A source that moves is not a loop.* The first check asked only that each
+  picture source move, which a figure turning by itself satisfies whatever
+  its routing does. Each loop in the section is now also run without its
+  picture routings, and has to show its hand against itself: the meter's
+  verdicts differ by a quarter of the readings, or the photocell's reading
+  moves a fifth more than it does without the loop. A slowly turning solid
+  is under the meter's floor for change and plain on the reading.
+- *The first comparison was unfair, and flattered.* The meter keeps fifteen
+  seconds of pictures, and loading a preset does not clear it, so the run
+  without the loop began with the looped run still in its history - the
+  organ read as wandering without its loop on what the loop had drawn. The
+  test clears the meter before every run now. Fairly compared, seven of the
+  fifteen showed nothing, because each moved by itself anyway: an equal fifth
+  turning, a solid spinning, pendulums restarting. Five were rebuilt by
+  taking that motion away - the fifths made just, so they stand still until
+  the light moves them; the solids given no spin of their own, so they turn
+  only when lit - and pass. The two harmonographs cannot be rebuilt that way:
+  pendulums that run down and start again wander with or without the light's
+  hand, which neither the verdict nor the reading can separate, so the test
+  names them and holds them only to their sources moving. Loading a preset
+  still leaves the meter's history as it was, so the readout's verdict takes
+  up to fifteen seconds to be about the new one; that is how it was, and it
+  is worth changing if it misleads.
+
+`picturepresettest.py` runs every preset in the two picture sections for
+eight seconds and requires each routed picture source to move - a loop that
+did nothing would pass any bound, as looptest says of its own run - and none
+to end running away. Its null tests: a preset with the photocell left off, a
+reticle moved back into the dark, the wandering loop tamed, and the runaway
+filter put in the section, each caught by the check written for it.

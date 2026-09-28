@@ -3519,6 +3519,11 @@ body[data-view="bench"] .dock  { order: 3; }
         beam sweeps past, drop it inside a solid and it reads how dense it is. Point it at
         rotation or zoom and the figure moves itself &mdash; and moves what the photocell sees,
         which is the loop. It fills with its own reading, so you can see what it is seeing.
+        The presets under <i>Pictures and sounds &rarr; The picture plays itself</i> are fifteen
+        of these loops set up and running, and <i>Playing live &rarr; Played with the picture</i>
+        puts your hands on top of four more. A loop needs its reticle on the trace of the
+        figure at rest: in the dark it reads nought, nought moves nothing, and nothing ever
+        lights it.
         <br><br>
         It can reach any control, the filter and the generator included, so the picture can
         be heard as well as seen. Three things keep that loop from running away. It moves a
@@ -4190,8 +4195,11 @@ body[data-view="bench"] .dock  { order: 3; }
         playing</i> is lightly played: what a microphone or a file draws and does to the
         effects, drawings that answer it, and drawings struck from the keyboard. <i>Playing
         live</i> is instruments: organ and FM keys, basses, pads, bells, then chords,
-        chords drawn, arpeggios, splits, layers, your hands on the sound and knobs of your
-        own. Each has a line on what to listen for and what to look at.</li>
+        chords drawn, arpeggios, splits, layers, your hands on the sound, many sources at
+        once, the picture with your playing, and knobs of your own. <i>The picture plays
+        itself</i>, second under <i>Pictures and sounds</i>, is the one to try first: the
+        photocell and the picture's own shape patched back onto what draws it and how it
+        sounds. Each has a line on what to listen for and what to look at.</li>
 
       <li><b>Browsing</b>
         <span>The menus are along the top and each menu's sections down the left; a menu
@@ -18293,6 +18301,76 @@ const PRESETS = [
      "Four single cycles - a sine, an organ's three partials, a saw and a narrow pulse - scanned by an oscillator: the harmonics pane fills and empties as it goes. Open Shape to draw over any of the four, or Grab a cycle into one."],
   ], "generator"],
 
+  ["The picture plays itself", [
+    ["Pendulums bent by the light", { gen: "harmonograph", interval: 7, detune: 30, decay: 25, display: "xy",
+                             persistence: "0.04", timebase: 5, pGoni: false, photoOn: true, photoU: 0.575,
+                             photoV: 0.45, mod: "photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300" },
+     "Where the pendulums' trace crosses the reticle, the brightness bends their ratio, and boredom pushes them to swing when the drawing goes stale: the figure they wind is never the same one twice."],
+    ["Light feeds the pendulums", { gen: "harmonograph", interval: 7, detune: 20, decay: 30, display: "xy",
+                                    persistence: "0.04", timebase: 5, pGoni: false, photoOn: true, photoU: 0.5,
+                                    photoV: 0.45, mod: "photo.1>gen.swing@0.500" },
+     "The brightness at the middle of the screen is the pendulums' energy: while the trace keeps passing through it they keep swinging, and when the figure winds away from it they run down until it comes back."],
+    ["The rose counts itself", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12",
+                                 timebase: 5, photoOn: true, photoU: 0.675, photoV: 0.45,
+                                 mod: "photo.1>gen.detail@0.500" },
+     "The brightness on one petal sets how many petals there are: more petals move the light, the light changes the petals, and the rose keeps recounting itself."],
+    ["The rose writes its own tune", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.04",
+                                       timebase: 5, photoOn: true, photoU: 0.7, photoV: 0.45, scoreOn: true,
+                                       scoreVoices: 2, keyScale: "pentatonic", mod: "photo.1>gen.detail@0.500" },
+     "The rose recounting its petals from the light on one of them, with the score reading the screen: the picture changes itself, and the playhead plays whatever it has become, in pentatonic."],
+    ["Brightness opens the ellipse", Object.assign({ shape: "sine", timebase: 4, photoOn: true, photoU: 0.675,
+                                                     photoV: 0.3, mod: "photo.1>gen.phase@0.500" }, XY),
+     "The light off the diagonal turns the phase between the channels: a line opens into an ellipse, the ellipse moves the light, and the figure breathes between them. Heard as the stereo image widening and narrowing."],
+    ["The figure sets its own FM", Object.assign({ shape: "sine", interval: 7, timebase: 4, oscRatio: 1.5,
+                                                   photoOn: true, photoU: 0.625, photoV: 0.275,
+                                                   mod: "photo.1>gen.fm@0.500" }, XY),
+     "The brightness at one point of a closed 3:2 figure is the FM index. Left alone it would stand still; lit, it grows loops, the loops move the light, and the timbre and the figure rise and fall together."],
+    ["The fifth detunes itself", Object.assign({ shape: "sine", interval: 7, timebase: 4, photoOn: true,
+                                                 photoU: 0.575, photoV: 0.325, mod: "photo.1>gen.ratio@0.300" }, XY),
+     "A closed fifth, still until the light on it bends its tuning: then it starts to turn, the turning moves the light, the tuning with it, and you hear the interval beat faster and slower as you watch it turn."],
+    ["The solid turns from the light", { gen: "wireframe", model: "Octahedron", spinX: 0, spinY: 0, display: "xy",
+                                         persistence: "0.12", timebase: 5, pGoni: false, photoOn: true, photoU: 0.6,
+                                         photoV: 0.35,
+                                         mod: "photo.1>gen.spinY@0.500" },
+     "An octahedron that does not turn on its own: wherever an edge crosses the reticle it spins about its upright axis, which carries the edge away, so it turns in fits and starts, looking for the dark."],
+    ["Novelty swirls it", Object.assign({ shape: "sine", interval: 7, just: false, timebase: 4, photoOn: true,
+                                          mod: "picture.novelty>gen.twist@0.500" }, XY),
+     "How unlike the last fifteen seconds the picture is, on the twist: a new shape swirls, the swirl is new, and it calms only when the figure has shown everything it has."],
+    /* First written on a just fifth, which the meter never found still enough
+       to be bored by: boredom sat at nought and the loop never started. A star
+       drawn forty times a second is as still as a picture gets. */
+    ["Never still for long", { gen: "figure", figure: "Star", detail: 5, display: "xy", persistence: "0.12",
+                               timebase: 5, photoOn: true,
+                               mod: "picture.bored>gen.detail@0.300;picture.change>gen.twist@0.400" },
+     "A star left alone grows bored, and boredom gives it more points; the new shape is change, which twists it, and boredom drains away until it has been still long enough to grow bored again."],
+    ["Self-portrait", Object.assign({ shape: "sine", interval: 7, timebase: 4, oscRatio: 2, photoOn: true,
+                                      photoU: 0.6, photoV: 0.35, delaySync: "1/8d", delayFeedback: 40,
+                                      mod: "photo.1>gen.twist@0.300;picture.round>gen.fm@0.400;picture.change>gen.echo@0.500" }, XY),
+     "Three things the picture says, patched onto three things it does: the light on it twists it, its roundness is its FM, and how much it has just moved is how much it echoes."],
+    ["Something new each time", Object.assign({ shape: "morph", morph: 0, interval: 7, timebase: 4,
+                                                photoOn: true, photoU: 0.575, photoV: 0.375,
+                                                mod: "picture.novelty>gen.morph@0.500;photo.1>gen.phase@0.300" }, XY),
+     "A closed fifth, still until the light turns its phase; then novelty walks the wave from sine towards square, and whenever the figure finds a new shape the timbre changes with it."],
+    ["The knot leans into the light", { gen: "wireframe", model: "Knot", figureRate: 20, depth: 60, spinX: 0, spinY: 0,
+                                        display: "xy",
+                                        persistence: "0.04", timebase: 5, pGoni: false, photoOn: true, photoU: 0.55,
+                                        photoV: 0.45, mod: "picture.round>gen.depth@0.500;photo.1>gen.spinX@0.400" },
+     "The Lissajous knot turns only when its light says so, about X, and its roundness sets its perspective: as it turns it looks rounder or flatter, and leans nearer or further to match."],
+    ["Coverage folds the sound", Object.assign({ shape: "triangle", interval: 4, timebase: 4, photoOn: true,
+                                                 photoU: 0.625, photoV: 0.35, persistence: "0.04",
+                                                 mod: "picture.cover>gen.fold@0.500;photo.1>gen.twist@0.400" }, XY),
+     "The more of the screen the figure lights, the harder the wave folds, and the light at the reticle twists it: a figure that spreads grows petals and buzzes, and pulls itself back in."],
+    /* An equal fifth, so the figure turns by itself: on a just one the bars
+       moved the figure too little for the light to follow, and the loop sat
+       still - once reading a change of two hundredths in eight seconds. It is
+       the plan's wandering preset: turning by itself it only cycles, and it is
+       the loop that makes it wander, which picturepresettest holds. */
+    ["The organ registers itself", Object.assign({ shape: "drawbars", bars: "008000000", interval: 7, just: false,
+                                                   timebase: 5, photoOn: true, photoU: 0.6, photoV: 0.35,
+                                                   mod: "photo.1>gen.bar3@0.500;picture.novelty>gen.bar4@0.500" }, XY),
+     "A flute stop drawn as a slowly turning fifth, whose picture pulls out drawbars: as the figure passes the reticle the 4' comes out, and whenever it finds a shape it has not shown lately the 2 2/3' joins it. Left to turn it would only cycle; the loop makes it wander, and the readout says so."],
+  ], "generator"],
+
   ["Organ", [
     ["Jazz organ", { shape: "drawbars", bars: "888000000", freq: 220, timebase: 5 },
      "88 8000 000: sub-octave, fundamental and fifth, the most played registration there is. Its cycle is two of the note's."],
@@ -18604,6 +18682,74 @@ const PRESETS = [
     ["Envelope sync sweep", { shape: "ramp", oscSync: 150, freq: 220, timebase: 4, midiMode: "poly", atk: 2, dec: 500,
                               sus: 20, rel: 300, vcfType: 1, vcfCut: 700, mod: "env.note>gen.sync@0.700" },
      "Each note starts torn and settles: the envelope sweeps the sync down as it decays, the classic sync lead, per note. Play it."],
+  ], "generator"],
+
+  ["Many sources", [
+    ["Everything the hands do", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", oscUnison: 3,
+                                  oscSpread: 8, vcfType: 1, vcfCut: 560, atk: 5, rel: 400, delaySync: "1/8d",
+                                  delayFeedback: 40,
+                                  mod: "midi.key>gen.vcf@0.400;cc.1>gen.fold@0.600;midi.pedal>gen.echo@1.000;notes.spread>gen.twist@0.300" },
+     "Four at once: strike harder and it opens, the wheel folds it, the pedal brings in echoes, spreading your hands swirls the stereo. Play it, and use all of them."],
+    ["Pianist's piano", { shape: "sine", freq: 220, timebase: 4, midiMode: "poly", oscRatio: 1, oscFm: 10,
+                          vcfType: 1, vcfCut: 700, atk: 2, dec: 1000, sus: 20, rel: 500, delaySync: "1/4",
+                          delayFeedback: 35,
+                          mod: "midi.key>gen.fm@0.500;notes.top>gen.vcf@0.300;midi.pedal>gen.echo@0.600" },
+     "An electric piano that barks when struck hard, brightens as the melody climbs, and blooms into echoes under the pedal. Play it."],
+    ["Organist's organ", { shape: "drawbars", bars: "888000000", freq: 220, timebase: 5, midiMode: "poly",
+                           chorusMix: 30, mod: "cc.1>gen.bar3@0.600;midi.pedal>gen.drive@0.500;notes.count>gen.bar6@0.500" },
+     "The wheel pulls out the 4', the pedal pushes the organ into drive, and the more notes you hold the more of the 1 3/5' sings. Play it."],
+    ["The chord shapes the figure", Object.assign({ shape: "sine", freq: 220, timebase: 4, midiMode: "poly",
+                                                    oscRatio: 1.5, atk: 10, rel: 400,
+                                                    mod: "notes.spread>gen.twist@0.400;notes.inner>gen.fm@0.500;env.note>gen.fold@0.300" }, XY),
+     "The outer notes drawn; how far apart they are twists the figure, how hard the inner voices are played sets the FM, and each strike folds it for a moment. Play it."],
+    ["Struck, held, bent", { shape: "square", freq: 220, timebase: 4, midiMode: "poly", oscSync: 150, vcfType: 1,
+                             vcfCut: 560, atk: 2, dec: 400, sus: 50, rel: 300,
+                             mod: "env.note>gen.vcf@0.500;midi.key>gen.drive@0.500;cc.1>gen.sync@0.600" },
+     "Each note's envelope opens its filter, how hard you strike drives it, and the wheel tears it with sync. Play it."],
+    ["Split, both hands working", { shape: "sine", freq: 110, timebase: 5, midiMode: "poly", layers: "split",
+                                    splitAt: 55, oscRatio: 1, oscFm: 15, oscSub: 40, bShape: "ramp", bVcf: 1,
+                                    bVcfCut: 600, bVcfRes: 30, delaySync: "1/8d", delayFeedback: 35,
+                                    mod: "midi.key>gen.fm@0.400;cc.1>gen.vcf@0.600;notes.spread>gen.echo@0.600" },
+     "Split at G3: the bass barks with how hard you play, the wheel opens the right hand's filter, and the wider your hands the more it all echoes. Play it."],
+    ["Layer, three hands", Object.assign({ shape: "triangle", freq: 220, timebase: 4, midiMode: "poly",
+                                           layers: "layer", oscUnison: 3, oscSpread: 10, vcfType: 1, vcfCut: 600,
+                                           atk: 200, rel: 1200, bShape: "sine", bRatio: 3.5, bFm: 15, bAtk: 1,
+                                           bDec: 800, bSus: 0, bRel: 1200, bAmp: 40,
+                                           mod: "midi.pedal>gen.vcf@0.500;midi.key>gen.fm@0.500;notes.count>gen.twist@0.300" }, XY),
+     "A pad and a bell on every key: the pedal opens the pad, how hard you strike rings the bell, and a fuller chord swirls the picture. Play it."],
+    ["The melody leads", { shape: "ramp", freq: 220, timebase: 4, midiMode: "poly", oscUnison: 3, oscSpread: 10,
+                           vcfType: 1, vcfCut: 520, atk: 10, rel: 500,
+                           mod: "notes.top>gen.vcf@0.500;notes.inner>gen.drive@0.400;notes.count>gen.fold@0.300;cc.1>gen.twist@0.400" },
+     "The top note opens the filter, the inner voices drive it, the size of the chord folds it and the wheel swirls it: four readings of one chord. Play it."],
+    ["Wheel and pedal, two jobs each", { shape: "pulse", width: 40, freq: 220, timebase: 4, midiMode: "poly",
+                                         vcfType: 1, vcfCut: 600, atk: 5, rel: 400, delaySync: "1/4", delayFeedback: 45,
+                                         mod: "cc.1>gen.width@-0.600;cc.1>gen.vcf@0.400;midi.pedal>gen.echo@1.000;midi.pedal>gen.drive@0.300;midi.key>gen.fm@0.300" },
+     "The wheel narrows the pulse and opens the filter together, the pedal brings in echoes and a little drive together, and how hard you strike adds FM. Play it."],
+    ["Soft inside, loud outside", Object.assign({ shape: "triangle", freq: 220, timebase: 4, midiMode: "poly",
+                                                  oscRatio: 2, atk: 10, rel: 500,
+                                                  mod: "notes.inner>gen.fm@0.500;notes.top>gen.twist@0.400;notes.spread>gen.fold@0.400;env.note>gen.phase@0.300" }, XY),
+     "Four readings of the voicing on the figure: the inner voices' strength is FM, the melody's height turns it, the chord's width folds it, and each strike nudges the phase. Play it."],
+  ], "generator"],
+
+  ["Played with the picture", [
+    ["Your hands and the light", Object.assign({ shape: "sine", interval: 7, just: false, timebase: 4, oscRatio: 1.5,
+                                                 photoOn: true, photoU: 0.6, photoV: 0.35,
+                                                 mod: "photo.1>gen.phase@0.400;midi.key>gen.fm@0.500;cc.1>gen.twist@0.500" }, XY),
+     "A slowly turning fifth whose light breathes it open and shut on its own; how hard you strike adds FM, and the wheel swirls what the light is doing. Play along with it."],
+    // The light on the petals rather than turning the rose: turned, it could
+    // come to rest at an angle where the reading stopped changing.
+    ["The rose you play", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.12", timebase: 5,
+                            midiMode: "dyad", photoOn: true, photoU: 0.675, photoV: 0.45,
+                            mod: "photo.1>gen.detail@0.400;cc.1>gen.twist@0.500" },
+     "Two notes set the rose's petals and the light on one petal adds to them, so every interval you play is recounted by the picture; the wheel swirls it."],
+    ["Organ in the light", Object.assign({ shape: "drawbars", bars: "008000000", interval: 7, just: false,
+                                           timebase: 5, photoOn: true, photoU: 0.6, photoV: 0.35,
+                                           mod: "photo.1>gen.bar3@0.500;cc.1>gen.bar6@0.600;midi.key>gen.drive@0.400" }, XY),
+     "A slowly turning fifth pulls out the 4' bar by itself each time it passes the light; the wheel adds the 1 3/5', and striking hard drives the organ. Play it over the registration the light is choosing."],
+    ["The tune you play into", { gen: "figure", figure: "Rose", detail: 3, display: "xy", persistence: "0.04",
+                                 timebase: 5, photoOn: true, photoU: 0.7, photoV: 0.45, scoreOn: true, scoreVoices: 2,
+                                 keyScale: "pentatonic", mod: "photo.1>gen.detail@0.500;cc.1>gen.twist@0.500" },
+     "The rose rewriting itself from the light and the score playing it, while the wheel swirls the rose into new tunes. Ride the wheel against what it plays."],
   ], "generator"],
 
   ["Macros", [
@@ -19276,6 +19422,9 @@ const PRESET_ABOUT = {
   "Arpeggios": "Hold a chord and it is played a note at a time at the tempo, each preset with a pattern of its own and something your hands move. They wait for a keyboard, and the on-screen one will do.",
   "Chords drawn": "Chords in X\u2013Y: which of the notes you hold are drawn, and against what. The rest are still heard. Each has something your hands move. They wait for a keyboard, and the on-screen one will do.",
   "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab, or put a controller on them.",
+  "The picture plays itself": "The screen as a source: the photocell reads the brightness under its reticle, and the picture's own sources read its shape, coverage, change and novelty, and each is patched back onto what draws the picture or makes the sound. So what the beam draws alters what it draws, and how it sounds. Drag the reticle anywhere; the readout says whether the loop is settled, cycling or wandering, and every loop is held to its bounds.",
+  "Many sources": "Everything your hands do at once, each on a different control: how hard, how many notes, how far apart, the melody, the inner voices, the envelope, the wheel and the pedal, three to five in every preset. They wait for a keyboard, and the on-screen one will do.",
+  "Played with the picture": "Your hands and the picture on one sound: the photocell keeps a loop going on its own, and what you play pushes it somewhere else. They sound before you play; the keyboard adds to them.",
   "Hands on the sound": "The mod wheel, the sustain pedal and the strike of a key, patched onto filter, fold, "
     + "drive and twist. A routing from a controller waits for the first time that controller moves.",
   "Bells and metal": "FM and ring modulation at ratios that are not harmonic, which is what makes metal "
@@ -19313,15 +19462,15 @@ const PRESET_ABOUT = {
    be in exactly one menu, since one left out would never be seen. */
 const PRESET_MENUS = [
   ["sounds", "Pictures and sounds",
-   "Nothing you play changes these: shapes, figures, drawings and effects that run on their own, to look at and listen to.",
-   ["Start here", "Lissajous", "Drawings", "Solids", "Motion", "The plane", "Echoes", "Rhythm and key", "Analysis"]],
+   "Nothing you play changes these: shapes, figures, drawings and effects that run on their own, and the picture patched back onto itself and its own sound.",
+   ["Start here", "The picture plays itself", "Lissajous", "Drawings", "Solids", "Motion", "The plane", "Echoes", "Rhythm and key", "Analysis"]],
   ["answer", "Answering your playing",
    "What you play, drawn, and drawings that answer it: for a microphone, a line input or a file, and drawings struck from the keyboard.",
    ["Live", "Live effects", "Listening", "Drawn by your playing", "Played into the drawing", "Drawings you play"]],
   ["live", "Playing live",
    "Instruments for the keyboard: voices, chords, splits and layers, and your hands - how hard, how many, how far apart, the wheel and the pedal - on the sound.",
    ["Organ", "Keys and leads", "Bass", "Pads", "Bells and metal", "Grit", "Poly keys", "Chords drawn",
-    "Arpeggios", "Split", "Layer", "Hands on the sound", "Macros"]],
+    "Arpeggios", "Split", "Layer", "Hands on the sound", "Many sources", "Played with the picture", "Macros"]],
 ];
 const SECTION_KEY = "scope.presetSection";
 let presetSection = 0;
