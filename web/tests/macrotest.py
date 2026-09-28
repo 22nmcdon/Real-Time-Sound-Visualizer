@@ -104,7 +104,10 @@ with sync_playwright() as pw:
                    knob: el.macro3.value };
       const hit = searchEntries().find((e) => e.kind === 'source' && e.id === 'macro.3');
       out.search = hit ? hit.crumb : null;
-      out.grid = !!document.querySelector('#srcGrid [data-family="macros"]');
+      // A family on the Sources tab as well as knobs on Measure, since the tab
+      // shows one family at a time and has the room.
+      chooseSourceFamily('macros');
+      out.grid = Array.from(el.srcList.querySelectorAll('[data-select]')).map((r) => r.dataset.select);
       restore({});
       return out;
     }""")
@@ -117,9 +120,9 @@ with sync_playwright() as pw:
           and named["bare"] == {"labels": ["Macro 1", "Macro 2", "Macro 3"], "mac3": 0}
           and named["back"] == {"labels": ["Open  up", "Macro 2", "Swell"], "mac3": 0.4, "knob": "40"},
           "%s / %s / %s" % (named["code"], named["bare"], named["back"]))
-    check("macros are found by search under Sources, and have the Macros section rather than a row in the grid",
-          named["search"] == "Sources › Macros" and named["grid"] is False,
-          "%s, grid row %s" % (named["search"], named["grid"]))
+    check("macros are found by search under Sources, and are a family there, all four, as well as knobs on Measure",
+          named["search"] == "Sources › Macros" and named["grid"] == ["macro.1", "macro.2", "macro.3", "macro.4"],
+          "%s, family %s" % (named["search"], named["grid"]))
 
     print("\n--- the morph ---")
     blend = p.evaluate("""async () => {

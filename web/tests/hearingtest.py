@@ -92,9 +92,8 @@ with sync_playwright() as pw:
     print("\n--- registered ---")
     reg = p.evaluate("""() => {
       const ids = [...MOD_SOURCES.values()].filter((s) => s.family === 'hearing').map((s) => s.id);
-      setView('bench'); setBenchTab('sources');
-      const fam = el.srcGrid.querySelector('[data-family="hearing"]');
-      return { ids, chips: fam ? fam.querySelectorAll('.mod-chip').length : 0 };
+      setView('bench'); setBenchTab('sources'); chooseSourceFamily('hearing');
+      return { ids, chips: el.srcList.dataset.family === 'hearing' ? el.srcList.querySelectorAll('.src-row').length : 0 };
     }""")
     # Eight values and one event, the onset, which drawingtest.py holds.
     check("nine sources that hear, eight values and the onset, in a family of their own on the Sources tab",
@@ -168,7 +167,15 @@ with sync_playwright() as pw:
           "%.3f, %.3f, %.3f" % (same["width"], inv["width"], other["width"]))
 
     print("\n--- flux ---")
-    steady = at(330, settle=1500)
+    # Until the change from the width's fifth has gone from the flux, as the
+    # release below waits: once, after the fit suite, a fixed 1.5 s read the
+    # held tone at 0.246 - less of the follower's own time, which advances by
+    # the frame, than the clock said. Never less than 1.5 s, at most 8; a flux
+    # that never falls fails the check it is waiting for.
+    steady = p.evaluate("""async () => { __play(330, 'same', 0.8); const t0 = performance.now();
+      await __wait(1500);
+      while (hearing.flux > 0.01 && performance.now() - t0 < 8000) await __wait(50);
+      return __read(); }""")
     struck = p.evaluate("""async () => {
       // A note struck four times a second: on for 120 ms, off for 130.
       let peak = 0, on = false;

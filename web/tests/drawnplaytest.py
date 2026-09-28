@@ -227,7 +227,13 @@ with sync_playwright() as pw:
           pitched == [False, True], str(pitched))
 
     grid = p.evaluate("""async () => {
-      const chips = () => [...el.srcGrid2.querySelectorAll('[data-family="picture"] [data-select]')].map((c) => c.dataset.select).filter((id) => id.startsWith('draw.'));
+      // On the tab, under Picture, and in the strip beside the screen, which
+      // listed Swing and the turns under a waveform until the tab's rule was
+      // given to it too.
+      const chips = () => { chooseSourceFamily('picture');
+        const tab = [...el.srcList.querySelectorAll('[data-select]')].map((c) => c.dataset.select).filter((id) => id.startsWith('draw.'));
+        const strip = [...el.benchSources.querySelectorAll('[data-source]')].map((c) => c.dataset.source).filter((id) => id.startsWith('draw.'));
+        return tab.join() === strip.join() ? tab : { tab, strip }; };
       const out = {};
       for (const mode of ['wave', 'harmonograph', 'wireframe']) {
         el.genMode.value = mode; el.genMode.dispatchEvent(new Event('change'));

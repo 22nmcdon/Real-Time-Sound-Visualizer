@@ -75,6 +75,11 @@ scrolls sideways, which works unchanged as a tab strip.
 
 ## R3 · the Sources tab
 
+(Since rebuilt as one family at a time - families, the family's sources as
+rows with meters, the one selected - because the grid below turned out to be
+a wall of forty chips; see *The Sources tab, one family at a time* in the
+README.)
+
 A grid of every source, **grouped by family**, and a detail panel for the one
 selected. `registerSource` gains `family` and `description`. A family with
 nothing registered shows a one-line hint ("Connect a keyboard", "Turn on the

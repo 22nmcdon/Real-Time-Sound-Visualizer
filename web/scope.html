@@ -965,23 +965,41 @@ body[data-view="bench"] .dock  { order: 3; }
    and the sources not on it yet as buttons underneath. Nothing here needs a
    steady hand, which is the whole of what was wrong with the two before it. */
 .mod-edit { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-/* The Sources tab. One row per family, the family named small; a family
-   with nothing in it says how to get something rather than vanishing. */
-.src-family { margin: 0 0 8px; }
-.src-family-name {
-  display: block; font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--text-soft); margin-bottom: 4px;
+/* The Sources tab, one family at a time: the families down the first
+   column, the chosen one's sources as rows in the second, and the chosen
+   source in the third. It replaced a grid of every source at once - forty
+   chips of one weight in two sections, which read as a wall. */
+.src-fam {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
+  background: none; border: 0; border-left: 2px solid transparent; padding: 6px 10px 6px 12px;
+  font-family: var(--sans); font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--text-soft); text-align: left; cursor: pointer;
 }
-.src-family-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-/* Tighter than the rail's chips beside the screen, which are dragged and
-   want the room. These are only chosen, and the tab has to hold every family
-   at once without scrolling - with the eight that hear, the keyboard's and a
-   moved controller, it did not at the rail's size. Seven pixels a side, not
-   nine, so Level, Envelope and the Threshold share a row: at nine they were
-   seven pixels too wide, and the row they wrapped onto put a rack of six
-   sixteen pixels past the Bench. */
-.src-family-chips .mod-chip { cursor: pointer; padding: 3px 7px; gap: 6px; font-size: 12px; }
-.src-empty { font-size: 12px; color: var(--text-soft); margin: 0; }
+.src-fam:hover { color: var(--charcoal); }
+.src-fam[aria-selected="true"] { color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper); }
+.src-fam .count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; opacity: 0.75; }
+/* A family with nothing in it now - no keyboard, the Photocell off - is
+   still listed, quieter, and says how to get something when it is chosen. */
+.src-fam[data-empty="1"] { opacity: 0.55; }
+/* The rows, in a list of one height whatever the family: the section is the
+   same size choosing Signal's three as Picture's eleven, so nothing on the
+   tab jumps while you browse, and the dealer's measure of it stays true -
+   with a height of its own it changed under the dealer every time a family
+   was chosen, and re-dealing on each click would have taken the focus off
+   the button just pressed. A long family - twenty learned controllers -
+   scrolls inside it rather than making the tab scroll. */
+#srcList { height: 330px; overflow-y: auto; }
+.src-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0;
+  border-left: 2px solid transparent; padding: 5px 8px; font-family: var(--sans); font-size: 13px;
+  color: var(--charcoal); text-align: left; cursor: pointer;
+}
+.src-row:hover { background: var(--paper); }
+.src-row[aria-pressed="true"] { border-left-color: var(--blush-deep); background: var(--paper); }
+.src-row .src-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-row .src-meter { flex: 0 0 64px; }
+.src-row .count { flex: 0 0 auto; font-family: var(--mono); font-size: 10.5px; color: var(--blush-deep); min-width: 1.4em; text-align: right; }
+.src-empty { font-size: 12px; color: var(--text-soft); margin: 4px 0 0; }
 .src-desc { font-size: 13px; line-height: 1.5; color: var(--charcoal); margin: 0 0 10px; }
 .src-meter {
   position: relative; flex: 1 1 auto; height: 6px; border-radius: 3px;
@@ -1831,9 +1849,11 @@ body[data-view="bench"] .dock  { order: 3; }
               </div>
           </div>
 
-          <!-- The Sources tab: every source, by family, and the one selected.
-               It replaces the Modulation section, which gave the two oscillators
-               a home and every other source a chip with no explanation. -->
+          <!-- The Sources tab: the families, one family's sources, and the one
+               selected. It replaced the Modulation section, which gave the two
+               oscillators a home and every other source a chip with no
+               explanation; and then a grid of every source at once, which gave
+               every source a chip of the same weight. -->
           <!-- Knobs of your own, and the fader between two sets of sliders.
                Together because the morph is a macro too: one control that
                moves many, which the matrix can drive like any other. On the
@@ -1891,22 +1911,22 @@ body[data-view="bench"] .dock  { order: 3; }
             <p class="menu-note" id="morphNote"></p>
           </div>
 
-          <!-- The grid in two sections, split by what grows: the oscillators,
-               the signal, the hearing and the keyboard, whose sizes are known,
-               and the controllers and the picture, which grow with every knob
-               learned and with the Photocell on (see SECOND_GRID). One section
-               could not fit a column: with a rack of six, a keyboard and the
-               Photocell it was 483 px of a 427 px column, and no dealing of whole
-               sections can fit one taller than a column - the reason Lanes left
-               Input. With the source detail these are three sections for three
-               columns, and Macros and Key and tempo are on Measure. -->
+          <!-- Three sections for three columns, one family at a time: the
+               families, the chosen family's sources, and the chosen source.
+               Every source used to be on show at once, as a grid of chips in two
+               sections split by what grows - forty chips of one weight, which
+               read as a wall. Only the list grows now, and it scrolls inside
+               itself past twelve rows (see #srcList), so what is plugged in can
+               no longer put the tab past the Bench. Macros and Key and tempo
+               went to Measure when this tab was full; with the room back, the
+               macros are a family here as well as knobs there. -->
           <div class="menu-group" id="srcGroup" data-home="bench" data-tab="sources">
             <span class="menu-title">Sources</span>
-            <div id="srcGrid"></div>
+            <div id="srcFamilies" role="tablist" aria-label="Families of sources"></div>
           </div>
           <div class="menu-group" id="srcGroup2" data-home="bench" data-tab="sources">
-            <span class="menu-title">Controllers and picture</span>
-            <div id="srcGrid2"></div>
+            <span class="menu-title" id="srcListTitle">Oscillators</span>
+            <div id="srcList"></div>
           </div>
           <!-- The note is here rather than under the grid: the grid's column is
                the tallest on the tab, and with a rack of six the Bench is 427 px
@@ -3554,13 +3574,18 @@ body[data-view="bench"] .dock  { order: 3; }
         remembered.</span></li>
 
       <li><b>The Sources tab</b>
-        <span>Every source, by family: the oscillators, the signal's level and envelope,
-        what the sound is doing, your hands on the keyboard, the controllers you have moved, and the picture itself.
-        A family with nothing in it says how to get something. Choose one and it says what
-        it is, shows where it is right now, and lists every control it is on with its own
-        depth and a cross to take it off; <i>Add a destination</i> puts it on another. An
-        oscillator's shape and rate are there, and a controller can be renamed or
-        forgotten there. Choosing a source also makes every control it is on, on every
+        <span>One family of sources at a time. Down the left, the families: <i>In use</i>,
+        every source that is on something now, then the oscillators, the signal's level and
+        envelope, what the sound is doing, your hands on the keyboard, the controllers you
+        have moved, the picture itself and your macros, each with how many it has. A family
+        with nothing in it now is quieter, and says how to get something when you choose it.
+        In the middle, the chosen family's sources, each with a meter of what it is doing
+        right now and an arrow counting where it goes, so you can see at a glance which band
+        is moving or which knob is up. On the right, the chosen source: what it is, every
+        control it is on with its own depth and a cross to take it off, and <i>Add a
+        destination</i> to put it on another. An oscillator's shape and rate are there, and
+        a controller can be renamed or forgotten there. The tab opens on <i>In use</i> when
+        anything is patched. Choosing a source also makes every control it is on, on every
         tab, draw its sweep.</span></li>
 
       <li><b>Macros: one knob, many controls</b>
@@ -4362,7 +4387,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
                   "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
                   "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
-                  "srcGroup", "srcGrid", "srcGroup2", "srcGrid2", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
+                  "srcGroup", "srcFamilies", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
@@ -16190,8 +16215,9 @@ function showGenerator() {
   el.figureRows.hidden = mode !== "figure";
   el.harmoRows.hidden = mode !== "harmonograph";
   el.wireRows.hidden = mode !== "wireframe";
-  // The drawing's own sources are shown only while their drawing plays.
-  buildSourceGrid();
+  // The drawing's own sources are shown only while their drawing plays, on the
+  // tab and in the strip beside the screen alike.
+  buildSourceChips();
 
   // Both of the drawn modes are paced by it, so the row belongs to neither.
   el.traceRateRow.hidden = mode !== "figure" && mode !== "wireframe";
@@ -16722,12 +16748,15 @@ const SOURCE_FAMILIES = [
   ["keyboard", "Keyboard", "Connect one, or Show keys on Play."],
   ["controllers", "Controllers", "Move a knob on a connected keyboard."],
   ["picture", "Picture", "Turn on the Photocell, above the screen."],
-  /* Listed for search and for a macro's crumb, and not drawn in the grid:
-     the Macros section beside it is their chips, and a row of four more in
-     the grid put a rack of six 21 px over. */
-  ["macros", "Macros", "", "own"],
+  // Their knobs are in the Macros section on Measure; here is where they go.
+  ["macros", "Macros", ""],
 ];
 let selectedSource = "lfo1";
+/* The family on show: one of SOURCE_FAMILIES, or "inuse" - every source that
+   is on something now, whatever its family, which is what a player coming
+   back to a setup wants to see first. */
+let sourceFamily = null;
+const IN_USE = ["inuse", "In use", "Nothing is patched yet. Choose a family, a source in it, and add a destination."];
 
 function sourcesInFamily(family) {
   // A source of one drawing is shown only while that drawing plays.
@@ -16738,49 +16767,84 @@ function sourcesInFamily(family) {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-/* The second grid, "Controllers and picture": the two families with no fixed
-   size - a chip for every knob learned, and the Photocell's seven with the
-   drawing's four - so that what grows has a column to itself. The first grid's
-   families are all of a known size and come to about 305 px at most. */
-const SECOND_GRID = new Set(["controllers", "picture"]);
+// Every family the list offers, "In use" first; anything registered without
+// a family - a test's stand-in, say - still shows, under Other.
+function sourceFamilies() {
+  const families = [IN_USE].concat(SOURCE_FAMILIES);
+  if (sourcesInFamily("other").length) families.push(["other", "Other", ""]);
+  return families;
+}
+const routedCount = (id) => state.modRoutings.filter((r) => r.sourceId === id).length;
+function sourcesShown(family) {
+  if (family !== "inuse") return sourcesInFamily(family);
+  const shown = new Set(sourceFamilies().slice(1).flatMap(([id]) => sourcesInFamily(id)));
+  return Array.from(MOD_SOURCES.values()).filter((source) => shown.has(source) && routedCount(source.id) > 0)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
 
 function buildSourceGrid() {
-  if (!el.srcGrid) return;
-  const families = SOURCE_FAMILIES.slice();
-  // Anything registered without a family - a test's stand-in, say - still shows.
-  if (sourcesInFamily("other").length) families.push(["other", "Other", ""]);
-  const html = (list) => list.filter((family) => family[3] !== "own").map(([id, name, hint]) => {
-    const list = sourcesInFamily(id);
-    return '<div class="src-family" data-family="' + id + '">'
-      + '<span class="src-family-name">' + name + "</span>"
-      + (list.length === 0
-        ? '<p class="src-empty">' + escapeText(hint) + "</p>"
-        : '<div class="src-family-chips">' + list.map((source) => {
-            const count = state.modRoutings.filter((r) => r.sourceId === source.id).length;
-            return '<button type="button" class="mod-chip" data-select="' + source.id + '"'
-              + ' aria-pressed="' + (source.id === selectedSource) + '">'
-              + '<span class="dot-sm" style="background:var(--' + source.ink + ')"></span>'
-              + escapeText(source.label)
-              + (count ? '<span class="count">' + count + "</span>" : "") + "</button>";
-          }).join("") + "</div>")
-      + "</div>";
-  }).join("");
-  el.srcGrid.innerHTML = html(families.filter(([id]) => !SECOND_GRID.has(id)));
-  el.srcGrid2.innerHTML = html(families.filter(([id]) => SECOND_GRID.has(id)));
-  for (const grid of [el.srcGrid, el.srcGrid2]) {
-    grid.querySelectorAll("[data-select]").forEach((chip) => {
-      chip.addEventListener("click", () => selectSource(chip.dataset.select));
-    });
+  if (!el.srcFamilies) return;
+  const families = sourceFamilies();
+  /* Where the tab opens: on what is patched, if anything is, since that is
+     the question coming back to a setup asks; otherwise on the chosen
+     source's family. A family that has gone - Other, once its stand-in has
+     - goes back to the same rule. */
+  if (sourceFamily === null || !families.some(([id]) => id === sourceFamily)) {
+    const chosen = MOD_SOURCES.get(selectedSource);
+    sourceFamily = sourcesShown("inuse").length ? "inuse" : (chosen && chosen.family) || "oscillators";
   }
+  el.srcFamilies.innerHTML = families.map(([id, name]) => {
+    const n = sourcesShown(id).length;
+    return '<button type="button" class="src-fam" role="tab" data-family="' + id + '" aria-selected="'
+      + (id === sourceFamily) + '" data-empty="' + (n === 0 ? 1 : 0) + '"><span>' + escapeText(name)
+      + '</span><span class="count">' + n + "</span></button>";
+  }).join("");
+  const family = families.find(([id]) => id === sourceFamily);
+  el.srcListTitle.textContent = family[1];
+  const list = sourcesShown(sourceFamily);
+  el.srcList.dataset.family = sourceFamily;
+  el.srcList.innerHTML = list.length === 0
+    ? '<p class="src-empty">' + escapeText(family[2] || "Nothing here now.") + "</p>"
+    : list.map((source) => {
+        const count = routedCount(source.id);
+        return '<button type="button" class="src-row" data-select="' + source.id + '" aria-pressed="'
+          + (source.id === selectedSource) + '"><span class="dot-sm" style="background:var(--' + source.ink
+          + ')"></span><span class="src-row-name">' + escapeText(source.label) + "</span>"
+          + '<span class="src-meter" style="--pip:var(--' + source.ink + ')"><span class="src-meter-fill"></span></span>'
+          + '<span class="count" title="' + count + " destination" + (count === 1 ? "" : "s") + '">'
+          + (count ? count + "\u2192" : "") + "</span></button>";
+      }).join("");
+  el.srcFamilies.querySelectorAll("[data-family]").forEach((button) => {
+    button.addEventListener("click", () => chooseSourceFamily(button.dataset.family));
+  });
+  el.srcList.querySelectorAll("[data-select]").forEach((row) => {
+    row.addEventListener("click", () => selectSource(row.dataset.select));
+  });
+  updateSourceMeter();
+}
+
+/* A family chosen: its sources in the second column, and its first one in
+   the third, so the detail beside the list is always of something in it
+   rather than of whatever was chosen three families ago. An empty family
+   keeps the detail it had, and says how to fill it. */
+function chooseSourceFamily(id) {
+  sourceFamily = id;
+  const list = sourcesShown(id);
+  if (list.length && !list.some((source) => source.id === selectedSource)) selectSource(list[0].id);
+  else buildSourceGrid();
 }
 
 /* Selecting a source also focuses it, so every control it is on - on every
    tab - draws its sweep. That was already what a chip did; the tab only
-   gives it somewhere to explain itself. */
+   gives it somewhere to explain itself. Chosen from anywhere else - a search,
+   a chip beside the screen - it brings its family with it, unless it is
+   already on show under In use. */
 function selectSource(id) {
   if (!MOD_SOURCES.has(id)) return;
   selectedSource = id;
   focusSource = id;
+  const source = MOD_SOURCES.get(id);
+  if (!sourcesShown(sourceFamily || "").some((s) => s.id === id)) sourceFamily = source.family || "other";
   buildSourceGrid();
   buildSourceDetail();
   paintRoutings();
@@ -16917,12 +16981,10 @@ function buildSourceDetail() {
   updateSourceMeter();
 }
 
-/* The selected source's value, once a frame, while the tab is showing. */
-function updateSourceMeter() {
-  if (document.body.dataset.view !== "bench" || benchTab !== "sources") return;
-  const fill = document.getElementById("srcMeter");
-  const source = MOD_SOURCES.get(selectedSource);
-  if (!fill || !source) return;
+/* Every shown source's value, once a frame, while the tab is showing: the
+   chosen one's in the detail, and each row's in the list, so a family is
+   read at a glance - which of the bands is moving, which knob is up. */
+function fillMeter(fill, source) {
   const v = Math.max(-1, Math.min(1, source.value()));
   // A bipolar source grows from the middle; the rest from the left.
   if (source.bipolar) {
@@ -16932,6 +16994,20 @@ function updateSourceMeter() {
     fill.style.left = "0";
     fill.style.width = Math.max(0, v) * 100 + "%";
   }
+  return v;
+}
+function updateSourceMeter() {
+  if (document.body.dataset.view !== "bench" || benchTab !== "sources") return;
+  if (el.srcList) {
+    for (const row of el.srcList.querySelectorAll(".src-row")) {
+      const source = MOD_SOURCES.get(row.dataset.select);
+      if (source) fillMeter(row.querySelector(".src-meter-fill"), source);
+    }
+  }
+  const fill = document.getElementById("srcMeter");
+  const source = MOD_SOURCES.get(selectedSource);
+  if (!fill || !source) return;
+  const v = fillMeter(fill, source);
   const reading = document.getElementById("srcMeterValue");
   if (reading) reading.textContent = (v > 0 && source.bipolar ? "+" : "") + v.toFixed(2);
 }
@@ -21582,7 +21658,7 @@ function rowWords(row, label, section) {
 
 // The Sources tab's own sections are sources, and searched as sources. Its
 // Add menu lists every destination, so as rows they would answer everything.
-const SEARCH_SKIP = ["srcGroup", "srcDetailGroup"];
+const SEARCH_SKIP = ["srcGroup", "srcGroup2", "srcDetailGroup"];
 
 function searchEntries() {
   const out = [];
@@ -21676,10 +21752,8 @@ function chooseSearch(entry) {
     if (document.body.dataset.view !== "bench") setView("bench");
     setBenchTab("sources");
     selectSource(entry.id);
-    // In either grid: a keyboard's or the picture's chip is in the second.
-    const chip = (el.srcGrid.querySelector('[data-select="' + entry.id + '"]')
-      || el.srcGrid2.querySelector('[data-select="' + entry.id + '"]'));
-    if (chip) { chip.focus(); flash(chip); }
+    const row = el.srcList.querySelector('[data-select="' + entry.id + '"]');
+    if (row) { row.focus(); flash(row); }
     return;
   }
   if (entry.kind === "strip") {
@@ -21778,7 +21852,14 @@ function clearSource(sourceId) {
 /* --- the chips ---------------------------------------------------------- */
 
 function buildSourceChips() {
+  /* A drawing's own sources only while it plays, as on the Sources tab - they
+     read nought otherwise, and the strip listed Swing, Pendulum and the three
+     turns under a waveform - unless one is still on something, which has to
+     stay in reach to be taken off. */
+  const tone = genSettings();
   const sources = Array.from(MOD_SOURCES.values())
+    .filter((source) => !source.modes || (tone && source.modes.includes(tone.mode))
+      || state.modRoutings.some((r) => r.sourceId === source.id))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   /* The chips live in a rail of their own, and it is the one list on the bench

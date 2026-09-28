@@ -179,7 +179,13 @@ Do not re-litigate these without a reason; each replaced something that failed.
   because Play had four sections for three columns, and Effects exists because
   the voice's oscillator made Shape five). `fittest.py` measures every tab in
   every combination of generator kind, tone or rack of six, keyboard and
-  Photocell, which is how Macros and Key and tempo came to be on Measure.
+  Photocell, and the Sources tab with each family on show, which is how
+  Macros and Key and tempo came to be on Measure.
+- **The Sources tab shows one family at a time.** Families, the chosen
+  family's sources as rows with meters, the chosen source - in that order, one
+  column each. A grid of every source at once was forty chips of one weight
+  and read as a wall. The list has a fixed height and scrolls inside itself,
+  so what is plugged in cannot put the tab over.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, Presets, Beam) or `bench` (everything played or tuned), and a
   section stays in its home in both views. Settings and the Bench used to hold

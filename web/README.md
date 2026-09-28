@@ -3290,3 +3290,50 @@ What does not follow the bar, on purpose:
 - *Setups* do not carry the transport: loading one leaves the bar playing or
   stopped as it was.
 - *Nothing sends clock out.* The Nord does not follow the page's Start.
+
+**The Sources tab, one family at a time.** The tab showed every source at
+once, as a grid of chips in two sections split by what grows: about forty
+chips of one weight, the family names small captions between them, and
+nothing to say which of them was doing anything or on anything. Asked to look
+at it, the verdict was *overwhelming*, and it was. It is three columns now,
+one per section:
+
+- *The families*, with *In use* first: every source on something now,
+  whatever its family, which is what coming back to a setup asks first. The
+  tab opens there when anything is patched, and on the chosen source's family
+  otherwise. A family with nothing in it now is still listed, quieter, with a
+  count of nought, and says how to get something when it is chosen.
+- *The chosen family's sources*, as rows, each with a meter of what it is
+  doing this frame and an arrow counting its destinations, so which band is
+  moving or which knob is up is read at a glance.
+- *The chosen source*, as before.
+
+Choosing a family chooses its first source, so the detail is always of
+something in the list beside it rather than of whatever was chosen three
+families ago. A source chosen from anywhere else - a search, a chip beside
+the screen - brings its family with it. The macros are a family again, as
+well as knobs on Measure: there is room now.
+
+- *The list has one height whatever the family*, 330 px, and scrolls inside
+  itself past a dozen rows. With a height of its own it changed under the
+  dealer every time a family was chosen, which `fittest.py`'s measured-height
+  check caught; re-dealing on each click would have taken the focus off the
+  button just pressed. It also means nothing on the tab jumps while you
+  browse. Thirty learned controllers are thirty rows in a list that scrolls,
+  and no tab does.
+- *`fittest.py` measures the tab with each family on show*, since the family
+  decides its height now: 221 cases each for the tone and a rack of six. Its
+  dealt-height check is held to the moment of the deal - the source's detail
+  changes height with the source chosen, always did, and has a column to
+  itself; whether that puts the tab over is the overflow check's question,
+  asked for every family.
+- *The strip beside the screen listed a drawing's sources under a
+  waveform* - Swing, Pendulum and the three turns, reading nought - which
+  the tab had always hidden. It follows the same rule now, except for one
+  still on something, which has to stay in reach to be taken off.
+- *hearingtest's held-tone flux read 0.246 once*, after the fit suite, against
+  0.001 on every other run. Reading a source has no side effects, so the
+  tab's new meters were not it; the reading was taken after a fixed 1.5 s,
+  which is less of the follower's own time - it advances by the frame - when
+  frames are slow. It now waits for the flux to fall, as the release reading
+  already did, never less than the 1.5 s and never more than 8.

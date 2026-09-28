@@ -12,8 +12,10 @@ So, against the ways it fails:
 
 - a tab over in some combination: every tab, on the tone and on a rack of
   six, with and without the keyboard's sources and the Photocell's, for each
-  of the four kinds of generator - and the worst of them again with a Nord's
-  ten controllers learned;
+  of the four kinds of generator - the Sources tab with each family on show,
+  since the family decides its height - and the worst of them again with
+  thirty controllers learned, where the family's list has to scroll inside
+  itself rather than put the tab over;
 - a dealer that measures a section at a width it will not have. It stacks
   every section in the first column to measure them, and with the empty
   columns hidden that column was the whole Bench wide, so everything that
@@ -54,15 +56,31 @@ SWEEP = """async ([rack]) => {
   setView('bench');
   const over = [], cases = [], mismeasured = [];
   const measure = (label) => {
+    const views = [];
     for (const [tab] of BENCH_TABS) {
+      if (tab !== 'sources') { views.push([tab, null]); continue; }
+      for (const [family] of sourceFamilies()) views.push([tab, family]);
+    }
+    let last = null;
+    for (const [tab, family] of views) {
       setBenchTab(tab);
-      const by = el.benchBody.scrollHeight - el.benchBody.clientHeight;
-      cases.push(label + '/' + tab);
-      if (by > 0) over.push([label, tab, by]);
-      // What the dealer measured each section at, against what it is now.
-      for (const [group, h] of benchMeasured) {
-        if (Math.abs(group.offsetHeight - h) > 1) mismeasured.push([label, tab, group.id || '?', h, group.offsetHeight]);
+      /* What the dealer measured each section at, against what it is now -
+         straight after the deal, which is what this holds. A section can
+         change height afterwards without anything being wrong: the source's
+         detail does with the source chosen, and always did, and it has a
+         column to itself. Whether any of that puts the tab over is the
+         overflow check's question, asked below for every family. */
+      if (tab !== last) {
+        for (const [group, h] of benchMeasured) {
+          if (Math.abs(group.offsetHeight - h) > 1) mismeasured.push([label, tab, group.id || '?', h, group.offsetHeight]);
+        }
       }
+      last = tab;
+      if (family) chooseSourceFamily(family);
+      const by = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+      const name = family ? tab + ':' + family : tab;
+      cases.push(label + '/' + name);
+      if (by > 0) over.push([label, name, by]);
     }
   };
   for (const keys of [false, true]) {
@@ -75,13 +93,16 @@ SWEEP = """async ([rack]) => {
       }
     }
   }
-  // The worst of them with ten controllers learned - a Nord Electro's nine
-  // drawbars and its swell pedal - which grow the Controllers family by a chip
-  // each. It holds about twenty in this state before its column is full.
-  for (let n = 16; n < 26; n++) midiControl(n, 64);
+  // The worst of them with thirty controllers learned - three Nord Electros'
+  // worth of drawbars and swells - which grow the Controllers family by a row
+  // each. Past a dozen rows the list scrolls inside itself; the tab must not.
+  for (let n = 16; n < 46; n++) midiControl(n, 64);
   buildSourceGrid();
-  measure((rack ? 'rack' : 'tone') + '+keys+photo+wireframe+10cc');
-  return { over, cases: cases.length, mismeasured };
+  measure((rack ? 'rack' : 'tone') + '+keys+photo+wireframe+30cc');
+  setBenchTab('sources'); chooseSourceFamily('controllers');
+  const list = { rows: el.srcList.querySelectorAll('.src-row').length,
+                 scrolls: el.srcList.scrollHeight > el.srcList.clientHeight + 1 };
+  return { over, cases: cases.length, mismeasured, list };
 }"""
 
 with sync_playwright() as pw:
@@ -100,9 +121,11 @@ with sync_playwright() as pw:
     for name, r in results.items():
         print("\n--- %s: %d tab-and-state cases ---" % (name, r["cases"]))
         check("on the %s, no tab scrolls in any of them" % ("rack of six" if name == "rack" else "tone"),
-              r["over"] == [] and r["cases"] >= 100, str(r["over"][:6]))
+              r["over"] == [] and r["cases"] >= 200, str(r["over"][:6]))
         check("and every section is dealt at the height it was measured at",
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
+        check("thirty controllers are thirty rows, and the list scrolls inside itself rather than the tab",
+              r["list"] == {"rows": 30, "scrolls": True}, str(r["list"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
