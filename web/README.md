@@ -3337,3 +3337,59 @@ well as knobs on Measure: there is room now.
   which is less of the follower's own time - it advances by the frame - when
   frames are slow. It now waits for the flux to fall, as the release reading
   already did, never less than the 1.5 s and never more than 8.
+
+**The preset library in three menus, and eighty more presets.** The browser
+was a rail of twenty-four sections in one list and a grid of cards at their
+full length, and it read as a wall. What it lacked was not presets but order,
+and it mixed presets that need nothing from you with ones that are nothing
+without you. The top level is now three menus, by how much your playing has
+to do with a preset, and Saved:
+
+- *Pictures and sounds*: nothing you play changes them. The shapes,
+  Lissajous, drawings, solids, motion, the plane, echoes, rhythm and key,
+  analysis.
+- *Answering your playing*: lightly played. What a microphone or a file
+  draws and does to the effects, the drawings that answer it, and the
+  drawings struck from the keyboard - the plucked harmonograph, the chord's
+  rose and *Play the figure* - in a *Drawings you play* section of their own.
+- *Playing live*: instruments. The voices (organ, keys and leads, bass, pads,
+  bells, grit), then poly keys, chords drawn, arpeggios, split, layer, hands
+  on the sound, and macros.
+
+The voices went under *Playing live* rather than *Pictures and sounds* by
+choice: they sound on the test tone without a key, but they are made to be
+played. *Split and layer* became *Split* and *Layer*.
+
+- *The rail is the open menu's sections*, ten or so rather than twenty-four,
+  and a menu goes back to the section it was left on.
+- *A card shows two lines*, and the strip under the grid shows the whole of
+  what the card under the pointer or the focus says, and which menu and
+  section it lives in - a search's heading can be off the top. Cards that
+  grew on hover moved the grid under the pointer, which is why it is a strip.
+- *`presettest.py` requires every section to be in exactly one menu.* A new
+  section left out of `PRESET_MENUS` would load, be searched and never be
+  shown in the rail; the check fails on it instead.
+
+The eighty-one new presets are mostly for playing, as asked: eight more
+splits and eight more layers (organ bass under a lead, acid under strings,
+bells over a pad, piano with strings, brass in two voices, two figures on
+every key), four more poly keys and four more for the hands (the wheel on the
+morph and the wavetable, the pedal on the pulse width, the envelope on the
+sync), an *Arpeggios* section of seven, *Chords drawn* - six ways of choosing
+which of the notes you hold are drawn, one of them a chord tuned to itself
+so a triad's figure locks - and *Macros*, six sets of four named knobs each
+already on several controls. The voices, the live effects, the listening and
+the drawings gained a few each.
+
+- *The round trip caught ten of them.* The envelope's attack stops at 200 ms
+  and its decay at 1000; eight pads and splits asked for more, and would have
+  loaded quietly at the ceiling. The crusher has no five-bit setting. And a
+  new Kalimba's blurb said *tine*, which is the word the search check uses to
+  find the FM piano alone.
+- *Every playing preset has to be played.* `performtest.py` strikes one chord
+  with the pedal down and the wheel up, and every routing in *Poly keys*,
+  *Chords drawn*, *Arpeggios*, *Split*, *Layer* and *Hands on the sound* has
+  to be still before it and move past 0.3 during it; every split and layer
+  has to sound both layers from it. That rules out the macros and an
+  expression pedal as sources there, and is why the macro presets have a
+  section outside the check.

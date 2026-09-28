@@ -30,7 +30,7 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
-KEYBOARD = ["Poly keys", "Split and layer", "Hands on the sound"]
+KEYBOARD = ["Poly keys", "Chords drawn", "Arpeggios", "Split", "Layer", "Hands on the sound"]
 
 # One port and a way to push bytes at it, before the page's script runs.
 STUB = """
@@ -67,7 +67,8 @@ with sync_playwright() as pw:
         out.counts[name] = section[1].length;
         for (const [preset, setup] of section[1]) {
           if (!played(setup)) out.unplayed.push(preset);
-          if (name === 'Split and layer' && !['split', 'layer'].includes(setup.layers)) out.unlayered.push(preset);
+          if (name === 'Split' && setup.layers !== 'split') out.unlayered.push(preset);
+          if (name === 'Layer' && setup.layers !== 'layer') out.unlayered.push(preset);
         }
       }
       // The null: a preset from the Organ section, which no hand moves.
@@ -78,10 +79,10 @@ with sync_playwright() as pw:
       return out;
     }""", KEYBOARD)
     print("    %s" % shape)
-    check("three sections for playing, each with a routing a hand moves in every preset",
+    check("the sections for playing, each with a routing a hand moves in every preset",
           shape["missing"] == [] and shape["unplayed"] == [] and all(n >= 5 for n in shape["counts"].values())
           and shape["organPlayed"] is False, str(shape))
-    check("and every preset in Split and layer is a split or a layer", shape["unlayered"] == [], str(shape["unlayered"]))
+    check("and every preset in Split is a split, and every one in Layer a layer", shape["unlayered"] == [], str(shape["unlayered"]))
     check("and a section of effects for live inputs, landing on whatever is playing",
           shape["live"] is not None and shape["live"][0] >= 5 and shape["live"][1] == "display", str(shape["live"]))
 

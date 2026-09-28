@@ -195,8 +195,15 @@ with sync_playwright() as pw:
 
     print("\n--- the mixer reaches it ---")
     p.evaluate("() => { genLane().mute = true; state.source.remix(); }")
-    p.wait_for_timeout(300)
+    # Until the heard window has no sound in it from before the mute, up to
+    # 3 s, rather than a fixed 300 ms: once, on a slow container, the window
+    # still held the unmuted lane and read its full 0.55. A mute that never
+    # silences still fails, at the end of the wait.
     muted = p.evaluate(HEARD)
+    for _ in range(30):
+        if muted["peak"] < 1e-3: break
+        p.wait_for_timeout(100)
+        muted = p.evaluate(HEARD)
     p.evaluate("() => { genLane().mute = false; state.source.remix(); }")
     p.wait_for_timeout(300)
     unmuted = p.evaluate(HEARD)

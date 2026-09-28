@@ -114,6 +114,9 @@ with sync_playwright() as pw:
     p.click("#preset"); p.wait_for_timeout(250)
     opened = p.evaluate("""() => ({
       open: el.presetDialog.open,
+      menu: el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu,
+      menus: Array.from(el.presetMenus.querySelectorAll('.preset-menu')).map((m) => [m.dataset.menu, Number(m.querySelector('.count').textContent)]),
+      rail: Array.from(el.presetRail.querySelectorAll('.preset-section')).map((r) => r.firstChild.textContent),
       sections: el.presetRail.querySelectorAll('.preset-section').length,
       on: el.presetRail.querySelector('[aria-selected="true"]').firstChild.textContent,
       cards: el.presetGrid.querySelectorAll('.preset-card').length,
@@ -122,13 +125,61 @@ with sync_playwright() as pw:
       about: el.presetAbout.textContent.length > 40,
       counts: Array.from(el.presetRail.querySelectorAll('.count')).map((c) => Number(c.textContent)),
     })""")
-    sizes = p.evaluate("PRESETS.map(([, e]) => e.length)")
+    menus = p.evaluate("""() => {
+      const size = (t) => { const s = PRESETS.find(([n]) => n === t); return s ? s[1].length : null; };
+      const named = PRESET_MENUS.flatMap(([, , , titles]) => titles);
+      return {
+        orphans: PRESETS.map(([t]) => t).filter((t) => named.filter((n) => n === t).length !== 1),
+        ghosts: named.filter((t) => size(t) === null),
+        sums: PRESET_MENUS.map(([id, , , titles]) => [id, titles.reduce((a, t) => a + size(t), 0)]),
+        live: PRESET_MENUS.find(([id]) => id === 'live')[3].map((t) => [t, size(t)]),
+      };
+    }""")
     print("    %s" % {k: v for k, v in opened.items() if k != "counts"})
-    check("the button opens it on the section of the preset in use, that card marked and focused",
-          opened["open"] and opened["on"] == "Keys and leads" and opened["pressed"] == ["b:Wah"]
-          and opened["focused"] == "b:Wah" and opened["about"], str(opened))
-    check("one section a group and one for saved setups, each counting its presets",
-          opened["sections"] == len(sizes) + 1 and opened["counts"][:-1] == sizes, str(opened["counts"]))
+    check("the button opens it on the menu and section of the preset in use, that card marked and focused",
+          opened["open"] and opened["menu"] == "live" and opened["on"] == "Keys and leads"
+          and opened["pressed"] == ["b:Wah"] and opened["focused"] == "b:Wah" and opened["about"], str(opened))
+    # A section in no menu would never be shown, and one in two would be
+    # shown twice; a menu naming a section that is not there shows nothing.
+    check("every section is in exactly one menu, and every menu's sections exist",
+          menus["orphans"] == [] and menus["ghosts"] == [], "%s, %s" % (menus["orphans"], menus["ghosts"]))
+    check("three menus by how much playing a preset asks for, then Saved, each counting its presets",
+          [m for m, _ in opened["menus"]] == ["sounds", "answer", "live", "saved"]
+          and [c for _, c in opened["menus"]][:3] == [n for _, n in menus["sums"]], str((opened["menus"], menus["sums"])))
+    check("and the rail is the open menu's sections only, in its order, each counting its presets",
+          opened["rail"] == [t for t, _ in menus["live"]] and opened["counts"] == [n for _, n in menus["live"]],
+          str((opened["rail"], opened["counts"])))
+    check("playing live has room to play in: a split and a layer section of eight or more each",
+          dict(menus["live"]).get("Split", 0) >= 8 and dict(menus["live"]).get("Layer", 0) >= 8, str(menus["live"]))
+    moved = p.evaluate("""() => {
+      const click = (sel) => el.presetDialog.querySelector(sel).click();
+      const on = () => [el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu,
+                        el.presetRail.querySelector('[aria-selected="true"]').firstChild.textContent];
+      click('.preset-menu[data-menu="sounds"]');
+      const first = on();
+      click('.preset-section[data-section="' + PRESETS.findIndex(([t]) => t === 'Solids') + '"]');
+      click('.preset-menu[data-menu="live"]');
+      const live = on();
+      click('.preset-menu[data-menu="sounds"]');
+      const back = on();
+      click('.preset-menu[data-menu="live"]');
+      return { first, live, back };
+    }""")
+    check("a menu opens on its first section, and going back to one returns to where it was left",
+          moved == {"first": ["sounds", "Start here"], "live": ["live", "Keys and leads"], "back": ["sounds", "Solids"]},
+          str(moved))
+    preview = p.evaluate("""() => {
+      const card = Array.from(el.presetGrid.querySelectorAll('.preset-card')).find((c) => c.dataset.value === 'b:Sync lead');
+      card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      const blurb = card.querySelector('.preset-blurb');
+      const full = PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Sync lead')[2];
+      return { text: el.presetPreview.querySelector('p').textContent === full,
+               where: el.presetPreview.querySelector('.where').textContent,
+               clamped: blurb.scrollHeight > blurb.clientHeight + 2 };
+    }""")
+    check("the strip below shows the whole of what the card under the pointer says, and where it lives",
+          preview["text"] and preview["where"] == "Playing live \u00b7 Keys and leads", str(preview))
+    check("while the card itself shows two lines of it", preview["clamped"], str(preview))
 
     p.click('.preset-section:has-text("Bells and metal")'); p.wait_for_timeout(150)
     p.click('.preset-card:has-text("Ring modulator")'); p.wait_for_timeout(300)
@@ -177,9 +228,9 @@ with sync_playwright() as pw:
       headings: Array.from(el.presetGrid.querySelectorAll('.preset-heading')).map((h) => h.textContent),
       names: Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent) })""")
     print("    'fold': %s" % found)
-    check("search looks across every section and heads what it finds by section",
+    check("search looks across every menu and heads what it finds by menu and section",
           "Wavefolder" in found["names"] and "Radial fold" in found["names"]
-          and {"Grit", "The plane"} <= set(found["headings"]), str(found))
+          and {"Playing live \u00b7 Grit", "Pictures and sounds \u00b7 The plane"} <= set(found["headings"]), str(found))
     # A word only a description has: "tine" is in the FM piano's, nowhere else.
     p.fill("#presetFind", "tine"); p.wait_for_timeout(150)
     tine = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
@@ -226,7 +277,8 @@ with sync_playwright() as pw:
           and saved["back"] == ["s:My test setup", 300], str(saved))
     live = p.evaluate("""() => {
       openPresets();
-      el.presetRail.querySelector('.preset-section:nth-child(' + (PRESETS.findIndex(([s]) => s === 'Live') + 1) + ')').click();
+      el.presetMenus.querySelector('[data-menu="answer"]').click();
+      el.presetRail.querySelector('.preset-section[data-section="' + PRESETS.findIndex(([s]) => s === 'Live') + '"]').click();
       const text = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
       el.presetDialog.close();
       return text;
@@ -242,7 +294,8 @@ with sync_playwright() as pw:
       navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
       el.srcMic.click(); await wait(900);
       openPresets();
-      el.presetRail.querySelector('.preset-section').click();
+      el.presetMenus.querySelector('[data-menu="sounds"]').click();
+      el.presetRail.querySelector('.preset-section[data-section="' + PRESETS.findIndex(([s]) => s === 'Start here') + '"]').click();
       const said = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
       const kind = state.source && state.source.kind;
       const offer = document.getElementById('presetToTone');
