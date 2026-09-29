@@ -3534,6 +3534,35 @@ as under the morph fader. `fadetest.py` holds it.
 - What it does not fade: an event routing, which fires or does not; a depth
   you drag, which should answer the hand; a knob or macro; and a slider you
   touch during a glide, which is dropped from it.
+- *The fade is an envelope you can see and take hold of.* One time for both
+  halves and an S-curve nobody could see was the first version: a velocity
+  that should bloom slowly and let go at once could not be had, and there was
+  no way to tell what the fade was doing except by listening. Under the
+  families now is a drawing: a rise, a hold and a fall, with the peak and the
+  end as the two times and the middle of each slope as its shape. A dot rides
+  it with whatever fade started last - a note, a routing, a preset - and
+  waits on the hold while the note is held. Everything that fades moves along
+  one ramp (`rampTo`, `rampAt`) on the half it is on, so routings, stepped
+  sources and the preset glide all answer the same drawing; the glide takes
+  the in half, since a preset is arriving.
+- *The shape is stored as the handle.* A shape is how far a fade has got
+  half-way through its time, which is exactly where the handle on the slope
+  sits, so what is dragged and what is stored are one number; the curve is
+  the power of time that passes through it. Pulling either slope's middle
+  towards where it is going - up on the rise, down on the fall - makes it
+  quick to start. The test drags each handle with the mouse and moves one by
+  keyboard, and checks the curve drawn passes through its handle.
+- *The time scale is a square root.* Each half's width is the square root of
+  its time over ten seconds; on a straight scale the whole of the first
+  second was four pixels, and the times anyone would reach for could not be
+  set by hand.
+- *The default is a straight line now,* not the S. It is the one a reader of
+  the drawing reads without help. It cost the preset sweep a race it had
+  been winning by luck: it waited a fixed 150 ms for a 100 ms glide, and the
+  S, flat at its end, hid a late frame that a straight line does not. It now
+  waits until the glide says it has landed.
+- A stored fade from before the envelope - one time - comes back as that
+  time for both halves.
 
 **Five sources and more.** Four presets with five or more sources, two of
 them the picture's among many others. *Eight things your hands do* (Many

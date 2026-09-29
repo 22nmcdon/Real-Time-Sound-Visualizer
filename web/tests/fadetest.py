@@ -288,7 +288,11 @@ with sync_playwright() as pw:
       setFade('both', 0.1); const bad = []; let glided = 0;
       for (const [name] of PRESETS.flatMap(([, e]) => e)) {
         applyPreset('b:' + name); if (glide.ids) glided++;
-        await wait(150);
+        /* Until the glide says it has landed, and a frame more: a fixed wait
+           was a race with the frame rate, hidden while the curve was an S -
+           flat at its end - and lost once a straight line was the default. */
+        for (let i = 0; i < 40 && glide.ids; i++) await wait(25);
+        await wait(50);
         const now = snapshot(), d = {};
         for (const k of Object.keys(now)) if (now[k] !== loadedSetup.snap[k]) d[k] = [loadedSetup.snap[k], now[k]];
         if (Object.keys(d).length) bad.push([name, d]);
@@ -300,13 +304,101 @@ with sync_playwright() as pw:
           landed["bad"] == [] and landed["glided"] > landed["total"] * 0.8,
           "%d of %d glided; %s" % (landed["glided"], landed["total"], landed["bad"][:3]))
 
+    print("\n--- the envelope: two times and two shapes ---")
+    env = run(p, """
+      restore({}); await wait(100); setMacro(0, 1);
+      setFade('both'); setFadeEnvelope({ inSeconds: 0.5, outSeconds: 2, inMid: 0.5, outMid: 0.5 });
+      addRouting('macro.1', 'gen.fm'); await wait(650); const inDone = route('gen.fm');
+      dropRouting('macro.1', 'gen.fm'); await wait(1000); const outHalf = route('gen.fm');
+      await wait(1300); const outDone = route('gen.fm');
+      // The same second of fading in, along a curve quick to start and one slow to start.
+      setFadeEnvelope({ inSeconds: 1, inMid: 0.85 }); addRouting('macro.1', 'gen.fm');
+      await wait(250); const quick = route('gen.fm'); clearSource('macro.1'); await wait(2200);
+      setFadeEnvelope({ inMid: 0.15 }); addRouting('macro.1', 'gen.fm');
+      await wait(250); const slow = route('gen.fm'); clearSource('macro.1'); await wait(2200);
+      // A preset glides along the in half, so over the in time and not the out.
+      restore({ freq: 880 }); await wait(100);
+      setFadeEnvelope({ inSeconds: 0.5, outSeconds: 5, inMid: 0.5 });
+      applyPreset("b:Pianist's piano"); await wait(700); const glided = Number(el.freq.value);
+      return { inDone, outHalf, outDone, quick, slow, glided };
+    """)
+    print("    %s" % env)
+    check("a fade in and a fade out each take their own time: in by half a second, out still going at one of two",
+          env["inDone"] == 0.35 and env["outHalf"] is not None and 0.1 < env["outHalf"] < 0.25 and env["outDone"] is None,
+          str(env))
+    check("the shape is heard: a quarter of the way into a fade, quick to start is most of the way, slow to start barely begun",
+          env["quick"] > 0.15 and env["slow"] < 0.05, str(env))
+    check("a preset glides over the in time", env["glided"] == 220, str(env))
+
+    print("\n--- the envelope drawn, and taken hold of ---")
+    drawn = p.evaluate("""() => {
+      setFadeEnvelope({ inSeconds: 2.5, outSeconds: 0.4, inMid: 0.8, outMid: 0.3 }); drawFadeEnvelope();
+      const at = (name) => ['cx', 'cy'].map((a) => +(+envParts[name].getAttribute(a)).toFixed(2));
+      const points = envParts.rise.getAttribute('d').slice(1).split('L').map((p) => p.split(',').map(Number));
+      return { peak: at('peak'), end: at('end'), riseMid: at('riseMid'), fallMid: at('fallMid'),
+               curveMid: +points[ENV.samples / 2][1].toFixed(2), text: el.fadeEnvValue.textContent };
+    }""")
+    print("    %s" % drawn)
+    # Worked by hand: the peak at 8 + 76 x sqrt(2.5 / 10) = 46; the end 22 on
+    # and 76 x sqrt(0.4 / 10) = 15.2 more; a shape of 0.8 at 52 - 44 x 0.8.
+    check("the handles sit where the numbers put them, and the curve passes through its shape handle",
+          drawn["peak"] == [46, 8] and drawn["end"] == [83.2, 52] and drawn["riseMid"] == [27, 16.8]
+          and drawn["fallMid"] == [75.6, 21.2] and drawn["curveMid"] == 16.8 and drawn["text"] == "In 2.5 s \u00b7 Out 0.40 s",
+          str(drawn))
+
+    p.evaluate("() => { setFadeEnvelope({ inSeconds: 1, outSeconds: 1, inMid: 0.5, outMid: 0.5 }); drawFadeEnvelope(); showControl('fadeMode'); }")
+    p.wait_for_timeout(200)
+    def drag(name, dx, dy):
+        box = p.locator('[data-handle="%s"]' % name).bounding_box()
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + dx / 2, y + dy / 2); p.mouse.move(x + dx, y + dy); p.mouse.up()
+    # The null for the drag: nothing moved before it.
+    unmoved = p.evaluate("() => [fade.inSeconds, fade.inMid, fade.outMid]")
+    check("before the drag the envelope is where it was set", unmoved == [1, 0.5, 0.5], str(unmoved))
+    drag("peak", 30, 0); drag("riseMid", 0, -15); drag("fallMid", 0, 15)
+    p.locator('[data-handle="end"]').focus(); p.keyboard.press("ArrowRight")
+    moved = p.evaluate("() => ({ inS: +fade.inSeconds.toFixed(3), outS: +fade.outSeconds.toFixed(3), inMid: +fade.inMid.toFixed(3), outMid: +fade.outMid.toFixed(3) })")
+    print("    after dragging and a key: %s" % moved)
+    # The fall's middle pulled down drops it early: quick to start, as the rise's pulled up is.
+    check("dragging the peak lengthens the fade in, and pulling each slope's middle towards where it is going makes it quick to start",
+          moved["inS"] > 1.5 and moved["inMid"] > 0.6 and moved["outMid"] > 0.6, str(moved))
+    check("and the arrow keys move a handle: the end a tenth longer", abs(moved["outS"] - 1.1) < 1e-6, str(moved))
+
+    dot = run(p, """
+      setFade('off'); restore({}); await wait(100); setMacro(0, 1);
+      setFade('both'); setFadeEnvelope({ inSeconds: 1, outSeconds: 1, inMid: 0.5, outMid: 0.5 });
+      const g = () => envGeometry(), where = () => ({ x: +envParts.dot.getAttribute('cx'), y: +envParts.dot.getAttribute('cy'),
+                                                    shown: envParts.dot.getAttribute('visibility') === 'visible' });
+      const before = where();
+      addRouting('macro.1', 'gen.fm'); await wait(400); const rising = where();
+      await wait(900); const holding = where();
+      dropRouting('macro.1', 'gen.fm'); await wait(400); const falling = where();
+      await wait(900); const gone = where();
+      return { before, rising, holding, falling, gone, g: g() };
+    """)
+    print("    %s" % dot)
+    gx = dot["g"]
+    check("the dot rides the rise while a fade in is under way, waits on the hold, rides the fall, and goes",
+          not dot["before"]["shown"]
+          and dot["rising"]["shown"] and 8 < dot["rising"]["x"] < gx["peak"] and 8 < dot["rising"]["y"] < 52
+          and dot["holding"]["shown"] and dot["holding"]["y"] == 8
+          and dot["falling"]["shown"] and gx["held"] < dot["falling"]["x"] < gx["end"] and 8 < dot["falling"]["y"] < 52
+          and not dot["gone"]["shown"], str(dot))
+
     print("\n--- kept in this browser ---")
-    p.evaluate("() => { setFade('both', 3.5); syncFadePanel(); }")
+    p.evaluate("() => { setFade('both'); setFadeEnvelope({ inSeconds: 3.5, outSeconds: 0.25, inMid: 0.7, outMid: 0.2 }); saveFade(); }")
     p.reload(); p.wait_for_timeout(700)
-    kept = p.evaluate("() => ({ mode: fade.mode, seconds: fade.seconds, shown: el.fadeMode.value, time: el.fadeTimeValue.textContent })")
-    check("the fade and its time come back after a reload, on the panel too",
-          kept == {"mode": "both", "seconds": 3.5, "shown": "both", "time": "3.5 s"}, str(kept))
-    p.evaluate("() => { setFade('off', 2); }")
+    kept = p.evaluate("() => ({ mode: fade.mode, inS: fade.inSeconds, outS: fade.outSeconds, inMid: fade.inMid, outMid: fade.outMid, shown: el.fadeMode.value, text: el.fadeEnvValue.textContent })")
+    check("the fade and its envelope come back after a reload, on the panel too",
+          kept == {"mode": "both", "inS": 3.5, "outS": 0.25, "inMid": 0.7, "outMid": 0.2, "shown": "both",
+                   "text": "In 3.5 s \u00b7 Out 0.25 s"}, str(kept))
+    # Stored by the version with one time for both halves.
+    p.evaluate("() => window.localStorage.setItem('scope.fade', JSON.stringify({ mode: 'in', seconds: 3 }))")
+    p.reload(); p.wait_for_timeout(700)
+    old = p.evaluate("() => ({ mode: fade.mode, inS: fade.inSeconds, outS: fade.outSeconds })")
+    check("and one stored as a single time comes back as that time for both halves",
+          old == {"mode": "in", "inS": 3, "outS": 3}, str(old))
+    p.evaluate("() => { setFade('off', 2); setFadeEnvelope({ inMid: 0.5, outMid: 0.5 }); saveFade(); }")
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
