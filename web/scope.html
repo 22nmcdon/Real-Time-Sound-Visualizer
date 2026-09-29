@@ -1011,6 +1011,13 @@ body[data-view="bench"] .dock  { order: 3; }
 .fade-env .env-base { stroke: var(--line); stroke-width: 1; }
 .fade-env .env-line { fill: none; stroke: var(--charcoal); stroke-width: 1.6; stroke-linejoin: round; }
 .fade-env .env-line.off { stroke: var(--unresolved); stroke-dasharray: 3 3; }
+.fade-env .env-ghost { fill: none; stroke: var(--ch2); stroke-width: 1; opacity: 0.35; }
+.fade-env .env-corner { stroke: var(--blush-deep); cursor: move; }
+.fade-opts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.fade-opts .check { margin: 0; }
+.fade-layers { display: inline-flex; gap: 2px; }
+.fade-layers[hidden] { display: none; }
+.fade-layers .link-btn[aria-pressed="true"] { color: var(--charcoal); border-bottom: 1px solid var(--blush-deep); }
 .fade-env .env-handle { fill: var(--paper); stroke-width: 1.6; cursor: grab; }
 .fade-env .env-time { stroke: var(--blush-deep); }
 .fade-env .env-bend { stroke: var(--ch2); cursor: ns-resize; }
@@ -1969,7 +1976,15 @@ body[data-view="bench"] .dock  { order: 3; }
                 title="Whether modulation eases in and out: a routing you patch or take off, and each step of the keyboard's sources - a note struck, a note let go, the pedal. Loading a preset glides its sliders over the same time."></select></div>
             </div>
             <div class="fade-env">
-              <svg id="fadeEnv" viewBox="0 0 200 64" role="group" aria-label="The fade's envelope: drag the peak and the end for the times, the middle of each slope for its shape"></svg>
+              <svg id="fadeEnv" viewBox="0 0 240 70" role="group" aria-label="The fade's envelope: drag the ends of the stretches for their times, the corner for the decay and the sustain, the middle of each slope for its shape"></svg>
+              <div class="fade-opts">
+                <span class="fade-layers" id="fadeLayers" hidden>
+                  <button type="button" class="link-btn caps" id="fadeEditA" aria-pressed="true" title="Draw and shape layer A's envelope">A</button>
+                  <button type="button" class="link-btn caps" id="fadeEditB" aria-pressed="false" title="Draw and shape layer B's envelope">B</button>
+                </span>
+                <label class="check" title="Each note struck runs the envelope again from where it is"><input type="checkbox" id="fadeRestart"> Restart</label>
+                <label class="check" title="While a note is held, the attack and decay go round again and again"><input type="checkbox" id="fadeLoop"> Loop</label>
+              </div>
               <span class="reading" id="fadeEnvValue">In 2.0 s &middot; Out 2.0 s</span>
             </div>
           </div>
@@ -3646,11 +3661,19 @@ body[data-view="bench"] .dock  { order: 3; }
         <br><br>
         <i>Fade</i>, under the families, is for when modulation should not arrive or leave all
         at once. <i>In</i> eases it in, <i>Out</i> eases it away, and <i>In and out</i> does
-        both. Under it is the fade's envelope: a rise, a hold and a fall. Drag the top of the rise
-        sideways for how long a fade in takes and the end of the fall for how long a fade out
-        takes; drag the middle of either slope towards where it is going to make it quick to
-        start, or away to make it slow to start (or use the arrow keys on a handle). A dot rides
-        the envelope with the last fade to begin and waits on the hold while a note is held. It acts on a routing you patch or take off, and
+        both. Under it is the fade's envelope: a wait, the attack, a decay to the level it holds
+        at, the hold, and the release. Drag the end of each stretch sideways for its time; drag
+        the corner where the decay meets the hold up and down for the level held, so a strike
+        can burst and then settle; drag the middle of a slope towards where it is going to make
+        it quick to start, or away to make it slow (or use the arrow keys on a handle).
+        <i>Restart</i> runs the envelope again on every note you strike, and <i>Loop</i> sends
+        the attack and decay round again for as long as a note is held. A dot rides the envelope
+        with the last fade to begin; its height is the level now. With the keyboard split or
+        layered, <i>A</i> and <i>B</i> choose which layer's envelope you are drawing, and the
+        other shows faint behind it: each layer's sound follows its own, and a note struck in a
+        split restarts only its own layer's. The picture's controls follow layer A's. The whole
+        envelope acts on notes; patching or taking off a routing uses its attack and release.
+        It acts on a routing you patch or take off, and
         on every step the keyboard's sources take: with velocity on the drive, a note starts the
         drive where it rests and brings it up to how hard you struck, and under <i>Out</i> a
         release lets it back down slowly. The pedal and the notes' count, spread, melody and inner
@@ -4469,7 +4492,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
                   "crossGroup", "crossOn", "crossCount", "crossX", "crossXValue", "crossY", "crossYValue",
                   "crossNoteX", "crossNoteY", "crossDecay", "crossDecayValue", "crossLevel", "crossLevelValue",
-                  "srcGroup", "srcFamilies", "fadeMode", "fadeEnv", "fadeEnvValue", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
+                  "srcGroup", "srcFamilies", "fadeMode", "fadeEnv", "fadeEnvValue", "fadeLayers", "fadeEditA", "fadeEditB", "fadeRestart", "fadeLoop", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "genMode", "interval", "tuneJust", "tuneEqual", "figureRows", "harmoRows",
                   "wireRows", "traceRateRow", "model",
@@ -6123,58 +6146,122 @@ syncMorphPanel();
    in a preset change at once, as they do under the morph. */
 const FADE_MODES = [["off", "Off"], ["in", "In"], ["out", "Out"], ["both", "In and out"]];
 const FADE_KEY = "scope.fade";
-/* The envelope: how long a fade in takes and how long a fade out takes, and
-   the shape of each. A shape is stored as how far the fade has got half-way
-   through its time - a half is a straight line, more is quick to start and
-   slow to land, less is slow to start - because that is exactly the handle
-   on the drawing: the handle IS the curve's midpoint, so what you drag and
-   what is stored are one number. One time for both was the first version,
-   with an S-curve nobody could see or change; a velocity that should bloom
-   slowly and let go at once could not be had. */
-const FADE_LIMITS = { min: 0.05, max: 10, bendMin: 0.1, bendMax: 0.9 };
-const fade = { mode: "off", inSeconds: 2, outSeconds: 2, inMid: 0.5, outMid: 0.5, gains: new Map(), last: null };
+/* The envelope, one per layer. It began as two numbers - how long a fade in
+   took and how long a fade out - and grew the shape of a synthesiser's
+   modulation envelope, because what a player asked of it was what one does:
+
+   - `delay`: a wait before anything moves, so vibrato can arrive after the
+     note has spoken;
+   - `attack`, with its shape: the rise to full;
+   - `decay` to `sustain`, with its shape: a burst on the strike that settles
+     to a held level - FM that barks and then sits, drive that bites and then
+     relaxes. A sustain of one is no decay at all, which is the default;
+   - `release`, with its shape: the fall back to rest;
+   - `restart`: each note struck runs the envelope again from wherever it is,
+     rather than a new note under a held chord carrying on;
+   - `loop`: while held, the attack and decay go round again and again - a
+     pulse on every held note, shaped by the drawing.
+
+   A shape is stored as how far its stretch has got half-way through its time,
+   because that is exactly the handle on the drawing: what is dragged and
+   what is stored are one number. The whole envelope applies to the sources
+   that move in steps - the notes; a routing being patched or taken off uses
+   only the attack and the release, because a routing arriving is not a note
+   and has nothing to hold a sustain for.
+
+   Two of them, because a layered sound is two instruments: a bass whose
+   velocity blooms slowly under a lead that snaps. Layer B's is used only
+   while the keyboard is split or layered, and only on what belongs to a
+   layer - the voice's pitch, level, shape, FM, drive, filter, bars; the
+   picture's controls follow layer A's. */
+const FADE_LIMITS = { min: 0.05, max: 10, delayMax: 5, bendMin: 0.1, bendMax: 0.9 };
+const ENV_DEFAULT = { delay: 0, attack: 2, attackMid: 0.5, decay: 0.5, decayMid: 0.5, sustain: 1,
+                      release: 2, releaseMid: 0.5, restart: false, loop: false };
+const fade = { mode: "off", envs: [Object.assign({}, ENV_DEFAULT), Object.assign({}, ENV_DEFAULT)], editing: 0,
+               gains: new Map(), last: [null, null], shownLayered: null };
 const routeKey = (routing) => routing.sourceId + ">" + routing.destId;
 const fadesIn = () => fade.mode === "in" || fade.mode === "both";
 const fadesOut = () => fade.mode === "out" || fade.mode === "both";
+// Whether layer B's envelope is in use: the keyboard split or layered.
+const fadeLayered = () => layersOn();
 
-/* How far along its way a fade is, nought to one, at a share t of its time.
-   A power of t, chosen so that half the time gives the stored midpoint. */
-function fadeTravel(arriving, t) {
+/* How far along its stretch a fade is, nought to one, at a share t of its
+   time: a power of t, chosen so half the time gives the stored midpoint. */
+function fadeTravel(t, mid) {
   if (t >= 1) return 1;
   if (t <= 0) return 0;
-  const mid = arriving ? fade.inMid : fade.outMid;
   return Math.pow(t, Math.log(mid) / Math.log(0.5));
 }
-const fadeMs = (arriving) => (arriving ? fade.inSeconds : fade.outSeconds) * 1000;
 
-/* A ramp, the one shape everything here moves along: a routing's gain, a
-   stepped source's value, and a preset's glide. From where it was to where
-   it is going, along the in or the out half of the envelope, over that
-   half's time. Retargeted from wherever it has got to, so a change of mind
+/* A ramp: from where it was to where it is going, along the attack or the
+   release of one layer's envelope, over that stretch's time. A routing's
+   gain moves on one, and so does a stepped source's value between two notes
+   held in turn. Retargeted from wherever it has got to, so a change of mind
    half-way is never a jump. */
-function rampAt(ramp, now) {
-  const t = (now - ramp.at) / fadeMs(ramp.arriving);
-  return ramp.from + (ramp.to - ramp.from) * fadeTravel(ramp.arriving, t);
+function rampMs(ramp) {
+  const env = fade.envs[ramp.layer];
+  return (ramp.arriving ? env.attack : env.release) * 1000;
 }
-const rampDone = (ramp, now) => now - ramp.at >= fadeMs(ramp.arriving);
-function rampTo(ramp, to, arriving, now) {
+function rampAt(ramp, now) {
+  const env = fade.envs[ramp.layer], t = (now - ramp.at) / rampMs(ramp);
+  return ramp.from + (ramp.to - ramp.from) * fadeTravel(t, ramp.arriving ? env.attackMid : env.releaseMid);
+}
+const rampDone = (ramp, now) => now - ramp.at >= rampMs(ramp);
+function rampTo(ramp, to, arriving, now, shown) {
   ramp.from = rampAt(ramp, now);
   ramp.to = to; ramp.arriving = arriving; ramp.at = now;
-  // The one the drawing's dot follows: whatever started most recently.
-  fade.last = { arriving, at: now };
+  // The one the drawing's dot follows: whatever started last on its layer.
+  if (shown !== false) fade.last[ramp.layer] = { ramp };
 }
-const rampStill = (value) => ({ from: value, to: value, at: -Infinity, arriving: true });
+const rampStill = (value, layer) => ({ from: value, to: value, at: -Infinity, arriving: true, layer });
 
-/* How much of a routing is on: nought to one. A pair not yet seen by
-   `fadeStep` arrived since the last frame, and is nought if routings fade
-   in - otherwise a routing made between two frames would be heard at full
-   depth for one block before its fade began, which is the click this is
-   here to stop. */
-function fadeGain(key) {
+/* A gate: a note's envelope, opened when the note arrives and closed when
+   it goes. Where it is is worked out from when it opened and the level it
+   opened from, rather than stepped a frame at a time, so any number of
+   readers in a frame agree and a slow frame is not a slow envelope. */
+function gatePhase(gate, now) {
+  const env = fade.envs[gate.layer];
+  if (!Number.isFinite(now - gate.at)) {
+    return gate.on ? { stage: "sustain", t: 0, level: env.sustain } : { stage: "rest", t: 1, level: 0 };
+  }
+  if (!gate.on) {
+    const t = (now - gate.at) / (env.release * 1000);
+    if (!fadesOut() || t >= 1) return { stage: "rest", t: 1, level: 0 };
+    return { stage: "release", t, level: gate.from * (1 - fadeTravel(t, env.releaseMid)) };
+  }
+  if (!fadesIn()) return { stage: "sustain", t: 0, level: env.sustain };
+  let ms = now - gate.at;
+  const wait = env.delay * 1000, rise = env.attack * 1000, fall = env.decay * 1000;
+  if (ms < wait) return { stage: "delay", t: ms / wait, level: gate.from };
+  ms -= wait;
+  let start = gate.from;
+  // Round again from the sustain level, once the first attack and decay are done.
+  if (env.loop && ms >= rise + fall) { ms %= rise + fall; start = env.sustain; }
+  if (ms < rise) {
+    return { stage: "attack", t: ms / rise, level: start + (1 - start) * fadeTravel(ms / rise, env.attackMid) };
+  }
+  ms -= rise;
+  if (ms < fall) {
+    return { stage: "decay", t: ms / fall, level: 1 + (env.sustain - 1) * fadeTravel(ms / fall, env.decayMid) };
+  }
+  return { stage: "sustain", t: 0, level: env.sustain };
+}
+function gateSet(gate, on, now) {
+  gate.from = gatePhase(gate, now).level;
+  gate.on = on; gate.at = now;
+  fade.last[gate.layer] = { gate };
+}
+
+/* How much of a routing is on, for one layer: nought to one. A pair not yet
+   seen by `fadeStep` arrived since the last frame, and is nought if routings
+   fade in - otherwise a routing made between two frames would be heard at
+   full depth for one block before its fade began, which is the click this
+   is here to stop. */
+function fadeGain(key, layer = 0) {
   if (fade.mode === "off") return 1;
   const entry = fade.gains.get(key);
   if (!entry) return fadesIn() ? 0 : 1;
-  return rampAt(entry, performance.now());
+  return rampAt(entry.ramps[layer], performance.now());
 }
 
 // Every routing that is heard: the ones in the setup, and those fading out.
@@ -6184,14 +6271,15 @@ function routingsHeard() {
   const out = state.modRoutings.slice();
   const now = performance.now();
   for (const [key, entry] of fade.gains) {
-    if (!here.has(key) && (entry.to > 0 || !rampDone(entry, now))) out.push(entry.routing);
+    if (here.has(key)) continue;
+    if (entry.ramps.some((ramp) => ramp.to > 0 || !rampDone(ramp, now))) out.push(entry.routing);
   }
   return out;
 }
 
 /* Once a frame. Each pair in the setup is sent towards one and each ghost
-   towards nought; a ghost that has arrived is forgotten and the routes
-   recompiled without it. */
+   towards nought, on both layers; a ghost that has arrived on both is
+   forgotten and the routes recompiled without it. */
 function fadeStep() {
   if (fade.mode === "off") return;
   const now = performance.now();
@@ -6200,73 +6288,99 @@ function fadeStep() {
     const key = routeKey(routing);
     here.add(key);
     let entry = fade.gains.get(key);
-    if (!entry) { entry = rampStill(0); fade.gains.set(key, entry); }
+    if (!entry) { entry = { ramps: [rampStill(0, 0), rampStill(0, 1)], routing }; fade.gains.set(key, entry); }
     entry.routing = routing;
-    if (entry.to === 1) continue;
-    if (fadesIn()) rampTo(entry, 1, true, now);
-    else Object.assign(entry, rampStill(1));
+    for (const ramp of entry.ramps) {
+      if (ramp.to === 1) continue;
+      if (fadesIn()) rampTo(ramp, 1, true, now);
+      else Object.assign(ramp, rampStill(1, ramp.layer));
+    }
   }
   for (const [key, entry] of fade.gains) {
     if (here.has(key)) continue;
-    if (entry.to !== 0) {
-      if (!fadesOut()) { fade.gains.delete(key); modDirty = true; continue; }
-      rampTo(entry, 0, false, now);
-    }
-    if (rampDone(entry, now)) { fade.gains.delete(key); modDirty = true; }
+    if (!fadesOut()) { fade.gains.delete(key); modDirty = true; continue; }
+    for (const ramp of entry.ramps) if (ramp.to !== 0) rampTo(ramp, 0, false, now);
+    if (entry.ramps.every((ramp) => rampDone(ramp, now))) { fade.gains.delete(key); modDirty = true; }
   }
 }
 
 /* A source that moves in steps - how hard you struck, the pedal, how many
-   notes and where they are - as the routings hear it: each step walked along
-   the envelope rather than taken in a frame. A note from silence takes the
-   drive from where it rests up to the velocity's worth along the in half; a
-   release, if routings fade out, walks it back down the out half. A step
-   towards nought is leaving and one away from it arriving, so In and Out
-   mean here what they mean for a routing.
+   notes and where they are - as one layer hears it: the value it last had
+   while notes were down, times where that layer's envelope has got to.
 
-   From where it has got to, not from nought, when a step comes during a
-   ramp or while notes are held: a new note under a held chord moves the
-   drive from its level to the new one. Dropping to rest first would itself
-   be the jump the fade is here to remove.
+   A note from silence opens the gate: the envelope runs from where it is -
+   through the delay, the attack, the decay - and holds at the sustain; the
+   last note let go closes it, and the release falls from wherever it had
+   reached, the value held at what it was, since the source itself is nought
+   by then. A step between two held values - another note into a chord, a
+   note played harder - moves the value along the attack or the release
+   from where it has got to, without touching the gate: dropping to rest
+   first would itself be the jump the fade is here to remove. With `restart`
+   a strike in the layer's half of the keyboard opens the gate again.
 
    Only sources marked `stepped`. A continuous source already moves as it
-   should, and easing an oscillator or the photocell over two seconds would
-   flatten it into something else; the envelope is its own fade. A
-   controller is left out too: a knob is a hand, and a switch on one cannot
-   be told from a knob turned quickly. Kept per source, so every routing
-   from one source hears the same ramp. */
+   should, and easing an oscillator or the photocell would flatten it into
+   something else; the signal's envelope is its own fade. A controller is
+   left out too: a knob is a hand, and a switch on one cannot be told from a
+   knob turned quickly. Kept per source, so every routing from one source
+   hears the same envelope on a layer. */
 const stepFade = new Map();
-function sourceNow(source) {
+function sourceNow(source, layer = 0) {
   const target = source.value();
   if (fade.mode === "off" || source.stepped !== true) return target;
   const now = performance.now();
-  let ramp = stepFade.get(source.id);
-  if (!ramp) { ramp = rampStill(target); stepFade.set(source.id, ramp); }
-  if (target !== ramp.to) {
-    const arriving = Math.abs(target) > Math.abs(rampAt(ramp, now));
-    if (arriving ? fadesIn() : fadesOut()) rampTo(ramp, target, arriving, now);
-    else Object.assign(ramp, rampStill(target));
+  let st = stepFade.get(source.id);
+  if (!st) {
+    st = { last: target, strikes: midi.strikesBy.slice(), values: [0, 1].map((l) => rampStill(target, l)),
+           gates: [0, 1].map((l) => ({ on: target !== 0, at: -Infinity, from: 0, layer: l })) };
+    stepFade.set(source.id, st);
   }
-  return rampAt(ramp, now);
+  if (target !== st.last) {
+    const opens = st.last === 0, closes = target === 0;
+    for (let l = 0; l < 2; l++) {
+      if (opens) { st.values[l] = rampStill(target, l); gateSet(st.gates[l], true, now); }
+      else if (closes) { st.values[l] = rampStill(rampAt(st.values[l], now), l); gateSet(st.gates[l], false, now); }
+      else {
+        const arriving = Math.abs(target) > Math.abs(rampAt(st.values[l], now));
+        if (arriving ? fadesIn() : fadesOut()) rampTo(st.values[l], target, arriving, now, false);
+        else st.values[l] = rampStill(target, l);
+      }
+    }
+    st.last = target;
+  }
+  for (let l = 0; l < 2; l++) {
+    if (midi.strikesBy[l] === st.strikes[l]) continue;
+    st.strikes[l] = midi.strikesBy[l];
+    if (fade.envs[l].restart && target !== 0) gateSet(st.gates[l], true, now);
+  }
+  return rampAt(st.values[layer], now) * gatePhase(st.gates[layer], now).level;
 }
 
 function saveFade() {
-  try {
-    window.localStorage.setItem(FADE_KEY, JSON.stringify({
-      mode: fade.mode, inSeconds: fade.inSeconds, outSeconds: fade.outSeconds, inMid: fade.inMid, outMid: fade.outMid,
-    }));
-  } catch (error) { /* private window */ }
+  try { window.localStorage.setItem(FADE_KEY, JSON.stringify({ mode: fade.mode, envs: fade.envs })); }
+  catch (error) { /* private window */ }
 }
-/* The envelope's four numbers, each clamped. `seconds` sets both times, as
-   the one slider the fade first had did. */
-function setFadeEnvelope(part) {
+/* One layer's envelope, each number clamped. The names the fade had before
+   the envelope - `inSeconds`, `outSeconds`, `inMid`, `outMid`, and `seconds`
+   for both - are taken as the attack and release, which is how a fade stored
+   by then comes back. */
+function setFadeEnvelope(part, layer = 0) {
+  const env = fade.envs[layer];
+  const p = Object.assign({}, part);
+  if (p.seconds !== undefined) { p.attack = p.attack ?? p.seconds; p.release = p.release ?? p.seconds; }
+  for (const [from, to] of [["inSeconds", "attack"], ["outSeconds", "release"], ["inMid", "attackMid"], ["outMid", "releaseMid"]]) {
+    if (p[from] !== undefined && p[to] === undefined) p[to] = p[from];
+  }
   const within = (v, lo, hi, dflt) => (Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Number(v))) : dflt);
-  const { min, max, bendMin, bendMax } = FADE_LIMITS;
-  if (part.seconds !== undefined) part = Object.assign({ inSeconds: part.seconds, outSeconds: part.seconds }, part);
-  fade.inSeconds = within(part.inSeconds, min, max, fade.inSeconds);
-  fade.outSeconds = within(part.outSeconds, min, max, fade.outSeconds);
-  fade.inMid = within(part.inMid, bendMin, bendMax, fade.inMid);
-  fade.outMid = within(part.outMid, bendMin, bendMax, fade.outMid);
+  const { min, max, delayMax, bendMin, bendMax } = FADE_LIMITS;
+  env.delay = within(p.delay, 0, delayMax, env.delay);
+  env.attack = within(p.attack, min, max, env.attack);
+  env.decay = within(p.decay, min, max, env.decay);
+  env.release = within(p.release, min, max, env.release);
+  env.sustain = within(p.sustain, 0, 1, env.sustain);
+  for (const k of ["attackMid", "decayMid", "releaseMid"]) env[k] = within(p[k], bendMin, bendMax, env[k]);
+  if (p.restart !== undefined) env.restart = p.restart === true;
+  if (p.loop !== undefined) env.loop = p.loop === true;
 }
 
 /* Changing the mode starts from where things are: every routing in the setup
@@ -6274,13 +6388,15 @@ function setFadeEnvelope(part) {
    does not fade in what was already playing. A new time or shape changes
    only the rest of a fade under way. */
 function setFade(mode, seconds) {
-  if (seconds !== undefined) setFadeEnvelope({ seconds });
+  if (seconds !== undefined) { setFadeEnvelope({ seconds }, 0); setFadeEnvelope({ seconds }, 1); }
   if (FADE_MODES.some(([id]) => id === mode) && mode !== fade.mode) {
     fade.mode = mode;
     fade.gains.clear();
     stepFade.clear();
-    fade.last = null;
-    for (const routing of state.modRoutings) fade.gains.set(routeKey(routing), Object.assign(rampStill(1), { routing }));
+    fade.last = [null, null];
+    for (const routing of state.modRoutings) {
+      fade.gains.set(routeKey(routing), { ramps: [rampStill(1, 0), rampStill(1, 1)], routing });
+    }
     modDirty = true;
   }
   saveFade();
@@ -6290,9 +6406,9 @@ function setFade(mode, seconds) {
    the morph fader drives them and for the same reason (see `morphApply`):
    `restore` is a load, and a slider is the path built to be moved sixty
    times a second. The preset is loaded, its sliders read, and then put back
-   where they were and walked to the new values - along the in half of the
-   envelope, since what is happening is the preset arriving. A slider your
-   hand moves during the glide is dropped from it. */
+   where they were and walked to the new values - along layer A's attack,
+   since what is happening is the preset arriving. A slider your hand moves
+   during the glide is dropped from it. */
 const glide = { ids: null, from: null, to: null, at: 0, ms: 0 };
 function glideFrom(before) {
   const to = morphCapture();
@@ -6305,8 +6421,8 @@ function glideFrom(before) {
   glide.ids = ids.length ? ids : null;
   if (!glide.ids) return;
   glide.from = before; glide.to = to;
-  glide.at = performance.now(); glide.ms = fadeMs(true);
-  fade.last = { arriving: true, at: glide.at };
+  glide.at = performance.now(); glide.ms = fade.envs[0].attack * 1000;
+  fade.last[0] = { ramp: { from: 0, to: 1, at: glide.at, arriving: true, layer: 0 } };
   glideStep(glide.at);
 }
 function glideStep(now) {
@@ -6315,7 +6431,7 @@ function glideStep(now) {
   for (const id of glide.ids) {
     // Landed on the value itself, not on a blend that rounds near it.
     if (t >= 1) setSliderTo(id, glide.to[id]);
-    else blendSlider(id, glide.from[id], glide.to[id], fadeTravel(true, t));
+    else blendSlider(id, glide.from[id], glide.to[id], fadeTravel(t, fade.envs[0].attackMid));
   }
   if (t >= 1) glide.ids = null;
 }
@@ -6327,27 +6443,67 @@ document.addEventListener("input", (event) => {
 }, true);
 
 /* --- the envelope, drawn -------------------------------------------------
-   The fade as a picture you can take hold of: a rise from rest to full, a
-   hold, and a fall back to rest, in a viewBox of 200 by 64 that scales with
-   its column and keeps its circles round. Each half's width is the square
-   root of its time over ten seconds, so a tenth of a second and ten seconds
-   can both be set by hand - on a straight scale the whole of the first
-   second was four pixels. Four handles: the peak (the in time), the end
-   (the out time) and the middle of each slope (its shape). A dot rides the
-   curve with whatever fade started last - a note, a routing, a preset - and
-   waits on the hold while the note is held. A half that is off is drawn
-   faint as the jump it now is, and can still be shaped. */
-const ENV = { x0: 8, seg: 76, hold: 22, top: 8, rest: 52, samples: 24 };
-const envWidth = (seconds) => ENV.seg * Math.sqrt(seconds / FADE_LIMITS.max);
-const envSeconds = (width) => FADE_LIMITS.max * Math.pow(Math.max(0, Math.min(1, width / ENV.seg)), 2);
+   The envelope as a picture you can take hold of, in a viewBox of 240 by 70
+   that scales with its column and keeps its circles round: a wait at rest,
+   the attack, the decay to the sustain, a stretch held there, and the
+   release. Each stretch's width is the square root of its time over its
+   longest, so a twentieth of a second and ten seconds can both be set by
+   hand - on a straight scale the whole first second was four pixels.
+
+   Seven handles: the end of the wait; the peak (the attack's time); the
+   corner where the decay meets the sustain, which moves both ways - its
+   time sideways, the sustain level up and down; the end of the release; and
+   the middle of each slope, its shape. Pulling a slope's middle towards
+   where it is going makes it quick to start. A dot rides the drawing with
+   what started last on the layer shown - its height is the level now, its
+   place along is the stretch it is in.
+
+   Layered, an A and a B choose which layer's envelope is drawn and taken
+   hold of, and the other is drawn faint behind it. Two drawings one above
+   the other were the first thought and cost the Sources tab its fit: with a
+   rack of six the families' column is already most of the Bench's height,
+   and no tab may scroll. */
+const ENV = { x0: 6, wait: 24, seg: 60, hold: 20, top: 8, rest: 54, samples: 24, view: 240 };
+const envWidth = (seconds, longest, width) => width * Math.sqrt(seconds / longest);
+const envSeconds = (w, longest, width) => longest * Math.pow(Math.max(0, Math.min(1, w / width)), 2);
 const envY = (v) => ENV.rest - (ENV.rest - ENV.top) * v;
-function envGeometry() {
-  const peak = ENV.x0 + envWidth(fade.inSeconds);
-  const held = peak + ENV.hold;
-  return { peak, held, end: held + envWidth(fade.outSeconds) };
+const envLevel = (y) => (ENV.rest - y) / (ENV.rest - ENV.top);
+function envGeometry(env) {
+  const waitEnd = ENV.x0 + envWidth(env.delay, FADE_LIMITS.delayMax, ENV.wait);
+  const peak = waitEnd + envWidth(env.attack, FADE_LIMITS.max, ENV.seg);
+  const corner = peak + envWidth(env.decay, FADE_LIMITS.max, ENV.seg);
+  const held = corner + ENV.hold;
+  return { waitEnd, peak, corner, held, end: held + envWidth(env.release, FADE_LIMITS.max, ENV.seg) };
+}
+// The whole envelope as one path, for the other layer's ghost.
+function envPath(env) {
+  const g = envGeometry(env), points = [[ENV.x0, 0], [g.waitEnd, 0]];
+  for (let i = 1; i <= ENV.samples; i++) {
+    const t = i / ENV.samples;
+    points.push([g.waitEnd + t * (g.peak - g.waitEnd), fadeTravel(t, env.attackMid)]);
+  }
+  for (let i = 1; i <= ENV.samples; i++) {
+    const t = i / ENV.samples;
+    points.push([g.peak + t * (g.corner - g.peak), 1 + (env.sustain - 1) * fadeTravel(t, env.decayMid)]);
+  }
+  points.push([g.held, env.sustain]);
+  for (let i = 1; i <= ENV.samples; i++) {
+    const t = i / ENV.samples;
+    points.push([g.held + t * (g.end - g.held), env.sustain * (1 - fadeTravel(t, env.releaseMid))]);
+  }
+  return "M" + points.map(([x, v]) => x.toFixed(2) + "," + envY(v).toFixed(2)).join("L");
 }
 const SVG_NS = "http://www.w3.org/2000/svg";
 const envParts = {};
+const ENV_HANDLES = [
+  ["wait", "Delay before the fade in", "time"],
+  ["attackMid", "Attack shape", "bend"],
+  ["decayMid", "Decay shape", "bend"],
+  ["releaseMid", "Release shape", "bend"],
+  ["peak", "Attack time", "time"],
+  ["corner", "Decay time and sustain level", "corner"],
+  ["end", "Release time", "time"],
+];
 function buildFadeEnvelope() {
   const svg = el.fadeEnv;
   const make = (tag, attrs) => {
@@ -6356,30 +6512,28 @@ function buildFadeEnvelope() {
     svg.appendChild(node);
     return node;
   };
-  envParts.base = make("line", { class: "env-base", y1: ENV.rest, y2: ENV.rest, x1: 2, x2: 198 });
-  envParts.rise = make("path", { class: "env-line" });
-  envParts.hold = make("line", { class: "env-line", y1: ENV.top, y2: ENV.top });
-  envParts.fall = make("path", { class: "env-line" });
-  // What each part is, under it, so the drawing explains itself.
-  for (const name of ["in", "held", "out"]) {
-    envParts["label-" + name] = make("text", { class: "env-label", y: 63, "text-anchor": "middle" });
+  envParts.base = make("line", { class: "env-base", y1: ENV.rest, y2: ENV.rest, x1: 2, x2: ENV.view - 2 });
+  envParts.ghost = make("path", { class: "env-ghost" });
+  for (const name of ["waitLine", "attack", "decay", "holdLine", "release"]) envParts[name] = make("path", { class: "env-line" });
+  for (const name of ["delay", "in", "decay", "held", "out"]) {
+    envParts["label-" + name] = make("text", { class: "env-label", y: 64, "text-anchor": "middle" });
     envParts["label-" + name].textContent = name;
   }
   envParts.dot = make("circle", { class: "env-dot", r: 3.2, visibility: "hidden" });
-  const handle = (name, label, kind) => {
-    const node = make("circle", { class: "env-handle env-" + kind, r: 4.2, tabindex: 0, role: "slider",
-                                  "aria-label": label, "data-handle": name });
-    envParts[name] = node;
-  };
-  handle("riseMid", "Fade in shape", "bend");
-  handle("fallMid", "Fade out shape", "bend");
-  handle("peak", "Fade in time", "time");
-  handle("end", "Fade out time", "time");
+  for (const [name, label, kind] of ENV_HANDLES) {
+    envParts[name] = make("circle", { class: "env-handle env-" + kind, r: 4.2, tabindex: 0, role: "slider",
+                                      "aria-label": label, "data-handle": name });
+  }
   svg.addEventListener("pointerdown", envPointerDown);
   svg.addEventListener("keydown", envKey);
 }
+const envSec = (s) => (s === 0 ? "0" : s < 1 ? s.toFixed(2) : s.toFixed(1)) + " s";
+const envBend = (m) => (m > 0.55 ? "quick to start" : m < 0.45 ? "slow to start" : "even");
 function drawFadeEnvelope() {
-  const g = envGeometry();
+  el.fadeMode.value = fade.mode;
+  const layered = fadeLayered();
+  if (!layered) fade.editing = 0;
+  const env = fade.envs[fade.editing], g = envGeometry(env);
   const curve = (x0, x1, value) => {
     const points = [];
     for (let i = 0; i <= ENV.samples; i++) {
@@ -6388,57 +6542,93 @@ function drawFadeEnvelope() {
     }
     return "M" + points.join("L");
   };
-  // A half that is off is the jump it makes: straight up, or straight down.
-  envParts.rise.setAttribute("d", fadesIn() ? curve(ENV.x0, g.peak, (t) => fadeTravel(true, t))
-    : "M" + g.peak.toFixed(2) + "," + ENV.rest + "V" + ENV.top);
-  envParts.fall.setAttribute("d", fadesOut() ? curve(g.held, g.end, (t) => 1 - fadeTravel(false, t))
-    : "M" + g.held.toFixed(2) + "," + ENV.top + "V" + ENV.rest);
-  envParts.rise.classList.toggle("off", !fadesIn());
-  envParts.fall.classList.toggle("off", !fadesOut());
-  envParts.hold.setAttribute("x1", g.peak); envParts.hold.setAttribute("x2", g.held);
-  envParts["label-in"].setAttribute("x", ((ENV.x0 + g.peak) / 2).toFixed(2));
-  envParts["label-held"].setAttribute("x", ((g.peak + g.held) / 2).toFixed(2));
-  envParts["label-out"].setAttribute("x", ((g.held + g.end) / 2).toFixed(2));
-  const place = (node, x, y, text, now) => {
+  envParts.waitLine.setAttribute("d", "M" + ENV.x0 + "," + ENV.rest + "H" + g.waitEnd.toFixed(2));
+  envParts.attack.setAttribute("d", curve(g.waitEnd, g.peak, (t) => fadeTravel(t, env.attackMid)));
+  envParts.decay.setAttribute("d", curve(g.peak, g.corner, (t) => 1 + (env.sustain - 1) * fadeTravel(t, env.decayMid)));
+  envParts.holdLine.setAttribute("d", "M" + g.corner.toFixed(2) + "," + envY(env.sustain).toFixed(2) + "H" + g.held.toFixed(2));
+  envParts.release.setAttribute("d", curve(g.held, g.end, (t) => env.sustain * (1 - fadeTravel(t, env.releaseMid))));
+  // A half that is off is drawn faint, and can still be shaped for later.
+  for (const name of ["waitLine", "attack", "decay"]) envParts[name].classList.toggle("off", !fadesIn());
+  envParts.release.classList.toggle("off", !fadesOut());
+  envParts.ghost.setAttribute("d", layered ? envPath(fade.envs[1 - fade.editing]) : "");
+  const place = (name, x, y, text, now, hidden) => {
+    const node = envParts[name];
     node.setAttribute("cx", x.toFixed(2)); node.setAttribute("cy", y.toFixed(2));
     node.setAttribute("aria-valuetext", text); node.setAttribute("aria-valuenow", now);
+    node.setAttribute("visibility", hidden ? "hidden" : "visible");
   };
-  const sec = (s) => (s < 1 ? s.toFixed(2) : s.toFixed(1)) + " s";
-  const bend = (m) => (m > 0.55 ? "quick to start" : m < 0.45 ? "slow to start" : "even");
-  place(envParts.peak, g.peak, ENV.top, sec(fade.inSeconds), fade.inSeconds);
-  place(envParts.end, g.end, ENV.rest, sec(fade.outSeconds), fade.outSeconds);
-  place(envParts.riseMid, (ENV.x0 + g.peak) / 2, envY(fade.inMid), bend(fade.inMid), fade.inMid);
-  place(envParts.fallMid, (g.held + g.end) / 2, envY(1 - fade.outMid), bend(fade.outMid), fade.outMid);
+  place("wait", g.waitEnd, ENV.rest, envSec(env.delay), env.delay);
+  place("peak", g.peak, ENV.top, envSec(env.attack), env.attack);
+  place("corner", g.corner, envY(env.sustain), envSec(env.decay) + " to " + Math.round(env.sustain * 100) + "%", env.decay);
+  place("end", g.end, ENV.rest, envSec(env.release), env.release);
+  place("attackMid", (g.waitEnd + g.peak) / 2, envY(env.attackMid), envBend(env.attackMid), env.attackMid);
+  // A decay to full is flat, and a release from nothing is: no shape to take hold of.
+  place("decayMid", (g.peak + g.corner) / 2, envY(1 + (env.sustain - 1) * env.decayMid), envBend(env.decayMid),
+        env.decayMid, env.sustain > 0.98);
+  place("releaseMid", (g.held + g.end) / 2, envY(env.sustain * (1 - env.releaseMid)), envBend(env.releaseMid),
+        env.releaseMid, env.sustain < 0.02);
+  // Each stretch named under it, where there is room for the word.
+  const label = (name, x0, x1) => {
+    const node = envParts["label-" + name];
+    node.setAttribute("x", ((x0 + x1) / 2).toFixed(2));
+    node.setAttribute("visibility", x1 - x0 >= 14 ? "visible" : "hidden");
+  };
+  label("delay", ENV.x0, g.waitEnd); label("in", g.waitEnd, g.peak); label("decay", g.peak, g.corner);
+  label("held", g.corner, g.held); label("out", g.held, g.end);
   el.fadeEnv.classList.toggle("off", fade.mode === "off");
-  el.fadeEnvValue.textContent = "In " + sec(fade.inSeconds) + " · Out " + sec(fade.outSeconds);
-  el.fadeEnvValue.title = "Fade in " + sec(fade.inSeconds) + ", " + bend(fade.inMid)
-    + "; fade out " + sec(fade.outSeconds) + ", " + bend(fade.outMid) + ".";
+  // The two times only: the rest is in the drawing, and all of it in the title. A line
+  // with the wait and the sustain in it ran off the column.
+  el.fadeEnvValue.textContent = (layered ? (fade.editing ? "B: " : "A: ") : "")
+    + "In " + envSec(env.attack) + " \u00b7 Out " + envSec(env.release);
+  el.fadeEnvValue.title = "Wait " + envSec(env.delay) + "; attack " + envSec(env.attack) + ", " + envBend(env.attackMid)
+    + "; decay " + envSec(env.decay) + " to " + Math.round(env.sustain * 100) + "%, " + envBend(env.decayMid)
+    + "; release " + envSec(env.release) + ", " + envBend(env.releaseMid) + "."
+    + (env.restart ? " Each note restarts it." : "") + (env.loop ? " Loops while held." : "");
+  el.fadeLayers.hidden = !layered;
+  el.fadeEditA.setAttribute("aria-pressed", String(fade.editing === 0));
+  el.fadeEditB.setAttribute("aria-pressed", String(fade.editing === 1));
+  el.fadeRestart.checked = env.restart;
+  el.fadeLoop.checked = env.loop;
+  fade.shownLayered = layered;
 }
-// Once a frame: where the last fade to start has got to.
+/* Where a fade in progress is: the stretch it is in and how far along, and
+   its level now. A routing's ramp rises along the attack and waits at the
+   peak, and falls along the release. */
+function rampPhase(ramp, now) {
+  const t = (now - ramp.at) / rampMs(ramp), level = rampAt(ramp, now);
+  if (ramp.arriving) return t < 1 ? { stage: "attack", t, level } : { stage: "peak", t: 1, level };
+  return t < 1 ? { stage: "release", t, level } : { stage: "rest", t: 1, level: 0 };
+}
+// Once a frame: the dot, for the layer shown, and the panel if the layers changed.
 function fadeDotStep(now) {
-  const last = fade.last, dot = envParts.dot;
+  const dot = envParts.dot;
   if (!dot) return;
+  if (fade.shownLayered !== fadeLayered()) drawFadeEnvelope();
+  const last = fade.last[fade.editing];
   if (fade.mode === "off" || !last) { dot.setAttribute("visibility", "hidden"); return; }
-  const g = envGeometry(), t = (now - last.at) / fadeMs(last.arriving);
-  let x, y;
-  if (last.arriving) {
-    if (t < 1) { x = ENV.x0 + t * (g.peak - ENV.x0); y = envY(fadeTravel(true, t)); }
-    else { x = (g.peak + g.held) / 2; y = ENV.top; }
-  } else {
-    if (t >= 1) { dot.setAttribute("visibility", "hidden"); return; }
-    x = g.held + t * (g.end - g.held); y = envY(1 - fadeTravel(false, t));
-  }
-  dot.setAttribute("cx", x.toFixed(2)); dot.setAttribute("cy", y.toFixed(2));
+  const phase = last.gate ? gatePhase(last.gate, now) : rampPhase(last.ramp, now);
+  const g = envGeometry(fade.envs[fade.editing]);
+  const along = { delay: [ENV.x0, g.waitEnd], attack: [g.waitEnd, g.peak], peak: [g.peak, g.peak],
+                  decay: [g.peak, g.corner], sustain: [(g.corner + g.held) / 2, (g.corner + g.held) / 2],
+                  release: [g.held, g.end] }[phase.stage];
+  if (!along) { dot.setAttribute("visibility", "hidden"); return; }
+  dot.setAttribute("cx", (along[0] + Math.min(1, phase.t) * (along[1] - along[0])).toFixed(2));
+  dot.setAttribute("cy", envY(phase.level).toFixed(2));
   dot.setAttribute("visibility", "visible");
 }
 // A handle moved to a point in the drawing's own units.
 function envMoveHandle(name, x, y) {
-  const g = envGeometry();
-  const mid = (value) => (ENV.rest - value) / (ENV.rest - ENV.top);
-  if (name === "peak") setFadeEnvelope({ inSeconds: envSeconds(x - ENV.x0) });
-  else if (name === "end") setFadeEnvelope({ outSeconds: envSeconds(x - g.held) });
-  else if (name === "riseMid") setFadeEnvelope({ inMid: mid(y) });
-  else if (name === "fallMid") setFadeEnvelope({ outMid: 1 - mid(y) });
+  const env = fade.envs[fade.editing], g = envGeometry(env), set = (part) => setFadeEnvelope(part, fade.editing);
+  const level = envLevel(y);
+  if (name === "wait") {
+    const delay = envSeconds(x - ENV.x0, FADE_LIMITS.delayMax, ENV.wait);
+    set({ delay: delay < 0.02 ? 0 : delay });
+  } else if (name === "peak") set({ attack: envSeconds(x - g.waitEnd, FADE_LIMITS.max, ENV.seg) });
+  else if (name === "corner") set({ decay: envSeconds(x - g.peak, FADE_LIMITS.max, ENV.seg), sustain: level });
+  else if (name === "end") set({ release: envSeconds(x - g.held, FADE_LIMITS.max, ENV.seg) });
+  else if (name === "attackMid") set({ attackMid: level });
+  else if (name === "decayMid" && env.sustain < 1) set({ decayMid: (1 - level) / (1 - env.sustain) });
+  else if (name === "releaseMid" && env.sustain > 0) set({ releaseMid: 1 - level / env.sustain });
   saveFade();
   drawFadeEnvelope();
 }
@@ -6465,20 +6655,25 @@ function envPointerDown(event) {
 }
 /* The handles by keyboard: left and right for a time, a tenth longer or
    shorter each press, since the scale is not straight; up and down for a
-   shape, a twentieth each press. */
+   shape - towards where its slope is going is quicker - or the sustain,
+   a twentieth each press. */
 function envKey(event) {
   const name = event.target.dataset && event.target.dataset.handle;
   if (!name) return;
-  const time = name === "peak" || name === "end";
-  const key = event.key;
-  const more = time ? key === "ArrowRight" : key === "ArrowUp";
-  const less = time ? key === "ArrowLeft" : key === "ArrowDown";
-  if (!more && !less) return;
+  const env = fade.envs[fade.editing], set = (part) => setFadeEnvelope(part, fade.editing);
+  const key = event.key, right = key === "ArrowRight", left = key === "ArrowLeft";
+  const up = key === "ArrowUp", down = key === "ArrowDown";
+  if (!right && !left && !up && !down) return;
+  const longer = (s) => (right ? s * 1.1 : s / 1.1);
+  if (name === "wait" && (right || left)) set({ delay: right ? Math.max(0.05, env.delay * 1.1) : env.delay < 0.06 ? 0 : env.delay / 1.1 });
+  else if (name === "peak" && (right || left)) set({ attack: longer(env.attack) });
+  else if (name === "end" && (right || left)) set({ release: longer(env.release) });
+  else if (name === "corner") set(right || left ? { decay: longer(env.decay) } : { sustain: env.sustain + (up ? 0.05 : -0.05) });
+  else if (name === "attackMid" && (up || down)) set({ attackMid: env.attackMid + (up ? 0.05 : -0.05) });
+  else if (name === "decayMid" && (up || down)) set({ decayMid: env.decayMid + (down ? 0.05 : -0.05) });
+  else if (name === "releaseMid" && (up || down)) set({ releaseMid: env.releaseMid + (down ? 0.05 : -0.05) });
+  else return;
   event.preventDefault();
-  if (name === "peak") setFadeEnvelope({ inSeconds: fade.inSeconds * (more ? 1.1 : 1 / 1.1) });
-  else if (name === "end") setFadeEnvelope({ outSeconds: fade.outSeconds * (more ? 1.1 : 1 / 1.1) });
-  else if (name === "riseMid") setFadeEnvelope({ inMid: fade.inMid + (more ? 0.05 : -0.05) });
-  else setFadeEnvelope({ outMid: fade.outMid + (more ? -0.05 : 0.05) });
   saveFade();
   drawFadeEnvelope();
 }
@@ -6492,13 +6687,25 @@ try {
   const saved = JSON.parse(window.localStorage.getItem(FADE_KEY) || "null");
   if (saved) {
     if (FADE_MODES.some(([id]) => id === saved.mode)) fade.mode = saved.mode;
-    // One stored before the envelope has `seconds`, which this takes as both halves.
-    setFadeEnvelope(saved);
+    // One stored before there were two is one envelope's numbers: both layers take it.
+    if (Array.isArray(saved.envs)) saved.envs.slice(0, 2).forEach((env, i) => setFadeEnvelope(env || {}, i));
+    else { setFadeEnvelope(saved, 0); setFadeEnvelope(saved, 1); }
   }
 } catch (error) { /* private window, or something else stored there */ }
 el.fadeMode.addEventListener("change", () => { setFade(el.fadeMode.value); syncFadePanel(); });
+el.fadeEditA.addEventListener("click", () => { fade.editing = 0; drawFadeEnvelope(); });
+el.fadeEditB.addEventListener("click", () => { fade.editing = 1; drawFadeEnvelope(); });
+el.fadeRestart.addEventListener("change", () => {
+  setFadeEnvelope({ restart: el.fadeRestart.checked }, fade.editing); saveFade(); drawFadeEnvelope();
+});
+el.fadeLoop.addEventListener("change", () => {
+  setFadeEnvelope({ loop: el.fadeLoop.checked }, fade.editing); saveFade(); drawFadeEnvelope();
+});
 buildFadeEnvelope();
-syncFadePanel();
+/* Drawn once the whole script has run, not here: drawing asks whether the
+   keyboard is layered, and the keyboard's state is declared further down the
+   page, where reading it now would throw. */
+Promise.resolve().then(syncFadePanel);
 
 /* Advanced in exactly one place. The tone source steps the oscillators once a
    sample inside `fill`, because a vibrato written sixty times a second is a
@@ -6680,10 +6887,16 @@ function compileRoutes() {
    fades on the tone and not in a rack. */
 function stepRoutes() {
   if (modDirty) compileRoutes();
+  // Layer B's own depths only while there is a layer B; otherwise A's.
+  const layered = fade.mode !== "off" && fadeLayered();
   for (let k = 0; k < genRoutes.length; k++) {
     const route = genRoutes[k];
-    if (route.index === undefined) route.held = sourceNow(route.source);
-    route.amount = route.key === undefined ? route.full : route.full * fadeGain(route.key);
+    if (route.index === undefined) {
+      route.held = sourceNow(route.source, 0);
+      route.heldB = layered ? sourceNow(route.source, 1) : route.held;
+    }
+    route.amount = route.key === undefined ? route.full : route.full * fadeGain(route.key, 0);
+    route.amountB = route.key === undefined || !layered ? route.amount : route.full * fadeGain(route.key, 1);
   }
 }
 
@@ -6884,6 +7097,7 @@ const midi = {
   access: null,
   ports: [],
   notes: [],                    // the held stack, most recent last
+  strikesBy: [0, 0],            // notes struck, per layer, for a fade that restarts on each
   mode: "dyad",                 // dyad | mono | poly
   /* Which held notes the picture draws in poly, and how many. The rest are
      heard and not drawn. `outer` is the bass and the top voices - the melody
@@ -7005,6 +7219,9 @@ function midiNoteOn(note, velocity) {
   const at = midi.notes.findIndex((held) => held.note === note);
   if (at >= 0) midi.notes.splice(at, 1);
   midi.notes.push({ note, velocity: velocity / 127 });
+  // Counted for the layer it is in: split, a bass note restarts only the bass's fade.
+  if (layersOn() && midi.layers.mode === "split") midi.strikesBy[note >= midi.layers.point ? 1 : 0]++;
+  else { midi.strikesBy[0]++; midi.strikesBy[1]++; }
   midiApplyNotes();
   // A key struck on a pitched harmonograph strikes the pendulums.
   const tone = genSettings();
@@ -8850,11 +9067,12 @@ function makeGeneratorCore(rate, slots, lfos) {
      nine powers. */
   const barsA = { at: new Float64Array(9).fill(-1), weights: new Float64Array(9) };
   const barsB = { at: new Float64Array(9).fill(-1), weights: new Float64Array(9) };
-  function registration(t, into) {
+  // `mod` is the layer's own pushes: layer B's bars answer layer B's fade.
+  function registration(t, into, mod = genMod) {
     let moved = false;
     for (let k = 0; k < 9; k++) {
       // `|| 0` for a core built with fewer slots than there are bars.
-      const push = genMod[DRAWBAR_SLOT + k] || 0;
+      const push = mod[DRAWBAR_SLOT + k] || 0;
       const level = Math.max(0, Math.min(8, t.bars[k] + push * 8));
       if (level !== into.at[k]) { into.at[k] = level; moved = true; }
     }
@@ -9239,6 +9457,13 @@ function makeGeneratorCore(rate, slots, lfos) {
 
   const wire = makeWireframe();
   const genMod = new Float32Array(slots);
+  /* Layer B's pushes: the same routings through layer B's own fade. Only the
+     voice's parameters read it - pitch, level, shape, FM, sync, drive, fold,
+     filter, bars - because only they belong to a layer; the plane, the echo,
+     the figure and the spin belong to the picture and answer layer A's. A
+     route that does not say (`amountB` absent) is the same on both layers,
+     so everything written before the second fade still sums as it did. */
+  const genModB = new Float32Array(slots);
   /* Plain numbers, never the source objects the matrix compiles. A route that
      carried a `value()` to call would be a main-thread function smuggled
      across the boundary, and it would be smuggled successfully until the day
@@ -9959,12 +10184,17 @@ function makeGeneratorCore(rate, slots, lfos) {
      accumulator holds a plain sum and not a value. */
   function sumRoutes() {
     genMod.fill(0);
+    genModB.fill(0);
     for (let k = 0; k < routes.length; k++) {
       const route = routes[k];
-      const value = route.index === undefined ? route.held : lfos[route.index].value;
+      const osc = route.index === undefined ? null : lfos[route.index].value;
+      const value = osc === null ? route.held : osc, valueB = osc === null ? route.heldB : osc;
       genMod[route.slot] += route.unipolar
         ? route.amount * (1 - value) / 2      // only ever ducks; see GEN_DESTS
         : route.amount * value;
+      genModB[route.slot] += route.unipolar
+        ? route.amountB * (1 - valueB) / 2
+        : route.amountB * valueB;
     }
   }
 
@@ -10076,14 +10306,15 @@ function makeGeneratorCore(rate, slots, lfos) {
       const widthPush = (genMod[WIDTH_SLOT] || 0) * 0.45;
       const tablePush = (genMod[TABLE_SLOT] || 0) * 1.5;
       const amount = shapeAmount(tone, morphPush, widthPush, tablePush);
-      // `|| 0` again. The same push on both layers, from their own bases.
+      // `|| 0` again. Each layer's push from its own fade, onto its own base.
       const fmPush = (genMod[FM_SLOT] || 0) * 5, syncPush = (genMod[SYNC_SLOT] || 0) * 3.5;
       vxA.fmI = Math.max(0, Math.min(20, tone.fmIndex + fmPush));
       vxA.syncR = Math.max(1, Math.min(8, tone.syncRatio + syncPush));
-      vxB.fmI = Math.max(0, Math.min(20, toneB.fmIndex + fmPush));
-      vxB.syncR = Math.max(1, Math.min(8, toneB.syncRatio + syncPush));
+      vxB.fmI = Math.max(0, Math.min(20, toneB.fmIndex + (genModB[FM_SLOT] || 0) * 5));
+      vxB.syncR = Math.max(1, Math.min(8, toneB.syncRatio + (genModB[SYNC_SLOT] || 0) * 3.5));
       const drivePush = (genMod[DRIVE_SLOT] || 0) * 0.5, foldPush = (genMod[FOLD_SLOT] || 0) * 0.5;
-      vxA.vcfPush = vxB.vcfPush = (genMod[VCF_SLOT] || 0) * 3;
+      vxA.vcfPush = (genMod[VCF_SLOT] || 0) * 3;
+      vxB.vcfPush = (genModB[VCF_SLOT] || 0) * 3;
       if (vxA.shaping) setShaping(tone, drivePush, foldPush);
 
       // J3: this sample of the input, and what it does. FM is a factor on
@@ -10245,17 +10476,19 @@ function makeGeneratorCore(rate, slots, lfos) {
       outL[i] = Math.max(-1, Math.min(1, l));
       outR[i] = Math.max(-1, Math.min(1, r));
 
-      /* Layer B, against the same modulation this sample already summed. */
+      /* Layer B, against its own pushes: the routings this sample summed,
+         through layer B's fade. */
       let bhl = 0, bhr = 0;
       if (layered) {
         // One drawn cycle for the page: layer B draws with layer A's.
-        const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB) : toneB.shape === "drawn" ? tone.cycle
+        const barsOfB = toneB.shape === "drawbars" ? registration(toneB, barsB, genModB) : toneB.shape === "drawn" ? tone.cycle
           : toneB.shape === "wavetable" ? tone.wavetable : null;
-        const amountOfB = shapeAmount(toneB, morphPush, widthPush, tablePush);
+        const amountOfB = shapeAmount(toneB, (genModB[MORPH_SLOT] || 0) * 1.5, (genModB[WIDTH_SLOT] || 0) * 0.45,
+                                      (genModB[TABLE_SLOT] || 0) * 1.5);
         if (vxB.shaping) {
-          setShaping(toneB, (genMod[DRIVE_SLOT] || 0) * 0.5, (genMod[FOLD_SLOT] || 0) * 0.5);
+          setShaping(toneB, (genModB[DRIVE_SLOT] || 0) * 0.5, (genModB[FOLD_SLOT] || 0) * 0.5);
         }
-        sound(voicesB, toneB, barsOfB, amountOfB, Math.pow(2, genMod[0]), 1 - genMod[1], dt, roleGlide, vxB);
+        sound(voicesB, toneB, barsOfB, amountOfB, Math.pow(2, genModB[0]), 1 - genModB[1], dt, roleGlide, vxB);
         bhl = mix[2]; bhr = mix[3];
         if (outBL) {
           let bx = mix[0], by = mix[1];
@@ -10323,6 +10556,8 @@ function makeGeneratorCore(rate, slots, lfos) {
         routes.push({
           index: route.index, held: route.held || 0, slot: route.slot,
           amount: route.amount, unipolar: route.unipolar === true,
+          amountB: route.amountB === undefined ? route.amount : route.amountB,
+          heldB: route.heldB === undefined ? route.held || 0 : route.heldB,
         });
       }
     },
@@ -10786,7 +11021,8 @@ function workletRoutes() {
   return genRoutes.map((route) => ({
     index: route.index,
     held: route.index === undefined ? route.held : 0,
-    slot: route.slot, amount: route.amount, unipolar: route.unipolar === true,
+    heldB: route.index === undefined ? route.heldB : 0,
+    slot: route.slot, amount: route.amount, amountB: route.amountB, unipolar: route.unipolar === true,
   }));
 }
 

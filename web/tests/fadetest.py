@@ -307,18 +307,18 @@ with sync_playwright() as pw:
     print("\n--- the envelope: two times and two shapes ---")
     env = run(p, """
       restore({}); await wait(100); setMacro(0, 1);
-      setFade('both'); setFadeEnvelope({ inSeconds: 0.5, outSeconds: 2, inMid: 0.5, outMid: 0.5 });
+      setFade('both'); setFadeEnvelope({ attack: 0.5, release: 2, attackMid: 0.5, releaseMid: 0.5, sustain: 1, delay: 0 });
       addRouting('macro.1', 'gen.fm'); await wait(650); const inDone = route('gen.fm');
       dropRouting('macro.1', 'gen.fm'); await wait(1000); const outHalf = route('gen.fm');
       await wait(1300); const outDone = route('gen.fm');
       // The same second of fading in, along a curve quick to start and one slow to start.
-      setFadeEnvelope({ inSeconds: 1, inMid: 0.85 }); addRouting('macro.1', 'gen.fm');
+      setFadeEnvelope({ attack: 1, attackMid: 0.85 }); addRouting('macro.1', 'gen.fm');
       await wait(250); const quick = route('gen.fm'); clearSource('macro.1'); await wait(2200);
-      setFadeEnvelope({ inMid: 0.15 }); addRouting('macro.1', 'gen.fm');
+      setFadeEnvelope({ attackMid: 0.15 }); addRouting('macro.1', 'gen.fm');
       await wait(250); const slow = route('gen.fm'); clearSource('macro.1'); await wait(2200);
-      // A preset glides along the in half, so over the in time and not the out.
+      // A preset glides along the attack, so over its time and not the release's.
       restore({ freq: 880 }); await wait(100);
-      setFadeEnvelope({ inSeconds: 0.5, outSeconds: 5, inMid: 0.5 });
+      setFadeEnvelope({ attack: 0.5, release: 5, attackMid: 0.5 });
       applyPreset("b:Pianist's piano"); await wait(700); const glided = Number(el.freq.value);
       return { inDone, outHalf, outDone, quick, slow, glided };
     """)
@@ -328,46 +328,237 @@ with sync_playwright() as pw:
           str(env))
     check("the shape is heard: a quarter of the way into a fade, quick to start is most of the way, slow to start barely begun",
           env["quick"] > 0.15 and env["slow"] < 0.05, str(env))
-    check("a preset glides over the in time", env["glided"] == 220, str(env))
+    check("a preset glides over the attack time", env["glided"] == 220, str(env))
+
+    print("\n--- the envelope's stretches, on a note ---")
+    # Velocity at full on the drive at half depth: the drive's push is half
+    # the envelope's level, so 0.5 is full and 0.2 a sustain of 0.4.
+    stretch = run(p, """
+      const pushed = () => { const slot = MOD_DESTS.get('gen.drive').slot;
+        const r = workletRoutes().find((x) => x.slot === slot); return r ? +(r.held * r.amount).toFixed(3) : 0; };
+      const strike = (n) => __send([0x90, n, 127]), lift = (n) => __send([0x80, n, 0]);
+      const plain = { delay: 0, attack: 0.2, decay: 0.4, sustain: 1, release: 0.5, restart: false, loop: false,
+                      attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 };
+      setFade('off'); restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
+      setFade('both'); setFadeEnvelope(Object.assign({}, plain, { delay: 0.4, attack: 0.3 })); await wait(100);
+      fade.editing = 0;
+      const dotNow = () => ({ x: +envParts.dot.getAttribute('cx'), y: +envParts.dot.getAttribute('cy'),
+                              stage: fade.last[0] && fade.last[0].gate ? gatePhase(fade.last[0].gate, performance.now()).stage : null });
+      strike(60); await wait(250); const waiting = pushed(), inWait = dotNow(), waitG = envGeometry(fade.envs[0]);
+      await wait(350); const rising = pushed();
+      lift(60); await wait(900);
+      setFadeEnvelope(Object.assign({}, plain, { sustain: 0.4 })); await wait(50);
+      strike(60); await wait(200); const burst = pushed(); await wait(700); const settled = pushed();
+      const onHold = dotNow(), holdG = envGeometry(fade.envs[0]);
+      lift(60); await wait(250); const releasing = pushed(); await wait(600); const rested = pushed();
+      // Restart: a second key struck at the same strength while the first is held.
+      const second = async (restart) => {
+        setFadeEnvelope({ restart }); strike(60); await wait(900); const before = pushed();
+        strike(64); await wait(220); const after = pushed(); lift(64); lift(60); await wait(900);
+        return [before, after];
+      };
+      const restarted = await second(true), carried = await second(false);
+      // Loop: sampled for two seconds while held, counting the times it comes back up to full.
+      const peaks = async (loop) => {
+        setFadeEnvelope({ loop, attack: 0.15, decay: 0.25, sustain: 0.2 }); strike(60);
+        let n = 0, high = false;
+        for (let i = 0; i < 40; i++) { await wait(50); const v = pushed(); if (!high && v > 0.4) { n++; high = true; } if (v < 0.25) high = false; }
+        lift(60); await wait(900); return n;
+      };
+      const looped = await peaks(true), once = await peaks(false);
+      setFadeEnvelope(plain); setFade('off');
+      return { waiting, rising, burst, settled, releasing, rested, restarted, carried, looped, once, inWait, waitG, onHold, holdG };
+    """)
+    print("    %s" % stretch)
+    check("the delay: a quarter of a second into a 0.4 s wait nothing has moved, and after it the attack is under way",
+          stretch["waiting"] < 0.01 and stretch["rising"] > 0.1, str(stretch))
+    # The dot is in the wait while the envelope waits - the sound alone
+    # cannot tell a wait from an attack at a time before it began.
+    w, wg, h, hg = stretch["inWait"], stretch["waitG"], stretch["onHold"], stretch["holdG"]
+    check("and the dot shows it: in the wait during the delay, on the held stretch at the sustain's height once settled",
+          w["stage"] == "delay" and 6 < w["x"] < wg["waitEnd"] and w["y"] == 54
+          and h["stage"] == "sustain" and hg["corner"] < h["x"] < hg["held"] and abs(h["y"] - (54 - 46 * 0.4)) < 0.01,
+          "%s / %s" % (w, h))
+    check("the decay: the strike bursts towards full, then settles to the sustain's 40 per cent",
+          stretch["burst"] > 0.35 and abs(stretch["settled"] - 0.2) < 0.01, str(stretch))
+    check("the release falls from the sustain, and rests at nought",
+          0.02 < stretch["releasing"] < 0.2 and stretch["rested"] == 0, str(stretch))
+    check("Restart: a second note struck under the first runs the envelope again; without it the drive carries on",
+          abs(stretch["restarted"][0] - 0.2) < 0.01 and stretch["restarted"][1] > 0.3
+          and abs(stretch["carried"][1] - 0.2) < 0.01, str(stretch))
+    check("Loop: a held note comes back up to full again and again; without it, once",
+          stretch["looped"] >= 3 and stretch["once"] == 1, str(stretch))
+
+    print("\n--- two layers, two envelopes ---")
+    layers = run(p, """
+      const both = () => { const slot = MOD_DESTS.get('gen.drive').slot;
+        const r = workletRoutes().find((x) => x.slot === slot);
+        return r ? [+(r.held * r.amount).toFixed(3), +(r.heldB * r.amountB).toFixed(3)] : [0, 0]; };
+      setFade('off'); restore({ midiMode: 'poly', layers: 'layer', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
+      const layered = fadeLayered();
+      setFade('both');
+      setFadeEnvelope({ delay: 0, attack: 0.2, sustain: 1, release: 0.3, restart: false, loop: false }, 0);
+      setFadeEnvelope({ delay: 0, attack: 1.5, sustain: 1, release: 0.3, restart: false, loop: false }, 1);
+      await wait(100);
+      __send([0x90, 60, 127]); await wait(400); const early = both(); await wait(1400); const late = both();
+      __send([0x80, 60, 0]); await wait(800);
+      // A routing patched while layered fades in on each layer's own attack too.
+      setMacro(0, 1); addRouting('macro.1', 'gen.fm'); await wait(400);
+      const fm = (() => { const slot = MOD_DESTS.get('gen.fm').slot; const r = workletRoutes().find((x) => x.slot === slot);
+                          return [+(r.held * r.amount).toFixed(3), +(r.heldB * r.amountB).toFixed(3)]; })();
+      clearSource('macro.1'); await wait(500);
+      // Unlayered, layer B's depth is layer A's, whatever its envelope says.
+      restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
+      __send([0x90, 60, 127]); await wait(400); const single = both(); __send([0x80, 60, 0]); await wait(800);
+      /* In the core itself: a route up an octave on layer A and not on B.
+         The null is the same route without a layer-B depth, which is how
+         every route was sent before there were two - it moves both. */
+      const rate = 44100;
+      const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
+      const bin = (x, hz) => { let re = 0, im = 0; for (let i = 0; i < x.length; i++) { const w = 2 * Math.PI * hz * i / rate; re += x[i] * Math.cos(w); im += x[i] * Math.sin(w); } return 2 * Math.hypot(re, im) / x.length; };
+      const layerPitch = (route) => {
+        const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+        core.set('shape', 'sine'); core.set('shape', 'sine', 1); core.set('attackMs', 1); core.set('attackMs', 1, 1);
+        core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }]);
+        core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }], 1);
+        core.setRoutes([route]);
+        const n = 8192, al = new Float32Array(n), ar = new Float32Array(n), hl = new Float32Array(n), hr = new Float32Array(n);
+        const bl = new Float32Array(n), br = new Float32Array(n);
+        core.block(al, ar, n, hl, hr, bl, br);
+        const tail = (x) => x.subarray(n - 4096);
+        return { a: [bin(tail(al), 220), bin(tail(al), 440)].map((v) => +v.toFixed(3)),
+                 b: [bin(tail(bl), 220), bin(tail(bl), 440)].map((v) => +v.toFixed(3)) };
+      };
+      const own = layerPitch({ index: undefined, held: 1, heldB: 0, slot: 0, amount: 1, amountB: 0, unipolar: false });
+      const shared = layerPitch({ index: undefined, held: 1, slot: 0, amount: 1, unipolar: false });
+      /* Two more of the voice's pushes, each its own line in the core: the
+         drive (a sine driven grows a third harmonic) and the level (the
+         tremolo destination ducks to silence at a held value of minus one). */
+      const layerOut = (route) => {
+        const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+        core.set('shape', 'sine'); core.set('shape', 'sine', 1); core.set('attackMs', 1); core.set('attackMs', 1, 1);
+        core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }]);
+        core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }], 1);
+        core.setRoutes([route]);
+        const n = 8192, al = new Float32Array(n), ar = new Float32Array(n), hl = new Float32Array(n), hr = new Float32Array(n);
+        const bl = new Float32Array(n), br = new Float32Array(n);
+        core.block(al, ar, n, hl, hr, bl, br);
+        const tail = (x) => x.subarray(n - 4096);
+        return { a: [bin(tail(al), 220), bin(tail(al), 660)].map((v) => +v.toFixed(4)),
+                 b: [bin(tail(bl), 220), bin(tail(bl), 660)].map((v) => +v.toFixed(4)) };
+      };
+      const drive = layerOut({ index: undefined, held: 1, heldB: 0, slot: MOD_DESTS.get('gen.drive').slot, amount: 1, amountB: 0, unipolar: false });
+      const level = layerOut({ index: undefined, held: -1, heldB: -1, slot: MOD_DESTS.get('gen.amp').slot, amount: 1, amountB: 0, unipolar: true });
+      setFade('off'); restore({});
+      return { layered, early, late, single, own, shared, drive, level, fm };
+    """)
+    print("    %s" % layers)
+    check("layered, each layer's drive follows its own envelope: A arrived at 0.4 s, B still rising, both there later",
+          layers["layered"] and layers["early"][0] == 0.5 and 0.05 < layers["early"][1] < 0.3
+          and layers["late"] == [0.5, 0.5], str(layers))
+    check("and a routing patched while layered fades in on each layer's own attack: A's there, B's under way",
+          layers["fm"][0] == 0.35 and 0.02 < layers["fm"][1] < 0.2, str(layers["fm"]))
+    check("unlayered, layer B's depth is layer A's", layers["single"][0] == layers["single"][1] == 0.5, str(layers))
+    own, shared = layers["own"], layers["shared"]
+    check("and in the core, layer B sounds its own depth: an octave up on A and not on B; sent as one, both move (the null)",
+          own["a"][1] > 10 * own["a"][0] and own["b"][0] > 10 * own["b"][1]
+          and shared["b"][1] > 10 * shared["b"][0], str(layers))
+    dr, lv = layers["drive"], layers["level"]
+    check("and the drive and the level too: A driven into a third harmonic and B clean; A ducked to silence and B not",
+          # B's third is the transform's leakage on a pure sine, about a thousandth; A's is a sixth.
+          dr["a"][1] > 0.05 and dr["b"][1] < 0.01 and lv["a"][0] < 0.01 and lv["b"][0] > 0.2, str(layers))
+
+    split = run(p, """
+      /* Split at middle C, each layer set to restart: a new bass note under
+         a held chord restarts the bass's envelope and leaves the lead's. */
+      const both = () => { const slot = MOD_DESTS.get('gen.drive').slot;
+        const r = workletRoutes().find((x) => x.slot === slot);
+        return r ? [+(r.held * r.amount).toFixed(3), +(r.heldB * r.amountB).toFixed(3)] : [0, 0]; };
+      setFade('off'); restore({ midiMode: 'poly', layers: 'split', splitAt: 60, mod: 'midi.key>gen.drive@0.500' }); await wait(200);
+      setFade('both');
+      for (const l of [0, 1]) setFadeEnvelope({ delay: 0, attack: 0.15, decay: 0.3, sustain: 0.4, release: 0.3, restart: true, loop: false }, l);
+      await wait(100);
+      __send([0x90, 48, 127]); __send([0x90, 72, 127]); await wait(900); const settled = both();
+      __send([0x90, 50, 127]); await wait(150); const bass = both(); await wait(700);
+      __send([0x90, 74, 127]); await wait(150); const lead = both();
+      for (const n of [48, 50, 72, 74]) __send([0x80, n, 0]);
+      for (const l of [0, 1]) setFadeEnvelope({ sustain: 1, restart: false, decay: 0.5 }, l);
+      await wait(600); setFade('off'); restore({});
+      return { settled, bass, lead };
+    """)
+    print("    %s" % split)
+    check("split, a bass note restarts only the bass layer's envelope, and a lead note only the lead's",
+          split["settled"] == [0.2, 0.2] and split["bass"][0] > 0.3 and split["bass"][1] == 0.2
+          and split["lead"][1] > 0.3 and abs(split["lead"][0] - 0.2) < 0.01, str(split))
 
     print("\n--- the envelope drawn, and taken hold of ---")
     drawn = p.evaluate("""() => {
-      setFadeEnvelope({ inSeconds: 2.5, outSeconds: 0.4, inMid: 0.8, outMid: 0.3 }); drawFadeEnvelope();
+      fade.editing = 0;
+      setFadeEnvelope({ delay: 1.25, attack: 2.5, decay: 0.4, sustain: 0.5, release: 0.9,
+                        attackMid: 0.8, decayMid: 0.5, releaseMid: 0.3 }); drawFadeEnvelope();
       const at = (name) => ['cx', 'cy'].map((a) => +(+envParts[name].getAttribute(a)).toFixed(2));
-      const points = envParts.rise.getAttribute('d').slice(1).split('L').map((p) => p.split(',').map(Number));
-      return { peak: at('peak'), end: at('end'), riseMid: at('riseMid'), fallMid: at('fallMid'),
+      const points = envParts.attack.getAttribute('d').slice(1).split('L').map((p) => p.split(',').map(Number));
+      return { wait: at('wait'), peak: at('peak'), corner: at('corner'), end: at('end'), attackMid: at('attackMid'),
+               decayMid: at('decayMid'), releaseMid: at('releaseMid'),
                curveMid: +points[ENV.samples / 2][1].toFixed(2), text: el.fadeEnvValue.textContent };
     }""")
     print("    %s" % drawn)
-    # Worked by hand: the peak at 8 + 76 x sqrt(2.5 / 10) = 46; the end 22 on
-    # and 76 x sqrt(0.4 / 10) = 15.2 more; a shape of 0.8 at 52 - 44 x 0.8.
-    check("the handles sit where the numbers put them, and the curve passes through its shape handle",
-          drawn["peak"] == [46, 8] and drawn["end"] == [83.2, 52] and drawn["riseMid"] == [27, 16.8]
-          and drawn["fallMid"] == [75.6, 21.2] and drawn["curveMid"] == 16.8 and drawn["text"] == "In 2.5 s \u00b7 Out 0.40 s",
-          str(drawn))
+    # Worked by hand: the wait ends at 6 + 24 x sqrt(1.25 / 5) = 18; the peak
+    # 60 x sqrt(2.5 / 10) = 30 on, at 48; the corner 60 x sqrt(0.4 / 10) = 12
+    # on, at 60, and at half height, 54 - 46 x 0.5 = 31; the hold is 20, so the
+    # release starts at 80 and ends 60 x sqrt(0.9 / 10) = 18 on, at 98. The
+    # attack's shape 0.8 sits at 54 - 46 x 0.8 = 17.2; the decay's midpoint at
+    # 1 - 0.5 x 0.5 = 0.75 of full, 19.5; the release's at 0.5 x 0.7 = 0.35, 37.9.
+    check("the handles sit where the numbers put them, and the attack's curve passes through its shape handle",
+          drawn["wait"] == [18, 54] and drawn["peak"] == [48, 8] and drawn["corner"] == [60, 31] and drawn["end"] == [98, 54]
+          and drawn["attackMid"] == [33, 17.2] and drawn["decayMid"] == [54, 19.5] and drawn["releaseMid"] == [89, 37.9]
+          and drawn["curveMid"] == 17.2 and drawn["text"] == "In 2.5 s \u00b7 Out 0.90 s", str(drawn))
 
-    p.evaluate("() => { setFadeEnvelope({ inSeconds: 1, outSeconds: 1, inMid: 0.5, outMid: 0.5 }); drawFadeEnvelope(); showControl('fadeMode'); }")
+    p.evaluate("""() => { setFadeEnvelope({ delay: 0, attack: 1, decay: 1, sustain: 0.6, release: 1,
+                                            attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 }); drawFadeEnvelope(); showControl('fadeMode'); }""")
     p.wait_for_timeout(200)
     def drag(name, dx, dy):
         box = p.locator('[data-handle="%s"]' % name).bounding_box()
         x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
         p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + dx / 2, y + dy / 2); p.mouse.move(x + dx, y + dy); p.mouse.up()
-    # The null for the drag: nothing moved before it.
-    unmoved = p.evaluate("() => [fade.inSeconds, fade.inMid, fade.outMid]")
-    check("before the drag the envelope is where it was set", unmoved == [1, 0.5, 0.5], str(unmoved))
-    drag("peak", 30, 0); drag("riseMid", 0, -15); drag("fallMid", 0, 15)
+    E = "() => { const e = fade.envs[0]; return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, typeof v === 'number' ? +v.toFixed(3) : v])); }"
+    unmoved = p.evaluate(E)
+    check("before the drag the envelope is where it was set",
+          [unmoved[k] for k in ("delay", "attack", "decay", "sustain", "attackMid", "releaseMid")] == [0, 1, 1, 0.6, 0.5, 0.5],
+          str(unmoved))
+    drag("wait", 20, 0); drag("peak", 25, 0); drag("corner", 15, -15); drag("attackMid", 0, -12); drag("releaseMid", 0, 8)
     p.locator('[data-handle="end"]').focus(); p.keyboard.press("ArrowRight")
-    moved = p.evaluate("() => ({ inS: +fade.inSeconds.toFixed(3), outS: +fade.outSeconds.toFixed(3), inMid: +fade.inMid.toFixed(3), outMid: +fade.outMid.toFixed(3) })")
+    moved = p.evaluate(E)
     print("    after dragging and a key: %s" % moved)
-    # The fall's middle pulled down drops it early: quick to start, as the rise's pulled up is.
-    check("dragging the peak lengthens the fade in, and pulling each slope's middle towards where it is going makes it quick to start",
-          moved["inS"] > 1.5 and moved["inMid"] > 0.6 and moved["outMid"] > 0.6, str(moved))
-    check("and the arrow keys move a handle: the end a tenth longer", abs(moved["outS"] - 1.1) < 1e-6, str(moved))
+    check("dragging moves each stretch: the wait longer, the attack longer, the corner later and higher, the shapes quicker",
+          moved["delay"] > 0.2 and moved["attack"] > 1.5 and moved["decay"] > 1.2 and moved["sustain"] > 0.7
+          and moved["attackMid"] > 0.6 and moved["releaseMid"] > 0.6, str(moved))
+    check("and the arrow keys move a handle: the end a tenth longer", abs(moved["release"] - 1.1) < 1e-6, str(moved))
+
+    ui = run(p, """
+      setFade('off'); restore({ midiMode: 'poly', layers: 'layer' }); await wait(200);
+      setFade('both'); await wait(100);
+      const shown = !el.fadeLayers.hidden;
+      el.fadeEditB.click(); const editing = fade.editing;
+      el.fadeRestart.click(); el.fadeLoop.click();
+      const b = { restart: fade.envs[1].restart, loop: fade.envs[1].loop }, a = { restart: fade.envs[0].restart, loop: fade.envs[0].loop };
+      const ghost = envParts.ghost.getAttribute('d').length > 0, label = el.fadeEnvValue.textContent.slice(0, 2);
+      el.fadeRestart.click(); el.fadeLoop.click(); el.fadeEditA.click();
+      restore({ midiMode: 'poly' }); await wait(200);
+      const hiddenAfter = el.fadeLayers.hidden, back = fade.editing, noGhost = envParts.ghost.getAttribute('d') === '';
+      setFade('off');
+      return { shown, editing, a, b, ghost, label, hiddenAfter, back, noGhost };
+    """)
+    print("    %s" % ui)
+    check("layered, A and B appear, B draws and takes Restart and Loop for itself, with A faint behind; unlayered they go",
+          ui["shown"] and ui["editing"] == 1 and ui["b"] == {"restart": True, "loop": True}
+          and ui["a"] == {"restart": False, "loop": False} and ui["ghost"] and ui["label"] == "B:"
+          and ui["hiddenAfter"] and ui["back"] == 0 and ui["noGhost"], str(ui))
 
     dot = run(p, """
       setFade('off'); restore({}); await wait(100); setMacro(0, 1);
-      setFade('both'); setFadeEnvelope({ inSeconds: 1, outSeconds: 1, inMid: 0.5, outMid: 0.5 });
-      const g = () => envGeometry(), where = () => ({ x: +envParts.dot.getAttribute('cx'), y: +envParts.dot.getAttribute('cy'),
+      setFade('both'); setFadeEnvelope({ delay: 0, attack: 1, release: 1, sustain: 1, attackMid: 0.5, releaseMid: 0.5 });
+      const g = () => envGeometry(fade.envs[0]), where = () => ({ x: +envParts.dot.getAttribute('cx'), y: +envParts.dot.getAttribute('cy'),
                                                     shown: envParts.dot.getAttribute('visibility') === 'visible' });
       const before = where();
       addRouting('macro.1', 'gen.fm'); await wait(400); const rising = where();
@@ -378,27 +569,33 @@ with sync_playwright() as pw:
     """)
     print("    %s" % dot)
     gx = dot["g"]
-    check("the dot rides the rise while a fade in is under way, waits on the hold, rides the fall, and goes",
+    check("the dot rides the attack while a fade in is under way, waits at the top, rides the release, and goes",
           not dot["before"]["shown"]
-          and dot["rising"]["shown"] and 8 < dot["rising"]["x"] < gx["peak"] and 8 < dot["rising"]["y"] < 52
+          and dot["rising"]["shown"] and gx["waitEnd"] < dot["rising"]["x"] < gx["peak"] and 8 < dot["rising"]["y"] < 54
           and dot["holding"]["shown"] and dot["holding"]["y"] == 8
-          and dot["falling"]["shown"] and gx["held"] < dot["falling"]["x"] < gx["end"] and 8 < dot["falling"]["y"] < 52
+          and dot["falling"]["shown"] and gx["held"] < dot["falling"]["x"] < gx["end"] and 8 < dot["falling"]["y"] < 54
           and not dot["gone"]["shown"], str(dot))
 
     print("\n--- kept in this browser ---")
-    p.evaluate("() => { setFade('both'); setFadeEnvelope({ inSeconds: 3.5, outSeconds: 0.25, inMid: 0.7, outMid: 0.2 }); saveFade(); }")
+    p.evaluate("""() => { setFade('both');
+      setFadeEnvelope({ delay: 0.3, attack: 3.5, decay: 0.8, sustain: 0.4, release: 0.25, attackMid: 0.7, releaseMid: 0.2, loop: true }, 0);
+      setFadeEnvelope({ attack: 0.1, restart: true }, 1); saveFade(); }""")
     p.reload(); p.wait_for_timeout(700)
-    kept = p.evaluate("() => ({ mode: fade.mode, inS: fade.inSeconds, outS: fade.outSeconds, inMid: fade.inMid, outMid: fade.outMid, shown: el.fadeMode.value, text: el.fadeEnvValue.textContent })")
-    check("the fade and its envelope come back after a reload, on the panel too",
-          kept == {"mode": "both", "inS": 3.5, "outS": 0.25, "inMid": 0.7, "outMid": 0.2, "shown": "both",
-                   "text": "In 3.5 s \u00b7 Out 0.25 s"}, str(kept))
-    # Stored by the version with one time for both halves.
-    p.evaluate("() => window.localStorage.setItem('scope.fade', JSON.stringify({ mode: 'in', seconds: 3 }))")
-    p.reload(); p.wait_for_timeout(700)
-    old = p.evaluate("() => ({ mode: fade.mode, inS: fade.inSeconds, outS: fade.outSeconds })")
-    check("and one stored as a single time comes back as that time for both halves",
-          old == {"mode": "in", "inS": 3, "outS": 3}, str(old))
-    p.evaluate("() => { setFade('off', 2); setFadeEnvelope({ inMid: 0.5, outMid: 0.5 }); saveFade(); }")
+    kept = p.evaluate("""() => ({ mode: fade.mode, a: fade.envs[0], b: { attack: fade.envs[1].attack, restart: fade.envs[1].restart },
+                                  shown: el.fadeMode.value, text: el.fadeEnvValue.textContent })""")
+    check("the fade and both envelopes come back after a reload, on the panel too",
+          kept["mode"] == "both" and kept["shown"] == "both" and kept["text"] == "In 3.5 s \u00b7 Out 0.25 s"
+          and {k: kept["a"][k] for k in ("delay", "attack", "decay", "sustain", "release", "attackMid", "releaseMid", "loop")}
+              == {"delay": 0.3, "attack": 3.5, "decay": 0.8, "sustain": 0.4, "release": 0.25, "attackMid": 0.7, "releaseMid": 0.2, "loop": True}
+          and kept["b"] == {"attack": 0.1, "restart": True}, str(kept))
+    # Stored by the versions before: one time for both halves, and then in, out and their shapes.
+    for stored, want in [({"mode": "in", "seconds": 3}, (3, 3, 0.5)),
+                         ({"mode": "in", "inSeconds": 1.5, "outSeconds": 4, "inMid": 0.7, "outMid": 0.5}, (1.5, 4, 0.7))]:
+        p.evaluate("(v) => window.localStorage.setItem('scope.fade', JSON.stringify(v))", stored)
+        p.reload(); p.wait_for_timeout(700)
+        old = p.evaluate("() => [fade.mode].concat([0, 1].map((l) => [fade.envs[l].attack, fade.envs[l].release, fade.envs[l].attackMid]))")
+        check("and one stored as %s comes back on both layers" % sorted(stored), old == ["in", list(want), list(want)], str(old))
+    p.evaluate("() => { window.localStorage.removeItem('scope.fade'); }")
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

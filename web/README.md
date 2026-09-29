@@ -3580,3 +3580,54 @@ running up. `picturepresettest.py` counts picture sources and the rest
 separately, and its null - the two mixed presets with their other sources
 taken off - fails it, because six picture sources alone are not "the picture
 and many other sources".
+
+**The fade as a modulation envelope, and one per layer.** Two times and two
+shapes were asked to do more: a vibrato that arrives after the note has
+spoken, FM that barks on the strike and settles, a pulse on every held note.
+So the envelope has a *delay* before anything moves, the *attack*, a *decay*
+to a *sustain* level, and the *release*, each with its shape; *Restart* runs
+it again on every note struck, and *Loop* sends the attack and decay round
+again for as long as a note is held. The drawing has seven handles - the
+end of the wait, the peak, the corner where the decay meets the sustain
+(sideways for its time, up and down for the level), the end of the release,
+and the middle of each slope - and the dot's height is the level now, so a
+release that begins above the sustain is seen beginning there.
+
+- *A note's envelope is a gate, worked out rather than stepped.* Opened when
+  a stepped source leaves nought and closed when it returns, its level is
+  computed from when it opened and the level it opened from, so every reader
+  in a frame agrees and a slow frame is not a slow envelope. The source's
+  value is held at what it was while the gate closes, since the source itself
+  is nought by then; a step between two held values moves the value along
+  the attack or the release without touching the gate.
+- *A routing being patched keeps only the attack and the release.* A routing
+  arriving is not a note and has nothing to hold a sustain for; applying the
+  sustain to it would have left every patched depth short of what its
+  control says.
+- *A second envelope needed a second set of pushes in the core.* The core
+  summed every routing into one array that both layers read, so layer B's
+  drive was layer A's whatever the page asked. There is `genModB` now, and a
+  route carries `amountB` and `heldB`; a route that does not - the effects
+  worklet, every test written before - means the same on both layers, so
+  nothing earlier sums differently. Only the voice's parameters read it
+  (pitch, level, shape, FM, sync, drive, fold, filter, bars); the plane, the
+  echo, the figure and the spin belong to the picture and follow layer A.
+  The test checks it in the core itself - a route up an octave on A and not
+  B moves A's pitch and not B's, the drive gives A a third harmonic and not
+  B, the level ducks A and not B - with the null of the same routes sent
+  without a layer-B depth moving both.
+- *Split, a strike restarts its own layer.* Notes are counted per layer by
+  where they fall on the keyboard, so a bass note under a held chord
+  restarts the bass's envelope and not the lead's. The sources themselves
+  are still the keyboard's, not a layer's: a note from silence in either
+  hand opens both layers' gates. Per-layer sources would be the next step.
+- *Two drawings did not fit.* One above the other cost the Sources tab its
+  height with a rack of six, and no tab may scroll. Layered, an A and a B
+  choose which envelope is drawn and taken hold of, and the other is drawn
+  faint behind it; unlayered they are not shown and B is not used.
+- *The first draw waits for the whole script.* The fade is declared above
+  the keyboard's state in the page, and drawing now asks whether the
+  keyboard is layered; reading that state before its declaration throws, so
+  the first draw is queued until the script has run.
+- A fade stored before either change - one time, or in and out with their
+  shapes - comes back as the attack and release on both layers.

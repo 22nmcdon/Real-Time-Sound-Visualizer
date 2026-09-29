@@ -78,9 +78,11 @@ scrolls sideways, which works unchanged as a tab strip.
 (Since rebuilt as one family at a time - families, the family's sources as
 rows with meters, the one selected - because the grid below turned out to be
 a wall of forty chips; see *The Sources tab, one family at a time* in the
-README. The families' column also holds *Fade* - whether routings ease in and
-out, and over how long - because it is about every routing at once rather
-than one source; see *Fading a routing, and gliding into a preset* in the
+README. The families' column also holds *Fade* - whether modulation eases in
+and out, drawn as an envelope with a delay, attack, decay, sustain and
+release, one per layer when the keyboard is split or layered - because it is
+about every routing at once rather than one source; see *Fading a routing,
+and gliding into a preset* and *The fade as a modulation envelope* in the
 README.)
 
 A grid of every source, **grouped by family**, and a detail panel for the one
