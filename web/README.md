@@ -3514,9 +3514,26 @@ as under the morph fader. `fadetest.py` holds it.
   glide, and the test glides into every preset in the library in turn and
   requires each to end as itself. The morph fader has the same exposure and
   has not been changed.
+- *The first version faded the wrong half.* It faded a routing arriving and
+  leaving, which a player does now and then, and not the source's own steps,
+  which happen at every note: with velocity on the drive, each strike still
+  put the whole velocity on the drive in a frame and each release took it
+  off, patched or not. It was reported by playing, not found by the test,
+  whose checks all used a routing being made or taken off. So the sources
+  that move in steps - velocity, the pedal, how many notes, their spread,
+  the melody, the inner voices - are marked `stepped`, and `sourceNow` walks
+  each step over the fade time: a note from silence takes the drive from its
+  rest up to the velocity's worth, and under *In and out* a release walks it
+  back. A step during a ramp, or a note under a held chord, goes from where
+  the drive has got to rather than back to rest, which would be the jump
+  again. Continuous sources are left alone - easing an oscillator over two
+  seconds flattens it into a different one - and so are the controllers,
+  because a knob is a hand and a switch on one cannot be told from a knob
+  turned fast. The live tick on each control shows the eased value, so the
+  fade can be watched on the slider it moves.
 - What it does not fade: an event routing, which fires or does not; a depth
-  you drag, which should answer the hand; and a slider you touch during a
-  glide, which is dropped from it.
+  you drag, which should answer the hand; a knob or macro; and a slider you
+  touch during a glide, which is dropped from it.
 
 **Five sources and more.** Four presets with five or more sources, two of
 them the picture's among many others. *Eight things your hands do* (Many

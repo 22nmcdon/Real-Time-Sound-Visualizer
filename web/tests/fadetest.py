@@ -48,6 +48,17 @@ HELPERS = """
   const rotation = () => +state.rotateMod.toFixed(4);
 """
 
+# A keyboard, so the sources that step with your playing are there to fade.
+STUB = """
+  window.__midi = { port: null };
+  navigator.requestMIDIAccess = function () {
+    const port = { id: "stub", name: "Stub Keyboard", onmidimessage: null };
+    window.__midi.port = port;
+    return Promise.resolve({ inputs: new Map([["stub", port]]), outputs: new Map(), onstatechange: null });
+  };
+  window.__send = (bytes) => window.__midi.port.onmidimessage({ data: Uint8Array.from(bytes) });
+"""
+
 def run(p, body):
     return p.evaluate("async () => {" + HELPERS + body + "}")
 
@@ -55,6 +66,7 @@ with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     ctx = b.new_context(viewport={"width": 1400, "height": 900})
     p = ctx.new_page()
+    p.add_init_script(STUB)
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
@@ -174,6 +186,64 @@ with sync_playwright() as pw:
           keep["kept"] == 0.3 and keep["arrived"] == 0, str(keep))
     check("put back half-way through fading out, it carries on from where it was rather than starting again",
           keep["half"] is not None and 0.05 < keep["half"] < 0.25 and abs(keep["back"] - keep["half"]) < 0.06, str(keep))
+
+    print("\n--- a note struck, with velocity on the drive ---")
+    # What was asked for after the first version: the routing already
+    # patched, and each note taking the drive from its rest up to the
+    # velocity's worth, rather than jumping there. The first version faded
+    # only patching, and velocity still jumped at every strike; the checks
+    # above all passed on it.
+    note = run(p, """
+      const pushed = (destId) => {
+        const slot = MOD_DESTS.get(destId).slot;
+        const r = workletRoutes().find((x) => x.slot === slot);
+        return r ? +(r.held * r.amount).toFixed(4) : 0;
+      };
+      const walk = async (n, ms) => { const out = [pushed('gen.drive')];
+        for (let i = 0; i < n; i++) { await wait(ms); out.push(pushed('gen.drive')); } return out; };
+      midiConnect(); await wait(200);
+      setFade('off'); restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500;midi.key>view.rotate@0.500' }); await wait(200);
+      __send([0x90, 60, 127]); const offOn = pushed('gen.drive');
+      __send([0x80, 60, 0]); const offOff = pushed('gen.drive');
+      await wait(100);
+      setFade('in', 1); await wait(50);
+      __send([0x90, 60, 127]); await wait(300);
+      // The same note seen on the picture's path, and on the drive's own slider.
+      const picture = rotation(), tick = +sweepOf(null, routingsFor('gen.drive')).live.toFixed(4);
+      await wait(1000); __send([0x80, 60, 0]); await wait(100);
+      __send([0x90, 60, 127]); const inRise = await walk(5, 250);
+      __send([0x80, 60, 0]); const inRelease = pushed('gen.drive');
+      await wait(100);
+      setFade('both', 1); await wait(50);
+      __send([0x90, 60, 127]); await wait(1200);
+      __send([0x80, 60, 0]); const bothFall = await walk(5, 250);
+      // Straight after a release that is fading, a new note climbs from where it was.
+      __send([0x90, 60, 127]); await wait(1200); __send([0x80, 60, 0]); await wait(400);
+      const before = pushed('gen.drive'); __send([0x90, 62, 127]); const after = pushed('gen.drive');
+      await wait(1200); __send([0x80, 62, 0]); await wait(1200);
+      // A knob is a hand and is not eased: a macro onto the same control answers at once.
+      setMacro(0, 0); state.modRoutings.push({ sourceId: 'macro.1', destId: 'gen.fm', amount: 0.5 }); touchRoutings();
+      await wait(1200); setMacro(0, 1);
+      const slot = MOD_DESTS.get('gen.fm').slot, r = workletRoutes().find((x) => x.slot === slot);
+      const knob = +(r.held * r.amount).toFixed(4);
+      setFade('off'); restore({}); await wait(100);
+      return { offOn, offOff, inRise, inRelease, bothFall, before, after, knob, picture, tick };
+    """)
+    print("    %s" % note)
+    check("with the fade off, a note puts velocity's whole worth on the drive at once, and a release takes it off (the null)",
+          note["offOn"] == 0.5 and note["offOff"] == 0, str(note))
+    check("fading in, a struck note starts the drive at its rest and brings it up to the velocity's worth over the fade",
+          note["inRise"][0] < 0.02 and any(0.1 < v < 0.4 for v in note["inRise"][1:4]) and note["inRise"][-1] == 0.5
+          and all(a <= b for a, b in zip(note["inRise"], note["inRise"][1:])), str(note["inRise"]))
+    check("the picture's path eases with it, and so does the tick drawn on the drive's slider",
+          0.02 < note["picture"] < 0.4 and 0.02 < note["tick"] < 0.4, str(note))
+    check("In alone lets a release go at once", note["inRelease"] == 0, str(note))
+    check("In and out walks it back down after the release",
+          note["bothFall"][0] > 0.45 and any(0.1 < v < 0.4 for v in note["bothFall"][1:4]) and note["bothFall"][-1] == 0,
+          str(note["bothFall"]))
+    check("a note struck while the last is still fading climbs from where the drive was, rather than dropping to rest",
+          0.05 < note["before"] < 0.45 and abs(note["after"] - note["before"]) < 0.05, str(note))
+    check("and a knob is not eased: a macro on a control answers the hand at once", note["knob"] == 0.5, str(note))
 
     print("\n--- a preset's sliders glide ---")
     first = p.evaluate("() => { setFade('off'); restore({ freq: 880 }); return el.freq.value; }")

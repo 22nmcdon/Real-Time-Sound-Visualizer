@@ -1951,7 +1951,7 @@ body[data-view="bench"] .dock  { order: 3; }
             <div class="menu-row" id="fadeRow">
               <label class="menu-label" for="fadeMode">Fade</label>
               <div class="grow"><select id="fadeMode" style="flex:1 1 auto"
-                title="Whether a routing eases in when you patch it and out when you take it off. Loading a preset glides its sliders over the same time."></select></div>
+                title="Whether modulation eases in and out: a routing you patch or take off, and each step of the keyboard's sources - a note struck, a note let go, the pedal. Loading a preset glides its sliders over the same time."></select></div>
             </div>
             <div class="menu-row">
               <label class="menu-label" for="fadeTime">Over</label>
@@ -3632,9 +3632,14 @@ body[data-view="bench"] .dock  { order: 3; }
         anything is patched. Choosing a source also makes every control it is on, on every
         tab, draw its sweep.
         <br><br>
-        <i>Fade</i>, under the families, is for when a routing should not arrive or leave all
-        at once. <i>In</i> eases a routing in when you patch it, <i>Out</i> eases it away when
-        you take it off, and <i>In and out</i> does both. <i>Over</i> sets how long it takes. With
+        <i>Fade</i>, under the families, is for when modulation should not arrive or leave all
+        at once. <i>In</i> eases it in, <i>Out</i> eases it away, and <i>In and out</i> does
+        both; <i>Over</i> sets how long it takes. It acts on a routing you patch or take off, and
+        on every step the keyboard's sources take: with velocity on the drive, a note starts the
+        drive where it rests and brings it up to how hard you struck, and under <i>Out</i> a
+        release lets it back down slowly. The pedal and the notes' count, spread, melody and inner
+        voices ease the same way; oscillators, the picture, the envelope and knobs are not eased,
+        because they already move as they should. With
         any of them on, loading a preset glides its sliders from where they were, so the
         picture morphs into the new one instead of jumping; its menus and switches still change
         at once. A depth you drag answers your hand straight away, and a slider you touch during
@@ -6091,6 +6096,12 @@ syncMorphPanel();
    had a chance to fade. So it is kept in this browser, like the preset
    section you were on.
 
+   And the sources that move in steps are faded as they step. That was the
+   half first left out, and it was the half that mattered: velocity on the
+   drive jumped to how hard you struck at every note and back at every
+   release, patched or not, so a fade that only acted on patching changed
+   nothing a player hears. See `sourceNow`.
+
    What it does not fade: an event routing, which fires or does not, and a
    depth you drag, which is your hand and should answer it. Menus and switches
    in a preset change at once, as they do under the morph. */
@@ -6146,6 +6157,43 @@ function fadeStep(elapsed) {
   }
 }
 
+/* A source that moves in steps - how hard you struck, the pedal, how many
+   notes and where they are - as the routings hear it: each step walked over
+   the fade time rather than taken in a frame. A note from silence takes the
+   drive from where it rests up to the velocity's worth; a release, if
+   routings fade out, walks it back down. A step towards nought is leaving
+   and one away from it arriving, so In and Out mean here what they mean for
+   a routing.
+
+   From where it has got to, not from nought, when a step comes during a
+   ramp or while notes are held: a new note under a held chord moves the
+   drive from its level to the new one. Dropping to rest first would itself
+   be the jump the fade is here to remove.
+
+   Only sources marked `stepped`. A continuous source already moves as it
+   should, and easing an oscillator or the photocell over two seconds would
+   flatten it into something else; the envelope is its own fade. A
+   controller is left out too: a knob is a hand, and a switch on one cannot
+   be told from a knob turned quickly. Kept per source, so every routing
+   from one source hears the same ramp. */
+const stepFade = new Map();
+function sourceNow(source) {
+  const target = source.value();
+  if (fade.mode === "off" || source.stepped !== true) return target;
+  const now = performance.now();
+  let ramp = stepFade.get(source.id);
+  if (!ramp) { ramp = { from: target, to: target, at: 0 }; stepFade.set(source.id, ramp); }
+  const t = Math.min(1, (now - ramp.at) / (fade.seconds * 1000));
+  const current = ramp.from + (ramp.to - ramp.from) * fadeEase(t);
+  if (target !== ramp.to) {
+    const arriving = Math.abs(target) > Math.abs(current);
+    if (arriving ? fadesIn() : fadesOut()) { ramp.from = current; ramp.to = target; ramp.at = now; return current; }
+    ramp.from = ramp.to = target; ramp.at = 0;
+    return target;
+  }
+  return current;
+}
+
 /* Changing the mode starts from where things are: every routing in the setup
    is taken as fully on, and nothing is left fading, so turning the fade on
    does not fade in what was already playing. */
@@ -6155,6 +6203,7 @@ function setFade(mode, seconds) {
   if (FADE_MODES.some(([id]) => id === mode) && mode !== fade.mode) {
     fade.mode = mode;
     fade.gains.clear();
+    stepFade.clear();
     for (const routing of state.modRoutings) fade.gains.set(routeKey(routing), { g: 1, routing });
     modDirty = true;
   }
@@ -6263,7 +6312,7 @@ function applyModMatrix(frame, elapsed) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
       if (source && routingAllowed(source, dest)) {
-        const push = source.value() * routingAmount(source, routing.amount) * fadeGain(routeKey(routing));
+        const push = sourceNow(source) * routingAmount(source, routing.amount) * fadeGain(routeKey(routing));
         if (source.fromPicture) loop += push; else sum += push;
       }
     }
@@ -6399,7 +6448,7 @@ function stepRoutes() {
   if (modDirty) compileRoutes();
   for (let k = 0; k < genRoutes.length; k++) {
     const route = genRoutes[k];
-    if (route.index === undefined) route.held = route.source.value();
+    if (route.index === undefined) route.held = sourceNow(route.source);
     route.amount = route.key === undefined ? route.full : route.full * fadeGain(route.key);
   }
 }
@@ -7288,6 +7337,7 @@ function midiRegisterKey() {
     id: "midi.key", label: "Key", ink: "ch4", bipolar: false, order: 11,
     family: "keyboard",
     description: "How hard you struck the last key; nought when nothing is held.",
+    stepped: true,
     value: () => midi.key,
   });
   registerSource({
@@ -7295,6 +7345,7 @@ function midiRegisterKey() {
     family: "keyboard",
     description: "How far down the sustain pedal is - a pedal that sends half-pedal "
       + "reads in between. Half-way and past, it also holds the notes you let go of.",
+    stepped: true,
     value: () => midi.pedal,
   });
   /* What the hands are doing, beyond the one note or two that set the pitch.
@@ -7310,12 +7361,14 @@ function midiRegisterKey() {
     id: "notes.count", label: "Notes", ink: "ch5", bipolar: false, order: 12,
     family: "keyboard",
     description: "How many keys are held, full at eight.",
+    stepped: true,
     value: () => Math.min(1, midi.notes.length / POLY_VOICES),
   });
   registerSource({
     id: "notes.spread", label: "Spread", ink: "ch6", bipolar: false, order: 13,
     family: "keyboard",
     description: "How far apart your lowest and highest held notes are, full at two octaves.",
+    stepped: true,
     value: () => {
       const p = pitches();
       return p.length < 2 ? 0 : Math.min(1, (Math.max(...p) - Math.min(...p)) / 24);
@@ -7325,6 +7378,7 @@ function midiRegisterKey() {
     id: "notes.top", label: "Melody", ink: "ch3", bipolar: false, order: 14,
     family: "keyboard",
     description: "How high your top note is, from C2 at nought to C6 at full.",
+    stepped: true,
     value: () => {
       const p = pitches();
       return p.length === 0 ? 0 : Math.max(0, Math.min(1, (Math.max(...p) - 36) / 48));
@@ -7334,6 +7388,7 @@ function midiRegisterKey() {
     id: "notes.inner", label: "Inner", ink: "ch1", bipolar: false, order: 15,
     family: "keyboard",
     description: "How hard you played the notes the picture is not drawing.",
+    stepped: true,
     value: () => {
       const undrawn = midiUndrawn();
       if (undrawn.length === 0) return 0;
@@ -22997,7 +23052,8 @@ function sweepOf(dest, list) {
     const source = MOD_SOURCES.get(routing.sourceId);
     if (!source) continue;
     handle += routing.amount;
-    live += source.value() * routing.amount;
+    // As the destination hears it, so a fade is seen moving on the control.
+    live += sourceNow(source) * routing.amount * fadeGain(routeKey(routing));
   }
   return { handle, live };
 }
