@@ -1,0 +1,22 @@
+# Two corners the other scenarios step round. A note struck on an envelope
+# resting wide open (reset to one, as a generator nobody plays is) has no
+# attack to run and goes straight into its decay. And a time shorter than a
+# sample - 0.015 ms is 0.72 of one at 48 kHz - which arrives in one step.
+#
+# That second one cannot tell the one-sample floor in `poleFor` from any
+# lower floor, and no scenario can: a stage's pole is worked out so that it
+# lands on its end in exactly `samples` steps, so at one sample it arrives on
+# the first, and anything shorter overshoots and is clamped to the same
+# value. The floor is there so a time of nought is not a division by it.
+rate 48000
+tone attackMs 50
+tone decayMs 40
+tone sustain 0.5
+tone releaseMs 30
+reset 1
+at 0 gate 1 1
+at 3000 gate 0
+at 4600 tone attackMs 0.015
+at 4600 gate 1 0.9
+at 4610 gate 0
+run 6000

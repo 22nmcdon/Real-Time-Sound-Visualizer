@@ -1,0 +1,20 @@
+# The edges: a sustain of one has no decay to run; sliders moved mid-stage
+# take effect mid-stage; times of nought are one sample; a velocity of nought
+# is taken as full; a sustain of nought ends the note in its decay.
+rate 48000
+tone attackMs 40
+tone decayMs 60
+tone sustain 1
+tone releaseMs 100
+reset 0
+at 0 gate 1 0
+at 900 tone attackMs 5
+at 6000 gate 0
+at 6500 tone releaseMs 0
+at 8000 tone sustain 0
+at 8000 tone attackMs 0
+at 8000 gate 1 0.7
+at 8100 tone decayMs 0
+at 12000 gate 0
+at 12001 reset 1
+run 14000

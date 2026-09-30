@@ -1,0 +1,10 @@
+# A plain note: attack, decay to a half, sustain, release to rest.
+rate 48000
+tone attackMs 20
+tone decayMs 100
+tone sustain 0.5
+tone releaseMs 150
+reset 0
+at 0 gate 1 0.8
+at 14400 gate 0
+run 24000

@@ -1,0 +1,15 @@
+# The legato rule: a second note while open changes nothing and keeps the
+# first note's velocity; a note during the release attacks again from where
+# the release had got to, at its own velocity.
+rate 44100
+tone attackMs 30
+tone decayMs 80
+tone sustain 0.6
+tone releaseMs 200
+reset 0
+at 0 gate 1 1
+at 3000 gate 1 0.3
+at 9000 gate 0
+at 11000 gate 1 0.5
+at 20000 gate 0
+run 32000

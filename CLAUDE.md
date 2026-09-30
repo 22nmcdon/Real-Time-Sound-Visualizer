@@ -2,7 +2,12 @@
 
 Two builds of one instrument. `web/scope.html` is the live one and where work
 lands first; `oscilloscope-poc/` is a native Python/PyQt6 build of the same
-thing. Read `web/README.md` before changing the web build — most of it is a list
+thing. And a third on the way: `plugin/` is the instrument as a JUCE plugin
+with the page as its UI, over `core/`, the C++ core that will be shared by the
+plugin and (as WebAssembly) the site - read `plugin/PLAN.md` before touching
+either. The core is a port held to the page sample for sample by
+`core/tests/parity.py`; a ported piece is not done until it passes that, with
+its nulls. Read `web/README.md` before changing the web build — most of it is a list
 of things this page has already got wrong once, each with the reason, and it
 will save you rediscovering them.
 
@@ -17,6 +22,7 @@ python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
 python3 web/tests/run.py                                    # everything, ~6 min
 python3 web/tests/run.py lane patch                         # just those
 cd oscilloscope-poc && python -m unittest discover -s tests
+python3 core/tests/parity.py                                # the C++ core against the page
 ```
 
 `web/scope.html` is one file with the script inline. `extract.py` lifts the
