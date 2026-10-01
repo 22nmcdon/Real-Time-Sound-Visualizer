@@ -12,6 +12,7 @@
 
 #include "scope/noise.h"
 #include "scope/osc.h"
+#include "scope/voice.h"
 #include "scope/wave.h"
 
 namespace {
@@ -98,6 +99,47 @@ int main(int argc, char** argv) {
         base += scope::kTwoPi * hz / rate;
         if (base >= scope::kPhaseWrap) base -= scope::kPhaseWrap;
         out.push_back(scope::oscStep(o, base, d("offset"), hz, t, bars, d("amount"), x, rate));
+      }
+      show(out);
+      continue;
+    }
+    if (name == "lowpassTaps") { show(scope::lowpassTaps(static_cast<int>(num(w[1])))); continue; }
+    if (name == "shapeRun") {
+      const int factor = static_cast<int>(num(w[1]));
+      scope::VoiceTone t; t.drive = num(w[2]); t.fold = num(w[3]);
+      scope::Shaping sh; scope::setShaping(sh, t, num(w[4]), num(w[5]));
+      scope::Shaper shaper(factor, scope::lowpassTaps(factor));
+      std::vector<double> out;
+      for (const double x : numbers(w[6])) out.push_back(shaper.step(x, sh));
+      show(out);
+      continue;
+    }
+    if (name == "crushRun") {
+      scope::VoiceTone t; t.crushHz = num(w[1]); t.crushBits = num(w[2]);
+      const double rate = num(w[3]);
+      scope::VoiceFx x; scope::voiceFxFor(t, x, false, false, false);
+      scope::Crush z;
+      std::vector<double> out;
+      for (const double v : numbers(w[4])) out.push_back(scope::crushStep(z, v, t, x, rate));
+      show(out);
+      continue;
+    }
+    if (name == "vcfRun") {
+      scope::VoiceTone t; t.vcfCutoff = num(w[1]); t.vcfEnv = num(w[2]); t.vcfTrack = num(w[3]); t.vcfQ = num(w[4]);
+      const int type = static_cast<int>(num(w[5]));
+      t.vcfType = type;
+      const double note = num(w[6]), rate = num(w[7]), push = num(w[8]), k = 1 / std::fmax(0.1, t.vcfQ);
+      const auto xs = numbers(w[9]), envs = numbers(w[10]);
+      scope::VcfState st;
+      std::vector<double> out;
+      const std::string field = w.size() > 11 ? w[11] : "";
+      for (std::size_t i = 0; i < xs.size(); i++) {
+        if (i == 80) {
+          if (field == "cutoff") t.vcfCutoff = num(w[12]);
+          else if (field == "env") t.vcfEnv = num(w[12]);
+          else if (field == "track") t.vcfTrack = num(w[12]);
+        }
+        out.push_back(scope::svfStep(st, xs[i], scope::vcfCoef(st, t, note, envs[i], push, rate), k, type));
       }
       show(out);
       continue;

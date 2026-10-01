@@ -7,8 +7,7 @@
 // `TWO_PI * hz * det * dtOf` is not the same double as `TWO_PI * (hz * det) *
 // dtOf` - because the parity is held to the last bit wherever it can be. Two
 // JavaScript behaviours spelled out: `%` on doubles is `std::fmod`, and
-// `Math.round` rounds a half upwards where `std::round` rounds it away from
-// nought, which is why the unison count uses `floor(x + 0.5)`.
+// `Math.round` is `jsRound` (see wave.h), not `std::round`.
 
 #pragma once
 
@@ -33,12 +32,12 @@ struct VoiceTone {
   bool subSine = false;
   double unison = 1, unisonCents = 0;
   int vcfType = 0;
-  double vcfQ = 0.707;
+  double vcfCutoff = 2000, vcfQ = 0.7071, vcfTrack = 0, vcfEnv = 0;
   double drive = 0, fold = 0, crushBits = 0, crushHz = 0;
 };
 
 inline int unisonAsked(const VoiceTone& t) {
-  const double rounded = std::floor(t.unison + 0.5);
+  const double rounded = jsRound(t.unison);
   const double n = std::isnan(rounded) || rounded == 0 ? 1 : rounded;
   return static_cast<int>(std::fmax(1.0, std::fmin(static_cast<double>(kUnisonMax), n)));
 }

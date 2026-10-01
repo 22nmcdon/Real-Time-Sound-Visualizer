@@ -80,15 +80,22 @@ Ported so far, leaves first: the envelope (`scope/envelope.h`); the
 waveforms and the functions under them (`scope/wave.h`) - `cycleOf`, the two
 bleps, the drawbars' gain and weights, the intervals, the state-variable
 filter, the drawn cycle's read, and `waveAt` for every shape; the four noises
-(`scope/noise.h`); and the voice's oscillator (`scope/osc.h`) - unison, FM,
-ring, hard sync with its band-limited reset, and the sub-oscillator. They are
+(`scope/noise.h`); the voice's oscillator (`scope/osc.h`) - unison, FM,
+ring, hard sync with its band-limited reset, and the sub-oscillator; and what
+follows it in a voice (`scope/voice.h`) - the filter's cutoff and its cached
+coefficient, the drive and fold with their oversampler, and the crush. They are
 held to the page by a list of about 14,000 calls written by `parity.py` and
 answered by both (`functions_js.mjs`, `functions_cpp`); the functions inside
 `makeGeneratorCore`, which the page does not export, are lifted out by name
 (`coreScope`) and run in the closure they were written for. Every call agrees
-to the last bit or within 2e-15 - the oscillator's sync accumulates a little
-- and 29 mutants of the ports are all caught. Next: the voice's filter and
-shaper, then the voices and the loop.
+to the last bit or within 3e-15 - the oscillator's sync and the shaper's
+oversampler accumulate a little - and 44 mutants of the ports are all caught.
+Next: the voices themselves (allocation, their envelopes and tails, the draw
+rule), then the per-sample loop that sums them.
+
+JavaScript's `Math.round` is `jsRound` in the core, not `std::round` (which
+takes a half away from nought) and not `floor(x + 0.5)` (which rounds the
+double just under a half up); the crush's quantiser is where it shows.
 
 The noise draws from a `scope::Random` it is handed (mulberry32), not from
 `Math.random`; the harness hands the page the same generator, so the two are
@@ -157,6 +164,11 @@ redone natively or left out.
   catches it); the stepped noise steps when its phase goes back, which only
   a phase standing still can tell from "on or back" (a run at 0 Hz); and the
   pulse and drawbars ones above.
+- **The voice's chain had two more,** caught the same way: no filter run
+  moved the tone's filter settings while the envelope held still, so a cache
+  that ignored the envelope amount or the tracking passed (each run now moves
+  one setting part-way, alone); and no fold fell between a quarter and a
+  half turn, the one range where the fold's normalising limit shows.
 - **The null device spins.** ALSA's `null` output accepts everything at once,
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of

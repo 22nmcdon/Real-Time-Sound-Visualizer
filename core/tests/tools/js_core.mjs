@@ -45,7 +45,7 @@ const core = (() => {
   const start = page.indexOf("\nfunction makeGeneratorCore(");
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
-const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt"];
+const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep"];
 export function coreScope(names, rate, random) {
   const outer = OUTER.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");
@@ -59,11 +59,15 @@ export function coreScope(names, rate, random) {
     let start = core.indexOf("\n  function " + name + "(");
     if (start >= 0) return core.slice(start + 1, core.indexOf("\n  }\n", start) + 4);
     start = core.indexOf("\n  const " + name + " = ");
+    // A `let` too: the shaper reads the core's own shaping variables.
+    if (start < 0) start = core.indexOf("\n  let " + name + " = ");
     if (start < 0) throw new Error("no " + name + " in makeGeneratorCore");
     return core.slice(start + 1, core.indexOf(";\n", start) + 2);
   });
   const body = "const Math = Object.create(globalThis.Math); if (random) Math.random = random;\n"
-    + outer.join("\n") + "\n" + inner.join("\n") + "\nreturn { " + names.join(", ") + " };";
+    + outer.join("\n") + "\n" + inner.join("\n")
+    // `__set` reaches a `let` in this closure, as the core's own code does.
+    + "\nreturn { " + names.join(", ") + ", __set: (name, value) => eval(name + ' = value') };";
   return new Function("rate", "random", body)(rate, random);
 }
 

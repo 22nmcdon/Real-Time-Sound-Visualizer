@@ -175,6 +175,43 @@ def calls():
             if "n2" in f or "n" in f: p["flip"] = 350; p.setdefault("n2", p["n"])
             if shape == "drawbars" and rng.random() < 0.5: p["bars"] = weights
             out.append("oscRun " + " ".join("%s=%s" % (k, v if isinstance(v, str) else repr(v)) for k, v in p.items()))
+    # The voice after its oscillator. The shaper at both factors, from nothing
+    # to all of both, with pushes past each end of their range and a fold
+    # small enough to be normalised (under a quarter turn); a signal that
+    # swings past one, so the drive's knee and the fold's turns are reached.
+    for factor in (2, 4):
+        out.append("lowpassTaps %d" % factor)
+        # 0.12 is a fold between a quarter and a half turn, the one range where
+        # normalising "under a quarter turn" and "under a half" disagree.
+        for drive, fold, dp, fpush in ((0, 0, 0, 0), (0.5, 0, 0, 0), (0, 0.05, 0, 0), (0, 0.12, 0, 0), (0, 0.6, 0, 0), (1, 1, 0, 0),
+                                       (0.3, 0.2, 0.9, -0.5), (0.7, 0.8, -1, 0.4)):
+            xs = ",".join("%r" % (1.3 * math.sin(i * 0.21) + 0.2 * rng.uniform(-1, 1)) for i in range(160))
+            out.append("shapeRun %d %r %r %r %r %s" % (factor, drive, fold, dp, fpush, xs))
+    # The crush, with values on exact halves of its steps - where JavaScript's
+    # rounding and C++'s differ - and a hold faster and slower than the rate.
+    for hz in (0, 900.0, 11025.0, 60000.0):
+        for bits in (0, 1, 4, 8):
+            q = 2 ** (bits - 1) if bits else 1
+            # And the double just under a half, which floor(x + 0.5) rounds up
+            # and Math.round does not.
+            halves = [(k + 0.5) / q for k in range(-3, 3)] + [0.49999999999999994 / q]
+            xs = ",".join("%r" % v for v in halves + [rng.uniform(-1, 1) for _ in range(40)])
+            out.append("crushRun %r %r 48000 %s" % (hz, bits, xs))
+    # The filter, with an envelope that holds and moves - its coefficient is
+    # worked out again only when something it depends on has moved - and
+    # cutoffs past the clamp at both ends.
+    for cutoff in (5.0, 800.0, 30000.0):
+        for env_amt, track, note in ((0, 0, 0.0), (2.0, 0.5, 110.0), (-1.5, 1, 880.0)):
+            for q, kind in ((0.05, 1), (0.7071, 2), (4.0, 3), (1.0, 4)):
+                xs = ",".join("%r" % rng.uniform(-1, 1) for _ in range(96))
+                envs = ",".join("%r" % (0.0 if i < 10 else min(1.0, (i - 10) / 30) if i < 60 else 0.6) for i in range(96))
+                # And one of the tone's three filter settings moved part-way,
+                # while the envelope and the push hold still - so the moved
+                # setting is the only thing that can ask for a new coefficient.
+                field = rng.choice(["cutoff", "env", "track"])
+                moved = {"cutoff": cutoff * 1.7, "env": env_amt + 0.8, "track": track + 0.5}[field]
+                out.append("vcfRun %r %r %r %r %d %r 48000 %r %s %s %s %r" % (cutoff, env_amt, track, q, kind, note,
+                                                                             rng.choice([0, 0.7]), xs, envs, field, moved))
     return out
 
 lines = calls()

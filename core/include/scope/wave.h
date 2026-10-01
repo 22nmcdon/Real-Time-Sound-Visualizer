@@ -25,6 +25,16 @@ namespace scope {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kTwoPi = kPi * 2;
 
+/* JavaScript's Math.round: to the nearer whole number, a half upwards. Not
+   `std::round`, which takes a half away from nought (-2.5 to -3, where the
+   page gets -2), and not `floor(x + 0.5)`, which is one too many for the
+   double just under a half - 0.49999999999999994 plus a half rounds to one
+   in floating point. `x - floor(x)` is exact, so this is the rule itself. */
+inline double jsRound(double x) {
+  const double r = std::floor(x);
+  return x - r >= 0.5 ? r + 1 : r;
+}
+
 inline double cycleOf(double phase) {
   const double t = std::fmod(phase / kTwoPi, 1.0);
   return t < 0 ? t + 1 : t;

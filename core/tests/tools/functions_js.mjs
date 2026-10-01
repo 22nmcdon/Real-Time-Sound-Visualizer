@@ -66,6 +66,46 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     out.push(show(values));
     continue;
   }
+  if (name === "lowpassTaps") {
+    out.push(show(Array.from(coreScope(["lowpassTaps"], 48000).lowpassTaps(a[0]))));
+    continue;
+  }
+  if (name === "shapeRun") {
+    // factor drive fold drivePush foldPush x,x,...: one voice's shaper.
+    const [factor, drive, fold, dp, fp, xs] = a;
+    const c = coreScope(["lowpassTaps", "shapeTaps", "shDrive", "shapeFactor", "shapeSample", "setShaping",
+                         "makeShaper"], 48000);
+    c.__set("shapeFactor", factor);
+    c.setShaping({ drive, fold }, dp, fp);
+    const sh = c.makeShaper();
+    out.push(show(xs.map((x) => sh.step(x))));
+    continue;
+  }
+  if (name === "crushRun") {
+    // crushHz crushBits rate x,x,...: the depth's step from voiceFxFor, as the core has it.
+    const [hz, bits, rate, xs] = a;
+    const c = coreScope(["UNISON_MAX", "makeVoiceFx", "voiceFxFor", "unisonAsked", "makeCrush", "crushStep"], rate);
+    const t = { crushHz: hz, crushBits: bits, unison: 1, vcfType: 0, vcfQ: 0.7071, drive: 0, fold: 0,
+                fmIndex: 0, ringMix: 0, syncRatio: 1, subLevel: 0, unisonCents: 0 };
+    const x = c.makeVoiceFx(); c.voiceFxFor(t, x, false, false, false);
+    const z = c.makeCrush();
+    out.push(show(xs.map((v) => c.crushStep(z, v, t, x))));
+    continue;
+  }
+  if (name === "vcfRun") {
+    // cutoff env track q type noteHz rate push x,x,... env,env,...
+    const [cutoff, envAmt, track, q, type, note, rate, push, xs, envs] = a;
+    const c = coreScope(["KEY_REF", "makeVcf", "vcfHz", "vcfCoef"], rate);
+    const t = { vcfCutoff: cutoff, vcfEnv: envAmt, vcfTrack: track, vcfQ: q, vcfType: type };
+    const st = c.makeVcf(), k = 1 / Math.max(0.1, q);
+    // At sample 80 one setting moves (`cutoff`, `env` or `track` and its new value).
+    const key = { cutoff: "vcfCutoff", env: "vcfEnv", track: "vcfTrack" }[rest[10]];
+    out.push(show(xs.map((x, i) => {
+      if (i === 80 && key) t[key] = a[11];
+      return f.svfStep(st, x, c.vcfCoef(st, t, note, envs[i], push), k, type);
+    })));
+    continue;
+  }
   if (name === "svfRun") {
     // A run of samples through one filter from rest: g k type x,x,x...
     const s = { ic1: 0, ic2: 0 };
