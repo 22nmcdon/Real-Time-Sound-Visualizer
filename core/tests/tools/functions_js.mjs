@@ -66,6 +66,71 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     out.push(show(values));
     continue;
   }
+  if (name === "voicesRun") {
+    /* A layer's chord through `reconcileVoices` and `sound`, the four mixes a
+       sample. `ev` is the events, `;` between them, each `sample:what`: a
+       note list (`note/hz/velocity/role`, `+` between notes, `none` for
+       every key up), `null` (the layer off), `cut:k` (the governor's fade
+       on the k-th voice) or `set:field:value` (a slider moved mid-note) or `factor:f` (the
+       shaper's oversampling, as the governor sets it). */
+    const p = Object.fromEntries(rest.map((kv) => { const i = kv.indexOf("="); return [kv.slice(0, i), kv.slice(i + 1)]; }));
+    const n = (k) => Number(p[k]);
+    const rate = n("rate");
+    const make = () => ({
+      shape: p.shape, amp: n("amp"), attackMs: n("a"), decayMs: n("d"), sustain: n("s"), releaseMs: n("r"),
+      fAttackMs: n("fa"), fDecayMs: n("fd"), fSustain: n("fs"), fReleaseMs: n("fr"),
+      vcfType: n("vtype"), vcfCutoff: n("vcut"), vcfQ: n("vq"), vcfTrack: n("vtrack"), vcfEnv: n("venv"),
+      drive: n("drive"), fold: n("fold"), crushBits: n("cbits"), crushHz: n("chz"), unison: n("n"),
+      unisonCents: n("cents"), fmIndex: n("fm"), modRatio: n("mod"), ringMix: n("ring"), syncRatio: n("sync"),
+      subLevel: n("sub"), subOctave: n("suboct"), subShape: n("subsine") === 1 ? "sine" : "square",
+      width: n("width"), table: n("table"), morph: n("morph"),
+    });
+    /* On layer B the other layer's filter envelope is different, so a voice
+       that read layer A's view would be told apart from one reading B's. */
+    const onB = p.layer === "b", tone = make(), toneB = make();
+    if (onB) Object.assign(tone, { fAttackMs: 1, fDecayMs: 37, fSustain: 0.2, fReleaseMs: 23 });
+    const t = onB ? toneB : tone;
+    const c = coreScope(["dtOf", "mix", "UNISON_MAX", "PHASE_WRAP", "Q_HYSTERESIS", "qHold", "qGlide",
+                         "quantiserFor", "nearestAllowed", "quantise", "NOISES", "PINK_GAIN", "makeNoise", "noiseStep",
+                         "makeOsc", "wrapJump", "oscStep", "makeVoiceFx", "voiceFxFor", "unisonAsked", "lowpassTaps",
+                         "shapeTaps", "shDrive", "shapeFactor", "shapeSample", "setShaping", "makeShaper", "shaperOf",
+                         "makeCrush", "crushStep", "KEY_REF", "makeVcf", "vcfHz", "vcfCoef", "CUT_SAMPLES", "fenvView",
+                         "fviewA", "POLY_TAILS", "ROLES", "chordMoved", "reconcileVoices", "sound"],
+                        rate, mulberry32(n("seed")), { tone, toneB });
+    c.__set("qMaskNow", n("qmask")); c.__set("qGlide", n("qglide")); c.__set("shapeFactor", n("factor"));
+    const x = c.makeVoiceFx();
+    c.voiceFxFor(t, x, n("fmr") === 1, n("syncr") === 1, n("shr") === 1);
+    x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = n("vpush");
+    c.setShaping(t, n("dp"), n("fp"));
+    const bars = p.bars === "-" ? undefined : arg(p.bars);
+    const events = new Map();
+    for (const e of p.ev.split(";")) {
+      const at = Number(e.slice(0, e.indexOf(":")));
+      if (!events.has(at)) events.set(at, []);
+      events.get(at).push(e.slice(e.indexOf(":") + 1));
+    }
+    const voices = [], values = [], samples = n("samples");
+    for (let i = 0; i < samples; i++) {
+      for (const what of events.get(i) || []) {
+        if (what === "null") c.reconcileVoices(voices, null, t);
+        else if (what.startsWith("cut:")) { const v = voices[Number(what.slice(4))]; if (v) v.fade = c.CUT_SAMPLES; }
+        else if (what.startsWith("factor:")) c.__set("shapeFactor", Number(what.slice(7)));
+        else if (what.startsWith("set:")) { const [, field, value] = what.split(":"); t[field] = Number(value); }
+        else {
+          const list = what === "none" ? [] : what.split("+").map((w) => {
+            const [note, freq, velocity, role] = w.split("/");
+            return { note: Number(note), freq: Number(freq), velocity: Number(velocity), role };
+          });
+          c.reconcileVoices(voices, list, t);
+        }
+      }
+      const bend = n("bend") + (n("bend2") - n("bend")) * i / samples;
+      c.sound(voices, t, bars, n("amount"), bend, n("duck"), c.dtOf, n("glide"), x);
+      values.push(c.mix[0], c.mix[1], c.mix[2], c.mix[3]);
+    }
+    out.push(show(values));
+    continue;
+  }
   if (name === "lowpassTaps") {
     out.push(show(Array.from(coreScope(["lowpassTaps"], 48000).lowpassTaps(a[0]))));
     continue;

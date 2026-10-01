@@ -40,13 +40,15 @@ export function pageScope(names) {
    its closing brace at the same depth, a constant to its line's end - and
    evaluated at a sample rate together with the page's helpers they call,
    so they see the closure they were written in. A seeded `Math.random` can
-   be put in their scope with `random`, which is how the noise is compared. */
+   be put in their scope with `random`, which is how the noise is compared,
+   and names the closure has from its caller - the layers' `tone` and
+   `toneB` - can be handed in with `given`. */
 const core = (() => {
   const start = page.indexOf("\nfunction makeGeneratorCore(");
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
-const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep"];
-export function coreScope(names, rate, random) {
+const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep", "makeEnvelope"];
+export function coreScope(names, rate, random, given = {}) {
   const outer = OUTER.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");
     if (start >= 0) return page.slice(start + 1, page.indexOf("\n}\n", start) + 2);
@@ -68,7 +70,7 @@ export function coreScope(names, rate, random) {
     + outer.join("\n") + "\n" + inner.join("\n")
     // `__set` reaches a `let` in this closure, as the core's own code does.
     + "\nreturn { " + names.join(", ") + ", __set: (name, value) => eval(name + ' = value') };";
-  return new Function("rate", "random", body)(rate, random);
+  return new Function("rate", "random", ...Object.keys(given), body)(rate, random, ...Object.values(given));
 }
 
 // mulberry32, as scope::Random has it, so the page's noise draws the same.

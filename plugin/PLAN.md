@@ -83,15 +83,33 @@ filter, the drawn cycle's read, and `waveAt` for every shape; the four noises
 (`scope/noise.h`); the voice's oscillator (`scope/osc.h`) - unison, FM,
 ring, hard sync with its band-limited reset, and the sub-oscillator; and what
 follows it in a voice (`scope/voice.h`) - the filter's cutoff and its cached
-coefficient, the drive and fold with their oversampler, and the crush. They are
-held to the page by a list of about 14,000 calls written by `parity.py` and
-answered by both (`functions_js.mjs`, `functions_cpp`); the functions inside
-`makeGeneratorCore`, which the page does not export, are lifted out by name
-(`coreScope`) and run in the closure they were written for. Every call agrees
-to the last bit or within 3e-15 - the oscillator's sync and the shaper's
-oversampler accumulate a little - and 44 mutants of the ports are all caught.
-Next: the voices themselves (allocation, their envelopes and tails, the draw
-rule), then the per-sample loop that sums them.
+coefficient, the drive and fold with their oversampler, and the crush; and the
+chord's voices (`scope/voices.h`) - the quantiser, `reconcileVoices` with its
+release tails and their limit of eight, and `sound`, a layer's voices summed a
+sample at a time with the governor's cut and the gains gliding between roles.
+They are held to the page by a list of about 14,000 calls written by
+`parity.py` and answered by both (`functions_js.mjs`, `functions_cpp`); the
+functions inside `makeGeneratorCore`, which the page does not export, are
+lifted out by name (`coreScope`) and run in the closure they were written for,
+with the layers' tones handed in. The voices are run as scenarios of events -
+chords, roles changed under held notes, a key pressed again inside its own
+release, fifteen tails at once, the layer switched off, the cut, a retune, a
+tie at the quantiser, sliders moved mid-note - through every shape and the
+whole voice chain on both layers. Every call agrees to the last bit or within
+3e-15 - the oscillator's sync and the shaper's oversampler accumulate a
+little - and 76 of 77 mutants of the ports are caught. The one that lives is
+the voice's phase folded back up from below nought, which only a pitch bent
+past nought reaches, and which changes nothing: `cycleOf` and `sin` read a
+phase below nought as the same point of the cycle.
+Next: the per-sample loop that sums the layers - the routings into each
+layer's pushes, the dyad, the plane, the echo and chorus, the governor.
+
+A voice's envelopes hold their tone by pointer, not by copy and not by
+reference: the page's envelope reads `tone.attackMs` every sample, so a slider
+moved mid-note is heard mid-note, and a copy would freeze the tone at the
+note's birth. A reference would do that job but makes a voice unmovable, and
+voices live in a vector that is erased from. The mutant that freezes the tone
+is caught by a scenario that moves the sliders while notes sound.
 
 JavaScript's `Math.round` is `jsRound` in the core, not `std::round` (which
 takes a half away from nought) and not `floor(x + 0.5)` (which rounds the

@@ -30,20 +30,22 @@ class Envelope {
  public:
   enum class Stage { Idle, Attack, Decay, Sustain, Release };
 
-  Envelope(double rate, const EnvelopeTone& tone) : rate_(rate), tone_(tone) {}
+  // The tone is read per sample, as the page reads `tone.attackMs`, so it is
+  // held by pointer: a voice's envelope has to be movable with the voice.
+  Envelope(double rate, const EnvelopeTone& tone) : rate_(rate), tone_(&tone) {}
 
   double step() {
     switch (stage_) {
       case Stage::Attack:
-        value_ += (target_ - value_) * poleFor(tone_.attackMs);
+        value_ += (target_ - value_) * poleFor(tone_->attackMs);
         if (value_ >= end_) { value_ = end_; enterStage(Stage::Decay); }
         break;
       case Stage::Decay:
-        value_ += (target_ - value_) * poleFor(tone_.decayMs);
+        value_ += (target_ - value_) * poleFor(tone_->decayMs);
         if (value_ <= end_) { value_ = end_; stage_ = Stage::Sustain; }
         break;
       case Stage::Release:
-        value_ += (target_ - value_) * poleFor(tone_.releaseMs);
+        value_ += (target_ - value_) * poleFor(tone_->releaseMs);
         if (value_ <= end_) { value_ = end_; stage_ = Stage::Idle; }
         break;
       case Stage::Sustain:
@@ -83,8 +85,8 @@ class Envelope {
     stage_ = next;
     if (next == Stage::Attack) { target_ = 1 + kReach; end_ = 1; }
     else if (next == Stage::Decay) {
-      target_ = tone_.sustain - kReach * (1 - tone_.sustain);
-      end_ = tone_.sustain;
+      target_ = tone_->sustain - kReach * (1 - tone_->sustain);
+      end_ = tone_->sustain;
     } else if (next == Stage::Release) { target_ = -kReach; end_ = 0; }
     else return;
 
@@ -100,7 +102,7 @@ class Envelope {
   }
 
   double rate_;
-  const EnvelopeTone& tone_;
+  const EnvelopeTone* tone_;
   Stage stage_ = Stage::Idle;
   double value_ = 1;
   double velocity_ = 1;

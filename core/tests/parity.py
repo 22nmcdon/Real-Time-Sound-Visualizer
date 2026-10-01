@@ -212,6 +212,94 @@ def calls():
                 moved = {"cutoff": cutoff * 1.7, "env": env_amt + 0.8, "track": track + 0.5}[field]
                 out.append("vcfRun %r %r %r %r %d %r 48000 %r %s %s %s %r" % (cutoff, env_amt, track, q, kind, note,
                                                                              rng.choice([0, 0.7]), xs, envs, field, moved))
+    out += [voices_call(v) for v in voice_scenarios()]
+    return out
+
+VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
+                      fa=5, fd=200, fs=1, fr=200, vtype=0, vcut=2000, vq=0.7071, vtrack=0, venv=0, drive=0, fold=0,
+                      cbits=0, chz=0, n=1, cents=0, fm=0, mod=1, ring=0, sync=1, sub=0, suboct=1, subsine=0,
+                      width=0.25, table=1.5, morph=0, qmask=0, qglide=1, factor=2, fmr=0, syncr=0, shr=0, vpush=0,
+                      dp=0, fp=0, bars="-", amount=0, bend=1, bend2=1, duck=0.9,
+                      glide=1 - math.exp(-1 / 240), ev="0:none")
+
+def voices_call(over):
+    p = dict(VOICE_DEFAULTS); p.update(over)
+    return "voicesRun " + " ".join("%s=%s" % (k, v if isinstance(v, str) else repr(v)) for k, v in p.items())
+
+def chord(*notes):
+    """`chord((60, 'x'), (64, 'y', 0.6))`: notes by MIDI number, equal-tempered."""
+    return "+".join("%d/%r/%r/%s" % (n[0], 440 * 2 ** ((n[0] - 69) / 12), n[2] if len(n) > 2 else 1.0, n[1])
+                    for n in notes)
+
+def voice_scenarios():
+    """The chord's voices, weighted towards the bookkeeping, which is where a
+    port of `reconcileVoices` goes wrong: a note kept while the chord around
+    it changes, a role changed under a held note (the gains glide), a key let
+    go and pressed again inside its own release (a second voice, not the
+    first one woken), a run of chords fast enough to put more than eight
+    tails in flight, a layer switched off with notes held, the governor's
+    cut, and two of one note in one list. Then every branch of `sound`."""
+    C, E, G, B = 60, 64, 67, 71
+    out = []
+    out.append(dict(ev=";".join(["0:" + chord((C, "x"), (E, "y", 0.7), (G, "u")),
+                                 "600:" + chord((C, "xy"), (E, "y", 0.7), (B, "x", 0.4)),
+                                 "1100:" + chord((B, "q")), "1600:none"])))
+    out.append(dict(ev=";".join(["0:" + chord((C, "x")), "500:none", "700:" + chord((C, "x", 0.5)), "1500:none"]),
+                    r=400))
+    # Six chords forty samples apart, three new notes each: fifteen tails.
+    out.append(dict(r=900, ev=";".join("%d:%s" % (40 * k, chord(*[(48 + 3 * k + j, "xy"[j % 2]) for j in range(3)]))
+                                       for k in range(6)) + ";260:none"))
+    out.append(dict(ev="0:" + chord((C, "x"), (G, "y")) + ";700:null;900:" + chord((E, "xy"))))
+    # One key held while its pitch is retuned under it: the same voice, at
+    # the new pitch.
+    out.append(dict(ev="0:60/261.63/1.0/x+67/392.0/1.0/y;500:60/270.0/1.0/x+67/392.0/1.0/y;1500:none"))
+    out.append(dict(ev="0:" + chord((C, "x"), (E, "y"), (G, "xy")) + ";300:cut:1;400:none;500:cut:0;2000:cut:2"))
+    out.append(dict(ev="0:" + chord((C, "x"), (C, "y", 0.3)) + ";0:" + chord((C, "xy"), (E, "x", 0)) + ";900:none"))
+    # The quantiser, on C major with a glide, under a bend of two semitones:
+    # off-key notes land on the key, then step as the bend carries them.
+    out.append(dict(qmask=2741, qglide=0.004, bend=1.0, bend2=2 ** (2 / 12), samples=4800,
+                    ev="0:" + chord((61, "x"), (66, "y"), (C, "u")) + ";3000:none"))
+    out.append(dict(qmask=2741, qglide=1, bend=0.97, bend2=1.05, rate=44100.0, samples=3000,
+                    ev="0:" + chord((C, "x"), (E, "y"))))
+    # A key a fifth of a billionth of a semitone above the middle of C and D:
+    # a tie, as the page counts one, which goes to the lower note.
+    tie = 440 * 2 ** ((61 + 2e-10 - 69) / 12)
+    out.append(dict(qmask=2741, ev="0:61/%r/1.0/x+62/%r/1.0/y" % (tie, 440 * 2 ** (-7 / 12))))
+    # A bend carried through nought to below it, so the phase runs backwards:
+    # the quantiser lets a pitch that is not above nought through untouched.
+    out.append(dict(qmask=2741, bend=1.0, bend2=-1.0, shape="ramp",
+                    ev="0:" + chord((C, "x"), (G, "y")) + ";1800:none"))
+    for shape, seed in (("noise", 1), ("pink", 7), ("brown", 11), ("stepped", 13)):
+        out.append(dict(shape=shape, seed=seed, ev="0:" + chord((C, "x"), (G, "y")) + ";800:" + chord((E, "xy")) + ";1600:none"))
+    weights = ",".join("%r" % w for w in (0.1, 0, 0.3, 0.2, 0, 0.05, 0, 0, 0.35))
+    for shape, extra in (("square", {}), ("ramp", {}), ("triangle", {}), ("harmonic", {}), ("pulse", dict(amount=0.3)),
+                         ("morph", dict(amount=1.6)), ("drawbars", dict(bars=weights))):
+        two = "0:" + chord((E, "x"), (B, "y", 0.8)) + ";1400:none"
+        out.append(dict(shape=shape, ev=two, **extra))
+        # The oscillator on: unison, FM, a sub and hard sync together.
+        out.append(dict(shape=shape, ev=two, n=3, cents=12, fm=0.8, mod=2, sub=0.4, sync=1.5, syncr=1, **extra))
+    shaped = "0:" + chord((C, "x"), (G, "y", 0.6)) + ";1200:none"
+    for factor in (2, 4):
+        out.append(dict(shape="square", factor=factor, drive=0.5, fold=0.2, dp=0.1, fp=-0.05, ev=shaped))
+    out.append(dict(shape="ramp", shr=1, dp=0.4, ev=shaped))
+    # The oversampling changed mid-note, as the governor changes it: each
+    # voice's shaper is built again at the new factor.
+    out.append(dict(shape="square", drive=0.6, factor=4, ev=shaped + ";700:factor:2"))
+    out.append(dict(shape="triangle", cbits=5, chz=7000.0, ev=shaped))
+    # The filter with its envelope, on both layers: on layer B the other
+    # layer's filter envelope is different (see the runner), so the page's
+    # choice of view is in the comparison.
+    for layer in ("a", "b"):
+        out.append(dict(layer=layer, shape="ramp", vtype=1, vcut=400, vq=2.0, venv=2.5, vtrack=0.5, fa=20, fd=150,
+                        fs=0.3, fr=300, vpush=0.2, bend2=1.06, ev=shaped))
+    out.append(dict(shape="square", vtype=3, vcut=1500, venv=-1, fa=1, fd=60, fs=0, fr=40, drive=0.3, cbits=7,
+                    ev=shaped, layer="b"))
+    # Sliders moved mid-note and mid-release: the envelopes read their tone
+    # per sample, which is what holding the tone by pointer is for.
+    out.append(dict(shape="ramp", vtype=1, vcut=600, venv=1.5, ev=";".join([
+        "0:" + chord((C, "x"), (E, "y")), "60:set:attackMs:80", "700:set:sustain:0.3", "750:set:fSustain:0.1",
+        "900:set:vcfCutoff:2400", "1000:none", "1200:set:releaseMs:40", "1300:set:fReleaseMs:900",
+        "1400:set:amp:0.3"])))
     return out
 
 lines = calls()
@@ -226,6 +314,7 @@ by_name, worst_line = {}, ("", 0.0)
 for call, a, b in zip(lines, js_rows, cpp_rows):
     w = worst(row(a), row(b))
     name = call.split()[0] + (" " + call.split()[1] if call.startswith(("waveAt", "noiseRun")) else "")
+    if call.startswith("voicesRun"): name += " " + call.split(" shape=")[1].split()[0]
     by_name[name] = max(by_name.get(name, 0.0), w)
     if w > worst_line[1]: worst_line = (call[:80], w)
 check("every call answered by both: %d calls" % len(lines), len(js_rows) == len(cpp_rows) == len(lines),
@@ -241,6 +330,27 @@ check("and the comparison fails against the page's answers a line out of step",
 # first such call found there could not tell 0.3 from 0.31.
 pulse = next(i for i, l in enumerate(lines) if l.startswith("waveAt pulse") and l.endswith(" 0.3")
              and 0.4 < (float(l.split()[2]) / TWO_PI) % 1 < 0.9)
+# The voices: every run sounds on each of its four mixes, so no comparison of
+# them is a comparison of silence.
+quiet = [l[:60] for l, a in zip(lines, js_rows) if l.startswith("voicesRun")
+         and min(max(abs(v) for v in row(a)[k::4]) for k in (2, 3)) < 0.05]
+check("every chord sounds, heard left and right", not quiet, "; ".join(quiet[:2]))
+pictured = [l for l, a in zip(lines, js_rows) if l.startswith("voicesRun")
+            and min(max(abs(v) for v in row(a)[k::4]) for k in (0, 1)) > 0.05]
+check("and most draw on both picture channels", len(pictured) > 30, "%d" % len(pictured))
+def js_one(call):
+    return row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(call)], check=True,
+                              capture_output=True, text=True).stdout)
+moved = next(i for i, l in enumerate(lines) if "set:releaseMs" in l)
+check("and against a release slider that was never moved",
+      worst(js_one(lines[moved].replace(";1200:set:releaseMs:40", "")), row(cpp_rows[moved])) > 1e-6)
+onb = next(i for i, l in enumerate(lines) if l.startswith("voicesRun") and "layer=b" in l and "vtype=1" in l)
+# What the page would have played had its layer-B voice read layer A's
+# filter envelope: layer A, with A's times. The comparison has to fail on it.
+check("and against layer B's filter envelope read from layer A's tone",
+      worst(js_one(lines[onb].replace("layer=b", "layer=a").replace("fa=20 fd=150 fs=0.3 fr=300",
+                                                                    "fa=1 fd=37 fs=0.2 fr=23")),
+            row(cpp_rows[onb])) > 1e-6)
 check("and against a pulse of 0.3 answered as one of 0.31",
       worst(row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"),
                                 _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),
