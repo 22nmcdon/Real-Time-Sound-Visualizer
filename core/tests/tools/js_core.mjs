@@ -22,7 +22,7 @@ export function pageFunction(name) {
    evaluated together in one scope so they can see each other, as they do in
    the page. A `const` runs to the end of its statement: a multi-line array
    or arrow function to its closing line, anything else to its semicolon. */
-export function pageScope(names) {
+export function pageScope(names, random) {
   const parts = names.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");
     if (start >= 0) return page.slice(start + 1, page.indexOf("\n}\n", start) + 2);
@@ -32,7 +32,21 @@ export function pageScope(names) {
     const close = line.endsWith("[") ? "\n];\n" : line.endsWith("{") ? "\n};\n" : ";\n";
     return page.slice(start + 1, page.indexOf(close, start) + close.length);
   });
-  return new Function(parts.join("\n") + "\nreturn { " + names.join(", ") + " };")();
+  return new Function("random", "const Math = Object.create(globalThis.Math); if (random) Math.random = random;\n"
+                      + parts.join("\n") + "\nreturn { " + names.join(", ") + " };")(random);
+}
+
+/* A stretch of the page between two markers, evaluated whole, with the
+   definitions it reaches for: for code that is not a list of named
+   definitions, such as the solids, built by a loose block of statements. */
+export function pageSpan(from, to, before, names) {
+  const start = page.indexOf(from), end = page.indexOf(to, start);
+  if (start < 0 || end < 0) throw new Error("no span from " + from);
+  const lifted = before.map((name) => {
+    const at = page.indexOf("\nconst " + name + " = ");
+    return page.slice(at + 1, page.indexOf(";\n", at) + 2);
+  });
+  return new Function(lifted.join("\n") + page.slice(start, end) + "\nreturn { " + names.join(", ") + " };")();
 }
 
 /* Functions and constants from inside `makeGeneratorCore`, which no page

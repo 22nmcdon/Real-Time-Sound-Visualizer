@@ -5,11 +5,20 @@
    `T:most:t0;t1;...` (each table a list), or a bank of them `B:` with the
    cycles split by `!`. Usage: node functions_js.mjs <calls> */
 import fs from "node:fs";
-import { pageScope, coreScope, mulberry32 } from "./js_core.mjs";
+import { pageScope, pageSpan, coreScope, mulberry32 } from "./js_core.mjs";
 
 const f = pageScope(["TWO_PI", "DRAWBAR_HARMONICS", "INTERVALS", "cycleOf", "polyBlep", "polyBlamp",
                      "drawbarGain", "drawbarWeights", "intervalRatio", "svfG", "svfStep", "cycleRead", "waveAt"]);
 
+const fig = pageScope(["figureAt"]);
+const solidsJs = pageSpan("const MODELS = [", "/* --- what rate this machine actually runs at", ["TWO_PI"],
+                          ["MODELS", "makeWireframe"]);
+// `P:x,y,x,y...;at,at,...` - a compiled path, as `compilePath` leaves one.
+const figPath = (w) => {
+  if (w === "-") return null;
+  const [xy, at] = w.slice(2).split(";");
+  return { xy: xy.split(",").map(Number), at: at.split(",").map(Number) };
+};
 const tables = (text) => {
   const [, most, body] = text.split(":");
   return { most: Number(most), levels: body.split(";").map((t) => Float32Array.from(t.split(",").map(Number))) };
@@ -174,6 +183,57 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       c.planeStep(c.__get("osHeard"), c.__get("fxHeard"), 0.6 * (x + y), 0.6 * (x - y));
       values.push(c.__get("opX"), c.__get("opY"));
     }
+    out.push(show(values));
+    continue;
+  }
+  if (name === "figureAt") {
+    // figureAt name t detail path
+    out.push(show(fig.figureAt(rest[0], a[1], a[2], figPath(rest[3]))));
+    continue;
+  }
+  if (name === "hypot") { out.push(show(Math.hypot(...a))); continue; }
+  if (name === "solidData") {
+    // The model's route, then its corners, as the page built and scaled them.
+    const m = solidsJs.MODELS.find((s) => s.name === rest[0]);
+    out.push(show(m.route.concat(m.v.flat())));
+    continue;
+  }
+  if (name === "wireRun") {
+    /* A solid turned and walked for `samples`: `ev` changes the model, the
+       depth or resets it at a sample (`900:model:Torus;1500:reset;2000:depth:0.9`). */
+    const p = Object.fromEntries(rest.map((kv) => { const i = kv.indexOf("="); return [kv.slice(0, i), kv.slice(i + 1)]; }));
+    const n = (k) => Number(p[k]);
+    const wire = solidsJs.makeWireframe();
+    wire.set(p.model);
+    const events = new Map();
+    for (const e of (p.ev || "").split(";").filter(Boolean)) {
+      const parts = e.split(":");
+      if (!events.has(Number(parts[0]))) events.set(Number(parts[0]), []);
+      events.get(Number(parts[0])).push(parts.slice(1));
+    }
+    let depth = n("depth");
+    const values = [], dt = 1 / n("rate");
+    for (let i = 0; i < n("samples"); i++) {
+      for (const [what, value] of events.get(i) || []) {
+        if (what === "model") wire.set(value);
+        else if (what === "reset") wire.reset();
+        else if (what === "depth") depth = Number(value);
+      }
+      const at = wire.step(dt, n("laps"), depth, [n("s0"), n("s1") * (1 + 0.5 * Math.sin(i * 0.001)), n("s2")]);
+      values.push(at[0], at[1]);
+    }
+    const ang = wire.angles;
+    values.push(ang[0], ang[1], ang[2]);
+    out.push(show(values));
+    continue;
+  }
+  if (name === "lfoRun") {
+    // shape lfoHz seed samples rate: the page's lfoStep, its random seeded.
+    const [shape, hz, seed, samples, rate] = a;
+    const l = pageScope(["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt",
+                         "lfoStep"], mulberry32(seed));
+    const lfo = { shape, rate: hz, depth: 0.5, phase: 0, held: 0, value: 0 }, values = [];
+    for (let i = 0; i < samples; i++) values.push(l.lfoStep(lfo, rate));
     out.push(show(values));
     continue;
   }

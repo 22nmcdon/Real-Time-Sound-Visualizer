@@ -214,6 +214,50 @@ def calls():
                                                                              rng.choice([0, 0.7]), xs, envs, field, moved))
     out += [voices_call(v) for v in voice_scenarios()]
     out += [plane_call(v) for v in plane_scenarios()]
+    out += drawing_calls()
+    return out
+
+SOLIDS = ["Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"]
+
+def drawing_calls():
+    """The figures at their corners and between, each detail rounded either
+    way and fractional where the figure keeps the fraction, a rose far into
+    its turns; a compiled path, a path of one point and none. The solids as
+    built, and walked: turned, slow and fast, switched and reset mid-lap.
+    The LFOs, the random one fast enough to draw many times."""
+    out = []
+    figures = ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph",
+               "Butterfly", "Nonsense"]
+    ts = sorted({k / d for d in (4, 5, 6, 7, 8, 12) for k in range(d)} | {rng.random() for _ in range(12)}
+                | {0.999999999, 1e-12})
+    for name in figures:
+        for detail in (0, 2.5, 3, 4.5, 5, 6.5, 7, 12):
+            for t in ts:
+                out.append("figureAt %s %r %r -" % (name, t, detail))
+    for t in (0.0, 1.25, 517.3, 10079.999):
+        out.append("figureAt Rose %r 3.7 -" % t)
+    path = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
+    for t in ts + [3.4, 0.5, 0.18]:
+        for name in ("Text", "Path", "Drawn"):
+            out.append("figureAt %s %r 5 %s" % (name, t, path))
+    out.append("figureAt Drawn 0.3 5 P:0.4,0.4;0")
+    out.append("figureAt Text 0.3 5 -")
+    for s in SOLIDS: out.append("solidData " + s)
+    # Math.hypot to the last bit: V8 scales by the largest and compensates the
+    # sum, which only the last place shows. Values whose squares carry well
+    # past a double's width, so the compensation has something to keep.
+    for _ in range(400):
+        vals = [rng.uniform(-1, 1) * 10 ** rng.randint(-3, 3) for _ in range(rng.choice([2, 3]))]
+        out.append("hypot " + " ".join("%r" % v for v in vals))
+    out.append("hypot 0.0 0.0 0.0")
+    for s in SOLIDS:
+        out.append("wireRun model=%s samples=1800 rate=48000 laps=40 depth=0.45 s0=0.11 s1=0.17 s2=0.3 ev=" % s)
+    out.append("wireRun model=Cube samples=3000 rate=48000 laps=300 depth=0.9 s0=2 s1=-1.3 s2=0.7 "
+               "ev=700:model:Knot;1300:depth:0.1;1900:reset;2300:model:Torus;2600:model:Torus")
+    out.append("wireRun model=Icosahedron samples=1200 rate=44100 laps=0.5 depth=1 s0=0 s1=0 s2=0 ev=600:model:Nonsense")
+    for shape in ("sine", "triangle", "ramp", "square", "random"):
+        for hz, seed in ((0.2, 1), (7.0, 9), (300.0, 4)):
+            out.append("lfoRun %s %r %d 2000 48000" % (shape, hz, seed))
     return out
 
 PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4, planeOS=2, planeLimit=0,
@@ -362,12 +406,17 @@ for call, a, b in zip(lines, js_rows, cpp_rows):
     name = call.split()[0] + (" " + call.split()[1] if call.startswith(("waveAt", "noiseRun")) else "")
     if call.startswith("voicesRun"): name += " " + call.split(" shape=")[1].split()[0]
     if call.startswith("planeRun"): name += " at %sx" % call.split(" planeOS=")[1].split()[0]
+    if call.startswith(("figureAt", "lfoRun")): name += " " + call.split()[1]
     by_name[name] = max(by_name.get(name, 0.0), w)
     if w > worst_line[1]: worst_line = (call[:80], w)
 check("every call answered by both: %d calls" % len(lines), len(js_rows) == len(cpp_rows) == len(lines),
       "%d from the page, %d from the port" % (len(js_rows), len(cpp_rows)))
+# Held to the last bit, where the page's arithmetic is a known algorithm the
+# port copies rather than a library call each side has its own of.
+EXACT = {"hypot"}
 for name in sorted(by_name):
-    check("%s, the same to %g" % (name, TOL), by_name[name] <= TOL, "worst %.3g" % by_name[name])
+    tol = 0 if name in EXACT else TOL
+    check("%s, the same to %g" % (name, tol), by_name[name] <= tol, "worst %.3g" % by_name[name])
 # The nulls: the page's answers a line out of step, and one call changed.
 shifted = js_rows[1:] + js_rows[-1:]
 check("and the comparison fails against the page's answers a line out of step",
@@ -418,6 +467,14 @@ check("and against a kaleidoscope of 5.6 answered as one of 5.5",
 flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
 check("and against an oversampler that kept its history through a change of factor",
       worst(js_one(lines[flips].replace(";1700:planeOS:4", ";1700:planeOS:2")), row(cpp_rows[flips])) > 1e-6)
+# The drawings: a solid that was never reset mid-lap, and a random LFO drawing
+# from another seed, must both be told apart.
+walk = next(i for i, l in enumerate(lines) if "1900:reset" in l)
+check("and against a solid that was not reset mid-lap",
+      worst(js_one(lines[walk].replace(";1900:reset", "")), row(cpp_rows[walk])) > 1e-6)
+held = next(i for i, l in enumerate(lines) if l.startswith("lfoRun random 300.0"))
+check("and against a random LFO from another seed",
+      worst(js_one(lines[held].replace(" 4 2000", " 5 2000")), row(cpp_rows[held])) > 1e-6)
 check("and against a pulse of 0.3 answered as one of 0.31",
       worst(row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"),
                                 _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),

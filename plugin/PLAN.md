@@ -89,7 +89,10 @@ release tails and their limit of eight, and `sound`, a layer's voices summed a
 sample at a time with the governor's cut and the gains gliding between roles;
 and the plane (`scope/plane.h`) - mirror, twist, kaleidoscope, the clip or fold
 at a radius and the snap, at one, two and four times the rate, then the chorus
-and the echo, one of each for each of the three pairs.
+and the echo, one of each for each of the three pairs; and the drawings - the
+figures (`scope/figures.h`), the solids as the page builds them, routes and
+all, and the beam walked round them (`scope/wireframe.h`), and the LFOs
+(`scope/lfo.h`).
 They are held to the page by a list of about 14,000 calls written by
 `parity.py` and answered by both (`functions_js.mjs`, `functions_cpp`); the
 functions inside `makeGeneratorCore`, which the page does not export, are
@@ -101,8 +104,13 @@ tie at the quantiser, sliders moved mid-note - through every shape and the
 whole voice chain on both layers; the plane, every stage alone at every
 factor, all of them together, and changed under the pairs. Every call agrees
 to the last bit or within 6e-15 - the oscillators' sync and the oversamplers
-accumulate a little - and 111 of 112 mutants of the ports are caught. The one
-that lives is
+accumulate a little - and 149 of 154 mutants of the ports are caught. The
+five that live change nothing that can happen. Four are in the drawings: a
+compiled path's span that is never nought, a test for a corner no list holds,
+a solid's leg that no model projects to nothing, and an exact tie the walk
+never lands on. `Math.hypot` is held to the last bit, because V8 computes it
+by an algorithm the port copies (scaled by the largest, the sum compensated)
+and a solid's corners are divided by it. The fifth is
 the voice's phase folded back up from below nought, which only a pitch bent
 past nought reaches, and which changes nothing: `cycleOf` and `sin` read a
 phase below nought as the same point of the cycle.
