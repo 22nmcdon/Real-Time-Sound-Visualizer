@@ -47,7 +47,8 @@ const core = (() => {
   const start = page.indexOf("\nfunction makeGeneratorCore(");
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
-const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep", "makeEnvelope"];
+const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep", "makeEnvelope",
+               "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT", "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT", "SPIN_SLOT"];
 export function coreScope(names, rate, random, given = {}) {
   const outer = OUTER.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");
@@ -68,8 +69,9 @@ export function coreScope(names, rate, random, given = {}) {
   });
   const body = "const Math = Object.create(globalThis.Math); if (random) Math.random = random;\n"
     + outer.join("\n") + "\n" + inner.join("\n")
-    // `__set` reaches a `let` in this closure, as the core's own code does.
-    + "\nreturn { " + names.join(", ") + ", __set: (name, value) => eval(name + ' = value') };";
+    // `__set` and `__get` reach a `let` in this closure, as the core's own
+    // code does; a name in the returned object is only its value when lifted.
+    + "\nreturn { " + names.join(", ") + ", __set: (name, value) => eval(name + ' = value'), __get: (name) => eval(name) };";
   return new Function("rate", "random", ...Object.keys(given), body)(rate, random, ...Object.values(given));
 }
 

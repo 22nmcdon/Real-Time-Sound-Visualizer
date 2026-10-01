@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
 
 #include "scope/noise.h"
 #include "scope/osc.h"
+#include "scope/plane.h"
 #include "scope/voice.h"
 #include "scope/voices.h"
 #include "scope/wave.h"
@@ -175,6 +177,58 @@ int main(int argc, char** argv) {
         const double bend = d("bend") + (d("bend2") - d("bend")) * static_cast<double>(i) / static_cast<double>(samples);
         scope::sound(voices, t, bars, d("amount"), bend, d("duck"), 1 / rate, d("glide"), x, c);
         out.insert(out.end(), c.mix.begin(), c.mix.end());
+      }
+      show(out);
+      continue;
+    }
+    if (name == "planeRun") {
+      std::map<std::string, std::string> p;
+      for (std::size_t i = 1; i < w.size(); i++) { const auto eq = w[i].find('='); p[w[i].substr(0, eq)] = w[i].substr(eq + 1); }
+      auto d = [&](const std::string& k) { return num(p[k]); };
+      const double rate = d("rate");
+      scope::PlaneTone t;
+      const std::map<std::string, std::function<void(double)>> fields {
+        { "planeMirror", [&](double v) { t.planeMirror = static_cast<int>(v); } },
+        { "planeRadius", [&](double v) { t.planeRadius = v; } }, { "planeOS", [&](double v) { t.planeOS = v; } },
+        { "planeLimit", [&](double v) { t.planeLimit = static_cast<int>(v); } },
+        { "planeScaleX", [&](double v) { t.planeScaleX = v; } }, { "planeScaleY", [&](double v) { t.planeScaleY = v; } },
+        { "planeShear", [&](double v) { t.planeShear = v; } }, { "planeTwist", [&](double v) { t.planeTwist = v; } },
+        { "planeKaleido", [&](double v) { t.planeKaleido = v; } }, { "planeSnap", [&](double v) { t.planeSnap = v; } },
+        { "delayMix", [&](double v) { t.delayMix = v; } }, { "delayMs", [&](double v) { t.delayMs = v; } },
+        { "delayFeedback", [&](double v) { t.delayFeedback = v; } },
+        { "delayPingPong", [&](double v) { t.delayPingPong = v != 0; } },
+        { "chorusMix", [&](double v) { t.chorusMix = v; } }, { "chorusRate", [&](double v) { t.chorusRate = v; } },
+        { "chorusDepthMs", [&](double v) { t.chorusDepthMs = v; } }, { "chorusMs", [&](double v) { t.chorusMs = v; } },
+        { "chorusFeedback", [&](double v) { t.chorusFeedback = v; } },
+      };
+      for (const auto& [k, set] : fields) set(d(k));
+      std::map<long, std::vector<std::pair<std::string, double>>> events;
+      for (const auto& e : splitOn(p["ev"], ';')) {
+        if (e.empty()) continue;
+        const auto f = splitOn(e, ':');
+        events[std::strtol(f[0].c_str(), nullptr, 10)].push_back({ f[1], num(f[2]) });
+      }
+      scope::Plane plane(rate);
+      std::vector<double> out;
+      bool on = false;
+      const double tw = scope::kTwoPi;
+      for (long i = 0; i < static_cast<long>(d("samples")); i++) {
+        const auto ev = events.find(i);
+        if (ev != events.end()) for (const auto& [field, value] : ev->second) fields.at(field)(value);
+        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1);
+        const double di = static_cast<double>(i);
+        const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
+        const double tp = static_cast<float>(d("tpush") * std::sin(di * 0.0047 + 1));
+        const double ep = static_cast<float>(d("epush") * std::sin(di * 0.0023 + 2));
+        const double etp = static_cast<float>(d("etpush") * std::sin(di * 0.0013 + 3));
+        double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
+        double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
+        if (d("inp") == 1) { x = -0.375; y = 0.625; }
+        if (!on) { out.insert(out.end(), { x, y, y, x, x, y }); continue; }
+        plane.tick(t, rp, tp, ep, etp, 1 / rate);
+        plane.step(scope::Plane::A, t, x, y); out.insert(out.end(), { plane.x, plane.y });
+        plane.step(scope::Plane::B, t, 0.8 * y, 1.1 * x); out.insert(out.end(), { plane.x, plane.y });
+        plane.step(scope::Plane::Heard, t, 0.6 * (x + y), 0.6 * (x - y)); out.insert(out.end(), { plane.x, plane.y });
       }
       show(out);
       continue;

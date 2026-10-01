@@ -213,6 +213,52 @@ def calls():
                 out.append("vcfRun %r %r %r %r %d %r 48000 %r %s %s %s %r" % (cutoff, env_amt, track, q, kind, note,
                                                                              rng.choice([0, 0.7]), xs, envs, field, moved))
     out += [voices_call(v) for v in voice_scenarios()]
+    out += [plane_call(v) for v in plane_scenarios()]
+    return out
+
+PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4, planeOS=2, planeLimit=0,
+                      planeScaleX=1, planeScaleY=1, planeShear=0, planeTwist=0, planeKaleido=0, planeSnap=0,
+                      delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
+                      chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
+                      etpush=0, inp=0, ev="")
+
+def plane_call(over):
+    p = dict(PLANE_DEFAULTS); p.update(over)
+    return "planeRun " + " ".join("%s=%s" % (k, v if isinstance(v, str) else repr(v)) for k, v in p.items())
+
+def plane_scenarios():
+    """Every stage of the plane alone at each oversampling, then together,
+    then changed under the pairs. The pairs are a 220 and 661 Hz mix against
+    330 Hz: never a circle, so a turn of the plane is a change of the figure
+    (see CLAUDE.md on fixtures), and loud enough to reach the radius."""
+    out = []
+    stages = [dict(planeMirror=1), dict(planeMirror=2), dict(planeMirror=3), dict(planeTwist=1.5, tpush=0.6),
+              dict(planeKaleido=3), dict(planeKaleido=5.5), dict(planeLimit=1, planeRadius=0.3, rpush=0.5),
+              dict(planeLimit=2, planeRadius=0.25, rpush=0.3), dict(planeSnap=3), dict(planeSnap=6.5)]
+    for os_ in (1, 2, 4):
+        for s in stages:
+            out.append(dict(planeOS=os_, **s))
+    out.append(dict(planeScaleX=1.4, planeScaleY=-0.6, planeShear=0.5))
+    # A pair held at -1.5 and 2.5 steps of a quarter's grid: halves, where
+    # JavaScript's rounding takes -1.5 up to -1 and C++'s std::round takes it
+    # down to -2. A sine passes through a half only by accident.
+    out.append(dict(planeOS=1, planeSnap=3, inp=1, samples=200))
+    out.append(dict(planeTwist=0, twr=1, tpush=0.9))
+    # The echo short enough to come back inside the run, its time moved by a
+    # routing (the read glides), ping-pong and not, and brought in from none.
+    for pp in (0, 1):
+        out.append(dict(delayMix=0.5, delayMs=12, delayFeedback=0.6, delayPingPong=pp, etpush=0.7))
+    out.append(dict(delayMix=0, ecr=1, epush=0.9, delayMs=9))
+    out.append(dict(chorusMix=0.7, chorusRate=3, chorusDepthMs=3, chorusMs=12, chorusFeedback=0.5))
+    out.append(dict(chorusMix=1, chorusRate=40, chorusDepthMs=20, chorusMs=40, rate=44100.0))
+    out.append(dict(planeMirror=1, planeTwist=0.8, planeKaleido=4, planeLimit=1, planeRadius=0.35, planeSnap=5,
+                    planeScaleX=1.2, planeShear=-0.3, delayMix=0.4, delayMs=8, chorusMix=0.5, chorusRate=2,
+                    tpush=0.4, rpush=0.4, epush=0.3, etpush=0.3, planeOS=4))
+    # Changed under the pairs: the oversampling (its histories emptied each
+    # time), the chorus brought in and the echo let go and brought back.
+    out.append(dict(planeTwist=1.2, ev="300:planeOS:4;900:planeOS:1;1400:planeOS:2;1700:planeOS:4"))
+    out.append(dict(planeLimit=2, planeRadius=0.3, delayMix=0.3, delayMs=6,
+                    ev="500:chorusMix:0.6;1000:delayMix:0;1200:delayMix:0.5;1900:planeKaleido:3"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -315,6 +361,7 @@ for call, a, b in zip(lines, js_rows, cpp_rows):
     w = worst(row(a), row(b))
     name = call.split()[0] + (" " + call.split()[1] if call.startswith(("waveAt", "noiseRun")) else "")
     if call.startswith("voicesRun"): name += " " + call.split(" shape=")[1].split()[0]
+    if call.startswith("planeRun"): name += " at %sx" % call.split(" planeOS=")[1].split()[0]
     by_name[name] = max(by_name.get(name, 0.0), w)
     if w > worst_line[1]: worst_line = (call[:80], w)
 check("every call answered by both: %d calls" % len(lines), len(js_rows) == len(cpp_rows) == len(lines),
@@ -351,6 +398,26 @@ check("and against layer B's filter envelope read from layer A's tone",
       worst(js_one(lines[onb].replace("layer=b", "layer=a").replace("fa=20 fd=150 fs=0.3 fr=300",
                                                                     "fa=1 fd=37 fs=0.2 fr=23")),
             row(cpp_rows[onb])) > 1e-6)
+# The plane: every run changes layer A's pair somewhere, so no comparison is of
+# the input passed through.
+def plane_input(i, rate, held):
+    if held: return -0.375, 0.625
+    x = 0.7 * math.sin(TWO_PI * 220 * i / rate) + 0.25 * math.sin(TWO_PI * 661 * i / rate)
+    return x, 0.5 * math.sin(TWO_PI * 330 * i / rate + 0.4)
+still = []
+for l, a in zip(lines, js_rows):
+    if not l.startswith("planeRun"): continue
+    rate, v, held = float(l.split("rate=")[1].split()[0]), row(a), " inp=1 " in l
+    if max(max(abs(v[6 * i] - plane_input(i, rate, held)[0]), abs(v[6 * i + 1] - plane_input(i, rate, held)[1]))
+           for i in range(len(v) // 6)) < 0.01:
+        still.append(l[:70])
+check("every plane run changes the pair it is given", not still, "; ".join(still[:2]))
+kal = next(i for i, l in enumerate(lines) if "planeKaleido=5.5" in l)
+check("and against a kaleidoscope of 5.6 answered as one of 5.5",
+      worst(js_one(lines[kal].replace("planeKaleido=5.5", "planeKaleido=5.6")), row(cpp_rows[kal])) > 1e-6)
+flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
+check("and against an oversampler that kept its history through a change of factor",
+      worst(js_one(lines[flips].replace(";1700:planeOS:4", ";1700:planeOS:2")), row(cpp_rows[flips])) > 1e-6)
 check("and against a pulse of 0.3 answered as one of 0.31",
       worst(row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"),
                                 _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),

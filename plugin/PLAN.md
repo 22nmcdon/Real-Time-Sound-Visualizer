@@ -86,7 +86,10 @@ follows it in a voice (`scope/voice.h`) - the filter's cutoff and its cached
 coefficient, the drive and fold with their oversampler, and the crush; and the
 chord's voices (`scope/voices.h`) - the quantiser, `reconcileVoices` with its
 release tails and their limit of eight, and `sound`, a layer's voices summed a
-sample at a time with the governor's cut and the gains gliding between roles.
+sample at a time with the governor's cut and the gains gliding between roles;
+and the plane (`scope/plane.h`) - mirror, twist, kaleidoscope, the clip or fold
+at a radius and the snap, at one, two and four times the rate, then the chorus
+and the echo, one of each for each of the three pairs.
 They are held to the page by a list of about 14,000 calls written by
 `parity.py` and answered by both (`functions_js.mjs`, `functions_cpp`); the
 functions inside `makeGeneratorCore`, which the page does not export, are
@@ -95,14 +98,23 @@ with the layers' tones handed in. The voices are run as scenarios of events -
 chords, roles changed under held notes, a key pressed again inside its own
 release, fifteen tails at once, the layer switched off, the cut, a retune, a
 tie at the quantiser, sliders moved mid-note - through every shape and the
-whole voice chain on both layers. Every call agrees to the last bit or within
-3e-15 - the oscillator's sync and the shaper's oversampler accumulate a
-little - and 76 of 77 mutants of the ports are caught. The one that lives is
+whole voice chain on both layers; the plane, every stage alone at every
+factor, all of them together, and changed under the pairs. Every call agrees
+to the last bit or within 6e-15 - the oscillators' sync and the oversamplers
+accumulate a little - and 111 of 112 mutants of the ports are caught. The one
+that lives is
 the voice's phase folded back up from below nought, which only a pitch bent
 past nought reaches, and which changes nothing: `cycleOf` and `sin` read a
 phase below nought as the same point of the cycle.
-Next: the per-sample loop that sums the layers - the routings into each
-layer's pushes, the dyad, the plane, the echo and chorus, the governor.
+Next: the governor, the crossings and the score's voices, then the
+per-sample loop that sums the layers - the routings into each layer's pushes,
+the dyad, the drawings - held to the page's own `makeGeneratorCore` whole.
+
+The plane's delay lines are made with it, not the first time the echo or the
+chorus is wanted as in the page, and its oversamplers are emptied in place
+when the factor changes rather than made again: allocating on the audio
+thread is how a plugin glitches. A line made early holds noughts until it is
+written, which is what one made late starts with, so nothing played differs.
 
 A voice's envelopes hold their tone by pointer, not by copy and not by
 reference: the page's envelope reads `tone.attackMs` every sample, so a slider
