@@ -293,6 +293,42 @@ keyboard and generator driven directly: equal to the last bit, and 0.61 from
 the same notes unrouted. The page opens with no routings, so the plugin sounds
 as it did until a setup gives it some.
 
+**2c has begun with the codes.** `scope/setup.h` is the page's setup as it
+keeps it - one flat object, `DEFAULTS` key for key, and the code that carries
+what differs from them: `encodeSetup`, `decodeSetup`, and the migrations from
+versions one, two and three. A code is `btoa(JSON.stringify(diff))`, so
+`scope/json.h` is JSON and base64 as V8 has them: UTF-16 strings, numbers
+printed as `Number.prototype.toString` prints them (shortest digits, "1e+21",
+"1e-7", minus nought as "0"), keys in V8's order (array indices first,
+ascending), `JSON.stringify`'s escapes, and `btoa`, which refuses a character
+past 0xFF as the browser throws, and the forgiving `atob`. The migrations read
+an old code with JavaScript's coercions - a lane of "1" or [1] is lane one, a
+full scale of "3" the fourth detent, a level given as text multiplied as a
+number - and in strict mode, as the page is, so a code that reads as a bare
+number or string throws where the page throws. A code that reads as `null` is
+one the page cannot load.
+
+It is held to the page's own functions in node (`setup_js.mjs`, `setup_cpp`):
+the defaults, about 300 snapshots with every kind of number, string and
+nesting encoded to the same characters, and about 500 codes - old versions
+with fields of every type, codes cut, padded, spaced and corrupted, JSON's
+corners - decoded to the same setup, or refused or thrown on as the page
+refuses or throws. Of 61 mutants, 58 are caught; the three that live change
+nothing: the second of `toString`'s placements at exactly 21 digits, which a
+double never reaches; two arrays compared as equal, where `DEFAULTS` holds
+none; and the text an object turns into as a trigger lane, which is never on a
+detent whatever it says.
+
+Three of the first fixtures could not see what they were for. The old codes'
+levels are only migrated while their lane sits on a detent other than nought,
+which random codes seldom did, so most of JavaScript's reading of a number was
+never read; a code on the -40 dB detent has a gain of exactly a hundred, and
+every reading shows there. Whitespace inside a code was only ever a space, the
+tabs being at its ends where the trim takes them first. And the runners wrote
+a character past ASCII as \u and four digits - which is how `JSON.stringify`
+writes a lone surrogate, so a port that escaped half of a good pair printed
+what the page printed. They write `{u+xxxx}` now.
+
 What the port leaves to later pieces: the arpeggiator (2d), where the page
 asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
 are `Panel` until the setup is the core's (2c); and a chord handed to the

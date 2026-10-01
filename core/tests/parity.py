@@ -1080,6 +1080,125 @@ mnull("layered", "strike 1", "strike 0", "the other layer struck")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(mjs.strip().split("\n")[1:]), "\n".join(mcpp.strip().split("\n")[:-1])) is not None)
 
+print("\n--- setup codes ---")
+# The page's DEFAULTS, encodeSetup, decodeSetup and migrateSetup, lifted by
+# name and run in strict mode, against scope/setup.h: a line a command, the
+# code or the setup read back, compared character for character.
+import json as _json, base64
+sexe = build("setup_cpp")
+def sboth(lines, name="setup_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w", encoding="utf-8") as f: f.write("\n".join(lines) + "\n")
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout.split("\n")
+    return js, subprocess.run([sexe, path], check=True, capture_output=True, text=True).stdout.split("\n")
+
+srng = random.Random(97)
+DEFAULT_KEYS = ["gen", "shape", "freq", "amp", "interval", "just", "phase", "figure", "detail", "figText", "mod", "bars",
+                "midiMode", "layers", "splitAt", "planeLimit", "delayMs", "oscFm", "vcfCut", "c0s", "c1s", "level", "trig"]
+NUMBERS = [0, -0.0, 1, -1, 0.1, 0.5, 1/3, 2/3, 123.456, 1e-6, 1e-7, 1.5e-7, 9.99e-7, 123456789012345680000.0, 1e21, 1.5e21,
+           1e300, 5e-324, 1.7976931348623157e308, 2**53, 2**53 + 2, 0.1 + 0.2, -1e-7, 100, 1000000, 4.35, 220.0]
+STRINGS = ["", "plain", "quote\"back\\slash", "tab\tnew\nline\rcr\bfeed\f", "ctl\u0001\u001f\u007f", "caf\u00e9 \u00ff",
+           "\u00a0nbsp", "lfo1>gen.freq@0.400;lfo2>gen.amp@-0.250", "slash/ok", "\u2028line", "\u4e2d\u6587",
+           "\U0001F3B5", "lone \ud800 high", "lone \udc00 low"]
+def rvalue(depth=0):
+    r = srng.random()
+    if r < 0.45: return srng.choice(NUMBERS + [srng.uniform(-1e4, 1e4), srng.randint(-1000, 1000), srng.random() * 10 ** srng.randint(-9, 25)])
+    if r < 0.7: return srng.choice(STRINGS)
+    if r < 0.85: return srng.choice([True, False])
+    if r < 0.9: return None
+    if depth < 2 and r < 0.95: return [rvalue(depth + 1) for _ in range(srng.randint(0, 3))]
+    if depth < 2: return {srng.choice(["a", "0", "7", "b"]): rvalue(depth + 1) for _ in range(srng.randint(0, 3))}
+    return 1
+def dumps(obj):
+    # Escaped, so a lone surrogate survives the file; the runs below also
+    # carry characters past ASCII as they are.
+    return _json.dumps(obj, ensure_ascii=True, separators=(",", ":"))
+def snapshot():
+    snap = {}
+    for k in srng.sample(DEFAULT_KEYS, srng.randint(0, len(DEFAULT_KEYS))): snap[k] = rvalue()
+    for _ in range(srng.randint(0, 3)): snap[srng.choice(["extra", "0", "12", "007", "4294967294", "4294967295", "v"])] = rvalue()
+    return snap
+def old_setup():
+    st = {}
+    if srng.random() < 0.8: st["v"] = srng.choice([1, 2, 3, 4, 5, "2", "x", None, [3], 1.5, True])
+    if srng.random() < 0.7: st["trig"] = srng.choice([0, 1, 2, "1", "x", [1], [], None, True, 0.5, -1, {"a": 1}])
+    for key in ("c0s", "c1s", "c2s"):
+        if srng.random() < 0.6: st[key] = srng.choice([0, 3, 8, 9, -1, "3", " 3", "03", 3.0, 2.5, "length", True, None, [5], -0.0])
+    if srng.random() < 0.7: st["level"] = srng.choice([100, -500, 1000, 999.5, 0.5, "250", "0x10", " 12 ", "1e2", "abc", None, True, [40], "", "Infinity"])
+    if srng.random() < 0.4: st["planeClip"] = srng.choice([True, False, 1, "true", None])
+    if srng.random() < 0.3: st["planeLimit"] = srng.choice([0, 2])
+    for _ in range(srng.randint(0, 2)): st[srng.choice(["gen", "freq", "mod", "5"])] = rvalue()
+    return st
+def code_of(text):
+    raw = text.encode("latin-1") if all(ord(c) < 256 for c in text) else text.encode("utf-8")
+    return base64.b64encode(raw).decode()
+def mangle(code):
+    r = srng.random()
+    if r < 0.5: return code.rstrip("=")
+    if r < 0.6: return " \t" + code + "\t "
+    if r < 0.7: return code[:len(code) // 2] + " " + code[len(code) // 2:]
+    if r < 0.75: return code + "="
+    if r < 0.8: return code[:-1] if len(code) % 4 == 2 else code + "A"
+    if r < 0.85: return code.replace("A", "*", 1)
+    if r < 0.9: return code.rstrip("=") + "=" * srng.randint(1, 3)
+    return code
+scmds = ["defaults"]
+scmds += ["encode " + dumps(snapshot()) for _ in range(300)]
+scmds += ["encode {\"figText\":\"caf\u00e9 \u00ff\",\"gen\":\"figure\"}", "encode {\"figText\":\"\u4e2d\"}",
+          "encode {\"figText\":\"\U0001F3B5\"}", "encode {\"figText\":\"\u0100\"}", "encode {\"figText\":\"\u00ff\"}", "encode {}", "encode []", "encode 5", "encode {\"a\":1,\"a\":2,\"0\":3}", "encode {bad"]
+for _ in range(400):
+    text = _json.dumps(old_setup(), separators=(",", ":"))
+    scmds.append("decode " + mangle(code_of(text)))
+for text in ["5", "\"abc\"", "true", "false", "null", "0", "\"\"", "[1,2]", "-0", "{\"v\":\"4\"}", "{\"v\":4,\"level\":5}",
+             "{bad json}", "{\"x\":\"caf\u00e9\"}", "{\"x\":\"\\ud800\"}", "  {\"trig\":1,\"c1s\":3,\"level\":64}  ", "{\"9\":1,\"1\":2,\"b\":3,\"a\":4,\"1\":5}"]:
+    scmds.append("decode " + code_of(text))
+# An old code on the -40 dB detent has a gain of exactly a hundred, so its
+# level is read as a number and every rule of that reading shows: halves
+# both ways, the infinities, hex, octal and binary, the forms that are not
+# numbers, an array as its joined text, and nothing at all.
+for level in ['"250"', '" 12 "', '"\\u00a0 7 \\u3000"', '"1e2"', '"abc"', '""', '"Infinity"', '"+Infinity"', '"-Infinity"',
+              '"0x1F"', '"0X1f"', '"0b101"', '"0b102"', '"0o17"', '"0o8"', '"0x"', '"1e"', '"1e+"', '".5"', '"5."', '"."', '"+.5e-1"',
+              '"12x"', '"1_0"', '"-"', '"+-1"', '"0x-1"', '"--1"', '"1e1000"', '[null]', '[1,null]', '[[2]]', '["3"]', '[1,2]', '{}',
+              '0.125', '-0.125', '0.135', '-0.135', '10.005', '-0', 'null', 'true', 'false', '1e999']:
+    scmds.append("decode " + code_of('{"v":1,"trig":0,"c0s":7,"level":%s}' % level))
+for text in ['{"a":01}', '{"a":1.}', '{"a":-}', '{"a":1e}', '{"a":"x\\/y"}', '{"a":"\u0001"}', '{"a":1}\u00a0', '\u00a0{"a":1}',
+             '{"a":1} x', '{"a":1e999,"b":-1e999}', '{"a":"\\ud83c\\udfb5"}', '{"a":"\\udfb5\\ud83c"}', '{"a":"\\ud83cx"}',
+             '{"a":"\\u00e9\\u0000\\u001f"}', '{"a":"\\x41"}', '{"a":[1,]}', '{"a":1,}', '{"a" :1 , "b":[ ] }', '[01]',
+             '{"a":"tab\there"}', '{"a":1E3,"b":1e-3,"c":-0.0}']:
+    scmds.append("decode " + code_of(text))
+for raw in ['{"v":4,"gen":"figure"}', '{"v":2,"trig":1,"c1s":"5","level":7}']:
+    c = code_of(raw)
+    scmds += ["decode " + c[:4] + "\t" + c[4:], "decode " + c[:4] + "\f" + c[4:8] + "\r\u000b" + c[8:]]
+scmds += ['encode {"freq":330,"gen":"figure"}', "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}')]
+scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
+sjs, scpp = sboth(scmds, "setup.txt")
+bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
+check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 180)
+enc = [i for i, c in enumerate(scmds) if c.startswith("encode")]
+dec = [i for i, c in enumerate(scmds) if c.startswith("decode")]
+check("%d snapshots encode to the page's code, character for character" % len(enc),
+      len(sjs) == len(scpp) and not [i for i in bad if i in enc], (scmds[bad[0]][:120] + " | " + sjs[bad[0]][:100] + " | " + scpp[bad[0]][:100]) if bad else "")
+check("%d codes decode and migrate to the page's setup, or fail as it fails" % len(dec),
+      len(sjs) == len(scpp) and not [i for i in bad if i in dec])
+# Each kind of case has to be there, or agreeing on it proves nothing.
+sj = "\n".join(sjs)
+check("the runs reach codes that throw, codes that do not read, migrated levels and the clip",
+      sjs.count("throws") >= 3 and sjs.count("unreadable") >= 10 and '"planeLimit":1' in sj
+      and re.search(r'"level":-?\d+', sj) and "1e+21" in sj and "1e-7" in sj and "\\ud800" in sj and "{u+d83c}{u+dfb5}" in sj)
+check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"9":1,"b":3,"a":4') for l in sjs))
+# Nulls: the page told something else, and the port must disagree.
+def snull(what, before, after):
+    i = scmds.index(before)
+    js, _ = sboth([scmds[i].replace(before, after, 1)])
+    check("and against " + what, js[0] != scpp[i])
+snull("a frequency a hertz higher", 'encode {"freq":330,"gen":"figure"}', 'encode {"freq":331,"gen":"figure"}')
+snull("an old code's level one more", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
+      "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":101}'))
+snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
+      "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
+check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
