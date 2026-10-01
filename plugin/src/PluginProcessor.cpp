@@ -19,19 +19,21 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   lfos_[0].rate = 0.2; lfos_[0].depth = 0.5;
   lfos_[1].rate = 0.5; lfos_[1].depth = 0.3;
   core_ = std::make_unique<scope::Generator>(sampleRate, scope::slot::Used, lfos_);
-  // Gated, as the page's generator is once a keyboard drives it: silent
-  // until a note.
-  core_->setGated(true);
+  notes_ = std::make_unique<scope::GeneratorNotes>(*core_);
+  keyboard_ = std::make_unique<scope::Keyboard>(*notes_);
+  /* A host is always a keyboard, so the generator is gated from the start -
+     silent until a note - which is what the page's first frame does once a
+     keyboard is there. Derived by the keyboard, not set here. */
+  keyboard_->setPresent(true);
+  keyboard_->frame(0);
   const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f);
-  held_ = -1;
   /* For looking at it without a keyboard: SCOPE_HOLD_NOTE=57 holds A3 from
-     the start, so the standalone has something to draw. Read once, here, and
-     never on the audio thread. */
-  if (const char* note = std::getenv("SCOPE_HOLD_NOTE")) {
-    held_ = std::atoi(note);
-    core_->set("freq", juce::MidiMessage::getMidiNoteInHertz(held_));
-    core_->gate(true, 1.0);
+     the start, and SCOPE_HOLD_NOTE=57,64 a fifth on it, so the standalone has
+     something to draw. Read once, here, and never on the audio thread. */
+  if (const char* held = std::getenv("SCOPE_HOLD_NOTE")) {
+    for (const auto& note : juce::StringArray::fromTokens(held, ",", ""))
+      keyboard_->noteOn(note.getIntValue(), 127);
   }
 }
 
@@ -65,20 +67,18 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const int at = std::clamp(event.samplePosition, done, frames);
     render(left, right, done, at);
     done = at;
-    const auto message = event.getMessage();
-    if (message.isNoteOn()) {
-      held_ = message.getNoteNumber();
-      core_->set("freq", juce::MidiMessage::getMidiNoteInHertz(held_));
-      core_->gate(true, message.getFloatVelocity());
-    } else if (message.isNoteOff() && message.getNoteNumber() == held_) {
-      core_->gate(false, 0);
-      held_ = -1;
-    } else if (message.isAllNotesOff() || message.isAllSoundOff()) {
-      core_->gate(false, 0);
-      held_ = -1;
-    }
+    /* The bytes, not JUCE's reading of them: the keyboard is the page's
+       `midiBytes` ported, so a note-on at velocity nought, a controller, the
+       pedal and a panic all mean here what they mean on the page. A chord
+       handed to the generator is copied there, which can allocate on a note
+       - once per layer, and a known cost until the brain's state is fixed in
+       size (PLAN.md). */
+    keyboard_->bytes(event.data, static_cast<std::size_t>(event.numBytes));
   }
   render(left, right, done, frames);
+  // And the keyboard's once-a-frame work, once a block: the controllers walk,
+  // and the gate and the chord are derived again.
+  keyboard_->frame(1000.0 * frames / rate_.load());
 }
 
 std::vector<float> ScopeProcessor::pictureSnapshot() const {

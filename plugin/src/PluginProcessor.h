@@ -8,15 +8,17 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "scope/generator.h"
+#include "scope/keyboard.h"
 #include "scope/lfo.h"
 
 // The processor plays the core's generator (scope::Generator, the page's
 // `makeGeneratorCore` ported): what the speakers get is its heard pair, and
-// what the page draws is its picture pair. Until the brain moves into the core
-// (PLAN.md, stage 2) the host's notes reach it as the page's keyboard reaches
-// a gated dyad - one note at a time, the newest key sets the pitch, the
-// envelope's legato rule does the rest - and every other setting is the
-// page's default.
+// what the page draws is its picture pair. The host's MIDI reaches it through
+// the core's keyboard (scope::Keyboard, the page's `midi` functions ported),
+// byte for byte as a port's reach the page: the stack, the pedal, the dyad,
+// mono and chords on two layers. Until the rest of the brain moves into the
+// core (PLAN.md, stage 2) the keyboard plays a dyad, as the page's does when
+// it opens, and every other setting is the page's default.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -71,8 +73,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
 
   std::vector<scope::Lfo> lfos_;
   std::unique_ptr<scope::Generator> core_;
+  std::unique_ptr<scope::GeneratorNotes> notes_;
+  std::unique_ptr<scope::Keyboard> keyboard_;
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
-  int held_ = -1;
   std::atomic<double> rate_ { 48000.0 };
 
   std::array<float, kPictureFrames * 2> picture_ {};

@@ -152,7 +152,7 @@ A3 held, the standalone's page reads 220 Hz on both channels, the right a
 quarter-cycle on from the left, the harmonic's third partial in the spectrum,
 and a peak of 0.362 - the page's default dyad, made in C++.
 
-Next: stage 2.
+Then stage 2, below.
 
 The plane's delay lines are made with it, not the first time the echo or the
 chorus is wanted as in the page, and its oversamplers are emptied in place
@@ -181,6 +181,67 @@ notes, layers, the arpeggiator, the score, the clock (the host's transport in
 the plugin), presets and setup codes as the core's state. The host's automation
 gets a curated set of parameters - the macros, the morph position, the main
 knobs - rather than every control.
+
+In pieces, as the engine went, each held to the page before the next:
+
+- **2a. The keyboard** (ported): the stack, the pedal, controllers, bytes, and
+  what notes tell the generator.
+- **2b. The matrix:** destinations, routings and their text, the reach and
+  loop rules, the compiled routes each block with their fades, and events.
+- **2c. The sources that are not the picture's or the hearing's:** the LFOs'
+  settings and sync, macros and the morph, the fade envelopes.
+- **2d. Time:** the key and the clock (the host's transport in the plugin),
+  the arpeggiator, the score.
+- **2e. The setup as the core's state:** setup codes, their migrations, and
+  presets; the panel the keyboard reads becomes part of it.
+- **2f. The hearing sources,** which analyse the sound and so are DSP in the
+  core rather than the page.
+- **2g. The host's parameters.**
+
+**2a is ported.** `scope/keyboard.h` is the page's `midi` functions: the
+held stack and its rules (a velocity of nought is a release, a note does not
+stack twice, a panic empties it), the sustain pedal and half-pedal, learned
+controllers with their smoothing and names, `midiBytes` with running status
+and a real-time byte taken wherever it lands - and what the stack tells the
+generator: the dyad's interval with Hold, mono, the chord on one layer or two
+(split with its learned point, layered, each layer's draw rule, A against B),
+just chords, the gate, the drawings' rates and the rose's petals, a pitched
+harmonograph struck by a key, and how the figures are laid out. And its
+sources: Key, Sustain, Notes, Spread, Melody, Inner.
+
+It is held to the page's own functions, lifted by name from `scope.html`
+(`keyboard_js.mjs`) and run against a stand-in generator that writes down
+every call; `keyboard_cpp` plays a real `scope::Generator` through a target
+that writes down the same calls first. 24 named runs and 40 seeded random
+sequences of 80 commands agree call for call, with the sources, the readout,
+the panel, the stack and the controllers after every command. Each named run
+must show what it is for, and each of those checks was seen to fail against
+a run without its feature. Of 76 mutants, 71 are caught; the five that live
+change nothing:
+
+- running status kept after `0xF0`, whose messages do nothing whether the
+  data after them is read in pairs or dropped;
+- channel pressure taking one data byte or two, for the same reason;
+- the early return on a message cut short at the end of the bytes, where the
+  loop ends anyway;
+- the draw count's ceiling of eight raised to nine, when at most eight notes
+  sound to be drawn;
+- `setPair`'s own call to work the layers out again, which the `applyNotes`
+  after it makes first anyway.
+
+The plugin plays the host's MIDI through it, byte for byte as the page's
+port does, and the shell test holds a dyad through the plugin - the second
+key mid-block in another block, released by a note-on at velocity nought -
+to a keyboard and generator told the same notes by name: equal to the last
+bit, with the second key a sample late 0.011 out, and the picture's right
+channel crossing three times to the left's two. In the standalone, with A3
+and E4 held, the page reads 220 Hz and 330 Hz - "E4 +2", the just fifth.
+
+What the port leaves to later pieces: the arpeggiator (2d), where the page
+asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
+are `Panel` until the setup is the core's (2e); and a chord handed to the
+generator, which the generator copies and so can allocate on a note, once a
+layer, until the brain's state is fixed in size.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes
@@ -265,6 +326,13 @@ redone natively or left out.
   rounded to float as the page does. A port that kept the double would
   differ in the last place of a float, and on a crossing line that is a
   note on one side and none on the other.
+- **A mutation pass in the working tree is a build of the mutant.** The
+  keyboard's first pass rewrote `keyboard.h` in place while the plugin was
+  being built beside it, and the plugin's shell test failed - the note-off
+  never closed the gate - on a mutant compiled in, not on the port; a backup
+  of the header taken then to add a print held a mutant too. Mutants are
+  made in a copy of `core/include` now, compiled from there, and the working
+  tree is never touched while a pass runs.
 - **The null device spins.** ALSA's `null` output accepts everything at once,
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of
@@ -282,8 +350,8 @@ python3 web/tests/run.py host                # the page's side, against a fake b
 
 To see it: run the standalone (`plugin/build/ScopeInstrument_artefacts/
 Release/Standalone/Scope`). Two switches for the spike, read once at start:
-`SCOPE_HOLD_NOTE=57` holds A3 on the generator so there is something to draw
-without a keyboard, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
+`SCOPE_HOLD_NOTE=57` holds A3 through the keyboard so there is something to
+draw without one (`57,64` holds a fifth), and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
 an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
 to run on.
 

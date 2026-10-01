@@ -724,6 +724,183 @@ gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
+print("\n--- the keyboard ---")
+# The page's own `midi` functions and scope::Keyboard, each playing a generator
+# that writes down every call made of it, through the same commands. A line a
+# command: what each call was, then the keyboard's sources, its readout, the
+# panel it moved, the stack and the controllers. Compared word by word, and a
+# number to 1e-12 - the frequencies come from `Math.pow` and `std::pow`.
+kexe = build("keyboard_cpp")
+import re
+def ktoks(line): return [t for t in re.split(r"[\s/+]+", line) if t]
+def kdiff(a, b):
+    """The first line where the two disagree, or None."""
+    a, b = a.strip().split("\n"), b.strip().split("\n")
+    if len(a) != len(b): return "%d lines against %d" % (len(a), len(b))
+    for i, (x, y) in enumerate(zip(a, b)):
+        tx, ty = ktoks(x), ktoks(y)
+        if len(tx) != len(ty): return "line %d: %s | %s" % (i, x[:160], y[:160])
+        for p, q in zip(tx, ty):
+            try: ok = abs(float(p) - float(q)) <= TOL * max(1.0, abs(float(p)))
+            except ValueError: ok = p == q
+            if not ok: return "line %d: %s against %s in %s" % (i, p, q, x[:160])
+    return None
+def kboth(text, name="keyboard_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([kexe, path], check=True, capture_output=True, text=True).stdout
+
+def krun(*commands, head=""):
+    return "run %s\n%s\nend\n" % (head, "\n".join(commands))
+
+kruns = [
+    ("dyad", krun("frame 16", "on 57 100", "on 64 90", "frame 16", "on 69 80", "off 69", "off 57", "off 64", "on 45 70",
+                  "on 76 127", "frame 16", "off 45", "on 40 60", "on 79 61", "panic", "frame 16")),
+    ("dyad-hold", krun("frame 16", "hold 1", "on 60 100", "on 67 100", "off 60", "off 67", "on 62 90", "hold 0", "off 62",
+                       "on 62 90", "frame 16")),
+    ("dyad-edges", krun("frame 16", "on 120 100", "on 127 100", "off 120", "off 127", "on 5 100", "on 0 1", "frame 16",
+                        "on 60 0", "on 0 0", "on 64 50", "on 64 120", "frame 16")),
+    ("mono", krun("frame 16", "on 60 100", "on 67 100", "mode mono", "on 72 100", "off 72", "off 67", "frame 16",
+                  "mode dyad", "on 76 50", "panel interval 5", "mode mono", "frame 16")),
+    ("poly-outer", krun("mode poly", "frame 16", "on 48 100", "on 64 90", "on 67 80", "on 72 70", "on 55 60", "frame 16",
+                        "off 48", "off 72", "on 36 30", "frame 16")),
+    ("poly-rules", krun("mode poly", "frame 16", "on 48 100", "on 52 91", "on 55 82", "on 59 73", "on 62 64", "on 65 55",
+                        "draw 0 3 lowest", "draw 0 4 highest", "draw 0 2 recent", "draw 0 5 outer", "draw 0 0 outer",
+                        "draw 0 99 lowest", "draw 0 1 recent", "draw 0 -3 highest", "frame 16")),
+    ("poly-many", krun("mode poly", "frame 16", *["on %d %d" % (40 + 3 * k, 20 + 9 * k) for k in range(11)], "frame 16",
+                       "off 43", "off 70", "frame 16", "draw 0 8 recent", "on 41 99")),
+    ("poly-just", krun("mode poly", "frame 16", "just 1", "on 60 100", "on 64 100", "on 67 100", "on 81 100", "on 47 100",
+                       "just 0", "frame 16", "just 1", "off 47", "off 60")),
+    ("poly-one", krun("mode poly", "frame 16", "on 60 100", "off 60", "on 61 40", "frame 16", "mode dyad", "on 66 70",
+                      "mode poly", "frame 16")),
+    ("split", krun("mode poly", "frame 16", "layers split", "on 40 100", "on 47 90", "on 64 80", "on 72 70", "on 76 60",
+                   "frame 16", "draw 1 2 highest", "draw 0 3 lowest", "pair against", "on 59 50", "on 60 51",
+                   "pair each", "off 40", "off 72", "frame 16", "layers off", "frame 16")),
+    ("split-learn", krun("mode poly", "frame 16", "layers split", "on 50 100", "on 70 100", "learn", "on 65 90",
+                         "on 60 80", "frame 16", "learn", "learn", "on 30 10", "frame 16")),
+    ("layer", krun("mode poly", "frame 16", "layers layer", "on 48 100", "on 55 90", "on 64 80", "pair against",
+                   "frame 16", "draw 1 2 recent", "on 67 70", "mode dyad", "frame 16", "mode poly", "frame 16",
+                   "layers split", "frame 16")),
+    ("pedal", krun("frame 16", "on 60 100", "pedal 1", "off 60", "on 64 90", "off 64", "on 60 70", "frame 30",
+                   "pedal 0", "frame 30", "pedal 0.5", "pedal 0.503937007874", "pedal 0.50393700787401574",
+                   "on 67 90", "off 67", "frame 5", "pedal 0", "cc 64 127", "on 69 50", "off 69", "panic", "cc 64 0",
+                   "frame 100")),
+    ("pedal-poly", krun("mode poly", "frame 16", "on 48 100", "on 52 100", "pedal 1", "off 48", "off 52", "on 55 100",
+                        "frame 16", "on 48 40", "pedal 0", "frame 16", "off 48", "off 55")),
+    ("controllers", krun("frame 16", "cc 16 64", "frame 10", "cc 42 127", "frame 40", "cc 16 0", "cc 7 100",
+                         "frame 1000", "name 42 Lower_drawbars", "name 99 Ninety_nine", "name 16", "cc 99 3", "cc 123 5", "on 60 80", "cc 120 0", "cc 113 1", "frame -5", "frame 0", "frame 3")),
+    ("bytes", krun("frame 16", "bytes 0x90,60,100,64,90", "bytes 0x80,60,0", "bytes 0x90,67", "bytes 100",
+                   "bytes 0x90,72,0xF8,77,0xFA,0xFB,0xFC", "bytes 0xB0,16,90,17,30,0xC0,5,0x90,62,0",
+                   "bytes 1,2,3", "bytes 0xF2,1,2,64,90", "bytes 0x90,74,0x80,74,0", "bytes 0xD0,9,0x90,76,99",
+                   "bytes 0xE0,0,64,0xB0,64,127", "bytes 0x99,30,10,0x8F,30,10,0xBF,123,0", "frame 16")),
+    ("figure", krun("gen mode figure", "frame 16", "on 57 100", "on 64 100", "panel figureRate 120", "on 81 100",
+                    "off 57", "play 1", "on 40 90", "play 0", "gen figure Rose", "on 52 100", "on 59 100",
+                    "off 52", "panel detail 7", "on 40 50", "off 59", "hold 1", "on 47 40", "on 54 40",
+                    "gen just false", "on 61 40", "on 40 100", "on 64 100", "mode mono", "on 71 40", "frame 16")),
+    ("figure-far", krun("gen mode figure", "frame 16", "panel figureRate 200", "on 100 100", "play 1", "on 127 100",
+                        "on 1 10", "play 0", "on 0 10", "frame 16")),
+    ("harmonograph", krun("gen mode harmonograph", "frame 16", "on 57 100", "play 1", "on 64 90", "off 64",
+                          "on 69 80", "drive 0", "on 72 70", "drive 1", "frame 16", "play 0", "on 74 60",
+                          "frame 16")),
+    ("wireframe", krun("gen mode wireframe", "frame 16", "on 57 100", "on 64 90", "drive 1", "on 69 80", "play 1",
+                       "on 72 70", "drive 0", "on 76 60", "frame 16")),
+    ("drive", krun("frame 16", "on 57 100", "on 64 90", "panel freq 330", "panel interval 4", "drive 0", "on 69 100",
+                   "frame 16", "drive 1", "frame 16", "undrive", "mode mono", "frame 16", "on 60 100", "play 1")),
+    ("kinds", krun("frame 16", "on 57 100", "gen mode figure", "frame 16", "on 64 90", "gen mode wave", "frame 16",
+                   "mode poly", "gen mode harmonograph", "frame 16", "on 67 80", "gen mode wave", "frame 16",
+                   "layers split", "gen mode figure", "frame 16", "gen mode wave", "frame 16")),
+    ("absent", krun("frame 16", "on 57 100", "on 64 90", "mode poly", "frame 16", "present 1", "frame 16",
+                    "on 67 80", "present 0", "frame 16", "layers split", "present 1", "frame 16", head="present=0")),
+    ("second", krun("frame 16", "gen inputFrom gen2", "frame 16", "mode poly", "layers split", "on 40 100",
+                    "on 70 100", "frame 16", "layers off", "frame 16", "gen inputFrom live", "frame 16")),
+]
+
+# And sequences no one wrote: seeded, so a failure is the same failure again.
+krng = random.Random(95)
+def kfuzz(n):
+    out = ["frame 16"]
+    held = []
+    for _ in range(n):
+        r = krng.random()
+        if r < 0.32:
+            note = krng.choice([krng.randint(30, 90), krng.choice([59, 60, 61]), krng.choice(held or [60])])
+            out.append("on %d %d" % (note, krng.choice([krng.randint(1, 127), 0, 127]))); held.append(note)
+        elif r < 0.52 and held: out.append("off %d" % krng.choice(held))
+        elif r < 0.58: out.append("pedal %r" % krng.choice([0, 1, 0.5, krng.random()]))
+        elif r < 0.63: out.append("mode " + krng.choice(["dyad", "mono", "poly", "poly"]))
+        elif r < 0.67: out.append("layers " + krng.choice(["off", "split", "layer"]))
+        elif r < 0.70: out.append("draw %d %d %s" % (krng.randint(0, 1), krng.randint(1, 9), krng.choice(["outer", "lowest", "highest", "recent"])))
+        elif r < 0.72: out.append("pair " + krng.choice(["each", "against"]))
+        elif r < 0.74: out.append("just %d" % krng.randint(0, 1))
+        elif r < 0.76: out.append("hold %d" % krng.randint(0, 1))
+        elif r < 0.78: out.append("learn")
+        elif r < 0.81: out.append("cc %d %d" % (krng.choice([16, 17, 42, 64, 7]), krng.randint(0, 127)))
+        elif r < 0.83: out.append("gen mode " + krng.choice(["wave", "wave", "figure", "harmonograph", "wireframe"]))
+        elif r < 0.85: out.append("drive %d" % krng.randint(0, 1))
+        elif r < 0.87: out.append("play %d" % krng.randint(0, 1))
+        elif r < 0.88: out.append("gen figure " + krng.choice(["Rose", "Circle"]))
+        elif r < 0.89: out.append("panic")
+        elif r < 0.91: out.append("bytes " + ",".join(str(krng.choice([0x90, 0x80, 0xB0, 0xF8, krng.randint(0, 127), krng.randint(0, 127)])) for _ in range(krng.randint(1, 7))))
+        else: out.append("frame %d" % krng.choice([16, 16, 33, 0, 250]))
+    return krun(*out)
+kruns += [("random-%d" % i, kfuzz(80)) for i in range(40)]
+
+ktext = "".join(t for _, t in kruns)
+kjs, kcpp = kboth(ktext, "keyboard.txt")
+klines = [len(t.strip().split("\n")) - 2 for _, t in kruns]
+def kslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(klines[:i])
+    return "\n".join(lines[start:start + klines[i]])
+for i, (name, _) in enumerate(kruns):
+    if name.startswith("random-"): continue
+    d = kdiff(kslice(kjs, i), kslice(kcpp, i))
+    check("%s: %d commands, every call the same" % (name, klines[i]), d is None, d or "")
+rbad = [n for i, (n, _) in enumerate(kruns) if n.startswith("random-") and kdiff(kslice(kjs, i), kslice(kcpp, i))]
+check("40 random sequences of 80 commands, every call the same", not rbad, ", ".join(rbad))
+
+# Each run has to show what it is for, or agreeing on it proves nothing.
+def kout(name): return kslice(kjs, next(i for i, (n, _) in enumerate(kruns) if n == name))
+check("the dyad sets an interval wider than an octave, and clamps the pitch at both ends",
+      "set octaves 2." in kout("dyad") and "set freq 4000.0" in kout("dyad-edges") and "set freq 30.00" in kout("dyad-edges"))
+check("a chord leaves notes heard and not drawn, by every rule",
+      all(r in kout("poly-rules") for r in ("/u+", "/x+", "/y")) and "/xy " in kout("poly-one"))
+check("past eight held notes the oldest stops sounding", "poly 8 2 11" in kout("poly-many"))
+check("split, layer B plays its own notes and each layer counts its own strikes",
+      re.search(r"set voices \S+ 1 ", kout("split")) and re.search(r"strikes (\d+) (?!\1)\d+ ", kout("split")))
+check("against, each layer's drawn notes go on one axis", "layout against" in kout("split")
+      and re.search(r"set voices [^ ]*/y[^ ]* 1", kout("split")))
+check("the pedal holds released keys, and lets them go", "sustained 60" in kout("pedal")
+      and "sustained 60+64" in kout("pedal"))
+check("bytes: running status, a clock tick inside a note, and the realtime handed on",
+      "realtime 248" in kout("bytes") and "notes 64/" in kout("bytes"))
+check("a played rose takes the dyad's ratio as its petals", "set detail 1.5" in kout("figure"))
+check("the pitched harmonograph is pitched, and a key strikes it", "set pitched 1" in kout("harmonograph")
+      and ":: reswing" in kout("harmonograph"))
+check("a controller walks towards where it was moved", "16/Drawbar_1/64/0.0000" in kout("controllers")
+      and "16/Drawbar_1/64/0.1428" in kout("controllers"))
+rnd = "\n".join(kslice(kjs, i) for i, (n, _) in enumerate(kruns) if n.startswith("random-"))
+check("the random sequences reach chords, layers, the pedal and the drawings",
+      all(w in rnd for w in ("set voices", " 1 | ", "layout each", "sustained 6", "set figureRate", "set pitched 1")))
+
+# Nulls: the page told something different, and the port must disagree.
+def knull(name, old, new, what):
+    text = dict(kruns)[name]
+    assert old in text, old
+    js, _ = kboth(text.replace(old, new, 1))
+    i = next(k for k, (n, _) in enumerate(kruns) if n == name)
+    check("and against " + what, kdiff(js, kslice(kcpp, i)) is not None)
+knull("poly-outer", "on 67 80", "on 67 81", "a chord with one velocity a step harder")
+knull("split", "layers split", "layers layer", "a layer where there was a split")
+knull("pedal", "pedal 1", "pedal 0.4", "a pedal not quite down")
+knull("bytes", "0x90,72,0xF8,77", "0x90,72,77,0xF8", "a clock tick after the velocity instead of inside it")
+knull("figure", "panel figureRate 120", "panel figureRate 121", "a trace-rate slider a hertz on")
+knull("dyad-hold", "hold 1", "hold 0", "Hold left off")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(kjs.strip().split("\n")[1:]), "\n".join(kcpp.strip().split("\n")[:-1])) is not None)
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)

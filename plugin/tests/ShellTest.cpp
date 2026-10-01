@@ -97,6 +97,82 @@ int main() {
   check("silent until the note, sounding while it is held, and silent once its release is over",
         before == 0 && held > 0.3 && tail == 0, num(before) + ", " + num(held) + ", " + num(tail));
 
+  /* Two keys, the second struck mid-block in another block, and released two
+     ways: a note-on at velocity nought, which is how most keyboards send a
+     release, and a note-off. The plugin hands the host's bytes to the core's
+     keyboard; the reference tells a keyboard and a generator the same notes
+     by name, at the same samples, with a release where the plugin got a
+     velocity of nought - so the byte path is what is being held. */
+  struct Played { std::vector<float> l, r; };
+  const auto playDyad = [&](int second) {
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    Played got;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int start = 0; start < total; start += block) {
+      buf.clear();
+      juce::MidiBuffer m;
+      const auto at = [&](int sample, const juce::MidiMessage& msg) {
+        if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
+      };
+      at(100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)));
+      at(second, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)));
+      at(40000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(0)));
+      at(static_cast<int>(rate), juce::MidiMessage::noteOff(1, 57));
+      p.processBlock(buf, m);
+      for (int i = 0; i < block && start + i < total; ++i) { got.l.push_back(buf.getSample(0, i)); got.r.push_back(buf.getSample(1, i)); }
+    }
+    return got;
+  };
+  const auto dyadReference = [&](int second) {
+    std::vector<scope::Lfo> lfos(2);
+    lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
+    scope::Generator core(rate, scope::slot::Used, lfos);
+    scope::GeneratorNotes notes(core);
+    scope::Keyboard keys(notes);
+    keys.setPresent(true);
+    keys.frame(0);
+    std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
+    int done = 0;
+    const auto run = [&](int to) {
+      while (done < to) {
+        const int end = std::min(to, (done / block + 1) * block);
+        core.block(pl.data() + done, pr.data() + done, end - done, l.data() + done, r.data() + done);
+        done = end;
+        if (done % block == 0) keys.frame(1000.0 * block / rate);
+      }
+    };
+    run(100); keys.noteOn(57, 100);
+    run(second); keys.noteOn(64, 90);
+    run(40000); keys.noteOff(64);
+    run(static_cast<int>(rate)); keys.noteOff(57);
+    run(total);
+    return std::array<std::vector<float>, 4> { l, r, pl, pr };
+  };
+  const Played dyad = playDyad(1300);
+  const auto dyadWant = dyadReference(1300), dyadLate = dyadReference(1301);
+  double dyadOff = 0, dyadOffLate = 0;
+  for (std::size_t i = 0; i < dyad.l.size(); ++i) {
+    dyadOff = std::fmax(dyadOff, std::fabs(dyad.l[i] - dyadWant[0][i]) + std::fabs(dyad.r[i] - dyadWant[1][i]));
+    dyadOffLate = std::fmax(dyadOffLate, std::fabs(dyad.l[i] - dyadLate[0][i]) + std::fabs(dyad.r[i] - dyadLate[1][i]));
+  }
+  check("two keys through the plugin are the core's keyboard playing its generator, a velocity of nought a release",
+        dyadOff == 0 && dyadOffLate > 1e-3, "off by " + num(dyadOff) + "; the second key a sample late would be off by " + num(dyadOffLate));
+  /* And it is a fifth: the picture's right channel crosses upwards three times
+     for the left's two while both keys are held. The one-key run is the null,
+     at one to one. */
+  const auto ratio = [&](const std::vector<float>& a, const std::vector<float>& b) {
+    int ca = 0, cb = 0;
+    for (std::size_t i = 4801; i < 38400; ++i) {
+      ca += a[i - 1] < 0 && a[i] >= 0;
+      cb += b[i - 1] < 0 && b[i] >= 0;
+    }
+    return ca ? static_cast<double>(cb) / ca : 0.0;
+  };
+  const double fifth = ratio(dyadWant[2], dyadWant[3]), unison = ratio(expected[2], expected[3]);
+  check("and the picture is the fifth the two keys make, its right channel at three to the left's two",
+        std::fabs(fifth - 1.5) < 0.01 && std::fabs(unison - 1) < 0.01, num(fifth) + " to one; one key is " + num(unison));
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";
