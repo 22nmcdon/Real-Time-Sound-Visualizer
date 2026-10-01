@@ -7,13 +7,16 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-#include "scope/envelope.h"
+#include "scope/generator.h"
+#include "scope/lfo.h"
 
-// The processor. For the spike it plays the core's envelope on a sine, one
-// note at a time with the envelope's legato rule, because the generator core
-// is not ported yet (PLAN.md, stage 1); what the spike is for is the shape
-// around it - notes in from the host, sound out, and the samples the page
-// draws handed to the editor.
+// The processor plays the core's generator (scope::Generator, the page's
+// `makeGeneratorCore` ported): what the speakers get is its heard pair, and
+// what the page draws is its picture pair. Until the brain moves into the core
+// (PLAN.md, stage 2) the host's notes reach it as the page's keyboard reaches
+// a gated dyad - one note at a time, the newest key sets the pitch, the
+// envelope's legato rule does the rest - and every other setting is the
+// page's default.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -63,10 +66,12 @@ class ScopeProcessor final : public juce::AudioProcessor {
   juce::String pictureReport() const { return pictureReport_; }
 
  private:
-  scope::EnvelopeTone tone_;
-  std::unique_ptr<scope::Envelope> envelope_;
-  double phase_ = 0;
-  double hz_ = 220;
+  // Render [from, to) of the block into the output and the picture ring.
+  void render(float* left, float* right, int from, int to);
+
+  std::vector<scope::Lfo> lfos_;
+  std::unique_ptr<scope::Generator> core_;
+  std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   int held_ = -1;
   std::atomic<double> rate_ { 48000.0 };
 

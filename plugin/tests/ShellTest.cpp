@@ -1,7 +1,8 @@
-// The spike's shell, run without a host or a web view: notes in, sound out,
-// the envelope in the sound, the page served, and the picture the page will
-// draw carrying what was played. It prints PASS and FAIL lines in the house
+// The plugin's shell, run without a host or a web view: notes in, the core's
+// generator's sound out, the page served, and the picture the page will draw
+// carrying what was played. It prints PASS and FAIL lines in the house
 // format and exits non-zero on a failure, like the web suite.
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -30,10 +31,10 @@ int main() {
 
   // Two seconds: a note struck at sample 100 of the first block, let go at one second.
   const int total = static_cast<int>(rate * 2);
-  std::vector<float> out;
+  std::vector<float> out, outR;
   out.reserve(static_cast<std::size_t>(total));
   juce::AudioBuffer<float> buffer(2, block);
-  /* The picture is taken mid-note, while a sine is playing. Taken at the end
+  /* The picture is taken mid-note, while the note is playing. Taken at the end
      it was silence after the release, which reads the same in any order, and
      a snapshot handed over newest first passed as oldest first. */
   std::vector<float> midNote;
@@ -44,7 +45,10 @@ int main() {
     if (start == 0) midi.addEvent(juce::MidiMessage::noteOn(1, 69, 1.0f), 100);
     if (start <= rate && rate < start + block) midi.addEvent(juce::MidiMessage::noteOff(1, 69), static_cast<int>(rate) - start);
     processor.processBlock(buffer, midi);
-    for (int i = 0; i < block && start + i < total; ++i) out.push_back(buffer.getSample(0, i));
+    for (int i = 0; i < block && start + i < total; ++i) {
+      out.push_back(buffer.getSample(0, i));
+      outR.push_back(buffer.getSample(1, i));
+    }
     if (midNote.empty() && start + block >= static_cast<int>(rate / 2)) {
       const auto served = scopeResource("/picture.bin", processor);
       if (served) {
@@ -56,38 +60,42 @@ int main() {
   }
 
   std::printf("\n--- sound ---\n");
-  double before = 0;
+  /* The generator by itself, told what the host told the plugin, at the same
+     samples: what the plugin plays has to be this, exactly. The engine is
+     held to the page by core/tests/parity.py; this holds the plugin's own
+     part - events at their own sample, the heard pair to the speakers and
+     the picture pair to the page. `reference(101)` is the null: the note a
+     sample late, which a plugin that moved events to the block's top, or
+     anywhere else, could not tell from right. */
+  const auto reference = [&](int on) {
+    std::vector<scope::Lfo> lfos(2);
+    lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
+    scope::Generator core(rate, scope::slot::Used, lfos);
+    core.setGated(true);
+    std::vector<float> heardL(static_cast<std::size_t>(total)), heardR(heardL), picL(heardL), picR(heardL);
+    int done = 0;
+    const auto run = [&](int to) {
+      core.block(picL.data() + done, picR.data() + done, to - done, heardL.data() + done, heardR.data() + done);
+      done = to;
+    };
+    run(on); core.set("freq", juce::MidiMessage::getMidiNoteInHertz(69)); core.gate(true, 1.0);
+    run(static_cast<int>(rate)); core.gate(false, 0);
+    run(total);
+    return std::array<std::vector<float>, 4> { heardL, heardR, picL, picR };
+  };
+  const auto expected = reference(100), late = reference(101);
+  double off = 0, offLate = 0, before = 0, held = 0, tail = 0;
+  for (std::size_t i = 0; i < out.size(); ++i) {
+    off = std::fmax(off, std::fabs(out[i] - expected[0][i]) + std::fabs(outR[i] - expected[1][i]));
+    offLate = std::fmax(offLate, std::fabs(out[i] - late[0][i]));
+  }
   for (int i = 0; i < 100; ++i) before = std::fmax(before, std::fabs(out[static_cast<std::size_t>(i)]));
-  check("silent until the note is struck, at its own sample and not the block's", before <= 0.0, num(before));
-
-  // The same envelope, by itself, with the plugin's defaults: the sound is
-  // 0.3 of it on a sine, so its peak over each cycle of 440 Hz should follow.
-  scope::EnvelopeTone tone;
-  scope::Envelope alone(rate, tone);
-  alone.reset(0);
-  std::vector<double> level(static_cast<std::size_t>(total));
-  for (int i = 0; i < total; ++i) {
-    if (i == 100) alone.gate(true, 1.0);
-    if (i == static_cast<int>(rate)) alone.gate(false, 0);
-    level[static_cast<std::size_t>(i)] = alone.step();
-  }
-  double worst = 0;
-  for (int i = 100; i < total; ++i) {
-    const double bound = 0.3 * level[static_cast<std::size_t>(i)] + 1e-6;
-    worst = std::fmax(worst, std::fabs(out[static_cast<std::size_t>(i)]) - bound);
-  }
-  double heldPeak = 0, tail = 0;
-  for (int i = 24000; i < 26000; ++i) heldPeak = std::fmax(heldPeak, std::fabs(out[static_cast<std::size_t>(i)]));
+  for (int i = 24000; i < 26000; ++i) held = std::fmax(held, std::fabs(out[static_cast<std::size_t>(i)]));
   for (int i = total - 2000; i < total; ++i) tail = std::fmax(tail, std::fabs(out[static_cast<std::size_t>(i)]));
-  check("the sound never exceeds the core's envelope, reaches it while held, and is silent after the release",
-        worst <= 0 && std::fabs(heldPeak - 0.3) < 0.005 && tail < 1e-6,
-        "over by " + num(worst) + ", held peak " + num(heldPeak) + ", tail " + num(tail));
-
-  // The bound above holds for an envelope that is too slow as well as the
-  // right one, so the attack is also held to being an attack.
-  double early = 0;
-  for (int i = 101; i < 110; ++i) early = std::fmax(early, std::fabs(out[static_cast<std::size_t>(i)]));
-  check("and the attack is heard as an attack: the first ten samples well under full", early < 0.2, num(early));
+  check("the plugin plays the core's generator, sample for sample, told at the note's own sample",
+        off == 0 && offLate > 1e-3, "off by " + num(off) + "; a sample late would be off by " + num(offLate));
+  check("silent until the note, sounding while it is held, and silent once its release is over",
+        before == 0 && held > 0.3 && tail == 0, num(before) + ", " + num(held) + ", " + num(tail));
 
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
@@ -112,16 +120,21 @@ int main() {
   check("and each character in the language it stands in: an entity in markup, an escape in a script, a pair past the first plane",
         sample == "<p>&#xB7;</p><script>'\\u2212\\uD83C\\uDFB5'</script>&#xD7;", sample);
 
+  /* The picture is the generator's picture pair, left as left: the dyad's
+     right channel is a quarter-cycle on from its left, so a picture handed
+     over swapped, or as the heard pair of one channel twice, is told apart. */
   const std::vector<float>& frames = midNote;
   const std::size_t n = ScopeProcessor::kPictureFrames;
-  double mismatch = frames.size() == n * 2 ? 0 : 1, moving = 0;
+  double mismatch = frames.size() == n * 2 ? 0 : 1, swapped = 0, moving = 0;
   for (std::size_t k = 0; k < n && frames.size() == n * 2; ++k) {
-    const float played = out[midNoteEnd - n + k];
-    moving = std::fmax(moving, std::fabs(played));
-    mismatch = std::fmax(mismatch, std::fabs(frames[k * 2] - played) + std::fabs(frames[k * 2 + 1] - played));
+    const std::size_t i = midNoteEnd - n + k;
+    moving = std::fmax(moving, std::fabs(expected[2][i]));
+    mismatch = std::fmax(mismatch, std::fabs(frames[k * 2] - expected[2][i]) + std::fabs(frames[k * 2 + 1] - expected[3][i]));
+    swapped = std::fmax(swapped, std::fabs(frames[k * 2] - expected[3][i]));
   }
-  check("the picture is the last " + std::to_string(n) + " frames played, oldest first, left and right",
-        mismatch <= 0.0 && moving > 0.25, "mismatch " + num(mismatch) + ", taken while the note was at " + num(moving));
+  check("the picture is the last " + std::to_string(n) + " frames of the picture pair, oldest first, left as left",
+        mismatch <= 0.0 && swapped > 0.1 && moving > 0.25,
+        "mismatch " + num(mismatch) + ", swapped would be " + num(swapped) + ", taken at " + num(moving));
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");
   return failures ? 1 : 0;

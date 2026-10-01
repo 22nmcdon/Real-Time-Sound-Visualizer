@@ -142,8 +142,17 @@ nothing that can happen, and each was looked at:
 the port copies (scaled by the largest, the sum compensated) and a solid's
 corners are divided by it.
 
-Next: the plugin plays `scope::Generator` in place of the spike's sine, and
-then stage 2.
+The plugin plays it. `ScopeProcessor` runs `scope::Generator` in place of
+the spike's sine - its heard pair to the speakers, its picture pair to the
+page - with the host's notes reaching it as the page's keyboard reaches a
+gated dyad, each at its own sample. The shell test holds what the plugin
+plays to the generator driven directly with the same calls, and they are
+equal to the last bit; the same note a sample late would be 0.03 out. With
+A3 held, the standalone's page reads 220 Hz on both channels, the right a
+quarter-cycle on from the left, the harmonic's third partial in the spectrum,
+and a peak of 0.362 - the page's default dyad, made in C++.
+
+Next: stage 2.
 
 The plane's delay lines are made with it, not the first time the echo or the
 chorus is wanted as in the page, and its oversamplers are emptied in place
@@ -273,8 +282,8 @@ python3 web/tests/run.py host                # the page's side, against a fake b
 
 To see it: run the standalone (`plugin/build/ScopeInstrument_artefacts/
 Release/Standalone/Scope`). Two switches for the spike, read once at start:
-`SCOPE_HOLD_NOTE=57` holds A3 so there is something to draw without a
-keyboard, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
+`SCOPE_HOLD_NOTE=57` holds A3 on the generator so there is something to draw
+without a keyboard, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
 an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
 to run on.
 
