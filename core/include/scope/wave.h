@@ -8,9 +8,10 @@
 //
 // - `%` on a double in JavaScript is `std::fmod`, sign of the dividend and
 //   all, which is why `cycleOf` folds a negative remainder back itself.
-// - The drawn cycle's tables are Float32Arrays in the page, so they are
-//   `float` here: a table of doubles would read back values the page never
-//   had, and the parity would be a comparison of two different tables.
+// - The drawn cycle's tables are plain arrays in the page, so doubles here.
+//   They were `float` once, on the belief that the page's were Float32Arrays;
+//   they never were, and the parity fed both sides float tables, which hid
+//   it. Porting `cycleTables` itself is what showed it.
 
 #pragma once
 
@@ -109,7 +110,7 @@ inline double svfStep(SvfState& s, double x, double g, double k, int type) {
 // half the harmonics of the one before, the first with `most` of them.
 struct CycleTables {
   double most = 0;
-  std::vector<std::vector<float>> levels;
+  std::vector<std::vector<double>> levels;
 };
 
 inline double cycleRead(const CycleTables* c, double phase, double step) {
@@ -124,7 +125,7 @@ inline double cycleRead(const CycleTables* c, double phase, double step) {
     lo = static_cast<int>(std::fmax(0.0, std::fmin(static_cast<double>(top), std::ceil(f))));
     w = lo < top ? std::fmax(0.0, std::fmin(1.0, f - lo + 1)) : 0;
   }
-  auto read = [t](const std::vector<float>& tab) {
+  auto read = [t](const std::vector<double>& tab) {
     const double n = static_cast<double>(tab.size());
     const double x = t * n, i = std::floor(x), fr = x - i;
     const std::size_t at = static_cast<std::size_t>(i);

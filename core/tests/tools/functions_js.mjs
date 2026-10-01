@@ -21,7 +21,7 @@ const figPath = (w) => {
 };
 const tables = (text) => {
   const [, most, body] = text.split(":");
-  return { most: Number(most), levels: body.split(";").map((t) => Float32Array.from(t.split(",").map(Number))) };
+  return { most: Number(most), levels: body.split(";").map((t) => t.split(",").map(Number)) };
 };
 const arg = (w) => {
   if (w.startsWith("T:")) return tables(w);

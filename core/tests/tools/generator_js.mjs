@@ -53,7 +53,7 @@ const build = (seed) => new Function("Math", source)(Object.assign(Object.create
 
 const tables = (text) => {
   const [, most, body] = text.split(":");
-  return { most: Number(most), levels: body.split(";").map((t) => Float32Array.from(t.split(",").map(Number))) };
+  return { most: Number(most), levels: body.split(";").map((t) => t.split(",").map(Number)) };
 };
 const value = (w) => (w === "true" ? true : w === "false" ? false : Number.isNaN(Number(w)) ? w : Number(w));
 const show = (v) => v.map((x) => Number(x).toPrecision(17)).join(" ");

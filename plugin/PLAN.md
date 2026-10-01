@@ -189,11 +189,12 @@ In pieces, as the engine went, each held to the page before the next:
 - **2b. The matrix** (ported): destinations, routings and their text, the
   reach and loop rules, the compiled routes each block with their fades, and
   events.
-- **2c. The setup as the core's state:** the page's flat snapshot and
-  `restore`, setup codes and their migrations, and presets. The panel the
-  keyboard reads becomes part of it, and so do the macros and the morph -
-  which moves the panel's sliders, and so cannot come before them. (It was
-  listed after time and the sources until the morph showed why not.)
+- **2c. The setup as the core's state** (ported, but for the snapshot): the
+  page's flat snapshot and `restore`, setup codes and their migrations, and
+  presets. The panel the keyboard reads becomes part of it, and so do the
+  macros and the morph - which moves the panel's sliders, and so cannot come
+  before them. (It was listed after time and the sources until the morph
+  showed why not.)
 - **2d. Time:** the key and the clock (the host's transport in the plugin),
   the LFOs locked to it, the arpeggiator, the score.
 - **2e. The rest of the sources** that are not the picture's or the
@@ -379,9 +380,8 @@ keeps it, its `slice` then truncating, so the keyboard's count is a number now,
 read as `slice` reads it; the keyboard's random sequences give fractional
 counts too.
 
-What the port of `restore` leaves to later pieces: the drawn cycles and the
-figures made of strokes, whose fields are kept and not yet applied; a MIDI
-clock overriding the tempo; and
+What the port of `restore` leaves to later pieces: a MIDI clock overriding
+the tempo; and
 three fields the page passes on raw - a mode it has not got, a `just` that is
 not a boolean, an LFO shape it does not know - which the core takes by their
 name or their truth while the page also keeps the raw value for its panel.
@@ -453,6 +453,69 @@ send a slider to layer A whatever the panel shows both live. The morph's walk
 allocates (a slider's value is the text the browser would hold) and runs on
 the audio thread for now; its place is the message thread once the page is
 the plugin's face.
+
+**And the drawn cycles and the figures made of strokes,** which finish the
+setup. `scope/cycles.h` is the four slots' points, their defaults, their text
+in a code, and `cycleTables`, the resynthesis that turns 256 points into
+eight band-limited tables; restore decodes the slots, builds the tables, and
+hands the drawn cycle to both layers and the bank to the wavetable.
+`scope/strokes.h` is the page's single-stroke font, its SVG path reader, the
+compiler that turns strokes into what the figure reads, and a drawing's text;
+restore sets the word, the path and the drawing, and sends the figure the one
+it shows. A word is upper-cased first, and JavaScript's upper case is
+Unicode's - "ß" draws as two letters and a Greek letter with its accents as
+three spaces - so the 104 characters whose upper case is not one non-ASCII
+character are a table, written out from V8. Tables are built again only for a
+slot whose points have changed, which gives the same tables and saves some
+25 ms a slot.
+
+Held to the page as part of `restore`: all 281 presets and the random
+setups, now with cycles of 256 bytes and of the wrong length, with white
+space `atob` forgives and characters it does not; words that upper-case into
+more letters, past twenty-four units, with line breaks a text input drops;
+SVG paths of every command, numbers run together, arcs' flags, junk; and
+drawings with junk in their pairs. Each line carries every slot's points, the
+tables the generator holds (by two sums a table and two of its values), the
+cycles' codes written back, the three compiled paths in full and the one the
+figure was sent, and the panel's note on a path it could not read. The made
+lines read: a default slot written out a byte at a time is written back as
+no cycle; "straße" draws as STRASSE; a path refused leaves the last one
+drawing; and a path past six thousand points is too detailed. A preset with
+one character of its cycle changed, one letter of its word, one number of
+its path or one point of its drawing is each a null. The shell test plays "A
+drawn cycle" through the plugin, equal to the core to the last bit, where
+before this the core had no tables and played a sine.
+
+Of 88 mutants of the cycles, the strokes and their part of restore, 81 are
+caught. The first pass left fifteen, and eight of them were fixtures that
+could not show the effect: the Greek letters that upper-case into three were
+in a word of nothing the font draws, which compiles to no path at all, so
+how many characters it made could not matter - every one of the 104 is now a
+made line between two letters; and nothing had a `+` on a number, a drawing
+whose points all coincide, a drawing past three thousand points, a path of
+only spaces, or a slot within a step of its default but not half a step.
+The seven that live change nothing: a placeholder for a character the font
+never draws, which the font does not draw either way; a guard against a
+glyph's part of one point, which no glyph has; a vertical line's offset
+written two ways that are one; two guards against a path whose box is not a
+number, and one against a path of one point, which all end in no path
+either way; and a trim before a split that drops what the trim would have.
+
+Two things found on the way, one in each direction. The core's tables were
+`float`, on the word of a comment that the page's were Float32Arrays; they
+are plain arrays, and the generator's parity fed both sides float tables of
+multiples of a sixty-fourth, exact in either, so nothing could show it.
+They are doubles now. And reading the page's path reader to port it showed
+that a number after a Z hung the page: Z takes no numbers, so the cursor
+stayed where it was and read the same number as another Z, for ever. A
+pasted path or a shared setup code could freeze the tab, and no check had a
+path that was not well formed. The page refuses it now, with a check that
+runs the reader in a worker under a time limit (web/README.md has it).
+
+What the setup still leaves: a snapshot of the core's state as a setup (the
+page's `snapshot`, the other direction from `restore`), which the host's
+saved state will need (2g); and grabbing a cycle from what is playing, which
+listens, and so waits for the hearing (2f).
 
 What the port leaves to later pieces: the arpeggiator (2d), where the page
 asks `arpActive()`; the panel's sliders the keyboard reads and moves, which

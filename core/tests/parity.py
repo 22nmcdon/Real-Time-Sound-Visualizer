@@ -1317,8 +1317,83 @@ MENUS = {
     "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5],
 }
 BOOLS = ["midiPolyJust", "midiHold", "midiTruth", "midiFollow", "photoOn", "quant", "crossOn", "scoreOn", "delayPingPong", "just"]
+# The drawn cycles and the figures made of strokes, in and out of their
+# grammars: a cycle of 256 bytes, of the wrong length, with white space atob
+# forgives and with a character it does not, and one that is a default slot
+# written out a byte at a time (which reads as the default within a byte's
+# step, the encoder's own question); words that upper-case into more letters
+# or fewer, and past twenty-four; SVG paths of every command, numbers run
+# together, arcs' flags, junk, and a number after a Z; drawings with junk in
+# their pairs and strange white space.
+def rdefault_bytes(k):
+    out = []
+    peak = max(abs(math.sin(2 * math.pi * i / 4096) + 0.5 * math.sin(4 * math.pi * i / 4096) + 0.33 * math.sin(6 * math.pi * i / 4096)) for i in range(4096))
+    for i in range(256):
+        t = i / 256; th = 2 * math.pi * t
+        v = (0.95 * (math.sin(th) + 0.5 * math.sin(2 * th) + 0.33 * math.sin(3 * th)) / peak if k == 1
+             else 0.95 * (2 * t if t < 0.5 else 2 * t - 2) if k == 2 else (0.95 if t < 0.25 else -0.95 / 3) if k == 3 else math.sin(th))
+        out.append((int(math.floor(v * 127 + 0.5)) + 256) % 256)
+    return bytes(out)
+def rcycle():
+    c = rrng.random()
+    if c < 0.4: return base64.b64encode(bytes(rrng.randrange(256) for _ in range(256))).decode()
+    if c < 0.55: return base64.b64encode(rdefault_bytes(rrng.randrange(4))).decode()
+    if c < 0.65: return base64.b64encode(bytes(rrng.randrange(256) for _ in range(rrng.choice([255, 257, 128])))).decode()
+    if c < 0.75:
+        t = base64.b64encode(bytes(rrng.randrange(256) for _ in range(256))).decode()
+        k = rrng.randrange(len(t))
+        return t[:k] + rrng.choice([" ", "\n", "\t", "!", "é", "="]) + t[k:]
+    return rrng.choice(["", "abc", 5, None, "====", [1]])
+def rcycles():
+    parts = [rrng.choice(["", rcycle() if rrng.random() < 0.5 else ""]) for _ in range(rrng.choice([1, 2, 3, 3, 3, 4]))]
+    parts = [p if isinstance(p, str) else "" for p in parts]
+    return rrng.choice([",".join(parts), ",".join(parts), 5, None])
+def rtext():
+    c = rrng.random()
+    if c < 0.5:
+        return rrng.choice(["HELLO", "Scope 2", "straße", "ﬁne ﬂy", "ǰet", "ΐᾀ", "ﬓx", "a" * 30,
+                            "line\nbreak\r!", "\U0001F600ok", "\ud800x", "", "lower case", "?!.,-+':/=", "ö" * 5,
+                            "ıſ", "x" * 23 + "\U0001F600", 7, None])
+    return "".join(rrng.choice("ABCXYZabcxyz0189 .,!?-+':/=#ßéﬀ") for _ in range(rrng.randint(0, 30)))
+SVG_ARITY = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "S": 4, "Q": 4, "T": 2, "A": 7, "Z": 0}
+def rsvg():
+    def num():
+        v = rrng.choice([rrng.randint(-50, 50), round(rrng.uniform(-100, 100), rrng.randint(0, 4)), 0, 0.5, -0.5, 1000, 0.0015])
+        t = repr(v)
+        if rrng.random() < 0.1: t = t.replace("0.", ".", 1)
+        if rrng.random() < 0.05: t += "e" + str(rrng.randint(-2, 2))
+        if rrng.random() < 0.08 and not t.startswith("-"): t = "+" + t
+        return t
+    out = []
+    for k in range(rrng.randint(1, 12)):
+        c = "M" if k == 0 and rrng.random() < 0.9 else rrng.choice("MLHVCSQTAZmlhvcsqtaz")
+        args = []
+        for _ in range(1 if SVG_ARITY[c.upper()] == 0 else rrng.choice([1, 1, 1, 2])):
+            for j in range(SVG_ARITY[c.upper()]):
+                args.append((rrng.choice("01") if rrng.random() < 0.97 else "2") if c.upper() == "A" and j in (3, 4) else num())
+        body = ("" if rrng.random() < 0.1 else rrng.choice([" ", ",", ", "])).join(args)
+        out.append(c + rrng.choice(["", " "]) + body)
+    d = rrng.choice([" ", "", "\n", "\t"]).join(out)
+    r = rrng.random()
+    if r < 0.08:
+        k = rrng.randrange(len(d) + 1)
+        d = d[:k] + rrng.choice("#x;! éB") + d[k:]
+    elif r < 0.12: d += rrng.choice([" Z 5", "Z.5", " z -1"])
+    elif r < 0.15: d = rrng.choice(["", "   ", "1 2", "M", "M0 0", "M0 0 L0 0", "M1e999 0 L1 1", 5, None])
+    return d
+def rdrawn():
+    if rrng.random() < 0.15:
+        return rrng.choice(["", "1,1", "a,b 1,1", ",5 1,1", "1,2,3 4,5", "Infinity,0 1,1", "0x10,1 1,1", ";;", 5, None])
+    strokes = []
+    for _ in range(rrng.randint(1, 4)):
+        pts = ["%s,%s" % (round(rrng.uniform(-3, 3), rrng.randint(0, 4)), round(rrng.uniform(-3, 3), 4)) for _ in range(rrng.randint(1, 6))]
+        strokes.append(rrng.choice([" ", "  ", "\t", " ", "　"]).join(pts))
+    return rrng.choice([";", " ; ", ";;"]).join(strokes)
 def rsetup():
     st = {}
+    for key, make in (("cycle", rcycle), ("cycles", rcycles), ("figText", rtext), ("figPath", rsvg), ("figDrawn", rdrawn)):
+        if rrng.random() < 0.15: st[key] = make()
+    if rrng.random() < 0.1: st["figure"] = rrng.choice(["Text", "Path", "Drawn"])
     for _ in range(rrng.randint(1, 25)):
         r = rrng.random()
         if r < 0.5: st[rrng.choice(SLIDERS)] = rnumber()
@@ -1336,8 +1411,41 @@ def rsetup():
 # And two more made to be read: B's morph end is written against A's, which
 # shows only when they differ on different sliders; and a routing list given
 # as an array is read as its text, as String() reads it.
+# And the cycles and figures, made to be read: a default slot written out a
+# byte at a time, which is written back as no cycle at all; a word with an "ß", which
+# upper-cases to two letters, beside the same word in capitals; a path read,
+# then one with a number after its Z, refused, with the first kept; a path
+# of more than six thousand points; one that starts with a number; a
+# drawing whose points all coincide, which has no length to go round; the
+# saw's slot a byte low at its second point, 0.94 of a step from the saw
+# rather than within the half a step that reads as the default; a path of
+# nothing but spaces, which is no path rather than a path of nothing; and a
+# drawing of 3,200 points, which keeps the first three thousand.
+FIG_MADE = [_json.dumps({"cycle": base64.b64encode(rdefault_bytes(0)).decode(), "cycles": ""}),
+            _json.dumps({"figText": "stra\u00dfe", "figure": "Text"}), _json.dumps({"figText": "STRASSE", "figure": "Text"}),
+            _json.dumps({"figPath": "M0 0 L10 0 L10 10", "figure": "Path"}),
+            _json.dumps({"figPath": "M0 0 L10 0 L10 10 Z 5", "figure": "Path"}),
+            _json.dumps({"figPath": "M0 0 " + "L1 1 L0 0 " * 3100}), _json.dumps({"figPath": "1 2 L 3 4"}),
+            _json.dumps({"figDrawn": "0.5,0.5 0.5,0.5", "figure": "Drawn"}),
+            _json.dumps({"cycles": "," + base64.b64encode(bytes(b - (i == 1) for i, b in enumerate(rdefault_bytes(2)))).decode() + ","}),
+            _json.dumps({"figPath": "   "}),
+            _json.dumps({"figDrawn": " ".join("%g,0" % (i / 1000) for i in range(1600)) + ";"
+                                     + " ".join("0,%g" % (i / 1000) for i in range(1600)), "figure": "Drawn"})]
+# And every character whose upper case is an ASCII letter or more than one
+# character, as V8 has them, each between two letters - since a word of
+# nothing the font draws compiles to no path at all, and then how many
+# characters the upper case made cannot show.
+FIG_UPPER_CPS = _json.loads(subprocess.run(["node", "-e", """
+  const out = [];
+  for (let c = 0x80; c <= 0x10FFFF; c++) {
+    if (c >= 0xD800 && c <= 0xDFFF) continue;
+    const up = Array.from(String.fromCodePoint(c).toUpperCase());
+    if (up.length !== 1 || up.some((x) => x.codePointAt(0) < 0x80)) out.push(c);
+  }
+  console.log(JSON.stringify(out));"""], check=True, capture_output=True, text=True).stdout)
+FIG_UPPER = [_json.dumps({"figText": "A" + chr(c) + "Z"}) for c in FIG_UPPER_CPS]
 rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)]
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)]
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
@@ -1348,6 +1456,42 @@ check("the setups reach every kind, both layers, the old LFO enum, the morph, th
       and any("lfo1>gen.phase" in r["mod"] for r in allr) and any(r["morph"]["a"] for r in allr)
       and any(r["midi"]["cc"] for r in allr) and any(r["lfos"][0]["rate"] != r["lfos"][0]["free"] for r in allr)
       and any(r["a"]["qMask"] not in (0, 4095) for r in allr) and any(r["echo"]["sync"] for r in allr))
+fm = [_json.loads(l) for l in rpg[4:4 + len(FIG_MADE)]]
+fu = [_json.loads(l) for l in rpg[4 + len(FIG_MADE):4 + len(FIG_MADE) + len(FIG_UPPER)]]
+check("the %d characters whose upper case is an ASCII letter or longer each lay out as the page lays them out, and change the width"
+      % len(FIG_UPPER), len(FIG_UPPER) == 104 and all(u["figure"]["textPath"] for u in fu)
+      and len({_json.dumps(u["figure"]["textPath"]) for u in fu}) > 10)
+check("a default slot written out a byte at a time is written back as no cycle, though what plays is the bytes",
+      fm[0]["cycles"]["codes"] == ["", ""] and fm[0]["cycles"]["cycle"] != _json.loads(ppage[0])["cycles"]["cycle"]
+      and fm[0]["cycles"]["points"][0] != _json.loads(ppage[0])["cycles"]["points"][0], repr(fm[0]["cycles"]["codes"]))
+check("\"stra\u00dfe\" is written as STRASSE, seven letters, the \u00df upper-cased to two",
+      fm[1]["figure"]["textPath"] == fm[2]["figure"]["textPath"] and fm[1]["figure"]["text"] != fm[2]["figure"]["text"]
+      and fm[1]["figure"]["sent"] == fm[1]["figure"]["textPath"] and len(fm[1]["figure"]["textPath"]["xy"]) > 50)
+check("a number after a Z is refused, and the path before it kept and still drawn",
+      fm[4]["figure"]["fault"].startswith("That path could not be read: unexpected character")
+      and fm[4]["figure"]["kept"] == "M0 0 L10 0 L10 10" and fm[4]["figure"]["sent"] == fm[3]["figure"]["sent"] != None,
+      fm[4]["figure"]["fault"])
+check("a drawing with no length draws nothing, and one past three thousand points keeps three thousand",
+      fm[7]["figure"]["drawnPath"] is None and fm[7]["figure"]["drawn"] == "0.5,0.5 0.5,0.5"
+      and len(fm[10]["figure"]["drawnPath"]["xy"]) == 2 * 3001 and fm[10]["figure"]["drawn"].replace(";", " ").count(" ") + 1 == 3000,
+      "%r, %d" % (fm[7]["figure"]["drawnPath"], len(fm[10]["figure"]["drawnPath"]["xy"]) if fm[10]["figure"]["drawnPath"] else -1))
+check("a slot 0.94 of a step from its default at one point is written back, and a path of spaces is no path and no complaint",
+      fm[8]["cycles"]["codes"][1].startswith(",") and len(fm[8]["cycles"]["codes"][1]) > 300
+      and fm[9]["figure"]["fault"] == "" and fm[9]["figure"]["kept"] == "" and fm[9]["figure"]["path"] is None,
+      "%r %r" % (fm[8]["cycles"]["codes"][1][:12], fm[9]["figure"]["fault"]))
+check("a path of more than six thousand points is refused as too detailed",
+      fm[5]["figure"]["fault"] == "That path could not be read: too detailed: 6201 points, and the most is 6000.", fm[5]["figure"]["fault"])
+rall = [_json.loads(l) for l in rpg]
+faults = {(r["figure"]["fault"].split(" at ")[0].split(": ")[1] if ": " in r["figure"]["fault"] else r["figure"]["fault"]).rstrip(".")
+          for r in rall}
+check("the random setups reach every refusal, paths, drawings and cycles read and refused, and every figure of strokes sent",
+      {"expected a number", "expected an arc flag", "unexpected character", "a path starts with a command",
+       "Nothing in that path to draw"} <= faults
+      and sum(1 for r in rall if r["cycles"]["codes"][0]) > 20 and sum(1 for r in rall if r["cycles"]["codes"][1]) > 5
+      and sum(1 for r in rall if r["figure"]["drawnPath"]) > 20
+      and {r["figure"]["sent"] is not None and (r["figure"]["sent"] == r["figure"]["textPath"], r["figure"]["sent"] == r["figure"]["path"],
+           r["figure"]["sent"] == r["figure"]["drawnPath"]) for r in rall} >= {(True, False, False), (False, True, False), (False, False, True)},
+      ", ".join(sorted(faults)))
 r0, r1 = _json.loads(rpg[0]), _json.loads(rpg[1])
 check("a slider snaps what it is given: a half goes up, and what is not a number takes its middle",
       r0["a"]["freq"] == 2015 and r0["a"]["detail"] == 7 and r1["a"]["freq"] == 2015 and r1["a"]["detail"] == 7,
@@ -1361,6 +1505,15 @@ def rnull(what, index, change):
 rnull("a preset a hertz higher", 3, lambda st: st | {"freq": (st.get("freq", 220)) + 1})
 rnull("a preset with layer B a step louder", 5, lambda st: st | {"bAmp": 21})
 rnull("a preset on the next scale", 7, lambda st: st | {"keyScale": "dorian", "quant": True})
+pdrawn = next(i for i, p in enumerate(presets) if '"cycle"' in p)
+rnull("the drawn cycle's preset with one character of its cycle changed", pdrawn,
+      lambda st: st | {"cycle": ("K" if st["cycle"][0] != "K" else "L") + st["cycle"][1:]})
+ptext = next(i for i, p in enumerate(presets) if '"figText"' in p)
+rnull("the written preset with one letter changed", ptext, lambda st: st | {"figText": "HELLP"})
+ppath = next(i for i, p in enumerate(presets) if '"figPath"' in p)
+rnull("the imported preset with one number of its path changed", ppath, lambda st: st | {"figPath": st["figPath"].replace("80", "81", 1)})
+pdraw = next(i for i, p in enumerate(presets) if '"figDrawn"' in p)
+rnull("the drawn preset with one point moved", pdraw, lambda st: st | {"figDrawn": st["figDrawn"].replace("0.6", "0.61", 1)})
 check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
 
 print("\n--- macros and the morph ---")

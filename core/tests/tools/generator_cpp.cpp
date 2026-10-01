@@ -31,8 +31,7 @@ scope::CycleTables tables(const std::string& text) {  // "most:t0;t1;..."
   scope::CycleTables c;
   c.most = num(text.substr(0, colon));
   for (const auto& t : splitOn(text.substr(colon + 1), ';')) {
-    std::vector<float> table;
-    for (const double v : numbers(t)) table.push_back(static_cast<float>(v));
+    std::vector<double> table = numbers(t);
     c.levels.push_back(table);
   }
   return c;

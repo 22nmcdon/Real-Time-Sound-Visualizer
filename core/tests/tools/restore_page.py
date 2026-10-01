@@ -3,7 +3,8 @@ the page loads a preset or a code, and what it leaves in the instrument
 written out as one JSON line - both layers' tones as the generator holds them,
 the keyboard's settings and the panel it reads, the LFOs, the routings, the
 key and the quantiser, the crossings, the score, the arpeggiator, the
-threshold, the macros, the morph, the plane and the echo, and every slider.
+threshold, the macros, the morph, the plane and the echo, the drawn cycles
+and the figures made of strokes, and every slider.
 A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
 for one frame ("mod") or from now on ("hold"), a macro's knob ("macro", "i"),
@@ -39,6 +40,12 @@ DUMP = """(setups) => {
   const ranges = () => { const o = {}; for (const id of rangeIds) { const e = document.getElementById(id); o[id] = e ? Number(e.value) : null; } return o; };
   // `just` by its truth, which is what the generator plays by: the page keeps
   // the raw value as well, for its panel, and the core does not.
+  // The cycles' tables and points by two sums each - weighted by position, so
+  // a point out of place shows, and squared - and two of a table's values; a
+  // compiled path in full.
+  const sums = (arr) => { let a = 0, b = 0; arr.forEach((v, i) => { a += v * (i + 1); b += v * v; }); return [a, b]; };
+  const digest = (c) => c ? { most: c.most, levels: c.levels.map((t) => [t.length, ...sums(t), t[0], t[517]]) } : null;
+  const pathOf = (p) => p ? { xy: Array.from(p.xy), at: Array.from(p.at) } : null;
   const tone = (t, skip) => { const o = {}; for (const k of Object.keys(t)) if (!skip.includes(k)) o[k] = k === "just" ? !!t[k] : t[k]; return o; };
   // An operation rather than a setup: a hand on a slider, an end of the morph
   // stored, the fader moved, the matrix pushing it for a frame (mod) or from
@@ -82,6 +89,12 @@ DUMP = """(setups) => {
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
       ranges: ranges(),
+      cycles: { codes: [cycleIsDefault(0) ? "" : encodeCycle(drawnCycle.slots[0]), encodeCycleSlots()],
+                points: drawnCycle.slots.map(sums), cycle: digest(genSettings().cycle),
+                bank: (genSettings().wavetable || []).map(digest) },
+      figure: { text: el.figText.value, d: el.figPathD.value, kept: figDrawing.pathD, fault: figDrawing.fault,
+                drawn: encodeDrawn(figDrawing.strokes), textPath: pathOf(figDrawing.text), path: pathOf(figDrawing.path),
+                drawnPath: pathOf(figDrawing.drawn), sent: pathOf(genSettings().figPath) },
       plane: { mirror: plane.mirror, limit: plane.limit, radius: plane.radius, os: plane.os, twist: plane.twist,
                kaleido: plane.kaleido, snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
       echo: { mix: echo.mix, ms: echo.ms, sync: echo.sync, feedback: echo.feedback, pingPong: echo.pingPong,

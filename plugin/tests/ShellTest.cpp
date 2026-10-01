@@ -133,7 +133,8 @@ int main() {
     }
     return got;
   };
-  const auto dyadReference = [&](int second, bool routed = false, const char* preset = nullptr, bool morphed = false) {
+  const auto dyadReference = [&](int second, bool routed = false, const char* preset = nullptr, bool morphed = false,
+                                 bool noTables = false) {
     std::vector<scope::Lfo> lfos(2);
     lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
     scope::Generator core(rate, scope::slot::Used, lfos);
@@ -145,6 +146,7 @@ int main() {
     scope::BrainSources brainSources(matrix, brain);
     keys.setPresent(true);
     if (preset) scope::restoreSetup(scope::findPreset(preset)->setup, brain, core, keys, matrix, lfos);
+    if (noTables) { core.setCycle(nullptr); core.setWavetable(nullptr); }  // what the core played before the cycles
     if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
     if (morphed) {
       scope::moveSlider("amp", u"20", brain, core, keys, lfos); scope::morphStore(brain, false);
@@ -253,6 +255,22 @@ int main() {
   }
   check("a preset loaded in the plugin is the core restoring it: \"Wah\", sample for sample",
         wahOff == 0 && wahVsBoot > 0.05, "off by " + num(wahOff) + "; the preset it opens on differs by " + num(wahVsBoot));
+
+  /* "A drawn cycle": the shape is a drawing, its 256 points in the preset's
+     code, and restore builds its tables and hands them to the generator.
+     Before the cycles were ported the core had no tables and played a sine
+     for it, and the same preset with no tables is the null: plugin and core
+     restoring alike would agree whether or not either built any. */
+  const Played drawn = playDyad(1300, false, "A drawn cycle");
+  const auto drawnWant = dyadReference(1300, false, "A drawn cycle");
+  const auto drawnSine = dyadReference(1300, false, "A drawn cycle", false, true);
+  double drawnOff = 0, drawnVsSine = 0;
+  for (std::size_t i = 0; i < drawn.l.size(); ++i) {
+    drawnOff = std::fmax(drawnOff, std::fabs(drawn.l[i] - drawnWant[0][i]) + std::fabs(drawn.r[i] - drawnWant[1][i]));
+    drawnVsSine = std::fmax(drawnVsSine, std::fabs(drawn.l[i] - drawnSine[0][i]));
+  }
+  check("a drawn cycle loaded in the plugin plays the tables the core builds from its points",
+        drawnOff == 0 && drawnVsSine > 0.05, "off by " + num(drawnOff) + "; with no tables it would differ by " + num(drawnVsSine));
 
   /* And it is a fifth: the picture's right channel crosses upwards three times
      for the left's two while both keys are held. The one-key run is the null,

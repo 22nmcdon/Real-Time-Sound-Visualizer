@@ -252,6 +252,51 @@ int main(int argc, char** argv) {
       if (std::string_view(r.id) != "lfoRate0") ranges.set(std::string_view(r.id), num(brain.panel.range(r.id)));
     }
     out.set("ranges", ranges);
+    {
+      const auto sums = [](const std::vector<double>& v) {
+        double a = 0, b = 0;
+        for (std::size_t i = 0; i < v.size(); i++) { a += v[i] * static_cast<double>(i + 1); b += v[i] * v[i]; }
+        Json o = Json::array(); o.a.push_back(num(a)); o.a.push_back(num(b));
+        return o;
+      };
+      const auto digest = [&](const scope::CycleTables* c) {
+        if (!c) return Json::null();
+        Json o = Json::object(), levels = Json::array();
+        o.set("most", num(c->most));
+        for (const auto& t : c->levels) {
+          Json row = Json::array();
+          row.a.push_back(num(static_cast<double>(t.size())));
+          for (const auto& x : sums(t).a) row.a.push_back(x);
+          row.a.push_back(num(t[0])); row.a.push_back(num(t[517]));
+          levels.a.push_back(row);
+        }
+        o.set("levels", levels);
+        return o;
+      };
+      Json cycles = Json::object(), codes = Json::array(), points = Json::array(), bank = Json::array();
+      codes.a.push_back(str(scope::cycleIsDefault(brain.cycles[0], 0) ? "" : scope::encodeCycle(brain.cycles[0])));
+      codes.a.push_back(str(scope::encodeCycleSlots(brain.cycles)));
+      for (const auto& slot : brain.cycles) points.a.push_back(sums(slot));
+      if (gen.tone().wavetable) for (const auto& c : *gen.tone().wavetable) bank.a.push_back(digest(&c));
+      cycles.set("codes", codes); cycles.set("points", points);
+      cycles.set("cycle", digest(gen.tone().cycle.get())); cycles.set("bank", bank);
+      out.set("cycles", cycles);
+      const auto pathOf = [](const scope::FigurePath* f) {
+        if (!f) return Json::null();
+        Json o = Json::object(), xy = Json::array(), at = Json::array();
+        for (const double v : f->xy) xy.a.push_back(num(v));
+        for (const double v : f->at) at.a.push_back(num(v));
+        o.set("xy", xy); o.set("at", at);
+        return o;
+      };
+      Json figure = Json::object();
+      figure.set("text", Json::string(brain.figText)); figure.set("d", Json::string(brain.figPathD));
+      figure.set("kept", Json::string(brain.fig.pathD)); figure.set("fault", Json::string(brain.fig.fault));
+      figure.set("drawn", str(scope::encodeDrawn(brain.fig.strokes)));
+      figure.set("textPath", pathOf(brain.fig.text.get())); figure.set("path", pathOf(brain.fig.path.get()));
+      figure.set("drawnPath", pathOf(brain.fig.drawn.get())); figure.set("sent", pathOf(gen.tone().figPath.get()));
+      out.set("figure", figure);
+    }
     const auto& p = brain.plane;
     Json plane = Json::object();
     plane.set("mirror", num(p.mirror)); plane.set("limit", num(p.limit)); plane.set("radius", num(p.radius)); plane.set("os", num(p.os));

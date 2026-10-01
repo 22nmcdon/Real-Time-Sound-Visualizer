@@ -20,11 +20,15 @@
 // What differs from the page, and why, so nobody goes looking:
 //
 // - The view's half of a setup (the display, the trigger, the channels, the
-//   filter, the beam, the panes) is the page's to apply. The core keeps the
-//   setup it was given, and in the plugin the page reads it from there.
-// - The drawn cycles and the figures made of strokes (text, a path, a
-//   drawing) are a later piece of the port. Their fields are kept and not yet
-//   applied.
+//   filter, the beam, the panes) is the page's to apply. Its sliders are
+//   written into the panel as the page writes them, so the morph can walk
+//   them; what they then do is the page's.
+// - The drawn cycles' tables are built again only for a slot whose points
+//   have changed. The page builds all four on every restore; the tables are
+//   the same either way, and each costs some 25 ms.
+// - The cycles and the figures made of strokes are the page's from the first
+//   restore on: a Brain starts with none, where the page starts with its
+//   defaults, and the plugin restores before it plays.
 // - The page's tempo has a MIDI clock that can override it; here the tempo in
 //   force is the setup's, which is what the page's is with no clock running.
 // - Three fields the page passes on raw are taken by their truth or their
@@ -46,6 +50,7 @@
 #include <utility>
 #include <vector>
 
+#include "scope/cycles.h"
 #include "scope/generator.h"
 #include "scope/json.h"
 #include "scope/keyboard.h"
@@ -53,6 +58,7 @@
 #include "scope/matrix.h"
 #include "scope/panel_controls.h"
 #include "scope/setup.h"
+#include "scope/strokes.h"
 
 namespace scope {
 
@@ -182,6 +188,19 @@ struct Brain {
     bool pingPong = false;
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
   } echo;
+  // drawnCycle: the four slots' points, and the tables built from them.
+  std::array<CyclePoints, kCycleSlots> cycles;
+  std::shared_ptr<const std::vector<CycleTables>> cycleBank;
+  std::array<CyclePoints, kCycleSlots> cycleBuiltFrom;  // what the bank's tables were built from
+  // figDrawing, and the two text rows: the word and the path's d as their
+  // inputs hold them, the d last read, and why the last one was not.
+  std::u16string figText, figPathD;
+  struct FigDrawing {
+    std::shared_ptr<const FigurePath> text, path, drawn;
+    std::u16string pathD, fault;
+    Strokes strokes;
+    bool full = false;
+  } fig;
 };
 
 // --- the tables restore reads -----------------------------------------------------------
@@ -453,6 +472,48 @@ inline void syncQuantiser(const Brain& b, Generator& gen) {
   gen.set("qGlideMs", b.quantiseGlide);
 }
 
+// cycleSend(true): every slot's tables, to the generator - the drawn cycle
+// for both layers (layer B plays layer A's) and the bank for the wavetable.
+inline void cycleSend(Brain& b, Generator& gen) {
+  if (!b.cycleBank || b.cycleBuiltFrom != b.cycles) {
+    auto bank = std::make_shared<std::vector<CycleTables>>();
+    for (std::size_t k = 0; k < kCycleSlots; k++) {
+      const bool same = b.cycleBank && b.cycleBuiltFrom[k] == b.cycles[k];
+      bank->push_back(same ? (*b.cycleBank)[k] : cycleTables(b.cycles[k]));
+    }
+    b.cycleBank = bank;
+    b.cycleBuiltFrom = b.cycles;
+  }
+  gen.setCycle(std::shared_ptr<const CycleTables>(b.cycleBank, &(*b.cycleBank)[0]));
+  gen.setWavetable(b.cycleBank);
+}
+
+// A text input's value as the browser keeps it: its line breaks taken out.
+inline std::u16string textInputValue(const std::u16string& v) {
+  std::u16string out;
+  for (const char16_t c : v) if (c != u'\n' && c != u'\r') out += c;
+  return out;
+}
+// setFigureText: the word as its row holds it, at most twenty-four units.
+inline void setFigureText(Brain& b, const std::u16string& text) {
+  b.figText = textInputValue(text.substr(0, kTextMost));
+  b.fig.text = compilePath(textStrokes(b.figText));
+}
+// setFigurePathD: a d that cannot be read leaves the drawing as it was and
+// says why; one that reads to nothing says that.
+inline void setFigurePathD(Brain& b, const std::u16string& d) {
+  b.figPathD = textInputValue(d);
+  if (jsTrim(d).empty()) { b.fig.path = nullptr; b.fig.pathD.clear(); b.fig.fault.clear(); return; }
+  const PathRead read = svgStrokes(d);
+  if (!read.strokes) { b.fig.fault = u"That path could not be read: " + utf8To16(read.error) + u"."; return; }
+  b.fig.path = compilePath(*read.strokes);
+  b.fig.pathD = d;
+  b.fig.fault = b.fig.path ? u"" : u"Nothing in that path to draw.";
+}
+inline std::shared_ptr<const FigurePath> figurePathFor(const Brain& b, std::string_view name) {
+  return name == "Text" ? b.fig.text : name == "Path" ? b.fig.path : name == "Drawn" ? b.fig.drawn : nullptr;
+}
+
 // --- the handlers' part, in restore's order -------------------------------------------------
 
 inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyboard& keys, Matrix& matrix,
@@ -521,6 +582,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   gen.set("gen2Figure", panel.select("gen2Figure"), 0);
   setA("gen2Rate", panel.range("gen2Rate"));
   gen.set("inputFrom", brain.inputFrom, 0);  // syncGen2
+  {
+    const auto first = decodeCycle(s("cycle"));
+    brain.cycles[0] = first ? *first : cycleDefault(0);
+    decodeCycleSlots(s("cycles"), brain.cycles);
+    cycleSend(brain, gen);
+  }
   {
     const double mode = panel.selectNumber("inputMode");
     brain.inputMode = mode == 0 || std::isnan(mode) ? 0 : mode;
@@ -592,7 +659,17 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   }
   applyVoiceLaws(gen, panel, 0);
 
+  {
+    const Json* text = s("figText");
+    setFigureText(brain, text && text->type == Json::Type::String ? text->s : defaults.get("figText")->s);
+    const Json* d = s("figPath");
+    setFigurePathD(brain, d && d->type == Json::Type::String ? d->s : u"");
+    brain.fig.strokes = decodeDrawn(s("figDrawn"));
+    brain.fig.full = false;
+    brain.fig.drawn = compilePath(brain.fig.strokes);  // drawnCompile: decodeDrawn keeps no stroke of one point
+  }
   gen.set("figure", panel.select("figure"), 0);
+  gen.setFigPath(figurePathFor(brain, panel.select("figure")));  // syncFigurePath
   gen.set("model", panel.select("model"), 0);
   setA("interval", panel.selectNumber("interval"));
 
