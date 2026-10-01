@@ -126,7 +126,23 @@ with sync_playwright() as pw:
           abs(held["on"] - PITCH(440)) < 0.005 and abs(held["off"] - PITCH(110)) < 0.005, str(held))
 
     print("\n--- brightness and the bands ---")
-    dull, keen = at(200), at(4000)
+    # Settled by the reading, as the bands below are and for the same reason:
+    # 900 ms of clock under the full suite's load was less of the follower's
+    # own time, and once read 200 Hz at 0.358 on its way down to 0.158.
+    def bright(hz):
+        return p.evaluate("""async (hz) => {
+          __play(hz, 'same', 0.8);
+          const began = performance.now();
+          let last = __read();
+          while (true) {
+            await __wait(150);
+            const now = __read();
+            const moved = Math.abs(now.bright - last.bright);
+            last = now;
+            if ((performance.now() - began > 900 && moved < 0.002) || performance.now() - began > 8000) return now;
+          }
+        }""", hz)
+    dull, keen = bright(200), bright(4000)
     print("    200 Hz %.3f (want %.3f), 4 kHz %.3f (want %.3f)" % (dull["bright"], BRIGHT(200),
                                                                    keen["bright"], BRIGHT(4000)))
     check("brightness puts a 200 Hz sine low and a 4 kHz one high, at one level, where the centroid says",
