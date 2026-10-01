@@ -104,9 +104,10 @@ int main() {
      by name, at the same samples, with a release where the plugin got a
      velocity of nought - so the byte path is what is being held. */
   struct Played { std::vector<float> l, r; };
-  const auto playDyad = [&](int second) {
+  const auto playDyad = [&](int second, bool routed = false) {
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
+    if (routed) { p.matrix().add("lfo1", "gen.freq", 0.5); p.matrix().add("midi.key", "gen.amp", 0.6); }
     Played got;
     juce::AudioBuffer<float> buf(2, block);
     for (int start = 0; start < total; start += block) {
@@ -124,22 +125,35 @@ int main() {
     }
     return got;
   };
-  const auto dyadReference = [&](int second) {
+  const auto dyadReference = [&](int second, bool routed = false) {
     std::vector<scope::Lfo> lfos(2);
     lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
     scope::Generator core(rate, scope::slot::Used, lfos);
     scope::GeneratorNotes notes(core);
     scope::Keyboard keys(notes);
+    scope::Matrix matrix;
+    scope::CoreSources sources(matrix, core, lfos, keys);
+    if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
     keys.setPresent(true);
     keys.frame(0);
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
+    // Each block: the keyboard's frame, the matrix's, and the routes held
+    // across the block - as the plugin is meant to do it, written out.
+    const auto top = [&] {
+      const double ms = 1000.0 * block / rate;
+      keys.frame(done == 0 ? 0 : ms);
+      matrix.setLayered(keys.layersOn());
+      matrix.setStrikes(keys.strikes());
+      matrix.frame(done * 1000.0 / rate);
+      core.setRoutes(matrix.routes(done * 1000.0 / rate));
+    };
     const auto run = [&](int to) {
       while (done < to) {
+        if (done % block == 0) top();
         const int end = std::min(to, (done / block + 1) * block);
         core.block(pl.data() + done, pr.data() + done, end - done, l.data() + done, r.data() + done);
         done = end;
-        if (done % block == 0) keys.frame(1000.0 * block / rate);
       }
     };
     run(100); keys.noteOn(57, 100);
@@ -158,6 +172,19 @@ int main() {
   }
   check("two keys through the plugin are the core's keyboard playing its generator, a velocity of nought a release",
         dyadOff == 0 && dyadOffLate > 1e-3, "off by " + num(dyadOff) + "; the second key a sample late would be off by " + num(dyadOffLate));
+  /* With routings: the matrix's routes reach the generator at the top of each
+     block, an LFO on the pitch and the key's velocity ducking the level. The
+     same notes with no routings are the null - the routes have to be heard. */
+  const Played routed = playDyad(1300, true);
+  const auto routedWant = dyadReference(1300, true);
+  double routedOff = 0, unrouted = 0;
+  for (std::size_t i = 0; i < routed.l.size(); ++i) {
+    routedOff = std::fmax(routedOff, std::fabs(routed.l[i] - routedWant[0][i]) + std::fabs(routed.r[i] - routedWant[1][i]));
+    unrouted = std::fmax(unrouted, std::fabs(routed.l[i] - dyadWant[0][i]));
+  }
+  check("routed, the plugin is the core's matrix compiling routes for its generator a block at a time",
+        routedOff == 0 && unrouted > 0.05, "off by " + num(routedOff) + "; the same notes unrouted differ by " + num(unrouted));
+
   /* And it is a fifth: the picture's right channel crosses upwards three times
      for the left's two while both keys are held. The one-key run is the null,
      at one to one. */

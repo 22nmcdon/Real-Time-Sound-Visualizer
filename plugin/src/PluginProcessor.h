@@ -10,15 +10,20 @@
 #include "scope/generator.h"
 #include "scope/keyboard.h"
 #include "scope/lfo.h"
+#include "scope/matrix.h"
+#include "scope/sources.h"
 
 // The processor plays the core's generator (scope::Generator, the page's
 // `makeGeneratorCore` ported): what the speakers get is its heard pair, and
 // what the page draws is its picture pair. The host's MIDI reaches it through
 // the core's keyboard (scope::Keyboard, the page's `midi` functions ported),
 // byte for byte as a port's reach the page: the stack, the pedal, the dyad,
-// mono and chords on two layers. Until the rest of the brain moves into the
-// core (PLAN.md, stage 2) the keyboard plays a dyad, as the page's does when
-// it opens, and every other setting is the page's default.
+// mono and chords on two layers. The routings reach it through the core's
+// matrix (scope::Matrix), compiled and faded at the top of every block, from
+// the sources ported so far. Until the rest of the brain moves into the core
+// (PLAN.md, stage 2) the keyboard plays a dyad, as the page's does when it
+// opens, there are no routings, as the page has none when it opens, and every
+// other setting is the page's default.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -67,6 +72,10 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void setPictureReport(const juce::String& json) { pictureReport_ = json; }
   juce::String pictureReport() const { return pictureReport_; }
 
+  // The routings, for whoever sets them: the shell test now, the brain's
+  // setup later. Not to be touched while the audio thread runs.
+  scope::Matrix& matrix() { return *matrix_; }
+
  private:
   // Render [from, to) of the block into the output and the picture ring.
   void render(float* left, float* right, int from, int to);
@@ -75,6 +84,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::unique_ptr<scope::Generator> core_;
   std::unique_ptr<scope::GeneratorNotes> notes_;
   std::unique_ptr<scope::Keyboard> keyboard_;
+  std::unique_ptr<scope::Matrix> matrix_;
+  std::unique_ptr<scope::CoreSources> sources_;
+  double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };
 

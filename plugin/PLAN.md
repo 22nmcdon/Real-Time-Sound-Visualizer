@@ -186,14 +186,18 @@ In pieces, as the engine went, each held to the page before the next:
 
 - **2a. The keyboard** (ported): the stack, the pedal, controllers, bytes, and
   what notes tell the generator.
-- **2b. The matrix:** destinations, routings and their text, the reach and
-  loop rules, the compiled routes each block with their fades, and events.
-- **2c. The sources that are not the picture's or the hearing's:** the LFOs'
-  settings and sync, macros and the morph, the fade envelopes.
+- **2b. The matrix** (ported): destinations, routings and their text, the
+  reach and loop rules, the compiled routes each block with their fades, and
+  events.
+- **2c. The setup as the core's state:** the page's flat snapshot and
+  `restore`, setup codes and their migrations, and presets. The panel the
+  keyboard reads becomes part of it, and so do the macros and the morph -
+  which moves the panel's sliders, and so cannot come before them. (It was
+  listed after time and the sources until the morph showed why not.)
 - **2d. Time:** the key and the clock (the host's transport in the plugin),
-  the arpeggiator, the score.
-- **2e. The setup as the core's state:** setup codes, their migrations, and
-  presets; the panel the keyboard reads becomes part of it.
+  the LFOs locked to it, the arpeggiator, the score.
+- **2e. The rest of the sources** that are not the picture's or the
+  hearing's: the learned controllers as sources, the note envelope, the level.
 - **2f. The hearing sources,** which analyse the sound and so are DSP in the
   core rather than the page.
 - **2g. The host's parameters.**
@@ -237,9 +241,61 @@ bit, with the second key a sample late 0.011 out, and the picture's right
 channel crossing three times to the left's two. In the standalone, with A3
 and E4 held, the page reads 220 Hz and 330 Hz - "E4 +2", the just fifth.
 
+**2b is ported.** `scope/matrix.h` is the page's modulation matrix: sources
+and destinations by id, routings with their depth, `routingAllowed` (an event
+reaches only what is struck, and never from the picture), the reach a picture
+source may move a destination - stored within it, except for a source whose
+reach depends on what is playing - and the one total the loop may push into a
+destination; the fades, with each layer's envelope and its clamps, a routing
+eased in and out, ghosts heard while they fade and then forgotten, and the
+stepped sources through delay, attack, decay, sustain, release, loop and
+restart; the routes compiled once per change and read and faded once a block,
+the loop's routes into one slot combined and bounded; events fired once for
+each new count and never for the count a routing found; and the picture's
+destinations summed into an offset and held to their range. A routing's text
+is the page's: `scope/text.h` has JavaScript's `toFixed`, which rounds an
+exact tie away from nought where `printf` rounds it to even (0.0625 is
+"0.063" in a browser), and its `Number`, which reads "1.2.3" as nothing where
+`strtod` reads 1.2.
+
+It is held to the page's own functions the same way (`matrix_js.mjs`,
+`matrix_cpp`): the page's text lifted by name - the picture's loop out of
+`applyModMatrix` itself - with stand-in sources whose values the run sets,
+the page's own `GEN_DESTS`, and the run's clock for `performance.now()`. 19
+named runs and 40 seeded random sequences of 120 commands agree on every
+route, event and offset, with the stored depths and what is heard and fading
+after each command; each named run shows what it is for, and each of those
+checks was seen to fail on a run without it - one, that a preset's pair does
+not dip, passed on a run with no preset in it, since all of nothing is true,
+and requires its frames now. The generator's destinations are a table in the
+port, and are held to `GEN_DESTS` id by id, slot by slot. Of 72 mutants (67
+of the matrix, 5 of the number text), 66 are caught; the six that live change
+nothing:
+
+- the half of the event rule that refuses a level to something struck, which
+  nothing else reads for such a pair;
+- a fade's end taken as past one rather than at it, where `pow(1, x)` is one;
+- layer B's depths worked out while fading is off, when every gain is one;
+- a held value written for an LFO's route, which is never set;
+- the decay's last instant, which lands on the sustain either way;
+- a ghost's routes recompiled while fading only in, when no ghost is heard.
+
+The port found one thing the page does that a reading of it would miss: its
+fades are a `Map`, so two routings of the same pair share one entry, where
+the first of them stood. The random sequences found it, on a pair routed
+twice.
+
+The plugin compiles its routes from it at the top of every block, from the
+sources ported so far (`scope/sources.h`: the LFOs, the keyboard's six, and
+Swing again, Kick and Pluck to strike), and the shell test holds a routed
+dyad - an LFO on the pitch, the key's velocity on the level - to a matrix,
+keyboard and generator driven directly: equal to the last bit, and 0.61 from
+the same notes unrouted. The page opens with no routings, so the plugin sounds
+as it did until a setup gives it some.
+
 What the port leaves to later pieces: the arpeggiator (2d), where the page
 asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
-are `Panel` until the setup is the core's (2e); and a chord handed to the
+are `Panel` until the setup is the core's (2c); and a chord handed to the
 generator, which the generator copies and so can allocate on a note, once a
 layer, until the brain's state is fixed in size.
 

@@ -21,6 +21,10 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   core_ = std::make_unique<scope::Generator>(sampleRate, scope::slot::Used, lfos_);
   notes_ = std::make_unique<scope::GeneratorNotes>(*core_);
   keyboard_ = std::make_unique<scope::Keyboard>(*notes_);
+  matrix_ = std::make_unique<scope::Matrix>();
+  sources_ = std::make_unique<scope::CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
+  nowMs_ = 0;
+  lastBlockMs_ = 0;
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
      keyboard is there. Derived by the keyboard, not set here. */
@@ -60,6 +64,17 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   const int frames = buffer.getNumSamples();
   auto* left = buffer.getWritePointer(0);
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
+  /* The page's once-a-frame work, once a block and before it: the keyboard's
+     controllers walk and its gate and chord are worked out again, the matrix
+     steps its fades, fires its events and compiles its routes, and the
+     generator holds those routes across the block, as the worklet does. */
+  keyboard_->frame(lastBlockMs_);
+  matrix_->setLayered(keyboard_->layersOn());
+  matrix_->setStrikes(keyboard_->strikes());
+  matrix_->frame(nowMs_);
+  core_->setRoutes(matrix_->routes(nowMs_));
+  lastBlockMs_ = 1000.0 * frames / rate_.load();
+  nowMs_ += lastBlockMs_;
   // Each event at its own sample, not at the top of the block: the generator
   // is run up to it, told, and run on.
   int done = 0;
@@ -76,9 +91,6 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     keyboard_->bytes(event.data, static_cast<std::size_t>(event.numBytes));
   }
   render(left, right, done, frames);
-  // And the keyboard's once-a-frame work, once a block: the controllers walk,
-  // and the gate and the chord are derived again.
-  keyboard_->frame(1000.0 * frames / rate_.load());
 }
 
 std::vector<float> ScopeProcessor::pictureSnapshot() const {

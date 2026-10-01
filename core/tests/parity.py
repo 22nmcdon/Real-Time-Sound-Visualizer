@@ -741,7 +741,9 @@ def kdiff(a, b):
         tx, ty = ktoks(x), ktoks(y)
         if len(tx) != len(ty): return "line %d: %s | %s" % (i, x[:160], y[:160])
         for p, q in zip(tx, ty):
-            try: ok = abs(float(p) - float(q)) <= TOL * max(1.0, abs(float(p)))
+            try:
+                fp, fq = float(p), float(q)
+                ok = (math.isnan(fp) and math.isnan(fq)) or abs(fp - fq) <= TOL * max(1.0, abs(fp))
             except ValueError: ok = p == q
             if not ok: return "line %d: %s against %s in %s" % (i, p, q, x[:160])
     return None
@@ -900,6 +902,183 @@ knull("figure", "panel figureRate 120", "panel figureRate 121", "a trace-rate sl
 knull("dyad-hold", "hold 1", "hold 0", "Hold left off")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(kjs.strip().split("\n")[1:]), "\n".join(kcpp.strip().split("\n")[:-1])) is not None)
+
+print("\n--- the matrix ---")
+# The page's routings, fades, events and routes, lifted by name, and
+# scope::Matrix, through the same commands. A line a command: the events
+# fired and the picture's offsets written, the routes the generator is given
+# each frame, the stored depths, and how much is heard and fading.
+mexe = build("matrix_cpp")
+def mboth(text, name="matrix_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "matrix_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([mexe, path], check=True, capture_output=True, text=True).stdout
+
+# The sources every run has: an LFO the loop reads for itself, a held level,
+# a stepped key, two picture sources with a reach, one whose reach varies,
+# and two event sources, one from the picture.
+MSETUP = ["source lfo1 index=0", "source lfo2 index=1", "source level", "source key stepped", "source pedal stepped",
+          "source photo picture reach=0.5", "source shape picture reach=0.5", "source hear reach=0.5 varies",
+          "source onset event", "source pic.hit event picture", "visual view.rotate 1 -2 2 0.25",
+          "visual view.zoom 8 0 24 20", "event gen.kick", "event gen.pluck",
+          "value level 0.6", "value photo 0.7", "value shape 0.9", "value hear 0.8", "value lfo1 0.3"]
+def mrun(*commands): return "run\n%s\nend\n" % "\n".join(MSETUP + list(commands))
+def frames(start, stop, step): return ["at %d" % t if i % 2 == 0 else "frame" for t in range(start, stop, step) for i in (0, 1)]
+
+mruns = [
+    ("routes", mrun("dests", "at 0", "frame", "route lfo1 gen.freq 0.4", "route level gen.amp 0.8", "route level gen.bar3 -0.5",
+                    "route lfo2 gen.spinZ 1", "route nobody gen.freq 1", "route level gen.nowhere 1",
+                    "route onset gen.freq 1", "route level gen.kick 1", "frame", "value level 0.25", "frame",
+                    "amount level gen.amp 0", "frame", "encode")),
+    ("reach", mrun("source pvary picture reach=0.3 varies", "value pvary 0.5", "route pvary gen.twist 0.9",
+                   "route photo gen.freq 0.9", "route shape gen.freq -0.8", "route hear gen.fm 0.9",
+                   "route photo gen.amp 0.7", "route shape gen.amp 0.4", "frame", "value photo 1", "value shape -1",
+                   "frame", "amount hear gen.fm -2", "amount photo gen.freq 0.2", "frame", "encode")),
+    ("visual", mrun("route level view.rotate 1", "route photo view.rotate 0.5", "route shape view.rotate 0.5",
+                    "frame", "value level 2.5", "frame", "route level view.zoom 1", "frame", "value level -9", "frame",
+                    "route hear view.zoom -0.9", "frame", "visual view.rotate 1 -2 2 -0.5", "frame")),
+    ("events", mrun("route onset gen.kick 0.6", "route pic.hit gen.kick 1", "route onset gen.pluck 0", "frame",
+                    "count onset 1", "frame", "frame", "count onset 3", "frame", "amount onset gen.kick -0.3",
+                    "count onset 4", "frame", "count pic.hit 2", "frame", "load onset>gen.kick@0.9", "count onset 5",
+                    "frame", "count onset 6", "frame", "route onset gen.pluck 0.5", "count onset 7", "frame")),
+    ("forget", mrun("route level gen.freq 0.5", "route photo gen.twist 0.3", "frame", "forget level", "frame",
+                    "source level", "frame", "forget photo", "frame")),
+    ("fade-in", mrun("fade in 1", "at 0", "frame", "route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "routes",
+                     *frames(100, 1300, 100), "unroute level gen.freq", "at 1400", "frame")),
+    ("fade-out", mrun("route level gen.freq 0.8", "route photo gen.freq 0.4", "route level view.rotate 1", "fade out 0.5",
+                      "at 0", "frame", "unroute level gen.freq", "unroute level view.rotate", *frames(50, 700, 50),
+                      "unroute photo gen.freq", *frames(700, 1300, 100))),
+    ("fade-both", mrun("fade both 2", "env 0 attackMid=0.2 releaseMid=0.8", "at 0", "route level gen.freq 0.8", "frame",
+                       *frames(250, 1000, 250), "unroute level gen.freq", *frames(1000, 2000, 250),
+                       "route level gen.freq 0.8", *frames(2000, 5000, 500))),
+    ("preset", mrun("route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "fade both 1", "at 0", "frame",
+                    "load level>gen.freq@0.6;photo>gen.twist@0.4", "at 10", "frame", *frames(200, 1400, 300),
+                    "fade off", "frame", "fade in", "frame")),
+    ("stepped", mrun("fade both 1", "env 0 delay=0.2 attack=0.5 decay=0.4 sustain=0.6 release=0.8",
+                     "route key gen.fm 1", "route pedal view.rotate 1", "at 0", "frame", "value key 0.7", "at 10",
+                     "frame", *frames(100, 1400, 150), "value key 0.9", *frames(1400, 2000, 150), "value key 0.4",
+                     *frames(2000, 2600, 150), "value key -0.8", *frames(2600, 3200, 150), "value key -0.3",
+                     *frames(3200, 3800, 150), "value key 0", *frames(2600, 3800, 200), "value pedal 1",
+                     *frames(3800, 4200, 100))),
+    ("stepped-loop", mrun("fade in 1", "env 0 attack=0.3 decay=0.2 sustain=0.5 loop=true", "route key gen.fm 1",
+                          "at 0", "frame", "value key 1", *frames(10, 2000, 70), "fade out", "frame", "value key 0",
+                          *frames(2000, 2600, 100))),
+    ("layered", mrun("fade both 1", "env 1 attack=0.2 decay=0.3 sustain=0.5 release=3 attackMid=0.7 restart=true",
+                     "env 0 restart=false", "layers 1", "route key gen.fm 1", "route level gen.freq 0.5", "at 0",
+                     "frame", "value key 0.8", *frames(50, 600, 50), "strike 1", *frames(600, 900, 50), "strike 0",
+                     *frames(900, 1200, 100), "layers 0", "frame", "layers 1", "unroute level gen.freq",
+                     *frames(1200, 2000, 200))),
+    ("envelope", mrun("env 0 attack=99 release=0 delay=-1 sustain=-1 attackMid=0 decayMid=1 releaseMid=0.5",
+                      "fade both", "fade sideways 2", "route key gen.fm 1", "at 0", "frame",
+                      "value key 1", *frames(10, 12000, 499), "value key 0", *frames(12000, 12500, 99))),
+    ("envelope-late", mrun("env 0 delay=7 attack=0.1 decay=0.1 sustain=0.5", "fade in", "route key gen.fm 1", "at 0",
+                           "frame", "value key 1", "at 10", "frame", *frames(4000, 8000, 500))),
+    ("envelope-seconds", mrun("env 0 seconds=3 attack=1", "fade both", "route key gen.fm 1", "at 0", "frame",
+                              "value key 1", "at 10", "frame", *frames(300, 3500, 300), "value key 0",
+                              *frames(3500, 7000, 500))),
+    ("envelope-names", mrun("env 0 seconds=3 attack=1", "env 0 inSeconds=4 attack=0.7",
+                            "env 0 outSeconds=0.3 outMid=0.3 inMid=0.6 releaseMid=0.8", "env 1 inSeconds=0.4 outMid=0.2",
+                            "layers 1", "fade both", "route key gen.fm 1", "at 0", "frame", "value key 1",
+                            *frames(10, 1000, 99), "value key 0", *frames(1000, 1500, 49))),
+    ("envelope-unreadable", mrun("env 0 attack=abc delay=abc sustain=abc", "fade in", "route key gen.fm 1", "at 0",
+                                 "frame", "value key 1", *frames(100, 2500, 300))),
+    ("strikes-first", mrun("fade both 1", "env 0 restart=true attack=0.2 decay=0.2 sustain=0.5 delay=0.2",
+                           "strike 0", "strike 0", "value key 1", "route key gen.fm 1", "at 0", "frame",
+                           *frames(50, 900, 50), "strike 0", *frames(900, 1500, 50))),
+    ("codes", mrun("load a>b@1;;x>y@1.2.3;level>gen.freq@-0.0625;bad;@;c>d@;e>f@.5;g>h>i@0.1875;j@k>l@1;m>n@-.25;o>p@5.;q>r@-",
+                   "encode", "frame", "load level>gen.amp@0.0005;level>gen.fm@1.9995;level>gen.freq@-0.00049;p0>q0@-0;p9>q9@9.9996;pm>qm@-99.9999", "encode",
+                   "load", "encode")),
+]
+
+mrng = random.Random(96)
+MSRC = ["lfo1", "lfo2", "level", "key", "pedal", "photo", "shape", "hear", "onset", "pic.hit", "ghost"]
+MDST = ["gen.freq", "gen.amp", "gen.fm", "gen.bar2", "gen.twist", "view.rotate", "view.zoom", "gen.kick", "gen.pluck"]
+def mfuzz(n):
+    out, t = ["at 0"], 0
+    for _ in range(n):
+        r = mrng.random()
+        if r < 0.18: out.append("route %s %s %r" % (mrng.choice(MSRC), mrng.choice(MDST), round(mrng.uniform(-1.2, 1.2), 3)))
+        elif r < 0.25: out.append("unroute %s %s" % (mrng.choice(MSRC), mrng.choice(MDST)))
+        elif r < 0.30: out.append("amount %s %s %r" % (mrng.choice(MSRC), mrng.choice(MDST), round(mrng.uniform(-1, 1), 2)))
+        elif r < 0.42: out.append("value %s %r" % (mrng.choice(MSRC), mrng.choice([0, 0, 1, round(mrng.uniform(-1, 1), 3)])))
+        elif r < 0.47: out.append("count %s %d" % (mrng.choice(["onset", "pic.hit"]), mrng.randint(0, 9)))
+        elif r < 0.51: out.append("fade %s %s" % (mrng.choice(["off", "in", "out", "both", "both"]), mrng.choice(["", "0.3", "1"])))
+        elif r < 0.55: out.append("env %d %s=%r" % (mrng.randint(0, 1), mrng.choice(["attack", "release", "decay", "delay", "sustain", "attackMid", "releaseMid"]), round(mrng.uniform(0, 1.5), 2)))
+        elif r < 0.57: out.append("env %d %s=%s" % (mrng.randint(0, 1), mrng.choice(["loop", "restart"]), mrng.choice(["true", "false"])))
+        elif r < 0.60: out.append("layers %d" % mrng.randint(0, 1))
+        elif r < 0.63: out.append("strike %d" % mrng.randint(0, 1))
+        elif r < 0.65: out.append("load " + ";".join("%s>%s@%.3f" % (mrng.choice(MSRC), mrng.choice(MDST), mrng.uniform(-1, 1)) for _ in range(mrng.randint(0, 4))))
+        elif r < 0.66: out.append("forget " + mrng.choice(["level", "photo", "onset"]))
+        else:
+            t += mrng.choice([16, 16, 33, 100, 400, 0])
+            out += ["at %d" % t, "frame"]
+    return mrun(*out)
+mruns += [("random-%d" % i, mfuzz(120)) for i in range(40)]
+
+mtext = "".join(t for _, t in mruns)
+mjs, mcpp = mboth(mtext, "matrix.txt")
+mlines = [len(t.strip().split("\n")) - 2 for _, t in mruns]
+def mslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(mlines[:i])
+    return "\n".join(lines[start:start + mlines[i]])
+for i, (name, _) in enumerate(mruns):
+    if name.startswith("random-"): continue
+    d = kdiff(mslice(mjs, i), mslice(mcpp, i))
+    check("%s: %d commands, the same routes, events and offsets" % (name, mlines[i]), d is None, d or "")
+rbad = [n for i, (n, _) in enumerate(mruns) if n.startswith("random-") and kdiff(mslice(mjs, i), mslice(mcpp, i))]
+check("40 random sequences of 120 commands, the same routes, events and offsets", not rbad, ", ".join(rbad))
+def mout(name): return mslice(mjs, next(i for i, (n, _) in enumerate(mruns) if n == name))
+def frame_lines(name): return [l for l in mout(name).split("\n") if l.startswith("frame")]
+def route_amounts(line):
+    m = re.search(r"routes (\S+)", line)
+    return [] if not m or m.group(1) == "-" else [float(r.split("/")[4]) for r in m.group(1).split("+")]
+check("the generator's destinations are the page's, each on its slot", "gen.spinZ/31/0" in mout("routes")
+      and "gen.amp/1/1" in mout("routes") and mout("routes").count("/0+") >= 30)
+fi = [route_amounts(l) for l in frame_lines("fade-in")]
+check("a routing fades in: part-way at first, whole by the end of its time",
+      any(0.05 < a[0] < 0.75 for a in fi if a) and any(abs(a[0] - 0.8) < 1e-12 for a in fi if a))
+fo = frame_lines("fade-out")
+check("a routing taken off is heard fading, then forgotten", "heard 3" in "\n".join(fo) and fo[-1].split("heard ")[1].startswith("0"))
+check("the loop's total into one slot is held to a half", "/1.0000000000000000/1.0000000000000000/0" in mout("reach")
+      and "u/0.50000000000000000/" in mout("reach"))
+check("events fire on a new count only, never on the count found, and never at no depth",
+      mout("events").count(":: fire gen.kick") == 5 and "fire gen.pluck" not in mout("events")
+      and ":: fire gen.kick -0.29" in mout("events"))
+check("the picture's offsets are held to their ranges", "visual view.rotate 1.75" in mout("visual")
+      and "visual view.zoom -20" in mout("visual"))
+st = "\n".join(frame_lines("stepped"))
+check("a stepped source waits out its delay, rises, settles to its sustain and falls",
+      "/0.69999999999999996/" not in st.split("\n")[2] and "0.41999999999999998/" in st and " :: visual view.rotate" in st)
+check("layered, layer B's depths and envelope are its own", any(
+      len(set(l.split("routes ")[1].split(" ")[0].split("/")[1:3])) == 2 for l in frame_lines("layered") if "routes u/" in l))
+# The pair in both the old preset and the new keeps its gain: at 0.6 from the
+# first frame after the load, never below. All of an empty list is true, so
+# the frames have to be there.
+after = [route_amounts(l) for l in frame_lines("preset")[1:]]
+check("a preset's pair already playing does not dip", len(after) >= 5 and all(a and abs(a[0] - 0.6) < 1e-12 for a in after))
+check("codes: the page's own rounding, and the malformed parts skipped",
+      "level>gen.freq@-0.063" in mout("codes") and "g>h>i@0.188" in mout("codes") and "m>n@-0.250" in mout("codes")
+      and "bad" not in mout("codes") and "c>d" not in mout("codes") and "j@k>l@1.000" in mout("codes")
+      and "x>y@NaN" in mout("codes") and "p0>q0@0.000;p9>q9@10.000;pm>qm@-100.000" in mout("codes"))
+rnd = "\n".join(mslice(mjs, i) for i, (n, _) in enumerate(mruns) if n.startswith("random-"))
+check("the random sequences reach fades, ghosts, events and the loop", all(w in rnd for w in (":: fire", "gains 1", ":: visual", "routes u/")))
+
+def mnull(name, old, new, what):
+    text = dict(mruns)[name]
+    assert old in text, old
+    js, _ = mboth(text.replace(old, new, 1))
+    i = next(k for k, (n, _) in enumerate(mruns) if n == name)
+    check("and against " + what, kdiff(js, mslice(mcpp, i)) is not None)
+mnull("fade-in", "fade in 1", "fade in 1.1", "a fade a tenth of a second longer")
+mnull("stepped", "sustain=0.6", "sustain=0.61", "a sustain a hundredth higher")
+mnull("reach", "source photo picture reach=0.5", "source photo picture reach=0.51", "a reach a hundredth further")
+mnull("events", "count onset 3", "count onset 1", "a count that did not move")
+mnull("layered", "strike 1", "strike 0", "the other layer struck")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(mjs.strip().split("\n")[1:]), "\n".join(mcpp.strip().split("\n")[:-1])) is not None)
 
 print()
 if fails:
