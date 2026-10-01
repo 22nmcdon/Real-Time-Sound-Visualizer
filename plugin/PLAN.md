@@ -76,6 +76,25 @@ delay and chorus, the quantiser, the governor. Each piece held to the page by
 the parity harness before the next is started, with scenarios written so the
 fixture can show the effect.
 
+Ported so far, leaves first: the envelope (`scope/envelope.h`); the
+waveforms and the functions under them (`scope/wave.h`) - `cycleOf`, the two
+bleps, the drawbars' gain and weights, the intervals, the state-variable
+filter, the drawn cycle's read, and `waveAt` for every shape; the four noises
+(`scope/noise.h`); and the voice's oscillator (`scope/osc.h`) - unison, FM,
+ring, hard sync with its band-limited reset, and the sub-oscillator. They are
+held to the page by a list of about 14,000 calls written by `parity.py` and
+answered by both (`functions_js.mjs`, `functions_cpp`); the functions inside
+`makeGeneratorCore`, which the page does not export, are lifted out by name
+(`coreScope`) and run in the closure they were written for. Every call agrees
+to the last bit or within 2e-15 - the oscillator's sync accumulates a little
+- and 29 mutants of the ports are all caught. Next: the voice's filter and
+shaper, then the voices and the loop.
+
+The noise draws from a `scope::Random` it is handed (mulberry32), not from
+`Math.random`; the harness hands the page the same generator, so the two are
+compared exactly. In use the plugin's noise and the site's are different
+sequences of the same noise.
+
 **2. The brain.** The modulation matrix and every source, the fade envelopes,
 notes, layers, the arpeggiator, the score, the clock (the host's transport in
 the plugin), presets and setup codes as the core's state. The host's automation
@@ -123,6 +142,21 @@ redone natively or left out.
   the page waited for one before the next or not, and a page that did not
   wait passed. It answers in 40 ms now, longer than two frames, and a page
   that does not wait has four in flight.
+- **Two of the waveform calls could not see the mistakes they were for.** A
+  null for the pulse's width took the first pulse call it found, which was at
+  the top of a cycle - where a pulse narrower than a half is 0.9 whatever its
+  width - and could not tell 0.3 from 0.31; it takes one from the low part of
+  the cycle now. And the drawbars were only ever called with steps that put
+  every partial wholly under or wholly over Nyquist, so their fade band could
+  have been twice as wide; they have steps that put each partial in it. One
+  mutant is equivalent and cannot be caught: the blep's window taken as
+  `t <= dt`, since the blep is nought at its edge either way.
+- **Three more fixtures that could not see their mistake,** each found by a
+  mutant that survived: every unison count in the oscillator's sweep was a
+  whole number, so rounding half a copy down passed (a run with 2.5 copies
+  catches it); the stepped noise steps when its phase goes back, which only
+  a phase standing still can tell from "on or back" (a run at 0 Hz); and the
+  pulse and drawbars ones above.
 - **The null device spins.** ALSA's `null` output accepts everything at once,
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of
