@@ -12881,6 +12881,95 @@ async function makeBandSource(data, label) {
   };
 }
 
+/* --- the plugin as a source ---------------------------------------------------
+   Inside the plugin (plugin/, see plugin/PLAN.md) the page is the UI and the
+   sound is the plugin's: the host plays it, and the page draws it. JUCE puts
+   `window.__JUCE__` on the page before this script runs, and that is the one
+   thing asked - not the user agent, not the URL - because it is the bridge
+   itself, and without it there is nothing to talk to.
+
+   `scopeHost` is the bridge in miniature: a call to one of the plugin's native
+   functions is an event out with an id, and its answer an event back with the
+   same id. JUCE ships a module that does this; the page is one file with its
+   script inline and imports nothing, so the dozen lines it needs are here. */
+const scopeHost = (() => {
+  const juce = window.__JUCE__;
+  if (!juce || !juce.backend) return null;
+  let next = 0;
+  const waiting = new Map();
+  juce.backend.addEventListener("__juce__complete", ({ promiseId, result }) => {
+    const resolve = waiting.get(promiseId);
+    if (resolve) { waiting.delete(promiseId); resolve(result); }
+  });
+  return {
+    call(name, ...params) {
+      const resultId = next++;
+      return new Promise((resolve) => {
+        waiting.set(resultId, resolve);
+        juce.backend.emitEvent("__juce__invoke", { name, params, resultId });
+      });
+    },
+  };
+})();
+
+/* What the plugin played, as a source the scope draws like any other. The
+   samples arrive by fetching the plugin's picture - its last frames, binary,
+   left and right interleaved - once a frame, from the URL the plugin names.
+   One fetch in flight at a time: a slow one is skipped past rather than
+   queued behind, so the picture is late by at most one fetch and never by a
+   backlog.
+
+   What it cannot do yet, and says: nothing here sends the plugin anything, so
+   the panel's sound controls do not reach what is heard. That is stage 2 of
+   the plan, when the brain is in the plugin's core. */
+function makeHostSource(info) {
+  const frames = info.pictureFrames;
+  const lanes = [new Float32Array(frames), new Float32Array(frames)];
+  const timing = { fetches: 0, totalMs: 0, worstMs: 0, failed: 0 };
+  let inFlight = false, stopped = false;
+
+  function pull() {
+    if (inFlight || stopped) return;
+    inFlight = true;
+    const t0 = performance.now();
+    fetch(info.pictureUrl, { cache: "no-store" })
+      .then((response) => response.arrayBuffer())
+      .then((buffer) => {
+        const both = new Float32Array(buffer);
+        const n = Math.min(frames, both.length >> 1);
+        for (let k = 0; k < n; k++) {
+          lanes[0][frames - n + k] = both[2 * k];
+          lanes[1][frames - n + k] = both[2 * k + 1];
+        }
+        const ms = performance.now() - t0;
+        timing.fetches++; timing.totalMs += ms; timing.worstMs = Math.max(timing.worstMs, ms);
+      })
+      .catch(() => { timing.failed++; })
+      .finally(() => { inFlight = false; });
+  }
+
+  return {
+    kind: "host",
+    get sampleRate() { return info.rate; },
+    get channels() { return 2; },
+    get capacity() { return frames; },
+    timing,
+    tick() { pull(); },
+    describe() { return "the plugin's output"; },
+    getLatestWindow(n) {
+      return lanes.map((lane) => {
+        const take = Math.min(n, frames);
+        const out = new Float32Array(n);
+        // Zero-padded at the front past what the plugin hands over, as the
+        // microphone's is while its buffer fills.
+        out.set(lane.subarray(frames - take), n - take);
+        return out;
+      });
+    },
+    stop() { stopped = true; },
+  };
+}
+
 /* --- state ----------------------------------------------------------------- */
 
 const state = {
@@ -20755,6 +20844,35 @@ function toTone() {
   midiApplyNotes();
 }
 
+/* Into the plugin's output, once on load inside the plugin. The page's own
+   generator is stopped rather than kept beside it: in the plugin the sound is
+   the plugin's, and a second engine in the page could only be heard by
+   nobody or heard twice.
+
+   Every few seconds the page tells the plugin how the picture is getting
+   through - frames a second, and how long each fetch of the samples took -
+   which is how the spike's question is answered: whether this path holds up
+   at sixty a second. The plugin keeps the last report and can print it. */
+async function toHost() {
+  rackBuild++;
+  const info = await scopeHost.call("scopeHost");
+  if (!info || !info.pictureUrl) return;
+  if (state.source) state.source.stop();
+  state.genSound = false;
+  state.source = makeHostSource(info);
+  showSource();
+  buildLaneRows();
+  buildLaneList();
+  setInterval(() => {
+    const t = state.source && state.source.timing;
+    if (!t) return;
+    scopeHost.call("scopeReport", {
+      fps: Math.round(state.fps), fetches: t.fetches, failed: t.failed,
+      meanMs: t.fetches ? +(t.totalMs / t.fetches).toFixed(2) : 0, worstMs: +t.worstMs.toFixed(2),
+    });
+  }, 3000);
+}
+
 async function toMic(deviceId) {
   rackBuild++;
   el.status.textContent = "asking";
@@ -24257,6 +24375,8 @@ state.lastReadout = performance.now();
 
 // Open on something, rather than on whatever the markup happened to say.
 applyPreset("b:Harmonic tone");
+// And inside the plugin, on what the plugin is playing.
+if (scopeHost) toHost();
 
 let startView = "scope";
 try { startView = window.localStorage.getItem(VIEW_KEY) || "scope"; }

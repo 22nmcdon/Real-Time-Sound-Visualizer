@@ -41,13 +41,33 @@ brain, compiled twice, cannot.
 
 ## Stages
 
-**0. The spike** (this commit). A JUCE plugin that builds on Linux here, loads
-the page from inside its binary, plays notes through the first ported piece of
-the core, and serves the samples it played for the page to draw. And the method
+**0. The spike** (done). A JUCE plugin that builds on Linux here, loads the
+page from inside its binary, plays notes through the first ported piece of the
+core, and serves the samples it played; the page finds JUCE's bridge, asks the
+plugin what it is (`scopeHost`), and draws the plugin's output instead of its
+own generator - one fetch of `/picture.bin` a frame, never two at once - and
+reports back how the picture is getting through (`scopeReport`). And the method
 the port lives by: `core/tests/parity.py` holds each ported piece to the page's
-own JavaScript, sample for sample. Still to do in the spike: the page drawing
-from `/picture.bin` when it finds itself in the plugin, and a measured frame
-rate for that path (the page alone draws at about 60 fps in the web view).
+own JavaScript, sample for sample; `web/tests/hosttest.py` holds the page's
+side to a fake bridge serving a known stereo signal.
+
+Measured in the standalone on a virtual display here, with software rendering
+and no real sound card (an ALSA null device):
+
+| | frames a second | fetch, mean | worst |
+|---|---|---|---|
+| no audio device (nothing to play) | 62 | 13 ms | 43 ms |
+| device running, silent | 59 | 13 ms | 48 ms |
+| device running, A3 held | 46 | 16 ms | 134 ms |
+
+Serving the picture costs the plugin's main thread about 1.5 per cent. The
+drop with a note held is the page drawing a real waveform in WebKitGTK's
+software renderer while the null device's audio thread spins a whole core
+(it never blocks, so the processor runs flat out) - not the transport. A real
+machine with GPU compositing and a real device will do better; that is a
+reasonable expectation, not a measurement, and the first run on one should
+check it. The answer to the spike's question is yes: the path holds the
+picture at frame rate with room to spare, and the brain can move.
 
 **1. The engine.** `makeGeneratorCore` (about 1,900 lines) to C++: voices and
 layers with their pushes, the voice's oscillator, shaping and filter, drawbars,
@@ -98,6 +118,16 @@ redone natively or left out.
   pole is built to land on its end in exactly that many steps, so any shorter
   time overshoots and is clamped to the same value. The scenario says so.
 
+- **The fake bridge's first fixture could not show a pile-up.** It answered
+  each fetch in 8 ms, faster than a frame, so fetches never overlapped whether
+  the page waited for one before the next or not, and a page that did not
+  wait passed. It answers in 40 ms now, longer than two frames, and a page
+  that does not wait has four in flight.
+- **The null device spins.** ALSA's `null` output accepts everything at once,
+  so the standalone's audio thread runs the processor as fast as it can and
+  takes a core. Fine for checking the picture end to end; not a measure of
+  anything the processor costs.
+
 ## Building and testing
 
 ```
@@ -105,7 +135,15 @@ python3 core/tests/parity.py                 # the core against the page
 cmake -S plugin -B plugin/build -G Ninja [-DSCOPE_JUCE_DIR=/path/to/JUCE]
 cmake --build plugin/build
 plugin/build/ScopeShellTest_artefacts/Release/ScopeShellTest
+python3 web/tests/run.py host                # the page's side, against a fake bridge
 ```
+
+To see it: run the standalone (`plugin/build/ScopeInstrument_artefacts/
+Release/Standalone/Scope`). Two switches for the spike, read once at start:
+`SCOPE_HOLD_NOTE=57` holds A3 so there is something to draw without a
+keyboard, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
+an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
+to run on.
 
 On Linux the web view needs WebKitGTK 4.1 and GTK 3, and the standalone ALSA:
 `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`, with the X11 and

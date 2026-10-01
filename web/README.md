@@ -3631,3 +3631,28 @@ release that begins above the sustain is seen beginning there.
   the first draw is queued until the script has run.
 - A fade stored before either change - one time, or in and out with their
   shapes - comes back as the attack and release on both layers.
+
+**Inside the plugin, the page draws the plugin's output.** The page is the
+plugin's UI (plugin/PLAN.md), and the first thing it has to do there is stop
+being an instrument of its own. JUCE puts `window.__JUCE__` on the page before
+its script runs; finding it, the page asks the plugin what it is through the
+native function `scopeHost` - its rate, how many frames it hands over, and the
+URL to fetch them from, named by the plugin because JUCE's resource root is a
+different scheme on each platform - stops its own generator, and switches to
+`makeHostSource`, which fetches the plugin's last frames once a frame and is
+drawn like any other source. Every three seconds it tells the plugin how that
+is going (`scopeReport`), which is how the spike was measured. JUCE ships a
+module for its bridge; the page imports nothing, so the dozen lines it needs
+are inline in `scopeHost`.
+
+- *One fetch in flight, skipped past rather than queued.* A slow fetch makes
+  the picture late by one fetch, never by a backlog. `hosttest.py` first
+  could not tell: its fake answered in 8 ms, under a frame, so fetches never
+  overlapped either way. It answers in 40 ms now and a page that does not
+  wait has four in flight.
+- *The rate is the plugin's.* The fake serves 441 Hz at 44.1 kHz, so the dock
+  reads 441 only if the source reports the plugin's rate; the page's own
+  48 kHz guess reads 480.
+- *What it cannot do yet:* nothing goes from the page to the plugin, so the
+  panel's sound controls do not reach what is heard. That is the brain moving
+  into the core (stage 2 of the plan), not something to patch round here.

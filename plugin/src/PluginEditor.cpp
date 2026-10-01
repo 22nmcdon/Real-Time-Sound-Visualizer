@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include "BinaryData.h"
@@ -19,7 +20,16 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         info->setProperty("host", "plugin");
         info->setProperty("rate", owner.sampleRateNow());
         info->setProperty("pictureFrames", static_cast<int>(ScopeProcessor::kPictureFrames));
+        // Named here rather than assumed by the page: JUCE's resource root is
+        // a different scheme on each platform.
+        info->setProperty("pictureUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "picture.bin");
         complete(juce::var(info));
+      })
+      .withNativeFunction("scopeReport", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        const auto json = args.isEmpty() ? juce::String() : juce::JSON::toString(args[0], true);
+        owner.setPictureReport(json);
+        if (std::getenv("SCOPE_REPORT") != nullptr) std::fprintf(stderr, "scope report %s\n", json.toRawUTF8());
+        complete(juce::var());
       })
       .withResourceProvider(std::move(provider));
 }

@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include <cmath>
+#include <cstdlib>
 
 #include "PluginEditor.h"
 
@@ -18,6 +19,14 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int) {
   envelope_->reset(0);
   phase_ = 0;
   held_ = -1;
+  /* For measuring the spike without a keyboard: SCOPE_HOLD_NOTE=57 holds A3
+     from the start, so the standalone has something to draw. Read once, here,
+     and never on the audio thread. */
+  if (const char* note = std::getenv("SCOPE_HOLD_NOTE")) {
+    held_ = std::atoi(note);
+    hz_ = juce::MidiMessage::getMidiNoteInHertz(held_);
+    envelope_->gate(true, 1.0);
+  }
 }
 
 void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {

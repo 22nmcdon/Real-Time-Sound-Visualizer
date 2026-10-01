@@ -48,9 +48,19 @@ class ScopeProcessor final : public juce::AudioProcessor {
      picture redrawn sixty times a second survives and a measurement would
      not - the real channel (PLAN.md, stage 1) carries a frame count so the
      page can tell. */
-  static constexpr std::size_t kPictureFrames = 2048;
+  /* About 170 ms at 48 kHz: enough for the scope's longer timebases and for
+     the readout's analysis, at 64 KB a fetch. 2048 was a twentieth of a
+     second, shorter than a 5 ms/div screen. */
+  static constexpr std::size_t kPictureFrames = 8192;
   std::vector<float> pictureSnapshot() const;
   double sampleRateNow() const { return rate_.load(); }
+
+  /* What the page last said about how the picture is getting through: frames
+     a second and how long its fetches take. Kept for whoever asks, and
+     printed when SCOPE_REPORT is set - which is how the spike measures the
+     path. Written from the message thread, read from it too. */
+  void setPictureReport(const juce::String& json) { pictureReport_ = json; }
+  juce::String pictureReport() const { return pictureReport_; }
 
  private:
   scope::EnvelopeTone tone_;
@@ -61,6 +71,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::atomic<double> rate_ { 48000.0 };
 
   std::array<float, kPictureFrames * 2> picture_ {};
+  juce::String pictureReport_;
   std::atomic<std::size_t> pictureAt_ { 0 };
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeProcessor)
