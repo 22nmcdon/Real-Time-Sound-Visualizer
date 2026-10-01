@@ -105,12 +105,17 @@ int main() {
      by name, at the same samples, with a release where the plugin got a
      velocity of nought - so the byte path is what is being held. */
   struct Played { std::vector<float> l, r; };
-  const auto playDyad = [&](int second, bool routed = false, const char* preset = nullptr) {
+  const auto playDyad = [&](int second, bool routed = false, const char* preset = nullptr, bool morphed = false) {
     ScopeProcessor p;
     if (preset) setenv("SCOPE_PRESET", preset, 1);
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
     if (routed) { p.matrix().add("lfo1", "gen.freq", 0.5); p.matrix().add("midi.key", "gen.amp", 0.6); }
+    if (morphed) {
+      p.moveSlider("amp", 20); p.storeMorph(false);
+      p.moveSlider("amp", 120); p.moveSlider("delayMix", 60); p.storeMorph(true);
+      p.matrix().add("lfo1", "morph.pos", -1);
+    }
     Played got;
     juce::AudioBuffer<float> buf(2, block);
     for (int start = 0; start < total; start += block) {
@@ -128,7 +133,7 @@ int main() {
     }
     return got;
   };
-  const auto dyadReference = [&](int second, bool routed = false, const char* preset = nullptr) {
+  const auto dyadReference = [&](int second, bool routed = false, const char* preset = nullptr, bool morphed = false) {
     std::vector<scope::Lfo> lfos(2);
     lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
     scope::Generator core(rate, scope::slot::Used, lfos);
@@ -137,9 +142,16 @@ int main() {
     scope::Matrix matrix;
     scope::CoreSources sources(matrix, core, lfos, keys);
     scope::Brain brain;
+    scope::BrainSources brainSources(matrix, brain);
     keys.setPresent(true);
     if (preset) scope::restoreSetup(scope::findPreset(preset)->setup, brain, core, keys, matrix, lfos);
     if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
+    if (morphed) {
+      scope::moveSlider("amp", u"20", brain, core, keys, lfos); scope::morphStore(brain, false);
+      scope::moveSlider("amp", u"120", brain, core, keys, lfos); scope::moveSlider("delayMix", u"60", brain, core, keys, lfos);
+      scope::morphStore(brain, true);
+      matrix.add("lfo1", "morph.pos", -1);
+    }
     keys.frame(0);
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
@@ -151,6 +163,7 @@ int main() {
       matrix.setLayered(keys.layersOn());
       matrix.setStrikes(keys.strikes());
       matrix.frame(done * 1000.0 / rate);
+      scope::morphStep(brain, core, keys, lfos);
       core.setRoutes(matrix.routes(done * 1000.0 / rate));
     };
     const auto run = [&](int to) {
@@ -189,6 +202,43 @@ int main() {
   }
   check("routed, the plugin is the core's matrix compiling routes for its generator a block at a time",
         routedOff == 0 && unrouted > 0.05, "off by " + num(routedOff) + "; the same notes unrouted differ by " + num(unrouted));
+
+  /* The morph, swept by an LFO through the matrix: amp from 20 to 120 and the
+     echo's mix in with it, B stored and LFO 1 pulling the fader back towards
+     A. The plugin walks the sliders after the matrix every block; held to the
+     core doing the same written out. The same ends with the fader left alone
+     are the null - B the whole way, so the sweep has to be heard. */
+  const Played morphed = playDyad(1300, false, nullptr, true);
+  const auto morphedWant = dyadReference(1300, false, nullptr, true);
+  const Played resting = [&] {
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    p.moveSlider("amp", 20); p.storeMorph(false);
+    p.moveSlider("amp", 120); p.moveSlider("delayMix", 60); p.storeMorph(true);
+    Played got;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int start = 0; start < total; start += block) {
+      buf.clear();
+      juce::MidiBuffer m;
+      const auto at = [&](int sample, const juce::MidiMessage& msg) {
+        if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
+      };
+      at(100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)));
+      at(1300, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)));
+      at(40000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(0)));
+      at(static_cast<int>(rate), juce::MidiMessage::noteOff(1, 57));
+      p.processBlock(buf, m);
+      for (int i = 0; i < block && start + i < total; ++i) { got.l.push_back(buf.getSample(0, i)); got.r.push_back(buf.getSample(1, i)); }
+    }
+    return got;
+  }();
+  double morphOff = 0, unswept = 0;
+  for (std::size_t i = 0; i < morphed.l.size(); ++i) {
+    morphOff = std::fmax(morphOff, std::fabs(morphed.l[i] - morphedWant[0][i]) + std::fabs(morphed.r[i] - morphedWant[1][i]));
+    unswept = std::fmax(unswept, std::fabs(morphed.l[i] - resting.l[i]));
+  }
+  check("an LFO on the morph's fader walks the sliders in the plugin as the core walks them, block by block",
+        morphOff == 0 && unswept > 0.05, "off by " + num(morphOff) + "; the fader left at B differs by " + num(unswept));
 
   /* A preset by name, loaded in the plugin through the core's restore: "Wah",
      a ramp through a resonant filter an LFO sweeps. Held to the core told the

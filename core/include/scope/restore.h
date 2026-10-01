@@ -148,6 +148,7 @@ class Controls {
 
 struct Brain {
   Controls panel;
+  int panelLayer = 0;              // which layer the panel's voice controls write
   std::string inputFrom = "live";  // genInput.from
   double inputMode = 0;            // genInput.mode
   struct LfoSetting { Json shape = Json::string(std::string_view("sine")); double free = 0.2; std::string sync; };
@@ -168,6 +169,8 @@ struct Brain {
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
   std::optional<MorphEnd> morphA, morphB;
   double morphPos = 0;
+  double morphMod = 0;                     // what the matrix pushes into the fader
+  std::optional<double> morphApplied;      // where the sliders were last put, or nothing
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
   struct PlaneState {
     double mirror = 0, limit = 0, radius = 0.4, os = 2, twist = 0, kaleido = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
@@ -223,19 +226,9 @@ inline bool delaySyncKnown(const std::u16string& s) {
 inline double cutoffHz(double step) { return 20 * std::pow(1000.0, step / 1000); }  // CUTOFF_STEPS a thousand
 inline double resonanceQ(double v) { return std::sqrt(0.5) * std::pow(20 / std::sqrt(0.5), v / 100); }
 
-// MORPH_IDS: the sliders the morph walks, in the page's order, less those that
-// are not part of a sound.
+// MORPH_IDS: the sliders the morph walks, in the page's order.
 inline const std::vector<std::string>& morphIds() {
-  static const std::vector<std::string> ids = [] {
-    std::vector<std::string> out;
-    for (const auto& r : kRanges) {
-      const std::string id = r.id;
-      if (id == "morphPos" || id == "macro1" || id == "macro2" || id == "macro3" || id == "macro4"
-          || id == "fileSeek" || id == "keysVelocity" || id == "align") continue;
-      out.push_back(id);
-    }
-    return out;
-  }();
+  static const std::vector<std::string> ids(std::begin(kMorphIds), std::end(kMorphIds));
   return ids;
 }
 inline double morphHome(const std::string& id) { return rangeSpec(id)->value; }
@@ -400,6 +393,64 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
     const double v = missing ? NAN : jsToNumber(&raw);
     if (std::isfinite(v)) gen.set(row.field, row.law(v), 1);
   }
+}
+
+// The panel's refreshers: the sliders written back from the state they show.
+inline void syncCrossPanel(Brain& b) {
+  b.panel.setRange("crossX", toU16(jsNumberToString(jsMathRound(b.cross.x * 100))));
+  b.panel.setRange("crossY", toU16(jsNumberToString(jsMathRound(b.cross.y * 100))));
+  b.panel.setRange("crossDecay", toU16(jsNumberToString(b.cross.decayMs)));
+  b.panel.setRange("crossLevel", toU16(jsNumberToString(jsMathRound(b.cross.level * 100))));
+}
+inline void syncPlanePanel(Brain& b) {
+  const auto pct = [](double v) { return toU16(jsNumberToString(jsMathRound(v * 100))); };
+  b.panel.setRange("planeRadius", pct(b.plane.radius));
+  b.panel.setRange("planeTwist", pct(b.plane.twist));
+  b.panel.setRange("planeScaleX", pct(b.plane.scaleX));
+  b.panel.setRange("planeScaleY", pct(b.plane.scaleY));
+  b.panel.setRange("planeShear", pct(b.plane.shear));
+}
+inline double delayTimeMs(const Brain& b) {
+  const double beats = delayBeats(b.echo.sync);
+  return beats > 0 ? std::fmin(2000, beats * 60000 / b.tempo) : b.echo.ms;
+}
+// The time a synced echo shows is the tempo's, and its slider stands still.
+inline void syncEchoPanel(Brain& b) {
+  const auto n = [](double v) { return toU16(jsNumberToString(v)); };
+  const Brain::EchoState& e = b.echo;
+  b.panel.setRange("delayMix", n(jsMathRound(e.mix * 100)));
+  b.panel.setRange("delayMs", n(!e.sync.empty() ? jsMathRound(delayTimeMs(b)) : e.ms));
+  b.panel.setRange("delayFeedback", n(jsMathRound(e.feedback * 100)));
+  b.panel.setRange("chorusMix", n(jsMathRound(e.chorus * 100)));
+  b.panel.setRange("chorusRate", n(jsMathRound(e.rate * 100)));
+  b.panel.setRange("chorusDepth", n(jsMathRound(e.depthMs * 10)));
+  b.panel.setRange("chorusTime", n(jsMathRound(e.centreMs * 10)));
+  b.panel.setRange("chorusFeedback", n(jsMathRound(e.chorusFeedback * 100)));
+}
+
+// syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
+// generator whole.
+inline void syncPlane(const Brain& b, Generator& gen) {
+  const Brain::PlaneState& p = b.plane;
+  gen.set("planeMirror", p.mirror); gen.set("planeLimit", p.limit); gen.set("planeRadius", p.radius);
+  gen.set("planeOS", p.os); gen.set("planeTwist", p.twist * kTwoPi); gen.set("planeKaleido", p.kaleido);
+  gen.set("planeSnap", p.snap); gen.set("planeScaleX", p.scaleX); gen.set("planeScaleY", p.scaleY);
+  gen.set("planeShear", p.shear);
+}
+inline void syncEcho(const Brain& b, Generator& gen) {
+  const Brain::EchoState& e = b.echo;
+  gen.set("delayMix", e.mix); gen.set("delayMs", delayTimeMs(b)); gen.set("delayFeedback", e.feedback);
+  gen.set("delayPingPong", e.pingPong ? 1 : 0); gen.set("chorusMix", e.chorus); gen.set("chorusRate", e.rate);
+  gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
+}
+inline void syncCrossings(const Brain& b, Generator& gen) {
+  gen.set("crossOn", b.cross.on ? 1 : 0); gen.set("crossX", b.cross.x); gen.set("crossY", b.cross.y);
+  gen.set("crossHzX", midiHz(b.cross.noteX)); gen.set("crossHzY", midiHz(b.cross.noteY));
+  gen.set("crossDecayMs", b.cross.decayMs); gen.set("crossLevel", b.cross.level);
+}
+inline void syncQuantiser(const Brain& b, Generator& gen) {
+  gen.set("qMask", b.quantise ? keyMask(b.keyRoot, b.keyScale) : 0);
+  gen.set("qGlideMs", b.quantiseGlide);
 }
 
 // --- the handlers' part, in restore's order -------------------------------------------------
@@ -660,6 +711,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   }
   setA("qMask", brain.quantise ? keyMask(brain.keyRoot, brain.keyScale) : 0);
   setA("qGlideMs", brain.quantiseGlide);
+  panel.setRange("tempo", toU16(jsNumberToString(brain.tempo)));               // setTempo
+  panel.setRange("quantiseGlide", toU16(jsNumberToString(brain.quantiseGlide)));  // syncKeyPanel
 
   // The crossings.
   brain.cross.on = isTrue("crossOn");
@@ -676,6 +729,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("crossHzY", midiHz(brain.cross.noteY));
   setA("crossDecayMs", brain.cross.decayMs);
   setA("crossLevel", brain.cross.level);
+  syncCrossPanel(brain);
 
   // The score, the arpeggiator, the threshold and the pluck: kept for their pieces.
   brain.score.on = isTrue("scoreOn");
@@ -723,6 +777,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       for (const char16_t c : name) if (c != u'|') clean += c;
       clean = jsTrim(clean).substr(0, 16);
       m.name = clean.empty() ? u"Macro " + u16(std::to_string(i + 1)) : clean;
+      panel.setRange("macro" + std::to_string(i + 1), toU16(jsNumberToString(jsMathRound(m.value * 100))));
     }
     brain.morphA = decodeMorphEnd(s("morphA"), morphHome);
     const auto refB = [&](const std::string& id) {
@@ -731,6 +786,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     };
     brain.morphB = decodeMorphEnd(s("morphB"), refB);
     brain.morphPos = within("morphPos", 0, 100, 0) / 100;
+    panel.setRange("morphPos", toU16(jsNumberToString(jsMathRound(brain.morphPos * 100))));
+    brain.morphApplied.reset();
   }
 
   // The plane and the echo.
@@ -749,6 +806,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("planeMirror", p.mirror); setA("planeLimit", p.limit); setA("planeRadius", p.radius); setA("planeOS", p.os);
     setA("planeTwist", p.twist * kTwoPi); setA("planeKaleido", p.kaleido); setA("planeSnap", p.snap);
     setA("planeScaleX", p.scaleX); setA("planeScaleY", p.scaleY); setA("planeShear", p.shear);
+    syncPlanePanel(brain);
   }
   {
     Brain::EchoState& e = brain.echo;
@@ -763,13 +821,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.depthMs = within("chorusDepth", 0, 100, 30) / 10;
     e.centreMs = within("chorusTime", 10, 300, 120) / 10;
     e.chorusFeedback = within("chorusFeedback", 0, 90, 0) / 100;
-    const double beats = delayBeats(e.sync);
     setA("delayMix", e.mix);
-    setA("delayMs", beats > 0 ? std::fmin(2000, beats * 60000 / brain.tempo) : e.ms);
+    setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
     setA("delayPingPong", e.pingPong ? 1 : 0);
     setA("chorusMix", e.chorus); setA("chorusRate", e.rate); setA("chorusDepthMs", e.depthMs);
     setA("chorusMs", e.centreMs); setA("chorusFeedback", e.chorusFeedback);
+    syncEchoPanel(brain);
   }
 
   // The routings: the setup's list, or the old enum when it has none.
@@ -795,6 +853,200 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     }
     matrix.load(list);
   }
+  // buildSourceDetail: the chosen source's rate slider, made again from where
+  // its LFO is (the first LFO, which is the source the page opens on).
+  {
+    const Brain::LfoSetting& l = brain.lfo[0];
+    panel.setRange("lfoRate0", toU16(jsNumberToString(jsMathRound((l.sync.empty() ? lfos[0].rate : l.free) * 100))));
+  }
+
+  // The view's half: its sliders are written, and what they do is the page's.
+  panel.setRange("timebase", str("timebase"));
+  panel.setRange("level", str("level"));
+  panel.setRange("position", str("position"));
+  panel.setRange("holdoff", str("holdoff"));
+  panel.setRange("ch1Scale", str("c0s"));
+  panel.setRange("ch1Offset", str("c0o"));
+  panel.setRange("ch2Scale", str("c1s"));
+  panel.setRange("ch2Offset", str("c1o"));
+  panel.setRange("acCorner", str("acHz"));
+  panel.setRange("lagMix", toU16(jsNumberToString(jsMathRound(jsMax(0, jsMin(0.5, num("lagMix") / 100)) * 100))));
+  panel.setRange("lag", toU16(jsNumberToString(jsMathRound(num("lagMs") * 10))));
+  panel.setRange("rotate", str("rotate"));
+  panel.setRange("filterCutoff", str("fCut"));
+  panel.setRange("filterRes", str("fRes"));
+  panel.setRange("zoom", toU16(jsNumberToString(jsMax(0, jsMin(24, num("zoom"))))));  // setZoom
 }
+
+}  // namespace scope
+
+namespace scope {
+
+// setMacro: nought to one, and its knob at the nearest hundredth.
+inline void setMacro(Brain& b, int i, double value) {
+  Brain::Macro& m = b.macros[static_cast<std::size_t>(i)];
+  m.value = jsMax(0, jsMin(1, value));
+  b.panel.setRange("macro" + std::to_string(i + 1), toU16(jsNumberToString(jsMathRound(m.value * 100))));
+}
+
+// --- a slider moved: its handler ---------------------------------------------------------
+
+// What the page's "input" handler for a slider does with its new value, for
+// every slider whose handler reaches the sound or a setting a setup carries -
+// a hand on it, or the morph walking it. The view's sliders do the view's
+// work, which is the page's; their values are the panel's all the same.
+inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>& lfos) {
+  const double v = b.panel.range(id);
+  const int layer = b.panelLayer;
+  const auto layerSet = [&](std::string_view field, double x) { gen.set(field, x, layer); };
+  if (id == "freq") { gen.set("freq", v); keys.panel().freq = v; }
+  else if (id == "amp") layerSet("amp", v / 100);
+  else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
+  else if (id == "phase") gen.set("phase", v * kPi / 180);
+  else if (id == "detail") { gen.set("detail", v); keys.panel().detail = v; }
+  else if (id == "figureRate") { gen.set("figureRate", v); keys.panel().figureRate = v; }
+  else if (id == "spinX" || id == "spinY" || id == "spinZ") {
+    std::array<double, 3> spin = gen.tone().spin;
+    spin[static_cast<std::size_t>(id[4] - 'X')] = v / 100;
+    gen.setSpin(spin);
+  }
+  else if (id == "spinRate") gen.set("spinRate", v / 100);
+  else if (id == "depth") gen.set("depth", v / 100);
+  else if (id == "envAttack") layerSet("attackMs", v);
+  else if (id == "envDecay") layerSet("decayMs", v);
+  else if (id == "envSustain") layerSet("sustain", v / 100);
+  else if (id == "envRelease") layerSet("releaseMs", v);
+  else if (id == "glide") layerSet("glideMs", v);
+  else if (id == "ringTime") gen.set("ringMs", v);
+  else if (id == "swingRate") gen.set("swingRate", v / 10);
+  else if (id == "decay") gen.set("decay", v / 100);
+  else if (id == "detune") gen.set("detune", v / 10000);
+  else if (id == "swingDrive") gen.set("swingDrive", v / 100);
+  else if (id == "gen2Rate") gen.set("gen2Rate", v);
+  else if (id == "inputDepth") gen.set("inputDepth", v / 100);
+  else if (id == "lfoRate0") {
+    b.lfo[0].free = v / 100;
+    if (b.lfo[0].sync.empty()) lfos[0].rate = b.lfo[0].free;
+  }
+  else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
+  else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
+  else if (id == "morphPos") b.morphPos = v / 100;
+  else if (id == "tempo") {  // setTempo
+    b.tempo = std::fmax(30, std::fmin(300, jsMathRound(v)));
+    b.panel.setRange("tempo", toU16(jsNumberToString(b.tempo)));
+  }
+  else if (id == "crossX") { b.cross.x = v / 100; syncCrossings(b, gen); }
+  else if (id == "crossY") { b.cross.y = v / 100; syncCrossings(b, gen); }
+  else if (id == "crossDecay") { b.cross.decayMs = v; syncCrossings(b, gen); }
+  else if (id == "crossLevel") { b.cross.level = v / 100; syncCrossings(b, gen); }
+  else if (id.size() == 4 && id.compare(0, 3, "bar") == 0) {
+    std::vector<double> bars;
+    for (int k = 0; k < 9; k++) bars.push_back(b.panel.range("bar" + std::to_string(k)));
+    gen.setBars(bars, layer);
+  }
+  else if (id == "planeRadius" || id == "planeTwist" || id == "planeScaleX" || id == "planeScaleY" || id == "planeShear") {
+    double& field = id == "planeRadius" ? b.plane.radius : id == "planeTwist" ? b.plane.twist
+                  : id == "planeScaleX" ? b.plane.scaleX : id == "planeScaleY" ? b.plane.scaleY : b.plane.shear;
+    field = v / 100;
+    syncPlanePanel(b);
+    syncPlane(b, gen);
+  }
+  else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "chorusMix" || id == "chorusRate"
+           || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback") {
+    Brain::EchoState& e = b.echo;
+    if (id == "delayMix") e.mix = v / 100;
+    else if (id == "delayMs") e.ms = v;
+    else if (id == "delayFeedback") e.feedback = v / 100;
+    else if (id == "chorusMix") e.chorus = v / 100;
+    else if (id == "chorusRate") e.rate = v / 100;
+    else if (id == "chorusDepth") e.depthMs = v / 10;
+    else if (id == "chorusTime") e.centreMs = v / 10;
+    else e.chorusFeedback = v / 100;
+    syncEchoPanel(b);
+    syncEcho(b, gen);
+  }
+  else {
+    for (const auto& row : layerControls()) {
+      if (id == row.id && isVoiceControl(row.id) && row.kind == LayerControl::Range) layerSet(row.field, row.law(v));
+    }
+  }
+}
+
+// A hand on a slider: the value written as the browser takes it, then the
+// slider's handler.
+inline void moveSlider(const std::string& id, std::u16string written, Brain& b, Generator& gen, Keyboard& keys,
+                       std::vector<Lfo>& lfos) {
+  b.panel.setRange(id, std::move(written));
+  sliderInput(id, b, gen, keys, lfos);
+}
+
+// --- macros and the morph ------------------------------------------------------------------
+
+// morphCapture: every slider the morph walks, as it stands.
+inline Brain::MorphEnd morphCapture(const Brain& b) {
+  Brain::MorphEnd out;
+  for (const auto& id : morphIds()) out.emplace_back(id, b.panel.range(id));
+  return out;
+}
+
+// morphStore: storing an end puts the fader at it, so storing moves nothing.
+inline void morphStore(Brain& b, bool endB) {
+  (endB ? b.morphB : b.morphA) = morphCapture(b);
+  b.morphPos = endB ? 1 : 0;
+  b.morphApplied = b.morphPos + b.morphMod;
+  b.panel.setRange("morphPos", toU16(jsNumberToString(b.morphPos * 100)));
+}
+
+// The fader's own slider moved.
+inline void morphFader(Brain& b) { b.morphPos = b.panel.range("morphPos") / 100; }
+
+// morphStep, once a frame after the matrix: only when where the fader stands
+// has moved, each slider that differs between the ends walked to its blend
+// and its handler fired if the browser's value moved. Frequency is walked in
+// ratio, so half-way from 220 to 880 is 440.
+inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>& lfos) {
+  if (!b.morphA || !b.morphB) return;
+  const double t = jsMax(0, jsMin(1, b.morphPos + b.morphMod));
+  if (b.morphApplied && std::fabs(t - *b.morphApplied) < 1e-4) return;
+  b.morphApplied = t;
+  for (std::size_t k = 0; k < b.morphA->size(); k++) {
+    const auto& [id, va] = (*b.morphA)[k];
+    const double vb = (*b.morphB)[k].second;
+    if (va == vb) continue;
+    const double want = id == "freq" && va > 0 && vb > 0 ? va * std::pow(vb / va, t) : va + (vb - va) * t;
+    const double before = b.panel.range(id);
+    b.panel.setRange(id, toU16(jsNumberToString(want)));
+    if (b.panel.range(id) != before) sliderInput(id, b, gen, keys, lfos);
+  }
+}
+
+// The macros as sources, and the fader as a destination the matrix moves.
+class MacroSource : public ModSource {
+ public:
+  MacroSource(int i, const Brain& b) : ModSource("macro." + std::to_string(i + 1)), i_(i), b_(b) {}
+  double value() const override { return b_.macros[static_cast<std::size_t>(i_)].value; }
+
+ private:
+  int i_;
+  const Brain& b_;
+};
+class BrainSources {
+ public:
+  BrainSources(Matrix& matrix, Brain& b) {
+    for (int i = 0; i < 4; i++) macros_.emplace_back(i, b);
+    for (auto& m : macros_) matrix.registerSource(&m);
+    ModDest d;
+    d.id = "morph.pos"; d.kind = DestKind::Visual; d.span = 1; d.min = 0; d.max = 1;
+    Brain* brain = &b;
+    d.base = [brain] { return brain->morphPos; };
+    d.set = [brain](double offset) { brain->morphMod = offset; };
+    matrix.registerDest(std::move(d));
+  }
+  BrainSources(const BrainSources&) = delete;
+  BrainSources& operator=(const BrainSources&) = delete;
+
+ private:
+  std::vector<MacroSource> macros_;
+};
 
 }  // namespace scope

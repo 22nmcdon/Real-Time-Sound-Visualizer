@@ -1,5 +1,6 @@
 // scope::restoreSetup through the same setups as restore_page.py, one JSON
-// line per setup in the same shape. The page's sources are registered as
+// line per setup in the same shape, and the same operations on the sliders,
+// the morph and the macros (see that file). The page's sources are registered as
 // stand-ins with their reach, so a stored depth is held as the page holds it.
 //   restore_cpp <setups> <sources.json>
 #include <cstdio>
@@ -99,7 +100,9 @@ int main(int argc, char** argv) {
       selects.set(std::string_view(sel.id), o);
     }
     Json out = Json::object();
-    out.set("ranges", ranges); out.set("selects", selects);
+    Json morph = Json::array();
+    for (const char* id : scope::kMorphIds) morph.a.push_back(Json::string(std::string_view(id)));
+    out.set("ranges", ranges); out.set("selects", selects); out.set("morph", morph);
     std::printf("%s\n", scope::utf16To8(scope::jsonStringify(out)).c_str());
     return 0;
   }
@@ -143,10 +146,34 @@ int main(int argc, char** argv) {
     }
   }
   std::ifstream file(argv[1]);
+  double held = 0;  // what the matrix pushes the fader by each frame
   for (std::string line; std::getline(file, line);) {
     if (line.empty()) continue;
     const auto setup = scope::jsonParse(scope::utf8To16(line));
-    scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
+    const Json* op = setup->isObject() ? setup->get("op") : nullptr;
+    brain.morphMod = held;  // the frame before each line, as restore_page.py has it
+    scope::morphStep(brain, gen, keys, lfos);
+    if (op) {
+      const std::string what = scope::utf16To8(op->s);
+      const Json* value = setup->get("value");
+      const std::u16string written = value ? scope::jsToString(*value) : u"undefined";
+      if (what == "slider") scope::moveSlider(scope::utf16To8(setup->get("id")->s), written, brain, gen, keys, lfos);
+      else if (what == "store") scope::morphStore(brain, setup->get("end")->s == u"b");
+      else if (what == "pos") {
+        brain.panel.setRange("morphPos", written);
+        scope::morphFader(brain);
+        scope::morphStep(brain, gen, keys, lfos);
+      } else if (what == "mod") { brain.morphMod = value->n; scope::morphStep(brain, gen, keys, lfos); }
+      else if (what == "hold") { held = brain.morphMod = value->n; scope::morphStep(brain, gen, keys, lfos); }
+      else if (what == "macro") {
+        const int i = static_cast<int>(setup->get("i")->n);
+        const std::string id = "macro" + std::to_string(i + 1);
+        brain.panel.setRange(id, written);
+        scope::setMacro(brain, i, brain.panel.range(id) / 100);
+      } else if (what == "step") scope::morphStep(brain, gen, keys, lfos);
+    } else {
+      scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
+    }
 
     Json out = Json::object();
     out.set("error", Json::null());
@@ -220,6 +247,11 @@ int main(int argc, char** argv) {
     Json photo = Json::object();
     photo.set("on", flag(brain.photo.on)); photo.set("u", num(brain.photo.u)); photo.set("v", num(brain.photo.v));
     out.set("photo", photo);
+    Json ranges = Json::object();
+    for (const auto& r : scope::kRanges) {
+      if (std::string_view(r.id) != "lfoRate0") ranges.set(std::string_view(r.id), num(brain.panel.range(r.id)));
+    }
+    out.set("ranges", ranges);
     const auto& p = brain.plane;
     Json plane = Json::object();
     plane.set("mirror", num(p.mirror)); plane.set("limit", num(p.limit)); plane.set("radius", num(p.radius)); plane.set("os", num(p.os));

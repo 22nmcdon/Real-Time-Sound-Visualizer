@@ -380,11 +380,79 @@ read as `slice` reads it; the keyboard's random sequences give fractional
 counts too.
 
 What the port of `restore` leaves to later pieces: the drawn cycles and the
-figures made of strokes, whose fields are kept and not yet applied; the view's
-half of a setup, which the page applies; a MIDI clock overriding the tempo; and
+figures made of strokes, whose fields are kept and not yet applied; a MIDI
+clock overriding the tempo; and
 three fields the page passes on raw - a mode it has not got, a `just` that is
 not a boolean, an LFO shape it does not know - which the core takes by their
 name or their truth while the page also keeps the raw value for its panel.
+The view's half of a setup - the timebase, the trigger, the traces' scales and
+offsets, the lag, the rotation, the picture's filter, the zoom - is written
+into the panel's sliders as the page writes it, so the morph can walk them;
+what the page then does with them is the page's.
+
+**Then the macros and the morph.** A hand on a slider is `moveSlider`: the
+value taken as the browser takes it, then `sliderInput`, which is every
+slider's handler that reaches the sound or a setting a setup carries, each
+with its law - and the morph walks sliders through the same handlers, so it
+could not come before them. `morphStore` keeps an end and puts the fader at
+it, so storing moves nothing; `morphStep` runs once a frame after the matrix
+and, only when where the fader stands has moved by a ten-thousandth, walks
+each slider that differs between the ends to its blend - frequency in ratio,
+so half way from 220 to 880 is 440 - and fires its handler only if the
+browser's value moved. The macros are sources (`BrainSources`, which also
+registers the fader as the matrix's destination `morph.pos`), set by their
+knobs. The plugin steps the morph after the matrix each block, and the shell
+test holds LFO 1 sweeping the fader through the matrix to the core doing the
+same written out, equal to the last bit, with the fader left at B as the
+null.
+
+Held in the browser like `restore`, as operations rather than setups: 1,642
+of them - hands on every slider in and out of range and with junk, ends
+stored, the fader moved by hand, pushed by the matrix for a frame and held
+there across a store, the macros by their knobs and their sliders - on top of
+presets and the defaults, and every one leaves the same instrument. The made
+lines read: a quarter of the way puts amp a quarter of the way and tells the
+generator, frequency walks in ratio and the keyboard's panel follows, a push
+under the threshold moves nothing, a hand on a slider at rest stays, a synced
+LFO's rate slider sets its free rate, a synced delay's slider goes on showing
+the beat, storing A from half way puts the fader at A, and B stored under a
+held push moves nothing until the push changes. Each was seen to fail against
+a wrong value, and the count of walks leaves out the fader's own slider,
+because with it in, a morph that walked nothing passed.
+
+Two things the comparison found. The page's morph does not walk its sliders
+in the order the page lays them out: `MORPH_IDS` is taken when the script
+runs, before the Bench has moved its sections, and leaves out the sliders made
+later (the traces' scales, the LFO's rate); an end is written in that order,
+so a code's text depended on it. It is a table of its own now
+(`kMorphIds`), held to the page. And the page's own frames ran between one
+batch of the harness's lines and the next, stepping the morph there - where
+the C++ runner has no frame, and where a batch happened to end. The page now
+runs under Playwright's clock, paused, so its frames run only when told, and
+both runners put one frame (the matrix's push, then the morph's step) before
+every line. A bare install of the clock is not enough: time flows under it,
+and the frames with it, until it is paused.
+
+Of 66 mutants of the handlers, the macros and the morph, 58 are caught. The
+first pass caught 53 and its survivors were runs missing, not equivalents:
+nothing moved a synced LFO's rate or a synced delay's time, stored A away
+from A, held a push across a store, or pushed between the step's threshold
+and ten times it - which on sliders that snap to whole numbers only one two
+thousand steps wide can show. Each is a made line now. Six of the eight that
+live change nothing: a macro's own clamp and rounding, and the tempo's
+rounding, which their sliders already apply; the plane's panel refreshed
+after a plane slider, which already shows the value; and a handler fired
+when the browser's value did not move, which sets what is already set. The
+other two are layer B, below.
+
+Not yet: the panel showing layer B. The page swaps the voice controls'
+values when the editing layer changes (`showLayerOnPanel`), and its sliders
+then write layer B; the port has `panelLayer` and the handlers honour it, but
+nothing in the core yet moves it, so no run edits B and the two mutants that
+send a slider to layer A whatever the panel shows both live. The morph's walk
+allocates (a slider's value is the text the browser would hold) and runs on
+the audio thread for now; its place is the message thread once the page is
+the plugin's face.
 
 What the port leaves to later pieces: the arpeggiator (2d), where the page
 asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
@@ -487,6 +555,14 @@ redone natively or left out.
   of the header taken then to add a print held a mutant too. Mutants are
   made in a copy of `core/include` now, compiled from there, and the working
   tree is never touched while a pass runs.
+- **A page's own frames run between a harness's calls.** The browser runner
+  evaluated its lines fifty at a time, and between two batches the page's
+  animation frame ran as it would for anyone - stepping the morph, and with
+  it any slider the last line had left between its ends. The C++ runner had
+  no frame there, so whether a run agreed depended on where a batch ended.
+  The page runs under Playwright's clock now, paused (a bare install leaves
+  time flowing, and the frames with it), and a frame happens where both
+  runners say.
 - **The null device spins.** ALSA's `null` output accepts everything at once,
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of

@@ -26,6 +26,7 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   nowMs_ = 0;
   lastBlockMs_ = 0;
   brain_ = std::make_unique<scope::Brain>();
+  brainSources_ = std::make_unique<scope::BrainSources>(*matrix_, *brain_);
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
      keyboard is there. Derived by the keyboard, not set here. */
@@ -67,6 +68,9 @@ void ScopeProcessor::render(float* left, float* right, int from, int to) {
   }
 }
 
+void ScopeProcessor::moveSlider(const std::string& id, double value) {
+  scope::moveSlider(id, scope::jsToString(scope::Json::number(value)), *brain_, *core_, *keyboard_, lfos_);
+}
 void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
   const int frames = buffer.getNumSamples();
@@ -74,12 +78,19 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
   /* The page's once-a-frame work, once a block and before it: the keyboard's
      controllers walk and its gate and chord are worked out again, the matrix
-     steps its fades, fires its events and compiles its routes, and the
-     generator holds those routes across the block, as the worklet does. */
+     steps its fades, fires its events and compiles its routes, the morph
+     walks its sliders, and the generator holds those routes across the
+     block, as the worklet does. */
   keyboard_->frame(lastBlockMs_);
   matrix_->setLayered(keyboard_->layersOn());
   matrix_->setStrikes(keyboard_->strikes());
   matrix_->frame(nowMs_);
+  /* After the matrix, so a source on the fader is already counted. A walk
+     moves sliders and fires their handlers, which allocate (a slider's value
+     is the text the browser would hold): not yet fit for an audio thread,
+     and the morph's place is the message thread once there is one to hand
+     it to (PLAN.md, stage 2). */
+  scope::morphStep(*brain_, *core_, *keyboard_, lfos_);
   core_->setRoutes(matrix_->routes(nowMs_));
   lastBlockMs_ = 1000.0 * frames / rate_.load();
   nowMs_ += lastBlockMs_;

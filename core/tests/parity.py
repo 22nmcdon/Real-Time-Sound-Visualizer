@@ -1262,6 +1262,9 @@ ctl_bad = [k for k in set(pctl["ranges"]) | set(cctl["ranges"]) if k not in pctl
 ctl_bad += [k for k in set(pctl["selects"]) | set(cctl["selects"]) if pctl["selects"].get(k) != cctl["selects"].get(k)]
 check("the panel's %d sliders and %d menus are the page's, range, step, options and all"
       % (len(pctl["ranges"]), len(pctl["selects"])), not ctl_bad and len(pctl["ranges"]) > 80, ", ".join(ctl_bad[:5]))
+check("the %d sliders the morph walks are the page's, in the page's order" % len(pctl["morph"]),
+      pctl["morph"] == cctl["morph"] and len(pctl["morph"]) > 70)
+check("and that order is not the layout's", pctl["morph"] != [k for k in pctl["ranges"] if k in pctl["morph"]])
 plib = rpage("--library").strip()
 clib = subprocess.run([rexe, "--library"], check=True, capture_output=True, text=True).stdout.strip()
 check("the preset library is the page's, preset for preset, character for character", plib == clib and len(plib) > 50000,
@@ -1359,6 +1362,121 @@ rnull("a preset a hertz higher", 3, lambda st: st | {"freq": (st.get("freq", 220
 rnull("a preset with layer B a step louder", 5, lambda st: st | {"bAmp": 21})
 rnull("a preset on the next scale", 7, lambda st: st | {"keyScale": "dorian", "quant": True})
 check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
+
+print("\n--- macros and the morph ---")
+# A hand on the sliders, the morph's ends stored and the fader moved - by hand
+# and by the matrix - and the macros' knobs, through the page's own handlers
+# against scope::moveSlider, morphStore, morphStep and setMacro. Each line is
+# an operation rather than a setup, and both runners put a frame (the matrix
+# letting go of the fader, then the morph's step) before every line, since the
+# page's own frames run between one batch of lines and the next.
+ctl_ids = list(pctl["ranges"])
+def mvalue(id):
+    r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
+    c = rrng.random()
+    if c < 0.75: return round(rrng.uniform(lo, hi), rrng.choice([0, 1, 2]))
+    if c < 0.85: return rrng.choice([lo - 10, hi + 10, lo, hi])
+    return rrng.choice(["abc", "1e2", " 5", "", "+3", "-0", "Infinity", "7.5"])
+def mslider(pool): id = rrng.choice(pool); return {"op": "slider", "id": id, "value": mvalue(id)}
+def mrun():
+    out = [_json.loads(rrng.choice(presets)) if rrng.random() < 0.7 else {}]
+    out += [mslider(ctl_ids) for _ in range(rrng.randint(2, 6))] + [{"op": "store", "end": "a"}]
+    out += [mslider(ctl_ids + ["freq", "freq", "amp", "morph", "bar3", "delayMix", "planeTwist"]) for _ in range(rrng.randint(1, 8))]
+    out.append({"op": "store", "end": "b"})
+    for _ in range(rrng.randint(3, 10)):
+        c = rrng.random()
+        if c < 0.45: out.append({"op": "pos", "value": rrng.choice([0, 25, 50, 50.5, 75, 100, rrng.randint(0, 100)])})
+        elif c < 0.6: out.append({"op": "mod", "value": rrng.choice([0, 0.1, -0.3, 0.5, 1.2, 0.00005, rrng.uniform(-1, 1)])})
+        elif c < 0.65: out.append({"op": "hold", "value": rrng.choice([0, 0, -0.2, 0.3, rrng.uniform(-1, 1)])})
+        elif c < 0.8: out.append({"op": "macro", "i": rrng.randint(0, 3), "value": rrng.choice([0, 33, 100, 150, -4, "x", rrng.randint(0, 100)])})
+        elif c < 0.9: out.append({"op": "step"})
+        else: out.append(mslider(ctl_ids))
+    return out
+# Made to be read, first: amp from 20 to 80 and frequency from 220 to 880, the
+# fader a quarter and then half way; a push from the matrix below the step's
+# threshold, then a real one; a hand on a slider with the fader at rest; the
+# macros by their knobs and by their sliders, past the end; two sliders A
+# holds that the page found in a different order from the one it lays out;
+# the rates of a synced LFO and a synced delay moved; A stored with the fader
+# half way; B stored while the matrix holds the fader a quarter back; and a
+# push of a twentieth of a per cent, which only a slider two thousand steps
+# wide can show.
+MADE = [{}, {"op": "slider", "id": "amp", "value": 20}, {"op": "slider", "id": "freq", "value": 220},
+        {"op": "store", "end": "a"},                                                             # 3
+        {"op": "slider", "id": "amp", "value": 80}, {"op": "slider", "id": "freq", "value": 880},
+        {"op": "store", "end": "b"},                                                             # 6
+        {"op": "pos", "value": 25}, {"op": "pos", "value": 50},                                  # 7, 8
+        {"op": "mod", "value": 0.00005}, {"op": "mod", "value": 0.25},                           # 9, 10
+        {"op": "slider", "id": "amp", "value": 70}, {"op": "step"},                              # 11, 12
+        {"op": "macro", "i": 1, "value": 33}, {"op": "slider", "id": "macro3", "value": 150},    # 13, 14
+        {}, {"op": "slider", "id": "timebase", "value": 4}, {"op": "slider", "id": "freq", "value": 300},
+        {"op": "store", "end": "a"},                                                             # 18
+        {"l0y": "1/4"}, {"op": "slider", "id": "lfoRate0", "value": 50},                          # 19, 20
+        {"delaySync": "1/4"}, {"op": "slider", "id": "delayMs", "value": 300},                    # 21, 22
+        {}, {"op": "slider", "id": "amp", "value": 20}, {"op": "store", "end": "b"},
+        {"op": "slider", "id": "amp", "value": 80}, {"op": "pos", "value": 50},                  # 26, 27
+        {"op": "store", "end": "a"},                                                             # 28
+        {"op": "hold", "value": -0.25}, {"op": "slider", "id": "amp", "value": 40},
+        {"op": "store", "end": "b"}, {"op": "step"}, {"op": "hold", "value": 0},                 # 31, 32
+        {}, {"op": "slider", "id": "level", "value": -1000}, {"op": "store", "end": "a"},
+        {"op": "slider", "id": "level", "value": 1000}, {"op": "store", "end": "b"},
+        {"op": "pos", "value": 50}, {"op": "mod", "value": 0.0005}]                              # 39, 40
+mlines = [_json.dumps(o) for o in MADE] + [_json.dumps(o) for _ in range(90) for o in mrun()]
+mpg, mpt = rboth(mlines, "morph_ops.txt")
+mb = rbad(mpg, mpt)
+check("%d operations on the sliders, the morph and the macros leave the same instrument" % len(mlines),
+      not mb and len(mlines) > 1500, mb[0] if mb else "")
+mp = [_json.loads(l) for l in mpg]
+check("storing an end moves nothing and puts the fader at it",
+      mp[6]["ranges"]["amp"] == 80 and mp[6]["morph"]["pos"] == 1 and mp[3]["morph"]["pos"] == 0
+      and mp[6]["morph"]["b"] == "=freq:880,amp:80",
+      "%r %r %r" % (mp[6]["ranges"]["amp"], mp[6]["morph"]["pos"], mp[6]["morph"]["b"]))
+check("the fader a quarter of the way puts amp a quarter of the way, and its handler tells the generator",
+      mp[7]["ranges"]["amp"] == 35 and mp[7]["a"]["amp"] == 0.35, "%r %r" % (mp[7]["ranges"]["amp"], mp[7]["a"]["amp"]))
+check("frequency is walked in ratio: half way from 220 to 880 is 440, and the keyboard's panel follows",
+      mp[8]["ranges"]["freq"] == 440 and mp[8]["a"]["freq"] == 440 and mp[8]["panel"]["freq"] == "440",
+      "%r %r %r" % (mp[8]["ranges"]["freq"], mp[8]["a"]["freq"], mp[8]["panel"]["freq"]))
+check("a push below the step's threshold moves nothing, and a quarter more from the matrix moves amp to 65",
+      mp[9]["ranges"]["amp"] == 50 and mp[10]["ranges"]["amp"] == 65,
+      "%r %r" % (mp[9]["ranges"]["amp"], mp[10]["ranges"]["amp"]))
+check("a push of five ten-thousandths is past the step's threshold, and moves a wide slider a step",
+      mp[39]["ranges"]["level"] == 0 and mp[40]["ranges"]["level"] == 1,
+      "%r %r" % (mp[39]["ranges"]["level"], mp[40]["ranges"]["level"]))
+check("a hand on a slider with the fader at rest stays where the hand put it",
+      mp[11]["ranges"]["amp"] == 70 and mp[12]["ranges"]["amp"] == 70 and mp[12]["a"]["amp"] == 0.7,
+      "%r %r" % (mp[11]["ranges"]["amp"], mp[12]["ranges"]["amp"]))
+check("a macro's knob sets it, and its slider past the end holds it at one",
+      mp[13]["macros"][1]["value"] == 0.33 and mp[14]["macros"][2]["value"] == 1 and mp[14]["ranges"]["macro3"] == 100,
+      "%r %r" % (mp[13]["macros"][1]["value"], mp[14]["macros"][2]["value"]))
+check("an end is written in the order the page found its sliders, not the order it lays them out",
+      mp[18]["morph"]["a"] == "=freq:300,timebase:4", mp[18]["morph"]["a"])
+check("LFO 1's rate moved while it is synced is its free rate, and it runs on at the beat's",
+      mp[20]["lfos"][0]["free"] == 0.5 and mp[20]["lfos"][0]["rate"] == 2, repr(mp[20]["lfos"][0]))
+check("the delay's time moved while it is synced is kept, and its slider goes on showing the beat's 500 ms",
+      mp[22]["echo"]["ms"] == 300 and mp[22]["ranges"]["delayMs"] == 500,
+      "%r %r" % (mp[22]["echo"]["ms"], mp[22]["ranges"]["delayMs"]))
+check("storing A with the fader half way puts the fader at A",
+      mp[27]["morph"]["pos"] == 0.5 and mp[28]["morph"]["pos"] == 0 and mp[28]["ranges"]["morphPos"] == 0)
+check("B stored under the matrix's push moves nothing until the push changes",
+      mp[31]["morph"]["pos"] == 1 and mp[32]["ranges"]["amp"] == 40, repr(mp[32]["ranges"]["amp"]))
+# Counted without the fader's own slider, which a hand on the fader moves
+# whether or not the morph does anything with it - with it in, a morph that
+# walked nothing passed this.
+def walked(i): return {k: v for k, v in mp[i]["ranges"].items() if k != "morphPos"} != {k: v for k, v in mp[i - 1]["ranges"].items() if k != "morphPos"}
+mwalks = [i for i in range(1, len(mp)) if walked(i) and _json.loads(mlines[i]).get("op") in ("pos", "mod", "step")]
+check("the runs walk the sliders %d times, by the fader and by the matrix" % len(mwalks),
+      len(mwalks) > 100 and any(_json.loads(mlines[i])["op"] == "mod" for i in mwalks))
+# Nulls: the page told something different, and the port must disagree.
+def mnull(what, index, change):
+    lines = list(mlines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "morph_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(mpt[index])) != [])
+mnull("the fader a point further", 7, lambda o: o | {"value": 26})
+mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
+mnull("the other macro", 13, lambda o: o | {"i": 2})
+mnull("the end stored without timebase", 16, lambda o: o | {"value": 7})
+check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
 
 print()
 if fails:

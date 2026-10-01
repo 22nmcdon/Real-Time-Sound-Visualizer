@@ -3,15 +3,18 @@ the page loads a preset or a code, and what it leaves in the instrument
 written out as one JSON line - both layers' tones as the generator holds them,
 the keyboard's settings and the panel it reads, the LFOs, the routings, the
 key and the quantiser, the crossings, the score, the arpeggiator, the
-threshold, the macros, the morph, the plane and the echo. restore_cpp writes
-the same line from scope::restoreSetup.
+threshold, the macros, the morph, the plane and the echo, and every slider.
+A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
+end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
+for one frame ("mod") or from now on ("hold"), a macro's knob ("macro", "i"),
+or a frame ("step"). restore_cpp writes the same line from the core.
 
 `restore` writes into the page's controls and fires their handlers, so it can
 only be run where there is a DOM; this is the one runner of the port that
 needs a browser.
 
     python3 restore_page.py <setups, one JSON object a line>
-    python3 restore_page.py --controls       the panel's sliders and menus
+    python3 restore_page.py --controls       the panel's sliders and menus, and the morph's
     python3 restore_page.py --sources        the page's sources and their reach
     python3 restore_page.py --presets        every preset's setup
     python3 restore_page.py --library        the whole library, as PRESETS
@@ -28,12 +31,37 @@ CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/c
 # port carries (the drawn cycles and the figures made of strokes).
 DUMP = """(setups) => {
   const out = [];
+  // Every slider the page opened with, by id, less lfoRate0: that one is made
+  // again each time the source detail is, so choosing a macro takes it out of
+  // the page, and what it shows is the LFO's rate, which \`lfos\` has.
+  const rangeIds = window.__rangeIds || (window.__rangeIds =
+    Array.from(document.querySelectorAll('input[type="range"][id]')).map((i) => i.id).filter((id) => id !== "lfoRate0"));
+  const ranges = () => { const o = {}; for (const id of rangeIds) { const e = document.getElementById(id); o[id] = e ? Number(e.value) : null; } return o; };
   // `just` by its truth, which is what the generator plays by: the page keeps
   // the raw value as well, for its panel, and the core does not.
   const tone = (t, skip) => { const o = {}; for (const k of Object.keys(t)) if (!skip.includes(k)) o[k] = k === "just" ? !!t[k] : t[k]; return o; };
+  // An operation rather than a setup: a hand on a slider, an end of the morph
+  // stored, the fader moved, the matrix pushing it for a frame (mod) or from
+  // now on (hold), a macro's knob.
+  const act = (o) => {
+    const input = (e, v) => { e.value = String(v); e.dispatchEvent(new Event("input")); };
+    // LFO 1's rate is in the page only while LFO 1 is the chosen source.
+    if (o.op === "slider" && o.id === "lfoRate0" && !document.getElementById(o.id)) selectSource("lfo1");
+    if (o.op === "slider") input(document.getElementById(o.id), o.value);
+    else if (o.op === "store") morphStore(o.end);
+    else if (o.op === "pos") { input(el.morphPos, o.value); morphStep(); }
+    else if (o.op === "mod") { morph.mod = o.value; morphStep(); }
+    else if (o.op === "hold") { window.__held = o.value; morph.mod = o.value; morphStep(); }
+    else if (o.op === "macro") input(el["macro" + (o.i + 1)], o.value);
+    else if (o.op === "step") morphStep();
+  };
   for (const setup of setups) {
     let error = null;
-    try { restore(setup); } catch (e) { error = String(e && e.message || e); }
+    // A frame first, as the page has between anything a hand does: the matrix
+    // pushes the fader by what \`hold\` last said (nothing, unless told), and
+    // the morph steps.
+    morph.mod = window.__held || 0; morphStep();
+    try { if (setup && setup.op) act(setup); else restore(setup); } catch (e) { error = String(e && e.message || e); }
     out.push(JSON.stringify({
       error,
       a: tone(genSettings(), ["cycle", "wavetable", "voices", "figPath"]),
@@ -53,6 +81,7 @@ DUMP = """(setups) => {
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
+      ranges: ranges(),
       plane: { mirror: plane.mirror, limit: plane.limit, radius: plane.radius, os: plane.os, twist: plane.twist,
                kaleido: plane.kaleido, snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
       echo: { mix: echo.mix, ms: echo.ms, sync: echo.sync, feedback: echo.feedback, pingPong: echo.pingPong,
@@ -65,6 +94,7 @@ DUMP = """(setups) => {
 
 # Every slider and menu: what a value written into it becomes is the browser's
 # business, so the port carries each one's range, step and options.
+# And the sliders the morph walks, in its order.
 CONTROLS = """() => {
   const out = { ranges: {}, selects: {} };
   for (const input of document.querySelectorAll('input[type="range"][id]')) {
@@ -73,6 +103,7 @@ CONTROLS = """() => {
   for (const select of document.querySelectorAll('select[id]')) {
     out.selects[select.id] = { options: Array.from(select.options).map((o) => o.value), value: select.value };
   }
+  out.morph = MORPH_IDS;
   return JSON.stringify(out);
 }"""
 
@@ -82,8 +113,16 @@ def main():
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
+        # The page's clock is Playwright's, paused, so its frames run only
+        # when told to: they would otherwise run between one batch of lines
+        # and the next, and step the morph, the glide and the fades there - in
+        # a place the C++ runner has no frame, and that depends on where a
+        # batch happens to end. A bare install is not enough; time flows
+        # under it, and the frames with it, until the clock is paused.
+        page.clock.install(time=0)
         page.goto("file://" + os.path.abspath(PAGE))
-        page.wait_for_timeout(700)
+        page.clock.pause_at(1000)
+        page.clock.run_for(700)
         if sys.argv[1] == "--controls":
             print(page.evaluate(CONTROLS))
         elif sys.argv[1] == "--presets":

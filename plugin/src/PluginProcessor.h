@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -22,10 +23,11 @@
 // byte for byte as a port's reach the page: the stack, the pedal, the dyad,
 // mono and chords on two layers. The routings reach it through the core's
 // matrix (scope::Matrix), compiled and faded at the top of every block, from
-// the sources ported so far. Until the rest of the brain moves into the core
-// (PLAN.md, stage 2) it starts as the page starts - on the "Harmonic tone"
-// preset, loaded through the core's `restoreSetup` - and nothing yet moves it
-// from there but the host's notes.
+// the sources ported so far, and the morph steps after it, as the page's
+// frame has it. Until the rest of the brain moves into the core (PLAN.md,
+// stage 2) it starts as the page starts - on the "Harmonic tone" preset,
+// loaded through the core's `restoreSetup` - and nothing yet moves it from
+// there but the host's notes and the matrix.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -77,6 +79,11 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The routings, for whoever sets them: the shell test now, the brain's
   // setup later. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return *matrix_; }
+  /* A hand on one of the panel's sliders, and an end of the morph stored: what
+     the page will send over the bridge once it is the plugin's face. Until
+     then, the shell test's way in. */
+  void moveSlider(const std::string& id, double value);
+  void storeMorph(bool endB) { scope::morphStore(*brain_, endB); }
 
  private:
   // Render [from, to) of the block into the output and the picture ring.
@@ -89,6 +96,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::unique_ptr<scope::Matrix> matrix_;
   std::unique_ptr<scope::CoreSources> sources_;
   std::unique_ptr<scope::Brain> brain_;  // what a setup sets beyond the generator
+  std::unique_ptr<scope::BrainSources> brainSources_;  // the macros, and the morph's fader as a destination
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };

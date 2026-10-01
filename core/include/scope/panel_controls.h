@@ -1,7 +1,6 @@
 // The panel's sliders and menus, as the page's DOM has them when it opens:
-// each slider's range, step and starting value (in the order the page lays
-// them out, which is the order the morph walks them), and each menu's options
-// and the one it starts on. Written out from the page by
+// each slider's range, step and starting value, in the order the page lays
+// them out, and each menu's options and the one it starts on. Written out from the page by
 // core/tests/tools/restore_page.py --controls, and held to it control for
 // control by core/tests/parity.py, so a slider whose range changes on the page
 // and not here is a failure, not a drift.
@@ -161,6 +160,23 @@ inline constexpr SelectSpec kSelects[] = {
   { "scoreOctaves", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4", "3" },
   { "pluckNote", "36" "\x1f" "37" "\x1f" "38" "\x1f" "39" "\x1f" "40" "\x1f" "41" "\x1f" "42" "\x1f" "43" "\x1f" "44" "\x1f" "45" "\x1f" "46" "\x1f" "47" "\x1f" "48" "\x1f" "49" "\x1f" "50" "\x1f" "51" "\x1f" "52" "\x1f" "53" "\x1f" "54" "\x1f" "55" "\x1f" "56" "\x1f" "57" "\x1f" "58" "\x1f" "59" "\x1f" "60" "\x1f" "61" "\x1f" "62" "\x1f" "63" "\x1f" "64" "\x1f" "65" "\x1f" "66" "\x1f" "67" "\x1f" "68" "\x1f" "69" "\x1f" "70" "\x1f" "71" "\x1f" "72" "\x1f" "73" "\x1f" "74" "\x1f" "75" "\x1f" "76" "\x1f" "77" "\x1f" "78" "\x1f" "79" "\x1f" "80" "\x1f" "81" "\x1f" "82" "\x1f" "83" "\x1f" "84", "60" },
   { "filterType", "lowpass" "\x1f" "highpass" "\x1f" "bandpass" "\x1f" "notch", "lowpass" },
+};
+
+// The sliders the morph walks (MORPH_IDS), in the order the page found them
+// when its script ran - which is not the DOM's order once the Bench has moved
+// its sections, and leaves out the sliders made later (the trace scales, the
+// LFO's rate) as well as the ones MORPH_SKIP names. The order is what a setup
+// code writes an end in, so it is held to the page like the rest.
+inline constexpr const char* kMorphIds[] = {
+  "freq", "amp", "morph", "width", "table", "phase", "detail", "spinX", "spinY", "spinZ", "spinRate",
+  "depth", "envAttack", "envDecay", "envSustain", "envRelease", "glide", "figureRate", "ringTime",
+  "swingRate", "decay", "detune", "swingDrive", "quantiseGlide", "tempo", "crossX", "crossY", "crossDecay",
+  "crossLevel", "lag", "lagMix", "acCorner", "rotate", "bar0", "bar1", "bar2", "bar3", "bar4", "bar5",
+  "bar6", "bar7", "bar8", "oscFm", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold",
+  "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "planeTwist",
+  "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "delayMix", "delayMs", "delayFeedback",
+  "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback", "gen2Rate", "inputDepth",
+  "filterCutoff", "filterRes", "position", "holdoff", "level", "timebase", "zoom",
 };
 
 }  // namespace scope
