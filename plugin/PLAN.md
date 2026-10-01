@@ -76,47 +76,74 @@ delay and chorus, the quantiser, the governor. Each piece held to the page by
 the parity harness before the next is started, with scenarios written so the
 fixture can show the effect.
 
-Ported so far, leaves first: the envelope (`scope/envelope.h`); the
-waveforms and the functions under them (`scope/wave.h`) - `cycleOf`, the two
-bleps, the drawbars' gain and weights, the intervals, the state-variable
-filter, the drawn cycle's read, and `waveAt` for every shape; the four noises
-(`scope/noise.h`); the voice's oscillator (`scope/osc.h`) - unison, FM,
-ring, hard sync with its band-limited reset, and the sub-oscillator; and what
-follows it in a voice (`scope/voice.h`) - the filter's cutoff and its cached
-coefficient, the drive and fold with their oversampler, and the crush; and the
-chord's voices (`scope/voices.h`) - the quantiser, `reconcileVoices` with its
-release tails and their limit of eight, and `sound`, a layer's voices summed a
-sample at a time with the governor's cut and the gains gliding between roles;
-and the plane (`scope/plane.h`) - mirror, twist, kaleidoscope, the clip or fold
-at a radius and the snap, at one, two and four times the rate, then the chorus
-and the echo, one of each for each of the three pairs; and the drawings - the
-figures (`scope/figures.h`), the solids as the page builds them, routes and
-all, and the beam walked round them (`scope/wireframe.h`), and the LFOs
-(`scope/lfo.h`).
-They are held to the page by a list of about 14,000 calls written by
-`parity.py` and answered by both (`functions_js.mjs`, `functions_cpp`); the
-functions inside `makeGeneratorCore`, which the page does not export, are
-lifted out by name (`coreScope`) and run in the closure they were written for,
-with the layers' tones handed in. The voices are run as scenarios of events -
-chords, roles changed under held notes, a key pressed again inside its own
-release, fifteen tails at once, the layer switched off, the cut, a retune, a
-tie at the quantiser, sliders moved mid-note - through every shape and the
-whole voice chain on both layers; the plane, every stage alone at every
-factor, all of them together, and changed under the pairs. Every call agrees
-to the last bit or within 6e-15 - the oscillators' sync and the oversamplers
-accumulate a little - and 149 of 154 mutants of the ports are caught. The
-five that live change nothing that can happen. Four are in the drawings: a
-compiled path's span that is never nought, a test for a corner no list holds,
-a solid's leg that no model projects to nothing, and an exact tie the walk
-never lands on. `Math.hypot` is held to the last bit, because V8 computes it
-by an algorithm the port copies (scaled by the largest, the sum compensated)
-and a solid's corners are divided by it. The fifth is
-the voice's phase folded back up from below nought, which only a pitch bent
-past nought reaches, and which changes nothing: `cycleOf` and `sin` read a
-phase below nought as the same point of the cycle.
-Next: the governor, the crossings and the score's voices, then the
-per-sample loop that sums the layers - the routings into each layer's pushes,
-the dyad, the drawings - held to the page's own `makeGeneratorCore` whole.
+**Stage 1 is ported.** The whole of `makeGeneratorCore` is in the core,
+leaves first, each piece held to the page before the next was started:
+
+- the envelope (`scope/envelope.h`);
+- the waveforms and the functions under them (`scope/wave.h`): `cycleOf`, the
+  two bleps, the drawbars' gain and weights, the intervals, the
+  state-variable filter, the drawn cycle's read, and `waveAt` for every shape;
+- the four noises (`scope/noise.h`) and the LFOs (`scope/lfo.h`);
+- the voice's oscillator (`scope/osc.h`), with unison, FM, ring, hard sync
+  and its band-limited reset, and the sub; and what follows it in a voice
+  (`scope/voice.h`): the filter with its cached coefficient, drive and fold
+  with their oversampler, and the crush;
+- the chord's voices (`scope/voices.h`): the quantiser, `reconcileVoices` with
+  its release tails, and `sound`;
+- the plane (`scope/plane.h`): every shape of it at one, two and four times
+  the rate, then the chorus and the echo, for each of the three pairs;
+- the drawings: the figures (`scope/figures.h`), and the solids as the page
+  builds them, routes and all, with the beam walked round them
+  (`scope/wireframe.h`);
+- and the generator itself (`scope/generator.h`): the routings summed into
+  each layer's pushes, the governor, the dyad, the chord on two layers, the
+  figure, the solid, the pendulums plucked and swung, the second generator,
+  the input three ways, the crossings and the score's voices, and the effect
+  a live input goes through - with the calls the worklet makes between
+  blocks.
+
+The pieces are held by about 18,000 calls written by `parity.py` and answered
+by both (`functions_js.mjs`, `functions_cpp`). The functions inside
+`makeGeneratorCore`, which the page does not export, are lifted out by name
+(`coreScope`) and run in the closure they were written for. The whole is held
+by 71 runs through the page's own `makeGeneratorCore` and `scope::Generator`
+alike (`generator_js.mjs`, `generator_cpp`), driven as the worklet drives
+it: blocks of 128 into float arrays, with the routings, the chord, the gate,
+strikes, kicks and resets landing between blocks while things sound. The
+page's side is assembled from the names `generatorModuleSource` binds, read
+out of its own text, so the runner has exactly what the worklet has. Each run
+must show what it is for - the governor taking copies away, both crossings
+firing, layer B drawing, the heard pair differing from the picture in a
+chord, a solid still spinning from a kick - and each of those checks was seen
+to fail on a wrong value before it was believed.
+
+Nearly every number agrees to the last bit, and none by more than 6e-15. Of
+277 mutants of the ports, 263 are caught. The fourteen that live change
+nothing that can happen, and each was looked at:
+
+- a voice's phase folded back up from below nought, which `cycleOf` and `sin`
+  read as the same point of the cycle;
+- a compiled path's span between neighbours, which is never nought; a test
+  for a corner that no list holds; a solid's leg, which no model projects to
+  nothing; and an exact tie, which the beam's walk never lands on;
+- heard left and right, which are equal for every role;
+- a governor's rank, which never ties, since every voice is born at its own
+  count; and the rule never to cut the last voice, which no setting can make
+  cost more than the budget alone;
+- a score voice's age, which only matters while all four are sounding;
+- a store into a float array, which rounds whether or not it is told to;
+- the guard against a `NaN` in the accumulator, which nothing sends;
+- the drawbars' weights worked out only when a level moves, which is economy:
+  worked out every sample they come out the same;
+- the filter envelope's reset when the core is made, and the level an
+  envelope is left at when ungated, neither of which is read before
+  `setGated` resets it again.
+`Math.hypot` is held to the last bit, because V8 computes it by an algorithm
+the port copies (scaled by the largest, the sum compensated) and a solid's
+corners are divided by it.
+
+Next: the plugin plays `scope::Generator` in place of the spike's sine, and
+then stage 2.
 
 The plane's delay lines are made with it, not the first time the echo or the
 chorus is wanted as in the page, and its oversamplers are emptied in place
@@ -207,6 +234,28 @@ redone natively or left out.
   that ignored the envelope amount or the tracking passed (each run now moves
   one setting part-way, alone); and no fold fell between a quarter and a
   half turn, the one range where the fold's normalising limit shows.
+- **The whole core found two things the pieces could not.** Its first run
+  through every mode found the morph's default at nought where the page
+  starts it at one and a half - `VoiceTone` was written for the oscillator's
+  tests, and its defaults were the tests'. And the plane's `step` threw away
+  what the echo and chorus returned; the plane's own runs found that one,
+  but only at two and four times, since no run at one had the echo on.
+- **The whole core's first runs could not see a third of their mutants.** 36
+  of 123 lived at first. Ten were mutants that did not compile and had
+  counted as caught in an earlier pass's tally, which is why the tally now
+  requires a failing comparison by name. The rest were runs that could not
+  show the effect: releases too long to finish inside a run, so idle tails
+  were never swept; a filter on a unison dyad, so its right channel's pitch
+  was its left's; bars out of range on bars nothing pushed back; the
+  governor's costs read after the unison that used them had been taken
+  away; tails never cut because nothing was over the budget at one copy; a
+  clock input that always went negative, so its hysteresis was never in
+  play; a crossing line no beam ever hovered under. Each has a run now.
+- **The outputs are float and the loop reads them back.** The crossings and
+  the heard pair read the picture from the output array, so they see it
+  rounded to float as the page does. A port that kept the double would
+  differ in the last place of a float, and on a crossing line that is a
+  note on one side and none on the other.
 - **The null device spins.** ALSA's `null` output accepts everything at once,
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of

@@ -114,6 +114,11 @@ class Plane {
 
   double x = 0, y = 0;
 
+  // What the governor costs it by: the factor, and which stages are on.
+  int factor() const { return factor_; }
+  bool nonlinearOn() const { return nonlinearOn_; }
+  bool timeOn() const { return timeOn_; }
+
  private:
   // Leaves its answer in `x`, `y`, where the oversampler reads it.
   void op(double x, double y) {

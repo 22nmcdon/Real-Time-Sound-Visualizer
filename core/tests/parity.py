@@ -480,6 +480,250 @@ check("and against a pulse of 0.3 answered as one of 0.31",
                                 _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),
             row(cpp_rows[pulse])) > 1e-6)
 
+print("\n--- the whole generator ---")
+# Slots, as GEN_DESTS has them.
+FREQ, AMP, PHASE, RATIO, DETAIL, TUMBLE, DEPTH, BAR = 0, 1, 2, 3, 4, 5, 6, 7
+MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT, SWING, WIDTH, TABLE, SPIN = range(16, 30)
+
+def route(slot, amount, index=-1, held=0, heldB=None, amountB=None, unipolar=0):
+    return "%d/%r/%r/%d/%r/%r/%d" % (index, held, held if heldB is None else heldB, slot, amount,
+                                     amount if amountB is None else amountB, unipolar)
+
+def notes(*ns):
+    return "+".join("%d/%r/%r/%s" % (n[0], 440 * 2 ** ((n[0] - 69) / 12), n[2] if len(n) > 2 else 1.0, n[1]) for n in ns)
+
+def gen_runs():
+    """The page's makeGeneratorCore and the port, driven alike: every mode,
+    each feature in it, and the calls a worklet makes between blocks - the
+    routings, the chord, the gate, a strike, a kick, a reswing - landing
+    while things sound."""
+    grng = random.Random(7)
+    def tset():
+        sizes = [16, 8, 4, 2]
+        return "T:%d:%s" % (8, ";".join(",".join("%r" % (grng.randint(-64, 64) / 64) for _ in range(n)) for n in sizes))
+    bank = "B:" + "!".join(tset()[2:] for _ in range(4))
+    runs = []
+    def add(name, events, samples=4096, rate=48000.0, slots=32, seed=3, lfo0="sine,5", lfo1="triangle,0.7"):
+        runs.append((name, "run name=%s rate=%r slots=%d seed=%d samples=%d lfo0=%s lfo1=%s\n%s\nend"
+                     % (name, rate, slots, seed, samples, lfo0, lfo1, "\n".join("at %d %s" % e for e in events))))
+    vib = route(FREQ, 0.05, index=0)
+    # The dyad, every shape, gliding to a new pitch with a vibrato on it.
+    for shape in ("harmonic", "sine", "triangle", "square", "ramp", "pulse", "morph", "noise", "pink", "brown", "stepped"):
+        add("dyad-" + shape, [(0, "set shape " + shape), (0, "set glideMs 30"), (0, "routes " + vib),
+                              (1024, "set freq 331"), (2048, "set interval 7"), (2048, "set just false"),
+                              (3072, "set octaves 1")])
+    add("dyad-drawbars", [(0, "set shape drawbars"), (0, "bars 0 8,0,6,3,0,2,0,1,4"),
+                          (0, "routes " + "+".join([route(BAR + 2, 0.4, index=1), route(BAR + 7, -0.3, index=0)])),
+                          (2048, "bars 0 0,0,8,0,0,0,0,0,0"), (3072, "bars 0 12,-3,11,0,9.5,0,0,-4,2"),
+                          # Pushes held back across the ends: an 11 pushed down by four is 7 if
+                          # it was kept as 11, and 4 if it was clamped to 8 when it was set.
+                          (3072, "routes " + "+".join([route(BAR + 2, -0.5, held=1), route(BAR + 7, 0.4, held=1)]))])
+    add("dyad-drawn", [(0, "set shape drawn"), (0, "cycle " + tset()), (2048, "set freq 1700")])
+    add("dyad-wavetable", [(0, "set shape wavetable"), (0, "wavetable " + bank), (0, "routes " + route(TABLE, 0.8, index=1))])
+    add("dyad-shape-routes", [(0, "set shape pulse"), (0, "routes " + "+".join([route(WIDTH, 0.6, index=0),
+                              route(PHASE, 0.3, index=1), route(RATIO, 0.2, held=0.5), route(AMP, 0.5, index=0, unipolar=1)])),
+                              (2048, "set shape morph"), (2048, "routes " + route(MORPH, 0.9, index=1))])
+    # The voice: its oscillator, its shaping at both factors, crush, filter.
+    add("dyad-voice", [(0, "set shape ramp"), (0, "set unison 5"), (0, "set unisonCents 20"), (0, "set fmIndex 1.5"),
+                       (0, "set modRatio 2"), (0, "set subLevel 0.5"), (0, "set subOctave 2"), (0, "set subShape sine"),
+                       (1024, "set syncRatio 1.7"), (1024, "routes " + "+".join([route(FM, 0.5, index=0),
+                       route(SYNC, 0.3, index=1)])), (2048, "set ringMix 0.4"), (3072, "reswing")])
+    add("dyad-shaped", [(0, "set shape square"), (0, "set drive 0.6"), (0, "set fold 0.3"), (0, "set shapeOS 4"),
+                        (0, "set crushBits 6"), (0, "set crushHz 9000"), (1024, "routes " + route(DRIVE, 0.4, index=0)),
+                        (2048, "set shapeOS 2"), (3072, "set fold 0")])
+    add("dyad-filter-gated", [(0, "set shape ramp"), (0, "set vcfType 1"), (0, "set vcfCutoff 500"), (0, "set vcfEnv 3"),
+                              (0, "set vcfTrack 0.5"), (0, "set vcfQ 3"), (0, "gated 1"), (256, "gate 1 0.8"),
+                              (0, "set interval 7"),
+                              (1536, "routes " + route(VCF, 0.4, index=0)), (2560, "gate 0 0"), (3584, "gate 1 0.5"),
+                              (3840, "gated 0")])
+    # Not gated, and the gate pressed anyway: the filter's envelope moves,
+    # and an ungated dyad must not read it.
+    add("dyad-filter-ungated", [(0, "set shape ramp"), (0, "set vcfType 1"), (0, "set vcfCutoff 500"),
+                                (0, "set vcfEnv 3"), (256, "gate 1 1"), (2048, "gate 0 0")])
+    # Fold alone routed, with drive and fold at rest: the shaper is still on.
+    add("dyad-fold-routed", [(0, "set shape triangle"), (0, "routes " + route(FOLD, 0.8, index=0))])
+    # A ratio pushed below nought, so the right channel's phase runs backwards.
+    add("dyad-negative-ratio", [(0, "set shape ramp"), (0, "routes " + route(RATIO, -3.0, held=1))])
+    add("dyad-quantised", [(0, "set qMask 2741"), (0, "set qGlideMs 15"), (0, "set freq 277"),
+                           (0, "routes " + route(FREQ, 0.3, index=1)), (2048, "set qGlideMs 0")], lfo1="sine,3")
+    add("dyad-random-lfo", [(0, "routes " + "+".join([route(FREQ, 0.2, index=0), route(AMP, 0.6, index=1, unipolar=1)]))],
+        lfo0="random,40", lfo1="square,9")
+    add("dyad-few-slots", [(0, "set shape morph"), (0, "routes " + "+".join([route(MORPH, 0.9, index=0),
+                           route(FREQ, 0.1, index=1), route(30, 1.0, held=1)]))], slots=8)
+    # The chord, on one layer and on two, roles changing under it; then the
+    # governor: everything on at once, past its budget, then the chord changed.
+    add("poly", [(0, "voices 0 " + notes((60, "x"), (64, "y", 0.7), (67, "u"))), (0, "routes " + vib),
+                 (0, "set releaseMs 6"),
+                 (1024, "voices 0 " + notes((60, "xy"), (64, "y", 0.7), (71, "x"))), (2048, "voices 0 none"),
+                 (3072, "voices 0 " + notes((62, "x")))])
+    add("layered", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"), (76, "u"))),
+                    (0, "set shape square 1"), (0, "set attackMs 40 1"), (0, "set releaseMs 30 1"),
+                    (0, "routes " + "+".join([route(FREQ, 0.05, index=0, amountB=0.2), route(DRIVE, 0.0, amountB=0.5, held=1),
+                                              route(FM, 0.3, amountB=-0.2, index=1)])),
+                    (0, "set drive 0.3 1"), (0, "set fmIndex 1 1"),
+                    # Fields layer B does not have are not written into A by a set on B.
+                    (512, "set freq 500 1"), (512, "set planeTwist 1.5 1"), (512, "set mode figure 1"), (512, "set amp 0.3"),
+                    # A held routing that holds one value for A and another for B.
+                    (1024, "routes " + route(FREQ, 0.25, held=0.2, heldB=-0.6)),
+                    (1536, "voices 1 " + notes((74, "x"))), (2560, "voices 1 null"), (3072, "voices 1 " + notes((79, "y")))])
+    chord = notes(*[(48 + 3 * k, "xyu"[k % 3]) for k in range(8)])
+    add("governed", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"),
+                     (0, "set drive 0.5"), (0, "set shapeOS 4"), (0, "set vcfType 2"), (0, "set crushBits 8"),
+                     (0, "voices 0 " + chord), (0, "voices 1 " + chord), (0, "set unison 7 1"), (0, "set fmIndex 2 1"),
+                     (0, "set planeKaleido 3"), (0, "set planeOS 4"),
+                     (1024, "voices 0 " + notes((60, "x"), (64, "y"))), (2048, "set unison 3"), (3072, "voices 1 none")],
+        samples=4096)
+    # And held there to the end, so the report the run ends with is the
+    # governor's answer to the whole chord on both layers.
+    add("governed-held", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"),
+                          (0, "set drive 0.5"), (0, "set shapeOS 4"), (0, "set vcfType 2"), (0, "voices 0 " + chord),
+                          (0, "voices 1 " + chord), (0, "set unison 7 1"), (0, "set fmIndex 2 1"), (0, "set drive 0.5 1")],
+        samples=2048)
+    # The costs of each shape's copies and single path, reported by the budget.
+    for sa, sb in (("morph", "drawbars"), ("pulse", "wavetable")):
+        add("governed-%s" % sa, [(0, "set shape " + sa), (0, "set shape %s 1" % sb), (0, "set unison 3"),
+                                 (0, "set unison 2 1"), (0, "voices 0 " + notes((60, "x"), (64, "y"))),
+                                 (0, "voices 1 " + notes((72, "xy"))), (0, "wavetable " + bank)], samples=2048)
+        add("governed-%s-single" % sa, [(0, "set shape " + sa), (0, "set shape %s 1" % sb),
+                                        (0, "voices 0 " + notes((60, "x"), (64, "y"))),
+                                        (0, "voices 1 " + notes((72, "xy"))), (0, "wavetable " + bank)], samples=1024)
+    # Twelve shaped voices: four times the rate is over the budget at 30 a
+    # voice and inside it at 17, so the factor given up says which.
+    six = notes(*[(50 + 2 * k, "xy") for k in range(6)])
+    add("governed-factor", [(0, "set drive 0.5"), (0, "set drive 0.5 1"), (0, "set shapeOS 4"), (0, "voices 0 " + six),
+                            (0, "voices 1 " + six)], samples=1024)
+    # Caps that stay down while tails die away: a chord let go to two notes,
+    # its six tails gone inside a few blocks, and the copies not given back.
+    tails = [(0, "set unison 7"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"), (0, "set drive 0.5"),
+             (0, "set vcfType 1"), (0, "set crushBits 6"), (0, "set subLevel 0.4"), (0, "set ringMix 0.3"),
+             # The plane, costed per pass and a chord is two passes, so cutting voices is needed even at one copy.
+             (0, "set planeKaleido 3"), (0, "set planeOS 4"), (0, "set delayMix 0.3"),
+             (0, "set releaseMs 4"), (0, "voices 0 " + chord), (512, "voices 0 " + notes((60, "x"), (64, "y")))]
+    add("governed-tails", tails, samples=2048)
+    # And the block right after the let-go, while the tails cut are still fading.
+    add("governed-cut", tails, samples=640)
+    # The drawings.
+    for fig in ("Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph", "Butterfly"):
+        add("figure-" + fig, [(0, "set mode figure"), (0, "set figure " + fig), (0, "set figureRate 170"),
+                              (0, "routes " + route(DETAIL, 0.4, index=1)), (2048, "set detail 7.5")])
+    add("figure-path", [(0, "set mode figure"), (0, "set figure Text"),
+                        (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
+                        (0, "set figureRate 90")])
+    add("figure-rose-turns", [(0, "set mode figure"), (0, "set figure Rose"), (0, "set detail 2.37"),
+                              (0, "set figureRate 2400")], samples=6144)
+    for model in ("Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"):
+        add("solid-" + model, [(0, "set mode wireframe"), (0, "set model " + model), (0, "set figureRate 60"),
+                               (0, "routes " + "+".join([route(TUMBLE, 0.5, index=0), route(DEPTH, 0.6, index=1),
+                                                         route(SPIN + 1, 0.8, index=1)])),
+                               (1024, "kick 2"), (2048, "spin 0.5,-0.2,0.9"), (3072, "kick -1.5")], lfo0="sine,2")
+    # Run down inside the run (a decay of 40 is a fortieth of a second a
+    # neper), so it is let go again and the relet's fade is in the output;
+    # then struck, then driven.
+    add("swing", [(0, "set mode harmonograph"), (0, "set decay 40"), (0, "set swingRate 40"), (0, "set detune 0.02"),
+                  (5248, "reswing"), (5632, "set swingDrive 0.5"), (5632, "routes " + route(SWING, 0.5, index=1)),
+                  (6400, "set swingDrive 0"), (6400, "routes none")],
+        samples=7168)
+    # A change of mode lets the pendulums go again, mid-swing.
+    add("swing-mode", [(0, "set mode harmonograph"), (0, "set decay 3"), (0, "set swingRate 30"),
+                       (1536, "set mode figure"), (2048, "set mode harmonograph")])
+    add("swing-pitched", [(0, "set mode harmonograph"), (0, "set pitched true"), (0, "set ringMs 40"),
+                          (0, "set freq 330"), (0, "set qMask 2741"), (1024, "reswing"), (2048, "set freq 290"),
+                          (2560, "reswing"), (3584, "set decay 0.5")])
+    # The plane on a dyad and on a chord, where the heard pair is its own.
+    add("plane-dyad", [(0, "set planeTwist 0.9"), (0, "set planeLimit 1"), (0, "set planeRadius 0.3"),
+                       (0, "set chorusMix 0.5"), (0, "set chorusRate 3"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
+                       (0, "routes " + "+".join([route(RADIUS, 0.4, index=0), route(ECHOT, 0.3, index=1)]))])
+    add("plane-poly", [(0, "voices 0 " + notes((60, "x"), (67, "y"), (64, "u"))), (0, "voices 1 " + notes((76, "xy"))),
+                       (0, "set planeMirror 1"), (0, "set planeKaleido 4"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
+                       (0, "routes " + "+".join([route(TWIST, 0.6, index=0), route(ECHO, 0.5, index=1)]))])
+    # The crossings, the score, and the input three ways and from the second generator.
+    add("crossings", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set crossOn true"), (0, "set crossX 0.2"),
+                      (0, "set crossY -0.3"), (0, "set crossDecayMs 40"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"), (2560, "strike 550 1"),
+                      (2688, "strike 660 0.4"), (2816, "strike 880 0.9"), (2944, "strike 990 0.7")], samples=8192)
+    # The harmonic's two peaks either side of a dip, the line between the dip
+    # and five hundredths above it: the beam falls below the line without
+    # falling far enough to arm it again, and the peaks are 50 ms apart.
+    add("crossings-dip", [(0, "set freq 5"), (0, "set crossOn true"), (0, "set crossX 0.39"), (0, "set crossY 0.9")],
+        samples=12288)
+    # A clock input that never goes below nought: it dips into the
+    # hysteresis and out again, which re-arms nothing.
+    add("input-clock-dc", [(0, "input 97 0.295 0.3"), (0, "set inputMode 3"), (0, "set mode figure")])
+    for mode in (1, 2, 3):
+        add("input-%d" % mode, [(0, "input 97 0.6"), (0, "set inputMode %d" % mode), (0, "set inputDepth 0.4"),
+                                (0, "set mode figure"), (2048, "set mode wave"), (3072, "input 0 0")])
+    add("input-ride-poly", [(0, "input 61 0.5"), (0, "set inputMode 2"), (0, "voices 0 " + notes((60, "x"), (64, "u")))])
+    for mode in (1, 2, 3):
+        add("gen2-%d" % mode, [(0, "set inputFrom gen2"), (0, "set inputMode %d" % mode), (0, "set gen2Figure Star"),
+                               (0, "set gen2Rate 73"), (0, "set mode figure"), (2048, "set mode wave"),
+                               (3072, "set gen2Rate 70000")])
+    add("effect", [(0, "fx 1"), (0, "input 140 0.7"), (0, "set planeTwist 0.7"), (0, "set chorusMix 0.6"),
+                   (0, "routes " + route(TWIST, 0.5, index=0)), (2048, "set planeSnap 4")])
+    add("at-44100", [(0, "set shape square"), (0, "set unison 3"), (0, "routes " + vib)], rate=44100.0)
+    return runs
+
+runs = gen_runs()
+listed = os.path.join(BUILD, "generator.txt")
+with open(listed, "w") as f: f.write("\n".join(r for _, r in runs) + "\n")
+gexe = build("generator_cpp")
+gjs = subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), listed], check=True,
+                     capture_output=True, text=True).stdout.splitlines()
+gcpp = subprocess.run([gexe, listed], check=True, capture_output=True, text=True).stdout.splitlines()
+check("every run answered by both: %d runs" % len(runs), len(gjs) == len(gcpp) == len(runs))
+gworst = {}
+for (name, _), a, b in zip(runs, gjs, gcpp):
+    family = name.split("-")[0]
+    gworst[family] = max(gworst.get(family, 0.0), worst(row(a), row(b)))
+for family in sorted(gworst):
+    check("%s, the same to %g" % (family, TOL), gworst[family] <= TOL, "worst %.3g" % gworst[family])
+
+# Each run has to be able to show what it is for: a comparison of two cores
+# doing nothing would pass. The report at the end of a row is envelope, pitch,
+# the two crossings' counts, the kick, the swing, then the budget (units,
+# asked A and B, unison A and B, asked factor, factor, silenced), the drawing
+# (swing, pendulum, three turns, facing), and the voices on each layer.
+TAIL = 22
+def grow(name):
+    i = next(k for k, (n, _) in enumerate(runs) if n == name)
+    v = row(gjs[i])
+    return v[:-TAIL], v[-TAIL:]
+def col(v, c): return v[c::6]
+quiet = [n for n, _ in runs if max(abs(x) for x in col(grow(n)[0], 0)) < 0.01]
+check("every run puts something on the screen", not quiet, ", ".join(quiet))
+body, tail = grow("governed-held")
+check("the governor, given everything, takes copies and voices away",
+      tail[9] < tail[7] and tail[10] < tail[8] and tail[12] < tail[11] and tail[13] > 0,
+      "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[7], tail[8], tail[9], tail[10], tail[12], tail[11], tail[13]))
+body, tail = grow("crossings")
+check("the crossings fire on both lines", tail[2] > 0 and tail[3] > 0, "%d and %d" % (tail[2], tail[3]))
+body, _ = grow("layered")
+check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 0.05)
+body, _ = grow("poly")
+check("in a chord the heard pair is not the picture",
+      max(abs(a - b) for a, b in zip(col(body, 0), col(body, 2))) > 0.05)
+check("the second generator is drawn while there is no layer B", all(max(abs(x) for x in col(grow("gen2-%d" % m)[0], 4)) > 0.1
+                                                                     for m in (1, 2, 3)))
+_, tail = grow("solid-Cube")
+check("a solid turns, and a kick is still spinning it", abs(tail[16]) + abs(tail[17]) > 0.01 and tail[4] != 0)
+_, tail = grow("swing-pitched")
+check("pitched, the pendulums sound at a quantised pitch", abs(12 * math.log2(tail[1] / 440) - round(12 * math.log2(tail[1] / 440))) < 1e-9
+      and tail[1] > 200, "%.4f Hz" % tail[1])
+# Nulls: the page told something different, and the port must disagree.
+def gjs_one(text):
+    path = os.path.join(BUILD, "one_gen.txt")
+    with open(path, "w") as f: f.write(text + "\n")
+    return row(subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), path], check=True,
+                              capture_output=True, text=True).stdout)
+def gnull(name, old, new, what):
+    i = next(k for k, (n, _) in enumerate(runs) if n == name)
+    assert old in runs[i][1], old
+    check("and against " + what, worst(gjs_one(runs[i][1].replace(old, new)), row(gcpp[i])) > 1e-6)
+gnull("poly", "/0.7/y", "/0.69/y", "a chord with one velocity a hundredth less")
+gnull("input-3", "input 97 0.6", "input 98 0.6", "a clock a hertz faster")
+gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never had four times to give up")
+gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
+check("and the comparison fails against the page's runs a line out of step",
+      min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
