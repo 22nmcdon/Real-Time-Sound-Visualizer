@@ -95,7 +95,7 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
       for (const auto& b : splitOn(arg(1), ',')) data.push_back(static_cast<std::uint8_t>(std::strtol(b.c_str(), nullptr, 0)));
       k.bytes(data.data(), data.size());
     } else if (cmd == "mode") k.setMode(arg(1) == "mono" ? scope::NoteMode::Mono : arg(1) == "poly" ? scope::NoteMode::Poly : scope::NoteMode::Dyad);
-    else if (cmd == "draw") k.setDraw(static_cast<int>(num(arg(1))), static_cast<int>(num(arg(2))), scope::drawWhichNamed(arg(3)));
+    else if (cmd == "draw") k.setDraw(static_cast<int>(num(arg(1))), num(arg(2)), scope::drawWhichNamed(arg(3)));
     else if (cmd == "just") k.setPolyJust(arg(1) == "1");
     else if (cmd == "layers") k.setLayers(arg(1) == "split" ? scope::LayerMode::Split : arg(1) == "layer" ? scope::LayerMode::Layer : scope::LayerMode::Off);
     else if (cmd == "learn") k.learnSplit();

@@ -773,6 +773,10 @@ kruns = [
                         "draw 0 99 lowest", "draw 0 1 recent", "draw 0 -3 highest", "frame 16")),
     ("poly-many", krun("mode poly", "frame 16", *["on %d %d" % (40 + 3 * k, 20 + 9 * k) for k in range(11)], "frame 16",
                        "off 43", "off 70", "frame 16", "draw 0 8 recent", "on 41 99")),
+    # A count the page keeps as given, and slices by truncation: 2.6 draws two.
+    ("poly-fractional", krun("mode poly", "frame 16", "on 48 100", "on 52 90", "on 55 80", "on 59 70", "on 62 60",
+                             "draw 0 2.6 lowest", "draw 0 3.99 highest", "draw 0 2.5 recent", "draw 0 3.5 outer",
+                             "draw 0 8.9 lowest", "frame 16")),
     ("poly-just", krun("mode poly", "frame 16", "just 1", "on 60 100", "on 64 100", "on 67 100", "on 81 100", "on 47 100",
                        "just 0", "frame 16", "just 1", "off 47", "off 60")),
     ("poly-one", krun("mode poly", "frame 16", "on 60 100", "off 60", "on 61 40", "frame 16", "mode dyad", "on 66 70",
@@ -833,7 +837,8 @@ def kfuzz(n):
         elif r < 0.58: out.append("pedal %r" % krng.choice([0, 1, 0.5, krng.random()]))
         elif r < 0.63: out.append("mode " + krng.choice(["dyad", "mono", "poly", "poly"]))
         elif r < 0.67: out.append("layers " + krng.choice(["off", "split", "layer"]))
-        elif r < 0.70: out.append("draw %d %d %s" % (krng.randint(0, 1), krng.randint(1, 9), krng.choice(["outer", "lowest", "highest", "recent"])))
+        elif r < 0.70: out.append("draw %d %s %s" % (krng.randint(0, 1), krng.choice([str(krng.randint(1, 9)), "%.3f" % krng.uniform(1, 9)]),
+                                                     krng.choice(["outer", "lowest", "highest", "recent"])))
         elif r < 0.72: out.append("pair " + krng.choice(["each", "against"]))
         elif r < 0.74: out.append("just %d" % krng.randint(0, 1))
         elif r < 0.76: out.append("hold %d" % krng.randint(0, 1))
@@ -1198,6 +1203,162 @@ snull("an old code's level one more", "decode " + code_of('{"v":1,"trig":1,"c1s"
 snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
+
+print("\n--- restore ---")
+# The page's own `restore`, in a browser (restore_page.py), against
+# scope::restoreSetup: every preset the page ships and random setups, each
+# loaded in turn as the page loads them, and what each leaves in the
+# instrument compared field by field - both layers' tones, the keyboard, the
+# LFOs, the routings, the key, the crossings, the macros, the morph, the plane
+# and the echo. A number to 1e-12: a cutoff is `Math.pow` against `std::pow`.
+rexe = build("restore_cpp")
+RTOOL = os.path.join(HERE, "tools", "restore_page.py")
+# This half needs a browser: the page's `restore` writes into its controls.
+# Without Playwright it says so and fails, rather than passing by not running.
+try:
+    import playwright  # noqa: F401
+except ImportError:
+    check("a browser to run the page's restore in (Playwright and Chromium)", False, "not installed")
+    print("\nFAILED: " + ", ".join(fails)); sys.exit(1)
+def rpage(*args): return subprocess.run([sys.executable, RTOOL] + list(args), check=True, capture_output=True, text=True).stdout
+rsources = os.path.join(BUILD, "page_sources.json")
+with open(rsources, "w") as f: f.write(rpage("--sources"))
+def rdiff(a, b, path=""):
+    if isinstance(a, dict) and isinstance(b, dict):
+        out = []
+        for k in sorted(set(a) | set(b)):
+            if k not in a or k not in b: out.append("%s.%s only in the %s" % (path, k, "page" if k in a else "port")); continue
+            out += rdiff(a[k], b[k], path + "." + k)
+        return out
+    if isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b): return ["%s: %d long against %d" % (path, len(a), len(b))]
+        return [d for i, (x, y) in enumerate(zip(a, b)) for d in rdiff(x, y, "%s[%d]" % (path, i))]
+    if isinstance(a, (bool, str)) or a is None or isinstance(b, (bool, str)) or b is None:
+        return [] if a == b and type(a) == type(b) else ["%s: %r against %r" % (path, a, b)]
+    return [] if abs(a - b) <= TOL * max(1.0, abs(a)) else ["%s: %r against %r" % (path, a, b)]
+def rboth(setups, name):
+    path = os.path.join(BUILD, name)
+    with open(path, "w", encoding="utf-8") as f: f.write("\n".join(setups) + "\n")
+    page = rpage(path).strip().split("\n")
+    port = subprocess.run([rexe, path, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
+    return page, port
+def rbad(page, port):
+    if len(page) != len(port): return ["%d against %d" % (len(page), len(port))]
+    out = []
+    for i, (x, y) in enumerate(zip(page, port)):
+        d = rdiff(_json.loads(x), _json.loads(y))
+        if d: out.append("setup %d: %s" % (i, "; ".join(d[:3])))
+    return out
+
+# The panel's table, held to the page's DOM control for control: a slider's
+# range, step and starting value (a blank attribute is the browser's default),
+# and a menu's options and the one it starts on.
+pctl = _json.loads(rpage("--controls"))
+cctl = _json.loads(subprocess.run([rexe, "--controls"], check=True, capture_output=True, text=True).stdout)
+def dom(v, d): return float(v) if v != "" else d
+ctl_bad = [k for k in set(pctl["ranges"]) | set(cctl["ranges"]) if k not in pctl["ranges"] or k not in cctl["ranges"]
+           or [dom(pctl["ranges"][k][f], d) for f, d in (("min", 0), ("max", 100), ("step", 1), ("value", float("nan")))]
+              != [cctl["ranges"][k][f] for f in ("min", "max", "step", "value")]]
+ctl_bad += [k for k in set(pctl["selects"]) | set(cctl["selects"]) if pctl["selects"].get(k) != cctl["selects"].get(k)]
+check("the panel's %d sliders and %d menus are the page's, range, step, options and all"
+      % (len(pctl["ranges"]), len(pctl["selects"])), not ctl_bad and len(pctl["ranges"]) > 80, ", ".join(ctl_bad[:5]))
+plib = rpage("--library").strip()
+clib = subprocess.run([rexe, "--library"], check=True, capture_output=True, text=True).stdout.strip()
+check("the preset library is the page's, preset for preset, character for character", plib == clib and len(plib) > 50000,
+      "%d against %d characters" % (len(plib), len(clib)))
+presets = rpage("--presets").strip().split("\n")
+ppage, pport = rboth(presets, "restore_presets.txt")
+pbad = rbad(ppage, pport)
+check("all %d of the page's presets load to the same instrument" % len(presets), len(presets) > 250 and not pbad,
+      pbad[0] if pbad else "")
+
+rrng = random.Random(98)
+SLIDERS = ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "swingDrive", "inputDepth", "detune",
+           "atk", "dec", "sus", "rel", "glide", "spinX", "spinY", "spinZ", "spinRate", "depth", "morph", "width", "table",
+           "ring", "gen2Rate", "oscFm", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut",
+           "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "bAmp", "bAtk", "bDec", "bSus", "bRel",
+           "bMorph", "bWidth", "bTable", "bFm", "bRing", "bSync", "bSub", "bSpread", "bDrive", "bFold", "bVcfCut", "bVcfRes",
+           "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel", "mac1", "mac2", "mac3", "mac4", "morphPos",
+           "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel", "scoreVoices", "scoreOctaves",
+           "arpOctaves", "threshLevel", "pluckNote", "planeRadius", "planeTwist", "planeScaleX", "planeScaleY", "planeShear",
+           "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
+           "qGlide", "bpm", "l0r", "l1r", "l0a", "l1a", "photoU", "photoV", "midiDrawCount", "midiDrawCountB", "splitAt"]
+def rnumber():
+    return rrng.choice([rrng.randint(-200, 4500), rrng.uniform(-50, 300), rrng.randint(0, 200) + 0.5, -0.0, 0, 1e21, -3e-7,
+                        "12", " 12", "1e2", "+5", ".5", "5.", "abc", "", None, True, False, [3], [], "Infinity", "0x10"])
+MENUS = {
+    "shape": ["harmonic", "sine", "square", "pulse", "triangle", "ramp", "drawbars", "morph", "noise", "pink", "brown",
+              "stepped", "bogus", 5],
+    "figure": ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Spiral", "Butterfly", "Bogus"],
+    "model": ["Cube", "Tetrahedron", "Torus", "Knot", "Sphere"],
+    "interval": [0, 3, 7, 12, "7", 7.0, 13, -1, 2.5, None],
+    "oscRatio": [1, 0.5, 1.5, 2, 7, "1.5", 1.4, None], "oscSubOct": [1, 2, 3, "2"], "oscSubShape": ["square", "sine", "saw"],
+    "oscUnison": [1, 2, 3, 5, 7, 4, "5"], "shpBits": [0, 8, 4, 1, 5], "shpRate": [0, 11025, 500, 600], "vcfType": [0, 1, 4, 5, "2"],
+    "shpOS": [2, 4, "4", 3], "inputMode": [0, 1, 2, 3, 4, "1", None], "inputFrom": ["live", "gen2", "bogus"],
+    "gen2Figure": ["Circle", "Rose", "Text", "Drawn", "Bogus", 5],
+    "midiMode": ["dyad", "mono", "poly", "bogus"], "midiDrawWhich": ["outer", "lowest", "highest", "recent", "x"],
+    "midiDrawWhichB": ["outer", "lowest", "recent", None], "layers": ["off", "split", "layer", "both"],
+    "layerPair": ["each", "against", "x"], "midiDrive": ["wave,harmonograph,figure", "wave", "", "figure,wireframe", "x", 5, "waveform,figures"],
+    "midiPlay": ["", "harmonograph", "figure,wireframe", "wave", "harmonographs"], "cc": ["", "16:Lower drawbars;42:Fx", " 7 : Vol ;x:y;99:a:b", "64:Sus\nx"],
+    "bars": ["887000000", "008740000", "12", 887000000, "8 8 7 0 0 0 0 0 9", None, "8870000001"], "bBars": ["800000008", "x", None],
+    "bShape": ["sine", "square", 5, None], "bRatio": [2, "3", 9], "bSubShape": ["sine", 3], "bUnison": [3, "x"],
+    "l0y": ["", "1/4", "1/8t", "4", "bogus"], "l1y": ["", "2", "1/16"], "l0d": ["none", "phase", "freq", "amp", "bogus"],
+    "l1d": ["none", "tumble", "depth", "ratio"], "keyScale": ["chromatic", "major", "blues", "whole", "bogus", ["major"]],
+    "keyRoot": [-3, 14, 2.5, "2", 7, -0.0, 11], "crossX": [-150, -50, 50, 150, "x"], "crossY": [-120, -30, 30, 120],
+    "scoreStep": ["1/16", "1/8", "1/4", "1/2"], "scoreLow": [36, 48, 60, 50, "48"], "arpMode": ["off", "up", "random", "x"],
+    "arpRate": ["1/4", "1/16t", "1/2"], "threshWatch": ["env.live", "", "midi.key", 5], "delaySync": ["", "1/4", "1/8d", "x"],
+    "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3], "planeKaleido": [0, 2, 8, 7],
+    "planeSnap": [0, 6, 7], "macroNames": ["", "Wide|Bright||Fold", "a" * 20 + "|  b  |c|d|e", "|", 5],
+    "morphA": ["", "=freq:330,amp:40", "=bogus:1,freq:x,amp:20:9", "=", "freq:1", 5, "=morphPos:50,freq:330",
+               "=macro1:20,fileSeek:5,align:3,keysVelocity:9,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
+    "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5],
+}
+BOOLS = ["midiPolyJust", "midiHold", "midiTruth", "midiFollow", "photoOn", "quant", "crossOn", "scoreOn", "delayPingPong", "just"]
+def rsetup():
+    st = {}
+    for _ in range(rrng.randint(1, 25)):
+        r = rrng.random()
+        if r < 0.5: st[rrng.choice(SLIDERS)] = rnumber()
+        elif r < 0.85:
+            k = rrng.choice(list(MENUS)); st[k] = rrng.choice(MENUS[k])
+        elif r < 0.95:
+            k = rrng.choice(BOOLS)
+            st[k] = rrng.choice([True, False, 1, 0, "yes", "", None]) if k == "just" else rrng.choice([True, False, 1, "true", None])
+        else: st["gen"] = rrng.choice(["wave", "harmonograph", "figure", "wireframe"])
+    if rrng.random() < 0.3: st.pop("mod", None)
+    return _json.dumps(st)
+# The first two are the slider's own rules, made to be read: a half goes up,
+# and a value that is not a number takes the slider's middle (detail runs from
+# two to twelve, so seven).
+# And two more made to be read: B's morph end is written against A's, which
+# shows only when they differ on different sliders; and a routing list given
+# as an array is read as its text, as String() reads it.
+rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)]
+rpg, rpt = rboth(rsetups, "restore_random.txt")
+rb = rbad(rpg, rpt)
+check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
+allr = [_json.loads(l) for l in ppage + rpg]
+check("the setups reach every kind, both layers, the old LFO enum, the morph, the controllers and the tempo",
+      {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
+      and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
+      and any("lfo1>gen.phase" in r["mod"] for r in allr) and any(r["morph"]["a"] for r in allr)
+      and any(r["midi"]["cc"] for r in allr) and any(r["lfos"][0]["rate"] != r["lfos"][0]["free"] for r in allr)
+      and any(r["a"]["qMask"] not in (0, 4095) for r in allr) and any(r["echo"]["sync"] for r in allr))
+r0, r1 = _json.loads(rpg[0]), _json.loads(rpg[1])
+check("a slider snaps what it is given: a half goes up, and what is not a number takes its middle",
+      r0["a"]["freq"] == 2015 and r0["a"]["detail"] == 7 and r1["a"]["freq"] == 2015 and r1["a"]["detail"] == 7,
+      "%r %r, %r %r" % (r0["a"]["freq"], r0["a"]["detail"], r1["a"]["freq"], r1["a"]["detail"]))
+# Nulls: the page told something different, and the port must disagree.
+def rnull(what, index, change):
+    setups = list(presets[:index + 1])
+    setups[index] = _json.dumps(change(_json.loads(setups[index])))
+    page, _ = rboth(setups, "restore_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(pport[index])) != [])
+rnull("a preset a hertz higher", 3, lambda st: st | {"freq": (st.get("freq", 220)) + 1})
+rnull("a preset with layer B a step louder", 5, lambda st: st | {"bAmp": 21})
+rnull("a preset on the next scale", 7, lambda st: st | {"keyScale": "dorian", "quant": True})
+check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
 
 print()
 if fails:

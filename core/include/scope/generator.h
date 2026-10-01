@@ -65,6 +65,7 @@ enum class Mode { Wave, Harmonograph, Figure, Wireframe };
 // its chord. Layer B is one of these and nothing else.
 struct LayerSettings : LayerTone {
   std::string shapeName = "harmonic";  // as the page names it, for the tables and the costs
+  std::string subShapeName = "square";  // as given: a menu with nothing chosen gives ""
   std::array<double, 9> bars { 0, 0, 8, 7, 4, 0, 0, 0, 0 };
   std::optional<std::vector<NoteWant>> voices;  // none is no chord
   LayerSettings() {
@@ -77,6 +78,10 @@ struct LayerSettings : LayerTone {
 // Layer A's tone, which is also the page's: everything but the voice.
 struct Tone : LayerSettings, PlaneTone {
   Mode mode = Mode::Wave;
+  // The words as the page's tone holds them, whatever they are: a setup can
+  // give a menu a value it has not got, and the page keeps the "" that results.
+  std::string modeName = "wave", figureName = "Circle", gen2FigureName = "Circle", modelName = "Cube";
+  std::string inputFromName = "live";
   double freq = 220;
   int interval = 0;
   double octaves = 0;
@@ -210,16 +215,17 @@ class Generator {
       t.shapeName = std::string(value);
       return;
     }
-    if (field == "subShape") { t.subSine = value == "sine"; return; }
+    if (field == "subShape") { t.subSine = value == "sine"; t.subShapeName = std::string(value); return; }
     if (layer == 1) return;
     if (field == "mode") {
+      a_.modeName = std::string(value);
       a_.mode = value == "harmonograph" ? Mode::Harmonograph : value == "figure" ? Mode::Figure
               : value == "wireframe" ? Mode::Wireframe : Mode::Wave;
       restartSwing();
-    } else if (field == "figure") a_.figure = figureNamed(value);
-    else if (field == "inputFrom") a_.fromGen2 = value == "gen2";
-    else if (field == "gen2Figure") a_.gen2Figure = figureNamed(value);
-    else if (field == "model") wire_.set(value);
+    } else if (field == "figure") { a_.figure = figureNamed(value); a_.figureName = std::string(value); }
+    else if (field == "inputFrom") { a_.fromGen2 = value == "gen2"; a_.inputFromName = std::string(value); }
+    else if (field == "gen2Figure") { a_.gen2Figure = figureNamed(value); a_.gen2FigureName = std::string(value); }
+    else if (field == "model") { wire_.set(value); a_.modelName = std::string(value); }
   }
 
   // Copied and clamped; the page ignores a registration that is not nine.

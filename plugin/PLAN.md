@@ -220,7 +220,7 @@ that writes down the same calls first. 24 named runs and 40 seeded random
 sequences of 80 commands agree call for call, with the sources, the readout,
 the panel, the stack and the controllers after every command. Each named run
 must show what it is for, and each of those checks was seen to fail against
-a run without its feature. Of 76 mutants, 71 are caught; the five that live
+a run without its feature. Of 78 mutants, 72 are caught; the six that live
 change nothing:
 
 - running status kept after `0xF0`, whose messages do nothing whether the
@@ -231,7 +231,9 @@ change nothing:
 - the draw count's ceiling of eight raised to nine, when at most eight notes
   sound to be drawn;
 - `setPair`'s own call to work the layers out again, which the `applyNotes`
-  after it makes first anyway.
+  after it makes first anyway;
+- a count below two told apart before or after it is made whole, when below
+  two only ever means one note sounding.
 
 The plugin plays the host's MIDI through it, byte for byte as the page's
 port does, and the shell test holds a dyad through the plugin - the second
@@ -329,6 +331,61 @@ a character past ASCII as \u and four digits - which is how `JSON.stringify`
 writes a lone surrogate, so a port that escaped half of a good pair printed
 what the page printed. They write `{u+xxxx}` now.
 
+**Then `restore`, and the presets.** `scope/restore.h` is what the page's
+`restore` does to the instrument: both layers of the generator, the keyboard,
+the LFOs, the routings (or the old two-oscillator enum, for a code from before
+them), the key, the quantiser and the tempo, the crossings, the plane and the
+echo - and the settings it keeps for pieces still to come: the score, the
+arpeggiator, the threshold, the macros, the morph's ends, the photocell.
+`restore` writes each value into one of the page's controls and fires the
+control's handler, so the port is two things. `Controls` is the browser's
+part: a slider takes a value as the browser does - a valid number or its
+middle, clamped to its range, snapped to its step half-way up (all 92 step in
+whole numbers) - and a menu given a value it has not got has nothing chosen and
+reads "". The sliders and menus are a table written out from the page
+(`scope/panel_controls.h`) and held to its DOM control for control.
+`restoreSetup` is the handlers' part, in `restore`'s order, each with its law.
+The library is `scope/presets.h`, every section and preset the page ships,
+held to the page's `PRESETS` character for character, and the plugin now opens
+as the page does, on "Harmonic tone", loaded through the core.
+
+This is the one piece held in a browser, because the page's `restore` needs a
+DOM: `restore_page.py` runs it in Chromium and writes out what it left behind,
+and `restore_cpp` writes the same from the port. All 281 presets, and 500
+random setups - every field in and out of range, of every type, junk - load to
+the same instrument, field for field, each loaded on top of the last as the
+page loads them. The checks that the runs reach every kind, both layers, the
+old enum, the morph, the controllers and the tempo, and that a slider snaps a
+half up and takes its middle for junk, were each seen to fail on data without
+it. The shell test holds a preset loaded in the plugin - "Wah", a ramp through
+a resonant filter an LFO sweeps - to the core told the same preset and notes
+directly, equal to the last bit. Of 88 mutants of the port, 76 are caught.
+Ten of the twelve that live change nothing: a slider's minus nought, which no
+snap makes; a ninth digit past eight, clamped again downstream; layer B's
+fallback for the morph, which names itself; the morph's and the width's own
+clamps and vcfDec's lower bound, which their sliders apply anyway; a draw
+count of nought against the floor of two; an input mode, an interval and a
+macro's bar, which no menu or split can hand over. The other two are what
+`restore` does to motion rather than to settings - the reswing it ends with,
+and the notes it applies a second time - which a comparison of settings cannot
+see, and which are the generator's and the keyboard's own, held by their own
+parity.
+
+The comparison found two things a reading would not. A clamp of a value that
+may not be a number - where the photocell sits - must carry the NaN through as
+`Math.min` does, where `std::fmin` drops it and answers the bound. And a draw
+rule's count is not rounded by the page: a setup can give 2.35 and the page
+keeps it, its `slice` then truncating, so the keyboard's count is a number now,
+read as `slice` reads it; the keyboard's random sequences give fractional
+counts too.
+
+What the port of `restore` leaves to later pieces: the drawn cycles and the
+figures made of strokes, whose fields are kept and not yet applied; the view's
+half of a setup, which the page applies; a MIDI clock overriding the tempo; and
+three fields the page passes on raw - a mode it has not got, a `just` that is
+not a boolean, an LFO shape it does not know - which the core takes by their
+name or their truth while the page also keeps the raw value for its panel.
+
 What the port leaves to later pieces: the arpeggiator (2d), where the page
 asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
 are `Panel` until the setup is the core's (2c); and a chord handed to the
@@ -418,6 +475,11 @@ redone natively or left out.
   rounded to float as the page does. A port that kept the double would
   differ in the last place of a float, and on a crossing line that is a
   note on one side and none on the other.
+- **A runner edited while a pass compiles it is a pass that counts nothing.**
+  The restore pass compiled its runner from the tree, and an include added to
+  the runner mid-pass left thirteen mutants failing to build against the
+  pass's copied headers. The pass copies its runner as well as its headers
+  now.
 - **A mutation pass in the working tree is a build of the mutant.** The
   keyboard's first pass rewrote `keyboard.h` in place while the plugin was
   being built beside it, and the plugin's shell test failed - the note-off
@@ -443,7 +505,8 @@ python3 web/tests/run.py host                # the page's side, against a fake b
 To see it: run the standalone (`plugin/build/ScopeInstrument_artefacts/
 Release/Standalone/Scope`). Two switches for the spike, read once at start:
 `SCOPE_HOLD_NOTE=57` holds A3 through the keyboard so there is something to
-draw without one (`57,64` holds a fifth), and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
+draw without one (`57,64` holds a fifth), `SCOPE_PRESET=Wah` opens on a preset
+by name, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
 an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
 to run on.
 

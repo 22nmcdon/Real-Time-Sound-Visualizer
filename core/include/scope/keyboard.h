@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "scope/generator.h"
+#include "scope/json.h"
 
 namespace scope {
 
@@ -142,7 +143,9 @@ inline DrawWhich drawWhichNamed(std::string_view w) {
        : w == "recent" ? DrawWhich::Recent : DrawWhich::Outer;
 }
 
-struct DrawRule { int count = 2; DrawWhich which = DrawWhich::Outer; };
+// The count is a number, not an integer: a setup can give 2.35, the page
+// keeps it, and its `slice` reads it as slice reads anything, by truncation.
+struct DrawRule { double count = 2; DrawWhich which = DrawWhich::Outer; };
 
 class Keyboard {
  public:
@@ -286,9 +289,9 @@ class Keyboard {
   // --- the panel's handlers -------------------------------------------------
 
   void setMode(NoteMode m) { mode_ = m; applyNotes(); }
-  void setDraw(int layer, int count, DrawWhich which) {
+  void setDraw(int layer, double count, DrawWhich which) {
     DrawRule& d = draws_[layer == 1 ? 1 : 0];
-    d.count = std::max(2, std::min(kPolyVoices, count == 0 ? 2 : count));
+    d.count = std::fmax(2, std::fmin(kPolyVoices, count == 0 || std::isnan(count) ? 2 : count));
     d.which = which;
     applyNotes();
   }
@@ -318,6 +321,70 @@ class Keyboard {
   }
   void setPresent(bool on) { present_ = on; }
   Panel& panel() { return panel_; }
+
+  // --- what a setup carries -------------------------------------------------
+
+  // The keyboard's part of a setup, written as `restore` writes the page's
+  // `midi` fields: all at once, the split's learning cancelled, and nothing
+  // applied until `apply`.
+  struct Settings {
+    NoteMode mode = NoteMode::Dyad;
+    std::array<DrawRule, 2> draws {};
+    LayerMode layers = LayerMode::Off;
+    int point = 60;
+    bool against = false, polyJust = false, hold = false, truth = true, follow = false;
+    std::array<bool, 4> drive { true, true, true, false };
+    std::array<bool, 4> play { false, false, false, false };
+  };
+  Settings settings() const {
+    return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_, drive_, play_ };
+  }
+  void setSettings(const Settings& s) {
+    mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
+    layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
+    drive_ = s.drive; play_ = s.play;
+  }
+  // syncMidi's part that reaches the generator, then midiApplyNotes: what
+  // `restore` ends the keyboard with, so what is under the hands outranks
+  // what the setup asked for.
+  void apply() {
+    syncPlay();
+    applyNotes();
+  }
+  // syncPlay alone, as the page's panel calls it when the kind changes.
+  void syncPlayed() { syncPlay(); }
+
+  // encodeCC: the learned controllers' names, "16:Drawbar 1;...".
+  std::string encodeCC() const {
+    std::string out;
+    for (const auto& c : cc_) {
+      std::string name = c.name;
+      for (auto& ch : name) if (ch == ';' || ch == ':') ch = ' ';
+      out += (out.empty() ? "" : ";") + std::to_string(c.number) + ":" + name;
+    }
+    return out;
+  }
+  // decodeCC: merged into what is learned, never swapped for it.
+  void decodeCC(const std::u16string& text) {
+    std::size_t at = 0;
+    while (at <= text.size()) {
+      const std::size_t end = std::min(text.find(u';', at), text.size());
+      const std::u16string part = jsTrim(text.substr(at, end - at));
+      std::size_t colon = 0;
+      while (colon < part.size() && part[colon] >= u'0' && part[colon] <= u'9') colon++;
+      // The page's /^(\d+):(.*)$/, whose dot stops at a line terminator.
+      bool oneLine = true;
+      for (const char16_t c : part) if (c == u'\n' || c == u'\r' || c == 0x2028 || c == 0x2029) oneLine = false;
+      if (oneLine && colon > 0 && colon < part.size() && part[colon] == u':') {
+        double number = 0;
+        for (std::size_t i = 0; i < colon; i++) number = number * 10 + (part[i] - u'0');
+        // A number past what an int holds names no controller anyone has.
+        if (number < 2147483648.0) learn(static_cast<int>(number), utf16To8(jsTrim(part.substr(colon + 1))));
+      }
+      if (end >= text.size()) break;
+      at = end + 1;
+    }
+  }
 
   // midiUndrive: the controls handed back, read from the panel.
   void undrive() {
@@ -435,17 +502,20 @@ class Keyboard {
       for (std::size_t j = i; j > 0 && byPitch[j - 1].note > byPitch[j].note; j--) std::swap(byPitch[j - 1], byPitch[j]);
     }
     const DrawRule& draw = draws_[static_cast<std::size_t>(which)];
-    const std::size_t n = std::min(static_cast<std::size_t>(std::max(2, draw.count)), count);
+    // n as the page has it, then as slice takes it: whole, by truncation.
+    const double nRaw = std::fmin(std::fmax(2.0, draw.count), static_cast<double>(count));
+    const std::size_t n = static_cast<std::size_t>(std::trunc(nRaw));
+    const std::size_t outerTail = static_cast<std::size_t>(std::trunc(nRaw - 1));
 
     std::array<int, kPolyVoices> drawn {};
     std::size_t drawnCount = 0;
     if (draw.which == DrawWhich::Lowest) for (std::size_t i = 0; i < n; i++) drawn[drawnCount++] = byPitch[i].note;
     else if (draw.which == DrawWhich::Highest) for (std::size_t i = count - n; i < count; i++) drawn[drawnCount++] = byPitch[i].note;
     else if (draw.which == DrawWhich::Recent) for (std::size_t i = count - n; i < count; i++) drawn[drawnCount++] = sounding[i].note;
-    else if (n < 2) drawn[drawnCount++] = byPitch[0].note;
+    else if (nRaw < 2) drawn[drawnCount++] = byPitch[0].note;
     else {
       drawn[drawnCount++] = byPitch[0].note;
-      for (std::size_t i = count - (n - 1); i < count; i++) drawn[drawnCount++] = byPitch[i].note;
+      for (std::size_t i = count - outerTail; i < count; i++) drawn[drawnCount++] = byPitch[i].note;
     }
     const auto isDrawn = [&](int note) {
       for (std::size_t i = 0; i < drawnCount; i++) if (drawn[i] == note) return true;
@@ -596,6 +666,7 @@ class Keyboard {
   std::array<DrawRule, 2> draws_ {};
   Layers layers_;
   bool polyJust_ = false, hold_ = false, present_ = true;
+  bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
   double pedal_ = 0, pedalTarget_ = 0;
   bool sustain_ = false;
   // Per generator kind: wave, harmonograph, figure, wireframe.

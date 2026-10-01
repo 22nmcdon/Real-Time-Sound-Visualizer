@@ -4,6 +4,7 @@
 // format and exits non-zero on a failure, like the web suite.
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -104,9 +105,11 @@ int main() {
      by name, at the same samples, with a release where the plugin got a
      velocity of nought - so the byte path is what is being held. */
   struct Played { std::vector<float> l, r; };
-  const auto playDyad = [&](int second, bool routed = false) {
+  const auto playDyad = [&](int second, bool routed = false, const char* preset = nullptr) {
     ScopeProcessor p;
+    if (preset) setenv("SCOPE_PRESET", preset, 1);
     p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
     if (routed) { p.matrix().add("lfo1", "gen.freq", 0.5); p.matrix().add("midi.key", "gen.amp", 0.6); }
     Played got;
     juce::AudioBuffer<float> buf(2, block);
@@ -125,7 +128,7 @@ int main() {
     }
     return got;
   };
-  const auto dyadReference = [&](int second, bool routed = false) {
+  const auto dyadReference = [&](int second, bool routed = false, const char* preset = nullptr) {
     std::vector<scope::Lfo> lfos(2);
     lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
     scope::Generator core(rate, scope::slot::Used, lfos);
@@ -133,8 +136,10 @@ int main() {
     scope::Keyboard keys(notes);
     scope::Matrix matrix;
     scope::CoreSources sources(matrix, core, lfos, keys);
-    if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
+    scope::Brain brain;
     keys.setPresent(true);
+    if (preset) scope::restoreSetup(scope::findPreset(preset)->setup, brain, core, keys, matrix, lfos);
+    if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
     keys.frame(0);
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
@@ -184,6 +189,20 @@ int main() {
   }
   check("routed, the plugin is the core's matrix compiling routes for its generator a block at a time",
         routedOff == 0 && unrouted > 0.05, "off by " + num(routedOff) + "; the same notes unrouted differ by " + num(unrouted));
+
+  /* A preset by name, loaded in the plugin through the core's restore: "Wah",
+     a ramp through a resonant filter an LFO sweeps. Held to the core told the
+     same preset and the same notes directly; the same notes on the preset the
+     plugin opens on are the null. */
+  const Played wah = playDyad(1300, false, "Wah");
+  const auto wahWant = dyadReference(1300, false, "Wah");
+  double wahOff = 0, wahVsBoot = 0;
+  for (std::size_t i = 0; i < wah.l.size(); ++i) {
+    wahOff = std::fmax(wahOff, std::fabs(wah.l[i] - wahWant[0][i]) + std::fabs(wah.r[i] - wahWant[1][i]));
+    wahVsBoot = std::fmax(wahVsBoot, std::fabs(wah.l[i] - dyadWant[0][i]));
+  }
+  check("a preset loaded in the plugin is the core restoring it: \"Wah\", sample for sample",
+        wahOff == 0 && wahVsBoot > 0.05, "off by " + num(wahOff) + "; the preset it opens on differs by " + num(wahVsBoot));
 
   /* And it is a fifth: the picture's right channel crosses upwards three times
      for the left's two while both keys are held. The one-key run is the null,

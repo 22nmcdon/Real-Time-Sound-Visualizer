@@ -25,10 +25,18 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   sources_ = std::make_unique<scope::CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
   nowMs_ = 0;
   lastBlockMs_ = 0;
+  brain_ = std::make_unique<scope::Brain>();
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
      keyboard is there. Derived by the keyboard, not set here. */
   keyboard_->setPresent(true);
+  /* And the sound the page opens on: its boot preset, loaded as the page loads
+     it. SCOPE_PRESET names another, for looking at one in the standalone;
+     read once, here, and never on the audio thread. */
+  const char* wanted = std::getenv("SCOPE_PRESET");
+  const scope::Preset* preset = wanted ? scope::findPreset(wanted) : nullptr;
+  if (!preset) preset = scope::findPreset("Harmonic tone");
+  if (preset) scope::restoreSetup(preset->setup, *brain_, *core_, *keyboard_, *matrix_, lfos_);
   keyboard_->frame(0);
   const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f);

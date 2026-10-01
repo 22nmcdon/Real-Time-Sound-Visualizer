@@ -11,6 +11,8 @@
 #include "scope/keyboard.h"
 #include "scope/lfo.h"
 #include "scope/matrix.h"
+#include "scope/presets.h"
+#include "scope/restore.h"
 #include "scope/sources.h"
 
 // The processor plays the core's generator (scope::Generator, the page's
@@ -21,9 +23,9 @@
 // mono and chords on two layers. The routings reach it through the core's
 // matrix (scope::Matrix), compiled and faded at the top of every block, from
 // the sources ported so far. Until the rest of the brain moves into the core
-// (PLAN.md, stage 2) the keyboard plays a dyad, as the page's does when it
-// opens, there are no routings, as the page has none when it opens, and every
-// other setting is the page's default.
+// (PLAN.md, stage 2) it starts as the page starts - on the "Harmonic tone"
+// preset, loaded through the core's `restoreSetup` - and nothing yet moves it
+// from there but the host's notes.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -86,6 +88,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::unique_ptr<scope::Keyboard> keyboard_;
   std::unique_ptr<scope::Matrix> matrix_;
   std::unique_ptr<scope::CoreSources> sources_;
+  std::unique_ptr<scope::Brain> brain_;  // what a setup sets beyond the generator
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };
