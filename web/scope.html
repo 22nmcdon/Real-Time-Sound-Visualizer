@@ -8212,6 +8212,9 @@ function svgStrokes(d) {
     if (c === "Z") {
       if (stroke) to(sx, sy);
       stroke = null; lastC = lastQ = null;
+      /* Z takes no numbers. One after it used to be read as another Z, which
+         took nothing, so the cursor never moved and the page hung. */
+      if (more()) throw new Error("unexpected character at " + i);
       continue;
     }
     if (c === "M") {

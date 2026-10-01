@@ -191,6 +191,25 @@ with sync_playwright() as pw:
     check("and what it cannot read is refused with a reason: an unknown command, a flag that is not one, too many points",
           svg["errors"][0].startswith("no such command") and svg["errors"][1].startswith("expected an arc flag")
           and svg["errors"][2].startswith("too detailed") and svg["note"] == 2, str(svg["errors"]))
+    # A number after a Z used to be read as another Z, which takes nothing, so
+    # the reader never moved on and the page hung - from a paste, or from a
+    # setup code someone shared. Run in a worker with a time limit, so a
+    # reader that hangs again fails here instead of hanging the suite.
+    closing = p.evaluate("""async () => {
+      const read = (d) => new Promise((resolve) => {
+        const src = "const PATH_POINTS_MOST = " + PATH_POINTS_MOST + ";\\n" + svgStrokes.toString()
+          + "\\nonmessage = (e) => { try { postMessage(JSON.stringify(svgStrokes(e.data))); } catch (err) { postMessage('refused: ' + err.message); } };";
+        const w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+        const t = setTimeout(() => { w.terminate(); resolve("hung"); }, 2000);
+        w.onmessage = (e) => { clearTimeout(t); w.terminate(); resolve(e.data); };
+        w.postMessage(d);
+      });
+      return [await read("M0 0 L1 1 Z 5"), await read("M0 0 L1 1 Z M2 2 L3 3"), await read("M0 0 L1 1 z m 1 1 l 1 1")];
+    }""")
+    print("    %s" % closing)
+    check("a number after a Z is refused, not read as Z again for ever, and a Z with a move after it still reads",
+          closing[0].startswith("refused: unexpected character") and closing[1].startswith("[[")
+          and closing[2].startswith("[["), str(closing))
 
     print("\n--- on the page ---")
     page = p.evaluate("""async () => {

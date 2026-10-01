@@ -2793,6 +2793,17 @@ path's `d` pasted in or read from a file.
   three were untested paths - a relative move's further pairs, radii too
   small to reach their end, and a new generator built from the panel - and
   have checks of their own. 26 of 26.
+- *A number after a Z hung the page, and every check passed.* Z takes no
+  numbers, so the reader left the cursor where it was and read the same
+  number as another Z, for ever: "M0 0 L1 1 Z 5" froze the tab, whether
+  pasted or in a setup code someone shared. Found by reading the reader
+  while porting it to the C++ core, not by any check - none had a number
+  after a Z, because the paths written for the checks were well formed and a
+  path that is not is what a reader is for. A Z with a number after it is
+  refused now, and the check runs the reader in a worker with a time limit,
+  so a reader that hangs again fails the check instead of hanging the
+  suite. The rule for a cursor over text: every way round the loop moves the
+  cursor, or ends it.
 
 **Your drawing (Stage L).** A figure drawn with the pointer on the X–Y
 screen: press *On the screen* under Draw and draw; each lift starts
