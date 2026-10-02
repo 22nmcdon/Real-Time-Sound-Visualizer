@@ -1018,6 +1018,8 @@ int main() {
     p.pageControl("midiDrive", scope::Json::boolean(true));
     p.pageControl("genMode", scope::Json::string(std::string_view("wave")));
     p.pageControl("midiDrive", scope::Json::boolean(false));
+    p.pageClick("tuneJust");
+    p.pageClick("tuneEqual");  // the same set of buttons: the later is kept alone
     juce::AudioBuffer<float> buf(2, block);
     juce::MidiBuffer none;
     p.processBlock(buf, none);
@@ -1029,10 +1031,18 @@ int main() {
     const auto decoded = scope::decodeSetup(p.pageState().code);
     const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
     const std::size_t count = hands && hands->type == scope::Json::Type::Array ? hands->a.size() : 0;
-    check("a control moved twice is kept once, and the drive kept in its place between the kinds: both come back",
-          p.tone().planeKaleido == 3 && q.tone().planeKaleido == 3 && count == 5 && p.keys().drive[3] && !p.keys().drive[0]
-          && q.keys().drive == p.keys().drive && q.tone().modeName == "wave",
+    check("a control moved twice is kept once, a button once for its set, and the drive kept in its place between the kinds: all come back",
+          p.tone().planeKaleido == 3 && q.tone().planeKaleido == 3 && count == 6 && p.keys().drive[3] && !p.keys().drive[0]
+          && q.keys().drive == p.keys().drive && q.tone().modeName == "wave" && !q.tone().just,
           std::to_string(count) + " kept; the solid driven " + (q.keys().drive[3] ? "yes" : "no") + ", the waveform " + (q.keys().drive[0] ? "yes" : "no"));
+    // And a setup loaded starts the list again: what was done to the last one is not done to it.
+    const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup);
+    if (code) p.pageSetup(*code);
+    p.processBlock(buf, none);
+    const auto after = scope::decodeSetup(p.pageState().code);
+    check("a setup loaded starts the list of hands again",
+          after.kind == scope::DecodedSetup::Kind::Read && !after.setup.get("pluginHands") && p.tone().planeKaleido == 0,
+          after.kind == scope::DecodedSetup::Kind::Read && after.setup.get("pluginHands") ? "still listed" : "");
   }
   {
     /* The routings as an edit on the page left them, every digit of the depth
