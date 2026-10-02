@@ -87,6 +87,22 @@ with sync_playwright() as pw:
     check("watching an oscillator it may strike the generator; watching what hears the generator it may not; "
           "and it never reaches a slider", allowed == {"plain": True, "loop": False, "slider": False}, str(allowed))
 
+    # A setup code may name anything for it to watch, itself included, though
+    # the menu offers no event source. Asking whether it was a loop then asked
+    # itself, for ever: the stack overflowed wherever a routing from it was
+    # drawn or compiled.
+    selfish = p.evaluate("""() => {
+      restore(Object.assign({}, DEFAULTS, { threshWatch: 'threshold', mod: 'threshold>gen.pluck@0.800' }));
+      let error = null, allowed = null;
+      try { allowed = routingAllowed(MOD_SOURCES.get('threshold'), MOD_DESTS.get('gen.pluck')); stepRoutes(); }
+      catch (e) { error = String(e); }
+      const out = { watch: thresh.watch, error, allowed };
+      restore(DEFAULTS);
+      return out;
+    }""")
+    check("a setup that has it watching itself loads, and a routing from it neither throws nor fires",
+          selfish == {"watch": "threshold", "error": None, "allowed": True}, str(selfish))
+
     print("\n--- Pluck ---")
     p.evaluate("() => midiConnect()"); p.wait_for_timeout(300)
     plucked = p.evaluate("""async () => {

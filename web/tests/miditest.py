@@ -82,9 +82,23 @@ with sync_playwright() as pw:
           credit: el.credit.textContent,
         })""")
 
+    # The routes the generator is handed, as [slot, depth] pairs: what is
+    # heard, rather than what the routings list says.
+    ROUTES = """() => { stepRoutes(); return genRoutes.map((r) => [r.slot, r.full]); }"""
+    vcf = p.evaluate("() => MOD_DESTS.get('gen.vcf').slot")
+
     print("\n--- the port ---")
+    # A routing from the key's strength made before there is a keyboard is
+    # skipped, there being no source; the port opening has to bring it in.
+    # Asserting the routing was still listed passed while it was never heard.
+    p.evaluate("() => { state.modRoutings = [{ sourceId: 'midi.key', destId: 'gen.vcf', amount: 0.5 }]; touchRoutings(); }")
+    unplugged = p.evaluate(ROUTES)
     p.evaluate("() => midiConnect()")
     p.wait_for_timeout(100)
+    plugged = p.evaluate(ROUTES)
+    check("a routing from the keyboard made before it was plugged in is heard once it is, and not before",
+          unplugged == [] and plugged == [[vcf, 0.5]], "%s, then %s" % (unplugged, plugged))
+    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
     wired = p.evaluate("() => ({ status: midi.status, ports: midi.ports, "
                        "bound: typeof __midi.port.onmidimessage })")
     check("a port is opened and its messages are listened to",
@@ -433,6 +447,24 @@ with sync_playwright() as pw:
     check("forgetting a controller unregisters it and keeps its patch",
           forgotten["gone"] and forgotten["back"] and forgotten["routings"] == 1,
           str(forgotten))
+
+    # A preset's "cc.1>gen.vcf" loaded before the wheel has moved: there is no
+    # source yet, so it is skipped, and the wheel's first move has to bring it
+    # in. It did not - the source was learned and the filter never moved - and
+    # the check above, on a picture destination summed every frame, could not
+    # see it: only the generator's routes are compiled.
+    p.evaluate("() => { midiForget(1); state.modRoutings = [{ sourceId: 'cc.1', destId: 'gen.vcf', amount: 0.7 }]; touchRoutings(); }")
+    unlearned = p.evaluate(ROUTES)
+    send(0xB0, 1, 100)
+    learned_ = p.evaluate(ROUTES)
+    p.evaluate("() => midiForget(1)")
+    forgot = p.evaluate(ROUTES)
+    send(0xB0, 1, 90)
+    again = p.evaluate(ROUTES)
+    check("a routing from a controller that has not moved yet is heard from its first move, and again after forgetting",
+          unlearned == [] and learned_ == [[vcf, 0.7]] and forgot == [] and again == [[vcf, 0.7]],
+          "%s, %s, %s, %s" % (unlearned, learned_, forgot, again))
+    p.evaluate("() => { midiForget(1); state.modRoutings = []; touchRoutings(); }")
 
     print("\n--- the note as ground truth ---")
     truth = p.evaluate("""() => {

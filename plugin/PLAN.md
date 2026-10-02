@@ -198,8 +198,9 @@ In pieces, as the engine went, each held to the page before the next:
 - **2d. Time** (ported): the key and the clock (the host's transport in the
   plugin), the LFOs locked to it, the arpeggiator, the score and the MIDI out
   they share.
-- **2e. The rest of the sources** that are not the picture's or the
-  hearing's: the learned controllers as sources, the note envelope, the level.
+- **2e. The rest of the sources** (ported) that are not the picture's or
+  the hearing's: the learned controllers as sources, the note envelope, the
+  level, the drawings' six, and the threshold.
 - **2f. The hearing sources,** which analyse the sound and so are DSP in the
   core rather than the page.
 - **2g. The host's parameters.**
@@ -656,6 +657,53 @@ ending each 100 ms on, and the boot preset sending nothing; a routing firing
 the pluck at C5 in "Pendulums ring a bell"; and "A sine, sung" under a host
 two beats into its count-in, the playhead waiting until the one and then
 following the bar. Eleven mutants of the plugin's wiring, every one caught.
+
+**2e: the rest of the sources.** The learned controllers (`cc.N`, each
+registered the frame after the keyboard learns it), the note envelope
+(`env.note`), the drawings' six (Swing, Pendulum, Tilt, Turn, Roll, Facing),
+the level (`env.live`, `scope/level.h`) and the threshold (`threshold`, the
+Brain's, a value source made into an event by rising through a level, with
+0.05 of hysteresis and 80 ms between firings). Whether a source is the
+picture's is now asked of it rather than read from a field, because the
+page's answer is a getter for the threshold - and will be for the hearing,
+which is a loop only while it hears the generator.
+
+The port found two bugs in the page, fixed there first (web/README.md): a
+routing from a controller that had not moved yet was skipped and never
+compiled again once it had, so a preset's mod wheel was never heard; and a
+setup code with the threshold watching itself overflowed the stack, a bug the
+core had copied and its random runs found.
+
+Held to the page three ways. The level and the threshold by their own
+harness (`signal_js.mjs` against `signal_cpp`): 9 named runs and 60 random
+ones, 9,200 lines, the follower and the threshold's whole state each command,
+with runs at each edge - the stride's, the cap at full scale, the level itself,
+80 ms exactly, the hysteresis's 0.24999999999999997, a watched source
+forgotten and brought back, and the threshold's part of restore run on both
+sides. The envelope and the drawings by the generator's harness, which now
+reads the page's own registrations of them over its generator against the
+core's sources, with runs that can show each: a solid's three turns apart, a
+key held at the end, an ungated run where the generator says one and the
+source must say nought. Four nulls. Mutation: 10 of 11 of the level (the one
+left chooses attack or release when the two are equal, where the step is
+nought either way), 18 of 18 of the threshold, 7 of 7 of the sources. The
+harness's first mutation pass caught everything, because both comparisons -
+the parity's and the mutation runner's - took minus infinity against itself
+for a difference, their difference being NaN; both now take identical text as
+the same before doing any arithmetic.
+
+In the plugin the level reads the last 2048 frames of the picture's left
+channel at the top of each block - the page reads its screen's fetch, which
+follows the timebase - and the threshold steps before the events fire, in the
+page's frame's order, which the crossings and the score now keep too. The
+shell test hears "Wheel wah"'s wheel from its first move and not a sample
+before; "Envelope sync sweep" as the core plays it, and unlike it without its
+routing; and "Pendulums ring a bell" plucking C5 at the top of the block its
+level reaches 0.40 - the pendulums swing from the start, so that is a few
+blocks in - with the level equal to a scope::Level's own over the picture the
+page would be handed, exactly. Eight mutants of the wiring, all caught; the
+two that read the wrong channel or the oldest of the ring were caught only
+once that last check was added.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

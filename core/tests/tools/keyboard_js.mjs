@@ -98,6 +98,8 @@ function midiRealtime(status) { log.push("realtime " + status); }
 const noop = () => {};
 const syncMidi = noop, midiSayMonitor = noop, syncLayerPanel = noop, buildLaneRows = noop,
       paintScreenKeys = noop, buildSourceChips = noop, buildMidiRows = noop;
+// The routings' compile, which learning a controller asks for; the matrix's, not the keyboard's.
+const touchRoutings = noop;
 const element = () => ({ value: "", textContent: "", checked: false, hidden: false, disabled: false, setAttribute: noop });
 const elements = { interval: Object.assign(element(), { value: "0" }), freq: Object.assign(element(), { value: "220" }),
                    figureRate: Object.assign(element(), { value: "40" }), detail: Object.assign(element(), { value: "5" }),

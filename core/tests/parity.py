@@ -507,6 +507,8 @@ def gen_runs():
         runs.append((name, "run name=%s rate=%r slots=%d seed=%d samples=%d lfo0=%s lfo1=%s\n%s\nend"
                      % (name, rate, slots, seed, samples, lfo0, lfo1, "\n".join("at %d %s" % e for e in events))))
     vib = route(FREQ, 0.05, index=0)
+    # A key held at the end, gated, so the envelope as a source reads where the ADSR has got to rather than nought.
+    add("env-held", [(0, "gated 1"), (256, "gate 1 0.8")])
     # The dyad, every shape, gliding to a new pitch with a vibrato on it.
     for shape in ("harmonic", "sine", "triangle", "square", "ramp", "pulse", "morph", "noise", "pink", "brown", "stepped"):
         add("dyad-" + shape, [(0, "set shape " + shape), (0, "set glideMs 30"), (0, "routes " + vib),
@@ -680,8 +682,10 @@ for family in sorted(gworst):
 # doing nothing would pass. The report at the end of a row is envelope, pitch,
 # the two crossings' counts, the kick, the swing, then the budget (units,
 # asked A and B, unison A and B, asked factor, factor, silenced), the drawing
-# (swing, pendulum, three turns, facing), and the voices on each layer.
-TAIL = 22
+# (swing, pendulum, three turns, facing), the voices on each layer, and then
+# the sources that read the generator, the page's registrations against the
+# core's: the note envelope and the drawings' six.
+TAIL = 29
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -704,6 +708,16 @@ check("the second generator is drawn while there is no layer B", all(max(abs(x) 
                                                                      for m in (1, 2, 3)))
 _, tail = grow("solid-Cube")
 check("a solid turns, and a kick is still spinning it", abs(tail[16]) + abs(tail[17]) > 0.01 and tail[4] != 0)
+# The sources: a solid whose three turns all differ, so a swapped axis is not
+# hidden; the envelope as a source somewhere non-zero; and somewhere ungated,
+# where the generator reports one and the source has to read nought.
+tails = {n: grow(n)[1] for n, _ in runs}
+turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[25:28]}) == 3 and min(abs(x) for x in t[25:28]) > 1e-3]
+swung = [n for n, t in tails.items() if abs(t[23]) > 1e-3 and abs(t[24]) > 1e-3]
+enveloped = [n for n, t in tails.items() if t[22] > 1e-3]
+ungated = [n for n, t in tails.items() if t[0] == 1 and t[22] == 0]
+check("the runs can show the sources: a solid's three turns apart, the pendulums swinging, an envelope, and an ungated one",
+      turned and swung and enveloped and ungated, "%d, %d, %d, %d" % (len(turned), len(swung), len(enveloped), len(ungated)))
 _, tail = grow("swing-pitched")
 check("pitched, the pendulums sound at a quantised pitch", abs(12 * math.log2(tail[1] / 440) - round(12 * math.log2(tail[1] / 440))) < 1e-9
       and tail[1] > 200, "%.4f Hz" % tail[1])
@@ -741,6 +755,7 @@ def kdiff(a, b):
         tx, ty = ktoks(x), ktoks(y)
         if len(tx) != len(ty): return "line %d: %s | %s" % (i, x[:160], y[:160])
         for p, q in zip(tx, ty):
+            if p == q: continue  # minus infinity against itself is no difference, though their difference is NaN
             try:
                 fp, fq = float(p), float(q)
                 ok = (math.isnan(fp) and math.isnan(fq)) or abs(fp - fq) <= TOL * max(1.0, abs(fp))
@@ -1467,6 +1482,143 @@ cnull("an oscillator locked to a quaver instead of a quaver triplet", "locked", 
 cnull("a Continue instead of a Start", "start-on-clock", "rt 250", "rt 251")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
+
+print("\n--- the level and the threshold ---")
+# The page's `env.live` - an envelope follower over the screen's signal lane -
+# and K1's threshold, a value made into an event, lifted by name, against
+# scope::Level and the Brain's threshold, through the same commands. A line a
+# command: the follower and the source's value, then the threshold's count,
+# whether it is armed, when it last fired, its flash, and whether it is a loop.
+lvexe = build("signal_cpp")
+def lvboth(text, name="signal_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "signal_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([lvexe, path], check=True, capture_output=True, text=True).stdout
+def lvrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+lvruns = [
+    # A tone half full scale for a third of a second, then silence for a second: fast up, slow down.
+    ("level-rise", lvrun("sine 0.5 8 2048", *["frame 16"] * 20, "sine 0 1 2048", *["frame 16"] * 60)),
+    # The stride, a 512th of the lane rounded down: 511 and 1023 read every sample, 1024 and 1533 every other, 1536
+    # and 2047 every third, 4096 every eighth. 1533 and 2047 are where a 511th would give one more.
+    ("level-stride", lvrun(*sum((["noise %d 0.8 %d" % (n, n), "frame 33"] for n in (511, 512, 1023, 1024, 1025, 1533, 1536, 2047, 4096)), []))),
+    # A full-scale sine is one; louder is still one, while the follower goes on rising.
+    ("level-full", lvrun("sine 1 4 1024", *["frame 50"] * 10, "sine 1.6 4 1024", *["frame 50"] * 10)),
+    # Rising through the level fires once; falling short of the hysteresis does not arm it; 80 ms must pass.
+    ("thresh-fire", lvrun("watch test.v", "level 0.5", "at 0", "v 0.2", "thresh", "at 10", "v 0.6", "thresh", "at 20", "thresh",
+                         "at 30", "v 0.47", "thresh", "at 40", "v 0.44", "thresh", "at 50", "v 0.6", "thresh", "at 89", "thresh",
+                         "at 90", "thresh", "at 200", "v 0.1", "thresh", "at 300", "v 0.5", "thresh", "at 400", "thresh")),
+    # The gap and the level, each exactly: 80 ms after the last is allowed, the level itself is through it. And
+    # the hysteresis: 0.3 - 0.05 is 0.24999999999999997 in doubles, so 0.25 is not below it and 0.2499 is.
+    ("thresh-exact", lvrun("watch test.v", "level 0.3", "at 1000", "v 0", "thresh", "v 0.3", "thresh", "v 0.2", "thresh",
+                          "at 1079", "v 0.3", "thresh", "at 1080", "thresh", "v 0.25", "thresh", "at 1500", "v 0.3", "thresh",
+                          "v 0.2499", "thresh", "at 2000", "v 0.3", "thresh")),
+    # What it watches: an event source disarms it, the picture's makes it a loop, nothing is nothing, itself is an event.
+    ("thresh-kinds", lvrun("watch test.v", "v 0", "thresh", "watch test.e", "thresh", "v 0.9", "thresh", "watch test.p", "v 0",
+                          "thresh", "v 0.9", "at 100", "thresh", "watch nothing", "thresh", "watch threshold", "thresh",
+                          "watch test.v", "v 0", "thresh", "v 0.9", "at 300", "thresh")),
+    # The source it watches forgotten, as a controller can be, and moved again: it has to fall below again first.
+    ("thresh-forgot", lvrun("watch test.v", "level 0.5", "at 0", "v 0", "thresh", "drop", "at 100", "thresh", "add", "v 0.9",
+                           "at 200", "thresh", "v 0", "at 300", "thresh", "v 0.9", "at 400", "thresh")),
+    # A setup loaded: what it watches and its level from the code, and armed afresh. 120 is held to 95 hundredths, so
+    # 0.96 is through it; 1 to 5, so nought cannot arm it (0.05 - 0.05 is not below nought) and a hair under can.
+    ("thresh-restore", lvrun("watch test.v", "at 0", "v 0", "thresh", "restore test.v 60", "v 0.9", "at 100", "thresh",
+                            "v 0", "at 200", "thresh", "restore test.p 120", "v 0.96", "at 300", "thresh", "v 0", "at 400", "thresh",
+                            "v 0.96", "at 500", "thresh", "restore test.v 1", "v 0", "at 600", "thresh", "v -0.01", "at 650", "thresh",
+                            "v 0.06", "at 700", "thresh")),
+    # Watching the level itself, the default: a tone arriving fires it.
+    ("thresh-level", lvrun("level 0.3", "sine 0 1 1024", "at 0", "frame 16", "thresh", *sum((["at %d" % (16 * k), "sine 0.6 3 1024" if k == 4 else "frame 16",
+                          "frame 16", "thresh"] for k in range(1, 30)), []))),
+]
+def lvfuzz(n):
+    out = []
+    for _ in range(n):
+        t, cmds = 0, ["watch " + lvrng.choice(["test.v", "env.live", "test.p", "test.e"])]
+        for _ in range(lvrng.randint(30, 120)):
+            t += lvrng.choice([0, 1, 16, 33, 79, 80, 81, 200])
+            cmds.append("at %d" % t)
+            r = lvrng.random()
+            if r < 0.3: cmds.append("thresh")
+            elif r < 0.5: cmds.append("v %r" % lvrng.choice([0, 0.1, 0.44, 0.45, 0.46, 0.5, 0.55, 0.9, 1.2, -0.3]))
+            elif r < 0.65: cmds.append("frame %r" % lvrng.choice([0, 1, 16, 16.7, 33, 100, 1000]))
+            elif r < 0.72: cmds.append("sine %r %d %d" % (lvrng.choice([0, 0.1, 0.5, 1, 1.5]), lvrng.randint(1, 12), lvrng.choice([100, 511, 512, 1024, 1025, 2048])))
+            elif r < 0.78: cmds.append("noise %d %r %d" % (lvrng.randint(1, 99), lvrng.choice([0.2, 0.7, 1]), lvrng.choice([300, 512, 777, 2049])))
+            elif r < 0.86: cmds.append("level %r" % lvrng.choice([0.05, 0.3, 0.5, 0.95]))
+            elif r < 0.93: cmds.append("watch " + lvrng.choice(["test.v", "test.v", "env.live", "test.p", "test.e", "threshold", "nothing"]))
+            elif r < 0.96: cmds.append(lvrng.choice(["drop", "add"]))
+            else: cmds.append("restore %s %r" % (lvrng.choice(["test.v", "env.live", "test.p", "nothing"]), lvrng.choice([1, 30, 50, 95, 200])))
+        out.append(lvrun(*cmds))
+    return out
+lvrng = random.Random(47)
+lvfuzzed = lvfuzz(60)
+lvtext = "".join(r for _, r in lvruns) + "".join(lvfuzzed)
+lvjs, lvcpp = lvboth(lvtext, "signal.txt")
+lvd = kdiff(lvjs, lvcpp)
+check("%d runs of the level and the threshold, %d of them random, are the page's line for line" % (len(lvruns) + len(lvfuzzed), len(lvfuzzed)),
+      lvd is None and len(lvjs.split("\n")) > 4000, lvd or "%d lines" % len(lvjs.split("\n")))
+def lvout(name):
+    js, _ = lvboth(dict(lvruns)[name])
+    return js.strip().split("\n")
+def lvfield(line, name):
+    t = line.split(" | ")[-1].split()
+    return t[t.index(name) + 1]
+L = lvout("level-rise")
+env = [float(lvfield(l, "env")) for l in L if l.startswith("frame")]
+# 0.5 / sqrt(2) is the tone's RMS. Attack: 16 ms steps on a 20 ms time constant, so the first step is 1 - e^-0.8 of the way.
+rms = 0.5 / math.sqrt(2)
+up = next(i for i, e in enumerate(env) if e > rms / 2)
+down = next(i for i, e in enumerate(env[20:]) if e < env[19] / 2)
+check("the level rises to a tone's RMS on a 20 ms attack and falls on a 250 ms release, twelve and a half times as slow",
+      abs(env[0] - rms * (1 - math.exp(-0.8))) < 1e-6 and abs(env[19] - rms) < 1e-4 and up == 0 and 9 <= down <= 12,
+      "first step %.5f, after 20 frames %.5f of %.5f, half way down after %d frames" % (env[0], env[19], rms, down))
+L = lvout("level-full")
+check("a full-scale sine reads one, and louder reads one still, while the follower itself goes on up",
+      abs(float(lvfield(L[10], "level")) - 1) < 2e-3 and lvfield(L[-1], "level") == "1.0000000000000000" and float(lvfield(L[-1], "env")) > 1.1,
+      "%s, then %s at %s" % (lvfield(L[10], "level"), lvfield(L[-1], "level"), lvfield(L[-1], "env")))
+L = lvout("thresh-fire")
+counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
+# thresh at 0 (arms), 10 fires, 20 no, 30 (0.47, not re-armed), 40 (0.44, arms), 50 (0.6, 40 ms after the last: no), 89 no, 90 fires,
+# 200 arms, 300 (0.5, the level itself) fires, 400 no.
+check("rising through the level fires once; falling short of the hysteresis does not arm it again; 80 ms must pass; the level itself is through",
+      counts == [0, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3], str(counts))
+L = lvout("thresh-exact")
+counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
+check("80 ms after the last firing is allowed and 79 is not; 0.05 below the level does not arm it, a hair more below does",
+      counts == [0, 1, 1, 1, 2, 2, 2, 2, 3], str(counts))
+L = lvout("thresh-kinds")
+th = [l for l in L if l.startswith("thresh")]
+check("watching an event source disarms it and never fires; watching the picture's makes it a loop; nothing and itself are nothing",
+      [int(lvfield(l, "count")) for l in th] == [0, 0, 0, 0, 1, 1, 1, 1, 2] and lvfield(th[3], "loop") == "1"
+      and all(lvfield(l, "loop") == "0" for l in th[:3] + th[5:]) and lvfield(th[1], "armed") == "0",
+      str([(lvfield(l, "count"), lvfield(l, "armed"), lvfield(l, "loop")) for l in th]))
+L = lvout("thresh-forgot")
+counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
+check("the source it watches forgotten and brought back has to fall below the level again before it fires",
+      counts == [0, 0, 0, 0, 1], str(counts))
+L = lvout("thresh-restore")
+th = [l for l in L if l.startswith("thresh")]
+check("a setup loaded sets what it watches and its level, held within 5 and 95 hundredths, and arms it afresh",
+      [int(lvfield(l, "count")) for l in th] == [0, 0, 0, 0, 0, 1, 1, 1, 2] and lvfield(th[0], "armed") == "1"
+      and lvfield(th[1], "armed") == "0" and lvfield(th[3], "loop") == "1" and lvfield(th[6], "armed") == "0",
+      str([(lvfield(l, "count"), lvfield(l, "armed"), lvfield(l, "loop")) for l in th]))
+L = lvout("thresh-level")
+fired = next((l for l in L if l.startswith("thresh") and lvfield(l, "count") == "1"), None)
+check("watching the level, as it does unless told otherwise, a tone arriving fires it once",
+      fired is not None and lvfield(L[-1], "count") == "1" and 0.3 <= float(lvfield(fired, "level")) < 0.6,
+      fired[:100] if fired else "never fired")
+def lvnull(what, name, old, new):
+    text = dict(lvruns)[name]
+    assert text.count(old) >= 1, old
+    js, _ = lvboth(text.replace(old, new, 1))
+    _, cpp = lvboth(text)
+    check("and against " + what, kdiff(js, cpp) is not None)
+lvnull("the tone a twentieth louder", "level-rise", "sine 0.5 8 2048", "sine 0.525 8 2048")
+lvnull("a lane one sample longer", "level-stride", "noise 1024 0.8 1024", "noise 1024 0.8 1025")
+lvnull("the level a hundredth higher, over the value it is crossed by", "thresh-exact", "level 0.3", "level 0.31")
+lvnull("a firing a millisecond later", "thresh-fire", "at 90", "at 91")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
 print("\n--- the score and MIDI out ---")
 # The page's score, its MIDI out and the crossings' and pluck's notes, on its

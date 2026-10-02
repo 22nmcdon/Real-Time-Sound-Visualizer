@@ -84,6 +84,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The routings, for whoever sets them: the shell test now, the brain's
   // setup later. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return *matrix_; }
+  // The level, the threshold's count and the learned controllers, for the shell test to read.
+  double level() const { return sources_->level().value(); }
+  int thresholdCount() const { return brain_->thresh.count; }
   // The clock and an oscillator's rate, for the shell test to read.
   const scope::Clock& clock() const { return brain_->clock; }
   const scope::ScoreState& score() const { return brain_->score; }
@@ -97,6 +100,10 @@ class ScopeProcessor final : public juce::AudioProcessor {
  private:
   // Render [from, to) of the block into the output and the picture ring.
   void render(float* left, float* right, int from, int to);
+  // The last of the picture's left channel, for the level to read.
+  void levelWindow();
+  static constexpr std::size_t kLevelFrames = 2048;
+  std::vector<float> levelLane_;
 
   std::vector<scope::Lfo> lfos_;
   std::unique_ptr<scope::Generator> core_;

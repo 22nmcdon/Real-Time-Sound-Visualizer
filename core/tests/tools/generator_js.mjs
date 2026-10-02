@@ -47,6 +47,17 @@ const source = bound.map((name) => name === "MODELS" ? "const MODELS = " + JSON.
                                                      : definition(name)).join("\n")
   + "\nconst MODEL_BY_NAME = new Map(MODELS.map((m) => [m.name, m]));"
   + "\nreturn makeGeneratorCore;";
+// The page's sources that read the generator - the note envelope and the
+// drawings' six - registered as the page registers them, over a tone source
+// that is this core, gated as the run gates it.
+const sourcesText = (() => {
+  const env = page.indexOf('\nregisterSource({\n  id: "env.note"');
+  const draw = page.indexOf("\nconst drawingNow = () => {");
+  if (env < 0 || draw < 0) throw new Error("no envelope or drawing sources in scope.html");
+  return page.slice(env + 1, page.indexOf("\n});\n", env) + 5) + page.slice(draw + 1, page.indexOf("\n}));\n", draw) + 5);
+})();
+const readSources = new Function("state", "genLane", "registerSource", sourcesText);
+const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
 const build = (seed) => new Function("Math", source)(Object.assign(Object.create(globalThis.Math),
                                                                      { random: mulberry32(seed) }));
@@ -68,7 +79,7 @@ function run(head, events) {
   const core = build(Number(p.seed))(rate, Number(p.slots), lfos);
   const out = [];
   const bufs = Array.from({ length: 6 }, () => new Float32Array(N));
-  let input = null, inHz = 0, inAmp = 0, inDc = 0, fx = false;
+  let input = null, inHz = 0, inAmp = 0, inDc = 0, fx = false, gated = false;
   for (let at = 0; at < samples; at += N) {
     for (const words of events.get(at) || []) {
       const [cmd, ...a] = words;
@@ -86,7 +97,7 @@ function run(head, events) {
           return { index: index < 0 ? undefined : index, held, heldB, slot, amount, amountB, unipolar: unipolar === 1 };
         }));
       } else if (cmd === "gate") core.gate(a[0] === "1", Number(a[1]));
-      else if (cmd === "gated") core.setGated(a[0] === "1");
+      else if (cmd === "gated") { core.setGated(a[0] === "1"); gated = a[0] === "1"; }
       else if (cmd === "kick") core.kick(Number(a[0]));
       else if (cmd === "strike") core.strike(Number(a[0]), Number(a[1]));
       else if (cmd === "reswing") core.reswing();
@@ -122,6 +133,10 @@ function run(head, events) {
   out.push(core.envelope, core.pitch, core.crossings.x, core.crossings.y, core.spinKick, core.swingLevel,
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
            d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length);
+  const sources = new Map();
+  readSources({ source: { kind: "tone", gated, envelope: core.envelope, drawing: core.drawing } }, () => null,
+              (entry) => sources.set(entry.id, entry));
+  for (const id of SOURCE_IDS) out.push(sources.get(id).value());
   return show(out);
 }
 

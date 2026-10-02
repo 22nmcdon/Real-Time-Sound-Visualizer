@@ -2,8 +2,8 @@
 // it does to the sound - both layers of the generator, the keyboard, the
 // LFOs, the routings, the key, the quantiser and the tempo, the crossings,
 // the plane, the echo, the arpeggiator, the score, the macros and the morph's
-// ends - and for the settings it keeps for pieces still to come (the
-// threshold, the photocell). It is held to the page's own `restore`, run in a
+// ends and the threshold - and for the settings it keeps for pieces still to
+// come (the photocell). It is held to the page's own `restore`, run in a
 // browser, by core/tests/parity.py.
 //
 // The page's `restore` writes each value into a control and fires the
@@ -175,6 +175,9 @@ struct Brain {
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
   std::u16string threshWatch = u"env.live";
   double threshLevel = 0.5, pluckNote = 60;
+  // The threshold's own state: how many times it has fired, when it last did,
+  // and whether its source has fallen far enough below to fire again.
+  struct Thresh { int count = 0; double last = -HUGE_VAL, flash = -HUGE_VAL; bool armed = false; } thresh;
   struct Macro { std::u16string name; double value = 0; };
   std::array<Macro, 4> macros { { { u"Macro 1", 0 }, { u"Macro 2", 0 }, { u"Macro 3", 0 }, { u"Macro 4", 0 } } };
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
@@ -862,6 +865,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const Json* w = s("threshWatch");
     brain.threshWatch = w && w->type == Json::Type::String && !w->s.empty() ? w->s : u"env.live";
     brain.threshLevel = within("threshLevel", 5, 95, 50) / 100;
+    brain.thresh.armed = false;
     brain.pluckNote = jsMathRound(within("pluckNote", 36, 84, 60));
   }
 
@@ -1126,6 +1130,44 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
   }
 }
 
+// K1's threshold (thresholdStep), once a frame before the events fire: the
+// source it watches rising through the level is a hit, and it can fire again
+// only once that source has fallen 0.05 below and 80 ms have passed. An event
+// source, or none, is nothing to watch.
+constexpr double kThreshHyst = 0.05, kThreshGap = 80;
+inline void thresholdStep(Brain& b, const Matrix& matrix, double now) {
+  const ModSource* watched = matrix.source(utf16To8(b.threshWatch));
+  if (!watched || watched->event) { b.thresh.armed = false; return; }
+  const double v = watched->value();
+  if (v < b.threshLevel - kThreshHyst) b.thresh.armed = true;
+  else if (b.thresh.armed && v >= b.threshLevel && now - b.thresh.last >= kThreshGap) {
+    b.thresh.armed = false; b.thresh.count++; b.thresh.last = now; b.thresh.flash = now;
+  }
+}
+// The panel's menu of what it watches: another source, and armed afresh.
+inline void setThresholdWatch(Brain& b, const std::u16string& id) {
+  b.threshWatch = id;
+  b.thresh.armed = false;
+}
+class ThresholdSource : public ModSource {
+ public:
+  ThresholdSource(const Brain& b, const Matrix& matrix) : ModSource("threshold"), b_(b), matrix_(matrix) { event = true; }
+  // A flash that fades over 150 ms, for the chip's meter.
+  double value() const override { return jsMax(0, 1 - (b_.clock.now() - b_.thresh.flash) / 150); }
+  int count() const override { return b_.thresh.count; }
+  // It is a loop when what it watches is one, asked afresh each time. An
+  // event source is never watched, so it makes no loop - and asking it would
+  // ask this, for ever, were a setup to have it watching itself.
+  bool picture() const override {
+    const ModSource* watched = matrix_.source(utf16To8(b_.threshWatch));
+    return watched && !watched->event && watched->picture();
+  }
+
+ private:
+  const Brain& b_;
+  const Matrix& matrix_;
+};
+
 // The macros as sources, and the fader as a destination the matrix moves.
 class MacroSource : public ModSource {
  public:
@@ -1140,7 +1182,7 @@ class BrainSources {
  public:
   // With a generator, the pluck too: struck at the setup's pluck note and sent
   // out, where the core's own stand-in strikes middle C and sends nothing.
-  BrainSources(Matrix& matrix, Brain& b, Generator* gen = nullptr) {
+  BrainSources(Matrix& matrix, Brain& b, Generator* gen = nullptr) : threshold_(b, matrix) {
     if (gen) {
       ModDest pluck;
       pluck.id = "gen.pluck"; pluck.kind = DestKind::Event;
@@ -1153,6 +1195,7 @@ class BrainSources {
     }
     for (int i = 0; i < 4; i++) macros_.emplace_back(i, b);
     for (auto& m : macros_) matrix.registerSource(&m);
+    matrix.registerSource(&threshold_);
     ModDest d;
     d.id = "morph.pos"; d.kind = DestKind::Visual; d.span = 1; d.min = 0; d.max = 1;
     Brain* brain = &b;
@@ -1163,8 +1206,12 @@ class BrainSources {
   BrainSources(const BrainSources&) = delete;
   BrainSources& operator=(const BrainSources&) = delete;
 
+  // thresholdStep, once a frame before the matrix fires its events.
+  void frame(Brain& b, const Matrix& matrix, double now) { thresholdStep(b, matrix, now); }
+
  private:
   std::vector<MacroSource> macros_;
+  ThresholdSource threshold_;
 };
 
 }  // namespace scope

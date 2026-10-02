@@ -3667,3 +3667,29 @@ are inline in `scopeHost`.
 - *What it cannot do yet:* nothing goes from the page to the plugin, so the
   panel's sound controls do not reach what is heard. That is the brain moving
   into the core (stage 2 of the plan), not something to patch round here.
+
+**Two bugs the port found in the page's sources.** Porting the learned
+controllers, the level and the threshold to the C++ core (plugin/PLAN.md, 2e)
+held each against the page line for line, and twice the page was the one
+that was wrong.
+
+- *A routing from a controller that had not moved yet was never heard.* A
+  preset's "cc.1>gen.vcf" loaded before the wheel moved was compiled without
+  it - there was no such source, and a routing without its source is skipped,
+  not dropped - and learning the controller registered the source without
+  asking for a compile. Nothing else asks while a patch is left alone, so the
+  wheel was learned, its chip lit up, and the filter never moved. The key's
+  strength had the same gap from before a keyboard was plugged in, though the
+  comment above it said the routing "picks it up on connect". Both now touch
+  the routings when they register. `miditest.py` had a check that forgetting
+  a controller "keeps its patch", which asserted the routing was still
+  listed and routed it to a picture destination - summed every frame, never
+  compiled - so it could not see this. The new checks read the routes the
+  generator is handed.
+- *The threshold watching itself overflowed the stack.* Whether the
+  threshold is a loop is a getter that asks the source it watches; watching
+  itself, it asked itself for ever. The menu offers no event source, but a
+  setup code may name anything, and restore takes it. An event source is never
+  watched (the step disarms on one), so it now makes no loop either.
+  `thresholdtest.py` loads such a code and routes from it. The core had copied
+  the recursion, and its random runs found it when one watched "threshold".

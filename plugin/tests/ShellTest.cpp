@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "../src/PluginEditor.h"
@@ -413,7 +414,10 @@ int main() {
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
-    if (hits) { p->matrix().registerSource(hits); p->matrix().add("test.hits", "gen.pluck", 0.8); }
+    /* The preset's own threshold routing is taken away for a hit of the
+       test's own: its pendulums swing from the start, and the level they
+       make plucks once by itself (see "the sources", below). */
+    if (hits) { p->matrix().remove("threshold", "gen.pluck"); p->matrix().registerSource(hits); p->matrix().add("test.hits", "gen.pluck", 0.8); }
     if (head) p->setPlayHead(head);
     std::vector<Sent> sent;
     juce::AudioBuffer<float> buf(2, block);
@@ -546,6 +550,122 @@ int main() {
     check("the score's playhead waits through a host's count-in and then follows its bar, a column a semiquaver; with no picture it sends nothing",
           p.score().on && waited && followed && counted > 40 && sentNothing,
           "col " + std::to_string(p.score().col) + " at the end, " + std::to_string(counted) + " blocks after the one");
+  }
+
+  std::printf("\n--- the sources ---\n");
+  /* What the plugin plays, the left channel, for a preset and what the host
+     sends; `unrouted` takes one routing away first, for the null. */
+  const auto playLeft = [&](const char* preset, const std::vector<std::pair<int, juce::MidiMessage>>& played, int blocksToRun,
+                            const char* unroutedFrom = nullptr, const char* unroutedTo = nullptr) {
+    setenv("SCOPE_PRESET", preset, 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    if (unroutedFrom) p.matrix().remove(unroutedFrom, unroutedTo);
+    std::vector<float> got;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < blocksToRun; ++k) {
+      const int start = k * block;
+      buf.clear();
+      juce::MidiBuffer m;
+      for (const auto& [sample, msg] : played)
+        if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
+      p.processBlock(buf, m);
+      for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+    }
+    return got;
+  };
+  const auto apart = [](const std::vector<float>& a, const std::vector<float>& b, std::size_t from, std::size_t to) {
+    double most = 0;
+    for (std::size_t i = from; i < to && i < a.size() && i < b.size(); ++i) most = std::fmax(most, std::fabs(a[i] - b[i]));
+    return most;
+  };
+  {
+    /* "Wheel wah" routes the mod wheel to a band pass. Its routing is loaded
+       before the wheel has moved, when there is no such source, and skipped;
+       the wheel's first move at sample 20,000 has to bring it in. The same
+       chord with the wheel left alone is the null - and the page itself did
+       not hear the wheel here until it was fixed for this port. */
+    const std::vector<std::pair<int, juce::MidiMessage>> chord { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) },
+                                                                { 120, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)) } };
+    auto wheeled = chord;
+    wheeled.push_back({ 20000, juce::MidiMessage::controllerEvent(1, 1, 127) });
+    const auto still = playLeft("Wheel wah", chord, 80), moved = playLeft("Wheel wah", wheeled, 80);
+    const double before = apart(still, moved, 0, 20000), after = apart(still, moved, 20480 + block, 40960);
+    check("a routing from the mod wheel loaded before it moved is heard from its first move, and not a sample before",
+          before == 0 && after > 0.05, "before " + num(before) + ", after " + num(after));
+  }
+  {
+    /* "Envelope sync sweep": the envelope on the sync, each note starting
+       torn and settling. Held to the core told the same, which has the
+       envelope as a source too; the same notes with that routing taken away
+       are the null. */
+    const Played swept = playDyad(1300, false, "Envelope sync sweep");
+    const auto sweptWant = dyadReference(1300, false, "Envelope sync sweep");
+    const std::vector<std::pair<int, juce::MidiMessage>> dyadNotes {
+      { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) }, { 1300, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)) },
+      { 40000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(0)) }, { 48000, juce::MidiMessage::noteOff(1, 57) } };
+    const auto plain = playLeft("Envelope sync sweep", dyadNotes, total / block, "env.note", "gen.sync");
+    double off = 0;
+    for (std::size_t i = 0; i < swept.l.size(); ++i) off = std::fmax(off, std::fabs(swept.l[i] - sweptWant[0][i]) + std::fabs(swept.r[i] - sweptWant[1][i]));
+    const double unswept = apart(swept.l, plain, 0, plain.size());
+    check("the note envelope as a source sweeps the sync in the plugin as in the core, sample for sample",
+          off == 0 && unswept > 0.05, "off by " + num(off) + "; without the routing it differs by " + num(unswept));
+  }
+  {
+    /* "Pendulums ring a bell": the threshold watches the level at 0.40 and
+       plucks C5. The pendulums swing from the moment the preset is loaded -
+       a drawing is not gated by the keys - and their picture is what the
+       level reads, so it rises through the threshold within a few blocks and
+       plucks once, and cannot again until the level has fallen back below
+       0.35. Read a block at a time: the first firing is on the first block
+       whose level is through 0.40, and the pluck is sent at that block's top.
+       The same with the threshold's routing taken away is the null: it still
+       fires, and nothing is sent. */
+    const auto ring = [&](bool routed) {
+      setenv("SCOPE_PRESET", "Pendulums ring a bell", 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      if (!routed) p->matrix().remove("threshold", "gen.pluck");
+      std::vector<double> levels;
+      std::vector<int> counts;
+      std::vector<Sent> sent;
+      /* And the level held to the picture: the newest 2048 frames of its left
+         channel, as the page is handed them before the block, followed by a
+         scope::Level of the test's own. Reading the right channel, or the
+         oldest of the ring, fires on the same block for this preset. */
+      scope::Level own;
+      double levelOff = 0;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 94; ++k) {
+        const auto picture = scopeResource("/picture.bin", *p);
+        std::vector<float> lane(2048);
+        const std::size_t frames = picture->data.size() / sizeof(float) / 2;
+        for (std::size_t i = 0; i < lane.size(); ++i)
+          std::memcpy(&lane[i], picture->data.data() + ((frames - lane.size() + i) * 2) * sizeof(float), sizeof(float));
+        own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * block / rate);
+        buf.clear();
+        juce::MidiBuffer m;
+        p->processBlock(buf, m);
+        levelOff = std::fmax(levelOff, std::fabs(p->level() - own.value()));
+        levels.push_back(p->level());
+        counts.push_back(p->thresholdCount());
+        for (const auto event : m) sent.push_back({ k * block + event.samplePosition, event.data[0], event.data[1], event.data[2] });
+      }
+      return std::make_tuple(levels, counts, ons(sent), levelOff);
+    };
+    const auto [levels, counts, on, levelOff] = ring(true);
+    const auto [levelsU, countsU, onU, levelOffU] = ring(false);
+    const auto first = static_cast<std::size_t>(std::find(counts.begin(), counts.end(), 1) - counts.begin());
+    const auto through = static_cast<std::size_t>(std::find_if(levels.begin(), levels.end(), [](double l) { return l >= 0.4; }) - levels.begin());
+    check("the pendulums' level rising through the threshold plucks C5 at the top of the block it gets there, once; unrouted, it fires and sends nothing",
+          first < counts.size() && first == through && first > 0 && on.size() == 1 && on[0].b == 72
+          && on[0].sample == static_cast<int>(first) * block && counts.back() == 1 && countsU == counts && onU.empty()
+          && levelOff == 0 && levels[20] > 0.1,
+          "fired in block " + std::to_string(first) + ", the level through 0.40 in block " + std::to_string(through) + ", "
+          + std::to_string(on.size()) + " plucked" + (on.empty() ? "" : " at " + std::to_string(on[0].sample)) + "; unrouted "
+          + std::to_string(onU.size()) + " sent, " + std::to_string(countsU.back()) + " fired; the level off the picture's by " + num(levelOff));
   }
 
   std::printf("\n--- the page and the picture ---\n");

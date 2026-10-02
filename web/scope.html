@@ -5792,7 +5792,11 @@ registerSource({
     + "through the level, and again only once it has fallen back below. Choose what it watches here.",
   value: () => Math.max(0, 1 - (performance.now() - thresh.flash) / 150),
   get count() { return thresh.count; },
-  get fromPicture() { const w = MOD_SOURCES.get(thresh.watch); return !!(w && w.fromPicture); },
+  /* An event source is never watched - the step disarms on one - so it makes
+     no loop either. Asking it anyway recursed for good when a setup code had
+     the threshold watching itself: the menu offers no event, but restore
+     takes any name it is given. */
+  get fromPicture() { const w = MOD_SOURCES.get(thresh.watch); return !!(w && w.event !== true && w.fromPicture); },
 });
 
 /* The event destinations (S3): struck, not set. Each carries `fire`, and the
@@ -7736,6 +7740,12 @@ function midiLearn(number, name) {
     value: () => entry.value,
   });
 
+  /* The routes again, now there is a source for a routing that was skipped
+     without one. A preset's "cc.1>gen.vcf" loaded before the wheel had moved
+     was compiled without it, and nothing else asks for a compile while a
+     patch is left alone - so the wheel was learned, its chip lit, and the
+     filter never moved. */
+  touchRoutings();
   buildSourceChips();
   buildMidiRows();
   return entry;
@@ -7846,6 +7856,8 @@ function midiRegisterKey() {
       return undrawn.reduce((sum, held) => sum + held.velocity, 0) / undrawn.length;
     },
   });
+  // A routing from it skipped before the keyboard was here is compiled now; see midiLearn.
+  touchRoutings();
   buildSourceChips();
 }
 

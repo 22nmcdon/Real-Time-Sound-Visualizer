@@ -55,6 +55,9 @@ class ModSource {
   virtual ~ModSource() = default;
   virtual double value() const = 0;
   virtual int count() const { return 0; }
+  // Whether it is the picture's, asked each time: the page's is a getter for a
+  // source whose answer depends on what it watches or hears.
+  virtual bool picture() const { return fromPicture; }
   std::string id;
   bool event = false, fromPicture = false, stepped = false, reachVaries = false;
   double reach = 0;
@@ -130,7 +133,7 @@ inline double clampLoop(double v) { return std::fmax(-kLoopTotal, std::fmin(kLoo
 inline bool routingAllowed(const ModSource* source, const ModDest* dest) {
   if (!source || !dest) return false;
   if (source->event != (dest->kind == DestKind::Event)) return false;
-  if (source->event && source->fromPicture) return false;
+  if (source->event && source->picture()) return false;
   return true;
 }
 
@@ -200,6 +203,7 @@ class Matrix {
   // depends on what is playing, which keeps what was asked.
   void touch() {
     dirty_ = true;
+    touches_++;
     for (auto& r : routings_) {
       const ModSource* s = source(r.sourceId);
       if (s && s->reach > 0 && !s->reachVaries) r.amount = routingAmount(s, r.amount);
@@ -323,6 +327,8 @@ class Matrix {
     return heard_;
   }
   std::size_t fading() const { return gains_.size(); }
+  // How many times the routings have been touched, for a harness to read.
+  int touches() const { return touches_; }
   bool dirty() const { return dirty_; }
 
   // --- once a frame ---------------------------------------------------------------
@@ -443,6 +449,9 @@ class Matrix {
     return true;
   }
 
+ public:
+  // A source or a destination by its id, or none: the threshold looks up what
+  // it watches.
   const ModSource* source(const std::string& id) const {
     const auto at = sources_.find(id);
     return at == sources_.end() ? nullptr : at->second;
@@ -451,6 +460,8 @@ class Matrix {
     const auto at = destIndex_.find(id);
     return at == destIndex_.end() ? nullptr : &dests_[at->second];
   }
+
+ private:
   bool fadesIn() const { return mode_ == FadeMode::In || mode_ == FadeMode::Both; }
   bool fadesOut() const { return mode_ == FadeMode::Out || mode_ == FadeMode::Both; }
   bool inSetup(const std::string& key) const {
@@ -564,7 +575,7 @@ class Matrix {
         const ModSource* s = source(r.sourceId);
         if (s && routingAllowed(s, &d)) {
           const double push = sourceNow(*s) * routingAmount(s, r.amount) * fadeGain(r.key());
-          if (s->fromPicture) loop += push; else sum += push;
+          if (s->picture()) loop += push; else sum += push;
         }
       }
       sum += clampLoop(loop);
@@ -586,7 +597,7 @@ class Matrix {
       if (!s || !d) continue;
       if (d->kind != DestKind::Audio) continue;
       if (!routingAllowed(s, d)) continue;
-      if (s->fromPicture) {
+      if (s->picture()) {
         auto at = std::find_if(loopBySlot.begin(), loopBySlot.end(), [&](const auto& e) { return e.first == d->slot; });
         if (at == loopBySlot.end()) { loopBySlot.push_back({ d->slot, {} }); at = loopBySlot.end() - 1; }
         at->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar });
@@ -633,6 +644,7 @@ class Matrix {
   std::array<int, 2> strikes_ { 0, 0 };
   bool layered_ = false;
   bool dirty_ = true;
+  int touches_ = 0;
   double now_ = 0;
 };
 

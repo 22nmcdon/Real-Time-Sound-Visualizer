@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "scope/generator.h"
+#include "scope/sources.h"
 
 namespace {
 std::vector<std::string> splitOn(const std::string& text, char sep) {
@@ -153,6 +154,10 @@ void run(const std::vector<std::string>& head, const Events& events) {
                           static_cast<double>(b.factor), static_cast<double>(b.silenced), d.swing, d.pendulum,
                           d.turn[0], d.turn[1], d.turn[2], d.facing, static_cast<double>(core.voices().size()),
                           static_cast<double>(core.voicesB().size()) });
+  // The sources that read it, as the matrix would.
+  out.push_back(scope::EnvelopeSource(core).value());
+  using D = scope::DrawingSource::Kind;
+  for (const D k : { D::Swing, D::Pendulum, D::TurnX, D::TurnY, D::TurnZ, D::Facing }) out.push_back(scope::DrawingSource(k, core).value());
   for (std::size_t i = 0; i < out.size(); i++) std::printf(i ? " %.17g" : "%.17g", out[i]);
   std::printf("\n");
 }

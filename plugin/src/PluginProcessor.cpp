@@ -56,6 +56,7 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   if (!preset) preset = scope::findPreset("Harmonic tone");
   if (preset) scope::restoreSetup(preset->setup, *brain_, *core_, *keyboard_, *matrix_, lfos_);
   keyboard_->frame(0);
+  levelLane_.assign(kLevelFrames, 0.0f);
   const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f);
   /* For looking at it without a keyboard: SCOPE_HOLD_NOTE=57 holds A3 from
@@ -110,17 +111,19 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
   }
   scope::clockFrame(*brain_, *core_, nowMs_);
+  /* The level over the last of the picture, the page's screen, as the frame
+     before this one left it. The page's window is its fetch, which follows
+     the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
+  levelWindow();
+  sources_->level().update(levelLane_.data(), levelLane_.size(), lastBlockMs_);
   keyboard_->setNow(nowMs_);
   keyboard_->setTempo(brain_->clock.bpm);
   keyboard_->frame(lastBlockMs_);
   outAt_ = 0;  // what is sent before the block's events is sent at its top
-  keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
-  matrix_->setLayered(keyboard_->layersOn());
-  matrix_->setStrikes(keyboard_->strikes());
-  matrix_->frame(nowMs_);
   /* The crossings' notes from the counts the generator reached by the end of
-     the last block, the score's step, and the pluck's note-offs due: once a
-     block, as the page does them once a frame, so a note-off due inside a
+     the last block, the score's step, the arpeggio's, the threshold, the
+     events, and the pluck's note-offs due, in the page's frame's order: once
+     a block, as the page does them once a frame, so a note-off due inside a
      block goes at the next block's top - 11 ms late at most at 512 samples,
      where the page's frames are 17 ms apart. The picture is the page's until
      stage 4, so the score has no grid to read and plays nothing, though its
@@ -129,6 +132,13 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
                    static_cast<int>(brain_->cross.noteY), midiOut_.get());
   scope::scoreTick(brain_->score, nowMs_, true, brain_->clock, nullptr, scope::keyMask(brain_->keyRoot, brain_->keyScale),
                    strike_, midiOut_.get());
+  keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
+  // A controller the keyboard learned last block is a source now, and its routings are heard.
+  sources_->learn(*matrix_, *keyboard_);
+  brainSources_->frame(*brain_, *matrix_, nowMs_);
+  matrix_->setLayered(keyboard_->layersOn());
+  matrix_->setStrikes(keyboard_->strikes());
+  matrix_->frame(nowMs_);
   scope::endDue(brain_->notesOut.pluckOffs, nowMs_, midiOut_.get());
   /* After the matrix, so a source on the fader is already counted. A walk
      moves sliders and fires their handlers, which allocate (a slider's value
@@ -179,6 +189,12 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   // The host's notes are spent; what goes back is what the out sent.
   midi.swapWith(outgoing_);
   outgoing_.clear();
+}
+
+void ScopeProcessor::levelWindow() {
+  // The left channel, oldest first, from the ring this thread writes.
+  const std::size_t at = pictureAt_.load(std::memory_order_relaxed), n = levelLane_.size();
+  for (std::size_t k = 0; k < n; ++k) levelLane_[k] = picture_[((at + kPictureFrames - n + k) % kPictureFrames) * 2];
 }
 
 std::vector<float> ScopeProcessor::pictureSnapshot() const {
