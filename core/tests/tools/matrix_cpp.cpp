@@ -82,6 +82,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "unroute") m.remove(arg(1), arg(2));
     else if (cmd == "amount") m.setAmount(arg(1), arg(2), num(arg(3)));
     else if (cmd == "load") m.load(scope::Matrix::decode(arg(1)));
+    else if (cmd == "edit") m.setRoutings(scope::Matrix::decode(arg(1)));
     else if (cmd == "forget") { m.unregisterSource(arg(1)); m.touch(); }
     else if (cmd == "fade") {
       const std::string mode = arg(1);

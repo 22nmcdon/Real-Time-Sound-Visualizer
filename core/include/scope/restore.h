@@ -1090,6 +1090,145 @@ inline void moveSlider(const std::string& id, std::u16string written, Brain& b, 
   sliderInput(id, b, gen, keys, lfos);
 }
 
+// The panel's menu of what it watches: another source, and armed afresh.
+inline void setThresholdWatch(Brain& b, const std::u16string& id) {
+  b.threshWatch = id;
+  b.thresh.armed = false;
+}
+
+// --- a menu or a switch changed: its handler ----------------------------------------------
+
+/* What the page's "change" handler for a menu, a checkbox or a text box does,
+   for each one that reaches the sound or a setting a setup carries: a hand on
+   it, sent from the page in the plugin (stage 3). A menu's value is written as
+   the browser would take it - one it has not got reads "" - and a switch is
+   its new state. The view's do the view's work, which is the page's.
+
+   What is not here yet, and why: the fade's menus and envelope, which live in
+   the page's own storage rather than in a setup; layer B's editing, which
+   swaps the panel between the layers (the panel here always writes layer A);
+   and the MIDI out's port, which in the plugin is the host's. */
+inline bool controlChange(const std::string& id, const std::u16string& written, bool checked, Brain& b, Generator& gen,
+                          Keyboard& keys, Matrix& matrix, std::vector<Lfo>& lfos) {
+  Controls& panel = b.panel;
+  const int layer = b.panelLayer;
+  // A menu takes only a value it has; one it has not got reads "". LFO 2's
+  // menus are made when it is chosen, from the lists LFO 1's are, and the
+  // threshold's lists every source that is not an event.
+  const bool menu = selectSpec(id) != nullptr;
+  const SelectSpec* like = selectSpec(id == "lfoShape1" ? "lfoShape0" : id == "lfoSync1" ? "lfoSync0" : "");
+  const ModSource* watch = id == "threshWatch" ? matrix.source(utf16To8(written)) : nullptr;
+  if (menu) panel.setSelect(id, written);
+  const std::u16string value = menu ? utf8To16(panel.select(id))
+                             : like ? (selectHas(*like, utf16To8(written)) ? written : u"")
+                             : id == "threshWatch" ? (watch && !watch->event ? written : u"") : written;
+  const std::string text = utf16To8(value);
+  const double number = jsStringToNumber(value);
+  const auto orElse = [](double v, double d) { return v == 0 || std::isnan(v) ? d : v; };
+  Keyboard::Settings k = keys.settings();
+
+  // The generator.
+  if (id == "genMode") { gen.set("mode", text, 0); keys.syncPlayed(); }
+  else if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
+  else if (id == "figure") { gen.set("figure", text, 0); gen.setFigPath(figurePathFor(b, text)); }
+  else if (id == "figPathD") { setFigurePathD(b, value); gen.setFigPath(figurePathFor(b, panel.select("figure"))); }
+  else if (id == "inputMode") { b.inputMode = orElse(number, 0); gen.set("inputMode", b.inputMode, 0); }
+  else if (id == "inputFrom") { b.inputFrom = text == "gen2" ? "gen2" : "live"; gen.set("inputFrom", b.inputFrom, 0); }
+  else if (id == "gen2Figure") gen.set("gen2Figure", text, 0);
+  else if (id == "model") gen.set("model", text, 0);
+  else if (id == "shape") gen.set("shape", text, layer);
+  else if (id == "shpOS") gen.set("shapeOS", number, 0);
+  else if (isVoiceControl(id) && menu) {
+    for (const auto& row : layerControls()) {
+      if (row.id != id) continue;
+      if (row.kind == LayerControl::Text) gen.set(row.field, text, layer);
+      else gen.set(row.field, row.law(number), layer);
+    }
+  }
+  // The plane and the echo.
+  else if (id == "planeMirror" || id == "planeLimit" || id == "planeKaleido" || id == "planeSnap") {
+    (id == "planeMirror" ? b.plane.mirror : id == "planeLimit" ? b.plane.limit : id == "planeKaleido" ? b.plane.kaleido : b.plane.snap) = number;
+    syncPlanePanel(b); syncPlane(b, gen);
+  }
+  else if (id == "delaySync") { b.echo.sync = text; syncEchoPanel(b); syncEcho(b, gen); }
+  else if (id == "delayPingPong") { b.echo.pingPong = checked; syncEcho(b, gen); }
+  // The crossings, the key and the quantiser.
+  else if (id == "crossOn") { b.cross.on = checked; syncCrossings(b, gen); }
+  else if (id == "crossNoteX") { b.cross.noteX = number; syncCrossings(b, gen); }
+  else if (id == "crossNoteY") { b.cross.noteY = number; syncCrossings(b, gen); }
+  else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }
+  else if (id == "keyScale") { b.keyScale = text; syncQuantiser(b, gen); }
+  else if (id == "quantise") { b.quantise = checked; syncQuantiser(b, gen); }
+  // The keyboard. The layer being edited is A's, as the panel here is.
+  else if (id == "midiDrawCount") keys.setDraw(0, jsMax(2, jsMin(kPolyVoices, orElse(number, 2))), k.draws[0].which);
+  else if (id == "midiDrawWhich") keys.setDraw(0, k.draws[0].count, drawWhichNamed(text));
+  else if (id == "midiPolyJust") keys.setPolyJust(checked);
+  else if (id == "midiLayers") keys.setLayers(text == "split" ? LayerMode::Split : text == "layer" ? LayerMode::Layer : LayerMode::Off);
+  else if (id == "midiLayerPair") keys.setPair(text == "against");
+  else if (id == "midiHold") keys.setHold(checked);
+  else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
+  else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
+  else if (id == "midiDrive") keys.setDrive(checked);
+  else if (id == "midiPlay") keys.setPlay(checked);
+  // The arpeggiator, the pluck and the score.
+  else if (id == "arpMode") {
+    // arpSet reads all three menus. The other two are the brain's, which a
+    // setup restores without writing the panel's copies of them.
+    b.arp.mode = text;
+    keys.setArp(b.arp.mode, b.arp.rate, jsStringToNumber(toU16(b.arp.octaves)));
+  }
+  else if (id == "arpRate") { b.arp.rate = text; keys.setArpRate(text); }
+  else if (id == "arpOctaves") { b.arp.octaves = text; keys.setArpOctaves(number); }
+  else if (id == "pluckNote") b.pluckNote = orElse(number, 60);
+  else if (id == "scoreOn") { b.score.on = checked; if (!b.score.on) scoreStop(b.score, b.out); }
+  else if (id == "scoreStep") b.score.step = text;
+  else if (id == "scoreVoices") b.score.voices = orElse(number, 1);
+  else if (id == "scoreLow") b.score.low = orElse(number, 48);
+  else if (id == "scoreOctaves") b.score.octaves = orElse(number, 3);
+  // The oscillators: a shape, and a note value to lock to, which starts it on the beat.
+  else if (id == "lfoShape0" || id == "lfoShape1") {
+    const std::size_t i = id.back() == '1' ? 1 : 0;
+    b.lfo[i].shape = Json::string(value);
+    lfos[i].setShape(text);
+  }
+  else if (id == "lfoSync0" || id == "lfoSync1") {
+    const std::size_t i = id.back() == '1' ? 1 : 0;
+    Brain::LfoSetting& l = b.lfo[i];
+    if (l.sync.empty()) l.free = lfos[i].rate;  // what to go back to
+    l.sync = text;
+    if (l.sync.empty()) lfos[i].rate = l.free;
+    b.clock.step(b.clock.now());
+    if (!l.sync.empty()) { lfos[i].phase = 0; lfos[i].epoch++; }
+  }
+  // The threshold, and a macro renamed.
+  else if (id == "threshWatch") { setThresholdWatch(b, value); matrix.touch(); }
+  else if (id.size() == 10 && id.compare(0, 9, "macroName") == 0 && id[9] >= '1' && id[9] <= '4') {
+    // nameMacro: the bar is a code's separator and an empty name no name.
+    std::u16string clean;
+    for (const char16_t c : value) if (c != u'|') clean += c;
+    clean = jsTrim(clean).substr(0, 16);
+    b.macros[static_cast<std::size_t>(id[9] - '1')].name = clean.empty() ? u"Macro " + toU16(std::string(1, id[9])) : clean;
+    matrix.touch();
+  }
+  else return false;
+  return true;
+}
+
+// What the page's buttons that reach the sound do when pressed. Each answers
+// whether it knew the control, so the plugin keeps only what did something.
+inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboard& keys) {
+  if (id == "tuneJust" || id == "tuneEqual") gen.set("just", id == "tuneJust" ? 1 : 0, 0);
+  else if (id == "midiDyad") keys.setMode(NoteMode::Dyad);
+  else if (id == "midiMono") keys.setMode(NoteMode::Mono);
+  else if (id == "midiPoly") keys.setMode(NoteMode::Poly);
+  else if (id == "planeOS1" || id == "planeOS2" || id == "planeOS4") {
+    b.plane.os = id.back() - '0';
+    syncPlanePanel(b); syncPlane(b, gen);
+  }
+  else return false;
+  return true;
+}
+
 // --- macros and the morph ------------------------------------------------------------------
 
 // morphCapture: every slider the morph walks, as it stands.
@@ -1143,11 +1282,6 @@ inline void thresholdStep(Brain& b, const Matrix& matrix, double now) {
   else if (b.thresh.armed && v >= b.threshLevel && now - b.thresh.last >= kThreshGap) {
     b.thresh.armed = false; b.thresh.count++; b.thresh.last = now; b.thresh.flash = now;
   }
-}
-// The panel's menu of what it watches: another source, and armed afresh.
-inline void setThresholdWatch(Brain& b, const std::u16string& id) {
-  b.threshWatch = id;
-  b.thresh.armed = false;
 }
 class ThresholdSource : public ModSource {
  public:

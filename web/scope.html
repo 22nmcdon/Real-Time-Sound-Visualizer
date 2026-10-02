@@ -6805,6 +6805,10 @@ function fireEvents() {
 const genMod = new Float32Array(GEN_DESTS.length);
 const genRoutes = [];
 let modDirty = true;
+/* Whether the page is the plugin's face and what it last sent it: with the
+   rest of that further down (hostConnect), but declared here, as
+   touchRoutings asks it and runs while the page is still starting. */
+const hostSync = { on: false, seen: 0, applying: false, routings: "" };
 
 let repaintQueued = false;
 
@@ -6821,6 +6825,7 @@ function touchRoutings() {
     const source = MOD_SOURCES.get(routing.sourceId);
     if (source && source.reach > 0 && !source.reachVaries) routing.amount = routingAmount(source, routing.amount);
   }
+  hostRoutings();
   // Coalesced: dragging a depth fires this on every pointermove, and rebuilding
   // the rows sixty times a second under the finger doing the dragging would
   // replace the element being dragged out from under it.
@@ -20902,18 +20907,20 @@ async function toHost() {
    as a preset is loaded. Not every change is a setup sent whole, though that
    would have been simpler: restoring even the setup already playing moves
    the sound at that sample, by as much as the sound itself on most presets,
-   where turning one control does not. So the menus, the switches and the
-   routings wait for their own handlers in the core; until then a change to
-   one of them on this page does not reach the plugin, which is where stage 3
-   stands now.
+   where turning one control does not. So a menu, a switch or a text box that
+   reaches the sound is sent as it changes, by its id and its value (a
+   switch's as true or false), a button by its id as it is pressed, and the
+   routings whole after any edit, every digit of each depth - each the page's
+   handler, ported, as a slider's is. What is not sent is listed with
+   HOST_CONTROLS, below.
 
-   One message in: the plugin's state, a setup code with the sliders moved
+   One message in: the plugin's state, a setup code with every hand on it
    since it was loaded, asked for four times a second. It carries a count of
    the changes that came from the host rather than from here, and the page
    applies a state only when that count has moved - so its own slider is never
    handed back to it mid-drag. Applying it moves the page's controls without
    sending them back. */
-const hostSync = { on: false, seen: 0, applying: false };
+// hostSync is declared with modDirty, near the top: touchRoutings asks it.
 
 async function hostPull() {
   const s = await scopeHost.call("scopeState");
@@ -20928,18 +20935,110 @@ function hostApply(s) {
   hostSync.applying = true;
   try {
     restore(setup);
-    // The sliders moved since the setup was loaded, as hands on them.
+    // The sliders moved since the setup was loaded, as a state saved before
+    // the menus reached the plugin listed them.
     const moved = typeof setup.pluginSliders === "string" ? setup.pluginSliders : "";
     for (const pair of moved.split(";")) {
       const eq = pair.indexOf("=");
-      const slider = eq > 0 ? document.getElementById(pair.slice(0, eq)) : null;
-      if (!slider || slider.type !== "range") continue;
-      slider.value = pair.slice(eq + 1);
-      slider.dispatchEvent(new Event("input"));
+      if (eq > 0) hostHand(["s", pair.slice(0, eq), pair.slice(eq + 1)]);
     }
+    // And every hand on it since, in order, as the plugin put them back.
+    for (const hand of Array.isArray(setup.pluginHands) ? setup.pluginHands : []) hostHand(hand);
+    hostSync.routings = hostRoutingsText();
   } finally {
     hostSync.applying = false;
   }
+}
+
+/* One hand from the plugin's state, done here as the page would have done it:
+   [kind, id, value], a slider ("s"), a menu, switch or text box ("c"), a
+   button ("k"), or the routings ("r"). An LFO's menus and the threshold's are
+   in the page only while theirs is the chosen source, so that source is
+   chosen for the moment and the one on show put back. */
+function hostHand(hand) {
+  if (!Array.isArray(hand)) return;
+  const [kind, id, value] = hand;
+  if (kind === "r") { state.modRoutings = decodeRoutings(String(value)); touchRoutings(); return; }
+  if (typeof id !== "string" || !id) return;
+  if (kind === "k") { const button = document.getElementById(id); if (button && HOST_CLICKS.has(id)) button.click(); return; }
+  if (kind === "s") {
+    const slider = document.getElementById(id);
+    if (!slider || slider.type !== "range") return;
+    slider.value = String(value);
+    slider.dispatchEvent(new Event("input"));
+    return;
+  }
+  if (kind !== "c" || !HOST_CONTROLS.has(id)) return;
+  const lfo = /^lfo(?:Shape|Sync)(\d)$/.exec(id);
+  const owner = lfo ? "lfo" + (Number(lfo[1]) + 1) : id === "threshWatch" ? "threshold" : null;
+  const shown = [selectedSource, focusSource, sourceFamily];
+  if (!document.getElementById(id) && owner) selectSource(owner);
+  const control = document.getElementById(id);
+  if (control) {
+    if (control.type === "checkbox") control.checked = value === true; else control.value = String(value);
+    control.dispatchEvent(new Event("change"));
+  }
+  if (owner && shown[0] !== selectedSource) {
+    [selectedSource, focusSource, sourceFamily] = shown;
+    buildSourceGrid();
+    buildSourceDetail();
+  }
+}
+
+/* The menus, switches and text boxes that reach the sound or what a setup
+   carries, and the buttons: the ones scope::controlChange and controlClick
+   port. Not here, each for its reason: the view's own (the timebase menu,
+   the beam), which are the page's; the fade's menus and envelope, kept in
+   the page's own storage rather than a setup; layer B's editing, which swaps
+   the panel between the layers, where the plugin's panel always writes layer
+   A - so with the layers on, a menu turned while B is on the panel reaches
+   the plugin as A's; and the MIDI out's port, which in the plugin is the
+   host's. A depth dragged reaches the plugin when the drag ends, as it is
+   only then that the page counts it as an edit. */
+const HOST_CONTROLS = new Set([
+  "genMode", "interval", "figure", "figPathD", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS",
+  "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
+  "planeMirror", "planeLimit", "planeKaleido", "planeSnap", "delaySync", "delayPingPong",
+  "crossOn", "crossNoteX", "crossNoteY", "keyRoot", "keyScale", "quantise",
+  "midiDrawCount", "midiDrawWhich", "midiPolyJust", "midiLayers", "midiLayerPair", "midiHold", "midiTruth",
+  "midiFollow", "midiDrive", "midiPlay", "arpMode", "arpRate", "arpOctaves", "pluckNote",
+  "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
+  "lfoShape0", "lfoShape1", "lfoSync0", "lfoSync1", "threshWatch",
+  "macroName1", "macroName2", "macroName3", "macroName4",
+]);
+const HOST_CLICKS = new Set(["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4"]);
+
+function hostControl(event) {
+  const control = event.target;
+  if (!hostSync.on || hostSync.applying || !control || !HOST_CONTROLS.has(control.id)) return;
+  scopeHost.call("scopeControl", control.id, control.type === "checkbox" ? control.checked : control.value);
+}
+
+function hostClick(event) {
+  const button = event.target && event.target.closest ? event.target.closest("button[id]") : null;
+  if (!hostSync.on || hostSync.applying || !button || !HOST_CLICKS.has(button.id)) return;
+  scopeHost.call("scopeClick", button.id);
+}
+
+/* The routings as they stand, each depth to its last digit: a setup code's
+   three places would move a depth dragged to a value of its own. A depth so
+   small that JavaScript writes it with an exponent is written out instead,
+   as the plugin reads plain decimals. */
+function hostRoutingsText() {
+  return state.modRoutings.map((r) => {
+    const amount = Number(r.amount);
+    const text = String(amount);
+    return r.sourceId + ">" + r.destId + "@" + (/e/.test(text) ? amount.toFixed(20) : text);
+  }).join(";");
+}
+
+// After any edit: sent when it changed something, and not while a load is quiet.
+function hostRoutings() {
+  if (!hostSync.on || hostSync.applying) return;
+  const text = hostRoutingsText();
+  if (text === hostSync.routings) return;
+  hostSync.routings = text;
+  scopeHost.call("scopeRoutings", text);
 }
 
 function hostSlider(event) {
@@ -20967,8 +21066,11 @@ function hostSendSetup() {
 
 async function hostConnect() {
   await hostPull();
+  hostSync.routings = hostRoutingsText();
   hostSync.on = true;
   document.addEventListener("input", hostSlider, true);
+  document.addEventListener("change", hostControl, true);
+  document.addEventListener("click", hostClick, true);
   setInterval(hostPull, 250);
 }
 

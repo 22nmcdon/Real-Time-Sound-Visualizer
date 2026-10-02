@@ -908,8 +908,8 @@ int main() {
     auto [direct, w2, b2, a2, q] = played(2);
     auto [still, w3, b3, a3, r] = played(0);
     const auto decoded = scope::decodeSetup(after.code);
-    const scope::Json* moved = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginSliders") : nullptr;
-    const bool says = moved && moved->type == scope::Json::Type::String && moved->s == u"vcfCut=900";
+    const scope::Json* moved = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
+    const bool says = moved && scope::utf16To8(scope::jsonStringify(*moved)) == "[[\"s\",\"vcfCut\",\"900\"]]";
     check("a slider moved on the page is the same move at the next block's top, sample for sample, its parameter following",
           apart(paged, direct, 0, paged.size()) == 0 && apart(paged, still, 20 * block, paged.size()) > 0.02 && waiting == 480
           && p->knob(6)->get() == 900,
@@ -917,7 +917,7 @@ int main() {
           + "; before the block " + num(waiting) + ", cutoff parameter " + num(p->knob(6)->get()));
     check("and the state the page is shown carries it, not counted as the host's; a parameter the host moves is counted",
           says && after.version == before.version && after.code != before.code && before.version >= 1,
-          "version " + std::to_string(before.version) + " then " + std::to_string(after.version) + (says ? ", vcfCut=900 in it" : ", not in it"));
+          "version " + std::to_string(before.version) + " then " + std::to_string(after.version) + (says ? ", vcfCut at 900 in it" : ", not in it"));
     const int was = p->pageState().version;
     p->knob(0)->setValueNotifyingHost(p->knob(0)->convertTo0to1(60));
     juce::AudioBuffer<float> buf(2, block);
@@ -952,6 +952,127 @@ int main() {
           && p.pageState().version == was,
           "cutoff " + num(before) + " then " + num(p.slider("vcfCut")) + " (Wah's " + num(wah.slider("vcfCut")) + "); version "
           + std::to_string(was) + " then " + std::to_string(p.pageState().version));
+  }
+  {
+    /* A menu, a switch and a button on the page wait for the next block's
+       top like a slider, and are each the page's handler there; what the
+       plugin does not know - a menu of the view, or no control at all - does
+       nothing and is not kept. The state carries them, in order, and a fresh
+       plugin given it plays the same, sample for sample, where one without
+       it does not. */
+    const auto play = [&](ScopeProcessor& p, bool hands) {
+      std::vector<float> got;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 60; ++k) {
+        if (k == 0 && hands) {
+          p.pageControl("shape", scope::Json::string(std::string_view("square")));
+          p.pageControl("delayPingPong", scope::Json::boolean(true));
+          p.pageClick("tuneEqual");
+          p.pageControl("beamLevel", scope::Json::string(std::string_view("high")));
+          p.pageControl("nothing", scope::Json::string(std::string_view("x")));
+          p.pageClick("nothing");
+        }
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 2) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 10); m.addEvent(juce::MidiMessage::noteOn(1, 61, static_cast<juce::uint8>(100)), 30); }
+        p.processBlock(buf, m);
+        if (k >= 2) for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+      }
+      return got;
+    };
+    ScopeProcessor a;
+    a.prepareToPlay(rate, block);
+    const std::string shapeBefore = a.tone().shapeName;
+    const int was = a.pageState().version;
+    const auto heardA = play(a, true);
+    const auto decoded = scope::decodeSetup(a.pageState().code);
+    const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
+    const std::string kept = hands ? scope::utf16To8(scope::jsonStringify(*hands)) : "none";
+    juce::MemoryBlock state;
+    a.getStateInformation(state);
+    ScopeProcessor b, none;
+    b.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    b.prepareToPlay(rate, block);
+    none.prepareToPlay(rate, block);
+    const auto heardB = play(b, false), heardNone = play(none, false);
+    check("a menu, a switch and a button on the page are their handlers in the plugin, and what it does not know is not kept",
+          shapeBefore != "square" && a.tone().shapeName == "square" && a.tone().delayPingPong && !a.tone().just
+          && kept == "[[\"c\",\"shape\",\"square\"],[\"c\",\"delayPingPong\",true],[\"k\",\"tuneEqual\"]]"
+          && a.pageState().version == was,
+          "shape " + shapeBefore + " then " + a.tone().shapeName + "; kept " + kept);
+    check("and the state carries them: a fresh plugin given it plays the same, sample for sample, and one without it does not",
+          apart(heardA, heardB, 0, heardA.size()) == 0 && apart(heardA, heardNone, 0, heardA.size()) > 0.02 && b.tone().shapeName == "square"
+          && b.tone().delayPingPong && !b.tone().just,
+          "apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by " + num(apart(heardA, heardNone, 0, heardA.size())));
+  }
+  {
+    /* A control moved twice is kept once, at its latest. But the keyboard's
+       drive is the kind's chosen at the time, so a drive between two kinds
+       keeps its place: the solid driven and the waveform not, both come back.
+       Kept as the latest alone, the solid's would have been lost. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    p.pageControl("planeKaleido", scope::Json::string(std::string_view("6")));
+    p.pageControl("planeKaleido", scope::Json::string(std::string_view("3")));
+    p.pageControl("genMode", scope::Json::string(std::string_view("wireframe")));
+    p.pageControl("midiDrive", scope::Json::boolean(true));
+    p.pageControl("genMode", scope::Json::string(std::string_view("wave")));
+    p.pageControl("midiDrive", scope::Json::boolean(false));
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p.processBlock(buf, none);
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    ScopeProcessor q;
+    q.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    q.prepareToPlay(rate, block);
+    const auto decoded = scope::decodeSetup(p.pageState().code);
+    const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
+    const std::size_t count = hands && hands->type == scope::Json::Type::Array ? hands->a.size() : 0;
+    check("a control moved twice is kept once, and the drive kept in its place between the kinds: both come back",
+          p.tone().planeKaleido == 3 && q.tone().planeKaleido == 3 && count == 5 && p.keys().drive[3] && !p.keys().drive[0]
+          && q.keys().drive == p.keys().drive && q.tone().modeName == "wave",
+          std::to_string(count) + " kept; the solid driven " + (q.keys().drive[3] ? "yes" : "no") + ", the waveform " + (q.keys().drive[0] ? "yes" : "no"));
+  }
+  {
+    /* The routings as an edit on the page left them, every digit of the depth
+       kept, where a setup code's routings keep three places. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    p.pageRoutings("lfo1>gen.freq@0.123456789012345");
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p.processBlock(buf, none);
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    ScopeProcessor q;
+    q.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    q.prepareToPlay(rate, block);
+    const auto& r = p.matrix().routings();
+    const auto& rq = q.matrix().routings();
+    check("the routings edited on the page are the plugin's, every digit of the depth kept, and saved so",
+          r.size() == 1 && r[0].amount == 0.123456789012345 && rq.size() == 1 && rq[0].amount == 0.123456789012345 && rq[0].destId == "gen.freq",
+          std::to_string(r.size()) + " routing" + (r.empty() ? "" : ", depth " + scope::jsNumberToString(r[0].amount))
+          + (rq.empty() ? "; none saved" : ", saved " + scope::jsNumberToString(rq[0].amount)));
+  }
+  {
+    /* A state saved before the menus reached the plugin listed its sliders
+       as "id=value;..." in `pluginSliders`. It still loads, and is saved
+       again in the list that replaced it. */
+    scope::Json old = scope::findPreset("Harmonic tone")->setup;
+    old.set("pluginSliders", scope::Json::string(std::string_view("vcfCut=900;amp=30")));
+    const auto code = scope::encodeSetup(old);
+    ScopeProcessor p;
+    if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
+    p.prepareToPlay(rate, block);
+    const auto decoded = scope::decodeSetup(p.pageState().code);
+    const bool gone = decoded.kind == scope::DecodedSetup::Kind::Read && !decoded.setup.get("pluginSliders");
+    const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
+    const std::string kept = hands ? scope::utf16To8(scope::jsonStringify(*hands)) : "none";
+    check("a state saved with the old list of sliders loads them, and is saved in the new list",
+          p.slider("vcfCut") == 900 && p.slider("amp") == 30 && gone
+          && kept == "[[\"s\",\"vcfCut\",\"900\"],[\"s\",\"amp\",\"30\"]]",
+          "cutoff " + num(p.slider("vcfCut")) + ", amp " + num(p.slider("amp")) + "; " + kept);
   }
 
   std::printf("\n--- the page and the picture ---\n");

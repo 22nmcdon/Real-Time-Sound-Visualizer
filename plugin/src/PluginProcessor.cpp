@@ -20,10 +20,12 @@ ScopeProcessor::ScopeProcessor()
 
 void ScopeProcessor::load(const scope::Json& setup, bool fromHost) {
   setup_ = setup;
-  moved_.clear();
+  hands_.clear();
   scope::restoreSetup(setup_, *brain_, *core_, *keyboard_, *matrix_, lfos_);
-  /* The sliders moved since this setup was first loaded, written into a
-     saved state as "id=value;..." and put back as hands on them. */
+  /* The sliders moved since this setup was first loaded, as a state saved
+     before the menus reached the plugin wrote them: "id=value;...", put back
+     as hands on them. One saved since has none of these, and its hands
+     follow in `pluginHands`. */
   if (const scope::Json* moved = setup_.type == scope::Json::Type::Object ? setup_.get("pluginSliders") : nullptr) {
     if (moved->type == scope::Json::Type::String) {
       const std::string text = scope::utf16To8(moved->s);
@@ -38,6 +40,9 @@ void ScopeProcessor::load(const scope::Json& setup, bool fromHost) {
       }
     }
   }
+  if (const scope::Json* hands = setup_.type == scope::Json::Type::Object ? setup_.get("pluginHands") : nullptr) {
+    if (hands->type == scope::Json::Type::Array) for (const auto& hand : hands->a) replay(hand);
+  }
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto v = static_cast<float>(brain_->panel.range(kKnobs[i].slider));
     knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
@@ -49,10 +54,10 @@ void ScopeProcessor::load(const scope::Json& setup, bool fromHost) {
 
 void ScopeProcessor::moveTo(const std::string& id, const std::u16string& text, bool fromHost) {
   scope::moveSlider(id, text, *brain_, *core_, *keyboard_, lfos_);
-  const std::u16string now = scope::toU16(scope::jsNumberToString(brain_->panel.range(id)));
-  bool known = false;
-  for (auto& [slider, value] : moved_) if (slider == id) { value = now; known = true; }
-  if (!known) moved_.push_back({ id, now });
+  scope::Json hand = scope::Json::array();
+  hand.a.push_back(scope::Json::string(std::string_view("s"))); hand.a.push_back(scope::Json::string(std::string_view(id)));
+  hand.a.push_back(scope::Json::string(std::string_view(scope::jsNumberToString(brain_->panel.range(id)))));
+  remember("s:" + id, std::move(hand));
   changed_ = true;
   if (fromHost) { hostVersion_++; return; }
   // Moved on the page: the host's parameter for that slider follows it.
@@ -63,12 +68,83 @@ void ScopeProcessor::moveTo(const std::string& id, const std::u16string& text, b
   }
 }
 
+void ScopeProcessor::change(const std::string& id, const scope::Json& value) {
+  const std::u16string text = value.type == scope::Json::Type::String ? value.s : u"";
+  const bool checked = value.type == scope::Json::Type::Bool && value.b;
+  if (!scope::controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
+  scope::Json hand = scope::Json::array();
+  hand.a.push_back(scope::Json::string(std::string_view("c"))); hand.a.push_back(scope::Json::string(std::string_view(id)));
+  hand.a.push_back(value.type == scope::Json::Type::Bool ? value : scope::Json::string(text));
+  remember("c:" + id, std::move(hand));
+  changed_ = true;
+}
+
+void ScopeProcessor::click(const std::string& id) {
+  if (!scope::controlClick(id, *brain_, *core_, *keyboard_)) return;
+  scope::Json hand = scope::Json::array();
+  hand.a.push_back(scope::Json::string(std::string_view("k"))); hand.a.push_back(scope::Json::string(std::string_view(id)));
+  // The buttons come in sets of which one is on: pressing one undoes the last of its set.
+  const std::string set = id.rfind("tune", 0) == 0 ? "tune" : id.rfind("planeOS", 0) == 0 ? "planeOS" : "midiMode";
+  remember("k:" + set, std::move(hand));
+  changed_ = true;
+}
+
+void ScopeProcessor::routings(const std::string& text) {
+  matrix_->setRoutings(scope::Matrix::decode(text));
+  scope::Json hand = scope::Json::array();
+  hand.a.push_back(scope::Json::string(std::string_view("r"))); hand.a.push_back(scope::Json::string(std::string_view("")));
+  hand.a.push_back(scope::Json::string(std::string_view(text)));
+  remember("r", std::move(hand));
+  changed_ = true;
+}
+
+void ScopeProcessor::replay(const scope::Json& hand) {
+  if (hand.type != scope::Json::Type::Array || hand.a.size() < 2 || hand.a[0].type != scope::Json::Type::String
+      || hand.a[1].type != scope::Json::Type::String) return;
+  const std::u16string kind = hand.a[0].s;
+  const std::string id = scope::utf16To8(hand.a[1].s);
+  const scope::Json* value = hand.a.size() > 2 ? &hand.a[2] : nullptr;
+  const std::u16string text = value && value->type == scope::Json::Type::String ? value->s : u"";
+  if (kind == u"s" && scope::rangeSpec(id)) moveTo(id, text, false);
+  else if (kind == u"c" && value) change(id, *value);
+  else if (kind == u"k") click(id);
+  else if (kind == u"r") routings(scope::utf16To8(text));
+}
+
+void ScopeProcessor::remember(std::string key, scope::Json hand) {
+  /* A hand on a control the list already has makes the earlier one
+     redundant: what the control says now is the later. Not when a hand
+     between them is on a control whose handler reads this one, or this one's
+     reads it - the keyboard's drive and play are for the kind chosen at the
+     time, an LFO's rate moved while it is synced is its free rate - since
+     the earlier one's effect would then be put back in a different place. */
+  static const std::vector<std::vector<std::string>> reads {
+    { "c:genMode", "c:midiDrive", "c:midiPlay" }, { "c:lfoSync0", "s:lfoRate0" }, { "c:delaySync", "s:delayMs" },
+    { "c:figure", "c:figPathD" }, { "c:arpMode", "c:arpRate", "c:arpOctaves" },
+  };
+  const auto related = [&](const std::string& a, const std::string& b) {
+    if (a == b) return false;
+    for (const auto& set : reads) {
+      if (std::find(set.begin(), set.end(), a) != set.end() && std::find(set.begin(), set.end(), b) != set.end()) return true;
+    }
+    return false;
+  };
+  for (std::size_t i = hands_.size(); i-- > 0;) {
+    if (related(hands_[i].key, key)) break;
+    if (hands_[i].key == key) { hands_.erase(hands_.begin() + static_cast<std::ptrdiff_t>(i)); break; }
+  }
+  hands_.push_back({ std::move(key), std::move(hand) });
+}
+
 std::string ScopeProcessor::stateCode() const {
   scope::Json setup = setup_.type == scope::Json::Type::Object ? setup_ : scope::Json::object();
-  std::string moved;
-  for (const auto& [slider, value] : moved_) moved += (moved.empty() ? "" : ";") + slider + "=" + scope::utf16To8(value);
   setup.erase("pluginSliders");
-  if (!moved.empty()) setup.set("pluginSliders", scope::Json::string(std::string_view(moved)));
+  setup.erase("pluginHands");
+  if (!hands_.empty()) {
+    scope::Json list = scope::Json::array();
+    for (const auto& h : hands_) list.a.push_back(h.hand);
+    setup.set("pluginHands", list);
+  }
   setup.set("cc", scope::Json::string(std::string_view(keyboard_->encodeCC())));
   const auto code = scope::encodeSetup(setup);
   return code ? *code : std::string();
@@ -77,14 +153,29 @@ std::string ScopeProcessor::stateCode() const {
 void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& text) {
   if (!scope::rangeSpec(id)) return;
   const juce::SpinLock::ScopedLockType lock(queueLock_);
-  queue_.push_back({ id, text, std::nullopt });
+  queue_.push_back({ PageCommand::Slider, id, text, {}, std::nullopt });
+}
+
+void ScopeProcessor::pageControl(const std::string& id, scope::Json value) {
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ PageCommand::Control, id, {}, std::move(value), std::nullopt });
+}
+
+void ScopeProcessor::pageClick(const std::string& id) {
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ PageCommand::Click, id, {}, {}, std::nullopt });
+}
+
+void ScopeProcessor::pageRoutings(std::string_view text) {
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ PageCommand::Routings, {}, scope::utf8To16(text), {}, std::nullopt });
 }
 
 bool ScopeProcessor::pageSetup(std::string_view code) {
   auto decoded = scope::decodeSetup(code);
   if (decoded.kind != scope::DecodedSetup::Kind::Read) return false;
   const juce::SpinLock::ScopedLockType lock(queueLock_);
-  queue_.push_back({ {}, {}, std::move(decoded.setup) });
+  queue_.push_back({ PageCommand::Setup, {}, {}, {}, std::move(decoded.setup) });
   return true;
 }
 
@@ -101,8 +192,13 @@ void ScopeProcessor::takePage() {
     std::swap(queue_, taken_);
   }
   for (auto& command : taken_) {
-    if (command.setup) load(*command.setup, false);
-    else moveTo(command.slider, command.text, false);
+    switch (command.kind) {
+      case PageCommand::Setup: load(*command.setup, false); break;
+      case PageCommand::Slider: moveTo(command.id, command.text, false); break;
+      case PageCommand::Control: change(command.id, command.value); break;
+      case PageCommand::Click: click(command.id); break;
+      case PageCommand::Routings: routings(scope::utf16To8(command.text)); break;
+    }
   }
   taken_.clear();
 }

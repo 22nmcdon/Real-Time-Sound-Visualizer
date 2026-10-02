@@ -816,12 +816,13 @@ to itself, and applying it sends nothing. The saved state is the same code,
 so a slider moved on the page survives a project saved and reopened, and the
 host parameters' sliders ride in it rather than beside it.
 
-What it does not do yet, and why: a menu, a switch or a routing changed on
-the page does not reach the plugin. Sending the whole setup on every change
-was the simple design and was measured first - restoring even the setup
-already playing moves the sound at that sample by 0.2 to 1.2, on five presets
-of seven, where one control turned does not - so each of those controls
-waits for its handler in the core, as the sliders' was ported, with parity.
+What it did not do, and why: a menu, a switch or a routing changed on the
+page did not reach the plugin. Sending the whole setup on every change was
+the simple design and was measured first - restoring even the setup already
+playing moves the sound at that sample by 0.2 to 1.2, on five presets of
+seven, where one control turned does not - so each of those controls waited
+for its handler in the core, as the sliders' was ported, with parity. That
+is 3b.
 
 The shell test: a slider moved on the page is, sample for sample, the same
 move made directly, at the next block's top and not before, with its
@@ -838,6 +839,54 @@ the first pull on connecting, which the next pull, a quarter of a second
 later, makes up for - the ordering it exists for (the state shown before
 anything is sent) is real but too brief for a check to see.
 
+**3b: the menus, the switches, the buttons and the routings.** The page's
+"change" handler for every menu, switch and text box that reaches the sound
+or what a setup carries - fifty-seven of them, from the kind and the shape
+to the keyboard's switches, the arpeggiator, the score, the LFOs' menus, the
+threshold's and the macros' names - is `scope::controlChange`, its buttons
+(the tuning, the keyboard's mode, the plane's oversampling) are
+`controlClick`, and an edit to the routings is `Matrix::setRoutings`: the
+list as the edit left it, a routing kept being the same routing, its serial
+kept, so an event on it fires on the next count where a preset's would not.
+The page sends them from two capture-phase listeners and after any edit to
+the routings, each depth to its last digit; the plugin queues them like a
+slider and keeps each that did something in `pluginHands`, the saved state's
+list of every hand since the setup was loaded, in order, which replaced
+3a's `pluginSliders` (a state saved with that still loads). A hand on a
+control already in the list replaces the earlier one at the end, unless a
+hand between them reads it or is read by it - the keyboard's drive is for
+the kind chosen at the time, an LFO's rate moved while it is synced is its
+free rate - since the earlier one would then be put back in a different
+place.
+
+Not sent, each for a reason given where `HOST_CONTROLS` is: the view's
+menus; the fade's, which the page keeps in its own storage and not in a
+setup; layer B's editing, which swaps the panel between the layers where
+the core's panel always writes A; the MIDI out's port, the host's in the
+plugin; and LFO 2's rate, a slider made when LFO 2 is chosen and so not one
+the core's panel table has. A depth dragged reaches the plugin when the drag
+ends, as the page only counts it an edit then.
+
+Parity, in a new section of `parity.py`: 1,300-odd hands through the page's
+own handlers and the core's - presets, sliders, every menu with values it has
+and some it has not, switches, text, buttons - each leaving the same
+instrument, field by field; the readable ones (a path drawn under the Path
+figure is what the figure sends, an echo synced to a quarter at 120 is
+500 ms, C major quantised is the mask 2741, an LFO locked to a quarter runs
+at 2 Hz from a phase of nought); every one of the sixty-five controls seen to
+move something; and nulls. The dump grew what the new handlers write that it
+did not read: the arpeggiator the keyboard plays as well as its menus, the
+LFOs' phase and epoch, the threshold's arming, and the keyboard's copy of
+the interval. The matrix's runs gained `edit` and a run that shows the
+serial kept. The shell test: a menu, a switch and a button sent are their
+handlers at the next block's top, what the plugin does not know is not
+kept, and a fresh plugin given the state plays the same sample for sample;
+a control moved twice is kept once while the drive keeps its place between
+two kinds; the routings keep every digit; an old state's sliders load.
+hosttest.py: each kind is sent once, the view's menu and an unported button
+not at all, the routings whole and only when changed, and a state's hands
+put back in order with nothing sent back.
+
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 
@@ -850,6 +899,21 @@ WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
 ## Found on the way
+
+- **The fade held a copy where the page holds the routing.** A routing
+  fading out is the page's routing object itself, so a depth changed and the
+  routing taken off before the next frame fades out at the new depth. The
+  core's fade copied the routing once a frame and faded the stale one. The
+  matrix's random runs had `amount` and `unroute` from the start
+  and never put them on one pair without a frame between; the edits' runs,
+  which replace the whole list, did it at once. The copy is now brought up to
+  date by serial whenever the routings change, and a named run shows it.
+- **The arpeggiator's mode read two menus a restore leaves stale.** The
+  page's `arpSet` reads the rate and octaves menus; the core's panel has
+  copies of them that `restoreSetup` does not write, keeping the values in
+  the brain instead, so the ported handler read the menus as they were
+  before the preset. It reads the brain's now. Found by the first run of the
+  menus' parity, at the 173rd hand.
 
 - **JUCE 8.0.9's Linux web view could not serve the page.** It runs WebKit in
   a child process and passes each resource over a pipe, reading without

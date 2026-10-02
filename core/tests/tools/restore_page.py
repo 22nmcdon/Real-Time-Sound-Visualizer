@@ -8,7 +8,8 @@ and the figures made of strokes, and every slider.
 A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
 for one frame ("mod") or from now on ("hold"), a macro's knob ("macro", "i"),
-or a frame ("step"). restore_cpp writes the same line from the core.
+a frame ("step"), a menu, a switch or a text box changed ("change", "id",
+"value", which for a switch is true or false), or a button pressed ("click"). restore_cpp writes the same line from the core.
 
 `restore` writes into the page's controls and fires their handlers, so it can
 only be run where there is a DOM; this is the one runner of the port that
@@ -61,6 +62,16 @@ DUMP = """(setups) => {
     else if (o.op === "hold") { window.__held = o.value; morph.mod = o.value; morphStep(); }
     else if (o.op === "macro") input(el["macro" + (o.i + 1)], o.value);
     else if (o.op === "step") morphStep();
+    else if (o.op === "change") {
+      // An LFO's menus and the threshold's are in the page only while theirs
+      // is the chosen source, as LFO 1's rate is.
+      const lfo = /^lfo(?:Shape|Sync)(\\d)$/.exec(o.id);
+      if (!document.getElementById(o.id)) selectSource(lfo ? "lfo" + (Number(lfo[1]) + 1) : "threshold");
+      const e = document.getElementById(o.id);
+      if (e.type === "checkbox") e.checked = o.value === true; else e.value = String(o.value);
+      e.dispatchEvent(new Event("change"));
+    }
+    else if (o.op === "click") document.getElementById(o.id).click();
   };
   for (const setup of setups) {
     let error = null;
@@ -76,14 +87,21 @@ DUMP = """(setups) => {
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
               polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
               play: midi.play, cc: encodeCC() },
-      panel: { freq: el.freq.value, interval: el.interval.value, figureRate: el.figureRate.value, detail: el.detail.value },
-      lfos: lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, free: l.free, sync: l.sync })),
+      // The interval twice: the core's panel and its keyboard each keep one,
+      // where the page's keyboard reads the menu.
+      panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: el.interval.value,
+               figureRate: el.figureRate.value, detail: el.detail.value },
+      // And what each plays, by its wave a radian in: the core keeps the
+      // shape it plays apart from the name the brain keeps.
+      lfos: lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, free: l.free, sync: l.sync,
+                               phase: l.phase, epoch: l.epoch, plays: l.shape === "random" ? "random" : waveAt(l.shape, 1) })),
       mod: encodeRoutings(state.modRoutings),
       key: { root: state.keyRoot, scale: state.keyScale, quantise: state.quantise, glide: state.quantiseGlide, bpm: transport.set },
       cross: { on: cross.on, x: cross.x, y: cross.y, noteX: cross.noteX, noteY: cross.noteY, decayMs: cross.decayMs, level: cross.level },
       score: { on: score.on, step: score.step, voices: score.voices, low: score.low, octaves: score.octaves },
       arp: { mode: el.arpMode.value, rate: el.arpRate.value, octaves: el.arpOctaves.value },
-      thresh: { watch: thresh.watch, level: thresh.level }, pluck: pluck.note,
+      arpPlays: { mode: arp.mode, rate: arp.rate, octaves: arp.octaves },
+      thresh: { watch: thresh.watch, level: thresh.level, armed: thresh.armed }, pluck: pluck.note,
       macros: macros.map((m) => ({ name: m.name, value: m.value })),
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
@@ -136,6 +154,9 @@ def main():
         page.goto("file://" + os.path.abspath(PAGE))
         page.clock.pause_at(1000)
         page.clock.run_for(700)
+        # The LFOs ran in those frames, and the core's have not: from nought
+        # both, so a phase the sync menu sets to nought can be seen to be set.
+        page.evaluate("() => lfos.forEach((l) => { l.phase = 0; })")
         if sys.argv[1] == "--controls":
             print(page.evaluate(CONTROLS))
         elif sys.argv[1] == "--presets":
@@ -146,9 +167,10 @@ def main():
             print(page.evaluate("() => JSON.stringify(PRESETS)"))
         elif sys.argv[1] == "--sources":
             # The sources the page has registered, with the reach `touchRoutings`
-            # holds a stored depth to: the C++ runner registers stand-ins for them.
+            # holds a stored depth to, and which are events, which the threshold cannot
+            # watch: the C++ runner registers stand-ins for them.
             print(page.evaluate("""() => JSON.stringify([...MOD_SOURCES.values()].map((s) =>
-              ({ id: s.id, reach: s.reach > 0 ? s.reach : 0, varies: !!s.reachVaries })))"""))
+              ({ id: s.id, reach: s.reach > 0 ? s.reach : 0, varies: !!s.reachVaries, event: s.event === true })))"""))
         else:
             setups = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
             for start in range(0, len(setups), 50):

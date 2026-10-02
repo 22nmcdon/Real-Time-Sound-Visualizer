@@ -1124,6 +1124,23 @@ mruns = [
     ("strikes-first", mrun("fade both 1", "env 0 restart=true attack=0.2 decay=0.2 sustain=0.5 delay=0.2",
                            "strike 0", "strike 0", "value key 1", "route key gen.fm 1", "at 0", "frame",
                            *frames(50, 900, 50), "strike 0", *frames(900, 1500, 50))),
+    # The page in the plugin sends its whole list after each edit. A pair kept
+    # is the same routing, so an event on it fires on the next new count; the
+    # same list loaded as a preset is new routings, which never fire on the
+    # count they find. A depth carried at full precision, and one past a
+    # reach held to it as the page holds it.
+    ("edit", mrun("route onset gen.kick 0.6", "route level gen.freq 0.5", "fade both 1", "at 0", "frame", "count onset 1",
+                  "frame", "edit onset>gen.kick@0.7;level>gen.freq@0.123456789012345;photo>gen.twist@0.4", "count onset 2",
+                  "at 50", "frame", "load onset>gen.kick@0.7;level>gen.freq@0.123456789012345;photo>gen.twist@0.4",
+                  "count onset 3", "at 100", "frame", "count onset 4", "edit level>gen.freq@0.5", "at 150", "frame",
+                  "edit onset>gen.kick@0.2;level>gen.freq@0.5", "count onset 5", "at 200", "frame", "count onset 6",
+                  "at 250", "frame", "edit level>gen.freq@0.5;photo>gen.freq@0.9", "routes", *frames(300, 1500, 200),
+                  "encode")),
+    # A depth changed and the routing taken off before the next frame: what
+    # fades out is the new depth, since the page's fade holds the routing
+    # itself. Found by the edits' fuzz; the port's fade held a stale copy.
+    ("fade-depth", mrun("route level gen.freq 0.8", "fade out 1", "at 0", "frame", "amount level gen.freq 0.3",
+                        "unroute level gen.freq", *frames(50, 1200, 100))),
     ("codes", mrun("load a>b@1;;x>y@1.2.3;level>gen.freq@-0.0625;bad;@;c>d@;e>f@.5;g>h>i@0.1875;j@k>l@1;m>n@-.25;o>p@5.;q>r@-",
                    "encode", "frame", "load level>gen.amp@0.0005;level>gen.fm@1.9995;level>gen.freq@-0.00049;p0>q0@-0;p9>q9@9.9996;pm>qm@-99.9999", "encode",
                    "load", "encode")),
@@ -1148,6 +1165,9 @@ def mfuzz(n):
         elif r < 0.63: out.append("strike %d" % mrng.randint(0, 1))
         elif r < 0.65: out.append("load " + ";".join("%s>%s@%.3f" % (mrng.choice(MSRC), mrng.choice(MDST), mrng.uniform(-1, 1)) for _ in range(mrng.randint(0, 4))))
         elif r < 0.66: out.append("forget " + mrng.choice(["level", "photo", "onset"]))
+        # Never a pair twice: the page's list cannot hold one twice.
+        elif r < 0.70: out.append("edit " + ";".join("%s>%s@%r" % (src, dst, mrng.uniform(-1, 1)) for src, dst in mrng.sample(
+            [(src, dst) for src in ("level", "onset", "photo") for dst in ("gen.freq", "gen.kick", "view.rotate")], mrng.randint(0, 3))))
         else:
             t += mrng.choice([16, 16, 33, 100, 400, 0])
             out += ["at %d" % t, "frame"]
@@ -1196,6 +1216,16 @@ check("layered, layer B's depths and envelope are its own", any(
 # the frames have to be there.
 after = [route_amounts(l) for l in frame_lines("preset")[1:]]
 check("a preset's pair already playing does not dip", len(after) >= 5 and all(a and abs(a[0] - 0.6) < 1e-12 for a in after))
+fd = [route_amounts(l) for l in frame_lines("fade-depth")[1:]]
+check("a depth changed just before its routing goes is the depth that fades out",
+      len(fd) > 5 and all(abs(x) <= 0.3 + 1e-12 for a in fd for x in a) and any(x > 0.25 for a in fd for x in a),
+      repr(fd[:3]))
+ed = mout("edit")
+check("an edit keeps the routings it kept: an event on one fires on the next count, and not after a load of the same list",
+      ed.count(":: fire gen.kick") == 3 and ":: fire gen.kick 0.69999999999999996" in ed
+      and ":: fire gen.kick 0.20000000000000001" in ed, "%d fired" % ed.count(":: fire gen.kick"))
+check("an edit's depth arrives whole, and one past its reach is held to it",
+      "amounts 0.69999999999999996+0.12345678901234500+" in ed and "photo>gen.freq@0.500" in ed)
 check("codes: the page's own rounding, and the malformed parts skipped",
       "level>gen.freq@-0.063" in mout("codes") and "g>h>i@0.188" in mout("codes") and "m>n@-0.250" in mout("codes")
       and "bad" not in mout("codes") and "c>d" not in mout("codes") and "j@k>l@1.000" in mout("codes")
@@ -1214,6 +1244,7 @@ mnull("stepped", "sustain=0.6", "sustain=0.61", "a sustain a hundredth higher")
 mnull("reach", "source photo picture reach=0.5", "source photo picture reach=0.51", "a reach a hundredth further")
 mnull("events", "count onset 3", "count onset 1", "a count that did not move")
 mnull("layered", "strike 1", "strike 0", "the other layer struck")
+mnull("edit", "edit onset>gen.kick@0.7;", "load onset>gen.kick@0.7;", "the edit sent as a preset")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(mjs.strip().split("\n")[1:]), "\n".join(mcpp.strip().split("\n")[:-1])) is not None)
 
@@ -2371,6 +2402,122 @@ mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
 mnull("the other macro", 13, lambda o: o | {"i": 2})
 mnull("the end stored without timebase", 16, lambda o: o | {"value": 7})
 check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
+
+print("\n--- menus, switches and buttons ---")
+# A hand on a menu, a switch, a text box or a button that reaches the sound,
+# through the page's own "change" and "click" handlers against
+# scope::controlChange and controlClick - what the page in the plugin sends
+# for each, as it sends a slider. Between presets and sliders, as a hand has
+# them, and with values a menu has not got.
+CMENUS = ["genMode", "interval", "figure", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS", "oscRatio",
+          "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType", "planeMirror", "planeLimit",
+          "planeKaleido", "planeSnap", "delaySync", "crossNoteX", "crossNoteY", "keyRoot", "keyScale", "midiDrawCount",
+          "midiDrawWhich", "midiLayers", "midiLayerPair", "arpMode", "arpRate", "arpOctaves", "pluckNote", "scoreStep",
+          "scoreVoices", "scoreLow", "scoreOctaves", "lfoShape0", "lfoSync0"]
+CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"],
+         "threshWatch": ["lfo1", "lfo2", "env.live", "macro.1", "onset", "threshold", "nobody", ""]}
+CSWITCHES = ["delayPingPong", "crossOn", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "midiDrive",
+             "midiPlay", "scoreOn"]
+CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""],
+         **{"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}}
+CCLICKS = ["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4"]
+def cop():
+    c = rrng.random()
+    if c < 0.5:
+        id = rrng.choice(CMENUS)
+        opts = pctl["selects"][id]["options"]
+        # A value the menu has not got reads "", which the page's keyboard
+        # keeps as it is and the core's, holding one of a few, cannot. No menu
+        # sends one - the page sends the menu's value - so not for those.
+        odd = rrng.random() >= 0.92 and id not in ("midiLayers", "midiLayerPair", "midiDrawWhich")
+        return {"op": "change", "id": id, "value": rrng.choice(["nonsense", "", "7"]) if odd else rrng.choice(opts)}
+    if c < 0.6: id = rrng.choice(list(CMORE)); return {"op": "change", "id": id, "value": rrng.choice(CMORE[id] + ["nonsense"])}
+    if c < 0.75: return {"op": "change", "id": rrng.choice(CSWITCHES), "value": rrng.random() < 0.5}
+    if c < 0.82: id = rrng.choice(list(CTEXT)); return {"op": "change", "id": id, "value": rrng.choice(CTEXT[id])}
+    if c < 0.95: return {"op": "click", "id": rrng.choice(CCLICKS)}
+    return mslider(ctl_ids)
+def crun():
+    return [_json.loads(rrng.choice(presets)) if rrng.random() < 0.7 else {}] + [cop() for _ in range(rrng.randint(4, 14))]
+# Made to be read: each family once, with what it should leave. The figure's
+# path is drawn while the Path figure is chosen; the LFO is locked to a
+# quarter at 120 and let go; the threshold is set to watch an event, which it
+# cannot.
+CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},                                  # 1
+         {"op": "change", "id": "genMode", "value": "figure"}, {"op": "change", "id": "figure", "value": "Path"},
+         {"op": "change", "id": "figPathD", "value": "M0 0 L20 5 L5 20 Z"},                              # 4
+         {"op": "change", "id": "genMode", "value": "wave"}, {"op": "change", "id": "shape", "value": "square"},
+         {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "change", "id": "vcfType", "value": "2"},  # 7, 8
+         {"op": "change", "id": "shpOS", "value": "4"}, {"op": "change", "id": "planeKaleido", "value": "6"},  # 9, 10
+         {"op": "click", "id": "planeOS4"}, {"op": "change", "id": "delaySync", "value": "1/4"},             # 11, 12
+         {"op": "change", "id": "delayPingPong", "value": True}, {"op": "change", "id": "crossOn", "value": True},
+         {"op": "change", "id": "crossNoteX", "value": "60"}, {"op": "change", "id": "keyScale", "value": "major"},
+         {"op": "change", "id": "quantise", "value": True},                                                  # 17
+         {"op": "change", "id": "midiLayers", "value": "split"}, {"op": "change", "id": "midiLayerPair", "value": "against"},
+         {"op": "click", "id": "midiPoly"}, {"op": "click", "id": "tuneEqual"},                              # 20, 21
+         {"op": "change", "id": "arpMode", "value": "up"}, {"op": "change", "id": "arpRate", "value": "1/16"},
+         {"op": "change", "id": "arpOctaves", "value": "2"},                                                 # 24
+         {"op": "change", "id": "lfoSync0", "value": "1/4"}, {"op": "change", "id": "lfoSync0", "value": ""},  # 25, 26
+         {"op": "change", "id": "lfoShape1", "value": "square"},                                             # 27
+         {"op": "change", "id": "threshWatch", "value": "lfo2"}, {"op": "change", "id": "threshWatch", "value": "onset"},
+         {"op": "change", "id": "macroName2", "value": "Wob|ble  "}, {"op": "change", "id": "macroName3", "value": "   "},
+         {"op": "change", "id": "scoreOn", "value": True}, {"op": "change", "id": "scoreVoices", "value": "4"},  # 32, 33
+         {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
+         {"op": "change", "id": "keyRoot", "value": "2"}, {"op": "change", "id": "keyScale", "value": "minor"},  # 36, 37
+         {"op": "change", "id": "scoreVoices", "value": "nonsense"}]                                       # 38
+clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(120) for o in crun()]
+cpg, cpt = rboth(clines, "control_ops.txt")
+cb = rbad(cpg, cpt)
+check("%d menus, switches, text boxes and buttons leave the same instrument" % len(clines),
+      not cb and len(clines) > 1200, cb[0] if cb else "")
+cp = [_json.loads(l) for l in cpg]
+check("the kind menu changes the kind, and a path drawn under the Path figure is what the figure sends",
+      cp[1]["a"]["mode"] == "harmonograph" and cp[3]["a"]["figure"] == "Path" and cp[4]["figure"]["sent"] is not None
+      and cp[4]["figure"]["sent"] != cp[3]["figure"]["sent"], "%r %r" % (cp[1]["a"]["mode"], cp[3]["a"]["figure"]))
+check("the shape, the unison, the filter's type and the oversampling reach the tone",
+      cp[6]["a"]["shape"] == "square" and cp[7]["a"]["unison"] == 3 and cp[8]["a"]["vcfType"] == 2 and cp[9]["a"]["shapeOS"] == 4)
+check("the kaleidoscope's menu and the plane's 4x button reach the tone",
+      cp[10]["a"]["planeKaleido"] == 6 and cp[11]["plane"]["os"] == 4 and cp[11]["a"]["planeOS"] == 4)
+check("the echo synced to a quarter at 120 is 500 ms, and ping-pong switched on",
+      cp[12]["a"]["delayMs"] == 500 and cp[13]["a"]["delayPingPong"] is True, repr(cp[12]["a"]["delayMs"]))
+check("the crossings switched on at middle C, and C major quantised is the mask 2741",
+      cp[14]["a"]["crossOn"] is True and abs(cp[15]["a"]["crossHzX"] - 261.6255653005986) < 1e-9
+      and cp[17]["a"]["qMask"] == 2741, repr(cp[17]["a"]["qMask"]))
+check("the split, the pairing, poly and the tuning both ways reach the keyboard and the tone",
+      cp[18]["midi"]["layers"]["mode"] == "split" and cp[19]["midi"]["layers"]["pair"] == "against"
+      and cp[19]["midi"]["mode"] != "poly" and cp[20]["midi"]["mode"] == "poly"
+      and cp[20]["a"]["just"] is True and cp[21]["a"]["just"] is False and cp[35]["a"]["just"] is True)
+check("the arpeggiator's menus reach what it plays",
+      cp[24]["arpPlays"] == {"mode": "up", "rate": "1/16", "octaves": 2}, repr(cp[24]["arpPlays"]))
+check("LFO 1 locked to a quarter at 120 runs at 2 Hz from the beat, and let go goes back to its free rate",
+      cp[25]["lfos"][0]["rate"] == 2 and cp[25]["lfos"][0]["phase"] == 0 and cp[25]["lfos"][0]["epoch"] > cp[24]["lfos"][0]["epoch"]
+      and cp[26]["lfos"][0]["rate"] == cp[24]["lfos"][0]["rate"] and cp[27]["lfos"][1]["shape"] == "square",
+      repr(cp[25]["lfos"][0]))
+check("the threshold watches another source, and an event is nothing it can watch",
+      cp[28]["thresh"]["watch"] == "lfo2" and cp[29]["thresh"]["watch"] == "", repr(cp[29]["thresh"]))
+check("a macro's name loses its bars and spaces, and a name of spaces is no name",
+      cp[30]["macros"][1]["name"] == "Wobble" and cp[31]["macros"][2]["name"] == "Macro 3")
+check("with the quantiser on, the key's root and its scale each move the mask at once",
+      cp[35]["key"]["quantise"] is True and len({cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]}) == 3,
+      "%r %r %r" % (cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]))
+check("the score switched on with four voices, and a number of voices the menu has not got is one",
+      cp[32]["score"]["on"] is True and cp[33]["score"]["voices"] == 4 and cp[38]["score"]["voices"] == 1)
+check("a shape the menu has not got is no shape", cp[34]["a"]["shape"] != "nonsense", repr(cp[34]["a"]["shape"]))
+cops = [_json.loads(l) for l in clines]
+cmoved = {o["id"] for i, o in enumerate(cops) if o.get("op") in ("change", "click") and i and rdiff(cp[i], cp[i - 1])}
+call = set(CMENUS) | set(CMORE) | set(CSWITCHES) | set(CTEXT) | set(CCLICKS)
+check("the runs move something with every one of the %d controls" % len(call), cmoved >= call, ", ".join(sorted(call - cmoved)))
+def cnull(what, index, change):
+    lines = list(clines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "control_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(cpt[index])) != [])
+cnull("the other kind", 1, lambda o: o | {"value": "wireframe"})
+cnull("the 2x button", 11, lambda o: o | {"id": "planeOS2"})
+cnull("the LFO locked to an eighth", 25, lambda o: o | {"value": "1/8"})
+cnull("the threshold watching LFO 1", 28, lambda o: o | {"value": "lfo1"})
+cnull("another name", 30, lambda o: o | {"value": "Wibble"})
+cnull("the switch the other way", 13, lambda o: o | {"value": False})
+check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
 
 print()
 if fails:

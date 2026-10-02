@@ -56,7 +56,8 @@ FAKE = """
       for (const fn of listeners.get('__juce__complete') || []) fn({ promiseId, result });
     }, 0);
     window.__JUCE__ = {
-      initialisationData: { __juce__functions: ['scopeHost', 'scopeReport', 'scopeSlider', 'scopeSetup', 'scopeState'] },
+      initialisationData: { __juce__functions: ['scopeHost', 'scopeReport', 'scopeSlider', 'scopeSetup', 'scopeState',
+                                                 'scopeControl', 'scopeClick', 'scopeRoutings'] },
       backend: {
         addEventListener(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
         emitEvent(name, payload) {
@@ -64,7 +65,9 @@ FAKE = """
           window.__hostTest.calls.push(payload.name);
           if (!['scopeHost', 'scopeState', 'scopeReport'].includes(payload.name)) window.__hostTest.log.push([payload.name, ...payload.params]);
           if (payload.name === 'scopeState') { reply(payload.resultId, window.__hostTest.state); return; }
-          if (payload.name === 'scopeSlider' || payload.name === 'scopeSetup') { reply(payload.resultId, true); return; }
+          if (['scopeSlider', 'scopeSetup', 'scopeControl', 'scopeClick', 'scopeRoutings'].includes(payload.name)) {
+            reply(payload.resultId, true); return;
+          }
           if (payload.name === 'scopeHost') {
             reply(payload.resultId, { host: 'plugin', rate: RATE, pictureFrames: FRAMES, pictureUrl: 'scope-test://picture.bin' });
           } else if (payload.name === 'scopeReport') {
@@ -202,6 +205,46 @@ with sync_playwright() as pw:
     check("a preset loaded on the page is sent to the plugin whole, as a code that reads back as that preset",
           preset["names"] == ["scopeSetup"] and preset["cut"] == preset["wantCut"] and preset["mod"] == preset["wantMod"]
           and preset["cut"] is not None, str(preset))
+
+    sent = p.evaluate("""() => {
+      const t = window.__hostTest, out = {};
+      const send = (name, act) => { t.log.length = 0; act(); out[name] = t.log.slice(); };
+      send('menu', () => { el.planeKaleido.value = '6'; el.planeKaleido.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('switch', () => { el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('view', () => { el.persistence.value = '0.3'; el.persistence.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('button', () => el.planeOS4.click());
+      send('other', () => el.reswing.click());
+      send('route', () => addRouting('lfo1', 'gen.freq'));
+      send('depth', () => { state.modRoutings[state.modRoutings.length - 1].amount = 0.123456789012345; touchRoutings(); });
+      send('again', () => touchRoutings());
+      send('tiny', () => { state.modRoutings[state.modRoutings.length - 1].amount = 1e-7; touchRoutings(); });
+      return out;
+    }""")
+    check("a menu turned on the page is sent to the plugin by id and value, a switch as true or false, once each",
+          sent["menu"] == [["scopeControl", "planeKaleido", "6"]] and sent["switch"] == [["scopeControl", "crossOn", True]], str(sent))
+    check("a button that reaches the sound is sent by its id; the view's menu and a button the plugin has no handler for are not",
+          sent["button"] == [["scopeClick", "planeOS4"]] and sent["view"] == [] and sent["other"] == [], str(sent))
+    route = sent["route"][0][1].split(";")[-1] if sent["route"] and len(sent["route"][0]) > 1 else ""
+    check("an edit to the routings sends them whole, each depth to its last digit, and nothing when nothing changed",
+          len(sent["route"]) == 1 and sent["route"][0][0] == "scopeRoutings" and route.startswith("lfo1>gen.freq@")
+          and sent["depth"] == [["scopeRoutings", sent["route"][0][1].rsplit("@", 1)[0] + "@0.123456789012345"]]
+          and sent["again"] == [] and len(sent["tiny"]) == 1 and sent["tiny"][0][1].endswith("@0.00000010000000000000"), str(sent))
+    hands = [["c", "planeKaleido", "4"], ["c", "crossOn", True], ["k", "planeOS1"], ["c", "lfoShape1", "square"],
+             ["r", "", "lfo2>gen.amp@-0.3456789"], ["s", "amp", "42"]]
+    applied = p.evaluate("""async (code) => {
+      const t = window.__hostTest;
+      cross.on = false; el.crossOn.checked = false;
+      const shown = selectedSource;
+      t.log.length = 0;
+      t.state = { version: 3, code };
+      await new Promise((r) => setTimeout(r, 700));
+      return { kaleido: plane.kaleido, menu: el.planeKaleido.value, cross: cross.on, os: plane.os, lfo: lfos[1].shape,
+               mod: state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount).join(';'), amp: el.amp.value,
+               shown: selectedSource === shown, log: t.log.slice() };
+    }""", code({"vcfCut": 222, "pluginHands": hands}))
+    check("the plugin's state puts its hands back on the page in order, menus, switches, buttons, routings and sliders, and sends nothing back",
+          applied == {"kaleido": 4, "menu": "4", "cross": True, "os": 1, "lfo": "square", "mod": "lfo2>gen.amp@-0.3456789",
+                      "amp": "42", "shown": True, "log": []}, str(applied))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -192,6 +192,22 @@ class Matrix {
     }
     touch();
   }
+  // The page's list after an edit there - one added, dropped or given a new
+  // depth - as the list now stands. A routing that was already there keeps
+  // what it was, its serial among it, as the page's object is kept. The
+  // page's list never names a pair twice, since adding one already there
+  // only sets its depth; one that did would be two routings with one serial.
+  void setRoutings(const std::vector<Routing>& list) {
+    std::vector<Routing> next;
+    for (const auto& r : list) {
+      const auto had = std::find_if(routings_.begin(), routings_.end(), [&](const Routing& o) {
+        return o.sourceId == r.sourceId && o.destId == r.destId;
+      });
+      next.push_back({ r.sourceId, r.destId, r.amount, had != routings_.end() ? had->serial : ++serial_ });
+    }
+    routings_ = std::move(next);
+    touch();
+  }
   // A preset's routings: every one new.
   void load(const std::vector<Routing>& list) {
     routings_.clear();
@@ -207,6 +223,12 @@ class Matrix {
     for (auto& r : routings_) {
       const ModSource* s = source(r.sourceId);
       if (s && s->reach > 0 && !s->reachVaries) r.amount = routingAmount(s, r.amount);
+    }
+    // A fade holds the page's routing object itself, so a depth changed since
+    // the last frame is the depth that fades out if the routing goes before
+    // the next one. Here the fade holds a copy, brought up to date by serial.
+    for (auto& g : gains_) {
+      for (const auto& r : routings_) if (r.serial == g.routing.serial) { g.routing.amount = r.amount; break; }
     }
   }
 

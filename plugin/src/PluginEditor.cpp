@@ -25,8 +25,9 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         info->setProperty("pictureUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "picture.bin");
         complete(juce::var(info));
       })
-      /* The page as the plugin's face: a slider moved, a setup loaded, and
-         the plugin's state for the page to show. */
+      /* The page as the plugin's face: a slider moved, a setup loaded, a
+         menu, a switch, a button, the routings, and the plugin's state for
+         the page to show. */
       .withNativeFunction("scopeSlider", [&owner](const juce::Array<juce::var>& args, auto complete) {
         if (args.size() >= 2)
           owner.pageSlider(args[0].toString().toStdString(), scope::toU16(args[1].toString().toStdString()));
@@ -35,6 +36,23 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
       .withNativeFunction("scopeSetup", [&owner](const juce::Array<juce::var>& args, auto complete) {
         const auto code = args.isEmpty() ? std::string() : args[0].toString().toStdString();
         complete(juce::var(owner.pageSetup(code)));
+      })
+      // A menu's value or a text box's as text, a switch's as true or false.
+      .withNativeFunction("scopeControl", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        if (args.size() >= 2) {
+          const auto id = args[0].toString().toStdString();
+          if (args[1].isBool()) owner.pageControl(id, scope::Json::boolean(static_cast<bool>(args[1])));
+          else owner.pageControl(id, scope::Json::string(scope::utf8To16(args[1].toString().toStdString())));
+        }
+        complete(juce::var());
+      })
+      .withNativeFunction("scopeClick", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        if (!args.isEmpty()) owner.pageClick(args[0].toString().toStdString());
+        complete(juce::var());
+      })
+      .withNativeFunction("scopeRoutings", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        owner.pageRoutings(args.isEmpty() ? std::string() : args[0].toString().toStdString());
+        complete(juce::var());
       })
       .withNativeFunction("scopeState", [&owner](const juce::Array<juce::var>&, auto complete) {
         const auto state = owner.pageState();

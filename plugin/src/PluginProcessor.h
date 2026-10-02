@@ -65,7 +65,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
 
   /* The plugin's state is a setup code, the thing the page shares: the
      setup it was loaded with, and over it what has moved since - every
-     slider moved, by the host's parameters or the page, and the controllers
+     slider moved, by the host's parameters or the page, every menu, switch
+     and button the page has sent and its routings, and the controllers
      learned. */
   void getStateInformation(juce::MemoryBlock&) override;
   void setStateInformation(const void*, int) override;
@@ -90,6 +91,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void setPictureReport(const juce::String& json) { pictureReport_ = json; }
   juce::String pictureReport() const { return pictureReport_; }
 
+  // The tone and the keyboard's settings, for the shell test to read.
+  const scope::Tone& tone() const { return core_->tone(); }
+  scope::Keyboard::Settings keys() const { return keyboard_->settings(); }
   // The routings, for whoever sets them: the shell test now, the brain's
   // setup later. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return *matrix_; }
@@ -128,6 +132,15 @@ class ScopeProcessor final : public juce::AudioProcessor {
      the page, so the page applies only those and never echoes its own. */
   void pageSlider(const std::string& id, const std::u16string& text);
   bool pageSetup(std::string_view code);
+  /* And a menu, a switch or a text box changed (its value as the browser
+     holds it, or a switch's state as true or false), a button pressed, and
+     the routings as an edit there left them, every depth to the last digit.
+     Each is the
+     page's handler, ported (scope::controlChange, controlClick and
+     Matrix::setRoutings). */
+  void pageControl(const std::string& id, scope::Json value);
+  void pageClick(const std::string& id);
+  void pageRoutings(std::string_view text);
   struct PageState { int version = 0; std::string code; };
   PageState pageState() const;
   double slider(const char* id) const { return brain_->panel.range(id); }
@@ -140,8 +153,16 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // A slider moved, by the host's parameter or the page, and remembered as
   // moved since the setup was loaded.
   void moveTo(const std::string& id, const std::u16string& text, bool fromHost);
+  // The page's other hands: done here, and remembered if they did anything.
+  void change(const std::string& id, const scope::Json& value);
+  void click(const std::string& id);
+  void routings(const std::string& text);
+  // A hand put back from a saved state, as the page sends it.
+  void replay(const scope::Json& hand);
+  // A hand remembered, in place of an earlier one it makes redundant.
+  void remember(std::string key, scope::Json hand);
   // The setup code of everything that can have changed: the setup loaded,
-  // the sliders moved since, the controllers learned.
+  // the hands on it since, the controllers learned.
   std::string stateCode() const;
   // The page's queue, applied; and the state, published for the page if it changed.
   void takePage();
@@ -176,8 +197,17 @@ class ScopeProcessor final : public juce::AudioProcessor {
   scope::Json setup_;                          // the setup the plugin was loaded with
   juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
-  std::vector<std::pair<std::string, std::u16string>> moved_;  // sliders moved since the setup was loaded
-  struct PageCommand { std::string slider; std::u16string text; std::optional<scope::Json> setup; };
+  /* Every hand on the setup since it was loaded, in order: a slider, a menu,
+     a switch, a button, the routings. Saved with it as `pluginHands`, each
+     [kind, id, value], and put back in order when the state is loaded. A
+     hand on a control already in the list takes the earlier one's place at
+     the end - unless a hand between them is one whose handler reads it. */
+  struct Hand { std::string key; scope::Json hand; };
+  std::vector<Hand> hands_;
+  struct PageCommand {
+    enum Kind { Slider, Setup, Control, Click, Routings } kind;
+    std::string id; std::u16string text; scope::Json value; std::optional<scope::Json> setup;
+  };
   juce::SpinLock queueLock_;
   std::vector<PageCommand> queue_, taken_;
   mutable juce::SpinLock publishLock_;

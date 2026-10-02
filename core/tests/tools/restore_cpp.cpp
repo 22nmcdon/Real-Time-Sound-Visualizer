@@ -1,7 +1,8 @@
 // scope::restoreSetup through the same setups as restore_page.py, one JSON
 // line per setup in the same shape, and the same operations on the sliders,
-// the morph and the macros (see that file). The page's sources are registered as
-// stand-ins with their reach, so a stored depth is held as the page holds it.
+// the morph, the macros, the menus, the switches and the buttons (see that
+// file). The page's sources are registered as stand-ins with their reach, so
+// a stored depth is held as the page holds it.
 //   restore_cpp <setups> <sources.json>
 #include <cstdio>
 #include <fstream>
@@ -141,6 +142,7 @@ int main(int argc, char** argv) {
       auto in = std::make_unique<StandIn>(scope::utf16To8(s.get("id")->s));
       in->reach = s.get("reach")->n;
       in->reachVaries = s.get("varies")->b;
+      in->event = s.get("event")->b;
       matrix.registerSource(in.get());
       standIns.push_back(std::move(in));
     }
@@ -171,6 +173,10 @@ int main(int argc, char** argv) {
         brain.panel.setRange(id, written);
         scope::setMacro(brain, i, brain.panel.range(id) / 100);
       } else if (what == "step") scope::morphStep(brain, gen, keys, lfos);
+      else if (what == "change") {
+        const bool checked = value && value->type == Json::Type::Bool && value->b;
+        scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, matrix, lfos);
+      } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys);
     } else {
       scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
     }
@@ -200,6 +206,7 @@ int main(int argc, char** argv) {
     Json panel = Json::object();
     panel.set("freq", str(scope::jsNumberToString(keys.panel().freq)));
     panel.set("interval", str(brain.panel.select("interval")));
+    panel.set("keysInterval", str(std::to_string(keys.panel().interval)));
     panel.set("figureRate", str(scope::jsNumberToString(keys.panel().figureRate)));
     panel.set("detail", str(scope::jsNumberToString(keys.panel().detail)));
     out.set("panel", panel);
@@ -209,6 +216,9 @@ int main(int argc, char** argv) {
       o.set("shape", brain.lfo[static_cast<std::size_t>(i)].shape);
       o.set("rate", num(lfos[static_cast<std::size_t>(i)].rate)); o.set("depth", num(lfos[static_cast<std::size_t>(i)].depth));
       o.set("free", num(brain.lfo[static_cast<std::size_t>(i)].free)); o.set("sync", str(brain.lfo[static_cast<std::size_t>(i)].sync));
+      o.set("phase", num(lfos[static_cast<std::size_t>(i)].phase)); o.set("epoch", num(lfos[static_cast<std::size_t>(i)].epoch));
+      const scope::Lfo& plays = lfos[static_cast<std::size_t>(i)];
+      o.set("plays", plays.random ? str("random") : num(scope::waveAt(plays.shape, 1)));
       lfoList.a.push_back(o);
     }
     out.set("lfos", lfoList);
@@ -229,8 +239,12 @@ int main(int argc, char** argv) {
     Json arp = Json::object();
     arp.set("mode", str(brain.arp.mode)); arp.set("rate", str(brain.arp.rate)); arp.set("octaves", str(brain.arp.octaves));
     out.set("arp", arp);
+    Json arpPlays = Json::object();
+    arpPlays.set("mode", str(keys.arp().mode)); arpPlays.set("rate", str(keys.arp().rate));
+    arpPlays.set("octaves", num(keys.arp().octaves));
+    out.set("arpPlays", arpPlays);
     Json thresh = Json::object();
-    thresh.set("watch", Json::string(brain.threshWatch)); thresh.set("level", num(brain.threshLevel));
+    thresh.set("watch", Json::string(brain.threshWatch)); thresh.set("level", num(brain.threshLevel)); thresh.set("armed", flag(brain.thresh.armed));
     out.set("thresh", thresh);
     out.set("pluck", num(brain.pluckNote));
     Json macros = Json::array();

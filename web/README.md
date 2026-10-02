@@ -3678,9 +3678,31 @@ are inline in `scopeHost`.
 - *Why not send the whole setup on every change.* It would have been one
   message for everything. But restoring even the setup already playing moves
   the sound at that sample - by as much as the sound itself, on five presets
-  of seven tried - where turning one control does not. So the menus, the
-  switches and the routings wait for their own handlers in the core, and
-  until then a change to one of them here does not reach the plugin.
+  of seven tried - where turning one control does not. So each control has
+  its own handler in the core, ported and held to the page's.
+- *Menus, switches, buttons and the routings.* A menu, a switch or a text box
+  in `HOST_CONTROLS` is sent as it changes (`scopeControl`, a switch's value
+  as true or false), a button in `HOST_CLICKS` as it is pressed
+  (`scopeClick`), and the routings whole after any edit (`scopeRoutings`),
+  each depth to its last digit - a setup code's three places would have moved
+  a depth dragged to 0.4567 to 0.457 in the plugin and left it at 0.4567
+  here. Two document-level listeners do it, in the capture phase, so no
+  control's own handler had to learn about the plugin. What is left out is
+  listed with `HOST_CONTROLS`, each with its reason: the view's menus, the
+  fade's (kept in this page's storage, not in a setup), layer B's editing
+  (with the layers on, a menu turned while B is on the panel reaches the
+  plugin as A's), the MIDI out's port, and LFO 2's rate, which is made when
+  LFO 2 is chosen and so is not one of the sliders the core knows.
+- *The plugin's state carries every hand.* `pluginHands`, a list of
+  [kind, id, value] in the order they happened, replaced 3a's `pluginSliders`;
+  the page puts them back the way it would have done them, choosing an LFO
+  or the threshold for a moment when the menu is only there while its source
+  is shown. A state saved with the old list still loads.
+- *`hostSync` is declared near the top, not with the rest of this.*
+  `touchRoutings` sends the routings, and it runs while the page is still
+  starting, long before the script reaches the host's section. A `const`
+  read before its line throws even under `typeof`, and declared where it
+  was first written it would have stopped the script at its first routing.
 
 **Two bugs the port found in the page's sources.** Porting the learned
 controllers, the level and the threshold to the C++ core (plugin/PLAN.md, 2e)

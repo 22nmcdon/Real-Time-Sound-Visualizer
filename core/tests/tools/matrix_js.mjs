@@ -14,7 +14,7 @@
      source ID [event] [picture] [stepped] [varies] [reach=R] [index=I]
      value ID V   count ID N   visual ID SPAN MIN MAX BASE   event ID
      route SRC DEST AMOUNT   unroute SRC DEST   amount SRC DEST A
-     load SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
+     load SRC>DEST@A;...   edit SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
      env LAYER key=value...   layers 0|1   strike LAYER   at MS   frame   routes   encode   dests
    Usage: node matrix_js.mjs <runs> */
 import fs from "node:fs";
@@ -70,7 +70,8 @@ const midi = { strikesBy: [0, 0] };
 let layered = false;
 function layersOn() { return layered; }
 const noop = () => {};
-const saveFade = noop, paintRoutings = noop;
+// The page in the plugin sends its routings after an edit; this harness is no plugin.
+const saveFade = noop, paintRoutings = noop, hostRoutings = noop;
 const requestAnimationFrame = (f) => f();
 `;
 
@@ -126,6 +127,17 @@ function run(commands) {
     } else if (cmd === "load") {
       // A preset: every routing a new object, as `restore` makes them.
       m.state.modRoutings = m.decodeRoutings(a[0] || "");
+      m.touchRoutings();
+    } else if (cmd === "edit") {
+      // The list as an edit on the page leaves it - one added, dropped or
+      // given a new depth - which the page in the plugin sends whole: a pair
+      // already there is the same object with its depth, the rest are new.
+      m.state.modRoutings = m.decodeRoutings(a[0] || "").map((r) => {
+        const had = m.state.modRoutings.find((x) => x.sourceId === r.sourceId && x.destId === r.destId);
+        if (!had) return r;
+        had.amount = r.amount;
+        return had;
+      });
       m.touchRoutings();
     } else if (cmd === "forget") {
       // A source unregistered, as forgetting a controller does it.

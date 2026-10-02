@@ -354,6 +354,10 @@ class Keyboard {
     arp_.current.clear();
     applyNotes();
   }
+  // The rate and octaves menus' own handlers: the field and nothing else,
+  // where the mode's handler (arpSet) starts the arpeggio afresh.
+  void setArpRate(std::string rate) { arp_.rate = std::move(rate); }
+  void setArpOctaves(double octaves) { arp_.octaves = octaves == 0 || std::isnan(octaves) ? 1 : octaves; }
   bool arpActive() const { return arp_.mode != "off" && drives(); }
   // arpStepMs: the step in milliseconds at the tempo in force.
   double arpStepMs() const {
