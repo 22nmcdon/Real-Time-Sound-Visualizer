@@ -22,9 +22,14 @@
 //   a flag (`setPresent`) and the second is always yes.
 // - The page's `genInput.from` is the generator's `inputFrom`; here it is read
 //   from the tone, where the two are always the same.
-// - The arpeggiator is a later piece of the port. Where the page asks
-//   `arpActive()` this keyboard plays the hands' stack, which is what the page
-//   does with the arpeggiator off.
+// - The arpeggiator's first step waits 25 ms for the rest of the chord, on a
+//   timer in the page. The core has no timers: the keyboard keeps its wakes
+//   (`arpWake`), and its owner calls `wakeArp` at each one's time - the
+//   plugin at its own sample, the page a frame or so late. "Now", where the
+//   page asks `performance.now()`, is what the owner last said (`setNow`),
+//   and the tempo the steps count in is the clock's (`setTempo`).
+// - The arpeggiator's random walk draws from the core's own generator, seeded,
+//   where the page asks `Math.random`; the parity seeds the page's alike.
 // - The stack is reserved for every note there is, so a note never makes it
 //   grow. The chord handed to the generator is a list, and the generator
 //   copies it; that copy can allocate on a note, once per layer.
@@ -35,6 +40,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -106,6 +112,15 @@ class GeneratorNotes : public NoteTarget {
  private:
   Generator& g_;
   Layout layout_ = Layout::One;
+};
+
+// Where notes go out: the MIDI out the score and the arpeggiator send on. A
+// note sent says whether it went (no port, or past the rate limit, is no).
+class NoteOut {
+ public:
+  virtual ~NoteOut() = default;
+  virtual bool noteOut(int note, double velocity, double now) = 0;
+  virtual void noteOutOff(int note) = 0;
 };
 
 // MIDI's real-time messages - clock, start, continue, stop - which belong to
@@ -321,6 +336,67 @@ class Keyboard {
   }
   void setPresent(bool on) { present_ = on; }
   Panel& panel() { return panel_; }
+
+  // --- the arpeggiator: Stage K5 ---------------------------------------------
+
+  void setNow(double ms) { now_ = ms; }
+  void setTempo(double bpm) { bpm_ = bpm; }
+  void setOut(NoteOut* out) { out_ = out; }
+
+  // arpSet: the menus' values. Switched with keys down, the generator is given
+  // what it should now have.
+  void setArp(std::string mode, std::string rate, double octaves) {
+    arp_.mode = std::move(mode);
+    arp_.rate = std::move(rate);
+    arp_.octaves = octaves == 0 || std::isnan(octaves) ? 1 : octaves;
+    if (arp_.start) { offSent(); arp_.start.reset(); }
+    arp_.index = -1;
+    arp_.current.clear();
+    applyNotes();
+  }
+  bool arpActive() const { return arp_.mode != "off" && drives(); }
+  // arpStepMs: the step in milliseconds at the tempo in force.
+  double arpStepMs() const {
+    static const std::pair<const char*, double> rates[] = {
+      { "1/4", 1 }, { "1/8", 0.5 }, { "1/16", 0.25 }, { "1/8t", 1.0 / 3 }, { "1/16t", 1.0 / 6 },
+    };
+    double beats = 0.5;
+    for (const auto& [id, b] : rates) if (arp_.rate == id) { beats = b; break; }
+    return beats * 60000 / bpm_;
+  }
+  // arpTick: the step that is due, if one is; counted from the first key on
+  // the clock, so the steps cannot drift.
+  void arpTick(double now) {
+    if (!arpActive() || !arp_.start) return;
+    if (notes_.empty()) { arpStop(); return; }
+    if (now < *arp_.start) return;
+    const double due = std::floor((now - *arp_.start) / arpStepMs());
+    if (due < arp_.steps) return;
+    arp_.steps = due + 1;
+    arpStep(now);
+  }
+  // The page's timer: when the first step is due, if one is waiting.
+  std::optional<double> arpWake() const {
+    if (wakes_.empty()) return std::nullopt;
+    return *std::min_element(wakes_.begin(), wakes_.end());
+  }
+  void wakeArp() {
+    const auto at = std::min_element(wakes_.begin(), wakes_.end());
+    const double when = *at;
+    wakes_.erase(at);
+    arpTick(when);
+  }
+  struct ArpState {
+    std::string mode = "off", rate = "1/8";
+    double octaves = 1;
+    std::vector<Held> current;
+    int index = -1;
+    std::optional<double> start;
+    double steps = 0;
+    bool stepping = false;
+    std::vector<int> sent;
+  };
+  const ArpState& arp() const { return arp_; }
 
   // --- what a setup carries -------------------------------------------------
 
@@ -540,8 +616,11 @@ class Keyboard {
   }
 
   // midiApplyPoly. An empty list rather than none while the layers are on:
-  // layer B exists and is silent, which is not the same as no layer B.
+  // layer B exists and is silent, which is not the same as no layer B. With
+  // the arpeggiator on, asked for by the chord's own bookkeeping, this is the
+  // arpeggio's note rather than the whole of what is held.
   void applyPoly() {
+    if (arpActive() && !arp_.stepping) { arpApply(); return; }
     polyVoices(0, chord_[0]);
     t_.setVoices(&chord_[0], 0);
     const bool on = layersOn();
@@ -589,8 +668,85 @@ class Keyboard {
     t_.gate(held, held ? notes_.back().velocity : 0);
   }
 
-  // midiApplyNotes and midiApplyNotesTo, with the arpeggiator off.
+  // midiApplyNotes: with the arpeggiator on, the stack stays the hands' and
+  // the generator is shown the arpeggio instead.
   void applyNotes() {
+    if (arpActive() && !arp_.stepping) {
+      key_ = notes_.empty() ? 0 : notes_.back().velocity;
+      arpHeld();
+      return;
+    }
+    applyNotesTo();
+  }
+
+  // arpSequence: the notes the arpeggio walks, from what is held.
+  void arpSequence(std::vector<Held>& seq) const {
+    seq.clear();
+    std::vector<Held>& base = arpBase_;
+    base = notes_;
+    if (arp_.mode != "played") {
+      std::stable_sort(base.begin(), base.end(), [](const Held& a, const Held& b) { return a.note < b.note; });
+    }
+    for (int o = 0; o < arp_.octaves; o++) for (const auto& h : base) seq.push_back({ h.note + 12 * o, h.velocity });
+    if (arp_.mode == "down") std::reverse(seq.begin(), seq.end());
+    // Up and back without playing either end twice in a row.
+    if (arp_.mode == "updown" && seq.size() > 2) {
+      for (std::size_t i = seq.size() - 1; i-- > 1;) seq.push_back(seq[i]);
+    }
+  }
+  // arpApply: the generator shown the step, struck - nothing, then the
+  // step's notes - and the hands' stack put back.
+  void arpApply() {
+    arp_.stepping = true;
+    std::swap(notes_, arpSaved_);
+    notes_.clear();
+    applyNotesTo();
+    notes_ = arp_.current;
+    applyNotesTo();
+    std::swap(notes_, arpSaved_);
+    arp_.stepping = false;
+  }
+  void offSent() {
+    for (const int note : arp_.sent) if (out_) out_->noteOutOff(note);
+    arp_.sent.clear();
+  }
+  void arpStep(double now) {
+    arpSequence(arpSeq_);
+    if (arpSeq_.empty()) return;
+    const int len = static_cast<int>(arpSeq_.size());
+    arp_.index = arp_.mode == "random" ? static_cast<int>(std::floor(random_.next() * len)) : (arp_.index + 1) % len;
+    const Held pick = arpSeq_[static_cast<std::size_t>(arp_.index)];
+    Held low = notes_[0];
+    for (const auto& h : notes_) if (h.note < low.note) low = h;
+    arp_.current.clear();
+    if (mode_ == NoteMode::Dyad && pick.note != low.note) arp_.current.push_back(low);
+    arp_.current.push_back(pick);
+    arpApply();
+    offSent();
+    if (out_ && out_->noteOut(pick.note, pick.velocity, now)) arp_.sent.push_back(pick.note);
+  }
+  void arpStop() {
+    arp_.start.reset();
+    arp_.index = -1;
+    arp_.current.clear();
+    offSent();
+    arpApply();
+  }
+  // arpHeld: the hands changed. Start once the first key has gathered its
+  // chord, stop on the last.
+  void arpHeld() {
+    if (notes_.empty()) { if (arp_.start) arpStop(); else arpApply(); return; }
+    if (!arp_.start) {
+      arp_.start = now_ + kArpGather;
+      arp_.steps = 0;
+      arp_.index = -1;
+      wakes_.push_back(now_ + kArpGather);
+    }
+  }
+
+  // midiApplyNotesTo: what the stack - or the arpeggio standing in for it -
+  // tells the generator.
+  void applyNotesTo() {
     key_ = notes_.empty() ? 0 : notes_.back().velocity;
     applyGate();
     gateNotes();
@@ -677,6 +833,16 @@ class Keyboard {
   PolyCount poly_;
   Panel panel_;
   int running_ = 0;
+  // The arpeggiator, and what it needs from outside: the time, the tempo, the
+  // out, its random walk, and its timers.
+  static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
+  ArpState arp_;
+  double now_ = 0, bpm_ = 120;
+  NoteOut* out_ = nullptr;
+  Random random_ { 1 };
+  std::vector<double> wakes_;
+  std::vector<Held> arpSaved_, arpSeq_;
+  mutable std::vector<Held> arpBase_;
 };
 
 }  // namespace scope

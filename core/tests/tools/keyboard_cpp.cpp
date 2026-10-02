@@ -65,6 +65,22 @@ class Realtime : public scope::RealtimeIn {
   std::vector<std::string>& log_;
 };
 
+// The MIDI out, writing down what it is sent while it is open.
+class Out : public scope::NoteOut {
+ public:
+  explicit Out(std::vector<std::string>& log) : log_(log) {}
+  bool noteOut(int note, double velocity, double now) override {
+    if (!open) return false;
+    log_.push_back("out " + std::to_string(note) + " " + show(velocity) + " " + show(now));
+    return true;
+  }
+  void noteOutOff(int note) override { log_.push_back("outoff " + std::to_string(note)); }
+  bool open = false;
+
+ private:
+  std::vector<std::string>& log_;
+};
+
 void run(const std::vector<std::string>& head, const std::vector<std::vector<std::string>>& commands) {
   bool present = true;
   for (const auto& kv : head) if (kv == "present=0") present = false;
@@ -75,6 +91,9 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
   Realtime clock(log);
   scope::Keyboard k(target, &clock);
   k.setPresent(present);
+  Out out(log);
+  k.setOut(&out);
+  double now = 0;
   std::vector<std::string> lines;
   for (const auto& words : commands) {
     const std::string& cmd = words[0];
@@ -117,6 +136,15 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     } else if (cmd == "frame") k.frame(num(arg(1)));
     else if (cmd == "undrive") k.undrive();
     else if (cmd == "present") k.setPresent(arg(1) == "1");
+    else if (cmd == "arp") k.setArp(arg(1), arg(2), num(arg(3)));
+    else if (cmd == "bpm") k.setTempo(num(arg(1)));
+    else if (cmd == "at") {
+      const double until = num(arg(1));
+      while (k.arpWake() && *k.arpWake() <= until) { k.setNow(*k.arpWake()); k.wakeArp(); }
+      now = until;
+      k.setNow(now);
+    } else if (cmd == "tick") k.arpTick(now);
+    else if (cmd == "out") out.open = arg(1) == "1";
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 
     std::string line = cmd;
@@ -144,6 +172,12 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
           + " layers " + (k.layersOn() ? "1" : "0")
           + " notes " + (notes.empty() ? "-" : notes) + " sustained " + (sustained.empty() ? "-" : sustained)
           + " cc " + (cc.empty() ? "-" : cc);
+    const auto& arp = k.arp();
+    std::string current, sent;
+    for (const auto& h : arp.current) current += (current.empty() ? "" : "+") + std::to_string(h.note) + "/" + show(h.velocity);
+    for (const int n : arp.sent) sent += (sent.empty() ? "" : "+") + std::to_string(n);
+    line += " arp " + arp.mode + " " + std::to_string(arp.index) + " " + (arp.start ? show(*arp.start) : std::string("-")) + " "
+          + show(arp.steps) + " " + (current.empty() ? "-" : current) + " " + (sent.empty() ? "-" : sent);
     lines.push_back(line);
   }
   for (const auto& l : lines) std::printf("%s\n", l.c_str());

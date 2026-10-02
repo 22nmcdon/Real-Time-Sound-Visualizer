@@ -853,6 +853,60 @@ def kfuzz(n):
         else: out.append("frame %d" % krng.choice([16, 16, 33, 0, 250]))
     return krun(*out)
 kruns += [("random-%d" % i, kfuzz(80)) for i in range(40)]
+# The arpeggiator (K5), on the clock: a chord struck over a few milliseconds
+# and gathered, the steps every quaver from the first key, each pattern, the
+# dyad's pairs, the tempo changed under it, switched off and on with keys down,
+# the out it sends on, and a random walk from the seeded generator.
+def steps(start, stop, every): return ["at %r" % t if i == 0 else "tick" for t in range(start, stop, every) for i in (0, 1)]
+kruns += [
+    ("arp-gather", krun("out 1", "arp up 1/8 1", "at 1000", "on 64 90", "at 1008", "on 60 100", "at 1012", "on 67 80",
+                        "at 1020", "tick", *steps(1030, 2100, 20))),
+    ("arp-patterns", krun("out 1", "arp down 1/8 2", "at 0", "on 60 100", "on 64 90", "on 67 80", *steps(30, 1700, 50),
+                          "arp updown 1/16 1", *steps(1700, 3000, 40), "arp played 1/4 1", "on 62 70", *steps(3000, 5200, 100))),
+    ("arp-dyad", krun("arp up 1/8 2", "at 0", "on 48 100", "on 55 90", "on 60 80", *steps(30, 1400, 25),
+                      "mode mono", *steps(1400, 2000, 25), "mode poly", *steps(2000, 2600, 25))),
+    ("arp-tempo", krun("arp up 1/16t 1", "at 0", "on 60 100", "on 63 90", "on 67 80", *steps(30, 600, 10), "bpm 90",
+                       *steps(600, 1200, 10), "bpm 200", "arp up 1/4 3", *steps(1200, 2400, 30))),
+    ("arp-switch", krun("out 1", "mode poly", "at 0", "on 60 100", "on 64 90", "on 67 80", "at 40", "arp up 1/8 1",
+                        *steps(50, 600, 50), "arp off 1/8 1", "at 700", "tick", "arp up 1/8 1", *steps(700, 1300, 50),
+                        "off 60", "off 64", "at 1400", "tick", "off 67", "at 1500", "tick", "on 72 60", *steps(1500, 2000, 50))),
+    ("arp-random", krun("out 1", "arp random 1/16 2", "at 0", "on 57 100", "on 60 90", "on 64 80", "on 69 70",
+                        *steps(30, 2000, 25))),
+    ("arp-undriven", krun("arp up 1/8 1", "drive 0", "at 0", "on 60 100", "on 64 90", *steps(30, 600, 50), "drive 1",
+                          *steps(600, 1200, 50), "arp nonsense 1/9 0", *steps(1200, 1500, 50))),
+    # The keys come up while the kind takes no notes, so nothing tells the
+    # arpeggiator; the kind changed back, the next frame finds it running with
+    # nothing held, and stops it.
+    ("arp-kind", krun("out 1", "arp up 1/8 1", "at 0", "on 60 100", "on 64 90", *steps(30, 400, 50), "gen mode wireframe",
+                      "off 60", "off 64", "gen mode wave", "at 450", "tick", "at 500", "tick")),
+    ("arp-pedal", krun("arp up 1/8 1", "pedal 1", "at 0", "on 60 100", "on 67 90", "off 60", *steps(30, 700, 50), "pedal 0",
+                       *steps(700, 1200, 50), "off 67", "at 1300", "tick")),
+]
+def kafuzz(n):
+    out, t, held = ["frame 16"], 0, []
+    for _ in range(n):
+        r = krng.random()
+        t += krng.choice([0, 1, 5, 8, 16, 24, 26, 50, 125, 250, 400])
+        out.append("at %d" % t)
+        if r < 0.25:
+            note = krng.choice([krng.randint(40, 80), krng.choice(held or [60])])
+            out.append("on %d %d" % (note, krng.choice([krng.randint(1, 127), 127]))); held.append(note)
+        elif r < 0.4 and held: out.append("off %d" % krng.choice(held))
+        elif r < 0.55: out.append("tick")
+        elif r < 0.62: out.append("arp %s %s %s" % (krng.choice(["up", "down", "updown", "played", "random", "off"]),
+                                                    krng.choice(["1/4", "1/8", "1/16", "1/8t", "1/16t", "1/3"]),
+                                                    krng.choice(["1", "2", "3", "0", "x"])))
+        elif r < 0.66: out.append("bpm %r" % krng.choice([60, 90, 120, 133.3, 200]))
+        elif r < 0.69: out.append("out %d" % krng.randint(0, 1))
+        elif r < 0.73: out.append("mode " + krng.choice(["dyad", "mono", "poly"]))
+        elif r < 0.75: out.append("pedal %r" % krng.choice([0, 1]))
+        elif r < 0.77: out.append("layers " + krng.choice(["off", "split", "layer"]))
+        elif r < 0.79: out.append("drive %d" % krng.randint(0, 1))
+        elif r < 0.80: out.append("gen mode " + krng.choice(["wave", "figure", "wireframe"]))
+        elif r < 0.81: out.append("panic")
+        else: out.append("frame 16")
+    return krun(*out)
+kruns += [("arp-random-%d" % i, kafuzz(120)) for i in range(40)]
 
 ktext = "".join(t for _, t in kruns)
 kjs, kcpp = kboth(ktext, "keyboard.txt")
@@ -899,6 +953,69 @@ def knull(name, old, new, what):
     js, _ = kboth(text.replace(old, new, 1))
     i = next(k for k, (n, _) in enumerate(kruns) if n == name)
     check("and against " + what, kdiff(js, kslice(kcpp, i)) is not None)
+# The arpeggiator's steps, read from the page's lines: when each landed (the
+# last `at` before it), the mode, what the generator was shown, and what went out.
+def arpsteps(name):
+    text = dict(kruns)[name].strip().split("\n")[1:-1]
+    out, t, last = [], 0.0, 0
+    for cmd, line in zip(text, kout(name).strip().split("\n")):
+        if cmd.startswith("at "): t = float(cmd.split()[1])
+        tail = line.split(" arp ")[-1].split()
+        n = int(float(tail[3]))
+        if n > last:
+            cur = [int(c.split("/")[0]) for c in tail[4].split("+")] if tail[4] != "-" else []
+            out.append({"t": t, "mode": tail[0], "current": cur, "sent": tail[5], "calls": line.split(" | ")[0]})
+        last = n
+    return out
+A = arpsteps("arp-gather")
+# When the first step went out, from the out's own log: the timer's time, not the frame's.
+first_out = float(re.search(r"out 60 \S+ (\S+)", A[0]["calls"]).group(1))
+check("a chord struck over 12 ms is gathered: the first step is its lowest note, 25 ms after the first key, not the key that came first",
+      first_out == 1025 and A[0]["current"] == [60], "%s %s" % (first_out, A[0]["current"]))
+check("and each step after it falls on the first frame after its quaver is due, counted from the first key so it cannot drift",
+      len(A) >= 4 and all(0 <= st["t"] - (1025 + 250 * k) < 20 for k, st in enumerate(A)), str([st["t"] for st in A]))
+check("in the dyad each step pairs the lowest held note with the arpeggio's, and each is struck: the gate closes and opens",
+      [st["current"] for st in A[:4]] == [[60], [60, 64], [60, 67], [60]]
+      and all(st["calls"].index("gate 0") < st["calls"].index("gate 1") for st in A[:4]),
+      str([st["current"] for st in A[:4]]))
+check("each step's note goes out, and the one before is let go",
+      [st["sent"] for st in A[:4]] == ["60", "64", "67", "60"] and "outoff 60" in A[1]["calls"], str([st["sent"] for st in A[:4]]))
+P = arpsteps("arp-patterns")
+picks = lambda mode: [st["current"][-1] for st in P if st["mode"] == mode]
+check("down plays the top first through two octaves, up-and-down turns without repeating its ends, played keeps the order the keys came",
+      picks("down")[:6] == [79, 76, 72, 67, 64, 60] and picks("updown")[:6] == [60, 64, 67, 64, 60, 64]
+      and picks("played")[:4] == [60, 64, 67, 62],
+      "%s / %s / %s" % (picks("down")[:6], picks("updown")[:6], picks("played")[:5]))
+D = arpsteps("arp-dyad")
+check("mono and poly play the arpeggio's note alone; only the dyad pairs it",
+      all(len(st["current"]) == 1 for st in D if st["mode"] == "up" and st["t"] >= 1400)
+      and any(len(st["current"]) == 2 for st in D if st["t"] < 1400), str([st["current"] for st in D][-6:]))
+T = arpsteps("arp-tempo")
+gap = lambda lo, hi: [b["t"] - a["t"] for a, b in zip(T, T[1:]) if lo <= a["t"] and b["t"] < hi]
+check("the step is the rate at the tempo in force: a sixteenth triplet at 120 is 83 ms, at 90 is 111",
+      all(80 <= g <= 90 for g in gap(30, 600)) and all(110 <= g <= 120 for g in gap(640, 1200)),
+      "%s | %s" % (gap(30, 600)[:4], gap(640, 1200)[:4]))
+S = kout("arp-switch").strip().split("\n")
+off_line = next(l for l in S if l.startswith("arp") and " arp off " in l)
+check("switched off with keys down, the generator is given the whole of what is held at once, and the out lets go",
+      "outoff 64" in off_line and off_line.count("/") > 6 and "set voices 60/" in off_line and "64/" in off_line.split("set voices")[1],
+      off_line[:160])
+last_off = next(l for l in S if l.startswith("off") and " - 3 - -" in l.split(" arp ")[-1])
+check("letting go of the last key stops it: the generator is told nothing is held, and the last note out is let go",
+      "outoff 67" in last_off and "gate 0" in last_off, last_off[:120])
+K = kout("arp-kind").strip().split("\n")
+check("a running arpeggio that finds nothing held at its next frame stops, and lets its last note go",
+      "outoff 64" in K[-3] and " - " in K[-3].split(" arp ")[-1] and "gate 0" in K[-3], K[-3][:120])
+U = arpsteps("arp-undriven")
+check("with notes not driving the generator it does not step, and driven again it starts",
+      all(st["t"] >= 600 for st in U) and len(U) >= 2, str([st["t"] for st in U][:4]))
+R = arpsteps("arp-random")
+check("a random walk picks only what is held, and is not the order up",
+      set(st["current"][-1] for st in R) <= {57, 60, 64, 69, 72, 76, 81} and len(set(st["current"][-1] for st in R)) >= 5
+      and [st["current"][-1] for st in R[:4]] != [57, 60, 64, 69], str([st["current"][-1] for st in R[:8]]))
+knull("arp-gather", "at 1008", "at 1030", "the second key landing after the chord was gathered")
+knull("arp-tempo", "bpm 90", "bpm 91", "a tempo a beat a minute faster under the arpeggio")
+knull("arp-patterns", "arp down 1/8 2", "arp up 1/8 2", "up where it said down")
 knull("poly-outer", "on 67 80", "on 67 81", "a chord with one velocity a step harder")
 knull("split", "layers split", "layers layer", "a layer where there was a split")
 knull("pedal", "pedal 1", "pedal 0.4", "a pedal not quite down")

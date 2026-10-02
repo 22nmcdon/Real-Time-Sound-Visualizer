@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 #include "PluginEditor.h"
@@ -95,7 +96,10 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
   }
   scope::clockFrame(*brain_, *core_, nowMs_);
+  keyboard_->setNow(nowMs_);
+  keyboard_->setTempo(brain_->clock.bpm);
   keyboard_->frame(lastBlockMs_);
+  keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
   matrix_->setLayered(keyboard_->layersOn());
   matrix_->setStrikes(keyboard_->strikes());
   matrix_->frame(nowMs_);
@@ -110,21 +114,38 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   lastBlockMs_ = 1000.0 * frames / rate_.load();
   nowMs_ += lastBlockMs_;
   // Each event at its own sample, not at the top of the block: the generator
-  // is run up to it, told, and run on.
+  // is run up to it, told, and run on. The arpeggiator's first step, which
+  // the page strikes on a timer once the chord has gathered, is struck the
+  // same way at the sample its time falls on.
   int done = 0;
+  const double rate = rate_.load();
+  const double endMs = blockMs + 1000.0 * frames / rate;
+  const auto wakesUntil = [&](int until) {
+    for (auto wake = keyboard_->arpWake(); wake && *wake < endMs; wake = keyboard_->arpWake()) {
+      const int at = std::clamp(static_cast<int>(std::ceil((*wake - blockMs) * rate / 1000)), done, frames);
+      if (at > until) break;
+      render(left, right, done, at);
+      done = at;
+      keyboard_->setNow(*wake);
+      keyboard_->wakeArp();
+    }
+  };
   for (const auto event : midi) {
     const int at = std::clamp(event.samplePosition, done, frames);
+    wakesUntil(at);
     render(left, right, done, at);
     done = at;
+    keyboard_->setNow(blockMs + 1000.0 * at / rate);
     /* The bytes, not JUCE's reading of them: the keyboard is the page's
        `midiBytes` ported, so a note-on at velocity nought, a controller, the
        pedal and a panic all mean here what they mean on the page. A chord
        handed to the generator is copied there, which can allocate on a note
        - once per layer, and a known cost until the brain's state is fixed in
        size (PLAN.md). */
-    clockIn_->at(blockMs + 1000.0 * at / rate_.load());  // a clock byte at its own time
+    clockIn_->at(blockMs + 1000.0 * at / rate);  // a clock byte at its own time
     keyboard_->bytes(event.data, static_cast<std::size_t>(event.numBytes));
   }
+  wakesUntil(frames);
   render(left, right, done, frames);
 }
 

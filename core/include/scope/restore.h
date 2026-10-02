@@ -849,7 +849,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     if (r && r->type == Json::Type::String) for (const char16_t* x : rates) if (r->s == x) brain.arp.rate = utf16To8(r->s);
     brain.arp.octaves = jsNumberToString(jsMathRound(within("arpOctaves", 1, 3, 1)));
   }
-  keys.apply();  // arpSet, which ends in midiApplyNotes
+  keys.setArp(brain.arp.mode, brain.arp.rate, jsStringToNumber(toU16(brain.arp.octaves)));  // arpSet
   {
     const Json* w = s("threshWatch");
     brain.threshWatch = w && w->type == Json::Type::String && !w->s.empty() ? w->s : u"env.live";

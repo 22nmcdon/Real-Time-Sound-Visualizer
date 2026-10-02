@@ -16,11 +16,15 @@
      layers off|split|layer   learn   pair each|against   hold 0|1
      drive 0|1   play 0|1   gen FIELD VALUE   panel FIELD VALUE
      frame MS   undrive   present 0|1
+     arp MODE RATE OCTAVES   bpm BPM   at MS   tick   out 0|1
+   `at` moves the clock, firing first any timer due by then at its own time;
+   `tick` is the frame's arpTick; `out` opens or closes the MIDI out.
    A run's head may say present=0 for a page with no keyboard.
    Usage: node keyboard_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mulberry32 } from "./js_core.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const page = fs.readFileSync(path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
@@ -44,11 +48,13 @@ const LIFTED = [
   "midiUndrawn", "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
   "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiLearn", "midiSmooth",
   "midiRegisterKey", "midiBytes", "setMidiMode", "syncPlay", "genLane", "genSettings", "genSet", "genReswing",
+  "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
+  "arpTick", "arpSet",
 ];
 
-/* The page's surroundings, as little as the lifted functions reach for. The
-   arpeggiator is off: it is a later piece of the port, and `arpActive` is
-   where it will come in. */
+/* The page's surroundings, as little as the lifted functions reach for: the
+   clock and its timers, the tempo, and a MIDI out that writes down what it is
+   sent while it is open. */
 const STUBS = `
 let midiRunning = 0;
 const log = [];
@@ -73,10 +79,18 @@ const toneSource = {
 };
 const state = { source: toneSource };
 const genInput = { from: "live" };
-const arp = { mode: "off", stepping: false };
-function arpActive() { return false; }
-function arpHeld() {}
-function arpApply() {}
+let clock = 0;
+const performance = { now: () => clock };
+const timers = [];
+function setTimeout(fn, ms) { timers.push({ due: clock + ms, fn }); }
+const transport = { bpm: 120 };
+let outOpen = false;
+function midiOutNote(note, velocity, now) {
+  if (!outOpen) return false;
+  log.push("out " + note + " " + show(velocity) + " " + show(now));
+  return true;
+}
+function midiOutOff(note) { log.push("outoff " + note); }
 const sources = new Map();
 function registerSource(entry) { sources.set(entry.id, entry); return entry; }
 const MOD_SOURCES = sources;
@@ -86,7 +100,9 @@ const syncMidi = noop, midiSayMonitor = noop, syncLayerPanel = noop, buildLaneRo
       paintScreenKeys = noop, buildSourceChips = noop, buildMidiRows = noop;
 const element = () => ({ value: "", textContent: "", checked: false, hidden: false, disabled: false, setAttribute: noop });
 const elements = { interval: Object.assign(element(), { value: "0" }), freq: Object.assign(element(), { value: "220" }),
-                   figureRate: Object.assign(element(), { value: "40" }), detail: Object.assign(element(), { value: "5" }) };
+                   figureRate: Object.assign(element(), { value: "40" }), detail: Object.assign(element(), { value: "5" }),
+                   arpMode: Object.assign(element(), { value: "off" }), arpRate: Object.assign(element(), { value: "1/8" }),
+                   arpOctaves: Object.assign(element(), { value: "1" }) };
 const el = new Proxy(elements, { get: (t, k) => (k in t ? t[k] : (t[k] = element())) });
 `;
 
@@ -94,12 +110,15 @@ const source = STUBS + LIFTED.map(definition).join("\n") + `
 return { midi, screenKeys, settings, settingsB, sources, log, show, el, genInput, toneSource,
          midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
          midiApplyNotes, midiUndrive, midiRegisterKey, midiLearn, setMidiMode, syncLayers, syncLayerPanel, syncPlay, genSettings,
-         POLY_VOICES, layersOn,
+         POLY_VOICES, layersOn, arp, arpSet, arpTick, timers, transport,
+         setClock: (ms) => { clock = ms; }, setOut: (on) => { outOpen = on; },
          setPresent: (on) => { midi.access = on ? {} : null; } };`;
 
 function run(head, commands) {
   const p = Object.fromEntries(head.map((kv) => kv.split("=")));
-  const k = new Function(source)();
+  // One seeded Math.random for the arpeggiator's random walk, as the core seeds its own.
+  const k = new Function("Math", source)(Object.assign(Object.create(globalThis.Math), { random: mulberry32(1) }));
+  let now = 0;
   k.setPresent(p.present !== "0");
   k.midiRegisterKey();
   const lines = [];
@@ -149,6 +168,24 @@ function run(head, commands) {
     else if (cmd === "frame") { k.midiSmooth(Number(a[0])); k.midiApplyGate(); }
     else if (cmd === "undrive") k.midiUndrive();
     else if (cmd === "present") k.setPresent(a[0] === "1");
+    else if (cmd === "arp") {
+      k.el.arpMode.value = a[0]; k.el.arpRate.value = a[1]; k.el.arpOctaves.value = a[2];
+      k.arpSet();
+    } else if (cmd === "bpm") k.transport.bpm = Number(a[0]);
+    else if (cmd === "at") {
+      const until = Number(a[0]);
+      for (;;) {
+        let next = -1;
+        k.timers.forEach((t, i) => { if (t.due <= until && (next < 0 || t.due < k.timers[next].due)) next = i; });
+        if (next < 0) break;
+        const t = k.timers.splice(next, 1)[0];
+        k.setClock(t.due);
+        t.fn();
+      }
+      now = until;
+      k.setClock(now);
+    } else if (cmd === "tick") k.arpTick(now);
+    else if (cmd === "out") k.setOut(a[0] === "1");
     else throw new Error("unknown command " + cmd);
 
     // And what the keyboard says of itself afterwards: its sources, its readout,
@@ -161,7 +198,9 @@ function run(head, commands) {
       "interval", m.interval.index, m.interval.octaves, "panel", k.el.interval.value, k.el.freq.value,
       "layout", k.toneSource.layout, "gated", k.show(k.toneSource.gated), "layers", k.show(k.layersOn()),
       "notes", m.notes.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-",
-      "sustained", [...m.sustained].join("+") || "-", "cc", cc];
+      "sustained", [...m.sustained].join("+") || "-", "cc", cc,
+      "arp", k.arp.mode, k.arp.index, k.arp.start === null ? "-" : k.show(k.arp.start), k.arp.steps,
+      k.arp.current.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-", k.arp.sent.join("+") || "-"];
     lines.push([cmd, ...k.log.flatMap((l) => ["::", l]), ...state].join(" "));
   }
   return lines.join("\n");

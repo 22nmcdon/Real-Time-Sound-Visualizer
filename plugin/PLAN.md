@@ -196,7 +196,7 @@ In pieces, as the engine went, each held to the page before the next:
   before them. (It was listed after time and the sources until the morph
   showed why not.)
 - **2d. Time:** the key and the clock (the host's transport in the plugin),
-  the LFOs locked to it (ported), the arpeggiator, the score.
+  the LFOs locked to it, the arpeggiator (ported), the score.
 - **2e. The rest of the sources** that are not the picture's or the
   hearing's: the learned controllers as sources, the note envelope, the level.
 - **2f. The hearing sources,** which analyse the sound and so are DSP in the
@@ -562,6 +562,43 @@ shell test plays "Wobble" (LFO 1 locked to a quaver) under a stand-in host at
 host, the bar at the host's position, stopped where the host stopped, and the
 slider's tempo back once it goes; and a MIDI clock at 150 sent as bytes reads
 150, where stamping the ticks at the block's top read 152.
+
+**Then the arpeggiator,** inside the keyboard, where the page has it: the
+hands' stack stays the hands' (the sources and the pedal go on reading it)
+and the generator is shown the arpeggio's note instead, swapped in for as
+long as it takes to apply - nothing, then the step, so every note is struck.
+The patterns, the dyad's pairing of the lowest held note with the arpeggio's,
+the steps counted on the clock from the first key so they cannot drift, the
+rate at the clock's tempo, and the MIDI out each step's note goes to. The
+page strikes the first step on a timer, 25 ms after the first key so a chord
+spread over a few milliseconds is gathered before it starts; the core has no
+timers, so the keyboard keeps its wakes and its owner fires each at its time.
+The page's random walk asks `Math.random`; the core's draws from its own
+seeded generator, and the parity seeds the page's alike.
+
+Held to the page through the keyboard's own harness, which now lifts the
+arpeggiator too, with a stand-in timer, tempo and out: nine named runs and
+forty random ones on the clock, among the keyboard's 14,500 lines. The made
+runs read: a chord struck over 12 ms starts on its lowest note 25 ms after
+the first key, not on the key that came first; each step after falls on the
+first frame after its quaver; the dyad pairs and the other modes do not; each
+step is struck; down, up-and-down and played; the step at the tempo in force;
+switched off with keys down the generator gets the whole chord at once;
+letting go stops it; not driving the generator, it does not step; a random
+walk stays among what is held. Three nulls. Of 38 mutants, 34 are caught; the
+four left are a check of the gather the step count already makes, two
+orderings of timers that do nothing when they fire, a guard on a loop that
+cannot run, and an index already reset. The first pass's one other survivor
+was a run missing: keys let go while the generator's kind takes no notes, so
+nothing tells the arpeggiator, and the kind changed back - the next frame
+finds it running with nothing held, and must stop it.
+
+In the plugin the arpeggiator steps once a block after the keyboard's frame,
+at the clock's tempo; a key is stamped with its own sample's time; and the
+first step, the page's timer, is struck at the sample its time falls on. The
+shell test holds a chord in "Intervals in turn" and hears the first sound 25
+ms after the first key to the sample - 1,300 where the next block's top
+would have been 1,536.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

@@ -361,6 +361,41 @@ int main() {
           "bpm " + num(c.bpm) + ", LFO " + num(p.lfoRate(0)));
   }
 
+  /* The arpeggiator, in "Intervals in turn": a chord struck over 12 ms is
+     gathered, and nothing sounds until the first step, 25 ms after the first
+     key - 1,200 samples at 48 kHz. The page strikes it on a timer; the plugin
+     strikes it at its own sample, where the next block's top would be 1,536. */
+  {
+    setenv("SCOPE_PRESET", "Intervals in turn", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    std::vector<float> got;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int start = 0; start < static_cast<int>(rate); start += block) {
+      buf.clear();
+      juce::MidiBuffer m;
+      const auto at = [&](int sample, const juce::MidiMessage& msg) {
+        if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
+      };
+      at(100, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)));
+      at(100 + 384, juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)));
+      at(100 + 576, juce::MidiMessage::noteOn(1, 67, static_cast<juce::uint8>(80)));
+      p.processBlock(buf, m);
+      for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+    }
+    std::size_t onset = 0;
+    while (onset < got.size() && got[onset] == 0.0f) ++onset;
+    const auto loud = [&](std::size_t from, std::size_t to) {
+      double most = 0;
+      for (std::size_t i = from; i < to && i < got.size(); ++i) most = std::fmax(most, std::fabs(got[i]));
+      return most;
+    };
+    check("an arpeggio's first step sounds 25 ms after the first key, to the sample, and the arpeggio goes on stepping",
+          onset >= 1300 && onset < 1303 && loud(1300 + 12000, 1300 + 24000) > 0.05 && loud(36000, 48000) > 0.05,
+          "first sound at sample " + std::to_string(onset) + "; later " + num(loud(36000, 48000)));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";
