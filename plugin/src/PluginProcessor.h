@@ -9,6 +9,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "scope/generator.h"
+#include "scope/hearing.h"
 #include "scope/keyboard.h"
 #include "scope/lfo.h"
 #include "scope/matrix.h"
@@ -87,6 +88,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The level, the threshold's count and the learned controllers, for the shell test to read.
   double level() const { return sources_->level().value(); }
   int thresholdCount() const { return brain_->thresh.count; }
+  const scope::Hearing& hearing() const { return hearing_->hearing(); }
   // The clock and an oscillator's rate, for the shell test to read.
   const scope::Clock& clock() const { return brain_->clock; }
   const scope::ScoreState& score() const { return brain_->score; }
@@ -100,10 +102,12 @@ class ScopeProcessor final : public juce::AudioProcessor {
  private:
   // Render [from, to) of the block into the output and the picture ring.
   void render(float* left, float* right, int from, int to);
-  // The last of the picture's left channel, for the level to read.
-  void levelWindow();
+  // The last of the picture, the page's screen, for the level and the hearing
+  // to read: its left channel for both, and its right for the hearing's width.
+  void window(std::vector<float>& left, std::vector<float>* right) const;
   static constexpr std::size_t kLevelFrames = 2048;
-  std::vector<float> levelLane_;
+  std::vector<float> levelLane_, hearL_, hearR_;
+  std::unique_ptr<scope::HearingSources> hearing_;  // what it hears of itself, as sources
 
   std::vector<scope::Lfo> lfos_;
   std::unique_ptr<scope::Generator> core_;

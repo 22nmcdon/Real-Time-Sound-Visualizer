@@ -26,6 +26,11 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   keyboard_ = std::make_unique<scope::Keyboard>(*notes_, clockIn_.get());
   matrix_ = std::make_unique<scope::Matrix>();
   sources_ = std::make_unique<scope::CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
+  /* What it hears is the picture, which is always the generator's: every
+     hearing source is a loop here, with the picture's reach, and the onset
+     is refused anything it could strike. */
+  hearing_ = std::make_unique<scope::HearingSources>(*matrix_);
+  hearing_->hears(true);
   nowMs_ = 0;
   lastBlockMs_ = 0;
   scope::linkClock(*brain_, lfos_);
@@ -57,6 +62,8 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   if (preset) scope::restoreSetup(preset->setup, *brain_, *core_, *keyboard_, *matrix_, lfos_);
   keyboard_->frame(0);
   levelLane_.assign(kLevelFrames, 0.0f);
+  hearL_.assign(scope::kHearN, 0.0f);
+  hearR_.assign(scope::kHearN, 0.0f);
   const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f);
   /* For looking at it without a keyboard: SCOPE_HOLD_NOTE=57 holds A3 from
@@ -114,8 +121,21 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   /* The level over the last of the picture, the page's screen, as the frame
      before this one left it. The page's window is its fetch, which follows
      the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
-  levelWindow();
+  window(levelLane_, nullptr);
   sources_->level().update(levelLane_.data(), levelLane_.size(), lastBlockMs_);
+  /* And the hearing, from the last 4096 frames, its held key the lowest the
+     hands hold. Once a block where the page's is once a frame; its period
+     estimator allocates as it goes, which is not yet fit for an audio
+     thread and is to move with the morph's walk (PLAN.md, stage 2). */
+  window(hearL_, &hearR_);
+  std::optional<double> heldHz;
+  if (!keyboard_->notes().empty()) {
+    int low = keyboard_->notes().front().note;
+    for (const auto& held : keyboard_->notes()) low = std::min(low, held.note);
+    heldHz = scope::midiHz(low);
+  }
+  hearing_->setNow(nowMs_);
+  hearing_->step(*matrix_, true, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_.load(), lastBlockMs_, heldHz, nowMs_);
   keyboard_->setNow(nowMs_);
   keyboard_->setTempo(brain_->clock.bpm);
   keyboard_->frame(lastBlockMs_);
@@ -191,10 +211,14 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   outgoing_.clear();
 }
 
-void ScopeProcessor::levelWindow() {
-  // The left channel, oldest first, from the ring this thread writes.
-  const std::size_t at = pictureAt_.load(std::memory_order_relaxed), n = levelLane_.size();
-  for (std::size_t k = 0; k < n; ++k) levelLane_[k] = picture_[((at + kPictureFrames - n + k) % kPictureFrames) * 2];
+void ScopeProcessor::window(std::vector<float>& left, std::vector<float>* right) const {
+  // Oldest first, from the ring this thread writes.
+  const std::size_t at = pictureAt_.load(std::memory_order_relaxed), n = left.size();
+  for (std::size_t k = 0; k < n; ++k) {
+    const std::size_t from = ((at + kPictureFrames - n + k) % kPictureFrames) * 2;
+    left[k] = picture_[from];
+    if (right) (*right)[k] = picture_[from + 1];
+  }
 }
 
 std::vector<float> ScopeProcessor::pictureSnapshot() const {

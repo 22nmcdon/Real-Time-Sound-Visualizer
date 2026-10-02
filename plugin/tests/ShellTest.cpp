@@ -668,6 +668,84 @@ int main() {
           + std::to_string(onU.size()) + " sent, " + std::to_string(countsU.back()) + " fired; the level off the picture's by " + num(levelOff));
   }
 
+  std::printf("\n--- the hearing ---\n");
+  {
+    /* "Brightness swirls it": the hearing's brightness on the plane's twist.
+       ("Brightness adds points" was the first choice, and showed nothing: the
+       star's points are whole, and a brightness of 0.23 held to the
+       picture's reach of a half adds less than half a point.) Read a block at a time and held to a scope::HearingSources of
+       the test's own, stepped over the picture the page would be handed -
+       the newest 4096 frames, left as the trigger's lane and the pair for the
+       width - with the held key as its pitch: every value the same, exactly.
+       And heard: the same with the routing taken away is the null. */
+    const auto listen = [&](bool routed) {
+      setenv("SCOPE_PRESET", "Brightness swirls it", 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      if (!routed) p->matrix().remove("hear.bright", "gen.twist");
+      scope::Matrix ownMatrix;
+      scope::HearingSources own(ownMatrix);
+      own.hears(true);
+      double off = 0;
+      std::vector<float> out;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 94; ++k) {
+        const auto picture = scopeResource("/picture.bin", *p);
+        const std::size_t frames = picture->data.size() / sizeof(float) / 2;
+        std::vector<float> l(scope::kHearN), r(scope::kHearN);
+        for (std::size_t i = 0; i < l.size(); ++i) {
+          std::memcpy(&l[i], picture->data.data() + ((frames - l.size() + i) * 2) * sizeof(float), sizeof(float));
+          std::memcpy(&r[i], picture->data.data() + ((frames - l.size() + i) * 2 + 1) * sizeof(float), sizeof(float));
+        }
+        const double now = 1000.0 * k * block / rate;
+        own.setNow(now);
+        own.step(ownMatrix, true, l.data(), l.data(), r.data(), l.size(), rate, k == 0 ? 0 : 1000.0 * block / rate,
+                 k * block > 100 ? std::optional<double>(scope::midiHz(57)) : std::nullopt, now);
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100);
+        p->processBlock(buf, m);
+        for (int i = 0; i < block; ++i) out.push_back(buf.getSample(0, i));
+        const auto& a = p->hearing();
+        const auto& b = own.hearing();
+        off = std::fmax(off, std::fabs(a.bright - b.bright) + std::fabs(a.pitch - b.pitch) + std::fabs(a.width - b.width)
+                             + std::fabs(a.flux - b.flux) + std::fabs(a.bands[0] - b.bands[0]) + std::fabs(a.bands[1] - b.bands[1])
+                             + std::fabs(a.bands[2] - b.bands[2]) + std::fabs(a.bands[3] - b.bands[3]));
+      }
+      return std::make_tuple(off, out, p->hearing().bright, p->hearing().pitch);
+    };
+    const auto [off, routed, bright, pitch] = listen(true);
+    const auto [offU, plain, brightU, pitchU] = listen(false);
+    const double heard = apart(routed, plain, 0, routed.size());
+    check("the hearing reads the picture as the page would, block by block, the held A3 its pitch; and brightness on the twist is heard",
+          off == 0 && bright > 0.1 && std::fabs(pitch - std::log2(220 / scope::kPitchRef) / 2) < 1e-9 && heard > 0.05,
+          "off by " + num(off) + ", brightness " + num(bright) + ", pitch " + num(pitch) + "; without the routing it differs by " + num(heard));
+  }
+  {
+    /* "Hits restart the pendulums": the onset on Swing again. What it hears
+       is the generator it would strike, so the routing is refused - every
+       strike would be the next onset - and the pendulums play as if it were
+       not there, though the onset fires. */
+    const std::vector<std::pair<int, juce::MidiMessage>> held { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(110)) } };
+    const auto routed = playLeft("Hits restart the pendulums", held, 94);
+    const auto plain = playLeft("Hits restart the pendulums", held, 94, "hear.onset", "gen.reswing");
+    setenv("SCOPE_PRESET", "Hits restart the pendulums", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < 94; ++k) {
+      buf.clear();
+      juce::MidiBuffer m;
+      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(110)), 100);
+      p.processBlock(buf, m);
+    }
+    check("an onset hearing the generator it would strike is refused it: the pendulums play as without the routing, though it fires",
+          apart(routed, plain, 0, routed.size()) == 0 && p.hearing().onset.count > 0,
+          std::to_string(p.hearing().onset.count) + " onsets; apart by " + num(apart(routed, plain, 0, routed.size())));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";

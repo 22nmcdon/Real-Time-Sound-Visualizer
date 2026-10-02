@@ -201,8 +201,8 @@ In pieces, as the engine went, each held to the page before the next:
 - **2e. The rest of the sources** (ported) that are not the picture's or
   the hearing's: the learned controllers as sources, the note envelope, the
   level, the drawings' six, and the threshold.
-- **2f. The hearing sources,** which analyse the sound and so are DSP in the
-  core rather than the page.
+- **2f. The hearing sources** (ported), which analyse the sound and so are
+  DSP in the core rather than the page.
 - **2g. The host's parameters.**
 
 **2a is ported.** `scope/keyboard.h` is the page's `midi` functions: the
@@ -704,6 +704,59 @@ blocks in - with the level equal to a scope::Level's own over the picture the
 page would be handed, exactly. Eight mutants of the wiring, all caught; the
 two that read the wrong channel or the oldest of the ring were caught only
 once that last check was added.
+
+**2f: the hearing.** `scope/hearing.h` is the page's `hearingStep`: a window
+of 4096 samples through a Hann window and an FFT, the four bands by
+Parseval, the flux and the onset it fires, the brightness from the centroid,
+the pitch from a held key or else YIN's period estimator past its confidence
+gate on a steady window, and the width from the X-Y pair's correlation; and
+the nine sources, which are the picture's - a loop, with its reach - while
+what is heard is the generator. Its owner says whether it is, whenever that
+changes, because the page's answer is a getter asked live, stopped or not;
+only the recompile it asks for waits for a step, as the page's does. A window
+whose length is not a power of two is not heard at all: the page's never are,
+and its FFT would read past its arrays on one.
+
+Held to the page by its own harness (`hearing_js.mjs` against `hearing_cpp`):
+10 named runs and 100 random ones, 7,100 lines, every value the hearing
+keeps each command, sounds made of sines and noise in a window that slides
+with the frames' elapsed time. The made runs read: a full-scale sine in each
+band reads near one there; 220 Hz named with nothing held, the pitch slewing
+there at four a second; a held key outranking it, a chord's lowest note the
+key; silence holding the pitch, brightness and width while the bands and flux
+let go; the width for channels alike, inverted, in quadrature, the same lane
+twice and one lane; an onset out of silence once, none for a note stopping,
+none within 80 ms and one at exactly 80; the loop flag and reach following
+the generator, and the routes touched as it flips; the lane the trigger
+watches; windows too short, the shortest and the longest; and the
+estimator's corners - no room to double, a period at the end of its range,
+no dip under the threshold, an offset with a trace on it, the decimated pass
+over 32,768 samples, and a window not steady. Four nulls.
+
+The parity found one bug of mine: the page's doubling search moves its own
+upper bound as it finds deeper dips, the bound being re-read each time round
+the loop, and I had fixed it at the start. It showed only on a noisy tone at
+a window of 1024, as 160 Hz against 155. Of 58 mutants, 49 are caught; the
+nine left are each equivalent where the core uses them, and say why: a
+conjugated FFT has the same magnitudes; the estimator's shortest period is
+clamped to the pitch's top either way; two guards cannot be reached at the
+window sizes heard; the parabola is only ever taken through a point no higher
+than its neighbours, so its clamp never acts; an aperiodicity only gates;
+the rise can never exceed the total; the decimated pass at exactly 16384 is
+the same pass; and an energy scaled by a ten-thousandth is the same gate.
+
+In the plugin the hearing reads the last 4096 frames of the picture each
+block, left as the trigger's lane and the pair for the width, its held key
+the lowest the hands hold. The shell test holds every value to a
+scope::HearingSources of its own over the picture the page would be handed,
+exactly, and hears "Brightness swirls it" against the same without its
+routing; and "Hits restart the pendulums" plays as without its routing though
+the onset fires, because an event that hears the generator it would strike is
+refused. ("Brightness adds points" was the first choice and showed nothing,
+rightly: a star's points are whole, and the brightness its reach allows adds
+less than half of one.) Seven mutants of the wiring, all caught. Its period
+estimator allocates as it goes, which is not yet fit for an audio thread and
+moves with the morph's walk.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

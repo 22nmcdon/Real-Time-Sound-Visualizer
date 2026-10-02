@@ -17,8 +17,8 @@
 //   strikes the score's voice at the page's pitch for it (C4); the Brain's
 //   sources replace it with the setup's pitch, sent out as MIDI.
 //
-// The macros and the threshold are the Brain's (restore.h); the hearing and
-// the picture's sources arrive with the pieces they belong to.
+// The macros and the threshold are the Brain's (restore.h), and the hearing's
+// are its own (hearing.h); the picture's sources arrive with stage 4.
 
 #pragma once
 

@@ -1620,6 +1620,164 @@ lvnull("a firing a millisecond later", "thresh-fire", "at 90", "at 91")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
+print("\n--- the hearing ---")
+def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)
+# The page's hearing - a window of the sound analysed once a frame into a
+# pitch, a brightness, four bands, a width, a flux and an onset - lifted by
+# name, against scope::HearingSources, through the same commands. A line a
+# command: every value it keeps, the onset's state, how many times the
+# routings were touched, and each source's loop flag and reach.
+hexe = build("hearing_cpp")
+def hboth(text, name="hearing_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "hearing_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([hexe, path], check=True, capture_output=True, text=True).stdout
+def hrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+def hframes(n, ms=16): return ["frame %r" % ms] * n
+hruns = [
+    # A full-scale sine inside each band in turn: that band reads near one, the others near nought.
+    # Each held 100 frames: the bands release on 250 ms, and the last band takes that long to let go.
+    ("hear-bands", hrun(*sum((["clear", "tone 0 %r 1 0" % hz, *hframes(100)] for hz in (60, 400, 2000, 8000)), []))),
+    # 220 Hz and nothing held: the estimator names it, every other frame, and the pitch slews there at four a second.
+    ("hear-pitch", hrun("tone 0 220 0.5 0", *hframes(30), "clear", "tone 0 440 0.5 0", *hframes(30))),
+    # A held key outranks what is heard; a chord's lowest note is the key; let go, the estimator again.
+    ("hear-held", hrun("tone 0 220 0.5 0", "held 69", *hframes(20), "held 64 57 72", *hframes(20), "held -", *hframes(20))),
+    # Silence: the pitch, the brightness and the width hold; the bands and the flux fall away.
+    ("hear-floor", hrun("tone 0 330 0.5 0", "tone 1 330 0.5 1", *hframes(20), "clear", *hframes(80))),
+    # The width: one channel the same, inverted, a quarter-cycle on, the same lane twice, and one lane only.
+    # Forty frames each: from one to minus one is half a second at the slew's four a second.
+    ("hear-width", hrun("tone 0 300 0.5 0", "tone 1 300 0.5 0", *hframes(15), "clear", "tone 0 300 0.5 0", "tone 1 300 0.5 3.141592653589793",
+                        *hframes(40), "clear", "tone 0 300 0.5 0", "tone 1 300 0.5 1.5707963267948966", *hframes(40), "xy 1 1", *hframes(40),
+                        "xy 0 1", "lanes 1", *hframes(40), "lanes 2", "clear", "tone 0 300 0.5 0", "xy 1 1", *hframes(10))),
+    # An onset: a note out of silence, starting in the window's newer half, fires once; a note stopping does not; one 64 ms
+    # after the last is held back by the gap, the next, 128 ms after, fires, and two more exactly 80 ms apart both fire.
+    ("hear-onset", hrun("at 0", "frame 16", "tone 0 500 0.5 0", "gap first", "at 16", "frame 16", "gap none", *sum((["at %d" % (32 + 16 * k), "frame 16"] for k in range(8)), []),
+                        "gap second", "at 200", "frame 16", "clear", "at 216", "frame 16", "tone 0 700 0.5 0", "gap first", "at 232", "frame 16",
+                        "gap none", "at 260", "frame 16", "clear", "at 280", "frame 16", "tone 0 900 0.5 0", "gap first", "at 296", "frame 16",
+                        "gap none", "at 320", "frame 16", "clear", "at 340", "frame 16", "tone 0 1100 0.5 0", "gap first", "at 360", "frame 16",
+                        "gap none", "at 400", "frame 16", "clear", "at 420", "frame 16", "tone 0 1300 0.5 0", "gap first", "at 440", "frame 16",
+                        "gap none", "clear", "at 470", "frame 16", "tone 0 1700 0.5 0", "gap first", "at 520", "frame 16", "gap none", "at 540", "frame 16")),
+    # What is heard stops being the generator and starts again: the loop flag and the reach follow, and the routes are touched each time.
+    ("hear-gen", hrun("tone 0 250 0.5 0", "frame 16", "gen 0", "frame 16", "frame 16", "gen 1", "frame 16", "running 0", "gen 0", "frame 16",
+                      "running 1", "frame 16")),
+    # The lane the trigger watches, and one there is not, which reads the first.
+    ("hear-trig", hrun("tone 0 200 0.5 0", "tone 1 3000 0.5 0", *hframes(10), "trig 1", *hframes(10), "trig 5", *hframes(10))),
+    # The estimator's corners. A window of 256 is too short for the doubling, so the dip's own parabola is the answer;
+    # a 376 Hz period runs to the end of its range, which is no answer; and 355 Hz under noise never dips under the
+    # threshold and is deepest at the end, which is none either. An offset with a trace of tone on it: the mean comes
+    # off and what is left is too little to measure. A tone quiet enough that its spectrum sums under a half, still over
+    # the floor. Two bars of an organ, 8' and 1', whose near-repeat dips before the real period. Noise alone. And 32768
+    # samples of a tone under noise, where the newest 16384 is not trusted and the whole window, decimated by twos -
+    # averaged, which halves the noise - is. The first three eighths of the window silent: the halves' energies four to
+    # one apart, which is not steady, so the estimator is not asked. (A quarter is two to one, and whether that is under
+    # two is a matter of where the cycles fall.)
+    ("hear-estimator", hrun("len 256", "tone 0 500 0.5 0", *hframes(6), "clear", "tone 0 376 0.5 0", *hframes(6), "clear",
+                            "tone 0 355 0.5 0", "noise 0 5 0.2", *hframes(8), "len 4096", "clear",
+                            "tone 0 0 0.5 1.5707963267948966", "tone 0 300 0.00003 0", *hframes(6), "len 256", "clear", "tone 0 700 0.0015 0",
+                            *hframes(6), "len 4096", "clear", "tone 0 261.63 0.4 0", "tone 0 2093 0.4 0", *hframes(6), "clear", "noise 0 9 0.5",
+                            *hframes(6), "len 256", *hframes(6), "len 32768", "clear", "tone 0 150 0.3 0", "noise 0 4 0.3", *hframes(6),
+                            "frame -16", "frame 16", "len 4096", "clear", "tone 0 300 0.5 0", "gap early", *hframes(6), "gap none")),
+    # Windows too short to hear, the shortest heard, and long ones; the longest past the estimator's 16384, decimated.
+    ("hear-lengths", hrun("tone 0 180 0.4 0", "noise 0 3 0.3", "len 128", *hframes(3), "len 256", *hframes(6), "len 1024", *hframes(6),
+                          "len 32768", *hframes(6), "len 4096", *hframes(6))),
+]
+def hfuzz(n):
+    out = []
+    for _ in range(n):
+        t, cmds = 0, ["lanes %d" % hrng.choice([1, 2, 2]), "len %d" % hrng.choice([256, 1024, 4096, 4096, 8192])]
+        for _ in range(hrng.randint(15, 45)):
+            t += hrng.choice([0, 8, 16, 17, 33, 80, 120])
+            cmds.append("at %d" % t)
+            r = hrng.random()
+            if r < 0.45: cmds.append("frame %r" % hrng.choice([0, 8, 16, 16.7, 33, 100, -16]))
+            elif r < 0.6: cmds.append("tone %d %r %r %r" % (hrng.randint(0, 1), hrng.choice([40, 110, 220, 261.6256, 523, 1500, 5000, 11000]) * hrng.choice([1, 1.01]),
+                                                       hrng.choice([0, 0.0005, 0.05, 0.5, 1]), hrng.choice([0, 1, 3.14])))
+            elif r < 0.66: cmds.append("noise %d %d %r" % (hrng.randint(0, 1), hrng.randint(1, 50), hrng.choice([0.01, 0.3, 1])))
+            elif r < 0.72: cmds.append("clear")
+            elif r < 0.78: cmds.append("gap %s" % hrng.choice(["none", "none", "first", "second"]))
+            elif r < 0.84: cmds.append("held %s" % hrng.choice(["-", "-", "60", "45 52", "81"]))
+            elif r < 0.88: cmds.append("gen %d" % hrng.randint(0, 1))
+            elif r < 0.91: cmds.append("running %d" % hrng.randint(0, 1))
+            elif r < 0.95: cmds.append("trig %d" % hrng.randint(0, 2))
+            else: cmds.append("xy %d %d" % (hrng.randint(0, 2), hrng.randint(0, 2)))
+        out.append(hrun(*cmds))
+    return out
+hrng = random.Random(53)
+hfuzzed = hfuzz(100)
+htext = "".join(r for _, r in hruns) + "".join(hfuzzed)
+hjs, hcpp = hboth(htext, "hearing.txt")
+hd = kdiff(hjs, hcpp)
+check("%d runs of the hearing, %d of them random, are the page's line for line" % (len(hruns) + len(hfuzzed), len(hfuzzed)),
+      hd is None and len(hjs.split("\n")) > 1500, hd or "%d lines" % len(hjs.split("\n")))
+def hout(name):
+    js, _ = hboth(dict(hruns)[name])
+    return js.strip().split("\n")
+def hfield(line, name, count=1):
+    t = line.split(" | ")[-1].split()
+    i = t.index(name)
+    return t[i + 1] if count == 1 else t[i + 1:i + 1 + count]
+L = [l for l in hout("hear-bands") if l.startswith("frame")]
+reads = [[float(x) for x in hfield(L[100 * b + 99], "bands", 4)] for b in range(4)]
+check("a full-scale sine inside a band reads near one there and near nought in the others, for each of the four",
+      all(reads[b][b] > 0.95 and all(reads[b][o] < 0.05 for o in range(4) if o != b) for b in range(4)),
+      str([[round(x, 3) for x in r] for r in reads]))
+L = [l for l in hout("hear-pitch") if l.startswith("frame")]
+want220, want440 = math.log2(220 / 261.6256) / 2, math.log2(440 / 261.6256) / 2
+check("220 Hz with nothing held is named, the pitch moving 0.064 a frame of 16 ms towards it, and 440 Hz an octave up",
+      abs(float(hfield(L[0], "pitch")) - (-0.064)) < 1e-12 and abs(float(hfield(L[29], "pitch")) - want220) < 1e-3
+      and abs(float(hfield(L[59], "pitch")) - want440) < 1e-3 and hfield(L[0], "frame") == "1",
+      "%s, %s, %s" % (hfield(L[0], "pitch"), hfield(L[29], "pitch"), hfield(L[59], "pitch")))
+L = [l for l in hout("hear-held") if l.startswith("frame")]
+check("a held key outranks what is heard, a chord's lowest note is the key, and let go the estimator names the tone again",
+      abs(float(hfield(L[19], "want")) - math.log2(440 / 261.6256) / 2) < 1e-12
+      and abs(float(hfield(L[39], "want")) - math.log2(220 / 261.6256) / 2) < 1e-4 and abs(float(hfield(L[39], "want")) - math.log2(midi_hz(57) / 261.6256) / 2) < 1e-12
+      and abs(float(hfield(L[59], "want")) - want220) < 1e-4, "%s, %s, %s" % (hfield(L[19], "want"), hfield(L[39], "want"), hfield(L[59], "want")))
+L = [l for l in hout("hear-floor") if l.startswith("frame")]
+check("in silence the pitch, the brightness and the width hold, and the bands and the flux fall away",
+      hfield(L[19], "pitch") == hfield(L[-1], "pitch") and hfield(L[19], "bright") == hfield(L[-1], "bright")
+      and hfield(L[19], "width") == hfield(L[-1], "width") and float(hfield(L[-1], "bands", 4)[1]) < 0.05 * float(hfield(L[19], "bands", 4)[1]),
+      "pitch %s, then %s; band %s, then %s" % (hfield(L[19], "pitch"), hfield(L[-1], "pitch"), hfield(L[19], "bands", 4)[1], hfield(L[-1], "bands", 4)[1]))
+L = [l for l in hout("hear-width") if l.startswith("frame")]
+widths = [float(hfield(L[i], "width")) for i in (14, 54, 94, 134, 174)]
+check("the width reads one for two channels alike, minus one for one inverted, nought a quarter-cycle on, one for one lane twice or one lane only",
+      abs(widths[0] - 1) < 1e-6 and abs(widths[1] + 1) < 1e-3 and abs(widths[2]) < 0.02 and abs(widths[3] - 1) < 1e-9 and abs(widths[4] - 1) < 1e-9,
+      str([round(w, 4) for w in widths]))
+L = hout("hear-onset")
+counts = [int(hfield(l, "onset")) for l in L if l.startswith("frame")]
+check("a note out of silence fires the onset once; a note stopping does not; none within 80 ms of the last; and exactly 80 is allowed",
+      counts[1] == 1 and counts[2:10] == [1] * 8 and counts[10] == 1 and counts[12] == 2 and counts[15] == 2 and counts[16] == 2
+      and counts[18] == 3 and counts[19] == 3 and counts[21] == 4 and counts[23] == 5,
+      str(counts))
+L = hout("hear-gen")
+src = lambda l: hfield(l, "sources", 9)
+check("hearing the generator, every source is a loop with the picture's reach and the onset a loop; not, none are; the routes touched at each change",
+      src(L[1])[0] == "1/0.50000000000000000" and src(L[1])[8] == "1/0.0000000000000000" and src(L[3])[0] == "0/0.0000000000000000"
+      and hfield(L[1], "touched") == "1" and hfield(L[3], "touched") == "2" and hfield(L[6], "touched") == "3" and hfield(L[8], "touched") == "3"
+      and src(L[8])[0] == "1/0.50000000000000000", "%s %s, touched %s %s %s %s" % (src(L[1])[0], src(L[3])[0], hfield(L[1], "touched"),
+                                                                                   hfield(L[3], "touched"), hfield(L[6], "touched"), hfield(L[8], "touched")))
+L = [l for l in hout("hear-trig") if l.startswith("frame")]
+b0, b1, b2 = (float(hfield(L[i], "bright")) for i in (9, 19, 29))
+check("the brightness follows the lane the trigger watches, and a lane that is not there reads the first",
+      b1 > b0 + 0.1 and b2 < b1 - 0.1, "%.3f, %.3f, %.3f" % (b0, b1, b2))
+L = [l for l in hout("hear-lengths") if l.startswith("frame")]
+check("a window under 256 samples is not heard, 256 is, and 32768, past the estimator's window, is too",
+      hfield(L[2], "frame") == "0" and hfield(L[3], "frame") == "1" and int(hfield(L[20], "frame")) > int(hfield(L[14], "frame")),
+      "%s, %s, %s" % (hfield(L[2], "frame"), hfield(L[3], "frame"), hfield(L[20], "frame")))
+def hnull(what, name, old, new):
+    text = dict(hruns)[name]
+    assert text.count(old) >= 1, old
+    js, _ = hboth(text.replace(old, new, 1))
+    _, cpp = hboth(text)
+    check("and against " + what, kdiff(js, cpp) is not None)
+hnull("a tone a cent sharp", "hear-pitch", "tone 0 220 0.5 0", "tone 0 220.127 0.5 0")
+hnull("the other key held", "hear-held", "held 69", "held 70")
+hnull("an onset a frame later", "hear-onset", "at 16\nframe 16\ngap none", "at 17\nframe 16\ngap none")
+hnull("the generator heard throughout", "hear-gen", "gen 0\nframe 16", "gen 1\nframe 16")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(hjs.split("\n")[1:]), "\n".join(hcpp.split("\n")[:-1])) is not None)
+
 print("\n--- the score and MIDI out ---")
 # The page's score, its MIDI out and the crossings' and pluck's notes, on its
 # bar, lifted by name, and scope's on a scope::Clock, through the same
