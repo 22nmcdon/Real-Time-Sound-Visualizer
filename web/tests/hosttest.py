@@ -238,6 +238,9 @@ with sync_playwright() as pw:
       t.log.length = 0;
       t.state = { version: 3, code };
       await new Promise((r) => setTimeout(r, 700));
+      // The routings it put back are the plugin's already: touched again
+      // unchanged, they are not sent back.
+      touchRoutings();
       return { kaleido: plane.kaleido, menu: el.planeKaleido.value, cross: cross.on, os: plane.os, lfo: lfos[1].shape,
                mod: state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount).join(';'), amp: el.amp.value,
                shown: selectedSource === shown, log: t.log.slice() };
