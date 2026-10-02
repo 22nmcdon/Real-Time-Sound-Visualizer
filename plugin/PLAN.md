@@ -800,6 +800,44 @@ every block, which nothing heard until something else moved their sliders.
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes
 on testing the page against the browser build.
 
+**3 has begun with the channel.** Three native functions: `scopeSlider` (a
+slider moved on the page, by id and value), `scopeSetup` (a setup loaded on
+the page, a preset or a code, as a code) and `scopeState` (the plugin's state
+for the page). The first two wait in a queue for the top of the next block
+and are done there as the morph's walk is: a slider is `moveSlider`, the
+page's handler ported, and the host's parameter for it follows; a setup is
+loaded as a preset is. The plugin's state is the setup code it would save -
+the setup loaded, the sliders moved since as `pluginSliders` ("id=value;..."),
+the controllers learned - published by the audio thread whenever it changes,
+with a count of the changes that came from the host (a load, a parameter
+moved) rather than the page. The page asks for it four times a second and
+applies it only when that count moves, so it never hands its own drag back
+to itself, and applying it sends nothing. The saved state is the same code,
+so a slider moved on the page survives a project saved and reopened, and the
+host parameters' sliders ride in it rather than beside it.
+
+What it does not do yet, and why: a menu, a switch or a routing changed on
+the page does not reach the plugin. Sending the whole setup on every change
+was the simple design and was measured first - restoring even the setup
+already playing moves the sound at that sample by 0.2 to 1.2, on five presets
+of seven, where one control turned does not - so each of those controls
+waits for its handler in the core, as the sliders' was ported, with parity.
+
+The shell test: a slider moved on the page is, sample for sample, the same
+move made directly, at the next block's top and not before, with its
+parameter following; the state the page is shown carries it without counting
+it as the host's, while a parameter the host moves is counted; a preset's
+code loaded from the page is loaded as the plugin loads a preset, and a bad
+code refused. hosttest.py, against the fake bridge's log: the page shows the
+plugin's state on load, the slider moved since included, and sends nothing
+back, not even the preset it opened on before it knew it was hosted; a slider
+moved is sent once; a newer state is applied, one no newer is not, and
+applying it sends nothing; a preset loaded is sent whole and reads back as
+that preset. Nine mutants of the page's side, eight caught; the ninth drops
+the first pull on connecting, which the next pull, a quarter of a second
+later, makes up for - the ordering it exists for (the state shown before
+anything is sent) is real but too brief for a check to see.
+
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 

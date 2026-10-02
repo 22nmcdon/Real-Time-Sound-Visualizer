@@ -64,8 +64,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void changeProgramName(int, const juce::String&) override {}
 
   /* The plugin's state is a setup code, the thing the page shares: the
-     setup it was loaded with, and over it what has moved since - the
-     host's parameters, the morph's position, the controllers learned. */
+     setup it was loaded with, and over it what has moved since - every
+     slider moved, by the host's parameters or the page, and the controllers
+     learned. */
   void getStateInformation(juce::MemoryBlock&) override;
   void setStateInformation(const void*, int) override;
 
@@ -109,20 +110,42 @@ class ScopeProcessor final : public juce::AudioProcessor {
   /* The host's parameters: the four macros, the morph's fader, and three of
      the main knobs, each one of the panel's sliders by id and in its units.
      A curated few rather than every control, as the plan has it. */
-  struct HostKnob { const char* id; const char* name; const char* slider; const char* key; };
+  struct HostKnob { const char* id; const char* name; const char* slider; };
   static constexpr std::array<HostKnob, 8> kKnobs { {
-    { "macro1", "Macro 1", "macro1", "mac1" }, { "macro2", "Macro 2", "macro2", "mac2" },
-    { "macro3", "Macro 3", "macro3", "mac3" }, { "macro4", "Macro 4", "macro4", "mac4" },
-    { "morph", "Morph", "morphPos", "morphPos" }, { "level", "Level", "amp", "amp" },
-    { "cutoff", "Cutoff", "vcfCut", "vcfCut" }, { "echo", "Echo", "delayMix", "delayMix" },
+    { "macro1", "Macro 1", "macro1" }, { "macro2", "Macro 2", "macro2" }, { "macro3", "Macro 3", "macro3" },
+    { "macro4", "Macro 4", "macro4" }, { "morph", "Morph", "morphPos" }, { "level", "Level", "amp" },
+    { "cutoff", "Cutoff", "vcfCut" }, { "echo", "Echo", "delayMix" },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
+
+  /* The page as the plugin's face (stage 3), through the editor's native
+     functions, on the message thread. A slider moved on the page is a hand
+     on that slider here; a setup loaded on the page - a preset, a code - is
+     loaded here as it was there. Both wait in a queue for the top of the
+     next block, where the audio thread does what it does with everything
+     else. And the state for the page to show: the setup code the plugin
+     would save, with how many changes in it came from the host rather than
+     the page, so the page applies only those and never echoes its own. */
+  void pageSlider(const std::string& id, const std::u16string& text);
+  bool pageSetup(std::string_view code);
+  struct PageState { int version = 0; std::string code; };
+  PageState pageState() const;
   double slider(const char* id) const { return brain_->panel.range(id); }
   int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
 
  private:
-  // A setup loaded as a preset is: the core restored, and the parameters read back from the panel.
-  void load(const scope::Json& setup);
+  // A setup loaded as a preset is: the core restored, the sliders it moved
+  // since put back, and the parameters read back from the panel.
+  void load(const scope::Json& setup, bool fromHost);
+  // A slider moved, by the host's parameter or the page, and remembered as
+  // moved since the setup was loaded.
+  void moveTo(const std::string& id, const std::u16string& text, bool fromHost);
+  // The setup code of everything that can have changed: the setup loaded,
+  // the sliders moved since, the controllers learned.
+  std::string stateCode() const;
+  // The page's queue, applied; and the state, published for the page if it changed.
+  void takePage();
+  void publish(bool wait);
   // Each parameter the host has moved since the last block, to its slider.
   void applyKnobs();
 
@@ -153,6 +176,15 @@ class ScopeProcessor final : public juce::AudioProcessor {
   scope::Json setup_;                          // the setup the plugin was loaded with
   juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
+  std::vector<std::pair<std::string, std::u16string>> moved_;  // sliders moved since the setup was loaded
+  struct PageCommand { std::string slider; std::u16string text; std::optional<scope::Json> setup; };
+  juce::SpinLock queueLock_;
+  std::vector<PageCommand> queue_, taken_;
+  mutable juce::SpinLock publishLock_;
+  PageState published_;
+  int hostVersion_ = 0;      // changes that came from the host: a load, a parameter moved
+  bool changed_ = false;
+  std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };

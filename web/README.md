@@ -3664,9 +3664,23 @@ are inline in `scopeHost`.
 - *The rate is the plugin's.* The fake serves 441 Hz at 44.1 kHz, so the dock
   reads 441 only if the source reports the plugin's rate; the page's own
   48 kHz guess reads 480.
-- *What it cannot do yet:* nothing goes from the page to the plugin, so the
-  panel's sound controls do not reach what is heard. That is the brain moving
-  into the core (stage 2 of the plan), not something to patch round here.
+- *What goes the other way (stage 3).* A slider moved on the page is sent to
+  the plugin as it moves (`scopeSlider`), and the plugin does what this
+  page's handler for it does - that handler is ported and held to this one.
+  A setup loaded here, a preset or a code, is sent whole (`scopeSetup`). The
+  plugin's state comes back four times a second (`scopeState`), a setup code
+  with the sliders moved since it was loaded, and a count of the changes that
+  came from the host; the page applies a state only when that count moves,
+  so its own drag is never handed back to it, and applies it without sending
+  anything. A load on the page is quiet while it restores - restoring fires
+  every slider's handler, and each would otherwise have been sent ahead of
+  the setup they belong to, two dozen of them.
+- *Why not send the whole setup on every change.* It would have been one
+  message for everything. But restoring even the setup already playing moves
+  the sound at that sample - by as much as the sound itself, on five presets
+  of seven tried - where turning one control does not. So the menus, the
+  switches and the routings wait for their own handlers in the core, and
+  until then a change to one of them here does not reach the plugin.
 
 **Two bugs the port found in the page's sources.** Porting the learned
 controllers, the level and the threshold to the C++ core (plugin/PLAN.md, 2e)

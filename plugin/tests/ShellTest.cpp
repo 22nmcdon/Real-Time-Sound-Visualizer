@@ -872,6 +872,88 @@ int main() {
           num(before) + ", " + num(waiting) + ", then " + num(c.knob(1)->get()));
   }
 
+  std::printf("\n--- the page as the plugin's face ---\n");
+  {
+    /* A slider moved on the page waits for the next block's top, then is a
+       hand on that slider: the same sound, sample for sample, as the same
+       move made there directly, and the host's parameter for it follows.
+       The state the page is shown has it, without counting it as the host's,
+       so the page does not apply its own move back to itself; a parameter
+       the host moves counts. */
+    const auto played = [&](int how) {
+      setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      std::vector<float> got;
+      juce::AudioBuffer<float> buf(2, block);
+      double waiting = 0;
+      ScopeProcessor::PageState before, after;
+      for (int k = 0; k < 60; ++k) {
+        if (k == 20) {
+          before = p->pageState();
+          if (how == 1) { p->pageSlider("vcfCut", u"900"); waiting = p->slider("vcfCut"); }
+          if (how == 2) p->moveSlider("vcfCut", 900);
+        }
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 120); }
+        p->processBlock(buf, m);
+        if (k == 20) after = p->pageState();
+        for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+      }
+      return std::make_tuple(got, waiting, before, after, std::move(p));
+    };
+    auto [paged, waiting, before, after, p] = played(1);
+    auto [direct, w2, b2, a2, q] = played(2);
+    auto [still, w3, b3, a3, r] = played(0);
+    const auto decoded = scope::decodeSetup(after.code);
+    const scope::Json* moved = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginSliders") : nullptr;
+    const bool says = moved && moved->type == scope::Json::Type::String && moved->s == u"vcfCut=900";
+    check("a slider moved on the page is the same move at the next block's top, sample for sample, its parameter following",
+          apart(paged, direct, 0, paged.size()) == 0 && apart(paged, still, 20 * block, paged.size()) > 0.02 && waiting == 480
+          && p->knob(6)->get() == 900,
+          "apart by " + num(apart(paged, direct, 0, paged.size())) + ", from unmoved by " + num(apart(paged, still, 20 * block, paged.size()))
+          + "; before the block " + num(waiting) + ", cutoff parameter " + num(p->knob(6)->get()));
+    check("and the state the page is shown carries it, not counted as the host's; a parameter the host moves is counted",
+          says && after.version == before.version && after.code != before.code && before.version >= 1,
+          "version " + std::to_string(before.version) + " then " + std::to_string(after.version) + (says ? ", vcfCut=900 in it" : ", not in it"));
+    const int was = p->pageState().version;
+    p->knob(0)->setValueNotifyingHost(p->knob(0)->convertTo0to1(60));
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p->processBlock(buf, none);
+    check("a parameter the host moves is counted as the host's, for the page to apply",
+          p->pageState().version == was + 1, std::to_string(was) + " then " + std::to_string(p->pageState().version));
+  }
+  {
+    /* A setup loaded on the page - here "Wah"'s, as its code - is loaded in
+       the plugin at the next block's top, as the plugin loads a preset: its
+       parameters read back from it, and not counted as the host's. A code
+       that does not read is refused and nothing is queued. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    const int was = p.pageState().version;
+    const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup);
+    const bool refused = !p.pageSetup("not a code");
+    const bool took = code && p.pageSetup(*code);
+    const double before = p.slider("vcfCut");
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p.processBlock(buf, none);
+    setenv("SCOPE_PRESET", "Wah", 1);
+    ScopeProcessor wah;
+    wah.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    bool same = true;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) same = same && p.knob(i)->get() == wah.knob(i)->get();
+    check("a setup loaded on the page is loaded at the next block's top as a preset is, its parameters following; a bad code is refused",
+          refused && took && before == 667 && p.slider("vcfCut") == wah.slider("vcfCut") && p.slider("vcfCut") != 667 && same
+          && p.pageState().version == was,
+          "cutoff " + num(before) + " then " + num(p.slider("vcfCut")) + " (Wah's " + num(wah.slider("vcfCut")) + "); version "
+          + std::to_string(was) + " then " + std::to_string(p.pageState().version));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";

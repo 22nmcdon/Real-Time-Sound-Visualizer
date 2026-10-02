@@ -12934,9 +12934,8 @@ const scopeHost = (() => {
    queued behind, so the picture is late by at most one fetch and never by a
    backlog.
 
-   What it cannot do yet, and says: nothing here sends the plugin anything, so
-   the panel's sound controls do not reach what is heard. That is stage 2 of
-   the plan, when the brain is in the plugin's core. */
+   What the panel sends the other way - its sliders, its presets - is
+   `hostSync`'s, further down; this is only the picture coming back. */
 function makeHostSource(info) {
   const frames = info.pictureFrames;
   const lanes = [new Float32Array(frames), new Float32Array(frames)];
@@ -20494,10 +20493,11 @@ function applyPreset(value) {
   if (setup === null) return;
 
   const before = fade.mode !== "off" ? morphCapture() : null;
-  restore(setup);
+  hostQuietly(() => restore(setup));
   // Taken before the glide puts the sliders back, so it is the preset's.
   loadedSetup = { value: value, snap: snapshot() };
   setPresetValue(value);
+  hostSendSetup();
   if (before) glideFrom(before);
 }
 
@@ -20651,9 +20651,10 @@ el.presetLoad.addEventListener("click", () => {
   const setup = decodeSetup(el.presetCode.value);
   if (setup === null) { sayPreset("That code could not be read."); return; }
 
-  restore(setup);
+  hostQuietly(() => restore(setup));
   loadedSetup = null;
   setPresetValue("");
+  hostSendSetup();
   sayPreset("Loaded.");
   setMenuOpen(false);
 });
@@ -20878,6 +20879,7 @@ async function toHost() {
   showSource();
   buildLaneRows();
   buildLaneList();
+  await hostConnect();
   setInterval(() => {
     const t = state.source && state.source.timing;
     if (!t) return;
@@ -20886,6 +20888,88 @@ async function toHost() {
       meanMs: t.fetches ? +(t.totalMs / t.fetches).toFixed(2) : 0, worstMs: +t.worstMs.toFixed(2),
     });
   }, 3000);
+}
+
+/* The page as the plugin's face (plugin/PLAN.md, stage 3). The sound is the
+   plugin's core, so what the panel does has to reach it, and what the plugin
+   has become - a project reopened, a parameter the host automates - has to
+   reach the panel.
+
+   Two kinds of message out. A slider moved is sent as it moves, by its id and
+   the value the browser holds, and the plugin does with it what this page's
+   handler for that slider does - the handler is ported, and held to this one.
+   A setup loaded - a preset, a code - is sent whole, and the plugin loads it
+   as a preset is loaded. Not every change is a setup sent whole, though that
+   would have been simpler: restoring even the setup already playing moves
+   the sound at that sample, by as much as the sound itself on most presets,
+   where turning one control does not. So the menus, the switches and the
+   routings wait for their own handlers in the core; until then a change to
+   one of them on this page does not reach the plugin, which is where stage 3
+   stands now.
+
+   One message in: the plugin's state, a setup code with the sliders moved
+   since it was loaded, asked for four times a second. It carries a count of
+   the changes that came from the host rather than from here, and the page
+   applies a state only when that count has moved - so its own slider is never
+   handed back to it mid-drag. Applying it moves the page's controls without
+   sending them back. */
+const hostSync = { on: false, seen: 0, applying: false };
+
+async function hostPull() {
+  const s = await scopeHost.call("scopeState");
+  if (!s || typeof s.code !== "string" || !(s.version > hostSync.seen)) return;
+  hostApply(s);
+}
+
+function hostApply(s) {
+  hostSync.seen = s.version;
+  const setup = decodeSetup(s.code);
+  if (!setup) return;
+  hostSync.applying = true;
+  try {
+    restore(setup);
+    // The sliders moved since the setup was loaded, as hands on them.
+    const moved = typeof setup.pluginSliders === "string" ? setup.pluginSliders : "";
+    for (const pair of moved.split(";")) {
+      const eq = pair.indexOf("=");
+      const slider = eq > 0 ? document.getElementById(pair.slice(0, eq)) : null;
+      if (!slider || slider.type !== "range") continue;
+      slider.value = pair.slice(eq + 1);
+      slider.dispatchEvent(new Event("input"));
+    }
+  } finally {
+    hostSync.applying = false;
+  }
+}
+
+function hostSlider(event) {
+  const slider = event.target;
+  if (!hostSync.on || hostSync.applying || !slider || slider.type !== "range" || !slider.id) return;
+  scopeHost.call("scopeSlider", slider.id, slider.value);
+}
+
+/* A setup restored here fires each slider's handler on the way, and each would
+   be sent as a hand on it, a few dozen messages ahead of the setup they are
+   part of. So a load is quiet while it restores, and then sent whole; the
+   glide into a preset, which moves the sliders afterwards, is sent as it
+   moves, as the plugin should follow it. */
+function hostQuietly(load) {
+  const was = hostSync.applying;
+  hostSync.applying = true;
+  try { load(); } finally { hostSync.applying = was; }
+}
+
+// A setup loaded here, sent whole. Not while applying the plugin's own.
+function hostSendSetup() {
+  if (!hostSync.on || hostSync.applying) return;
+  scopeHost.call("scopeSetup", encodeSetup(snapshot()));
+}
+
+async function hostConnect() {
+  await hostPull();
+  hostSync.on = true;
+  document.addEventListener("input", hostSlider, true);
+  setInterval(hostPull, 250);
 }
 
 async function toMic(deviceId) {

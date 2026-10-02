@@ -25,6 +25,24 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         info->setProperty("pictureUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "picture.bin");
         complete(juce::var(info));
       })
+      /* The page as the plugin's face: a slider moved, a setup loaded, and
+         the plugin's state for the page to show. */
+      .withNativeFunction("scopeSlider", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        if (args.size() >= 2)
+          owner.pageSlider(args[0].toString().toStdString(), scope::toU16(args[1].toString().toStdString()));
+        complete(juce::var());
+      })
+      .withNativeFunction("scopeSetup", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        const auto code = args.isEmpty() ? std::string() : args[0].toString().toStdString();
+        complete(juce::var(owner.pageSetup(code)));
+      })
+      .withNativeFunction("scopeState", [&owner](const juce::Array<juce::var>&, auto complete) {
+        const auto state = owner.pageState();
+        auto* out = new juce::DynamicObject();
+        out->setProperty("version", state.version);
+        out->setProperty("code", juce::String(state.code));
+        complete(juce::var(out));
+      })
       .withNativeFunction("scopeReport", [&owner](const juce::Array<juce::var>& args, auto complete) {
         const auto json = args.isEmpty() ? juce::String() : juce::JSON::toString(args[0], true);
         owner.setPictureReport(json);

@@ -18,14 +18,108 @@ ScopeProcessor::ScopeProcessor()
   }
 }
 
-void ScopeProcessor::load(const scope::Json& setup) {
+void ScopeProcessor::load(const scope::Json& setup, bool fromHost) {
   setup_ = setup;
+  moved_.clear();
   scope::restoreSetup(setup_, *brain_, *core_, *keyboard_, *matrix_, lfos_);
+  /* The sliders moved since this setup was first loaded, written into a
+     saved state as "id=value;..." and put back as hands on them. */
+  if (const scope::Json* moved = setup_.type == scope::Json::Type::Object ? setup_.get("pluginSliders") : nullptr) {
+    if (moved->type == scope::Json::Type::String) {
+      const std::string text = scope::utf16To8(moved->s);
+      std::size_t at = 0;
+      while (at < text.size()) {
+        const std::size_t end = std::min(text.find(';', at), text.size());
+        const std::string pair = text.substr(at, end - at);
+        const std::size_t eq = pair.find('=');
+        if (eq != std::string::npos && scope::rangeSpec(pair.substr(0, eq)))
+          moveTo(pair.substr(0, eq), scope::toU16(pair.substr(eq + 1)), false);
+        at = end + 1;
+      }
+    }
+  }
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto v = static_cast<float>(brain_->panel.range(kKnobs[i].slider));
     knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
     applied_[i] = knobs_[i]->get();
   }
+  changed_ = true;
+  if (fromHost) hostVersion_++;
+}
+
+void ScopeProcessor::moveTo(const std::string& id, const std::u16string& text, bool fromHost) {
+  scope::moveSlider(id, text, *brain_, *core_, *keyboard_, lfos_);
+  const std::u16string now = scope::toU16(scope::jsNumberToString(brain_->panel.range(id)));
+  bool known = false;
+  for (auto& [slider, value] : moved_) if (slider == id) { value = now; known = true; }
+  if (!known) moved_.push_back({ id, now });
+  changed_ = true;
+  if (fromHost) { hostVersion_++; return; }
+  // Moved on the page: the host's parameter for that slider follows it.
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    if (id != kKnobs[i].slider) continue;
+    knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(static_cast<float>(brain_->panel.range(id))));
+    applied_[i] = knobs_[i]->get();
+  }
+}
+
+std::string ScopeProcessor::stateCode() const {
+  scope::Json setup = setup_.type == scope::Json::Type::Object ? setup_ : scope::Json::object();
+  std::string moved;
+  for (const auto& [slider, value] : moved_) moved += (moved.empty() ? "" : ";") + slider + "=" + scope::utf16To8(value);
+  setup.erase("pluginSliders");
+  if (!moved.empty()) setup.set("pluginSliders", scope::Json::string(std::string_view(moved)));
+  setup.set("cc", scope::Json::string(std::string_view(keyboard_->encodeCC())));
+  const auto code = scope::encodeSetup(setup);
+  return code ? *code : std::string();
+}
+
+void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& text) {
+  if (!scope::rangeSpec(id)) return;
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ id, text, std::nullopt });
+}
+
+bool ScopeProcessor::pageSetup(std::string_view code) {
+  auto decoded = scope::decodeSetup(code);
+  if (decoded.kind != scope::DecodedSetup::Kind::Read) return false;
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ {}, {}, std::move(decoded.setup) });
+  return true;
+}
+
+ScopeProcessor::PageState ScopeProcessor::pageState() const {
+  const juce::SpinLock::ScopedLockType lock(publishLock_);
+  return published_;
+}
+
+void ScopeProcessor::takePage() {
+  {
+    // Not waited for: a page mid-push leaves its commands for the next block.
+    const juce::SpinLock::ScopedTryLockType lock(queueLock_);
+    if (!lock.isLocked()) return;
+    std::swap(queue_, taken_);
+  }
+  for (auto& command : taken_) {
+    if (command.setup) load(*command.setup, false);
+    else moveTo(command.slider, command.text, false);
+  }
+  taken_.clear();
+}
+
+void ScopeProcessor::publish(bool wait) {
+  if (keyboard_->controllers().size() != learnedSeen_) { learnedSeen_ = keyboard_->controllers().size(); changed_ = true; }
+  if (!changed_) return;
+  std::string code = stateCode();
+  if (wait) {
+    const juce::SpinLock::ScopedLockType lock(publishLock_);
+    published_ = { hostVersion_, std::move(code) };
+  } else {
+    const juce::SpinLock::ScopedTryLockType lock(publishLock_);
+    if (!lock.isLocked()) return;  // the page is reading it; again next block
+    published_ = { hostVersion_, std::move(code) };
+  }
+  changed_ = false;
 }
 
 void ScopeProcessor::applyKnobs() {
@@ -36,19 +130,15 @@ void ScopeProcessor::applyKnobs() {
     const float v = knobs_[i]->get();
     if (v == applied_[i]) continue;
     applied_[i] = v;
-    scope::moveSlider(kKnobs[i].slider, scope::jsToString(scope::Json::number(v)), *brain_, *core_, *keyboard_, lfos_);
+    moveTo(kKnobs[i].slider, scope::jsToString(scope::Json::number(v)), true);
   }
 }
 
 void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
   const juce::SpinLock::ScopedLockType lock(stateLock_);
   if (!brain_) return;
-  /* The setup as loaded, and over it what has moved: each parameter's slider
-     as the page's snapshot writes it, and the controllers learned. */
-  scope::Json setup = setup_.type == scope::Json::Type::Object ? setup_ : scope::Json::object();
-  for (const auto& k : kKnobs) setup.set(k.key, scope::Json::number(brain_->panel.range(k.slider)));
-  setup.set("cc", scope::Json::string(std::string_view(keyboard_->encodeCC())));
-  if (const auto code = scope::encodeSetup(setup)) out.append(code->data(), code->size());
+  const std::string code = stateCode();
+  out.append(code.data(), code.size());
 }
 
 void ScopeProcessor::setStateInformation(const void* data, int size) {
@@ -111,10 +201,13 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   {
     // A state the host handed over before there was a core to give it to wins.
     const juce::SpinLock::ScopedLockType lock(stateLock_);
-    if (pending_) { load(*pending_); pending_.reset(); }
-    else if (preset) load(preset->setup);
+    if (pending_) { load(*pending_, true); pending_.reset(); }
+    else if (preset) load(preset->setup, true);
   }
   keyboard_->frame(0);
+  learnedSeen_ = keyboard_->controllers().size();
+  changed_ = true;
+  publish(true);  // for a page that asks before the first block
   levelLane_.assign(kLevelFrames, 0.0f);
   hearL_.assign(scope::kHearN, 0.0f);
   hearR_.assign(scope::kHearN, 0.0f);
@@ -157,7 +250,8 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      allocates, as a preset's load does. */
   const juce::SpinLock::ScopedTryLockType lock(stateLock_);
   if (!lock.isLocked()) { buffer.clear(); midi.clear(); return; }
-  if (pending_) { load(*pending_); pending_.reset(); }
+  if (pending_) { load(*pending_, true); pending_.reset(); }
+  takePage();
   const int frames = buffer.getNumSamples();
   auto* left = buffer.getWritePointer(0);
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
@@ -270,6 +364,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   // The host's notes are spent; what goes back is what the out sent.
   midi.swapWith(outgoing_);
   outgoing_.clear();
+  publish(false);
 }
 
 void ScopeProcessor::window(std::vector<float>& left, std::vector<float>* right) const {

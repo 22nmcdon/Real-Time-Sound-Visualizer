@@ -19,8 +19,20 @@ only get from the plugin's samples at the plugin's rate:
 - the page reports back how the picture is getting through, which is how the
   spike's question was answered;
 - and without the bridge the page is the website, on its own generator.
+
+And the page as the plugin's face (plan, stage 3), against the fake's own
+log of every call and its arguments:
+
+- on load the page shows the plugin's state - a setup code with a slider
+  moved since - and sends nothing back while it does, not even the preset it
+  opened on before it knew it was hosted;
+- a slider moved on the page is sent, by id and value, once;
+- a newer state from the host is applied and one no newer is not, and
+  applying it sends nothing back;
+- a preset loaded on the page is sent whole, as a code that reads back as
+  that preset.
 """
-import os, sys
+import base64, json, os, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -38,17 +50,21 @@ FAKE = """
   (() => {
     const RATE = 44100, FRAMES = 8192;
     const listeners = new Map();
-    window.__hostTest = { reports: [], fetches: 0, inFlight: 0, mostInFlight: 0, calls: [] };
+    window.__hostTest = { reports: [], fetches: 0, inFlight: 0, mostInFlight: 0, calls: [], log: [],
+                          state: { version: 1, code: STATE_CODE } };
     const reply = (promiseId, result) => setTimeout(() => {
       for (const fn of listeners.get('__juce__complete') || []) fn({ promiseId, result });
     }, 0);
     window.__JUCE__ = {
-      initialisationData: { __juce__functions: ['scopeHost', 'scopeReport'] },
+      initialisationData: { __juce__functions: ['scopeHost', 'scopeReport', 'scopeSlider', 'scopeSetup', 'scopeState'] },
       backend: {
         addEventListener(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
         emitEvent(name, payload) {
           if (name !== '__juce__invoke') return;
           window.__hostTest.calls.push(payload.name);
+          if (!['scopeHost', 'scopeState', 'scopeReport'].includes(payload.name)) window.__hostTest.log.push([payload.name, ...payload.params]);
+          if (payload.name === 'scopeState') { reply(payload.resultId, window.__hostTest.state); return; }
+          if (payload.name === 'scopeSlider' || payload.name === 'scopeSetup') { reply(payload.resultId, true); return; }
           if (payload.name === 'scopeHost') {
             reply(payload.resultId, { host: 'plugin', rate: RATE, pictureFrames: FRAMES, pictureUrl: 'scope-test://picture.bin' });
           } else if (payload.name === 'scopeReport') {
@@ -80,6 +96,13 @@ FAKE = """
     };
   })();
 """
+
+def code(setup):
+    """A setup code as the page and the plugin write them."""
+    return base64.b64encode(json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
+
+# The plugin's state on load: a cutoff in its setup, and the level moved since.
+FAKE = FAKE.replace("STATE_CODE", json.dumps(code({"vcfCut": 333, "pluginSliders": "amp=99"})))
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -143,6 +166,42 @@ with sync_playwright() as pw:
     check("and it reports back how the picture is getting through: frames a second, fetches, their times",
           bool(reports) and last.get("fps", 0) > 0 and last.get("fetches", 0) > 20 and last.get("failed") == 0
           and last.get("meanMs", 0) >= 40, str(last))
+
+    print("\n--- the page as the plugin's face ---")
+    shown = p.evaluate("() => ({ cut: el.vcfCut.value, amp: el.amp.value, log: window.__hostTest.log.slice() })")
+    check("on load the page shows the plugin's state, the slider moved since included, and sends nothing back",
+          shown["cut"] == "333" and shown["amp"] == "99" and shown["log"] == [], str(shown))
+    sent = p.evaluate("""() => {
+      window.__hostTest.log.length = 0;
+      el.vcfCut.value = '700'; el.vcfCut.dispatchEvent(new Event('input', { bubbles: true }));
+      return window.__hostTest.log.slice();
+    }""")
+    check("a slider moved on the page is sent to the plugin, by id and value, once",
+          sent == [["scopeSlider", "vcfCut", "700"]], str(sent))
+    applied = p.evaluate("""async (codes) => {
+      const t = window.__hostTest;
+      t.log.length = 0;
+      t.state = { version: 2, code: codes[0] };
+      await new Promise((r) => setTimeout(r, 700));
+      const newer = el.vcfCut.value;
+      t.state = { version: 2, code: codes[1] };
+      await new Promise((r) => setTimeout(r, 700));
+      return { newer, same: el.vcfCut.value, log: t.log.slice() };
+    }""", [code({"vcfCut": 222}), code({"vcfCut": 111})])
+    check("a newer state from the host is applied, one no newer is not, and applying it sends nothing back",
+          applied == {"newer": "222", "same": "222", "log": []}, str(applied))
+    preset = p.evaluate("""() => {
+      const t = window.__hostTest;
+      t.log.length = 0;
+      applyPreset('b:Wah');
+      const calls = t.log.slice();
+      const sent = calls.length === 1 && calls[0][0] === 'scopeSetup' ? decodeSetup(calls[0][1]) : null;
+      const wah = findPreset('b:Wah');
+      return { names: calls.map((c) => c[0]), cut: sent && sent.vcfCut, wantCut: wah.vcfCut, mod: sent && sent.mod, wantMod: wah.mod };
+    }""")
+    check("a preset loaded on the page is sent to the plugin whole, as a code that reads back as that preset",
+          preset["names"] == ["scopeSetup"] and preset["cut"] == preset["wantCut"] and preset["mod"] == preset["wantMod"]
+          and preset["cut"] is not None, str(preset))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
