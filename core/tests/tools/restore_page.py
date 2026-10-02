@@ -154,9 +154,10 @@ def main():
         page.goto("file://" + os.path.abspath(PAGE))
         page.clock.pause_at(1000)
         page.clock.run_for(700)
-        # The LFOs ran in those frames, and the core's have not: from nought
-        # both, so a phase the sync menu sets to nought can be seen to be set.
-        page.evaluate("() => lfos.forEach((l) => { l.phase = 0; })")
+        # The LFOs ran in those frames, and the core's have not: from one
+        # radian both, so a phase the sync menu sets to nought can be seen
+        # to be set - from nought, setting it to nought could not be seen.
+        page.evaluate("() => lfos.forEach((l) => { l.phase = 1; })")
         if sys.argv[1] == "--controls":
             print(page.evaluate(CONTROLS))
         elif sys.argv[1] == "--presets":

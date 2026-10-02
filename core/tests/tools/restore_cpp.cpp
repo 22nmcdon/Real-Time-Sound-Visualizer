@@ -127,6 +127,7 @@ int main(int argc, char** argv) {
   if (argc < 3) { std::fprintf(stderr, "usage: restore_cpp <setups> <sources.json>\n"); return 2; }
   std::vector<scope::Lfo> lfos(2);
   lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
+  lfos[0].phase = lfos[1].phase = 1;  // as restore_page.py leaves the page's
   scope::Generator gen(48000, scope::slot::Used, lfos);
   scope::GeneratorNotes notes(gen);
   scope::Keyboard keys(notes);

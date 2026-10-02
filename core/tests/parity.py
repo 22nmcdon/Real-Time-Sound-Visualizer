@@ -2490,7 +2490,7 @@ check("the split, the pairing, poly and the tuning both ways reach the keyboard 
 check("the arpeggiator's menus reach what it plays",
       cp[24]["arpPlays"] == {"mode": "up", "rate": "1/16", "octaves": 2}, repr(cp[24]["arpPlays"]))
 check("LFO 1 locked to a quarter at 120 runs at 2 Hz from the beat, and let go goes back to its free rate",
-      cp[25]["lfos"][0]["rate"] == 2 and cp[25]["lfos"][0]["phase"] == 0 and cp[25]["lfos"][0]["epoch"] > cp[24]["lfos"][0]["epoch"]
+      cp[25]["lfos"][0]["rate"] == 2 and cp[24]["lfos"][0]["phase"] == 1 and cp[25]["lfos"][0]["phase"] == 0 and cp[25]["lfos"][0]["epoch"] > cp[24]["lfos"][0]["epoch"]
       and cp[26]["lfos"][0]["rate"] == cp[24]["lfos"][0]["rate"] and cp[27]["lfos"][1]["shape"] == "square",
       repr(cp[25]["lfos"][0]))
 check("the threshold watches another source, and an event is nothing it can watch",
