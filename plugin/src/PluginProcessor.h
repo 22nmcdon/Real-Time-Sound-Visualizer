@@ -30,7 +30,9 @@
 // rest of the brain moves into the core (PLAN.md, stage 2) it starts as the
 // page starts - on the "Harmonic tone" preset, loaded through the core's
 // `restoreSetup` - and nothing yet moves it from there but the host's notes,
-// its clock and the matrix.
+// its clock and the matrix. What the page sends to a MIDI port - the
+// arpeggio's steps, the crossings' notes, the pluck's and the score's - goes
+// to the host's MIDI out (scope::MidiOut), each at the sample of what sent it.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -46,7 +48,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
 
   const juce::String getName() const override { return JucePlugin_Name; }
   bool acceptsMidi() const override { return true; }
-  bool producesMidi() const override { return false; }
+  bool producesMidi() const override { return true; }
   bool isMidiEffect() const override { return false; }
   double getTailLengthSeconds() const override { return 0.5; }
 
@@ -84,6 +86,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   scope::Matrix& matrix() { return *matrix_; }
   // The clock and an oscillator's rate, for the shell test to read.
   const scope::Clock& clock() const { return brain_->clock; }
+  const scope::ScoreState& score() const { return brain_->score; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   /* A hand on one of the panel's sliders, and an end of the morph stored: what
      the page will send over the bridge once it is the plugin's face. Until
@@ -103,7 +106,11 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::unique_ptr<scope::CoreSources> sources_;
   std::unique_ptr<scope::Brain> brain_;  // what a setup sets beyond the generator
   std::unique_ptr<scope::ClockIn> clockIn_;  // MIDI's real-time bytes, to the brain's clock
-  std::unique_ptr<scope::BrainSources> brainSources_;  // the macros, and the morph's fader as a destination
+  std::unique_ptr<scope::BrainSources> brainSources_;  // the macros, the morph's fader and the pluck as destinations
+  std::unique_ptr<scope::MidiOut> midiOut_;  // to the host's MIDI out, through `outgoing_`
+  scope::Strike strike_;  // the score's notes, struck in the generator's score voice
+  juce::MidiBuffer outgoing_;  // what the out sent this block, at `outAt_`, handed over at its end
+  int outAt_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };

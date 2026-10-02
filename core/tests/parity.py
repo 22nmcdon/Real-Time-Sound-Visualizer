@@ -1468,6 +1468,173 @@ cnull("a Continue instead of a Start", "start-on-clock", "rt 250", "rt 251")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
 
+print("\n--- the score and MIDI out ---")
+# The page's score, its MIDI out and the crossings' and pluck's notes, on its
+# bar, lifted by name, and scope's on a scope::Clock, through the same
+# commands. A line a command: what was struck and every byte sent, then the
+# playhead, the chord, what is sounding, the rate limit's count, and the
+# note-offs due. The grid is the run's: the picture's, in the page, until
+# stage 4.
+sexe = build("score_cpp")
+def sboth(text, name="score_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "score_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([sexe, path], check=True, capture_output=True, text=True).stdout
+def srun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+def frames_at(start, stop, every): return ["at %r" % t if i == 0 else "frame" for t in range(start, stop, every) for i in (0, 1)]
+sruns = [
+    # One cell lit a column: the bottom row is the lowest pitch of the key, the top the highest, and a dim one is no note.
+    ("score-rows", srun("port 1 0", "key 2 major", "cell 63 0 0.9", "cell 0 1 0.8", "cell 31 2 0.7", "cell 40 3 0.1",
+                        "cell 40 4 0.15", "cell 10 5 0.5", "cell 12 5 0.6", "cell 50 5 0.4", "cell 60 5 0.3",
+                        "score on 1/16 2 48 2", *frames_at(0, 800, 20))),
+    # A step every sixteenth at 120; a frame two steps late plays only the newest.
+    ("score-steps", srun("grid 3 0.4", "score on 1/16 3 48 3", "at 0", "frame", "at 126", "frame", "at 251", "frame",
+                         "at 520", "frame", "at 530", "frame", "tempo 60", "at 700", "frame", "at 1100", "frame")),
+    # Stop lets go and stands; Start brings the playhead back to the first column; the scope stopped plays nothing.
+    ("score-stop", srun("port 1 3", "grid 5 0.5", "score on 1/8 2 36 4", *frames_at(0, 1300, 50), "stop", *frames_at(1300, 1500, 50),
+                        "start", *frames_at(1500, 1800, 50), "running 0", *frames_at(1800, 2000, 50), "running 1",
+                        *frames_at(2000, 2200, 50), "score off 1/8 2 36 4", "frame")),
+    # Equal brightness in three bands and two voices: the lower pitches win the tie.
+    ("score-ties", srun("cell 60 0 0.5", "cell 40 0 0.5", "cell 20 0 0.5", "score on 1/16 2 48 1", "at 0", "frame")),
+    # The bar's one leaves the chord sounding with the playhead reset; the scope stopped then still lets it go.
+    ("score-anchor", srun("port 1 0", "grid 4 0.5", "score on 1/16 3 48 2", "at 0", "frame", "at 60", "start", "running 0",
+                          "frame", "running 1", "at 70", "frame")),
+    # Under a MIDI clock the bar adds a twenty-fourth a tick, and six of them come to 0.24999999999999997: the step is
+    # due on that tick all the same. Just after a MIDI Start the bar is a tick short of nought, and nothing plays.
+    ("score-midi", srun("port 1 0", "grid 9 0.5", "score on 1/16 2 48 2", "at 0", "midistart", "frame",
+                        *sum((["at %r" % (k * 20.833), "tick", "frame"] for k in range(1, 40)), []))),
+    # Note-offs due on the frame's own millisecond go on it.
+    ("offs-exact", srun("port 1 0", "cross 1 60 67", "at 1000", "counts 1 0", "frame", "at 1100", "frame",
+                        "at 2000", "pluck 0.5", "at 2150", "frame")),
+    # Forty note-ons a second and no more; the note-offs always go.
+    ("out-rate", srun("port 1 0", *sum((["at %d" % (t * 20), "pluck 0.5", "frame"] for t in range(60)), []), "at 2000", "frame",
+                      *sum((["at %d" % (2000 + t * 30), "pluck 0.7"] for t in range(10)), []))),
+    # A note already sounding is ended first; a new port or channel lets everything go on the old one first.
+    ("out-notes", srun("port 1 5", "pluckNote 64", "at 0", "pluck 0.3", "at 50", "pluck 1", "at 60", "port 1 6", "pluck 0.01",
+                       "at 300", "frame", "port 0 0", "pluck 0.9", "panic")),
+    # A crossing's count gone up is a note, ended a tenth of a second on; down - a new generator - is not.
+    ("crossings", srun("port 1 0", "cross 1 60 67", "at 0", "counts 1 0", "frame", "at 50", "counts 3 2", "frame", "at 120", "frame",
+                       "at 160", "frame", "counts 0 0", "frame", "counts 1 1", "cross 0 60 67", "frame", "counts 2 2", "frame",
+                       "cross 1 72 74", "at 400", "frame", "at 600", "frame")),
+]
+def sfuzz(n):
+    out = []
+    for _ in range(n):
+        t, cmds = 0, []
+        for _ in range(srng.randint(30, 100)):
+            t += srng.choice([0, 5, 16, 33, 60, 125, 250, 400])
+            cmds.append("at %d" % t)
+            r = srng.random()
+            if r < 0.4: cmds.append("frame")
+            elif r < 0.5: cmds.append("pluck %r" % srng.choice([0.2, 0.5, 1, 1.4, -0.3]))
+            elif r < 0.56: cmds.append("score %s %s %s %s %s" % (srng.choice(["on", "on", "off"]), srng.choice(["1/16", "1/8", "1/4", "x"]),
+                                                              srng.choice(["1", "2", "4", "0", "-1", "-2"]), srng.choice(["36", "48", "60"]), srng.choice(["1", "2", "3", "4"])))
+            elif r < 0.62: cmds.append("grid %d %r" % (srng.randint(1, 99), srng.choice([0.05, 0.2, 0.6])))
+            elif r < 0.66: cmds.append("key %d %s" % (srng.randint(0, 11), srng.choice(["chromatic", "major", "minorpent", "whole"])))
+            elif r < 0.71: cmds.append("counts %d %d" % (srng.randint(0, 6), srng.randint(0, 6)))
+            elif r < 0.74: cmds.append("cross %d %d %d" % (srng.randint(0, 1), srng.randint(48, 72), srng.randint(48, 72)))
+            elif r < 0.78: cmds.append("port %d %d" % (srng.randint(0, 1), srng.randint(0, 15)))
+            elif r < 0.81: cmds.append(srng.choice(["start", "stop", "midistart", "tick", "tick"]))
+            elif r < 0.84: cmds.append("tempo %d" % srng.choice([60, 120, 180, 300]))
+            elif r < 0.87: cmds.append("running %d" % srng.randint(0, 1))
+            elif r < 0.9: cmds.append("pluckNote %d" % srng.randint(36, 84))
+            elif r < 0.92: cmds.append("panic")
+            else: cmds.append("cell %d %d %r" % (srng.randint(0, 63), srng.randint(0, 63), srng.choice([0.1, 0.15, 0.5, 1])))
+        out.append(srun(*cmds))
+    return out
+srng = random.Random(43)
+sfuzzed = sfuzz(50)
+stext = "".join(r for _, r in sruns) + "".join(sfuzzed)
+sjs, scpp = sboth(stext, "score.txt")
+sd = kdiff(sjs, scpp)
+check("%d runs of the score and the out, %d of them random, are the page's line for line" % (len(sruns) + len(sfuzzed), len(sfuzzed)),
+      sd is None and len(sjs.split("\n")) > 3000, sd or "")
+def sout(name):
+    js, _ = sboth(dict(sruns)[name])
+    return js.strip().split("\n")
+def sfield(line, name):
+    t = line.split(" | ")[-1].split()
+    return t[t.index(name) + 1]
+def chord(line): return [int(x.split("/")[0]) for x in sfield(line, "notes").split("+")] if sfield(line, "notes") != "-" else []
+L = sout("score-rows")
+cols = {}
+for l in L:
+    if l.startswith("frame") and sfield(l, "col") not in cols: cols[sfield(l, "col")] = chord(l)
+# D major from 48 over two octaves: 49 50 52 54 55 57 59 61 62 64 66 67 69 71 - fourteen pitches, the bottom
+# row the lowest. Row r is band floor((63 - r) * 14 / 64): row 31 is band 7 (61), row 40 band 5 (57).
+check("a column's bottom row is the key's lowest pitch and its top row the highest; under the floor is no note, at it is",
+      cols.get("0") == [49] and cols.get("1") == [71] and cols.get("2") == [61] and cols.get("3") == [] and cols.get("4") == [57],
+      str(cols))
+# Rows 10 and 12 share band 11 (67), at 0.6; row 50 is band 2 (52), at 0.4; row 60 band 0 (49), at 0.3; two voices.
+check("the brightest few over the floor are the chord, loudest first, as many as the voices, a band as bright as its brightest row",
+      cols.get("5") == [67, 52], str(cols.get("5")))
+L = sout("score-steps")
+fl = [l for l in L if l.startswith("frame")]
+check("a step every sixteenth at 120, and a frame two steps late plays only the newest: no flam",
+      [int(sfield(l, "col")) for l in fl[:5]] == [0, 1, 2, 4, 4] and sfield(fl[3], "steps") == "4" and sfield(fl[4], "steps") == "4",
+      str([(sfield(l, "col"), sfield(l, "steps")) for l in fl[:5]]))
+L = sout("score-stop")
+stop = next(l for l in L if l.startswith("stop"))
+start_i = next(i for i, l in enumerate(L) if l.startswith("start"))
+first_after = next(l for l in L[start_i:] if l.startswith("frame"))
+run0 = next(i for i, l in enumerate(L) if l.startswith("running"))
+check("Stop lets the chord go; Start puts the playhead back on the first column; the scope stopped lets go and plays nothing",
+      stop.count("send 131,") >= 1 and sfield(stop, "notes") == "-" and sfield(first_after, "col") == "0"
+      and all(sfield(l, "col") == "-1" for l in L[run0 + 2:run0 + 9] if l.startswith("frame")),
+      "%s | %s" % (stop[:80], sfield(first_after, "col")))
+L = sout("score-ties")
+check("three bands as bright as each other and two voices: the lower two pitches, in the order of the key",
+      chord(L[5]) == [48, 52], L[5][-160:])
+L = sout("score-anchor")
+check("the bar's one leaves the chord sounding and the playhead back before the first step; the scope then stopped lets it go",
+      sfield(L[6], "last") == "-1" and chord(L[6]) == [62, 60, 65] and "send 144" not in L[6]
+      and "send 128,62,0 :: send 128,60,0 :: send 128,65,0" in L[8] and sfield(L[8], "notes") == "-"
+      and sfield(L[11], "col") == "0", "%s | %s" % (L[6][:60], L[8][:80]))
+L = sout("score-midi")
+# Line 3 + 3k is the k-th tick's "at", then the tick, then the frame.
+check("after a MIDI Start nothing plays until the clock's next tick, which is the one; the seventh tick, six twenty-fourths "
+      "short by a rounding, is the second step all the same",
+      sfield(L[5], "col") == "-1" and "send" not in L[5] and sfield(L[8], "col") == "0" and sfield(L[23], "col") == "0"
+      and sfield(L[25], "beat") == "0.24999999999999997" and sfield(L[26], "col") == "1",
+      "%s %s %s %s" % (sfield(L[5], "col"), sfield(L[8], "col"), sfield(L[25], "beat"), sfield(L[26], "col")))
+L = sout("offs-exact")
+check("a crossing's note-off and the pluck's each go on the frame of their own millisecond, not the next",
+      "send 128,60,0" in L[6] and sfield(L[6], "crossoffs") == "-" and "send 128,60,0" in L[10] and sfield(L[10], "pluckoffs") == "-",
+      "%s | %s" % (L[6][:40], L[10][:40]))
+L = sout("out-rate")
+# Fifty plucks 20 ms apart in the first second, then ten more as the window frees.
+ons = sum(l.count("send 144,") for l in L[:150])
+offs = sum(l.count("send 128,") for l in L[:182])  # to the frame at 2000 ms, which ends the first burst's last notes
+check("the out sends forty note-ons in a second and drops the rest, counting them, then sends again as the second passes; every note-off goes",
+      ons == 40 and int(sfield(L[149], "dropped")) == 10 and sum(l.count("send 144,") for l in L[:180]) == 50
+      and offs == sum(l.count("send 144,") for l in L[:180]),
+      "%d on, %s dropped, %d off" % (ons, sfield(L[149], "dropped"), offs))
+L = sout("out-notes")
+check("a note already sounding is ended before it is struck again, and a new channel lets the old one's notes go first",
+      "send 133,64,0 :: send 149,64,127" in L[5] and "send 133,64,0 :: send 181,123,0" in L[7] and "send 150,64,1" in L[8],
+      "%s | %s | %s" % (L[5][:70], L[7][:70], L[8][:70]))
+L = sout("crossings")
+check("a crossing's count gone up is its line's note, ended a tenth of a second on; a count gone down, or the lines off, is none",
+      "send 144,60,102" in L[4] and "send 144,60,102" in L[7] and "send 144,67,102" in L[7] and "send 128,60,0" in L[9]
+      and "send 144" not in L[13] and "send 144" not in L[16] and "send 144" not in L[18], " / ".join(l[:50] for l in L[4:19:3]))
+# The count is not watched while the lines are off, so what it gained meanwhile is heard when they come on.
+check("and a count that rose while the lines were off is heard when they come back on, at their new notes",
+      "send 144,72,102" in L[21] and "send 144,74,102" in L[21], L[21][:90])
+def snull(what, name, old, new):
+    text = dict(sruns)[name]
+    assert text.count(old) >= 1, old
+    js, _ = sboth(text.replace(old, new, 1))
+    _, cpp = sboth(text)
+    check("and against " + what, kdiff(js, cpp) is not None)
+snull("a cell a row lower, over the line between two pitches", "score-rows", "cell 31 2 0.7", "cell 32 2 0.7")
+snull("the next key", "score-rows", "key 2 major", "key 3 major")
+snull("a pluck a millisecond later", "out-rate", "at 400\npluck", "at 401\npluck")
+snull("another channel", "out-notes", "port 1 6", "port 1 7")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(sjs.split("\n")[1:]), "\n".join(scpp.split("\n")[:-1])) is not None)
+
 print("\n--- restore ---")
 # The page's own `restore`, in a browser (restore_page.py), against
 # scope::restoreSetup: every preset the page ships and random setups, each

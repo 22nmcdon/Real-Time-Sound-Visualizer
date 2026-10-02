@@ -195,8 +195,9 @@ In pieces, as the engine went, each held to the page before the next:
   macros and the morph - which moves the panel's sliders, and so cannot come
   before them. (It was listed after time and the sources until the morph
   showed why not.)
-- **2d. Time:** the key and the clock (the host's transport in the plugin),
-  the LFOs locked to it, the arpeggiator (ported), the score.
+- **2d. Time** (ported): the key and the clock (the host's transport in the
+  plugin), the LFOs locked to it, the arpeggiator, the score and the MIDI out
+  they share.
 - **2e. The rest of the sources** that are not the picture's or the
   hearing's: the learned controllers as sources, the note envelope, the level.
 - **2f. The hearing sources,** which analyse the sound and so are DSP in the
@@ -517,8 +518,8 @@ page's `snapshot`, the other direction from `restore`), which the host's
 saved state will need (2g); and grabbing a cycle from what is playing, which
 listens, and so waits for the hearing (2f).
 
-What the port leaves to later pieces: the arpeggiator (2d), where the page
-asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
+What the port leaves to later pieces: the arpeggiator (2d, since ported),
+where the page asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
 are `Panel` until the setup is the core's (2c); and a chord handed to the
 generator, which the generator copies and so can allocate on a note, once a
 layer, until the brain's state is fixed in size.
@@ -599,6 +600,62 @@ first step, the page's timer, is struck at the sample its time falls on. The
 shell test holds a chord in "Intervals in turn" and hears the first sound 25
 ms after the first key to the sample - 1,300 where the next block's top
 would have been 1,536.
+
+**And the score, with the MIDI out.** `scope/score.h` is the page's score -
+the phosphor grid read as a graphical score, the playhead crossing its 64
+columns on the clock's bar, a step a semiquaver, quaver or crotchet, and the
+brightest few pitches of the key in a column struck in the generator's score
+voice - and the out it shares with the arpeggiator, the crossings and the
+pluck: one port and one channel, forty note-ons a second at most and every
+note-off sent whatever the count, a note already sounding ended before it is
+struck again, a new port or channel letting go on the old one first, and the
+panic. The crossings' notes, ended a tenth of a second on, and the pluck's,
+150 ms on, came with it, since they are the out's other callers. The score's
+brightness is kept in single precision, as the page's `Float32Array` keeps
+it, or a tie between two bands breaks the other way; and its step is the
+bar's over the step's beats plus a billionth, because six twenty-fourths of a
+MIDI clock come to 0.24999999999999997 and the step due on that tick would
+otherwise be a tick late.
+
+Held to the page by its own harness (`score_js.mjs` against `score_cpp`, the
+latter on a Brain linked as `linkClock` links it): 10 named runs and 50
+random ones, 7,400 lines - the strikes and every byte sent each command,
+then the playhead, the chord, what is sounding, the rate limit's count and
+the note-offs due. The made runs read: one lit cell a column - the bottom row
+the key's lowest pitch, the top its highest, a dim cell no note and one at the
+floor a note; the brightest few over the floor loudest first; a step every
+semiquaver, and a frame two steps late playing only the newest, not a flam;
+Stop letting go, Start back to the first column, the scope stopped playing
+nothing; a tie going to the lower pitches; the bar's one leaving the chord
+sounding until the next step; after a MIDI Start nothing until the next tick,
+and the seventh tick the second step despite its rounding; note-offs due on a
+frame's own millisecond going on it; the rate limit; a note struck twice and a
+channel changed; the crossings, counts going up and down. Four nulls. Of 48
+mutants of the score, 43 are caught; four of those left are guards that cannot
+change what is picked (an empty key, a dark cell, a band under the floor, the
+brightness array's initial value), and the fifth - a bar below nought - cannot
+happen on the page, where the bar is never less than a tick short of nought,
+and is held by the shell test, where a host's count-in makes one. Five more
+mutants of `linkClock`'s hooks are all caught. What restore does when a setup
+turns the score off - let it go there and then - is what the score's next
+frame would do anyway, a frame later, and nothing in the harnesses can tell
+the two apart.
+
+In the plugin the out writes into the host's MIDI buffer at the sample of
+whatever sent the note: an arpeggio's first step at its own sample, a step
+after it at the block's top as the page steps it in its frame, a note-off from
+letting go at the release's sample, and the crossings, the score and the
+pluck's note-offs at the block's top, once a block as the page's once a frame.
+The grid is still the page's, so the score's playhead runs on the bar and
+plays nothing until stage 4. The pluck is struck at the setup's pluck note,
+where the core's own stand-in strikes middle C and sends nothing. The shell
+test reads what comes back from the host's buffer: the arpeggio's steps at
+1,300 and then every 12,000 samples to the block's top, each ending the last;
+"Three against two" sending both lines' notes together at velocity 102 and
+ending each 100 ms on, and the boot preset sending nothing; a routing firing
+the pluck at C5 in "Pendulums ring a bell"; and "A sine, sung" under a host
+two beats into its count-in, the playhead waiting until the one and then
+following the bar. Eleven mutants of the plugin's wiring, every one caught.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

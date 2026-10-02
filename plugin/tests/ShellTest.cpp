@@ -2,6 +2,7 @@
 // generator's sound out, the page served, and the picture the page will draw
 // carrying what was played. It prints PASS and FAIL lines in the house
 // format and exits non-zero on a failure, like the web suite.
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -394,6 +395,157 @@ int main() {
     check("an arpeggio's first step sounds 25 ms after the first key, to the sample, and the arpeggio goes on stepping",
           onset >= 1300 && onset < 1303 && loud(1300 + 12000, 1300 + 24000) > 0.05 && loud(36000, 48000) > 0.05,
           "first sound at sample " + std::to_string(onset) + "; later " + num(loud(36000, 48000)));
+  }
+
+  std::printf("\n--- MIDI out ---\n");
+  /* What the plugin hands back to the host: every message, with its sample
+     counted from the start of the run. */
+  struct Sent { int sample; std::uint8_t a, b, c; };
+  struct Hits : scope::ModSource {
+    Hits() : ModSource("test.hits") { event = true; }
+    double value() const override { return 0; }
+    int count() const override { return n; }
+    int n = 0;
+  };
+  const auto sendOut = [&](const char* preset, const std::vector<std::pair<int, juce::MidiMessage>>& played, int blocksToRun,
+                           Hits* hits = nullptr, int hitAt = 0, juce::AudioPlayHead* head = nullptr) {
+    setenv("SCOPE_PRESET", preset, 1);
+    auto p = std::make_unique<ScopeProcessor>();
+    p->prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    if (hits) { p->matrix().registerSource(hits); p->matrix().add("test.hits", "gen.pluck", 0.8); }
+    if (head) p->setPlayHead(head);
+    std::vector<Sent> sent;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < blocksToRun; ++k) {
+      const int start = k * block;
+      buf.clear();
+      juce::MidiBuffer m;
+      for (const auto& [sample, msg] : played)
+        if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
+      if (hits && start == hitAt) hits->n++;
+      p->processBlock(buf, m);
+      for (const auto event : m) {
+        const auto* d = event.data;
+        sent.push_back({ start + event.samplePosition, d[0], event.numBytes > 1 ? d[1] : std::uint8_t(0),
+                         event.numBytes > 2 ? d[2] : std::uint8_t(0) });
+      }
+    }
+    return std::make_pair(std::move(p), sent);
+  };
+  const auto ons = [](const std::vector<Sent>& sent) {
+    std::vector<Sent> out;
+    for (const auto& e : sent) if ((e.a & 0xF0) == 0x90 && e.c > 0) out.push_back(e);
+    return out;
+  };
+  const auto offs = [](const std::vector<Sent>& sent) {
+    std::vector<Sent> out;
+    for (const auto& e : sent) if ((e.a & 0xF0) == 0x80) out.push_back(e);
+    return out;
+  };
+  {
+    /* The arpeggio sent as it is played: its first step at sample 1300, 25 ms
+       after the first key, where the next block's top is 1536; then a quaver
+       at 120 apart, 12,000 samples, each at the first block's top on or after
+       its time, as the page steps it in its frame, with the last step's note
+       ended first. Four in the second; and the chord let go at sample 40,000,
+       which ends the step sounding there and then, at the release's own
+       sample. The host's own notes are not sent back. */
+    const auto [p, sent] = sendOut("Intervals in turn", { { 100, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)) },
+                                                         { 484, juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)) },
+                                                         { 676, juce::MidiMessage::noteOn(1, 67, static_cast<juce::uint8>(80)) },
+                                                         { 40000, juce::MidiMessage::noteOff(1, 64) },
+                                                         { 40000, juce::MidiMessage::noteOff(1, 60) },
+                                                         { 40000, juce::MidiMessage::noteOff(1, 67) } }, 94);
+    const auto on = ons(sent), off = offs(sent);
+    bool stepped = on.size() == 4 && off.size() == 4 && off[3].sample == 40000 && off[3].b == on[3].b;
+    for (std::size_t k = 1; stepped && k < on.size(); ++k) {
+      const int due = 1300 + static_cast<int>(k) * 12000, top = (due + block - 1) / block * block;
+      stepped = on[k].sample == top && off[k - 1].sample == top && off[k - 1].b == on[k - 1].b;
+    }
+    const bool unechoed = std::none_of(sent.begin(), sent.end(), [](const Sent& e) {
+      return e.sample == 100 || e.sample == 484 || e.sample == 676 || (e.sample == 40000 && e.b != 64);
+    });
+    check("the arpeggio goes out to the host as it is struck: its first step at sample 1300, on channel 1, then a step a quaver, each ending the last, the last ended as the chord is let go",
+          !on.empty() && on[0].sample == 1300 && on[0].a == 0x90 && stepped && unechoed,
+          on.empty() ? "nothing sent" : "first at " + std::to_string(on[0].sample) + ", " + std::to_string(on.size()) + " steps, "
+          + std::to_string(off.size()) + " ended");
+  }
+  {
+    /* "Three against two": the crossings on, a note held so the figure is
+       drawn, and each crossing of a line sent as its note at velocity 102 and
+       ended a tenth of a second on - both at a block's top, the crossings'
+       frame. At three against two both lines are crossed together, twice in
+       the second. The boot preset, the crossings off, is the null: nothing. */
+    const std::vector<std::pair<int, juce::MidiMessage>> held { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } };
+    const auto [p, sent] = sendOut("Three against two", held, 94);
+    const auto [q, quiet] = sendOut("Harmonic tone", held, 94);
+    const auto on = ons(sent), off = offs(sent);
+    bool tops = true, notes = true;
+    for (const auto& e : on) { tops = tops && e.sample % block == 0; notes = notes && (e.b == 60 || e.b == 67) && e.c == 102; }
+    for (const auto& e : off) tops = tops && e.sample % block == 0;
+    const bool both = std::any_of(on.begin(), on.end(), [](const Sent& e) { return e.b == 60; })
+                      && std::any_of(on.begin(), on.end(), [](const Sent& e) { return e.b == 67; });
+    // Each note's own note-off: two notes struck in one block are ended in the other order.
+    bool later = on.size() >= 2 && off.size() >= 2;
+    for (std::size_t k = 0; later && k < 2; ++k) {
+      const auto end = std::find_if(off.begin(), off.end(), [&](const Sent& e) { return e.b == on[k].b; });
+      later = end != off.end() && end->sample - on[k].sample >= rate / 10 && end->sample - on[k].sample < rate / 10 + block;
+    }
+    check("a crossing goes out as its line's note at a block's top, both lines' notes, each ended a tenth of a second on",
+          on.size() == 4 && tops && notes && both && later && quiet.empty(),
+          std::to_string(on.size()) + " sent, " + std::to_string(off.size()) + " ended"
+          + "; with the crossings off " + std::to_string(quiet.size()));
+  }
+  {
+    /* A routing fires the pluck: "Pendulums ring a bell" has it at C5, 72,
+       where the core's own stand-in strikes middle C and sends nothing. Struck
+       in the block after the hit, sent at velocity 102 and ended 150 ms on. */
+    Hits hits;
+    const auto [p, sent] = sendOut("Pendulums ring a bell", {}, 40, &hits, 10 * block);
+    const auto on = ons(sent), off = offs(sent);
+    check("the pluck, fired by a routing, is struck at the setup's pluck note and sent, and ended 150 ms on",
+          on.size() == 1 && on[0].b == 72 && on[0].c == 102 && on[0].sample == 10 * block && off.size() == 1 && off[0].b == 72
+          && off[0].sample - on[0].sample >= rate * 0.15 && off[0].sample - on[0].sample < rate * 0.15 + block,
+          on.empty() ? "nothing sent" : "note " + std::to_string(on[0].b) + " at " + std::to_string(on[0].sample)
+          + (off.empty() ? ", never ended" : ", ended at " + std::to_string(off[0].sample)));
+  }
+  {
+    /* "A sine, sung" has the score on, a step a semiquaver. Its picture is the
+       page's until stage 4, so it plays nothing in the plugin, but its
+       playhead runs on the bar - and through a host's count-in, two beats
+       before the one, it waits: a bar of minus two would be column minus
+       eight, and a grid read from there. */
+    struct Head : juce::AudioPlayHead {
+      juce::Optional<PositionInfo> getPosition() const override {
+        PositionInfo p;
+        p.setBpm(120); p.setPpqPosition(ppq); p.setIsPlaying(true);
+        return p;
+      }
+      double ppq = -2;
+    } head;
+    setenv("SCOPE_PRESET", "A sine, sung", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    p.setPlayHead(&head);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    bool waited = true, followed = true, sentNothing = true;
+    int counted = 0;
+    for (int k = 0; k < 160; ++k) {
+      buf.clear();
+      none.clear();
+      const double at = head.ppq;
+      p.processBlock(buf, none);
+      sentNothing = sentNothing && none.isEmpty();
+      if (at < 0) waited = waited && p.score().col == -1;
+      else { followed = followed && p.score().col == static_cast<int>(std::floor(at * 4 + 1e-9)) % 64; counted++; }
+      head.ppq += block / rate * 2;
+    }
+    check("the score's playhead waits through a host's count-in and then follows its bar, a column a semiquaver; with no picture it sends nothing",
+          p.score().on && waited && followed && counted > 40 && sentNothing,
+          "col " + std::to_string(p.score().col) + " at the end, " + std::to_string(counted) + " blocks after the one");
   }
 
   std::printf("\n--- the page and the picture ---\n");

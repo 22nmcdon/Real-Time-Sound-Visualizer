@@ -29,7 +29,21 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   nowMs_ = 0;
   lastBlockMs_ = 0;
   scope::linkClock(*brain_, lfos_);
-  brainSources_ = std::make_unique<scope::BrainSources>(*matrix_, *brain_);
+  /* The page's MIDI out, a port chosen once and for good: the host's MIDI out
+     is always there, and whether anything listens to it is the host's
+     routing. Channel 1, the page's default; the page's menu for it is not the
+     plugin's yet. */
+  midiOut_ = std::make_unique<scope::MidiOut>([this](const std::uint8_t* bytes, int length) {
+    outgoing_.addEvent(bytes, length, outAt_);
+  });
+  midiOut_->choose(true, 0);
+  outgoing_.clear();
+  outgoing_.ensureSize(2048);
+  brain_->out = midiOut_.get();
+  keyboard_->setOut(midiOut_.get());
+  scope::Generator* gen = core_.get();
+  strike_ = [gen](double hz, double velocity) { gen->strike(hz, velocity); };
+  brainSources_ = std::make_unique<scope::BrainSources>(*matrix_, *brain_, core_.get());
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
      keyboard is there. Derived by the keyboard, not set here. */
@@ -99,10 +113,23 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   keyboard_->setNow(nowMs_);
   keyboard_->setTempo(brain_->clock.bpm);
   keyboard_->frame(lastBlockMs_);
+  outAt_ = 0;  // what is sent before the block's events is sent at its top
   keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
   matrix_->setLayered(keyboard_->layersOn());
   matrix_->setStrikes(keyboard_->strikes());
   matrix_->frame(nowMs_);
+  /* The crossings' notes from the counts the generator reached by the end of
+     the last block, the score's step, and the pluck's note-offs due: once a
+     block, as the page does them once a frame, so a note-off due inside a
+     block goes at the next block's top - 11 ms late at most at 512 samples,
+     where the page's frames are 17 ms apart. The picture is the page's until
+     stage 4, so the score has no grid to read and plays nothing, though its
+     playhead runs on the bar. */
+  scope::crossStep(brain_->notesOut, nowMs_, brain_->cross.on, core_->crossings(), static_cast<int>(brain_->cross.noteX),
+                   static_cast<int>(brain_->cross.noteY), midiOut_.get());
+  scope::scoreTick(brain_->score, nowMs_, true, brain_->clock, nullptr, scope::keyMask(brain_->keyRoot, brain_->keyScale),
+                   strike_, midiOut_.get());
+  scope::endDue(brain_->notesOut.pluckOffs, nowMs_, midiOut_.get());
   /* After the matrix, so a source on the fader is already counted. A walk
      moves sliders and fires their handlers, which allocate (a slider's value
      is the text the browser would hold): not yet fit for an audio thread,
@@ -126,6 +153,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
       if (at > until) break;
       render(left, right, done, at);
       done = at;
+      outAt_ = std::min(at, frames - 1);  // a wake in the block's last fraction of a sample rounds up past its end
       keyboard_->setNow(*wake);
       keyboard_->wakeArp();
     }
@@ -135,6 +163,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     wakesUntil(at);
     render(left, right, done, at);
     done = at;
+    outAt_ = at;
     keyboard_->setNow(blockMs + 1000.0 * at / rate);
     /* The bytes, not JUCE's reading of them: the keyboard is the page's
        `midiBytes` ported, so a note-on at velocity nought, a controller, the
@@ -147,6 +176,9 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   }
   wakesUntil(frames);
   render(left, right, done, frames);
+  // The host's notes are spent; what goes back is what the out sent.
+  midi.swapWith(outgoing_);
+  outgoing_.clear();
 }
 
 std::vector<float> ScopeProcessor::pictureSnapshot() const {

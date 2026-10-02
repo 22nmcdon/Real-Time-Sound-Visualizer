@@ -1,10 +1,10 @@
 // A setup loaded into the instrument: the page's `restore`, ported for what
 // it does to the sound - both layers of the generator, the keyboard, the
 // LFOs, the routings, the key, the quantiser and the tempo, the crossings,
-// the plane and the echo - and for the settings it keeps for pieces still to
-// come (the score, the arpeggiator, the threshold, the macros, the morph, the
-// photocell). It is held to the page's own `restore`, run in a browser, by
-// core/tests/parity.py.
+// the plane, the echo, the arpeggiator, the score, the macros and the morph's
+// ends - and for the settings it keeps for pieces still to come (the
+// threshold, the photocell). It is held to the page's own `restore`, run in a
+// browser, by core/tests/parity.py.
 //
 // The page's `restore` writes each value into a control and fires the
 // control's handler, so what a setup means is two things at once: what the
@@ -59,6 +59,7 @@
 #include "scope/lfo.h"
 #include "scope/matrix.h"
 #include "scope/panel_controls.h"
+#include "scope/score.h"
 #include "scope/setup.h"
 #include "scope/strokes.h"
 
@@ -168,7 +169,9 @@ struct Brain {
   double quantiseGlide = 0;
   Clock clock;  // transport: the tempo, the bar, and the oscillators locked to it
   struct Cross { bool on = false; double x = 0, y = 0, noteX = 60, noteY = 67, decayMs = 180, level = 0.4; } cross;
-  struct Score { bool on = false; std::string step = "1/16"; double voices = 2, low = 48, octaves = 3; } score;
+  ScoreState score;
+  NotesOut notesOut;       // the crossings' and the pluck's notes out, and their note-offs due
+  NoteOut* out = nullptr;  // the MIDI out, where its owner has given one
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
   std::u16string threshWatch = u"env.live";
   double threshLevel = 0.5, pluckNote = 60;
@@ -465,6 +468,10 @@ inline void syncQuantiser(const Brain& b, Generator& gen) {
 // restore says it again, which costs nothing.
 inline void linkClock(Brain& b, std::vector<Lfo>& lfos) {
   b.clock.locks = { { &lfos[0], &b.lfo[0].sync }, { &lfos[1], &b.lfo[1].sync } };
+  // The bar's one puts the score back to its first column; Stop lets its notes go.
+  Brain* brain = &b;
+  b.clock.onAnchor = [brain] { brain->score.last = -1; brain->score.steps = 0; };
+  b.clock.onStop = [brain] { scoreStop(brain->score, brain->out); };
 }
 // MIDI's real-time bytes as the keyboard hands them on, to the clock, at the
 // time of the event that carried them.
@@ -838,6 +845,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   brain.score.voices = jsMathRound(within("scoreVoices", 1, 4, 2));
   brain.score.low = among("scoreLow", { 36, 48, 60 }, 48);
   brain.score.octaves = jsMathRound(within("scoreOctaves", 1, 4, 3));
+  if (!brain.score.on) scoreStop(brain.score, brain.out);
   {
     const Json* m = s("arpMode");
     static const char16_t* modes[] = { u"off", u"up", u"down", u"updown", u"played", u"random" };
@@ -1130,7 +1138,19 @@ class MacroSource : public ModSource {
 };
 class BrainSources {
  public:
-  BrainSources(Matrix& matrix, Brain& b) {
+  // With a generator, the pluck too: struck at the setup's pluck note and sent
+  // out, where the core's own stand-in strikes middle C and sends nothing.
+  BrainSources(Matrix& matrix, Brain& b, Generator* gen = nullptr) {
+    if (gen) {
+      ModDest pluck;
+      pluck.id = "gen.pluck"; pluck.kind = DestKind::Event;
+      Brain* brain = &b;
+      pluck.fire = [brain, gen](double amount) {
+        pluckFire(brain->notesOut, static_cast<int>(brain->pluckNote), jsMax(0, jsMin(1, std::fabs(amount))), brain->clock.now(),
+                  [gen](double hz, double velocity) { gen->strike(hz, velocity); }, brain->out);
+      };
+      matrix.registerDest(std::move(pluck));
+    }
     for (int i = 0; i < 4; i++) macros_.emplace_back(i, b);
     for (auto& m : macros_) matrix.registerSource(&m);
     ModDest d;
