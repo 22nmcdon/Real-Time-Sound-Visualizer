@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,9 @@
 // its clock and the matrix. What the page sends to a MIDI port - the
 // arpeggio's steps, the crossings' notes, the pluck's and the score's - goes
 // to the host's MIDI out (scope::MidiOut), each at the sample of what sent it.
+// The host sees eight parameters, each one of the panel's sliders, and saves
+// the plugin as a setup code: the setup it was loaded with, the parameters
+// over it, and the controllers it has learned.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -59,8 +63,11 @@ class ScopeProcessor final : public juce::AudioProcessor {
   const juce::String getProgramName(int) override { return {}; }
   void changeProgramName(int, const juce::String&) override {}
 
-  void getStateInformation(juce::MemoryBlock&) override {}
-  void setStateInformation(const void*, int) override {}
+  /* The plugin's state is a setup code, the thing the page shares: the
+     setup it was loaded with, and over it what has moved since - the
+     host's parameters, the morph's position, the controllers learned. */
+  void getStateInformation(juce::MemoryBlock&) override;
+  void setStateInformation(const void*, int) override;
 
   /* The last `kPictureFrames` of what was played, left and right interleaved,
      for the page to draw: written by the audio thread, read by the editor's
@@ -99,7 +106,26 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void moveSlider(const std::string& id, double value);
   void storeMorph(bool endB) { scope::morphStore(*brain_, endB); }
 
+  /* The host's parameters: the four macros, the morph's fader, and three of
+     the main knobs, each one of the panel's sliders by id and in its units.
+     A curated few rather than every control, as the plan has it. */
+  struct HostKnob { const char* id; const char* name; const char* slider; const char* key; };
+  static constexpr std::array<HostKnob, 8> kKnobs { {
+    { "macro1", "Macro 1", "macro1", "mac1" }, { "macro2", "Macro 2", "macro2", "mac2" },
+    { "macro3", "Macro 3", "macro3", "mac3" }, { "macro4", "Macro 4", "macro4", "mac4" },
+    { "morph", "Morph", "morphPos", "morphPos" }, { "level", "Level", "amp", "amp" },
+    { "cutoff", "Cutoff", "vcfCut", "vcfCut" }, { "echo", "Echo", "delayMix", "delayMix" },
+  } };
+  juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
+  double slider(const char* id) const { return brain_->panel.range(id); }
+  int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
+
  private:
+  // A setup loaded as a preset is: the core restored, and the parameters read back from the panel.
+  void load(const scope::Json& setup);
+  // Each parameter the host has moved since the last block, to its slider.
+  void applyKnobs();
+
   // Render [from, to) of the block into the output and the picture ring.
   void render(float* left, float* right, int from, int to);
   // The last of the picture, the page's screen, for the level and the hearing
@@ -122,6 +148,11 @@ class ScopeProcessor final : public juce::AudioProcessor {
   scope::Strike strike_;  // the score's notes, struck in the generator's score voice
   juce::MidiBuffer outgoing_;  // what the out sent this block, at `outAt_`, handed over at its end
   int outAt_ = 0;
+  std::array<juce::AudioParameterFloat*, kKnobs.size()> knobs_ {};
+  std::array<float, kKnobs.size()> applied_ {};  // each parameter as last applied
+  scope::Json setup_;                          // the setup the plugin was loaded with
+  juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
+  std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };

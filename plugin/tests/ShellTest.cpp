@@ -746,6 +746,132 @@ int main() {
           std::to_string(p.hearing().onset.count) + " onsets; apart by " + num(apart(routed, plain, 0, routed.size())));
   }
 
+  std::printf("\n--- the host's parameters, and the state ---\n");
+  {
+    /* Eight parameters, each a slider of the panel in its units, read back
+       from the setup loaded: "Stretched echoes" has its echo at 45, the
+       level and the cutoff at the page's defaults, the macros at nought. */
+    setenv("SCOPE_PRESET", "Stretched echoes", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    std::string names;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) names += (i ? ", " : "") + p.knob(i)->name.toStdString();
+    check("eight parameters for the host, each one of the panel's sliders, read back from the setup it loads",
+          p.getParameters().size() == 8 && names == "Macro 1, Macro 2, Macro 3, Macro 4, Morph, Level, Cutoff, Echo"
+          && p.knob(7)->get() == 45 && p.knob(5)->get() == 55 && p.knob(6)->get() == 667 && p.knob(0)->get() == 0,
+          names + "; echo " + num(p.knob(7)->get()) + ", level " + num(p.knob(5)->get()) + ", cutoff " + num(p.knob(6)->get()));
+  }
+  /* "Brighten, grit, space, swirl" has a routing from each macro. Automated
+     from block 20 - Macro 1 to full, the cutoff from 480 to 900 - each is
+     heard from that block and not a sample before; the same unautomated is
+     the null. */
+  const auto automated = [&](int knobIndex, float value) {
+    setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    std::vector<float> got;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < 60; ++k) {
+      if (k == 20 && knobIndex >= 0) p.knob(static_cast<std::size_t>(knobIndex))->setValueNotifyingHost(p.knob(static_cast<std::size_t>(knobIndex))->convertTo0to1(value));
+      buf.clear();
+      juce::MidiBuffer m;
+      if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 120); }
+      p.processBlock(buf, m);
+      for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+    }
+    return std::make_pair(got, std::make_pair(p.slider("macro1"), p.slider("vcfCut")));
+  };
+  {
+    const auto [still, stillSliders] = automated(-1, 0);
+    const auto [macro, macroSliders] = automated(0, 100);
+    const auto [cutoff, cutoffSliders] = automated(6, 900);
+    check("automating Macro 1 or the cutoff is heard from the block it is moved in, and not a sample before",
+          apart(still, macro, 0, 20 * block) == 0 && apart(still, macro, 20 * block, still.size()) > 0.02
+          && apart(still, cutoff, 0, 20 * block) == 0 && apart(still, cutoff, 20 * block, still.size()) > 0.02
+          && macroSliders.first == 100 && cutoffSliders.second == 900,
+          "macro apart by " + num(apart(still, macro, 20 * block, still.size())) + ", cutoff by " + num(apart(still, cutoff, 20 * block, still.size()))
+          + "; sliders " + num(macroSliders.first) + ", " + num(cutoffSliders.second));
+  }
+  {
+    /* The state round trip. One plugin loads "Brighten, grit, space, swirl",
+       has Macro 2 and the echo moved by the host and learns the mod wheel;
+       its state, handed to a fresh plugin before it is prepared, is what
+       that one loads instead of its own preset. Both then play the same
+       notes: the same sound, sample for sample, the same parameters, the
+       wheel learned. The fresh plugin without the state is the null. */
+    const auto play = [&](ScopeProcessor& p, bool tweak) {
+      std::vector<float> got;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 80; ++k) {
+        if (k == 0 && tweak) {
+          p.knob(1)->setValueNotifyingHost(p.knob(1)->convertTo0to1(70));
+          p.knob(7)->setValueNotifyingHost(p.knob(7)->convertTo0to1(30));
+        }
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0 && tweak) m.addEvent(juce::MidiMessage::controllerEvent(1, 1, 0), 10);
+        if (k == 10) { m.addEvent(juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)), 50); m.addEvent(juce::MidiMessage::noteOn(1, 67, static_cast<juce::uint8>(90)), 70); }
+        if (k == 50) m.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
+        p.processBlock(buf, m);
+        if (k >= 10) for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+      }
+      return got;
+    };
+    setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
+    ScopeProcessor a;
+    a.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    const auto heardA = play(a, true);
+    juce::MemoryBlock state;
+    a.getStateInformation(state);
+    ScopeProcessor b, none;
+    b.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    b.prepareToPlay(rate, block);
+    const float prepared = b.knob(1)->get();  // loaded by prepareToPlay itself, not left for the first block
+    none.prepareToPlay(rate, block);
+    const auto heardB = play(b, false), heardNone = play(none, false);
+    bool same = true;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) same = same && a.knob(i)->get() == b.knob(i)->get();
+    check("a state handed to a fresh plugin is the setup it loads: the same sound, the same parameters, the wheel learned",
+          apart(heardA, heardB, 0, heardA.size()) == 0 && apart(heardA, heardNone, 0, heardA.size()) > 0.02 && same
+          && b.knob(1)->get() == 70 && b.knob(7)->get() == 30 && b.learned() == 1 && none.learned() == 0 && state.getSize() > 20
+          && prepared == 70,
+          std::to_string(state.getSize()) + " bytes; apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by "
+          + num(apart(heardA, heardNone, 0, heardA.size())) + "; learned " + std::to_string(b.learned()));
+    /* A parameter applies when the host moves it, and not again: the slider
+       moved since by something else - the morph, or a hand once the page is
+       the plugin's face - stays where it was put. */
+    {
+      ScopeProcessor d;
+      d.prepareToPlay(rate, block);
+      juce::AudioBuffer<float> held(2, block);
+      juce::MidiBuffer none2;
+      d.knob(5)->setValueNotifyingHost(d.knob(5)->convertTo0to1(100));
+      d.processBlock(held, none2);
+      const double moved = d.slider("amp");
+      d.moveSlider("amp", 20);
+      d.processBlock(held, none2);
+      check("a parameter applies when the host moves it and not again: the slider moved since stays where it was put",
+            moved == 100 && d.slider("amp") == 20, num(moved) + ", then " + num(d.slider("amp")));
+    }
+    /* And handed over while it plays: loaded at the top of the next block,
+       the parameters following. */
+    ScopeProcessor c;
+    c.prepareToPlay(rate, block);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer m;
+    c.processBlock(buf, m);
+    const float before = c.knob(1)->get();
+    c.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    const float waiting = c.knob(1)->get();
+    c.processBlock(buf, m);
+    check("a state handed over while it plays is loaded at the next block's top, and its parameters follow",
+          before == 0 && waiting == 0 && c.knob(1)->get() == 70 && c.knob(7)->get() == 30,
+          num(before) + ", " + num(waiting) + ", then " + num(c.knob(1)->get()));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";

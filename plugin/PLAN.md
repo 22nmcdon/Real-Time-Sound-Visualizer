@@ -203,7 +203,8 @@ In pieces, as the engine went, each held to the page before the next:
   level, the drawings' six, and the threshold.
 - **2f. The hearing sources** (ported), which analyse the sound and so are
   DSP in the core rather than the page.
-- **2g. The host's parameters.**
+- **2g. The host's parameters** (built), and the plugin's state as a setup
+  code.
 
 **2a is ported.** `scope/keyboard.h` is the page's `midi` functions: the
 held stack and its rules (a velocity of nought is a release, a note does not
@@ -515,9 +516,10 @@ path that was not well formed. The page refuses it now, with a check that
 runs the reader in a worker under a time limit (web/README.md has it).
 
 What the setup still leaves: a snapshot of the core's state as a setup (the
-page's `snapshot`, the other direction from `restore`), which the host's
-saved state will need (2g); and grabbing a cycle from what is playing, which
-listens, and so waits for the hearing (2f).
+page's `snapshot`, the other direction from `restore`), which waits for the
+page to be the plugin's face (stage 3) - the host's saved state did not need
+it after all (2g); and grabbing a cycle from what is playing, which listens,
+and can now be built on the hearing (2f).
 
 What the port leaves to later pieces: the arpeggiator (2d, since ported),
 where the page asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
@@ -757,6 +759,42 @@ rightly: a star's points are whole, and the brightness its reach allows adds
 less than half of one.) Seven mutants of the wiring, all caught. Its period
 estimator allocates as it goes, which is not yet fit for an audio thread and
 moves with the morph's walk.
+
+**2g: the host's parameters, and the state.** Eight parameters, a curated
+few rather than every control: the four macros, the morph's fader, and the
+level, the cutoff and the echo, each one of the panel's sliders by id and in
+its units, so a parameter moved by the host is a hand on that slider - its
+value written as the browser would hold it, its handler run - and a
+parameter applies when the host moves it and not again, so a slider moved
+since by something else stays where it was put. Loading a setup reads them
+back from the panel, so the host shows what the preset set.
+
+The state is a setup code, the thing the page shares, and not a snapshot of
+everything. The page's `snapshot` reads the view's half of a setup - the
+display, the trigger, the channels, the filter, the panes - from controls the
+core does not keep, so it cannot be ported whole until the page is the
+plugin's face (stage 3); and until then what can change the plugin's state is
+narrow: the setup it was loaded with, the host's parameters, and the
+controllers it has learned. So the state is the setup as loaded, and over it
+each parameter's slider as the page's snapshot writes it and the learned
+controllers' names; a state handed back is restored as a preset is, before
+the first block if it comes before `prepareToPlay` and at the top of the next
+block if it comes while it plays - that block, and any the message thread
+holds the lock for, being silence rather than a wait. What it loses, and
+says so here: anything moved by a hand that is not a parameter, of which
+there is none until stage 3.
+
+The shell test: eight parameters named and read back from "Stretched
+echoes"; Macro 1 and the cutoff automated in "Brighten, grit, space, swirl"
+heard from the block they are moved in and not a sample before; a state
+round trip, with Macro 2 and the echo moved and the wheel learned, into a
+fresh plugin that then plays the same notes sample for sample, with the same
+parameters and the wheel learned, where the same plugin without it does not;
+a state handed over mid-play loaded at the next block; and a slider moved
+after its parameter staying put. Eight mutants of the wiring, all caught,
+two only once the last two checks were added - a state left for the first
+block instead of loaded by `prepareToPlay`, and parameters applied again
+every block, which nothing heard until something else moved their sliders.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

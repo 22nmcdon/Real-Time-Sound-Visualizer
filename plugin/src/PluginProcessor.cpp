@@ -7,7 +7,56 @@
 #include "PluginEditor.h"
 
 ScopeProcessor::ScopeProcessor()
-    : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)) {}
+    : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    const auto* spec = scope::rangeSpec(kKnobs[i].slider);
+    knobs_[i] = new juce::AudioParameterFloat(juce::ParameterID { kKnobs[i].id, 1 }, kKnobs[i].name,
+                                              juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max),
+                                                                             static_cast<float>(spec->step)),
+                                              static_cast<float>(spec->value));
+    addParameter(knobs_[i]);
+  }
+}
+
+void ScopeProcessor::load(const scope::Json& setup) {
+  setup_ = setup;
+  scope::restoreSetup(setup_, *brain_, *core_, *keyboard_, *matrix_, lfos_);
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    const auto v = static_cast<float>(brain_->panel.range(kKnobs[i].slider));
+    knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
+    applied_[i] = knobs_[i]->get();
+  }
+}
+
+void ScopeProcessor::applyKnobs() {
+  /* As a hand on the slider: the value written as the browser would hold it,
+     the slider's handler run. Which allocates, as the morph's walk does, and
+     moves with it to the message thread (PLAN.md, stage 2). */
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    const float v = knobs_[i]->get();
+    if (v == applied_[i]) continue;
+    applied_[i] = v;
+    scope::moveSlider(kKnobs[i].slider, scope::jsToString(scope::Json::number(v)), *brain_, *core_, *keyboard_, lfos_);
+  }
+}
+
+void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
+  const juce::SpinLock::ScopedLockType lock(stateLock_);
+  if (!brain_) return;
+  /* The setup as loaded, and over it what has moved: each parameter's slider
+     as the page's snapshot writes it, and the controllers learned. */
+  scope::Json setup = setup_.type == scope::Json::Type::Object ? setup_ : scope::Json::object();
+  for (const auto& k : kKnobs) setup.set(k.key, scope::Json::number(brain_->panel.range(k.slider)));
+  setup.set("cc", scope::Json::string(std::string_view(keyboard_->encodeCC())));
+  if (const auto code = scope::encodeSetup(setup)) out.append(code->data(), code->size());
+}
+
+void ScopeProcessor::setStateInformation(const void* data, int size) {
+  const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(data), static_cast<std::size_t>(size)));
+  if (decoded.kind != scope::DecodedSetup::Kind::Read) return;
+  const juce::SpinLock::ScopedLockType lock(stateLock_);
+  pending_ = decoded.setup;
+}
 
 bool ScopeProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
   return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
@@ -59,7 +108,12 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   const char* wanted = std::getenv("SCOPE_PRESET");
   const scope::Preset* preset = wanted ? scope::findPreset(wanted) : nullptr;
   if (!preset) preset = scope::findPreset("Harmonic tone");
-  if (preset) scope::restoreSetup(preset->setup, *brain_, *core_, *keyboard_, *matrix_, lfos_);
+  {
+    // A state the host handed over before there was a core to give it to wins.
+    const juce::SpinLock::ScopedLockType lock(stateLock_);
+    if (pending_) { load(*pending_); pending_.reset(); }
+    else if (preset) load(preset->setup);
+  }
   keyboard_->frame(0);
   levelLane_.assign(kLevelFrames, 0.0f);
   hearL_.assign(scope::kHearN, 0.0f);
@@ -98,6 +152,12 @@ void ScopeProcessor::moveSlider(const std::string& id, double value) {
 }
 void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
+  /* A state being loaded from the message thread: this block is silence
+     rather than a wait; one waiting for this thread is loaded here, which
+     allocates, as a preset's load does. */
+  const juce::SpinLock::ScopedTryLockType lock(stateLock_);
+  if (!lock.isLocked()) { buffer.clear(); midi.clear(); return; }
+  if (pending_) { load(*pending_); pending_.reset(); }
   const int frames = buffer.getNumSamples();
   auto* left = buffer.getWritePointer(0);
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
@@ -118,6 +178,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
   }
   scope::clockFrame(*brain_, *core_, nowMs_);
+  applyKnobs();
   /* The level over the last of the picture, the page's screen, as the frame
      before this one left it. The page's window is its fetch, which follows
      the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
