@@ -24,10 +24,13 @@
 // mono and chords on two layers. The routings reach it through the core's
 // matrix (scope::Matrix), compiled and faded at the top of every block, from
 // the sources ported so far, and the morph steps after it, as the page's
-// frame has it. Until the rest of the brain moves into the core (PLAN.md,
-// stage 2) it starts as the page starts - on the "Harmonic tone" preset,
-// loaded through the core's `restoreSetup` - and nothing yet moves it from
-// there but the host's notes and the matrix.
+// frame has it. Before all of it the clock (scope::Clock, the page's
+// `transport`): the host's tempo, play and position where the host gives
+// them, a MIDI clock's otherwise, and the slider's when neither. Until the
+// rest of the brain moves into the core (PLAN.md, stage 2) it starts as the
+// page starts - on the "Harmonic tone" preset, loaded through the core's
+// `restoreSetup` - and nothing yet moves it from there but the host's notes,
+// its clock and the matrix.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -79,6 +82,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The routings, for whoever sets them: the shell test now, the brain's
   // setup later. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return *matrix_; }
+  // The clock and an oscillator's rate, for the shell test to read.
+  const scope::Clock& clock() const { return brain_->clock; }
+  double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   /* A hand on one of the panel's sliders, and an end of the morph stored: what
      the page will send over the bridge once it is the plugin's face. Until
      then, the shell test's way in. */
@@ -96,6 +102,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::unique_ptr<scope::Matrix> matrix_;
   std::unique_ptr<scope::CoreSources> sources_;
   std::unique_ptr<scope::Brain> brain_;  // what a setup sets beyond the generator
+  std::unique_ptr<scope::ClockIn> clockIn_;  // MIDI's real-time bytes, to the brain's clock
   std::unique_ptr<scope::BrainSources> brainSources_;  // the macros, and the morph's fader as a destination
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay

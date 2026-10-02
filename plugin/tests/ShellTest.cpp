@@ -287,6 +287,80 @@ int main() {
   check("and the picture is the fifth the two keys make, its right channel at three to the left's two",
         std::fabs(fifth - 1.5) < 0.01 && std::fabs(unison - 1) < 0.01, num(fifth) + " to one; one key is " + num(unison));
 
+  std::printf("\n--- the clock ---\n");
+  /* "Wobble" locks LFO 1 to a quaver: four cycles a second at the page's 120,
+     three at a host's 90. A stand-in host plays at 90 from beat 8, then
+     stops, then goes away; the same preset with no host is the null. */
+  struct Head : juce::AudioPlayHead {
+    juce::Optional<PositionInfo> getPosition() const override {
+      if (!there) return {};
+      PositionInfo p;
+      p.setBpm(bpm); p.setPpqPosition(ppq); p.setIsPlaying(playing);
+      return p;
+    }
+    double bpm = 90, ppq = 8;
+    bool playing = true, there = true;
+  };
+  {
+    setenv("SCOPE_PRESET", "Wobble", 1);
+    ScopeProcessor hosted, alone;
+    hosted.prepareToPlay(rate, block); alone.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    Head head;
+    hosted.setPlayHead(&head);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    const auto blocks = [&](ScopeProcessor& p, int n, bool advance) {
+      for (int k = 0; k < n; ++k) {
+        buf.clear();
+        p.processBlock(buf, none);
+        if (advance && head.playing) head.ppq += block / rate * head.bpm / 60;
+      }
+    };
+    blocks(hosted, 40, true); blocks(alone, 40, false);
+    const double lastPpq = head.ppq - block / rate * head.bpm / 60;
+    const auto& c = hosted.clock();
+    check("under a host at 90 the clock is the host's: its tempo, its position for the bar, and a locked oscillator at its quaver",
+          c.from == scope::Clock::From::Host && c.bpm == 90 && c.set == 120 && std::fabs(c.beat(c.now()) - lastPpq) < 1e-9
+          && std::fabs(hosted.lfoRate(0) - 3) < 1e-12 && std::fabs(alone.lfoRate(0) - 4) < 1e-12
+          && alone.clock().from == scope::Clock::From::Internal,
+          "bpm " + num(c.bpm) + ", beat " + num(c.beat(c.now())) + " against " + num(lastPpq) + ", LFO " + num(hosted.lfoRate(0))
+          + "; with no host " + num(alone.lfoRate(0)));
+    head.playing = false;
+    blocks(hosted, 3, true);
+    check("the host stopped is the bar stopped where the host says it is",
+          !c.running && std::fabs(c.beat(c.now() + 500) - head.ppq) < 1e-9, "beat " + num(c.beat(c.now() + 500)));
+    head.there = false;
+    blocks(hosted, 60, true);
+    check("and a host gone quiet for half a second gives the tempo back to the slider", c.from == scope::Clock::From::Internal
+          && c.bpm == 120 && std::fabs(hosted.lfoRate(0) - 4) < 1e-12, "bpm " + num(c.bpm) + ", LFO " + num(hosted.lfoRate(0)));
+  }
+  /* A MIDI clock through the plugin's bytes: ticks at 150, each at its own
+     sample. Stamped at the block's top instead, the ticks in one block would
+     land at one time and the tempo come out wrong. */
+  {
+    setenv("SCOPE_PRESET", "Wobble", 1);
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    juce::AudioBuffer<float> buf(2, block);
+    const double tickSamples = rate * 60 / 150 / 24;
+    double next = 300;
+    for (int start = 0; start < static_cast<int>(rate); start += block) {
+      buf.clear();
+      juce::MidiBuffer m;
+      for (; next < start + block; next += tickSamples) {
+        const std::uint8_t tick = 0xF8;
+        m.addEvent(&tick, 1, static_cast<int>(next) - start);
+      }
+      p.processBlock(buf, m);
+    }
+    const auto& c = p.clock();
+    check("a MIDI clock at 150 through the plugin's bytes, each tick at its own sample, is a tempo of 150 and LFO 1 at five",
+          c.from == scope::Clock::From::Midi && std::fabs(c.bpm - 150) < 0.5 && std::fabs(p.lfoRate(0) - c.bpm / 30) < 1e-12,
+          "bpm " + num(c.bpm) + ", LFO " + num(p.lfoRate(0)));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";

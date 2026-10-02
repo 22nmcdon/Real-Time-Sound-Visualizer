@@ -196,7 +196,7 @@ In pieces, as the engine went, each held to the page before the next:
   before them. (It was listed after time and the sources until the morph
   showed why not.)
 - **2d. Time:** the key and the clock (the host's transport in the plugin),
-  the LFOs locked to it, the arpeggiator, the score.
+  the LFOs locked to it (ported), the arpeggiator, the score.
 - **2e. The rest of the sources** that are not the picture's or the
   hearing's: the learned controllers as sources, the note envelope, the level.
 - **2f. The hearing sources,** which analyse the sound and so are DSP in the
@@ -522,6 +522,46 @@ asks `arpActive()`; the panel's sliders the keyboard reads and moves, which
 are `Panel` until the setup is the core's (2c); and a chord handed to the
 generator, which the generator copies and so can allocate on a note, once a
 layer, until the brain's state is fixed in size.
+
+**2d has begun with the clock.** `scope/clock.h` is the page's `transport`:
+the tempo in force (the slider's, a tap's, or a MIDI clock's, the mean of the
+last two dozen gaps), the bar worked out from the time it is asked about
+rather than stepped - re-based when the tempo changes, so it never jumps, and
+under a MIDI clock a twenty-fourth a tick, guessing ahead between ticks but
+never past the next - Start, Stop and Continue, a MIDI Start that holds the
+bar a tick short so the first tick is the one, and the step once a frame that
+lets a quiet clock go and sets every locked oscillator's rate. The Brain holds
+it where it held a bare tempo, restore sets the tempo and steps it as the page
+does, and a delay in note values is sent again when the tempo moves it.
+
+Held to the page by its own harness (`clock_js.mjs` against `clock_cpp`): 13
+named runs and 60 random ones, 7,650 lines, every field of the clock and both
+oscillators each line. The made runs read: a tempo changed mid-bar leaves the
+bar where it was; a MIDI clock at 120 reads 120 and moves the bar a
+twenty-fourth a tick, never guessing past the next; a quiet clock is let go
+after half a second and the slider's tempo comes back; a Start with no clock
+after it does not hold the bar short for ever; taps, stopped and running; the
+locked oscillators following the tempo and the clock and restarting on Start;
+the delay sent only when it moves. Four nulls. Of 44 mutants, 42 are caught:
+the two left are the tap's rounding before a `setTempo` that rounds anyway,
+and a guard on an empty list of ticks no state reaches while the clock is a
+MIDI clock's. The first pass left two more that were runs missing - time never
+went backwards, though a MIDI tick is stamped when it arrived and can come a
+little before the frame that reads it; and the harness could not tell a delay
+sent again unchanged from one not sent - and the fuzz steps back now and then,
+and `clockFrame` says whether it sent.
+
+In the plugin, the clock steps first in every block, as in the page's frame.
+A host's transport, which the page has not got, is the clock's while the host
+gives one: its tempo in force with the slider's kept, its play and stop as
+Start and Stop, its position as the bar; a host gone quiet gives the tempo
+back to the slider, as a stopped MIDI clock does. MIDI's real-time bytes
+reach the clock through the keyboard at the time of their own sample. The
+shell test plays "Wobble" (LFO 1 locked to a quaver) under a stand-in host at
+90 and finds the oscillator at three cycles a second against four with no
+host, the bar at the host's position, stopped where the host stopped, and the
+slider's tempo back once it goes; and a MIDI clock at 150 sent as bytes reads
+150, where stamping the ticks at the block's top read 152.
 
 **3. The page as a view.** One adapter in the page: the worklet and the
 WebAssembly core in a browser, JUCE's bridge in the plugin. The web suite goes

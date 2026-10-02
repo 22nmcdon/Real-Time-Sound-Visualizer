@@ -29,8 +29,9 @@
 // - The cycles and the figures made of strokes are the page's from the first
 //   restore on: a Brain starts with none, where the page starts with its
 //   defaults, and the plugin restores before it plays.
-// - The page's tempo has a MIDI clock that can override it; here the tempo in
-//   force is the setup's, which is what the page's is with no clock running.
+// - "Now", where restore asks for it (setting the tempo re-bases the bar), is
+//   the clock's `now()`, which its owner keeps up to date; the page asks
+//   `performance.now()`.
 // - Three fields the page passes on raw are taken by their truth or their
 //   name: `gen` (a mode the page has not got leaves the generator as it was
 //   told, and the core plays a waveform), `just` (anything truthy is just),
@@ -50,6 +51,7 @@
 #include <utility>
 #include <vector>
 
+#include "scope/clock.h"
 #include "scope/cycles.h"
 #include "scope/generator.h"
 #include "scope/json.h"
@@ -164,7 +166,7 @@ struct Brain {
   std::string keyScale = "chromatic";
   bool quantise = false;
   double quantiseGlide = 0;
-  double tempo = 120;  // transport.set, and the tempo in force
+  Clock clock;  // transport: the tempo, the bar, and the oscillators locked to it
   struct Cross { bool on = false; double x = 0, y = 0, noteX = 60, noteY = 67, decayMs = 180, level = 0.4; } cross;
   struct Score { bool on = false; std::string step = "1/16"; double voices = 2, low = 48, octaves = 3; } score;
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
@@ -187,6 +189,7 @@ struct Brain {
     double feedback = 0.35;
     bool pingPong = false;
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
+    std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // drawnCycle: the four slots' points, and the tables built from them.
   std::array<CyclePoints, kCycleSlots> cycles;
@@ -223,21 +226,6 @@ inline int keyMask(double root, const std::string& scale) {
   int mask = 0;
   for (const int degree : found->degrees) mask |= 1 << static_cast<int>(std::fmod(root + degree, 12));
   return mask;
-}
-inline double syncBeats(const std::string& sync) {  // LFO_SYNC
-  static const std::pair<const char*, double> table[] = {
-    { "4", 16 }, { "2", 8 }, { "1", 4 }, { "1/2", 2 }, { "1/4", 1 }, { "1/8", 0.5 }, { "1/16", 0.25 },
-    { "1/4t", 2.0 / 3 }, { "1/8t", 1.0 / 3 },
-  };
-  for (const auto& [id, beats] : table) if (sync == id) return beats;
-  return 0;
-}
-inline double delayBeats(const std::string& sync) {  // DELAY_SYNC
-  static const std::pair<const char*, double> table[] = {
-    { "1/2", 2 }, { "1/4", 1 }, { "1/8d", 0.75 }, { "1/8", 0.5 }, { "1/4t", 2.0 / 3 }, { "1/8t", 1.0 / 3 }, { "1/16", 0.25 },
-  };
-  for (const auto& [id, beats] : table) if (sync == id) return beats;
-  return 0;
 }
 inline bool delaySyncKnown(const std::u16string& s) {
   return s.empty() || s == u"1/2" || s == u"1/4" || s == u"1/8d" || s == u"1/8" || s == u"1/4t" || s == u"1/8t" || s == u"1/16";
@@ -431,7 +419,7 @@ inline void syncPlanePanel(Brain& b) {
 }
 inline double delayTimeMs(const Brain& b) {
   const double beats = delayBeats(b.echo.sync);
-  return beats > 0 ? std::fmin(2000, beats * 60000 / b.tempo) : b.echo.ms;
+  return beats > 0 ? std::fmin(2000, beats * 60000 / b.clock.bpm) : b.echo.ms;
 }
 // The time a synced echo shows is the tempo's, and its slider stands still.
 inline void syncEchoPanel(Brain& b) {
@@ -470,6 +458,45 @@ inline void syncCrossings(const Brain& b, Generator& gen) {
 inline void syncQuantiser(const Brain& b, Generator& gen) {
   gen.set("qMask", b.quantise ? keyMask(b.keyRoot, b.keyScale) : 0);
   gen.set("qGlideMs", b.quantiseGlide);
+}
+
+// The two oscillators the clock can lock, each with the note value it is
+// locked to. Whoever holds both the Brain and the oscillators says so once;
+// restore says it again, which costs nothing.
+inline void linkClock(Brain& b, std::vector<Lfo>& lfos) {
+  b.clock.locks = { { &lfos[0], &b.lfo[0].sync }, { &lfos[1], &b.lfo[1].sync } };
+}
+// MIDI's real-time bytes as the keyboard hands them on, to the clock, at the
+// time of the event that carried them.
+class ClockIn : public RealtimeIn {
+ public:
+  explicit ClockIn(Clock& clock) : clock_(clock) {}
+  void at(double ms) { when_ = ms; }
+  void realtime(int status) override { clock_.realtime(status, when_); }
+
+ private:
+  Clock& clock_;
+  double when_ = 0;
+};
+// clockStep, whole: the clock's own step, then a delay in note values sent
+// again when the tempo has moved it - and whether it was.
+inline bool clockFrame(Brain& b, Generator& gen, double now) {
+  b.clock.step(now);
+  if (!b.echo.sync.empty()) {
+    const double ms = delayTimeMs(b);
+    if (!b.echo.sent || *b.echo.sent != ms) { b.echo.sent = ms; gen.set("delayMs", ms); return true; }
+  }
+  return false;
+}
+// setTempo, with the slider it writes.
+inline void setTempo(Brain& b, double bpm, double at) {
+  b.clock.setTempo(bpm, at);
+  b.panel.setRange("tempo", toU16(jsNumberToString(b.clock.set)));
+}
+// clockTap, with the slider a tap's tempo writes.
+inline void tapTempo(Brain& b, double at) {
+  b.clock.tap(at);
+  b.panel.setRange("tempo", toU16(jsNumberToString(b.clock.set)));
 }
 
 // cycleSend(true): every slot's tables, to the generator - the drawn cycle
@@ -780,15 +807,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const double glide = num("qGlide");
     brain.quantiseGlide = std::fmax(0, std::fmin(300, glide == 0 || std::isnan(glide) ? 0 : glide));
     const double bpm = num("bpm");
-    brain.tempo = std::fmax(30, std::fmin(300, jsMathRound(bpm == 0 || std::isnan(bpm) ? 120 : bpm)));
-  }
-  for (int i = 0; i < 2; i++) {  // clockStep: an LFO locked to the tempo runs at it
-    const double beats = syncBeats(brain.lfo[static_cast<std::size_t>(i)].sync);
-    if (beats > 0) lfos[static_cast<std::size_t>(i)].rate = brain.tempo / 60 / beats;
+    linkClock(brain, lfos);
+    setTempo(brain, bpm == 0 || std::isnan(bpm) ? 120 : bpm, brain.clock.now());
+    clockFrame(brain, gen, brain.clock.now());
   }
   setA("qMask", brain.quantise ? keyMask(brain.keyRoot, brain.keyScale) : 0);
   setA("qGlideMs", brain.quantiseGlide);
-  panel.setRange("tempo", toU16(jsNumberToString(brain.tempo)));               // setTempo
   panel.setRange("quantiseGlide", toU16(jsNumberToString(brain.quantiseGlide)));  // syncKeyPanel
 
   // The crossings.
@@ -1008,10 +1032,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
   else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
   else if (id == "morphPos") b.morphPos = v / 100;
-  else if (id == "tempo") {  // setTempo
-    b.tempo = std::fmax(30, std::fmin(300, jsMathRound(v)));
-    b.panel.setRange("tempo", toU16(jsNumberToString(b.tempo)));
-  }
+  else if (id == "tempo") setTempo(b, v, b.clock.now());
   else if (id == "crossX") { b.cross.x = v / 100; syncCrossings(b, gen); }
   else if (id == "crossY") { b.cross.y = v / 100; syncCrossings(b, gen); }
   else if (id == "crossDecay") { b.cross.decayMs = v; syncCrossings(b, gen); }

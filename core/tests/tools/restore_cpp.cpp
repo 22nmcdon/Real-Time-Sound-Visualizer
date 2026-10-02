@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
     out.set("mod", str(scope::Matrix::encode(matrix.routings())));
     Json key = Json::object();
     key.set("root", num(brain.keyRoot)); key.set("scale", str(brain.keyScale)); key.set("quantise", flag(brain.quantise));
-    key.set("glide", num(brain.quantiseGlide)); key.set("bpm", num(brain.tempo));
+    key.set("glide", num(brain.quantiseGlide)); key.set("bpm", num(brain.clock.set));
     out.set("key", key);
     Json cross = Json::object();
     cross.set("on", flag(brain.cross.on)); cross.set("x", num(brain.cross.x)); cross.set("y", num(brain.cross.y));

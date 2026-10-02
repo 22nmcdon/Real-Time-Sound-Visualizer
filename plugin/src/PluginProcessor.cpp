@@ -20,12 +20,14 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   lfos_[1].rate = 0.5; lfos_[1].depth = 0.3;
   core_ = std::make_unique<scope::Generator>(sampleRate, scope::slot::Used, lfos_);
   notes_ = std::make_unique<scope::GeneratorNotes>(*core_);
-  keyboard_ = std::make_unique<scope::Keyboard>(*notes_);
+  brain_ = std::make_unique<scope::Brain>();
+  clockIn_ = std::make_unique<scope::ClockIn>(brain_->clock);
+  keyboard_ = std::make_unique<scope::Keyboard>(*notes_, clockIn_.get());
   matrix_ = std::make_unique<scope::Matrix>();
   sources_ = std::make_unique<scope::CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
   nowMs_ = 0;
   lastBlockMs_ = 0;
-  brain_ = std::make_unique<scope::Brain>();
+  scope::linkClock(*brain_, lfos_);
   brainSources_ = std::make_unique<scope::BrainSources>(*matrix_, *brain_);
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
@@ -80,7 +82,19 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      controllers walk and its gate and chord are worked out again, the matrix
      steps its fades, fires its events and compiles its routes, the morph
      walks its sliders, and the generator holds those routes across the
-     block, as the worklet does. */
+     block, as the worklet does. First of all the clock, as in the page's
+     frame: the host's transport where it gives one, then the clock's step,
+     which sets the locked oscillators' rates. */
+  brain_->clock.setNow(nowMs_);
+  if (auto* head = getPlayHead()) {
+    if (const auto position = head->getPosition()) {
+      if (const auto bpm = position->getBpm()) {
+        const auto ppq = position->getPpqPosition();
+        brain_->clock.host(*bpm, ppq.hasValue() ? std::optional<double>(*ppq) : std::nullopt, position->getIsPlaying(), nowMs_);
+      }
+    }
+  }
+  scope::clockFrame(*brain_, *core_, nowMs_);
   keyboard_->frame(lastBlockMs_);
   matrix_->setLayered(keyboard_->layersOn());
   matrix_->setStrikes(keyboard_->strikes());
@@ -92,6 +106,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      it to (PLAN.md, stage 2). */
   scope::morphStep(*brain_, *core_, *keyboard_, lfos_);
   core_->setRoutes(matrix_->routes(nowMs_));
+  const double blockMs = nowMs_;
   lastBlockMs_ = 1000.0 * frames / rate_.load();
   nowMs_ += lastBlockMs_;
   // Each event at its own sample, not at the top of the block: the generator
@@ -107,6 +122,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
        handed to the generator is copied there, which can allocate on a note
        - once per layer, and a known cost until the brain's state is fixed in
        size (PLAN.md). */
+    clockIn_->at(blockMs + 1000.0 * at / rate_.load());  // a clock byte at its own time
     keyboard_->bytes(event.data, static_cast<std::size_t>(event.numBytes));
   }
   render(left, right, done, frames);

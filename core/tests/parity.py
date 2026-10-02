@@ -1204,6 +1204,153 @@ snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
 
+print("\n--- the clock ---")
+# The page's tempo, bar, tap, MIDI clock and locked oscillators, lifted by
+# name, and scope::Clock as the Brain holds it, through the same commands. A
+# line a command: what reached the score and the delay, then the tempo, where
+# the bar is and how it is moving, the oscillators' rates, phases and restarts.
+cexe = build("clock_cpp")
+def cboth(text, name="clock_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "clock_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([cexe, path], check=True, capture_output=True, text=True).stdout
+def crun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+def ticks(start, gap, n, every=False):
+    out = []
+    for k in range(n):
+        out += ["at %r" % (start + k * gap), "tick"] + (["step"] if every else [])
+    return out
+def cfield(line, name):
+    t = line.split("|", 1)[1].split()
+    return t[t.index(name) + 1]
+def clfo(line, i):  # an oscillator's rate, phase and restarts
+    t = line.split("|", 1)[1].split()
+    k = t.index("lfo%d" % i)
+    return [float(v) for v in t[k + 1:k + 4]]
+cruns = [
+    # A tempo changed mid-bar re-bases, so the bar does not jump.
+    ("tempo-mid-bar", crun("at 0", "at 700", "tempo 90", "at 1700", "tempo 140", "at 2300", "tempo 10", "tempo 400",
+                           "tempo 89.5", "tempo 90.4999")),
+    # A MIDI clock at 120, its bar a twenty-fourth a tick and never past the next.
+    ("midi-120", crun(*(ticks(1000, 20.833333, 30, every=True) + ["at 1700", "step", "at 1800", "step"]))),
+    # Ticks bunched as USB delivers them: the tempo is the mean of the last two dozen gaps.
+    ("midi-bunched", crun(*sum((["at %r" % (2000 + 83.3333 * k), "tick", "tick", "at %r" % (2000 + 83.3333 * k + 2), "tick", "tick", "step"]
+                                for k in range(20)), []))),
+    # The clock stops: half a second on, back to the slider from where the clock would have had the bar.
+    # The clock at 125 and the slider at 100, so going back can show.
+    ("midi-stops", crun("tempo 100", *(ticks(500, 20, 12, every=True) + ["at 1000", "step", "at 1300", "step", "at 1400", "step"]))),
+    # A MIDI Start waits for the first tick to be the one; with no tick it lets go.
+    ("start-on-clock", crun("at 300", "rt 250", "step", *ticks(320, 20.8333, 6, every=True))),
+    ("start-no-clock", crun("at 300", "rt 250", "at 600", "step", "at 900", "step", "at 1200", "step")),
+    # Stop holds the bar; Continue picks up at the next tick; Continue while running does nothing.
+    ("stop-continue", crun("at 0", "at 1000", "stop", "at 2000", "step", "rt 251", *ticks(2010, 20.8333, 4, every=True),
+                           "at 3000", "rt 251", "rt 252", "at 3500", "step", "tick", "at 4100", "step")),
+    # Ticks while stopped measure the tempo and leave the bar.
+    ("ticks-stopped", crun("at 100", "stop", *ticks(200, 25, 8, every=True), "start")),
+    # Taps: four at 500 ms is 120, each a downbeat while running; a pause of two seconds starts again; stopped, no anchor.
+    ("taps", crun("sync 0 1/4", "phase 0 1", "at 1000", "tap", "at 1500", "tap", "phase 0 2", "at 2000", "tap", "at 2500", "tap",
+                  "at 3000", "tap", "at 6000", "tap", "stop", "at 6400", "tap", "at 6800", "tap")),
+    ("taps-same-ms", crun("at 10", "tap", "tap", "at 20", "tap")),
+    # Locked oscillators follow the tempo and the clock, and restart on Start; a free one does neither.
+    ("locked", crun("sync 0 1/8t", "sync 1 4", "step", "tempo 60", "step", "phase 0 3", "phase 1 4", "start",
+                    "sync 1 -", "phase 1 5", "start", "sync 1 4", *ticks(5000, 15, 10, every=True),
+                    "sync 0 nonsense", "tempo 180", "step")),
+    # A delay in note values is sent again when the tempo moves it, and only then.
+    ("echo", crun("echo 1/8d 200", "step", "step", "tempo 100", "step", "step", "echo - 200", "tempo 120", "step",
+                  "echo 1/2 300", "tempo 30", "step", "echo 1/16 300", "step", *ticks(100, 41.666, 6, every=True))),
+    # More than two dozen ticks: the oldest go.
+    ("many-ticks", crun(*ticks(0, 20, 40), "step")),
+]
+def cfuzz(n):
+    out = []
+    for _ in range(n):
+        t, cmds = 0.0, []
+        for _ in range(crng.randint(20, 90)):
+            r = crng.random()
+            # Now and then a step back: a MIDI tick is stamped when it arrived,
+            # which can be a little before the frame that read it.
+            t += crng.choice([0, 1, 5, 20.8333, 21, 40, 100, 300, 499, 501, 700, 2100]) if r < 0.9 else -crng.uniform(0, 15)
+            cmds.append("at %r" % t)
+            cmds.append(crng.choice(["tick", "tick", "tick", "step", "step", "tap", "start", "stop", "rt 250", "rt 251", "rt 252",
+                                     "rt 248", "tempo %r" % crng.choice([60, 90, 120.5, 200, 25, 333]),
+                                     "sync %d %s" % (crng.randint(0, 1), crng.choice(["-", "1/4", "1/8t", "4", "1/16", "x"])),
+                                     "echo %s %d" % (crng.choice(["-", "1/8d", "1/4t", "1/16"]), crng.randint(1, 2000)),
+                                     "phase %d %r" % (crng.randint(0, 1), crng.uniform(0, 6))]))
+        out.append(crun(*cmds))
+    return out
+crng = random.Random(41)
+cfuzzed = cfuzz(60)
+ctext = "".join(r for _, r in cruns) + "".join(cfuzzed)
+cjs, ccpp = cboth(ctext, "clock.txt")
+cd = kdiff(cjs, ccpp)
+check("%d runs of the clock, %d of them random, are the page's line for line" % (len(cruns) + len(cfuzzed), len(cfuzzed)),
+      cd is None and len(cjs.split("\n")) > 3000, cd or "")
+def cout(name):
+    js, _ = cboth(dict(cruns)[name])
+    return js.strip().split("\n")
+L = cout("tempo-mid-bar")
+check("a tempo changed mid-bar leaves the bar where it was, and the slider holds it to 30-300 in whole beats",
+      cfield(L[2], "beat") == cfield(L[1], "beat") and [float(cfield(L[i], "set")) for i in (6, 7, 8, 9)] == [30, 300, 90, 90],
+      "%s %s; %s" % (cfield(L[1], "beat"), cfield(L[2], "beat"), [cfield(L[i], "set") for i in (6, 7, 8, 9)]))
+L = cout("midi-120")
+tl = [l for l in L if l.startswith("tick")]
+check("a MIDI clock at 120 reads 120, and moves the bar a twenty-fourth a tick",
+      abs(float(cfield(tl[-1], "bpm")) - 120) < 1e-3 and cfield(tl[-1], "from") == "midi"
+      and abs(float(cfield(tl[-1], "base")) - float(cfield(tl[-2], "base")) - 1 / 24) < 1e-12,
+      "%s, %s" % (cfield(tl[-1], "bpm"), float(cfield(tl[-1], "base")) - float(cfield(tl[-2], "base"))))
+check("and between ticks the bar guesses ahead but never past the next tick",
+      abs(float(cfield(L[-3], "beat")) - float(cfield(L[-3], "base")) - 1 / 24) < 1e-12, cfield(L[-3], "beat"))
+L = cout("midi-stops")
+check("a clock gone quiet for half a second is let go, and the tempo goes back to the slider's",
+      cfield(L[-5], "from") == "midi" and abs(float(cfield(L[-5], "bpm")) - 125) < 1e-9
+      and cfield(L[-3], "from") == "internal" and float(cfield(L[-3], "bpm")) == 100,
+      "%s %s, %s %s" % (cfield(L[-5], "from"), cfield(L[-5], "bpm"), cfield(L[-3], "from"), cfield(L[-3], "bpm")))
+L = cout("start-on-clock")
+first = next(l for l in L if l.startswith("tick"))
+check("a MIDI Start holds the bar a tick short, so the first tick after it is the one",
+      float(cfield(L[1], "base")) == -1 / 24 and float(cfield(first, "beat")) == 0 and "anchor" in L[1], first[:60])
+L = cout("start-no-clock")
+check("and a Start no clock follows lets go after half a second rather than holding the bar short for ever",
+      float(cfield(L[-1], "beat")) > 1 and cfield(L[-1], "ticking") == "0", cfield(L[-1], "beat"))
+L = cout("taps")
+taps = [l for l in L if l.startswith("tap")]
+check("four taps 500 ms apart are 120, each a downbeat and a restart of what is locked; after a pause of two seconds a tap starts again",
+      float(cfield(taps[3], "set")) == 120 and all("anchor" in t for t in taps[1:5]) and clfo(taps[2], 0)[1:] == [0, 2]
+      and "anchor" not in taps[5] and cfield(taps[5], "taps") == "1",
+      " / ".join(cfield(t, "set") for t in taps))
+check("and stopped, a tap sets the tempo and restarts the oscillators, but leaves the bar where it stood",
+      float(cfield(taps[6], "set")) == 150 and "anchor" not in taps[6] and clfo(taps[6], 0)[2] == 5
+      and cfield(taps[6], "beat") == cfield(taps[5], "beat"), taps[6][:80])
+L = cout("locked")
+last_tick_step = [l for l in L if l.startswith("step") and cfield(l, "from") == "midi"][-1]
+check("a locked oscillator runs at the tempo's note value, follows a MIDI clock, and restarts on Start; a free one does neither",
+      abs(clfo(L[2], 0)[0] - 6) < 1e-12 and abs(clfo(L[4], 0)[0] - 3) < 1e-12 and abs(clfo(L[4], 1)[0] - 1 / 16) < 1e-12
+      and clfo(L[7], 0)[1:] == [0, 1] and clfo(L[10], 1)[1:] == [5, 1]
+      and abs(clfo(last_tick_step, 1)[0] - float(cfield(last_tick_step, "bpm")) / 960) < 1e-12
+      and float(cfield(last_tick_step, "bpm")) != 60 and clfo(L[-1], 0)[0] == clfo(L[-4], 0)[0],
+      "%s %s %s | %s | %s | %s" % (clfo(L[2], 0), clfo(L[4], 0), clfo(L[4], 1), clfo(L[7], 0), clfo(L[10], 1), clfo(last_tick_step, 1)))
+L = cout("echo")
+sent = [i for i, l in enumerate(L) if ":: delayMs" in l]
+said = [L[i].split(":: ")[1].split(" |")[0] for i in sent]
+check("a delay in note values is sent when the tempo moves it, not again until it does, and never past two seconds",
+      sent[:4] == [1, 4, 11, 13] and said[:4] == ["delayMs 375", "delayMs 450", "delayMs 2000", "delayMs 500"],
+      "%s %s" % (sent[:5], said[:5]))
+# Nulls: the page told something different, and the port must disagree.
+def cnull(what, name, old, new):
+    text = dict(cruns)[name]
+    assert text.count(old) >= 1
+    js, _ = cboth(text.replace(old, new, 1))
+    _, cpp = cboth(text)
+    check("and against " + what, kdiff(js, cpp) is not None)
+cnull("a tempo a beat a minute faster", "tempo-mid-bar", "tempo 90\n", "tempo 91\n")
+cnull("a tick a millisecond late", "midi-120", "at 1041.666666", "at 1042.666666")
+cnull("an oscillator locked to a quaver instead of a quaver triplet", "locked", "sync 0 1/8t", "sync 0 1/8")
+cnull("a Continue instead of a Start", "start-on-clock", "rt 250", "rt 251")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
+
 print("\n--- restore ---")
 # The page's own `restore`, in a browser (restore_page.py), against
 # scope::restoreSetup: every preset the page ships and random setups, each
