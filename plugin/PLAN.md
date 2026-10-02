@@ -887,6 +887,24 @@ hosttest.py: each kind is sent once, the view's menu and an unported button
 not at all, the routings whole and only when changed, and a state's hands
 put back in order with nothing sent back.
 
+Mutation: 64 mutants of the handlers, 59 caught. Three are equivalent for
+every value a menu can send - a law applied to a menu whose law is the
+value itself, the draw count's floor of two under a menu that starts at two,
+and an LFO's free rate kept on locking when the free rate is its rate
+whenever it is free - and two are out of this harness's sight: the score's
+notes stopped when its switch goes off, as no score note plays here, and
+the threshold disarmed by its menu, as nothing arms it without frames. Six
+lived at first and were caught once the dump read what the handlers write
+(the keyboard's interval, the LFO's shape as it plays, its phase from a
+radian rather than from nought, which a reset to nought could not show) or
+the readable runs had a case for them (a key changed with the quantiser on,
+a number of voices the menu has not got). The matrix's edits, four of four;
+the plugin's hands, nineteen of nineteen, three only after the shell test
+learnt to load a preset after the hands, to press both of a set of
+buttons, and to hear a button put back; the page's side, nineteen of
+nineteen, one only after hosttest.py touched the routings it had just put
+back.
+
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 
@@ -904,9 +922,9 @@ redone natively or left out.
   fading out is the page's routing object itself, so a depth changed and the
   routing taken off before the next frame fades out at the new depth. The
   core's fade copied the routing once a frame and faded the stale one. The
-  matrix's random runs had `amount` and `unroute` from the start
-  and never put them on one pair without a frame between; the edits' runs,
-  which replace the whole list, did it at once. The copy is now brought up to
+  matrix's random runs had `amount` and `unroute` from the start and never
+  put them on one pair without a frame between; the edits' runs, which
+  replace the whole list, did it at once. The copy is now brought up to
   date by serial whenever the routings change, and a named run shows it.
 - **The arpeggiator's mode read two menus a restore leaves stale.** The
   page's `arpSet` reads the rate and octaves menus; the core's panel has
