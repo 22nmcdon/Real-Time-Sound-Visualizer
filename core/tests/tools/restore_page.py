@@ -88,8 +88,8 @@ DUMP = """(setups) => {
               polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
               play: midi.play, cc: encodeCC() },
       // The interval twice: the core's panel and its keyboard each keep one,
-      // where the page's keyboard reads the menu.
-      panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: el.interval.value,
+      // where the page's keyboard reads the menu as a number.
+      panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: Number(el.interval.value),
                figureRate: el.figureRate.value, detail: el.detail.value },
       // And what each plays, by its wave a radian in: the core keeps the
       // shape it plays apart from the name the brain keeps.

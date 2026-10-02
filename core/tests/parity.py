@@ -2463,8 +2463,9 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "scoreOn", "value": True}, {"op": "change", "id": "scoreVoices", "value": "4"},  # 32, 33
          {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
          {"op": "change", "id": "keyRoot", "value": "2"}, {"op": "change", "id": "keyScale", "value": "minor"},  # 36, 37
-         {"op": "change", "id": "scoreVoices", "value": "nonsense"}]                                       # 38
-clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(120) for o in crun()]
+         {"op": "change", "id": "scoreVoices", "value": "nonsense"},                                       # 38
+         {"op": "change", "id": "genMode", "value": "harmonograph"}, {"op": "change", "id": "midiPlay", "value": True}]  # 39, 40
+clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(150) for o in crun()]
 cpg, cpt = rboth(clines, "control_ops.txt")
 cb = rbad(cpg, cpt)
 check("%d menus, switches, text boxes and buttons leave the same instrument" % len(clines),
@@ -2501,6 +2502,8 @@ check("with the quantiser on, the key's root and its scale each move the mask at
       "%r %r %r" % (cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]))
 check("the score switched on with four voices, and a number of voices the menu has not got is one",
       cp[32]["score"]["on"] is True and cp[33]["score"]["voices"] == 4 and cp[38]["score"]["voices"] == 1)
+check("the harmonograph played at the note's pitch by its switch",
+      cp[39]["midi"]["play"]["harmonograph"] is False and cp[40]["midi"]["play"]["harmonograph"] is True, repr(cp[40]["midi"]["play"]))
 check("a shape the menu has not got is no shape", cp[34]["a"]["shape"] != "nonsense", repr(cp[34]["a"]["shape"]))
 cops = [_json.loads(l) for l in clines]
 cmoved = {o["id"] for i, o in enumerate(cops) if o.get("op") in ("change", "click") and i and rdiff(cp[i], cp[i - 1])}

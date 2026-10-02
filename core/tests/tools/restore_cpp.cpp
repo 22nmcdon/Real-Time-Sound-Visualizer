@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
     Json panel = Json::object();
     panel.set("freq", str(scope::jsNumberToString(keys.panel().freq)));
     panel.set("interval", str(brain.panel.select("interval")));
-    panel.set("keysInterval", str(std::to_string(keys.panel().interval)));
+    panel.set("keysInterval", num(keys.panel().interval));
     panel.set("figureRate", str(scope::jsNumberToString(keys.panel().figureRate)));
     panel.set("detail", str(scope::jsNumberToString(keys.panel().detail)));
     out.set("panel", panel);
