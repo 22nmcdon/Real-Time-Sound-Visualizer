@@ -1348,6 +1348,29 @@ cursors and the graticule are not the beam, and the first version of the
 agreement check counted the dashed trigger line as trace and failed the grid
 for leaving it out.
 
+**One loud sample could stop the page, and the grid now cuts a long segment
+before walking it.** `phosphorSegment` samples every half cell of the whole
+segment, not of the part on the screen, so a sample a million times full scale -
+a source gone wrong, a filter run away - was a hundred million steps for one
+stroke, every frame, and an infinite one never finished at all. Nothing
+measured it because nothing fed it one; the plugin's port of the walk, which
+cannot be allowed to stop a host, went looking. A segment longer than two grid
+widths is cut to the grid's square (Liang and Barsky), and the walk takes only
+the samples it always took that fall on the cut part, and two either side. The
+cells lit are exactly the whole walk's; only the time changes. A first version
+walked the cut part afresh from its ends, which samples at another phase, and
+the picture tests' own corner-to-corner stroke - 135 cells long, not a strange
+picture - lit different cells. Parity could not see that, because the page and
+the core had changed together, so a check now runs every picture run through a
+copy of the page with the cut taken out and requires the same output to the
+last bit. (Past 2^40 steps a step cannot be counted in a double, and the cut
+part is walked afresh; nothing that long was a picture.) A point that is not a
+number, or is infinite, lays nothing. Zoomed far into an X-Y figure most
+segments are long, and walking them had been most of the frame. The checks are
+in `core/tests/parity.py` (the picture's sources, *cut*, and the beam's walk,
+*loud*): without the cut, the loud run does not finish in twenty seconds, and
+with it, it takes a fifth of one.
+
 **"Picture-only" stopped being the safe category when Stage C shipped.** The
 plan listed rotation and the lag as destinations a photocell could reach
 without the loop touching audio; C had since put both in the speakers. The

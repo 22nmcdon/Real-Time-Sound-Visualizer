@@ -14574,14 +14574,59 @@ function phosphorFade(resized) {
    cell, which cannot skip a cell a segment passes through. */
 function phosphorSegment(x0, y0, x1, y1, level) {
   const N = PHOSPHOR_N, g = phosphor.grid;
-  const ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
-  const bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
+  let ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
+  let bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
   // The path, in half-widths of the screen, for roundness.
   if (phosphor.moments) {
     phosphor.moments.add(ax / N * 2 - 1, 1 - ay / N * 2, bx / N * 2 - 1, 1 - by / N * 2, level);
   }
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 2));
-  for (let s = 0; s <= steps; s++) {
+  let steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 2));
+  // A point that is not a number lays nothing, and neither does one off at
+  // infinity - which would otherwise be a loop that never ends, a hung page
+  // from one bad sample. The comparison is written so a NaN fails it too.
+  if (!(steps < Infinity)) return;
+  /* And a long one is walked only where it crosses the grid. The walk samples
+     every half cell of the WHOLE segment, so one sample a million times full
+     scale - a broken source, a filter run away - was a hundred million steps
+     for one stroke, every frame, which is a page that stops answering; and a
+     plugin's walk is the same arithmetic in a host that cannot be allowed to
+     stop. Zoomed far in, an X-Y figure's segments are mostly off the grid too,
+     and walking them was most of the frame.
+
+     The part on the grid is found by cutting the segment to the grid's square
+     (Liang and Barsky), and the walk then takes only the samples it always
+     took that fall in that part, and two either side for rounding. So the
+     cells are the ones the whole walk would light; what changes is how long
+     it takes. A first version walked the cut segment afresh from its ends,
+     which samples at a different phase and lit different cells along a long
+     diagonal - on the picture tests' own corner-to-corner stroke, 135 cells
+     long, which is not a strange picture. Past 2^40 steps a step can no
+     longer be counted in a double, and there the cut segment is walked
+     afresh; nothing that long was ever a picture. Only past two grid widths
+     at all, so a short segment does not pay for the cut. */
+  let first = 0, last = steps;
+  if (steps > 4 * N) {
+    let t0 = 0, t1 = 1;
+    const dx = bx - ax, dy = by - ay;
+    const keep = (p, q) => {
+      if (p === 0) return q >= 0;
+      const r = q / p;
+      if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+      else { if (r < t0) return false; if (r < t1) t1 = r; }
+      return true;
+    };
+    if (!keep(-dx, ax) || !keep(dx, N - ax) || !keep(-dy, ay) || !keep(dy, N - ay)) return;
+    if (steps <= 2 ** 40) {
+      first = Math.max(0, Math.floor(t0 * steps) - 2);
+      last = Math.min(steps, Math.ceil(t1 * steps) + 2);
+    } else {
+      const cx0 = ax + dx * t0, cy0 = ay + dy * t0;
+      bx = ax + dx * t1; by = ay + dy * t1; ax = cx0; ay = cy0;
+      steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 2));
+      last = steps;
+    }
+  }
+  for (let s = first; s <= last; s++) {
     const t = s / steps;
     const cx = Math.floor(ax + (bx - ax) * t), cy = Math.floor(ay + (by - ay) * t);
     if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;

@@ -60,7 +60,10 @@ class Moments {
     const double vxx = sxx_ / w_ - mx * mx, vyy = syy_ / w_ - my * my, vxy = sxy_ / w_ - mx * my;
     const double middle = (vxx + vyy) / 2;
     const double split = std::sqrt(std::pow((vxx - vyy) / 2, 2) + vxy * vxy);
-    return std::sqrt(std::fmax(0.0, middle - split) / (std::fmax(0.0, middle + split) + 0.002));
+    // Math.max's, which keeps a NaN where std::fmax would drop it: a path of
+    // samples far past full scale has spreads too large to subtract.
+    const auto atLeast0 = [](double v) { return std::isnan(v) ? v : v > 0 ? v : 0; };
+    return std::sqrt(atLeast0(middle - split) / (atLeast0(middle + split) + 0.002));
   }
 
  private:
@@ -96,12 +99,48 @@ class Phosphor {
   // crosses, each keeping the brighter of what it held and what is laid on.
   void segment(const Plot& plot, double x0, double y0, double x1, double y1, double level) {
     constexpr int N = kPhosphorN;
-    const double ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
-    const double bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
+    double ax = (x0 - plot.x) / plot.w * N, ay = (y0 - plot.y) / plot.h * N;
+    double bx = (x1 - plot.x) / plot.w * N, by = (y1 - plot.y) / plot.h * N;
     // The path, in half-widths of the screen, for roundness.
     if (hasMoments_) moments_.add(ax / N * 2 - 1, 1 - ay / N * 2, bx / N * 2 - 1, 1 - by / N * 2, level);
-    const double steps = std::fmax(1.0, std::ceil(std::fmax(std::fabs(bx - ax), std::fabs(by - ay)) * 2));
-    for (double s = 0; s <= steps; s++) {
+    // A point that is not a number, or is off at infinity, lays nothing. The
+    // page's `Math.max` carries a NaN through to the count and stops there,
+    // where `std::fmax` would drop it - and two ends at the same infinity are
+    // a NaN only in their difference, so it is the differences that are
+    // asked. An infinite count would never finish.
+    const double across = std::fabs(bx - ax), down = std::fabs(by - ay);
+    if (std::isnan(across) || std::isnan(down)) return;
+    double steps = std::fmax(1.0, std::ceil(std::fmax(across, down) * 2));
+    if (!(steps < HUGE_VAL)) return;
+    // A long one walked only where it crosses the grid, as the page walks it:
+    // cut to the grid's square (Liang and Barsky), then the samples it always
+    // took that fall in the cut part, two either side for rounding - so the
+    // cells are the whole walk's, and one sample a million times full scale
+    // is not a hundred million steps in a host that cannot stop. Past 2^40
+    // steps, where a step cannot be counted in a double, the cut part afresh.
+    double first = 0, last = steps;
+    if (steps > 4 * N) {
+      double t0 = 0, t1 = 1;
+      const double dx = bx - ax, dy = by - ay;
+      const auto keep = [&](double p, double q) {
+        if (p == 0) return q >= 0;
+        const double r = q / p;
+        if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+        else { if (r < t0) return false; if (r < t1) t1 = r; }
+        return true;
+      };
+      if (!keep(-dx, ax) || !keep(dx, N - ax) || !keep(-dy, ay) || !keep(dy, N - ay)) return;
+      if (steps <= 1099511627776.0) {  // 2^40
+        first = std::fmax(0.0, std::floor(t0 * steps) - 2);
+        last = std::fmin(steps, std::ceil(t1 * steps) + 2);
+      } else {
+        const double cx0 = ax + dx * t0, cy0 = ay + dy * t0;
+        bx = ax + dx * t1; by = ay + dy * t1; ax = cx0; ay = cy0;
+        steps = std::fmax(1.0, std::ceil(std::fmax(std::fabs(bx - ax), std::fabs(by - ay)) * 2));
+        last = steps;
+      }
+    }
+    for (double s = first; s <= last; s++) {
       const double t = s / steps;
       const double cx = std::floor(ax + (bx - ax) * t), cy = std::floor(ay + (by - ay) * t);
       if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
@@ -117,6 +156,12 @@ class Phosphor {
       const double level = steps ? (steps[i] + 1.0) / kBeamK : 1;
       segment(plot, xs[i], ys[i], xs[i + 1], ys[i + 1], level);
     }
+  }
+
+  // drawSpectrogram's: no beam draws a spectrogram, so the grid holds nothing.
+  void blank() {
+    grid_.fill(0);
+    if (hasMoments_) moments_.clear();
   }
 
   // phosphorRead: brightness at a point of the graticule, five bilinear

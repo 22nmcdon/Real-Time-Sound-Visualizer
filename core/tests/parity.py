@@ -1815,6 +1815,171 @@ cpnull("turn", "rot 0.25", "rot 0.251", "a turn a thousandth further")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cpjs.strip().split("\n")[1:]), "\n".join(cpcpp.strip().split("\n")[:-1])) is not None)
 
+print("\n--- the beam's walk ---")
+# What the page's renderer lays into the phosphor grid - drawMain's Y-T lanes,
+# as peak bars and as the polyline, and drawXY's figure or figures, with the
+# beam's shading on either - against scope/beam.h, each frame taken by the
+# capture of the side it belongs to. A line a frame: the grid by two sums, the
+# beam's path by its roundness, the fades counted, the graticule, and every
+# anchor the beam holds.
+bmexe = build("beam_cpp")
+def bmboth(text, name="beam_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    # With a time limit: the walk once took a hundred million steps over one
+    # loud sample, and a hang should fail the check rather than the suite.
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "beam_js.mjs"), path], check=True,
+                        capture_output=True, text=True, timeout=300).stdout
+    return js, subprocess.run([bmexe, path], check=True, capture_output=True, text=True, timeout=300).stdout
+bmruns = [
+    # The figure: each level of the beam, one the page has no ramp for, the
+    # beam off, X-Y's own switch, the zoom, an offset and a full scale, the
+    # smallest square the page will draw, and a resize.
+    ("xy", cprun(*TONE, "display xy", "tb 3", "persist 0.2", "draw 16", "draw 16", "beam subtle", "draw 16", "beam high", "draw 33",
+                 "beam bright", "draw 16", "beam off", "draw 16", "beam moderate", "beamxy 0", "draw 16", "beamxy 1", "zoom 3", "draw 16",
+                 "offset 0 0.3", "fs 1 -6", "draw 16", "canvas 60 50", "resize", "draw 16", "canvas 800 500", "resize", "draw 0", "draw 2000")),
+    # A diagonal line - both lanes one signal, so a turn is plain to see -
+    # unturned, turned by the capture as a stereo pair, turned by the walk as a
+    # rack, by modulation, not at all on the input's side, and with the lag.
+    # Unshaded, because this is about where the line goes: the capture rounds
+    # the lanes it turns to floats and the walk turns in doubles, and the beam
+    # reads lengths through a histogram whose bins that rounding can cross -
+    # which shaded a pair turned one way a whole step apart from the same pair
+    # turned the other, or against the speed of the picture before.
+    ("turn", cprun("signal 40000", "add 0 sine 0.6 220 0", "add 1 sine 0.6 220 0", "display xy", "beamxy 0", "tb 3", "draw 16", "rot 0.125",
+                   "draw 16", "lanes 1", "draw 16", "rotmod 0.05", "draw 16", "shaping 0", "draw 16", "shaping 1", "lanes 0", "rotmod 0",
+                   "lag 1", "beamxy 1", "draw 16")),
+    # Figures the source asks for: two, one naming a lane that is not there,
+    # one alone, none and the pair the menus chose, and the lag refusing them.
+    ("figures", cprun(*TONE, "add 2 sine 0.4 110 0", "add 3 sine 0.4 165 0.5", "chans 4", "display xy", "tb 3", "figures 0,1;2,3", "draw 16",
+                      "figures 0,1;2,5", "draw 16", "figures none", "draw 16", "figures 2,3", "draw 16", "figures none", "pair 1 0", "draw 16",
+                      "pair 0 3", "draw 16",
+                      "pair 0 1", "figures 0,1;2,3", "beamxy 0", "draw 16", "beamxy 1", "lag 1", "draw 16")),
+    # A long window: eight samples a point, four, and every sample.
+    ("stride", cprun("rate 96000", "signal 500000", "add 0 sine 0.5 50 0", "add 1 sine 0.5 75 0.3", "display xy", "tb 8", "draw 16",
+                     "tb 7", "draw 16", "tb 5", "draw 16")),
+    # Y-T: the polyline, then shaded, magnified, peak bars, the polyline again
+    # under a deep zoom, a wide screen shaded both sides of the beam's limit
+    # and past it, and a constant the trigger cannot lock to, which the beam
+    # leaves unshaded.
+    ("yt", cprun(*TONE, "tb 3", "draw 16", "beamyt 1", "draw 16", "draw 16", "zoom 4", "draw 16", "tb 6", "zoom 1", "draw 16", "zoom 16",
+                 "draw 16", "zoom 1", "canvas 4000 500", "resize", "tb 5", "draw 16", "tb 6", "draw 16", "tb 7", "draw 16",
+                 "rate 96000", "canvas 5000 500", "tb 6", "draw 16", "rate 48000", "canvas 800 500", "signal 40000", "add 0 dc 0.2",
+                 "add 1 dc -0.1", "tb 3", "draw 16")),
+    # Six lanes stacked, with the gutter set by the widest name and held to 22
+    # per cent of the screen, rounded to a whole pixel; overlaid; a lane off, one offset, one scaled; and
+    # two lanes, which are never stacked.
+    ("stack", cprun("signal 40000", *["add %d sine %.1f %d %d" % (c, 0.3 + 0.1 * c, 110 * (c + 1), c) for c in range(6)], "chans 6", "tb 3",
+                    "draw 16", "name 40.2", "draw 16", "name 300", "draw 16", "stack 0", "draw 16", "canvas 801 500", "stack 1", "draw 16",
+                    "canvas 800 500", "on 2 0", "offset 3 0.5",
+                    "fs 4 -12", "beamyt 1", "draw 16", "chans 2", "draw 16")),
+    # Persistence: infinite, a half, a resize and off.
+    ("persist", cprun(*TONE, "display xy", "tb 3", "persist -1", "draw 16", "draw 16", "draw 16", "persist 0.5", "draw 16", "resize",
+                      "draw 16", "persist 0", "draw 16")),
+    # The anchor: set, moved part way by a figure ten times faster, further
+    # over a longer frame, forgotten and set afresh, and the floor on the time.
+    ("anchor", cprun(*TONE, "display xy", "tb 3", "draw 16", "signal 40000", "add 0 sine 0.5 2200 0", "add 1 sine 0.3 3300 1", "draw 16",
+                     "draw 500", "forget", "draw 16", "draw 0")),
+    # A lane that is not a number, and one that goes from loud to infinite in
+    # a window, through every walk: nothing laid where there is no number,
+    # and the long segments cut to the grid.
+    ("loud", cprun(*TONE, "add 1 dc NaN", "tb 3", "draw 16", "display xy", "draw 16", "signal 40000", "add 0 sine 0.5 220 0",
+                   "add 1 sine 1e39 330 0", "display yt", "draw 16", "display xy", "draw 16", "beamyt 1", "display yt", "draw 16", "tb 7", "draw 16")),
+    # A figure that does not move, so every length is the floor; the deepest
+    # zoom, where nearly every segment is cut; Y-T's sixteen-sample least; and
+    # noise ten times full scale at that zoom, every segment long enough to be
+    # past the anchor's histogram.
+    ("edges", cprun("signal 40000", "add 0 dc 0.3", "add 1 dc 0.3", "display xy", "tb 3", "draw 16", *TONE, "zoom 64", "draw 16",
+                    "display yt", "draw 16", "beamyt 1", "draw 16", "signal 40000", "add 0 noise 3 0.9", "add 1 noise 4 0.9",
+                    "fs 0 -20", "fs 1 -20", "display xy", "forget", "draw 16")),
+    # A circle and a fifth, beam on then off.
+    ("circle", cprun("signal 40000", "add 0 sine 0.5 220 0", "add 1 sine 0.5 220 1.5707963267948966", "display xy", "tb 3", "draw 16",
+                     "beamxy 0", "draw 16", "beamxy 1", *TONE, "draw 16", "beamxy 0", "draw 16")),
+]
+bmrng = random.Random(110)
+def bmfuzz(n):
+    chans = bmrng.choice([1, 2, 2, 4])
+    out = ["rate %d" % bmrng.choice([44100, 48000, 96000]), "signal %d" % bmrng.choice([40000, 60000]), "chans %d" % chans]
+    for c in range(chans):
+        for _ in range(bmrng.randint(1, 2)):
+            k = bmrng.choice(["sine", "sine", "square", "noise", "dc"])
+            out.append("add %d %s" % (c, {"sine": "sine %.2f %.1f %.2f" % (bmrng.random(), bmrng.uniform(20, 3000), bmrng.uniform(0, 6)),
+                                          "square": "square %.2f %.1f %.2f" % (bmrng.random(), bmrng.uniform(20, 1000), bmrng.uniform(0, 6)),
+                                          "noise": "noise %d %.2f" % (bmrng.randint(1, 99), bmrng.random() * 0.4),
+                                          "dc": "dc %.2f" % bmrng.uniform(-0.5, 0.5)}[k]))
+    for _ in range(n):
+        r = bmrng.random()
+        pick = bmrng.choice
+        if r < 0.3: out.append("draw %d" % pick([16, 16, 33, 0, 250]))
+        elif r < 0.38: out.append(pick(["display yt", "display xy"]))
+        elif r < 0.44: out.append("tb %d" % bmrng.randint(0, 8))
+        elif r < 0.5: out.append(pick(["zoom %g" % pick([1, 1, 1.19, 2, 4, 16, 64]), "persist %g" % pick([0, 0.1, 0.5, -1])]))
+        elif r < 0.58: out.append(pick(["beam %s" % pick(["off", "subtle", "moderate", "high"]), "beamxy %d" % (bmrng.random() < 0.7),
+                                        "beamyt %d" % (bmrng.random() < 0.6)]))
+        elif r < 0.64: out.append(pick(["stack %d" % (bmrng.random() < 0.7), "name %.1f" % bmrng.uniform(0, 200),
+                                        "canvas %d %d" % (bmrng.randint(200, 2000), bmrng.randint(150, 900)), "resize", "forget"]))
+        elif r < 0.7: out.append(pick(["pair %d %d" % (bmrng.randint(0, 1), bmrng.randint(0, 1)),
+                                       "figures %s" % pick(["none", "0,1;2,3", "0,1", "1,0;0,1"])]))
+        elif r < 0.78: out.append(pick(["offset %d %.2f" % (bmrng.randint(0, 3), bmrng.uniform(-0.6, 0.6)),
+                                        "fs %d %d" % (bmrng.randint(0, 3), pick([0, -6, -20])), "on %d %d" % (bmrng.randint(0, 3), bmrng.random() < 0.7)]))
+        elif r < 0.86: out.append(pick(["pos %.2f" % bmrng.random(), "level %.2f" % bmrng.uniform(-0.8, 0.8), "trig %d" % bmrng.randint(0, 1),
+                                        "edge %s" % pick(["rising", "falling"])]))
+        elif r < 0.93: out.append(pick(["rot %.3f" % pick([0, 0, bmrng.uniform(-1, 1)]), "rotmod %.3f" % bmrng.uniform(-0.2, 0.2),
+                                        "shaping %d" % (bmrng.random() < 0.8), "lanes %d" % (bmrng.random() < 0.3), "ms %d" % (bmrng.random() < 0.2)]))
+        else: out.append(pick(["lag %.2f" % bmrng.uniform(0, 5), "lagoff", "lagoff", "filter lowpass %d 0" % bmrng.randint(200, 900), "filter off"]))
+    return cprun(*out)
+bmruns += [("random-%d" % i, bmfuzz(40)) for i in range(40)]
+bmtext = "".join(t for _, t in bmruns)
+bmjs, bmcpp = bmboth(bmtext, "beam.txt")
+bmlines = [len(t.strip().split("\n")) - 2 for _, t in bmruns]
+def bmslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(bmlines[:i])
+    return "\n".join(lines[start:start + bmlines[i]])
+for i, (name, _) in enumerate(bmruns):
+    if name.startswith("random-"): continue
+    d = kdiff(bmslice(bmjs, i), bmslice(bmcpp, i))
+    check("%s: %d commands, the same grid" % (name, bmlines[i]), d is None, d or "")
+bmbad = [n for i, (n, _) in enumerate(bmruns) if n.startswith("random-") and kdiff(bmslice(bmjs, i), bmslice(bmcpp, i))]
+check("40 random sequences of 40 commands, the same grid", not bmbad, ", ".join(bmbad))
+def bmdraws(name): return [l for l in bmslice(bmjs, next(i for i, (n, _) in enumerate(bmruns) if n == name)).split("\n") if l.startswith("draw ")]
+def bmgrid(line): w = line.split(); i = w.index("grid"); return (float(w[i + 1]), float(w[i + 2]))
+def bmref(line, key): w = line.split(); return float(w[w.index(key, w.index("refs")) + 1])
+ci = bmdraws("circle")
+check("a circle at 220 Hz lays the same grid with the beam on or off, and a fifth, which changes speed, lays less with it on",
+      bmgrid(ci[0]) == bmgrid(ci[1]) and bmgrid(ci[2])[0] < bmgrid(ci[3])[0], " ".join(str(bmgrid(l)[0]) for l in ci))
+tu = bmdraws("turn")
+check("the walk turns a rack's pair as the capture turns a stereo pair, and either is a different picture from the line unturned",
+      bmgrid(tu[1]) == bmgrid(tu[2]) and bmgrid(tu[0]) != bmgrid(tu[1]) and bmgrid(tu[4]) == bmgrid(tu[0]),
+      " ".join(str(bmgrid(l)[0]) for l in tu))
+st = bmdraws("stack")
+def bmplot(line): w = line.split(); i = w.index("plot"); return float(w[i + 1])
+check("stacked, the gutter is 44 pixels, the widest name and sixteen more, and never past 22 per cent of the screen, rounded to a pixel",
+      [bmplot(l) for l in st[:5]] == [44, 57, 176, 44, 176], " ".join(str(bmplot(l)) for l in st))
+an = bmdraws("anchor")
+a = 1 - math.exp(-16 / 1000 / 0.5)
+fresh = bmref(an[3], "xy")
+check("the anchor moves a thirty-second of the way to a new figure in a frame, and starts afresh at the figure's own once forgotten",
+      abs(bmref(an[1], "xy") - (bmref(an[0], "xy") + (fresh - bmref(an[0], "xy")) * a)) < 1e-12 and fresh != bmref(an[0], "xy")
+      and abs(fresh + 20 - round((fresh + 20) / (50 / 64) - 0.5) * (50 / 64) - 25 / 64) < 1e-12,
+      " ".join(str(bmref(l, "xy")) for l in an))
+fi = bmdraws("figures")
+check("two figures hold an anchor each, and figures naming a lane that is not there give way to the pair the menus chose",
+      " xy1 " in fi[0] and bmgrid(fi[1]) == bmgrid(fi[2]) and bmgrid(fi[0]) != bmgrid(fi[2]) and bmgrid(fi[3]) != bmgrid(fi[2]),
+      " ".join(str(bmgrid(l)[0]) for l in fi))
+def bmnull(name, old, new, what):
+    text = dict(bmruns)[name]
+    assert old in text, old
+    js, _ = bmboth(text.replace(old, new, 1))
+    i = next(k for k, (n, _) in enumerate(bmruns) if n == name)
+    check("and against " + what, kdiff(js, bmslice(bmcpp, i)) is not None)
+bmnull("xy", "beam high", "beam subtle", "a softer beam")
+bmnull("yt", "zoom 16", "zoom 15", "a zoom one step less")
+bmnull("turn", "rot 0.125", "rot 0.126", "a turn a thousandth further")
+bmnull("anchor", "draw 500", "draw 501", "a frame a millisecond longer")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(bmjs.strip().split("\n")[1:]), "\n".join(bmcpp.strip().split("\n")[:-1])) is not None)
+
 print("\n--- the picture's sources ---")
 # The page's phosphor grid, the beam's moments, the picture meter, the drawn
 # pair's shape, the photocell and pictureStep, lifted by name, against
@@ -1848,6 +2013,23 @@ pcruns = [
     ("segment", pcrun("plot 40 30 600 450", "fade", "seg 40 30 640 480 1", "read 0.5 0.5", "read 0.51 0.5",
                       "seg 100 400 600 100 0.5", "read 0.25 0.25", *["read %.4f 0.5" % (0.49 + i * 0.002) for i in range(11)],
                       "seg -50 -50 900 900 1", "seg 340 255 340 255 1")),
+    # Long segments, cut to the grid before they are walked: one straight
+    # across from a million pixels out, then down, corner to corner, wholly
+    # off to one side and to another, one leaving from the middle, the two
+    # either side of where the cut begins, and ends that are not numbers or
+    # are infinite; one lying along the graticule's top edge, which is on it.
+    # Last, an end not a number across and infinite down, whose
+    # length the language makes infinite rather than not a number - which
+    # spoils the moments for the rest of the run, so it goes at the end.
+    ("cut", pcrun("plot 40 30 600 450", "persist 0", "fade", "seg -1e6 255 1e6 255 1", "fade", "seg 340 -1e9 340 1e9 0.5", "seg -1e6 -1e6 1e6 1e6 1",
+                  "seg -1e6 1000 -900 1000 1", "seg 2000 -5e5 2100 5e5 1", "seg 340 255 1e7 260 1", "fade", "seg 40 100 1239 100 1",
+                  "seg 40 200 1241 200 1", "seg 340 255 NaN 255 1", "seg 340 255 Infinity 255 1", "seg Infinity 0 Infinity 10 1",
+                  "seg -1e6 30 1e6 30 1", "seg 340 255 NaN Infinity 1")),
+    # Segments far too long to walk whole - some 8.5e11 half cells, under the
+    # bound where the cut part is walked afresh - across, down and corner to
+    # corner: a walk that strays past the part on the grid never finishes.
+    ("far", pcrun("plot 40 30 600 450", "persist 0", "fade", "seg -2e12 255 2e12 255 1", "seg 340 -1.5e12 340 1.5e12 1",
+                  "seg -2e12 -1.5e12 2e12 1.5e12 0.5")),
     # A circle fading frame by frame, then infinite, then off, then a resize.
     ("fade", pcrun("plot 40 30 600 450", "persist 0.12", "fade", pcellipse(340, 255, 150, 150), "read 0.75 0.5",
                    *["fade" for _ in range(6)], "read 0.75 0.5", "persist -1", "fade", "fade", "persist 0.3", "fade",
@@ -1977,6 +2159,29 @@ def pcnull(name, old, new, what):
     i = next(k for k, (n, _) in enumerate(pcruns) if n == name)
     check("and against " + what, kdiff(js, pcslice(pccpp, i)) is not None)
 pcnull("segment", "seg 100 400 600 100 0.5", "seg 100 400 600 101 0.5", "a segment a pixel lower at one end")
+cu = pcslice(pcjs, next(i for i, (n, _) in enumerate(pcruns) if n == "cut")).split("\n")
+def cugrid(line): w = line.split(); return float(w[w.index("grid") + 2])
+check("a segment from a million pixels off one side to a million off the other lights all 64 cells of its row, and no more",
+      cugrid(cu[3]) == 64, cu[3][:80])
+check("either side of where the cut begins, a segment from the graticule's left edge lights the same 64 cells",
+      cugrid(cu[12]) - cugrid(cu[11]) == 64 and cugrid(cu[11]) == 64, "%s %s" % (cugrid(cu[11]), cugrid(cu[12])))
+# The cut is there for the time a long segment takes, and must not change what
+# it lights: every run above through a copy of the page with the cut taken
+# out, line for line the same. A first cut walked the cut part afresh, at a
+# different phase, and the corner-to-corner stroke of the first run lit other
+# cells - which parity could not see, since both sides had changed together.
+with open(os.path.join(HERE, "..", "..", "web", "scope.html")) as f: whole = f.read()
+assert whole.count("  if (steps > 4 * N) {") == 1
+uncut = os.path.join(BUILD, "scope_uncut.html")
+with open(uncut, "w") as f: f.write(whole.replace("  if (steps > 4 * N) {", "  if (false) {"))
+# Every run but the one too long to walk whole.
+near = [i for i, (n, _) in enumerate(pcruns) if n != "far"]
+with open(os.path.join(BUILD, "picture_near.txt"), "w") as f: f.write("".join(pcruns[i][1] for i in near))
+pcuncut = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), os.path.join(BUILD, "picture_near.txt")], check=True,
+                         capture_output=True, text=True, timeout=600, env=dict(os.environ, SCOPE_PAGE=uncut)).stdout
+pcnear = "\n".join(pcslice(pcjs, i) for i in near)
+check("every picture run lays the same grid with the long segments cut as walked whole, to the last bit",
+      pcuncut.strip() == pcnear.strip(), kdiff(pcnear, pcuncut) or "")
 pcnull("fade", "persist 0.3", "persist 0.31", "a persistence a hundredth longer")
 pcnull("photo", "photo 1 0.5 0.1", "photo 1 0.5 0.497", "the reticle at the edge of the line rather than off it")
 pcnull("strained", "limit -8", "limit -5", "a limiter under six decibels")

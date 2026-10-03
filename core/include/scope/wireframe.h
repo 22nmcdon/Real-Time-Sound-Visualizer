@@ -23,9 +23,10 @@ namespace scope {
    and scaled back. `std::hypot` is a different algorithm and may differ in
    the last place, and a solid's corners are divided by its longest. */
 inline double jsHypot(std::initializer_list<double> values) {
+  // An infinity wins over a NaN wherever it stands, as the language says.
+  for (const double v : values) if (std::isinf(v)) return std::numeric_limits<double>::infinity();
   double most = 0;
   for (const double v : values) {
-    if (std::isinf(v)) return std::numeric_limits<double>::infinity();
     if (std::isnan(v)) return std::numeric_limits<double>::quiet_NaN();
     most = std::fmax(most, std::fabs(v));
   }

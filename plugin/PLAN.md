@@ -1012,6 +1012,76 @@ rate holds, and a lag that adds to less than nothing. Exact samples needed
 a square of a half on an offset of a half, since a float of 0.4 and a
 double of 0.4 do not cancel.
 
+**4c: the beam's walk** (`scope/beam.h`). What the renderer lays into the
+grid each frame: the X-Y figure, or one per layer while the source asks and
+the lag has not taken the lanes, turned when the capture has not turned it,
+placed by full scale and offset and magnified, a point in every so many when
+the window is long; each Y-T lane on, in its band when stacked, as a bar a
+column when there are more samples than pixels and as the polyline
+otherwise; and the beam's shading on both - the anchor from a histogram of
+the squared lengths, smoothed per display, and a step for each segment - so a
+fast stroke deposits less than a slow one. `drawPicture` does a frame: the
+fade, then the walk for the display, and the spectrogram clears the grid.
+Nothing is drawn; the canvas is handed in as its size, whether it was
+resized or wiped, and how wide the widest lane name is, which the page
+measures and the core cannot.
+
+Parity (`beam_js.mjs`, `beam_cpp`) runs the page's own `drawMain` and `drawXY`
+on a canvas that draws nothing, each frame from the page's own capture, so
+what is compared is what the page deposits and not a second reading of it.
+Named runs: the figure at each level of the beam and with it off, zoomed,
+placed, at the smallest square and resized; a diagonal line turned by the
+capture and by the walk; figures the source asks for, one naming a lane that
+is not there, refused under the lag; a window long enough to stride; Y-T as
+polyline, shaded, magnified, as peak bars and past the beam's limit, and
+unlocked; six lanes stacked with the gutter each way, a lane off, offset and
+scaled; persistence each way; the anchor set, moved, forgotten; samples that
+are not numbers or are infinite; a figure that does not move, the deepest
+zoom, and noise past the anchor's histogram; and a circle and a fifth. Then
+40 random runs of 40 commands. Not the spectrogram's branch, which clears
+the grid: the page's spectrogram needs a canvas that draws, and the plugin
+checks that branch in 4d. A circle at 220 Hz lays the same grid with
+the beam on as off, and a fifth lays less; the walk turns a rack's pair as
+the capture turns a stereo pair; the gutter is the widest name and sixteen
+pixels, held to 22 per cent of the screen; the anchor moves 3.1 per cent of
+the way to a new figure in a 16 ms frame. Each was seen to fail on a wrong
+value first.
+
+Mutation: 48 of 57 caught in the walk. The nine left are equivalent, or
+reachable only in states the page never reaches: the floor under a squared
+length in the step and the floor at step nought, which no anchor can bring
+into play; the percentile's tie, met only when three tenths of the count is
+a whole number and the count lands on it; the hysteresis, which never holds
+(below); rounding a squared length to a float, which moves a step only
+within a float's width of its edge; an anchor that is not finite, which none
+is; the first segment's hysteresis, which has no step before it; a figure's Y
+lane missing from a frame of more than one lane; and the cap on points,
+which the stride's rounding up already keeps. Four lived until something
+could show them: the anchor's top bin (the noise past the histogram), the
+anchor's smoothing and the lag's refusal of figures (both mutants first
+failed to compile and were counted as living), and the gutter's rounding
+(a screen whose 22 per cent is not a whole pixel).
+
+The grid's walk gained a cut on the way (below, under *Found on the way*),
+in the page and the core together, and its mutants ran through both the
+picture's runs and the walk's: 12 of 18 caught, and the one in `jsHypot`.
+The six left change how long a walk takes and not what it lights, which is
+the cut's whole claim: its threshold, held instead by a check that every
+picture run lays the same grid through a copy of the page with the cut
+taken out, to the last bit; the grid's far edges a cell further out, past
+which every sample is skipped anyway; the two samples' margin at either
+end, there for rounding at a grid edge no run lands on; and the bound where
+the cut part is walked afresh, brought down to 1e10 steps, which walks the
+far run's segments afresh and lights the same cells. Two lived until runs
+could show them - a segment lying along the graticule's top edge, and a walk
+straying past the part on the grid, which only a segment too long to walk
+whole shows, by never finishing.
+
+What it is not yet is anything the plugin runs: that is 4d, the plugin
+feeding the grid from its picture ring through `capture` and `drawPicture`
+with the view held in the core, and stepping the photo and picture sources
+each frame.
+
 **5. The site on WebAssembly.** The worklet runs the compiled core, and the
 JavaScript engine and brain are retired once parity says there is nothing left
 they do that the core does not.
@@ -1021,6 +1091,44 @@ WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
 ## Found on the way
+
+- **One loud sample stopped the page.** The grid's segment walk samples every
+  half cell of the whole segment, so a sample far past full scale - a float
+  of 1e39 is 3.4e38 - asked for some 10^40 steps, and an infinite one asked
+  for infinitely many; the page stopped answering, and a plugin would have
+  stopped its host. The port went looking because a host cannot be allowed
+  to stop, and both the page and the core now walk a segment longer than two
+  grid widths only where it crosses the grid - the samples the whole walk
+  takes there, so the cells are the same to the bit, which a check holds
+  against a copy of the page without the cut - and lay nothing for a point
+  that is not a number. The first cut walked the cut part afresh, at another
+  phase, and lit other cells on an ordinary diagonal; parity passed, both
+  sides having changed together, and a surviving mutant (the cut's
+  threshold, caught when it should have been equivalent) said so. The parity runs found both halves: a lane of
+  infinities set the core writing to a cell from a NaN index where the page
+  laid nothing - two ends at the same infinity are a NaN only in their
+  difference, which `std::fmax` dropped, so the core now asks the
+  differences - and a lane of 1e39 then hung both sides.
+- **The beam's hysteresis never holds a step.** `strokeBeam` keeps the old
+  step when the new step's centre is within a fifth of a step of the old
+  one's edges, and a neighbouring step's centre is half a step out, so the
+  condition is never met and a segment's step is exactly `beamStep`'s. Its
+  comment says noise near an edge would otherwise shred a run; it does. The
+  core keeps the dead branch so the two stay together, and a mutant widening
+  the margin is caught, so changing the page will show. Not fixed here: it
+  changes every shaded picture, which is a decision about how the beam looks.
+- **A circle is not always the same with the beam on.** The page says that,
+  with the anchor at the thirtieth percentile, a figure of even speed
+  saturates at the ink, so a circle draws the same with the beam on or off.
+  The anchor is the centre of a histogram bin 0.78 wide in log2 of the
+  squared length, and a speed in the upper half of its bin reaches step 6 of
+  8: a circle at 800 Hz lays less with the beam on. At 220 Hz, and at 14 of
+  15 frequencies tried, it lays the same; the parity check uses 220 and says
+  so. Not fixed here, for the same reason.
+- **`jsHypot` let a NaN beat an infinity.** JavaScript's `Math.hypot` is
+  infinite if any argument is, wherever a NaN stands; the port returned at
+  whichever came first. Nothing had handed it both until a segment ran to
+  (NaN, infinity); one does now.
 
 - **An envelope that was an array.** The page asks whether each envelope it
   is handed is an object with `typeof`, to which an array is one, with

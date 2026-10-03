@@ -19,7 +19,8 @@ import { fileURLToPath } from "node:url";
 import { mulberry32 } from "./js_core.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const page = fs.readFileSync(path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
+// SCOPE_PAGE names another copy of the page, for a check that alters one.
+const page = fs.readFileSync(process.env.SCOPE_PAGE || path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
 
 function definition(name) {
   let start = page.indexOf("\nfunction " + name + "(");
