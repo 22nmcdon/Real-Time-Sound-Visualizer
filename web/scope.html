@@ -17570,11 +17570,19 @@ function setZoom(step) {
 
 el.zoom.addEventListener("input", () => setZoom(Number(el.zoom.value)));
 
+/* A step of the zoom from the wheel or a key, as a hand on the slider: its
+   own input event, so it is the slider's handler that runs, and the plugin,
+   which hears the slider and not the wheel, hears this too. */
+function nudgeZoom(by) {
+  el.zoom.value = String(Number(el.zoom.value) + by);
+  el.zoom.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 /* The wheel, because a zoom you have to find a slider for is a zoom nobody
    uses. Passive is off so the page does not scroll out from under it. */
 el.trace.addEventListener("wheel", (event) => {
   event.preventDefault();
-  setZoom(Number(el.zoom.value) + (event.deltaY < 0 ? 1 : -1));
+  nudgeZoom(event.deltaY < 0 ? 1 : -1);
 }, { passive: false });
 
 el.persistence.addEventListener("change", () => {
@@ -21040,6 +21048,8 @@ function hostHand(hand) {
     slider.dispatchEvent(new Event("input"));
     return;
   }
+  // The reticle has no control of its own to write: it is put where the plugin last had it.
+  if (kind === "c" && id === "photoReticle") { const [u, v] = String(value).split(","); movePhoto(Number(u), Number(v)); return; }
   if (kind !== "c" || !HOST_CONTROLS.has(id)) return;
   const lfo = /^lfo(?:Shape|Sync)(\d)$/.exec(id);
   const owner = lfo ? "lfo" + (Number(lfo[1]) + 1) : id === "threshWatch" ? "threshold" : null;
@@ -21076,9 +21086,16 @@ const HOST_CONTROLS = new Set([
   "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
   "lfoShape0", "lfoShape1", "lfoSync0", "lfoSync1", "threshWatch",
   "macroName1", "macroName2", "macroName3", "macroName4",
+  // The view, which the plugin draws into its own grid for the photocell and the picture's sources.
+  "ch1On", "ch1Ac", "ch2On", "ch2Ac", "midSide", "lagOn", "filterOn", "filterType", "beamLevel", "beamXY", "beamYT",
+  "persistence", "xyX", "xyY",
 ]);
 const HOST_CLICKS = new Set(["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4",
-                             "midiEditA", "midiEditB"]);
+                             "midiEditA", "midiEditB",
+                             "dispYT", "dispXY", "dispSpect", "edgeRising", "edgeFalling", "modeAuto", "modeNormal",
+                             "modeSingle", "lagAuto", "lagManual", "seeDry", "seeWet", "measurePre", "measurePost",
+                             "layStack", "layOver", "trigSource0", "trigSource1", "trigSource2", "trigSource3",
+                             "trigSource4", "trigSource5", "photoButton", "clearButton"]);
 
 function hostControl(event) {
   const control = event.target;
@@ -22555,7 +22572,7 @@ function buildLegend() {
 function buildTrigSources() {
   const n = laneCount();
   el.trigSources.innerHTML = state.channels.slice(0, n).map((ch, i) =>
-    '<button type="button" class="caps" data-lane="' + i + '" role="radio" aria-checked="'
+    '<button type="button" class="caps" id="trigSource' + i + '" data-lane="' + i + '" role="radio" aria-checked="'
     + (i === state.trigSource) + '">' + escapeText(laneName(i).slice(0, 8)) + "</button>"
   ).join("");
 
@@ -24270,6 +24287,8 @@ function movePhoto(u, v) {
   photo.u = Math.max(0, Math.min(1, u));
   photo.v = Math.max(0, Math.min(1, v));
   placeReticle();
+  // The plugin reads the grid where the page's reticle is, so it hears each move.
+  if (hostSync.on && !hostSync.applying) scopeHost.call("scopeControl", "photoReticle", photo.u + "," + photo.v);
 }
 
 el.photoButton.addEventListener("click", () => setPhoto(!photo.on));
@@ -24635,15 +24654,16 @@ document.addEventListener("keydown", (event) => {
       if (document.body.dataset.view !== "bench") setView("bench");
       el.benchSearch.focus();
       break;
-    case "1": event.preventDefault(); setDisplay("yt"); break;
-    case "2": event.preventDefault(); setDisplay("xy"); break;
-    case "3": event.preventDefault(); setDisplay("spect"); break;
+    // By their buttons, so a display chosen from the keys is a hand on the button, which the plugin hears.
+    case "1": event.preventDefault(); el.dispYT.click(); break;
+    case "2": event.preventDefault(); el.dispXY.click(); break;
+    case "3": event.preventDefault(); el.dispSpect.click(); break;
     case "ArrowLeft":  event.preventDefault(); step(el.timebase, -1); break;
     case "ArrowRight": event.preventDefault(); step(el.timebase, 1); break;
     case "ArrowUp":    event.preventDefault(); step(el.level, 25); break;
     case "ArrowDown":  event.preventDefault(); step(el.level, -25); break;
-    case "+": case "=": event.preventDefault(); setZoom(Number(el.zoom.value) + 1); break;
-    case "-": case "_": event.preventDefault(); setZoom(Number(el.zoom.value) - 1); break;
+    case "+": case "=": event.preventDefault(); nudgeZoom(1); break;
+    case "-": case "_": event.preventDefault(); nudgeZoom(-1); break;
     default: break;
   }
 });

@@ -3721,6 +3721,19 @@ are inline in `scopeHost`.
   and put back from the plugin's state - or reset to its defaults when the
   plugin has none, since in the plugin the project's fade is the one that
   counts.
+- *And the view, since 4d.* The plugin draws its own picture for the
+  photocell and the picture's sources, so the view's controls are sent too:
+  the display, the trigger's edge, lane and mode, each lane's switches, mid
+  and side, the lag, the filter, the taps, the layout, the beam,
+  persistence, the X-Y pair, the photocell's and the Clear buttons, and the
+  reticle as it moves (`photoReticle`, "u,v", which has no control of its own
+  and is put back by `movePhoto`). Three things set the view without a hand
+  on a control, and so would have been silent: the keys 1, 2 and 3, which
+  called `setDisplay`, and the keys + and - and the wheel, which called
+  `setZoom`. They press the display buttons and step the zoom slider now
+  (`nudgeZoom`), which is what they meant. The trigger's lane buttons, built
+  per lane, have ids for the same reason. What is still left out of the view
+  is what no grid shows: the cursors, the panes, the spectrogram's span.
 - *The plugin's state carries every hand.* `pluginHands`, a list of
   [kind, id, value] in the order they happened, replaced 3a's `pluginSliders`;
   the page puts them back the way it would have done them, choosing an LFO

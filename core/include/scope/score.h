@@ -30,11 +30,11 @@
 
 #include "scope/clock.h"
 #include "scope/keyboard.h"
+#include "scope/loop.h"  // kPhosphorN
 #include "scope/setup.h"
 
 namespace scope {
 
-constexpr int kPhosphorN = 64;       // PHOSPHOR_N: the grid is 64 by 64
 constexpr double kScoreFloor = 0.15;  // SCORE_FLOOR: brightness a note needs, of one
 constexpr std::size_t kMidiOutRate = 40;  // MIDI_OUT_RATE: note-ons a second, at most
 

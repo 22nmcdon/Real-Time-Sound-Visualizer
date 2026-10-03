@@ -3203,6 +3203,95 @@ def fnull(what, index, change):
 fnull("an attack a tenth longer", 1, lambda o: {"op": "fade", "value": {"mode": "both", "envs": [dict(FULL, attack=1.6), o["value"]["envs"][1]]}})
 fnull("fading in only", 1, lambda o: {"op": "fade", "value": dict(o["value"], mode="in")})
 
+print("\n--- the view ---")
+# What the screen is set to draw - the capture's settings and the walk's - as
+# the page's restore, its sliders and its menus, switches and buttons leave
+# them, against the core's: what the plugin draws its own grid by, for the
+# photocell and the picture's sources with the window closed. Every run above
+# compares the view too; these are the view's own hands, between presets,
+# with values a menu has not got and a reticle off the screen.
+VSLIDERS = ["timebase", "level", "position", "holdoff", "ch1Scale", "ch1Offset", "ch2Scale", "ch2Offset", "acCorner", "lag",
+            "rotate", "filterCutoff", "filterRes", "zoom"]
+VMENUS = {"filterType": pctl["selects"]["filterType"]["options"], "beamLevel": pctl["selects"]["beamLevel"]["options"],
+          "persistence": pctl["selects"]["persistence"]["options"], "xyX": ["0", "1"], "xyY": ["0", "1"]}
+VSWITCHES = ["ch1On", "ch1Ac", "ch2On", "ch2Ac", "midSide", "lagOn", "filterOn", "beamXY", "beamYT"]
+VCLICKS = ["dispYT", "dispXY", "dispSpect", "edgeRising", "edgeFalling", "modeAuto", "modeNormal", "modeSingle", "lagAuto",
+           "lagManual", "seeDry", "seeWet", "measurePre", "measurePost", "layStack", "layOver", "trigSource0", "trigSource1",
+           "photoButton", "clearButton"]
+def vop():
+    c = rrng.random()
+    if c < 0.3: return mslider(VSLIDERS)
+    if c < 0.5:
+        id = rrng.choice(list(VMENUS))
+        return {"op": "change", "id": id, "value": rrng.choice(VMENUS[id] + ["nonsense", "2"])}
+    if c < 0.65: return {"op": "change", "id": rrng.choice(VSWITCHES), "value": rrng.random() < 0.5}
+    if c < 0.88: return {"op": "click", "id": rrng.choice(VCLICKS)}
+    # The kind menu, which turns the screen to X-Y for a drawing - from Y-T, and only from Y-T.
+    if c < 0.9: return {"op": "change", "id": "genMode", "value": rrng.choice(["wave", "harmonograph", "figure"])}
+    return {"op": "change", "id": "photoReticle",
+            "value": rrng.choice(["%.3f,%.3f" % (rrng.random(), rrng.random()), "1.5,-0.2", "abc,0.5", "0.5,", "0.5"])}
+# Setups that name lanes the generator has not got, or one lane twice: the
+# trigger and the pair are held to the two lanes there are.
+VODD = [{"trig": 3}, {"trig": -1}, {"trig": 1.5}, {"xy0": 3, "xy1": 3}, {"xy0": 1, "xy1": 1}, {"xy0": 0, "xy1": 0},
+        {"xy0": 5, "xy1": 0}, {"xy0": -1, "xy1": 1}, {"display": "xy", "persistence": "0"}, {"timebase": 12},
+        # And a corner off the slider's range and one off its step, which the slider holds to them.
+        {"acHz": 5000}, {"acHz": 2.5}]
+# And setups that move every field of the view, which the presets mostly leave
+# at its default: the holdoff, the edge, the trigger's mode, a lane off.
+def vsetup():
+    pick, r = rrng.choice, rrng.random
+    return {"timebase": rrng.randint(0, 8), "level": rrng.randint(-1000, 1000), "position": rrng.randint(0, 100),
+            "holdoff": rrng.randint(0, 500), "edge": pick(["rising", "falling", "rising"]), "trig": rrng.randint(0, 1),
+            "trigMode": pick(["auto", "normal", "single"]), "c0on": r() < 0.8, "c1on": r() < 0.8, "c0ac": r() < 0.3,
+            "c1ac": r() < 0.3, "c0s": pick([0, -3, -6, -12, -24, -50, -1.5, -9, -45]), "c1s": pick([0, -6, -18, -20]),
+            "c0o": pick([rrng.randint(-100, 100), round(rrng.uniform(-100, 100), 1)]), "c1o": rrng.randint(-100, 100), "midSide": r() < 0.3, "acHz": rrng.randint(5, 200), "lagOn": r() < 0.4,
+            "lagMs": round(rrng.uniform(0, 40), 1), "lagAuto": r() < 0.5, "rotate": rrng.randint(-100, 100), "fOn": r() < 0.4,
+            "fType": pick(VMENUS["filterType"]), "fCut": rrng.randint(0, 1000), "fRes": rrng.randint(0, 100),
+            "fSee": pick(["pre", "post"]), "mSee": pick(["pre", "post"]), "xy0": rrng.randint(0, 1), "xy1": rrng.randint(0, 1),
+            "beam": pick(VMENUS["beamLevel"]), "beamXY": r() < 0.7, "beamYT": r() < 0.4, "display": pick(["yt", "xy", "spect"]),
+            "persistence": pick(VMENUS["persistence"]), "span": pick(["2", "5", "10", "30"]), "zoom": rrng.randint(0, 24)}
+def vrun():
+    c = rrng.random()
+    first = _json.loads(rrng.choice(presets)) if c < 0.4 else vsetup() if c < 0.8 else rrng.choice(VODD) if c < 0.9 else {}
+    return [first] + [vop() for _ in range(rrng.randint(4, 14))]
+# Made to be read: each family once, with what it should leave.
+VMADE = [{}, {"op": "click", "id": "dispXY"}, {"op": "change", "id": "persistence", "value": "0.3"},       # 1, 2
+         {"op": "click", "id": "dispYT"}, {"op": "slider", "id": "zoom", "value": 8},                       # 3, 4
+         {"op": "slider", "id": "ch1Scale", "value": 3}, {"op": "change", "id": "lagOn", "value": True},    # 5, 6
+         {"op": "change", "id": "midSide", "value": True}, {"op": "change", "id": "xyX", "value": "1"},     # 7, 8
+         {"op": "click", "id": "trigSource1"}, {"op": "change", "id": "photoReticle", "value": "0.25,0.6"},  # 9, 10
+         {"op": "change", "id": "photoReticle", "value": "2,-1"}, {"op": "click", "id": "photoButton"},    # 11, 12
+         {"op": "change", "id": "filterType", "value": "notch"}, {"op": "change", "id": "beamLevel", "value": "nonsense"},
+         {"op": "click", "id": "seeDry"}, {"op": "slider", "id": "timebase", "value": 7}]                   # 15, 16
+vlines = [_json.dumps(o) for o in VMADE + VODD] + [_json.dumps(o) for _ in range(120) for o in vrun()]
+vpg, vpt = rboth(vlines, "view_ops.txt")
+vb = rbad(vpg, vpt)
+check("%d of the view's sliders, menus, switches, buttons and reticle moves leave the same view" % len(vlines),
+      not vb and len(vlines) > 1000, vb[0] if vb else "")
+vp = [_json.loads(l)["view"] for l in vpg]
+vph = [_json.loads(l)["photo"] for l in vpg]
+check("X-Y with no persistence is nudged to 0.12 on the way in, and a persistence chosen after it stays",
+      vp[0]["persistence"] == 0 and vp[1]["display"] == "xy" and vp[1]["persistence"] == 0.12 and vp[2]["persistence"] == 0.3
+      and vp[3]["display"] == "yt", "%r %r %r" % (vp[1]["persistence"], vp[2]["persistence"], vp[3]["display"]))
+check("zoom at step 8 is four times, and lane one's scale at its fourth detent is -12 dB",
+      vp[4]["zoom"] == 4 and vp[5]["channels"][0]["fsDb"] == -12, "%r %r" % (vp[4]["zoom"], vp[5]["channels"][0]["fsDb"]))
+check("the lag and then mid and side: the one thrown last wins", vp[6]["lagOn"] is True and vp[7]["midSide"] is True
+      and vp[7]["lagOn"] is False)
+check("X on lane two makes the pair two against one, never one lane twice, and the trigger takes lane two",
+      vp[8]["xy"] == [1, 0] and vp[9]["trigSource"] == 1, "%r %r" % (vp[8]["xy"], vp[9]["trigSource"]))
+check("the reticle goes where it is put, held to the screen, and the photocell's button turns it on",
+      vph[10]["u"] == 0.25 and vph[10]["v"] == 0.6 and vph[11]["u"] == 1 and vph[11]["v"] == 0 and vph[12]["on"] is True,
+      "%r %r %r" % (vph[10], vph[11], vph[12]))
+check("a filter's kind, a beam level the menu has not got, the input's side, and a timebase",
+      vp[13]["filter"]["type"] == "notch" and vp[14]["beam"] == "" and vp[15]["analyseAt"] == "pre" and vp[16]["timebase"] == 7,
+      "%r %r %r %r" % (vp[13]["filter"]["type"], vp[14]["beam"], vp[15]["analyseAt"], vp[16]["timebase"]))
+# The comparison, against the port given one hand differently.
+vwrong = [l.replace('"value": 8}', '"value": 9}') if '"zoom"' in l else l for l in vlines]
+vpath = os.path.join(BUILD, "view_wrong.txt")
+with open(vpath, "w", encoding="utf-8") as f: f.write("\n".join(vwrong) + "\n")
+vwport = subprocess.run([rexe, vpath, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
+check("and the comparison fails against a zoom a step further", bool(rbad(vpg, vwport)))
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)

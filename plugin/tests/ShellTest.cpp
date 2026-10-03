@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <functional>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
@@ -515,11 +516,12 @@ int main() {
           + (off.empty() ? ", never ended" : ", ended at " + std::to_string(off[0].sample)));
   }
   {
-    /* "A sine, sung" has the score on, a step a semiquaver. Its picture is the
-       page's until stage 4, so it plays nothing in the plugin, but its
-       playhead runs on the bar - and through a host's count-in, two beats
-       before the one, it waits: a bar of minus two would be column minus
-       eight, and a grid read from there. */
+    /* "A sine, sung" has the score on, a step a semiquaver, reading the grid
+       the plugin draws for itself. Its playhead runs on the bar - and through
+       a host's count-in, two beats before the one, it waits: a bar of minus
+       two would be column minus eight, and a grid read from there. It sends
+       what the grid lights; the same with the spectrogram showing, which no
+       beam draws and which leaves the grid dark, sends nothing at all. */
     struct Head : juce::AudioPlayHead {
       juce::Optional<PositionInfo> getPosition() const override {
         PositionInfo p;
@@ -528,28 +530,310 @@ int main() {
       }
       double ppq = -2;
     } head;
-    setenv("SCOPE_PRESET", "A sine, sung", 1);
-    ScopeProcessor p;
-    p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
-    p.setPlayHead(&head);
-    juce::AudioBuffer<float> buf(2, block);
-    juce::MidiBuffer none;
-    bool waited = true, followed = true, sentNothing = true;
-    int counted = 0;
-    for (int k = 0; k < 160; ++k) {
-      buf.clear();
-      none.clear();
-      const double at = head.ppq;
-      p.processBlock(buf, none);
-      sentNothing = sentNothing && none.isEmpty();
-      if (at < 0) waited = waited && p.score().col == -1;
-      else { followed = followed && p.score().col == static_cast<int>(std::floor(at * 4 + 1e-9)) % 64; counted++; }
-      head.ppq += block / rate * 2;
+    struct Sung { bool on = false, waited = true, followed = true; int counted = 0, ons = 0, col = 0; };
+    const auto sing = [&](bool spectrogram) {
+      head.ppq = -2;
+      setenv("SCOPE_PRESET", "A sine, sung", 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.setPlayHead(&head);
+      if (spectrogram) p.pageClick("dispSpect");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      Sung out;
+      for (int k = 0; k < 160; ++k) {
+        buf.clear();
+        m.clear();
+        // A held A3, so there is a sine to draw.
+        if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+        const double at = head.ppq;
+        p.processBlock(buf, m);
+        for (const auto e : m) out.ons += e.getMessage().isNoteOn() ? 1 : 0;
+        if (at < 0) out.waited = out.waited && p.score().col == -1;
+        else { out.followed = out.followed && p.score().col == static_cast<int>(std::floor(at * 4 + 1e-9)) % 64; out.counted++; }
+        head.ppq += block / rate * 2;
+      }
+      out.on = p.score().on;
+      out.col = p.score().col;
+      return out;
+    };
+    const Sung sung = sing(false), dark = sing(true);
+    check("the score's playhead waits through a host's count-in and then follows its bar, a column a semiquaver, and plays the grid the plugin draws; on the spectrogram's dark grid it plays nothing",
+          sung.on && sung.waited && sung.followed && sung.counted > 40 && sung.ons > 0 && dark.ons == 0,
+          "col " + std::to_string(sung.col) + " at the end, " + std::to_string(sung.counted) + " blocks after the one, "
+          + std::to_string(sung.ons) + " notes sent, " + std::to_string(dark.ons) + " on the spectrogram");
+  }
+
+  std::printf("\n--- the picture, with the window closed ---\n");
+  {
+    /* No editor is opened anywhere here: the grid, the photocell and the
+       picture's sources are the plugin's own, drawn from its picture ring.
+       "Pendulums bent by the light" is a harmonograph in X-Y whose photocell
+       bends the ratio of the figure it draws - a loop through the picture,
+       which the heard pendulums do not carry; "Brightness opens the ellipse"
+       turns the phase between a held sine's two channels, and is heard as the
+       stereo image opening. Each check against the failure it would show:
+       the loop's routings taken away is the null for the loop doing
+       anything, and the photocell switched off from the page must be exactly
+       that null, picture and sound, since its sources are then not there. */
+    struct Run {
+      std::vector<float> l, r, picture;
+      int frames = 0;
+      double lit = 0, most = -1, least = 2;
+      bool registered = false;
+      std::string display;
+    };
+    const auto run = [&](const char* preset, bool held, int blocks, const std::function<void(ScopeProcessor&)>& before) {
+      setenv("SCOPE_PRESET", preset, 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      if (before) before(*p);
+      Run out;
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      for (int k = 0; k < blocks; ++k) {
+        buf.clear();
+        m.clear();
+        if (k == 0 && held) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+        p->processBlock(buf, m);
+        for (int i = 0; i < block; ++i) { out.l.push_back(buf.getSample(0, i)); out.r.push_back(buf.getSample(1, i)); }
+        if (k >= blocks / 2) {
+          const double reading = p->picture().pictures().photo();
+          out.most = std::fmax(out.most, reading);
+          out.least = std::fmin(out.least, reading);
+        }
+      }
+      out.frames = p->picture().phosphor().frames();
+      for (const float c : p->picture().phosphor().grid()) out.lit += c;
+      out.registered = p->matrix().source("photo.1") && p->matrix().source("picture.round") && p->matrix().source("picture.bored");
+      out.display = p->view().screen.display;
+      out.picture = p->pictureSnapshot();
+      return out;
+    };
+    const auto most = [](const std::vector<float>& a, const std::vector<float>& b) {
+      double worst = a.size() == b.size() ? 0 : 1;
+      for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) worst = std::fmax(worst, std::fabs(a[i] - b[i]));
+      return worst;
+    };
+    const int blocks = static_cast<int>(std::ceil(2 * rate / block));  // two seconds
+    const char* bent = "Pendulums bent by the light";
+    const Run looped = run(bent, false, blocks, nullptr);
+    const Run open = run(bent, false, blocks, [](ScopeProcessor& p) {
+      p.matrix().remove("photo.1", "gen.ratio");
+      p.matrix().remove("picture.bored", "gen.swing");
+    });
+    const Run off = run(bent, false, blocks, [](ScopeProcessor& p) { p.pageClick("photoButton"); });
+    const Run yt = run(bent, false, blocks, [](ScopeProcessor& p) { p.pageClick("dispYT"); });
+    const double seconds = blocks * static_cast<double>(block) / rate;
+    const double want = std::floor(seconds * 1000 / scope::kPictureFrameMs) + 1;
+    check("the plugin draws its own picture at the page's sixty frames a second: " + std::to_string(looped.frames) + " in "
+          + num(seconds) + " s, not one a block (" + std::to_string(blocks) + ")",
+          std::fabs(looped.frames - want) <= 1, "wanted " + num(want));
+    check("with the photocell on, its sources and the picture's are there, the grid is lit, and the reading moves",
+          looped.registered && looped.lit > 1 && looped.most - looped.least > 0.01,
+          "lit " + num(looped.lit) + ", reading " + num(looped.least) + " to " + num(looped.most));
+    const double bentApart = most(looped.picture, open.picture);
+    check("the loop goes round with no window: the photocell bends the figure the pendulums draw, against the same without its routings",
+          bentApart > 0.01, "the pictures apart by " + num(bentApart));
+    const double offPicture = most(off.picture, open.picture), offSound = most(off.l, open.l) + most(off.r, open.r);
+    check("and the photocell switched off from the page is that null exactly, picture and sound, its sources gone",
+          offPicture == 0 && offSound == 0 && !off.registered && off.most == 0 && off.least == 0,
+          "picture off by " + num(offPicture) + ", sound by " + num(offSound));
+    check("and Y-T chosen on the page is the plugin's view, drawn into its grid in place of the figure",
+          yt.display == "yt" && looped.display == "xy" && std::fabs(yt.lit - looped.lit) > 1,
+          "lit " + num(yt.lit) + " against " + num(looped.lit));
+    /* An oscillator on the zoom, sent from the page as its routings: the
+       destination is the plugin's, the offset it writes is in the view, and
+       the zoom the walk draws at is made again from it after the matrix -
+       so the grid differs from the figure at the zoom's own step. And the
+       Clear button, with persistence at infinite so everything drawn stays:
+       the frame after it starts the grid again. */
+    const Run zoomed = run(bent, false, blocks, [](ScopeProcessor& p) {
+      p.pageRoutings("photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300;lfo1>view.zoom@1.000");
+    });
+    double zoomMod = 0, zoomNow = 0, zoomStep = 0;
+    {
+      setenv("SCOPE_PRESET", bent, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.pageRoutings("photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300;lfo1>view.zoom@1.000");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      for (int k = 0; k < 40; ++k) { buf.clear(); p.processBlock(buf, m); }
+      zoomMod = p.view().zoomMod; zoomNow = p.view().screen.zoom; zoomStep = p.view().zoomStep;
     }
-    check("the score's playhead waits through a host's count-in and then follows its bar, a column a semiquaver; with no picture it sends nothing",
-          p.score().on && waited && followed && counted > 40 && sentNothing,
-          "col " + std::to_string(p.score().col) + " at the end, " + std::to_string(counted) + " blocks after the one");
+    check("an oscillator on the zoom from the page moves the plugin's picture: the offset in the view, the zoom made again from it",
+          zoomMod != 0 && std::fabs(zoomNow - std::pow(2, (zoomStep + zoomMod) / 4)) < 1e-12 && zoomNow != std::pow(2, zoomStep / 4)
+          && std::fabs(zoomed.lit - looped.lit) > 1,
+          "offset " + num(zoomMod) + ", zoom " + num(zoomNow) + ", lit " + num(zoomed.lit) + " against " + num(looped.lit));
+    double kept = 0, cleared = 0;
+    {
+      setenv("SCOPE_PRESET", bent, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      const auto litNow = [&] { double lit = 0; for (const float c : p.picture().phosphor().grid()) lit += c; return lit; };
+      for (int k = 0; k < blocks; ++k) { buf.clear(); p.processBlock(buf, m); }
+      kept = litNow();
+      p.pageClick("clearButton");
+      // Two blocks: the click at the first one's top, and a frame due in one or the other.
+      for (int k = 0; k < 2; ++k) { buf.clear(); p.processBlock(buf, m); }
+      cleared = litNow();
+    }
+    check("with persistence at infinite the grid keeps everything, and the page's Clear starts it again",
+          kept > looped.lit * 2 && cleared < kept / 4, "lit " + num(kept) + ", then " + num(cleared));
+    /* The frame the plugin draws by is the page's capture of its picture
+       ring as the ring stood at the top of that frame's block - which is the
+       ring as the block before left it - at the host's rate, within the
+       ring's capacity, left as left. At 20 ms a division the window and the
+       trigger's search behind it ask for more than the ring holds, so the
+       capture has to give way as the page's does for a short buffer. */
+    double frameOff = -1, lastLength = 0, lastAsked = 0;
+    int compared = 0;
+    {
+      setenv("SCOPE_PRESET", bent, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.pageSlider("timebase", u"7");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      std::vector<float> before;
+      scope::View viewBefore;
+      int framesBefore = 0;
+      for (int k = 0; k < 60; ++k) {
+        buf.clear();
+        p.processBlock(buf, m);
+        if (k > 1 && p.picture().phosphor().frames() != framesBefore) {
+          scope::CaptureSource src;
+          src.rate = rate; src.capacity = static_cast<double>(ScopeProcessor::kPictureFrames); src.channels = 2;
+          src.latest = [&](std::size_t n) {
+            std::vector<scope::Lane> out(2, scope::Lane(n, 0.0f));
+            const std::size_t have = before.size() / 2, take = std::min(n, have);
+            for (std::size_t i = 0; i < take; ++i) {
+              out[0][n - take + i] = before[(have - take + i) * 2];
+              out[1][n - take + i] = before[(have - take + i) * 2 + 1];
+            }
+            return out;
+          };
+          const scope::Frame want = scope::capture(viewBefore, src);
+          const scope::Frame& got = p.picture().frame();
+          // What it asked the ring for and how short it fell, as well as what it drew.
+          double off = want.channels.size() == got.channels.size() && want.length == got.length && want.asked == got.asked
+                       && want.starved == got.starved ? 0 : 1;
+          for (std::size_t c = 0; c < want.channels.size() && c < got.channels.size(); ++c) {
+            if (want.channels[c].size() != got.channels[c].size()) { off = 1; continue; }
+            for (std::size_t i = 0; i < want.channels[c].size(); ++i) off = std::fmax(off, std::fabs(want.channels[c][i] - got.channels[c][i]));
+          }
+          frameOff = std::fmax(frameOff, off);
+          compared++;
+          lastLength = got.length;
+          lastAsked = got.asked;
+        }
+        framesBefore = p.picture().phosphor().frames();
+        before = p.pictureSnapshot();
+        viewBefore = p.view().capture;
+      }
+    }
+    check("the frame the plugin draws is the page's capture of its ring as the block before left it, at 20 ms a division, sample for sample",
+          frameOff == 0 && compared > 20, std::to_string(compared) + " frames, off by " + num(frameOff) + ", the window "
+          + num(lastLength) + " long, asked " + num(lastAsked));
+    /* The photocell switched from the page mid-run: off, its sources go and
+       its reading is nought; on again from off, the loop starts - which it
+       can only do if the routes are compiled again once its sources are
+       there. And the Clear button leaves the grid to fill again. */
+    const auto midRun = [&](bool startOff) {
+      setenv("SCOPE_PRESET", bent, 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      if (startOff) p->pageClick("photoButton");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      for (int k = 0; k < blocks; ++k) {
+        if (k == blocks / 2) p->pageClick("photoButton");
+        buf.clear();
+        p->processBlock(buf, m);
+      }
+      return p;
+    };
+    const auto wentOff = midRun(false), cameOn = midRun(true);
+    const double cameApart = most(cameOn->pictureSnapshot(), off.picture);
+    check("the photocell switched off mid-run takes its sources away and reads nought; switched on from off, the loop starts",
+          !wentOff->matrix().source("photo.1") && !wentOff->matrix().source("picture.bored") && wentOff->picture().pictures().photo() == 0
+          && cameOn->matrix().source("photo.1") && cameApart > 0.01, "the picture apart from never on by " + num(cameApart));
+    double refilled = 0, clearedNow = 0;
+    {
+      setenv("SCOPE_PRESET", bent, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
+      p.pageClick("clearButton");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      const auto litNow = [&] { double lit = 0; for (const float c : p.picture().phosphor().grid()) lit += c; return lit; };
+      for (int k = 0; k < 2; ++k) { buf.clear(); p.processBlock(buf, m); }
+      clearedNow = litNow();
+      for (int k = 0; k < blocks; ++k) { buf.clear(); p.processBlock(buf, m); }
+      refilled = litNow();
+    }
+    check("and after a Clear the grid fills again, rather than wiping every frame",
+          refilled > clearedNow * 4 && refilled > looped.lit * 2, "lit " + num(clearedNow) + ", then " + num(refilled));
+    /* The loop's rules: the photocell and the picture's sources are read as
+       the picture's, so their pushes are bounded as one, and each holds a
+       depth to its reach - half a destination's span, and boredom 0.3. */
+    std::string held;
+    bool loopFlags = false;
+    {
+      setenv("SCOPE_PRESET", bent, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p.pageRoutings("photo.1>gen.ratio@0.900;picture.bored>gen.swing@-0.900");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      for (int k = 0; k < 4; ++k) { buf.clear(); p.processBlock(buf, m); }
+      held = scope::Matrix::encode(p.matrix().routings());
+      const scope::ModSource* photo = p.matrix().source("photo.1");
+      const scope::ModSource* round = p.matrix().source("picture.round");
+      loopFlags = photo && round && photo->picture() && round->picture();
+    }
+    check("the photocell and the picture's sources are the loop's, and hold a depth to their reach: half, and boredom 0.3",
+          loopFlags && held == "photo.1>gen.ratio@0.500;picture.bored>gen.swing@-0.300", held);
+    /* The view's hands as the state keeps them: a display undoes the one
+       before, the photocell's switch keeps every press, and the Clear
+       button, which leaves nothing behind it, is not kept - nor does a view
+       button undo the keyboard's mode, as an unknown set once would have. */
+    std::string viewHands;
+    {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      for (const char* id : { "midiDyad", "photoButton", "photoButton", "dispXY", "dispYT", "clearButton" }) p.pageClick(id);
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      p.processBlock(buf, m);
+      const auto decoded = scope::decodeSetup(p.pageState().code);
+      const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
+      viewHands = hands ? scope::utf16To8(scope::jsonStringify(*hands)) : "none";
+    }
+    check("the view's buttons are kept as hands, a display undoing the last, every press of the photocell's switch, and no Clear",
+          viewHands == "[[\"k\",\"midiDyad\"],[\"k\",\"photoButton\"],[\"k\",\"photoButton\"],[\"k\",\"dispYT\"]]", viewHands);
+    const char* ellipse = "Brightness opens the ellipse";
+    // The reticle put on the line the held sine draws, at the middle of the screen, by the page's drag.
+    const auto centred = [](ScopeProcessor& p) { p.pageControl("photoReticle", scope::Json::string(std::string_view("0.5,0.5"))); };
+    const Run heard = run(ellipse, true, blocks, centred);
+    const Run unheard = run(ellipse, true, blocks, [&](ScopeProcessor& p) { centred(p); p.matrix().remove("photo.1", "gen.phase"); });
+    const double opened = most(heard.r, unheard.r), sameLeft = most(heard.l, unheard.l);
+    check("and the loop reaches the sound: the light turns the phase of the held sine's right channel, and leaves its left alone",
+          opened > 0.05 && sameLeft < opened / 10 && heard.most > 0,
+          "right apart by " + num(opened) + ", left by " + num(sameLeft) + ", reading in the second second up to " + num(heard.most));
   }
 
   std::printf("\n--- the sources ---\n");
@@ -968,7 +1252,7 @@ int main() {
           p.pageControl("shape", scope::Json::string(std::string_view("square")));
           p.pageControl("delayPingPong", scope::Json::boolean(true));
           p.pageClick("tuneEqual");
-          p.pageControl("beamLevel", scope::Json::string(std::string_view("high")));
+          p.pageControl("spectroSpan", scope::Json::string(std::string_view("30")));
           p.pageControl("nothing", scope::Json::string(std::string_view("x")));
           p.pageClick("nothing");
         }

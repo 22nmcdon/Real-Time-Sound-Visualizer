@@ -51,6 +51,7 @@
 #include <utility>
 #include <vector>
 
+#include "scope/beam.h"     // Screen, what the walk reads
 #include "scope/capture.h"
 #include "scope/clock.h"
 #include "scope/cycles.h"
@@ -194,6 +195,27 @@ struct Brain {
   double morphMod = 0;                     // what the matrix pushes into the fader
   std::optional<double> morphApplied;      // where the sliders were last put, or nothing
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
+  /* The view: what the screen is set to draw, as the page's `state` holds it
+     - the capture's half and the walk's - with the zoom's step and what is
+     pointed at it, the trigger's mode and the spectrogram's span. The
+     timebase, the trigger's lane and the X-Y pair are kept as the numbers
+     the page keeps, whatever they are, and the capture reads them through
+     `captureView`, which holds them to what it can index. `lanes` is the
+     source's lane count, the page's `laneCount()`: two, for the generator's
+     pair, which is all the plugin draws. `restored` counts setups, which
+     start the beam's anchors afresh; `wipe` is the Clear button, for the
+     next frame. */
+  struct ViewState {
+    View capture;
+    Screen screen;
+    double timebase = 4, trigSource = 0;
+    std::array<double, 2> xy { 0, 1 };
+    std::string edge = "rising", mode = "auto", analyseAt = "post", measureAt = "pre";
+    double zoomStep = 0, zoomMod = 0, spectroSpan = 5;
+    int lanes = 2;
+    int restored = 0;
+    bool wipe = false;
+  } view;
   struct PlaneState {
     double mirror = 0, limit = 0, radius = 0.4, os = 2, twist = 0, kaleido = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
   } plane;
@@ -659,6 +681,76 @@ inline std::shared_ptr<const FigurePath> figurePathFor(const Brain& b, std::stri
 
 // --- the handlers' part, in restore's order -------------------------------------------------
 
+// --- the view ---------------------------------------------------------------------------
+
+// setZoom: the step held to the slider's range, and the zoom it and what is
+// pointed at it make, in quarter-steps of a doubling.
+inline void setZoom(Brain& b, double step) {
+  Brain::ViewState& w = b.view;
+  w.zoomStep = jsMax(0, jsMin(24, step));
+  w.screen.zoom = std::pow(2, (w.zoomStep + w.zoomMod) / 4);
+}
+
+// setTrigSource: held to the lanes there are.
+inline void setTrigSource(Brain& b, double index) {
+  b.view.trigSource = jsMax(0, jsMin(index, b.view.lanes - 1));
+}
+
+// fitChannels' hold on the trigger's lane and the pair: neither past the
+// lanes there are, and the pair never one lane twice.
+inline void fitView(Brain& b) {
+  Brain::ViewState& w = b.view;
+  const double n = w.lanes;
+  if (w.trigSource >= n) w.trigSource = 0;
+  w.xy = { jsMin(w.xy[0], n - 1), jsMin(w.xy[1], n - 1) };
+  if (w.xy[0] == w.xy[1]) w.xy[1] = std::fmod(w.xy[0] + 1, std::fmax(2.0, n));
+}
+
+// relaneForLag: the pair and the trigger held to the lanes, and the lanes'
+// rows built again from what they hold - each scale at the detent nearest its
+// decibels (fsDetent), each offset in whole hundredths.
+inline void relane(Brain& b) {
+  fitView(b);
+  const View& v = b.view.capture;
+  for (std::size_t i = 0; i < 2 && i < v.channels.size(); i++) {
+    std::size_t best = 0;
+    for (std::size_t k = 1; k < 9; k++) {
+      if (std::fabs(kFullScaleDb[k] - v.channels[i].fsDb) < std::fabs(kFullScaleDb[best] - v.channels[i].fsDb)) best = k;
+    }
+    const std::string lane = "ch" + std::to_string(i + 1);
+    b.panel.setRange(lane + "Scale", toU16(jsNumberToString(static_cast<double>(best))));
+    b.panel.setRange(lane + "Offset", toU16(jsNumberToString(jsMathRound(v.channels[i].offset * 100))));
+  }
+}
+
+// setDisplay: X-Y with no persistence is a thin scribble, so it is nudged once, on the way in.
+inline void setDisplay(Brain& b, const std::string& mode) {
+  Brain::ViewState& w = b.view;
+  w.screen.display = mode;
+  if (mode == "xy" && w.screen.persistence == 0) {
+    w.screen.persistence = 0.12;
+    b.panel.setSelect("persistence", u"0.12");
+  }
+}
+
+// The view as the capture and the walk read it: the page's numbers held to
+// what they can index - a timebase off the table, or a lane that is not a
+// whole number, is the default rather than a read past the end - and the
+// pair and the analysis tap carried across.
+inline const View& captureView(Brain& b) {
+  Brain::ViewState& w = b.view;
+  const auto index = [](double x, double top, int otherwise) {
+    return std::isfinite(x) && x == std::floor(x) && x >= 0 && x <= top ? static_cast<int>(x) : otherwise;
+  };
+  w.capture.timebase = index(w.timebase, static_cast<double>(kTimebase.size() - 1), 4);
+  w.capture.trigSource = index(w.trigSource, kMaxLanes - 1, 0);
+  w.capture.rising = w.edge == "rising";
+  w.capture.shaping = w.analyseAt == "post";
+  w.capture.measurePost = w.measureAt == "post";
+  w.screen.xyPair = { index(w.xy[0], kMaxLanes - 1, 0), index(w.xy[1], kMaxLanes - 1, 1) };
+  return w.capture;
+}
+
 inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyboard& keys, Matrix& matrix,
                          std::vector<Lfo>& lfos) {
   const Json& defaults = setupDefaults();
@@ -1103,6 +1195,56 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("filterCutoff", str("fCut"));
   panel.setRange("filterRes", str("fRes"));
   panel.setRange("zoom", toU16(jsNumberToString(jsMax(0, jsMin(24, num("zoom"))))));  // setZoom
+
+  // And what the page's restore leaves in its state, which is what the screen draws by.
+  {
+    Brain::ViewState& w = brain.view;
+    View& v = w.capture;
+    const auto truthy = [&](std::string_view key) { const Json* x = s(key); return x && jsTruthy(*x); };
+    const auto text = [&](std::string_view key) { return utf16To8(str(key)); };
+    w.timebase = num("timebase");
+    v.level = num("level") / 1000;
+    v.position = num("position") / 100;
+    v.holdoffMs = num("holdoff") / 10;
+    w.edge = text("edge");
+    setTrigSource(brain, num("trig"));
+    w.mode = text("trigMode");
+    v.channels.resize(2);
+    for (int i = 0; i < 2; i++) {
+      const std::string key = "c" + std::to_string(i);
+      View::Channel& c = v.channels[static_cast<std::size_t>(i)];
+      c.on = truthy(key + "on");
+      c.ac = truthy(key + "ac");
+      c.fsDb = num(key + "s");
+      c.offset = num(key + "o") / 100;
+    }
+    v.midSide = truthy("midSide");
+    v.acHz = panel.range("acCorner") / 10;
+    v.lagOn = truthy("lagOn") && !truthy("midSide");
+    v.lagMs = num("lagMs");
+    v.rotate = num("rotate") / 100;
+    v.filter.on = truthy("fOn");
+    v.filter.type = text("fType");
+    v.filter.cutoff = num("fCut");
+    v.filter.res = num("fRes");
+    w.analyseAt = text("fSee");
+    w.measureAt = text("mSee");
+    v.lagLock.reset();
+    v.lagAuto = truthy("lagAuto");
+    w.xy = { num("xy0"), num("xy1") };
+    relane(brain);
+    Screen& sc = w.screen;
+    sc.beam = text("beam");
+    sc.beamXY = truthy("beamXY");
+    sc.beamYT = truthy("beamYT");
+    w.restored++;  // beamRefs.clear()
+    // Persistence after the display, because switching to X-Y nudges it.
+    setDisplay(brain, text("display"));
+    panel.setSelect("persistence", str("persistence"));
+    sc.persistence = num("persistence");
+    w.spectroSpan = num("span");
+    setZoom(brain, num("zoom"));
+  }
 }
 
 }  // namespace scope
@@ -1190,6 +1332,23 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     syncEchoPanel(b);
     syncEcho(b, gen);
   }
+  // The view's sliders, each as the page's handler reads it.
+  else if (id == "timebase") b.view.timebase = v;
+  else if (id == "level") b.view.capture.level = v / 1000;
+  else if (id == "position") b.view.capture.position = v / 100;
+  else if (id == "holdoff") b.view.capture.holdoffMs = v / 10;
+  else if (id == "ch1Scale" || id == "ch2Scale" || id == "ch1Offset" || id == "ch2Offset") {
+    View::Channel& c = b.view.capture.channels[id[2] == '2' ? 1 : 0];
+    // The scale's detent, by its index in the table, as the page's handler has it.
+    if (id[3] == 'S') { const Json at = Json::number(v); c.fsDb = fullScaleAt(&at).value_or(NAN); }
+    else c.offset = v / 100;
+  }
+  else if (id == "acCorner") b.view.capture.acHz = v / 10;
+  else if (id == "lag") b.view.capture.lagMs = v / 10;
+  else if (id == "rotate") b.view.capture.rotate = v / 100;
+  else if (id == "filterCutoff") b.view.capture.filter.cutoff = v;
+  else if (id == "filterRes") b.view.capture.filter.res = v;
+  else if (id == "zoom") setZoom(b, v);
   else {
     for (const auto& row : layerControls()) {
       if (id == row.id && isVoiceControl(row.id) && row.kind == LayerControl::Range) layerSet(row.field, row.law(v));
@@ -1243,7 +1402,12 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   Keyboard::Settings k = keys.settings();
 
   // The generator.
-  if (id == "genMode") { gen.set("mode", text, 0); keys.syncPlayed(); }
+  if (id == "genMode") {
+    gen.set("mode", text, 0);
+    keys.syncPlayed();
+    // A figure and a harmonograph are X-Y things: shown against time they are a waveform nobody asked for.
+    if (text != "wave" && b.view.screen.display == "yt") setDisplay(b, "xy");
+  }
   else if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
   else if (id == "figure") { gen.set("figure", text, 0); gen.setFigPath(figurePathFor(b, text)); }
   else if (id == "figPathD") { setFigurePathD(b, value); gen.setFigPath(figurePathFor(b, panel.select("figure"))); }
@@ -1325,6 +1489,44 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     b.macros[static_cast<std::size_t>(id[9] - '1')].name = clean.empty() ? u"Macro " + toU16(std::string(1, id[9])) : clean;
     matrix.touch();
   }
+  // The view's switches and menus.
+  else if (id == "ch1On" || id == "ch2On" || id == "ch1Ac" || id == "ch2Ac") {
+    View::Channel& c = b.view.capture.channels[id[2] == '2' ? 1 : 0];
+    (id[3] == 'O' ? c.on : c.ac) = checked;
+  }
+  // Mid and side and the lag both rewrite lane two: the one just thrown wins.
+  else if (id == "midSide") {
+    View& v = b.view.capture;
+    v.midSide = checked;
+    if (v.midSide && v.lagOn) { v.lagOn = false; relane(b); }
+  }
+  else if (id == "lagOn") {
+    View& v = b.view.capture;
+    v.lagOn = checked;
+    if (v.lagOn && v.midSide) v.midSide = false;
+    v.lagLock.reset();  // the old lock belonged to whatever was playing before
+    relane(b);
+  }
+  else if (id == "filterOn") b.view.capture.filter.on = checked;
+  else if (id == "filterType") b.view.capture.filter.type = text;
+  else if (id == "beamLevel") b.view.screen.beam = text;
+  else if (id == "beamXY") b.view.screen.beamXY = checked;
+  else if (id == "beamYT") b.view.screen.beamYT = checked;
+  else if (id == "persistence") b.view.screen.persistence = jsStringToNumber(value);
+  else if (id == "xyX" || id == "xyY") {
+    Brain::ViewState& w = b.view;
+    const std::size_t which = id == "xyY" ? 1 : 0;
+    w.xy[which] = jsStringToNumber(value);
+    // Two of the same lane is the diagonal, always, whatever it is doing.
+    if (w.xy[0] == w.xy[1]) w.xy[which ? 0 : 1] = std::fmod(w.xy[which] + 1, w.lanes);
+  }
+  // The reticle, moved: "u,v", each held to the screen, as the page splits
+  // it - no comma is a u and a v that is not a number at all.
+  else if (id == "photoReticle") {
+    const std::size_t comma = value.find(u',');
+    b.photo.u = jsMax(0, jsMin(1, jsStringToNumber(value.substr(0, comma))));
+    b.photo.v = comma == std::u16string::npos ? NAN : jsMax(0, jsMin(1, jsStringToNumber(value.substr(comma + 1))));
+  }
   else return false;
   return true;
 }
@@ -1341,6 +1543,20 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
     b.plane.os = id.back() - '0';
     syncPlanePanel(b); syncPlane(b, gen);
   }
+  // The view's buttons.
+  else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");
+  else if (id == "edgeRising" || id == "edgeFalling") b.view.edge = id == "edgeRising" ? "rising" : "falling";
+  else if (id == "modeAuto" || id == "modeNormal" || id == "modeSingle") b.view.mode = id == "modeAuto" ? "auto" : id == "modeNormal" ? "normal" : "single";
+  else if (id == "lagAuto" || id == "lagManual") {
+    b.view.capture.lagAuto = id == "lagAuto";
+    if (b.view.capture.lagAuto) b.view.capture.lagLock.reset();
+  }
+  else if (id == "seeDry" || id == "seeWet") b.view.analyseAt = id == "seeDry" ? "pre" : "post";
+  else if (id == "measurePre" || id == "measurePost") b.view.measureAt = id == "measurePre" ? "pre" : "post";
+  else if (id == "layStack" || id == "layOver") b.view.screen.stack = id == "layStack";
+  else if (id.size() == 11 && id.compare(0, 10, "trigSource") == 0 && id[10] >= '0' && id[10] <= '5') setTrigSource(b, id[10] - '0');
+  else if (id == "photoButton") b.photo.on = !b.photo.on;
+  else if (id == "clearButton") b.view.wipe = true;
   else return false;
   return true;
 }

@@ -65,6 +65,8 @@ DUMP = """(setups) => {
     else if (o.op === "hold") { window.__held = o.value; morph.mod = o.value; morphStep(); }
     else if (o.op === "macro") input(el["macro" + (o.i + 1)], o.value);
     else if (o.op === "step") morphStep();
+    // The reticle moved, "u,v", as a drag or a key moves it.
+    else if (o.op === "change" && o.id === "photoReticle") { const [u, v] = String(o.value).split(","); movePhoto(Number(u), Number(v)); }
     else if (o.op === "change") {
       // An LFO's menus and the threshold's are in the page only while theirs
       // is the chosen source, as LFO 1's rate is.
@@ -118,6 +120,20 @@ DUMP = """(setups) => {
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
+      // The view: what the screen draws by. Switches by their truth, which is
+      // what anything reads them by, and words as words.
+      view: (() => {
+        const lane = (c) => c ? { on: !!c.on, ac: !!c.ac, fsDb: c.fsDb, offset: c.offset } : null;
+        return { timebase: state.timebase, level: state.level, position: state.position, holdoffMs: state.holdoffMs,
+                 edge: String(state.edge), trigSource: state.trigSource, mode: String(state.mode),
+                 channels: [lane(state.channels[0]), lane(state.channels[1])], midSide: !!state.midSide, acHz: state.acHz,
+                 lagOn: !!state.lagOn, lagMs: state.lagMs, lagAuto: !!state.lagAuto, rotate: state.rotate,
+                 filter: { on: !!state.filter.on, type: String(state.filter.type), cutoff: state.filter.cutoff, res: state.filter.res },
+                 analyseAt: String(state.analyseAt), measureAt: String(state.measureAt), xy: state.xyPair,
+                 beam: String(state.beam), beamXY: !!state.beamXY, beamYT: !!state.beamYT, display: String(state.display),
+                 persistence: state.persistence, span: state.spectroSpan, zoomStep: state.zoomStep, zoom: state.zoom,
+                 stack: !!state.stack };
+      })(),
       ranges: ranges(),
       cycles: { codes: [cycleIsDefault(0) ? "" : encodeCycle(drawnCycle.slots[0]), encodeCycleSlots()],
                 points: drawnCycle.slots.map(sums), cycle: digest(genSettings().cycle),

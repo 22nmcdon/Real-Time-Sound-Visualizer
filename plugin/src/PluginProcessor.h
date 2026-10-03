@@ -16,6 +16,7 @@
 #include "scope/matrix.h"
 #include "scope/presets.h"
 #include "scope/restore.h"
+#include "scope/screen.h"
 #include "scope/sources.h"
 
 // The processor plays the core's generator (scope::Generator, the page's
@@ -105,6 +106,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The clock and an oscillator's rate, for the shell test to read.
   const scope::Clock& clock() const { return brain_->clock; }
   const scope::ScoreState& score() const { return brain_->score; }
+  // The picture as the plugin draws it for itself, and the view it draws by, for the shell test to read.
+  const scope::PictureRun& picture() const { return *pictureRun_; }
+  const scope::Brain::ViewState& view() const { return brain_->view; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   /* A hand on one of the panel's sliders, and an end of the morph stored: what
      the page will send over the bridge once it is the plugin's face. Until
@@ -182,6 +186,15 @@ class ScopeProcessor final : public juce::AudioProcessor {
   static constexpr std::size_t kLevelFrames = 2048;
   std::vector<float> levelLane_, hearL_, hearR_;
   std::unique_ptr<scope::HearingSources> hearing_;  // what it hears of itself, as sources
+  /* The picture, drawn here for the photocell and the picture's sources so
+     their loops go on with the window closed (stage 4): captured from the
+     picture ring by the view the page set, at the page's sixty frames a
+     second of audio time, on a canvas of the size the page's trace usually
+     is. The grid depends on that size only through the Y-T walk's peak bars,
+     one a pixel; X-Y draws on a square however wide the canvas. */
+  std::unique_ptr<scope::PictureRun> pictureRun_;
+  scope::CaptureSource pictureSource_;
+  static constexpr scope::Canvas kCanvas { 846, 534, false, 0 };
 
   std::vector<scope::Lfo> lfos_;
   std::unique_ptr<scope::Generator> core_;
@@ -208,6 +221,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
      the end - unless a hand between them is one whose handler reads it. */
   struct Hand { std::string key; scope::Json hand; };
   std::vector<Hand> hands_;
+  int presses_ = 0;  // the photocell's button, each press its own hand
   struct PageCommand {
     enum Kind { Slider, Setup, Control, Click, Routings, Fade } kind;
     std::string id; std::u16string text; scope::Json value; std::optional<scope::Json> setup;

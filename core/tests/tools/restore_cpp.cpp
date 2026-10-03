@@ -286,6 +286,36 @@ int main(int argc, char** argv) {
     Json photo = Json::object();
     photo.set("on", flag(brain.photo.on)); photo.set("u", num(brain.photo.u)); photo.set("v", num(brain.photo.v));
     out.set("photo", photo);
+    {
+      const auto& w = brain.view;
+      const auto& v = w.capture;
+      Json view = Json::object();
+      view.set("timebase", num(w.timebase)); view.set("level", num(v.level)); view.set("position", num(v.position));
+      view.set("holdoffMs", num(v.holdoffMs)); view.set("edge", str(w.edge)); view.set("trigSource", num(w.trigSource));
+      view.set("mode", str(w.mode));
+      Json lanes = Json::array();
+      for (std::size_t i = 0; i < 2; i++) {
+        Json c = Json::object();
+        c.set("on", flag(v.channels[i].on)); c.set("ac", flag(v.channels[i].ac));
+        c.set("fsDb", num(v.channels[i].fsDb)); c.set("offset", num(v.channels[i].offset));
+        lanes.a.push_back(c);
+      }
+      view.set("channels", lanes);
+      view.set("midSide", flag(v.midSide)); view.set("acHz", num(v.acHz)); view.set("lagOn", flag(v.lagOn));
+      view.set("lagMs", num(v.lagMs)); view.set("lagAuto", flag(v.lagAuto)); view.set("rotate", num(v.rotate));
+      Json filter = Json::object();
+      filter.set("on", flag(v.filter.on)); filter.set("type", str(v.filter.type));
+      filter.set("cutoff", num(v.filter.cutoff)); filter.set("res", num(v.filter.res));
+      view.set("filter", filter);
+      view.set("analyseAt", str(w.analyseAt)); view.set("measureAt", str(w.measureAt));
+      Json xy = Json::array(); xy.a.push_back(num(w.xy[0])); xy.a.push_back(num(w.xy[1]));
+      view.set("xy", xy);
+      view.set("beam", str(w.screen.beam)); view.set("beamXY", flag(w.screen.beamXY)); view.set("beamYT", flag(w.screen.beamYT));
+      view.set("display", str(w.screen.display)); view.set("persistence", num(w.screen.persistence));
+      view.set("span", num(w.spectroSpan)); view.set("zoomStep", num(w.zoomStep)); view.set("zoom", num(w.screen.zoom));
+      view.set("stack", flag(w.screen.stack));
+      out.set("view", view);
+    }
     Json ranges = Json::object();
     for (const auto& r : scope::kRanges) {
       if (std::string_view(r.id) != "lfoRate0") ranges.set(std::string_view(r.id), num(brain.panel.range(r.id)));

@@ -222,15 +222,44 @@ with sync_playwright() as pw:
     }""")
     check("a menu turned on the page is sent to the plugin by id and value, a switch as true or false, once each",
           sent["menu"] == [["scopeControl", "planeKaleido", "6"]] and sent["switch"] == [["scopeControl", "crossOn", True]], str(sent))
-    check("a button that reaches the sound is sent by its id; the view's menu and a button the plugin has no handler for are not",
-          sent["button"] == [["scopeClick", "planeOS4"]] and sent["view"] == [] and sent["other"] == [], str(sent))
+    check("a button that reaches the sound is sent by its id, and so is the view's persistence; a button the plugin has no handler for is not",
+          sent["button"] == [["scopeClick", "planeOS4"]] and sent["view"] == [["scopeControl", "persistence", "0.3"]]
+          and sent["other"] == [], str(sent))
+    # The view, which the plugin draws into its own grid for the photocell and
+    # the picture's sources: its buttons by id, its lanes' switches, the
+    # trigger's lane, the reticle as it moves, and the display and the zoom
+    # from the keys and the wheel, which are hands on the button and the slider.
+    view = p.evaluate("""() => {
+      const t = window.__hostTest, out = {};
+      const send = (name, act) => { t.log.length = 0; act(); out[name] = t.log.slice(); };
+      const key = (k) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+      send('display', () => el.dispXY.click());
+      send('lane', () => { el.ch2On.checked = false; el.ch2On.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('trigger', () => document.getElementById('trigSource1').click());
+      send('reticle', () => movePhoto(0.25, 1.5));
+      send('photo', () => el.photoButton.click());
+      send('keyDisplay', () => key('1'));
+      send('keyZoom', () => key('+'));
+      send('wheel', () => el.trace.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true })));
+      send('cursors', () => { el.cursorsOn.checked = true; el.cursorsOn.dispatchEvent(new Event('change', { bubbles: true })); });
+      out.zoom = el.zoom.value;
+      return out;
+    }""")
+    check("the view's buttons, a lane's switch, the trigger's lane and the reticle are sent; the cursors, which no grid shows, are not",
+          view["display"] == [["scopeClick", "dispXY"]] and view["lane"] == [["scopeControl", "ch2On", False]]
+          and view["trigger"] == [["scopeClick", "trigSource1"]] and view["reticle"] == [["scopeControl", "photoReticle", "0.25,1"]]
+          and view["photo"] == [["scopeClick", "photoButton"]] and view["cursors"] == [], str(view))
+    check("the display from a key is its button, and the zoom from a key or the wheel is the slider, one step each",
+          view["keyDisplay"] == [["scopeClick", "dispYT"]] and len(view["keyZoom"]) == 1 and len(view["wheel"]) == 1
+          and view["keyZoom"][0][:2] == ["scopeSlider", "zoom"] and view["wheel"][0][:2] == ["scopeSlider", "zoom"]
+          and int(view["wheel"][0][2]) == int(view["keyZoom"][0][2]) + 1, str(view))
     route = sent["route"][0][1].split(";")[-1] if sent["route"] and len(sent["route"][0]) > 1 else ""
     check("an edit to the routings sends them whole, each depth to its last digit, and nothing when nothing changed",
           len(sent["route"]) == 1 and sent["route"][0][0] == "scopeRoutings" and route.startswith("lfo1>gen.freq@")
           and sent["depth"] == [["scopeRoutings", sent["route"][0][1].rsplit("@", 1)[0] + "@0.123456789012345"]]
           and sent["again"] == [] and len(sent["tiny"]) == 1 and sent["tiny"][0][1].endswith("@0.00000010000000000000"), str(sent))
     hands = [["c", "planeKaleido", "4"], ["c", "crossOn", True], ["k", "planeOS1"], ["c", "lfoShape1", "square"],
-             ["r", "", "lfo2>gen.amp@-0.3456789"], ["s", "amp", "42"]]
+             ["r", "", "lfo2>gen.amp@-0.3456789"], ["s", "amp", "42"], ["k", "dispXY"], ["c", "photoReticle", "0.3,0.7"]]
     applied = p.evaluate("""async (code) => {
       const t = window.__hostTest;
       cross.on = false; el.crossOn.checked = false;
@@ -243,11 +272,11 @@ with sync_playwright() as pw:
       touchRoutings();
       return { kaleido: plane.kaleido, menu: el.planeKaleido.value, cross: cross.on, os: plane.os, lfo: lfos[1].shape,
                mod: state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount).join(';'), amp: el.amp.value,
-               shown: selectedSource === shown, log: t.log.slice() };
+               display: state.display, reticle: [photo.u, photo.v], shown: selectedSource === shown, log: t.log.slice() };
     }""", code({"vcfCut": 222, "pluginHands": hands}))
-    check("the plugin's state puts its hands back on the page in order, menus, switches, buttons, routings and sliders, and sends nothing back",
+    check("the plugin's state puts its hands back on the page in order, menus, switches, buttons, routings, sliders, the view and the reticle, and sends nothing back",
           applied == {"kaleido": 4, "menu": "4", "cross": True, "os": 1, "lfo": "square", "mod": "lfo2>gen.amp@-0.3456789",
-                      "amp": "42", "shown": True, "log": []}, str(applied))
+                      "amp": "42", "display": "xy", "reticle": [0.3, 0.7], "shown": True, "log": []}, str(applied))
 
     more = p.evaluate("""() => {
       const t = window.__hostTest, out = {};

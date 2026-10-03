@@ -1077,10 +1077,81 @@ could show them - a segment lying along the graticule's top edge, and a walk
 straying past the part on the grid, which only a segment too long to walk
 whole shows, by never finishing.
 
-What it is not yet is anything the plugin runs: that is 4d, the plugin
-feeding the grid from its picture ring through `capture` and `drawPicture`
-with the view held in the core, and stepping the photo and picture sources
-each frame.
+The plugin runs it from 4d.
+
+**4d: the plugin draws its own picture** (`scope/screen.h`, the view in
+`scope/restore.h`). So the loops through the picture go on with the window
+closed, the plugin captures from its picture ring, lays the grid, and steps
+the photocell and the picture's sources itself, at the page's sixty frames a
+second of audio time, in the page's order: the capture, the sources stepped
+from the grid the last frame left, the matrix, then the deposits. The score
+reads that grid, so it plays in the plugin now, where it used to send
+nothing. The sources are registered while the photocell is on, as `setPhoto`
+has it, and the view's destinations - rotation, the lag, the filter, the
+zoom, the trigger's position, each lane's full scale - always, with the zoom
+made again from its step and offset after every matrix pass.
+
+The view is the page's `state` held in the brain (`Brain::ViewState`):
+restored from a setup as the page's `restore` leaves it, moved by the view's
+sliders, and changed by its menus, switches and buttons and the reticle,
+which the page now sends - the display, the trigger's edge, lane and mode,
+each lane's switches, mid and side, the lag, the filter, the analysis and
+measurement taps, the layout, the beam, persistence, the X-Y pair, the
+photocell's button and the Clear button. The page's keyboard shortcuts for the
+display and the zoom, and the wheel's zoom, became hands on the button and the
+slider, so the plugin hears them; and the trigger's lane buttons have ids.
+Held to the page by the restore parity, whose dump now carries the view: every
+preset, every random setup and every slider, menu and switch run there
+compares it, and a section of its own puts the view's hands between presets,
+with lanes the generator has not got and a reticle off the screen. The page
+switching to X-Y when the kind menu chooses a drawing was found there.
+
+What differs, said in `screen.h`: the page's verdict reads its monitor
+limiters, Web Audio nodes the plugin has not got, so a picture cannot run
+away by the limiter here; the automatic lag's lock is not ported, and the
+lag is the slider's; the canvas is a fixed 846 by 534, the page's trace at its
+usual size, which matters only to Y-T's peak bars, one a pixel; and the
+capture is always Auto's.
+
+Checked in the shell test: sixty frames a second and not one a block; the
+frame is the page's capture of the ring as the block before left it, at a
+timebase that asks for more than the ring holds; with the photocell on its
+sources are there, the grid is lit and the reading moves; the loop bends the
+figure "Pendulums bent by the light" draws, against the same without its
+routings, and the photocell switched off from the page is that null exactly,
+picture and sound; the loop reaches the sound in "Brightness opens the
+ellipse", the reticle put on its line from the page; switched off mid-run the
+sources go, switched on from off the loop starts; Y-T chosen on the page is
+drawn in place of the figure; an oscillator on the zoom from the page moves
+the picture; infinite persistence keeps everything, the Clear button starts
+again and the grid fills again after it; a depth past a source's reach is
+held to it; and the view's buttons are kept as hands, a display undoing the
+last and every press of the photocell's switch.
+
+Mutation: the view's half of the core, 72 of 75 through the restore parity;
+the plugin's wiring and `screen.h`, 26 of 29 through the shell test; the
+page's side, 12 of 12 through hosttest.py. The six left are equivalent: the
+trigger's lane tested against the lanes after `setTrigSource` has already
+held it under them; an offset rounded before a slider of step one rounds it
+anyway; the lane rows built again when the lag is switched, which with two
+lanes changes nothing the restore's rebuild had not; a frame due a little
+early, at the same rate; a fixed sixteen milliseconds for the frame's
+elapsed time where the real ones alternate about 16.7; and the turn applied
+to the drawn pair's shape, which moves only its edge contact - not offered as
+a source - since its direction is the same under any turn. Most of the rest
+lived until something could show them, and each named something the runs
+did not do: setups that move the view's every field, where the presets
+leave the holdoff, the edge, the trigger's mode and the lanes' switches at
+their defaults; lanes the generator has not got; an AC corner off its
+slider; the kind menu changed with the spectrogram showing; a full scale
+halfway between two detents; a reticle with no comma, which the core had
+refused and the page reads as a number and a NaN; the frame compared with
+the page's own capture of the ring, its length and what it asked for; the
+photocell switched mid-run each way; the grid filling again after a Clear;
+and a depth past a source's reach. And the restore's last step was found
+missing by the first of those: the page builds the lanes' rows again from
+what they hold, so a scale slider stands at the detent nearest its
+decibels, which the core's panel had left where the setup put it.
 
 **5. The site on WebAssembly.** The worklet runs the compiled core, and the
 JavaScript engine and brain are retired once parity says there is nothing left
@@ -1091,6 +1162,21 @@ WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
 ## Found on the way
+
+- **Every button the plugin did not name was in the keyboard's set.** The
+  hands a state keeps are compacted by set - pressing Dyad undoes an earlier
+  Poly - and a button outside the four sets 3b knew was put in the
+  keyboard's. Nothing reached it while those were the only buttons sent; the
+  view's would have, and the photocell's button would have erased a Dyad
+  press. Each set is named now, the photocell's switch keeps every press,
+  and the Clear button, which leaves nothing behind, is not kept.
+- **A check that claimed more than the preset does.** The first check that
+  the loop reached the sound with the window closed used "Pendulums bent by
+  the light", and found the sound unchanged by its routings: they bend the
+  figure the pendulums draw, which is what the preset is for, and the heard
+  pendulums do not carry the ratio. The check reads the picture for that
+  preset now, and the sound for "Brightness opens the ellipse", whose phase
+  is heard.
 
 - **One loud sample stopped the page.** The grid's segment walk samples every
   half cell of the whole segment, so a sample far past full scale - a float

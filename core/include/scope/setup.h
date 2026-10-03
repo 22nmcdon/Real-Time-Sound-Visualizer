@@ -149,6 +149,18 @@ inline double jsToNumber(const Json* v) {
   }
 }
 
+// ToBoolean: false, nought, NaN, the empty string and null are false, and
+// everything else - an array, an object, the string "false" - is true.
+inline bool jsTruthy(const Json& v) {
+  switch (v.type) {
+    case Json::Type::Null: return false;
+    case Json::Type::Bool: return v.b;
+    case Json::Type::Number: return v.n != 0 && !std::isnan(v.n);
+    case Json::Type::String: return !v.s.empty();
+    default: return true;
+  }
+}
+
 // FULL_SCALE_DB[key]: a detent by its index as a property key, its length by
 // name, and nothing for anything else.
 inline std::optional<double> fullScaleAt(const Json* key) {

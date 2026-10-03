@@ -28,11 +28,11 @@
 #include <string>
 #include <vector>
 
+#include "scope/loop.h"       // kPhosphorN, kPhotoReach
 #include "scope/wireframe.h"  // jsHypot, as V8 computes it
 
 namespace scope {
 
-constexpr int kPhosphorN = 64;  // PHOSPHOR_N
 constexpr int kBeamK = 8;       // BEAM_K: the beam's steps, which a shaded segment's level is out of
 
 // makeMoments: the beam's path as running second moments, for roundness.
@@ -329,7 +329,7 @@ inline PairShape shapeOfPair(const float* left, const float* right, std::size_t 
 // The photocell and the picture's sources, with their defences: half the
 // reach any other source may have, a start that is enough to see, and a
 // slew of two whole swings a second on every one of them.
-constexpr double kPhotoReach = 0.5, kPhotoStart = 0.2, kPhotoSlew = 2;
+constexpr double kPhotoStart = 0.2, kPhotoSlew = 2;  // and PHOTO_REACH, in loop.h
 constexpr double kBoredReach = 0.3, kBoredRise = 0.25, kBoredLeak = 0.2;
 
 struct PictureValues { double round = 0, cover = 0, change = 0, novelty = 0, signed_ = 0, edge = 0, bored = 0; };

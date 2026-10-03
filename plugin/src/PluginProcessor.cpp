@@ -81,11 +81,21 @@ void ScopeProcessor::change(const std::string& id, const scope::Json& value) {
 
 void ScopeProcessor::click(const std::string& id) {
   if (!scope::controlClick(id, *brain_, *core_, *keyboard_)) return;
+  // The Clear button wipes the next frame and leaves nothing to keep.
+  if (id == "clearButton") return;
   scope::Json hand = scope::Json::array();
   hand.a.push_back(scope::Json::string(std::string_view("k"))); hand.a.push_back(scope::Json::string(std::string_view(id)));
-  // The buttons come in sets of which one is on: pressing one undoes the last of its set.
-  const std::string set = id.rfind("tune", 0) == 0 ? "tune" : id.rfind("planeOS", 0) == 0 ? "planeOS"
-                        : id.rfind("midiEdit", 0) == 0 ? "midiEdit" : "midiMode";
+  /* The buttons come in sets of which one is on: pressing one undoes the
+     last of its set. The photocell's is a switch, each press undoing the one
+     before, so every press is kept - two taken out would be the photocell
+     left as it was, and one taken out the other way round. */
+  static const std::pair<const char*, const char*> sets[] {
+    { "tune", "tune" }, { "planeOS", "planeOS" }, { "midiEdit", "midiEdit" }, { "midi", "midiMode" }, { "disp", "disp" },
+    { "edge", "edge" }, { "mode", "trigMode" }, { "lag", "lagAuto" }, { "see", "see" }, { "measure", "measure" },
+    { "lay", "lay" }, { "trigSource", "trigSource" },
+  };
+  std::string set = "photoButton#" + std::to_string(++presses_);
+  for (const auto& [prefix, name] : sets) if (id.rfind(prefix, 0) == 0) { set = name; break; }
   remember("k:" + set, std::move(hand));
   changed_ = true;
 }
@@ -132,6 +142,9 @@ void ScopeProcessor::remember(std::string key, scope::Json hand) {
   static const std::vector<std::vector<std::string>> reads {
     { "c:genMode", "c:midiDrive", "c:midiPlay" }, { "c:lfoSync0", "s:lfoRate0" }, { "c:lfoSync1", "s:lfoRate1" }, { "c:delaySync", "s:delayMs" },
     { "c:figure", "c:figPathD" }, { "c:arpMode", "c:arpRate", "c:arpOctaves" },
+    // The view's: the pair's two menus keep it off one lane twice, mid and side and the lag turn each other off,
+    // and a display of X-Y reads the persistence, which the kind menu's choice of X-Y does too.
+    { "c:xyX", "c:xyY" }, { "c:midSide", "c:lagOn" }, { "k:disp", "c:persistence", "c:genMode" },
   };
   const auto related = [&](const std::string& a, const std::string& b) {
     if (a == b) return false;
@@ -305,6 +318,24 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   scope::Generator* gen = core_.get();
   strike_ = [gen](double hz, double velocity) { gen->strike(hz, velocity); };
   brainSources_ = std::make_unique<scope::BrainSources>(*matrix_, *brain_, core_.get());
+  // The view's destinations before any setup, so a preset's routings onto them are heard.
+  pictureRun_ = std::make_unique<scope::PictureRun>(*matrix_, *brain_);
+  pictureSource_.rate = sampleRate;
+  pictureSource_.capacity = static_cast<double>(kPictureFrames);
+  pictureSource_.channels = 2;
+  pictureSource_.lanes = false;
+  // The latest n frames of the ring, oldest first, nought before the start
+  // of what it holds - which the capacity says it never asks for.
+  pictureSource_.latest = [this](std::size_t n) {
+    std::vector<scope::Lane> out(2, scope::Lane(n, 0.0f));
+    const std::size_t at = pictureAt_.load(std::memory_order_relaxed), take = std::min(n, kPictureFrames);
+    for (std::size_t k = 0; k < take; ++k) {
+      const std::size_t from = ((at + kPictureFrames - take + k) % kPictureFrames) * 2;
+      out[0][n - take + k] = picture_[from];
+      out[1][n - take + k] = picture_[from + 1];
+    }
+    return out;
+  };
   /* A host is always a keyboard, so the generator is gated from the start -
      silent until a note - which is what the page's first frame does once a
      keyboard is there. Derived by the keyboard, not set here. */
@@ -417,14 +448,21 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      events, and the pluck's note-offs due, in the page's frame's order: once
      a block, as the page does them once a frame, so a note-off due inside a
      block goes at the next block's top - 11 ms late at most at 512 samples,
-     where the page's frames are 17 ms apart. The picture is the page's until
-     stage 4, so the score has no grid to read and plays nothing, though its
-     playhead runs on the bar. */
+     where the page's frames are 17 ms apart. The score reads the grid the
+     plugin draws for itself, as the last picture frame left it. */
   scope::crossStep(brain_->notesOut, nowMs_, brain_->cross.on, core_->crossings(), static_cast<int>(brain_->cross.noteX),
                    static_cast<int>(brain_->cross.noteY), midiOut_.get());
-  scope::scoreTick(brain_->score, nowMs_, true, brain_->clock, nullptr, scope::keyMask(brain_->keyRoot, brain_->keyScale),
-                   strike_, midiOut_.get());
+  scope::scoreTick(brain_->score, nowMs_, true, brain_->clock, pictureRun_->phosphor().grid().data(),
+                   scope::keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
   keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
+  /* The picture's frame, when a sixtieth of a second of audio has gone: the
+     capture, and the photocell and the picture's sources stepped from the
+     grid the last frame left, before the matrix reads them - with no
+     limiter to read, the host's output being the host's. Its capture and
+     its walk allocate as they go, a known cost on this thread like the
+     hearing's, until the brain's work moves off it (PLAN.md, stage 2). */
+  const bool pictureFrame = pictureRun_->due(nowMs_);
+  if (pictureFrame) pictureRun_->before(*matrix_, pictureSource_, 0);
   // A controller the keyboard learned last block is a source now, and its routings are heard.
   sources_->learn(*matrix_, *keyboard_);
   brainSources_->frame(*brain_, *matrix_, nowMs_);
@@ -438,6 +476,9 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      and the morph's place is the message thread once there is one to hand
      it to (PLAN.md, stage 2). */
   scope::morphStep(*brain_, *core_, *keyboard_, lfos_);
+  // The zoom made again from what the matrix wrote, and the frame's deposits, as the page draws after its matrix.
+  pictureRun_->afterMatrix();
+  if (pictureFrame) pictureRun_->draw(pictureSource_, kCanvas);
   core_->setRoutes(matrix_->routes(nowMs_));
   const double blockMs = nowMs_;
   lastBlockMs_ = 1000.0 * frames / rate_.load();

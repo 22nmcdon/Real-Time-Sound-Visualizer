@@ -146,14 +146,14 @@ class Beam {
 };
 
 // What the renderer reads that the capture does not.
-struct Figure { int x = 0, y = 1; };
+struct LanePair { int x = 0, y = 1; };  // an X-Y figure's two lanes
 struct Screen {
   std::string display = "yt";   // yt | xy | spect
   double persistence = 0;
   double zoom = 1;
   bool stack = true;
-  Figure xyPair;
-  std::vector<Figure> figures;  // what the source asks for, or none
+  LanePair xyPair;
+  std::vector<LanePair> figures;  // what the source asks for, or none
   std::string beam = "moderate";
   bool beamXY = true, beamYT = false;
 };
@@ -183,7 +183,7 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
   const Plot plot { cx - radius, cy - radius, size, size };
 
   const auto exists = [&](int ch) { return ch >= 0 && static_cast<std::size_t>(ch) < v.channels.size(); };
-  std::vector<Figure> figures { s.xyPair };
+  std::vector<LanePair> figures { s.xyPair };
   if (!lagging && !s.figures.empty()) {
     bool all = true;
     for (const auto& fig : s.figures) all = all && exists(fig.x) && exists(fig.y);

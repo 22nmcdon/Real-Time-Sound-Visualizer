@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "scope/level.h"
+#include "scope/loop.h"  // kPhotoReach
 #include "scope/matrix.h"
 #include "scope/setup.h"
 
@@ -43,7 +44,6 @@ constexpr double kPitchRef = 261.6256; // C4, the pitch source's nought
 constexpr std::size_t kPitchMaxWindow = 16384;
 constexpr double kPitchDip = 0.1, kPitchTrust = 0.35;
 constexpr double kOnsetOn = 0.3, kOnsetOff = 0.12, kOnsetGap = 80;
-constexpr double kPhotoReach = 0.5;    // PHOTO_REACH: the most of a span the picture may move a control
 
 // BANDS: the band split's crossovers, a top of nought for no top.
 struct HearingBand { double from, to; };
