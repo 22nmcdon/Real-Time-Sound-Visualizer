@@ -281,6 +281,8 @@ with sync_playwright() as pw:
       t.state = { version: 5, code: codes[1] };
       await new Promise((r) => setTimeout(r, 700));
       out.none = { mode: fade.mode, attack: fade.envs[0].attack, restart: fade.envs[0].restart };
+      // The fade it put back is the plugin's already: saved again unchanged, it is not sent back.
+      saveFade();
       out.log = t.log.slice();
       return out;
     }""", [code({"pluginHands": [["f", "", {"mode": "in", "envs": [{"attack": 4}, {"release": 0.5}]}]]}), code({})])
