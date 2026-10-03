@@ -1357,25 +1357,29 @@ inline void fadeFromPage(Matrix& matrix, const Json& value) {
     const Json* env = envs && envs->type == Json::Type::Array && static_cast<std::size_t>(i) < envs->a.size()
                       ? &envs->a[static_cast<std::size_t>(i)] : nullptr;
     FadePart p;
-    if (!env || !env->isObject()) {
+    // An envelope that is not an object is the default; an array is an
+    // object to the page's typeof, with nothing in it.
+    if (!env || !(env->isObject() || env->type == Json::Type::Array)) {
       const FadeEnvelope d;  // ENV_DEFAULT
       p.delay = d.delay; p.attack = d.attack; p.attackMid = d.attackMid; p.decay = d.decay; p.decayMid = d.decayMid;
       p.sustain = d.sustain; p.release = d.release; p.releaseMid = d.releaseMid; p.restart = d.restart; p.loop = d.loop;
     } else {
-      const auto number = [&](std::string_view k, std::optional<double>& into) { if (const Json* v = env->get(k)) into = jsToNumber(v); };
+      const auto number = [&](std::string_view k, std::optional<double>& into) {
+        if (const Json* v = env->isObject() ? env->get(k) : nullptr) into = jsToNumber(v);
+      };
       // The page fills a missing attack or release from seconds with ??, to
       // which null is missing too.
-      const bool seconds = env->get("seconds") != nullptr;
+      const bool seconds = env->isObject() && env->get("seconds") != nullptr;
       const auto timed = [&](std::string_view k, std::optional<double>& into) {
-        const Json* v = env->get(k);
+        const Json* v = env->isObject() ? env->get(k) : nullptr;
         if (v && !(seconds && v->type == Json::Type::Null)) into = jsToNumber(v);
       };
       number("delay", p.delay); timed("attack", p.attack); number("attackMid", p.attackMid); number("decay", p.decay);
       number("decayMid", p.decayMid); number("sustain", p.sustain); timed("release", p.release);
       number("releaseMid", p.releaseMid); number("seconds", p.seconds); number("inSeconds", p.inSeconds);
       number("outSeconds", p.outSeconds); number("inMid", p.inMid); number("outMid", p.outMid);
-      if (const Json* v = env->get("restart")) p.restart = v->type == Json::Type::Bool && v->b;
-      if (const Json* v = env->get("loop")) p.loop = v->type == Json::Type::Bool && v->b;
+      if (const Json* v = env->isObject() ? env->get("restart") : nullptr) p.restart = v->type == Json::Type::Bool && v->b;
+      if (const Json* v = env->isObject() ? env->get("loop") : nullptr) p.loop = v->type == Json::Type::Bool && v->b;
     }
     matrix.setFadeEnvelope(p, i);
   }

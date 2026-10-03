@@ -934,6 +934,18 @@ project reopened is the plugin's, whatever the page's storage remembers.
 `scope::fadeFromPage` reads it as the page's `fadeFromHost` does, a code's
 oddities and the fade's old names included.
 
+Mutation: the core's new pieces, 20 of 26 caught. Four are equivalent - a
+law back rounded where the slider rounds to its step anyway (the level, the
+cutoff, the drawbars), and the flag for A's kept controls, which cannot
+differ when it is read - and two are the core holding the panel on A while
+a setup is restored, which its restore never needs, as nothing in it asks
+the keyboard to work the layers out again before the voice controls are
+written; it is kept because the page needs it and the two should not
+differ. The plugin's wiring, six of six; the page's, eight of ten by
+hosttest.py and two more by parity (the page's hold on A, which is the bug
+fix, and the fade's mode checked), with one equivalent left - the fade's
+memory set on connecting, which the first state applied has already set.
+
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 
@@ -946,6 +958,13 @@ WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
 ## Found on the way
+
+- **An envelope that was an array.** The page asks whether each envelope it
+  is handed is an object with `typeof`, to which an array is one, with
+  nothing in it, so the envelope stays as it was; the core asked whether it
+  was a JSON object, and gave an array the defaults. The fade's random runs
+  never made an envelope that was not an object; a surviving mutant that
+  dropped the check said so, and they make arrays, numbers and nulls now.
 
 - **The fade held a copy where the page holds the routing.** A routing
   fading out is the page's routing object itself, so a depth changed and the

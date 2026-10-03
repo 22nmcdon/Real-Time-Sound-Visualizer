@@ -2629,7 +2629,10 @@ def fvalue():
     if c < 0.12: return rrng.choice(["both", 3, []])
     v = {}
     if rrng.random() < 0.95: v["mode"] = rrng.choice(["off", "in", "out", "both", "both", "sideways", None])
-    if rrng.random() < 0.95: v["envs"] = [fenv() for _ in range(rrng.choice([0, 1, 2, 2, 2, 3]))] if rrng.random() < 0.95 else "no"
+    # An envelope may be something other than an object: an array is one to
+    # the page's typeof, with nothing in it; the rest are the default.
+    odd = lambda: rrng.choice([[], [1, 2], 5, "x", None, True])
+    if rrng.random() < 0.95: v["envs"] = [fenv() if rrng.random() < 0.85 else odd() for _ in range(rrng.choice([0, 1, 2, 2, 2, 3]))] if rrng.random() < 0.95 else "no"
     return v
 FULL = {"delay": 0.25, "attack": 1.5, "attackMid": 0.7, "decay": 0.4, "decayMid": 0.3, "sustain": 0.6, "release": 3,
         "releaseMid": 0.2, "restart": True, "loop": False}
