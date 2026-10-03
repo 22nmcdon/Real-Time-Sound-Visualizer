@@ -249,6 +249,45 @@ with sync_playwright() as pw:
           applied == {"kaleido": 4, "menu": "4", "cross": True, "os": 1, "lfo": "square", "mod": "lfo2>gen.amp@-0.3456789",
                       "amp": "42", "shown": True, "log": []}, str(applied))
 
+    more = p.evaluate("""() => {
+      const t = window.__hostTest, out = {};
+      const send = (name, act) => { t.log.length = 0; act(); out[name] = t.log.slice(); };
+      send('layerB', () => el.midiEditB.click());
+      send('layerA', () => el.midiEditA.click());
+      send('fade', () => { el.fadeMode.value = 'both'; el.fadeMode.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('fadeAgain', () => saveFade());
+      send('restart', () => { el.fadeRestart.checked = true; el.fadeRestart.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('rate', () => {
+        selectSource('lfo2');
+        const r = document.getElementById('lfoRate1');
+        r.value = '300'; r.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      return out;
+    }""")
+    fade = json.loads(more["fade"][0][1]) if more["fade"] and len(more["fade"][0]) > 1 else {}
+    check("the A and B buttons are sent; the fade is sent whole when it is saved, and not again unchanged",
+          more["layerB"] == [["scopeClick", "midiEditB"]] and more["layerA"] == [["scopeClick", "midiEditA"]]
+          and more["fade"][0][0] == "scopeFade" and fade.get("mode") == "both" and len(fade.get("envs", [])) == 2
+          and more["fadeAgain"] == [] and len(more["restart"]) == 1 and json.loads(more["restart"][0][1])["envs"][0]["restart"] is True,
+          str(more))
+    check("LFO 2's rate is sent as a slider, by its id",
+          more["rate"] == [["scopeSlider", "lfoRate1", "300"]], str(more["rate"]))
+    faded = p.evaluate("""async (codes) => {
+      const t = window.__hostTest, out = {};
+      t.log.length = 0;
+      t.state = { version: 4, code: codes[0] };
+      await new Promise((r) => setTimeout(r, 700));
+      out.given = { mode: fade.mode, attack: fade.envs[0].attack, b: fade.envs[1].release, shown: el.fadeMode.value };
+      t.state = { version: 5, code: codes[1] };
+      await new Promise((r) => setTimeout(r, 700));
+      out.none = { mode: fade.mode, attack: fade.envs[0].attack, restart: fade.envs[0].restart };
+      out.log = t.log.slice();
+      return out;
+    }""", [code({"pluginHands": [["f", "", {"mode": "in", "envs": [{"attack": 4}, {"release": 0.5}]}]]}), code({})])
+    check("the plugin's fade is put back on the page, and with none told it, the fade's defaults; nothing is sent back",
+          faded["given"] == {"mode": "in", "attack": 4, "b": 0.5, "shown": "in"}
+          and faded["none"] == {"mode": "off", "attack": 2, "restart": False} and faded["log"] == [], str(faded))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

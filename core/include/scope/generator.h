@@ -146,6 +146,7 @@ class Generator {
 
   Tone& tone() { return a_; }
   LayerSettings& toneB() { return b_; }
+  const LayerSettings& toneB() const { return b_; }
 
   // --- the page's `set`, by kind of value -----------------------------------
 

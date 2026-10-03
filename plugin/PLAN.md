@@ -905,6 +905,35 @@ buttons, and to hear a button put back; the page's side, nineteen of
 nineteen, one only after hosttest.py touched the routings it had just put
 back.
 
+**3c: layer B on the panel, LFO 2's rate, and the fade.** Three things 3b
+left out, each because the core had no place for it.
+
+Layer B. With the layers on, the page's A and B buttons choose which layer
+the voice controls show and write (`showLayerOnPanel`): B shown keeps what
+A's controls said and writes B's tone into them, each through its law
+back. The core's panel had a layer field that nothing set, so a slider moved
+with B shown on the page moved A in the plugin. The keyboard now keeps which
+layer is being edited and says so whenever it works the layers out again,
+as the page's `syncLayers` does; the brain shows that layer on its panel
+(`scope::showLayerOnPanel`, `syncLayerPanel`), the laws back are in
+`LAYER_CONTROLS` beside the laws, and the buttons are sent and kept. Its
+parity is a section of its own, with a keyboard there - the layers are
+only on with one, and the harness's page had none, so 3b's runs could
+never have seen this.
+
+LFO 2's rate. Its slider is made when LFO 2 is chosen, so it was not one of
+the sliders the page opened with, and the core's panel table, held to the
+page's, had no place for it. It is LFO 1's slider again (`rangeSpec`), as
+on the page.
+
+The fade. The page keeps it in its own storage, not in a setup, so it was
+never going to arrive with a preset. It is sent whole when it is saved
+(`hostFade`), kept as a hand, and put back on the page from the plugin's
+state - the fade's defaults where the plugin has been told none, since a
+project reopened is the plugin's, whatever the page's storage remembers.
+`scope::fadeFromPage` reads it as the page's `fadeFromHost` does, a code's
+oddities and the fade's old names included.
+
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 

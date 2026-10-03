@@ -9,7 +9,9 @@ A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
 for one frame ("mod") or from now on ("hold"), a macro's knob ("macro", "i"),
 a frame ("step"), a menu, a switch or a text box changed ("change", "id",
-"value", which for a switch is true or false), or a button pressed ("click"). restore_cpp writes the same line from the core.
+"value", which for a switch is true or false), a button pressed ("click"), or
+a keyboard come or gone ("keys", true or false), or the fade as the plugin
+keeps it ("fade", {mode, envs}). restore_cpp writes the same line from the core.
 
 `restore` writes into the page's controls and fires their handlers, so it can
 only be run where there is a DOM; this is the one runner of the port that
@@ -53,8 +55,9 @@ DUMP = """(setups) => {
   // now on (hold), a macro's knob.
   const act = (o) => {
     const input = (e, v) => { e.value = String(v); e.dispatchEvent(new Event("input")); };
-    // LFO 1's rate is in the page only while LFO 1 is the chosen source.
-    if (o.op === "slider" && o.id === "lfoRate0" && !document.getElementById(o.id)) selectSource("lfo1");
+    // An LFO's rate is in the page only while that LFO is the chosen source.
+    const rate = o.op === "slider" && /^lfoRate(\\d)$/.exec(o.id);
+    if (rate && !document.getElementById(o.id)) selectSource("lfo" + (Number(rate[1]) + 1));
     if (o.op === "slider") input(document.getElementById(o.id), o.value);
     else if (o.op === "store") morphStore(o.end);
     else if (o.op === "pos") { input(el.morphPos, o.value); morphStep(); }
@@ -72,6 +75,11 @@ DUMP = """(setups) => {
       e.dispatchEvent(new Event("change"));
     }
     else if (o.op === "click") document.getElementById(o.id).click();
+    // A keyboard there or not, as the on-screen one's being open says without
+    // drawing it: the layers are only on with one, and so is layer B's panel.
+    else if (o.op === "keys") { screenKeys.open = o.value === true; midiApplyGate(); }
+    // The fade as the plugin hands it back, through the page's own fadeFromHost.
+    else if (o.op === "fade") fadeFromHost(o.value);
   };
   for (const setup of setups) {
     let error = null;
@@ -101,6 +109,10 @@ DUMP = """(setups) => {
       score: { on: score.on, step: score.step, voices: score.voices, low: score.low, octaves: score.octaves },
       arp: { mode: el.arpMode.value, rate: el.arpRate.value, octaves: el.arpOctaves.value },
       arpPlays: { mode: arp.mode, rate: arp.rate, octaves: arp.octaves },
+      // The layer the panel shows, and its menus: a layer's other controls are sliders, in ranges.
+      fade: { mode: fade.mode, envs: fade.envs },
+      panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"]
+        .map((id) => [id, el[id].value])),
       thresh: { watch: thresh.watch, level: thresh.level, armed: thresh.armed }, pluck: pluck.note,
       macros: macros.map((m) => ({ name: m.name, value: m.value })),
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),

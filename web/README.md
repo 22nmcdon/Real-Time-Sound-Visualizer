@@ -3692,7 +3692,12 @@ are inline in `scopeHost`.
   fade's (kept in this page's storage, not in a setup), layer B's editing
   (with the layers on, a menu turned while B is on the panel reaches the
   plugin as A's), the MIDI out's port, and LFO 2's rate, which is made when
-  LFO 2 is chosen and so is not one of the sliders the core knows.
+  LFO 2 is chosen and so is not one of the sliders the core knows. Since
+  then (3c) layer B's editing, LFO 2's rate and the fade reach it too: the
+  fade, kept in this page's storage, is sent whole whenever it is saved,
+  and put back from the plugin's state - or reset to its defaults when the
+  plugin has none, since in the plugin the project's fade is the one that
+  counts.
 - *The plugin's state carries every hand.* `pluginHands`, a list of
   [kind, id, value] in the order they happened, replaced 3a's `pluginSliders`;
   the page puts them back the way it would have done them, choosing an LFO
@@ -3703,6 +3708,19 @@ are inline in `scopeHost`.
   starting, long before the script reaches the host's section. A `const`
   read before its line throws even under `typeof`, and declared where it
   was first written it would have stopped the script at its first routing.
+
+**A preset loaded with layer B on the panel went half into B.** `restore`
+put the panel on layer A at its start and left it to the keyboard after
+that; halfway through, the second generator's rows ask the keyboard to work
+the layers out again, and the keyboard still said what the old setup said -
+layers on, B being edited - so B came back on the panel mid-load. The
+preset's shape, drawbars and level had already gone into A's controls by
+then and were kept as A's; everything after them went into B, and A was left
+with B's drawbars. The panel is now held on A for the whole of a restore and
+handed back to the keyboard at the end. Found by the plugin's port, which
+held the panel on A and so disagreed with the page (plugin/PLAN.md, 3c); the
+parity run that found it loads a preset with B chosen and asks that both
+layers are the preset's.
 
 **Two bugs the port found in the page's sources.** Porting the learned
 controllers, the level and the threshold to the C++ core (plugin/PLAN.md, 2e)

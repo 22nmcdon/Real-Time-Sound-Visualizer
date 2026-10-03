@@ -40,6 +40,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -519,10 +520,17 @@ class Keyboard {
 
   // layersOn: two layers, in poly on the waveform with the generator alone.
   bool layersOn() const { return layers_.mode != LayerMode::Off && polyWanted(); }
+  /* Which layer the panel shows (editLayer): B only while there is one, so
+     no control writes into a layer nobody hears. The A and B buttons choose,
+     and whoever keeps the panel is told whenever the layers are worked out
+     again, as the page's syncLayers shows the layer on the panel first. */
+  int editLayer() const { return layersOn() && layers_.edit == 1 ? 1 : 0; }
+  void setEdit(int layer) { layers_.edit = layer == 1 ? 1 : 0; if (onLayers_) onLayers_(); }
+  void setLayerPanel(std::function<void()> f) { onLayers_ = std::move(f); }
 
  private:
   struct Interval { int index = 0, octaves = 0; };
-  struct Layers { LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; };
+  struct Layers { LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0; };
 
   static std::size_t kindOf(Mode m) {
     return m == Mode::Harmonograph ? 1 : m == Mode::Figure ? 2 : m == Mode::Wireframe ? 3 : 0;
@@ -645,6 +653,7 @@ class Keyboard {
 
   // syncLayers: the layers, derived as the chord is, and how they are drawn.
   void syncLayers() {
+    if (onLayers_) onLayers_();
     const bool on = layersOn();
     if (on != t_.hasVoices(1)) {
       if (!on) t_.setVoices(nullptr, 1);
@@ -840,6 +849,7 @@ class Keyboard {
   // The arpeggiator, and what it needs from outside: the time, the tempo, the
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
+  std::function<void()> onLayers_;  // the panel's syncLayerPanel
   ArpState arp_;
   double now_ = 0, bpm_ = 120;
   NoteOut* out_ = nullptr;

@@ -68,6 +68,9 @@ namespace scope {
 // --- the browser's part: what a control makes of a value written into it ------
 
 inline const RangeSpec* rangeSpec(std::string_view id) {
+  // LFO 2's rate is made when LFO 2 is chosen, as LFO 1's is, and so is not
+  // among the sliders the page opened with; it is LFO 1's slider again.
+  if (id == "lfoRate1") id = "lfoRate0";
   for (const auto& r : kRanges) if (id == r.id) return &r;
   return nullptr;
 }
@@ -158,6 +161,10 @@ class Controls {
 struct Brain {
   Controls panel;
   int panelLayer = 0;              // which layer the panel's voice controls write
+  // What layer A's controls said while B is on the panel, and whether there is any.
+  std::vector<std::pair<std::string, std::u16string>> panelKeptA;
+  bool keptA = false;
+  bool panelHeldOnA = false;  // while a setup is restored, as the page's restore holds it
   std::string inputFrom = "live";  // genInput.from
   double inputMode = 0;            // genInput.mode
   struct LfoSetting { Json shape = Json::string(std::string_view("sine")); double free = 0.2; std::string sync; };
@@ -302,42 +309,51 @@ inline std::optional<std::array<double, 9>> parseRegistrationText(const std::u16
   return out;
 }
 
-// One row of LAYER_CONTROLS: the control, the generator's field, and its law.
-struct LayerControl { const char* id; const char* field; enum Kind { Range, Menu, Text } kind; double (*law)(double); };
+// One row of LAYER_CONTROLS: the control, the generator's field, its law, and
+// the law back from the field to the control, for showing layer B on the panel.
+struct LayerControl {
+  const char* id; const char* field; enum Kind { Range, Menu, Text } kind; double (*law)(double); double (*inverse)(double) = nullptr;
+};
 inline const std::vector<LayerControl>& layerControls() {
+  static const auto same = [](double v) { return v; };
+  static const auto hundred = [](double v) { return v / 100; };
+  static const auto byHundred = [](double v) { return v * 100; };
+  static const auto byHundredRound = [](double v) { return jsMathRound(v * 100); };
   static const std::vector<LayerControl> rows {
-    { "amp", "amp", LayerControl::Range, [](double v) { return v / 100; } },
+    { "amp", "amp", LayerControl::Range, hundred, byHundred },
     { "shape", "shape", LayerControl::Text, nullptr },
-    { "envAttack", "attackMs", LayerControl::Range, [](double v) { return v; } },
-    { "envDecay", "decayMs", LayerControl::Range, [](double v) { return v; } },
-    { "envSustain", "sustain", LayerControl::Range, [](double v) { return v / 100; } },
-    { "envRelease", "releaseMs", LayerControl::Range, [](double v) { return v; } },
+    { "envAttack", "attackMs", LayerControl::Range, same, same },
+    { "envDecay", "decayMs", LayerControl::Range, same, same },
+    { "envSustain", "sustain", LayerControl::Range, hundred, byHundred },
+    { "envRelease", "releaseMs", LayerControl::Range, same, same },
     { "bars", "bars", LayerControl::Text, nullptr },
-    { "morph", "morph", LayerControl::Range, [](double v) { return v / 100; } },
-    { "width", "width", LayerControl::Range, [](double v) { return v / 100; } },
-    { "table", "table", LayerControl::Range, [](double v) { return v / 100; } },
-    { "oscRatio", "modRatio", LayerControl::Menu, [](double v) { return v; } },
-    { "oscFm", "fmIndex", LayerControl::Range, [](double v) { return v / 10; } },
-    { "oscRing", "ringMix", LayerControl::Range, [](double v) { return v / 100; } },
-    { "oscSync", "syncRatio", LayerControl::Range, [](double v) { return v / 100; } },
-    { "oscSub", "subLevel", LayerControl::Range, [](double v) { return v / 100; } },
-    { "oscSubOct", "subOctave", LayerControl::Menu, [](double v) { return v; } },
+    { "morph", "morph", LayerControl::Range, hundred, byHundredRound },
+    { "width", "width", LayerControl::Range, hundred, byHundredRound },
+    { "table", "table", LayerControl::Range, hundred, byHundredRound },
+    { "oscRatio", "modRatio", LayerControl::Menu, same, same },
+    { "oscFm", "fmIndex", LayerControl::Range, [](double v) { return v / 10; }, [](double v) { return jsMathRound(v * 10); } },
+    { "oscRing", "ringMix", LayerControl::Range, hundred, byHundredRound },
+    { "oscSync", "syncRatio", LayerControl::Range, hundred, byHundredRound },
+    { "oscSub", "subLevel", LayerControl::Range, hundred, byHundredRound },
+    { "oscSubOct", "subOctave", LayerControl::Menu, same, same },
     { "oscSubShape", "subShape", LayerControl::Text, nullptr },
-    { "oscUnison", "unison", LayerControl::Menu, [](double v) { return v; } },
-    { "oscSpread", "unisonCents", LayerControl::Range, [](double v) { return v; } },
-    { "shpDrive", "drive", LayerControl::Range, [](double v) { return v / 100; } },
-    { "shpFold", "fold", LayerControl::Range, [](double v) { return v / 100; } },
-    { "shpBits", "crushBits", LayerControl::Menu, [](double v) { return v; } },
-    { "shpRate", "crushHz", LayerControl::Menu, [](double v) { return v; } },
-    { "vcfType", "vcfType", LayerControl::Menu, [](double v) { return v; } },
-    { "vcfCut", "vcfCutoff", LayerControl::Range, [](double v) { return cutoffHz(v); } },
-    { "vcfRes", "vcfQ", LayerControl::Range, [](double v) { return resonanceQ(v); } },
-    { "vcfTrack", "vcfTrack", LayerControl::Range, [](double v) { return v / 100; } },
-    { "vcfEnvAmt", "vcfEnv", LayerControl::Range, [](double v) { return v / 10; } },
-    { "vcfAtk", "fAttackMs", LayerControl::Range, [](double v) { return v; } },
-    { "vcfDec", "fDecayMs", LayerControl::Range, [](double v) { return v; } },
-    { "vcfSus", "fSustain", LayerControl::Range, [](double v) { return v / 100; } },
-    { "vcfRel", "fReleaseMs", LayerControl::Range, [](double v) { return v; } },
+    { "oscUnison", "unison", LayerControl::Menu, same, same },
+    { "oscSpread", "unisonCents", LayerControl::Range, same, same },
+    { "shpDrive", "drive", LayerControl::Range, hundred, byHundredRound },
+    { "shpFold", "fold", LayerControl::Range, hundred, byHundredRound },
+    { "shpBits", "crushBits", LayerControl::Menu, same, same },
+    { "shpRate", "crushHz", LayerControl::Menu, same, same },
+    { "vcfType", "vcfType", LayerControl::Menu, same, same },
+    { "vcfCut", "vcfCutoff", LayerControl::Range, [](double v) { return cutoffHz(v); },
+      [](double v) { return jsMathRound(1000 * std::log(v / 20) / std::log(1000.0)); } },
+    { "vcfRes", "vcfQ", LayerControl::Range, [](double v) { return resonanceQ(v); },
+      [](double v) { return jsMathRound(100 * std::log(v / std::sqrt(0.5)) / std::log(20 / std::sqrt(0.5))); } },
+    { "vcfTrack", "vcfTrack", LayerControl::Range, hundred, byHundredRound },
+    { "vcfEnvAmt", "vcfEnv", LayerControl::Range, [](double v) { return v / 10; }, [](double v) { return jsMathRound(v * 10); } },
+    { "vcfAtk", "fAttackMs", LayerControl::Range, same, same },
+    { "vcfDec", "fDecayMs", LayerControl::Range, same, same },
+    { "vcfSus", "fSustain", LayerControl::Range, hundred, byHundredRound },
+    { "vcfRel", "fReleaseMs", LayerControl::Range, same, same },
   };
   return rows;
 }
@@ -354,6 +370,95 @@ inline void applyVoiceLaws(Generator& gen, const Controls& panel, int layer) {
     const double v = row.kind == LayerControl::Range ? panel.range(row.id) : panel.selectNumber(row.id);
     gen.set(row.field, row.law(v), layer);
   }
+}
+
+// A layer's field by the name LAYER_CONTROLS gives it, as the page reads
+// `toneB[field]`; the three that are words are not asked for here.
+inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
+  if (f == "amp") return t.amp;
+  if (f == "attackMs") return t.env.attackMs;
+  if (f == "decayMs") return t.env.decayMs;
+  if (f == "sustain") return t.env.sustain;
+  if (f == "releaseMs") return t.env.releaseMs;
+  if (f == "morph") return t.morph;
+  if (f == "width") return t.width;
+  if (f == "table") return t.table;
+  if (f == "modRatio") return t.modRatio;
+  if (f == "fmIndex") return t.fmIndex;
+  if (f == "ringMix") return t.ringMix;
+  if (f == "syncRatio") return t.syncRatio;
+  if (f == "subLevel") return t.subLevel;
+  if (f == "subOctave") return t.subOctave;
+  if (f == "unison") return t.unison;
+  if (f == "unisonCents") return t.unisonCents;
+  if (f == "drive") return t.drive;
+  if (f == "fold") return t.fold;
+  if (f == "crushBits") return t.crushBits;
+  if (f == "crushHz") return t.crushHz;
+  if (f == "vcfType") return t.vcfType;
+  if (f == "vcfCutoff") return t.vcfCutoff;
+  if (f == "vcfQ") return t.vcfQ;
+  if (f == "vcfTrack") return t.vcfTrack;
+  if (f == "vcfEnv") return t.vcfEnv;
+  if (f == "fAttackMs") return t.fenv.attackMs;
+  if (f == "fDecayMs") return t.fenv.decayMs;
+  if (f == "fSustain") return t.fenv.sustain;
+  if (f == "fReleaseMs") return t.fenv.releaseMs;
+  return std::nan("");
+}
+
+// A layer control's value on the panel as its text, and written back as the
+// browser takes it: the drawbars as one registration of nine sliders.
+inline std::u16string layerPanelValue(const Controls& panel, const LayerControl& row) {
+  if (std::string_view(row.id) == "bars") {
+    std::u16string out;
+    for (int k = 0; k < 9; k++) out += toU16(jsNumberToString(panel.range("bar" + std::to_string(k))));
+    return out;
+  }
+  return row.kind == LayerControl::Range ? toU16(jsNumberToString(panel.range(row.id))) : utf8To16(panel.select(row.id));
+}
+inline void setLayerPanelValue(Controls& panel, const LayerControl& row, const std::u16string& text) {
+  if (std::string_view(row.id) == "bars") {
+    const auto levels = parseRegistrationText(text);  // el.bars's setter: nine digits or nothing
+    if (!levels) return;
+    for (int k = 0; k < 9; k++) panel.setRange("bar" + std::to_string(k), toU16(jsNumberToString((*levels)[static_cast<std::size_t>(k)])));
+    return;
+  }
+  if (row.kind == LayerControl::Range) panel.setRange(row.id, text);
+  else panel.setSelect(row.id, text);
+}
+
+/* showLayerOnPanel: the layer controls are layer A's, moved between the
+   layers rather than copied. Showing B keeps what A's said and writes B's
+   tone into them through each one's law back; showing A again puts A's back
+   rather than reading the generator, as the page does. The panel's labels
+   are the page's. */
+inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
+  if (layer == b.panelLayer) return;
+  if (layer == 1) {
+    b.panelKeptA.clear();
+    for (const auto& row : layerControls()) b.panelKeptA.push_back({ row.id, layerPanelValue(b.panel, row) });
+    const LayerSettings& toneB = gen.toneB();
+    for (const auto& row : layerControls()) {
+      const std::string_view field = row.field;
+      std::u16string text;
+      if (field == "shape") text = utf8To16(toneB.shapeName);
+      else if (field == "subShape") text = utf8To16(toneB.subShapeName);
+      else if (field == "bars") for (const double v : toneB.bars) text += toU16(jsNumberToString(jsMathRound(v)));
+      else text = toU16(jsNumberToString(row.inverse(layerFieldValue(toneB, field))));
+      setLayerPanelValue(b.panel, row, text);
+    }
+  } else if (b.keptA) {
+    for (const auto& row : layerControls()) {
+      for (const auto& [id, text] : b.panelKeptA) if (id == row.id) setLayerPanelValue(b.panel, row, text);
+    }
+  }
+  b.keptA = layer == 1;
+  b.panelLayer = layer;
+}
+// syncLayerPanel: the layer the keyboard says is being edited, on the panel.
+inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys) {
+  showLayerOnPanel(b, gen, b.panelHeldOnA ? 0 : keys.editLayer());
 }
 
 // Layer B's sound: B's own field where the setup gives one, else what the
@@ -566,6 +671,14 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   const auto str = [&](std::string_view key) -> std::u16string { const Json* v = s(key); return v ? jsToString(*v) : u"undefined"; };
   const auto isTrue = [&](std::string_view key) { const Json* v = s(key); return v && v->type == Json::Type::Bool && v->b; };
   const auto isString = [&](std::string_view key, std::u16string_view want) { const Json* v = s(key); return v && v->type == Json::Type::String && v->s == want; };
+  // The controls say layer A while a setup is being written into them, held
+  // there until it is done, and then whatever the keyboard says.
+  struct HeldOnA {
+    Brain& b; const Generator& gen; const Keyboard& keys;
+    ~HeldOnA() { b.panelHeldOnA = false; syncLayerPanel(b, gen, keys); }
+  } held { brain, gen, keys };
+  brain.panelHeldOnA = true;
+  showLayerOnPanel(brain, gen, 0);
   // within(): a finite number held to a range, else the default.
   const auto within = [&](std::string_view key, double lo, double hi, double dflt) {
     const double v = num(key);
@@ -1037,9 +1150,10 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "swingDrive") gen.set("swingDrive", v / 100);
   else if (id == "gen2Rate") gen.set("gen2Rate", v);
   else if (id == "inputDepth") gen.set("inputDepth", v / 100);
-  else if (id == "lfoRate0") {
-    b.lfo[0].free = v / 100;
-    if (b.lfo[0].sync.empty()) lfos[0].rate = b.lfo[0].free;
+  else if (id == "lfoRate0" || id == "lfoRate1") {
+    const std::size_t i = id.back() == '1' ? 1 : 0;
+    b.lfo[i].free = v / 100;
+    if (b.lfo[i].sync.empty()) lfos[i].rate = b.lfo[i].free;
   }
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
   else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
@@ -1221,12 +1335,50 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
   else if (id == "midiDyad") keys.setMode(NoteMode::Dyad);
   else if (id == "midiMono") keys.setMode(NoteMode::Mono);
   else if (id == "midiPoly") keys.setMode(NoteMode::Poly);
+  else if (id == "midiEditA" || id == "midiEditB") keys.setEdit(id == "midiEditB" ? 1 : 0);
   else if (id == "planeOS1" || id == "planeOS2" || id == "planeOS4") {
     b.plane.os = id.back() - '0';
     syncPlanePanel(b); syncPlane(b, gen);
   }
   else return false;
   return true;
+}
+
+// The fade as the page keeps it, {mode, envs}, which the page in the plugin
+// sends whole when it is saved (fadeFromHost): a mode it has not got is off,
+// and an envelope not given is the default. Each number as the page's
+// Number() takes it, so null is nought; restart and loop only if true.
+inline void fadeFromPage(Matrix& matrix, const Json& value) {
+  const Json* mode = value.isObject() ? value.get("mode") : nullptr;
+  const std::u16string m = mode && mode->type == Json::Type::String ? mode->s : u"off";
+  matrix.setFade(m == u"in" ? FadeMode::In : m == u"out" ? FadeMode::Out : m == u"both" ? FadeMode::Both : FadeMode::Off);
+  const Json* envs = value.isObject() ? value.get("envs") : nullptr;
+  for (int i = 0; i < 2; i++) {
+    const Json* env = envs && envs->type == Json::Type::Array && static_cast<std::size_t>(i) < envs->a.size()
+                      ? &envs->a[static_cast<std::size_t>(i)] : nullptr;
+    FadePart p;
+    if (!env || !env->isObject()) {
+      const FadeEnvelope d;  // ENV_DEFAULT
+      p.delay = d.delay; p.attack = d.attack; p.attackMid = d.attackMid; p.decay = d.decay; p.decayMid = d.decayMid;
+      p.sustain = d.sustain; p.release = d.release; p.releaseMid = d.releaseMid; p.restart = d.restart; p.loop = d.loop;
+    } else {
+      const auto number = [&](std::string_view k, std::optional<double>& into) { if (const Json* v = env->get(k)) into = jsToNumber(v); };
+      // The page fills a missing attack or release from seconds with ??, to
+      // which null is missing too.
+      const bool seconds = env->get("seconds") != nullptr;
+      const auto timed = [&](std::string_view k, std::optional<double>& into) {
+        const Json* v = env->get(k);
+        if (v && !(seconds && v->type == Json::Type::Null)) into = jsToNumber(v);
+      };
+      number("delay", p.delay); timed("attack", p.attack); number("attackMid", p.attackMid); number("decay", p.decay);
+      number("decayMid", p.decayMid); number("sustain", p.sustain); timed("release", p.release);
+      number("releaseMid", p.releaseMid); number("seconds", p.seconds); number("inSeconds", p.inSeconds);
+      number("outSeconds", p.outSeconds); number("inMid", p.inMid); number("outMid", p.outMid);
+      if (const Json* v = env->get("restart")) p.restart = v->type == Json::Type::Bool && v->b;
+      if (const Json* v = env->get("loop")) p.loop = v->type == Json::Type::Bool && v->b;
+    }
+    matrix.setFadeEnvelope(p, i);
+  }
 }
 
 // --- macros and the morph ------------------------------------------------------------------

@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
   keys.setPresent(false);  // the page in the harness has no keyboard plugged in
   scope::Matrix matrix;
   scope::Brain brain;
+  keys.setLayerPanel([&] { scope::syncLayerPanel(brain, gen, keys); });
   std::vector<std::unique_ptr<StandIn>> standIns;
   {
     std::ifstream f(argv[2]);
@@ -178,6 +179,8 @@ int main(int argc, char** argv) {
         const bool checked = value && value->type == Json::Type::Bool && value->b;
         scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, matrix, lfos);
       } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys);
+      else if (what == "fade") scope::fadeFromPage(matrix, value ? *value : Json::null());
+      else if (what == "keys") { keys.setPresent(value && value->type == Json::Type::Bool && value->b); keys.frame(0); }
     } else {
       scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
     }
@@ -244,6 +247,27 @@ int main(int argc, char** argv) {
     arpPlays.set("mode", str(keys.arp().mode)); arpPlays.set("rate", str(keys.arp().rate));
     arpPlays.set("octaves", num(keys.arp().octaves));
     out.set("arpPlays", arpPlays);
+    {
+      Json fade = Json::object(), envs = Json::array();
+      const auto mode = matrix.fadeMode();
+      fade.set("mode", str(mode == scope::FadeMode::In ? "in" : mode == scope::FadeMode::Out ? "out" : mode == scope::FadeMode::Both ? "both" : "off"));
+      for (int i = 0; i < 2; i++) {
+        const auto& e = matrix.fadeEnvelope(i);
+        Json o = Json::object();
+        o.set("delay", num(e.delay)); o.set("attack", num(e.attack)); o.set("attackMid", num(e.attackMid));
+        o.set("decay", num(e.decay)); o.set("decayMid", num(e.decayMid)); o.set("sustain", num(e.sustain));
+        o.set("release", num(e.release)); o.set("releaseMid", num(e.releaseMid));
+        o.set("restart", flag(e.restart)); o.set("loop", flag(e.loop));
+        envs.a.push_back(o);
+      }
+      fade.set("envs", envs);
+      out.set("fade", fade);
+    }
+    out.set("panelLayer", num(brain.panelLayer));
+    Json menus = Json::object();
+    for (const char* id : { "shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType" })
+      menus.set(std::string_view(id), str(brain.panel.select(id)));
+    out.set("menus", menus);
     Json thresh = Json::object();
     thresh.set("watch", Json::string(brain.threshWatch)); thresh.set("level", num(brain.threshLevel)); thresh.set("armed", flag(brain.thresh.armed));
     out.set("thresh", thresh);

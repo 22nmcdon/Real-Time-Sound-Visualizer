@@ -2435,6 +2435,7 @@ def cop():
     if c < 0.75: return {"op": "change", "id": rrng.choice(CSWITCHES), "value": rrng.random() < 0.5}
     if c < 0.82: id = rrng.choice(list(CTEXT)); return {"op": "change", "id": id, "value": rrng.choice(CTEXT[id])}
     if c < 0.95: return {"op": "click", "id": rrng.choice(CCLICKS)}
+    if c < 0.97: return {"op": "slider", "id": "lfoRate1", "value": mvalue("lfoRate0")}
     return mslider(ctl_ids)
 def crun():
     return [_json.loads(rrng.choice(presets)) if rrng.random() < 0.7 else {}] + [cop() for _ in range(rrng.randint(4, 14))]
@@ -2464,7 +2465,9 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
          {"op": "change", "id": "keyRoot", "value": "2"}, {"op": "change", "id": "keyScale", "value": "minor"},  # 36, 37
          {"op": "change", "id": "scoreVoices", "value": "nonsense"},                                       # 38
-         {"op": "change", "id": "genMode", "value": "harmonograph"}, {"op": "change", "id": "midiPlay", "value": True}]  # 39, 40
+         {"op": "change", "id": "genMode", "value": "harmonograph"}, {"op": "change", "id": "midiPlay", "value": True},  # 39, 40
+         {"op": "slider", "id": "lfoRate1", "value": 120}, {"op": "change", "id": "lfoSync1", "value": "1/4"},  # 41, 42
+         {"op": "slider", "id": "lfoRate1", "value": 300}]                                                 # 43
 clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(150) for o in crun()]
 cpg, cpt = rboth(clines, "control_ops.txt")
 cb = rbad(cpg, cpt)
@@ -2502,6 +2505,9 @@ check("with the quantiser on, the key's root and its scale each move the mask at
       "%r %r %r" % (cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]))
 check("the score switched on with four voices, and a number of voices the menu has not got is one",
       cp[32]["score"]["on"] is True and cp[33]["score"]["voices"] == 4 and cp[38]["score"]["voices"] == 1)
+check("LFO 2's rate moves it, and moved while it is synced is its free rate, the beat's going on",
+      cp[41]["lfos"][1]["rate"] == 1.2 and cp[41]["lfos"][1]["free"] == 1.2 and cp[42]["lfos"][1]["rate"] == 2
+      and cp[43]["lfos"][1]["free"] == 3 and cp[43]["lfos"][1]["rate"] == 2, repr([cp[i]["lfos"][1] for i in (41, 42, 43)]))
 check("the harmonograph played at the note's pitch by its switch",
       cp[39]["midi"]["play"]["harmonograph"] is False and cp[40]["midi"]["play"]["harmonograph"] is True, repr(cp[40]["midi"]["play"]))
 check("a shape the menu has not got is no shape", cp[34]["a"]["shape"] != "nonsense", repr(cp[34]["a"]["shape"]))
@@ -2521,6 +2527,141 @@ cnull("the threshold watching LFO 1", 28, lambda o: o | {"value": "lfo1"})
 cnull("another name", 30, lambda o: o | {"value": "Wibble"})
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
+
+print("\n--- layer B on the panel ---")
+# With the layers on, the A and B buttons choose which layer the panel's
+# voice controls show and write: B shown keeps what A's controls said and
+# writes B's tone into them, each through its law back. The page's own
+# handlers against scope::showLayerOnPanel and the keyboard's editLayer,
+# with a keyboard there - the layers are only on with one.
+LSLIDERS = ["amp", "envAttack", "envDecay", "envSustain", "envRelease", "morph", "width", "table", "oscFm", "oscRing",
+            "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt",
+            "vcfAtk", "vcfDec", "vcfSus", "vcfRel"] + ["bar%d" % k for k in range(9)]
+LMENUS = ["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"]
+def lop():
+    c = rrng.random()
+    if c < 0.45: return mslider(LSLIDERS)
+    if c < 0.65: id = rrng.choice(LMENUS); return {"op": "change", "id": id, "value": rrng.choice(pctl["selects"][id]["options"])}
+    if c < 0.8: return {"op": "click", "id": rrng.choice(["midiEditA", "midiEditB", "midiEditB"])}
+    if c < 0.86: return {"op": "change", "id": "midiLayers", "value": rrng.choice(["off", "split", "layer", "layer"])}
+    if c < 0.9: return {"op": "click", "id": rrng.choice(["midiPoly", "midiPoly", "midiMono", "midiDyad"])}
+    if c < 0.92: return {"op": "keys", "value": rrng.random() < 0.7}
+    if c < 0.94: return {"op": "change", "id": "genMode", "value": rrng.choice(["wave", "wave", "figure"])}
+    if c < 0.96: return {"op": "store", "end": rrng.choice(["a", "b"])}
+    if c < 0.98: return {"op": "pos", "value": rrng.randint(0, 100)}
+    return _json.loads(rrng.choice(presets))
+def lrun():
+    start = [_json.loads(rrng.choice(presets)) if rrng.random() < 0.6 else {}, {"op": "keys", "value": True},
+             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "change", "id": "midiLayers", "value": rrng.choice(["split", "layer"])}, {"op": "click", "id": "midiEditB"}]
+    return start + [lop() for _ in range(rrng.randint(6, 16))]
+# Made to be read: A's level set to 30, B chosen and its level set to 80,
+# its shape, a drawbar and its unison; A chosen again; B chosen and the
+# layers turned off under it; a preset loaded with B chosen; the keyboard gone.
+LMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                    # 0-2
+         {"op": "change", "id": "midiLayers", "value": "layer"}, {"op": "slider", "id": "amp", "value": 30},  # 3, 4
+         {"op": "click", "id": "midiEditB"}, {"op": "slider", "id": "amp", "value": 80},            # 5, 6
+         {"op": "change", "id": "shape", "value": "square"}, {"op": "slider", "id": "bar3", "value": 8},  # 7, 8
+         {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "click", "id": "midiEditA"},     # 9, 10
+         {"op": "click", "id": "midiEditB"}, {"op": "change", "id": "midiLayers", "value": "off"},  # 11, 12
+         {"op": "change", "id": "midiLayers", "value": "layer"}, _json.loads(presets[4]),           # 13, 14
+         {"op": "keys", "value": False}]                                                           # 15
+llines = [_json.dumps(o) for o in LMADE] + [_json.dumps(o) for _ in range(80) for o in lrun()]
+lpg, lpt = rboth(llines, "layerb_ops.txt")
+lb = rbad(lpg, lpt)
+check("%d hands with the layers on, layer A and layer B on the panel in turn, leave the same instrument" % len(llines),
+      not lb and len(llines) > 900, lb[0] if lb else "")
+lp = [_json.loads(l) for l in lpg]
+check("with the layers on, B chosen shows B on the panel and A's level stays A's",
+      lp[4]["ranges"]["amp"] == 30 and lp[4]["panelLayer"] == 0 and lp[5]["panelLayer"] == 1
+      and lp[5]["ranges"]["amp"] == round(lp[5]["b"]["amp"] * 100) and lp[5]["ranges"]["amp"] != 30,
+      "%r %r" % (lp[5]["panelLayer"], lp[5]["ranges"]["amp"]))
+check("a slider, a menu and a drawbar moved with B shown are B's, and A's are untouched",
+      lp[6]["b"]["amp"] == 0.8 and lp[6]["a"]["amp"] == 0.3 and lp[7]["b"]["shape"] == "square"
+      and lp[7]["a"]["shape"] != "square" and lp[8]["b"]["bars"][3] == 8 and lp[8]["a"]["bars"] != lp[8]["b"]["bars"]
+      and lp[9]["b"]["unison"] == 3 and lp[9]["a"]["unison"] != 3,
+      "%r %r" % (lp[7]["a"]["shape"], lp[9]["a"]["unison"]))
+check("A chosen again puts A's controls back as they were, its menus among them",
+      lp[10]["panelLayer"] == 0 and lp[10]["ranges"]["amp"] == 30 and lp[10]["menus"]["shape"] == lp[4]["menus"]["shape"]
+      and lp[10]["menus"]["oscUnison"] == lp[4]["menus"]["oscUnison"], repr(lp[10]["menus"]))
+check("the layers turned off under B put A back on the panel, and on again show B",
+      lp[11]["panelLayer"] == 1 and lp[12]["panelLayer"] == 0 and lp[12]["ranges"]["amp"] == 30 and lp[13]["panelLayer"] == 1)
+p4 = _json.loads(presets[4])
+check("a preset loaded with B chosen is the preset's in A, and in B where it gives B nothing of its own",
+      lp[14]["a"]["shape"] == p4["shape"] == lp[14]["b"]["shape"] and lp[14]["a"]["amp"] == 0.55 == lp[14]["b"]["amp"]
+      and lp[14]["a"]["bars"] == [0, 0, 8, 7, 4, 0, 0, 0, 0] == lp[14]["b"]["bars"],
+      "A %r %r %r, B %r %r %r" % (lp[14]["a"]["shape"], lp[14]["a"]["amp"], lp[14]["a"]["bars"], lp[14]["b"]["shape"],
+                                  lp[14]["b"]["amp"], lp[14]["b"]["bars"]))
+check("and the keyboard gone shows A", lp[15]["panelLayer"] == 0, repr(lp[15]["panelLayer"]))
+lmoved = sum(1 for i in range(1, len(lp)) if lp[i]["panelLayer"] != lp[i - 1]["panelLayer"])
+check("the runs move the panel between the layers %d times, and write B %d times" % (lmoved,
+      sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i - 1]["panelLayer"] == 1)),
+      lmoved > 100 and sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i - 1]["panelLayer"] == 1) > 150)
+def lnull(what, index, change):
+    lines = list(llines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "layerb_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(lpt[index])) != [])
+lnull("A chosen where B was", 5, lambda o: o | {"id": "midiEditA"})
+lnull("B's level a step lower", 6, lambda o: o | {"value": 79})
+lnull("the layers split where they were layered", 13, lambda o: o | {"value": "split"})
+check("and the comparison fails against the page's operations one out of step", rbad(lpg[1:], lpt[:-1]) != [])
+
+print("\n--- the fade from the plugin ---")
+# The fade the page keeps in its own storage, sent whole to the plugin when
+# it is saved and handed back by the plugin's state: the page's own
+# fadeFromHost against scope::fadeFromPage, with what the page sends and
+# with what a code could hold - a mode it has not got, numbers as words, the
+# names the fade had before its envelope, an envelope missing, nothing.
+def fenv():
+    keys = ["delay", "attack", "attackMid", "decay", "decayMid", "sustain", "release", "releaseMid", "restart", "loop",
+            "seconds", "inSeconds", "outSeconds", "inMid", "outMid"]
+    out = {}
+    for k in rrng.sample(keys, rrng.randint(0, len(keys))):
+        c = rrng.random()
+        out[k] = (rrng.random() < 0.5 if k in ("restart", "loop") and c < 0.7 else
+                  round(rrng.uniform(-1, 12), rrng.choice([0, 1, 2])) if c < 0.75 else
+                  rrng.choice([None, "3", "x", True, [], 0]))
+    return out
+def fvalue():
+    c = rrng.random()
+    if c < 0.08: return None
+    if c < 0.12: return rrng.choice(["both", 3, []])
+    v = {}
+    if rrng.random() < 0.95: v["mode"] = rrng.choice(["off", "in", "out", "both", "both", "sideways", None])
+    if rrng.random() < 0.95: v["envs"] = [fenv() for _ in range(rrng.choice([0, 1, 2, 2, 2, 3]))] if rrng.random() < 0.95 else "no"
+    return v
+FULL = {"delay": 0.25, "attack": 1.5, "attackMid": 0.7, "decay": 0.4, "decayMid": 0.3, "sustain": 0.6, "release": 3,
+        "releaseMid": 0.2, "restart": True, "loop": False}
+FMADE = [{}, {"op": "fade", "value": {"mode": "both", "envs": [FULL, dict(FULL, attack=0.5, loop=True)]}},      # 1
+         {"op": "fade", "value": None},                                                                       # 2
+         {"op": "fade", "value": {"mode": "in", "envs": [{"seconds": 4, "attack": None}, {"inSeconds": 0.3, "outMid": 0.8}]}},  # 3
+         {"op": "fade", "value": {"mode": "sideways", "envs": [{"attack": 99, "sustain": "0.5", "delay": None}]}}]  # 4
+flines = [_json.dumps(o) for o in FMADE] + [_json.dumps({"op": "fade", "value": fvalue()}) for _ in range(300)]
+fpg, fpt = rboth(flines, "fade_ops.txt")
+fb = rbad(fpg, fpt)
+check("%d fades handed back by the plugin, as the page sends them and as a code could hold them, are the same fade" % len(flines),
+      not fb, fb[0] if fb else "")
+fp = [_json.loads(l)["fade"] for l in fpg]
+check("the page's fade comes back whole, mode and both layers' envelopes",
+      fp[1]["mode"] == "both" and fp[1]["envs"][0] == FULL and fp[1]["envs"][1]["attack"] == 0.5 and fp[1]["envs"][1]["loop"] is True,
+      repr(fp[1]))
+check("none is the fade's defaults, off with two-second fades",
+      fp[2]["mode"] == "off" and fp[2]["envs"][0]["attack"] == 2 and fp[2]["envs"][1]["release"] == 2 and fp[2]["envs"][0]["restart"] is False,
+      repr(fp[2]))
+check("the names from before the envelope still read, a null attack beside seconds is the seconds",
+      fp[3]["envs"][0]["attack"] == 4 and fp[3]["envs"][0]["release"] == 4 and fp[3]["envs"][1]["attack"] == 0.3
+      and fp[3]["envs"][1]["releaseMid"] == 0.8, repr(fp[3]["envs"]))
+check("a mode it has not got is off; a time is held to ten seconds, a word that is a number is that number, null is nought",
+      fp[4]["mode"] == "off" and fp[4]["envs"][0]["attack"] == 10 and fp[4]["envs"][0]["sustain"] == 0.5 and fp[4]["envs"][0]["delay"] == 0
+      and fp[4]["envs"][1] == fp[2]["envs"][1], repr(fp[4]["envs"][0]))
+def fnull(what, index, change):
+    lines = list(flines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "fade_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(fpt[index])) != [])
+fnull("an attack a tenth longer", 1, lambda o: {"op": "fade", "value": {"mode": "both", "envs": [dict(FULL, attack=1.6), o["value"]["envs"][1]]}})
+fnull("fading in only", 1, lambda o: {"op": "fade", "value": dict(o["value"], mode="in")})
 
 print()
 if fails:

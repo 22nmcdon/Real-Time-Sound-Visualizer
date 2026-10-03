@@ -50,6 +50,10 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         if (!args.isEmpty()) owner.pageClick(args[0].toString().toStdString());
         complete(juce::var());
       })
+      .withNativeFunction("scopeFade", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        owner.pageFade(args.isEmpty() ? std::string() : args[0].toString().toStdString());
+        complete(juce::var());
+      })
       .withNativeFunction("scopeRoutings", [&owner](const juce::Array<juce::var>& args, auto complete) {
         owner.pageRoutings(args.isEmpty() ? std::string() : args[0].toString().toStdString());
         complete(juce::var());

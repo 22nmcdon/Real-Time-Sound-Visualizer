@@ -1084,6 +1084,68 @@ int main() {
           && kept == "[[\"s\",\"vcfCut\",\"900\"],[\"s\",\"amp\",\"30\"]]",
           "cutoff " + num(p.slider("vcfCut")) + ", amp " + num(p.slider("amp")) + "; " + kept);
   }
+  {
+    /* With the layers on, the B button on the page puts layer B on the
+       plugin's panel as on the page's, so a slider and a menu moved there are
+       B's; A's stay where they were. And it is kept: a fresh plugin given the
+       state has B as it was left, and A. Without the button, the same hands
+       are A's - the null. */
+    const auto layered = [&](bool chooseB) {
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      p->pageClick("midiPoly");
+      p->pageControl("midiLayers", scope::Json::string(std::string_view("layer")));
+      if (chooseB) p->pageClick("midiEditB");
+      p->pageSlider("amp", u"80");
+      p->pageControl("shape", scope::Json::string(std::string_view("square")));
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer none;
+      p->processBlock(buf, none);
+      return p;
+    };
+    auto withB = layered(true), withA = layered(false);
+    juce::MemoryBlock state;
+    withB->getStateInformation(state);
+    ScopeProcessor q;
+    q.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    q.prepareToPlay(rate, block);
+    const auto& a = withB->tone();
+    check("with the layers on, B chosen on the page puts B on the plugin's panel: a slider and a menu moved there are B's",
+          withB->toneB().amp == 0.8 && withB->toneB().shapeName == "square" && a.amp == 0.55 && a.shapeName != "square"
+          && withB->slider("amp") == 80 && withA->tone().amp == 0.8 && withA->toneB().amp != 0.8,
+          "B " + num(withB->toneB().amp) + " " + withB->toneB().shapeName + ", A " + num(a.amp) + " " + a.shapeName
+          + "; without the button A " + num(withA->tone().amp));
+    check("and a fresh plugin given the state has B as it was left, on its panel, and A",
+          q.toneB().amp == 0.8 && q.toneB().shapeName == "square" && q.tone().amp == 0.55 && q.slider("amp") == 80,
+          "B " + num(q.toneB().amp) + ", A " + num(q.tone().amp) + ", panel " + num(q.slider("amp")));
+  }
+  {
+    /* LFO 2's rate, a slider made when LFO 2 is chosen; and the fade, which
+       the page keeps in its own storage and sends whole. Both are kept. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    const double before = p.lfoRate(1);
+    p.pageSlider("lfoRate1", u"300");
+    p.pageFade(R"({"mode":"both","envs":[{"delay":0.25,"attack":1.5,"attackMid":0.7,"decay":0.4,"decayMid":0.3,"sustain":0.6,)"
+               R"("release":3,"releaseMid":0.2,"restart":true,"loop":false},{"attack":0.5}]})");
+    p.pageFade("not json");
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p.processBlock(buf, none);
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    ScopeProcessor q;
+    q.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    q.prepareToPlay(rate, block);
+    const auto& e = p.matrix().fadeEnvelope(0);
+    check("LFO 2's rate moved on the page is LFO 2's in the plugin, and kept",
+          before == 0.5 && p.lfoRate(1) == 3 && q.lfoRate(1) == 3, num(before) + " then " + num(p.lfoRate(1)) + ", kept " + num(q.lfoRate(1)));
+    check("the fade sent from the page is the plugin's, both layers' envelopes, and kept; what does not read is not",
+          p.matrix().fadeMode() == scope::FadeMode::Both && e.attack == 1.5 && e.sustain == 0.6 && e.restart
+          && p.matrix().fadeEnvelope(1).attack == 0.5 && p.matrix().fadeEnvelope(1).release == 2
+          && q.matrix().fadeMode() == scope::FadeMode::Both && q.matrix().fadeEnvelope(0).attack == 1.5,
+          "attack " + num(e.attack) + ", B's " + num(p.matrix().fadeEnvelope(1).attack) + "; kept " + num(q.matrix().fadeEnvelope(0).attack));
+  }
 
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);

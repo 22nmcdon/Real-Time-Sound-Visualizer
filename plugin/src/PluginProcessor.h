@@ -93,6 +93,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
 
   // The tone and the keyboard's settings, for the shell test to read.
   const scope::Tone& tone() const { return core_->tone(); }
+  const scope::LayerSettings& toneB() const { return core_->toneB(); }
   scope::Keyboard::Settings keys() const { return keyboard_->settings(); }
   // The routings, for whoever sets them: the shell test now, the brain's
   // setup later. Not to be touched while the audio thread runs.
@@ -141,6 +142,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void pageControl(const std::string& id, scope::Json value);
   void pageClick(const std::string& id);
   void pageRoutings(std::string_view text);
+  // And the fade, which the page keeps in its own storage, sent whole as JSON when it is saved.
+  void pageFade(std::string_view json);
   struct PageState { int version = 0; std::string code; };
   PageState pageState() const;
   double slider(const char* id) const { return brain_->panel.range(id); }
@@ -157,6 +160,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void change(const std::string& id, const scope::Json& value);
   void click(const std::string& id);
   void routings(const std::string& text);
+  void fade(const scope::Json& value);
   // A hand put back from a saved state, as the page sends it.
   void replay(const scope::Json& hand);
   // A hand remembered, in place of an earlier one it makes redundant.
@@ -205,7 +209,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   struct Hand { std::string key; scope::Json hand; };
   std::vector<Hand> hands_;
   struct PageCommand {
-    enum Kind { Slider, Setup, Control, Click, Routings } kind;
+    enum Kind { Slider, Setup, Control, Click, Routings, Fade } kind;
     std::string id; std::u16string text; scope::Json value; std::optional<scope::Json> setup;
   };
   juce::SpinLock queueLock_;

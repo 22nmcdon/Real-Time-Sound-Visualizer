@@ -6148,6 +6148,12 @@ syncMorphPanel();
    What it does not fade: an event routing, which fires or does not, and a
    depth you drag, which is your hand and should answer it. Menus and switches
    in a preset change at once, as they do under the morph. */
+/* Whether the page is the plugin's face and what it last sent it: with the
+   rest of that further down (hostConnect), but declared here, as
+   touchRoutings and saveFade ask it and run while the page is still
+   starting. */
+const hostSync = { on: false, seen: 0, applying: false, routings: "", fade: "" };
+
 const FADE_MODES = [["off", "Off"], ["in", "In"], ["out", "Out"], ["both", "In and out"]];
 const FADE_KEY = "scope.fade";
 /* The envelope, one per layer. It began as two numbers - how long a fade in
@@ -6363,6 +6369,7 @@ function sourceNow(source, layer = 0) {
 function saveFade() {
   try { window.localStorage.setItem(FADE_KEY, JSON.stringify({ mode: fade.mode, envs: fade.envs })); }
   catch (error) { /* private window */ }
+  hostFade();
 }
 /* One layer's envelope, each number clamped. The names the fade had before
    the envelope - `inSeconds`, `outSeconds`, `inMid`, `outMid`, and `seconds`
@@ -6805,10 +6812,6 @@ function fireEvents() {
 const genMod = new Float32Array(GEN_DESTS.length);
 const genRoutes = [];
 let modDirty = true;
-/* Whether the page is the plugin's face and what it last sent it: with the
-   rest of that further down (hostConnect), but declared here, as
-   touchRoutings asks it and runs while the page is still starting. */
-const hostSync = { on: false, seen: 0, applying: false, routings: "" };
 
 let repaintQueued = false;
 
@@ -16979,6 +16982,7 @@ function morphReading(at) {
    otherwise have been built with B's envelope. */
 let panelLayer = 0;
 let panelKeptA = null;
+let panelHeldOnA = false;  // while a setup is restored: see restore
 
 function showLayerOnPanel(layer) {
   if (layer === panelLayer) return;
@@ -17044,7 +17048,7 @@ function syncBars() {
 }
 
 function syncLayerPanel() {
-  showLayerOnPanel(editLayer());
+  showLayerOnPanel(panelHeldOnA ? 0 : editLayer());
 }
 
 /* And where its SOUND is, the same question a fourth time. The tone source
@@ -18698,8 +18702,26 @@ function snapshot() {
 }
 
 /* Everything goes back through the same setters the controls use, so the
-   screen and the state cannot end up disagreeing about what is loaded. */
+   screen and the state cannot end up disagreeing about what is loaded.
+
+   The panel is held on layer A for the whole of it. It used to be put on A
+   at the start and left to the keyboard after that, and halfway through a
+   restore asks the keyboard to work the layers out again (the second
+   generator's rows do) while the keyboard still says what the old setup
+   said. With layer B on the panel before a preset loaded, B came back
+   halfway, so the preset's envelope went into B and A kept B's drawbars.
+   Found by the plugin's port, which was right. */
 function restore(partial) {
+  panelHeldOnA = true;
+  try {
+    restoreInto(partial);
+  } finally {
+    panelHeldOnA = false;
+    syncLayerPanel();
+  }
+}
+
+function restoreInto(partial) {
   const s = Object.assign({}, DEFAULTS, partial || {});
   // The controls say layer A while a setup is being written into them.
   showLayerOnPanel(0);
@@ -20942,9 +20964,13 @@ function hostApply(s) {
       const eq = pair.indexOf("=");
       if (eq > 0) hostHand(["s", pair.slice(0, eq), pair.slice(eq + 1)]);
     }
-    // And every hand on it since, in order, as the plugin put them back.
-    for (const hand of Array.isArray(setup.pluginHands) ? setup.pluginHands : []) hostHand(hand);
+    // And every hand on it since, in order, as the plugin put them back; the
+    // fade the plugin keeps, or its defaults where it has been told none.
+    const hands = Array.isArray(setup.pluginHands) ? setup.pluginHands : [];
+    for (const hand of hands) hostHand(hand);
+    if (!hands.some((hand) => Array.isArray(hand) && hand[0] === "f")) fadeFromHost(null);
     hostSync.routings = hostRoutingsText();
+    hostSync.fade = hostFadeText();
   } finally {
     hostSync.applying = false;
   }
@@ -20952,13 +20978,14 @@ function hostApply(s) {
 
 /* One hand from the plugin's state, done here as the page would have done it:
    [kind, id, value], a slider ("s"), a menu, switch or text box ("c"), a
-   button ("k"), or the routings ("r"). An LFO's menus and the threshold's are
+   button ("k"), the routings ("r"), or the fade ("f"). An LFO's menus and the threshold's are
    in the page only while theirs is the chosen source, so that source is
    chosen for the moment and the one on show put back. */
 function hostHand(hand) {
   if (!Array.isArray(hand)) return;
   const [kind, id, value] = hand;
   if (kind === "r") { state.modRoutings = decodeRoutings(String(value)); touchRoutings(); return; }
+  if (kind === "f") { fadeFromHost(value); return; }
   if (typeof id !== "string" || !id) return;
   if (kind === "k") { const button = document.getElementById(id); if (button && HOST_CLICKS.has(id)) button.click(); return; }
   if (kind === "s") {
@@ -20988,13 +21015,12 @@ function hostHand(hand) {
 /* The menus, switches and text boxes that reach the sound or what a setup
    carries, and the buttons: the ones scope::controlChange and controlClick
    port. Not here, each for its reason: the view's own (the timebase menu,
-   the beam), which are the page's; the fade's menus and envelope, kept in
-   the page's own storage rather than a setup; layer B's editing, which swaps
-   the panel between the layers, where the plugin's panel always writes layer
-   A - so with the layers on, a menu turned while B is on the panel reaches
-   the plugin as A's; and the MIDI out's port, which in the plugin is the
-   host's. A depth dragged reaches the plugin when the drag ends, as it is
-   only then that the page counts it as an edit. */
+   the beam), which are the page's; the fade's, which is sent whole when it
+   is saved (hostFade); and the MIDI out's port, which in the plugin is the
+   host's. The A and B buttons are sent, and the
+   plugin's panel shows the layer the page's does, so a control moved while
+   B is shown is B's there too. A depth dragged reaches the plugin when the
+   drag ends, as it is only then that the page counts it as an edit. */
 const HOST_CONTROLS = new Set([
   "genMode", "interval", "figure", "figPathD", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS",
   "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
@@ -21006,7 +21032,8 @@ const HOST_CONTROLS = new Set([
   "lfoShape0", "lfoShape1", "lfoSync0", "lfoSync1", "threshWatch",
   "macroName1", "macroName2", "macroName3", "macroName4",
 ]);
-const HOST_CLICKS = new Set(["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4"]);
+const HOST_CLICKS = new Set(["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4",
+                             "midiEditA", "midiEditB"]);
 
 function hostControl(event) {
   const control = event.target;
@@ -21030,6 +21057,27 @@ function hostRoutingsText() {
     const text = String(amount);
     return r.sourceId + ">" + r.destId + "@" + (/e/.test(text) ? amount.toFixed(20) : text);
   }).join(";");
+}
+
+/* The fade, which the page keeps in its own storage rather than in a setup:
+   inside the plugin the plugin's is the one that counts - a project reopened
+   brings its fade back - so it is sent whole whenever it is saved, and the
+   plugin's state puts it back here, or the fade's defaults where the plugin
+   has never been told one. */
+function hostFadeText() { return JSON.stringify({ mode: fade.mode, envs: fade.envs }); }
+function hostFade() {
+  if (!hostSync.on || hostSync.applying) return;
+  const text = hostFadeText();
+  if (text === hostSync.fade) return;
+  hostSync.fade = text;
+  scopeHost.call("scopeFade", text);
+}
+function fadeFromHost(value) {
+  const v = value && typeof value === "object" ? value : { mode: "off", envs: [] };
+  setFade(FADE_MODES.some(([id]) => id === v.mode) ? v.mode : "off");
+  const envs = Array.isArray(v.envs) ? v.envs : [];
+  for (let i = 0; i < 2; i++) setFadeEnvelope(envs[i] && typeof envs[i] === "object" ? envs[i] : ENV_DEFAULT, i);
+  syncFadePanel();
 }
 
 // After any edit: sent when it changed something, and not while a load is quiet.
@@ -21067,6 +21115,7 @@ function hostSendSetup() {
 async function hostConnect() {
   await hostPull();
   hostSync.routings = hostRoutingsText();
+  hostSync.fade = hostFadeText();
   hostSync.on = true;
   document.addEventListener("input", hostSlider, true);
   document.addEventListener("change", hostControl, true);

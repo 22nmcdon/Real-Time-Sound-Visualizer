@@ -84,7 +84,8 @@ void ScopeProcessor::click(const std::string& id) {
   scope::Json hand = scope::Json::array();
   hand.a.push_back(scope::Json::string(std::string_view("k"))); hand.a.push_back(scope::Json::string(std::string_view(id)));
   // The buttons come in sets of which one is on: pressing one undoes the last of its set.
-  const std::string set = id.rfind("tune", 0) == 0 ? "tune" : id.rfind("planeOS", 0) == 0 ? "planeOS" : "midiMode";
+  const std::string set = id.rfind("tune", 0) == 0 ? "tune" : id.rfind("planeOS", 0) == 0 ? "planeOS"
+                        : id.rfind("midiEdit", 0) == 0 ? "midiEdit" : "midiMode";
   remember("k:" + set, std::move(hand));
   changed_ = true;
 }
@@ -95,6 +96,15 @@ void ScopeProcessor::routings(const std::string& text) {
   hand.a.push_back(scope::Json::string(std::string_view("r"))); hand.a.push_back(scope::Json::string(std::string_view("")));
   hand.a.push_back(scope::Json::string(std::string_view(text)));
   remember("r", std::move(hand));
+  changed_ = true;
+}
+
+void ScopeProcessor::fade(const scope::Json& value) {
+  scope::fadeFromPage(*matrix_, value);
+  scope::Json hand = scope::Json::array();
+  hand.a.push_back(scope::Json::string(std::string_view("f"))); hand.a.push_back(scope::Json::string(std::string_view("")));
+  hand.a.push_back(value);
+  remember("f", std::move(hand));
   changed_ = true;
 }
 
@@ -109,6 +119,7 @@ void ScopeProcessor::replay(const scope::Json& hand) {
   else if (kind == u"c" && value) change(id, *value);
   else if (kind == u"k") click(id);
   else if (kind == u"r") routings(scope::utf16To8(text));
+  else if (kind == u"f") fade(value ? *value : scope::Json::null());
 }
 
 void ScopeProcessor::remember(std::string key, scope::Json hand) {
@@ -119,7 +130,7 @@ void ScopeProcessor::remember(std::string key, scope::Json hand) {
      time, an LFO's rate moved while it is synced is its free rate - since
      the earlier one's effect would then be put back in a different place. */
   static const std::vector<std::vector<std::string>> reads {
-    { "c:genMode", "c:midiDrive", "c:midiPlay" }, { "c:lfoSync0", "s:lfoRate0" }, { "c:delaySync", "s:delayMs" },
+    { "c:genMode", "c:midiDrive", "c:midiPlay" }, { "c:lfoSync0", "s:lfoRate0" }, { "c:lfoSync1", "s:lfoRate1" }, { "c:delaySync", "s:delayMs" },
     { "c:figure", "c:figPathD" }, { "c:arpMode", "c:arpRate", "c:arpOctaves" },
   };
   const auto related = [&](const std::string& a, const std::string& b) {
@@ -166,6 +177,13 @@ void ScopeProcessor::pageClick(const std::string& id) {
   queue_.push_back({ PageCommand::Click, id, {}, {}, std::nullopt });
 }
 
+void ScopeProcessor::pageFade(std::string_view json) {
+  const auto parsed = scope::jsonParse(scope::utf8To16(json));
+  if (!parsed) return;
+  const juce::SpinLock::ScopedLockType lock(queueLock_);
+  queue_.push_back({ PageCommand::Fade, {}, {}, *parsed, std::nullopt });
+}
+
 void ScopeProcessor::pageRoutings(std::string_view text) {
   const juce::SpinLock::ScopedLockType lock(queueLock_);
   queue_.push_back({ PageCommand::Routings, {}, scope::utf8To16(text), {}, std::nullopt });
@@ -198,6 +216,7 @@ void ScopeProcessor::takePage() {
       case PageCommand::Control: change(command.id, command.value); break;
       case PageCommand::Click: click(command.id); break;
       case PageCommand::Routings: routings(scope::utf16To8(command.text)); break;
+      case PageCommand::Fade: fade(command.value); break;
     }
   }
   taken_.clear();
@@ -259,6 +278,8 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   brain_ = std::make_unique<scope::Brain>();
   clockIn_ = std::make_unique<scope::ClockIn>(brain_->clock);
   keyboard_ = std::make_unique<scope::Keyboard>(*notes_, clockIn_.get());
+  // The layer the panel shows follows the keyboard, as the page's syncLayers has it.
+  keyboard_->setLayerPanel([this] { scope::syncLayerPanel(*brain_, *core_, *keyboard_); });
   matrix_ = std::make_unique<scope::Matrix>();
   sources_ = std::make_unique<scope::CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
   /* What it hears is the picture, which is always the generator's: every
