@@ -949,6 +949,40 @@ memory set on connecting, which the first state applied has already set.
 **4. The picture's sources in the core,** so the loops go on with the window
 closed.
 
+**4a: the arithmetic** (`scope/picture.h`). The phosphor grid the photocell
+reads - 64 by 64 floats over the graticule, each cell keeping the brighter
+of what it held and what is laid on, faded with the canvas - and its
+five-point bilinear read; the beam's running moments, for roundness; the
+picture meter, with its coverage, change, novelty and verdict; the drawn
+pair's direction and edge contact; the photocell's slewed reading; and
+`pictureStep`, with boredom's rise and leak and the slew on every value.
+The page's grids are Float32Arrays, so these are floats written the same
+way, and its `Math.hypot` is V8's (`jsHypot`, from the solids): roundness is
+a difference of two nearly equal numbers for a figure that is nearly a
+line, and `std::hypot`'s last place made one 2 per cent apart.
+
+What it is not yet is anything the plugin runs. What the grid is given is
+the renderer's own segment walk - the X-Y figure, each Y-T polyline, the
+peak bars - in canvas pixels, through the view's settings (the display, the
+timebase and trigger, the zoom, the channels' scales and offsets, the turn,
+persistence). That is the next piece, and the larger one; this one is held
+to the page with segments both are handed.
+
+Parity (`picture_js.mjs`, `picture_cpp`): named runs for each piece - a
+segment and the reads across a cell's edge, a fade through every
+persistence, the beam's steps, roundness of a circle, a two-to-one ellipse
+at two turns, a line and a figure shrinking to nothing, the photocell's
+slew, each verdict reached (settled, cycling, wandering, and running away
+by ink and by the limiter), the drawn pair each way round and to the edge,
+a figure under the moments' floor, twenty seconds for the meter's memory to
+forget, and frames far enough apart that the window's median lies between
+two kinds - and 30 random runs of 200 commands. Mutation: 41 of 42 caught;
+the one left clears the photocell's reading when it is turned off, which
+the next frame clears anyway before anything reads it. Six lived until the
+runs could show them: the moments' floor, a cell over full ink, the
+memory's fifteen seconds, the verdict's wait for history, the median of an
+even window, and boredom let go when the photocell is.
+
 **5. The site on WebAssembly.** The worklet runs the compiled core, and the
 JavaScript engine and brain are retired once parity says there is nothing left
 they do that the core does not.

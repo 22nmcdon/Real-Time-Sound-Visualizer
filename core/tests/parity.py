@@ -1651,6 +1651,174 @@ lvnull("a firing a millisecond later", "thresh-fire", "at 90", "at 91")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
+print("\n--- the picture's sources ---")
+# The page's phosphor grid, the beam's moments, the picture meter, the drawn
+# pair's shape, the photocell and pictureStep, lifted by name, against
+# scope/picture.h through the same commands. What the renderer would deposit
+# is the run's own segments and polylines, so this is the arithmetic: what
+# walks the beam is the next piece. A line a command: the grid's two sums
+# and the roundness, and at each frame every value, raw and slewed, the
+# meter and its verdict.
+pcexe = build("picture_cpp")
+def pcboth(text, name="picture_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([pcexe, path], check=True, capture_output=True, text=True).stdout
+def pcrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+def pcellipse(cx, cy, rx, ry, n=48, turn=0.0):
+    return "poly " + ";".join("%.4f,%.4f" % (cx + rx * math.cos(2 * math.pi * k / n + turn), cy + ry * math.sin(2 * math.pi * k / n + turn))
+                              for k in range(n + 1))
+def pcframes(count, elapsed=16, deposit=None):
+    out = []
+    for i in range(count):
+        out.append("fade")
+        if deposit: out.append(deposit(i))
+        out.append("step %d" % elapsed)
+    return out
+PC = ["plot 40 30 600 450", "photo 1 0.5 0.5"]
+pcruns = [
+    # One segment: the cells it crosses, its moments, the reading beside it
+    # and on it, and the bilinear reads moving smoothly across a cell edge.
+    ("segment", pcrun("plot 40 30 600 450", "fade", "seg 40 30 640 480 1", "read 0.5 0.5", "read 0.51 0.5",
+                      "seg 100 400 600 100 0.5", "read 0.25 0.25", *["read %.4f 0.5" % (0.49 + i * 0.002) for i in range(11)],
+                      "seg -50 -50 900 900 1", "seg 340 255 340 255 1")),
+    # A circle fading frame by frame, then infinite, then off, then a resize.
+    ("fade", pcrun("plot 40 30 600 450", "persist 0.12", "fade", pcellipse(340, 255, 150, 150), "read 0.75 0.5",
+                   *["fade" for _ in range(6)], "read 0.75 0.5", "persist -1", "fade", "fade", "persist 0.3", "fade",
+                   "persist 0", "fade", pcellipse(340, 255, 150, 150), "persist 0.12", "fade 1")),
+    # The beam's steps: a polyline shaded, each segment at its own level.
+    ("steps", pcrun("plot 0 0 512 512", "fade", "poly 0,0;100,100;200,50;300,300;511,511 0,3,7,1", "read 0.2 0.2",
+                    "poly 10,500;500,10 7")),
+    # Roundness: a circle, an ellipse two to one, turned, and a line; and a
+    # figure shrinking towards nothing, which fades rather than falling.
+    ("round", pcrun("plot 0 0 400 400", "persist 0", "fade", pcellipse(200, 200, 120, 120), "fade",
+                    pcellipse(200, 200, 160, 80), "fade", pcellipse(200, 200, 160, 80, turn=0.7), "fade",
+                    "seg 20 20 380 380 1", *[x for r in (40, 10, 3, 1, 0.3) for x in ("fade", pcellipse(200, 200, r, r))])),
+    # The photocell on a lit cell and a dark one, slewed at two swings a
+    # second; off reads nothing, and so does the spectrogram.
+    ("photo", pcrun(*PC, "persist -1", "fade", "seg 40 255 640 255 1", "pair ellipse 0.5 0.5 3 4096 0",
+                    *["step 16" for _ in range(40)], "photo 1 0.5 0.1", *["step 33" for _ in range(20)],
+                    "photo 0", "step 16", "photo 1", "spect 1", "step 16", "spect 0", "step 100", "step 0", "step -5")),
+    # A still picture: change falls to nought, the verdict says settled, and
+    # boredom rises at a quarter a second.
+    ("settled", pcrun(*PC, "persist -1", "fade", pcellipse(340, 255, 120, 80), "pair ellipse 0.5 0.3 3 4096 0",
+                      *["step 50" for _ in range(160)], "photo 0", "step 50", "photo 1", "step 50")),
+    # A circle that keeps turning half its way round and back: it moves every
+    # frame and keeps coming back - cycling; then one that never does.
+    ("cycling", pcrun(*PC, "persist 0", "pair ellipse 0.5 0.3 3 4096 0",
+                      *pcframes(200, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 0.8), 255, 60, 40)))),
+    ("wandering", pcrun(*PC, "persist 0", "pair ellipse 0.5 0.3 3 4096 0",
+                        *pcframes(200, 50, lambda i: pcellipse(60 + (i * 37) % 520, 40 + (i * 53) % 380, 30 + i % 17, 20 + i % 11)))),
+    # The screen full of ink, and a limiter held under six decibels: running away.
+    ("running", pcrun(*PC, "persist -1", "fade", *["seg 40 %d 640 %d 1" % (30 + y, 30 + y) for y in range(0, 450, 4)],
+                      "pair ellipse 0.5 0.3 3 4096 0", *["step 50" for _ in range(100)])),
+    ("strained", pcrun(*PC, "persist 0.5", "pair ellipse 0.5 0.3 3 4096 0", "limit -8",
+                       *pcframes(100, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 1.3), 255, 60, 40)), "limit -2", "step 50")),
+    # A figure whose whole path weighs less than the moments' floor reads
+    # nought; a cell given more than full ink still counts as one.
+    ("tiny", pcrun("plot 0 0 400 400", "fade", "poly 200,200;200.00000001,200;200.00000001,200.00000001;200,200.00000001;200,200",
+                   *PC[1:], "pair ellipse 0.5 0.3 3 4096 0", "step 16", "seg 10 10 390 10 2", "step 16")),
+    # Twenty seconds: a picture from the first two comes back after fifteen,
+    # by when it has left the meter's memory; a picture held still and then
+    # boredom let go and taken up again from nothing.
+    ("long", pcrun(*PC, "persist 0", "pair ellipse 0.5 0.3 3 4096 0",
+                   *pcframes(400, 50, lambda i: pcellipse(100, 100, 40, 40) if i < 40 or i >= 360
+                             else pcellipse(150 + (i * 37) % 400, 100 + (i * 53) % 300, 30, 20)),
+                   "photo 0", "step 50", "photo 1", "step 50")),
+    # Frames a second apart, so the window holds few rows and the history
+    # grows a snapshot a step; and frames 0.7 s apart that move and hold in
+    # turn, so the window's median is between a moving frame and a still one.
+    ("sparse", pcrun(*PC, "persist 0", "pair ellipse 0.5 0.3 3 4096 0",
+                     *pcframes(16, 1000, lambda i: pcellipse(340 + 50 * math.sin(i), 255, 60, 40)),
+                     *pcframes(30, 700, lambda i: pcellipse(340 + 100 * ((i // 2) % 2), 255, 60, 40)))),
+    # The drawn pair: round each way, a line, through a gain, an offset, a
+    # turn and a zoom that reaches the edge; no frame at all.
+    ("shape", pcrun(*PC, "fade", "pair ellipse 0.5 0.3 3 4096 0", "step 16", "pair ellipse 0.5 0.3 3 4096 3.1416",
+                    "step 16", "pair ellipse 0.5 0.5 3 4096 1.5708", "step 16", "view 2 0.5 0.1 -0.2 0.125 1.5", "step 16",
+                    "pair ellipse 0.9 0.9 5 9000 0", "view 1 1 0 0 0 1.1", "step 16", "pair noise 7 0.4 3000", "step 16",
+                    "pair ellipse 0.5 0.3 1 2 0", "step 16", "pair none", "step 16")),
+]
+pcrng = random.Random(104)
+def pcfuzz(n):
+    out = ["plot %d %d %d %d" % (pcrng.randint(0, 50), pcrng.randint(0, 50), pcrng.randint(100, 800), pcrng.randint(100, 600)),
+           "photo 1 %.3f %.3f" % (pcrng.random(), pcrng.random()), "pair ellipse 0.5 0.3 3 4096 0"]
+    for _ in range(n):
+        r = pcrng.random()
+        if r < 0.25: out.append("fade" + (" 1" if pcrng.random() < 0.03 else ""))
+        elif r < 0.45: out.append("seg %.2f %.2f %.2f %.2f %.3f" % tuple(pcrng.uniform(-100, 900) for _ in range(4)) + (pcrng.random(),) if False else
+                                  "seg %.2f %.2f %.2f %.2f %.3f" % (pcrng.uniform(-100, 900), pcrng.uniform(-100, 700), pcrng.uniform(-100, 900),
+                                                                   pcrng.uniform(-100, 700), pcrng.random()))
+        elif r < 0.55: out.append(pcellipse(pcrng.uniform(0, 800), pcrng.uniform(0, 600), pcrng.uniform(1, 300), pcrng.uniform(1, 300),
+                                            pcrng.randint(3, 60), pcrng.random() * 6))
+        elif r < 0.6:
+            k = pcrng.randint(2, 8)
+            out.append("poly " + ";".join("%.1f,%.1f" % (pcrng.uniform(0, 800), pcrng.uniform(0, 600)) for _ in range(k)) + " "
+                       + ",".join(str(pcrng.randint(0, 7)) for _ in range(k - 1)))
+        elif r < 0.63: out.append("read %.3f %.3f" % (pcrng.uniform(-0.1, 1.1), pcrng.uniform(-0.1, 1.1)))
+        elif r < 0.66: out.append("persist %s" % pcrng.choice(["0", "-1", "0.04", "0.12", "0.3"]))
+        elif r < 0.68: out.append("photo %d %.3f %.3f" % (pcrng.random() < 0.8, pcrng.random(), pcrng.random()))
+        elif r < 0.7: out.append("spect %d" % (pcrng.random() < 0.3))
+        elif r < 0.73: out.append(pcrng.choice(["pair ellipse %.2f %.2f %d %d %.3f" % (pcrng.uniform(0, 1), pcrng.uniform(0, 1), pcrng.randint(1, 9),
+                                                pcrng.choice([2, 100, 4096, 5000]), pcrng.uniform(0, 6.3)),
+                                                "pair noise %d %.2f %d" % (pcrng.randint(1, 99), pcrng.random(), pcrng.choice([50, 3000])), "pair none"]))
+        elif r < 0.75: out.append("view %.2f %.2f %.2f %.2f %.3f %.2f" % (pcrng.uniform(0.2, 3), pcrng.uniform(0.2, 3), pcrng.uniform(-0.3, 0.3),
+                                  pcrng.uniform(-0.3, 0.3), pcrng.choice([0, 0, pcrng.uniform(-1, 1)]), pcrng.uniform(0.5, 4)))
+        elif r < 0.77: out.append("limit %.1f" % pcrng.choice([0, -2, -7, -12]))
+        else: out.append("step %d" % pcrng.choice([16, 16, 33, 50, 100, 250, 0]))
+    return pcrun(*out)
+pcruns += [("random-%d" % i, pcfuzz(200)) for i in range(30)]
+pctext = "".join(t for _, t in pcruns)
+pcjs, pccpp = pcboth(pctext, "picture.txt")
+pclines = [len(t.strip().split("\n")) - 2 for _, t in pcruns]
+def pcslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(pclines[:i])
+    return "\n".join(lines[start:start + pclines[i]])
+for i, (name, _) in enumerate(pcruns):
+    if name.startswith("random-"): continue
+    d = kdiff(pcslice(pcjs, i), pcslice(pccpp, i))
+    check("%s: %d commands, the same grid, moments, meter and sources" % (name, pclines[i]), d is None, d or "")
+pcbad = [n for i, (n, _) in enumerate(pcruns) if n.startswith("random-") and kdiff(pcslice(pcjs, i), pcslice(pccpp, i))]
+check("30 random sequences of 200 commands, the same grid, moments, meter and sources", not pcbad, ", ".join(pcbad))
+def pcout(name): return pcslice(pcjs, next(i for i, (n, _) in enumerate(pcruns) if n == name)).split("\n")
+def pcfield(line, word, k=0): w = line.split(); return w[w.index(word) + 1 + k]
+pcsteps = lambda name: [l for l in pcout(name) if l.startswith("step")]
+check("the verdicts are each reached: settled, cycling, wandering and running away, twice",
+      pcfield(pcsteps("settled")[159], "meter", 5) == "settled" and pcfield(pcsteps("cycling")[-1], "meter", 5) == "cycling"
+      and pcfield(pcsteps("wandering")[-1], "meter", 5) == "wandering" and pcfield(pcsteps("running")[-1], "meter", 5) == "running"
+      and pcfield(pcsteps("strained")[-2], "meter", 5) == "running",
+      " ".join(pcfield(pcsteps(n)[159 if n == "settled" else -1], "meter", 5) for n in ("settled", "cycling", "wandering", "running")))
+ro = [float(pcfield(l, "round")) for l in pcout("round")]
+check("roundness reads near one for a circle, under two thirds for two to one at any turn, nought for a line, and fades as a figure shrinks",
+      ro[3] > 0.9 and 0.5 < ro[5] < 0.65 and abs(ro[7] - ro[5]) < 0.02 and ro[9] < 1e-6
+      and ro[11] > ro[13] > ro[15] > ro[17] > ro[19] >= 0, repr([round(x, 3) for x in ro]))
+ph = [float(pcfield(l, "photo", 1)) for l in pcsteps("photo")]
+check("the photocell climbs at two swings a second to what is under it, falls on a dark cell, and reads nothing off or on the spectrogram",
+      abs(ph[0] - 0.032) < 1e-12 and ph[39] > 0.3 and ph[59] < ph[39] and ph[60] == 0 and ph[61] == 0, repr([round(x, 3) for x in ph[:3] + ph[38:41] + ph[58:62]]))
+bo = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][:160]
+bo2 = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][160:]
+check("and the photocell turned off lets boredom go: on again, it starts from nothing rather than where it was",
+      bo[-1] > 0.5 and bo2 == [0.0, 0.0], repr(bo2))
+check("boredom rises while the picture is still, toward eight tenths over ten seconds of stillness",
+      bo[-1] > 0.5 and all(b2 >= b1 for b1, b2 in zip(bo[10:], bo[11:])), repr(round(bo[-1], 3)))
+sh = [(float(pcfield(l, "shape")), float(pcfield(l, "shape", 1))) for l in pcsteps("shape")]
+check("the drawn pair: anticlockwise one way and clockwise the other, a line nought, and the edge reached when zoomed",
+      sh[0][0] > 0.5 and sh[1][0] < -0.5 and abs(sh[2][0]) < 0.05 and sh[4][1] > 0.1 and sh[7] == (0.0, 0.0), repr(sh))
+def pcnull(name, old, new, what):
+    text = dict(pcruns)[name]
+    assert old in text, old
+    js, _ = pcboth(text.replace(old, new, 1))
+    i = next(k for k, (n, _) in enumerate(pcruns) if n == name)
+    check("and against " + what, kdiff(js, pcslice(pccpp, i)) is not None)
+pcnull("segment", "seg 100 400 600 100 0.5", "seg 100 400 600 101 0.5", "a segment a pixel lower at one end")
+pcnull("fade", "persist 0.3", "persist 0.31", "a persistence a hundredth longer")
+pcnull("photo", "photo 1 0.5 0.1", "photo 1 0.5 0.497", "the reticle at the edge of the line rather than off it")
+pcnull("strained", "limit -8", "limit -5", "a limiter under six decibels")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(pcjs.strip().split("\n")[1:]), "\n".join(pccpp.strip().split("\n")[:-1])) is not None)
+
 print("\n--- the hearing ---")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)
 # The page's hearing - a window of the sound analysed once a frame into a
