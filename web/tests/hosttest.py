@@ -267,7 +267,7 @@ with sync_playwright() as pw:
     fade = json.loads(more["fade"][0][1]) if more["fade"] and len(more["fade"][0]) > 1 else {}
     check("the A and B buttons are sent; the fade is sent whole when it is saved, and not again unchanged",
           more["layerB"] == [["scopeClick", "midiEditB"]] and more["layerA"] == [["scopeClick", "midiEditA"]]
-          and more["fade"][0][0] == "scopeFade" and fade.get("mode") == "both" and len(fade.get("envs", [])) == 2
+          and len(more["fade"]) == 1 and more["fade"][0][0] == "scopeFade" and fade.get("mode") == "both" and len(fade.get("envs", [])) == 2
           and more["fadeAgain"] == [] and len(more["restart"]) == 1 and json.loads(more["restart"][0][1])["envs"][0]["restart"] is True,
           str(more))
     check("LFO 2's rate is sent as a slider, by its id",
