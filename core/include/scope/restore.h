@@ -51,6 +51,7 @@
 #include <utility>
 #include <vector>
 
+#include "scope/capture.h"
 #include "scope/clock.h"
 #include "scope/cycles.h"
 #include "scope/generator.h"
@@ -243,7 +244,7 @@ inline int keyMask(double root, const std::string& scale) {
 inline bool delaySyncKnown(const std::u16string& s) {
   return s.empty() || s == u"1/2" || s == u"1/4" || s == u"1/8d" || s == u"1/8" || s == u"1/4t" || s == u"1/8t" || s == u"1/16";
 }
-inline double cutoffHz(double step) { return 20 * std::pow(1000.0, step / 1000); }  // CUTOFF_STEPS a thousand
+// cutoffHz is the capture's (scope/capture.h): one law for the trace's filter and the voice's.
 inline double resonanceQ(double v) { return std::sqrt(0.5) * std::pow(20 / std::sqrt(0.5), v / 100); }
 
 // MORPH_IDS: the sliders the morph walks, in the page's order.

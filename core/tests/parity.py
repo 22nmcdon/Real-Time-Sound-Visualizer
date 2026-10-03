@@ -1651,6 +1651,170 @@ lvnull("a firing a millisecond later", "thresh-fire", "at 90", "at 91")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
+print("\n--- the capture ---")
+# The page's capture - the window and the search span behind it, the AC
+# coupling, the filter, the lag lane, mid and side, the turn and the trigger -
+# lifted by name, against scope/capture.h, through the same commands. A line
+# a frame: whether it triggered, the level as a voltage, what it asked the
+# source for, the window and where the edge sits in it, whether it turned,
+# what the coupling and the filter changed, the lag used, how short the
+# buffer was, and every lane drawn and measured, by two sums and its ends.
+cpexe = build("capture_cpp")
+def cpboth(text, name="capture_one.txt"):
+    path = os.path.join(BUILD, name)
+    with open(path, "w") as f: f.write(text)
+    js = subprocess.run(["node", os.path.join(HERE, "tools", "capture_js.mjs"), path], check=True,
+                        capture_output=True, text=True).stdout
+    return js, subprocess.run([cpexe, path], check=True, capture_output=True, text=True).stdout
+def cprun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+TONE = ["signal 40000", "add 0 sine 0.5 220 0", "add 1 sine 0.3 330 1"]
+cpruns = [
+    # Every timebase at three rates, with the edge a tenth in, half way and at the very end.
+    ("window", cprun(*TONE, *[x for r in (48000, 44100, 96000) for x in ["rate %d" % r] + [y for t in range(9) for y in ("tb %d" % t, "cap")]],
+                     "rate 48000", "tb 3", "pos 0", "cap", "pos 0.5", "cap", "pos 1", "cap", "posmod 0.3", "cap", "posmod -2", "cap")),
+    # The edge: rising and falling, at levels inside and outside the signal,
+    # on noise where the hysteresis matters, with holdoff on a ringing square,
+    # and none at all on a constant - the window runs free.
+    ("trigger", cprun("signal 30000", "add 0 sine 0.5 220 0", "add 0 noise 3 0.05", "add 1 square 0.4 110 0", "add 1 sine 0.1 2200 0",
+                      "tb 3", "cap", "level 0.3", "cap", "edge falling", "cap", "level 0.7", "cap", "level -0.45", "cap",
+                      "edge rising", "trig 1", "level 0", "cap", "holdoff 3", "cap", "holdoff 8", "cap", "holdoff 50", "cap",
+                      "signal 30000", "add 0 dc 0.2", "trig 0", "holdoff 0", "cap")),
+    # Full scale: the level a fraction of the screen, so a voltage that
+    # follows the lane's scale and what is pointed at it.
+    ("fullscale", cprun(*TONE, "tb 3", "level 0.4", "cap", "fs 0 -6", "cap", "fs 0 -12", "fsmod 0 -6", "cap", "fsmod 0 -90", "cap",
+                        "fs 0 3", "fsmod 0 0", "cap")),
+    # The coupling: an offset taken off one lane and not the other, the
+    # corner held to its range, and nothing taken off on the input's side.
+    ("ac", cprun("signal 40000", "add 0 sine 0.3 220 0", "add 0 dc 0.4", "add 1 sine 0.3 220 0", "add 1 dc 0.4", "tb 4",
+                 "ac 0 1", "cap", "achz 0.1", "cap", "achz 100", "cap", "ac 1 1", "trig 1", "cap", "shaping 0", "cap")),
+    # The filter, each kind, its resonance and what is pointed at both; a
+    # lane switched off left alone; the input's side left alone.
+    ("filter", cprun("signal 40000", "add 0 square 0.4 220 0", "add 1 noise 5 0.3", "tb 3",
+                     *[y for t in ("lowpass", "highpass", "bandpass", "notch") for y in ("filter %s 500 0" % t, "cap", "filter %s 700 80" % t, "cap")],
+                     "fmod 200 10", "cap", "fmod -2000 500", "cap", "fmod 0 0", "on 1 0", "cap", "on 1 1", "shaping 0", "cap",
+                     "shaping 1", "filter off", "cap")),
+    # The lag lane: a whole and a fractional delay, its modulation, the most
+    # it may be, an automatic lock, and the three things that refuse it - mid
+    # and side, a source of lanes, and a buffer with no room for it.
+    ("lag", cprun(*TONE, "tb 3", "lag 2", "cap", "lag 1.37", "cap", "lagmod 0.5", "cap", "lag 90", "cap", "lagmod 0",
+                  "lagauto 0.00113", "cap", "lagauto none", "lag 1", "ms 1", "cap", "ms 0", "lanes 1", "cap", "lanes 0",
+                  "cap 1000", "cap", "cap inf", "lagoff", "cap")),
+    # Mid and side, with two lanes and with one; and the turn, a quarter and
+    # by modulation, refused for a source of lanes, a lag, and the input's side.
+    ("turn", cprun(*TONE, "tb 3", "ms 1", "cap", "chans 1", "cap", "chans 2", "ms 0", "rot 0.25", "cap", "rotmod 0.1", "cap",
+                   "measure 1", "cap", "measure 0", "lanes 1", "cap", "lanes 0", "lag 1", "cap", "lagoff", "shaping 0", "cap",
+                   "shaping 1", "level 0.2", "cap")),
+    # The buffer: the search span giving way first, then the window short
+    # and said so; six lanes and one, the trigger on a lane switched off.
+    ("buffer", cprun(*TONE, "tb 4", "cap 3000", "cap", "cap 900", "cap", "cap 500", "tb 6", "cap", "cap inf", "chans 6",
+                     "add 4 sine 0.2 440 0", "trig 4", "cap", "on 4 0", "cap", "trig 9", "cap", "chans 1", "trig 0", "cap")),
+]
+cpruns += [
+    # Samples landing exactly on the level and on the hysteresis band's
+    # edge: a square of a half on an offset of a half is exactly nought and
+    # exactly one, so a level of one is met and not passed, and a level of
+    # 0.02 puts the band's edge at nought itself. Its edges are exactly 480
+    # samples apart - a phase off nought, so no edge sits where the sine is
+    # nought and its sign is rounding - and so a holdoff of exactly that, and
+    # one that rounds to it from above. Last, the band's edge at nought with
+    # the window starting at the edge, so the first edge of all is in reach
+    # and only arming refuses it.
+    ("exact", cprun("signal 30000", "add 0 square 0.5 100 0.1", "add 0 dc 0.5", "tb 3", "pos 0.5",
+                    "level 1", "cap", "level 0.02", "cap", "level 0.5", "holdoff 10", "cap",
+                    "holdoff 10.0083333333", "cap", "holdoff 9.99", "cap", "holdoff 0", "pos 0", "level 0.02", "cap")),
+    # The probe: the trigger on a lane switched off measures lane one's coupling instead.
+    ("probe", cprun("signal 40000", "add 0 sine 0.3 220 0", "add 0 dc 0.4", "add 1 sine 0.3 330 0", "add 1 dc 0.1", "tb 4",
+                    "ac 0 1", "ac 1 1", "trig 1", "cap", "on 1 0", "cap", "filter lowpass 300 0", "cap")),
+    # A cutoff past what the rate can hold, and a lag that adds to less than nothing.
+    ("edges", cprun(*TONE, "rate 22050", "tb 3", "filter lowpass 1000 0", "cap", "filter highpass 990 50", "cap", "rate 48000",
+                    "filter off", "cap 3000", "lag 1", "lagmod -5", "cap")),
+]
+cprng = random.Random(105)
+def cpfuzz(n):
+    out = ["rate %d" % cprng.choice([44100, 48000, 96000]), "signal %d" % cprng.choice([20000, 40000, 60000])]
+    for c in range(cprng.randint(1, 4)):
+        for _ in range(cprng.randint(1, 3)):
+            k = cprng.choice(["sine", "square", "noise", "dc"])
+            out.append("add %d %s" % (c, {"sine": "sine %.2f %.1f %.2f" % (cprng.random(), cprng.uniform(20, 3000), cprng.uniform(0, 6)),
+                                          "square": "square %.2f %.1f %.2f" % (cprng.random(), cprng.uniform(20, 1000), cprng.uniform(0, 6)),
+                                          "noise": "noise %d %.2f" % (cprng.randint(1, 99), cprng.random() * 0.4),
+                                          "dc": "dc %.2f" % cprng.uniform(-0.5, 0.5)}[k]))
+    out.append("chans %d" % cprng.choice([1, 2, 2, 2, 4]))
+    for _ in range(n):
+        r = cprng.random()
+        pick = cprng.choice
+        if r < 0.3: out.append("cap")
+        elif r < 0.36: out.append("tb %d" % cprng.randint(0, 8))
+        elif r < 0.42: out.append(pick(["pos %.2f" % cprng.random(), "posmod %.2f" % cprng.uniform(-0.5, 0.5), "holdoff %d" % pick([0, 0, 2, 10])]))
+        elif r < 0.5: out.append(pick(["level %.2f" % cprng.uniform(-1, 1), "edge %s" % pick(["rising", "falling"]), "trig %d" % cprng.randint(0, 4)]))
+        elif r < 0.56: out.append(pick(["ac %d %d" % (cprng.randint(0, 3), cprng.random() < 0.5), "achz %.1f" % cprng.uniform(0, 30)]))
+        elif r < 0.62: out.append(pick(["fs %d %d" % (cprng.randint(0, 3), pick([0, -3, -12, -50, 6])), "fsmod %d %.1f" % (cprng.randint(0, 3), cprng.uniform(-20, 5)),
+                                        "on %d %d" % (cprng.randint(0, 3), cprng.random() < 0.7)]))
+        elif r < 0.7: out.append(pick(["filter %s %d %d" % (pick(["lowpass", "highpass", "bandpass", "notch"]), cprng.randint(0, 1000), cprng.randint(0, 100)),
+                                       "filter off", "fmod %d %d" % (cprng.randint(-300, 300), cprng.randint(-50, 50))]))
+        elif r < 0.78: out.append(pick(["lag %.2f" % cprng.uniform(0, 50), "lagoff", "lagmod %.2f" % cprng.uniform(-2, 2),
+                                        "lagauto %s" % pick(["none", "%.5f" % cprng.uniform(0, 0.03)])]))
+        elif r < 0.86: out.append(pick(["ms %d" % (cprng.random() < 0.3), "rot %.3f" % pick([0, 0, cprng.uniform(-1, 1)]), "rotmod %.3f" % cprng.uniform(-0.2, 0.2)]))
+        elif r < 0.92: out.append(pick(["shaping %d" % (cprng.random() < 0.8), "measure %d" % (cprng.random() < 0.5), "lanes %d" % (cprng.random() < 0.2)]))
+        else: out.append("cap %s" % pick(["inf", "inf", str(cprng.randint(500, 40000))]))
+    return cprun(*out)
+cpruns += [("random-%d" % i, cpfuzz(60)) for i in range(40)]
+cptext = "".join(t for _, t in cpruns)
+cpjs, cpcpp = cpboth(cptext, "capture.txt")
+cplines = [len(t.strip().split("\n")) - 2 for _, t in cpruns]
+def cpslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(cplines[:i])
+    return "\n".join(lines[start:start + cplines[i]])
+for i, (name, _) in enumerate(cpruns):
+    if name.startswith("random-"): continue
+    d = kdiff(cpslice(cpjs, i), cpslice(cpcpp, i))
+    check("%s: %d commands, the same frames" % (name, cplines[i]), d is None, d or "")
+cpbad = [n for i, (n, _) in enumerate(cpruns) if n.startswith("random-") and kdiff(cpslice(cpjs, i), cpslice(cpcpp, i))]
+check("40 random sequences of 60 commands, the same frames", not cpbad, ", ".join(cpbad))
+def cpframes(name): return [l for l in cpslice(cpjs, next(i for i, (n, _) in enumerate(cpruns) if n == name)).split("\n") if l.startswith("cap ")]
+def cpf(line, word, k=0): w = line.split(); return w[w.index(word) + 1 + k]
+wn = cpframes("window")
+check("2 ms a division is 960 samples at 48 kHz, 882 at 44.1 and 1920 at 96; the edge a tenth in, then half way, then at the end",
+      cpf(wn[4], "len") == "960" and cpf(wn[13], "len") == "882" and cpf(wn[22], "len") == "1920" and cpf(wn[27], "pre") == "0"
+      and cpf(wn[28], "pre") == "240" and cpf(wn[29], "pre") == "480" and cpf(wn[0], "len") == "64",
+      " ".join(cpf(wn[k], "len") for k in (0, 4, 13, 22)))
+tr = cpframes("trigger")
+check("the trigger finds edges on noise and on a ringing square, and runs free at a level the signal never reaches and on a constant",
+      all(cpf(l, "trig") == "1" for l in tr[:3] + tr[4:9]) and cpf(tr[3], "trig") == "0" and cpf(tr[-1], "trig") == "0",
+      " ".join(cpf(l, "trig") for l in tr))
+fsl = cpframes("fullscale")
+check("the level follows full scale: 0.4 of the screen is 0.2 volts at -6 dB, and full scale is held to its range",
+      abs(float(cpf(fsl[1], "level")) - 0.4 * 10 ** (-6 / 20)) < 1e-12 and float(cpf(fsl[3], "level")) == float(cpf(fsl[3], "level"))
+      and abs(float(cpf(fsl[3], "level")) - 0.4 * 10 ** (-50 / 20)) < 1e-12 and abs(float(cpf(fsl[4], "level")) - 0.4) < 1e-12,
+      " ".join(cpf(l, "level") for l in fsl))
+acl = cpframes("ac")
+check("the coupling takes an offset off the lane it is on, and nothing on the input's side",
+      float(cpf(acl[0], "shaped")) > 0.1 and float(cpf(acl[4], "shaped")) == 0, " ".join(cpf(l, "shaped") for l in acl))
+lg = cpframes("lag")
+check("the lag lane is two milliseconds, held to forty, and refused with mid and side, with lanes and with no room",
+      abs(float(cpf(lg[0], "lag")) - 2) < 1e-9 and abs(float(cpf(lg[3], "lag")) - 40) < 1e-9 and float(cpf(lg[5], "lag")) == 0
+      and float(cpf(lg[6], "lag")) == 0 and float(cpf(lg[7], "lag")) == 0, " ".join(cpf(l, "lag") for l in lg))
+tn = cpframes("turn")
+check("the turn turns the screen's pair and not what is measured, and is refused for lanes, a lag and the input's side",
+      cpf(tn[2], "turned") == "1" and cpf(tn[2], "measured") == "signal" and cpf(tn[4], "measured") == "drawn"
+      and cpf(tn[5], "turned") == "0" and cpf(tn[6], "turned") == "0" and cpf(tn[7], "turned") == "0")
+bf = cpframes("buffer")
+check("a short buffer gives up the search span first, then draws a window it says is short",
+      int(cpf(bf[0], "asked")) <= 3000 and cpf(bf[0], "starved") == "0" and int(cpf(bf[2], "starved")) > 0, " ".join(cpf(l, "asked") + "/" + cpf(l, "starved") for l in bf))
+def cpnull(name, old, new, what):
+    text = dict(cpruns)[name]
+    assert old in text, old
+    js, _ = cpboth(text.replace(old, new, 1))
+    i = next(k for k, (n, _) in enumerate(cpruns) if n == name)
+    check("and against " + what, kdiff(js, cpslice(cpcpp, i)) is not None)
+cpnull("trigger", "level 0.3", "level 0.31", "a level a hundredth higher")
+cpnull("filter", "filter lowpass 500 0", "filter lowpass 501 0", "a cutoff a step higher")
+cpnull("lag", "lag 1.37", "lag 1.38", "a lag a hundredth of a millisecond longer")
+cpnull("turn", "rot 0.25", "rot 0.251", "a turn a thousandth further")
+check("and the comparison fails against the page's lines one command out of step",
+      kdiff("\n".join(cpjs.strip().split("\n")[1:]), "\n".join(cpcpp.strip().split("\n")[:-1])) is not None)
+
 print("\n--- the picture's sources ---")
 # The page's phosphor grid, the beam's moments, the picture meter, the drawn
 # pair's shape, the photocell and pictureStep, lifted by name, against
