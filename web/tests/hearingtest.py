@@ -101,8 +101,20 @@ with sync_playwright() as pw:
 
     p.evaluate("() => __mic()")
     print("\n--- pitch ---")
-    hi = at(440, settle=1200)
-    lo = at(110, settle=1200)
+    # The pitch is a slewed reading, so it is asked until it arrives or five
+    # seconds pass, rather than once at 1.2 s: in a full run on a loaded
+    # machine the frames that slew it come late, and 110 Hz read -0.633
+    # where -0.625 is right (once in three full runs, never alone). A pitch
+    # that never arrives fails as it did.
+    def settled(hz, want):
+        return p.evaluate("""async ([hz, want]) => {
+          __play(hz, 'same', 0.8);
+          let r = __read();
+          for (let t = 0; t < 5000 && !(Math.abs(r.pitch - want) < 0.005); t += 100) { await __wait(100); r = __read(); }
+          return r;
+        }""", [hz, want])
+    hi = settled(440, PITCH(440))
+    lo = settled(110, PITCH(110))
     print("    440 Hz reads %.4f (want %.4f), 110 Hz reads %.4f (want %.4f)"
           % (hi["pitch"], PITCH(440), lo["pitch"], PITCH(110)))
     check("440 Hz and 110 Hz read their octaves from middle C, a tenth of a semitone either way",

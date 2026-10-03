@@ -176,9 +176,17 @@ with sync_playwright() as pw:
         out.presets.push({ preset, active: state.source.fx.active, where: el.planeWhere.textContent,
                            low: Math.min(...w[0]), apart: apart() });
       }
-      // The contrast: a display preset with no effect in it leaves the input alone.
-      applyPreset('b:Playing, waveform'); await __wait(800);
-      out.plain = { active: state.source.fx.active, apart: apart() };
+      /* The contrast: a display preset with no effect in it leaves the input
+         alone. Asked until it says so or three seconds pass, rather than once
+         at 800 ms: in a full run on a loaded machine the window read then
+         could still hold the last effect's samples (1.58 apart, once in
+         three full runs, never alone), and a window that is late is not the
+         input being processed. An input still processed after three seconds
+         fails as it did. */
+      applyPreset('b:Playing, waveform');
+      let plainAt = 0;
+      for (; plainAt < 3000 && !(state.source.fx.active === false && apart() < 1e-3); plainAt += 100) await __wait(100);
+      out.plain = { active: state.source.fx.active, apart: apart(), ms: plainAt };
       return out;
     }""")
     for row in live["presets"]:
