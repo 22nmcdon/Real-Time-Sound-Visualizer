@@ -983,6 +983,35 @@ runs could show them: the moments' floor, a cell over full ink, the
 memory's fifteen seconds, the verdict's wait for history, the median of an
 even window, and boredom let go when the photocell is.
 
+**4b: the capture** (`scope/capture.h`). One frame of what the screen
+draws, from the source's latest samples: the window and the trigger's
+search span behind it, giving way in the page's order when the buffer is
+short; the AC coupling and the trace's filter over the whole fetch, primed;
+the lag lane, interpolated; mid and side; the turn, before the trigger; and
+the edge found with its hysteresis and holdoff, the window cut there. The
+view's settings are a struct (`View`) where the page reads `state`, and the
+automatic lag's lock is handed in. The trace filter's law for the cutoff is
+the voice's, so `cutoffHz` moved here from restore.
+
+Parity (`capture_js.mjs`, `capture_cpp`): every timebase at three rates, the
+edge at three places and pushed past both ends; the trigger rising and
+falling on noise and a ringing square, out of reach and on a constant; full
+scale moving the level; the coupling on one lane and the other and on the
+input's side; each kind of filter with its resonance and what is pointed at
+both; the lag whole and fractional, clamped, locked, and refused three ways;
+mid and side and the turn, refused three ways; the buffer giving way;
+samples landing exactly on the level and on the band's edge, edges exactly a
+holdoff apart and a fraction of a sample short; and 40 random runs.
+Mutation: 45 of 47 caught. The two left are equivalent: the search starting
+at sample one rather than nought, where no crossing can be, and mid and side
+asking that the source has two channels as well as the frame, which it does
+whenever the frame does, as mid and side refuses the lag that could add a
+lane. Six lived until runs could show them - the band's edge, a level met
+exactly, the holdoff's rounding and its equality, a cutoff past what the
+rate holds, and a lag that adds to less than nothing. Exact samples needed
+a square of a half on an offset of a half, since a float of 0.4 and a
+double of 0.4 do not cancel.
+
 **5. The site on WebAssembly.** The worklet runs the compiled core, and the
 JavaScript engine and brain are retired once parity says there is nothing left
 they do that the core does not.
