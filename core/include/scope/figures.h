@@ -47,7 +47,10 @@ inline std::array<double, 2> figureAt(Figure name, double t, double detail, cons
     case Figure::Drawn: {
       if (path == nullptr || path->at.size() < 2) return { 0, 0 };
       const auto& at = path->at;
-      const auto& xy = path->xy;
+      // A point past the end of xy is the page's undefined, which makes NaN
+      // of whatever it touches; read as that, rather than past the vector.
+      // No path the page builds is short, but one given whole can be.
+      const auto xy = [&path](std::size_t i) { return i < path->xy.size() ? path->xy[i] : NAN; };
       const double u = t - std::floor(t);
       std::size_t lo = 0, hi = at.size() - 1;
       while (hi - lo > 1) {
@@ -55,7 +58,7 @@ inline std::array<double, 2> figureAt(Figure name, double t, double detail, cons
         if (at[mid] <= u) lo = mid; else hi = mid;
       }
       const double span = at[hi] - at[lo], f = span > 0 ? (u - at[lo]) / span : 0;
-      return { xy[2 * lo] + (xy[2 * hi] - xy[2 * lo]) * f, xy[2 * lo + 1] + (xy[2 * hi + 1] - xy[2 * lo + 1]) * f };
+      return { xy(2 * lo) + (xy(2 * hi) - xy(2 * lo)) * f, xy(2 * lo + 1) + (xy(2 * hi + 1) - xy(2 * lo + 1)) * f };
     }
     case Figure::Square: {
       static constexpr double corners[5][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 } };

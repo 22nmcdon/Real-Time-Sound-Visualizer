@@ -109,6 +109,9 @@ void run(const std::vector<std::string>& head, const Events& events) {
         else if (cmd == "kick") core.kick(num(arg(1)));
         else if (cmd == "strike") core.strike(num(arg(1)), num(arg(2)));
         else if (cmd == "reswing") core.reswing();
+        else if (cmd == "cycle" && arg(1) == "none") core.setCycle(nullptr);
+        else if (cmd == "wavetable" && arg(1) == "none") core.setWavetable(nullptr);
+        else if (cmd == "figPath" && arg(1) == "none") core.setFigPath(nullptr);
         else if (cmd == "cycle") core.setCycle(std::make_shared<scope::CycleTables>(tables(arg(1).substr(2))));
         else if (cmd == "wavetable") {
           auto bank = std::make_shared<std::vector<scope::CycleTables>>();
@@ -122,6 +125,8 @@ void run(const std::vector<std::string>& head, const Events& events) {
         } else if (cmd == "lfo") {
           auto& lfo = lfos[static_cast<std::size_t>(num(arg(1)))];
           lfo.setShape(arg(2)); lfo.rate = num(arg(3));
+        } else if (cmd == "restart") {
+          lfos[static_cast<std::size_t>(num(arg(1)))].phase = 0;
         } else if (cmd == "input") { inHz = num(arg(1)); inAmp = num(arg(2)); inDc = arg(3).empty() ? 0 : num(arg(3)); }
         else if (cmd == "fx") fx = arg(1) == "1";
         else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }

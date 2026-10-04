@@ -16,8 +16,16 @@
      bars LAYER v,v,...           voices LAYER null | note/hz/vel/role+...
      spin a,b,c                   routes none | index/held/heldB/slot/amount/amountB/unipolar+...
      gate 0|1 VEL   gated 0|1     kick AMT   strike HZ VEL   reswing
-     cycle T:...   wavetable B:...   figPath P:xy;at   lfo I SHAPE RATE
+     cycle T:...   wavetable B:...   figPath P:xy;at   (each, or none)   lfo I SHAPE RATE
+     restart I   (an oscillator's phase to nought, as the worklet restarts one)
      input HZ AMP [DC]   (0 for none)  fx 0|1 (the effect instead of the block)
+
+   With CORE=wasm in the environment the core is the page's `makeWasmCore`
+   over the module the page carries, and with CORE=js the page's JavaScript
+   core printed the same way: the samples, then only what the worklet reads
+   of a core - the envelope, the crossings, the budget, the drawing - and the
+   oscillators as it left them. The effect is not the compiled core's yet, so
+   a run that asks for it prints that and nothing else.
    Usage: node generator_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -25,7 +33,8 @@ import { fileURLToPath } from "node:url";
 import { pageSpan, mulberry32 } from "./js_core.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const page = fs.readFileSync(path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
+// SCOPE_PAGE names another copy of the page, for a check that alters one.
+const page = fs.readFileSync(process.env.SCOPE_PAGE || path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
 
 function definition(name) {
   let start = page.indexOf("\nfunction " + name + "(");
@@ -46,7 +55,7 @@ const solids = pageSpan("const MODELS = [", "/* --- what rate this machine actua
 const source = bound.map((name) => name === "MODELS" ? "const MODELS = " + JSON.stringify(solids.MODELS) + ";"
                                                      : definition(name)).join("\n")
   + "\nconst MODEL_BY_NAME = new Map(MODELS.map((m) => [m.name, m]));"
-  + "\nreturn makeGeneratorCore;";
+  + "\nreturn { makeGeneratorCore, makeWasmCore };";
 // The page's sources that read the generator - the note envelope and the
 // drawings' six - registered as the page registers them, over a tone source
 // that is this core, gated as the run gates it.
@@ -59,12 +68,29 @@ const sourcesText = (() => {
 const readSources = new Function("state", "genLane", "registerSource", sourcesText);
 const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
-const build = (seed) => new Function("Math", source)(Object.assign(Object.create(globalThis.Math),
-                                                                     { random: mulberry32(seed) }));
+const MODE = process.env.CORE || "";
+// WASM_FILE names a module to run instead of the page's: a mutant's, or one
+// broken on purpose so a check can be seen to fail.
+const wasmBytes = (() => {
+  if (MODE !== "wasm") return null;
+  if (process.env.WASM_FILE) return new Uint8Array(fs.readFileSync(process.env.WASM_FILE));
+  const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
+  const text = page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at));
+  return Uint8Array.from(Buffer.from(text, "base64"));
+})();
+const build = (seed) => {
+  const made = new Function("Math", source)(Object.assign(Object.create(globalThis.Math), { random: mulberry32(seed) }));
+  return MODE === "wasm" ? (rate, slots, lfos) => made.makeWasmCore(wasmBytes, rate, slots, lfos, seed) : made.makeGeneratorCore;
+};
 
+// In the worklet's two modes the tables and the path are typed arrays, as a
+// page could hand them over: the JavaScript core indexes either alike, and
+// the compiled one is given them through JSON, which has to write a typed
+// array as the array it holds.
+const numbers = (t) => (MODE ? Float64Array.from(t.split(","), Number) : t.split(",").map(Number));
 const tables = (text) => {
   const [, most, body] = text.split(":");
-  return { most: Number(most), levels: body.split(";").map((t) => t.split(",").map(Number)) };
+  return { most: Number(most), levels: body.split(";").map(numbers) };
 };
 const value = (w) => (w === "true" ? true : w === "false" ? false : Number.isNaN(Number(w)) ? w : Number(w));
 const show = (v) => v.map((x) => Number(x).toPrecision(17)).join(" ");
@@ -77,6 +103,7 @@ function run(head, events) {
     return { shape, rate: Number(hz), depth: 0.5, phase: 0, held: 0, value: 0, epoch: 0 };
   });
   const core = build(Number(p.seed))(rate, Number(p.slots), lfos);
+  if (MODE && [...events.values()].some((list) => list.some((w) => w[0] === "fx" && w[1] === "1"))) return "fx";
   const out = [];
   const bufs = Array.from({ length: 6 }, () => new Float32Array(N));
   let input = null, inHz = 0, inAmp = 0, inDc = 0, fx = false, gated = false;
@@ -101,12 +128,14 @@ function run(head, events) {
       else if (cmd === "kick") core.kick(Number(a[0]));
       else if (cmd === "strike") core.strike(Number(a[0]), Number(a[1]));
       else if (cmd === "reswing") core.reswing();
+      else if (a[0] === "none" && ["cycle", "wavetable", "figPath"].includes(cmd)) core.set(cmd, null);
       else if (cmd === "cycle") core.set("cycle", tables(a[0]));
       else if (cmd === "wavetable") core.set("wavetable", a[0].slice(2).split("!").map((c) => tables("T:" + c)));
       else if (cmd === "figPath") {
         const [xy, t] = a[0].slice(2).split(";");
-        core.set("figPath", { xy: xy.split(",").map(Number), at: t.split(",").map(Number) });
+        core.set("figPath", { xy: numbers(xy), at: numbers(t) });
       } else if (cmd === "lfo") { lfos[Number(a[0])].shape = a[1]; lfos[Number(a[0])].rate = Number(a[2]); }
+      else if (cmd === "restart") lfos[Number(a[0])].phase = 0;
       else if (cmd === "input") { inHz = Number(a[0]); inAmp = Number(a[1]); inDc = Number(a[2] || 0); }
       else if (cmd === "fx") fx = a[0] === "1";
       else throw new Error("unknown command " + cmd);
@@ -130,6 +159,12 @@ function run(head, events) {
   }
   // And what the core says of itself at the end, as the worklet posts it.
   const b = core.budget, d = core.drawing;
+  if (MODE) {
+    out.push(core.envelope, core.crossings.x, core.crossings.y, b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1],
+             b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing);
+    for (const l of lfos) out.push(l.phase, l.held, l.value);
+    return show(out);
+  }
   out.push(core.envelope, core.pitch, core.crossings.x, core.crossings.y, core.spinKick, core.swingLevel,
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
            d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length);

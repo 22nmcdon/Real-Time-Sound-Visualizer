@@ -23,6 +23,7 @@ python3 web/tests/run.py                                    # everything, ~6 min
 python3 web/tests/run.py lane patch                         # just those
 cd oscilloscope-poc && python -m unittest discover -s tests
 python3 core/tests/parity.py                                # the C++ core against the page
+python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 ```
 
 `web/scope.html` is one file with the script inline. `extract.py` lifts the

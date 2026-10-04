@@ -1157,11 +1157,101 @@ decibels, which the core's panel had left where the setup put it.
 JavaScript engine and brain are retired once parity says there is nothing left
 they do that the core does not.
 
+5a puts the generator in the worklet as WebAssembly, behind a switch:
+`?core=wasm` in the address, and the worklet runs the C++ core's
+`scope::Generator` where it ran `makeGeneratorCore`, and says which it made.
+Everything else stays as it was - the main thread's generator, the effects
+worklet, the brain - so the switch changes one thing, and the JavaScript one
+is the default until the compiled one has been shown to be the same in every
+way the worklet uses it.
+
+The module is built by `core/wasm/build.py` with clang's own wasm32 target
+and the WASI libc and libc++, no Emscripten: `-fno-exceptions -fno-rtti -O2`,
+as a reactor so `_initialize` runs the static constructors, and stripped. It
+imports only the three WASI calls the C library's abort path reaches for,
+which the page stubs. The library's `operator new` would throw and a module
+without an exception runtime cannot link that, so the bridge has its own, and
+an allocation that fails ends the module as it would end the worklet. The
+build is deterministic, 187 KB, and goes into the page as base64 between two
+marker comments, because the page is one file opened from the disk as often
+as served and a worklet cannot fetch from `file://`. `--check` builds it again
+and compares; parity runs that, and the web suite does when the toolchain is
+there.
+
+The bridge (`core/wasm/scope_wasm.cpp`, and `makeWasmCore` in the page) is
+the JavaScript core's interface spelt for a boundary of numbers. A setting
+crosses as its field's name and its value as JSON in a scratch buffer, read by
+the core's own `jsonParse`; JavaScript writes a number in its shortest
+round-trip form, so nothing is lost on the way, and a typed array goes as the
+array it holds. Routes go as seven doubles each. The oscillators stay the
+worklet's objects and its truth: every number written in before a block and
+read back after it, so a restart the worklet makes by setting a phase to
+nought is just the phase. The lanes, the input and the readings come back
+through views made fresh after every call, since the module's memory can grow
+and replace its buffer.
+
+Held three ways. Parity drives the page's `makeWasmCore` over the module the
+page carries and the page's `makeGeneratorCore` through the generator runs,
+both through the harness's own calls, and compares the samples and what the
+worklet reads back - the envelope, the crossings, the budget, the drawing and
+each oscillator's phase, held value and value - to 1e-12 in every family; the
+effect's runs say so and are left out, as the effect is not the compiled
+core's yet. The nulls build the bridge wrong on purpose - a route a
+thousandth too strong, the phases not handed back, a setting given as text
+dropped - and each fails it, and the page's copy is told from one a character
+different. `wasmtest.py` plays the page with the switch and finds the worklet
+saying `wasm`, the picture drawn from it and the oscillators coming back, and
+without it saying `js`; and runs every one of the 254 generator presets
+through both cores with the settings, routes and oscillators the page holds,
+through JSON as processorOptions are and then as live objects as a message
+brings them, for a quarter of a second: the same to 1e-16, against a route a
+hundredth stronger or a tone a cent sharp that is not.
+
+The samples agree to the bit everywhere but the drawing's readings, which
+differ in the last place: V8's sine and the WASI libc's are not the same
+function, and the native build's libm is a third. A first-run difference in
+`figure-path` was not that - see the comparison that skipped NaN, below.
+
+Mutation: the bridge's C++, 45 of 49 through the parity section, and its
+page side, 21 of 24. The seven left are equivalent: an oscillator's depth,
+which the generator never reads (routes carry their own amounts), written
+across or not, on either side; its held value and its value written in,
+which only the module itself changes, since a restart sets the phase alone;
+the oscillators sized in two steps rather than one; UTF-8's two-byte branch,
+which no string the page sends reaches; and `undefined` turned into `null`,
+which the page never sends. Five more lived until runs were added that did
+what the page does and the runs had not: drawbars on layer B, with a
+registration of their own; a drawn cycle, a wavetable bank and a path each
+cleared after being set; an oscillator's shape changed under a routing; an
+oscillator restarted, by its phase set to nought; and typed arrays handed
+over, which JSON writes as objects unless told otherwise. The harness's two
+modes hand over typed arrays now, and it has `restart` and `none` for the
+other three.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
 ## Found on the way
+
+- **A comparison that skipped NaN called NaN and a number the same.**
+  `worst` in the parity harness took the largest difference with Python's
+  `max`, which never takes a NaN after a number. The generator's path fixture
+  had a time more than it had points, so the page drew NaN for the last
+  stretch of every cycle and the core read past the end of its vector - and
+  the run passed, as did the same path in `figureAt`'s rows, until the
+  WebAssembly build read different memory there and disagreed with the
+  native one. NaN against a number is infinitely far now, and checked to be;
+  the core reads a missing point as the page's undefined, NaN; the fixture
+  has its sixth point, and the short path is held at `figureAt`, where no
+  clamp stands between it and the comparison. Not in a generator run: the
+  output clamps are `fmin` and `fmax` in the core, which give the bound for
+  a NaN, and `Math.min` and `Math.max` on the page, which keep it, so a NaN
+  sample is full scale in one and NaN in the other. The core's is the safer
+  for a host, and nothing the page builds makes a NaN to reach it; the same
+  difference stands wherever else the core uses `fmin` and `fmax` for the
+  page's `Math.min` and `Math.max`, and parity holds those for finite
+  values only.
 
 - **Every button the plugin did not name was in the keyboard's set.** The
   hands a state keeps are compacted by set - pressing Dyad undoes an earlier
@@ -1333,6 +1423,7 @@ redone natively or left out.
 
 ```
 python3 core/tests/parity.py                 # the core against the page
+python3 core/wasm/build.py                   # the core compiled into the page, after any change to it
 cmake -S plugin -B plugin/build -G Ninja [-DSCOPE_JUCE_DIR=/path/to/JUCE]
 cmake --build plugin/build
 plugin/build/ScopeShellTest_artefacts/Release/ScopeShellTest
@@ -1346,6 +1437,11 @@ draw without one (`57,64` holds a fifth), `SCOPE_PRESET=Wah` opens on a preset
 by name, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
 an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
 to run on.
+
+The WebAssembly build needs clang with the wasm32 target, the WASI libc and
+the wasm32 libc++ (Ubuntu: `wasi-libc libc++-18-dev-wasm32
+libc++abi-18-dev-wasm32 libclang-rt-18-dev-wasm32`); parity needs it too, to
+check the page's copy and run it.
 
 On Linux the web view needs WebKitGTK 4.1 and GTK 3, and the standalone ALSA:
 `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`, with the X11 and

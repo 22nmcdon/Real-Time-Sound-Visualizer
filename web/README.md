@@ -1,7 +1,10 @@
 # The web scope
 
-`scope.html` is the whole application: one file, no build step, no dependencies.
-Open it in a browser and it runs. It is also published as an artifact, but this
+`scope.html` is the whole application: one file, no dependencies. Open it in a
+browser and it runs. One part of it is generated rather than written: the C++
+core's generator, compiled to WebAssembly by `../core/wasm/build.py` and
+carried as base64 between two marker comments, which the page runs in its
+worklet with `?core=wasm` in the address. Nothing else is built. It is also published as an artifact, but this
 copy is the source of truth — the published page is a deployment of it.
 
 The desktop app in `../oscilloscope-poc/` is a separate implementation of the
@@ -57,6 +60,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
 | `ratetest.py` | the sample-rate audit: everything that was secretly a count of samples, from 22 kHz to 96 kHz |
 | `worklettest.py` | the generator in the audio thread, and that it is the same code as the picture's |
+| `wasmtest.py` | the compiled core behind `?core=wasm`: the page's copy built from the core as it stands, the worklet saying it runs it, every generator preset the same sound through it as through the JavaScript one |
 | `envtest.py` | the gate, the envelope and the legato rule |
 | `taptest.py` | the two taps, all four combinations, and the block they straddle |
 | `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
@@ -3783,3 +3787,33 @@ that was wrong.
   watched (the step disarms on one), so it now makes no loop either.
   `thresholdtest.py` loads such a code and routes from it. The core had copied
   the recursion, and its random runs found it when one watched "threshold".
+
+**The compiled core rides in the page, and has to be built again when the
+core changes.** Stage 5a (plugin/PLAN.md) puts the C++ core's generator in the
+worklet as WebAssembly, behind `?core=wasm`. A worklet cannot fetch from
+`file://`, and the page is opened from the disk as often as it is served, so
+the module goes inside the page: about 187 KB, 249 KB as base64, written
+between `WASM_CORE_BEGIN` and `WASM_CORE_END` by `python3 core/wasm/build.py`.
+That is the cost of one file: a quarter of a megabyte that is generated, and
+stale the moment `core/include` changes under it. `build.py --check` builds it
+again and compares, since the build is deterministic; `wasmtest.py` runs that
+when clang's wasm32 target is installed (Ubuntu: `wasi-libc
+libc++-18-dev-wasm32 libc++abi-18-dev-wasm32 libclang-rt-18-dev-wasm32`) and
+says SKIP when it is not, and `core/tests/parity.py` always runs it. The
+module imports nothing but the three WASI calls the C library's abort path
+needs, which the page stubs; there is no Emscripten runtime.
+
+- *A getter named for what it says, not `core`.* The worklet now tells the
+  page which generator it made, and the first name for the reading was
+  `core` - which the rack's generator lane already uses for the generator
+  itself, so in that object literal the later getter would have replaced
+  `lane.core.tone` for every caller. It is `coreKind`.
+- *A comparison that skipped NaN.* The parity harness's `worst` took the
+  largest difference with Python's `max`, which never picks a NaN after a
+  number. A drawn path in its fixtures had a time more than it had points,
+  so the page drew NaN for the last stretch and the core read past the end
+  of a vector, and both passed as the same to 1e-12 until the WebAssembly
+  build read different memory there. NaN against a number counts as
+  infinitely far now, with a check that says so; the core reads a missing
+  point as NaN, as the page does; and the fixture has its point.
+

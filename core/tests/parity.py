@@ -16,7 +16,7 @@ values shifted by one sample, and against a run with one tone value changed,
 must both fail - a comparison that could not tell those apart would pass
 whatever the port did.
 """
-import os, subprocess, sys, glob
+import os, subprocess, sys, glob, math
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORE = os.path.dirname(HERE)
@@ -45,9 +45,19 @@ def _one(call):
     with open(path, "w") as f: f.write(call + "\n")
     return path
 
+# NaN on one side and a number on the other is as far apart as two values can
+# be. It used to count as no difference at all - `max` never takes a NaN after
+# a number - which is how a run the page answered with NaN, and the core with
+# memory read past the end of a vector, passed as the same to 1e-12.
 def worst(a, b):
     if len(a) != len(b): return float("inf")
-    return max((abs(x - y) for x, y in zip(a, b)), default=0.0)
+    return max((0.0 if x == y or (math.isnan(x) and math.isnan(y)) else
+                float("inf") if math.isnan(x) or math.isnan(y) else abs(x - y) for x, y in zip(a, b)), default=0.0)
+nan, inf = float("nan"), float("inf")
+check("the comparison sees a NaN against a number, after a number and before one",
+      worst([1, nan], [1, 2]) == inf and worst([1, 2], [1, nan]) == inf and worst([nan, 1], [2, 1]) == inf)
+check("and NaN against NaN, or an infinity against itself, as the same",
+      worst([nan, inf, -inf], [nan, inf, -inf]) == 0 and worst([inf], [-inf]) == inf)
 
 print("\n--- the envelope ---")
 exe = build("envelope_cpp")
@@ -236,10 +246,19 @@ def drawing_calls():
                 out.append("figureAt %s %r %r -" % (name, t, detail))
     for t in (0.0, 1.25, 517.3, 10079.999):
         out.append("figureAt Rose %r 3.7 -" % t)
-    path = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
+    path = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
     for t in ts + [3.4, 0.5, 0.18]:
         for name in ("Text", "Path", "Drawn"):
             out.append("figureAt %s %r 5 %s" % (name, t, path))
+    # A path with a time more than it has points, which the path above was by
+    # mistake for as long as this harness has had it. The page reads the
+    # missing point as undefined and answers NaN past the last one; the core
+    # read past the end of its vector, and the comparison skipped NaN, so
+    # both went unseen. Nothing the page builds is short; this holds the core
+    # to NaN rather than to whatever memory follows.
+    short = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
+    for t in (0.1, 0.6, 0.9, 0.99):
+        out.append("figureAt Path %r 5 %s" % (t, short))
     out.append("figureAt Drawn 0.3 5 P:0.4,0.4;0")
     out.append("figureAt Text 0.3 5 -")
     for s in SOLIDS: out.append("solidData " + s)
@@ -521,7 +540,18 @@ def gen_runs():
                           # it was kept as 11, and 4 if it was clamped to 8 when it was set.
                           (3072, "routes " + "+".join([route(BAR + 2, -0.5, held=1), route(BAR + 7, 0.4, held=1)]))])
     add("dyad-drawn", [(0, "set shape drawn"), (0, "cycle " + tset()), (2048, "set freq 1700")])
+    # An oscillator's shape changed in the middle, under a routing: the
+    # compiled core is told a shape only when it changes, and one never told
+    # went on with the old.
+    # And restarted, as the worklet restarts one when the page's is: by
+    # setting its phase to nought, which the compiled core has to be told.
+    add("dyad-lfo-restart", [(0, "routes " + route(FREQ, 0.2, index=0)), (1536, "restart 0"), (2944, "restart 0")])
+    add("dyad-lfo-shape", [(0, "routes " + route(FREQ, 0.2, index=0)), (1536, "lfo 0 square 9"), (3072, "lfo 0 random 40")])
     add("dyad-wavetable", [(0, "set shape wavetable"), (0, "wavetable " + bank), (0, "routes " + route(TABLE, 0.8, index=1))])
+    # Each of the three taken away again, as the page takes them: a cycle, a
+    # bank or a path cleared that the core went on drawing passed until these.
+    add("dyad-drawn-cleared", [(0, "set shape drawn"), (0, "cycle " + tset()), (2048, "cycle none")])
+    add("dyad-wavetable-cleared", [(0, "set shape wavetable"), (0, "wavetable " + bank), (2048, "wavetable none")])
     add("dyad-shape-routes", [(0, "set shape pulse"), (0, "routes " + "+".join([route(WIDTH, 0.6, index=0),
                               route(PHASE, 0.3, index=1), route(RATIO, 0.2, held=0.5), route(AMP, 0.5, index=0, unipolar=1)])),
                               (2048, "set shape morph"), (2048, "routes " + route(MORPH, 0.9, index=1))])
@@ -568,6 +598,12 @@ def gen_runs():
                     # A held routing that holds one value for A and another for B.
                     (1024, "routes " + route(FREQ, 0.25, held=0.2, heldB=-0.6)),
                     (1536, "voices 1 " + notes((74, "x"))), (2560, "voices 1 null"), (3072, "voices 1 " + notes((79, "y")))])
+    # Drawbars on both layers with two registrations, which no run had: a
+    # registration given to B that landed on A, or nowhere, passed.
+    add("layered-drawbars", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((67, "xy"))),
+                             (0, "set shape drawbars"), (0, "set shape drawbars 1"),
+                             (0, "bars 0 8,0,6,3,0,2,0,1,4"), (0, "bars 1 0,8,0,0,5,0,3,0,0"),
+                             (2048, "bars 1 2,0,0,8,0,0,0,6,0")])
     chord = notes(*[(48 + 3 * k, "xyu"[k % 3]) for k in range(8)])
     add("governed", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"),
                      (0, "set drive 0.5"), (0, "set shapeOS 4"), (0, "set vcfType 2"), (0, "set crushBits 8"),
@@ -609,8 +645,20 @@ def gen_runs():
         add("figure-" + fig, [(0, "set mode figure"), (0, "set figure " + fig), (0, "set figureRate 170"),
                               (0, "routes " + route(DETAIL, 0.4, index=1)), (2048, "set detail 7.5")])
     add("figure-path", [(0, "set mode figure"), (0, "set figure Text"),
-                        (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
+                        (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
                         (0, "set figureRate 90")])
+    # This run's path had a time more than it had points, by mistake, for as
+    # long as it has existed; the page drew NaN for the last stretch and the
+    # core read past its vector, and a comparison that skipped NaN called
+    # them the same. The short path is held at figureAt now, where NaN is
+    # compared as NaN. Not here: the generator's output is clamped, with
+    # fmin and fmax in the core, which take the bound for a NaN, and with
+    # Math.min and Math.max on the page, which keep it - so a NaN sample is
+    # full scale in one and NaN in the other. The core's is the safer for a
+    # host, and nothing the page builds makes a NaN to reach it.
+    add("figure-path-cleared", [(0, "set mode figure"), (0, "set figure Path"),
+                                (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
+                                (0, "set figureRate 90"), (2048, "figPath none")])
     add("figure-rose-turns", [(0, "set mode figure"), (0, "set figure Rose"), (0, "set detail 2.37"),
                               (0, "set figureRate 2400")], samples=6144)
     for model in ("Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"):
@@ -3291,6 +3339,63 @@ vpath = os.path.join(BUILD, "view_wrong.txt")
 with open(vpath, "w", encoding="utf-8") as f: f.write("\n".join(vwrong) + "\n")
 vwport = subprocess.run([rexe, vpath, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
 check("and the comparison fails against a zoom a step further", bool(rbad(vpg, vwport)))
+
+print("\n--- the generator in WebAssembly ---")
+# Stage 5a: the core's generator compiled for the browser, the module the page
+# carries, driven through the page's own `makeWasmCore` - the bridge the
+# worklet uses - and held to the page's JavaScript generator driven the same
+# way, run for run, through what the worklet reads back of a core: the
+# samples, the envelope, the crossings, the budget, the drawing, and the
+# oscillators as each left them. The same runs as the whole generator's; the
+# effect's are not the compiled core's yet and both sides say so.
+WBUILD = os.path.join(CORE, "wasm", "build.py")
+WSRC = os.path.join(CORE, "wasm", "scope_wasm.cpp")
+GEN_JS = os.path.join(HERE, "tools", "generator_js.mjs")
+def wrun(mode, path=listed, module=None):
+    env = dict(os.environ, CORE=mode)
+    if module: env["WASM_FILE"] = module
+    return subprocess.run(["node", GEN_JS, path], env=env, check=True, capture_output=True, text=True).stdout.splitlines()
+def wworst(js, wa):
+    by = {}
+    for (name, _), a, b in zip(runs, js, wa):
+        if a == b == "fx": continue  # nothing compared, so no family that passes for it
+        family = name.split("-")[0]
+        by[family] = max(by.get(family, 0.0), inf if "fx" in (a, b) else worst(row(a), row(b)))
+    return by
+fresh = subprocess.run([sys.executable, WBUILD, "--check"], capture_output=True, text=True)
+check("the page carries this core, compiled", fresh.returncode == 0, (fresh.stdout + fresh.stderr).strip()[-300:])
+wjs, wwa = wrun("js"), wrun("wasm")
+fxed = [n for n, r in runs if "fx 1" in r]
+check("every run answered by both, and only the effect's left out: %d runs, %d of the effect" % (len(runs), len(fxed)),
+      len(wjs) == len(wwa) == len(runs) and fxed
+      and [n for (n, _), a in zip(runs, wjs) if a == "fx"] == fxed == [n for (n, _), a in zip(runs, wwa) if a == "fx"])
+wby = wworst(wjs, wwa)
+for family in sorted(wby):
+    check("compiled, %s, the same to %g" % (family, TOL), wby[family] <= TOL, "worst %.3g" % wby[family])
+# Nulls. The check of the page's copy, against a copy of the page with one
+# character of the module changed.
+wpage = os.path.join(BUILD, "scope_wasm_wrong.html")
+page_text = open(os.path.join(CORE, "..", "web", "scope.html"), encoding="utf-8").read()
+wat = page_text.index("/* WASM_CORE_BEGIN */") + 30000
+with open(wpage, "w", encoding="utf-8") as f: f.write(page_text[:wat] + ("B" if page_text[wat] != "B" else "C") + page_text[wat + 1:])
+check("and the page's copy is told from a module one character different",
+      subprocess.run([sys.executable, WBUILD, "--check", "--page", wpage], capture_output=True).returncode != 0)
+# And the comparison, against modules built from the bridge with one thing
+# wrong in each: a route a thousandth too strong, the oscillators' phases not
+# handed back, a setting given as text dropped.
+def wnull(what, old, new):
+    src = open(WSRC).read()
+    assert src.count(old) == 1, old
+    bad_src, bad_mod = os.path.join(BUILD, "scope_wasm_null.cpp"), os.path.join(BUILD, "scope_wasm_null.wasm")
+    with open(bad_src, "w") as f: f.write(src.replace(old, new))
+    subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
+    by = wworst(wjs, wrun("wasm", module=bad_mod))
+    check("and the comparison fails against a module with %s" % what, max(by.values()) > TOL,
+          ", ".join(f for f in sorted(by) if by[f] > TOL))
+wnull("a route a thousandth too strong", "route.amount = r[4];", "route.amount = r[4] * 1.001;")
+wnull("the oscillators' phases not handed back", "{ l.phase, l.held, l.value }", "{ 0.0, l.held, l.value }")
+wnull("a setting given as text dropped",
+      "else if (v.type == T::String) core->set(field, std::string_view(scope::utf16To8(v.s)), layer);", "")
 
 print()
 if fails:
