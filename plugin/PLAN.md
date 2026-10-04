@@ -1228,6 +1228,45 @@ over, which JSON writes as objects unless told otherwise. The harness's two
 modes hand over typed arrays now, and it has `restart` and `none` for the
 other three.
 
+5b gives the effects worklet the compiled core too, and makes it what both
+worklets run: the generator's and the effects' on a live input take the
+module unless the address says `?core=js`, or the browser has no
+WebAssembly. The bridge gained the effect (`scope_effect`: a live pair in the
+first two lanes, the plane's result in the next two, the oscillators in and
+out as for a block). A worklet that is sent the module and cannot make it -
+a version it does not know, memory it will not give - makes the JavaScript
+core instead, through `makeWorkletCore`, and says which it made and why; the
+page keeps both (`coreKind`, `coreWhy`) for the tone, the rack's lane and the
+effects insert, so a refused module is the other core playing rather than
+silence. The main thread's generator, which draws the picture while the
+sound is off, is still the JavaScript one.
+
+What made the default safe to change is that the whole web suite is now a
+test of it: every check that sounds the generator or puts an effect on a
+live input runs the compiled core, and passes. On top of that, parity's
+effect runs went from one to four - the echo with feedback and ping-pong
+under routings and a restart, the kaleidoscope and mirror oversampled with
+the radius routed, and nothing on at all - compared through the harness
+like every other run, with a null that copies the input to the output
+without running the effect, which all four fail (the last by its
+oscillators, which the effect steps and the copy does not); and wasmtest.py
+puts every preset's effects, as the insert is given them, on a 3:2 stereo
+input through both cores, the same to 1e-16, against a twist a hundredth of
+a radian further that is not. It plays a stub microphone through the
+mirror and finds the insert running the compiled core and the input folded,
+and `js` for both worklets with `?core=js`, and gives the page a module of a
+version nobody has written and finds both worklets on the JavaScript core,
+saying why, and playing.
+
+Mutation: the effect's path through the bridge, 6 of 6 through the parity
+section - its lanes swapped either way, the second input written from the
+first, the oscillators not written in or not read back; and the worklets'
+choice of core and what they say of it, 9 of 9 through wasmtest.py - the
+fallback rethrowing, the compiled core called the JavaScript one, the switch
+read the wrong way or `&&` as `||`, the effects worklet not sent the module,
+its report or the generator's reason not kept, the effects worklet not
+saying, and the helper left out of the worklet's module.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

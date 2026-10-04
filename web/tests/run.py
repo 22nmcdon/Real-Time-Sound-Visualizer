@@ -24,7 +24,7 @@ SUITES = [
     ("scale", [sys.executable, "scaletest.py"], "full scale as decibels, and the nine detents"),
     ("rate", [sys.executable, "ratetest.py"], "the sample-rate audit: 22k to 96k"),
     ("worklet", [sys.executable, "worklettest.py"], "the generator in the audio thread"),
-    ("wasm", [sys.executable, "wasmtest.py"], "the compiled core behind ?core=wasm: the page's copy current, the worklet running it, every generator preset the same sound as the JavaScript one"),
+    ("wasm", [sys.executable, "wasmtest.py"], "the compiled core in both worklets: the page's copy current, each worklet running it and the JavaScript core with ?core=js, a refused module falling back, every preset's sound and effects the same through both"),
     ("env", [sys.executable, "envtest.py"], "the gate, the envelope and the legato rule"),
     ("patch", [sys.executable, "patchtest.py"], "patching by pointer, keyboard and touch"),
     ("lane", [sys.executable, "lanetest.py"], "the modulation lane: does it draw the real law"),

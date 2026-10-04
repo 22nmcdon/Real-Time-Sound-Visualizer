@@ -24,8 +24,7 @@
    over the module the page carries, and with CORE=js the page's JavaScript
    core printed the same way: the samples, then only what the worklet reads
    of a core - the envelope, the crossings, the budget, the drawing - and the
-   oscillators as it left them. The effect is not the compiled core's yet, so
-   a run that asks for it prints that and nothing else.
+   oscillators as it left them, the effect's runs included.
    Usage: node generator_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -103,7 +102,6 @@ function run(head, events) {
     return { shape, rate: Number(hz), depth: 0.5, phase: 0, held: 0, value: 0, epoch: 0 };
   });
   const core = build(Number(p.seed))(rate, Number(p.slots), lfos);
-  if (MODE && [...events.values()].some((list) => list.some((w) => w[0] === "fx" && w[1] === "1"))) return "fx";
   const out = [];
   const bufs = Array.from({ length: 6 }, () => new Float32Array(N));
   let input = null, inHz = 0, inAmp = 0, inDc = 0, fx = false, gated = false;

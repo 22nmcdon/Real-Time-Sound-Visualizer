@@ -197,6 +197,14 @@ EXPORT(scope_block) void scopeBlock(int n, int hasInput) {
   core->block(l, l + m, n, l + 2 * m, l + 3 * m, l + 4 * m, l + 5 * m);
 }
 
+// A live input's pair through the plane, the effects worklet's call: the
+// input in the first two lanes, the result in the next two.
+EXPORT(scope_effect) void scopeEffect(int n) {
+  float* l = lanes.data();
+  const std::size_t m = laneLength;
+  core->effect(l, l + m, l + 2 * m, l + 3 * m, n);
+}
+
 // What goes back with the samples: the envelope, the crossings' counts, the
 // budget, the drawing's readings, and each oscillator's phase, held value and
 // value.

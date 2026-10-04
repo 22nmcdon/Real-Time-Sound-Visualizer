@@ -708,6 +708,17 @@ def gen_runs():
                                (3072, "set gen2Rate 70000")])
     add("effect", [(0, "fx 1"), (0, "input 140 0.7"), (0, "set planeTwist 0.7"), (0, "set chorusMix 0.6"),
                    (0, "routes " + route(TWIST, 0.5, index=0)), (2048, "set planeSnap 4")])
+    # More of the effect, now that the compiled core plays it too: the echo
+    # with feedback and ping-pong under a routing on its level and time, the
+    # kaleidoscope and the mirror oversampled four times with the radius
+    # routed, and nothing on at all - the input handed through untouched.
+    add("effect-echo", [(0, "fx 1"), (0, "input 220 0.6"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
+                        (0, "set delayFeedback 0.6"), (0, "set delayPingPong true"),
+                        (0, "routes " + "+".join([route(ECHO, 0.5, index=1), route(ECHOT, 0.3, index=0)])),
+                        (1536, "restart 0"), (2048, "input 0 0")])
+    add("effect-kaleido", [(0, "fx 1"), (0, "input 330 0.8 0.1"), (0, "set planeKaleido 5"), (0, "set planeMirror 1"),
+                           (0, "set planeOS 4"), (0, "routes " + route(RADIUS, 0.4, index=0)), (2048, "set planeKaleido 3")])
+    add("effect-off", [(0, "fx 1"), (0, "input 180 0.7"), (2048, "input 90 0.3 -0.2")])
     add("at-44100", [(0, "set shape square"), (0, "set unison 3"), (0, "routes " + vib)], rate=44100.0)
     return runs
 
@@ -3346,8 +3357,8 @@ print("\n--- the generator in WebAssembly ---")
 # worklet uses - and held to the page's JavaScript generator driven the same
 # way, run for run, through what the worklet reads back of a core: the
 # samples, the envelope, the crossings, the budget, the drawing, and the
-# oscillators as each left them. The same runs as the whole generator's; the
-# effect's are not the compiled core's yet and both sides say so.
+# oscillators as each left them. The same runs as the whole generator's, the
+# effect's among them, which the effects worklet runs.
 WBUILD = os.path.join(CORE, "wasm", "build.py")
 WSRC = os.path.join(CORE, "wasm", "scope_wasm.cpp")
 GEN_JS = os.path.join(HERE, "tools", "generator_js.mjs")
@@ -3358,17 +3369,15 @@ def wrun(mode, path=listed, module=None):
 def wworst(js, wa):
     by = {}
     for (name, _), a, b in zip(runs, js, wa):
-        if a == b == "fx": continue  # nothing compared, so no family that passes for it
         family = name.split("-")[0]
-        by[family] = max(by.get(family, 0.0), inf if "fx" in (a, b) else worst(row(a), row(b)))
+        by[family] = max(by.get(family, 0.0), worst(row(a), row(b)))
     return by
 fresh = subprocess.run([sys.executable, WBUILD, "--check"], capture_output=True, text=True)
 check("the page carries this core, compiled", fresh.returncode == 0, (fresh.stdout + fresh.stderr).strip()[-300:])
 wjs, wwa = wrun("js"), wrun("wasm")
 fxed = [n for n, r in runs if "fx 1" in r]
-check("every run answered by both, and only the effect's left out: %d runs, %d of the effect" % (len(runs), len(fxed)),
-      len(wjs) == len(wwa) == len(runs) and fxed
-      and [n for (n, _), a in zip(runs, wjs) if a == "fx"] == fxed == [n for (n, _), a in zip(runs, wwa) if a == "fx"])
+check("every run answered by both, the effect's included: %d runs, %d of the effect" % (len(runs), len(fxed)),
+      len(wjs) == len(wwa) == len(runs) and len(fxed) >= 4)
 wby = wworst(wjs, wwa)
 for family in sorted(wby):
     check("compiled, %s, the same to %g" % (family, TOL), wby[family] <= TOL, "worst %.3g" % wby[family])
@@ -3396,6 +3405,21 @@ wnull("a route a thousandth too strong", "route.amount = r[4];", "route.amount =
 wnull("the oscillators' phases not handed back", "{ l.phase, l.held, l.value }", "{ 0.0, l.held, l.value }")
 wnull("a setting given as text dropped",
       "else if (v.type == T::String) core->set(field, std::string_view(scope::utf16To8(v.s)), layer);", "")
+# And the effect's own: a module that hands the input back without running
+# the effect. Every effect run has to fail it - the one with nothing on too,
+# by its oscillators, which the effect steps and the copy does not.
+def wnull_effect():
+    old = "core->effect(l, l + m, l + 2 * m, l + 3 * m, n);"
+    new = "(void)n; for (std::size_t i = 0; i < 2 * m; i++) l[2 * m + i] = l[i];"
+    src = open(WSRC).read()
+    assert src.count(old) == 1, old
+    bad_src, bad_mod = os.path.join(BUILD, "scope_wasm_null.cpp"), os.path.join(BUILD, "scope_wasm_null.wasm")
+    with open(bad_src, "w") as f: f.write(src.replace(old, new))
+    subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
+    bad = wrun("wasm", module=bad_mod)
+    off = [n for (n, _), a, b in zip(runs, wjs, bad) if n.startswith("effect") and worst(row(a), row(b)) > TOL]
+    check("and every effect run fails against a module that hands the input back", sorted(off) == sorted(fxed), ", ".join(off))
+wnull_effect()
 
 print()
 if fails:

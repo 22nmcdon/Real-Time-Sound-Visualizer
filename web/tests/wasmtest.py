@@ -1,10 +1,11 @@
-"""The generator in WebAssembly (stage 5a): the compiled core behind ?core=wasm.
+"""The core in WebAssembly (stage 5): the compiled core in both worklets.
 
 The page carries the C++ core's generator, compiled, as base64 between two
-marker comments, and with `?core=wasm` in the address its worklet runs that in
-place of `makeGeneratorCore`. `core/tests/parity.py` holds the module to the
-JavaScript generator through the parity harness's own runs. This holds it in
-the browser, through what the page itself sends:
+marker comments, and its worklets - the generator's and the effects' on a live
+input - run it in place of `makeGeneratorCore` unless the address says
+`?core=js`. `core/tests/parity.py` holds the module to the JavaScript core
+through the parity harness's own runs. This holds it in the browser, through
+what the page itself sends:
 
 THE PAGE'S COPY IS THIS CORE. The module is generated, not written, and has to
 be built again whenever the core changes; `core/wasm/build.py --check` builds
@@ -12,16 +13,19 @@ it and compares. That needs clang's wasm32 target and the WASI libc, which not
 everyone running the web suite has, so without them the check says SKIP, by
 name, rather than passing.
 
-THE WORKLET RUNS IT. The worklet says which core it made, and the page
-records what it said: `wasm` with the switch and `js` without it, which is
-the null - the reading comes from the audio thread, not from the address.
+THE WORKLETS RUN IT. Each worklet says which core it made, and the page
+records what it said: `wasm` by default and `js` with `?core=js`, which is the
+null - the reading comes from the audio thread, not from the address. And a
+module the browser will not make falls back: the worklet makes the
+JavaScript core, says so and why, and the sound goes on.
 
 EVERY PRESET IS THE SAME SOUND. Each generator preset applied as a player
 would, and its settings, routes and oscillators given to both cores the way
 the worklet gives them - through JSON at construction, as processorOptions
 are, and then again as live objects, as a message brings them - and run for
 a quarter of a second each: the samples and everything the worklet reads
-back, compared value for value.
+back, compared value for value. And every preset's effects, as the effects
+worklet would be given them, on a stereo input through both cores.
 """
 import os, shutil, subprocess, sys, tempfile
 from playwright.sync_api import sync_playwright
@@ -113,11 +117,50 @@ PRESET_RUN = """async () => {
       Math.random = real;
     }
   };
-  const rows = [];
+  // The effects worklet's life: made with a live input's fields, given them
+  // again as a message would, and handed a stereo input of its own - 220 Hz
+  // and 330 Hz, never a circle - block by block.
+  const wet = (wasm, tone, routes, seed) => {
+    const ls = lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, phase: 0, held: 0, value: 0, epoch: 0 }));
+    const real = Math.random;
+    Math.random = mul(seed);
+    try {
+      const c = wasm ? makeWasmCore(bytes, 48000, GEN_DESTS.length, ls, seed) : makeGeneratorCore(48000, GEN_DESTS.length, ls);
+      const asSent = JSON.parse(JSON.stringify(tone));
+      for (const f in asSent) c.set(f, asSent[f]);
+      c.setRoutes(JSON.parse(JSON.stringify(routes)));
+      const inL = new Float32Array(N), inR = new Float32Array(N), oL = new Float32Array(N), oR = new Float32Array(N);
+      const out = [];
+      out.changed = 0;
+      for (let b = 0; b < 64; b++) {
+        if (b === 16) { for (const f in tone) c.set(f, tone[f]); c.setRoutes(routes); }
+        for (let i = 0; i < N; i++) {
+          inL[i] = 0.6 * Math.sin(2 * Math.PI * 220 * (b * N + i) / 48000);
+          inR[i] = 0.5 * Math.sin(2 * Math.PI * 330 * (b * N + i) / 48000);
+        }
+        c.effect(inL, inR, oL, oR, N);
+        for (let i = 0; i < N; i++) {
+          out.push(oL[i], oR[i]);
+          out.changed = Math.max(out.changed, Math.abs(oL[i] - inL[i]), Math.abs(oR[i] - inR[i]));
+        }
+        for (const l of ls) out.push(l.phase, l.held, l.value);
+      }
+      return out;
+    } finally {
+      Math.random = real;
+    }
+  };
+  const rows = [], effects = [];
   for (const [, entries, kind] of PRESETS) {
-    if (kind !== "generator") continue;
     for (const [name] of entries) {
       applyPreset("b:" + name);
+      {
+        const tone = liveFxFields(), routes = workletRoutes();
+        const js = wet(false, tone, routes, 5);
+        effects.push({ name, worst: far(js, wet(true, tone, routes, 5)), changed: js.changed,
+                       wrong: effects.length < 4 ? far(js, wet(true, { ...tone, planeTwist: (tone.planeTwist || 0) + 0.01 }, routes, 5)) : null });
+      }
+      if (kind !== "generator") continue;
       const tone = genSettings(), toneB = genSettings(1) || {};
       if (!tone) { rows.push({ name, missing: true }); continue; }
       const routes = workletRoutes();
@@ -134,7 +177,7 @@ PRESET_RUN = """async () => {
       rows.push({ name, worst: far(js, wa), peak, routes: routes.length, length: js.length, wrong });
     }
   }
-  return rows;
+  return { rows, effects };
 }"""
 
 
@@ -159,14 +202,33 @@ with sync_playwright() as pw:
           const f = capture();
           let peak = 0;
           for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
-          return { kind: state.source.coreKind, switch: CORE_IN_WASM, blocks: state.source.blocks,
+          return { kind: state.source.coreKind, why: state.source.coreWhy, switch: CORE_IN_WASM, blocks: state.source.blocks,
                    fault: state.source.fault, peak, driver: lfoDriver(), phase: lfos[0].phase };
         }""")
 
-    print("\n--- the worklet runs it ---")
-    p, bad = open_page("?core=wasm")
+    # The effects worklet, on a stub microphone - two oscillators, 3:2 - with
+    # the mirror on, so the insert makes its node.
+    def effects(p):
+        return p.evaluate("""async () => {
+          const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+          const ctx = new AudioContext();
+          const merge = ctx.createChannelMerger(2), dest = ctx.createMediaStreamDestination();
+          const a = ctx.createOscillator(), c = ctx.createOscillator();
+          a.frequency.value = 220; c.frequency.value = 330;
+          a.connect(merge, 0, 0); c.connect(merge, 0, 1); merge.connect(dest); a.start(); c.start();
+          navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
+          el.srcMic.click(); await wait(1200);
+          el.planeMirror.value = "3"; el.planeMirror.dispatchEvent(new Event("change")); await wait(1200);
+          const w = state.source.getLatestWindow(4410);
+          return { source: state.source.kind, active: state.source.fx.active, kind: state.source.fx.coreKind,
+                   why: state.source.fx.coreWhy, fault: state.source.fx.fault,
+                   lowX: Math.min(...w[0]), lowY: Math.min(...w[1]) };
+        }""")
+
+    print("\n--- the worklets run it, by default ---")
+    p, bad = open_page("")
     on = sound(p)
-    check("with ?core=wasm the worklet says it is running the compiled core", on["switch"] and on["kind"] == "wasm", str(on))
+    check("the generator's worklet says it is running the compiled core", on["switch"] and on["kind"] == "wasm" and on["why"] is None, str(on))
     check("and it plays, and the picture is drawn from what it sends",
           on["fault"] is None and on["blocks"] > 3 and on["peak"] > 0.05 and on["driver"] == "worklet",
           "%d blocks, peak %.3f, fault %r" % (on["blocks"], on["peak"], on["fault"]))
@@ -174,10 +236,10 @@ with sync_playwright() as pw:
     later = p.evaluate("() => ({ phase: lfos[0].phase, blocks: state.source.blocks })")
     check("and the oscillators' phases come back from it", later["phase"] != on["phase"] and later["blocks"] > on["blocks"],
           "%r then %r" % (on["phase"], later["phase"]))
-    check("with no errors on the page", not bad, "; ".join(bad[:3]))
 
-    print("\n--- every generator preset, both cores ---")
-    rows = p.evaluate(PRESET_RUN)
+    print("\n--- every preset, both cores ---")
+    ran = p.evaluate(PRESET_RUN)
+    rows, wets = ran["rows"], ran["effects"]
     missing = [r["name"] for r in rows if r.get("missing")]
     worst = max((r["worst"] for r in rows if not r.get("missing")), default=float("inf"))
     off = [(r["name"], r["worst"]) for r in rows if not r.get("missing") and not r["worst"] <= TOL]
@@ -190,12 +252,45 @@ with sync_playwright() as pw:
     nulls = [r for r in rows if r.get("wrong") is not None]
     check("and the comparison fails against a route a hundredth stronger, or a tone a cent sharp",
           len(nulls) == 6 and all(r["wrong"] > TOL for r in nulls), ", ".join("%s %.3g" % (r["name"], r["wrong"]) for r in nulls))
+    woff = [(r["name"], r["worst"]) for r in wets if not r["worst"] <= TOL]
+    acting = sum(1 for r in wets if r["changed"] > 0.01)
+    check("%d presets' effects on a live input, every one the same to %g, %d of them changing it" % (len(wets), TOL, acting),
+          wets and not woff and acting >= 20, "worst %.3g; %s" % (max((r["worst"] for r in wets), default=0), woff[:4]))
+    wnulls = [r for r in wets if r.get("wrong") is not None]
+    check("and the comparison fails against the twist a hundredth of a radian further",
+          len(wnulls) == 4 and all(r["wrong"] > TOL for r in wnulls), ", ".join("%s %.3g" % (r["name"], r["wrong"]) for r in wnulls))
+
+    print("\n--- the effects worklet, by default ---")
+    fx = effects(p)
+    # The mirror on both axes folds each channel to its positive half, so
+    # neither lane goes below nought if the effect is in the path.
+    check("the effects worklet on a microphone says it is running the compiled core, and mirrors the input",
+          fx["source"] == "mic" and fx["active"] and fx["kind"] == "wasm" and fx["why"] is None and fx["fault"] is None
+          and fx["lowX"] > -0.01 and fx["lowY"] > -0.01, str(fx))
+    check("with no errors on the page", not bad, "; ".join(bad[:3]))
     p.close()
 
+    print("\n--- ?core=js, the JavaScript core ---")
+    p, bad = open_page("?core=js")
+    js = sound(p)
+    check("with ?core=js the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
+          and js["why"] is None and js["blocks"] > 3, str(js))
+    fx = effects(p)
+    check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and fx["why"] is None, str(fx))
+    check("with no errors on the page", not bad, "; ".join(bad[:3]))
+    p.close()
+
+    print("\n--- a module the browser will not make ---")
     p, bad = open_page("")
-    off = sound(p)
-    check("and without the switch the worklet says it is the JavaScript one", not off["switch"] and off["kind"] == "js"
-          and off["blocks"] > 3, str(off))
+    # Eight bytes with the module's magic and a version nobody has written.
+    p.evaluate("() => { wasmCore = () => new Uint8Array([0, 97, 115, 109, 9, 0, 0, 0]); }")
+    fell = sound(p)
+    check("the generator's worklet makes the JavaScript core instead, says why, and plays",
+          fell["switch"] and fell["kind"] == "js" and bool(fell["why"]) and fell["fault"] is None and fell["blocks"] > 3
+          and fell["peak"] > 0.05, str(fell))
+    fx = effects(p)
+    check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and bool(fx["why"]) and fx["fault"] is None
+          and fx["lowX"] > -0.01, str(fx))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
     p.close()
     b.close()
