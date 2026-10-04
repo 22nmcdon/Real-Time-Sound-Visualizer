@@ -3,9 +3,10 @@
 `scope.html` is the whole application: one file, no dependencies. Open it in a
 browser and it runs. One part of it is generated rather than written: the C++
 core's generator, compiled to WebAssembly by `../core/wasm/build.py` and
-carried as base64 between two marker comments, which the page's worklets run
-- the generator's and the effects' on a live input - unless the address says
-`?core=js`. Nothing else is built. It is also published as an artifact, but
+carried as base64 between two marker comments, which the page runs - in the
+generator's worklet, in the effects worklet on a live input, and on the main
+thread, where the generator draws while the sound is off - unless the address
+says `?core=js`. Nothing else is built. It is also published as an artifact, but
 this copy is the source of truth — the published page is a deployment of it.
 
 The desktop app in `../oscilloscope-poc/` is a separate implementation of the
@@ -3830,4 +3831,28 @@ needs, which the page stubs; there is no Emscripten runtime.
   the rack's lane and a live input's effects insert). `wasmtest.py` hands the
   page a module with a version nobody has written, and requires the sound to
   go on.
+- *A typed array over the module's memory has to be made after the call that
+  might grow it.* `new Float64Array(x.memory.buffer, x.scope_numbers(n), n)`
+  reads the buffer first, as JavaScript evaluates arguments left to right;
+  `scope_numbers` can grow the memory to make room, which detaches the buffer
+  just read, and the view throws "detached ArrayBuffer". It did, the first
+  time a preset sent a wavetable bank to the main thread's core. The call
+  goes first and the buffer is read after it, everywhere in
+  `makeWasmCore`, including the state read-back, which had the same shape
+  since 5a and had only ever been lucky that the heap had room.
+- *Big settings go as numbers, not JSON.* The page sends the drawn cycle,
+  the wavetable bank and a figure's path with every preset, and as JSON a
+  bank is over a megabyte: applying a preset went from 125 to 285 ms when
+  the main thread's core became the compiled one. They go through
+  `scope_tables` as counted runs of numbers now, and a preset costs what it
+  did. The small settings stay JSON, which the core parses itself.
+- *The main thread's core keeps its settings on this side.* The page reads
+  the generator's settings back - the panel, `genSettings`, what a worklet is
+  sent - and the compiled core has no way to hand them over, so its wrapper
+  keeps `tone` and `toneB` itself, by `storeGeneratorSetting`, the rules the
+  JavaScript core now also stores by, from `generatorSettings`, the one set
+  of defaults. Nothing writes the settings except through `set` (checked:
+  the core itself never does), so the mirror cannot fall behind.
+  `wasmtest.py` applies every preset on a page of each kind and requires the
+  settings read back to be the same, character for character.
 

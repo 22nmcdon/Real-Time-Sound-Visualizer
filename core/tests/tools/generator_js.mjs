@@ -22,8 +22,9 @@
 
    With CORE=wasm in the environment the core is the page's `makeWasmCore`
    over the module the page carries, and with CORE=js the page's JavaScript
-   core printed the same way: the samples, then only what the worklet reads
-   of a core - the envelope, the crossings, the budget, the drawing - and the
+   core printed the same way: the samples, then what the worklets and the
+   main thread read of a core - the envelope, the crossings, the budget, the
+   drawing, the pitch, the kick, the swing's envelope, whether gated - and the
    oscillators as it left them, the effect's runs included.
    Usage: node generator_js.mjs <runs> */
 import fs from "node:fs";
@@ -68,6 +69,11 @@ const readSources = new Function("state", "genLane", "registerSource", sourcesTe
 const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
 const MODE = process.env.CORE || "";
+// PAIRS=picture: the picture pair only, as the main thread asks for a block -
+// no heard pair and no B's, which the core is handed as none.
+// PAIRS=b: the picture and B's pair without the heard pair, as the tone
+// source asks while the sound is off.
+const PICTURE_ONLY = process.env.PAIRS === "picture", WITH_B = process.env.PAIRS === "b";
 // WASM_FILE names a module to run instead of the page's: a mutant's, or one
 // broken on purpose so a check can be seen to fail.
 const wasmBytes = (() => {
@@ -152,14 +158,17 @@ function run(head, events) {
       continue;
     }
     core.setInput(input);
-    core.block(l, r, N, hl, hr, bl, br);
+    if (PICTURE_ONLY) core.block(l, r, N);
+    else if (WITH_B) core.block(l, r, N, null, null, bl, br);
+    else core.block(l, r, N, hl, hr, bl, br);
     for (let k = 0; k < N; k++) out.push(l[k], r[k], hl[k], hr[k], bl[k], br[k]);
   }
   // And what the core says of itself at the end, as the worklet posts it.
   const b = core.budget, d = core.drawing;
   if (MODE) {
     out.push(core.envelope, core.crossings.x, core.crossings.y, b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1],
-             b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing);
+             b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing,
+             core.pitch, core.spinKick, core.swingLevel, core.gated ? 1 : 0);
     for (const l of lfos) out.push(l.phase, l.held, l.value);
     return show(out);
   }

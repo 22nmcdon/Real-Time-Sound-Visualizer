@@ -548,6 +548,9 @@ def gen_runs():
     add("dyad-lfo-restart", [(0, "routes " + route(FREQ, 0.2, index=0)), (1536, "restart 0"), (2944, "restart 0")])
     add("dyad-lfo-shape", [(0, "routes " + route(FREQ, 0.2, index=0)), (1536, "lfo 0 square 9"), (3072, "lfo 0 random 40")])
     add("dyad-wavetable", [(0, "set shape wavetable"), (0, "wavetable " + bank), (0, "routes " + route(TABLE, 0.8, index=1))])
+    # On the bank's last slot and nowhere else, so a bank that arrived a slot
+    # short - which the compiled core's numbers once could - is heard.
+    add("dyad-wavetable-last", [(0, "set shape wavetable"), (0, "wavetable " + bank), (0, "set table 3")])
     # Each of the three taken away again, as the page takes them: a cycle, a
     # bank or a path cleared that the core went on drawing passed until these.
     add("dyad-drawn-cleared", [(0, "set shape drawn"), (0, "cycle " + tset()), (2048, "cycle none")])
@@ -3362,9 +3365,10 @@ print("\n--- the generator in WebAssembly ---")
 WBUILD = os.path.join(CORE, "wasm", "build.py")
 WSRC = os.path.join(CORE, "wasm", "scope_wasm.cpp")
 GEN_JS = os.path.join(HERE, "tools", "generator_js.mjs")
-def wrun(mode, path=listed, module=None):
+def wrun(mode, path=listed, module=None, pairs=None):
     env = dict(os.environ, CORE=mode)
     if module: env["WASM_FILE"] = module
+    if pairs: env["PAIRS"] = pairs
     return subprocess.run(["node", GEN_JS, path], env=env, check=True, capture_output=True, text=True).stdout.splitlines()
 def wworst(js, wa):
     by = {}
@@ -3381,6 +3385,19 @@ check("every run answered by both, the effect's included: %d runs, %d of the eff
 wby = wworst(wjs, wwa)
 for family in sorted(wby):
     check("compiled, %s, the same to %g" % (family, TOL), wby[family] <= TOL, "worst %.3g" % wby[family])
+# The main thread's call (5c): the picture pair only, the heard pair and B's
+# handed over as none, as the JavaScript core is handed null.
+pjs, pwa = wrun("js", pairs="picture"), wrun("wasm", pairs="picture")
+pby = wworst(pjs, pwa)
+check("compiled, asked for the picture alone as the main thread asks, every family the same to %g" % TOL,
+      len(pjs) == len(pwa) == len(runs) and max(pby.values()) <= TOL, "worst %.3g" % max(pby.values()))
+bjs, bwa = wrun("js", pairs="b"), wrun("wasm", pairs="b")
+bby = wworst(bjs, bwa)
+check("and asked for the picture and B's pair as the tone source asks, every family the same to %g" % TOL,
+      len(bjs) == len(bwa) == len(runs) and max(bby.values()) <= TOL, "worst %.3g" % max(bby.values()))
+heardless = [n for (n, r), a, b in zip(runs, wjs, pjs) if "fx 1" not in r and worst(row(a), row(b)) > 0]
+check("and asked for the picture alone, a run with a heard pair or a layer B reads as one without",
+      len(heardless) >= len(runs) // 2, "%d runs" % len(heardless))
 # Nulls. The check of the page's copy, against a copy of the page with one
 # character of the module changed.
 wpage = os.path.join(BUILD, "scope_wasm_wrong.html")
@@ -3403,6 +3420,8 @@ def wnull(what, old, new):
           ", ".join(f for f in sorted(by) if by[f] > TOL))
 wnull("a route a thousandth too strong", "route.amount = r[4];", "route.amount = r[4] * 1.001;")
 wnull("the oscillators' phases not handed back", "{ l.phase, l.held, l.value }", "{ 0.0, l.held, l.value }")
+wnull("the heard pair withheld from a caller who gave one", "const bool heard = given & 2, pairB = given & 4;",
+      "const bool heard = false, pairB = given & 4;")
 wnull("a setting given as text dropped",
       "else if (v.type == T::String) core->set(field, std::string_view(scope::utf16To8(v.s)), layer);", "")
 # And the effect's own: a module that hands the input back without running

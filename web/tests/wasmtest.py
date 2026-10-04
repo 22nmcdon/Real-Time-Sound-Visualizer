@@ -85,7 +85,7 @@ PRESET_RUN = """async () => {
   // One core of either kind through the worklet's whole life: made, given
   // its settings as processorOptions are (JSON), run, given them again as a
   // message gives them (the objects), run on.
-  const play = (wasm, tone, toneB, routes, seed) => {
+  const play = (wasm, tone, toneB, routes, seed, pictureOnly) => {
     const ls = lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, phase: 0, held: 0, value: 0, epoch: 0 }));
     const real = Math.random;
     Math.random = mul(seed);
@@ -104,7 +104,8 @@ PRESET_RUN = """async () => {
           for (const f in toneB) c.set(f, toneB[f], 1);
           c.setRoutes(routes);
         }
-        c.block(bufs[0], bufs[1], N, bufs[2], bufs[3], bufs[4], bufs[5]);
+        if (pictureOnly) c.block(bufs[0], bufs[1], N);
+        else c.block(bufs[0], bufs[1], N, bufs[2], bufs[3], bufs[4], bufs[5]);
         for (const buf of bufs) for (let i = 0; i < N; i++) out.push(buf[i]);
         for (let i = 0; i < N; i++) out.peak = Math.max(out.peak, Math.abs(bufs[0][i]), Math.abs(bufs[1][i]));
         const d = c.drawing, g = c.budget;
@@ -174,7 +175,9 @@ PRESET_RUN = """async () => {
         const sharp = routes.length ? tone : { ...tone, freq: tone.freq * Math.pow(2, 1 / 1200) };
         wrong = far(js, play(true, sharp, toneB, bent, 11));
       }
-      rows.push({ name, worst: far(js, wa), peak, routes: routes.length, length: js.length, wrong });
+      // And as the main thread asks: the picture alone.
+      const alone = far(play(false, tone, toneB, routes, 11, true), play(true, tone, toneB, routes, 11, true));
+      rows.push({ name, worst: Math.max(far(js, wa), alone), peak, routes: routes.length, length: js.length, wrong });
     }
   }
   return { rows, effects };
@@ -184,8 +187,9 @@ PRESET_RUN = """async () => {
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    def open_page(query):
+    def open_page(query, init=None):
         p = b.new_page(viewport={"width": 1400, "height": 900})
+        if init: p.add_init_script(init)
         bad = []
         p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         p.on("console", lambda m: bad.append("console: " + m.text)
@@ -203,6 +207,7 @@ with sync_playwright() as pw:
           let peak = 0;
           for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
           return { kind: state.source.coreKind, why: state.source.coreWhy, switch: CORE_IN_WASM, blocks: state.source.blocks,
+                   main: state.source.mainCoreKind, mainWhy: state.source.mainCoreWhy,
                    fault: state.source.fault, peak, driver: lfoDriver(), phase: lfos[0].phase };
         }""")
 
@@ -229,6 +234,8 @@ with sync_playwright() as pw:
     p, bad = open_page("")
     on = sound(p)
     check("the generator's worklet says it is running the compiled core", on["switch"] and on["kind"] == "wasm" and on["why"] is None, str(on))
+    check("and so does the main thread's generator, which draws while the sound is off", on["main"] == "wasm" and on["mainWhy"] is None,
+          "%r %r" % (on["main"], on["mainWhy"]))
     check("and it plays, and the picture is drawn from what it sends",
           on["fault"] is None and on["blocks"] > 3 and on["peak"] > 0.05 and on["driver"] == "worklet",
           "%d blocks, peak %.3f, fault %r" % (on["blocks"], on["peak"], on["fault"]))
@@ -275,6 +282,7 @@ with sync_playwright() as pw:
     js = sound(p)
     check("with ?core=js the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
           and js["why"] is None and js["blocks"] > 3, str(js))
+    check("and so does the main thread's", js["main"] == "js" and js["mainWhy"] is None, "%r %r" % (js["main"], js["mainWhy"]))
     fx = effects(p)
     check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and fx["why"] is None, str(fx))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
@@ -291,6 +299,70 @@ with sync_playwright() as pw:
     fx = effects(p)
     check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and bool(fx["why"]) and fx["fault"] is None
           and fx["lowX"] > -0.01, str(fx))
+    check("with no errors on the page", not bad, "; ".join(bad[:3]))
+    p.close()
+
+    print("\n--- the main thread's settings, read back ---")
+    # Every preset applied on a page whose main thread runs the compiled core
+    # and on one whose main thread runs the JavaScript core, and the settings
+    # each reads back - the mirror on one, the core's own objects on the
+    # other - compared as written.
+    # Hashed in the page, with the length beside: written out, a preset's
+    # settings carry its wavetable bank, a megabyte and more, and the first
+    # version of this sent all 281 back - a third of a gigabyte - and stalled.
+    SETTINGS = """() => {
+      const hash = (text) => {
+        let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+        for (let i = 0; i < text.length; i++) {
+          const c = text.charCodeAt(i);
+          h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        return (h2 >>> 0).toString(16) + (h1 >>> 0).toString(16);
+      };
+      const out = [];
+      for (const [, entries] of PRESETS) for (const [name] of entries) {
+        applyPreset("b:" + name);
+        const text = JSON.stringify([genSettings(), genSettings(1)]);
+        out.push([name, hash(text) + ":" + text.length]);
+      }
+      return { kind: state.source.mainCoreKind, out };
+    }"""
+    pa, bad_a = open_page("")
+    pb, bad_b = open_page("?core=js")
+    wa_set, js_set = pa.evaluate(SETTINGS), pb.evaluate(SETTINGS)
+    differ = [n for (n, x), (_, y) in zip(wa_set["out"], js_set["out"]) if x != y]
+    moved = sum(1 for (_, x), (_, y) in zip(js_set["out"], js_set["out"][1:]) if x != y)
+    check("%d presets, the settings the page reads back the same from the compiled core's mirror as from the JavaScript core"
+          % len(js_set["out"]), wa_set["kind"] == "wasm" and js_set["kind"] == "js" and len(wa_set["out"]) == len(js_set["out"])
+          and not differ, ", ".join(differ[:4]))
+    check("and they can show it: %d presets leave the settings other than the one before" % moved, moved >= 200)
+    # And the rack's generator lane, which makes its core the same way.
+    LANE = """async () => {
+      el.rackSynth.checked = true; await setRackSynth(true);
+      await new Promise((r) => setTimeout(r, 600));
+      const lane = genLane();
+      genSet("freq", 331);
+      return { source: state.source.kind, kind: lane && lane.mainCoreKind, freq: lane && lane.core.tone.freq };
+    }"""
+    la, lb = pa.evaluate(LANE), pb.evaluate(LANE)
+    check("the rack's generator lane runs the compiled core, and keeps its settings where the page reads them",
+          la["source"] == "rack" and la["kind"] == "wasm" and la["freq"] == 331, str(la))
+    check("and the JavaScript one with ?core=js", lb["source"] == "rack" and lb["kind"] == "js" and lb["freq"] == 331, str(lb))
+    check("with no errors on either page", not bad_a and not bad_b, "; ".join((bad_a + bad_b)[:3]))
+    pa.close(); pb.close()
+
+    print("\n--- a main thread that will not compile the module ---")
+    # The page's own WebAssembly refused before it loads; the worklets have a
+    # global scope of their own, and theirs is untouched.
+    p, bad = open_page("", "WebAssembly.Module = function () { throw new Error('refused for the test'); };")
+    early = p.evaluate("""() => { const f = capture(); let peak = 0; for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
+                                  return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak }; }""")
+    check("the main thread makes the JavaScript core instead, says why, and draws", early["main"] == "js"
+          and "refused for the test" in (early["why"] or "") and early["peak"] > 0.05, str(early))
+    later = sound(p)
+    check("and the worklet, which can, still runs the compiled core", later["kind"] == "wasm" and later["blocks"] > 3, str(later))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
     p.close()
     b.close()

@@ -1267,6 +1267,57 @@ read the wrong way or `&&` as `||`, the effects worklet not sent the module,
 its report or the generator's reason not kept, the effects worklet not
 saying, and the helper left out of the worklet's module.
 
+5c moves the main thread's generator - the tone source's and the rack lane's,
+which draw the picture while the sound is off and whose settings the page
+reads back - onto the compiled core, under the same switch and with the same
+fallback (`makeMainCore`; `mainCoreKind` and `mainCoreWhy` on the source). The
+module is compiled once on the main thread, synchronously, about forty
+milliseconds, and each source instantiates its own; a browser that will not
+compile a module this size there gets the JavaScript core and says why. So the
+generator the page runs is the compiled one everywhere it runs.
+
+The main thread asks more of a core than a worklet does, and three things
+were needed. Its settings: the page reads `tone` and `toneB` back, so the
+wrapper keeps them on this side by the rules the JavaScript core stores by -
+the defaults and the storing are now shared functions (`generatorSettings`,
+`storeGeneratorSetting`) that both cores use, so they cannot drift. Its
+blocks: the main thread draws without the heard pair, and the lane without
+layer B's, and the bridge passes the core none for a pair it was not given,
+as the JavaScript core is passed null. And its readings: the pitch, the kick
+on the spin and the swing's envelope came across with the rest. What it does
+not offer is the voices in detail, which only the tests read, from cores
+they make themselves.
+
+Two faults were found on the way, both in the wrapper. A view over the
+module's memory made before a call that grew it, which threw the first time a
+preset sent a wavetable bank (the same shape was in the state read-back since
+5a, and had been lucky); and the cost of JSON for the big settings - the
+wavetable bank, the drawn cycle and the path, which every preset sends -
+which more than doubled what a preset cost. Those go as numbers now
+(`scope_tables`).
+
+Held by: parity's picture-only comparison of every run, the main thread's
+call; a module withholding the heard pair from a caller who gave one, which
+fails; and in wasmtest.py the main thread saying `wasm` by default and `js`
+with the switch, every preset's settings read back the same from the mirror
+as from the JavaScript core, every generator preset drawn picture-only the
+same through both cores, and a page whose own WebAssembly is refused drawing
+from the JavaScript core while its worklet still runs the compiled one. And,
+as with 5b, the whole web suite: every check that draws the generator with
+the sound off now draws it from the compiled core.
+
+Mutation: the bridge's new paths, 19 of 20 through parity in its three ways
+of asking for a block - the tables and the path read or written short or
+wrong, a cleared one left set, the readings out of order, the gate not
+kept, the pairs' flags confused, the tables not sent; the one left asks for
+the heard pair when only B's was wanted, which changes nothing a caller
+reads. Two lived until the run on the bank's last slot was added: a bank
+arriving a slot short, from either side. And the page's half, 8 of 8
+through wasmtest.py: the mirror not kept or not the one handed out, the
+switch inverted, the fallback's reason dropped, either source making the
+JavaScript core while saying otherwise, the module refused, and the view
+over the memory made before the call that grows it.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

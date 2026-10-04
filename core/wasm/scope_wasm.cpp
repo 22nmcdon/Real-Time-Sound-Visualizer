@@ -18,6 +18,7 @@
 // a module without an exception runtime cannot link; allocation failure here
 // is the end of the module, as it is of the worklet.
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -74,6 +75,29 @@ scope::CycleTables tablesOf(const scope::Json& v) {
   }
   return t;
 }
+
+// The tables and the path as numbers rather than JSON: a wavetable bank is a
+// megabyte and more as text, and the page sends it with every preset, so the
+// text cost a tenth of a second a preset that a copy does not. A table is its
+// harmonic ceiling, how many levels, then each level's length and samples; a
+// path is the length of xy, xy, the length of at, at.
+struct Reader {
+  const double* at;
+  const double* end;
+  double next() { return at < end ? *at++ : 0; }
+  std::size_t count() { const double n = next(); return n > 0 ? static_cast<std::size_t>(n) : 0; }
+  std::vector<double> list() {
+    std::vector<double> out(std::min(count(), static_cast<std::size_t>(end - at)));
+    for (auto& v : out) v = next();
+    return out;
+  }
+  scope::CycleTables tables() {
+    scope::CycleTables t;
+    t.most = next();
+    for (std::size_t k = count(); k > 0 && at < end; k--) t.levels.push_back(list());
+    return t;
+  }
+};
 
 }  // namespace
 
@@ -150,6 +174,26 @@ EXPORT(scope_set) int scopeSet(int fieldBytes, int valueBytes, int layer) {
   return 1;
 }
 
+// cycle, wavetable or figPath (`which` 0, 1, 2) from the first `count` of the
+// numbers buffer, in the shapes above; a count of nought is none.
+EXPORT(scope_tables) void scopeTables(int which, int count) {
+  Reader r { numbers.data(), numbers.data() + count };
+  if (which == 0) {
+    core->setCycle(count ? std::make_shared<scope::CycleTables>(r.tables()) : nullptr);
+  } else if (which == 1) {
+    if (!count) { core->setWavetable(nullptr); return; }
+    auto bank = std::make_shared<std::vector<scope::CycleTables>>();
+    for (std::size_t k = r.count(); k > 0 && r.at < r.end; k--) bank->push_back(r.tables());
+    core->setWavetable(bank);
+  } else {
+    if (!count) { core->setFigPath(nullptr); return; }
+    auto path = std::make_shared<scope::FigurePath>();
+    path->xy = r.list();
+    path->at = r.list();
+    core->setFigPath(path);
+  }
+}
+
 // setRoutes: `count` routes, seven numbers each in the numbers buffer - index
 // (below nought for a held value), held, held on B, slot, amount, amount on B,
 // unipolar.
@@ -190,11 +234,17 @@ EXPORT(scope_lanes) float* scopeLanes(int n) {
   return lanes.data();
 }
 
-EXPORT(scope_block) void scopeBlock(int n, int hasInput) {
+// `given` says which the caller has: 1 an input, 2 the heard pair, 4 B's
+// pair. One it has not got is passed as none, as the JavaScript core is
+// passed null - the main thread draws without the heard pair, and the rack's
+// lane without B's.
+EXPORT(scope_block) void scopeBlock(int n, int given) {
   float* l = lanes.data();
   const std::size_t m = laneLength;
-  core->setInput(hasInput ? l + 6 * m : nullptr, n);
-  core->block(l, l + m, n, l + 2 * m, l + 3 * m, l + 4 * m, l + 5 * m);
+  const bool heard = given & 2, pairB = given & 4;
+  core->setInput(given & 1 ? l + 6 * m : nullptr, n);
+  core->block(l, l + m, n, heard ? l + 2 * m : nullptr, heard ? l + 3 * m : nullptr,
+              pairB ? l + 4 * m : nullptr, pairB ? l + 5 * m : nullptr);
 }
 
 // A live input's pair through the plane, the effects worklet's call: the
@@ -206,8 +256,9 @@ EXPORT(scope_effect) void scopeEffect(int n) {
 }
 
 // What goes back with the samples: the envelope, the crossings' counts, the
-// budget, the drawing's readings, and each oscillator's phase, held value and
-// value.
+// budget, the drawing's readings, the pitch layer A last played, the kick on
+// the spin and the swing's envelope, and each oscillator's phase, held value
+// and value.
 EXPORT(scope_state) double* scopeState() {
   const auto c = core->crossings();
   const auto& b = core->budget();
@@ -216,7 +267,7 @@ EXPORT(scope_state) double* scopeState() {
                  static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                  static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
                  static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0], d.turn[1],
-                 d.turn[2], d.facing });
+                 d.turn[2], d.facing, core->pitch(), core->spinKick(), core->swingLevel() });
   for (const auto& l : lfos) state.insert(state.end(), { l.phase, l.held, l.value });
   return state.data();
 }
