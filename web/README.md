@@ -5,9 +5,9 @@ browser and it runs. One part of it is generated rather than written: the C++
 core's generator, compiled to WebAssembly by `../core/wasm/build.py` and
 carried as base64 between two marker comments, which the page runs - in the
 generator's worklet, in the effects worklet on a live input, on the main
-thread, where the generator draws while the sound is off, and for the
-picture's own sources, the phosphor grid, the photocell and the meter -
-unless the address says `?core=js`. Nothing else is built. It is also published as an artifact, but
+thread, where the generator draws while the sound is off, for the
+picture's own sources, the phosphor grid, the photocell and the meter, and
+for setup codes - unless the address says `?core=js`. Nothing else is built. It is also published as an artifact, but
 this copy is the source of truth — the published page is a deployment of it.
 
 The desktop app in `../oscilloscope-poc/` is a separate implementation of the
@@ -3890,4 +3890,23 @@ character.
   "settled" every time; the long scenario with the limiters held down is
   "running away"; and the photocell switched off and on after five seconds
   shows a reset.
+
+**Setup codes are the compiled core's too, and the module paid for them.**
+Stage 5e made `encodeSetup` and `decodeSetup` call `setupCodec`, the core's
+`scope/setup.h` compiled, with the page's own (`encodeSetupHere`,
+`decodeSetupHere`) kept as the fallback and the reference. The module grew
+from 211 KB to 371 KB doing it - the setup code brings the defaults, the
+migration and the JSON writer that has to match V8's to the character - so
+the page is 213 KB of base64 larger. Text crosses as UTF-16 code units, the
+strings as JavaScript holds them, so a name with a lone surrogate in it makes
+the same code both ways.
+
+- *The page's decoder trims inside its try.* A code that is not a string -
+  a number, say - reads as nothing in the page's own, because `code.trim()`
+  throws inside the `try` that turns every failure into `null`. The compiled
+  codec first trimmed outside one and threw instead; an awkward case added
+  after the mutation pass found it. Its encoder likewise hands anything but a
+  plain object to the page's own, because the core reads an array as an array
+  where the page's loop takes its indices as keys - unreachable from
+  `snapshot()`, and not worth a second answer.
 

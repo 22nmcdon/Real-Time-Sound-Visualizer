@@ -17,7 +17,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const page = fs.readFileSync(path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
+// SCOPE_PAGE names another copy of the page, and WASM_FILE another module,
+// for a check that alters one.
+const page = fs.readFileSync(process.env.SCOPE_PAGE || path.join(here, "..", "..", "..", "web", "scope.html"), "utf8");
 
 function definition(name) {
   let start = page.indexOf("\nfunction " + name + "(");
@@ -30,10 +32,21 @@ function definition(name) {
   return page.slice(start + 1, page.indexOf(close, start) + close.length);
 }
 
+/* With CORE=wasm in the environment the codes are made and read by the
+   compiled core's codec (5e), from the module the page carries, as the site
+   now makes them; otherwise by the page's own JavaScript. */
+const MODE = process.env.CORE || "js";
 const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "DEFAULTS",
-                "SETUP_VERSION", "encodeSetup", "decodeSetup", "migrateSetup"];
-const s = new Function('"use strict";\n' + LIFTED.map(definition).join("\n")
-                       + "\nreturn { DEFAULTS, encodeSetup, decodeSetup };")();
+                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", "migrateSetup", "makeWasmSetupCodec"];
+const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
+  : MODE === "wasm" ? (() => {
+  const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
+  return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
+})() : null;
+const s = new Function("WASM_BYTES", '"use strict";\n' + LIFTED.map(definition).join("\n")
+                       + "\nif (WASM_BYTES) { const c = makeWasmSetupCodec(new WebAssembly.Module(WASM_BYTES));"
+                       + " return { DEFAULTS, encodeSetup: c.encode, decodeSetup: c.decode }; }"
+                       + "\nreturn { DEFAULTS, encodeSetup: encodeSetupHere, decodeSetup: decodeSetupHere };")(WASM_BYTES);
 const ascii = (text) => text.replace(/[^\x00-\x7f]/g, (c) => "{u+" + c.charCodeAt(0).toString(16).padStart(4, "0") + "}");
 
 const out = [];

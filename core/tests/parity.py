@@ -1428,6 +1428,19 @@ snull("an old code's level one more", "decode " + code_of('{"v":1,"trig":1,"c1s"
 snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
+# The site's codec (5e): the compiled core's, made from the module the page
+# carries and driven through the page's own wrapper, on every command above.
+# Its lines are the page's to the character, throws and unreadable included.
+def swasm(path):
+    return subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), path], env=dict(os.environ, CORE="wasm"),
+                          check=True, capture_output=True, text=True).stdout.split("\n")
+swa = swasm(os.path.join(BUILD, "setup.txt"))
+check("the site's codec, compiled, on all %d commands: the page's lines to the character" % len(scmds),
+      swa == sjs, next(("line %d: %s | %s" % (i, a[:80], b[:80]) for i, (a, b) in enumerate(zip(swa, sjs)) if a != b), ""))
+swrong = os.path.join(BUILD, "setup_wrong.txt")
+with open(swrong, "w", encoding="utf-8") as f:
+    f.write("\n".join(c.replace('"freq":330', '"freq":331') for c in scmds) + "\n")
+check("and against the commands with a frequency a hertz higher", swasm(swrong) != sjs)
 
 print("\n--- the clock ---")
 # The page's tempo, bar, tap, MIDI clock and locked oscillators, lifted by

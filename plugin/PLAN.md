@@ -1366,6 +1366,36 @@ with history behind it; and a verdict other than "listening". And the
 page's wrappers - what each frame hands the engine, the meter it reads, the
 grid it hands back - 10 of 10 through phototest, shapetest and wasmtest.
 
+5e makes setup codes on the site the compiled core's: `encodeSetup` and
+`decodeSetup` on the page call `setupCodec`, `scope/setup.h` compiled, in an
+instance of its own, with the page's own kept as `encodeSetupHere` and
+`decodeSetupHere`, the fallback and the reference. The core gained a UTF-16
+`decodeSetup`, which the UTF-8 one now calls; the bridge, an encode and a
+decode over UTF-16 text. `restore` stays the page's: it applies a setup to the
+page's state and its controls, and the core's restore applies one to a
+`Brain` the site does not run yet - it moves when the brain does.
+
+Held by parity's setup section, whose 804 commands - every kind of snapshot
+and code, the throws and the unreadable, numbers V8 writes in exponent form,
+lone surrogates - now also go through the compiled codec as the site makes
+it, and give the page's lines to the character, against the commands with a
+frequency a hertz higher that do not; and by wasmtest.py, where every preset's
+snapshot makes the same code through each codec and reads back the same, and
+27 awkward codes and snapshots - empty, not base64, base64 of things that are
+not setups, old versions, names past Latin-1, null, an array, a number for a
+code, a setup longer than the reader's chunk - have the same outcome from
+each, a throw as a throw. The cost is the module's size: 211 KB to 371 KB.
+
+Mutation: the bridge's setup exports, 4 of 5 through parity's commands, the
+one left reading the code as UTF-8 first, which comes to the same since
+anything past Latin-1 makes a code unreadable either way; two error codes the
+page could not tell apart were made one. The codec's page side, 7 of 7, three
+of them only once wasmtest.py's awkward cases had a null and an array to
+encode, a number to decode and a setup longer than the reader's chunk - and
+the number found a real difference on the way: the page's own decoder trims
+inside its `try`, so a code that is not a string reads as nothing, where the
+compiled codec had thrown.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

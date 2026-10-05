@@ -252,9 +252,12 @@ struct DecodedSetup {
   enum class Kind { Unreadable, Throws, Read } kind = Kind::Unreadable;
   Json setup;
 };
-inline DecodedSetup decodeSetup(std::string_view code) {
+// The code as the page's string holds it, UTF-16 (stage 5e: the page hands
+// its codes over as they are). A code is base64, so anything past Latin-1 in
+// it makes it unreadable however it crosses; this saves the round trip.
+inline DecodedSetup decodeSetup(const std::u16string& code) {
   DecodedSetup out;
-  const auto text = atob(jsTrim(utf8To16(code)));
+  const auto text = atob(jsTrim(code));
   if (!text) return out;
   auto parsed = jsonParse(*text);
   if (!parsed) return out;
@@ -265,5 +268,6 @@ inline DecodedSetup decodeSetup(std::string_view code) {
   out.kind = migrateSetup(out.setup) ? DecodedSetup::Kind::Read : DecodedSetup::Kind::Throws;
   return out;
 }
+inline DecodedSetup decodeSetup(std::string_view code) { return decodeSetup(utf8To16(code)); }
 
 }  // namespace scope

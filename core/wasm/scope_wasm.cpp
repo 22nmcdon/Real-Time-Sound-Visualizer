@@ -27,6 +27,7 @@
 
 #include "scope/generator.h"
 #include "scope/picture.h"
+#include "scope/setup.h"
 #include "scope/json.h"
 #include "scope/text.h"
 
@@ -334,6 +335,42 @@ EXPORT(picture_state) double* pictureStateOut() {
                         static_cast<double>(phosphor->frames()), phosphor->moments().roundness(), pairShape.signed_,
                         pairShape.edge });
   return pictureState.data();
+}
+
+// --- setup codes (5e) ---------------------------------------------------------
+// Text crosses as UTF-16 code units, the page's own strings as they are, so a
+// lone surrogate in a name survives the trip that UTF-8 would not.
+
+std::u16string setupIn, setupOut;
+
+EXPORT(setup_text) char16_t* setupText(int units) {
+  setupIn.resize(static_cast<std::size_t>(units));
+  return setupIn.data();
+}
+EXPORT(setup_out) const char16_t* setupOutText() { return setupOut.data(); }
+EXPORT(setup_out_length) int setupOutLength() { return static_cast<int>(setupOut.size()); }
+
+// encodeSetup: the snapshot as JSON in the text; the code into the out text,
+// and its length, or -1 where the page's `btoa` throws (a unit past 0xFF).
+// The JSON always parses - JSON.stringify wrote it - so a failure to is the
+// same -1 rather than a case of its own nobody could reach.
+EXPORT(setup_encode) int setupEncode() {
+  const auto snap = scope::jsonParse(setupIn);
+  if (!snap) return -1;
+  const auto code = scope::encodeSetup(*snap);
+  if (!code) return -1;
+  setupOut.assign(code->begin(), code->end());
+  return static_cast<int>(setupOut.size());
+}
+// decodeSetup: the code in the text; nought for one that does not read, one
+// for one the page's migration throws on, two for a setup read, written into
+// the out text as JSON.
+EXPORT(setup_decode) int setupDecode() {
+  const auto decoded = scope::decodeSetup(setupIn);
+  if (decoded.kind == scope::DecodedSetup::Kind::Unreadable) return 0;
+  if (decoded.kind == scope::DecodedSetup::Kind::Throws) return 1;
+  setupOut = scope::jsonStringify(decoded.setup);
+  return 2;
 }
 
 // What goes back with the samples: the envelope, the crossings' counts, the

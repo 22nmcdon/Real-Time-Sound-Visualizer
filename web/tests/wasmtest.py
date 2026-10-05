@@ -208,7 +208,7 @@ with sync_playwright() as pw:
           for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
           return { kind: state.source.coreKind, why: state.source.coreWhy, switch: CORE_IN_WASM, blocks: state.source.blocks,
                    main: state.source.mainCoreKind, mainWhy: state.source.mainCoreWhy,
-                   picture: pictureCoreKind, pictureWhy: pictureCoreWhy,
+                   picture: pictureCoreKind, pictureWhy: pictureCoreWhy, setup: setupCoreKind, setupWhy: setupCoreWhy,
                    fault: state.source.fault, peak, driver: lfoDriver(), phase: lfos[0].phase };
         }""")
 
@@ -226,8 +226,9 @@ with sync_playwright() as pw:
           el.srcMic.click(); await wait(1200);
           el.planeMirror.value = "3"; el.planeMirror.dispatchEvent(new Event("change")); await wait(1200);
           const w = state.source.getLatestWindow(4410);
-          return { source: state.source.kind, active: state.source.fx.active, kind: state.source.fx.coreKind,
-                   why: state.source.fx.coreWhy, fault: state.source.fx.fault,
+          const fx = state.source.fx || {};
+          return { source: state.source.kind, active: fx.active, kind: fx.coreKind,
+                   why: fx.coreWhy, fault: fx.fault || state.sourceError || null,
                    lowX: Math.min(...w[0]), lowY: Math.min(...w[1]) };
         }""")
 
@@ -239,6 +240,7 @@ with sync_playwright() as pw:
           "%r %r" % (on["main"], on["mainWhy"]))
     check("and so do the picture's own sources - the grid, the photocell, the meter", on["picture"] == "wasm" and on["pictureWhy"] is None,
           "%r %r" % (on["picture"], on["pictureWhy"]))
+    check("and so do the setup codes", on["setup"] == "wasm" and on["setupWhy"] is None, "%r %r" % (on["setup"], on["setupWhy"]))
     check("and it plays, and the picture is drawn from what it sends",
           on["fault"] is None and on["blocks"] > 3 and on["peak"] > 0.05 and on["driver"] == "worklet",
           "%d blocks, peak %.3f, fault %r" % (on["blocks"], on["peak"], on["fault"]))
@@ -452,6 +454,55 @@ with sync_playwright() as pw:
           fx["source"] == "mic" and fx["active"] and fx["kind"] == "wasm" and fx["why"] is None and fx["fault"] is None
           and fx["lowX"] > -0.01 and fx["lowY"] > -0.01, str(fx))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
+
+    print("\n--- the setup codes, both codecs ---")
+    # Every preset's snapshot made into a code by each codec, and each code
+    # read back by each - the page's copy and load - and then codes nobody
+    # made with a snapshot: empty, not base64, base64 of things that are not
+    # setups, an old version's level and clip, and names past Latin-1, which
+    # cannot be made into a code at all. Each outcome compared, a throw as a
+    # throw.
+    SETUPS = """() => {
+      const wasm = setupCodec, js = { encode: encodeSetupHere, decode: decodeSetupHere };
+      const tried = (f) => { try { const v = f(); return v === null ? "null" : JSON.stringify(v); } catch (error) { return "throws"; } };
+      const rows = [];
+      for (const [, entries] of PRESETS) for (const [name] of entries) {
+        applyPreset("b:" + name);
+        const snap = snapshot();
+        const cw = tried(() => wasm.encode(snap)), cj = tried(() => js.encode(snap));
+        const code = cj === "throws" ? "" : JSON.parse(cj);
+        rows.push([name, cw === cj && tried(() => wasm.decode(code)) === tried(() => js.decode(code)), cj.length,
+                   tried(() => wasm.encode({ ...snap, freq: snap.freq + 1 })) !== cj]);
+      }
+      const b = (text) => btoa(text).replace(/=+$/, "");
+      const odd = ["", "   ", "!!!", "not base64 at all", b("null"), b("5"), b('"x"'), b("[1,2]"), b("{}"), b("true"),
+                   b('{"v":1,"trig":1,"c1s":3,"level":100}'), b('{"v":2,"c0s":4}'), b('{"v":3,"planeClip":true}'),
+                   b('{"v":9,"freq":1}'), b('{"1":5,"9":1,"b":3,"a":4}'), "  " + b('{"v":4,"freq":330}') + "\\n"];
+      const oddRows = odd.map((code) => [code, tried(() => wasm.decode(code)), tried(() => js.decode(code))]);
+      const names = [{ macroNames: "caf\\u00e9" }, { macroNames: "\\u4e2d\\u6587" }, { figText: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
+                     null, [1, 2], 5, "a string"];
+      const nameRows = names.map((snap) => [JSON.stringify(snap), tried(() => wasm.encode(snap)), tried(() => js.encode(snap))]);
+      // A setup longer than one of the reader's chunks - twenty thousand
+      // characters of text - made and read back by each.
+      const long = { figText: "x".repeat(20000) + "y" };
+      const longCode = js.encode(long);
+      nameRows.push(["a long setup", tried(() => wasm.decode(longCode)), tried(() => js.decode(longCode))]);
+      // And a code that is not a string, which the page's own throws on.
+      nameRows.push(["a code that is a number", tried(() => wasm.decode(5)), tried(() => js.decode(5))]);
+      return { rows, oddRows, nameRows };
+    }"""
+    st = p.evaluate(SETUPS)
+    srows = st["rows"]
+    sbad = [r[0] for r in srows if not r[1]]
+    check("%d presets: each codec makes the same code from the snapshot, and reads each code back the same" % len(srows),
+          srows and not sbad and all(r[2] > 10 for r in srows), ", ".join(sbad[:4]))
+    check("and the comparison sees a frequency a hertz higher", all(r[3] for r in srows))
+    oddbad = [r for r in st["oddRows"] + st["nameRows"] if r[1] != r[2]]
+    outcomes = set(r[2] if r[2] in ("throws", "null") else "read" for r in st["oddRows"] + st["nameRows"])
+    check("%d awkward codes and snapshots, the same outcome from each, a throw as a throw: %s"
+          % (len(st["oddRows"]) + len(st["nameRows"]), sorted(outcomes)), not oddbad and outcomes == {"throws", "null", "read"},
+          "; ".join("%r: %s | %s" % (r[0][:30], r[1][:60], r[2][:60]) for r in oddbad[:3]))
+
     p.close()
 
     print("\n--- ?core=js, the JavaScript core ---")
@@ -461,6 +512,7 @@ with sync_playwright() as pw:
           and js["why"] is None and js["blocks"] > 3, str(js))
     check("and so does the main thread's", js["main"] == "js" and js["mainWhy"] is None, "%r %r" % (js["main"], js["mainWhy"]))
     check("and the picture's sources", js["picture"] == "js" and js["pictureWhy"] is None, "%r %r" % (js["picture"], js["pictureWhy"]))
+    check("and the setup codes", js["setup"] == "js" and js["setupWhy"] is None, "%r %r" % (js["setup"], js["setupWhy"]))
     fx = effects(p)
     check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and fx["why"] is None, str(fx))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
@@ -537,11 +589,14 @@ with sync_playwright() as pw:
     p, bad = open_page("", "WebAssembly.Module = function () { throw new Error('refused for the test'); };")
     early = p.evaluate("""() => { const f = capture(); let peak = 0; for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
                                   return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak,
-                                           picture: pictureCoreKind, pictureWhy: pictureCoreWhy }; }""")
+                                           picture: pictureCoreKind, pictureWhy: pictureCoreWhy,
+                                           setup: setupCoreKind, setupWhy: setupCoreWhy }; }""")
     check("the main thread makes the JavaScript core instead, says why, and draws", early["main"] == "js"
           and "refused for the test" in (early["why"] or "") and early["peak"] > 0.05, str(early))
     check("and the picture's sources are the JavaScript ones, saying why", early["picture"] == "js"
           and "refused for the test" in (early["pictureWhy"] or ""), "%r %r" % (early["picture"], early["pictureWhy"]))
+    check("and so are the setup codes", early["setup"] == "js" and "refused for the test" in (early["setupWhy"] or ""),
+          "%r %r" % (early["setup"], early["setupWhy"]))
     later = sound(p)
     check("and the worklet, which can, still runs the compiled core", later["kind"] == "wasm" and later["blocks"] > 3, str(later))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
