@@ -43,12 +43,14 @@ function statement(text) {
 const LIFTED = [
   "SCALES", "keyMask", "midiHz", "transport", "CLOCK_TIMEOUT_MS", "clockTick", "transportBeat", "transportRebase", "transportAnchor",
   "transportStart", "transportStop", "clockRestart", "setTempo", "PHOSPHOR_N", "SCORE_STEPS", "SCORE_FLOOR", "score",
-  "scorePitches", "scoreColumn", "scoreTick", "scoreStop", "MIDI_OUT_RATE", "midiOut", "midiOutSend", "midiOutNote",
+  "scorePitches", "scoreColumn", "scoreTick", "scoreStop", "MIDI_OUT_RATE", "midiOut", "midiOutSend", "midiCoreHears", "midiOutNote",
   "midiOutOff", "midiOutPanic", "crossSeen", "crossOffs", "crossOut", "crossStepPanel", "pluck", "pluckFire",
 ];
 
 const STUBS = `
 let clock = 0;
+// No instrument in a worklet sending notes of its own (?brain=core): the page's out, as it always was.
+const scopeHost = null;
 const performance = { now: () => clock };
 const log = [];
 const show = (v) => Number(v).toPrecision(17);

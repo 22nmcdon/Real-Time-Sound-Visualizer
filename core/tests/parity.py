@@ -3472,6 +3472,128 @@ def wnull_effect():
     check("and every effect run fails against a module that hands the input back", sorted(off) == sorted(fxed), ", ".join(off))
 wnull_effect()
 
+print("\n--- the instrument, compiled (5f) ---")
+# The plugin's instrument whole (scope/instrument.h) - brain and engine, as
+# the plugin plays it - natively, and as the page carries it compiled, played
+# through the page's own wrapper (makeWasmBrain, which the site's worklet
+# runs). The same script into each: setups, the page's hands, notes and MIDI
+# clock as bytes, blocks of every size. Out: the heard pair and the picture
+# pair a sample at a time, what went to a MIDI port, refusals, and the state
+# code the page is shown. Held to equality, not to a tolerance: the two are
+# the same code, and every run so far comes out the same to the last bit of
+# every float - a tolerance would only be somewhere for a difference to hide.
+iexe = build("instrument_cpp")
+inames = [n for n in subprocess.run([iexe, "--names"], check=True, capture_output=True, text=True).stdout.split("\n") if n]
+icode = dict(zip(inames, subprocess.run([iexe, "--code", *inames], check=True, capture_output=True, text=True).stdout.split("\n")))
+def iscript(name, lines):
+    path = os.path.join(BUILD, "instrument_%s.txt" % name)
+    with open(path, "w") as f: f.write("\n".join(_json.dumps(l) for l in lines) + "\n")
+    return path
+def icpp(path): return subprocess.run([iexe, path], check=True, capture_output=True, text=True).stdout.split("\n")
+def ijs(path, module=None):
+    env = dict(os.environ, **({"WASM_FILE": module} if module else {}))
+    return subprocess.run(["node", os.path.join(HERE, "tools", "instrument_js.mjs"), path], env=env,
+                          check=True, capture_output=True, text=True).stdout.split("\n")
+# The worst sample apart, and the first line that is not a block and differs.
+# Each sample read back as the float it is: nine digits round-trip a float,
+# but a float that is a tie at nine digits (0.1376953125) is written
+# ...312 by the C library, which breaks ties to even, and ...313 by
+# JavaScript's toPrecision, which breaks them upwards - the same sample.
+from array import array
+def ifloats(line): return array("f", [float(v) for v in line.split()[1:]]).tolist()
+check("and the comparison reads a tie written two ways as one float, and the next float as another",
+      ifloats("block 0.137695312") == ifloats("block 0.137695313") != ifloats("block 0.137695328"))
+def icompare(a, b):
+    if len(a) != len(b): return inf, "%d lines against %d" % (len(a), len(b))
+    most, other = 0.0, ""
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x.startswith("block ") and y.startswith("block "):
+            most = max(most, worst(ifloats(x), ifloats(y)))
+        elif x != y and not other: other = "line %d: %s | %s" % (i, x[:70], y[:70])
+    return most, other
+def blocks(k, n=128, stride=1): return [["block", n, stride]] * k
+NOTE_ON = lambda n, v=100: ["midi", 0x90, n, v]
+NOTE_OFF = lambda n: ["midi", 0x80, n, 0]
+
+iruns = {}
+iruns["notes"] = [["make", 48000, 128, icode["Harmonic tone"]]] + blocks(3) + [NOTE_ON(57)] + blocks(30) \
+    + [NOTE_ON(64, 70)] + blocks(20) + [["midi", 0xB0, 64, 127], NOTE_OFF(57), NOTE_OFF(64)] + blocks(20) \
+    + [["midi", 0xB0, 64, 0]] + blocks(30) + [NOTE_ON(45), ["midi", 0xB0, 123, 0]] + blocks(10)
+FADE = _json.dumps({"mode": "both", "envs": [{"delay": 0, "attack": 0.3, "attackMid": 0.5, "decay": 0.5, "decayMid": 0.5,
+                    "sustain": 1, "release": 0.4, "releaseMid": 0.5, "restart": True, "loop": False}] * 2})
+iruns["hands"] = [["make", 44100, 128, icode["Harmonic tone"]], NOTE_ON(57)] + blocks(10) \
+    + [["slider", "amp", "30"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
+    + [["control", "crossOn", True], ["click", "planeOS4"]] + blocks(10) \
+    + [["routings", "lfo1>gen.vcf@0.55;lfo1>gen.freq@0.35"]] + blocks(20) + [["fade", FADE]] + blocks(10) \
+    + [["control", "genMode", "harmonograph"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
+    + [["slider", "lfoRate1", "300"], ["click", "dispXY"], ["control", "persistence", "0.3"], ["click", "photoButton"]] \
+    + blocks(40) + [["control", "macroName1", "Brückner — 🎹"], ["click", "clearButton"]] + blocks(10)
+iruns["refused"] = [["make", 48000, 128, "not a code at all"]] + blocks(4) + [["slider", "noSuchSlider", "1"],
+    ["setup", "eyJub3QiOg=="], ["fade", "{not json"], ["slider", "amp", "20"]] + blocks(4)
+# Every preset in turn, a note held through each, so whatever a preset leaves
+# behind is what the next one is loaded over, as a player's evening goes.
+iruns["presets"] = [["make", 48000, 128, icode["Harmonic tone"]]]
+for n in inames:
+    iruns["presets"] += [["setup", icode[n]], NOTE_ON(57)] + blocks(10, 128, 7) + [NOTE_OFF(57)] + blocks(3, 128, 7)
+# The arpeggiator stepping on MIDI clock, and what it sends out of the port.
+iruns["clock"] = [["make", 48000, 128, icode["Arpeggiated chords"]], ["midi", 0xFA], NOTE_ON(60), NOTE_ON(64), NOTE_ON(67)]
+for k in range(400): iruns["clock"] += ([["midi", 0xF8]] if k % 2 == 0 else []) + [["block", 128, 5]]
+iruns["clock"] += [["midi", 0xFC], NOTE_OFF(60), NOTE_OFF(64), NOTE_OFF(67)] + blocks(40, 128, 5)
+# A loop through the picture: the photocell reads the grid the instrument
+# draws for itself, at sixty frames a second of audio time, and bends the sound.
+iruns["photocell"] = [["make", 48000, 256, icode["Pendulums bent by the light"]], NOTE_ON(57)] + blocks(500, 256, 9)
+# A clock byte alone, after a note: one byte and not three, since two more
+# would be data under the note's running status - a note-on for note nought
+# at velocity nought, which lets go of a note nought held.
+iruns["realtime"] = [["make", 48000, 128, icode["Harmonic tone"]], NOTE_ON(0), NOTE_ON(57)] + blocks(10) \
+    + [["midi", 0xF8], ["midi", 0xFA]] + blocks(20) + [["midi", 0xF8]] + blocks(10)
+iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
+
+iout = {}
+for name, lines in iruns.items():
+    path = iscript(name, lines)
+    a, b = icpp(path), ijs(path)
+    iout[name] = (path, a, b)
+    most, other = icompare(a, b)
+    said = sum(1 for l in a if l.startswith("state ")), sum(1 for l in a if l.startswith("out ")), sum(1 for l in a if l == "no")
+    check("%s: the compiled instrument is the native one, every sample, every state and every message out" % name,
+          most == 0 and not other, "worst %g; %d states, %d sends, %d refusals%s" % (most, said[0], said[1], said[2],
+                                                                                    ("; " + other) if other else ""))
+# What the runs have to have had in them for the checks above to mean anything.
+def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
+def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)
+check("and the runs had sound in them, states that changed, MIDI sent and refusals said",
+      all(ipeak(n) > 0.05 for n in iruns if n != "refused") and icount("hands", "state ") >= 8
+      and icount("clock", "out ") >= 10 and icount("refused", "no") == 4 and icount("presets", "state ") >= len(inames),
+      "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
+          {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
+          icount("refused", "no"), icount("presets", "state ")))
+# Nulls. The comparison one line out of step; a native run with one hand a
+# step away; and modules from the bridge with one thing wrong in each.
+pa, ca, ja = iout["notes"]
+check("and the comparison fails one line out of step", icompare(ca[1:] + [""], ja)[0] > 0)
+moved = [l if l != ["slider", "amp", "30"] else ["slider", "amp", "31"] for l in iruns["hands"]]
+check("and against the native run with the level moved to 31 rather than 30",
+      icompare(icpp(iscript("hands_moved", moved)), iout["hands"][2]) != (0.0, ""))
+def inull(what, old, new, runs):
+    src = open(WSRC).read()
+    assert src.count(old) == 1, old
+    bad_src, bad_mod = os.path.join(BUILD, "scope_wasm_null.cpp"), os.path.join(BUILD, "scope_wasm_null.wasm")
+    with open(bad_src, "w") as f: f.write(src.replace(old, new))
+    subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
+    seen = [n for n in runs if icompare(iout[n][1], ijs(iout[n][0], bad_mod)) != (0.0, "")]
+    check("and the comparison fails against a module with %s" % what, seen == runs, ", ".join(seen))
+inull("every message padded to three bytes", "std::clamp(length, 1, 3)", "std::clamp(length, 3, 3)", ["realtime"])
+inull("the page's MIDI dropped", "  midiLengths.push_back(n);\n", "  midiIn.resize(midiIn.size() - n);\n", ["notes", "clock"])
+# Only the sweep can see this one: the presets the other runs play make a
+# heard pair that is the picture pair, sample for sample, as most of the
+# plain waves do; 265 of the 281 presets do not.
+inull("the heard pair handed back as the picture pair",
+      "instrument->latest(lanes + 2 * frames, lanes + 3 * frames, frames);",
+      "std::copy(lanes, lanes + 2 * frames, lanes + 2 * frames);", ["presets"])
+inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
+inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)

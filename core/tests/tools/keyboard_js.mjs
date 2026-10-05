@@ -47,7 +47,7 @@ const LIFTED = [
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
   "midiUndrawn", "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
   "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiLearn", "midiSmooth",
-  "midiRegisterKey", "midiBytes", "setMidiMode", "syncPlay", "genLane", "genSettings", "genSet", "genReswing",
+  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiCoreHears", "midiToCore", "setMidiMode", "syncPlay", "genLane", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
 ];
@@ -57,6 +57,9 @@ const LIFTED = [
    sent while it is open. */
 const STUBS = `
 let midiRunning = 0;
+// No instrument in a worklet to pass notes to (?brain=core): the page's own keyboard, as it always was.
+let midiFromPort = false;
+const scopeHost = null;
 const log = [];
 const show = (v) => v === null ? "null" : v === true ? "1" : v === false ? "0"
   : typeof v === "number" ? v.toPrecision(17)

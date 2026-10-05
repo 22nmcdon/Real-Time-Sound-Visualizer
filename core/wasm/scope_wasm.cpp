@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "scope/generator.h"
+#include "scope/instrument.h"
 #include "scope/picture.h"
 #include "scope/setup.h"
 #include "scope/json.h"
@@ -389,3 +390,122 @@ EXPORT(scope_state) double* scopeState() {
   for (const auto& l : lfos) state.insert(state.end(), { l.phase, l.held, l.value });
   return state.data();
 }
+
+// --- the instrument (5f) ------------------------------------------------------
+// The whole of it, brain and all, as the plugin plays it (scope/instrument.h):
+// for the site's second arrangement, where the page is the instrument's face
+// as it is the plugin's and the instrument runs in a worklet. The page's
+// hands arrive as the plugin's native functions take them - a slider by id
+// and value, a setup as a code, a menu's or a text box's value, a switch as
+// true or false, a button, the routings, the fade - each its text in UTF-16
+// as setup codes are; what the page plays arrives as MIDI bytes, which go to
+// the instrument at the top of the next block, as a host's would at sample
+// nought. What comes back: the heard pair and the picture pair, what the
+// instrument sends to a MIDI port, and its state when that has changed.
+
+namespace {
+std::unique_ptr<scope::Instrument> instrument;
+std::u16string brainIn, brainOut;
+std::vector<std::uint8_t> midiIn;            // the bytes of every message waiting
+std::vector<std::size_t> midiLengths;        // and each one's length
+std::vector<scope::Instrument::Event> midiEvents;
+std::vector<std::uint8_t> midiOut;           // each message sent, its length first
+std::vector<float> brainLanes;               // four of a block: the heard pair, the picture pair
+std::size_t brainLength = 0;
+
+std::string brainAscii(std::size_t from) { return scope::utf16To8(brainIn.substr(std::min(from, brainIn.size()))); }
+}  // namespace
+
+EXPORT(brain_text) char16_t* brainText(int units) {
+  brainIn.resize(static_cast<std::size_t>(units));
+  return brainIn.data();
+}
+
+// Made at a rate and a block size, loaded with the setup code in the text as
+// the plugin loads the preset it opens on. One when the code read; nought
+// when it did not, and the instrument is made on the defaults.
+EXPORT(brain_make) int brainMake(double rate, int block) {
+  instrument = std::make_unique<scope::Instrument>();
+  instrument->hooks.midiOut = [](const std::uint8_t* bytes, int length, int) {
+    midiOut.push_back(static_cast<std::uint8_t>(length));
+    midiOut.insert(midiOut.end(), bytes, bytes + length);
+  };
+  midiIn.clear(); midiLengths.clear(); midiOut.clear();
+  auto setup = scope::Instrument::setup(brainAscii(0));
+  instrument->prepare(rate, block, setup ? *setup->setup : scope::Json::object());
+  return setup ? 1 : 0;
+}
+
+// A slider: its id in the first `idUnits` of the text, the value the browser holds after.
+EXPORT(brain_slider) int brainSlider(int idUnits) {
+  const auto command = scope::Instrument::slider(scope::utf16To8(brainIn.substr(0, static_cast<std::size_t>(idUnits))),
+                                                 brainIn.substr(static_cast<std::size_t>(idUnits)));
+  if (command) instrument->apply(*command);
+  return command ? 1 : 0;
+}
+// A setup, as a code.
+EXPORT(brain_setup) int brainSetup() {
+  const auto command = scope::Instrument::setup(brainAscii(0));
+  if (command) instrument->apply(*command);
+  return command ? 1 : 0;
+}
+// A menu, a switch or a text box: its id in the first `idUnits`, then for
+// `kind` nought its value as text, one a switch off and two a switch on.
+EXPORT(brain_control) void brainControl(int idUnits, int kind) {
+  const std::string id = scope::utf16To8(brainIn.substr(0, static_cast<std::size_t>(idUnits)));
+  instrument->apply(scope::Instrument::control(id, kind == 0 ? scope::Json::string(brainIn.substr(static_cast<std::size_t>(idUnits)))
+                                                             : scope::Json::boolean(kind == 2)));
+}
+EXPORT(brain_click) void brainClick() { instrument->apply(scope::Instrument::click(brainAscii(0))); }
+EXPORT(brain_routings) void brainRoutings() { instrument->apply(scope::Instrument::routings(brainAscii(0))); }
+EXPORT(brain_fade) int brainFade() {
+  const auto command = scope::Instrument::fade(brainAscii(0));
+  if (command) instrument->apply(*command);
+  return command ? 1 : 0;
+}
+
+// One MIDI message, of one to three bytes, for the top of the next block.
+EXPORT(brain_midi) void brainMidi(int a, int b, int c, int length) {
+  const std::uint8_t bytes[3] = { static_cast<std::uint8_t>(a), static_cast<std::uint8_t>(b), static_cast<std::uint8_t>(c) };
+  const std::size_t n = static_cast<std::size_t>(std::clamp(length, 1, 3));
+  midiIn.insert(midiIn.end(), bytes, bytes + n);
+  midiLengths.push_back(n);
+}
+
+EXPORT(brain_lanes) float* brainLanesAt(int n) {
+  brainLength = static_cast<std::size_t>(n);
+  if (brainLanes.size() < 4 * brainLength) brainLanes.resize(4 * brainLength);
+  return brainLanes.data();
+}
+
+// One block of n frames: the heard pair into lanes 0 and 1, the picture pair
+// into 2 and 3. Returns how many bytes of MIDI went out, each message its
+// length and then its bytes, read with brain_midi_out.
+EXPORT(brain_block) int brainBlock(int n) {
+  const std::size_t frames = static_cast<std::size_t>(n);
+  if (brainLanes.size() < 4 * frames) brainLanes.resize(4 * frames);
+  brainLength = frames;
+  midiEvents.clear();
+  std::size_t at = 0;
+  for (const std::size_t length : midiLengths) { midiEvents.push_back({ 0, midiIn.data() + at, length }); at += length; }
+  midiOut.clear();
+  float* lanes = brainLanes.data();
+  instrument->block(lanes, lanes + frames, n, midiEvents.data(), midiEvents.size(), nullptr, nullptr, 0);
+  instrument->latest(lanes + 2 * frames, lanes + 3 * frames, frames);
+  midiIn.clear(); midiLengths.clear();
+  return static_cast<int>(midiOut.size());
+}
+EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }
+
+// The state for the page, when it has changed: the code into the out text and
+// its length, the instrument told it is published; or -1, unchanged.
+EXPORT(brain_state) int brainState() {
+  if (!instrument->changed()) return -1;
+  const std::string code = instrument->stateCode();
+  brainOut.assign(code.begin(), code.end());
+  instrument->published();
+  return static_cast<int>(brainOut.size());
+}
+EXPORT(brain_out) const char16_t* brainOutText() { return brainOut.data(); }
+// How many of the state's changes came from the host rather than the page.
+EXPORT(brain_version) int brainVersion() { return instrument->hostVersion(); }

@@ -1396,6 +1396,99 @@ the number found a real difference on the way: the page's own decoder trims
 inside its `try`, so a code that is not a string reads as nothing, where the
 compiled codec had thrown.
 
+5f puts the brain on the site too, as a second arrangement beside the first:
+with `?brain=core` the page is the face of the instrument compiled whole, as
+it is the plugin's, rather than the brain driving the compiled engine. Two
+halves.
+
+The first lifted the plugin's processor, less JUCE, into the core:
+`scope::Instrument` (`scope/instrument.h`) is the hands the page sends and
+how they are remembered, a setup loaded, the state code, the block loop with
+its once-a-frame work and its events at their samples, and the picture ring.
+The processor owns one and keeps what only a host has - the parameters, the
+transport, the MIDI in and out, the locks - handing it over through three
+hooks (MIDI sent, a slider the page moved, a setup loaded) and the block's
+arguments. The SVG path parser threw, as the page's does, and the core builds
+without exceptions for WebAssembly, so it keeps the first refusal and stops
+at the next command instead, with the same strokes or the same message. Held
+by the shell test, all 59 checks unchanged, and parity.
+
+The second compiled it and put it in a worklet. The bridge's `brain_`
+exports take the page's hands as the plugin's native functions do, text in
+UTF-16; MIDI as messages for the top of the next block, as a host's would be
+at sample nought; and hand back the heard pair, the picture pair, what was
+sent to a MIDI port, and the state when it changes. In the page,
+`makeWasmBrain` wraps them, `brainProcessor` plays them in the audio thread,
+and `makeBrainHost` answers the plugin's native functions from it, so
+`scopeHost` - the page's bridge to the plugin - is the worklet when there is
+no plugin, and the page runs its hosted code unchanged: `toHost`,
+`hostConnect`, every hand sent, every state applied. What the site needed
+that the plugin did not: the page's notes, passed on as MIDI from the four
+places they enter (a port's bytes once, as they came, and not again as the
+notes the page makes of them); the instrument's MIDI out sent from the page's
+port on the page's channel, with the page's own brain kept from sending
+beside it; the generator's switch opening the instrument's way to the
+speakers through the page's monitor chain, the instrument playing either
+way, as in a host; and a press. A browser runs no blocks until something on
+the page has been pressed, which a plugin never waits for, so the processor
+posts its state from its constructor - the page shows the instrument at once
+- and the credit line says it is waiting until the first press starts it.
+
+Found on the way: a hosted page had no generator. `genSettings` and `genSet`
+asked whether the source was a tone, and a hosted source never is, so inside
+the plugin the generator's whole section was missing from the panel - no
+kind, no frequency, no shape - and the plugin's tests, which send hands from
+code, never looked. A hosted source now carries a mirror of the generator's
+settings (`makeGeneratorMirror`, by the cores' own rules), kept by the page's
+handlers and restored from the instrument's state, and the two ask whether
+the source carries settings rather than what it is. And while hosted the
+source switch is disabled: a microphone chosen there would be drawn while the
+instrument went on taking the panel's hands.
+
+What it has not got, and why it is a second mode rather than the first: live
+inputs, files, the rack and recording, none of which the plugin's view of the
+page has either; the effects on a live input with them; and the page's own
+analyses that drive the generator in the first arrangement (the hearing of a
+live input, the automatic lag's lock), which the instrument's own hearing
+replaces for its own sound only. The module is the price everyone pays: 371
+KB to 764 KB, in one module rather than two, since a second would carry the
+generator twice.
+
+Held by parity's instrument section: seven scripts through the native
+instrument and the compiled one, through the page's own wrapper - notes and
+the pedal, the page's hands of every kind, refusals, every preset in turn
+with a note held through each, the arpeggiator on MIDI clock and what it
+sends, a photocell loop over five hundred blocks, and blocks of every size
+from one frame to 2,048 - every sample, state and message the same to the
+bit, against the comparison one line out of step, the native run with one
+hand a step away, and modules with the page's MIDI dropped, the heard pair
+handed back as the picture pair, a state never published and a switch read
+as off. By braintest.py, in the browser: the page draws the instrument and
+shows its state; a note from the page is heard at its pitch and not a
+semitone up, with silence either side; a slider halves the picture; a preset
+is the setup the instrument loaded and not another; the kind menu moves the
+panel, the view and the instrument; a port's bytes go once; MIDI out leaves
+by the page's port and channel and the page's brain stays quiet; the switch
+opens and closes; a module that will not make leaves the website; and an
+unpressed page plays nothing until pressed. And by hosttest.py, which now
+looks for the generator's panel inside the plugin.
+
+Mutation: the bridge's `brain_` exports, 14 of 15 through parity's scripts;
+the one left prepares the instrument for blocks of 64 rather than 128, which
+only changes how a block is cut into pieces, and the pieces add up to the
+same samples. One lived until a run had a note nought held: a message padded
+to three bytes is a clock byte and two zeros, which under a note's running
+status is a note-on for note nought at velocity nought, and only a held note
+nought can hear that. The page's side, 30 of 30: 27 through braintest.py and
+hosttest.py and three in the page's wrapper through parity, which drives that
+wrapper lifted from the page - a switch read the wrong way, the MIDI padding,
+and the heard pair handed back as the picture. Two lived until braintest.py
+looked: the picture's lanes posted the wrong way round, which on Harmonic
+tone, its lanes a quarter-cycle apart, reads a quarter where the website's
+reads three quarters; and the instrument made on the defaults rather than on the setup the
+page opened on, which the page then restored without complaint, until a check
+asked for Harmonic tone's timebase of 3 where the default's is 4.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

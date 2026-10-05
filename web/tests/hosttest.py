@@ -319,6 +319,36 @@ with sync_playwright() as pw:
           faded["given"] == {"mode": "in", "attack": 4, "b": 0.5, "shown": "in"}
           and faded["none"] == {"mode": "off", "attack": 2, "restart": False} and faded["log"] == [], str(faded))
 
+    # The generator's panel, inside the plugin. A hosted page used to keep no
+    # generator at all, so its whole section went from the panel - no kind,
+    # no frequency, no shape - and the kind menu, had it been there, wrote to
+    # nothing. Now the page keeps a mirror of the plugin's generator, by its
+    # own handlers, and restores it from the plugin's state like the rest.
+    gen = p.evaluate("""async (code) => {
+      const t = window.__hostTest, out = {};
+      setView('bench');
+      await new Promise((r) => setTimeout(r, 200));
+      out.shown = el.genMode.offsetParent !== null && el.freq.offsetParent !== null;
+      out.sound = !el.genSoundRow.hidden;
+      t.log.length = 0;
+      el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));
+      out.sent = t.log.slice();
+      out.mode = genSettings().mode;
+      out.rows = !el.harmoRows.hidden;
+      // And a state from the plugin with another kind puts the mirror there.
+      t.state = { version: 9, code };
+      await new Promise((r) => setTimeout(r, 700));
+      out.restored = genSettings().mode;
+      out.menu = el.genMode.value;
+      setView('scope');
+      return out;
+    }""", code({"gen": "figure"}))
+    check("inside the plugin the page keeps the generator's panel, its kind menu moves the page's generator and is sent",
+          gen["shown"] and gen["mode"] == "harmonograph" and gen["rows"]
+          and gen["sent"] == [["scopeControl", "genMode", "harmonograph"]], str(gen))
+    check("and the plugin's state puts the generator's kind back on the page; with no way to hear it but the host's, no switch",
+          gen["restored"] == "figure" and gen["menu"] == "figure" and gen["sound"] is False, str(gen))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

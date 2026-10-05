@@ -3910,3 +3910,49 @@ the same code both ways.
   where the page's loop takes its indices as keys - unreachable from
   `snapshot()`, and not worth a second answer.
 
+
+**`?brain=core` is the page as the instrument's face, and it is the plugin's
+code.** Stage 5f lifted the plugin's processor, less JUCE, into
+`scope::Instrument`, compiled it into the module beside the rest, and gave the
+site a second arrangement: with `?brain=core` the whole instrument - brain and
+engine - plays in a worklet (`brainProcessor`), and `scopeHost`, the page's
+bridge to the plugin, is answered by that worklet (`makeBrainHost`) instead of
+by JUCE. Everything the page sends and applies is the hosted page's existing
+code, call for call, which is why it is held by the same tests that hold the
+plugin's face, plus `braintest.py` for what is the site's own: notes, MIDI
+out, the sound switch and the press it waits for. The module grew from 371 KB
+to 764 KB; it is one module rather than two because a second would carry the
+generator twice.
+
+- *A hosted page had no generator.* `genSettings` and `genSet` asked whether
+  the source was a tone, and a hosted source never is, so inside the plugin
+  the generator's whole section was missing from the panel - no kind, no
+  frequency, no shape - and nobody had noticed, because the plugin's tests
+  sent hands from code rather than looking for the controls. A hosted source
+  now carries a mirror of the generator's settings (`makeGeneratorMirror`),
+  kept by the page's handlers and restored from the instrument's state like
+  everything else, and the two functions ask whether the source carries
+  settings, not what kind it is. `hosttest.py` looks for the panel now.
+- *A browser runs no blocks until it has been pressed.* A plugin always has a
+  host running it; a page's audio context starts suspended, and the worklet's
+  `process` is not called until something on the page is pressed. The
+  processor is still built, and posts its state from its constructor so the
+  page shows the instrument at once; the credit line says it is waiting; the
+  first press anywhere starts it. Closing the help sheet counts as a press -
+  which is how the first version of the check for this passed on a page that
+  had already been pressed.
+- *A port's bytes go over once.* The page's keyboard keeps its own stack for
+  the keys on the screen and the readout, and passes on each note, pedal and
+  panic it takes. A port's message is passed on as it came, and what the page
+  makes of it is not sent again - `midiBytes` sets `midiFromPort` while it
+  works, so its `midiNoteOn` does not send the same note a second time.
+- *Nine digits, two ways.* The parity harness writes floats with `%.9g`
+  natively and `toPrecision(9)` in JavaScript. A float that is a tie at nine
+  digits (0.1376953125) comes out `...312` from the C library, which breaks
+  ties to even, and `...313` from JavaScript, which breaks them upwards; the
+  first comparison called that a difference of 1e-9 in two runs of seven.
+  Read back as floats, the compiled instrument is the native one exactly.
+- *A heard pair is usually the picture pair.* The null that hands the heard
+  pair back as the picture pair could not fail on any run but the preset
+  sweep: on a plain wave, a harmonograph or the photocell's pendulums the two
+  are the same signal to the bit. 265 of the 281 presets are not.
