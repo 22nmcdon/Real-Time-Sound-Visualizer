@@ -9,36 +9,21 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-#include "scope/generator.h"
-#include "scope/hearing.h"
-#include "scope/keyboard.h"
-#include "scope/lfo.h"
-#include "scope/matrix.h"
+#include "scope/instrument.h"
 #include "scope/presets.h"
-#include "scope/restore.h"
-#include "scope/screen.h"
-#include "scope/sources.h"
 
-// The processor plays the core's generator (scope::Generator, the page's
-// `makeGeneratorCore` ported): what the speakers get is its heard pair, and
-// what the page draws is its picture pair. The host's MIDI reaches it through
-// the core's keyboard (scope::Keyboard, the page's `midi` functions ported),
-// byte for byte as a port's reach the page: the stack, the pedal, the dyad,
-// mono and chords on two layers. The routings reach it through the core's
-// matrix (scope::Matrix), compiled and faded at the top of every block, from
-// the sources ported so far, and the morph steps after it, as the page's
-// frame has it. Before all of it the clock (scope::Clock, the page's
-// `transport`): the host's tempo, play and position where the host gives
-// them, a MIDI clock's otherwise, and the slider's when neither. Until the
-// rest of the brain moves into the core (PLAN.md, stage 2) it starts as the
-// page starts - on the "Harmonic tone" preset, loaded through the core's
-// `restoreSetup` - and nothing yet moves it from there but the host's notes,
-// its clock and the matrix. What the page sends to a MIDI port - the
-// arpeggio's steps, the crossings' notes, the pluck's and the score's - goes
-// to the host's MIDI out (scope::MidiOut), each at the sample of what sent it.
-// The host sees eight parameters, each one of the panel's sliders, and saves
-// the plugin as a setup code: the setup it was loaded with, the parameters
-// over it, and the controllers it has learned.
+// The processor is the instrument (scope::Instrument) behind JUCE: the core's
+// generator, and over it the brain - the keyboard, the matrix and its
+// sources, the clock, the score, the hearing, the picture the photocell
+// reads - which the site's worklet runs too, compiled, so the two are one
+// instrument. What is the processor's own is what only a host has: the
+// host's MIDI, handed to the instrument byte for byte at its sample, and its
+// MIDI out, which gets what the page would send to a port - the arpeggio's
+// steps, the crossings' notes, the pluck's and the score's - each at the
+// sample of what sent it; the host's transport; eight parameters, each one
+// of the panel's sliders; the page's commands, queued under a lock for the
+// top of the next block; and the state, saved as a setup code - the setup it
+// was loaded with, the hands on it since, and the controllers it has learned.
 class ScopeProcessor final : public juce::AudioProcessor {
  public:
   ScopeProcessor();
@@ -74,15 +59,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
 
   /* The last `kPictureFrames` of what was played, left and right interleaved,
      for the page to draw: written by the audio thread, read by the editor's
-     resource provider. The read can tear across a block boundary, which a
-     picture redrawn sixty times a second survives and a measurement would
-     not - the real channel (PLAN.md, stage 1) carries a frame count so the
-     page can tell. */
-  /* About 170 ms at 48 kHz: enough for the scope's longer timebases and for
-     the readout's analysis, at 64 KB a fetch. 2048 was a twentieth of a
-     second, shorter than a 5 ms/div screen. */
-  static constexpr std::size_t kPictureFrames = 8192;
-  std::vector<float> pictureSnapshot() const;
+     resource provider. */
+  static constexpr std::size_t kPictureFrames = scope::Instrument::kPictureFrames;
+  std::vector<float> pictureSnapshot() const { return instrument_.pictureSnapshot(); }
   double sampleRateNow() const { return rate_.load(); }
 
   /* What the page last said about how the picture is getting through: frames
@@ -92,29 +71,23 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void setPictureReport(const juce::String& json) { pictureReport_ = json; }
   juce::String pictureReport() const { return pictureReport_; }
 
-  // The tone and the keyboard's settings, for the shell test to read.
-  const scope::Tone& tone() const { return core_->tone(); }
-  const scope::LayerSettings& toneB() const { return core_->toneB(); }
-  scope::Keyboard::Settings keys() const { return keyboard_->settings(); }
-  // The routings, for whoever sets them: the shell test now, the brain's
-  // setup later. Not to be touched while the audio thread runs.
-  scope::Matrix& matrix() { return *matrix_; }
-  // The level, the threshold's count and the learned controllers, for the shell test to read.
-  double level() const { return sources_->level().value(); }
-  int thresholdCount() const { return brain_->thresh.count; }
-  const scope::Hearing& hearing() const { return hearing_->hearing(); }
-  // The clock and an oscillator's rate, for the shell test to read.
-  const scope::Clock& clock() const { return brain_->clock; }
-  const scope::ScoreState& score() const { return brain_->score; }
-  // The picture as the plugin draws it for itself, and the view it draws by, for the shell test to read.
-  const scope::PictureRun& picture() const { return *pictureRun_; }
-  const scope::Brain::ViewState& view() const { return brain_->view; }
-  double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
-  /* A hand on one of the panel's sliders, and an end of the morph stored: what
-     the page will send over the bridge once it is the plugin's face. Until
-     then, the shell test's way in. */
-  void moveSlider(const std::string& id, double value);
-  void storeMorph(bool endB) { scope::morphStore(*brain_, endB); }
+  // What the shell test reads, from the instrument.
+  const scope::Tone& tone() const { return instrument_.tone(); }
+  const scope::LayerSettings& toneB() const { return instrument_.toneB(); }
+  scope::Keyboard::Settings keys() const { return instrument_.keyboard().settings(); }
+  // The routings, for the shell test to set. Not to be touched while the audio thread runs.
+  scope::Matrix& matrix() { return instrument_.matrix(); }
+  double level() const { return instrument_.level(); }
+  int thresholdCount() const { return instrument_.thresholdCount(); }
+  const scope::Hearing& hearing() const { return instrument_.hearing(); }
+  const scope::Clock& clock() const { return instrument_.clock(); }
+  const scope::ScoreState& score() const { return instrument_.score(); }
+  const scope::PictureRun& picture() const { return instrument_.picture(); }
+  const scope::Brain::ViewState& view() const { return instrument_.view(); }
+  double lfoRate(int i) const { return instrument_.lfoRate(i); }
+  // A hand on one of the panel's sliders, not remembered, and an end of the morph stored: the shell test's way in.
+  void moveSlider(const std::string& id, double value) { instrument_.moveSlider(id, value); }
+  void storeMorph(bool endB) { instrument_.storeMorph(endB); }
 
   /* The host's parameters: the four macros, the morph's fader, and three of
      the main knobs, each one of the panel's sliders by id and in its units.
@@ -150,96 +123,30 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void pageFade(std::string_view json);
   struct PageState { int version = 0; std::string code; };
   PageState pageState() const;
-  double slider(const char* id) const { return brain_->panel.range(id); }
-  int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
+  double slider(const char* id) const { return instrument_.slider(id); }
+  int learned() const { return instrument_.learned(); }
 
  private:
-  // A setup loaded as a preset is: the core restored, the sliders it moved
-  // since put back, and the parameters read back from the panel.
-  void load(const scope::Json& setup, bool fromHost);
-  // A slider moved, by the host's parameter or the page, and remembered as
-  // moved since the setup was loaded.
-  void moveTo(const std::string& id, const std::u16string& text, bool fromHost);
-  // The page's other hands: done here, and remembered if they did anything.
-  void change(const std::string& id, const scope::Json& value);
-  void click(const std::string& id);
-  void routings(const std::string& text);
-  void fade(const scope::Json& value);
-  // A hand put back from a saved state, as the page sends it.
-  void replay(const scope::Json& hand);
-  // A hand remembered, in place of an earlier one it makes redundant.
-  void remember(std::string key, scope::Json hand);
-  // The setup code of everything that can have changed: the setup loaded,
-  // the hands on it since, the controllers learned.
-  std::string stateCode() const;
+  // A command from the page, waiting for the next block; or refused, and false.
+  bool queue(std::optional<scope::Instrument::Command> command);
   // The page's queue, applied; and the state, published for the page if it changed.
   void takePage();
   void publish(bool wait);
-  // Each parameter the host has moved since the last block, to its slider.
-  void applyKnobs();
 
-  // Render [from, to) of the block into the output and the picture ring.
-  void render(float* left, float* right, int from, int to);
-  // The last of the picture, the page's screen, for the level and the hearing
-  // to read: its left channel for both, and its right for the hearing's width.
-  void window(std::vector<float>& left, std::vector<float>* right) const;
-  static constexpr std::size_t kLevelFrames = 2048;
-  std::vector<float> levelLane_, hearL_, hearR_;
-  std::unique_ptr<scope::HearingSources> hearing_;  // what it hears of itself, as sources
-  /* The picture, drawn here for the photocell and the picture's sources so
-     their loops go on with the window closed (stage 4): captured from the
-     picture ring by the view the page set, at the page's sixty frames a
-     second of audio time, on a canvas of the size the page's trace usually
-     is. The grid depends on that size only through the Y-T walk's peak bars,
-     one a pixel; X-Y draws on a square however wide the canvas. */
-  std::unique_ptr<scope::PictureRun> pictureRun_;
-  scope::CaptureSource pictureSource_;
-  static constexpr scope::Canvas kCanvas { 846, 534, false, 0 };
-
-  std::vector<scope::Lfo> lfos_;
-  std::unique_ptr<scope::Generator> core_;
-  std::unique_ptr<scope::GeneratorNotes> notes_;
-  std::unique_ptr<scope::Keyboard> keyboard_;
-  std::unique_ptr<scope::Matrix> matrix_;
-  std::unique_ptr<scope::CoreSources> sources_;
-  std::unique_ptr<scope::Brain> brain_;  // what a setup sets beyond the generator
-  std::unique_ptr<scope::ClockIn> clockIn_;  // MIDI's real-time bytes, to the brain's clock
-  std::unique_ptr<scope::BrainSources> brainSources_;  // the macros, the morph's fader and the pluck as destinations
-  std::unique_ptr<scope::MidiOut> midiOut_;  // to the host's MIDI out, through `outgoing_`
-  scope::Strike strike_;  // the score's notes, struck in the generator's score voice
-  juce::MidiBuffer outgoing_;  // what the out sent this block, at `outAt_`, handed over at its end
-  int outAt_ = 0;
+  scope::Instrument instrument_;
+  juce::MidiBuffer outgoing_;  // what the out sent this block, handed over at its end
   std::array<juce::AudioParameterFloat*, kKnobs.size()> knobs_ {};
   std::array<float, kKnobs.size()> applied_ {};  // each parameter as last applied
-  scope::Json setup_;                          // the setup the plugin was loaded with
+  std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
+  std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block
   juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
-  /* Every hand on the setup since it was loaded, in order: a slider, a menu,
-     a switch, a button, the routings. Saved with it as `pluginHands`, each
-     [kind, id, value], and put back in order when the state is loaded. A
-     hand on a control already in the list takes the earlier one's place at
-     the end - unless a hand between them is one whose handler reads it. */
-  struct Hand { std::string key; scope::Json hand; };
-  std::vector<Hand> hands_;
-  int presses_ = 0;  // the photocell's button, each press its own hand
-  struct PageCommand {
-    enum Kind { Slider, Setup, Control, Click, Routings, Fade } kind;
-    std::string id; std::u16string text; scope::Json value; std::optional<scope::Json> setup;
-  };
   juce::SpinLock queueLock_;
-  std::vector<PageCommand> queue_, taken_;
+  std::vector<scope::Instrument::Command> queue_, taken_;
   mutable juce::SpinLock publishLock_;
   PageState published_;
-  int hostVersion_ = 0;      // changes that came from the host: a load, a parameter moved
-  bool changed_ = false;
-  std::size_t learnedSeen_ = 0;
-  double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
-  std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepareToPlay
   std::atomic<double> rate_ { 48000.0 };
-
-  std::array<float, kPictureFrames * 2> picture_ {};
   juce::String pictureReport_;
-  std::atomic<std::size_t> pictureAt_ { 0 };
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeProcessor)
 };

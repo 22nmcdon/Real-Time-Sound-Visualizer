@@ -141,8 +141,15 @@ struct PathRead {
 
 // svgStrokes: every command in the specification, curves and arcs flattened
 // into short lines, each subpath a stroke, fitted to the screen.
+//
+// The page's parser throws at the first thing it cannot read. This one keeps
+// the first refusal and stops at the top of the next command, because the
+// core builds without exceptions for WebAssembly; a number or a flag refused
+// leaves the position where it was, so whatever the rest of that command
+// reads is thrown away with it, and the message is the first one's.
 inline PathRead svgStrokes(const std::u16string& text) {
-  struct Refused { std::string why; };
+  std::optional<std::string> why;
+  const auto refuse = [&](std::string message) { if (!why) why = std::move(message); };
   const std::size_t n = text.size();
   std::size_t i = 0;
   const auto at = [&](std::size_t k) { return k < n ? text[k] : char16_t(0); };
@@ -159,7 +166,7 @@ inline PathRead svgStrokes(const std::u16string& text) {
     if (whole) {
       if (at(k) == '.') { k++; while (digit(at(k))) k++; }
     } else {
-      if (at(k) != '.' || !digit(at(k + 1))) throw Refused { "expected a number at character " + std::to_string(i) };
+      if (at(k) != '.' || !digit(at(k + 1))) { refuse("expected a number at character " + std::to_string(i)); return 0; }
       k++;
       while (digit(at(k))) k++;
     }
@@ -175,14 +182,14 @@ inline PathRead svgStrokes(const std::u16string& text) {
   const auto flag = [&]() -> bool {
     skip();
     const char16_t c = at(i);
-    if (i >= n || (c != '0' && c != '1')) throw Refused { "expected an arc flag at character " + std::to_string(i) };
+    if (i >= n || (c != '0' && c != '1')) { refuse("expected an arc flag at character " + std::to_string(i)); return false; }
     i++;
     return c == '1';
   };
   const auto more = [&] { skip(); return i < n && (text[i] == '-' || text[i] == '+' || text[i] == '.' || digit(text[i])); };
 
   Strokes strokes;
-  try {
+  {
     bool open = false;  // whether `stroke` is the last of `strokes`
     double x = 0, y = 0, sx = 0, sy = 0;
     char16_t cmd = 0;
@@ -193,18 +200,18 @@ inline PathRead svgStrokes(const std::u16string& text) {
       x = nx; y = ny;
     };
     constexpr int kSteps = 16;
-    while (true) {
+    while (!why) {
       skip();
       if (i >= n) break;
       if (letter(text[i])) cmd = text[i++];
-      else if (!cmd) throw Refused { "a path starts with a command" };
+      else if (!cmd) { refuse("a path starts with a command"); break; }
       const bool rel = cmd >= 'a' && cmd <= 'z';
       const char16_t c = rel ? static_cast<char16_t>(cmd - 32) : cmd;
       const double ox = rel ? x : 0, oy = rel ? y : 0;
       if (c == 'Z') {
         if (open) to(sx, sy);
         open = false; lastC.reset(); lastQ.reset();
-        if (more()) throw Refused { "unexpected character at " + std::to_string(i) };
+        if (more()) refuse("unexpected character at " + std::to_string(i));
         continue;
       }
       if (c == 'M') {
@@ -273,13 +280,13 @@ inline PathRead svgStrokes(const std::u16string& text) {
       } else {
         std::string name;
         name += static_cast<char>(cmd);
-        throw Refused { "no such command: " + name };
+        refuse("no such command: " + name);
+        break;
       }
-      if (!more() && i < n && !letter(text[i])) throw Refused { "unexpected character at " + std::to_string(i) };
+      if (!more() && i < n && !letter(text[i])) refuse("unexpected character at " + std::to_string(i));
     }
-  } catch (const Refused& r) {
-    return { std::nullopt, r.why };
   }
+  if (why) return { std::nullopt, *why };
   std::size_t count = 0;
   for (const auto& s : strokes) count += s.size();
   if (count > kPathPointsMost) {
