@@ -68,13 +68,15 @@ const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS"
   "MID_SIDE_TURNS", "MID_SIDE_GAIN", "MID_SIDE_FLIP", "lagSeconds", "lagActive", "SHAPE_STRIDE", "strayBetween",
   "capture", "findTriggerIndex",
   "PAD", "plot", "wipeScreen", "clearOrFade", "stacked", "sourceFigures", "drawMain", "drawXY",
-  "PHOSPHOR_N", "phosphor", "makeMoments", "phosphorFade", "phosphorSegment", "phosphorDeposit",
+  "PHOSPHOR_N", "phosphor", "makeMoments", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
+  "phosphorDeposit", "phosphorReadGrid", "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW",
+  "makePictureMeter", "PICTURE_KEYS", "makePictureEngine", "const pictureEngine = makePictureEngine();",
   "BEAM_K", "BEAM_EPS2", "BEAM_TAU", "BEAM_LEVELS", "beamRamps", "hexToRgb", "buildBeamRamps", "beamStep",
   "BEAM_ANCHOR_Q", "BEAM_HIST_LO", "beamHist", "beamRefs", "beamAnchor", "BEAM_MAX", "beamX", "beamY", "beamL2",
   "beamStepOf", "strokeBeam", "beamColours"];
-const source = STUBS + LIFTED.map(definition).join("\n") + `
+const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
 buildBeamRamps();
-return { state, capture, laneCount, drawMain, phosphor, beamRefs, setLock: (v) => { lagLock = v; },
+return { state, capture, laneCount, drawMain, phosphor, engine: pictureEngine, beamRefs, setLock: (v) => { lagLock = v; },
          plot: () => plot, canvas: (w, h) => { canvasW = w; canvasH = h; }, resize: () => { resized = true; },
          name: (w) => { nameWidth = w; } };`;
 
@@ -126,7 +128,7 @@ function run(commands) {
       let a1 = 0, a2 = 0;
       for (let i = 0; i < g.length; i++) { a1 += g[i] * (i + 1); a2 += g[i] * g[i]; }
       const refs = [...s.beamRefs.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1)).map(([k, v]) => k + " " + show(v));
-      extra = [" | grid", show(a1), show(a2), "round", show(s.phosphor.moments.roundness()), "frames", s.phosphor.frames,
+      extra = [" | grid", show(a1), show(a2), "round", show(s.engine.roundness), "frames", s.phosphor.frames,
                "plot", show(p.x), show(p.y), show(p.w), show(p.h), "refs", ...refs].join(" ");
     }
     else if (cmd === "canvas") s.canvas(Number(a[0]), Number(a[1]));

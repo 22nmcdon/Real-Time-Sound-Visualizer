@@ -1318,6 +1318,54 @@ switch inverted, the fallback's reason dropped, either source making the
 JavaScript core while saying otherwise, the module refused, and the view
 over the memory made before the call that grows it.
 
+5d puts the picture's own sources on the site onto the compiled core: the
+phosphor grid and its fades, the walks the renderer lays into it, the
+photocell, the picture meter and its verdict, roundness from the beam's
+moments, the drawn pair's shape, boredom and the slews - the pieces 4a
+ported. The page's JavaScript for them is gathered into `makePictureEngine`
+and stays, as the fallback and the reference; `makeWasmPictureEngine` is the
+same interface over the core's `Phosphor` and `PictureSources`, an instance
+of its own from the module the main thread compiled; `pictureEngine` is
+whichever the switch chose, with the same fallback and the same report
+(`pictureCoreKind`, `pictureCoreWhy`). The renderer still draws to the canvas
+and walks the beam in JavaScript, handing each walk's polyline to the engine:
+moving the walk itself (4c's `drawPicture`) would put the canvas's and the
+grid's walks in two places, which is the drift the renderer's comment says
+the grid was built to avoid.
+
+The page's objects stay where they were, because the tests and the readouts
+reach into them: `phosphor.grid` is the engine's cells - over the compiled
+core, a view into its memory, so a test's write is a write the core reads -
+and `photo` and `picture` are plain objects each step reads and writes back.
+The core gained what that needs and nothing else: the cells to write into,
+`carry` for the slewed values handed back in, and the meter reset alone.
+
+Held three ways. The parity harness's picture runs go through the compiled
+engine as well as the page's, and its output is the page's to the character
+across all of them (9,538 lines), against runs with every persistence a
+hundredth more that are not. wasmtest.py records every call the page makes
+to its engine over real frames - every preset that turns the photocell on,
+Y-T, the spectrogram over a lit grid, persistence off and infinite, a Clear,
+a word and the lag's figure turned and zoomed into the screen's edge, five
+seconds with a reset, those five seconds with the limiters held down, and a
+still picture - and replays them into a fresh engine of each kind, comparing
+the cells, the photocell, every value raw and slewed, the meter, its verdict
+and the shape after each call; against persistence a thousandth more and
+every walk a step brighter, which are not. And the web suite runs every
+picture check on the compiled engine.
+
+Mutation: the bridge's picture exports, 13 of 13, and the compiled engine's
+page side, 9 of 10, through the recorded replays; the one left skips a
+polyline of two points, which the page never lays. Five of the thirteen
+lived until the replays did what the page does and they had not: the
+spectrogram over a grid with ink on it (a blank that did nothing cleared
+nothing either way); a turn applied backwards, which only the lag's figure
+shows (see the README on figures with a mirror in them); the monitor's
+limiters held down, which with the sound off they never are; a meter reset
+with history behind it; and a verdict other than "listening". And the
+page's wrappers - what each frame hands the engine, the meter it reads, the
+grid it hands back - 10 of 10 through phototest, shapetest and wasmtest.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

@@ -208,6 +208,7 @@ with sync_playwright() as pw:
           for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
           return { kind: state.source.coreKind, why: state.source.coreWhy, switch: CORE_IN_WASM, blocks: state.source.blocks,
                    main: state.source.mainCoreKind, mainWhy: state.source.mainCoreWhy,
+                   picture: pictureCoreKind, pictureWhy: pictureCoreWhy,
                    fault: state.source.fault, peak, driver: lfoDriver(), phase: lfos[0].phase };
         }""")
 
@@ -236,6 +237,8 @@ with sync_playwright() as pw:
     check("the generator's worklet says it is running the compiled core", on["switch"] and on["kind"] == "wasm" and on["why"] is None, str(on))
     check("and so does the main thread's generator, which draws while the sound is off", on["main"] == "wasm" and on["mainWhy"] is None,
           "%r %r" % (on["main"], on["mainWhy"]))
+    check("and so do the picture's own sources - the grid, the photocell, the meter", on["picture"] == "wasm" and on["pictureWhy"] is None,
+          "%r %r" % (on["picture"], on["pictureWhy"]))
     check("and it plays, and the picture is drawn from what it sends",
           on["fault"] is None and on["blocks"] > 3 and on["peak"] > 0.05 and on["driver"] == "worklet",
           "%d blocks, peak %.3f, fault %r" % (on["blocks"], on["peak"], on["fault"]))
@@ -267,6 +270,180 @@ with sync_playwright() as pw:
     check("and the comparison fails against the twist a hundredth of a radian further",
           len(wnulls) == 4 and all(r["wrong"] > TOL for r in wnulls), ", ".join("%s %.3g" % (r["name"], r["wrong"]) for r in wnulls))
 
+    print("\n--- the picture's own sources, recorded and played into both ---")
+    # Every call the page makes to its picture engine over a second and a
+    # half of real frames, with copies of what it was handed - the walks'
+    # polylines, the drawn pair's lanes, the photocell and the picture's
+    # values as they stood - played in order into a fresh JavaScript engine and
+    # a fresh compiled one, and the cells and every reading compared after
+    # each call. The scenarios are every preset that turns the photocell on,
+    # then Y-T, the spectrogram, persistence off and infinite, and a Clear.
+    PICTURE = """async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const E = pictureEngine;
+      const slice = (v, n) => Array.prototype.slice.call(v, 0, n);
+      const copies = {
+        fade: (p, w) => [p, !!w],
+        segment: (plot, x0, y0, x1, y1, level) => [{ ...plot }, x0, y0, x1, y1, level],
+        deposit: (plot, xs, ys, count, steps) => [{ ...plot }, slice(xs, count), slice(ys, count), count, steps ? slice(steps, count) : null],
+        blank: () => [],
+        photoStep: (ph, elapsed, spect) => [{ on: ph.on, u: ph.u, v: ph.v, value: ph.value, raw: ph.raw }, elapsed, spect],
+        pictureStep: (ph, pic, pair, elapsed, spect, limiting) => [
+          { on: ph.on }, JSON.parse(JSON.stringify(pic)),
+          pair ? { ...pair, left: Float32Array.from(pair.left.subarray(0, pair.n)), right: Float32Array.from(pair.right.subarray(0, pair.n)) } : null,
+          elapsed, spect, limiting],
+      };
+      const record = async (setUp, ms) => {
+        const log = [], kept = {};
+        for (const name in copies) {
+          kept[name] = E[name];
+          E[name] = function (...args) { log.push([name, copies[name](...args)]); return kept[name].apply(E, args); };
+        }
+        const keptReset = E.meter.reset;
+        E.meter.reset = function () { log.push(["reset", []]); return keptReset.call(E.meter); };
+        try { await setUp(); await wait(ms); }
+        finally { for (const name in copies) E[name] = kept[name]; E.meter.reset = keptReset; }
+        return log;
+      };
+      const readings = (e) => [e.roundness, e.bored, e.frames, e.meter.coverage, e.meter.lit, e.meter.change, e.meter.novelty,
+                               e.meter.depth, e.shape.signed, e.shape.edge];
+      // Both engines through one log in step; `bend` changes what one of
+      // them is given, for the nulls.
+      const replay = (log, bend) => {
+        const js = makePictureEngine(), wa = makeWasmPictureEngine(wasmModule());
+        let worst = 0, lit = 0, photoMost = 0, worstAt = "";
+        const verdicts = new Set(), counts = {};
+        const far = (a, b) => (a === b || (Number.isNaN(a) && Number.isNaN(b)) ? 0 : Math.abs(a - b) || Infinity);
+        for (let k = 0; k < log.length; k++) {
+          const [op, a] = log[k];
+          counts[op] = (counts[op] || 0) + 1;
+          const forWa = bend ? bend(op, a) : a;
+          if (op === "fade") { js.fade(a[0], a[1]); wa.fade(forWa[0], forWa[1]); }
+          else if (op === "segment") { js.segment(...a); wa.segment(...forWa); }
+          else if (op === "deposit") { js.deposit(...a); wa.deposit(...forWa); }
+          else if (op === "blank") { js.blank(); wa.blank(); }
+          else if (op === "reset") { js.meter.reset(); wa.meter.reset(); }
+          else if (op === "photoStep") {
+            const pj = { ...a[0] }, pw = { ...a[0] };
+            js.photoStep(pj, a[1], a[2]); wa.photoStep(pw, a[1], a[2]);
+            const d = Math.max(far(pj.value, pw.value), far(pj.raw, pw.raw));
+            if (d > worst) { worst = d; worstAt = op + " " + k; }
+            photoMost = Math.max(photoMost, pj.value);
+          } else if (op === "pictureStep") {
+            const cj = JSON.parse(JSON.stringify(a[1])), cw = JSON.parse(JSON.stringify(a[1]));
+            js.pictureStep(a[0], cj, a[2], a[3], a[4], a[5]); wa.pictureStep(a[0], cw, a[2], a[3], a[4], a[5]);
+            for (const key of PICTURE_KEYS) {
+              const d = Math.max(far(cj[key], cw[key]), far(cj.raw[key], cw.raw[key]));
+              if (d > worst) { worst = d; worstAt = op + " " + key + " " + k; }
+            }
+            const rj = readings(js), rw = readings(wa);
+            for (let i = 0; i < rj.length; i++) { const d = far(rj[i], rw[i]); if (d > worst) { worst = d; worstAt = "reading " + i + " at " + k; } }
+            const vj = js.meter.verdict();
+            if (vj !== wa.meter.verdict()) { worst = Infinity; worstAt = "verdict at " + k; }
+            verdicts.add(vj);
+          }
+          const gj = js.cells, gw = wa.cells;
+          for (let i = 0; i < gj.length; i++) {
+            const d = far(gj[i], gw[i]);
+            if (d > worst) { worst = d; worstAt = op + " cell " + i + " at " + k; }
+            lit = Math.max(lit, gj[i]);
+          }
+        }
+        return { worst, worstAt, lit, photoMost, verdicts: [...verdicts], counts, last: js.meter.verdict(), edge: js.shape.edge };
+      };
+      const uses = (setup) => setup.photoOn === true;
+      const scenarios = [];
+      for (const [, entries] of PRESETS) for (const [name, setup] of entries) {
+        if (uses(setup)) scenarios.push([name, () => applyPreset("b:" + name)]);
+      }
+      let turnedOnScreen = 0;
+      // And one long enough for the meter to give a verdict - it says nothing
+      // until four seconds of history - on a preset that keeps finding new shapes.
+      // Five seconds of it, then the photocell off and on, which starts the
+      // meter's history again.
+      scenarios.push(["Something new each time, then the photocell off and on", async () => {
+        applyPreset("b:Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
+      }, 800]);
+      // A word turned and zoomed until the screen's edge clips it: the only
+      // place the turn shows in what the picture says, since a turn leaves
+      // which way round the beam goes alone - and a word, because a figure
+      // with a mirror in it (a 3:2 Lissajous, a heart) clips the same turned
+      // either way, which hid a turn applied backwards.
+      scenarios.push(["a word turned and clipped", () => {
+        applyPreset("b:Written on the screen"); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
+      }]);
+      // And the turn the picture applies itself, rather than the signal: with
+      // the lag on, the pair is a signal against its own past, which no turn
+      // of the signal could mean, so the drawn pair is turned on the screen
+      // and the shape is taken from it turned - the only case in which the
+      // pair's own turn is not nought.
+      scenarios.push(["the lag's figure turned on the screen and clipped", () => {
+        applyPreset("b:Harmonic tone"); el.dispXY.click(); setPhoto(true);
+        el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event("change")); state.rotate = 0.1; setZoom(6);
+      }]);
+      scenarios.push(["Y-T with the photocell", () => { applyPreset("b:Harmonic tone"); setPhoto(true); el.dispYT.click(); }]);
+      // Ink on the grid first, so the spectrogram's blank has something to clear.
+      scenarios.push(["the spectrogram with the photocell", async () => { el.dispXY.click(); setPhoto(true); await wait(600); el.dispSpect.click(); }]);
+      scenarios.push(["X-Y, persistence off", () => { el.dispXY.click(); setPhoto(true); state.persistence = 0; }]);
+      scenarios.push(["X-Y, persistence infinite", () => { state.persistence = -1; }]);
+      scenarios.push(["a Clear", async () => { state.persistence = 0.12; await wait(300); el.clearButton.click(); }]);
+      const rows = [];
+      let first = null, longest = null;
+      for (const [name, setUp, ms] of scenarios) {
+        const log = await record(setUp, ms || 1500);
+        if (name.startsWith("the lag's")) turnedOnScreen = Math.max(0, ...log.filter(([op, a]) => op === "pictureStep" && a[2]).map(([, a]) => Math.abs(a[2].spin)));
+        if (!first && log.some(([op]) => op === "deposit")) first = log;
+        if (name.includes("off and on")) longest = log;
+        rows.push(Object.assign({ name }, replay(log)));
+      }
+      setZoom(0); state.rotate = 0; el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event("change"));
+      // The long one again with the monitor's limiters held hard down, which
+      // the sound being off never does: the verdict has to run away, in both.
+      const strained = longest.map(([op, a]) => [op, op === "pictureStep" ? [a[0], a[1], a[2], a[3], a[4], -8] : a]);
+      rows.push(Object.assign({ name: "the long one with the limiters at -8 dB" }, replay(strained)));
+      // A still picture, which the meter has to call settled: the long one's
+      // frames up to its fortieth step, then that step again and again, a
+      // quarter of a second apart and nothing new laid, for eight seconds.
+      const steps = longest.filter(([op]) => op === "pictureStep");
+      const at = longest.indexOf(steps[Math.min(39, steps.length - 1)]);
+      const [, held] = longest[at];
+      const still = longest.slice(0, at + 1);
+      for (let k = 0; k < 32; k++) still.push(["pictureStep", [{ on: true }, held[1], held[2], 250, false, 0]]);
+      rows.push(Object.assign({ name: "a still picture, eight seconds" }, replay(still)));
+      // The nulls: the compiled engine given persistence a thousandth more,
+      // and given every deposit a step brighter.
+      const nulls = first ? [
+        replay(first, (op, a) => (op === "fade" && a[0] > 0 ? [a[0] + 0.001, a[1]] : a)).worst,
+        replay(first, (op, a) => (op === "deposit" ? [a[0], a[1], a[2], a[3], a[4] ? a[4].map((v) => Math.min(v + 1, BEAM_K - 1)) : a[4]] : a)).worst,
+      ] : [];
+      return { rows, nulls, turnedOnScreen };
+    }"""
+    ran = p.evaluate(PICTURE)
+    prow = ran["rows"]
+    off = [(r["name"], r["worst"], r["worstAt"]) for r in prow if not r["worst"] <= TOL]
+    check("%d scenarios of the picture's sources, the compiled engine the same as the JavaScript to %g after every call"
+          % (len(prow), TOL), prow and not off, "; ".join("%s %.3g at %s" % o for o in off[:3]))
+    deposits = sum(r["counts"].get("deposit", 0) + r["counts"].get("segment", 0) for r in prow)
+    steps = sum(r["counts"].get("pictureStep", 0) for r in prow)
+    verdicts = set(v for r in prow for v in r["verdicts"])
+    clipped = [r["name"] for r in prow if r["edge"] > 0.01]
+    check("and the lag's figure is turned by the screen, not the signal, a tenth of a turn", abs(ran["turnedOnScreen"] - 0.1) < 1e-9,
+          str(ran["turnedOnScreen"]))
+    strained = prow[-2]
+    still = prow[-1]
+    lit = [r["name"] for r in prow if r["lit"] > 0.5]
+    lightly = [r["name"] for r in prow if r["photoMost"] > 0.01]
+    check("and they can show it: %d walks laid, %d steps, %d scenarios lighting the grid, %d moving the photocell, verdicts %s"
+          % (deposits, steps, len(lit), len(lightly), sorted(verdicts)),
+          deposits > 1000 and steps > 500 and len(lit) >= len(prow) - 3 and len(lightly) >= 5 and len(verdicts) >= 2)
+    reset = next((r for r in prow if "off and on" in r["name"]), {"verdicts": [], "last": None})
+    check("and the edge, a reset mid-run, the limiters and a still picture: %s clipped, %s then %s across the reset, %s with the limiters down, %s when still"
+          % (clipped, sorted(reset["verdicts"]), reset["last"], sorted(strained["verdicts"]), still["last"]),
+          clipped and set(reset["verdicts"]) - {"listening"} and reset["last"] == "listening"
+          and "running away" in strained["verdicts"] and still["last"] == "settled")
+    check("and the comparison fails against persistence a thousandth more, or every walk a step brighter",
+          len(ran["nulls"]) == 2 and all(n > TOL for n in ran["nulls"]), str(ran["nulls"]))
+
     print("\n--- the effects worklet, by default ---")
     fx = effects(p)
     # The mirror on both axes folds each channel to its positive half, so
@@ -283,6 +460,7 @@ with sync_playwright() as pw:
     check("with ?core=js the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
           and js["why"] is None and js["blocks"] > 3, str(js))
     check("and so does the main thread's", js["main"] == "js" and js["mainWhy"] is None, "%r %r" % (js["main"], js["mainWhy"]))
+    check("and the picture's sources", js["picture"] == "js" and js["pictureWhy"] is None, "%r %r" % (js["picture"], js["pictureWhy"]))
     fx = effects(p)
     check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and fx["why"] is None, str(fx))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
@@ -358,9 +536,12 @@ with sync_playwright() as pw:
     # global scope of their own, and theirs is untouched.
     p, bad = open_page("", "WebAssembly.Module = function () { throw new Error('refused for the test'); };")
     early = p.evaluate("""() => { const f = capture(); let peak = 0; for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
-                                  return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak }; }""")
+                                  return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak,
+                                           picture: pictureCoreKind, pictureWhy: pictureCoreWhy }; }""")
     check("the main thread makes the JavaScript core instead, says why, and draws", early["main"] == "js"
           and "refused for the test" in (early["why"] or "") and early["peak"] > 0.05, str(early))
+    check("and the picture's sources are the JavaScript ones, saying why", early["picture"] == "js"
+          and "refused for the test" in (early["pictureWhy"] or ""), "%r %r" % (early["picture"], early["pictureWhy"]))
     later = sound(p)
     check("and the worklet, which can, still runs the compiled core", later["kind"] == "wasm" and later["blocks"] > 3, str(later))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))

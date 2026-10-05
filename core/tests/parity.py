@@ -2190,6 +2190,25 @@ for i, (name, _) in enumerate(pcruns):
     check("%s: %d commands, the same grid, moments, meter and sources" % (name, pclines[i]), d is None, d or "")
 pcbad = [n for i, (n, _) in enumerate(pcruns) if n.startswith("random-") and kdiff(pcslice(pcjs, i), pcslice(pccpp, i))]
 check("30 random sequences of 200 commands, the same grid, moments, meter and sources", not pcbad, ", ".join(pcbad))
+# The compiled core's picture engine (5d), the one the site now runs, through
+# the same runs: made as the page makes it, from the module the page carries,
+# and driven through the page's own wrappers. Its output is the page's to the
+# character, which is stronger than the tolerance and is what it gave.
+def pcwasm(path):
+    return subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), path], env=dict(os.environ, CORE="wasm"),
+                          check=True, capture_output=True, text=True).stdout
+pcwa = pcwasm(os.path.join(BUILD, "picture.txt"))
+check("the site's picture engine, compiled, through every run: the page's output to the character, and the core's to %g" % TOL,
+      pcwa == pcjs and kdiff(pcwa, pccpp) is None,
+      "%d lines; first difference from the page %r" % (len(pcwa.split("\n")),
+       next((i for i, (x, y) in enumerate(zip(pcwa.split("\n"), pcjs.split("\n"))) if x != y), None)))
+# The null: the runs with every persistence a hundredth more, which the
+# comparison has to see.
+pcbent = os.path.join(BUILD, "picture_bent.txt")
+with open(pcbent, "w") as f:
+    f.write(re.sub(r"^persist ([0-9.]+)$", lambda m: "persist %r" % (float(m.group(1)) + 0.01) if float(m.group(1)) > 0 else m.group(0),
+                   pctext, flags=re.M))
+check("and the comparison fails against the runs with every persistence a hundredth more", kdiff(pcwasm(pcbent), pcjs) is not None)
 def pcout(name): return pcslice(pcjs, next(i for i, (n, _) in enumerate(pcruns) if n == name)).split("\n")
 def pcfield(line, word, k=0): w = line.split(); return w[w.index(word) + 1 + k]
 pcsteps = lambda name: [l for l in pcout(name) if l.startswith("step")]

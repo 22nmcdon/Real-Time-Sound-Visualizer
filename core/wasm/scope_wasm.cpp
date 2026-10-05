@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "scope/generator.h"
+#include "scope/picture.h"
 #include "scope/json.h"
 #include "scope/text.h"
 
@@ -55,6 +56,15 @@ std::vector<double> numbers;   // the routes, seven to one
 std::vector<float> lanes;      // seven of a block each: the picture's pair, the heard pair, B's pair, the input
 std::size_t laneLength = 0;
 std::vector<double> state;     // what the worklet sends back with its samples
+
+// The picture's own sources (stage 5d), for the page's main thread: the
+// phosphor grid the renderer's walks deposit into, and the photocell, meter
+// and slewed values read from it. Their own, beside any generator.
+std::unique_ptr<scope::Phosphor> phosphor;
+std::unique_ptr<scope::PictureSources> pictures;
+std::vector<float> pairLanes;  // the drawn pair, left then right
+scope::PairShape pairShape;
+std::vector<double> pictureState;
 
 std::vector<double> numberList(const scope::Json& v) {
   std::vector<double> out;
@@ -253,6 +263,77 @@ EXPORT(scope_effect) void scopeEffect(int n) {
   float* l = lanes.data();
   const std::size_t m = laneLength;
   core->effect(l, l + m, l + 2 * m, l + 3 * m, n);
+}
+
+// --- the picture's own sources (5d) -----------------------------------------
+
+EXPORT(picture_make) void pictureMake() {
+  phosphor = std::make_unique<scope::Phosphor>();
+  pictures = std::make_unique<scope::PictureSources>();
+}
+EXPORT(picture_fade) void pictureFade(double persistence, int wipe) { phosphor->fade(persistence, wipe != 0); }
+EXPORT(picture_blank) void pictureBlank() { phosphor->blank(); }
+EXPORT(picture_segment) void pictureSegment(double px, double py, double pw, double ph, double x0, double y0, double x1,
+                                            double y1, double level) {
+  phosphor->segment(scope::Plot { px, py, pw, ph }, x0, y0, x1, y1, level);
+}
+// A polyline from the numbers buffer: `count` xs, then `count` ys, then, when
+// `hasSteps`, the beam's `count` steps.
+EXPORT(picture_deposit) void pictureDeposit(double px, double py, double pw, double ph, int count, int hasSteps) {
+  const std::size_t n = static_cast<std::size_t>(count);
+  std::vector<int> steps;
+  if (hasSteps) {
+    steps.resize(n);
+    for (std::size_t i = 0; i < n; i++) steps[i] = static_cast<int>(numbers[2 * n + i]);
+  }
+  phosphor->deposit(scope::Plot { px, py, pw, ph }, numbers.data(), numbers.data() + n, n, hasSteps ? steps.data() : nullptr);
+}
+EXPORT(picture_read) double pictureRead(double u, double v) { return phosphor->read(u, v); }
+EXPORT(picture_cells) float* pictureCells() { return phosphor->cells(); }
+EXPORT(picture_lanes) float* pictureLanes(int n) {
+  if (pairLanes.size() < 2 * static_cast<std::size_t>(n)) pairLanes.resize(2 * static_cast<std::size_t>(n));
+  return pairLanes.data();
+}
+// The drawn pair's shape from the `n` samples a lane in the picture lanes,
+// turned, scaled and offset as the page draws them.
+EXPORT(picture_shape) void pictureShape(int n, double gx, double gy, double ox, double oy, double spin, double zoom) {
+  const std::size_t m = static_cast<std::size_t>(n);
+  pairShape = scope::shapeOfPair(pairLanes.data(), pairLanes.data() + m, m, gx, gy, ox, oy, spin, zoom);
+}
+// photoStep, from the page's photocell as it stands: on, where, and the value
+// it last slewed to.
+EXPORT(picture_photo) void picturePhoto(int on, double u, double v, double value, double elapsed, int spect) {
+  pictures->on = on != 0;
+  pictures->u = u; pictures->v = v;
+  pictures->carry(value, pictures->values());
+  pictures->photoStep(*phosphor, elapsed, spect != 0);
+}
+// pictureStep, from the page's slewed values as they stand, with the shape
+// last made or none.
+EXPORT(picture_step) void pictureStep(int on, int hasShape, double elapsed, int spect, double limiting, double round,
+                                      double cover, double change, double novelty, double signedArea, double edge,
+                                      double bored) {
+  pictures->on = on != 0;
+  pictures->carry(pictures->photo(), scope::PictureValues { round, cover, change, novelty, signedArea, edge, bored });
+  pictures->pictureStep(*phosphor, hasShape ? &pairShape : nullptr, elapsed, spect != 0, limiting);
+}
+EXPORT(picture_reset_meter) void pictureResetMeter() { pictures->resetMeter(); }
+// The photocell's value and reading, the slewed values and their targets,
+// boredom's level, the meter's readings, its depth and verdict (nought
+// listening, one running away, two settled, three cycling, four wandering),
+// the fades so far, the roundness, and the last shape.
+EXPORT(picture_state) double* pictureStateOut() {
+  const auto& v = pictures->values();
+  const auto& r = pictures->raw();
+  const auto& m = pictures->meter();
+  const std::string said = m.verdict();
+  const double verdict = said == "running away" ? 1 : said == "settled" ? 2 : said == "cycling" ? 3 : said == "wandering" ? 4 : 0;
+  pictureState.assign({ pictures->photo(), pictures->photoRaw(), v.round, v.cover, v.change, v.novelty, v.signed_, v.edge,
+                        v.bored, r.round, r.cover, r.change, r.novelty, r.signed_, r.edge, r.bored, pictures->bored(),
+                        m.coverage(), m.lit(), m.change(), m.novelty(), static_cast<double>(m.depth()), verdict,
+                        static_cast<double>(phosphor->frames()), phosphor->moments().roundness(), pairShape.signed_,
+                        pairShape.edge });
+  return pictureState.data();
 }
 
 // What goes back with the samples: the envelope, the crossings' counts, the

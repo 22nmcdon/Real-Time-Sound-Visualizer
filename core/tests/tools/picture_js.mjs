@@ -46,20 +46,34 @@ const gainOf = (ch) => gains[ch];
 let limiting = 0;
 function monitorLimiting() { return limiting; }
 `;
-const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorSegment", "phosphorDeposit", "phosphorRead",
+/* The page's picture engine (5d) is made here as the page makes it: the
+   JavaScript one, or with CORE=wasm in the environment the compiled core's,
+   from the module the page carries - so the same runs hold the compiled
+   picture engine to the page's and to the native core. */
+const MODE = process.env.CORE || "js";
+const ENGINE = MODE === "wasm"
+  ? `const pictureEngine = makeWasmPictureEngine(new WebAssembly.Module(WASM_BYTES));`
+  : `const pictureEngine = makePictureEngine();`;
+const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
+  "phosphorDeposit", "phosphorRead", "phosphorReadGrid",
   "BEAM_K", "PHOTO_REACH", "PHOTO_START", "PHOTO_SLEW", "photo", "photoStep",
   "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "CHANGE_FLOOR", "NOVELTY_FLOOR",
-  "SATURATED", "STRAINED", "makePictureMeter", "pictureMeter", "makeMoments", "shapeX", "shapeOfPair",
-  "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK", "boredLevel", "pictureStep"];
-const source = STUBS + LIFTED.map(definition).join("\n") + `
+  "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
+  "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
+  "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep"];
+const WASM_BYTES = MODE === "wasm" ? (() => {
+  const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
+  return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
+})() : null;
+const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
 return { state, gains, phosphor, phosphorFade, phosphorSegment, phosphorDeposit, phosphorRead, photo, photoStep,
-         pictureMeter, shapeOfPair, picture, pictureStep, boredLevel: () => boredLevel,
+         pictureMeter, shapeOfPair, picture, pictureStep, engine: pictureEngine,
          setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
 
 function run(commands) {
-  const s = new Function(source)();
+  const s = new Function("WASM_BYTES", source)(WASM_BYTES);
   let frame = null;
   const lines = [];
   for (const words of commands) {
@@ -117,7 +131,7 @@ function run(commands) {
     const g = s.phosphor.grid;
     for (let i = 0; i < g.length; i++) { a1 += g[i] * (i + 1); a2 += g[i] * g[i]; }
     lines.push(cmd + " | grid " + show(a1) + " " + show(a2) + " round "
-               + show(s.phosphor.moments ? s.phosphor.moments.roundness() : 0) + extra);
+               + show(s.engine.roundness) + extra);
   }
   return lines.join("\n");
 }

@@ -184,6 +184,10 @@ class Phosphor {
   }
 
   const Grid& grid() const { return grid_; }
+  // The cells to write into, for the page's own reads and writes when the
+  // grid is the compiled core's (stage 5d): the page and its tests set cells
+  // as they always have, and the core sees them.
+  float* cells() { return grid_.data(); }
   const Moments& moments() const { return moments_; }
   int frames() const { return frames_; }
 
@@ -371,6 +375,14 @@ class PictureSources {
     slew(values_.novelty, raw_.novelty); slew(values_.signed_, raw_.signed_); slew(values_.edge, raw_.edge);
     slew(values_.bored, raw_.bored);
   }
+
+  // The page's slewed values handed back in before a step (stage 5d): the
+  // page's `photo` and `picture` are the truth on its side, as a worklet's
+  // oscillators are on its, so whatever the page set them to is what the next
+  // step slews from.
+  void carry(double photo, const PictureValues& values) { photo_ = photo; values_ = values; }
+  // The meter alone started afresh, as the page's `pictureMeter.reset()` does.
+  void resetMeter() { meter_.reset(); }
 
   // setPhoto: on, the meter starts afresh; off, the photocell reads nothing.
   void setOn(bool want) {

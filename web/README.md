@@ -4,9 +4,10 @@
 browser and it runs. One part of it is generated rather than written: the C++
 core's generator, compiled to WebAssembly by `../core/wasm/build.py` and
 carried as base64 between two marker comments, which the page runs - in the
-generator's worklet, in the effects worklet on a live input, and on the main
-thread, where the generator draws while the sound is off - unless the address
-says `?core=js`. Nothing else is built. It is also published as an artifact, but
+generator's worklet, in the effects worklet on a live input, on the main
+thread, where the generator draws while the sound is off, and for the
+picture's own sources, the phosphor grid, the photocell and the meter -
+unless the address says `?core=js`. Nothing else is built. It is also published as an artifact, but
 this copy is the source of truth — the published page is a deployment of it.
 
 The desktop app in `../oscilloscope-poc/` is a separate implementation of the
@@ -3855,4 +3856,38 @@ needs, which the page stubs; there is no Emscripten runtime.
   the core itself never does), so the mirror cannot fall behind.
   `wasmtest.py` applies every preset on a page of each kind and requires the
   settings read back to be the same, character for character.
+
+**The picture's own sources run in an engine, and the page's objects stay
+where they were.** Stage 5d put the phosphor grid, the photocell, the picture
+meter, roundness and boredom behind one interface in two builds:
+`makePictureEngine`, the page's JavaScript gathered up, and
+`makeWasmPictureEngine`, the compiled core's. `pictureEngine` is whichever the
+switch chose. The tests reach into these objects more than into anything
+else - they set cells, read `photo.value`, ask `pictureMeter` for its
+verdict - so `phosphor.grid` is the engine's own cells (over the compiled core,
+a view into its memory, made fresh on every read, which a test's write lands
+in), and `photo` and `picture` stay plain objects that each step reads and
+writes back, the page's truth as a worklet's oscillators are the worklet's.
+The two are held to each other by recording the page's own calls to its
+engine over real frames and replaying them into a fresh engine of each kind,
+comparing after every call (`wasmtest.py`), and through the parity harness's
+picture runs, where the compiled engine's output is the page's to the
+character.
+
+- *A figure with a mirror in it cannot show which way it was turned.* The
+  drawn pair's shape is turned before its edge contact is measured, and a
+  mutation that turned it the wrong way lived through a 3:2 figure turned and
+  clipped: a Lissajous figure is its own mirror image, so turned a tenth of a
+  turn either way it clips the screen by the same amount. A word does not.
+  And with the generator as the source the turn is applied to the signal, so
+  the pair arrives turned and its own turn is nought - it is only with the
+  lag on, a signal against its own past, that the screen turns the pair, and
+  the scenario that catches a backwards turn is the lag's figure, turned and
+  zoomed into the edge.
+- *A replay of a second and a half sees no verdict.* The meter says
+  "listening" for four seconds, so the first replays compared only the one
+  verdict. A still picture made by repeating one step with nothing laid is
+  "settled" every time; the long scenario with the limiters held down is
+  "running away"; and the photocell switched off and on after five seconds
+  shows a reset.
 
