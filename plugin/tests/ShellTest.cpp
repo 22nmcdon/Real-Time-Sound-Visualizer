@@ -1431,6 +1431,192 @@ int main() {
           "attack " + num(e.attack) + ", B's " + num(p.matrix().fadeEnvelope(1).attack) + "; kept " + num(q.matrix().fadeEnvelope(0).attack));
   }
 
+  std::printf("\n--- the input ---\n");
+  {
+    /* The host's input bus, turned on, carrying a saw on the left and a
+       triangle on the right - two signals unlike each other and unlike
+       anything the generator plays, so the output says which it is. The
+       page's Mic and Tone buttons choose what is drawn: the input, through
+       the plane, or the generator. */
+    const auto saw = [](long long k) { return static_cast<float>(0.5 * (2 * std::fmod(static_cast<double>(k), 100.0) / 100.0 - 1)); };
+    const auto tri = [](long long k) { const double u = std::fmod(static_cast<double>(k), 73.0) / 73.0;
+                                       return static_cast<float>(0.5 * (u < 0.5 ? 4 * u - 1 : 3 - 4 * u)); };
+    struct Fed { double apart = 0, peak = 0; std::vector<float> outL; };
+    // Blocks with the input in the buffer, as a host hands it over; how far the output is from the input, and how loud.
+    const auto feed = [&](ScopeProcessor& p, long long& at, int blocks, const std::function<void(ScopeProcessor&, int)>& hands) {
+      Fed f;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int b = 0; b < blocks; ++b) {
+        if (hands) hands(p, b);
+        for (int i = 0; i < block; ++i) { buf.setSample(0, i, saw(at + i)); buf.setSample(1, i, tri(at + i)); }
+        juce::MidiBuffer m;
+        if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) {
+          f.apart = std::fmax(f.apart, std::fabs(buf.getSample(0, i) - saw(at + i)) + std::fabs(buf.getSample(1, i) - tri(at + i)));
+          f.peak = std::fmax(f.peak, std::fabs(buf.getSample(0, i)));
+          f.outL.push_back(buf.getSample(0, i));
+        }
+        at += block;
+      }
+      return f;
+    };
+    ScopeProcessor fx;
+    fx.enableAllBuses();
+    fx.prepareToPlay(rate, block);
+    long long at = 0;
+    const Fed tone = feed(fx, at, 8, nullptr);
+    check("with the input on and the generator drawn, the output is the generator's, not the input",
+          !fx.drawsInput() && tone.apart > 0.3 && fx.getTotalNumInputChannels() == 2,
+          "apart by " + num(tone.apart) + ", " + std::to_string(fx.getTotalNumInputChannels()) + " inputs");
+    // Mic from the page: the input drawn, and heard, exactly, with nothing on the plane.
+    const scope::ModSource* pitch = fx.matrix().source("hear.pitch");
+    const bool loopBefore = pitch && pitch->picture();
+    fx.pageClick("srcMic");
+    feed(fx, at, 1, nullptr);
+    const bool loopAfter = pitch && pitch->picture();
+    const Fed drawn = feed(fx, at, 8, nullptr);
+    const auto snapshot = fx.pictureSnapshot();
+    double pictured = 0;
+    for (std::size_t k = 0; k < 4096; ++k) {
+      const long long i = at - 4096 + static_cast<long long>(k);
+      const std::size_t s0 = (ScopeProcessor::kPictureFrames - 4096 + k) * 2;
+      pictured = std::fmax(pictured, std::fabs(snapshot[s0] - saw(i)) + std::fabs(snapshot[s0 + 1] - tri(i)));
+    }
+    check("Mic on the page draws the input and hears it, sample for sample, left as left",
+          fx.drawsInput() && drawn.apart == 0 && pictured == 0 && drawn.peak > 0.4,
+          "output apart by " + num(drawn.apart) + ", picture by " + num(pictured));
+    check("and what it hears is no longer a loop through its own sound: the hearing's sources are counted as loops only before",
+          loopBefore && !loopAfter, std::string(loopBefore ? "loop" : "not") + " before, " + (loopAfter ? "loop" : "not") + " after");
+    // Through the plane: the kaleidoscope on, the input no longer comes out as it went in.
+    fx.pageControl("planeKaleido", scope::Json::string(std::u16string(u"6")));
+    feed(fx, at, 1, nullptr);
+    const long long from = at;
+    const Fed folded = feed(fx, at, 8, nullptr);
+    check("and through the plane: the kaleidoscope on, the input comes out folded", folded.apart > 0.1 && folded.peak > 0.1,
+          "apart by " + num(folded.apart));
+    /* Prepared again while it draws its input - a host changing its rate - it
+       still draws it, and still counts what it hears as no loop. */
+    {
+      ScopeProcessor again2;
+      again2.enableAllBuses();
+      again2.prepareToPlay(rate, block);
+      again2.pageClick("srcMic");
+      long long k = 0;
+      feed(again2, k, 2, nullptr);
+      again2.prepareToPlay(rate / 2, block);
+      feed(again2, k, 2, nullptr);
+      const scope::ModSource* heard = again2.matrix().source("hear.pitch");
+      check("prepared again while drawing its input, it still draws it and still hears no loop",
+            again2.drawsInput() && heard && !heard->picture());
+    }
+    // The state carries the source, and a project reopened draws its input again, through the same plane.
+    const auto state = fx.pageState();
+    const auto decoded = scope::decodeSetup(state.code);
+    const scope::Json* drawnFlag = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginInput") : nullptr;
+    juce::MemoryBlock saved;
+    fx.getStateInformation(saved);
+    ScopeProcessor reopened;
+    reopened.enableAllBuses();
+    reopened.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    reopened.prepareToPlay(rate, block);
+    long long again = from;
+    const Fed second = feed(reopened, again, 8, nullptr);
+    double same = second.outL.size() == folded.outL.size() ? 0 : 1;
+    for (std::size_t i = 0; i < second.outL.size() && i < folded.outL.size(); ++i) same = std::fmax(same, std::fabs(second.outL[i] - folded.outL[i]));
+    check("the state says the input is drawn, and the plugin reopened from it draws its input through the same plane",
+          drawnFlag && drawnFlag->type == scope::Json::Type::Bool && drawnFlag->b && reopened.drawsInput() && second.apart > 0.1,
+          "reopened apart from the input by " + num(second.apart));
+    // Not compared sample for sample with the first: the plane's oscillators have run a different time.
+    // Tone from the page: back to the generator - its held note, not the input.
+    fx.pageClick("srcTone");
+    feed(fx, at, 1, nullptr);
+    const Fed back = feed(fx, at, 4, nullptr);
+    const auto backDecoded = scope::decodeSetup(fx.pageState().code);
+    check("Tone on the page draws the generator again, and the state says nothing of an input",
+          !fx.drawsInput() && back.apart > 0.3 && back.peak > 0.05 && backDecoded.kind == scope::DecodedSetup::Kind::Read
+          && backDecoded.setup.get("pluginInput") == nullptr, "apart from the input by " + num(back.apart));
+
+    /* The generator's live-input modes: a figure whose rate the input's FM
+       moves, against the same with the mode off, and the same with the input
+       bus off. The null is the mode off, where the input must change nothing. */
+    const auto played = [&](bool busOn, const char* mode) {
+      ScopeProcessor p;
+      if (busOn) p.enableAllBuses();
+      p.prepareToPlay(rate, block);
+      long long k = 0;
+      return feed(p, k, 12, [&](ScopeProcessor& q, int b) {
+        if (b == 0) { q.pageControl("genMode", scope::Json::string(std::u16string(u"figure")));
+                      q.pageControl("inputMode", scope::Json::string(scope::utf8To16(mode))); }
+      }).outL;
+    };
+    const auto most = [](const std::vector<float>& a, const std::vector<float>& b) {
+      double m = a.size() == b.size() ? 0 : 1;
+      for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) m = std::fmax(m, std::fabs(a[i] - b[i]));
+      return m;
+    };
+    const double moved = most(played(true, "1"), played(false, "1")), still = most(played(true, "0"), played(false, "0"));
+    check("drawing the generator, the input reaches it: FM from the input moves the figure, and with the mode off changes nothing",
+          moved > 0.05 && still == 0, "moved " + num(moved) + ", mode off " + num(still));
+    /* One channel, as the page's worklet takes it: the stereo pair summed and
+       halved. The same FM from a mono input bus carrying that mix is the same
+       sound to the sample; carrying the left alone, it is not. */
+    const auto monoPlayed = [&](bool mix) {
+      ScopeProcessor p;
+      juce::AudioProcessor::BusesLayout layout;
+      layout.inputBuses.add(juce::AudioChannelSet::mono());
+      layout.outputBuses.add(juce::AudioChannelSet::stereo());
+      p.setBusesLayout(layout);
+      p.prepareToPlay(rate, block);
+      std::vector<float> outL;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int b = 0; b < 12; ++b) {
+        if (b == 0) { p.pageControl("genMode", scope::Json::string(std::u16string(u"figure")));
+                      p.pageControl("inputMode", scope::Json::string(std::u16string(u"1"))); }
+        buf.clear();
+        for (int i = 0; i < block; ++i) {
+          const long long k = static_cast<long long>(b) * block + i;
+          buf.setSample(0, i, mix ? (saw(k) + tri(k)) * 0.5f : saw(k));
+        }
+        juce::MidiBuffer m;
+        if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) outL.push_back(buf.getSample(0, i));
+      }
+      return std::make_pair(outL, p.getTotalNumInputChannels());
+    };
+    /* A mono input drawn: the one channel on both sides, as the page's insert
+       makes two identical halves of a mono microphone. */
+    {
+      ScopeProcessor mono;
+      juce::AudioProcessor::BusesLayout layout;
+      layout.inputBuses.add(juce::AudioChannelSet::mono());
+      layout.outputBuses.add(juce::AudioChannelSet::stereo());
+      mono.setBusesLayout(layout);
+      mono.prepareToPlay(rate, block);
+      mono.pageClick("srcMic");
+      juce::AudioBuffer<float> buf(2, block);
+      double apart = 0, peak = 0;
+      for (int b = 0; b < 4; ++b) {
+        buf.clear();
+        for (int i = 0; i < block; ++i) buf.setSample(0, i, saw(static_cast<long long>(b) * block + i));
+        juce::MidiBuffer m;
+        mono.processBlock(buf, m);
+        if (b == 0) continue;
+        for (int i = 0; i < block; ++i) {
+          const float want = saw(static_cast<long long>(b) * block + i);
+          apart = std::fmax(apart, std::fabs(buf.getSample(0, i) - want) + std::fabs(buf.getSample(1, i) - want));
+          peak = std::fmax(peak, std::fabs(buf.getSample(1, i)));
+        }
+      }
+      check("a mono input drawn comes out on both sides", apart == 0 && peak > 0.4, "apart by " + num(apart));
+    }
+    const auto mixed = monoPlayed(true), leftOnly = monoPlayed(false);
+    const double asMono = most(played(true, "1"), mixed.first), asLeft = most(played(true, "1"), leftOnly.first);
+    check("a stereo input reaches the generator as one channel, the pair summed and halved: a mono bus carrying that is the same sound",
+          mixed.second == 1 && asMono == 0 && asLeft > 0.01, "apart by " + num(asMono) + "; the left alone, " + num(asLeft));
+  }
+
   std::printf("\n--- the page and the picture ---\n");
   const auto page = scopeResource("/", processor);
   const std::string head = page ? std::string(reinterpret_cast<const char*>(page->data.data()), 15) : "";

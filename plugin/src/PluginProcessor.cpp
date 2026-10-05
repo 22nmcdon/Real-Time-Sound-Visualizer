@@ -7,7 +7,11 @@
 #include "PluginEditor.h"
 
 ScopeProcessor::ScopeProcessor()
-    : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+    /* An input bus, off until a host turns it on: with it, the plugin can be
+       an effect - drawing its input through the plane, and hearing it - and
+       its generator can take the input for its live-input modes. */
+    : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), false)
+                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto* spec = scope::rangeSpec(kKnobs[i].slider);
     knobs_[i] = new juce::AudioParameterFloat(juce::ParameterID { kKnobs[i].id, 1 }, kKnobs[i].name,
@@ -96,13 +100,18 @@ void ScopeProcessor::setStateInformation(const void* data, int size) {
 }
 
 bool ScopeProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
-  return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+  // A stereo out, and an input of one channel, two, or none.
+  const auto in = layouts.getMainInputChannelSet();
+  return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
+      && (in.isDisabled() || in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo());
 }
 
 void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   rate_.store(sampleRate);
   outgoing_.clear();
   outgoing_.ensureSize(2048);
+  const auto most = static_cast<std::size_t>(std::max(64, samplesPerBlock));
+  inL_.assign(most, 0.0f); inR_.assign(most, 0.0f);
   /* The sound the page opens on: its boot preset, loaded as the page loads
      it. SCOPE_PRESET names another, for looking at one in the standalone;
      read once, here, and never on the audio thread. */
@@ -160,9 +169,20 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   for (const auto event : midi)
     events_.push_back({ event.samplePosition, event.data, static_cast<std::size_t>(event.numBytes) });
   const int frames = buffer.getNumSamples();
+  /* The input, copied out before anything is written: a host hands the
+     input over in the same buffer the output goes back in. */
+  const int inputs = getTotalNumInputChannels();
+  std::optional<scope::Instrument::Input> input;
+  if (inputs > 0) {
+    const auto n = static_cast<std::size_t>(frames);
+    if (inL_.size() < n) { inL_.resize(n); inR_.resize(n); }
+    std::copy(buffer.getReadPointer(0), buffer.getReadPointer(0) + frames, inL_.begin());
+    if (inputs > 1) std::copy(buffer.getReadPointer(1), buffer.getReadPointer(1) + frames, inR_.begin());
+    input = scope::Instrument::Input { inL_.data(), inputs > 1 ? inR_.data() : nullptr };
+  }
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
   instrument_.block(buffer.getWritePointer(0), right, frames, events_.data(), events_.size(), transport ? &*transport : nullptr,
-                    moved_.data(), moved_.size());
+                    moved_.data(), moved_.size(), input ? &*input : nullptr);
   // The host's notes are spent; what goes back is what the out sent.
   midi.swapWith(outgoing_);
   outgoing_.clear();

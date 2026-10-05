@@ -3956,3 +3956,22 @@ generator twice.
   pair back as the picture pair could not fail on any run but the preset
   sweep: on a plain wave, a harmonograph or the photocell's pendulums the two
   are the same signal to the bit. 265 of the 281 presets are not.
+
+**The instrument's input, and the two sources.** Stage 5g gave the
+instrument an input pair and made the page's Tone and Mic buttons a hand on
+it when hosted: Mic draws the input through the plane, Tone draws the
+generator, which takes the input for its live-input modes. Two things worth
+knowing:
+
+- *The source is not in the setup, so it rides beside it.* A setup has never
+  said which source is playing, and presets land on whatever is - so the
+  choice is not a hand on the setup (a preset would clear it) but a field of
+  the plugin's state, `pluginInput`, written beside the setup and read back
+  only from a state. A page preset says nothing about it and changes nothing.
+- *Parity cannot see what both sides get wrong.* The compiled instrument and
+  the native one agreeing to the bit says nothing if both ignored the input,
+  so the parity runs that feed one also read the samples back against what
+  was fed: drawn with nothing on the plane, the output is the input exactly.
+  The input is a saw and a triangle made by arithmetic alone, so the two
+  harnesses make it to the bit without a sine whose last place could differ
+  between V8 and the C library.

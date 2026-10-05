@@ -412,6 +412,7 @@ std::vector<scope::Instrument::Event> midiEvents;
 std::vector<std::uint8_t> midiOut;           // each message sent, its length first
 std::vector<float> brainLanes;               // four of a block: the heard pair, the picture pair
 std::size_t brainLength = 0;
+std::vector<float> brainInput;               // two of a block: the input's left, then its right
 
 std::string brainAscii(std::size_t from) { return scope::utf16To8(brainIn.substr(std::min(from, brainIn.size()))); }
 }  // namespace
@@ -478,10 +479,17 @@ EXPORT(brain_lanes) float* brainLanesAt(int n) {
   return brainLanes.data();
 }
 
+// Where a block's input goes, two lanes of n: left, then right.
+EXPORT(brain_input) float* brainInputAt(int n) {
+  if (brainInput.size() < 2 * static_cast<std::size_t>(n)) brainInput.resize(2 * static_cast<std::size_t>(n));
+  return brainInput.data();
+}
+
 // One block of n frames: the heard pair into lanes 0 and 1, the picture pair
-// into 2 and 3. Returns how many bytes of MIDI went out, each message its
+// into 2 and 3; with `given` one, the input's left lane as a mono input, and
+// two, both lanes. Returns how many bytes of MIDI went out, each message its
 // length and then its bytes, read with brain_midi_out.
-EXPORT(brain_block) int brainBlock(int n) {
+EXPORT(brain_block) int brainBlock(int n, int given) {
   const std::size_t frames = static_cast<std::size_t>(n);
   if (brainLanes.size() < 4 * frames) brainLanes.resize(4 * frames);
   brainLength = frames;
@@ -490,7 +498,9 @@ EXPORT(brain_block) int brainBlock(int n) {
   for (const std::size_t length : midiLengths) { midiEvents.push_back({ 0, midiIn.data() + at, length }); at += length; }
   midiOut.clear();
   float* lanes = brainLanes.data();
-  instrument->block(lanes, lanes + frames, n, midiEvents.data(), midiEvents.size(), nullptr, nullptr, 0);
+  if (given && brainInput.size() < 2 * frames) brainInput.resize(2 * frames);
+  const scope::Instrument::Input input { brainInput.data(), given == 2 ? brainInput.data() + frames : nullptr };
+  instrument->block(lanes, lanes + frames, n, midiEvents.data(), midiEvents.size(), nullptr, nullptr, 0, given ? &input : nullptr);
   instrument->latest(lanes + 2 * frames, lanes + 3 * frames, frames);
   midiIn.clear(); midiLengths.clear();
   return static_cast<int>(midiOut.size());

@@ -85,6 +85,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   const scope::PictureRun& picture() const { return instrument_.picture(); }
   const scope::Brain::ViewState& view() const { return instrument_.view(); }
   double lfoRate(int i) const { return instrument_.lfoRate(i); }
+  bool drawsInput() const { return instrument_.drawsInput(); }
   // A hand on one of the panel's sliders, not remembered, and an end of the morph stored: the shell test's way in.
   void moveSlider(const std::string& id, double value) { instrument_.moveSlider(id, value); }
   void storeMorph(bool endB) { instrument_.storeMorph(endB); }
@@ -139,6 +140,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::array<float, kKnobs.size()> applied_ {};  // each parameter as last applied
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
   std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block
+  std::vector<float> inL_, inR_;                      // the host's input this block, copied out of the buffer
   juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
   juce::SpinLock queueLock_;

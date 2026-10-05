@@ -1489,6 +1489,72 @@ reads three quarters; and the instrument made on the defaults rather than on the
 page opened on, which the page then restored without complaint, until a check
 asked for Harmonic tone's timebase of 3 where the default's is 4.
 
+5g gives the instrument an input, which on the site is your microphone or
+line input in `?brain=core` and in the plugin is an input bus, so the plugin
+can be an effect as well as a synth. A block may carry an input pair, and the
+instrument draws one of two sources, chosen by the page's Tone and Mic
+buttons, which are hands now (`srcTone`, `srcMic`). Drawing the input, the
+input goes through the plane - `Generator::effect`, the page's effects
+worklet, which steps the oscillators itself - and what comes out is both the
+picture and what is heard, as the page's analysers and monitor chain both
+hang off the insert's output; the hearing stops counting what it hears as a
+loop, since it is not the instrument's own sound. Drawing the generator, the
+input is the generator's, for its live-input modes (the FM, the ride and the
+clock), as one channel - the two summed and halved, as the page's worklet
+takes it - and in the instrument it reaches the generator heard or not,
+where the page's own needs the generator to be heard, the input reaching its
+generator only inside the worklet. Which source is drawn is not a hand on
+the setup: a setup has never said which source is playing, and a preset
+lands on whatever is. So a preset loaded leaves it where it is, and the
+state carries it beside the setup as `pluginInput`, for a project reopened.
+
+On the site, Mic in `?brain=core` asks the page for the live stream - the
+same one, from the same code, that the generator's live-input modes open -
+and connects it to the worklet's input; the page's own rule says what is
+heard: a line input you have asked to hear, never a microphone. The plugin's
+input bus is off until a host turns it on, mono or stereo, and is copied out
+of the buffer before anything is written into it, since a host hands the
+input over where the output goes back. Not carried across: the band split,
+which is the page's own four filters and has no place in the instrument yet,
+and the device chooser inside the plugin, where the input is the host's.
+
+Held by parity: a run through every part of it - the input drawn, through
+the kaleidoscope and a routing on the twist, a preset loaded meanwhile, back
+to the generator with each of its three input modes, a mono input and none -
+and one that opens from a state with the input drawn, the compiled
+instrument the native one to the bit, against modules with the input's lanes
+swapped and a stereo input taken as mono; and, since two sides that ignored
+the input would agree perfectly, the samples read against what was fed: the
+input drawn with nothing on the plane comes out exactly as it went in, from
+the reopened state's first block too, and not once folded or under the
+generator - against the same reading a sample late. By the shell test: the
+input bus on, the generator's sound and not the input; Mic from the page,
+the input heard and drawn sample for sample, left as left; folded by the
+kaleidoscope; a state saved and reopened drawing its input through the same
+plane; Tone back to the generator with the state saying nothing of an input;
+and the generator's FM moving a figure from the input, where with the mode
+off the input changes nothing at all. By braintest.py, with a stereo stream
+of known pitches standing in for the microphone: the input drawn at its
+pitches, left as left, against the lanes the other way round; a microphone
+not heard, a line input heard when asked; the plane folding it; Tone letting
+the stream go; and the generator's FM taking it unheard. And by hosttest.py:
+inside the plugin Mic and Tone are sent, the device is the host's, and a
+state puts the source back on the page.
+
+Mutation: the instrument's input and the plugin's bus, 13 of 13, twelve
+through the shell test and one through parity - the heard pair left unwritten
+while the input is drawn, which in the plugin changes nothing because the
+host's buffer already holds the input in place, and which only a harness that
+hands the instrument its own empty lanes can see. Three lived at first and
+named something no check did: a stereo input reaching the generator as its
+left channel alone, caught once a mono bus carrying the halved sum had to
+sound the same; the instrument prepared again, as a host changing its rate
+does, forgetting that what it hears is not a loop; and a mono input drawn on
+one side only. The page's side, 20 of 20 through braintest.py, hosttest.py
+and, for the plain site's generator taking an input only while heard,
+inputtest.py; one line was found doing nothing, monitoring reset on a change
+of source that asks again for it anyway, and was taken out.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

@@ -349,6 +349,43 @@ with sync_playwright() as pw:
     check("and the plugin's state puts the generator's kind back on the page; with no way to hear it but the host's, no switch",
           gen["restored"] == "figure" and gen["menu"] == "figure" and gen["sound"] is False, str(gen))
 
+    # The input (5g): inside the plugin, Mic is the host's input bus. The press
+    # is sent; the device is the host's; a state that says the input is drawn
+    # puts Mic back on the page, and one that does not puts Tone back.
+    inp = p.evaluate("""async (codes) => {
+      const t = window.__hostTest, out = {};
+      t.log.length = 0;
+      el.srcMic.click();
+      out.sent = t.log.slice();
+      out.mic = el.srcMic.getAttribute('aria-checked');
+      out.device = el.device.disabled;
+      out.file = el.srcFile.disabled;
+      out.micTitle = el.srcMic.title;
+      t.log.length = 0;
+      el.srcTone.click();
+      out.toneSent = t.log.slice();
+      // The generator's input, inside the plugin, is the host's: said so where the page would say what it is.
+      el.inputMode.value = '1'; el.inputMode.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      out.where = el.inputWhere.textContent;
+      el.inputMode.value = '0'; el.inputMode.dispatchEvent(new Event('change', { bubbles: true }));
+      t.log.length = 0;
+      t.state = { version: 11, code: codes[0] };
+      await new Promise((r) => setTimeout(r, 700));
+      out.restored = [state.source.drawsInput, el.srcMic.getAttribute('aria-checked')];
+      t.state = { version: 12, code: codes[1] };
+      await new Promise((r) => setTimeout(r, 700));
+      out.back = [state.source.drawsInput, el.srcTone.getAttribute('aria-checked')];
+      out.log = t.log.slice();
+      return out;
+    }""", [code({"pluginInput": True}), code({})])
+    check("inside the plugin, Mic is sent to the plugin as the host's input, Tone as its generator, and the device is the host's",
+          inp["sent"] == [["scopeClick", "srcMic"]] and inp["toneSent"] == [["scopeClick", "srcTone"]] and inp["mic"] == "true"
+          and inp["device"] is True and inp["file"] is True and inp["micTitle"] == "The host's input"
+          and inp["where"] == "From the host's input, once the host gives the plugin one.", str(inp))
+    check("and the plugin's state puts the input back as drawn, or the generator, sending nothing back",
+          inp["restored"] == [True, "true"] and inp["back"] == [False, "true"] and inp["log"] == [], str(inp))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

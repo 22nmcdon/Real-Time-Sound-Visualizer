@@ -102,10 +102,10 @@ with sync_playwright() as pw:
     p.wait_for_timeout(300)
     panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null, freq: el.freq ? el.freq.offsetParent !== null : null,
       sound: !el.genSoundRow.hidden, mode: genSettings() && genSettings().mode,
-      others: [el.srcTone, el.srcMic, el.srcFile, el.srcRack].every((b) => b.disabled) })""")
+      others: [el.srcFile, el.srcRack].every((b) => b.disabled) && ![el.srcTone, el.srcMic].some((b) => b.disabled) })""")
     check("and keeps the generator's panel, kind and frequency, and the switch to hear it",
           panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
-    check("and offers no other source: the instrument is the source", panel["others"], str(panel))
+    check("and offers no file and no lanes, and Tone and Mic as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
 
     # A note from the page's keys. Harmonic tone, keyboard present: gated, so silent until a note.
@@ -225,6 +225,95 @@ with sync_playwright() as pw:
     }""")
     check("the switch to hear it opens and closes the instrument's way out",
           sound == {"on": [True, True, 1], "off": [False, False, 0]}, str(sound))
+
+    # The input (5g). In place of the microphone, a known pair: 441 Hz on the
+    # left and 661.5 Hz on the right, from oscillators in a second context,
+    # handed over where the page asks for a live stream.
+    p.evaluate("""() => {
+      const ctx2 = new AudioContext({ sampleRate: deviceRate() });
+      const merge = ctx2.createChannelMerger(2), dest = ctx2.createMediaStreamDestination();
+      dest.channelCount = 2;
+      [[441, 0], [661.5, 1]].forEach(([hz, ch]) => {
+        const o = ctx2.createOscillator(), g = ctx2.createGain();
+        o.frequency.value = hz; g.gain.value = 0.5; o.connect(g).connect(merge, 0, ch); o.start();
+      });
+      merge.connect(dest);
+      window.__fakeIn = { stream: dest.stream, opened: 0, released: 0 };
+      window.openLiveStream = async () => { window.__fakeIn.opened++; return dest.stream; };
+      window.releaseLiveStream = () => { window.__fakeIn.released++; };
+    }""")
+    p.evaluate("() => { applyPreset('b:Harmonic tone'); el.srcMic.click(); }")
+    p.wait_for_timeout(1200)
+    drawn = p.evaluate("""async () => {
+      const pitchOf = (lane) => {
+        const at = [];
+        for (let k = 1; k < lane.length; k++) if (lane[k - 1] < 0 && lane[k] >= 0) at.push(k - 1 + lane[k - 1] / (lane[k - 1] - lane[k]));
+        return at.length < 3 ? 0 : (at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]);
+      };
+      const [l, r] = state.source.getLatestWindow(8192);
+      const s = await scopeHost.call('scopeState');
+      return { left: pitchOf(l), right: pitchOf(r), connected: state.source.inputConnected, mic: el.srcMic.getAttribute('aria-checked'),
+               state: decodeSetup(s.code).pluginInput === true, gain: Math.round(state.source.gain * 100) / 100,
+               soundRow: el.genSoundRow.hidden, device: el.device.disabled, bands: el.micShapeRow.hidden,
+               file: el.srcFile.disabled, opened: window.__fakeIn.opened };
+    }""")
+    check("Mic in ?brain=core: the instrument draws your input, left as left, and keeps that in its state",
+          abs(drawn["left"] - 441) < 0.5 and abs(drawn["right"] - 661.5) < 0.5 and drawn["connected"] and drawn["mic"] == "true"
+          and drawn["state"] and drawn["opened"] == 1, str(drawn))
+    check("and the pitch check fails against the two lanes the other way round", not abs(drawn["right"] - 441) < 0.5)
+    check("a microphone drawn is not heard, the generator's switch goes, and the device is the page's to choose; no band split, no file",
+          drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and drawn["bands"] and drawn["file"], str(drawn))
+    heard = p.evaluate("""async () => {
+      const out = {};
+      setLiveKind('line'); el.monitorLive.checked = true; el.monitorLive.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 300));
+      out.line = [state.monitorLive, Math.round(state.source.gain * 100) / 100];
+      setLiveKind('mic');
+      await new Promise((r) => setTimeout(r, 300));
+      out.mic = [state.monitorLive, Math.round(state.source.gain * 100) / 100];
+      // Through the plane: X folded onto its right half, so the left lane never goes below nought.
+      el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 500));
+      const [l] = state.source.getLatestWindow(4096);
+      out.lowest = Math.min(...l);
+      el.planeMirror.value = '0'; el.planeMirror.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 500));
+      out.lowestOff = Math.min(...state.source.getLatestWindow(4096)[0]);
+      // Another device chosen: the stream let go and opened again from it.
+      el.device.add(new Option('Another input', 'another'));
+      el.device.value = 'another'; el.device.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 500));
+      out.reopened = [window.__fakeIn.opened, window.__fakeIn.released, state.source.kind, state.source.inputConnected];
+      return out;
+    }""")
+    check("a line input asked to be heard is heard, and a microphone never", heard["line"] == [True, 1] and heard["mic"] == [False, 0],
+          str(heard))
+    check("another device chosen lets the stream go and opens it again from that device, the instrument still the source",
+          heard["reopened"] == [2, 1, "host", True], str(heard["reopened"]))
+    check("and the input goes through the instrument's plane: folded onto its right half, the left lane never below nought",
+          heard["lowest"] > -0.01 and heard["lowestOff"] < -0.4, "%.3f folded, %.3f not" % (heard["lowest"], heard["lowestOff"]))
+    back = p.evaluate("""async () => {
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 600));
+      const s = await scopeHost.call('scopeState');
+      return { draws: state.source.drawsInput, connected: state.source.inputConnected, released: window.__fakeIn.released,
+               state: decodeSetup(s.code).pluginInput === undefined, tone: el.srcTone.getAttribute('aria-checked'),
+               soundRow: el.genSoundRow.hidden };
+    }""")
+    check("Tone draws the generator again: the input let go, the switch to hear it back, and the state says nothing of an input",
+          back == {"draws": False, "connected": False, "released": 2, "state": True, "tone": "true", "soundRow": False}, str(back))
+    # The generator's live-input modes take the input in the instrument, heard or not.
+    fm = p.evaluate("""async () => {
+      el.inputMode.value = '1'; el.inputMode.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 600));
+      const out = { connected: state.source.inputConnected, wanted: genInputWanted(), where: el.inputWhere.textContent };
+      el.inputMode.value = '0'; el.inputMode.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 600));
+      out.after = state.source.inputConnected;
+      return out;
+    }""")
+    check("the generator's FM from the input takes your input in the instrument, unheard, and lets it go when the mode is off",
+          fm["connected"] and fm["wanted"] and fm["after"] is False and fm["where"] == "Your input, into the generator.", str(fm))
 
     # A module that will not make: no instrument, and the page stays what it was.
     refused = p.evaluate("""async () => {

@@ -72,6 +72,9 @@ class Instrument {
   struct Event { int sample; const std::uint8_t* data; std::size_t size; };
   // A host parameter moved since the last block: a hand on its slider.
   struct HostSlider { const char* id; double value; };
+  /* A block's input: what a host's input bus or a page's microphone hands
+     over, its right channel null for a mono input. */
+  struct Input { const float* left; const float* right; };
 
   /* One hand from the page: a slider moved (by id and the value the browser
      holds), a setup loaded (a preset, a code), a menu, a switch or a text box
@@ -124,11 +127,13 @@ class Instrument {
     keyboard_->setLayerPanel([this] { syncLayerPanel(*brain_, *core_, *keyboard_); });
     matrix_ = std::make_unique<Matrix>();
     sources_ = std::make_unique<CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
-    /* What it hears is the picture, which is always the generator's: every
-       hearing source is a loop here, with the picture's reach, and the onset
-       is refused anything it could strike. */
+    /* What it hears is the picture, the generator's unless it is drawing its
+       input: while it is the generator's, every hearing source is a loop,
+       with the picture's reach, and the onset is refused anything it could
+       strike. Which source is drawn outlives a prepare, as a host's input
+       does. */
     hearing_ = std::make_unique<HearingSources>(*matrix_);
-    hearing_->hears(true);
+    hearing_->hears(!drawsInput_);
     nowMs_ = 0;
     lastBlockMs_ = 0;
     linkClock(*brain_, lfos_);
@@ -175,7 +180,7 @@ class Instrument {
     hearL_.assign(kHearN, 0.0f);
     hearR_.assign(kHearN, 0.0f);
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
-    pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f);
+    pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
   }
 
   // A setup loaded as a preset is: the core restored, the hands on it since put back.
@@ -204,6 +209,9 @@ class Instrument {
     if (const Json* hands = setup_.type == Json::Type::Object ? setup_.get("pluginHands") : nullptr) {
       if (hands->type == Json::Type::Array) for (const auto& hand : hands->a) replay(hand);
     }
+    // A saved state says which source was drawn; a preset or a code from the page says nothing, and changes nothing.
+    if (const Json* drawn = setup_.type == Json::Type::Object ? setup_.get("pluginInput") : nullptr)
+      drawFrom(drawn->type == Json::Type::Bool && drawn->b);
     if (hooks.loaded) hooks.loaded();
     changed_ = true;
     if (fromHost) hostVersion_++;
@@ -226,7 +234,8 @@ class Instrument {
      `transport` is null where the host gives none; `sliders` are the host's
      parameters moved since the last block. */
   void block(float* left, float* right, int frames, const Event* events, std::size_t eventCount, const Transport* transport,
-             const HostSlider* sliders, std::size_t sliderCount) {
+             const HostSlider* sliders, std::size_t sliderCount, const Input* input = nullptr) {
+    input_ = input;
     /* The page's once-a-frame work, once a block and before it: the
        keyboard's controllers walk and its gate and chord are worked out
        again, the matrix steps its fades, fires its events and compiles its
@@ -367,6 +376,8 @@ class Instrument {
       setup.set("pluginHands", list);
     }
     setup.set("cc", Json::string(std::string_view(keyboard_->encodeCC())));
+    setup.erase("pluginInput");
+    if (drawsInput_) setup.set("pluginInput", Json::boolean(true));
     const auto code = encodeSetup(setup);
     return code ? *code : std::string();
   }
@@ -410,6 +421,7 @@ class Instrument {
   const ScoreState& score() const { return brain_->score; }
   const PictureRun& picture() const { return *pictureRun_; }
   const Brain::ViewState& view() const { return brain_->view; }
+  bool drawsInput() const { return drawsInput_; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   double slider(const char* id) const { return brain_->panel.range(id); }
   int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
@@ -448,6 +460,7 @@ class Instrument {
   }
 
   void press(const std::string& id) {
+    if (id == "srcTone" || id == "srcMic") { drawFrom(id == "srcMic"); return; }
     if (!controlClick(id, *brain_, *core_, *keyboard_)) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -483,6 +496,18 @@ class Instrument {
     hand.a.push_back(Json::string(std::string_view("f"))); hand.a.push_back(Json::string(std::string_view("")));
     hand.a.push_back(value);
     remember("f", std::move(hand));
+    changed_ = true;
+  }
+
+  /* Which source is drawn: the input, or the generator. Not a hand on the
+     setup - a setup has never said which source is playing, and a preset
+     lands on whatever is - so a load leaves it where it is, and the state
+     carries it beside the setup, as `pluginInput`, for a project reopened. */
+  void drawFrom(bool input) {
+    if (input == drawsInput_) return;
+    drawsInput_ = input;
+    // What it hears is its own sound only while that is the generator's: a loop then, and not otherwise.
+    hearing_->hears(!input);
     changed_ = true;
   }
 
@@ -531,7 +556,15 @@ class Instrument {
     hands_.push_back({ std::move(key), std::move(hand) });
   }
 
-  // Render [from, to) of the block into the output and the picture ring.
+  /* Render [from, to) of the block into the output and the picture ring.
+     Drawing the input, the input goes through the plane - the page's
+     effects worklet, `effect` - and what comes out is both the picture and
+     what is heard, as the page's analysers and its monitor chain both hang
+     off the insert's output; with no input given, silence goes through, so
+     the oscillators the effect steps go on stepping. Drawing the generator,
+     the input is the generator's, for its live-input modes, as one channel:
+     the two summed and halved, which is how the page's worklet takes a
+     stereo input on its one-channel input. */
   void render(float* left, float* right, int from, int to) {
     // In pieces no longer than the buffers made for them: a host may hand
     // over a bigger block than it said it would.
@@ -539,7 +572,21 @@ class Instrument {
     for (int at = from; at < to; at += most) {
       const int n = std::min(most, to - at);
       float* heardR = right ? right + at : spare_.data();
-      core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR);
+      const float* inL = input_ ? input_->left + at : nullptr;
+      const float* inR = input_ ? (input_->right ? input_->right + at : inL) : nullptr;
+      if (drawsInput_) {
+        if (!inL) { std::fill(spare_.begin(), spare_.begin() + n, 0.0f); inL = inR = spare_.data(); }
+        core_->effect(inL, inR, pictureL_.data(), pictureR_.data(), n);
+        std::copy(pictureL_.begin(), pictureL_.begin() + n, left + at);
+        std::copy(pictureR_.begin(), pictureR_.begin() + n, heardR);
+      } else {
+        if (inL) {
+          for (int k = 0; k < n; ++k) mono_[static_cast<std::size_t>(k)] = input_->right ? (inL[k] + inR[k]) * 0.5f : inL[k];
+          core_->setInput(mono_.data(), n);
+        }
+        core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR);
+        core_->setInput(nullptr, 0);
+      }
       std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
       for (int k = 0; k < n; ++k) {
         picture_[ring * 2] = pictureL_[static_cast<std::size_t>(k)];
@@ -593,7 +640,9 @@ class Instrument {
   bool changed_ = false;
   std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
-  std::vector<float> pictureL_, pictureR_, spare_;  // a block's worth, made in prepare
+  std::vector<float> pictureL_, pictureR_, spare_, mono_;  // a block's worth, made in prepare
+  const Input* input_ = nullptr;  // this block's, while it is rendered
+  bool drawsInput_ = false;       // drawing the input rather than the generator
   std::array<float, kPictureFrames * 2> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
 };

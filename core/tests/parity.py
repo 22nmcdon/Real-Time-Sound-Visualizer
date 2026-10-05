@@ -3547,6 +3547,22 @@ iruns["photocell"] = [["make", 48000, 256, icode["Pendulums bent by the light"]]
 # at velocity nought, which lets go of a note nought held.
 iruns["realtime"] = [["make", 48000, 128, icode["Harmonic tone"]], NOTE_ON(0), NOTE_ON(57)] + blocks(10) \
     + [["midi", 0xF8], ["midi", 0xFA]] + blocks(20) + [["midi", 0xF8]] + blocks(10)
+# The input (5g): a saw of a hundred samples on the left and a triangle of
+# seventy-three on the right, made by arithmetic on both sides. Drawn, it
+# goes through the plane - the kaleidoscope, then the twist under a routing -
+# and a preset loaded meanwhile leaves it drawn; given to the generator, it
+# moves a figure by each of its three modes; mono, and then none at all.
+def icode_of(setup):
+    return base64.b64encode(_json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
+iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
+    + [["click", "srcMic"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
+    + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", icode["Pluck"]]] + blocks(10) \
+    + [["click", "srcTone"], ["control", "genMode", "figure"], ["control", "inputMode", "1"]] + blocks(20) \
+    + [["control", "inputMode", "2"]] + blocks(20) + [["control", "inputMode", "3"]] + blocks(30) \
+    + [["feed", 64], ["click", "srcMic"]] + blocks(10) + [["feed"]] + blocks(10)
+# A state that opens with the input drawn, as a project reopened does.
+iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": True})], ["feed", 90, 61]] + blocks(10) \
+    + [["click", "srcTone"], NOTE_ON(60)] + blocks(10)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
 iout = {}
@@ -3568,6 +3584,28 @@ check("and the runs had sound in them, states that changed, MIDI sent and refusa
       "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
           {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
           icount("refused", "no"), icount("presets", "state ")))
+# And what the input runs played, read off the samples, since two sides that
+# both ignored the input would agree perfectly: drawn with nothing on the
+# plane, the heard pair is the input exactly - the run's blocks seven to
+# sixteen, and the reopened run's first ten - and folded by the kaleidoscope
+# it is not; drawing the generator, it is not the input either.
+def ifed(k, pl, pr):
+    t, u = (k % pl) / pl, (k % pr) / pr
+    return array("f", [0.5 * (2 * t - 1), 0.5 * (4 * u - 1 if u < 0.5 else 3 - 4 * u)]).tolist()
+def iheard(name, first, count, pl, pr, start):
+    rows = [ifloats(l) for l in iout[name][1] if l.startswith("block ")][first:first + count]
+    most = 0.0
+    for b, row in enumerate(rows):
+        for k in range(128):
+            want = ifed(start + (b * 128) + k, pl, pr)
+            most = max(most, abs(row[k] - want[0]), abs(row[128 + k] - want[1]))
+    return most
+drawn_plain, drawn_open = iheard("input", 7, 9, 100, 73, 7 * 128), iheard("opened", 0, 10, 90, 61, 0)
+folded, generated = iheard("input", 17, 9, 100, 73, 17 * 128), iheard("input", 5, 1, 100, 73, 5 * 128)
+check("and the input drawn is heard as it was fed, the reopened state's from its first block, and not once folded or under the generator",
+      drawn_plain == 0 and drawn_open == 0 and folded > 0.1 and generated > 0.1,
+      "drawn %g and %g; folded %g, generator %g" % (drawn_plain, drawn_open, folded, generated))
+check("and the reading fails against the input a sample late", iheard("input", 7, 9, 100, 73, 7 * 128 + 1) > 0)
 # Nulls. The comparison one line out of step; a native run with one hand a
 # step away; and modules from the bridge with one thing wrong in each.
 pa, ca, ja = iout["notes"]
@@ -3583,6 +3621,12 @@ def inull(what, old, new, runs):
     subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
     seen = [n for n in runs if icompare(iout[n][1], ijs(iout[n][0], bad_mod)) != (0.0, "")]
     check("and the comparison fails against a module with %s" % what, seen == runs, ", ".join(seen))
+inull("the input's lanes the wrong way round",
+      "const scope::Instrument::Input input { brainInput.data(), given == 2 ? brainInput.data() + frames : nullptr };",
+      "const scope::Instrument::Input input { given == 2 ? brainInput.data() + frames : brainInput.data(), given == 2 ? brainInput.data() : nullptr };",
+      ["input", "opened"])
+inull("a stereo input taken as mono", "brainInput.data(), given == 2 ? brainInput.data() + frames : nullptr }",
+      "brainInput.data(), nullptr }", ["input", "opened"])
 inull("every message padded to three bytes", "std::clamp(length, 1, 3)", "std::clamp(length, 3, 3)", ["realtime"])
 inull("the page's MIDI dropped", "  midiLengths.push_back(n);\n", "  midiIn.resize(midiIn.size() - n);\n", ["notes", "clock"])
 # Only the sweep can see this one: the presets the other runs play make a
