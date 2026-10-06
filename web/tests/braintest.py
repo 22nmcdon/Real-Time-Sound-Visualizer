@@ -102,10 +102,10 @@ with sync_playwright() as pw:
     p.wait_for_timeout(300)
     panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null, freq: el.freq ? el.freq.offsetParent !== null : null,
       sound: !el.genSoundRow.hidden, mode: genSettings() && genSettings().mode,
-      others: [el.srcFile, el.srcRack].every((b) => b.disabled) && ![el.srcTone, el.srcMic].some((b) => b.disabled) })""")
+      others: el.srcRack.disabled && ![el.srcTone, el.srcMic, el.srcFile].some((b) => b.disabled) })""")
     check("and keeps the generator's panel, kind and frequency, and the switch to hear it",
           panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
-    check("and offers no file and no lanes, and Tone and Mic as what the instrument draws", panel["others"], str(panel))
+    check("and offers no lanes, and Tone, Mic and File as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
 
     # A note from the page's keys. Harmonic tone, keyboard present: gated, so silent until a note.
@@ -261,8 +261,8 @@ with sync_playwright() as pw:
           abs(drawn["left"] - 441) < 0.5 and abs(drawn["right"] - 661.5) < 0.5 and drawn["connected"] and drawn["mic"] == "true"
           and drawn["state"] and drawn["opened"] == 1, str(drawn))
     check("and the pitch check fails against the two lanes the other way round", not abs(drawn["right"] - 441) < 0.5)
-    check("a microphone drawn is not heard, the generator's switch goes, and the device is the page's to choose; no band split, no file",
-          drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and drawn["bands"] and drawn["file"], str(drawn))
+    check("a microphone drawn is not heard, the generator's switch goes, and the device is the page's to choose; no band split",
+          drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and drawn["bands"] and drawn["file"] is False, str(drawn))
     heard = p.evaluate("""async () => {
       const out = {};
       setLiveKind('line'); el.monitorLive.checked = true; el.monitorLive.dispatchEvent(new Event('change'));
@@ -314,6 +314,76 @@ with sync_playwright() as pw:
     }""")
     check("the generator's FM from the input takes your input in the instrument, unheard, and lets it go when the mode is off",
           fm["connected"] and fm["wanted"] and fm["after"] is False and fm["where"] == "Your input, into the generator.", str(fm))
+
+    # A file (5h): the instrument's input, played in its context. A WAV made
+    # here, 441 Hz on the left and 661.5 Hz on the right, two seconds long.
+    WAV = """(seconds) => {
+      const rate = 44100, n = Math.round(rate * seconds), data = new DataView(new ArrayBuffer(44 + n * 4));
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) data.setUint8(o + i, t.charCodeAt(i)); };
+      str(0, 'RIFF'); data.setUint32(4, 36 + n * 4, true); str(8, 'WAVE'); str(12, 'fmt '); data.setUint32(16, 16, true);
+      data.setUint16(20, 1, true); data.setUint16(22, 2, true); data.setUint32(24, rate, true); data.setUint32(28, rate * 4, true);
+      data.setUint16(32, 4, true); data.setUint16(34, 16, true); str(36, 'data'); data.setUint32(40, n * 4, true);
+      for (let k = 0; k < n; k++) {
+        data.setInt16(44 + k * 4, Math.round(16000 * Math.sin(2 * Math.PI * 441 * k / rate)), true);
+        data.setInt16(46 + k * 4, Math.round(16000 * Math.sin(2 * Math.PI * 661.5 * k / rate)), true);
+      }
+      return new File([data.buffer], 'two tones.wav', { type: 'audio/wav' });
+    }"""
+    played = p.evaluate("""async (src) => {
+      const pitchOf = (lane) => {
+        const at = [];
+        for (let k = 1; k < lane.length; k++) if (lane[k - 1] < 0 && lane[k] >= 0) at.push(k - 1 + lane[k - 1] / (lane[k - 1] - lane[k]));
+        return at.length < 3 ? 0 : (at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]);
+      };
+      // From the generator: the file has to tell the instrument to draw its input.
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 400));
+      el.fileLoop.checked = true;
+      await toFile(eval(src)(2));
+      await new Promise((r) => setTimeout(r, 900));
+      const [l, r] = state.source.getLatestWindow(8192);
+      const s = await scopeHost.call('scopeState');
+      const out = { left: pitchOf(l), right: pitchOf(r), peak: Math.max(...l.map(Math.abs)), gain: Math.round(state.source.gain * 100) / 100,
+                    file: el.srcFile.getAttribute('aria-checked'),
+                    rows: el.fileRows.hidden, state: decodeSetup(s.code).pluginInput === true, credit: el.credit.textContent };
+      el.filePlay.click();
+      await new Promise((r) => setTimeout(r, 400));
+      out.paused = [state.source.playing, el.filePlay.textContent, Math.max(...state.source.getLatestWindow(2048)[0].map(Math.abs))];
+      state.source.seek(1.5);
+      out.seeked = Math.round(state.source.at * 100) / 100;
+      el.filePlay.click();
+      await new Promise((r) => setTimeout(r, 900));
+      // Looping: past the end of two seconds and back round, still playing.
+      out.looped = [state.source.playing, state.source.at < 1.5];
+      // A state from the instrument saying the input is drawn, which it is: the file plays on.
+      const now = await scopeHost.call('scopeState');
+      hostApply({ version: hostSync.seen + 1, code: now.code });
+      await new Promise((r) => setTimeout(r, 200));
+      out.kept = [!!state.source.file, state.source.playing];
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 400));
+      out.tone = [state.source.file, state.source.drawsInput, el.fileRows.hidden];
+      // Drawing the microphone's stream: a file chosen lets the stream go.
+      el.srcMic.click();
+      await new Promise((r) => setTimeout(r, 500));
+      out.streamBefore = state.source.inputConnected;
+      await toFile(eval(src)(2));
+      await new Promise((r) => setTimeout(r, 500));
+      out.streamAfter = state.source.inputConnected;
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 300));
+      return out;
+    }""", WAV)
+    check("a file in ?brain=core is the instrument's input: drawn at its pitches, left as left, heard, and the stream let go",
+          abs(played["left"] - 441) < 0.5 and abs(played["right"] - 661.5) < 0.5 and played["gain"] == 1 and played["streamBefore"]
+          and played["streamAfter"] is False and played["state"] and played["file"] == "true" and played["rows"] is False
+          and "two tones.wav" in played["credit"], str(played))
+    check("and the pitch check fails against the two lanes the other way round", not abs(played["left"] - 661.5) < 0.5)
+    check("its transport: paused it is silent, it seeks, and looping it goes round past its end",
+          played["paused"][0] is False and played["paused"][1] == "Play" and played["paused"][2] == 0
+          and played["seeked"] == 1.5 and played["looped"] == [True, True], str(played))
+    check("and a state from the instrument saying what is already so leaves it playing", played["kept"] == [True, True], str(played["kept"]))
+    check("and Tone lets the file go", played["tone"] == [None, False, True], str(played["tone"]))
 
     # A module that will not make: no instrument, and the page stays what it was.
     refused = p.evaluate("""async () => {

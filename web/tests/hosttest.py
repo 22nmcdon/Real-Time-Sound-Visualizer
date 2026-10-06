@@ -360,6 +360,7 @@ with sync_playwright() as pw:
       out.mic = el.srcMic.getAttribute('aria-checked');
       out.device = el.device.disabled;
       out.file = el.srcFile.disabled;
+      out.fileTitle = el.srcFile.title;
       out.micTitle = el.srcMic.title;
       t.log.length = 0;
       el.srcTone.click();
@@ -382,6 +383,7 @@ with sync_playwright() as pw:
     check("inside the plugin, Mic is sent to the plugin as the host's input, Tone as its generator, and the device is the host's",
           inp["sent"] == [["scopeClick", "srcMic"]] and inp["toneSent"] == [["scopeClick", "srcTone"]] and inp["mic"] == "true"
           and inp["device"] is True and inp["file"] is True and inp["micTitle"] == "The host's input"
+          and inp["fileTitle"] == "The host plays files here"
           and inp["where"] == "From the host's input, once the host gives the plugin one.", str(inp))
     check("and the plugin's state puts the input back as drawn, or the generator, sending nothing back",
           inp["restored"] == [True, "true"] and inp["back"] == [False, "true"] and inp["log"] == [], str(inp))

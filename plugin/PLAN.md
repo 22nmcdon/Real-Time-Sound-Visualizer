@@ -1555,6 +1555,30 @@ and, for the plain site's generator taking an input only while heard,
 inputtest.py; one line was found doing nothing, monitoring reset on a change
 of source that asks again for it anyway, and was taken out.
 
+5h plays a file through the instrument on the site. A file is only an input:
+the page decodes it in the instrument's own audio context and plays it into
+the worklet's input, the instrument draws its input as it does for a
+microphone, and it is heard, as a file always is on the site. The transport
+- play, pause, seek, loop, where it is - was the file source's, and is now
+`makeBufferPlayer`, which the file source and the instrument's file both
+use; the band split keeps a copy of its own, wired into its four lanes. The
+microphone's stream and a file are never both the input: choosing a file
+lets the stream go, and Mic or Tone lets the file go, while a state from the
+instrument saying what is already so leaves a playing file alone. Inside the
+plugin File stays off: the host plays files there. Nothing in the core
+changed, so parity has nothing new to hold; braintest.py does it, with a WAV
+made in the page - 441 Hz on the left, 661.5 Hz on the right - drawn at its
+pitches, left as left, against the lanes the other way round; heard; the
+stream let go; paused silent, seeking, looping past its end; and Tone
+letting it go. hosttest.py checks File is off inside the plugin.
+
+Mutation: the page's side, 13 of 13 through braintest.py and hosttest.py.
+One lived until the check started from the generator: a file that never told
+the instrument to draw its input, which a check that pressed Mic first could
+not tell from one that did; and the guard that keeps a playing file through a
+state from the instrument was caught only once a check applied such a state
+while one played.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

@@ -3975,3 +3975,12 @@ knowing:
   The input is a saw and a triangle made by arithmetic alone, so the two
   harnesses make it to the bit without a sine whose last place could differ
   between V8 and the C library.
+
+**A file in `?brain=core` is just the instrument's input.** Stage 5h plays
+a file into the worklet's input from the instrument's own audio context, and
+the instrument draws its input as it does a microphone's - nothing in the
+core changed. The transport that the file source had written into itself is
+`makeBufferPlayer` now, used by the file source and the instrument's file
+alike. The band split still has its own copy, wired into four lanes, which
+is a known duplication rather than an oversight: lifting it means touching
+the lanes' mixer, and it can wait for lanes in the instrument.

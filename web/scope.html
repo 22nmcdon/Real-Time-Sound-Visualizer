@@ -3987,8 +3987,9 @@ body[data-view="bench"] .dock  { order: 3; }
         you have pressed something, and the line under the title says so until then.
         <i>Mic</i> gives it your input: drawn through its plane effects, and heard only if
         it is a line input you have asked to hear. <i>Tone</i> goes back to its generator,
-        which takes your input too whenever <i>Input</i> under the generator is on. Files,
-        lanes, the band split and recording are not part of it yet.</span></li>
+        which takes your input too whenever <i>Input</i> under the generator is on.
+        <i>File</i> plays a file into it, drawn and heard, with the usual play, seek and loop.
+        Lanes, the band split and recording are not part of it yet.</span></li>
 
       <li><b>The envelope, and when it is in force</b>
         <span>Only while a keyboard is driving the <i>waveform</i>. With nothing plugged in
@@ -12214,6 +12215,69 @@ async function makeMicSource(deviceId) {
    argument for X-Y is that the picture and the sound are the same thing. The
    analyser sits between the player and the speakers, so what is on screen is
    what is coming out.                                                       */
+/* One decoded buffer played into a node, with the transport a file has:
+   play, pause, seek, loop, and where it is. Lifted out of the file source so
+   the instrument in a worklet (?brain=core) plays a file by the same code;
+   the band split keeps a copy of its own still, wired into its four lanes. */
+function makeBufferPlayer(ctx, buffer, into) {
+  let node = null;
+  let offset = 0;            // where in the file we are, in seconds
+  let startedAt = 0;         // the context time that offset corresponded to
+  let loop = true;
+
+  function position() {
+    if (node === null) return offset;
+    const at = offset + (ctx.currentTime - startedAt);
+    return loop && buffer.duration > 0 ? at % buffer.duration : Math.min(at, buffer.duration);
+  }
+
+  function stopNode() {
+    if (node === null) return;
+    node.onended = null;
+    try { node.stop(); } catch (error) { /* already finished */ }
+    node = null;
+  }
+
+  function play() {
+    if (node !== null) return;
+
+    node = ctx.createBufferSource();
+    node.buffer = buffer;
+    node.loop = loop;
+    node.connect(into);
+    node.onended = () => { node = null; offset = 0; };
+    node.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
+    startedAt = ctx.currentTime;
+  }
+
+  function pause() {
+    if (node === null) return;
+    offset = position();
+    stopNode();
+  }
+
+  return {
+    get duration() { return buffer.duration; },
+    get playing() { return node !== null; },
+    get at() { return position(); },
+    get looping() { return loop; },
+    play,
+    pause,
+    toggle() { if (node === null) play(); else pause(); },
+    seek(seconds) {
+      const wasPlaying = node !== null;
+      pause();
+      offset = Math.max(0, Math.min(buffer.duration, seconds));
+      if (wasPlaying) play();
+    },
+    setLoop(on) {
+      loop = on;
+      if (node !== null) node.loop = on;
+    },
+    stop: stopNode,
+  };
+}
+
 async function makeFileSource(data, name) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (ctx.state === "suspended") await ctx.resume();
@@ -12239,43 +12303,8 @@ async function makeFileSource(data, name) {
 
   const scratch = [new Float32Array(32768), new Float32Array(32768)];
 
-  let node = null;
-  let offset = 0;            // where in the file we are, in seconds
-  let startedAt = 0;         // the context time that offset corresponded to
-  let loop = true;
-
-  function position() {
-    if (node === null) return offset;
-    const at = offset + (ctx.currentTime - startedAt);
-    return loop && buffer.duration > 0 ? at % buffer.duration : Math.min(at, buffer.duration);
-  }
-
-  function stopNode() {
-    if (node === null) return;
-    // The node fires onended as it stops, and the handler would read it as
-    // the track finishing rather than as a seek.
-    node.onended = null;
-    try { node.stop(); } catch (error) { /* already finished */ }
-    node = null;
-  }
-
-  function play() {
-    if (node !== null) return;
-
-    node = ctx.createBufferSource();
-    node.buffer = buffer;
-    node.loop = loop;
-    node.connect(insert.input);      // drawn and heard, through the one insert
-    node.onended = () => { node = null; offset = 0; };
-    node.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
-    startedAt = ctx.currentTime;
-  }
-
-  function pause() {
-    if (node === null) return;
-    offset = position();
-    stopNode();
-  }
+  // Drawn and heard, through the one insert.
+  const player = makeBufferPlayer(ctx, buffer, insert.input);
 
   return {
     kind: "file",
@@ -12286,10 +12315,10 @@ async function makeFileSource(data, name) {
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return mono && !insert.active ? 1 : 2; },
     get capacity() { return scratch[0].length; },
-    get duration() { return buffer.duration; },
-    get playing() { return node !== null; },
-    get at() { return position(); },
-    get looping() { return loop; },
+    get duration() { return player.duration; },
+    get playing() { return player.playing; },
+    get at() { return player.at; },
+    get looping() { return player.looping; },
 
     describe() {
       const minutes = Math.floor(buffer.duration / 60);
@@ -12298,21 +12327,11 @@ async function makeFileSource(data, name) {
              + (mono ? "  ·  mono" : "");
     },
 
-    play,
-    pause,
-    toggle() { if (node === null) play(); else pause(); },
-
-    seek(seconds) {
-      const wasPlaying = node !== null;
-      pause();
-      offset = Math.max(0, Math.min(buffer.duration, seconds));
-      if (wasPlaying) play();
-    },
-
-    setLoop(on) {
-      loop = on;
-      if (node !== null) node.loop = on;
-    },
+    play: player.play,
+    pause: player.pause,
+    toggle: player.toggle,
+    seek: player.seek,
+    setLoop: player.setLoop,
 
     getLatestWindow(n) {
       return analysers.map((a, i) => {
@@ -12325,7 +12344,7 @@ async function makeFileSource(data, name) {
     },
 
     stop() {
-      stopNode();
+      player.stop();
       insert.drop();
       dropMonitorChain(monitor);
       ctx.close();
@@ -13452,11 +13471,13 @@ function makeBrainHost() {
 
   /* What reaches the speakers. Drawing the generator, its switch says; drawing
      the input, the page's rule for a live input does - a line input you have
-     asked to hear, never a microphone, which would feed back. */
+     asked to hear, never a microphone, which would feed back - and a file is
+     heard, as a file always is on the site. */
   let monitored = false;
+  let player = null, fileName = "", fileMono = false;
   const level_ = () => {
     if (!level) return;
-    const on = source.drawsInput ? monitored : audible;
+    const on = source.drawsInput ? (player !== null || monitored) : audible;
     level.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.02);
   };
   source.setSound = async (on) => {
@@ -13473,8 +13494,37 @@ function makeBrainHost() {
     return monitored;
   };
   Object.defineProperty(source, "monitored", { get: () => monitored });
+  /* Which the instrument draws. Its input is the microphone's stream or a
+     file, never both: choosing either source again lets a file go. */
+  const dropFile = () => { if (player) { player.stop(); player = null; } };
   // Monitoring is asked again on every source change (showSource), so it is not reset here.
-  source.drawInput = (input) => { source.drawsInput = input; level_(); };
+  source.drawInput = (input) => { dropFile(); source.drawsInput = input; level_(); };
+  /* A file, decoded in this context and played into the worklet's input, with
+     the transport a file has (makeBufferPlayer). Drawn and heard: the
+     instrument is told to draw its input, as Mic tells it. */
+  source.playFile = async (data, name, loop) => {
+    if (!ctx) throw new Error("no instrument to play it");
+    const buffer = await ctx.decodeAudioData(data);
+    dropFile();
+    player = makeBufferPlayer(ctx, buffer, node);
+    fileName = name;
+    fileMono = buffer.numberOfChannels < 2;
+    player.setLoop(loop);
+    source.drawsInput = true;
+    send({ op: "click", id: "srcMic" });
+    player.play();
+    level_();
+  };
+  Object.defineProperty(source, "file", { get: () => (player ? { name: fileName, mono: fileMono } : null) });
+  Object.defineProperty(source, "duration", { get: () => (player ? player.duration : 0) });
+  Object.defineProperty(source, "playing", { get: () => !!player && player.playing });
+  Object.defineProperty(source, "at", { get: () => (player ? player.at : 0) });
+  Object.defineProperty(source, "looping", { get: () => !player || player.looping });
+  source.play = () => { if (player) player.play(); };
+  source.pause = () => { if (player) player.pause(); };
+  source.toggle = () => { if (player) player.toggle(); };
+  source.seek = (seconds) => { if (player) player.seek(seconds); };
+  source.setLoop = (on) => { if (player) player.setLoop(on); };
   /* The input stream, connected to the worklet's input: the page opens it
      (syncGenInput) when the instrument draws it, or when the generator takes
      it for its live-input modes, which in the instrument hear it whether or
@@ -13560,6 +13610,12 @@ function makeBrainSource() {
     tick() {},
     describe() {
       if (this.waiting) return "the instrument, compiled \u2014 press anything to start it";
+      const file = this.file;
+      if (this.drawsInput && file) {
+        const d = this.duration;
+        return "the instrument, compiled, playing " + file.name + "  \u00b7  " + Math.floor(d / 60) + ":"
+          + String(Math.round(d % 60)).padStart(2, "0") + (file.mono ? "  \u00b7  mono" : "");
+      }
       if (this.drawsInput && genInput.fault) return "the instrument, compiled \u2014 your input could not be opened";
       return this.drawsInput ? "the instrument, compiled, drawing your input" : "the instrument, compiled, in the audio thread";
     },
@@ -21708,7 +21764,7 @@ el.presetLoad.addEventListener("click", () => {
 function showSource(pending) {
   const loaded = state.source.kind;
   // Hosted, the buttons say what the instrument draws: its input, as a microphone would be, or its generator.
-  const kind = pending || (loaded === "host" ? (state.source.drawsInput ? "mic" : "tone") : loaded);
+  const kind = pending || (loaded === "host" ? (state.source.drawsInput ? (state.source.file ? "file" : "mic") : "tone") : loaded);
   el.micWhole.setAttribute("aria-checked", String(!state.micBands));
   el.micBands.setAttribute("aria-checked", String(state.micBands));
 
@@ -21717,14 +21773,14 @@ function showSource(pending) {
   el.srcFile.setAttribute("aria-checked", String(kind === "file"));
   el.srcRack.setAttribute("aria-checked", String(kind === "rack"));
   /* Hosted - inside the plugin, or ?brain=core - the sound is the
-     instrument's: Tone and Mic choose what it draws, and a file or a rack it
-     has not got. Not offered, rather than half working: a file chosen here
-     would be drawn while the instrument went on taking the panel's hands. */
+     instrument's: Tone, Mic and File choose what it draws, and a rack it has
+     not got. Not offered, rather than half working. A file only on the site:
+     inside the plugin the host plays files. */
   const hosted = loaded === "host";
-  for (const button of [el.srcFile, el.srcRack]) {
-    button.disabled = hosted;
-    button.title = hosted ? "The instrument is the source here" : "";
-  }
+  el.srcRack.disabled = hosted;
+  el.srcRack.title = hosted ? "The instrument is the source here" : "";
+  el.srcFile.disabled = hosted && !state.source.devices;
+  el.srcFile.title = el.srcFile.disabled ? "The host plays files here" : "";
   el.srcMic.title = hosted && !state.source.devices ? "The host's input" : "";
 
   shownKind = kind;
@@ -21812,8 +21868,7 @@ function showSource(pending) {
 /* Something to press play on, which is not the same as being a rack: a rack of
    the generator and a live input has no buffer in it and a transport over it
    would be three controls that do nothing. */
-const playable = () => state.source.kind === "file"
-  || (state.source.kind === "rack" && state.source.duration > 0);
+const playable = () => typeof state.source.toggle === "function" && state.source.duration > 0;
 
 /* What the panel says, written into a generator that has just been made. Two
    things make new generators - choosing Tone, and building a rack with the
@@ -21881,8 +21936,10 @@ function generatorFromPanel(set) {
    bus in the plugin, your microphone or line input on the site). The press
    itself reaches the instrument as a hand (HOST_CLICKS); this is the page
    showing it, and what a state from the instrument puts back (hostApply). */
-function hostDraw(input) {
+function hostDraw(input, fromState) {
   const source = state.source;
+  // A state saying what is already so leaves a file playing; a press of Mic or Tone lets it go.
+  if (fromState && source.drawsInput === input) { showSource(); return; }
   if (source.drawInput) source.drawInput(input);
   else source.drawsInput = input;
   showSource();
@@ -22008,7 +22065,7 @@ function hostApply(s) {
     for (const hand of hands) hostHand(hand);
     if (!hands.some((hand) => Array.isArray(hand) && hand[0] === "f")) fadeFromHost(null);
     // Which the instrument draws, which its state carries beside the setup.
-    hostDraw(setup.pluginInput === true);
+    hostDraw(setup.pluginInput === true, true);
     hostSync.routings = hostRoutingsText();
     hostSync.fade = hostFadeText();
   } finally {
@@ -22232,6 +22289,14 @@ async function toFile(file) {
   el.status.dataset.state = "loading";
 
   try {
+    // ?brain=core: the file is the instrument's input, played in its context.
+    if (state.source && state.source.kind === "host" && state.source.playFile) {
+      await state.source.playFile(await file.arrayBuffer(), file.name, el.fileLoop.checked);
+      showSource();
+      showGenerator();
+      el.filePlay.textContent = "Pause";
+      return;
+    }
     // Straight off the disk: nothing is uploaded, and the CSP would not let
     // it be even if this wanted to.
     const source = await makeFileSource(await file.arrayBuffer(), file.name);
@@ -22959,7 +23024,7 @@ function genInputWanted() {
    and released here so the two share one stream and one device. */
 function liveInputWanted() {
   const source = state.source;
-  return genInputWanted() || !!(source && source.drawsInput && source.setInput);
+  return genInputWanted() || !!(source && source.drawsInput && source.setInput && !source.file);
 }
 function genInputWhere() {
   const source = state.source;
