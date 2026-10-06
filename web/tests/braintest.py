@@ -102,10 +102,10 @@ with sync_playwright() as pw:
     p.wait_for_timeout(300)
     panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null, freq: el.freq ? el.freq.offsetParent !== null : null,
       sound: !el.genSoundRow.hidden, mode: genSettings() && genSettings().mode,
-      others: el.srcRack.disabled && ![el.srcTone, el.srcMic, el.srcFile].some((b) => b.disabled) })""")
+      others: ![el.srcTone, el.srcMic, el.srcFile, el.srcRack].some((b) => b.disabled) })""")
     check("and keeps the generator's panel, kind and frequency, and the switch to hear it",
           panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
-    check("and offers no lanes, and Tone, Mic and File as what the instrument draws", panel["others"], str(panel))
+    check("and offers Tone, Mic, File and Lanes as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
 
     # A note from the page's keys. Harmonic tone, keyboard present: gated, so silent until a note.
@@ -384,6 +384,110 @@ with sync_playwright() as pw:
           and played["seeked"] == 1.5 and played["looped"] == [True, True], str(played))
     check("and a state from the instrument saying what is already so leaves it playing", played["kept"] == [True, True], str(played["kept"]))
     check("and Tone lets the file go", played["tone"] == [None, False, True], str(played["tone"]))
+
+    # A rack (5i): the instrument's lanes. Two mono stems made here, 441 Hz and
+    # 661.5 Hz, and the generator's lane first, with a note held in it.
+    MONO = """(hz, name) => {
+      const rate = 44100, n = rate * 2, data = new DataView(new ArrayBuffer(44 + n * 2));
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) data.setUint8(o + i, t.charCodeAt(i)); };
+      str(0, 'RIFF'); data.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); data.setUint32(16, 16, true);
+      data.setUint16(20, 1, true); data.setUint16(22, 1, true); data.setUint32(24, rate, true); data.setUint32(28, rate * 2, true);
+      data.setUint16(32, 2, true); data.setUint16(34, 16, true); str(36, 'data'); data.setUint32(40, n * 2, true);
+      for (let k = 0; k < n; k++) data.setInt16(44 + k * 2, Math.round(16000 * Math.sin(2 * Math.PI * hz * k / rate)), true);
+      return new File([data.buffer], name, { type: 'audio/wav' });
+    }"""
+    rack = p.evaluate("""async (src) => {
+      const make = eval(src);
+      const pitchOf = (lane) => {
+        const at = [];
+        for (let k = 1; k < lane.length; k++) if (lane[k - 1] < 0 && lane[k] >= 0) at.push(k - 1 + lane[k - 1] / (lane[k - 1] - lane[k]));
+        return at.length < 3 ? 0 : Math.round((at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]) * 10) / 10;
+      };
+      const out = {};
+      applyPreset('b:Harmonic tone');
+      el.srcRack.click();
+      state.rackSynth = true; el.rackSynth.checked = true;
+      state.rackLive = false; el.rackLive.checked = false;
+      midiNoteOn(57, 100);
+      // The pair turned round first, so that a rack starting it again at the first two lanes is seen to.
+      el.xyX.value = '1'; el.xyX.dispatchEvent(new Event('change', { bubbles: true }));
+      out.turned = state.xyPair.join(',');
+      await toRack([make(441, 'a.wav'), make(661.5, 'b.wav')]);
+      await new Promise((r) => setTimeout(r, 1200));
+      out.names = state.source.lanes.map((lane) => lane.name);
+      out.drawn = [state.source.kind, state.source.channels, laneCount(), el.srcRack.getAttribute('aria-checked'), state.stack];
+      out.pitches = state.source.getLatestWindow(8192).map(pitchOf);
+      const hands = decodeSetup((await scopeHost.call('scopeState')).code).pluginHands || [];
+      const told = (id) => (hands.filter((h) => h[0] === 'c' && h[1] === id).pop() || [])[2];
+      out.fitted = [state.channels.length, el.xyX.options.length, state.xyPair.join(','), told('xyX'), told('xyY')];
+      /* A lane the rack has and the worklet has not posted yet reads as
+         silence, not as whatever the ring last held there: three lanes of
+         0.5 and then two of 0.25, in one go so nothing comes between, read
+         over both - a window of the last two alone would find nothing stale
+         in a ring that has not yet come round. */
+      const level = (v) => new Float32Array(512).fill(v);
+      state.source.absorb([level(0.5), level(0.5), level(0.5)]);
+      state.source.absorb([level(0.25), level(0.25)]);
+      const unposted = state.source.getLatestWindow(1024);
+      out.unposted = [unposted.length, unposted[0][0], unposted[0][1023], Math.max(...unposted[2].map(Math.abs))];
+      out.stemsHeard = [state.source.lanes[1].gain.gain.value, state.source.lanes[2].gain.gain.value];
+      // The generator's lane is heard through the instrument, as its switch and the mixer say.
+      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 300));
+      out.genHeard = Math.round(state.source.gain * 100) / 100;
+      state.source.lanes[0].mute = true; state.source.remix();
+      await new Promise((r) => setTimeout(r, 300));
+      out.genMuted = Math.round(state.source.gain * 100) / 100;
+      state.source.lanes[0].mute = false; state.source.remix();
+      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      // The trigger on the second stem reaches the instrument as a hand.
+      document.getElementById('trigSource2').click();
+      await new Promise((r) => setTimeout(r, 300));
+      const s = await scopeHost.call('scopeState');
+      out.trig = (decodeSetup(s.code).pluginHands || []).some((h) => h[0] === 'k' && h[1] === 'trigSource2');
+      // Paused, the stems' lanes go quiet and the generator's draws on.
+      el.filePlay.click();
+      await new Promise((r) => setTimeout(r, 500));
+      const w = state.source.getLatestWindow(2048);
+      out.paused = [state.source.playing, Math.max(...w[1].map(Math.abs)), Math.max(...w[0].map(Math.abs)) > 0.1];
+      out.align = [el.alignRow.hidden];
+      // The band split is not the instrument's: it says so and changes nothing.
+      await toBands(make(441, 'c.wav'));
+      out.bands = [state.source.kind, !!state.source.rack, el.rackNote.textContent.indexOf('band split') >= 0];
+      // Playing along - a stem and you - keeps no alignment row: the instrument does not read the page's lanes.
+      state.rackSynth = false; el.rackSynth.checked = false;
+      state.rackLive = true; el.rackLive.checked = true;
+      await toRack([make(441, 'a.wav')]);
+      await new Promise((r) => setTimeout(r, 500));
+      out.along = [state.source.lanes.map((lane) => lane.name).join(','), state.source.hasLive, el.alignRow.hidden];
+      state.rackLive = false; el.rackLive.checked = false;
+      // Tone leaves the rack, and the instrument plays on: the rack's stop is not its context's.
+      const left = state.source.rack;
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 600));
+      out.tone = [state.source.rack, state.source.channels, el.srcTone.getAttribute('aria-checked'), left.playing];
+      const before = state.source.chunks;
+      await new Promise((r) => setTimeout(r, 400));
+      out.alive = state.source.chunks > before;
+      midiNoteOff(57);
+      return out;
+    }""", MONO)
+    check("Lanes in ?brain=core: the instrument draws the rack, the generator's lane its own and each stem at its pitch",
+          rack["names"] == ["Generator", "a", "b"] and rack["drawn"] == ["host", 3, 3, "true", True]
+          and abs(rack["pitches"][0] - 220) < 0.5 and abs(rack["pitches"][1] - 441) < 0.5 and abs(rack["pitches"][2] - 661.5) < 0.5,
+          str(rack))
+    check("and the pitch check fails against the stems the other way round", not abs(rack["pitches"][1] - 661.5) < 0.5)
+    check("the stems are heard through the page's mixer, the generator's lane through the instrument as the mixer and its switch say",
+          rack["stemsHeard"] == [1, 1] and rack["genHeard"] == 1 and rack["genMuted"] == 0, str(rack))
+    check("the trigger's lane reaches the instrument; paused, the stems go quiet while the generator draws on; no alignment",
+          rack["trig"] and rack["paused"] == [False, 0, True] and rack["align"] == [True], str(rack))
+    check("the band split says it is not the instrument's and leaves the rack; Tone leaves the rack for the generator's pair, and it plays on",
+          rack["bands"] == ["host", True, True] and rack["tone"] == [None, 2, "true", False] and rack["alive"], str(rack))
+    check("a rack fits the lanes - three rows, three lanes for the pair - and starts the pair again at the first two, the instrument told",
+          rack["turned"] == "1,0" and rack["fitted"] == [3, 3, "0,1", "0", "1"], str(rack["turned"]) + " " + str(rack["fitted"]))
+    check("a lane the rack has and the worklet has not posted reads as silence, not as what the ring held there",
+          rack["unposted"] == [3, 0.5, 0.25, 0], str(rack["unposted"]))
+    check("playing along - a stem and you - keeps no alignment row", rack["along"] == ["a,You", True, True], str(rack["along"]))
 
     # A module that will not make: no instrument, and the page stays what it was.
     refused = p.evaluate("""async () => {

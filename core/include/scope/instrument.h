@@ -73,8 +73,17 @@ class Instrument {
   // A host parameter moved since the last block: a hand on its slider.
   struct HostSlider { const char* id; double value; };
   /* A block's input: what a host's input bus or a page's microphone hands
-     over, its right channel null for a mono input. */
-  struct Input { const float* left; const float* right; };
+     over, its right channel null for a mono input; and for a rack, its lanes,
+     one signal each, up to kMaxLanes of them (the first two are left and
+     right as well). */
+  struct Input {
+    const float* left;
+    const float* right;
+    const float* const* lanes = nullptr;
+    int laneCount = 0;
+  };
+  // The most lanes the ring keeps: the page's MAX_LANES.
+  static constexpr int kRingLanes = kMaxLanes;
 
   /* One hand from the page: a slider moved (by id and the value the browser
      holds), a setup loaded (a preset, a code), a menu, a switch or a text box
@@ -159,13 +168,8 @@ class Instrument {
     // The latest n frames of the ring, oldest first, nought before the start
     // of what it holds - which the capacity says it never asks for.
     pictureSource_.latest = [this](std::size_t n) {
-      std::vector<Lane> out(2, Lane(n, 0.0f));
-      const std::size_t at = pictureAt_.load(std::memory_order_relaxed), take = std::min(n, kPictureFrames);
-      for (std::size_t k = 0; k < take; ++k) {
-        const std::size_t from = ((at + kPictureFrames - take + k) % kPictureFrames) * 2;
-        out[0][n - take + k] = picture_[from];
-        out[1][n - take + k] = picture_[from + 1];
-      }
+      std::vector<Lane> out(static_cast<std::size_t>(pictureSource_.channels), Lane(n, 0.0f));
+      for (std::size_t c = 0; c < out.size(); ++c) latestLane(static_cast<int>(c), out[c].data(), n);
       return out;
     };
     /* A host is always a keyboard, so the generator is gated from the start -
@@ -181,6 +185,7 @@ class Instrument {
     hearR_.assign(kHearN, 0.0f);
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
     pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
+    heardL_.assign(size, 0.0f); heardR_.assign(size, 0.0f);
   }
 
   // A setup loaded as a preset is: the core restored, the hands on it since put back.
@@ -212,6 +217,8 @@ class Instrument {
     // A saved state says which source was drawn; a preset or a code from the page says nothing, and changes nothing.
     if (const Json* drawn = setup_.type == Json::Type::Object ? setup_.get("pluginInput") : nullptr)
       drawFrom(drawn->type == Json::Type::Bool && drawn->b);
+    // A setup restores two lanes' worth of view; a rack drawn has more, and keeps them.
+    if (rack_ > 0) { brain_->view.capture.channels.resize(static_cast<std::size_t>(std::max(2, rack_))); fitView(*brain_); }
     if (hooks.loaded) hooks.loaded();
     changed_ = true;
     if (fromHost) hostVersion_++;
@@ -267,6 +274,7 @@ class Instrument {
       for (const auto& held : keyboard_->notes()) low = std::min(low, held.note);
       heldHz = midiHz(low);
     }
+    hearing_->hears(hearsItself());
     hearing_->setNow(nowMs_);
     hearing_->step(*matrix_, true, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_, lastBlockMs_, heldHz, nowMs_);
     keyboard_->setNow(nowMs_);
@@ -391,22 +399,23 @@ class Instrument {
     std::vector<float> out(kPictureFrames * 2);
     const std::size_t at = pictureAt_.load(std::memory_order_acquire);
     for (std::size_t k = 0; k < kPictureFrames; ++k) {
-      const std::size_t from = (at + k) % kPictureFrames;
-      out[k * 2] = picture_[from * 2];
-      out[k * 2 + 1] = picture_[from * 2 + 1];
+      const std::size_t from = ((at + k) % kPictureFrames) * kRingLanes;
+      out[k * 2] = picture_[from];
+      out[k * 2 + 1] = picture_[from + 1];
     }
     return out;
   }
   // The last n frames of the picture into two lanes, oldest first.
-  void latest(float* left, float* right, std::size_t n) const {
+  void latest(float* left, float* right, std::size_t n) const { latestLane(0, left, n); latestLane(1, right, n); }
+  // The last n frames of one lane of the picture, oldest first.
+  void latestLane(int lane, float* out, std::size_t n) const {
     const std::size_t at = pictureAt_.load(std::memory_order_relaxed), take = std::min(n, kPictureFrames);
-    for (std::size_t k = 0; k < n - take; ++k) left[k] = right[k] = 0.0f;
-    for (std::size_t k = 0; k < take; ++k) {
-      const std::size_t from = ((at + kPictureFrames - take + k) % kPictureFrames) * 2;
-      left[n - take + k] = picture_[from];
-      right[n - take + k] = picture_[from + 1];
-    }
+    const std::size_t c = static_cast<std::size_t>(std::clamp(lane, 0, kRingLanes - 1));
+    for (std::size_t k = 0; k < n - take; ++k) out[k] = 0.0f;
+    for (std::size_t k = 0; k < take; ++k) out[n - take + k] = picture_[((at + kPictureFrames - take + k) % kPictureFrames) * kRingLanes + c];
   }
+  // How many lanes the picture has: two, or a rack's.
+  int pictureLanes() const { return pictureSource_.channels; }
 
   // What the owners and their tests read.
   const Tone& tone() const { return core_->tone(); }
@@ -422,6 +431,8 @@ class Instrument {
   const PictureRun& picture() const { return *pictureRun_; }
   const Brain::ViewState& view() const { return brain_->view; }
   bool drawsInput() const { return drawsInput_; }
+  int rack() const { return rack_; }
+  int synthLane() const { return synthLane_; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   double slider(const char* id) const { return brain_->panel.range(id); }
   int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
@@ -451,6 +462,7 @@ class Instrument {
   void change(const std::string& id, const Json& value) {
     const std::u16string text = value.type == Json::Type::String ? value.s : u"";
     const bool checked = value.type == Json::Type::Bool && value.b;
+    if (id == "srcLanes") { rackFrom(utf16To8(text)); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
@@ -460,7 +472,7 @@ class Instrument {
   }
 
   void press(const std::string& id) {
-    if (id == "srcTone" || id == "srcMic") { drawFrom(id == "srcMic"); return; }
+    if (id == "srcTone" || id == "srcMic") { drawRack(0, -1); drawFrom(id == "srcMic"); return; }
     if (!controlClick(id, *brain_, *core_, *keyboard_)) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -509,6 +521,41 @@ class Instrument {
     // What it hears is its own sound only while that is the generator's: a loop then, and not otherwise.
     hearing_->hears(!input);
     changed_ = true;
+  }
+
+  /* A rack: how many lanes, and which of them the generator draws - "4,0" is
+     four with the generator first, "3,-1" three of the page's own, "0" none
+     and back to the generator alone. The page's rack is the page's - files a
+     setup cannot hold, a microphone's lane, the mixer - and what reaches the
+     instrument is its lanes, as an input of that many channels. Not kept in
+     the state, as a rack's files cannot be. */
+  void rackFrom(const std::string& text) {
+    const std::size_t comma = text.find(',');
+    const double count = jsStringToNumber(toU16(text.substr(0, comma)));
+    const double synth = comma == std::string::npos ? -1 : jsStringToNumber(toU16(text.substr(comma + 1)));
+    drawRack(std::isfinite(count) ? static_cast<int>(count) : 0, std::isfinite(synth) ? static_cast<int>(synth) : -1);
+  }
+  void drawRack(int count, int synth) {
+    const int lanes = std::clamp(count, 0, kRingLanes);
+    if (lanes == rack_ && synth == synthLane_) return;
+    rack_ = lanes;
+    synthLane_ = lanes > 0 && synth >= 0 && synth < lanes ? synth : -1;
+    // A rack replaces the input rather than sitting over it: leaving one is the generator again, and no state says the input.
+    if (lanes > 0) drawsInput_ = false;
+    // The view's lanes, as the page's fitChannels has them: the trigger's lane and the pair held to them.
+    brain_->view.lanes = lanes > 0 ? lanes : 2;
+    brain_->panel.setLanes(lanes > 0 ? lanes : 2);
+    auto& channels = brain_->view.capture.channels;
+    channels.resize(static_cast<std::size_t>(std::max(2, lanes)));
+    fitView(*brain_);
+    pictureSource_.channels = lanes > 0 ? lanes : 2;
+    pictureSource_.lanes = lanes > 0;
+    changed_ = true;
+  }
+  // Whether what it hears is its own sound: the generator, or a rack's trigger on the generator's lane.
+  bool hearsItself() const {
+    if (rack_ > 0) return synthLane_ >= 0 && static_cast<int>(brain_->view.trigSource) == synthLane_;
+    return !drawsInput_;
   }
 
   // A hand put back from a saved state, as the page sends it.
@@ -574,6 +621,32 @@ class Instrument {
       float* heardR = right ? right + at : spare_.data();
       const float* inL = input_ ? input_->left + at : nullptr;
       const float* inR = input_ ? (input_->right ? input_->right + at : inL) : nullptr;
+      if (rack_ > 0) {
+        /* A rack: each lane its input's, the generator's lane its picture's
+           left channel - one signal, as the page's generator lane is - and
+           what is heard is that lane alone, on both sides, as the page's goes
+           to its lane's gain. The generator runs whether or not it has a lane,
+           since it steps the oscillators every modulation reads; with none,
+           nothing of it is heard. The rest of what is heard is the page's: it
+           mixes the lanes it plays itself. */
+        core_->block(pictureL_.data(), pictureR_.data(), n, heardL_.data(), heardR_.data());
+        for (int k = 0; k < n; ++k) {
+          const float h = synthLane_ >= 0 ? heardL_[static_cast<std::size_t>(k)] : 0.0f;
+          left[at + k] = h;
+          heardR[k] = h;
+        }
+        std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
+        for (int k = 0; k < n; ++k) {
+          float* row = &picture_[ring * kRingLanes];
+          for (int c = 0; c < kRingLanes; ++c) {
+            const float* lane = input_ && c < input_->laneCount && input_->lanes[c] ? input_->lanes[c] + at : nullptr;
+            row[c] = c >= rack_ ? 0.0f : c == synthLane_ ? pictureL_[static_cast<std::size_t>(k)] : lane ? lane[k] : 0.0f;
+          }
+          ring = (ring + 1) % kPictureFrames;
+        }
+        pictureAt_.store(ring, std::memory_order_release);
+        continue;
+      }
       if (drawsInput_) {
         if (!inL) { std::fill(spare_.begin(), spare_.begin() + n, 0.0f); inL = inR = spare_.data(); }
         core_->effect(inL, inR, pictureL_.data(), pictureR_.data(), n);
@@ -589,24 +662,26 @@ class Instrument {
       }
       std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
       for (int k = 0; k < n; ++k) {
-        picture_[ring * 2] = pictureL_[static_cast<std::size_t>(k)];
-        picture_[ring * 2 + 1] = pictureR_[static_cast<std::size_t>(k)];
+        float* row = &picture_[ring * kRingLanes];
+        row[0] = pictureL_[static_cast<std::size_t>(k)];
+        row[1] = pictureR_[static_cast<std::size_t>(k)];
+        // A rack's lanes past the pair, gone: nothing stale to read if a rack is drawn again.
+        for (int c = 2; c < kRingLanes; ++c) row[c] = 0.0f;
         ring = (ring + 1) % kPictureFrames;
       }
       pictureAt_.store(ring, std::memory_order_release);
     }
   }
 
-  // The last of the picture, the page's screen, for the level and the hearing
-  // to read: its left channel for both, and its right for the hearing's width.
+  /* The last of the picture, the page's screen, for the level and the hearing
+     to read: its left channel for both, and its right for the hearing's
+     width. A rack's, as the page reads a rack: the trigger's lane for both,
+     and for the width the X-Y pair's other lane. */
   void window(std::vector<float>& left, std::vector<float>* right) const {
-    // Oldest first, from the ring this thread writes.
-    const std::size_t at = pictureAt_.load(std::memory_order_relaxed), n = left.size();
-    for (std::size_t k = 0; k < n; ++k) {
-      const std::size_t from = ((at + kPictureFrames - n + k) % kPictureFrames) * 2;
-      left[k] = picture_[from];
-      if (right) (*right)[k] = picture_[from + 1];
-    }
+    const int a = rack_ > 0 ? std::clamp(static_cast<int>(brain_->view.trigSource), 0, rack_ - 1) : 0;
+    const int b = rack_ > 0 ? std::clamp(static_cast<int>(brain_->view.xy[1]), 0, rack_ - 1) : 1;
+    latestLane(a, left.data(), left.size());
+    if (right) latestLane(b, right->data(), right->size());
   }
 
   double rate_ = 48000;
@@ -640,10 +715,12 @@ class Instrument {
   bool changed_ = false;
   std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
-  std::vector<float> pictureL_, pictureR_, spare_, mono_;  // a block's worth, made in prepare
+  std::vector<float> pictureL_, pictureR_, spare_, mono_, heardL_, heardR_;  // a block's worth, made in prepare
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator
-  std::array<float, kPictureFrames * 2> picture_ {};
+  int rack_ = 0;                  // drawing a rack of this many lanes, or none
+  int synthLane_ = -1;            // the rack's lane the generator draws, or none
+  std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
 };
 

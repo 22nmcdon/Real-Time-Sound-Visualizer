@@ -3563,6 +3563,15 @@ iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73
 # A state that opens with the input drawn, as a project reopened does.
 iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": True})], ["feed", 90, 61]] + blocks(10) \
     + [["click", "srcTone"], NOTE_ON(60)] + blocks(10)
+# A rack (5i): four lanes of the page's, then five with the generator's
+# first and a note in it, the trigger moved off the generator's lane and the
+# pair set across two lanes; a preset loaded meanwhile; back to the generator
+# for longer than the ring holds, so the last blocks read rows the rack wrote
+# once - which the pair has to have cleared of its lanes.
+iruns["rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 100, 73, 51, 37, 29]] + blocks(2) \
+    + [["control", "srcLanes", "4,-1"]] + blocks(8) + [["control", "srcLanes", "5,0"], NOTE_ON(57)] + blocks(10) \
+    + [["click", "trigSource2"], ["control", "xyY", "3"]] + blocks(10) + [["setup", icode["Pluck"]]] + blocks(6) \
+    + [["control", "srcLanes", "4,-1"], NOTE_ON(60)] + blocks(6) + [["click", "srcTone"]] + blocks(40)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
 iout = {}
@@ -3606,6 +3615,30 @@ check("and the input drawn is heard as it was fed, the reopened state's from its
       drawn_plain == 0 and drawn_open == 0 and folded > 0.1 and generated > 0.1,
       "drawn %g and %g; folded %g, generator %g" % (drawn_plain, drawn_open, folded, generated))
 check("and the reading fails against the input a sample late", iheard("input", 7, 9, 100, 73, 7 * 128 + 1) > 0)
+# A rack's lanes, read off the samples: each of the page's lanes the input it
+# was fed, at its own index; the generator's lane what the generator plays
+# (Harmonic tone, whose heard pair is its picture pair); nothing past the
+# count; and back at the generator, two lanes again.
+def irack(row, lane): return row[(2 + lane) * 128:(3 + lane) * 128]
+def isaw(k, p): return array("f", [0.5 * (2 * ((k % p) / p) - 1)]).tolist()[0]
+rrows = [ifloats(l) for l in iout["rack"][1] if l.startswith("block ")]
+def ilane_fed(b, lane, period, fed_lane=None):
+    return max(abs(irack(rrows[b], lane)[k] - isaw(b * 128 + k, period)) for k in range(128))
+four = max(ilane_fed(b, c, p) for b in range(3, 10) for c, p in enumerate([100, 73, 51, 37]))
+past = max(abs(v) for b in range(3, 10) for c in (4, 5) for v in irack(rrows[b], c))
+five = max(ilane_fed(b, c, p) for b in range(12, 20) for c, p in ((1, 73), (2, 51), (3, 37), (4, 29)))
+synth = max(abs(irack(rrows[b], 0)[k] - rrows[b][k]) for b in range(12, 20) for k in range(128))
+synth_peak = max(abs(v) for b in range(12, 20) for v in irack(rrows[b], 0))
+after = max(abs(v) for b in range(len(rrows) - 4, len(rrows)) for c in (2, 3, 4, 5) for v in irack(rrows[b], c))
+check("and a rack's lanes are what they were fed at their own places, the generator's lane the generator, nothing past the count",
+      four == 0 and past == 0 and five == 0 and synth == 0 and synth_peak > 0.1 and after == 0,
+      "fed %g and %g, past %g, generator %g at %.3f, after %g" % (four, five, past, synth, synth_peak, after))
+check("and the reading fails against the lanes one place along", ilane_fed(15, 2, 73) > 0)
+# A rack with no generator lane, a note held: nothing of the generator heard.
+# Its blocks counted from the start - 2, 8, 10, 10 and 6 before it - since the
+# run after it is as long as it has to be to wrap the ring.
+unheard = max(abs(v) for b in range(37, 42) for v in rrows[b][:256])
+check("and a rack with no generator lane sends nothing out, a note held or not", unheard == 0, "peak %g" % unheard)
 # Nulls. The comparison one line out of step; a native run with one hand a
 # step away; and modules from the bridge with one thing wrong in each.
 pa, ca, ja = iout["notes"]
@@ -3622,19 +3655,23 @@ def inull(what, old, new, runs):
     seen = [n for n in runs if icompare(iout[n][1], ijs(iout[n][0], bad_mod)) != (0.0, "")]
     check("and the comparison fails against a module with %s" % what, seen == runs, ", ".join(seen))
 inull("the input's lanes the wrong way round",
-      "const scope::Instrument::Input input { brainInput.data(), given == 2 ? brainInput.data() + frames : nullptr };",
-      "const scope::Instrument::Input input { given == 2 ? brainInput.data() + frames : brainInput.data(), given == 2 ? brainInput.data() : nullptr };",
+      "const scope::Instrument::Input input { brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr, inputLanes.data(), count };",
+      "const scope::Instrument::Input input { count >= 2 ? brainInput.data() + frames : brainInput.data(), count >= 2 ? brainInput.data() : nullptr, inputLanes.data(), count };",
       ["input", "opened"])
-inull("a stereo input taken as mono", "brainInput.data(), given == 2 ? brainInput.data() + frames : nullptr }",
-      "brainInput.data(), nullptr }", ["input", "opened"])
+inull("a stereo input taken as mono", "brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr, inputLanes.data(), count }",
+      "brainInput.data(), nullptr, inputLanes.data(), count }", ["input", "opened"])
+inull("a rack's lanes handed over one place along",
+      "inputLanes[static_cast<std::size_t>(c)] = brainInput.data() + static_cast<std::size_t>(c) * frames;",
+      "inputLanes[static_cast<std::size_t>(c)] = brainInput.data() + static_cast<std::size_t>((c + 1) % count) * frames;", ["rack"])
 inull("every message padded to three bytes", "std::clamp(length, 1, 3)", "std::clamp(length, 3, 3)", ["realtime"])
 inull("the page's MIDI dropped", "  midiLengths.push_back(n);\n", "  midiIn.resize(midiIn.size() - n);\n", ["notes", "clock"])
 # Only the sweep can see this one: the presets the other runs play make a
 # heard pair that is the picture pair, sample for sample, as most of the
 # plain waves do; 265 of the 281 presets do not.
 inull("the heard pair handed back as the picture pair",
-      "instrument->latest(lanes + 2 * frames, lanes + 3 * frames, frames);",
-      "std::copy(lanes, lanes + 2 * frames, lanes + 2 * frames);", ["presets"])
+      "    instrument->latestLane(c, lanes + (2 + static_cast<std::size_t>(c)) * frames, frames);",
+      "    if (c >= 2) instrument->latestLane(c, lanes + (2 + static_cast<std::size_t>(c)) * frames, frames);"
+      " else std::copy(lanes + c * frames, lanes + (c + 1) * frames, lanes + (2 + c) * frames);", ["presets"])
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
 

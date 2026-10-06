@@ -12,13 +12,15 @@
 //                                    left and a triangle of periodR on the right, at half
 //                                    scale, by arithmetic alone so both sides make it to the
 //                                    bit; one period is a mono input, none is no input
+//   ["feedlanes", p0, p1, ...]       a rack's lanes from now on, up to six: lane k a saw of
+//                                    pk samples, at half scale
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
 //
 // `instrument_cpp --code NAME...` prints each preset's setup code instead, and
 // `instrument_cpp --names` every preset's name.
 //
 // Out, a line each: `no` for a slider, setup or fade refused; for a block,
-// `block` and its heard pair then its picture pair, every sample; `out` and
+// `block` and its heard pair then the picture's six lanes, every sample; `out` and
 // the MIDI it sent, if any; `state`, the host's count and the code, if the
 // state changed.
 #include <cmath>
@@ -57,6 +59,7 @@ int main(int argc, char** argv) {
   std::vector<std::size_t> lengths;
   std::vector<std::vector<int>> sent;
   double feedL = 0, feedR = 0;
+  std::vector<double> feedLanes;
   long long fed = 0;
   std::vector<float> inL, inR;
   instrument.hooks.midiOut = [&](const std::uint8_t* bytes, int length, int) { sent.emplace_back(bytes, bytes + length); };
@@ -90,6 +93,11 @@ int main(int argc, char** argv) {
     } else if (cmd == "feed") {
       feedL = a.size() > 1 ? a[1].n : 0;
       feedR = a.size() > 2 ? a[2].n : 0;
+      feedLanes.clear();
+    } else if (cmd == "feedlanes") {
+      feedLanes.clear();
+      for (std::size_t i = 1; i < a.size() && feedLanes.size() < 6; ++i) feedLanes.push_back(a[i].n);
+      feedL = feedR = 0;
     } else if (cmd == "block") {
       const std::size_t n = static_cast<std::size_t>(arg(1).n);
       inL.assign(n, 0.0f); inR.assign(n, 0.0f);
@@ -101,15 +109,29 @@ int main(int argc, char** argv) {
           inR[k] = static_cast<float>(0.5 * (u < 0.5 ? 4 * u - 1 : 3 - 4 * u));
         }
       }
-      const scope::Instrument::Input input { inL.data(), feedR > 0 ? inR.data() : nullptr };
-      std::vector<float> lanes(4 * n);
+      std::vector<std::vector<float>> rack(feedLanes.size(), std::vector<float>(n));
+      std::vector<const float*> rackLanes;
+      for (std::size_t c = 0; c < feedLanes.size(); ++c) {
+        for (std::size_t k = 0; k < n; ++k) {
+          const double t = std::fmod(static_cast<double>(fed + static_cast<long long>(k)), feedLanes[c]) / feedLanes[c];
+          rack[c][k] = static_cast<float>(0.5 * (2 * t - 1));
+        }
+        rackLanes.push_back(rack[c].data());
+      }
+      if (!feedLanes.empty()) fed += static_cast<long long>(n);
+      const scope::Instrument::Input input = feedLanes.empty()
+        ? scope::Instrument::Input { inL.data(), feedR > 0 ? inR.data() : nullptr }
+        : scope::Instrument::Input { rackLanes[0], rackLanes.size() > 1 ? rackLanes[1] : nullptr, rackLanes.data(),
+                                     static_cast<int>(rackLanes.size()) };
+      std::vector<float> lanes(8 * n);  // the heard pair, then the picture's six lanes
       std::vector<scope::Instrument::Event> events;
       std::size_t at = 0;
       for (const std::size_t length : lengths) { events.push_back({ 0, midi.data() + at, length }); at += length; }
       sent.clear();
       instrument.block(lanes.data(), lanes.data() + n, static_cast<int>(n), events.data(), events.size(), nullptr, nullptr, 0,
-                       feedL > 0 ? &input : nullptr);
-      instrument.latest(lanes.data() + 2 * n, lanes.data() + 3 * n, n);
+                       feedL > 0 || !feedLanes.empty() ? &input : nullptr);
+      for (int c = 0; c < scope::Instrument::kRingLanes; ++c)
+        instrument.latestLane(c, lanes.data() + (2 + static_cast<std::size_t>(c)) * n, n);
       midi.clear(); lengths.clear();
       const std::size_t stride = arg(2).type == scope::Json::Type::Number && arg(2).n >= 1 ? static_cast<std::size_t>(arg(2).n) : 1;
       std::printf("block");

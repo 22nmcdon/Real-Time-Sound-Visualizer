@@ -3984,3 +3984,38 @@ core changed. The transport that the file source had written into itself is
 alike. The band split still has its own copy, wired into four lanes, which
 is a known duplication rather than an oversight: lifting it means touching
 the lanes' mixer, and it can wait for lanes in the instrument.
+
+**A rack in `?brain=core` is tapped, not rebuilt.** Stage 5i gave the
+instrument lanes, and the page's rack - its decoding, its scheduled start,
+its mixer, its live lane - builds in the instrument's own audio context and
+taps each lane into the worklet's input. The tap is one connection from each
+lane's analyser, which passes its input through, so nothing about how any
+kind of lane is built had to change. Two things learnt:
+
+- *A lane count that arrives late draws one count against another's
+  settings.* The brain source first reported its lanes from the chunks the
+  worklet posts back, which come after the rack is made; for a frame or two
+  the page drew three lanes over settings for two, and threw every frame,
+  which stopped the stems starting. The count is now the rack's own, the
+  moment it exists, and lanes not yet posted read as silence.
+- *The alignment for playing along cannot reach a tapped lane.* It reads a
+  lane further back on the page; the instrument takes each lane as it plays.
+  So the row is hidden in `?brain=core`, rather than being a slider that
+  moves nothing the instrument sees.
+- *A menu whose options are built from the lanes has to be built in the
+  core too.* The core's panel checks a menu's value against its options,
+  as the browser does, and it held the X-Y pair's two menus to the options
+  they have on the page before a rack - "0" and "1". On the page,
+  `buildLaneRows` builds them again with an option a lane. So in a rack, a
+  pair chosen on the third lane or later became lane 0 inside the
+  instrument, and the width it heard was read from the wrong lane. Parity
+  could not see it: its rack run set the pair on lane 3, but the compiled
+  and the native instrument both made the same mistake. The shell test
+  found it by reading the width. The lane menus now take a lane count,
+  which a rack sets. Any other menu the page builds from what is drawn
+  needs the same treatment.
+- *Two guards that cover each other can each be deleted unseen.* Entering
+  a rack cleared "draws the input", and the state also refused to say
+  input while a rack was up. Each mutant lived, because the other guard did
+  its job. The second guard is gone. The first is held by a check that goes
+  from Mic into a rack and back out, and finds the generator.

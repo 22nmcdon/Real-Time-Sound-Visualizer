@@ -146,8 +146,14 @@ class Controls {
   void setSelect(const std::string& id, const std::u16string& written) {
     const SelectSpec* s = selectSpec(id);
     const std::string value = utf16To8(written);
+    if (id == "xyX" || id == "xyY") { selects_[id] = laneOption(value) ? value : ""; return; }
     selects_[id] = selectHas(*s, value) ? value : "";
   }
+  /* The X-Y pair's two menus hold an option a lane, as the page builds them
+     again for whatever is drawn (buildLaneRows), where every other menu's
+     options are fixed: a pair on a rack's fourth lane is a value only a rack
+     of four or more has. Two lanes, the generator's pair, until told. */
+  void setLanes(int n) { lanes_ = std::max(1, n); }
   double range(const std::string& id) const { return ranges_.at(id); }
   const std::string& select(const std::string& id) const { return selects_.at(id); }
   // Number() of a menu's value, as a handler reads it.
@@ -156,6 +162,11 @@ class Controls {
  private:
   std::map<std::string, double> ranges_;
   std::map<std::string, std::string> selects_;
+  int lanes_ = 2;
+  bool laneOption(const std::string& value) const {
+    for (int k = 0; k < lanes_; ++k) if (value == std::to_string(k)) return true;
+    return false;
+  }
 };
 
 // --- the brain's state that a setup sets beyond the generator ----------------------

@@ -1579,6 +1579,93 @@ not tell from one that did; and the guard that keeps a playing file through a
 state from the instrument was caught only once a check applied such a state
 while one played.
 
+5i gives the instrument a rack. A third source beside its generator and its
+input: up to six lanes, one signal each, which it draws, triggers on and
+hears. Its picture ring keeps six lanes rather than a pair; the capture
+already took a source of lanes, as a rack is on the page. A lane is the
+input's lane of the same number, or - the generator's lane - the generator's
+picture left channel, one signal as the page's generator lane is, and what
+the instrument then sends out is that lane alone on both sides. The
+generator runs with or without a lane, since its block steps the
+oscillators every modulation reads. The level and the hearing read the
+trigger's lane, and the hearing's width the pair's other lane, as the page
+reads a rack; and what it hears is a loop through its own sound only while
+the trigger is on the generator's lane. A rack is told by count and the
+generator's place (`srcLanes`, "4,0"); like a rack's files, it is not kept
+in the state.
+
+On the site the rack's audio stays the page's own - `makeRackSource`, now
+able to build in a context it is handed and to take its generator lane from
+its owner: stems decoded and started together, a microphone's lane, the
+mixer that plays the stems. Each lane is tapped where its analyser hangs,
+before the mixer turns it, into the worklet's input - an analyser passes its
+input through, so the tap is one connection and nothing about how a lane is
+built changed - and the generator's lane is the instrument's, its mixer
+level turning the instrument's output. Not carried across: the band split,
+which is its own four filters; the alignment for playing along, which reads
+a lane further back on the page where the instrument takes it as it plays;
+and in the plugin a rack at all, where the host plays the files.
+
+Held by parity, a rack run - four lanes of the page's, five with the
+generator's first and a note in it, the trigger and the pair moved, a preset
+loaded, back to the generator - the compiled instrument the native one to the
+bit, and the lanes read off the samples: each fed lane at its own place, the
+generator's lane the generator, nothing past the count, two lanes again
+after - against the reading a lane along, and a module handing the lanes over
+a place along - and, back at the generator for longer than the ring holds,
+no lane of the rack's left behind in rows the pair wrote again. By the shell
+test: the hearing a loop only with the trigger on the generator's lane; its
+pitch and level read from the trigger's lane and its width from the X-Y
+pair's other lane; all three lanes drawn, and a lag asked for in a rack not
+taken; a setup loaded over a rack keeping its lanes; Mic, into a rack and
+out, back at the generator; and a generator's lane past the count unheard.
+By braintest.py, with two stems made in the page and
+the generator's lane, each drawn at its pitch; the stems heard through the
+mixer and the generator's lane through the instrument as the mixer and its
+switch say; the lanes fitted and the pair started again at the first two,
+the instrument told; a lane not yet posted read as silence; the trigger
+reaching the instrument; paused, the stems quiet and
+the generator drawing on; the band split saying it is not the instrument's;
+and Tone leaving the rack and stopping its stems. And by hosttest.py, Lanes
+off inside the plugin.
+
+The width check found a bug that parity could not. The core's panel checks
+a menu's value against the menu's options, as a browser does, and it held
+the X-Y pair's two menus to the options they have before a rack: lanes 0
+and 1. On the page they are built again with one option per lane. So in a
+rack, a pair on lane 2 or later became lane 0 inside the instrument. The
+compiled instrument and the native one made the same mistake, so parity's
+rack run, which sets the pair on lane 3, agreed with itself. The lane menus
+now take a lane count, which a rack sets. A related gap was on the page: a
+rack in `?brain=core` started the page's pair again at the first two lanes
+and never told the instrument, so the picture showed one pair while the
+instrument heard the width of another. The page now sends it.
+
+Mutation, the instrument's side: 18 of 18. Fifteen were caught by the shell
+test. The other three are about lane contents the plugin has no input to
+fill, and were caught by parity's readings: a lane past the count left
+unzeroed, Tone not leaving the rack, and the pair leaving a rack's lanes in
+the ring. At first the shell test caught 6 of 16, and parity's readings 3
+more. The checks for the rest were written against what each survivor
+broke, and one of them found the menu bug above. Two guards that covered
+each other lived as a pair: entering a rack cleared "draws the input", and
+the state refused to say input during a rack. The second guard was removed.
+The ring's mutant lived until the rack run went back to the generator for
+longer than the ring holds. Before that, every row it read had only ever
+been written by the pair.
+
+The page's side: 20 of 22 caught, one equivalent and one living. The brain
+source reading an unposted lane as silence lived until the check read back
+over the frames three lanes wrote. A window of the last two lanes' frames
+found nothing stale in a ring that had not come round yet. Fitting the
+channels when a rack is adopted proved equivalent: `buildLaneRows` fits them
+itself, so that call is gone. One mutant lives: the worklet dropping a
+part-filled chunk when the lane count changes. Without the drop, the new
+lane's first chunk starts with up to 512 frames of silence. With it, those
+frames are lost from the old lanes. No reading at the screen's rate tells
+the two apart, and the drop is kept because it never mixes two counts in one
+chunk.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

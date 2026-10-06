@@ -361,6 +361,7 @@ with sync_playwright() as pw:
       out.device = el.device.disabled;
       out.file = el.srcFile.disabled;
       out.fileTitle = el.srcFile.title;
+      out.rack = [el.srcRack.disabled, el.srcRack.title];
       out.micTitle = el.srcMic.title;
       t.log.length = 0;
       el.srcTone.click();
@@ -384,6 +385,7 @@ with sync_playwright() as pw:
           inp["sent"] == [["scopeClick", "srcMic"]] and inp["toneSent"] == [["scopeClick", "srcTone"]] and inp["mic"] == "true"
           and inp["device"] is True and inp["file"] is True and inp["micTitle"] == "The host's input"
           and inp["fileTitle"] == "The host plays files here"
+          and inp["rack"] == [True, "The host plays them here"]
           and inp["where"] == "From the host's input, once the host gives the plugin one.", str(inp))
     check("and the plugin's state puts the input back as drawn, or the generator, sending nothing back",
           inp["restored"] == [True, "true"] and inp["back"] == [False, "true"] and inp["log"] == [], str(inp))

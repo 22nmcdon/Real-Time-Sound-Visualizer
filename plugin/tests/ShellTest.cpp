@@ -1558,6 +1558,149 @@ int main() {
     const double moved = most(played(true, "1"), played(false, "1")), still = most(played(true, "0"), played(false, "0"));
     check("drawing the generator, the input reaches it: FM from the input moves the figure, and with the mode off changes nothing",
           moved > 0.05 && still == 0, "moved " + num(moved) + ", mode off " + num(still));
+    /* A rack (5i), as the site's page sends one: what it hears is a loop
+       through its own sound only while the trigger is on the generator's
+       lane. Three lanes with the generator first; the trigger on it, then on
+       the second lane, then a rack with no generator lane at all. */
+    {
+      ScopeProcessor rack;
+      rack.prepareToPlay(rate, block);
+      juce::AudioBuffer<float> buf(2, block);
+      const auto run = [&](int blocks) { for (int b = 0; b < blocks; ++b) { buf.clear(); juce::MidiBuffer m; rack.processBlock(buf, m); } };
+      rack.pageControl("srcLanes", scope::Json::string(std::u16string(u"3,0")));
+      run(2);
+      const scope::ModSource* heard = rack.matrix().source("hear.pitch");
+      const bool onGenerator = heard && heard->picture();
+      rack.pageClick("trigSource1");
+      run(2);
+      const bool onLane = heard && heard->picture();
+      rack.pageControl("srcLanes", scope::Json::string(std::u16string(u"3,-1")));
+      rack.pageClick("trigSource0");
+      run(2);
+      const bool noGenerator = heard && heard->picture();
+      /* What it hears is the trigger's lane: the generator's lane, with a note
+         in it, has a pitch; the plugin's empty lanes have none. And a trigger
+         on the third lane holds, three lanes being there. */
+      {
+        ScopeProcessor pitched;
+        pitched.prepareToPlay(rate, block);
+        pitched.pageControl("srcLanes", scope::Json::string(std::u16string(u"3,1")));
+        juce::AudioBuffer<float> b2(2, block);
+        for (int b = 0; b < 40; ++b) {
+          b2.clear();
+          juce::MidiBuffer m;
+          if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0);
+          if (b == 0) pitched.pageClick("trigSource1");
+          pitched.processBlock(b2, m);
+        }
+        const double pitchOnGen = pitched.hearing().pitch, onGen = pitched.level();
+        pitched.pageClick("trigSource2");
+        for (int b = 0; b < 200; ++b) { b2.clear(); juce::MidiBuffer m; pitched.processBlock(b2, m); }
+        const double onEmpty = pitched.level();
+        check("a rack's ear reads its trigger's lane: the generator's lane, with A3 in it, has A3's pitch and a level, and a trigger on an empty third lane holds and reads silence",
+              std::abs(pitchOnGen + 0.125) < 0.01 && onGen > 0.05 && pitched.view().trigSource == 2 && onEmpty < 0.001,
+              "pitch " + num(pitchOnGen) + " and level " + num(onGen) + " on the generator's lane, level "
+              + num(onEmpty) + " on an empty one, trigger " + num(pitched.view().trigSource));
+      }
+      check("a rack's trigger on the generator's lane is a loop through its own sound, on another lane or with no generator lane not",
+            onGenerator && !onLane && !noGenerator && rack.picture().phosphor().grid().size() > 0,
+            std::string(onGenerator ? "loop" : "not") + " on the generator, " + (onLane ? "loop" : "not") + " on a lane, "
+              + (noGenerator ? "loop" : "not") + " with none");
+
+      /* A fresh instrument a rack is made on, A3 held in it from the first
+         block, run so many blocks with what is asked of it between. */
+      const auto racked = [&](const char16_t* lanes, const std::function<void(ScopeProcessor&)>& then, int blocks) {
+        auto p = std::make_unique<ScopeProcessor>();
+        p->prepareToPlay(rate, block);
+        p->pageControl("srcLanes", scope::Json::string(std::u16string(lanes)));
+        then(*p);
+        juce::AudioBuffer<float> b3(2, block);
+        double loud = 0;
+        for (int b = 0; b < blocks; ++b) {
+          b3.clear();
+          juce::MidiBuffer m;
+          if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0);
+          p->processBlock(b3, m);
+          for (int i = 0; i < block; ++i) loud = std::fmax(loud, std::fabs(b3.getSample(0, i)));
+        }
+        return std::make_pair(std::move(p), loud);
+      };
+      const auto grid = [](const ScopeProcessor& p) { const auto& g = p.picture().phosphor().grid(); return std::vector<float>(g.begin(), g.end()); };
+      const auto lit = [](const std::vector<float>& g) { double sum = 0; for (const float c : g) sum += c; return sum; };
+      const auto click = [](const char* id) { return [id](ScopeProcessor& p) { p.pageClick(id); }; };
+      /* The width the ear hears is the X-Y pair's: the trigger's lane against
+         the pair's other one. The generator's lane against itself is one
+         signal; against an empty lane, none of it is shared. */
+      {
+        auto same = racked(u"3,1", [](ScopeProcessor& p) { p.pageClick("trigSource1"); p.pageControl("xyX", scope::Json::string(std::u16string(u"0")));
+                                                           p.pageControl("xyY", scope::Json::string(std::u16string(u"1"))); }, 120);
+        auto apart = racked(u"3,1", [](ScopeProcessor& p) { p.pageClick("trigSource1"); p.pageControl("xyX", scope::Json::string(std::u16string(u"1")));
+                                                            p.pageControl("xyY", scope::Json::string(std::u16string(u"2"))); }, 120);
+        const double one = same.first->hearing().width, none = apart.first->hearing().width;
+        check("a rack's heard width is its X-Y pair's: the generator's lane against itself one signal, against an empty lane nothing shared",
+              one > 0.9 && std::fabs(none) < 0.1 && apart.first->view().xy[1] == 2, "width " + num(one) + " and " + num(none) + ", the pair " + num(apart.first->view().xy[0]) + " and " + num(apart.first->view().xy[1]));
+      }
+      /* All a rack's lanes drawn, not the first two: the generator on the
+         third lane is ink only a third lane can put there. And a lag asked
+         for in a rack is not taken - a lane of the rack's is the second
+         lane, as on the page, where lanes and the lag are one or the other. */
+      {
+        const auto third = racked(u"3,2", click("trigSource2"), 40), none = racked(u"3,-1", click("trigSource2"), 40);
+        double apart = 0;
+        const auto a = grid(*third.first), b = grid(*none.first);
+        for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) apart += std::fabs(a[i] - b[i]);
+        check("a rack's lanes are all drawn: the generator on the third lane is ink a two-lane picture never puts there",
+              apart > 1 && third.first->pictureLanes() == 3, "apart by " + num(apart) + ", " + num(third.first->pictureLanes()) + " lanes");
+        const auto lagOn = [](ScopeProcessor& p) { p.pageClick("trigSource0"); p.pageSlider("lag", u"200");
+                                                   p.pageControl("lagOn", scope::Json::boolean(true)); };
+        const auto lagged = racked(u"2,0", lagOn, 40), plain = racked(u"2,0", click("trigSource0"), 40);
+        const auto alone = [&](bool lag) {
+          ScopeProcessor p;
+          p.prepareToPlay(rate, block);
+          if (lag) { p.pageSlider("lag", u"200"); p.pageControl("lagOn", scope::Json::boolean(true)); }
+          juce::AudioBuffer<float> b3(2, block);
+          for (int b = 0; b < 40; ++b) { b3.clear(); juce::MidiBuffer m; if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0); p.processBlock(b3, m); }
+          return grid(p);
+        };
+        const auto diff = [](const std::vector<float>& x, const std::vector<float>& y) {
+          double d = x.size() == y.size() ? 0 : 1e9;
+          for (std::size_t i = 0; i < x.size() && i < y.size(); ++i) d += std::fabs(x[i] - y[i]);
+          return d;
+        };
+        const double inRack = diff(grid(*lagged.first), grid(*plain.first)), onPair = diff(alone(true), alone(false));
+        check("a lag asked for in a rack is not taken, the second lane the rack's own; on the generator's pair the same lag moves the picture",
+              inRack == 0 && lit(grid(*plain.first)) > 0 && onPair > 1, "apart by " + num(inRack) + " in the rack, " + num(onPair) + " on the pair");
+      }
+      /* A setup loaded over a rack keeps the rack's lanes: a setup says two
+         lanes' worth of view, and the rack is still playing three - and the
+         X-Y pair's menus still offer the third. */
+      {
+        const auto loaded = racked(u"3,1", [](ScopeProcessor& p) {
+          if (const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup)) p.pageSetup(*code);
+          p.pageControl("xyY", scope::Json::string(std::u16string(u"2"))); }, 4);
+        check("a setup loaded over a rack keeps the rack's three lanes in the view, and the pair can take the third",
+              loaded.first->view().lanes == 3 && loaded.first->view().capture.channels.size() == 3 && loaded.first->view().xy[1] == 2,
+              num(loaded.first->view().lanes) + " lanes, " + num(static_cast<double>(loaded.first->view().capture.channels.size())) + " rows, the pair's Y "
+              + num(loaded.first->view().xy[1]));
+      }
+      /* A rack replaces the input, rather than sitting over it: leaving the
+         rack is the generator again, and nothing in the state says input. A
+         generator's lane past the rack's count is no lane, and unheard. */
+      {
+        const auto fromMic = racked(u"0", [](ScopeProcessor& p) {
+          p.pageClick("srcMic");
+          p.pageControl("srcLanes", scope::Json::string(std::u16string(u"3,1")));
+          p.pageControl("srcLanes", scope::Json::string(std::u16string(u"0"))); }, 2);
+        const auto decoded = scope::decodeSetup(fromMic.first->pageState().code);
+        const bool says = decoded.kind == scope::DecodedSetup::Kind::Read && decoded.setup.get("pluginInput");
+        check("a rack replaces the input: from Mic to a rack and out of it is the generator, and the state does not say input",
+              !fromMic.first->drawsInput() && !says && fromMic.second > 0.01,
+              std::string(fromMic.first->drawsInput() ? "input" : "generator") + (says ? ", the state says input" : "") + ", heard " + num(fromMic.second));
+        const auto past = racked(u"3,7", click("trigSource0"), 20), within = racked(u"3,2", click("trigSource0"), 20);
+        check("a generator's lane past the rack's count is none: unheard, where the third lane is heard",
+              past.second == 0 && within.second > 0.01 && past.first->synthLane() == -1, "heard " + num(past.second) + " and " + num(within.second));
+      }
+    }
     /* One channel, as the page's worklet takes it: the stereo pair summed and
        halved. The same FM from a mono input bus carrying that mix is the same
        sound to the sample; carrying the left alone, it is not. */

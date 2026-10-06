@@ -86,6 +86,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
   const scope::Brain::ViewState& view() const { return instrument_.view(); }
   double lfoRate(int i) const { return instrument_.lfoRate(i); }
   bool drawsInput() const { return instrument_.drawsInput(); }
+  int pictureLanes() const { return instrument_.pictureLanes(); }
+  int synthLane() const { return instrument_.synthLane(); }
   // A hand on one of the panel's sliders, not remembered, and an end of the morph stored: the shell test's way in.
   void moveSlider(const std::string& id, double value) { instrument_.moveSlider(id, value); }
   void storeMorph(bool endB) { instrument_.storeMorph(endB); }
