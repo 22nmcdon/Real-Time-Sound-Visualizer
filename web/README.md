@@ -4019,3 +4019,40 @@ kind of lane is built had to change. Two things learnt:
   input while a rack was up. Each mutant lived, because the other guard did
   its job. The second guard is gone. The first is held by a check that goes
   from Mic into a rack and back out, and finds the generator.
+
+**The band split in the instrument is the browser's own filters, to the
+bit.** Stage 5j moved the page's band split into the core, for the site in
+`?brain=core` and for the plugin's host input. It had to be the
+BiquadFilterNodes' arithmetic, not the page's JavaScript biquad's, because
+the page's band split is made of the nodes. The cookbook formulas in doubles
+came within 2.5e-6 of Chromium's output, not to the bit, and the gap was
+largest on the 120 Hz highpass. The cause was found by trying each possible
+float rounding in the coefficient arithmetic against the browser's own
+output, one at a time and then together. Two match exactly: Q is an
+AudioParam, so it is a float, and the browser works the resonance
+(10^(Q/20)) out of it as a float too. With both, braintest.py's offline
+render of the page's BANDS and the compiled instrument agree to zero on
+every lane and on what is heard. `biquadNodeCoefficients` in `capture.h`
+holds those roundings. The picture-path filter keeps
+`biquadCoefficients`, which is held to the page's JavaScript biquad.
+
+Two more things learnt on the way:
+
+- *The bands do not add back up, by about 3 dB.* The page said the
+  difference was small. The shell test checks that what the plugin plays is
+  the four served bands summed, to 1.5e-8, and the same run measured the
+  level: 0.207 RMS from an input of 0.3. Neighbouring second-order
+  Butterworth bands partly cancel. The comment at `BANDS` now gives the
+  number, and names Linkwitz-Riley crossovers as the fix if it matters.
+- *laneMixer sets the lanes one at a time.* A band split whose gains live in
+  the instrument was first sent three mixes for one solo, two of them
+  half-finished. They were harmless only while all three arrived before the
+  same block. The four are now sent together, once the mixer has set them
+  all, and only when they changed.
+- *A file still decoding when another source is chosen.* Under
+  `?brain=core`, Tone and Mic returned before marking a build in flight as
+  stale. A file decoding when Tone was pressed was therefore played, and
+  drawn, over the generator once it had decoded. This happened to 5h's
+  file and to 5j's file split. `playFile` now asks once the decode is done
+  whether it is still wanted. braintest.py presses Tone, and Mic, while a
+  file is decoding.

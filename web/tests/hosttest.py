@@ -94,7 +94,8 @@ FAKE = """
          fetch every frame without waiting passed as one that waited. */
       return new Promise((resolve) => setTimeout(() => {
         t.inFlight--;
-        resolve(new Response(both.buffer.slice(0)));
+        // Two lanes, or the four a band split serves when a check has asked for them.
+        resolve(new Response((t.served || both).buffer.slice(0)));
       }, 40));
     };
   })();
@@ -389,6 +390,84 @@ with sync_playwright() as pw:
           and inp["where"] == "From the host's input, once the host gives the plugin one.", str(inp))
     check("and the plugin's state puts the input back as drawn, or the generator, sending nothing back",
           inp["restored"] == [True, "true"] and inp["back"] == [False, "true"] and inp["log"] == [], str(inp))
+
+    # The host's input split into bands (5j): Into bands sent as the plugin's
+    # control, the four lanes it then serves drawn exactly as served, a band
+    # soloed sent as one mix, Whole sent back; and the plugin's state putting
+    # the split back, or the generator, sending nothing back.
+    split = p.evaluate("""async (codes) => {
+      const t = window.__hostTest, out = {};
+      const four = new Float32Array(8192 * 4);
+      for (let k = 0; k < 8192; k++) for (let c = 0; c < 4; c++) four[4 * k + c] = (c + 1) * 0.1 * Math.sin(2 * Math.PI * 100 * (c + 1) * k / 44100);
+      el.srcMic.click();
+      out.row = el.micShapeRow.hidden;
+      t.log.length = 0;
+      el.micBands.click();
+      t.served = four;
+      await new Promise((r) => setTimeout(r, 500));
+      out.sent = t.log.slice();
+      out.lanes = [state.source.channels, state.source.lanes.map((l) => l.name).join(',')];
+      const w = state.source.getLatestWindow(8192);
+      let off = 0, along = 0;
+      for (let k = 0; k < 8192; k++) {
+        for (let c = 0; c < 4; c++) off = Math.max(off, Math.abs(w[c][k] - four[4 * k + c]));
+        along = Math.max(along, Math.abs(w[2][k] - four[4 * k + 3]));
+      }
+      out.off = off; out.along = along;
+      t.log.length = 0;
+      state.source.lanes[3].solo = true; state.source.remix();
+      await new Promise((r) => setTimeout(r, 0));
+      // The same mix again is not sent again.
+      state.source.remix();
+      await new Promise((r) => setTimeout(r, 0));
+      out.mix = t.log.slice();
+      state.source.lanes[3].solo = false; state.source.remix();
+      await new Promise((r) => setTimeout(r, 0));
+      t.log.length = 0;
+      el.micWhole.click();
+      t.served = null;
+      await new Promise((r) => setTimeout(r, 400));
+      out.whole = [t.log.slice(), state.source.channels];
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 200));
+      t.log.length = 0;
+      t.state = { version: 13, code: codes[0] };
+      t.served = four;
+      await new Promise((r) => setTimeout(r, 700));
+      out.restored = [state.micBands, state.source.bands, state.source.channels, el.srcMic.getAttribute('aria-checked'), el.micBands.getAttribute('aria-checked')];
+      t.state = { version: 14, code: codes[1] };
+      t.served = null;
+      await new Promise((r) => setTimeout(r, 700));
+      out.back = [state.source.bands, state.source.channels, el.srcTone.getAttribute('aria-checked')];
+      out.log = t.log.slice();
+      /* Split again, read at once: the lanes past the two the plugin is still
+         serving read as silence, not as the four it served before. Then Tone
+         lets the split go without Whole. */
+      el.srcMic.click();
+      el.micBands.click();
+      const early = state.source.getLatestWindow(1024);
+      out.early = [early.length, Math.max(...early[2].map(Math.abs)), Math.max(...early[0].map(Math.abs)) > 0.1];
+      el.srcTone.click();
+      out.tone = [state.source.bands, state.source.channels];
+      el.micWhole.click();
+      // A file split asked for in the plugin, whose host plays the files: said, and nothing sent.
+      t.log.length = 0;
+      await toBands(new File([new Uint8Array(64)], 'x.wav', { type: 'audio/wav' }));
+      out.noFile = [el.rackNote.textContent, t.log.slice(), state.source.bands];
+      return out;
+    }""", [code({"pluginBands": True}), code({})])
+    check("inside the plugin, Into bands is offered and sent, and the four lanes the plugin serves are drawn as served",
+          split["row"] is False and split["sent"] == [["scopeControl", "srcBands", "1"]]
+          and split["lanes"] == [4, "Low,Low mid,High mid,High"] and split["off"] == 0, str(split))
+    check("and the comparison fails against the lanes one place along", split["along"] > 0.1, str(split["along"]))
+    check("a band soloed is sent as one mix, and Whole as the input whole",
+          split["mix"] == [["scopeControl", "laneMix", "0,0,0,1"]] and split["whole"] == [[["scopeControl", "srcBands", "0"]], 2], str(split))
+    check("and the plugin's state puts the split back, or the generator, sending nothing back",
+          split["restored"] == [True, True, 4, "true", "true"] and split["back"] == [False, 2, "true"] and split["log"] == [], str(split))
+    check("a lane the plugin has not served yet reads as silence, and Tone lets the split go",
+          split["early"] == [4, 0, True] and split["tone"] == [False, 2], str(split["early"]) + " " + str(split["tone"]))
+    check("a file split asked for inside the plugin says the host plays files there, and sends nothing",
+          split["noFile"] == ["The host plays files here.", [], False], str(split["noFile"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

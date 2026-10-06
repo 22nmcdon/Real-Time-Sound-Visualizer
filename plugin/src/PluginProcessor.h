@@ -62,6 +62,10 @@ class ScopeProcessor final : public juce::AudioProcessor {
      resource provider. */
   static constexpr std::size_t kPictureFrames = scope::Instrument::kPictureFrames;
   std::vector<float> pictureSnapshot() const { return instrument_.pictureSnapshot(); }
+  std::vector<float> pictureServed() const { return instrument_.pictureServed(); }
+  bool bands() const { return instrument_.bands(); }
+  int rack() const { return instrument_.rack(); }
+  double bandGain(int lane) const { return instrument_.bandGain(lane); }
   double sampleRateNow() const { return rate_.load(); }
 
   /* What the page last said about how the picture is getting through: frames

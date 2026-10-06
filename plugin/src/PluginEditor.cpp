@@ -113,10 +113,11 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     const auto& page = servedPage();
     return bytes(page.data(), page.size(), "text/html; charset=utf-8");
   }
-  // The picture: the last frames played, as little-endian float32, left and
-  // right interleaved - fetched by the page each frame it draws.
+  // The picture: the last frames played, as little-endian float32, its lanes
+  // interleaved - left and right, or the band split's four - fetched by the
+  // page each frame it draws, which reads the lane count off the length.
   if (path == "/picture.bin") {
-    const auto frames = processor.pictureSnapshot();
+    const auto frames = processor.pictureServed();
     return bytes(frames.data(), frames.size() * sizeof(float), "application/octet-stream");
   }
   return std::nullopt;

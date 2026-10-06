@@ -84,6 +84,10 @@ class Instrument {
   };
   // The most lanes the ring keeps: the page's MAX_LANES.
   static constexpr int kRingLanes = kMaxLanes;
+  /* The band split's four bands, as the page's BANDS has them: a highpass at
+     the lower edge, a lowpass at the upper, nought for none. */
+  static constexpr int kBandCount = 4;
+  static constexpr std::array<std::array<double, 2>, kBandCount> kBandEdges { { { 0, 120 }, { 120, 800 }, { 800, 4000 }, { 4000, 0 } } };
 
   /* One hand from the page: a slider moved (by id and the value the browser
      holds), a setup loaded (a preset, a code), a menu, a switch or a text box
@@ -162,6 +166,7 @@ class Instrument {
     // The view's destinations before any setup, so a preset's routings onto them are heard.
     pictureRun_ = std::make_unique<PictureRun>(*matrix_, *brain_);
     pictureSource_.rate = sampleRate;
+    bandFilters();
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;
     pictureSource_.lanes = false;
@@ -217,6 +222,8 @@ class Instrument {
     // A saved state says which source was drawn; a preset or a code from the page says nothing, and changes nothing.
     if (const Json* drawn = setup_.type == Json::Type::Object ? setup_.get("pluginInput") : nullptr)
       drawFrom(drawn->type == Json::Type::Bool && drawn->b);
+    if (const Json* split = setup_.type == Json::Type::Object ? setup_.get("pluginBands") : nullptr)
+      drawBands(split->type == Json::Type::Bool && split->b);
     // A setup restores two lanes' worth of view; a rack drawn has more, and keeps them.
     if (rack_ > 0) { brain_->view.capture.channels.resize(static_cast<std::size_t>(std::max(2, rack_))); fitView(*brain_); }
     if (hooks.loaded) hooks.loaded();
@@ -385,7 +392,9 @@ class Instrument {
     }
     setup.set("cc", Json::string(std::string_view(keyboard_->encodeCC())));
     setup.erase("pluginInput");
+    setup.erase("pluginBands");
     if (drawsInput_) setup.set("pluginInput", Json::boolean(true));
+    if (bands_) setup.set("pluginBands", Json::boolean(true));
     const auto code = encodeSetup(setup);
     return code ? *code : std::string();
   }
@@ -402,6 +411,20 @@ class Instrument {
       const std::size_t from = ((at + k) % kPictureFrames) * kRingLanes;
       out[k * 2] = picture_[from];
       out[k * 2 + 1] = picture_[from + 1];
+    }
+    return out;
+  }
+  /* The picture as the plugin serves it to its page: the whole ring, oldest
+     first, as many lanes as the picture has interleaved - two, or a rack's or
+     the band split's - so the page, which knows how many frames the ring is,
+     reads the lane count off the length. Two lanes are pictureSnapshot's. */
+  std::vector<float> pictureServed() const {
+    const std::size_t lanes = static_cast<std::size_t>(std::clamp(pictureSource_.channels, 1, kRingLanes));
+    std::vector<float> out(kPictureFrames * lanes);
+    const std::size_t at = pictureAt_.load(std::memory_order_acquire);
+    for (std::size_t k = 0; k < kPictureFrames; ++k) {
+      const std::size_t from = ((at + k) % kPictureFrames) * kRingLanes;
+      for (std::size_t c = 0; c < lanes; ++c) out[k * lanes + c] = picture_[from + c];
     }
     return out;
   }
@@ -433,6 +456,8 @@ class Instrument {
   bool drawsInput() const { return drawsInput_; }
   int rack() const { return rack_; }
   int synthLane() const { return synthLane_; }
+  bool bands() const { return bands_; }
+  double bandGain(int lane) const { return bandGain_[static_cast<std::size_t>(lane)]; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   double slider(const char* id) const { return brain_->panel.range(id); }
   int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
@@ -462,7 +487,9 @@ class Instrument {
   void change(const std::string& id, const Json& value) {
     const std::u16string text = value.type == Json::Type::String ? value.s : u"";
     const bool checked = value.type == Json::Type::Bool && value.b;
-    if (id == "srcLanes") { rackFrom(utf16To8(text)); return; }
+    if (id == "srcLanes") { bands_ = false; rackFrom(utf16To8(text)); return; }
+    if (id == "srcBands") { drawBands(text == u"1"); return; }
+    if (id == "laneMix") { mixFrom(utf16To8(text)); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
@@ -472,7 +499,7 @@ class Instrument {
   }
 
   void press(const std::string& id) {
-    if (id == "srcTone" || id == "srcMic") { drawRack(0, -1); drawFrom(id == "srcMic"); return; }
+    if (id == "srcTone" || id == "srcMic") { bands_ = false; drawRack(0, -1); drawFrom(id == "srcMic"); return; }
     if (!controlClick(id, *brain_, *core_, *keyboard_)) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -552,6 +579,62 @@ class Instrument {
     pictureSource_.lanes = lanes > 0;
     changed_ = true;
   }
+  /* The band split: the input, split by the page's four crossovers into a
+     rack of four lanes, each one signal - the two channels filtered apart
+     and halved together, as the page's analysers take a stereo band - and
+     what is heard the bands' two channels summed, each band at the gain the
+     page's mixer gives it, so a band soloed is the part you are looking at.
+     Kept in the state, as the input is: a host's input split is how that
+     project is played. Off, it is the input whole again. */
+  void drawBands(bool on) {
+    if (on == bands_) return;
+    if (on) {
+      drawRack(kBandCount, -1);
+      bands_ = true;
+      bandGain_.fill(1.0);
+      for (auto& band : bandMemory_) for (auto& channel : band) for (auto& stage : channel) stage = BiquadMemory {};
+    } else {
+      bands_ = false;
+      drawRack(0, -1);
+      drawFrom(true);
+    }
+    changed_ = true;
+  }
+  /* The page's mixer, "g0,g1,...": each lane's gain, mute and solo already in
+     it, taken as sent - nothing the page's mixer makes is below nought, and
+     a gain that was would only turn its band over. Not a hand, as the rack
+     is not. */
+  void mixFrom(const std::string& text) {
+    std::size_t at = 0;
+    for (std::size_t lane = 0; lane < bandGain_.size() && at <= text.size(); ++lane) {
+      const std::size_t end = std::min(text.find(',', at), text.size());
+      const double gain = jsStringToNumber(toU16(text.substr(at, end - at)));
+      if (std::isfinite(gain)) bandGain_[lane] = gain;
+      at = end + 1;
+    }
+  }
+  /* One band's filters for a rate: the page's Butterworth crossovers as its
+     BiquadFilterNodes make them (biquadNodeCoefficients), not as the page's
+     own JavaScript biquad would, since the page's band split is the nodes. */
+  void bandFilters() {
+    for (int b = 0; b < kBandCount; ++b) {
+      const auto& edge = kBandEdges[static_cast<std::size_t>(b)];
+      bandHp_[static_cast<std::size_t>(b)] = edge[0] > 0 ? biquadNodeCoefficients("highpass", edge[0], kButterworthQDb, rate_) : Biquad {};
+      bandLp_[static_cast<std::size_t>(b)] = edge[1] > 0 ? biquadNodeCoefficients("lowpass", edge[1], kButterworthQDb, rate_) : Biquad {};
+    }
+  }
+  /* One sample of one band of one channel: the highpass and then the lowpass,
+     each as the browser's BiquadFilterNode runs it - coefficients and memory
+     in doubles, every output rounded to a float sample before it is
+     remembered or passed on - with a stage the band has not got passing its
+     input straight through. */
+  float bandStep(int band, int channel, float x) {
+    auto& memory = bandMemory_[static_cast<std::size_t>(band)][static_cast<std::size_t>(channel)];
+    const auto& edge = kBandEdges[static_cast<std::size_t>(band)];
+    if (edge[0] > 0) x = memory[0].step(bandHp_[static_cast<std::size_t>(band)], x);
+    if (edge[1] > 0) x = memory[1].step(bandLp_[static_cast<std::size_t>(band)], x);
+    return x;
+  }
   // Whether what it hears is its own sound: the generator, or a rack's trigger on the generator's lane.
   bool hearsItself() const {
     if (rack_ > 0) return synthLane_ >= 0 && static_cast<int>(brain_->view.trigSource) == synthLane_;
@@ -630,12 +713,31 @@ class Instrument {
            nothing of it is heard. The rest of what is heard is the page's: it
            mixes the lanes it plays itself. */
         core_->block(pictureL_.data(), pictureR_.data(), n, heardL_.data(), heardR_.data());
+        std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
+        if (bands_) {
+          for (int k = 0; k < n; ++k) {
+            float* row = &picture_[ring * kRingLanes];
+            const float xl = inL ? inL[k] : 0.0f, xr = inR ? inR[k] : xl;
+            double hl = 0, hr = 0;
+            for (int c = 0; c < kRingLanes; ++c) {
+              if (c >= kBandCount) { row[c] = 0.0f; continue; }
+              const float yl = bandStep(c, 0, xl), yr = bandStep(c, 1, xr);
+              row[c] = (yl + yr) * 0.5f;
+              hl += bandGain_[static_cast<std::size_t>(c)] * yl;
+              hr += bandGain_[static_cast<std::size_t>(c)] * yr;
+            }
+            left[at + k] = static_cast<float>(hl);
+            heardR[k] = static_cast<float>(hr);
+            ring = (ring + 1) % kPictureFrames;
+          }
+          pictureAt_.store(ring, std::memory_order_release);
+          continue;
+        }
         for (int k = 0; k < n; ++k) {
           const float h = synthLane_ >= 0 ? heardL_[static_cast<std::size_t>(k)] : 0.0f;
           left[at + k] = h;
           heardR[k] = h;
         }
-        std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
         for (int k = 0; k < n; ++k) {
           float* row = &picture_[ring * kRingLanes];
           for (int c = 0; c < kRingLanes; ++c) {
@@ -720,6 +822,19 @@ class Instrument {
   bool drawsInput_ = false;       // drawing the input rather than the generator
   int rack_ = 0;                  // drawing a rack of this many lanes, or none
   int synthLane_ = -1;            // the rack's lane the generator draws, or none
+  bool bands_ = false;            // the rack is the input split into bands
+  // A biquad's memory as the browser keeps it: doubles, fed and feeding back float samples.
+  struct BiquadMemory {
+    double x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    float step(const Biquad& c, float x) {
+      const float y = static_cast<float>(c.b0 * x + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2);
+      x2 = x1; x1 = x; y2 = y1; y1 = y;
+      return y;
+    }
+  };
+  std::array<Biquad, kBandCount> bandHp_ {}, bandLp_ {};
+  std::array<std::array<std::array<BiquadMemory, 2>, 2>, kBandCount> bandMemory_ {};  // band, channel, stage
+  std::array<double, kBandCount> bandGain_ { 1, 1, 1, 1 };
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
 };

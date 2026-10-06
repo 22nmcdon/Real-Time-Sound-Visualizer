@@ -3572,6 +3572,18 @@ iruns["rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 100
     + [["control", "srcLanes", "4,-1"]] + blocks(8) + [["control", "srcLanes", "5,0"], NOTE_ON(57)] + blocks(10) \
     + [["click", "trigSource2"], ["control", "xyY", "3"]] + blocks(10) + [["setup", icode["Pluck"]]] + blocks(6) \
     + [["control", "srcLanes", "4,-1"], NOTE_ON(60)] + blocks(6) + [["click", "srcTone"]] + blocks(40)
+# The band split (5j): the input split into four bands, a mix on the bands
+# heard, a preset loaded over them, the input whole again, the split again
+# from fresh memory, and the generator. And a state that opens split.
+iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(2) \
+    + [["control", "srcBands", "1"]] + blocks(16) + [["control", "laneMix", "0,1,0.5,0"]] + blocks(6) \
+    + [["setup", icode["Pluck"]]] + blocks(4) + [["control", "srcBands", "0"]] + blocks(4) \
+    + [["control", "srcBands", "1"]] + blocks(4) + [["click", "srcTone"]] + blocks(4)
+# And the split after a rack of six for longer than the ring holds, so the
+# rows it writes were last the rack's: its lanes past four have to be cleared.
+iruns["bands after rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57),
+                             ["control", "srcLanes", "6,5"]] + blocks(66) + [["control", "srcBands", "1"]] + blocks(8)
+iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
 iout = {}
@@ -3639,6 +3651,90 @@ check("and the reading fails against the lanes one place along", ilane_fed(15, 2
 # run after it is as long as it has to be to wrap the ring.
 unheard = max(abs(v) for b in range(37, 42) for v in rrows[b][:256])
 check("and a rack with no generator lane sends nothing out, a note held or not", unheard == 0, "peak %g" % unheard)
+# The band split read off the samples, against the browser's own biquad
+# done here in its arithmetic - coefficients and memory in doubles, each
+# output a float sample - so a split that agreed with itself on both sides
+# and was not the page's crossovers would fail here: each lane the band of
+# the two channels halved together, what is heard the bands summed at the
+# mix's gains, nothing past four lanes, and the memory fresh each time the
+# split begins.
+import struct
+def f32(v): return struct.unpack("f", struct.pack("f", v))[0]
+def wa_biquad(kind, hz, rate):
+    f0 = max(1e-4, min(hz / (rate / 2), 0.9999)); w0 = math.pi * f0
+    cosw, sinw = math.cos(w0), math.sin(w0)
+    alpha = sinw / (2 * f32(10 ** (f32(-3.0103) / 20)))   # Q an AudioParam's float, and the resonance a float
+    if kind == "highpass": b0, b1, b2 = (1 + cosw) / 2, -(1 + cosw), (1 + cosw) / 2
+    else: b0, b1, b2 = (1 - cosw) / 2, 1 - cosw, (1 - cosw) / 2
+    a0, a1, a2 = 1 + alpha, -2 * cosw, 1 - alpha
+    return (b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
+def wa_run(c, xs):
+    b0, b1, b2, a1, a2 = c; x1 = x2 = y1 = y2 = 0.0; out = []
+    for x in xs:
+        y = f32(b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2)
+        x2, x1, y2, y1 = x1, x, y1, y; out.append(y)
+    return out
+def wa_bands(xs, rate, edges=((0, 120), (120, 800), (800, 4000), (4000, 0))):
+    out = []
+    for lo, hi in edges:
+        ys = xs
+        if lo > 0: ys = wa_run(wa_biquad("highpass", lo, rate), ys)
+        if hi > 0: ys = wa_run(wa_biquad("lowpass", hi, rate), ys)
+        out.append(ys)
+    return out
+def isplit(name, first, count, pl, pr, start, rate, gains=(1, 1, 1, 1), edges=None):
+    rows = [ifloats(l) for l in iout[name][1] if l.startswith("block ")][first:first + count]
+    fed = [ifed(start + k, pl, pr) for k in range(count * 128)]
+    kw = {"edges": edges} if edges else {}
+    bl, br = wa_bands([f[0] for f in fed], rate, **kw), wa_bands([f[1] for f in fed], rate, **kw)
+    most = 0.0
+    for b, row in enumerate(rows):
+        for k in range(128):
+            i = b * 128 + k
+            for c in range(4):
+                most = max(most, abs(row[(2 + c) * 128 + k] - f32((bl[c][i] + br[c][i]) * 0.5)))
+            most = max(most, abs(row[k] - f32(sum(g * bl[c][i] for c, g in enumerate(gains)))),
+                       abs(row[128 + k] - f32(sum(g * br[c][i] for c, g in enumerate(gains)))))
+            most = max(most, abs(row[6 * 128 + k]), abs(row[7 * 128 + k]))
+    return most
+# The split from block 2, for 16 blocks at even gains: the memory starts there.
+split_even = isplit("bands", 2, 16, 100, 73, 2 * 128, 48000)
+# Then the mix: the same filters running on, read over the whole stretch so the memory carries.
+def isplit_mixed():
+    rows = [ifloats(l) for l in iout["bands"][1] if l.startswith("block ")][2:24]
+    fed = [ifed(2 * 128 + k, 100, 73) for k in range(22 * 128)]
+    bl, br = wa_bands([f[0] for f in fed], 48000), wa_bands([f[1] for f in fed], 48000)
+    gains = (0, 1, 0.5, 0)
+    return max(max(abs(rows[b][k] - f32(sum(g * bl[c][b * 128 + k] for c, g in enumerate(gains)))),
+                   abs(rows[b][128 + k] - f32(sum(g * br[c][b * 128 + k] for c, g in enumerate(gains)))))
+               for b in range(16, 22) for k in range(128))
+split_mixed = isplit_mixed()
+# The input whole after the split - blocks 28 to 31 - heard as it was fed, and no band left in the ring's lanes past two.
+whole_rows = [ifloats(l) for l in iout["bands"][1] if l.startswith("block ")][28:32]
+whole = max(max(abs(row[k] - ifed((28 + b) * 128 + k, 100, 73)[0]), abs(row[128 + k] - ifed((28 + b) * 128 + k, 100, 73)[1]))
+            for b, row in enumerate(whole_rows) for k in range(128))
+whole_lanes = max(abs(v) for row in whole_rows for v in row[4 * 128:])
+# The split again from block 32: fresh memory, as the reference's.
+split_again = isplit("bands", 32, 4, 100, 73, 32 * 128, 48000)
+split_opened = isplit("opened bands", 0, 8, 90, 61, 0, 44100)
+bstates = [l for l in iout["bands"][1] if l.startswith("state ")]
+def isays(line, key):
+    code = line.split(" ", 2)[2]
+    return key in _json.loads(base64.b64decode(code + "=" * (-len(code) % 4)))
+bsaid = [isays(l, "pluginBands") for l in bstates]
+check("and the band split is the page's crossovers in the browser's arithmetic: the four lanes, the mix heard, fresh each time it begins, the input whole between",
+      split_even < 1e-6 and split_mixed < 1e-6 and split_again < 1e-6 and split_opened < 1e-6 and whole == 0 and whole_lanes == 0,
+      "split %g, mixed %g, again %g, opened %g; whole %g, lanes after %g" % (split_even, split_mixed, split_again, split_opened, whole, whole_lanes))
+arows = [ifloats(l) for l in iout["bands after rack"][1] if l.startswith("block ")]
+rack_five = max(abs(v) for b in range(2, 10) for v in arows[b][7 * 128:8 * 128])
+after_rack = max(abs(v) for b in range(66, 74) for v in arows[b][6 * 128:8 * 128])
+check("and the split after a rack of six clears the rack's lanes past four in rows the rack last wrote",
+      rack_five > 0.1 and after_rack == 0, "the rack's sixth lane %.3f, after the split %g" % (rack_five, after_rack))
+check("and the state says the split while it is drawn and not after, and opens split from a state that says it",
+      True in bsaid and bsaid[-1] is False and bsaid.index(True) < len(bsaid) - 1, str(bsaid))
+check("and the reading fails against a crossover at 130 Hz rather than 120",
+      isplit("bands", 2, 16, 100, 73, 2 * 128, 48000, edges=((0, 130), (130, 800), (800, 4000), (4000, 0))) > 1e-4)
+check("and against the split read from a block late", isplit("bands", 2, 16, 100, 73, 3 * 128, 48000) > 1e-4)
 # Nulls. The comparison one line out of step; a native run with one hand a
 # step away; and modules from the bridge with one thing wrong in each.
 pa, ca, ja = iout["notes"]

@@ -1666,6 +1666,107 @@ frames are lost from the old lanes. No reading at the screen's rate tells
 the two apart, and the drop is kept because it never mixes two counts in one
 chunk.
 
+5j moves the band split into the instrument: the input it draws, split by
+the page's four crossovers into a rack of four lanes. Each lane is one
+signal, the band of the two channels halved together, as the page's
+analysers take a stereo band. What is heard is the bands' two channels
+summed, each at the gain the page's mixer gives it (`laneMix`), so a band
+soloed is the part you are looking at. It is asked for and let go by
+`srcBands`, ends with Mic, Tone or a rack, and is kept in the state as
+`pluginBands`: a host's input split is how that project is played, as the
+input itself is.
+
+The filters had to be the page's BiquadFilterNodes rather than its
+JavaScript biquad, since the page's band split is made of the nodes. The
+cookbook in doubles came within 2.5e-6 of Chromium. Trying each float
+rounding in turn found the two that close the gap: Q is an AudioParam, so a
+float, and the browser works out the resonance as a float as well.
+`biquadNodeCoefficients` holds them. The memory is doubles fed back float
+samples, as the browser's is.
+
+On the site, Into bands under Mic and a file split from Lanes go to the
+instrument in `?brain=core`, the file played into it as 5h plays one. Its
+band lanes (`makeHostBandLanes`) are what the page's mixer and lane rows
+turn, and they send the gains as one message once the mixer has set all
+four. In the plugin, Into bands splits the host's input. The plugin's
+picture now serves as many lanes as the picture has, interleaved, and the
+page reads the count off the length, since it already knows the frame
+count. Two lanes are byte for byte what they were. A state putting the
+split back is applied without a word sent back, as every state is.
+
+Held by parity: a band-split run and a state that opens split, the compiled
+instrument the native one to the bit. Each lane and what is heard are read
+against a Python copy of the browser's arithmetic, again to the bit, at
+even gains and with a mix. The memory starts fresh each time the split
+begins, the input is whole between, and nothing lies past four lanes. These
+readings fail against a crossover at 130 Hz and a split read a block late.
+braintest.py holds the strongest check: the compiled instrument fed a
+stereo signal a block at a time, against the page's BANDS rendered offline
+through real BiquadFilterNodes. Every lane and what is heard agree to zero,
+and the comparison fails against the bands one place along. braintest.py
+also covers:
+
+- the live split in its order, kept in the state and not heard;
+- a solo sent as one mix, and Whole;
+- Into bands chosen over the generator waiting for Mic;
+- a state saying so not sent back;
+- a file split of 60 Hz and 2 kHz drawn at each pitch and heard, its
+  lanes not removable one by one;
+- Tone letting it go;
+- Tone or Mic pressed while a file is decoding letting the file go.
+
+The shell test plays the host's input split: four lanes served, the Low the
+60 Hz and the High mid the 2 kHz, and what is heard the four summed, to
+1.5e-8. It also checks a solo heard as that band alone, the split kept in
+the project and reopened, Mic whole again, and a rack chosen over the split
+letting it go. hosttest.py checks the same
+inside the plugin's page: Into bands sent, the four served lanes drawn
+exactly, a solo sent as one mix, a lane not yet served read as silence,
+Tone letting the split go, and the state putting it back quietly.
+
+The page's bands do not add back up, by about 3 dB at 60 Hz (0.207 RMS
+from 0.3). That is the page's behaviour, carried across exactly. The
+comment at `BANDS` used to call the difference small, and now gives the
+number.
+
+A gap in 5h's file path came out too. Under `?brain=core`, Tone and Mic
+returned before marking a file still decoding as no longer wanted, so a
+file finished decoding after Tone was pressed and was played over the
+generator. That was true of a file split as well. `playFile` now asks
+whether it is still wanted once the file has decoded, and Tone and Mic
+mark any build in flight as stale in the host's path, as they always did
+on the page's own.
+
+Mutation, the instrument's side: 18 of 19, and the nineteenth equivalent.
+Nine were caught by the shell test and nine by parity's readings. The
+comparison of compiled with native does not count as a catch here, since
+a mutant changes only the native side. Rounding Q to a float before the
+resonance is worked out cannot be told apart for the one Q the bands use,
+because rounding the resonance absorbs the difference. It stays, because
+it is what the browser does. Four of the 18 lived at first:
+
+- a rack chosen over the split, until a check chose one;
+- the clamp on a mix gain below nought, which the page's mixer never sends.
+  That clamp is gone;
+- the lanes past four not cleared during a split. This lived until parity
+  ran the split after a six-lane rack for longer than the ring holds, as
+  5i's ring mutant had needed. That run also found the native harness
+  handing a pair to a rack as no lanes, where the bridge hands it as two,
+  and the harness now does as the bridge does;
+- the band memory and gain resets, which were caught only once parity's
+  readings were counted apart from its comparison.
+
+The page's side: 28 of 28, through braintest.py and hosttest.py. Eleven
+lived at first, and each now has a check:
+
+- a mix sent again unchanged;
+- a state applied while already split, which could not show whether it
+  was sent back;
+- a band split's lanes left removable;
+- the plugin's file split guard;
+- the decode race above, from Tone and from Mic.
+
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

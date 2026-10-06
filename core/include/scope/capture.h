@@ -52,15 +52,13 @@ inline double cutoffHz(double step) { return 20 * std::pow(1000.0, step / 1000);
 // A biquad's coefficients, normalised by a0, and a one-pole DC blocker's.
 struct Biquad { double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0; };
 
-// biquadCoefficients: the cookbook in the form the Web Audio specification
-// writes it; Q in decibels for the lowpass and highpass, linear otherwise.
-inline Biquad biquadCoefficients(const std::string& type, double hz, double q, double rate) {
+// biquadFromLinearQ: the cookbook in the form the Web Audio specification
+// writes it, for a Q already linear.
+inline Biquad biquadFromLinearQ(const std::string& type, double hz, double linearQ, double rate) {
   const double nyquist = rate / 2;
   const double f0 = std::fmax(1e-4, std::fmin(hz / nyquist, 0.9999));
   const double w0 = 3.14159265358979323846 * f0;
   const double cosw = std::cos(w0), sinw = std::sin(w0);
-  const bool decibels = type == "lowpass" || type == "highpass";
-  const double linearQ = decibels ? std::pow(10, q / 20) : std::fmax(1e-4, q);
   const double alpha = sinw / (2 * linearQ);
   double b0, b1, b2, a0, a1, a2;
   if (type == "highpass") { b0 = (1 + cosw) / 2; b1 = -(1 + cosw); b2 = b0; a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha; }
@@ -68,6 +66,24 @@ inline Biquad biquadCoefficients(const std::string& type, double hz, double q, d
   else if (type == "notch") { b0 = 1; b1 = -2 * cosw; b2 = 1; a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha; }
   else { b0 = (1 - cosw) / 2; b1 = 1 - cosw; b2 = b0; a0 = 1 + alpha; a1 = -2 * cosw; a2 = 1 - alpha; }
   return { b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0 };
+}
+
+// biquadCoefficients: the page's JavaScript biquad's - Q in decibels for the
+// lowpass and highpass, linear otherwise, all of it in doubles.
+inline Biquad biquadCoefficients(const std::string& type, double hz, double q, double rate) {
+  const bool decibels = type == "lowpass" || type == "highpass";
+  return biquadFromLinearQ(type, hz, decibels ? std::pow(10, q / 20) : std::fmax(1e-4, q), rate);
+}
+
+/* biquadNodeCoefficients: a BiquadFilterNode's own, for a lowpass or a
+   highpass, which differ from the page's arithmetic in two roundings: Q is
+   an AudioParam, so a float, and the browser works the resonance out of it
+   as a float too. Found by trying each rounding against the browser's
+   output: with these two the core's band split is Chromium's to the bit,
+   and without the second a 120 Hz highpass is two parts in a million away. */
+inline Biquad biquadNodeCoefficients(const std::string& type, double hz, double qDb, double rate) {
+  const double resonance = static_cast<float>(std::pow(10.0, static_cast<double>(static_cast<float>(qDb)) / 20));
+  return biquadFromLinearQ(type, hz, resonance, rate);
 }
 
 // dcBlockerCoefficients: the pole that puts the -3 dB point at the corner.

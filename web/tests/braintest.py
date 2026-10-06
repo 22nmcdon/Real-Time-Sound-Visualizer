@@ -261,8 +261,9 @@ with sync_playwright() as pw:
           abs(drawn["left"] - 441) < 0.5 and abs(drawn["right"] - 661.5) < 0.5 and drawn["connected"] and drawn["mic"] == "true"
           and drawn["state"] and drawn["opened"] == 1, str(drawn))
     check("and the pitch check fails against the two lanes the other way round", not abs(drawn["right"] - 441) < 0.5)
-    check("a microphone drawn is not heard, the generator's switch goes, and the device is the page's to choose; no band split",
-          drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and drawn["bands"] and drawn["file"] is False, str(drawn))
+    # Until 5j this asserted the Whole / Into bands row hidden: the band split was the page's alone.
+    check("a microphone drawn is not heard, the generator's switch goes, the device is the page's to choose, and Whole or Into bands is offered",
+          drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and not drawn["bands"] and drawn["file"] is False, str(drawn))
     heard = p.evaluate("""async () => {
       const out = {};
       setLiveKind('line'); el.monitorLive.checked = true; el.monitorLive.dispatchEvent(new Event('change'));
@@ -292,16 +293,77 @@ with sync_playwright() as pw:
           heard["reopened"] == [2, 1, "host", True], str(heard["reopened"]))
     check("and the input goes through the instrument's plane: folded onto its right half, the left lane never below nought",
           heard["lowest"] > -0.01 and heard["lowestOff"] < -0.4, "%.3f folded, %.3f not" % (heard["lowest"], heard["lowestOff"]))
+    # The live band split (5j): Into bands while the input is drawn. The pair
+    # is 441 Hz and 661.5 Hz, both in the Low mid band: that lane carries the
+    # most, the High mid some of 661.5 Hz through its gentle slope, and the
+    # Low and the High next to nothing - which a split that copied the input
+    # into four lanes, or put the bands in another order, cannot do.
+    split = p.evaluate("""async () => {
+      const out = {}, posted = [];
+      const realPost = MessagePort.prototype.postMessage;
+      MessagePort.prototype.postMessage = function (m, ...rest) {
+        if (m && m.op === 'control') posted.push(m.id + '=' + m.value);
+        return realPost.call(this, m, ...rest);
+      };
+      const rms = (lane) => Math.sqrt(lane.reduce((a, v) => a + v * v, 0) / lane.length);
+      el.micBands.click();
+      await new Promise((r) => setTimeout(r, 900));
+      const s = await scopeHost.call('scopeState');
+      out.split = [state.source.channels, state.source.lanes.map((l) => l.name).join(','), decodeSetup(s.code).pluginBands === true,
+                   el.srcMic.getAttribute('aria-checked'), el.micBands.getAttribute('aria-checked'), Math.round(state.source.gain * 100) / 100];
+      out.rms = state.source.getLatestWindow(8192).map(rms);
+      state.source.lanes[2].solo = true; state.source.remix();
+      await new Promise((r) => setTimeout(r, 0));
+      out.posted = posted.slice();
+      state.source.lanes[2].solo = false; state.source.remix();
+      el.micWhole.click();
+      await new Promise((r) => setTimeout(r, 900));
+      const s2 = await scopeHost.call('scopeState');
+      out.whole = [state.source.channels, state.source.lanes === undefined, decodeSetup(s2.code).pluginBands === undefined,
+                   decodeSetup(s2.code).pluginInput === true];
+      // Into bands chosen over the generator, then Mic: the input arrives split.
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 300));
+      el.micBands.click();
+      out.overTone = [state.source.channels, state.source.bands];
+      el.srcMic.click();
+      await new Promise((r) => setTimeout(r, 600));
+      out.micSplit = [state.source.channels, state.source.bands, el.srcMic.getAttribute('aria-checked')];
+      // A state from the instrument saying it splits, applied over the input whole: split here, and not a word back.
+      el.micWhole.click();
+      await new Promise((r) => setTimeout(r, 400));
+      posted.length = 0;
+      hostApply({ version: hostSync.seen + 1, code: encodeSetup(Object.assign(snapshot(), { pluginBands: true })) });
+      out.quiet = [state.source.channels, state.micBands, posted.filter((m) => /^srcBands/.test(m))];
+      el.micWhole.click();
+      await new Promise((r) => setTimeout(r, 600));
+      out.after = [state.source.channels, state.micBands];
+      MessagePort.prototype.postMessage = realPost;
+      return out;
+    }""")
+    r = split["rms"]
+    check("Into bands in ?brain=core: the instrument splits your input into the four bands, in order, keeps it in its state, and is not heard",
+          split["split"] == [4, "Low,Low mid,High mid,High", True, "true", "true", 0]
+          and r[1] > 0.1 and r[1] > 1.3 * r[2] and r[1] > 5 * r[0] and r[1] > 5 * r[3], str(split))
+    check("and the reading fails against the input copied into each lane", not (r[1] > 1.3 * r[1]))
+    check("a band soloed is sent as the mix the instrument hears, and Whole is the input whole again",
+          "srcBands=1" in split["posted"] and "laneMix=0,0,1,0" in split["posted"] and split["whole"] == [2, True, True, True],
+          str(split["posted"]) + " " + str(split["whole"]))
+    check("Into bands chosen over the generator waits for Mic, which then splits, and a state saying so is not sent back",
+          split["overTone"] == [2, False] and split["micSplit"] == [4, True, "true"] and split["quiet"] == [4, True, []]
+          and split["after"] == [2, False], str({k: split[k] for k in ("overTone", "micSplit", "quiet", "after")}))
     back = p.evaluate("""async () => {
+      // Counted across the press: the checks before it open and let go the stream as they need to.
+      const before = window.__fakeIn.released;
       el.srcTone.click();
       await new Promise((r) => setTimeout(r, 600));
       const s = await scopeHost.call('scopeState');
-      return { draws: state.source.drawsInput, connected: state.source.inputConnected, released: window.__fakeIn.released,
+      return { draws: state.source.drawsInput, connected: state.source.inputConnected, released: window.__fakeIn.released - before,
                state: decodeSetup(s.code).pluginInput === undefined, tone: el.srcTone.getAttribute('aria-checked'),
                soundRow: el.genSoundRow.hidden };
     }""")
     check("Tone draws the generator again: the input let go, the switch to hear it back, and the state says nothing of an input",
-          back == {"draws": False, "connected": False, "released": 2, "state": True, "tone": "true", "soundRow": False}, str(back))
+          back == {"draws": False, "connected": False, "released": 1, "state": True, "tone": "true", "soundRow": False}, str(back))
     # The generator's live-input modes take the input in the instrument, heard or not.
     fm = p.evaluate("""async () => {
       el.inputMode.value = '1'; el.inputMode.dispatchEvent(new Event('change', { bubbles: true }));
@@ -451,9 +513,6 @@ with sync_playwright() as pw:
       const w = state.source.getLatestWindow(2048);
       out.paused = [state.source.playing, Math.max(...w[1].map(Math.abs)), Math.max(...w[0].map(Math.abs)) > 0.1];
       out.align = [el.alignRow.hidden];
-      // The band split is not the instrument's: it says so and changes nothing.
-      await toBands(make(441, 'c.wav'));
-      out.bands = [state.source.kind, !!state.source.rack, el.rackNote.textContent.indexOf('band split') >= 0];
       // Playing along - a stem and you - keeps no alignment row: the instrument does not read the page's lanes.
       state.rackSynth = false; el.rackSynth.checked = false;
       state.rackLive = true; el.rackLive.checked = true;
@@ -481,13 +540,147 @@ with sync_playwright() as pw:
           rack["stemsHeard"] == [1, 1] and rack["genHeard"] == 1 and rack["genMuted"] == 0, str(rack))
     check("the trigger's lane reaches the instrument; paused, the stems go quiet while the generator draws on; no alignment",
           rack["trig"] and rack["paused"] == [False, 0, True] and rack["align"] == [True], str(rack))
-    check("the band split says it is not the instrument's and leaves the rack; Tone leaves the rack for the generator's pair, and it plays on",
-          rack["bands"] == ["host", True, True] and rack["tone"] == [None, 2, "true", False] and rack["alive"], str(rack))
+    check("Tone leaves the rack for the generator's pair and stops its stems, and the instrument plays on",
+          rack["tone"] == [None, 2, "true", False] and rack["alive"], str(rack))
     check("a rack fits the lanes - three rows, three lanes for the pair - and starts the pair again at the first two, the instrument told",
           rack["turned"] == "1,0" and rack["fitted"] == [3, 3, "0,1", "0", "1"], str(rack["turned"]) + " " + str(rack["fitted"]))
     check("a lane the rack has and the worklet has not posted reads as silence, not as what the ring held there",
           rack["unposted"] == [3, 0.5, 0.25, 0], str(rack["unposted"]))
     check("playing along - a stem and you - keeps no alignment row", rack["along"] == ["a,You", True, True], str(rack["along"]))
+
+    # A file split into bands (5j): 60 Hz and 2 kHz together, mono, so the
+    # Low lane is the one and the High mid the other, each clean enough to
+    # read its pitch through the other's slope. Heard, as the page's file
+    # split is; a band soloed sent as the mix; Tone lets it go.
+    filesplit = p.evaluate("""async () => {
+      const rate = 48000, n = rate * 2, data = new DataView(new ArrayBuffer(44 + n * 2));
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) data.setUint8(o + i, t.charCodeAt(i)); };
+      str(0, 'RIFF'); data.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); data.setUint32(16, 16, true);
+      data.setUint16(20, 1, true); data.setUint16(22, 1, true); data.setUint32(24, rate, true); data.setUint32(28, rate * 2, true);
+      data.setUint16(32, 2, true); data.setUint16(34, 16, true); str(36, 'data'); data.setUint32(40, n * 2, true);
+      for (let k = 0; k < n; k++) data.setInt16(44 + k * 2, Math.round(9000 * Math.sin(2 * Math.PI * 60 * k / rate) + 9000 * Math.sin(2 * Math.PI * 2000 * k / rate)), true);
+      const file = new File([data.buffer], 'duo.wav', { type: 'audio/wav' });
+      const pitchOf = (lane) => {
+        const at = [];
+        for (let k = 1; k < lane.length; k++) if (lane[k - 1] < 0 && lane[k] >= 0) at.push(k - 1 + lane[k - 1] / (lane[k - 1] - lane[k]));
+        return at.length < 3 ? 0 : Math.round((at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]));
+      };
+      const out = {}, posted = [];
+      const realPost = MessagePort.prototype.postMessage;
+      MessagePort.prototype.postMessage = function (m, ...rest) {
+        if (m && m.op === 'control') posted.push(m.id + '=' + m.value);
+        return realPost.call(this, m, ...rest);
+      };
+      await toBands(file);
+      await new Promise((r) => setTimeout(r, 1200));
+      const s = await scopeHost.call('scopeState');
+      out.drawn = [state.source.kind, el.srcRack.getAttribute('aria-checked'), state.source.channels, state.source.lanes.map((l) => l.name).join(','),
+                   el.laneGroup.dataset.off === undefined, Math.round(state.source.gain * 100) / 100, state.source.playing,
+                   decodeSetup(s.code).pluginBands === true, /^Add files/.test(el.rackNote.textContent)];
+      out.pitches = state.source.getLatestWindow(16384).map(pitchOf);
+      out.removable = document.querySelectorAll('[data-act="remove"]').length;
+      state.source.lanes[0].solo = true; state.source.remix();
+      await new Promise((r) => setTimeout(r, 0));
+      out.posted = posted.slice();
+      state.source.lanes[0].solo = false; state.source.remix();
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 600));
+      const s2 = await scopeHost.call('scopeState');
+      out.tone = [state.source.channels, state.source.file, decodeSetup(s2.code).pluginBands === undefined, el.srcTone.getAttribute('aria-checked')];
+      /* Tone pressed while a file split, or a file, is still decoding: the
+         file is let go when it has decoded, not played over the generator. */
+      toBands(file);
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 1500));
+      out.raceSplit = [state.source.channels, state.source.file, state.source.bands, el.srcTone.getAttribute('aria-checked')];
+      toFile(file);
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 1500));
+      out.raceFile = [state.source.file, state.source.drawsInput, el.srcTone.getAttribute('aria-checked')];
+      toBands(file);
+      el.srcMic.click();
+      await new Promise((r) => setTimeout(r, 1500));
+      out.raceMic = [state.source.file, state.source.bands, state.source.drawsInput, el.srcMic.getAttribute('aria-checked')];
+      el.srcTone.click();
+      await new Promise((r) => setTimeout(r, 300));
+      MessagePort.prototype.postMessage = realPost;
+      return out;
+    }""")
+    check("a file split into bands in ?brain=core: the instrument draws its four bands, each at its pitch, heard, and keeps the split in its state",
+          filesplit["drawn"] == ["host", "true", 4, "Low,Low mid,High mid,High", True, 1, True, True, True]
+          and abs(filesplit["pitches"][0] - 60) <= 1 and abs(filesplit["pitches"][2] - 2000) <= 2, str(filesplit))
+    check("and the pitch check fails against the bands one place along", not abs(filesplit["pitches"][1] - 60) <= 1)
+    check("a band of the file soloed is sent as the mix, and Tone lets the file and the split go",
+          "srcBands=1" in filesplit["posted"] and "laneMix=1,0,0,0" in filesplit["posted"]
+          and filesplit["tone"] == [2, None, True, "true"], str(filesplit["posted"]) + " " + str(filesplit["tone"]))
+    check("a band split's lanes cannot be taken out one by one, being one file through a crossover",
+          filesplit["removable"] == 0, str(filesplit["removable"]))
+    check("Tone pressed while a file split or a file is still decoding lets it go once decoded, rather than playing it over the generator",
+          filesplit["raceSplit"] == [2, None, False, "true"] and filesplit["raceFile"] == [None, False, "true"]
+          and filesplit["raceMic"][0] is None and filesplit["raceMic"][2] is True and filesplit["raceMic"][3] == "true",
+          str(filesplit["raceSplit"]) + " " + str(filesplit["raceFile"]) + " " + str(filesplit["raceMic"]))
+
+    # The instrument's split against the browser's own (5j): the page's BANDS
+    # through BiquadFilterNodes set as buildBands sets them, rendered offline,
+    # and the compiled instrument fed the same stereo signal a block at a
+    # time - noise on the left, a tone and noise on the right, so every band
+    # has something in it and the two channels differ. Each lane the band of
+    # the two halved together, and what is heard the bands at the mix's gains.
+    wa = p.evaluate("""async () => {
+      const rate = 48000, n = 128, blocks = 60, frames = n * blocks;
+      let seed = 12345;
+      const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296) * 2 - 1;
+      const L = new Float32Array(frames), R = new Float32Array(frames);
+      for (let k = 0; k < frames; k++) { L[k] = 0.4 * rnd(); R[k] = 0.3 * Math.sin(2 * Math.PI * 300 * k / rate) + 0.2 * rnd(); }
+      const gains = [0.5, 1, 0.25, 2];
+      const brain = makeWasmBrain(new WebAssembly.Module(wasmCore()), rate, n, encodeSetup(snapshot()));
+      brain.control('srcBands', '1');
+      brain.control('laneMix', gains.join(','));
+      const heardL = new Float32Array(n), heardR = new Float32Array(n), pictures = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(n));
+      const lanes = [0, 1, 2, 3].map(() => new Float32Array(frames)), hl = new Float32Array(frames), hr = new Float32Array(frames);
+      for (let b = 0; b < blocks; b++) {
+        brain.block(n, heardL, heardR, pictures, [L.subarray(b * n, (b + 1) * n), R.subarray(b * n, (b + 1) * n)]);
+        for (let c = 0; c < 4; c++) lanes[c].set(pictures[c], b * n);
+        hl.set(heardL, b * n); hr.set(heardR, b * n);
+      }
+      const off = new OfflineAudioContext(8, frames, rate);
+      const buffer = off.createBuffer(2, frames, rate);
+      buffer.copyToChannel(L, 0); buffer.copyToChannel(R, 1);
+      const src = off.createBufferSource(); src.buffer = buffer;
+      const merge = off.createChannelMerger(8);
+      BANDS.forEach((band, i) => {
+        const chain = [];
+        if (band.from > 0) { const f = off.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = band.from; f.Q.value = BUTTERWORTH_Q_DB; chain.push(f); }
+        if (band.to > 0) { const f = off.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = band.to; f.Q.value = BUTTERWORTH_Q_DB; chain.push(f); }
+        src.connect(chain[0]);
+        for (let j = 0; j < chain.length - 1; j++) chain[j].connect(chain[j + 1]);
+        const split = off.createChannelSplitter(2);
+        chain[chain.length - 1].connect(split);
+        split.connect(merge, 0, 2 * i); split.connect(merge, 1, 2 * i + 1);
+      });
+      merge.connect(off.destination);
+      src.start();
+      const rendered = await off.startRendering();
+      const band = (i, ch) => rendered.getChannelData(2 * i + ch);
+      let lanesOff = 0, heardOff = 0, along = Infinity, energy = 0;
+      for (let k = 0; k < frames; k++) {
+        let sl = 0, sr = 0;
+        for (let i = 0; i < 4; i++) {
+          const want = Math.fround((band(i, 0)[k] + band(i, 1)[k]) * 0.5);
+          lanesOff = Math.max(lanesOff, Math.abs(lanes[i][k] - want));
+          energy = Math.max(energy, Math.abs(want));
+          sl += gains[i] * band(i, 0)[k]; sr += gains[i] * band(i, 1)[k];
+        }
+        heardOff = Math.max(heardOff, Math.abs(hl[k] - Math.fround(sl)), Math.abs(hr[k] - Math.fround(sr)));
+      }
+      // The null: the instrument's Low lane against the browser's Low mid.
+      along = 0;
+      for (let k = 0; k < frames; k++) along = Math.max(along, Math.abs(lanes[0][k] - Math.fround((band(1, 0)[k] + band(1, 1)[k]) * 0.5)));
+      return { lanesOff, heardOff, along, energy };
+    }""")
+    check("the instrument's band split is the browser's own crossovers: each lane and what is heard, sample for sample",
+          wa["lanesOff"] == 0 and wa["heardOff"] == 0 and wa["energy"] > 0.1, str(wa))
+    check("and the comparison fails against the bands one place along", wa["along"] > 0.01, str(wa["along"]))
 
     # A module that will not make: no instrument, and the page stays what it was.
     refused = p.evaluate("""async () => {

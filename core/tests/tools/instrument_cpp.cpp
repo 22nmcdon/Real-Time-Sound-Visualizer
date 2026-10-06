@@ -119,8 +119,10 @@ int main(int argc, char** argv) {
         rackLanes.push_back(rack[c].data());
       }
       if (!feedLanes.empty()) fed += static_cast<long long>(n);
+      // A pair is lanes too, as the bridge hands over whatever channels it is given: one, or two.
+      const float* pairLanes[2] = { inL.data(), inR.data() };
       const scope::Instrument::Input input = feedLanes.empty()
-        ? scope::Instrument::Input { inL.data(), feedR > 0 ? inR.data() : nullptr }
+        ? scope::Instrument::Input { inL.data(), feedR > 0 ? inR.data() : nullptr, pairLanes, feedR > 0 ? 2 : 1 }
         : scope::Instrument::Input { rackLanes[0], rackLanes.size() > 1 ? rackLanes[1] : nullptr, rackLanes.data(),
                                      static_cast<int>(rackLanes.size()) };
       std::vector<float> lanes(8 * n);  // the heard pair, then the picture's six lanes

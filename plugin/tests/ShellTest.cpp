@@ -1431,6 +1431,100 @@ int main() {
           "attack " + num(e.attack) + ", B's " + num(p.matrix().fadeEnvelope(1).attack) + "; kept " + num(q.matrix().fadeEnvelope(0).attack));
   }
 
+  std::printf("\n--- the band split ---\n");
+  {
+    /* The host's input split into the page's four bands (5j): 60 Hz and
+       2 kHz together, the one in the Low band and the other in the High mid,
+       each far enough from the other's crossover that a band soloed is the
+       one tone and not the other. How often the output, or a served lane,
+       rises through nought in a second says which tone it is. */
+    const auto duo = [&](long long k) {
+      const double t = static_cast<double>(k) / rate;
+      return static_cast<float>(0.3 * std::sin(2 * 3.14159265358979323846 * 60 * t) + 0.3 * std::sin(2 * 3.14159265358979323846 * 2000 * t));
+    };
+    const auto rises = [&](const std::vector<float>& x) {
+      int n = 0;
+      for (std::size_t i = 1; i < x.size(); ++i) if (x[i - 1] < 0 && x[i] >= 0) ++n;
+      return n * rate / static_cast<double>(x.size());
+    };
+    ScopeProcessor split;
+    split.enableAllBuses();
+    split.prepareToPlay(rate, block);
+    long long at = 0;
+    // A second of blocks with the duo on both inputs, the output's left kept.
+    const auto run = [&](ScopeProcessor& p, int blocks) {
+      std::vector<float> out;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int b = 0; b < blocks; ++b) {
+        for (int i = 0; i < block; ++i) { buf.setSample(0, i, duo(at + i)); buf.setSample(1, i, duo(at + i)); }
+        juce::MidiBuffer m;
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) out.push_back(buf.getSample(0, i));
+        at += block;
+      }
+      return out;
+    };
+    const auto rms = [](const std::vector<float>& x) { double sum = 0; for (const float v : x) sum += v * v; return std::sqrt(sum / static_cast<double>(x.size())); };
+    const int second = static_cast<int>(rate / block);
+    split.pageClick("srcMic");
+    split.pageControl("srcBands", scope::Json::string(std::u16string(u"1")));
+    run(split, 8);
+    const auto whole = run(split, second);
+    const auto served = split.pictureServed();
+    const std::size_t frames = ScopeProcessor::kPictureFrames;
+    std::vector<float> low(frames), highMid(frames);
+    // What is heard is the four bands summed - not the input, which second-order crossovers do not add back up to.
+    double summed = served.size() == frames * 4 ? 0 : 1;
+    for (std::size_t k = 0; k < frames && served.size() == frames * 4; ++k) {
+      low[k] = served[k * 4]; highMid[k] = served[k * 4 + 2];
+      const double sum = static_cast<double>(served[k * 4]) + served[k * 4 + 1] + served[k * 4 + 2] + served[k * 4 + 3];
+      summed = std::fmax(summed, std::fabs(whole[whole.size() - frames + k] - sum));
+    }
+    check("the host's input split into bands: four lanes served, the Low the 60 Hz and the High mid the 2 kHz, and the four summed heard",
+          split.bands() && served.size() == frames * 4 && std::abs(rises(low) - 60) < 8 && std::abs(rises(highMid) - 2000) < 30
+            && summed < 1e-6 && rms(whole) > 0.15,
+          num(static_cast<double>(served.size() / frames)) + " lanes; " + num(rises(low)) + " Hz and " + num(rises(highMid)) + " Hz served; "
+            + "heard " + num(summed) + " from the bands summed, at " + num(rms(whole)) + " RMS to the input's 0.3");
+    split.pageControl("laneMix", scope::Json::string(std::u16string(u"1,0,0,0")));
+    run(split, 4);
+    const auto lowHeard = run(split, second);
+    split.pageControl("laneMix", scope::Json::string(std::u16string(u"0,0,1,0")));
+    run(split, 4);
+    const auto highHeard = run(split, second);
+    check("a band soloed on the page is the band heard: the Low alone the 60 Hz, the High mid alone the 2 kHz",
+          std::abs(rises(lowHeard) - 60) < 3 && std::abs(rises(highHeard) - 2000) < 10,
+          num(rises(lowHeard)) + " Hz and " + num(rises(highHeard)) + " Hz");
+    // A rack chosen over the split is the rack: its lanes, its generator heard, the split let go.
+    {
+      ScopeProcessor racked;
+      racked.enableAllBuses();
+      racked.prepareToPlay(rate, block);
+      racked.pageClick("srcMic");
+      racked.pageControl("srcBands", scope::Json::string(std::u16string(u"1")));
+      run(racked, 2);
+      const bool wasSplit = racked.bands();
+      racked.pageControl("srcLanes", scope::Json::string(std::u16string(u"4,-1")));
+      const auto rackHeard = run(racked, 4);
+      check("a rack chosen over the split lets the split go: four lanes of the rack, and none of the input heard",
+            wasSplit && !racked.bands() && racked.rack() == 4 && rms(rackHeard) == 0,
+            std::string(wasSplit ? "split" : "whole") + " before, " + (racked.bands() ? "split" : "the rack") + " after, heard " + num(rms(rackHeard)));
+    }
+    // Kept in the project: a state reopened splits the input again, before anything is pressed.
+    juce::MemoryBlock saved;
+    split.getStateInformation(saved);
+    ScopeProcessor reopened;
+    reopened.enableAllBuses();
+    reopened.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    reopened.prepareToPlay(rate, block);
+    run(reopened, 2);
+    const bool reopenedSplit = reopened.bands() && reopened.pictureServed().size() == frames * 4;
+    split.pageClick("srcMic");
+    run(split, 2);
+    check("the split is kept in the project and comes back with it, and Mic is the input whole again",
+          reopenedSplit && !split.bands() && split.drawsInput() && split.pictureServed().size() == frames * 2,
+          std::string(reopenedSplit ? "split" : "whole") + " reopened; " + (split.bands() ? "split" : "whole") + " after Mic");
+  }
+
   std::printf("\n--- the input ---\n");
   {
     /* The host's input bus, turned on, carrying a saw on the left and a
