@@ -3583,6 +3583,15 @@ iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73
 # rows it writes were last the rack's: its lanes past four have to be cleared.
 iruns["bands after rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57),
                              ["control", "srcLanes", "6,5"]] + blocks(66) + [["control", "srcBands", "1"]] + blocks(8)
+# The alignment for playing along (5k): a rack of four with the generator's
+# lane first, the track's lanes held back 100 samples to meet the live one
+# on the third, then the live one held back 250 instead, then a new rack,
+# which starts aligned nowhere; then another held back 300 samples at once,
+# which has nothing behind it for those 300 but silence.
+iruns["aligned"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 100, 73, 51, 37], NOTE_ON(57),
+                    ["control", "srcLanes", "4,0"]] + blocks(10) + [["control", "laneDelay", "100,100,0,100"]] + blocks(10) \
+    + [["control", "laneDelay", "0,0,250,0"]] + blocks(10) + [["control", "srcLanes", "3,-1"]] + blocks(6) \
+    + [["control", "srcLanes", "2,-1"], ["control", "laneDelay", "300,300"]] + blocks(6)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
@@ -3725,6 +3734,30 @@ bsaid = [isays(l, "pluginBands") for l in bstates]
 check("and the band split is the page's crossovers in the browser's arithmetic: the four lanes, the mix heard, fresh each time it begins, the input whole between",
       split_even < 1e-6 and split_mixed < 1e-6 and split_again < 1e-6 and split_opened < 1e-6 and whole == 0 and whole_lanes == 0,
       "split %g, mixed %g, again %g, opened %g; whole %g, lanes after %g" % (split_even, split_mixed, split_again, split_opened, whole, whole_lanes))
+# The alignment read off the samples: each fed lane its saw from as many
+# samples back as it was told, the generator's lane what was heard that far
+# back, a change taking at once, and a new rack read now.
+lrows = [ifloats(l) for l in iout["aligned"][1] if l.startswith("block ")]
+def ialigned(first, count, delays, periods, shift=0):
+    most = 0.0
+    heard = [v for row in lrows for v in row[:128]]
+    for b in range(first, first + count):
+        for k in range(128):
+            t = b * 128 + k
+            for c, (d, p) in enumerate(zip(delays, periods)):
+                got = lrows[b][(2 + c) * 128 + k]
+                want = heard[t - d - shift] if p == 0 else isaw(t - d - shift, p)
+                most = max(most, abs(got - want))
+    return most
+held = ialigned(10, 10, (100, 100, 0, 100), (0, 73, 51, 37))
+live_held = ialigned(20, 10, (0, 0, 250, 0), (0, 73, 51, 37))
+fresh = ialigned(30, 6, (0, 0, 0), (100, 73, 51))
+behind = max(abs(lrows[b][(2 + c) * 128 + k] - (0.0 if b * 128 + k - 36 * 128 < 300 else isaw(b * 128 + k - 300, p)))
+             for b in range(36, 42) for k in range(128) for c, p in enumerate((100, 73)))
+check("and the alignment draws each of a rack's lanes from as far back as it is told: the track's, the generator's, the live one's, and a new rack from now",
+      held == 0 and live_held == 0 and fresh == 0 and behind == 0 and max(abs(v) for v in lrows[15][2 * 128:3 * 128]) > 0.1,
+      "held %g, the live one held %g, a new rack %g, one held back at once %g" % (held, live_held, fresh, behind))
+check("and the reading fails a sample further back", ialigned(10, 10, (100, 100, 0, 100), (0, 73, 51, 37), shift=1) > 0)
 arows = [ifloats(l) for l in iout["bands after rack"][1] if l.startswith("block ")]
 rack_five = max(abs(v) for b in range(2, 10) for v in arows[b][7 * 128:8 * 128])
 after_rack = max(abs(v) for b in range(66, 74) for v in arows[b][6 * 128:8 * 128])

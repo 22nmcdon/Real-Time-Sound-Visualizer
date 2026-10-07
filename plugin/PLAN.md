@@ -1767,6 +1767,54 @@ lived at first, and each now has a check:
 - the decode race above, from Tone and from Mic.
 
 
+5k moves the alignment for playing along into the instrument. Each of a
+rack's lanes goes through a delay line, written every sample whatever its
+delay, so moving the alignment reads further back at once, as the page's
+analysers let it. Each lane is read as many samples back as the page says
+(`laneDelay`): the track's lanes and the generator's held back to meet a
+late input, or the input held back instead. As on the page, only the
+picture moves; what is heard is not held back. The lines reach 200 ms, as
+far as the page's slider does. A new rack starts at nought, with nothing
+behind it, as the page's new lanes do. The page's `applyAlignment` still
+decides which lanes and how far, and in `?brain=core` it tells the
+instrument, and the alignment row is shown there.
+
+On the way, the page itself was found losing the alignment when a
+play-along was built again, for example with the generator ticked in. The
+new lanes start at 0, and the alignment was applied only when the
+context's guess was taken, so the slider went on reading 40 ms over lanes
+held back by nothing. `alignRack` takes the guess the first time and
+applies the alignment every time, on the page and in the instrument.
+
+Held by parity: a play-along run, the generator's lane first and three fed
+lanes, the compiled instrument the native one to the bit. Read off the
+samples, each fed lane is its saw from as far back as it was told, and the
+generator's lane is what was heard that far back. Moving the delay to the
+live lane takes effect at once, a new rack reads from now, and a new rack
+held back at once has silence behind it, not the old rack. The readings
+fail a sample further back. The shell test checks that the
+plugin's generator lane held back 480 samples is what it played 480
+samples before, to the sample, and is now again once let go. It also
+checks that a lane asked for from further back than 200 ms is drawn from
+200 ms back and no further.
+braintest.py, in `?brain=core`, checks that the row shows for a stem and
+you, that the instrument is told the stem's delay and yours, and that it
+is told again for the new rack when the generator is ticked in. It also
+checks that the same alignment is not sent twice, and that a rack of the
+same shape in its place is told it again.
+alongtest.py checks the same rebuild on the page's own rack.
+
+Mutation, the instrument's side: 9 of 9. Seven were caught by the shell
+test and two by parity's readings, not counting its comparison of compiled
+with native. One lived until parity held a new rack back at once:
+clearing the delay lines when a rack is made. Without that clearing, the
+first moment of a new rack aligned at once showed the old rack.
+
+The page's side: 9 of 9, through braintest.py and alongtest.py. One lived
+until the rebuild check trimmed the alignment to 70 ms rather than 40.
+This browser's guess is 40 ms, so a rebuild that took the guess again
+passed a check at 40.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

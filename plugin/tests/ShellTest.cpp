@@ -1431,6 +1431,51 @@ int main() {
           "attack " + num(e.attack) + ", B's " + num(p.matrix().fadeEnvelope(1).attack) + "; kept " + num(q.matrix().fadeEnvelope(0).attack));
   }
 
+  std::printf("\n--- the alignment ---\n");
+  {
+    /* A rack's lane drawn from further back (5k): the generator's lane held
+       back 480 samples is what was heard 480 samples before, to the sample,
+       and what is heard is not held back at all. Then 0 again, at once. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    p.pageControl("srcLanes", scope::Json::string(std::u16string(u"2,0")));
+    std::vector<float> heard;
+    juce::AudioBuffer<float> buf(2, block);
+    const auto run = [&](int blocks) {
+      for (int b = 0; b < blocks; ++b) {
+        buf.clear();
+        juce::MidiBuffer m;
+        if (heard.empty() && b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, 1.0f), 0);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) heard.push_back(buf.getSample(0, i));
+      }
+    };
+    run(4);
+    p.pageControl("laneDelay", scope::Json::string(std::u16string(u"480,0")));
+    run(8);
+    const std::size_t frames = ScopeProcessor::kPictureFrames;
+    const auto apart = [&](std::size_t back, std::size_t span = 2048) {
+      const auto served = p.pictureServed();
+      double most = served.size() == frames * 2 ? 0 : 1;
+      // The last `span` frames served, lane 0, against what was heard `back` samples before each.
+      for (std::size_t k = frames - span; k < frames && served.size() == frames * 2; ++k)
+        most = std::fmax(most, std::fabs(served[k * 2] - heard[heard.size() - frames + k - back]));
+      return most;
+    };
+    const double held = apart(480), notHeld = apart(0);
+    p.pageControl("laneDelay", scope::Json::string(std::u16string(u"0,0")));
+    run(1);
+    const double back = apart(0, block);  // the one block since, and only that
+    check("a rack's generator lane held back is what was heard that far back, to the sample, and let go is now again",
+          held == 0 && notHeld > 0.05 && back == 0, "held back 480: " + num(held) + " apart (" + num(notHeld) + " from now); after, " + num(back));
+    // Asked for further back than the slider reaches, it is drawn from 200 ms back - 9600 samples here - and no further.
+    p.pageControl("laneDelay", scope::Json::string(std::u16string(u"99999,0")));
+    run(40);
+    const double most = apart(9600), nearly = apart(9599);
+    check("a lane asked for from further back than 200 ms is drawn from 200 ms back",
+          most == 0 && nearly > 0.01, num(most) + " apart at 9600 samples, " + num(nearly) + " at 9599");
+  }
+
   std::printf("\n--- the band split ---\n");
   {
     /* The host's input split into the page's four bands (5j): 60 Hz and

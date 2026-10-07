@@ -4056,3 +4056,24 @@ Two more things learnt on the way:
   file and to 5j's file split. `playFile` now asks once the decode is done
   whether it is still wanted. braintest.py presses Tone, and Mic, while a
   file is decoding.
+
+**The alignment is the instrument's in `?brain=core`, and a rebuilt
+play-along keeps it.** Stage 5k gave the instrument a delay line per rack
+lane, written every sample whatever its delay. Moving the alignment
+therefore reads further back at once, as the page's analysers let it. The
+page's `applyAlignment` still decides which lanes are held back and by how
+many samples, and the instrument is told (`laneDelay`). As on the page,
+only the picture moves: what is heard is not held back. Two things learnt:
+
+- *A play-along built again lost its alignment, on the page as well.*
+  Ticking the generator or another file into a play-along makes new lanes,
+  which start held back by nothing. The alignment was applied only when the
+  context's guess was taken, so the slider went on reading 40 ms over lanes
+  at 0. `alignRack` now takes the guess only the first time and applies the
+  alignment every time. alongtest.py checks the generator ticked in over
+  70 ms. It used 40 ms at first, which this browser happens to guess
+  itself, so a rebuild that took the guess again could not fail it.
+- *A new rack in the instrument starts at nought.* The page sends a lane
+  delay only when it changes. The instrument's new rack is not held back,
+  so the page's record of what it last sent starts again with each rack;
+  otherwise an unchanged alignment would never be resent.

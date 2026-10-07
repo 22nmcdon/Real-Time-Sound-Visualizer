@@ -88,6 +88,8 @@ class Instrument {
      the lower edge, a lowpass at the upper, nought for none. */
   static constexpr int kBandCount = 4;
   static constexpr std::array<std::array<double, 2>, kBandCount> kBandEdges { { { 0, 120 }, { 120, 800 }, { 800, 4000 }, { 4000, 0 } } };
+  // The furthest back a rack's lane is drawn, for the alignment: the page's slider reaches 200 ms.
+  static constexpr double kAlignMostSeconds = 0.2;
 
   /* One hand from the page: a slider moved (by id and the value the browser
      holds), a setup loaded (a preset, a code), a menu, a switch or a text box
@@ -167,6 +169,10 @@ class Instrument {
     pictureRun_ = std::make_unique<PictureRun>(*matrix_, *brain_);
     pictureSource_.rate = sampleRate;
     bandFilters();
+    alignFrames_ = static_cast<std::size_t>(std::ceil(kAlignMostSeconds * sampleRate)) + 1;
+    alignLine_.assign(alignFrames_ * kRingLanes, 0.0f);
+    alignAt_ = 0;
+    laneDelay_.fill(0);
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;
     pictureSource_.lanes = false;
@@ -490,6 +496,7 @@ class Instrument {
     if (id == "srcLanes") { bands_ = false; rackFrom(utf16To8(text)); return; }
     if (id == "srcBands") { drawBands(text == u"1"); return; }
     if (id == "laneMix") { mixFrom(utf16To8(text)); return; }
+    if (id == "laneDelay") { delayFrom(utf16To8(text)); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
@@ -567,6 +574,10 @@ class Instrument {
     if (lanes == rack_ && synth == synthLane_) return;
     rack_ = lanes;
     synthLane_ = lanes > 0 && synth >= 0 && synth < lanes ? synth : -1;
+    /* A new rack starts aligned nowhere and with nothing behind it, as the
+       page's new lanes do: the alignment is the page's to send again. */
+    laneDelay_.fill(0);
+    std::fill(alignLine_.begin(), alignLine_.end(), 0.0f);
     // A rack replaces the input rather than sitting over it: leaving one is the generator again, and no state says the input.
     if (lanes > 0) drawsInput_ = false;
     // The view's lanes, as the page's fitChannels has them: the trigger's lane and the pair held to them.
@@ -613,6 +624,21 @@ class Instrument {
       at = end + 1;
     }
   }
+  /* The alignment for playing along, "d0,d1,...": how many samples back
+     each of a rack's lanes is drawn, as the page's applyAlignment works it
+     out - the track's lanes held back to meet a late input, or the input
+     held back instead. The picture only: what is heard is not moved, as the
+     page's is not. Not a hand, as the rack is not. */
+  void delayFrom(const std::string& text) {
+    std::size_t at = 0;
+    for (std::size_t lane = 0; lane < laneDelay_.size() && at <= text.size(); ++lane) {
+      const std::size_t end = std::min(text.find(',', at), text.size());
+      const double samples = jsStringToNumber(toU16(text.substr(at, end - at)));
+      if (std::isfinite(samples)) laneDelay_[lane] = static_cast<std::size_t>(std::clamp(samples, 0.0, static_cast<double>(alignFrames_ - 1)));
+      at = end + 1;
+    }
+  }
+
   /* One band's filters for a rate: the page's Butterworth crossovers as its
      BiquadFilterNodes make them (biquadNodeCoefficients), not as the page's
      own JavaScript biquad would, since the page's band split is the nodes. */
@@ -738,12 +764,19 @@ class Instrument {
           left[at + k] = h;
           heardR[k] = h;
         }
+        /* Each lane through its own delay line, written every sample whatever
+           its delay, so the alignment moved reads further back at once, as
+           the page's analysers let it. */
         for (int k = 0; k < n; ++k) {
           float* row = &picture_[ring * kRingLanes];
+          float* now = &alignLine_[alignAt_ * kRingLanes];
           for (int c = 0; c < kRingLanes; ++c) {
             const float* lane = input_ && c < input_->laneCount && input_->lanes[c] ? input_->lanes[c] + at : nullptr;
-            row[c] = c >= rack_ ? 0.0f : c == synthLane_ ? pictureL_[static_cast<std::size_t>(k)] : lane ? lane[k] : 0.0f;
+            now[c] = c >= rack_ ? 0.0f : c == synthLane_ ? pictureL_[static_cast<std::size_t>(k)] : lane ? lane[k] : 0.0f;
+            const std::size_t back = laneDelay_[static_cast<std::size_t>(c)];
+            row[c] = alignLine_[((alignAt_ + alignFrames_ - back) % alignFrames_) * kRingLanes + static_cast<std::size_t>(c)];
           }
+          alignAt_ = (alignAt_ + 1) % alignFrames_;
           ring = (ring + 1) % kPictureFrames;
         }
         pictureAt_.store(ring, std::memory_order_release);
@@ -823,6 +856,10 @@ class Instrument {
   int rack_ = 0;                  // drawing a rack of this many lanes, or none
   int synthLane_ = -1;            // the rack's lane the generator draws, or none
   bool bands_ = false;            // the rack is the input split into bands
+  // The alignment's delay lines, a frame of every lane at a time, and how far back each lane is read.
+  std::vector<float> alignLine_;
+  std::size_t alignFrames_ = 1, alignAt_ = 0;
+  std::array<std::size_t, kRingLanes> laneDelay_ {};
   // A biquad's memory as the browser keeps it: doubles, fed and feeding back float samples.
   struct BiquadMemory {
     double x1 = 0, x2 = 0, y1 = 0, y2 = 0;

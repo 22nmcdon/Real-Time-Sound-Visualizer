@@ -513,12 +513,37 @@ with sync_playwright() as pw:
       const w = state.source.getLatestWindow(2048);
       out.paused = [state.source.playing, Math.max(...w[1].map(Math.abs)), Math.max(...w[0].map(Math.abs)) > 0.1];
       out.align = [el.alignRow.hidden];
-      // Playing along - a stem and you - keeps no alignment row: the instrument does not read the page's lanes.
+      /* Playing along - a stem and you (5k): the alignment row, and the
+         instrument told how far back to draw each lane - the stem held back,
+         you not - then the generator ticked in, a new rack, told again. Until
+         5k the row was hidden here, the instrument not reading the page's lanes. */
+      const delays = [];
+      const realPost = MessagePort.prototype.postMessage;
+      MessagePort.prototype.postMessage = function (m, ...rest) {
+        if (m && m.op === 'control' && m.id === 'laneDelay') delays.push(m.value);
+        return realPost.call(this, m, ...rest);
+      };
       state.rackSynth = false; el.rackSynth.checked = false;
       state.rackLive = true; el.rackLive.checked = true;
       await toRack([make(441, 'a.wav')]);
       await new Promise((r) => setTimeout(r, 500));
-      out.along = [state.source.lanes.map((lane) => lane.name).join(','), state.source.hasLive, el.alignRow.hidden];
+      el.align.value = '50'; el.align.dispatchEvent(new Event('input'));
+      const held = Math.round(50 * state.source.sampleRate / 1000);
+      out.along = [state.source.lanes.map((lane) => lane.name).join(','), state.source.hasLive, el.alignRow.hidden,
+                   delays[delays.length - 1] === held + ',0'];
+      await setRackSynth(true);
+      await new Promise((r) => setTimeout(r, 800));
+      out.alongAgain = [state.source.lanes.map((lane) => lane.name).join(','), delays[delays.length - 1] === held + ',' + held + ',0',
+                        delays.slice(-3)];
+      // The same alignment again is not sent again; a rack of the same shape in its place, new in the instrument, is.
+      const sent = delays.length;
+      el.align.value = '50'; el.align.dispatchEvent(new Event('input'));
+      out.alongSame = delays.length - sent;
+      await toRack([make(441, 'b.wav')]);
+      await new Promise((r) => setTimeout(r, 800));
+      out.alongReplaced = [state.source.lanes.map((lane) => lane.name).join(','), delays.length - sent, delays[delays.length - 1] === held + ',' + held + ',0'];
+      MessagePort.prototype.postMessage = realPost;
+      state.rackSynth = false; el.rackSynth.checked = false;
       state.rackLive = false; el.rackLive.checked = false;
       // Tone leaves the rack, and the instrument plays on: the rack's stop is not its context's.
       const left = state.source.rack;
@@ -546,7 +571,12 @@ with sync_playwright() as pw:
           rack["turned"] == "1,0" and rack["fitted"] == [3, 3, "0,1", "0", "1"], str(rack["turned"]) + " " + str(rack["fitted"]))
     check("a lane the rack has and the worklet has not posted reads as silence, not as what the ring held there",
           rack["unposted"] == [3, 0.5, 0.25, 0], str(rack["unposted"]))
-    check("playing along - a stem and you - keeps no alignment row", rack["along"] == ["a,You", True, True], str(rack["along"]))
+    check("playing along in ?brain=core: the alignment row, and the instrument told to draw the stem from as far back as it says and you from now",
+          rack["along"] == ["a,You", True, False, True], str(rack["along"]))
+    check("and the generator ticked in, a new rack in the instrument, is told the alignment again",
+          rack["alongAgain"][:2] == ["Generator,a,You", True], str(rack["alongAgain"]))
+    check("the same alignment is not sent twice, and a rack of the same shape in its place is told it again",
+          rack["alongSame"] == 0 and rack["alongReplaced"] == ["Generator,b,You", 1, True], str([rack["alongSame"], rack["alongReplaced"]]))
 
     # A file split into bands (5j): 60 Hz and 2 kHz together, mono, so the
     # Low lane is the one and the High mid the other, each clean enough to

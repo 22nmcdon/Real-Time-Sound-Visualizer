@@ -156,6 +156,24 @@ with sync_playwright() as pw:
           shifted["at50"]["capacity"] == shifted["at0"]["capacity"] - want,
           "%d against %d" % (shifted["at50"]["capacity"], shifted["at0"]["capacity"]))
 
+    # A play-along built again keeps its alignment: ticking the generator in
+    # makes new lanes, which start held back by nothing. It was applied only
+    # with the context's guess, so the slider read 40 ms over lanes at 0.
+    # Trimmed to 70 here, not 40, since the guess itself is 40 in this browser
+    # and a rebuild that took the guess again would pass at 40.
+    rebuilt = p.evaluate("""async () => {
+      el.align.value = '70'; el.align.dispatchEvent(new Event('input'));
+      await setRackSynth(true);
+      await new Promise((r) => setTimeout(r, 1500));
+      const out = [state.alignMs, state.source.lanes.map((l) => l.name + ':' + l.delay).join(' ')];
+      await setRackSynth(false);
+      await new Promise((r) => setTimeout(r, 1500));
+      return out;
+    }""")
+    want70 = round(70 * rate / 1000)
+    check("a play-along built again - the generator ticked in - keeps its alignment on the new lanes",
+          rebuilt == [70, "Generator:%d other:%d You:0" % (want70, want70)], str(rebuilt))
+
     print("\n--- one stream, and it is given back ---")
     shared = p.evaluate("""async () => {
       const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
