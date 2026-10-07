@@ -52,14 +52,24 @@ STUB = """
     const audio = await ctx.decodeAudioData(await blob.arrayBuffer());
     ctx.close();
     const data = audio.getChannelData(0), rate = audio.sampleRate;
+    /* The median time between upward crossings, not their count over the
+       window: a dropout while the machine is loaded - the suite running
+       beside parity - took a few cycles out of a count and read 440 Hz as
+       430, where it leaves the median interval where it was. */
     const pitch = (a, b) => {
-      let ups = 0, low = false;
+      let low = false, last = -1;
+      const gaps = [];
       const from = Math.floor(a * rate), to = Math.min(data.length, Math.floor(b * rate));
       for (let i = from; i < to; i++) {
         if (data[i] < -0.05) low = true;
-        else if (low && data[i] > 0.05) { ups++; low = false; }
+        else if (low && data[i] > 0.05) {
+          if (last >= 0) gaps.push(i - last);
+          last = i; low = false;
+        }
       }
-      return ups / ((to - from) / rate);
+      if (gaps.length < 3) return 0;
+      gaps.sort((x, y) => x - y);
+      return rate / gaps[gaps.length >> 1];
     };
     const peakIn = (a, b) => {
       let most = 0;
@@ -325,6 +335,89 @@ with sync_playwright() as pw:
           str(end["discarded"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
+
+    # ?brain=core (5l): the instrument plays everything, so the speakers'
+    # tap is always there, and is taken only while they play; and the input
+    # it draws and nobody hears is the instrument's own output before its
+    # silent way out, or the input whole when split, or the rack's live lane.
+    print("\n--- the compiled instrument ---")
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    qbad = []
+    q.on("pageerror", lambda e: qbad.append("pageerror: " + str(e)))
+    q.add_init_script(STUB)
+    q.goto(f"file://{ART}/scope.html?brain=core"); q.wait_for_timeout(700)
+    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+    q.mouse.click(5, 5); q.wait_for_timeout(1500)
+    core = q.evaluate("""async () => {
+      const out = { kind: state.source.kind };
+      applyPreset('b:Harmonic tone');
+      midiNoteOn(57, 100); await __wait(300);
+      const quiet = await __sound(await __record(1200));
+      out.silent = { peak: quiet.peak, note: rec.note };
+      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change')); await __wait(400);
+      const tone = await __sound(await __record(1500));
+      out.tone = { pitch: tone.pitch(0.4, 1.3), peak: tone.peak, note: rec.note };
+      midiNoteOff(57);
+      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      await __mic(440);
+      const mic = await __sound(await __record(1500));
+      out.mic = { draws: state.source.drawsInput, pitch: mic.pitch(0.4, 1.3), peak: mic.peak, note: rec.note };
+      /* Both channels folded onto their positive halves by the instrument's
+         plane - the octave-up pedal - so what is taken, if it is the input
+         after the plane as the page's insert gives it, is an octave up. Read
+         by pitch, not by its lowest sample: the codec takes the folded
+         wave's DC away, and a fold read that way looked like no fold. */
+      el.planeMirror.value = '3'; el.planeMirror.dispatchEvent(new Event('change', { bubbles: true })); await __wait(500);
+      const folded = await __sound(await __record(1500));
+      out.folded = { pitch: folded.pitch(0.4, 1.3), note: rec.note };
+      el.planeMirror.value = '0'; el.planeMirror.dispatchEvent(new Event('change', { bubbles: true })); await __wait(500);
+      /* Split, with the Low band soloed: what is taken is the input whole,
+         as the page's band split gives it, not the instrument's bands at the
+         mixer's gains - the Low band alone at 440 Hz is some 20 dB down. */
+      el.micBands.click(); await __wait(1200);
+      state.source.lanes[0].solo = true; state.source.remix(); await __wait(300);
+      const bands = await __sound(await __record(1500));
+      out.bands = { bands: state.source.bands, pitch: bands.pitch(0.4, 1.3), peak: bands.peak, note: rec.note };
+      state.source.lanes[0].solo = false; state.source.remix();
+      el.micWhole.click(); await __wait(600);
+      el.kindLine.click(); await __wait(100);
+      el.monitorLive.checked = true; el.monitorLive.dispatchEvent(new Event('change')); await __wait(400);
+      const monitored = await __sound(await __record(1500));
+      out.monitored = { on: state.source.monitored, pitch: monitored.pitch(0.4, 1.3), peak: monitored.peak, note: rec.note };
+      el.monitorLive.checked = false; el.monitorLive.dispatchEvent(new Event('change'));
+      el.kindMic.click();
+      el.srcTone.click(); await __wait(400);
+      await toFile(__wav(330)); await __wait(1000);
+      const file = await __sound(await __record(1500));
+      out.file = { pitch: file.pitch(0.4, 1.3), peak: file.peak, note: rec.note };
+      el.srcTone.click(); await __wait(400);
+      await toPlayAlong(__wav(330)); await __wait(1500);
+      const along = await __sound(await __record(1500));
+      out.along = { live: state.source.hasLive, peak: along.peak, note: rec.note };
+      el.srcTone.click(); await __wait(400);
+      return out;
+    }""")
+    print("    %s" % core)
+    check("?brain=core: a generator nobody hears makes a silent clip that says so, and heard, its note at its pitch",
+          core["kind"] == "host" and core["silent"]["peak"] < 0.01 and "silent: nothing was heard" in core["silent"]["note"]
+          and abs(core["tone"]["pitch"] - 220) < 6 and core["tone"]["peak"] > 0.1
+          and "the sound is what the speakers played." in core["tone"]["note"], str({k: core[k] for k in ("silent", "tone")}))
+    check("a live input the instrument draws and nobody hears is in the clip, whole and split into bands, and the note says your input",
+          core["mic"]["draws"] and abs(core["mic"]["pitch"] - 440) < 10 and 0.35 < core["mic"]["peak"] < 0.65
+          and "the sound is your input." in core["mic"]["note"]
+          and core["bands"]["bands"] and abs(core["bands"]["pitch"] - 440) < 10 and core["bands"]["peak"] > 0.35 and "your input" in core["bands"]["note"],
+          str({k: core[k] for k in ("mic", "bands")}))
+    check("and what is taken is the input through the instrument's plane: folded both ways, an octave up, where unfolded it was 440 Hz",
+          abs(core["folded"]["pitch"] - 880) < 20 and abs(core["mic"]["pitch"] - 440) < 10, "%.1f Hz folded" % core["folded"]["pitch"])
+    check("monitored, the input is in the clip once, through the speakers; a file is what the speakers played",
+          core["monitored"]["on"] is True and abs(core["monitored"]["pitch"] - 440) < 10 and 0.35 < core["monitored"]["peak"] < 0.8
+          and "the sound is what the speakers played." in core["monitored"]["note"]
+          and abs(core["file"]["pitch"] - 330) < 8 and "the sound is what the speakers played." in core["file"]["note"],
+          str({k: core[k] for k in ("monitored", "file")}))
+    check("playing along, the clip has the track the speakers played and your input",
+          core["along"]["live"] and core["along"]["peak"] > 0.1 and "what the speakers played, and your input" in core["along"]["note"],
+          str(core["along"]))
+    check("no page errors in ?brain=core", not qbad, "; ".join(qbad[:3]))
     b.close()
 
 print("\n%d failed" % len(fails) if fails else "\nall passed")

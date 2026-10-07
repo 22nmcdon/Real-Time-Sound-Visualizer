@@ -1815,6 +1815,44 @@ until the rebuild check trimmed the alignment to 70 ms rather than 40.
 This browser's guess is 40 ms, so a rebuild that took the guess again
 passed a check at 40.
 
+5l is recording in `?brain=core`, and is all on the page's side. Measured
+first, a clip already carried the generator heard and a file, through the
+instrument's monitor chain, but two things were wrong. A microphone and
+the band split were silent: a clip takes a live input nobody hears from
+the source's `unheard`, and the brain source named none. And every clip
+said the sound was what the speakers played, a silent one included,
+because the instrument's monitor chain is always there.
+
+The chain now says when it is silent (its gain is nought), and a clip
+takes it only while it is not. `unheard` answers as the page's sources
+do:
+
+- for the input drawn, the instrument's output before its silent way out,
+  which is the input through the plane, as the page's insert gives it;
+- for the input split into bands, the input whole, as the page's band
+  split gives it;
+- for a rack, its live lane;
+- for a file, or a line input monitored, nothing, since the speakers have
+  them already.
+
+Held by recordtest.py, on a second page with `?brain=core`:
+
+- a generator nobody hears makes a silent clip that says why, and heard,
+  its note is at its pitch;
+- a live input unheard is in the clip, the note saying so;
+- folded both ways by the instrument's plane, the input is an octave up,
+  so what is taken is after the plane;
+- split, with the Low band soloed, the input is still whole and loud;
+- monitored, the input is in the clip once, through the speakers;
+- a file is what the speakers played;
+- playing along, the clip has the track and your input.
+
+The fold was first read by the clip's lowest sample, which said no fold:
+the codec takes a folded wave's DC away, about 0.32 of it, so the reading
+is now the octave.
+
+Mutation, 8 of 8 through recordtest.py.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

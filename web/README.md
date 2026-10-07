@@ -4077,3 +4077,21 @@ only the picture moves: what is heard is not held back. Two things learnt:
   delay only when it changes. The instrument's new rack is not held back,
   so the page's record of what it last sent starts again with each rack;
   otherwise an unchanged alignment would never be resent.
+
+**A clip's codec takes the DC away, so read a fold by its pitch.** Stage
+5l's check that a clip in `?brain=core` takes the input after the plane
+first folded the input onto its positive half and read the clip's lowest
+sample. That sample came out at -0.31, which looked like no fold. Opus
+removes DC as it encodes, and a folded sine of 0.5 has a mean of 0.32, so
+the fold was there and had been moved down. The check now folds both
+channels, an octave up, and reads the pitch, which the codec cannot hide.
+The same applies to any clip check: what survives a codec is pitch and
+level, not the absolute value of a sample.
+
+**Read a clip's pitch from the median interval, not a count.**
+recordtest.py counted upward crossings over a window and divided by its
+length. In a full run beside parity, a dropout took a few cycles out and
+read a 440 Hz input as 430, just outside the check's 10 Hz. The median
+time between crossings is not moved by a gap. A loaded machine drops
+samples. A count-based estimator turns each dropout into a pitch error,
+and the median interval does not.

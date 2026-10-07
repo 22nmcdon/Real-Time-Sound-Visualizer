@@ -3993,8 +3993,8 @@ body[data-view="bench"] .dock  { order: 3; }
         draws and triggers on, the stems heard through the mixer as usual. <i>Into bands</i>
         under Mic, and a file split from Lanes, are split by the instrument itself, through the
         page's own four crossovers to the sample; solo a band and that is the band it plays.
-        Playing along, <i>Alignment</i> tells it how far back to draw each lane. Recording is
-        not part of it yet.</span></li>
+        Playing along, <i>Alignment</i> tells it how far back to draw each lane. A clip records
+        what it plays, and your input when nobody hears it, as the page does.</span></li>
 
       <li><b>The envelope, and when it is in force</b>
         <span>Only while a keyboard is driving the <i>waveform</i>. With nothing plugged in
@@ -13476,6 +13476,10 @@ function makeBrainHost() {
     node.connect(level);
     const chain = makeMonitorChain(ctx);
     level.connect(chain.input);
+    /* Always there, as the instrument always plays, so it says when nothing
+       is going through it: a clip records the speakers only while they play
+       something, and is silent, and says why, when they do not. */
+    chain.silent = () => levelOn === 0;
     unwire = () => dropMonitorChain(chain);
     if (ctx.state === "suspended") {
       // The credit says it is waiting, and says what it is once it is not.
@@ -13493,7 +13497,7 @@ function makeBrainHost() {
      heard, as a file always is on the site. */
   let monitored = false;
   let player = null, fileName = "", fileMono = false;
-  let rack = null, merger = null, synthMix = 1, bands = null;
+  let rack = null, merger = null, synthMix = 1, bands = null, levelOn = 0;
   const level_ = () => {
     if (!level) return;
     /* A rack's generator lane is heard as the page's mixer and the generator's
@@ -13502,6 +13506,7 @@ function makeBrainHost() {
        microphone are a loud feedback loop. */
     const on = rack ? (audible ? synthMix : 0) : bands ? (player !== null ? 1 : 0)
       : source.drawsInput ? (player !== null || monitored ? 1 : 0) : audible ? 1 : 0;
+    levelOn = on;
     level.gain.setTargetAtTime(on, ctx.currentTime, 0.02);
   };
   source.setSound = async (on) => {
@@ -13637,6 +13642,19 @@ function makeBrainHost() {
     if (inputStream && node && ctx) { inputNode = ctx.createMediaStreamSource(inputStream); inputNode.connect(node); }
   };
   Object.defineProperty(source, "inputConnected", { get: () => !!inputNode });
+  /* The live input it draws and nobody hears, for a clip to take as the
+     page's sources give theirs: the instrument's output before its silent
+     way out, which is the input through the plane, as the page's insert
+     gives it; split into bands, the input whole, as the page's band split
+     gives it; and a rack's live lane, the rack's. A file, or a line input
+     monitored, is heard, and is in the clip already. */
+  Object.defineProperty(source, "unheard", {
+    get: () => {
+      if (rack) return rack.unheard || null;
+      if (!source.drawsInput || player || monitored) return null;
+      return bands ? inputNode : node;
+    },
+  });
   source.audible = () => audible;
   // Where the way out stands: what the switch is judged by, rather than the flag it sets.
   Object.defineProperty(source, "gain", { get: () => (level ? level.gain.value : 0) });
@@ -25664,7 +25682,7 @@ function recordType() {
    the generator switched off and on - is a new tap and not a stale one. */
 function recordSources() {
   const want = new Map();
-  for (const chain of monitorChains) want.set(chain.clamp, "speakers");
+  for (const chain of monitorChains) if (!(chain.silent && chain.silent())) want.set(chain.clamp, "speakers");
   const source = state.source;
   const live = source && source.unheard;
   if (live) want.set(live, "input");
