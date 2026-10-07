@@ -4095,3 +4095,23 @@ read a 440 Hz input as 430, just outside the check's 10 Hz. The median
 time between crossings is not moved by a gap. A loaded machine drops
 samples. A count-based estimator turns each dropout into a pitch error,
 and the median interval does not.
+
+**A rule that holds in the plugin need not hold on the site.** The
+instrument gated its generator from the start, because the plugin's host
+is always a keyboard. On the site that meant a blank screen until a note,
+which is the very thing the page's own `keyboardPresent` rule exists to
+prevent. Every `?brain=core` check had been written with a note played
+first, so none could see it. A probe of the page opened and left alone
+found it. When moving a rule from one host to another, check its
+assumptions about the host: here the page now tells the instrument
+whether a keyboard is there. And look at the screen before anything is
+pressed, because that is the first thing a visitor sees.
+
+**Moving the default does not retire the reference.** `parity.py` lifts
+the page's JavaScript functions out of `scope.html` by name and holds the
+C++ core to them, so the JavaScript brain is what the core is a port of,
+not a fallback to delete. Of the checks that failed with `?brain=core`
+the default, about half were tests reaching into that brain's objects:
+the generator worklet's driver, `reswing`, the gate flag. Those test the
+reference and belong on `?brain=js`. The rest were things you would see,
+and those are the instrument's to fix before the default moves.

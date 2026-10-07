@@ -3592,6 +3592,10 @@ iruns["aligned"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 
                     ["control", "srcLanes", "4,0"]] + blocks(10) + [["control", "laneDelay", "100,100,0,100"]] + blocks(10) \
     + [["control", "laneDelay", "0,0,250,0"]] + blocks(10) + [["control", "srcLanes", "3,-1"]] + blocks(6) \
     + [["control", "srcLanes", "2,-1"], ["control", "laneDelay", "300,300"]] + blocks(6)
+# A keyboard there or not (5m): the site's page says none, and the generator
+# plays with no note; then one, and it is gated until a note; then none again.
+iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"]] + blocks(10) \
+    + [["control", "keyboardPresent", "1"]] + blocks(60) + [["control", "keyboardPresent", "0"]] + blocks(10)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
@@ -3763,6 +3767,16 @@ rack_five = max(abs(v) for b in range(2, 10) for v in arows[b][7 * 128:8 * 128])
 after_rack = max(abs(v) for b in range(66, 74) for v in arows[b][6 * 128:8 * 128])
 check("and the split after a rack of six clears the rack's lanes past four in rows the rack last wrote",
       rack_five > 0.1 and after_rack == 0, "the rack's sixth lane %.3f, after the split %g" % (rack_five, after_rack))
+urows = [ifloats(l) for l in iout["unkeyed"][1] if l.startswith("block ")]
+upeak = [max(abs(v) for v in row[2 * 128:3 * 128]) for row in urows]
+# Told nothing, the instrument is the plugin's: a keyboard, and silent until a note.
+told_nothing = max(max(abs(v) for v in ifloats(l)[2 * 128:3 * 128]) for l in [l for l in iout["notes"][1] if l.startswith("block ")][:3])
+def unkeyed(free, shut):
+    return min(upeak[b] for b in free) > 0.1 and max(upeak[b] for b in shut) == 0
+check("and with no keyboard the generator plays with no note, gated the moment there is one, and free again when it goes; told nothing, it waits for a note",
+      unkeyed(list(range(0, 10)) + list(range(70, 80)), range(10, 70)) and told_nothing == 0,
+      "none %.3f, one %.3f, none again %.3f; told nothing %g" % (min(upeak[:10]), max(upeak[10:70]), min(upeak[70:]), told_nothing))
+check("and the reading fails if the keyboard were there from the start", not unkeyed(range(0, 10), range(0, 70)))
 check("and the state says the split while it is drawn and not after, and opens split from a state that says it",
       True in bsaid and bsaid[-1] is False and bsaid.index(True) < len(bsaid) - 1, str(bsaid))
 check("and the reading fails against a crossover at 130 Hz rather than 120",

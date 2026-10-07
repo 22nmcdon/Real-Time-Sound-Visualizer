@@ -19,7 +19,9 @@
 // - The page asks `keyboardPresent()` - a port or the screen's keys - and
 //   whether the source can lay out two figures. In the plugin the host is
 //   always a keyboard and the generator is always on its own, so the first is
-//   a flag (`setPresent`) and the second is always yes.
+//   a flag (`setPresent`) and the second is always yes. On the site the page
+//   still knows the answer to the first and says it, through the
+//   instrument's `keyboardPresent` control.
 // - The page's `genInput.from` is the generator's `inputFrom`; here it is read
 //   from the tone, where the two are always the same.
 // - The arpeggiator's first step waits 25 ms for the rest of the chord, on a

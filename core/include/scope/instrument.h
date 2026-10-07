@@ -185,7 +185,9 @@ class Instrument {
     };
     /* A host is always a keyboard, so the generator is gated from the start -
        silent until a note - which is what the page's first frame does once a
-       keyboard is there. Derived by the keyboard, not set here. */
+       keyboard is there. Derived by the keyboard, not set here. The site is
+       not always one: its page says so (keyboardPresent) once the worklet is
+       ready, a few blocks in, and an instrument told nothing is the plugin's. */
     keyboard_->setPresent(true);
     load(setup, true);
     keyboard_->frame(0);
@@ -497,6 +499,11 @@ class Instrument {
     if (id == "srcBands") { drawBands(text == u"1"); return; }
     if (id == "laneMix") { mixFrom(utf16To8(text)); return; }
     if (id == "laneDelay") { delayFrom(utf16To8(text)); return; }
+    /* Whether there is a keyboard to wait for, which the site's page knows
+       (a MIDI port or the screen's keys) and the plugin never says, being
+       always one. Not a hand on the setup: it is where the instrument is
+       playing, not what it plays. The gate follows at the next block. */
+    if (id == "keyboardPresent") { keyboard_->setPresent(text != u"0"); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));

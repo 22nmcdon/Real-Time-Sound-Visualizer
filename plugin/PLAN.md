@@ -1853,6 +1853,68 @@ is now the octave.
 
 Mutation, 8 of 8 through recordtest.py.
 
+5m is making `?brain=core` the site's default, with `?brain=js` as the
+way back. It is not one step. Flipping the default and running the whole
+web suite gave 1436 checks passed, 159 failed and 20 suites crashed, in
+57 of the 74 suites. The failures are of two kinds, and only the first is
+the instrument's to fix:
+
+- Behaviour you would see. The first was the biggest: on the site, with
+  nothing plugged in, the screen was blank until a note.
+- Tests that reach into the JavaScript brain's own objects (the
+  generator's worklet driver, `state.source.reswing`, the envelope's gate
+  flag), which a source that is the instrument has no reason to have.
+
+The JavaScript brain does not go away. `parity.py` holds the core to the
+page's own functions, lifted out of `scope.html` by name, so the
+JavaScript is the reference the core is a port of, as well as the way
+back. The suites that test that reference will run on `?brain=js`. What
+the default has to pass is everything you would see.
+
+5m-i is the blank screen. The instrument gated its generator from the
+start, because the plugin's host is always a keyboard. The page gates
+only while there is a keyboard to wait for (`keyboardPresent`: a MIDI
+port or the screen's keys), since a shut gate with nothing to open it is
+a blank screen with nothing on the panel to explain it. The instrument
+now takes `keyboardPresent` as a control, and the site's brain host sends
+it from `midiApplyGate`: asked every frame, as the page asks it of its
+own generator, and sent when the answer moves.
+
+It is not a hand on the setup. It says where the instrument is playing,
+not what it plays, so it is not remembered in the state, and the plugin
+never sends it. An instrument told nothing is the plugin's: gated until a
+note.
+
+With the fix, the flipped suite went to 1493 passed, 109 failed and 18
+suites crashed. The 109 that remain, read one by one, are in these
+groups:
+
+- The fade's dot and readouts.
+- Layer B's drawbars, morph and pulse width written from the panel.
+- A learned controller on a generator control.
+- The readouts that explain a quiet screen or a budget.
+- The picture's loop into the sound (boredom, the photocell's pitch).
+- Tests that drive the page's LFOs by hand, which the page steps itself
+  when the instrument is the source.
+
+Held by:
+
+- parity.py: with no keyboard the generator plays with no note, is gated
+  the moment one is there and freed when it goes. Told nothing, it waits
+  for a note. Nulled against a keyboard there from the start.
+- braintest.py: with no keyboard and nothing played, the site's
+  instrument draws its generator. The note check now opens the screen's
+  keys first, because it was written against the plugin's assumption that
+  a keyboard is always there.
+
+Mutation: 4 of 4 in the core through parity's reading, and 3 of 4 on
+the page's side through braintest.py. The one that lived sends the
+answer every frame rather than when it moves, which sounds the same and
+costs a message a frame. A fifth mutant lived too, and the code it
+mutated has gone. It removed a guard against sending before the worklet
+was ready, but the worklet builds the instrument in its constructor,
+before it reads a message, so the guard did nothing.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

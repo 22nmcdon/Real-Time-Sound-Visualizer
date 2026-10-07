@@ -108,8 +108,16 @@ with sync_playwright() as pw:
     check("and offers Tone, Mic, File and Lanes as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
 
-    # A note from the page's keys. Harmonic tone, keyboard present: gated, so silent until a note.
-    p.evaluate("() => applyPreset('b:Harmonic tone')")
+    # No keyboard - no port, the screen's keys shut - and nothing played: the
+    # instrument draws its generator, as the website opens. It used to open
+    # gated, as the plugin does, which was a blank screen until a note.
+    unkeyed = p.evaluate("() => ({ present: keyboardPresent() })")
+    free = p.evaluate(PEAK, 4096)
+    check("with no keyboard and nothing played the instrument draws its generator, as the website opens",
+          unkeyed["present"] is False and free > 0.1, "keyboard %s, peak %.3f" % (unkeyed["present"], free))
+    # A note from the page's keys. Harmonic tone, the screen's keys open: gated, so
+    # silent until a note. They stay open, so the rest is played on a keyboard.
+    p.evaluate("() => { setScreenKeys(true); applyPreset('b:Harmonic tone'); }")
     p.wait_for_timeout(600)
     before = p.evaluate(PEAK, 4096)
     p.evaluate("() => midiNoteOn(57, 100)")
