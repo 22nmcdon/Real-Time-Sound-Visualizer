@@ -34,6 +34,9 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+# What is playing is asked with playingKind(), not state.source.kind: since
+# 5m the site plays through the instrument, whose source's kind is "host"
+# whatever it draws, and a rack built there is the instrument's rack.
 SETUP = """() => {
   // A mono 16-bit WAV of a sine, a quarter of a second, named.
   window.__wav = (name, hz) => {
@@ -81,7 +84,7 @@ with sync_playwright() as pw:
       el.rackInput.click = () => { picked++; };
       el.srcRack.click();
       await __wait(300);
-      const out = { picked, kind: state.source.kind, rows: !el.rackRows.hidden,
+      const out = { picked, kind: playingKind(), rows: !el.rackRows.hidden,
                     switch: el.srcRack.getAttribute('aria-checked'), label: el.srcRack.textContent,
                     note: el.rackNote.textContent,
                     // Nothing loaded yet, so no lanes to list.
@@ -158,9 +161,9 @@ with sync_playwright() as pw:
     print("\n--- Lanes remembers ---")
     back = p.evaluate("""async () => {
       el.srcTone.click(); await __wait(300);
-      const away = state.source.kind;
+      const away = playingKind();
       el.srcRack.click(); await __wait(900);
-      return { away, kind: state.source.kind, names: __names() };
+      return { away, kind: playingKind(), names: __names() };
     }""")
     print("    %s" % back)
     check("coming back to Lanes brings the rack back as it was",
@@ -170,7 +173,7 @@ with sync_playwright() as pw:
     along = p.evaluate("""async () => {
       await toPlayAlong(__wav('track', 110));
       const made = { names: __names(), box: el.rackLive.checked, files: rackFiles.map((f) => f.name),
-                     align: state.alignMs, suggested: state.source.suggestedAlignMs,
+                     align: state.alignMs, suggested: (state.source.rack || state.source).suggestedAlignMs,
                      mark: el.sourceMark.textContent.trim().toLowerCase() };
       el.rackSynth.checked = true; await setRackSynth(true);
       made.withGen = __names();
@@ -214,7 +217,7 @@ with sync_playwright() as pw:
       const late = toRack([__wav('f', 220), __wav('g', 330)]);
       toTone();
       await late; await __wait(300);
-      return { last, after: state.source.kind };
+      return { last, after: playingKind() };
     }""")
     print("    %s" % race)
     check("of two builds in flight, the one asked for last is the one loaded",

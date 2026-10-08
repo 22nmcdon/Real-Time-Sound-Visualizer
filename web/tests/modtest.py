@@ -4,6 +4,10 @@ Every preset in the page still names its destination with the old enum's word,
 and every setup code anyone has saved does too. The matrix has to reproduce what
 those did exactly, so most of this is about equivalence rather than novelty.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - its oscillators'
+# shape and rate, set directly - which core/tests/parity.py holds the
+# instrument to, sample for sample. The instrument, the site's default since
+# 5m, is braintest.py's and hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -26,7 +30,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 

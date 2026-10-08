@@ -65,7 +65,8 @@ const sourcesText = (() => {
   if (env < 0 || draw < 0) throw new Error("no envelope or drawing sources in scope.html");
   return page.slice(env + 1, page.indexOf("\n});\n", env) + 5) + page.slice(draw + 1, page.indexOf("\n}));\n", draw) + 5);
 })();
-const readSources = new Function("state", "genLane", "registerSource", sourcesText);
+// They ask what is playing (playingKind, since 5m), lifted from the page beside them.
+const readSources = new Function("state", "genLane", "registerSource", definition("playingKind") + "\n" + sourcesText);
 const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
 const MODE = process.env.CORE || "";

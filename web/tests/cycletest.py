@@ -171,7 +171,7 @@ with sync_playwright() as pw:
       return (async () => {
       await toFile(new File([buf], 'x.wav', { type: 'audio/wav' }));
       el.srcTone.click(); await new Promise((r) => setTimeout(r, 300));
-      const fresh = state.source.kind === 'tone' && JSON.stringify(genSettings().cycle) === JSON.stringify(drawnCycle.bank[0]);
+      const fresh = playingKind() === 'tone' && JSON.stringify(genSettings().cycle) === JSON.stringify(drawnCycle.bank[0]);
       el.cycleSine.click();
       const sine = Math.max(...drawnCycle.points.map((v, i) => Math.abs(v - Math.sin(2 * Math.PI * i / CYCLE_POINTS))));
       return { smooth, codeLength: code.length, worst, bare, back, sine, sineCode: snapshot().cycle, fresh };

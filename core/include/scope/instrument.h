@@ -198,6 +198,7 @@ class Instrument {
     hearR_.assign(kHearN, 0.0f);
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
     pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
+    pictureBL_.assign(size, 0.0f); pictureBR_.assign(size, 0.0f);
     heardL_.assign(size, 0.0f); heardR_.assign(size, 0.0f);
   }
 
@@ -445,7 +446,9 @@ class Instrument {
     for (std::size_t k = 0; k < n - take; ++k) out[k] = 0.0f;
     for (std::size_t k = 0; k < take; ++k) out[n - take + k] = picture_[((at + kPictureFrames - take + k) % kPictureFrames) * kRingLanes + c];
   }
-  // How many lanes the picture has: two, or a rack's.
+  // The generator, for what the page reads off it: its envelope, gate, crossings, budget and drawing.
+  const Generator& generator() const { return *core_; }
+  // How many lanes the picture has: two, four for two figures, or a rack's.
   int pictureLanes() const { return pictureSource_.channels; }
 
   // What the owners and their tests read.
@@ -504,11 +507,34 @@ class Instrument {
        always one. Not a hand on the setup: it is where the instrument is
        playing, not what it plays. The gate follows at the next block. */
     if (id == "keyboardPresent") { keyboard_->setPresent(text != u"0"); return; }
+    if (id == "drawn") { drawnFrom(text); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
     hand.a.push_back(value.type == Json::Type::Bool ? value : Json::string(text));
     remember("c:" + id, std::move(hand));
+    changed_ = true;
+  }
+
+  /* What is drawn by hand - the cycles, and a figure drawn on the screen -
+     as the setup's own fields in one JSON object: "cycle", "cycles",
+     "figDrawn", any of them. A drawing is neither a slider moved nor a
+     preset loaded, so it reached the instrument by neither: on the site and
+     in the plugin, a cycle drawn on the panel was never heard. Kept in the
+     setup the state is made from, rather than as a hand, so a project
+     reopened draws it again by the same restore that a preset does. */
+  void drawnFrom(const std::u16string& text) {
+    const auto part = jsonParse(text);
+    if (!part || part->type != Json::Type::Object) return;
+    if (setup_.type != Json::Type::Object) setup_ = Json::object();
+    for (const char* key : { "cycle", "cycles", "figDrawn" })
+      if (const Json* v = part->get(key)) setup_.set(key, *v);
+    if (part->get("cycle") || part->get("cycles"))
+      restoreCycles(setup_.get("cycle"), setup_.get("cycles"), *brain_, *core_);
+    if (const Json* strokes = part->get("figDrawn")) {
+      restoreDrawnFigure(strokes, *brain_);
+      core_->setFigPath(figurePathFor(*brain_, brain_->panel.select("figure")));
+    }
     changed_ = true;
   }
 
@@ -561,6 +587,7 @@ class Instrument {
     drawsInput_ = input;
     // What it hears is its own sound only while that is the generator's: a loop then, and not otherwise.
     hearing_->hears(!input);
+    keyboard_->setLayable(rack_ == 0 && !drawsInput_);
     changed_ = true;
   }
 
@@ -595,6 +622,8 @@ class Instrument {
     fitView(*brain_);
     pictureSource_.channels = lanes > 0 ? lanes : 2;
     pictureSource_.lanes = lanes > 0;
+    // Two layers are two figures, and a rack's generator lane is one signal: a split is kept, not applied (layersOn).
+    keyboard_->setLayable(rack_ == 0 && !drawsInput_);
     changed_ = true;
   }
   /* The band split: the input, split by the page's four crossovers into a
@@ -799,16 +828,35 @@ class Instrument {
           for (int k = 0; k < n; ++k) mono_[static_cast<std::size_t>(k)] = input_->right ? (inL[k] + inR[k]) * 0.5f : inL[k];
           core_->setInput(mono_.data(), n);
         }
-        core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR);
+        core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR, pictureBL_.data(), pictureBR_.data());
         core_->setInput(nullptr, 0);
       }
+      /* The figures the generator lays out, as the page's tone source lays
+         them out (getLatestWindow): layer A's pair alone; A's and B's as two
+         pairs, or A's and the second generator's ("each"), four lanes; or
+         one pair with B's added, clamped ("against") - where the generator
+         has already put A on X and B on Y, and B's own pair is silent, so
+         the sum is the page's and changes nothing. The keyboard works the
+         layout out, as the page's syncLayers does. Until 5m the pair
+         was A's whatever the layout, so in the plugin and on the site layer
+         B and the second generator were heard and never drawn. */
+      const Layout lay = drawsInput_ ? Layout::One : notes_->layout();
+      pictureSource_.channels = lay == Layout::Each ? 4 : 2;
       std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
       for (int k = 0; k < n; ++k) {
         float* row = &picture_[ring * kRingLanes];
-        row[0] = pictureL_[static_cast<std::size_t>(k)];
-        row[1] = pictureR_[static_cast<std::size_t>(k)];
-        // A rack's lanes past the pair, gone: nothing stale to read if a rack is drawn again.
-        for (int c = 2; c < kRingLanes; ++c) row[c] = 0.0f;
+        const std::size_t i = static_cast<std::size_t>(k);
+        if (lay == Layout::Against) {
+          row[0] = std::fmax(-1.0f, std::fmin(1.0f, pictureL_[i] + pictureBL_[i]));
+          row[1] = std::fmax(-1.0f, std::fmin(1.0f, pictureR_[i] + pictureBR_[i]));
+        } else {
+          row[0] = pictureL_[i];
+          row[1] = pictureR_[i];
+        }
+        row[2] = lay == Layout::Each ? pictureBL_[i] : 0.0f;
+        row[3] = lay == Layout::Each ? pictureBR_[i] : 0.0f;
+        // A rack's lanes past these, gone: nothing stale to read if a rack is drawn again.
+        for (int c = 4; c < kRingLanes; ++c) row[c] = 0.0f;
         ring = (ring + 1) % kPictureFrames;
       }
       pictureAt_.store(ring, std::memory_order_release);
@@ -858,6 +906,7 @@ class Instrument {
   std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_, mono_, heardL_, heardR_;  // a block's worth, made in prepare
+  std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, or the second generator's, as the generator draws it
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator
   int rack_ = 0;                  // drawing a rack of this many lanes, or none

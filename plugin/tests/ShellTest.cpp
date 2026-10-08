@@ -1570,6 +1570,54 @@ int main() {
           std::string(reopenedSplit ? "split" : "whole") + " reopened; " + (split.bands() ? "split" : "whole") + " after Mic");
   }
 
+  std::printf("\n--- two layers drawn ---\n");
+  {
+    /* Poly, split at middle C, a note each side: the page draws a figure
+       each, so the plugin serves four lanes, A's pair then B's - the page
+       reads the count off the length. Until 5m it served A's pair whatever
+       the layout, and layer B was heard and never drawn. Then A against B,
+       one pair again: the generator puts A on X and B on Y. */
+    ScopeProcessor layered;
+    layered.prepareToPlay(rate, block);
+    layered.pageClick("midiPoly");
+    layered.pageControl("midiLayers", scope::Json::string(std::u16string(u"split")));
+    juce::AudioBuffer<float> buf(2, block);
+    const auto blocks = [&](int n, bool notes) {
+      for (int b = 0; b < n; ++b) {
+        juce::MidiBuffer m;
+        if (notes && b == 0) {
+          m.addEvent(juce::MidiMessage::noteOn(1, 48, static_cast<juce::uint8>(100)), 0);
+          m.addEvent(juce::MidiMessage::noteOn(1, 72, static_cast<juce::uint8>(100)), 0);
+        }
+        buf.clear();
+        layered.processBlock(buf, m);
+      }
+    };
+    blocks(static_cast<int>(rate / block), true);
+    const std::size_t frames = ScopeProcessor::kPictureFrames;
+    const auto served = layered.pictureServed();
+    const auto lane = [&](const std::vector<float>& all, std::size_t count, std::size_t c) {
+      std::vector<float> out;
+      for (std::size_t k = frames - 8192; k < frames; ++k) out.push_back(all[k * count + c]);
+      return out;
+    };
+    const auto hz = [&](const std::vector<float>& x) {
+      int n = 0, first = -1, last = -1;
+      for (std::size_t i = 1; i < x.size(); ++i)
+        if (x[i - 1] < 0 && x[i] >= 0) { ++n; if (first < 0) first = static_cast<int>(i); last = static_cast<int>(i); }
+      return n > 2 ? (n - 1) * rate / (last - first) : 0.0;
+    };
+    const bool four = served.size() == frames * 4;
+    const double a = four ? hz(lane(served, 4, 0)) : 0, b = four ? hz(lane(served, 4, 2)) : 0;
+    check("two layers drawn a figure each are served as four lanes: A's pair at its note, B's at its",
+          four && std::abs(a - 130.81) < 2 && std::abs(b - 523.25) < 6,
+          std::to_string(served.size() / frames) + " lanes; A " + std::to_string(a) + " Hz, B " + std::to_string(b) + " Hz");
+    layered.pageControl("midiLayerPair", scope::Json::string(std::u16string(u"against")));
+    blocks(4, false);
+    const auto against = layered.pictureServed();
+    check("and A against B is one pair again", against.size() == frames * 2, std::to_string(against.size() / frames) + " lanes");
+  }
+
   std::printf("\n--- the input ---\n");
   {
     /* The host's input bus, turned on, carrying a saw on the left and a

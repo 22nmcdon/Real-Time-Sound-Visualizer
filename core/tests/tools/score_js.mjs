@@ -44,7 +44,7 @@ const LIFTED = [
   "SCALES", "keyMask", "midiHz", "transport", "CLOCK_TIMEOUT_MS", "clockTick", "transportBeat", "transportRebase", "transportAnchor",
   "transportStart", "transportStop", "clockRestart", "setTempo", "PHOSPHOR_N", "SCORE_STEPS", "SCORE_FLOOR", "score",
   "scorePitches", "scoreColumn", "scoreTick", "scoreStop", "MIDI_OUT_RATE", "midiOut", "midiOutSend", "midiCoreHears", "midiOutNote",
-  "midiOutOff", "midiOutPanic", "crossSeen", "crossOffs", "crossOut", "crossStepPanel", "pluck", "pluckFire",
+  "midiOutOff", "midiOutPanic", "crossSeen", "crossOffs", "crossOut", "playingKind", "crossStepPanel", "pluck", "pluckFire",
 ];
 
 const STUBS = `

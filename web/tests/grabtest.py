@@ -298,7 +298,8 @@ with sync_playwright() as pw:
       el.cycleSine.click(); midiNoteOn(57, 100); await wait(500);
       const ok = grabCycle();
       midiNoteOff(57);
-      return { kind: state.source.kind, ok, note: el.cycleNote.title, points: drawnCycle.points.slice() };
+      // What is playing, not the source's kind: the instrument's is "host" whatever it draws (5m).
+      return { kind: playingKind(), ok, note: el.cycleNote.title, points: drawnCycle.points.slice() };
     }""")
     acorr, _ = match(alone["points"], SINE)
     check("with the tone alone, Grab takes the generator's own output, and names no lane",

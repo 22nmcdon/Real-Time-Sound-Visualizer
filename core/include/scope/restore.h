@@ -762,6 +762,23 @@ inline const View& captureView(Brain& b) {
   return w.capture;
 }
 
+// The cycles drawn by hand, as a setup carries them: slot one ("cycle") and
+// the rest ("cycles"), each its default when it says nothing. A setup's, and
+// the instrument's `drawn` control, since a drawing is neither a slider nor
+// a preset and reached the plugin by neither.
+inline void restoreCycles(const Json* first, const Json* rest, Brain& brain, Generator& gen) {
+  const auto one = decodeCycle(first);
+  brain.cycles[0] = one ? *one : cycleDefault(0);
+  decodeCycleSlots(rest, brain.cycles);
+  cycleSend(brain, gen);
+}
+// A figure drawn on the screen, as a setup carries it ("figDrawn").
+inline void restoreDrawnFigure(const Json* strokes, Brain& brain) {
+  brain.fig.strokes = decodeDrawn(strokes);
+  brain.fig.full = false;
+  brain.fig.drawn = compilePath(brain.fig.strokes);  // drawnCompile: decodeDrawn keeps no stroke of one point
+}
+
 inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyboard& keys, Matrix& matrix,
                          std::vector<Lfo>& lfos) {
   const Json& defaults = setupDefaults();
@@ -836,12 +853,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   gen.set("gen2Figure", panel.select("gen2Figure"), 0);
   setA("gen2Rate", panel.range("gen2Rate"));
   gen.set("inputFrom", brain.inputFrom, 0);  // syncGen2
-  {
-    const auto first = decodeCycle(s("cycle"));
-    brain.cycles[0] = first ? *first : cycleDefault(0);
-    decodeCycleSlots(s("cycles"), brain.cycles);
-    cycleSend(brain, gen);
-  }
+  restoreCycles(s("cycle"), s("cycles"), brain, gen);
   {
     const double mode = panel.selectNumber("inputMode");
     brain.inputMode = mode == 0 || std::isnan(mode) ? 0 : mode;
@@ -918,9 +930,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setFigureText(brain, text && text->type == Json::Type::String ? text->s : defaults.get("figText")->s);
     const Json* d = s("figPath");
     setFigurePathD(brain, d && d->type == Json::Type::String ? d->s : u"");
-    brain.fig.strokes = decodeDrawn(s("figDrawn"));
-    brain.fig.full = false;
-    brain.fig.drawn = compilePath(brain.fig.strokes);  // drawnCompile: decodeDrawn keeps no stroke of one point
+    restoreDrawnFigure(s("figDrawn"), brain);
   }
   gen.set("figure", panel.select("figure"), 0);
   gen.setFigPath(figurePathFor(brain, panel.select("figure")));  // syncFigurePath

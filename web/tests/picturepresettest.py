@@ -35,6 +35,11 @@ them, the failures to guard against are:
   and then four with five or more, two of them the picture's sources among
   at least three others.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - restore() called
+# directly, which the page sends the instrument nothing of - which
+# core/tests/parity.py holds the instrument to, sample for sample. The
+# instrument, the site's default since 5m, is braintest.py's and
+# hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -61,7 +66,7 @@ with sync_playwright() as pw:
     p = b.new_page(viewport={"width": 1400, "height": 900})
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- what the sections are ---")

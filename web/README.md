@@ -96,6 +96,21 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | rack, file, tone, and a microphone that is denied |
 
+**Two brains, and which suite runs on which.** Since stage 5m the site plays
+through the instrument (`plugin/PLAN.md`): the plugin's brain and sound,
+compiled, in a worklet, with the page as its face. `?brain=js` is the page's
+own brain, written in JavaScript, and it is not a leftover:
+`core/tests/parity.py` lifts its functions out of `scope.html` by name and
+holds the compiled instrument to them sample for sample, so it is the
+reference the instrument is checked against. A suite that reaches into that
+brain runs on `?brain=js` and says so at its top: its worklets, its gate flags,
+`genSet`, `midiControl` and `restore()` called directly. None of those calls
+reaches the instrument, which takes a slider moved, a menu changed, a preset or
+a code loaded, a note, and nothing else. Everything else runs on the
+default. That includes `braintest.py`, which holds what you see of the
+instrument, and the suites that check the page's own work: layout, presets,
+the rack, the fade, cycles drawn.
+
 ## Two things worth knowing before changing it
 
 **`getLatestWindow` zero-pads rather than refusing.** Ask a source for more
@@ -4115,3 +4130,65 @@ the default, about half were tests reaching into that brain's objects:
 the generator worklet's driver, `reswing`, the gate flag. Those test the
 reference and belong on `?brain=js`. The rest were things you would see,
 and those are the instrument's to fix before the default moves.
+
+**A field that answers "which kind" stops answering once a source can be
+anything.** With the instrument the default, `state.source.kind` is `"host"`
+whatever it draws. Every question asked of the kind was then asked of the
+wrong thing: "is the generator what is playing", "is this a rack", "is it a
+file". So the head read *Instrument*, the rack's note said the screen was
+showing "the file" when it was the generator, a rack's transport never
+appeared, the crossings' lines were never drawn, and the preset browser never
+said that nothing playing had a generator. `playingKind()` answers the
+question being asked, and the instrument's source is asked what it draws. It
+is the third time this page has learned it (see CLAUDE.md); the tell was the
+same, a condition on the kind with no branch for a new kind.
+
+**A test that calls a function the panel would have called skips the
+forwarding.** The instrument hears only what reaches it: a slider moved, a
+menu changed, a button pressed, a preset or code loaded, a note through
+`midiBytes`. A test that calls `setMidiMode`, `midiControl`, `genSet` or
+`restore()` directly changes the page and leaves the instrument as it was,
+and then reads a sound the change never reached. Such a test is about the
+page's own brain, and runs on `?brain=js`. A check meant for the instrument
+clicks the button (`el.midiPoly.click()`, not `setMidiMode('poly')`).
+
+**A drawing is neither a slider nor a preset.** The drawn cycles and a
+figure drawn on the screen reached the page's own generator by `genSet`,
+and so reached the instrument by no path at all: on the site and in the
+plugin, a cycle drawn on the panel was drawn and never heard. They now go as
+the setup's own fields in one control (`drawn`), and the instrument keeps
+them in the setup its state is made from, so a reopened project draws them
+again.
+
+**What a host takes back at connect has to be what the host owns.** In the
+plugin the page takes the plugin's state when it connects, because a
+reopened project is the plugin's. The site's instrument was made from the
+page's own setup, so taking its first state back gave the page nothing new,
+and it reset the fade to off on every load. The fade lives in the page's
+own storage, not in a setup, and the instrument had never been told it.
+
+**A browser runs no audio until the visitor presses something, and a test
+browser hides it.** The tests launch Chromium with
+`--autoplay-policy=no-user-gesture-required`, and this headless build
+ignored the opposite flag too. So the default's first visit, a scope blank
+until a click, showed only when the context was held suspended by hand
+(braintest's last section does this). The instrument now draws on the
+page's own thread until the worklet's first block arrives.
+
+
+**A page function that starts calling a new helper breaks the parity
+harnesses that lift it.** `core/tests/tools/*_js.mjs` lift the page's
+functions by name into a sandbox, each with a list of the names it needs.
+When `playingKind()` arrived, four harnesses lifted a function that now called it,
+and each stopped with a `ReferenceError` until the helper joined its list.
+That failure is loud, which is the right way round. Before adding a helper
+to a function the core is held to, grep the harnesses for that function.
+
+**The native and compiled instruments agree exactly until a run calls the
+maths library.** Every instrument run in `parity.py` matched the compiled
+one sample for sample, and stage 5m's drawn-cycle runs did not: 1.9e-17
+apart. A drawn cycle's tables are built with `sin` and `cos`, which the C
+library and the WebAssembly one may round differently in the last place.
+Those runs are held to the file's 1e-12, with the reason beside them. Any
+other run that drifts from exact is a real difference, and should be read
+as one.

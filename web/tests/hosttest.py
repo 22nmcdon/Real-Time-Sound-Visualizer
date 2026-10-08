@@ -113,10 +113,15 @@ with sync_playwright() as pw:
 
     print("\n--- without the bridge: the website ---")
     p = b.new_page(viewport={"width": 1400, "height": 900})
+    # Since 5m the website is the instrument in a worklet, which answers the
+    # same calls the plugin does; without the bridge it is that, and not the
+    # plugin's - nothing fetched - and with ?brain=js no host at all.
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(800)
-    alone = p.evaluate("() => ({ kind: state.source.kind, host: scopeHost === null })")
-    check("on its own the page is the website: no bridge, its own generator (the null)",
-          alone == {"kind": "tone", "host": True}, str(alone))
+    alone = p.evaluate("() => ({ kind: state.source.kind, site: !!state.source.devices, fetched: !!state.source.timing })")
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(800)
+    own = p.evaluate("() => ({ kind: state.source.kind, host: scopeHost === null })")
+    check("on its own the page is the website: the site's instrument, not the plugin's, and with ?brain=js its own generator (the null)",
+          alone == {"kind": "host", "site": True, "fetched": False} and own == {"kind": "tone", "host": True}, "%s %s" % (alone, own))
     p.close()
 
     print("\n--- inside the plugin ---")

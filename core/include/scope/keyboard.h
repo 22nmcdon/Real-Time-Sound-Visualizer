@@ -17,11 +17,13 @@
 //   interval menu with it, and handing the controls back reads them. Here they
 //   are `Panel`, which the brain will own when the setup is in the core.
 // - The page asks `keyboardPresent()` - a port or the screen's keys - and
-//   whether the source can lay out two figures. In the plugin the host is
-//   always a keyboard and the generator is always on its own, so the first is
-//   a flag (`setPresent`) and the second is always yes. On the site the page
-//   still knows the answer to the first and says it, through the
-//   instrument's `keyboardPresent` control.
+//   whether the source can lay out two figures. Here both are flags. The
+//   first (`setPresent`) is yes in the plugin, whose host is always a
+//   keyboard, and on the site the page says it, through the instrument's
+//   `keyboardPresent` control. The second (`setLayable`) the instrument sets
+//   itself: no while it draws a rack or its input, since a rack's generator
+//   lane is one signal and layer B's figure has nowhere to go. Until 5m it
+//   was always yes, which was true until the instrument had racks and inputs.
 // - The page's `genInput.from` is the generator's `inputFrom`; here it is read
 //   from the tone, where the two are always the same.
 // - The arpeggiator's first step waits 25 ms for the rest of the chord, on a
@@ -338,6 +340,8 @@ class Keyboard {
     if (on) applyNotes(); else undrive();
   }
   void setPresent(bool on) { present_ = on; }
+  // Whether the generator is on its own, to lay out two figures: not as a rack's lane, nor while the input is drawn.
+  void setLayable(bool on) { layable_ = on; }
   Panel& panel() { return panel_; }
 
   // --- the arpeggiator: Stage K5 ---------------------------------------------
@@ -521,7 +525,7 @@ class Keyboard {
   }
 
   // layersOn: two layers, in poly on the waveform with the generator alone.
-  bool layersOn() const { return layers_.mode != LayerMode::Off && polyWanted(); }
+  bool layersOn() const { return layers_.mode != LayerMode::Off && layable_ && polyWanted(); }
   /* Which layer the panel shows (editLayer): B only while there is one, so
      no control writes into a layer nobody hears. The A and B buttons choose,
      and whoever keeps the panel is told whenever the layers are worked out
@@ -836,7 +840,7 @@ class Keyboard {
   NoteMode mode_ = NoteMode::Dyad;
   std::array<DrawRule, 2> draws_ {};
   Layers layers_;
-  bool polyJust_ = false, hold_ = false, present_ = true;
+  bool polyJust_ = false, hold_ = false, present_ = true, layable_ = true;
   bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
   double pedal_ = 0, pedalTarget_ = 0;
   bool sustain_ = false;

@@ -13,6 +13,10 @@ produced, exactly - not nearly - because everything downstream is measured
 against that baseline, and a baseline that has moved makes every later
 comparison a comparison with a moving target.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - its oscillators,
+# set by hand between frames - which core/tests/parity.py holds the instrument
+# to, sample for sample. The instrument, the site's default since 5m, is
+# braintest.py's and hosttest.py's.
 import math, os, sys
 from playwright.sync_api import sync_playwright
 
@@ -39,7 +43,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 

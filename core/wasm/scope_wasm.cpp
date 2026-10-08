@@ -515,6 +515,23 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
   return static_cast<int>(midiOut.size());
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }
+// What the page reads off the generator, as scope_state gives it for the
+// page's own: the envelope, whether it is gated, the crossings' counts, the
+// budget, and the drawing's readings - for the meters and the readouts, which
+// with the instrument playing had nothing to read and stood at nought.
+std::vector<double> brainRead;
+EXPORT(brain_readings) double* brainReadings() {
+  const auto& g = instrument->generator();
+  const auto c = g.crossings();
+  const auto& b = g.budget();
+  const auto d = g.drawing();
+  brainRead.assign({ g.envelope(), g.gated() ? 1.0 : 0.0, static_cast<double>(c[0]), static_cast<double>(c[1]), b.units,
+                     static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
+                     static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
+                     static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0],
+                     d.turn[1], d.turn[2], d.facing });
+  return brainRead.data();
+}
 // How many lanes the picture has now: two, or a rack's.
 EXPORT(brain_picture_lanes) int brainPictureLanes() { return instrument->pictureLanes(); }
 

@@ -43,7 +43,7 @@ function block(first, close) {
 
 const LIFTED = [
   "ENV_ATTACK", "ENV_FULL", "PHOTO_REACH", "PHOTO_START", "BANDS", "midiHz", "midiPitch", "midiPitchHz",
-  "HEAR_N", "HEAR_SLEW", "HEAR_FLOOR", "PITCH_REF", "hearing", "hearsGenerator", "hearingFollow", "hearingSlew", "hearingStep",
+  "HEAR_N", "HEAR_SLEW", "HEAR_FLOOR", "PITCH_REF", "hearing", "playingKind", "hearsGenerator", "hearingFollow", "hearingSlew", "hearingStep",
   "PITCH_MAX_WINDOW", "PITCH_DIP", "PITCH_TRUST", "pitchPass", "estimatePeriod", "fft", "correlation",
   "ONSET_ON", "onset", "onsetStep", "HEARING_SOURCES", "hearingBands",
 ];

@@ -194,6 +194,11 @@ with sync_playwright() as pw:
         p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         p.on("console", lambda m: bad.append("console: " + m.text)
              if m.type == "error" and "ERR_CERT" not in m.text else None)
+        # On ?brain=js (5m): this suite reads which core the page's own two
+        # worklets and its main thread run - the page's own brain, which
+        # core/tests/parity.py holds the instrument to. The instrument, the
+        # site's default since 5m, is braintest.py's and hosttest.py's.
+        query = query + "&brain=js" if query else "?brain=js"
         p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(700)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         p.wait_for_timeout(200)

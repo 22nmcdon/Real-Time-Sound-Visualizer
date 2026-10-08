@@ -19,8 +19,10 @@ native one sample for sample; this holds what the page does with it:
   page's channel, and the page's own brain sends nothing beside it;
 - the sound switch opens and closes the instrument's way out;
 - a module that will not make leaves the page as the website;
-- and a browser that has not been pressed yet runs no blocks, says so, and
-  starts on the first press.
+- and in a browser that has not been pressed yet, the worklet runs no
+  blocks and says so, the same instrument draws on the page's thread
+  meanwhile and takes the page's hands, and the first press starts the
+  worklet, which has had those hands too.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -73,26 +75,33 @@ def opened(b, query, settle=2500, close=True):
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    for query, want in (("", "tone"), ("?brain=core&core=js", "tone")):
+    # The way back (5m made the instrument the default): ?brain=js, or the
+    # compiled core turned off, is the page's own brain on its own generator.
+    for query, want in (("?brain=js", "tone"), ("?brain=core&core=js", "tone")):
         p, _ = opened(b, query, 1200)
         got = p.evaluate("() => ({ kind: state.source.kind, host: !!scopeHost, brain: BRAIN_IN_CORE, mic: el.srcMic.disabled })")
-        if not query:
+        if query == "?brain=js":
             # The website's own picture of a note, for the instrument's to be held to below.
             p.evaluate("() => { applyPreset('b:Harmonic tone'); midiNoteOn(57, 100); }")
             p.wait_for_timeout(600)
             site_skew = p.evaluate(SKEW, 4096)
-        check("with %s the page is the website, on its own generator, its other sources offered" % (query or "no switch"),
+        check("with %s the page is on its own brain and its own generator, its other sources offered" % query,
               got["kind"] == want and not got["host"] and not got["brain"] and got["mic"] is False, str(got))
         p.close()
+    # ?brain=core, the switch before the instrument was the default, still asks for it.
+    p, _ = opened(b, "?brain=core", 1200)
+    check("and ?brain=core, the old switch, is the instrument", p.evaluate("() => BRAIN_IN_CORE && state.source.kind === 'host'"))
+    p.close()
 
-    p, errors = opened(b, "?brain=core")
+    # With no switch at all: the site, which since 5m is the instrument.
+    p, errors = opened(b, "")
     first = p.evaluate("""async () => ({ kind: state.source.kind, mark: el.sourceMark.textContent, on: hostSync.on,
       seen: hostSync.seen, chunks: state.source.chunks, rate: state.source.sampleRate, ctxRate: deviceRate(),
       timebase: decodeSetup((await scopeHost.call('scopeState')).code).timebase })""")
     p.wait_for_timeout(500)
     later = p.evaluate("() => state.source.chunks")
-    check("with ?brain=core the page draws the instrument in the worklet, and the instrument is playing",
-          first["kind"] == "host" and first["mark"] == "Instrument" and first["on"] and later > first["chunks"] > 0,
+    check("with no switch the page draws the instrument in the worklet, and the instrument is playing, its head saying what it plays",
+          first["kind"] == "host" and first["mark"] == "Test tone" and first["on"] and later > first["chunks"] > 0,
           "%s, %d chunks half a second later" % (first, later))
     check("and the page shows the instrument's state, put on it as the plugin's is", first["seen"] >= 1, str(first["seen"]))
     # The page opens on Harmonic tone, whose timebase is 3 where the default's is 4.
@@ -730,18 +739,192 @@ with sync_playwright() as pw:
     check("a module that will not make is no instrument, and the page is told so", refused is None, str(refused))
     check("no page errors", not errors, "; ".join(errors[:3]))
     p.close()
+
+    # What became of the page's own features once the instrument was the
+    # default (5m): each was there with the page's brain, and each was found
+    # missing by running the whole suite with the instrument the default.
+    print("\n--- the default, as it is seen ---")
+    p, errors = opened(b, "")
+    seen = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const out = { credit: el.credit.textContent };
+      // Two layers, played and edited: the A and B buttons, B's drawbars written to B, a figure each.
+      setScreenKeys(true); el.midiPoly.click();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      await wait(50);
+      el.midiEditB.click(); await wait(50);
+      out.titleB = el.barsTitle.textContent;
+      el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
+      el.bars.value = '800000000'; el.bar0.dispatchEvent(new Event('input'));
+      out.bars = [genSettings(0).bars.join(''), genSettings(1).bars.join('')];
+      el.midiEditA.click(); await wait(50);
+      midiNoteOn(48, 100); midiNoteOn(72, 100); await wait(700);
+      const w = state.source.getLatestWindow(8192);
+      out.figures = sourceFigures();
+      out.hz = w.map((lane) => estimateFrequency(lane, state.source.sampleRate));
+      out.names = [0, 1, 2, 3].map(laneName);
+      // The generator's readings: its envelope as a source, while a note is held.
+      out.envelope = MOD_SOURCES.get('env.note').value();
+      midiNoteOff(48); midiNoteOff(72);
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      await wait(1500);
+      out.envelopeAfter = MOD_SOURCES.get('env.note').value();
+      // The fade's dot follows a note's envelope.
+      restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
+      setFade('both'); setFadeEnvelope({ delay: 0.4, attack: 0.3, decay: 0.4, sustain: 1, release: 0.5 }); await wait(100);
+      fade.editing = 0;
+      const stage = () => (fade.last[0] && fade.last[0].gate ? gatePhase(fade.last[0].gate, performance.now()).stage : null);
+      midiNoteOn(60, 127); await wait(250); out.inWait = stage();
+      await wait(500); out.later = stage(); midiNoteOff(60);
+      out.dot = envParts.dot.getAttribute('visibility');
+      return out;
+    }""")
+    print("    %s" % seen)
+    check("the line under the title names what the generator plays, as the page's own does", seen["credit"] == "220 Hz, unison just",
+          seen["credit"])
+    check("with the layers on, the panel edits B and writes B's drawbars, leaving A's",
+          seen["titleB"] == "Drawbars \u00b7 layer B" and seen["bars"][1] == "800000000" and seen["bars"][0] != "800000000",
+          "%s, %s" % (seen["titleB"], seen["bars"]))
+    def layered(hz, a, b):
+        return all(h is not None and abs(h - want) < 1 for h, want in zip(hz, (a, a, b, b)))
+    check("and the instrument draws a figure each, A's at C3 and B's at C5 on its 16' bar, named so",
+          seen["figures"] == [[0, 1], [2, 3]] and layered(seen["hz"], 130.81, 261.63)
+          and seen["names"] == ["A \u00b7 X", "A \u00b7 Y", "B \u00b7 X", "B \u00b7 Y"], "%s %s" % (seen["hz"], seen["names"]))
+    check("and the reading fails with the figures the other way round", not layered(seen["hz"], 261.63, 130.81))
+    check("the generator's envelope is a source the page can read: up while a note is held, back down after",
+          seen["envelope"] > 0.3 and seen["envelopeAfter"] < 0.01, "%.3f then %.3f" % (seen["envelope"], seen["envelopeAfter"]))
+    check("the fade's dot follows a note: in the wait, then past it", seen["inWait"] == "delay" and seen["later"] in ("decay", "sustain")
+          and seen["dot"] == "visible", str(seen))
+    # What a suite on ?brain=js checks of the page's own brain, held here for
+    # the instrument where it is something seen: a controller on the
+    # frequency moves the pitch (miditest), the crossings' count climbs beside
+    # its switch (crosstest), and the readout says why a gated screen is empty
+    # (envtest).
+    more = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const hz = () => estimateFrequency(state.source.getLatestWindow(8192)[0], state.source.sampleRate);
+      const out = {};
+      setFade('off'); restore({}); setScreenKeys(false); await wait(200);
+      el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
+      midiBytes(Uint8Array.from([0xB0, 16, 0])); await wait(100);
+      state.modRoutings = [{ sourceId: 'cc.16', destId: 'gen.freq', amount: 1 }]; touchRoutings();
+      await wait(400); out.low = hz();
+      midiBytes(Uint8Array.from([0xB0, 16, 127])); await wait(500); out.high = hz();
+      state.modRoutings = []; touchRoutings();
+      // A slow harmonograph and the crossings on: the count beside the switch climbs, read off the instrument.
+      applyPreset('b:Harmonograph'); await wait(300);
+      el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change'));
+      await wait(300); const c0 = state.source.crossings; await wait(1500); const c1 = state.source.crossings;
+      out.counts = [c0.x + c0.y, c1.x + c1.y];
+      el.crossOn.checked = false; el.crossOn.dispatchEvent(new Event('change'));
+      // The screen's keys open and nothing held: the waveform is gated, and the readout says why it is empty.
+      applyPreset('b:Harmonic tone'); setScreenKeys(true); await wait(600);
+      out.gated = el.readoutDetail.textContent;
+      setScreenKeys(false); await wait(400);
+      out.free = el.readoutDetail.textContent;
+      return out;
+    }""")
+    check("a controller routed to the frequency moves the instrument's pitch: an octave at full", abs(more["low"] - 220) < 0.5
+          and abs(more["high"] - 440) < 1, "%s then %s" % (more["low"], more["high"]))
+    check("and the reading fails against the pitch it started at", not abs(more["low"] - 440) < 1)
+    check("the crossings' count climbs, read off the instrument", more["counts"][1] > more["counts"][0], str(more["counts"]))
+    check("and the readout says why a gated screen is empty, and stops once nothing gates it",
+          "gated \u00b7 no note held" in more["gated"] and "gated" not in more["free"], str(more))
+    # The crossings' lines drawn over the instrument's generator (crosstest's
+    # reading: blush in the X line's column and the Y line's row), and a split
+    # in a rack kept and not applied, the panel saying why (layertest's).
+    lines = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setScreenKeys(false); applyPreset('b:Harmonic tone'); await wait(300);
+      setView('scope');
+      el.amp.value = '2'; el.amp.dispatchEvent(new Event('input'));
+      el.dispXY.click(); el.persistence.value = '0'; el.persistence.dispatchEvent(new Event('change'));
+      el.crossX.value = '37'; el.crossX.dispatchEvent(new Event('input'));
+      el.crossY.value = '-37'; el.crossY.dispatchEvent(new Event('input'));
+      const read = async () => {
+        await wait(300);
+        const ctx = el.trace.getContext('2d'), k = ctx.getTransform().a;
+        const scale = plot.w / 2 * state.zoom;
+        const x = Math.round((plot.x + plot.w / 2 + 0.37 * gainOf(0) * scale) * k);
+        const col = ctx.getImageData(x - 1, Math.round(plot.y * k), 3, Math.round(plot.h * k)).data;
+        const rows = col.length / 4 / 3; let n = 0;
+        for (let j = 0; j < rows; j++) {
+          let most = 0;
+          for (let c = 0; c < 3; c++) { const i = (j * 3 + c) * 4; most = Math.max(most, col[i] - col[i + 2]); }
+          if (most > 25) n++;
+        }
+        return n / rows;
+      };
+      el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change'));
+      const on = await read();
+      el.crossOn.checked = false; el.crossOn.dispatchEvent(new Event('change'));
+      const off = await read();
+      // A rack with the generator in it, the keyboard split.
+      setScreenKeys(true); el.midiPoly.click();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      el.rackSynth.checked = true; await setRackSynth(true); await wait(900);
+      const rack = { lane: !!genLane(), on: layersOn(), mode: midi.layers.mode,
+                     note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      el.srcTone.click(); await wait(300); setScreenKeys(false);
+      return { on, off, rack };
+    }""")
+    check("the crossings' lines are drawn over the instrument's generator, and go when the crossings do",
+          lines["on"] > 0.3 and lines["off"] < 0.05, "inked %.2f on, %.2f off" % (lines["on"], lines["off"]))
+    check("and in a rack a split is kept, not applied, and the panel says why",
+          lines["rack"]["lane"] and not lines["rack"]["on"] and lines["rack"]["mode"] == "split" and "one layer" in lines["rack"]["note"],
+          str(lines["rack"]))
+    # The fade is kept in the page's storage, not in a setup: the instrument's
+    # first state, taken back at connect as the plugin's is, reset it to off.
+    p.evaluate("() => { setFade('both'); setFadeEnvelope({ attack: 1.25 }); saveFade(); }")
+    p.reload(); p.wait_for_timeout(1500)
+    kept = p.evaluate("() => ({ mode: fade.mode, attack: fade.envs[0].attack, kind: state.source.kind })")
+    check("and the fade comes back after a reload", kept == {"mode": "both", "attack": 1.25, "kind": "host"}, str(kept))
+    p.evaluate("() => { setFade('off'); saveFade(); }")
+    check("no page errors", not errors, "; ".join(errors[:3]))
+    p.close()
     b.close()
 
-    # Without autoplay: no blocks until a press, and the page says so.
+    # Without autoplay: the worklet plays no blocks until a press, and the page
+    # says so. Until 5m this asserted no chunks at all, which was the blank
+    # screen a first visit got: now the same instrument draws on this thread
+    # meanwhile. The context is held suspended until a press, as a browser's
+    # autoplay rule holds it, rather than trusting this one to.
     b = pw.chromium.launch(executable_path=CHROME)
-    p, errors = opened(b, "?brain=core", 2000, close=False)
-    waiting = p.evaluate("() => ({ chunks: state.source.chunks, credit: el.credit.textContent, seen: hostSync.seen })")
-    p.mouse.click(700, 450)
-    p.wait_for_timeout(800)
-    pressed = p.evaluate("() => ({ chunks: state.source.chunks, credit: el.credit.textContent })")
-    check("unpressed, the instrument has made itself and shown its state but plays no blocks, and says so",
-          waiting["chunks"] == 0 and waiting["seen"] >= 1 and "press" in waiting["credit"], str(waiting))
-    check("and the first press starts it", pressed["chunks"] > 0 and "press" not in pressed["credit"], str(pressed))
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    q.add_init_script("""(() => {
+      let pressed = false;
+      for (const kind of ['pointerdown', 'keydown']) window.addEventListener(kind, () => { pressed = true; }, true);
+      const Real = window.AudioContext;
+      window.AudioContext = class extends Real {
+        constructor(...a) { super(...a); super.suspend(); }
+        resume() { return pressed ? super.resume() : Promise.resolve(); }
+      };
+    })()""")
+    errors = []
+    q.on("pageerror", lambda e: errors.append(str(e)))
+    q.goto(PAGE)
+    q.wait_for_timeout(2000)
+    WAIT = """() => ({ kind: state.source.kind, waiting: state.source.waiting, standing: state.source.standing,
+      credit: el.credit.textContent, seen: hostSync.seen, peak: Math.max(...state.source.getLatestWindow(2048)[0].map(Math.abs)) })"""
+    waiting = q.evaluate(WAIT)
+    check("unpressed, the worklet plays no blocks and the page says so, and the instrument draws on this thread meanwhile",
+          waiting["kind"] == "host" and waiting["waiting"] and waiting["standing"] and waiting["seen"] >= 1
+          and "press anything to hear it" in waiting["credit"] and waiting["peak"] > 0.1, str(waiting))
+    # A hand on a slider before the press: the stand-in takes it, and so does the worklet.
+    q.evaluate("() => { el.amp.value = String(Number(el.amp.value) / 2); el.amp.dispatchEvent(new Event('input')); }")
+    q.wait_for_timeout(600)
+    halved = q.evaluate(WAIT)
+    q.keyboard.press("Shift")
+    q.wait_for_timeout(1000)
+    pressed = q.evaluate(WAIT)
+    check("a slider moved before the press reaches the stand-in: the picture half the height",
+          abs(halved["peak"] / waiting["peak"] - 0.5) < 0.03, "%.4f then %.4f" % (waiting["peak"], halved["peak"]))
+    check("and the first press starts the worklet, which lets the stand-in go and had the slider too",
+          not pressed["waiting"] and not pressed["standing"] and "press" not in pressed["credit"]
+          and abs(pressed["peak"] / waiting["peak"] - 0.5) < 0.03, str(pressed))
+    check("and the comparison fails against the level before the slider", not abs(waiting["peak"] / waiting["peak"] - 0.5) < 0.03)
+    check("no page errors while it stood in", not errors, "; ".join(errors[:3]))
     b.close()
 
 print()

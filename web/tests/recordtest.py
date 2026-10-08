@@ -18,6 +18,11 @@ Against the way it would fail:
 - a recorder that holds on: when it stops, its taps and its context are let
   go, and at the longest clip it stops by itself and says so.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - its sources'
+# recording taps; the instrument's clips are the section on ?brain=core -
+# which core/tests/parity.py holds the instrument to, sample for sample. The
+# instrument, the site's default since 5m, is braintest.py's and
+# hosttest.py's.
 import os
 from playwright.sync_api import sync_playwright
 
@@ -110,7 +115,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- the generator, heard ---")

@@ -20,6 +20,10 @@ What would go wrong, and what is checked for it:
 The spectra are numpy's, on windows a whole number of hertz wide, for the
 reasons drawbartest.py gives.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - genSet called
+# directly, and its generator's samples - which core/tests/parity.py holds the
+# instrument to, sample for sample. The instrument, the site's default since
+# 5m, is braintest.py's and hosttest.py's.
 import math, os, sys
 import numpy as np
 from playwright.sync_api import sync_playwright
@@ -77,7 +81,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     core = lambda morph, freq, n=N, extra=None: p.evaluate(CORE, [morph, freq, n, extra])

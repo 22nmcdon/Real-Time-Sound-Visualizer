@@ -3596,10 +3596,47 @@ iruns["aligned"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 
 # plays with no note; then one, and it is gated until a note; then none again.
 iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"]] + blocks(10) \
     + [["control", "keyboardPresent", "1"]] + blocks(60) + [["control", "keyboardPresent", "0"]] + blocks(10)
+# Two layers (5m): poly, split at middle C, a note each side, drawn as a
+# figure each - four lanes - and A against B, the same notes summed into one
+# pair; and the second generator beside the first, drawn as a figure each
+# with the layers off.
+LAYERED = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "midiPoly"], ["control", "midiLayers", "split"]]
+iruns["layered"] = LAYERED + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+iruns["layered against"] = LAYERED + [["control", "midiLayerPair", "against"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+# And in a rack, whose generator lane is one signal: the split is kept and not
+# applied. Layer B's level is put at nought first, so a split applied is B's
+# note silent, and one kept is that note at A's level; and the same without
+# the rack, where the split is applied, for the reading to be seen to fail.
+LAYERED_B = LAYERED + [["click", "midiEditB"], ["slider", "amp", "0"], ["click", "midiEditA"]]
+iruns["layered rack"] = LAYERED_B + [["feedlanes", 100], ["control", "srcLanes", "2,0"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+iruns["layered quiet B"] = LAYERED_B + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+# And while the input is drawn, when the page shows layer A whatever was chosen:
+# B chosen, the level put at nought there is A's, so back on the generator A's
+# note is the silent one and B's is heard.
+iruns["layered input"] = LAYERED + [["feed", 100, 73], ["click", "srcMic"], ["click", "midiEditB"], ["slider", "amp", "0"],
+                                    ["click", "midiEditA"], ["click", "srcTone"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+# A drawing (5m): a square-ish cycle and a sketched figure, sent as the setup's
+# own fields, as the page sends what it draws; the generator playing its drawn
+# cycle, and no keyboard, so it plays with no note.
+SQUARE = base64.b64encode(bytes((round((0.8 if k < 128 else -0.8) * 127) + 256) % 256 for k in range(256))).decode()
+SKETCH = "0.1,0.2 0.3,0.4"
+DRAWN = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"], ["control", "shape", "drawn"]] + blocks(10)
+iruns["drawn"] = DRAWN + [["control", "drawn", _json.dumps({"cycle": SQUARE, "cycles": "", "figDrawn": SKETCH})]] + blocks(30)
+iruns["drawn none"] = DRAWN + blocks(30)
+# A figure drawn on the screen: a horizontal stroke, sent to the generator's Drawn figure.
+FIG = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"], ["control", "genMode", "figure"],
+       ["control", "figure", "Drawn"]] + blocks(10)
+iruns["drawn figure"] = FIG + [["control", "drawn", _json.dumps({"figDrawn": "-0.5,0 0.5,0"})]] + blocks(30)
+iruns["drawn figure none"] = FIG + blocks(30)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 
 iout = {}
+# Every sample alike, except where a drawn cycle is played: its tables are
+# built with sin and cos, which the C library and the WebAssembly one are
+# allowed to round differently in the last place - 1.9e-17 apart, where every
+# other run is exact - so those runs are held to the file's 1e-12 (TOL).
+ILIBM = {"drawn", "drawn none"}
 for name, lines in iruns.items():
     path = iscript(name, lines)
     a, b = icpp(path), ijs(path)
@@ -3607,13 +3644,15 @@ for name, lines in iruns.items():
     most, other = icompare(a, b)
     said = sum(1 for l in a if l.startswith("state ")), sum(1 for l in a if l.startswith("out ")), sum(1 for l in a if l == "no")
     check("%s: the compiled instrument is the native one, every sample, every state and every message out" % name,
-          most == 0 and not other, "worst %g; %d states, %d sends, %d refusals%s" % (most, said[0], said[1], said[2],
+          most <= (TOL if name in ILIBM else 0) and not other, "worst %g; %d states, %d sends, %d refusals%s" % (most, said[0], said[1], said[2],
                                                                                     ("; " + other) if other else ""))
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)
+# All but the two that are silent by design: the refusals, and the Drawn
+# figure with nothing drawn, which is the stroke's null.
 check("and the runs had sound in them, states that changed, MIDI sent and refusals said",
-      all(ipeak(n) > 0.05 for n in iruns if n != "refused") and icount("hands", "state ") >= 8
+      all(ipeak(n) > 0.05 for n in iruns if n not in ("refused", "drawn figure none")) and icount("hands", "state ") >= 8
       and icount("clock", "out ") >= 10 and icount("refused", "no") == 4 and icount("presets", "state ") >= len(inames),
       "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
           {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
@@ -3767,6 +3806,59 @@ rack_five = max(abs(v) for b in range(2, 10) for v in arows[b][7 * 128:8 * 128])
 after_rack = max(abs(v) for b in range(66, 74) for v in arows[b][6 * 128:8 * 128])
 check("and the split after a rack of six clears the rack's lanes past four in rows the rack last wrote",
       rack_five > 0.1 and after_rack == 0, "the rack's sixth lane %.3f, after the split %g" % (rack_five, after_rack))
+# Two layers drawn: a figure each is A's pair then B's, at their notes'
+# pitches; A against B is one pair, A's on X and B's on Y, as the generator
+# makes it - the pair B would add is silent then, so the page's sum of the
+# two is the generator's own pair - and nothing past it.
+def ilane(name, lane, first, last):
+    return [v for l in [l for l in iout[name][1] if l.startswith("block ")][first:last] for v in ifloats(l)[(2 + lane) * 128:(3 + lane) * 128]]
+def ihz(xs):
+    ups = [k for k in range(1, len(xs)) if xs[k - 1] < 0 <= xs[k]]
+    return (len(ups) - 1) * 48000 / (ups[-1] - ups[0]) if len(ups) > 2 else 0
+each = [ilane("layered", c, 10, 40) for c in range(4)]
+against = [ilane("layered against", c, 10, 40) for c in range(4)]
+def ilayered(a_lane, b_lane):
+    return (abs(ihz(each[0]) - 130.81) < 2 and abs(ihz(each[2]) - 523.25) < 6 and max(abs(v) for v in each[2]) > 0.1
+            and abs(ihz(against[a_lane]) - 130.81) < 2 and abs(ihz(against[b_lane]) - 523.25) < 6
+            and max(abs(v) for v in against[2] + against[3]) == 0)
+check("and two layers are drawn as the page lays them out: a figure each, A's pair at its note and B's at its; A against B, A on X and B on Y",
+      ilayered(0, 1), "each: A %.1f Hz, B %.1f Hz; against: X %.1f Hz, Y %.1f Hz, past them %g"
+      % (ihz(each[0]), ihz(each[2]), ihz(against[0]), ihz(against[1]), max(abs(v) for v in against[2] + against[3])))
+check("and the reading fails with A against B the other way round", not ilayered(1, 0))
+def igoertzel(xs, hz):
+    w = 2 * math.pi * hz / 48000
+    re_ = sum(v * math.cos(w * k) for k, v in enumerate(xs)); im = sum(v * math.sin(w * k) for k, v in enumerate(xs))
+    return 2 * math.hypot(re_, im) / len(xs)
+def iheard_at(name, hz):
+    return igoertzel([v for l in [l for l in iout[name][1] if l.startswith("block ")][10:40] for v in ifloats(l)[:128]], hz)
+rack_b, split_b = iheard_at("layered rack", 523.25), iheard_at("layered quiet B", 523.25)
+check("and in a rack a split is kept, not applied: with layer B silent, B's note is heard, at A's level",
+      rack_b > 0.05 and iheard_at("layered rack", 130.81) > 0.05, "B's note heard %.3f in a rack" % rack_b)
+check("and the reading fails without the rack, where the split is applied and B's note is silent", not split_b > 0.05,
+      "%.4f" % split_b)
+input_a, input_b = iheard_at("layered input", 130.81), iheard_at("layered input", 523.25)
+check("and a slider moved with B chosen while the input is drawn is A's, as the page shows A then: A's note silent after, B's heard",
+      input_a < 0.01 and input_b > 0.05, "A %.4f, B %.3f" % (input_a, input_b))
+# The drawing heard and kept: the picture's crest - peak over RMS - falls from a
+# sine's 1.41 towards a square's 1 once the square is sent, and the state the
+# instrument publishes carries both fields, so a project reopened draws them.
+def icrest(name, first, last):
+    xs = ilane(name, 0, first, last)
+    return max(abs(v) for v in xs) / math.sqrt(sum(v * v for v in xs) / len(xs))
+dstates = [l for l in iout["drawn"][1] if l.startswith("state ")]
+dlast = _json.loads(base64.b64decode(dstates[-1].split(" ", 2)[2] + "=" * (-len(dstates[-1].split(" ", 2)[2]) % 4)))
+check("and a drawing sent is played and kept: the drawn cycle heard, the crest of a square, and the cycle and the sketch in the state",
+      icrest("drawn", 2, 10) > 1.3 and icrest("drawn", 20, 40) < 1.2 and dlast.get("cycle") == SQUARE and dlast.get("figDrawn") == SKETCH,
+      "crest %.2f then %.2f; state has the cycle %s, the sketch %s" % (icrest("drawn", 2, 10), icrest("drawn", 20, 40),
+                                                                       dlast.get("cycle") == SQUARE, dlast.get("figDrawn") == SKETCH))
+check("and the reading fails without the drawing sent", not icrest("drawn none", 20, 40) < 1.2, "%.2f" % icrest("drawn none", 20, 40))
+def istroke(name):
+    xs, ys = ilane(name, 0, 20, 40), ilane(name, 1, 20, 40)
+    return max(xs) - min(xs) > 0.4 and max(abs(v) for v in ys) < 1e-6
+check("and a figure drawn on the screen is the figure drawn: a horizontal stroke, across in X and flat in Y",
+      istroke("drawn figure"), "X %.3f to %.3f, Y within %g" % (min(ilane("drawn figure", 0, 20, 40)), max(ilane("drawn figure", 0, 20, 40)),
+                                                                max(abs(v) for v in ilane("drawn figure", 1, 20, 40))))
+check("and the reading fails without the stroke sent", not istroke("drawn figure none"))
 urows = [ifloats(l) for l in iout["unkeyed"][1] if l.startswith("block ")]
 upeak = [max(abs(v) for v in row[2 * 128:3 * 128]) for row in urows]
 # Told nothing, the instrument is the plugin's: a keyboard, and silent until a note.

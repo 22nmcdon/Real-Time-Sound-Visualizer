@@ -19,6 +19,10 @@ Written against the way each would fail:
   cut off, more than once an attack, or faster than the gap allows;
 - a routing that fires when it is made, or never fires at all.
 """
+# On ?brain=js (5m): this suite reads the page's own brain - its sources'
+# functions, bound directly - which core/tests/parity.py holds the instrument
+# to, sample for sample. The instrument, the site's default since 5m, is
+# braintest.py's and hosttest.py's.
 import math, os
 from playwright.sync_api import sync_playwright
 
@@ -79,7 +83,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     run = lambda steps, keep=False: p.evaluate(CORE, {"steps": steps, "keep": keep})
     SR = 44100

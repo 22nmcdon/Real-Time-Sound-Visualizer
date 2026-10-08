@@ -1915,6 +1915,130 @@ mutated has gone. It removed a guard against sending before the worklet
 was ready, but the worklet builds the instrument in its constructor,
 before it reads a message, so the guard did nothing.
 
+5m-ii is the flip. `BRAIN_IN_CORE` is now true unless the address says
+`?brain=js`, or the compiled core is off (`?core=js`, or no WebAssembly).
+`?brain=core` still asks for the default, and an instrument that will not
+start leaves the page on its own brain, as before.
+
+What the full suite found once the instrument was the default, each fixed
+and each held by a check on the default:
+
+- **A first visit was a blank scope until a press.** A browser starts an
+  audio context suspended until the visitor presses something, and a
+  suspended context runs no blocks. The tests turn that rule off, so it
+  showed only with the context held suspended by hand. Until the worklet's
+  first chunk, the same instrument now plays on the page's own thread: the
+  same module, opened on the same setup, handed the same messages. It is
+  drawn and not heard, and let go when the worklet speaks.
+  (`makeBrainHost`'s stand-in; braintest's last section.) It compiles the
+  module on the main thread, as the page's own generator has since 5c. A
+  browser that refuses a module that size there gets no stand-in and waits
+  for the press as before, rather than an error.
+- **The line under the title said "in the audio thread".** It now names
+  what the generator plays, from the page's mirror of its settings, as the
+  tone source does (`describeGenerator`).
+- **The fade was reset to off on every load.** The page took the
+  instrument's first state back at connect, as it does in the plugin. That
+  state was the page's own setup, less the fade, which lives in the page's
+  storage. On the site the state is now counted as seen, not taken back,
+  and the fade is sent (`hostConnect(site)`).
+- **The fade's dot stood still.** It follows the page's own reckoning of
+  each note's envelope, and with the instrument playing nothing on the
+  page stepped the generator's routes. Now the page steps them for what it
+  shows. This was true in the plugin as well.
+- **Layer B was heard and never drawn, and could not be edited.** This was
+  true in the plugin as well. The instrument passed its generator A's pair
+  only, so layer B's figure, or the second generator's, was computed and
+  dropped. It now lays out the picture as the page's tone source does: four
+  lanes for a figure each, one pair for A against B (`Instrument::render`).
+  On the page, the instrument's source keeps the layout (`withLayout`).
+  The page asks the source whether two layers can be laid out before it
+  shows layer B on the panel, and the instrument's source had no answer, so
+  the panel went on showing A while the instrument wrote B.
+- **A split in a rack was applied.** The keyboard took the generator to be
+  always on its own, which stopped being true when the instrument gained
+  inputs and racks. The instrument now tells it (`Keyboard::setLayable`).
+- **The meters and readouts that read the generator stood at nought.** These
+  are its envelope, gate, crossings' counts, budget and drawings. The bridge
+  now gives them (`brain_readings`), the worklet posts them with each chunk,
+  and the instrument's source and its rack lane answer for them.
+- **A drawn cycle, or a figure drawn on the screen, was never heard.** This
+  was true in the plugin as well. A drawing is neither a slider nor a preset,
+  and reached the instrument by neither. It now goes as the setup's own
+  fields in one control (`drawn`), applied by the restore code a preset
+  uses (`restoreCycles`, `restoreDrawnFigure`), and kept in the setup the
+  state is made from.
+- **Every question asked of `state.source.kind` had the wrong answer**,
+  because the instrument's is `"host"` whatever it draws. The head read
+  *Instrument*. The rack's note said the screen showed "the file" while it
+  showed the generator, and a rack's transport and the crossings' lines were
+  never shown. The preset browser, the effects' and the second generator's
+  notes, and a file dropped on a rack all answered wrongly too.
+  `playingKind()` answers the question asked.
+- **Of two racks in flight, the slower won.** The instrument's `makeRack`
+  installed whatever finished last. It now asks whether it is still wanted,
+  as `playFile` does.
+- **The readout said "speakers on the input" with nothing heard**, because
+  the instrument's monitor chain is always there. A silent chain is not
+  speakers.
+
+What the default does not do, and says so on the cheat sheet: the
+oscillators that move the picture are the page's and those that move the
+sound are the instrument's, so one routed to both moves them at the same
+rate but not in step. This was so in the plugin from stage 3.
+
+The suites. Thirty-seven reach into the page's own brain: its worklets, its
+gate flags, `genSet`, `midiControl`, `setMidiMode`, `restore()` and its
+oscillators set by hand. None of those calls reaches the instrument. They run
+on `?brain=js` and each says why at its top; parity holds the instrument to
+that brain. The rest run on the default, and `braintest.py` holds what they
+checked that you see:
+
+- a controller on the frequency;
+- the crossings' count;
+- the gated readout;
+- the layers;
+- the envelope as a source;
+- the fade's dot, and the fade after a reload.
+
+Held by:
+
+- parity.py:
+  - two layers laid out as the page lays them out, nulled with A against B
+    the other way round;
+  - a split kept and not applied in a rack, nulled without the rack;
+  - a slider moved with B chosen while the input is drawn is A's, as the
+    page shows A then;
+  - a drawn cycle heard and kept in the state, nulled without it;
+  - a figure drawn on the screen drawn, nulled without the stroke.
+- ShellTest: the plugin serves four lanes for a figure each, and one pair
+  for A against B.
+
+Mutation: 10 in the core, through parity's readings and the shell test.
+Nine were caught. The one that lived adds nothing to "against", where B's
+own pair is silent, so it is equivalent. Two of the nine lived at first: a
+split kept while the input is drawn, and a sketch applied. Each now has its
+parity check above. A third was first counted as caught by a build that
+failed on an unused variable, and is now caught by the sketch's check.
+
+On the page, 23. Twenty-one were caught on the first pass; the
+crossings' lines and a split in a rack lived, and braintest has a check for
+each. One was caught at first only by hearingtest's timing check, which
+proves nothing about the mutant. Run again, it is caught by the loop's own
+checks as well.
+
+With the default the instrument, the suites stand at:
+
+| suite | passed |
+|---|---|
+| web | 1911, of which 37 suites are on `?brain=js` |
+| parity | 598 |
+| shell | 85 |
+| Python build | 61 |
+
+Four of parity's harnesses lift page functions that now ask
+`playingKind()`, and each takes the helper too.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

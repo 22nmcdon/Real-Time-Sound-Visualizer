@@ -297,11 +297,12 @@ with sync_playwright() as pw:
       el.presetMenus.querySelector('[data-menu="sounds"]').click();
       el.presetRail.querySelector('.preset-section[data-section="' + PRESETS.findIndex(([s]) => s === 'Start here') + '"]').click();
       const said = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
-      const kind = state.source && state.source.kind;
+      // What is playing, not the source's kind: the instrument's is "host" whatever it draws (5m).
+      const kind = playingKind();
       const offer = document.getElementById('presetToTone');
       if (offer) offer.click();
       await wait(400);
-      const after = { kind: state.source.kind, hidden: el.presetWhere.hidden };
+      const after = { kind: playingKind(), hidden: el.presetWhere.hidden };
       el.presetDialog.close();
       return { said, kind, after };
     }""")
