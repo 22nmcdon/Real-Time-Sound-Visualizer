@@ -145,7 +145,11 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
        pairs a sample - layer A's picture, layer B's, the heard pair - with
        the setup done again every 128 samples, as a block would. Its routings'
        pushes are sines of their own, rounded as the Float32Array holding them
-       rounds them. `ev` moves a tone field at a sample: `500:planeOS:4`. */
+       rounds them. `ev` moves a tone field at a sample: `500:planeOS:4`.
+       With `bown=1` layer B has its own shape (the `b...` fields, a `b`
+       before the tone's name, and `bTurn`), pushed by B's own sines: B's
+       pair goes through it, and the heard pair is A's share and B's bent
+       apart and joined before the time stage, as the block does. */
     const p = Object.fromEntries(rest.map((kv) => { const i = kv.indexOf("="); return [kv.slice(0, i), kv.slice(i + 1)]; }));
     const n = (k) => Number(p[k]);
     const rate = n("rate");
@@ -153,25 +157,38 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                     "planeTwist", "planeKaleido", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
                     "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
-    const c = coreScope(["poleFor", "opX", "pTwist", "planeOp", "DELAY_MAX", "CHORUS_MAX", "delayGlide", "chorusPhase",
-                         "makeTimeFx", "readLine", "timeStep", "lowpassTaps", "makeOversampler", "planeFactor", "fxA",
-                         "linearOn", "chorusSin", "genMod", "planeSetup", "planeTick", "planeStep"],
-                        rate, null, { tone, slots: 40 });
+    const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
+                      "planeTwist", "planeKaleido", "planeSnap"];
+    const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
+    toneB.planeOwn = n("bown") === 1;
+    toneB.planeTurn = n("bTurn");
+    const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "CHORUS_MAX",
+                         "delayGlide", "chorusPhase", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
+                         "makeOversampler", "planeFactor", "fxA", "linearOn", "chorusSin", "genMod", "genModB",
+                         "shapeSet", "planeSetup", "planeTick", "planeStep"],
+                        rate, null, { tone, toneB, slots: 40 });
     const events = new Map();
     for (const e of (p.ev || "").split(";").filter(Boolean)) {
       const [at, field, value] = e.split(":");
       if (!events.has(Number(at))) events.set(Number(at), []);
       events.get(Number(at)).push([field, Number(value)]);
     }
-    const g = c.genMod, values = [];
+    const g = c.genMod, gB = c.genModB, values = [];
     let on = false;
     for (let i = 0; i < n("samples"); i++) {
-      for (const [field, value] of events.get(i) || []) tone[field] = value;
-      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1);
+      for (const [field, value] of events.get(i) || []) {
+        if (field === "bown") toneB.planeOwn = value === 1;
+        else if (field === "bTurn") toneB.planeTurn = value;
+        else if (field[0] === "b") toneB["plane" + field.slice(1)] = value;
+        else tone[field] = value;
+      }
+      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true);
       g[c.__get("RADIUS_SLOT")] = n("rpush") * Math.sin(i * 0.0031);
       g[c.__get("TWIST_SLOT")] = n("tpush") * Math.sin(i * 0.0047 + 1);
       g[c.__get("ECHO_SLOT")] = n("epush") * Math.sin(i * 0.0023 + 2);
       g[c.__get("ECHO_TIME_SLOT")] = n("etpush") * Math.sin(i * 0.0013 + 3);
+      gB[c.__get("RADIUS_SLOT")] = n("brpush") * Math.sin(i * 0.0029 + 0.5);
+      gB[c.__get("TWIST_SLOT")] = n("btpush") * Math.sin(i * 0.0041 + 1.5);
       let x = 0.7 * Math.sin(f.TWO_PI * 220 * i / rate) + 0.25 * Math.sin(f.TWO_PI * 661 * i / rate);
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.
@@ -179,7 +196,17 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       if (!on) { values.push(x, y, y, x, x, y); continue; }
       c.planeTick(1 / rate);
       c.planeStep(c.__get("osA"), c.fxA, x, y); values.push(c.__get("opX"), c.__get("opY"));
-      c.planeStep(c.__get("osB"), c.__get("fxB"), 0.8 * y, 1.1 * x); values.push(c.__get("opX"), c.__get("opY"));
+      const shapeOfB = c.__get("shapeOfB");
+      c.planeStep(c.__get("osB"), c.__get("fxB"), 0.8 * y, 1.1 * x, shapeOfB); values.push(c.__get("opX"), c.__get("opY"));
+      if (shapeOfB !== c.shapeA) {
+        c.planeStep(c.__get("osHeard"), null, 0.6 * (x + y), 0.6 * (x - y), c.shapeA);
+        let hx = c.__get("opX"), hy = c.__get("opY");
+        c.planeStep(c.__get("osHeardB"), null, 0.4 * y, 0.3 * x, shapeOfB);
+        hx += c.__get("opX"); hy += c.__get("opY");
+        if (c.__get("timeOn")) { c.timeStep(c.__get("fxHeard"), hx, hy, c.__get("chorusSin"), c.__get("chorusCos")); hx = c.__get("opX"); hy = c.__get("opY"); }
+        values.push(hx, hy);
+        continue;
+      }
       c.planeStep(c.__get("osHeard"), c.__get("fxHeard"), 0.6 * (x + y), 0.6 * (x - y));
       values.push(c.__get("opX"), c.__get("opY"));
     }

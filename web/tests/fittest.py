@@ -55,6 +55,7 @@ SWEEP = """async ([rack]) => {
   }
   setView('bench');
   const over = [], cases = [], mismeasured = [];
+  let planeRows = null;
   const measure = (label) => {
     const views = [];
     for (const [tab] of BENCH_TABS) {
@@ -93,6 +94,20 @@ SWEEP = """async ([rack]) => {
       }
     }
   }
+  /* Two layers, with layer B's own plane on the panel: the Plane section
+     grows its Layers row and B's Turn, and the clip at the radius shows the
+     radius's. A rack keeps a split without applying it, so only the tone. */
+  if (!rack) {
+    el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
+    setMidiMode('poly');
+    el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
+    el.planeLayerB.click();
+    el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
+    planeRows = [el.planeLayerRow.hidden, el.planeTurnRow.hidden, el.planeRadiusRow.hidden];
+    measure('tone+keys+photo+layers+planeB');
+    el.planeLayerBoth.click(); setMidiMode('dyad');
+    el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
+  }
   // The worst of them with thirty controllers learned - three Nord Electros'
   // worth of drawbars and swells - which grow the Controllers family by a row
   // each. Past a dozen rows the list scrolls inside itself; the tab must not.
@@ -102,7 +117,7 @@ SWEEP = """async ([rack]) => {
   setBenchTab('sources'); chooseSourceFamily('controllers');
   const list = { rows: el.srcList.querySelectorAll('.src-row').length,
                  scrolls: el.srcList.scrollHeight > el.srcList.clientHeight + 1 };
-  return { over, cases: cases.length, mismeasured, list };
+  return { over, cases: cases.length, mismeasured, list, planeRows };
 }"""
 
 with sync_playwright() as pw:
@@ -126,6 +141,9 @@ with sync_playwright() as pw:
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
         check("thirty controllers are thirty rows, and the list scrolls inside itself rather than the tab",
               r["list"] == {"rows": 30, "scrolls": True}, str(r["list"]))
+        if name == "tone":
+            check("the layered case had the Plane section's Layers, Turn and Radius rows all showing",
+                  r["planeRows"] == [False, False, False], str(r["planeRows"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

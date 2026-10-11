@@ -113,7 +113,8 @@ DUMP = """(setups) => {
       arpPlays: { mode: arp.mode, rate: arp.rate, octaves: arp.octaves },
       // The layer the panel shows, and its menus: a layer's other controls are sliders, in ranges.
       fade: { mode: fade.mode, envs: fade.envs },
-      panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"]
+      panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
+                                             "planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
         .map((id) => [id, el[id].value])),
       thresh: { watch: thresh.watch, level: thresh.level, armed: thresh.armed }, pluck: pluck.note,
       macros: macros.map((m) => ({ name: m.name, value: m.value })),
@@ -143,6 +144,9 @@ DUMP = """(setups) => {
                 drawnPath: pathOf(figDrawing.drawn), sent: pathOf(genSettings().figPath) },
       plane: { mirror: plane.mirror, limit: plane.limit, radius: plane.radius, os: plane.os, twist: plane.twist,
                kaleido: plane.kaleido, snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
+      planeB: { own: planeB.own, mirror: planeB.mirror, limit: planeB.limit, radius: planeB.radius, twist: planeB.twist,
+                kaleido: planeB.kaleido, snap: planeB.snap, scaleX: planeB.scaleX, scaleY: planeB.scaleY, shear: planeB.shear,
+                turn: planeB.turn },
       echo: { mix: echo.mix, ms: echo.ms, sync: echo.sync, feedback: echo.feedback, pingPong: echo.pingPong,
               chorus: echo.chorus, rate: echo.rate, depthMs: echo.depthMs, centreMs: echo.centreMs,
               chorusFeedback: echo.chorusFeedback },
@@ -184,7 +188,12 @@ def main():
         # batch happens to end. A bare install is not enough; time flows
         # under it, and the frames with it, until the clock is paused.
         page.clock.install(time=0)
-        page.goto("file://" + os.path.abspath(PAGE))
+        # On the page's own brain, the reference this harness holds the core
+        # to. On the default the instrument's stand-in comes up whenever the
+        # compiled module has loaded - sometimes after the oscillators below
+        # are set - and since its oscillators are the page's (5n) it wrote
+        # its own phases over them: one run in two, by a fixed step.
+        page.goto("file://" + os.path.abspath(PAGE) + "?brain=js")
         page.clock.pause_at(1000)
         page.clock.run_for(700)
         # The LFOs ran in those frames, and the core's have not: from one

@@ -204,6 +204,20 @@ int main(int argc, char** argv) {
         { "chorusFeedback", [&](double v) { t.chorusFeedback = v; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
+      // Layer B's own shape, as the page's run holds it.
+      scope::PlaneShapeTone b;
+      bool bown = d("bown") == 1;
+      double bturn = d("bTurn");
+      const std::map<std::string, std::function<void(double)>> bfields {
+        { "bown", [&](double v) { bown = v == 1; } }, { "bTurn", [&](double v) { bturn = v; } },
+        { "bMirror", [&](double v) { b.planeMirror = static_cast<int>(v); } },
+        { "bRadius", [&](double v) { b.planeRadius = v; } },
+        { "bLimit", [&](double v) { b.planeLimit = static_cast<int>(v); } },
+        { "bScaleX", [&](double v) { b.planeScaleX = v; } }, { "bScaleY", [&](double v) { b.planeScaleY = v; } },
+        { "bShear", [&](double v) { b.planeShear = v; } }, { "bTwist", [&](double v) { b.planeTwist = v; } },
+        { "bKaleido", [&](double v) { b.planeKaleido = v; } }, { "bSnap", [&](double v) { b.planeSnap = v; } },
+      };
+      for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;
       for (const auto& e : splitOn(p["ev"], ';')) {
         if (e.empty()) continue;
@@ -216,20 +230,35 @@ int main(int argc, char** argv) {
       const double tw = scope::kTwoPi;
       for (long i = 0; i < static_cast<long>(d("samples")); i++) {
         const auto ev = events.find(i);
-        if (ev != events.end()) for (const auto& [field, value] : ev->second) fields.at(field)(value);
-        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1);
+        if (ev != events.end()) {
+          for (const auto& [field, value] : ev->second) {
+            if (fields.count(field)) fields.at(field)(value); else bfields.at(field)(value);
+          }
+        }
+        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn);
         const double di = static_cast<double>(i);
         const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
         const double tp = static_cast<float>(d("tpush") * std::sin(di * 0.0047 + 1));
         const double ep = static_cast<float>(d("epush") * std::sin(di * 0.0023 + 2));
         const double etp = static_cast<float>(d("etpush") * std::sin(di * 0.0013 + 3));
+        const double brp = static_cast<float>(d("brpush") * std::sin(di * 0.0029 + 0.5));
+        const double btp = static_cast<float>(d("btpush") * std::sin(di * 0.0041 + 1.5));
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
         if (!on) { out.insert(out.end(), { x, y, y, x, x, y }); continue; }
-        plane.tick(t, rp, tp, ep, etp, 1 / rate);
+        plane.tick(t, rp, tp, ep, etp, 1 / rate, &b, brp, btp);
         plane.step(scope::Plane::A, t, x, y); out.insert(out.end(), { plane.x, plane.y });
-        plane.step(scope::Plane::B, t, 0.8 * y, 1.1 * x); out.insert(out.end(), { plane.x, plane.y });
+        plane.step(scope::Plane::B, t, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });
+        if (plane.ownB()) {
+          plane.step(scope::Plane::Heard, t, 0.6 * (x + y), 0.6 * (x - y), false, false);
+          double hx = plane.x, hy = plane.y;
+          plane.step(scope::Plane::HeardB, t, 0.4 * y, 0.3 * x, true, false);
+          hx += plane.x; hy += plane.y;
+          plane.timeOnly(scope::Plane::Heard, t, hx, hy);
+          out.insert(out.end(), { plane.x, plane.y });
+          continue;
+        }
         plane.step(scope::Plane::Heard, t, 0.6 * (x + y), 0.6 * (x - y)); out.insert(out.end(), { plane.x, plane.y });
       }
       show(out);

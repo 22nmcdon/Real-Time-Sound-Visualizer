@@ -45,6 +45,16 @@ Json layerJson(const scope::LayerSettings& t) {
   return o;
 }
 
+// Layer B's, with its own plane.
+Json layerBJson(const scope::LayerBSettings& t) {
+  Json o = layerJson(t);
+  o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
+  o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
+  o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
+  o.set("planeTwist", num(t.planeTwist)); o.set("planeKaleido", num(t.planeKaleido)); o.set("planeSnap", num(t.planeSnap));
+  return o;
+}
+
 Json toneJson(const scope::Tone& t) {
   Json o = layerJson(t);
   o.set("mode", str(t.modeName)); o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
@@ -188,7 +198,7 @@ int main(int argc, char** argv) {
     Json out = Json::object();
     out.set("error", Json::null());
     out.set("a", toneJson(gen.tone()));
-    out.set("b", layerJson(gen.toneB()));
+    out.set("b", layerBJson(gen.toneB()));
     const auto k = keys.settings();
     Json midi = Json::object();
     midi.set("mode", str(modeName(k.mode)));
@@ -265,7 +275,8 @@ int main(int argc, char** argv) {
     }
     out.set("panelLayer", num(brain.panelLayer));
     Json menus = Json::object();
-    for (const char* id : { "shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType" })
+    for (const char* id : { "shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
+                            "planeMirror", "planeLimit", "planeKaleido", "planeSnap" })
       menus.set(std::string_view(id), str(brain.panel.select(id)));
     out.set("menus", menus);
     Json thresh = Json::object();
@@ -372,6 +383,13 @@ int main(int argc, char** argv) {
     plane.set("twist", num(p.twist)); plane.set("kaleido", num(p.kaleido)); plane.set("snap", num(p.snap));
     plane.set("scaleX", num(p.scaleX)); plane.set("scaleY", num(p.scaleY)); plane.set("shear", num(p.shear));
     out.set("plane", plane);
+    const auto& q = brain.planeB;
+    Json planeB = Json::object();
+    planeB.set("own", flag(q.own)); planeB.set("mirror", num(q.mirror)); planeB.set("limit", num(q.limit));
+    planeB.set("radius", num(q.radius)); planeB.set("twist", num(q.twist)); planeB.set("kaleido", num(q.kaleido));
+    planeB.set("snap", num(q.snap)); planeB.set("scaleX", num(q.scaleX)); planeB.set("scaleY", num(q.scaleY));
+    planeB.set("shear", num(q.shear)); planeB.set("turn", num(q.turn));
+    out.set("planeB", planeB);
     const auto& e = brain.echo;
     Json echo = Json::object();
     echo.set("mix", num(e.mix)); echo.set("ms", num(e.ms)); echo.set("sync", str(e.sync)); echo.set("feedback", num(e.feedback));

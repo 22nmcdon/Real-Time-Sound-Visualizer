@@ -2070,6 +2070,45 @@ phase the harness set. Its browser now has no leave to play sound unasked,
 so the worklet never starts and the stand-in, stepped by the paused frames,
 is what plays there.
 
+5o is layer B's own plane. The Plane section had one set of settings, and
+with two layers B's picture and sound went through A's: no way to mirror
+one layer and not the other, and the screen's rotation turned both
+figures. Now a Layers row, shown with two layers, chooses Together (as
+before), A or B. Leaving Together gives B a plane of its own - mirror,
+radial, twist, kaleidoscope, snap, scale and shear, and a Turn that is B's
+alone - starting as a copy of A's, and A or B says which the section
+edits, the same choice as the Play tab's buttons. While B has its own the
+screen's rotation turns A only. The echo, the chorus and the oversampling
+stay one for the page.
+
+The generator holds a shape per layer (the page's `planeOf`, scope's
+`Plane::Shape`) where it held one set of variables; B's is A's object
+until B has its own, so off is the old arithmetic exactly - checked against
+the committed page sample for sample before anything else was done. B's
+share of the heard pair goes through a fourth oversampler and joins A's
+before the one time stage, which is a different sound from the two through
+one plane even with the same settings (see web/README.md), and B's radius
+and twist are pushed by B's own fade. A setup carries `bPlane` (in the
+defaults, false) and, while it is on, B's fields, each falling back to A's
+when a code lacks it, as B's sound does.
+
+Held by parity.py: the plane's harness with B's own shape on, turned,
+pushed and switched under the pairs; whole-generator runs where B's own
+bends B's picture and the sound and leaves A's picture exact; 80 setups of
+B's own; 900 hands on the section with the layers on; and the beam walk's
+rule that B's figure is not turned by the screen while it turns itself. In
+the plugin the instrument walks only the pair the menus chose into its own
+grid - it is never given the figures - so that rule has nothing there to
+act on yet; the page draws both. layerplanetest.py holds the rest, on the
+page's brain and on the instrument.
+
+5n's mend of the restore harness was half of one. With no leave to play
+sound the worklet never starts, but the instrument's stand-in does, as soon
+as the compiled module has loaded - sometimes after the harness has set the
+oscillators - and its first readings wrote its own phases over them, by a
+fixed step, in about one run in two. The harness now loads the page's own
+brain, the reference it holds the core to and what it loaded before 5m.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

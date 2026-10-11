@@ -283,7 +283,8 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       planeScaleX=1, planeScaleY=1, planeShear=0, planeTwist=0, planeKaleido=0, planeSnap=0,
                       delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
                       chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
-                      etpush=0, inp=0, ev="")
+                      etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
+                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -322,6 +323,19 @@ def plane_scenarios():
     out.append(dict(planeTwist=1.2, ev="300:planeOS:4;900:planeOS:1;1400:planeOS:2;1700:planeOS:4"))
     out.append(dict(planeLimit=2, planeRadius=0.3, delayMix=0.3, delayMs=6,
                     ev="500:chorusMix:0.6;1000:delayMix:0;1200:delayMix:0.5;1900:planeKaleido:3"))
+    # Layer B with a shape of its own: bent where A is not and the other way
+    # round, turned, pushed by its own routings, and its share of the heard
+    # pair joining A's before an echo and a chorus. A always does something,
+    # so every run still changes A's pair (the check below).
+    for os_ in (1, 2, 4):
+        out.append(dict(planeOS=os_, planeTwist=1.1, tpush=0.3, bown=1, bMirror=3, bTurn=0.7))
+    out.append(dict(planeScaleX=1.1, bown=1, bTurn=-1.9))
+    out.append(dict(planeMirror=1, bown=1, bKaleido=5, bLimit=1, bRadius=0.3, brpush=0.6, btpush=0.5, bTwist=0.4,
+                    bScaleX=0.7, bShear=0.4, delayMix=0.4, delayMs=9, delayFeedback=0.5, chorusMix=0.5, chorusRate=2))
+    out.append(dict(planeKaleido=3, bown=1, bLimit=2, bRadius=0.25, bSnap=4, delayMix=0.3, delayMs=7, delayPingPong=1))
+    # B's own switched on and off under the pairs, and moved while it is on.
+    out.append(dict(planeTwist=0.9, bMirror=1, bTurn=0.5,
+                    ev="600:bown:1;1100:bKaleido:5;1500:bown:0;2000:bown:1;2200:bTurn:-0.3"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -483,6 +497,14 @@ check("every plane run changes the pair it is given", not still, "; ".join(still
 kal = next(i for i, l in enumerate(lines) if "planeKaleido=5.5" in l)
 check("and against a kaleidoscope of 5.6 answered as one of 5.5",
       worst(js_one(lines[kal].replace("planeKaleido=5.5", "planeKaleido=5.6")), row(cpp_rows[kal])) > 1e-6)
+# Layer B's own shape: a page that put B's pair through A's shape, or turned
+# it the other way, must both be told apart.
+bown = next(i for i, l in enumerate(lines) if "brpush=0.6" in l)
+check("and against layer B's pair put through layer A's shape",
+      worst(js_one(lines[bown].replace("bown=1", "bown=0")), row(cpp_rows[bown])) > 1e-6)
+bturn = next(i for i, l in enumerate(lines) if "bTurn=-1.9" in l)
+check("and against layer B turned the other way",
+      worst(js_one(lines[bturn].replace("bTurn=-1.9", "bTurn=1.9")), row(cpp_rows[bturn])) > 1e-6)
 flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
 check("and against an oversampler that kept its history through a change of factor",
       worst(js_one(lines[flips].replace(";1700:planeOS:4", ";1700:planeOS:2")), row(cpp_rows[flips])) > 1e-6)
@@ -689,6 +711,20 @@ def gen_runs():
     add("plane-poly", [(0, "voices 0 " + notes((60, "x"), (67, "y"), (64, "u"))), (0, "voices 1 " + notes((76, "xy"))),
                        (0, "set planeMirror 1"), (0, "set planeKaleido 4"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
                        (0, "routes " + "+".join([route(TWIST, 0.6, index=0), route(ECHO, 0.5, index=1)]))])
+    # Layer B with a plane of its own: bent and turned apart from A, its twist
+    # pushed through its own fade, its share of the heard pair joining A's
+    # before the echo; and the same with it off, so the two can be compared.
+    # Then a turn alone, with nothing of A's on, switched off mid-run.
+    for own in ("true", "false"):
+        add("plane-own" + ("" if own == "true" else "-off"),
+            [(0, "voices 0 " + notes((60, "x"), (67, "y"), (64, "u"))), (0, "voices 1 " + notes((76, "xy"), (81, "u"))),
+             (0, "set planeTwist 0.6"), (0, "set planeOwn %s 1" % own), (0, "set planeMirror 3 1"),
+             (0, "set planeKaleido 5 1"), (0, "set planeTurn 0.8 1"), (0, "set planeLimit 1 1"),
+             (0, "set planeRadius 0.35 1"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
+             (0, "routes " + "+".join([route(TWIST, 0.6, index=0, amountB=0.2), route(RADIUS, 0.3, index=1, amountB=-0.4)]))])
+    add("plane-own-turn", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                           (0, "set planeOwn true 1"), (0, "set planeTurn -1.2 1"), (1024, "set planeScaleX 1.3 1"),
+                           (2048, "set planeOwn false 1"), (3072, "set planeOwn true 1")])
     # The crossings, the score, and the input three ways and from the second generator.
     add("crossings", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set crossOn true"), (0, "set crossX 0.2"),
                       (0, "set crossY -0.3"), (0, "set crossDecayMs 40"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"), (2560, "strike 550 1"),
@@ -763,6 +799,11 @@ body, tail = grow("crossings")
 check("the crossings fire on both lines", tail[2] > 0 and tail[3] > 0, "%d and %d" % (tail[2], tail[3]))
 body, _ = grow("layered")
 check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 0.05)
+own, off = grow("plane-own")[0], grow("plane-own-off")[0]
+check("layer B's own plane bends B's picture and its share of the sound, and leaves A's picture as it was",
+      max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
+      and max(abs(a - b) for a, b in zip(col(own, 2), col(off, 2))) > 0.05
+      and col(own, 0) == col(off, 0) and col(own, 1) == col(off, 1))
 body, _ = grow("poly")
 check("in a chord the heard pair is not the picture",
       max(abs(a - b) for a, b in zip(col(body, 0), col(body, 2))) > 0.05)
@@ -2003,6 +2044,13 @@ def bmfuzz(n):
                                         "shaping %d" % (bmrng.random() < 0.8), "lanes %d" % (bmrng.random() < 0.3), "ms %d" % (bmrng.random() < 0.2)]))
         else: out.append(pick(["lag %.2f" % bmrng.uniform(0, 5), "lagoff", "lagoff", "filter lowpass %d 0" % bmrng.randint(200, 900), "filter off"]))
     return cprun(*out)
+# Layer B turning itself: two figures, B's a diagonal (one sine on both of its
+# lanes, which a turn changes, where a circle would hide it), the screen
+# turned an eighth with B's own turn on and off, and not turned at all.
+for name, rot, own in (("ownturn", "0.125", "1"), ("ownturn-off", "0.125", "0"), ("ownturn-still", "0", "1"),
+                       ("ownturn-still-off", "0", "0")):
+    bmruns.append((name, cprun(*TONE, "add 2 sine 0.5 110 0", "add 3 sine 0.5 110 0", "chans 4", "display xy", "beamxy 0",
+                               "tb 3", "figures 0,1;2,3", "rot " + rot, "ownturn " + own, "draw 16")))
 bmruns += [("random-%d" % i, bmfuzz(40)) for i in range(40)]
 bmtext = "".join(t for _, t in bmruns)
 bmjs, bmcpp = bmboth(bmtext, "beam.txt")
@@ -2042,6 +2090,9 @@ fi = bmdraws("figures")
 check("two figures hold an anchor each, and figures naming a lane that is not there give way to the pair the menus chose",
       " xy1 " in fi[0] and bmgrid(fi[1]) == bmgrid(fi[2]) and bmgrid(fi[0]) != bmgrid(fi[2]) and bmgrid(fi[3]) != bmgrid(fi[2]),
       " ".join(str(bmgrid(l)[0]) for l in fi))
+ot = {n: bmgrid(bmdraws(n)[0]) for n in ("ownturn", "ownturn-off", "ownturn-still", "ownturn-still-off")}
+check("layer B turning itself is not turned by the screen's rotation, and with the screen still it changes nothing",
+      ot["ownturn"] != ot["ownturn-off"] and ot["ownturn-still"] == ot["ownturn-still-off"], repr(ot))
 def bmnull(name, old, new, what):
     text = dict(bmruns)[name]
     assert old in text, old
@@ -2847,12 +2898,39 @@ FIG_UPPER_CPS = _json.loads(subprocess.run(["node", "-e", """
   }
   console.log(JSON.stringify(out));"""], check=True, capture_output=True, text=True).stdout)
 FIG_UPPER = [_json.dumps({"figText": "A" + chr(c) + "Z"}) for c in FIG_UPPER_CPS]
+# Layer B's own plane, from a generator of its own so the setups above are
+# the ones they always were: the switch true, false and not a boolean, B's
+# fields in range, out of it, of the wrong type and missing (when they are
+# A's), and A's plane beside them so a field falling back to A's shows.
+brng = random.Random(131)
+def bplane_setup():
+    st = {"bPlane": brng.choice([True, True, True, False, 1, "true", None])}
+    pick = lambda: brng.choice([brng.randint(-120, 260), brng.uniform(-60, 60), "40", "", None, True, [5], -0.0, 1e21])
+    for key, menu in (("bMirror", [0, 1, 2, 3, 4, "1"]), ("bLimit", [0, 1, 2, 3]), ("bKaleido", [0, 2, 5, 8, 7, "3"]),
+                      ("bSnap", [0, 3, 6, 9])):
+        if brng.random() < 0.6: st[key] = brng.choice(menu)
+    for key in ("bRadius", "bTwist", "bScaleX", "bScaleY", "bShear", "bTurn"):
+        if brng.random() < 0.6: st[key] = pick()
+    for key, menu in (("planeMirror", [0, 1, 2]), ("planeKaleido", [0, 3, 6]), ("planeLimit", [0, 2])):
+        if brng.random() < 0.5: st[key] = brng.choice(menu)
+    for key in ("planeRadius", "planeTwist", "planeShear"):
+        if brng.random() < 0.5: st[key] = brng.randint(-100, 100)
+    if brng.random() < 0.5: st.update(layers=brng.choice(["split", "layer"]), midiMode="poly")
+    return _json.dumps(st)
+BPLANE = [bplane_setup() for _ in range(80)]
 rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)]
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BPLANE
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
 allr = [_json.loads(l) for l in ppage + rpg]
+bown = [_json.loads(l) for l in rpg[-len(BPLANE):]]
+check("the setups reach layer B's own plane, with fields of its own and fields falling back to A's, and B's turned",
+      any(r["planeB"]["own"] and r["b"]["planeOwn"] for r in bown)
+      and any(not r["planeB"]["own"] for r in bown)
+      and any(r["planeB"]["own"] and r["planeB"]["kaleido"] != r["plane"]["kaleido"] for r in bown)
+      and any(r["planeB"]["own"] and r["planeB"]["kaleido"] == r["plane"]["kaleido"] != 0 for r in bown)
+      and any(r["planeB"]["turn"] != 0 for r in bown))
 check("the setups reach every kind, both layers, the old LFO enum, the morph, the controllers and the tempo",
       {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
       and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
@@ -3237,6 +3315,85 @@ lnull("A chosen where B was", 5, lambda o: o | {"id": "midiEditA"})
 lnull("B's level a step lower", 6, lambda o: o | {"value": 79})
 lnull("the layers split where they were layered", 13, lambda o: o | {"value": "split"})
 check("and the comparison fails against the page's operations one out of step", rbad(lpg[1:], lpt[:-1]) != [])
+
+print("\n--- layer B's own plane on the panel ---")
+# Together, A or B: B given a plane of its own, a copy of A's, and the Plane
+# section's controls writing whichever layer's it shows - the same choice as
+# the Play tab's A and B buttons. The page's setPlaneLayer and planeTarget
+# against scope's, with their own generator of hands so the runs above are
+# the runs they were. The morph walks B's turn and, with B's plane shown,
+# B's sliders, as it walks B's voice.
+prng = random.Random(77)
+PSLIDERS = ["planeTwist", "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "planeTurn"]
+PMENUS = ["planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
+def pvalue(id):
+    r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
+    return prng.choice([round(prng.uniform(lo, hi)), round(prng.uniform(lo, hi), 1), lo - 5, hi + 5, "abc", "7.5"])
+def pop():
+    c = prng.random()
+    if c < 0.35: id = prng.choice(PSLIDERS); return {"op": "slider", "id": id, "value": pvalue(id)}
+    if c < 0.55: id = prng.choice(PMENUS); return {"op": "change", "id": id, "value": prng.choice(pctl["selects"][id]["options"])}
+    if c < 0.72: return {"op": "click", "id": prng.choice(["planeLayerBoth", "planeLayerA", "planeLayerB", "planeLayerB"])}
+    if c < 0.8: return {"op": "click", "id": prng.choice(["midiEditA", "midiEditB"])}
+    if c < 0.84: return {"op": "change", "id": "midiLayers", "value": prng.choice(["off", "split", "layer", "layer"])}
+    if c < 0.87: return {"op": "change", "id": "midiLayerPair", "value": prng.choice(["each", "against"])}
+    if c < 0.9: return {"op": "keys", "value": prng.random() < 0.8}
+    if c < 0.93: return {"op": "store", "end": prng.choice(["a", "b"])}
+    if c < 0.96: return {"op": "pos", "value": prng.randint(0, 100)}
+    return _json.loads(prng.choice(presets))
+def prun():
+    start = [_json.loads(prng.choice(presets)) if prng.random() < 0.5 else {}, {"op": "keys", "value": True},
+             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "change", "id": "midiLayers", "value": prng.choice(["split", "layer"])},
+             {"op": "click", "id": prng.choice(["planeLayerA", "planeLayerB"])}]
+    return start + [pop() for _ in range(prng.randint(6, 16))]
+# Made to be read: a kaleidoscope of three on both; B given its own, which
+# starts as a copy; B's mirror, B's turn; A's own twist; B shown again from
+# the Play tab's button; back to Together; a setup of B's own loaded and the
+# panel's A and B buttons after it.
+PMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                      # 0-2
+         {"op": "change", "id": "midiLayers", "value": "layer"},                                   # 3
+         {"op": "change", "id": "planeKaleido", "value": "3"}, {"op": "click", "id": "planeLayerB"},  # 4, 5
+         {"op": "change", "id": "planeMirror", "value": "1"}, {"op": "slider", "id": "planeTurn", "value": 25},  # 6, 7
+         {"op": "click", "id": "planeLayerA"}, {"op": "slider", "id": "planeTwist", "value": 40},  # 8, 9
+         {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "planeLayerBoth"},             # 10, 11
+         {"bPlane": True, "bMirror": 2, "bTurn": -10, "planeMirror": 1, "layers": "layer", "midiMode": "poly"},  # 12
+         {"op": "click", "id": "midiEditB"}]                                                       # 13
+plines = [_json.dumps(o) for o in PMADE] + [_json.dumps(o) for _ in range(60) for o in prun()]
+ppg, ppt = rboth(plines, "planeb_ops.txt")
+pb = rbad(ppg, ppt)
+check("%d hands on the Plane section with the layers on, Together, A and B in turn, leave the same instrument" % len(plines),
+      not pb and len(plines) > 700, pb[0] if pb else "")
+pp = [_json.loads(l) for l in ppg]
+check("leaving Together gives B a plane of its own that starts as A's, and shows it",
+      not pp[4]["planeB"]["own"] and pp[5]["planeB"]["own"] and pp[5]["b"]["planeOwn"] and pp[5]["planeB"]["kaleido"] == 3
+      and pp[5]["menus"]["planeKaleido"] == "3" and pp[5]["panelLayer"] == 1, repr(pp[5]["planeB"]))
+check("a menu and the turn moved with B's shown are B's, and A's plane is untouched",
+      pp[6]["planeB"]["mirror"] == 1 and pp[6]["plane"]["mirror"] == 0 and pp[6]["b"]["planeMirror"] == 1
+      and pp[6]["a"]["planeMirror"] == 0 and pp[7]["planeB"]["turn"] == 0.25
+      and abs(pp[7]["b"]["planeTurn"] - 0.25 * TWO_PI) < 1e-12, repr(pp[7]["planeB"]))
+check("A shows A's plane and writes it, and B's own stays B's",
+      pp[8]["menus"]["planeMirror"] == "0" and pp[8]["panelLayer"] == 0 and pp[9]["plane"]["twist"] == 0.4
+      and pp[9]["planeB"]["twist"] == 0 and pp[9]["planeB"]["mirror"] == 1, repr(pp[9]["planeB"]))
+check("B chosen on the Play tab shows B's plane here too",
+      pp[10]["menus"]["planeMirror"] == "1" and pp[10]["ranges"]["planeTwist"] == 0, repr(pp[10]["menus"]))
+check("Together lets B's own go, and B follows A again",
+      not pp[11]["planeB"]["own"] and not pp[11]["b"]["planeOwn"] and pp[11]["planeB"]["mirror"] == 0
+      and pp[11]["planeB"]["twist"] == 0.4, repr(pp[11]["planeB"]))
+check("a setup with B's own loads it, a field it lacks being A's, and B's shown after it",
+      pp[12]["planeB"] == {"own": True, "mirror": 2, "limit": 0, "radius": 0.4, "twist": 0, "kaleido": 0, "snap": 0,
+                           "scaleX": 1, "scaleY": 1, "shear": 0, "turn": -0.1}
+      and pp[13]["menus"]["planeMirror"] == "2", repr(pp[12]["planeB"]))
+pwrote = sum(1 for i in range(1, len(pp)) if pp[i]["planeB"] != pp[i - 1]["planeB"] and pp[i]["planeB"]["own"])
+check("the runs write B's own plane %d times" % pwrote, pwrote > 100)
+def pnull(what, index, change):
+    lines = list(plines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "planeb_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(ppt[index])) != [])
+pnull("A's own chosen where B's was", 5, lambda o: o | {"id": "planeLayerA"})
+pnull("Together chosen where B's was", 5, lambda o: o | {"id": "planeLayerBoth"})
+check("and the comparison fails against the page's operations one out of step", rbad(ppg[1:], ppt[:-1]) != [])
 
 print("\n--- the fade from the plugin ---")
 # The fade the page keeps in its own storage, sent whole to the plugin when

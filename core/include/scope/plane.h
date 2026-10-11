@@ -4,7 +4,9 @@
 // non-linear stage's oversampler (`makeOversampler`), and the three calls the
 // block makes of it - `planeSetup`, `planeTick` and `planeStep`. One plane for
 // three pairs: layer A's picture, layer B's, and the heard pair, each with its
-// own oversampler and its own delay lines.
+// own oversampler and its own delay lines. Layer B can have a shape of its own
+// (the page's `shapeOfB`), and then its share of the heard pair goes through
+// a fourth oversampler and joins A's before the one time stage.
 //
 // Two decisions that differ from the page, neither audible:
 //
@@ -31,14 +33,20 @@
 
 namespace scope {
 
-// The fields of layer A's tone the plane reads; the page's defaults.
-struct PlaneTone {
+// The fields of a layer's tone that bend its pair, which layer B has its own
+// of; the page's defaults.
+struct PlaneShapeTone {
   int planeMirror = 0;  // a bitmask: 1 folds X onto its positive half, 2 folds Y
   double planeRadius = 0.4;
-  double planeOS = 2;
   int planeLimit = 0;  // 0 nothing, 1 the clip, 2 the fold
   double planeScaleX = 1, planeScaleY = 1, planeShear = 0;
   double planeTwist = 0, planeKaleido = 0, planeSnap = 0;
+};
+
+// The fields of layer A's tone the plane reads: its shape, and the
+// oversampling and the time stage, which are one for the page.
+struct PlaneTone : PlaneShapeTone {
+  double planeOS = 2;
   double delayMix = 0, delayMs = 375, delayFeedback = 0.35;
   bool delayPingPong = false;
   double chorusMix = 0, chorusRate = 0.6, chorusDepthMs = 3, chorusMs = 12, chorusFeedback = 0;
@@ -46,7 +54,14 @@ struct PlaneTone {
 
 class Plane {
  public:
-  enum Pair { A = 0, B = 1, Heard = 2 };
+  enum Pair { A = 0, B = 1, Heard = 2, HeardB = 3 };
+
+  // A layer's shape as `setup` and `tick` work it out: the page's `planeOf`.
+  struct Shape {
+    bool linear = false, nonlinear = false;
+    int mirror = 0, limit = 0;
+    double kaleido = 0, snap = 0, radius = 0, twist = 0, sx = 1, sy = 1, shear = 0, turn = 0, tc = 1, ts = 0;
+  };
 
   explicit Plane(double rate)
       : rate_(rate), delayMax_(static_cast<int>(std::ceil(2 * rate)) + 4),
@@ -61,31 +76,38 @@ class Plane {
     }
   }
 
-  // What the plane does this block; true if it does anything.
-  bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted) {
+  // What the plane does this block; true if it does anything. `b` is layer
+  // B's own shape when it has one in force (the page's `withB` and
+  // `planeOwn` both), and `turnB` its turn in radians.
+  bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneShapeTone* b = nullptr,
+             double turnB = 0) {
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
     if (want != factor_) {
       factor_ = want;
       for (auto& os : os_) os.reset(want, want == 4 ? taps4_ : taps2_);
     }
-    linearOn_ = t.planeScaleX != 1 || t.planeScaleY != 1 || t.planeShear != 0;
-    nonlinearOn_ = t.planeMirror != 0 || t.planeLimit != 0 || t.planeTwist != 0 || twistRouted || t.planeKaleido > 1 ||
-                   t.planeSnap > 0;
+    shapeSet(shapeA_, t, twistRouted, 0);
+    ownB_ = b != nullptr;
+    if (ownB_) shapeSet(shapeB_, *b, twistRouted, turnB);
+    linearOn_ = shapeA_.linear || (ownB_ && (shapeB_.linear || shapeB_.turn != 0));
+    nonlinearOn_ = shapeA_.nonlinear || (ownB_ && shapeB_.nonlinear);
     delayOn_ = t.delayMix > 0 || echoRouted;
     timeOn_ = delayOn_ || t.chorusMix > 0;
-    mirror_ = t.planeMirror;
-    limit_ = t.planeLimit;
-    kaleido_ = t.planeKaleido;
-    snap_ = t.planeSnap > 0 ? 2 / std::pow(2.0, t.planeSnap) : 0;
     return linearOn_ || nonlinearOn_ || timeOn_;
   }
 
   // This sample's radius, twist and echo from their pushes, and the chorus's
   // sweep. The pushes are the routings' sums, as the page's accumulator holds
   // them.
-  void tick(const PlaneTone& t, double radiusPush, double twistPush, double echoPush, double echoTimePush, double dt) {
-    radius_ = std::fmax(0.02, std::fmin(1.0, t.planeRadius + radiusPush * 0.5));
-    twist_ = std::fmax(-kTwoPi, std::fmin(kTwoPi, t.planeTwist + twistPush * kPi));
+  // Layer B's own radius and twist from B's pushes, through B's fade.
+  void tick(const PlaneTone& t, double radiusPush, double twistPush, double echoPush, double echoTimePush, double dt,
+            const PlaneShapeTone* b = nullptr, double radiusPushB = 0, double twistPushB = 0) {
+    shapeA_.radius = std::fmax(0.02, std::fmin(1.0, t.planeRadius + radiusPush * 0.5));
+    shapeA_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, t.planeTwist + twistPush * kPi));
+    if (ownB_ && b) {
+      shapeB_.radius = std::fmax(0.02, std::fmin(1.0, b->planeRadius + radiusPushB * 0.5));
+      shapeB_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, b->planeTwist + twistPushB * kPi));
+    }
     if (delayOn_) {
       echo_ = std::fmax(0.0, std::fmin(1.0, t.delayMix + echoPush * 0.5));
       echoMs_ = echoTimePush == 0 ? t.delayMs : t.delayMs * std::pow(2.0, echoTimePush);
@@ -98,21 +120,42 @@ class Plane {
   }
 
   // A pair through the whole of it: the matrix, the non-linear stage inside
-  // the oversampling, then the chorus and the delay. The answer is `x`, `y`.
-  void step(Pair pair, const PlaneTone& t, double x, double y) {
-    if (linearOn_) {
-      const double sheared = x + t.planeShear * y;
-      x = t.planeScaleX * sheared; y = t.planeScaleY * y;
+  // the oversampling, layer B's turn, then the chorus and the delay. Through
+  // layer B's own shape when `layerB` and B has one, A's otherwise; through
+  // no time stage without `time`, as B's share of the heard pair is before
+  // it joins A's. HeardB has no lines of its own and is never given time.
+  // The answer is `x`, `y`.
+  void step(Pair pair, const PlaneTone& t, double x, double y, bool layerB = false, bool time = true) {
+    const Shape& s = layerB && ownB_ ? shapeB_ : shapeA_;
+    if (s.linear) {
+      const double sheared = x + s.shear * y;
+      x = s.sx * sheared; y = s.sy * y;
     }
-    if (nonlinearOn_) {
+    if (s.nonlinear) {
+      cur_ = &s;
       if (factor_ == 1) { op(x, y); x = this->x; y = this->y; }
       else { os_[pair].step(*this, x, y); x = os_[pair].outX; y = os_[pair].outY; }
     }
-    if (timeOn_) { timeStep(fx_[pair], t, x, y); x = this->x; y = this->y; }
+    if (s.turn != 0) {
+      const double tx = x * s.tc - y * s.ts;
+      y = x * s.ts + y * s.tc; x = tx;
+    }
+    if (timeOn_ && time && pair != HeardB) { timeStep(fx_[pair], t, x, y); x = this->x; y = this->y; }
+    this->x = x; this->y = y;
+  }
+
+  // The time stage alone, on a pair already bent: the two shares of the
+  // heard pair, joined.
+  void timeOnly(Pair pair, const PlaneTone& t, double x, double y) {
+    if (timeOn_ && pair != HeardB) { timeStep(fx_[pair], t, x, y); return; }
     this->x = x; this->y = y;
   }
 
   double x = 0, y = 0;
+
+  // Whether layer B's own shape is in force this block.
+  bool ownB() const { return ownB_; }
+  const Shape& shapeB() const { return shapeB_; }
 
   // What the governor costs it by: the factor, and which stages are on.
   int factor() const { return factor_; }
@@ -120,8 +163,23 @@ class Plane {
   bool timeOn() const { return timeOn_; }
 
  private:
-  // Leaves its answer in `x`, `y`, where the oversampler reads it.
+  static void shapeSet(Shape& s, const PlaneShapeTone& t, bool twistRouted, double turn) {
+    s.linear = t.planeScaleX != 1 || t.planeScaleY != 1 || t.planeShear != 0;
+    s.nonlinear = t.planeMirror != 0 || t.planeLimit != 0 || t.planeTwist != 0 || twistRouted || t.planeKaleido > 1 ||
+                  t.planeSnap > 0;
+    s.mirror = t.planeMirror;
+    s.limit = t.planeLimit;
+    s.kaleido = t.planeKaleido;
+    s.snap = t.planeSnap > 0 ? 2 / std::pow(2.0, t.planeSnap) : 0;
+    s.sx = t.planeScaleX; s.sy = t.planeScaleY; s.shear = t.planeShear;
+    s.turn = turn; s.tc = std::cos(turn); s.ts = std::sin(turn);
+  }
+
+  // Leaves its answer in `x`, `y`, where the oversampler reads it. Applies
+  // `cur_`, the shape `step` was given.
   void op(double x, double y) {
+    const int mirror_ = cur_->mirror, limit_ = cur_->limit;
+    const double kaleido_ = cur_->kaleido, snap_ = cur_->snap, radius_ = cur_->radius, twist_ = cur_->twist;
     if (mirror_ & 1) x = std::fabs(x);
     if (mirror_ & 2) y = std::fabs(y);
     if (twist_ != 0) {
@@ -237,11 +295,11 @@ class Plane {
   double delayGlide_;
   std::vector<double> taps2_, taps4_;
   int factor_ = 0;
-  std::array<Oversampler, 3> os_;
+  std::array<Oversampler, 4> os_;
   std::array<TimeFx, 3> fx_;
-  bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, delayOn_ = false;
-  int mirror_ = 0, limit_ = 0;
-  double kaleido_ = 0, snap_ = 0, radius_ = 0, twist_ = 0;
+  bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, delayOn_ = false, ownB_ = false;
+  Shape shapeA_, shapeB_;
+  const Shape* cur_ = &shapeA_;
   double chorusPhase_ = 0, chorusSin_ = 0, chorusCos_ = 1, echo_ = 0, echoMs_ = 375;
 };
 

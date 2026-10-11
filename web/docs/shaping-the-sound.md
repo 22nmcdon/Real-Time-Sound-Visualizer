@@ -474,6 +474,14 @@ whose channels are the same - which is the truth about a mono signal, and the
 readout says so rather than the page pretending. Layers take the same rule, one
 operation across both layers' pairs.
 
+**Built later (5o):** layer B can have a plane of its own - the Plane section's
+*Layers* row, Together, A or B - with a *Turn* of B's alone, and while it does
+the screen's rotation turns layer A only. B's share of the heard pair is then
+bent apart from A's and the two join before the delay and chorus, which stay
+one for the page. Bending two chords apart is not bending their sum: a mirror
+on the sum also makes their difference tones. So leaving Together changes the
+sound at once though the picture does not move. plugin/PLAN.md has the rest.
+
 ### I1 · time, which the plane does not have
 
 Two classic effects are worth adding because they have honest pictures:

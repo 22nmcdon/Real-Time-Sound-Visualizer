@@ -60,7 +60,7 @@ inline const Json& setupDefaults() {
   "layers":"off","splitAt":60,"layerPair":"each","photoOn":false,"photoU":0.75,"photoV":0.5,
   "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
   "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeKaleido":0,"planeSnap":0,
-  "planeScaleX":100,"planeScaleY":100,"planeShear":0,"delayMix":0,"delayMs":375,"delaySync":"",
+  "planeScaleX":100,"planeScaleY":100,"planeShear":0,"bPlane":false,"delayMix":0,"delayMs":375,"delaySync":"",
   "delayFeedback":35,"delayPingPong":false,"oscRatio":1,"oscFm":0,"oscRing":0,"oscSync":100,"oscSub":0,
   "oscSubOct":1,"oscSubShape":"square","oscUnison":1,"oscSpread":12,"shpDrive":0,"shpFold":0,
   "shpBits":0,"shpRate":0,"shpOS":2,"vcfType":0,"vcfCut":667,"vcfRes":0,"vcfTrack":0,"vcfEnvAmt":0,

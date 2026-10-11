@@ -154,6 +154,11 @@ struct Screen {
   bool stack = true;
   LanePair xyPair;
   std::vector<LanePair> figures;  // what the source asks for, or none
+  // Layer B's figure turned by its own Turn, in the generator, rather than by
+  // the screen's rotation: the page's layerTurnsItself. The instrument walks
+  // the one pair the menus chose (it is never given the figures), so in the
+  // plugin's own grid this has nothing yet to act on.
+  bool ownTurn = false;
   std::string beam = "moderate";
   bool beamXY = true, beamYT = false;
 };
@@ -206,8 +211,9 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
     const std::size_t stride = std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(static_cast<double>(points) / kBeamMax)));
     const double scale = radius * s.zoom;
 
-    // Turned only when the capture has not already, and only on the shaped side.
-    const double spin = f.turned || !v.shaping ? 0 : v.rotate + v.rotateMod;
+    // Turned only when the capture has not already, and only on the shaped
+    // side; and not layer B's figure while B turns itself.
+    const double spin = f.turned || !v.shaping || (figure > 0 && s.ownTurn) ? 0 : v.rotate + v.rotateMod;
     const double angle = spin * 2 * 3.14159265358979323846;
     const double rc = std::cos(angle), rs = std::sin(angle);
     const bool turning = spin != 0;

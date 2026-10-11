@@ -227,9 +227,15 @@ struct Brain {
     int restored = 0;
     bool wipe = false;
   } view;
-  struct PlaneState {
-    double mirror = 0, limit = 0, radius = 0.4, os = 2, twist = 0, kaleido = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
-  } plane;
+  // The plane's shape in the panel's terms, which layer B can have its own of.
+  struct PlaneShape {
+    double mirror = 0, limit = 0, radius = 0.4, twist = 0, kaleido = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
+  };
+  struct PlaneState : PlaneShape { double os = 2; } plane;
+  // Layer B's own (the page's `planeB`): kept a copy of A's while it has none,
+  // and B's turn in turns.
+  struct PlaneBState : PlaneShape { bool own = false; double turn = 0; } planeB;
+  std::string planeShown;  // which layer's plane the section last showed
   struct EchoState {
     double mix = 0, ms = 375;
     std::string sync;
@@ -490,9 +496,14 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
   b.keptA = layer == 1;
   b.panelLayer = layer;
 }
+// The plane section's, defined with the other refreshers below.
+inline std::string planeSide(const Brain& b, const Keyboard& keys);
+inline void syncPlanePanel(Brain& b, const Keyboard& keys);
 // syncLayerPanel: the layer the keyboard says is being edited, on the panel.
 inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys) {
   showLayerOnPanel(b, gen, b.panelHeldOnA ? 0 : keys.editLayer());
+  // syncPlaneLayer: the plane section says whose plane it shows the moment that changes.
+  if (planeSide(b, keys) != b.planeShown) syncPlanePanel(b, keys);
 }
 
 // Layer B's sound: B's own field where the setup gives one, else what the
@@ -554,13 +565,33 @@ inline void syncCrossPanel(Brain& b) {
   b.panel.setRange("crossDecay", toU16(jsNumberToString(b.cross.decayMs)));
   b.panel.setRange("crossLevel", toU16(jsNumberToString(jsMathRound(b.cross.level * 100))));
 }
-inline void syncPlanePanel(Brain& b) {
+/* planeEditsB, planeTarget: which layer's plane the section's controls are -
+   B's while B has its own and is the layer on the panel, A's otherwise. */
+inline bool planeEditsB(const Brain& b, const Keyboard& keys) {
+  return !b.panelHeldOnA && keys.layersOn() && b.planeB.own && keys.editLayer() == 1;
+}
+inline Brain::PlaneShape& planeTarget(Brain& b, const Keyboard& keys) {
+  return planeEditsB(b, keys) ? static_cast<Brain::PlaneShape&>(b.planeB) : b.plane;
+}
+inline std::string planeSide(const Brain& b, const Keyboard& keys) {
+  return !keys.layersOn() ? "one" : !b.planeB.own ? "both" : planeEditsB(b, keys) ? "b" : "a";
+}
+inline void planeBFollow(Brain& b) { static_cast<Brain::PlaneShape&>(b.planeB) = b.plane; }
+inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
   const auto pct = [](double v) { return toU16(jsNumberToString(jsMathRound(v * 100))); };
-  b.panel.setRange("planeRadius", pct(b.plane.radius));
-  b.panel.setRange("planeTwist", pct(b.plane.twist));
-  b.panel.setRange("planeScaleX", pct(b.plane.scaleX));
-  b.panel.setRange("planeScaleY", pct(b.plane.scaleY));
-  b.panel.setRange("planeShear", pct(b.plane.shear));
+  const auto n = [](double v) { return toU16(jsNumberToString(v)); };
+  b.planeShown = planeSide(b, keys);
+  const Brain::PlaneShape& p = planeTarget(b, keys);
+  b.panel.setRange("planeTurn", pct(b.planeB.turn));
+  b.panel.setSelect("planeMirror", n(p.mirror));
+  b.panel.setSelect("planeLimit", n(p.limit));
+  b.panel.setRange("planeRadius", pct(p.radius));
+  b.panel.setRange("planeTwist", pct(p.twist));
+  b.panel.setSelect("planeKaleido", n(p.kaleido));
+  b.panel.setSelect("planeSnap", n(p.snap));
+  b.panel.setRange("planeScaleX", pct(p.scaleX));
+  b.panel.setRange("planeScaleY", pct(p.scaleY));
+  b.panel.setRange("planeShear", pct(p.shear));
 }
 inline double delayTimeMs(const Brain& b) {
   const double beats = delayBeats(b.echo.sync);
@@ -582,7 +613,18 @@ inline void syncEchoPanel(Brain& b) {
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
 // generator whole.
-inline void syncPlane(const Brain& b, Generator& gen) {
+// Layer B's, into layer B; following A's while it has none of its own.
+inline void syncPlaneB(Brain& b, Generator& gen) {
+  if (!b.planeB.own) planeBFollow(b);
+  const Brain::PlaneBState& p = b.planeB;
+  gen.set("planeOwn", p.own ? 1 : 0, 1);
+  gen.set("planeMirror", p.mirror, 1); gen.set("planeLimit", p.limit, 1); gen.set("planeRadius", p.radius, 1);
+  gen.set("planeTwist", p.twist * kTwoPi, 1); gen.set("planeKaleido", p.kaleido, 1); gen.set("planeSnap", p.snap, 1);
+  gen.set("planeScaleX", p.scaleX, 1); gen.set("planeScaleY", p.scaleY, 1); gen.set("planeShear", p.shear, 1);
+  gen.set("planeTurn", p.turn * kTwoPi, 1);
+}
+inline void syncPlane(Brain& b, Generator& gen) {
+  syncPlaneB(b, gen);
   const Brain::PlaneState& p = b.plane;
   gen.set("planeMirror", p.mirror); gen.set("planeLimit", p.limit); gen.set("planeRadius", p.radius);
   gen.set("planeOS", p.os); gen.set("planeTwist", p.twist * kTwoPi); gen.set("planeKaleido", p.kaleido);
@@ -1143,10 +1185,39 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     p.scaleX = within("planeScaleX", 0, 200, 100) / 100;
     p.scaleY = within("planeScaleY", 0, 200, 100) / 100;
     p.shear = within("planeShear", -100, 100, 0) / 100;
+    /* Layer B's own plane: not in the defaults, so a field the setup lacks
+       is A's; with it off, B follows A. */
+    Brain::PlaneBState& q = brain.planeB;
+    planeBFollow(brain);
+    q.own = isTrue("bPlane");
+    q.turn = 0;
+    if (q.own) {
+      const auto own = [&](std::string_view key) -> const Json* { return given ? partial.get(key) : nullptr; };
+      const auto menu = [&](std::string_view key, std::initializer_list<double> list, double a) {
+        const Json* v = own(key);
+        if (v && v->type == Json::Type::Number) for (const double x : list) if (v->n == x) return v->n;
+        return a;
+      };
+      const auto slide = [&](std::string_view key, double lo, double hi, double a) {
+        const double v = jsToNumber(own(key));
+        return std::isfinite(v) ? std::fmax(lo, std::fmin(hi, v)) / 100 : a;
+      };
+      q.mirror = menu("bMirror", { 0, 1, 2, 3 }, p.mirror);
+      q.limit = menu("bLimit", { 0, 1, 2 }, p.limit);
+      q.radius = slide("bRadius", 2, 100, p.radius);
+      q.twist = slide("bTwist", -100, 100, p.twist);
+      q.kaleido = menu("bKaleido", { 0, 2, 3, 4, 5, 6, 8 }, p.kaleido);
+      q.snap = menu("bSnap", { 0, 1, 2, 3, 4, 5, 6 }, p.snap);
+      q.scaleX = slide("bScaleX", 0, 200, p.scaleX);
+      q.scaleY = slide("bScaleY", 0, 200, p.scaleY);
+      q.shear = slide("bShear", -100, 100, p.shear);
+      q.turn = slide("bTurn", -50, 50, 0);
+    }
     setA("planeMirror", p.mirror); setA("planeLimit", p.limit); setA("planeRadius", p.radius); setA("planeOS", p.os);
     setA("planeTwist", p.twist * kTwoPi); setA("planeKaleido", p.kaleido); setA("planeSnap", p.snap);
     setA("planeScaleX", p.scaleX); setA("planeScaleY", p.scaleY); setA("planeShear", p.shear);
-    syncPlanePanel(brain);
+    syncPlaneB(brain, gen);
+    syncPlanePanel(brain, keys);
   }
   {
     Brain::EchoState& e = brain.echo;
@@ -1333,12 +1404,15 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     gen.setBars(bars, layer);
   }
   else if (id == "planeRadius" || id == "planeTwist" || id == "planeScaleX" || id == "planeScaleY" || id == "planeShear") {
-    double& field = id == "planeRadius" ? b.plane.radius : id == "planeTwist" ? b.plane.twist
-                  : id == "planeScaleX" ? b.plane.scaleX : id == "planeScaleY" ? b.plane.scaleY : b.plane.shear;
+    Brain::PlaneShape& p = planeTarget(b, keys);
+    double& field = id == "planeRadius" ? p.radius : id == "planeTwist" ? p.twist
+                  : id == "planeScaleX" ? p.scaleX : id == "planeScaleY" ? p.scaleY : p.shear;
     field = v / 100;
-    syncPlanePanel(b);
+    syncPlanePanel(b, keys);
     syncPlane(b, gen);
   }
+  // B's alone, whichever layer is on the panel.
+  else if (id == "planeTurn") { b.planeB.turn = v / 100; syncPlanePanel(b, keys); syncPlane(b, gen); }
   else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "chorusMix" || id == "chorusRate"
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback") {
     Brain::EchoState& e = b.echo;
@@ -1447,8 +1521,9 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   }
   // The plane and the echo.
   else if (id == "planeMirror" || id == "planeLimit" || id == "planeKaleido" || id == "planeSnap") {
-    (id == "planeMirror" ? b.plane.mirror : id == "planeLimit" ? b.plane.limit : id == "planeKaleido" ? b.plane.kaleido : b.plane.snap) = number;
-    syncPlanePanel(b); syncPlane(b, gen);
+    Brain::PlaneShape& p = planeTarget(b, keys);
+    (id == "planeMirror" ? p.mirror : id == "planeLimit" ? p.limit : id == "planeKaleido" ? p.kaleido : p.snap) = number;
+    syncPlanePanel(b, keys); syncPlane(b, gen);
   }
   else if (id == "delaySync") { b.echo.sync = text; syncEchoPanel(b); syncEcho(b, gen); }
   else if (id == "delayPingPong") { b.echo.pingPong = checked; syncEcho(b, gen); }
@@ -1562,7 +1637,16 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
   else if (id == "midiEditA" || id == "midiEditB") keys.setEdit(id == "midiEditB" ? 1 : 0);
   else if (id == "planeOS1" || id == "planeOS2" || id == "planeOS4") {
     b.plane.os = id.back() - '0';
-    syncPlanePanel(b); syncPlane(b, gen);
+    syncPlanePanel(b, keys); syncPlane(b, gen);
+  }
+  /* setPlaneLayer: Together lets B's own go; A or B gives B its own - which
+     is already a copy of A's, kept one by syncPlaneB - and puts that layer
+     on the panel. */
+  else if (id == "planeLayerBoth") { b.planeB.own = false; syncPlanePanel(b, keys); syncPlane(b, gen); }
+  else if (id == "planeLayerA" || id == "planeLayerB") {
+    b.planeB.own = true;
+    keys.setEdit(id == "planeLayerB" ? 1 : 0);
+    syncPlanePanel(b, keys); syncPlane(b, gen);
   }
   // The view's buttons.
   else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");

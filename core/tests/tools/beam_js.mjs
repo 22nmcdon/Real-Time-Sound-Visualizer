@@ -59,6 +59,9 @@ const laneName = (i) => "lane " + i;
 const drawCursors = () => {};
 const drawSpectrogram = () => { throw new Error("the spectrogram is not walked"); };
 const cross = { on: false };
+// Layer B turning itself, as the run says (the page's asks the layers and B's plane).
+let ownTurn = false;
+const layerTurnsItself = () => ownTurn;
 const crossSeen = {};
 `;
 const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS", "MAX_SEARCH_SECONDS", "LAG_MAX_MS",
@@ -77,6 +80,7 @@ const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS"
 const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
 buildBeamRamps();
 return { state, capture, laneCount, drawMain, phosphor, engine: pictureEngine, beamRefs, setLock: (v) => { lagLock = v; },
+         ownTurn: (v) => { ownTurn = v; },
          plot: () => plot, canvas: (w, h) => { canvasW = w; canvasH = h; }, resize: () => { resized = true; },
          name: (w) => { nameWidth = w; } };`;
 
@@ -140,6 +144,7 @@ function run(commands) {
     else if (cmd === "stack") st.stack = a[0] === "1";
     else if (cmd === "pair") st.xyPair = [Number(a[0]), Number(a[1])];
     else if (cmd === "figures") figures = a[0] === "none" ? null : a[0].split(";").map((f) => f.split(",").map(Number));
+    else if (cmd === "ownturn") s.ownTurn(a[0] === "1");
     else if (cmd === "beam") st.beam = a[0];
     else if (cmd === "beamxy") st.beamXY = a[0] === "1";
     else if (cmd === "beamyt") st.beamYT = a[0] === "1";

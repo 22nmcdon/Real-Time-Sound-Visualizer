@@ -4200,3 +4200,20 @@ to show there had been nothing to fix. The other half of the change was
 still copying the instrument's values in. Loading the committed page
 (`git show HEAD:web/scope.html`) gave the real before: r = 0.10. Partial
 reverts are mutations, and they answer a different question.
+
+**A test of a copy inherits whatever the original was left holding.** Layer
+B's own plane starts as a copy of A's, and the check that the screen's
+rotation leaves B's figure a diagonal failed at first: an earlier block of
+the same test had left A's plane with a kaleidoscope and a twist, B copied
+them, and its "diagonal" was a wedge. The feature was right and the fixture
+was not what it claimed to be. A block that tests a copy sets the original
+to a known state first.
+
+**Two layers bent apart do not sound like two layers bent together.** A
+mirror or a fold on the sum of two chords also makes every difference tone
+between them; on each chord alone it does not. So giving layer B a plane of
+its own changes the sound the moment it is switched on, even though B's
+plane starts as a copy of A's and the picture does not move. That is what
+the honest sound of two planes is, and the cheat sheet says so. A test of
+"switching it on changes nothing" would have to be a test of the picture
+only.

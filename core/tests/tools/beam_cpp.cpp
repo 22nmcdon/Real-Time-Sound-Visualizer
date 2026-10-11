@@ -85,6 +85,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
         }
       }
     }
+    else if (cmd == "ownturn") screen.ownTurn = arg(1) == "1";
     else if (cmd == "beam") screen.beam = arg(1);
     else if (cmd == "beamxy") screen.beamXY = arg(1) == "1";
     else if (cmd == "beamyt") screen.beamYT = arg(1) == "1";
