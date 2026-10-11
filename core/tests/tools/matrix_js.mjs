@@ -52,7 +52,7 @@ function visualLoop() {
 const LIFTED = [
   "CUTOFF_STEPS", "DRAWBARS", "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT",
   "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT",
-  "SPIN_SLOT", "MOD_SOURCES", "MOD_DESTS", "registerSource", "registerDest", "routingAllowed", "LOOP_TOTAL",
+  "SPIN_SLOT", "TURN_SLOT", "MOD_SOURCES", "MOD_DESTS", "registerSource", "registerDest", "routingAllowed", "LOOP_TOTAL",
   "clampLoop", "routingAmount", "GEN_DESTS",
   "FADE_MODES", "FADE_LIMITS", "ENV_DEFAULT", "fade", "routeKey", "fadesIn", "fadesOut", "fadeLayered",
   "fadeTravel", "rampMs", "rampAt", "rampDone", "rampTo", "rampStill", "gatePhase", "gateSet", "fadeGain",

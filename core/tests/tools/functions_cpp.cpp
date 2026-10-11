@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
             if (fields.count(field)) fields.at(field)(value); else bfields.at(field)(value);
           }
         }
-        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn);
+        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1);
         const double di = static_cast<double>(i);
         const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
         const double tp = static_cast<float>(d("tpush") * std::sin(di * 0.0047 + 1));
@@ -243,11 +243,12 @@ int main(int argc, char** argv) {
         const double etp = static_cast<float>(d("etpush") * std::sin(di * 0.0013 + 3));
         const double brp = static_cast<float>(d("brpush") * std::sin(di * 0.0029 + 0.5));
         const double btp = static_cast<float>(d("btpush") * std::sin(di * 0.0041 + 1.5));
+        const double bup = static_cast<float>(d("bturnpush") * std::sin(di * 0.0017 + 0.7));
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
         if (!on) { out.insert(out.end(), { x, y, y, x, x, y }); continue; }
-        plane.tick(t, rp, tp, ep, etp, 1 / rate, &b, brp, btp);
+        plane.tick(t, rp, tp, ep, etp, 1 / rate, &b, brp, btp, bup);
         plane.step(scope::Plane::A, t, x, y); out.insert(out.end(), { plane.x, plane.y });
         plane.step(scope::Plane::B, t, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });
         if (plane.ownB()) {

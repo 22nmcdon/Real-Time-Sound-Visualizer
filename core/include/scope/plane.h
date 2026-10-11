@@ -80,7 +80,7 @@ class Plane {
   // B's own shape when it has one in force (the page's `withB` and
   // `planeOwn` both), and `turnB` its turn in radians.
   bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneShapeTone* b = nullptr,
-             double turnB = 0) {
+             double turnB = 0, bool turnRouted = false) {
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
     if (want != factor_) {
       factor_ = want;
@@ -89,7 +89,9 @@ class Plane {
     shapeSet(shapeA_, t, twistRouted, 0);
     ownB_ = b != nullptr;
     if (ownB_) shapeSet(shapeB_, *b, twistRouted, turnB);
-    linearOn_ = shapeA_.linear || (ownB_ && (shapeB_.linear || shapeB_.turn != 0));
+    turnRoutedB_ = turnRouted;  // read only where B has its own
+    turnB_ = turnB;
+    linearOn_ = shapeA_.linear || (ownB_ && (shapeB_.linear || shapeB_.turn != 0 || turnRoutedB_));
     nonlinearOn_ = shapeA_.nonlinear || (ownB_ && shapeB_.nonlinear);
     delayOn_ = t.delayMix > 0 || echoRouted;
     timeOn_ = delayOn_ || t.chorusMix > 0;
@@ -101,12 +103,17 @@ class Plane {
   // them.
   // Layer B's own radius and twist from B's pushes, through B's fade.
   void tick(const PlaneTone& t, double radiusPush, double twistPush, double echoPush, double echoTimePush, double dt,
-            const PlaneShapeTone* b = nullptr, double radiusPushB = 0, double twistPushB = 0) {
+            const PlaneShapeTone* b = nullptr, double radiusPushB = 0, double twistPushB = 0, double turnPushB = 0) {
     shapeA_.radius = std::fmax(0.02, std::fmin(1.0, t.planeRadius + radiusPush * 0.5));
     shapeA_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, t.planeTwist + twistPush * kPi));
     if (ownB_ && b) {
       shapeB_.radius = std::fmax(0.02, std::fmin(1.0, b->planeRadius + radiusPushB * 0.5));
       shapeB_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, b->planeTwist + twistPushB * kPi));
+      // B's turn under a routing, a sample at a time.
+      if (turnRoutedB_) {
+        const double turn = turnB_ + turnPushB * kPi;
+        shapeB_.turn = turn; shapeB_.tc = std::cos(turn); shapeB_.ts = std::sin(turn);
+      }
     }
     if (delayOn_) {
       echo_ = std::fmax(0.0, std::fmin(1.0, t.delayMix + echoPush * 0.5));
@@ -297,7 +304,8 @@ class Plane {
   int factor_ = 0;
   std::array<Oversampler, 4> os_;
   std::array<TimeFx, 3> fx_;
-  bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, delayOn_ = false, ownB_ = false;
+  bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, delayOn_ = false, ownB_ = false, turnRoutedB_ = false;
+  double turnB_ = 0;
   Shape shapeA_, shapeB_;
   const Shape* cur_ = &shapeA_;
   double chorusPhase_ = 0, chorusSin_ = 0, chorusCos_ = 1, echo_ = 0, echoMs_ = 375;

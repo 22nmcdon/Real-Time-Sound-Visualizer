@@ -284,7 +284,7 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
                       chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
                       etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
-                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, ev="")
+                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -330,6 +330,11 @@ def plane_scenarios():
     for os_ in (1, 2, 4):
         out.append(dict(planeOS=os_, planeTwist=1.1, tpush=0.3, bown=1, bMirror=3, bTurn=0.7))
     out.append(dict(planeScaleX=1.1, bown=1, bTurn=-1.9))
+    # B's turn under a routing (5q): from nought, which only the routing turns
+    # the stage on for, and from a turn of its own; and routed with B's own off.
+    out.append(dict(planeScaleX=1.1, bown=1, btr=1, bturnpush=0.8))
+    out.append(dict(planeMirror=2, bown=1, bTurn=0.6, btr=1, bturnpush=-0.5, delayMix=0.3, delayMs=8))
+    out.append(dict(planeScaleX=1.1, bown=0, btr=1, bturnpush=0.8))
     out.append(dict(planeMirror=1, bown=1, bKaleido=5, bLimit=1, bRadius=0.3, brpush=0.6, btpush=0.5, bTwist=0.4,
                     bScaleX=0.7, bShear=0.4, delayMix=0.4, delayMs=9, delayFeedback=0.5, chorusMix=0.5, chorusRate=2))
     out.append(dict(planeKaleido=3, bown=1, bLimit=2, bRadius=0.25, bSnap=4, delayMix=0.3, delayMs=7, delayPingPong=1))
@@ -503,6 +508,9 @@ bown = next(i for i, l in enumerate(lines) if "brpush=0.6" in l)
 check("and against layer B's pair put through layer A's shape",
       worst(js_one(lines[bown].replace("bown=1", "bown=0")), row(cpp_rows[bown])) > 1e-6)
 bturn = next(i for i, l in enumerate(lines) if "bTurn=-1.9" in l)
+turnr = next(i for i, l in enumerate(lines) if "bturnpush=0.8" in l and "bown=1" in l)
+check("and against layer B's turn left unrouted",
+      worst(js_one(lines[turnr].replace("bturnpush=0.8", "bturnpush=0.0")), row(cpp_rows[turnr])) > 1e-6)
 check("and against layer B turned the other way",
       worst(js_one(lines[bturn].replace("bTurn=-1.9", "bTurn=1.9")), row(cpp_rows[bturn])) > 1e-6)
 flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
@@ -525,6 +533,7 @@ print("\n--- the whole generator ---")
 # Slots, as GEN_DESTS has them.
 FREQ, AMP, PHASE, RATIO, DETAIL, TUMBLE, DEPTH, BAR = 0, 1, 2, 3, 4, 5, 6, 7
 MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT, SWING, WIDTH, TABLE, SPIN = range(16, 30)
+TURN = SPIN + 3
 
 def route(slot, amount, index=-1, held=0, heldB=None, amountB=None, unipolar=0):
     return "%d/%r/%r/%d/%r/%r/%d" % (index, held, held if heldB is None else heldB, slot, amount,
@@ -722,6 +731,16 @@ def gen_runs():
              (0, "set planeKaleido 5 1"), (0, "set planeTurn 0.8 1"), (0, "set planeLimit 1 1"),
              (0, "set planeRadius 0.35 1"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
              (0, "routes " + "+".join([route(TWIST, 0.6, index=0, amountB=0.2), route(RADIUS, 0.3, index=1, amountB=-0.4)]))])
+    # B's turn under a routing through B's fade (5q), with as many slots as the page's table has.
+    add("plane-own-routed", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                             (0, "set planeOwn true 1"), (0, "set planeTurn 0.3 1"),
+                             (0, "routes " + route(TURN, 0.9, index=0, amountB=0.6)), (2048, "set planeOwn false 1")],
+        slots=40, lfo0="sine,40")
+    # And bare: no turn of B's own and nothing of A's, so the routing is all
+    # that turns the stage on.
+    add("plane-own-routed-bare", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                                  (0, "set planeOwn true 1"), (0, "routes " + route(TURN, 0.9, index=0, amountB=0.6))],
+        slots=40, lfo0="sine,40")
     add("plane-own-turn", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                            (0, "set planeOwn true 1"), (0, "set planeTurn -1.2 1"), (1024, "set planeScaleX 1.3 1"),
                            (2048, "set planeOwn false 1"), (3072, "set planeOwn true 1")])

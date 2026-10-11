@@ -165,7 +165,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "CHORUS_MAX",
                          "delayGlide", "chorusPhase", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "chorusSin", "genMod", "genModB",
-                         "shapeSet", "planeSetup", "planeTick", "planeStep"],
+                         "turnRoutedB", "shapeSet", "planeSetup", "planeTick", "planeStep"],
                         rate, null, { tone, toneB, slots: 40 });
     const events = new Map();
     for (const e of (p.ev || "").split(";").filter(Boolean)) {
@@ -182,13 +182,14 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
         else if (field[0] === "b") toneB["plane" + field.slice(1)] = value;
         else tone[field] = value;
       }
-      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true);
+      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true, n("btr") === 1);
       g[c.__get("RADIUS_SLOT")] = n("rpush") * Math.sin(i * 0.0031);
       g[c.__get("TWIST_SLOT")] = n("tpush") * Math.sin(i * 0.0047 + 1);
       g[c.__get("ECHO_SLOT")] = n("epush") * Math.sin(i * 0.0023 + 2);
       g[c.__get("ECHO_TIME_SLOT")] = n("etpush") * Math.sin(i * 0.0013 + 3);
       gB[c.__get("RADIUS_SLOT")] = n("brpush") * Math.sin(i * 0.0029 + 0.5);
       gB[c.__get("TWIST_SLOT")] = n("btpush") * Math.sin(i * 0.0041 + 1.5);
+      gB[c.__get("TURN_SLOT")] = n("bturnpush") * Math.sin(i * 0.0017 + 0.7);
       let x = 0.7 * Math.sin(f.TWO_PI * 220 * i / rate) + 0.25 * Math.sin(f.TWO_PI * 661 * i / rate);
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.

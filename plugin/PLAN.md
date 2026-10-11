@@ -2096,11 +2096,8 @@ Held by parity.py: the plane's harness with B's own shape on, turned,
 pushed and switched under the pairs; whole-generator runs where B's own
 bends B's picture and the sound and leaves A's picture exact; 80 setups of
 B's own; 900 hands on the section with the layers on; and the beam walk's
-rule that B's figure is not turned by the screen while it turns itself. In
-the plugin the instrument walks only the pair the menus chose into its own
-grid - it is never given the figures - so that rule has nothing there to
-act on yet; the page draws both. layerplanetest.py holds the rest, on the
-page's brain and on the instrument.
+rule that B's figure is not turned by the screen while it turns itself.
+layerplanetest.py holds the rest, on the page's brain and on the instrument.
 
 5n's mend of the restore harness was half of one. With no leave to play
 sound the worklet never starts, but the instrument's stand-in does, as soon
@@ -2122,6 +2119,15 @@ hand its grid out): with only B playing, B's figure is in it, where the
 committed instrument held A's silent dot and nothing else; and with B's
 own plane the screen's rotation leaves B's figure as it was, where
 Together turns it. Mutation: 5 of 5.
+
+5q is B's Turn as a destination, `gen.turn`, the generator's last slot.
+A routing reaches it through B's fade alone and only while B has a plane
+of its own; it turns B's stage on with the slider at nought, as a routing
+on the twist does, and while one is there the turn is worked out a sample
+at a time, where at rest it is a cosine and a sine a block. The parity
+harness caught the page's own worklet missing the slot's name from the
+list it builds its module from - the page's generator would have thrown in
+the worklet the first time a routing reached the turn.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

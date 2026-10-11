@@ -62,7 +62,7 @@ const core = (() => {
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
 const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep", "makeEnvelope",
-               "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT", "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT", "SPIN_SLOT"];
+               "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT", "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT", "SPIN_SLOT", "TURN_SLOT"];
 export function coreScope(names, rate, random, given = {}) {
   const outer = OUTER.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");

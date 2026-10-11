@@ -56,7 +56,8 @@ constexpr int Freq = 0, Amp = 1, Phase = 2, Ratio = 3, Detail = 4, Tumble = 5, D
 constexpr int Drawbar = 7, Morph = Drawbar + 9, Radius = Morph + 1, Twist = Radius + 1, Fm = Twist + 1, Sync = Fm + 1;
 constexpr int Drive = Sync + 1, Fold = Drive + 1, Vcf = Fold + 1, Echo = Vcf + 1, EchoTime = Echo + 1;
 constexpr int Swing = EchoTime + 1, Width = Swing + 1, Table = Width + 1, Spin = Table + 1;
-constexpr int Used = Spin + 3;  // the slots the loop reads
+constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
+constexpr int Used = Turn + 1;  // the slots the loop reads
 }  // namespace slot
 
 enum class Mode { Wave, Harmonograph, Figure, Wireframe };
@@ -354,15 +355,17 @@ class Generator {
     const bool layered = b_.voices.has_value();
     const double roleGlide = poleFor(4, rate_);
     bool twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false, echoRouted = false;
+    bool turnRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
+      if (r.slot == slot::Turn) turnRouted = true;
       if (r.slot == slot::Fm) fmRouted = true;
       if (r.slot == slot::Sync) syncRouted = true;
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && b_.planeOwn ? &b_ : nullptr,
-                                      b_.planeTurn);
+                                      b_.planeTurn, turnRouted);
     govern(fmRouted, syncRouted, shapeRouted, planeOn);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;
@@ -720,7 +723,7 @@ class Generator {
   void planeTick(double dt) {
     const double e = mod(slot::EchoTime);
     plane_.tick(a_, modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), std::isnan(e) ? 0 : e, dt,
-                &b_, modBOr0(slot::Radius), modBOr0(slot::Twist));
+                &b_, modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Turn));
   }
 
   // --- S10: the governor ------------------------------------------------------

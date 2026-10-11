@@ -154,6 +154,28 @@ with sync_playwright() as pw:
     check("and given a depth of its own, it moves",
           not same(q[1][4], q[2][4]), "%.4f" % max(abs(x - y) for x, y in zip(q[1][4], q[2][4])))
 
+    print("\n--- the core: B's turn as a destination ---")
+    # A held value of one, so the push is the depth: B's depth a quarter is an
+    # eighth of a turn, which lays B's diagonal on the Y axis, as the slider's
+    # eighth does above. A's depth on it is a different number, and is nothing.
+    turn = lambda own, bb: {"sets": [["planeOwn", own, 1]],
+                            "routes": [{"dest": "gen.turn", "held": 1, "heldB": 1, "amount": 0.9, "amountB": bb}]}
+    t_on, t_none, t_off = core(turn(True, 0.25)), core(turn(True, 0)), core(turn(False, 0.25))
+    print("    B's X and Y peaks: routed %.4f %.3f; B's depth nought %.3f %.3f; B's own off %.3f %.3f"
+          % (peak(t_on[4]), peak(t_on[5]), peak(t_none[4]), peak(t_none[5]), peak(t_off[4]), peak(t_off[5])))
+    check("a routing on Turn at B's depth of a quarter turns B an eighth: its diagonal on the Y axis",
+          peak(t_on[4]) < 1e-3 * peak(t_on[5]) and abs(peak(t_on[5]) / peak(flat[4]) - math.sqrt(2)) < 0.01,
+          "%.5f %.4f" % (peak(t_on[4]), peak(t_on[5])))
+    check("and at B's depth of nought, whatever A's, B is not turned",
+          max(abs(x - y) for x, y in zip(t_none[4], t_none[5])) < 1e-6 and peak(t_none[4]) > 0.1)
+    flat_off = core({"sets": []})
+    check("and with B's own plane off the routing turns nothing",
+          same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
+    way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: !!el.planeTurnRow.querySelector('.mod-open'),
+                                 listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === GEN_DESTS.length - 1 })""")
+    check("the Turn row takes a routing like any destination, and it is the table's last slot",
+          way == {"dest": "gen.turn", "open": True, "listed": True}, str(way))
+
     print("\n--- the panel ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
