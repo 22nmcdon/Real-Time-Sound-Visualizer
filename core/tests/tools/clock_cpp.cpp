@@ -35,10 +35,15 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "tap") scope::tapTempo(brain, now);
     else if (cmd == "tempo") scope::setTempo(brain, num(1), now);
     else if (cmd == "step") {
-      if (scope::clockFrame(brain, gen, now)) log.push_back("delayMs " + scope::jsNumberToString(*brain.echo.sent));
+      // What the frame sent, A's then B's, as the page's genSet logs them.
+      const auto was = brain.echo.sent, wasB = brain.echoB.sent;
+      scope::clockFrame(brain, gen, now);
+      if (brain.echo.sent != was) log.push_back("delayMs " + scope::jsNumberToString(*brain.echo.sent));
+      if (brain.echoB.sent != wasB) log.push_back("delayMsB " + scope::jsNumberToString(*brain.echoB.sent));
     }
     else if (cmd == "sync") brain.lfo[static_cast<std::size_t>(num(1))].sync = arg(2) == "-" ? "" : arg(2);
     else if (cmd == "echo") { brain.echo.sync = arg(1) == "-" ? "" : arg(1); brain.echo.ms = num(2); }
+    else if (cmd == "echob") { brain.planeB.own = arg(1) == "1"; brain.echoB.sync = arg(2) == "-" ? "" : arg(2); brain.echoB.ms = num(3); }
     else if (cmd == "phase") lfos[static_cast<std::size_t>(num(1))].phase = num(2);
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 
@@ -53,6 +58,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       line += " lfo" + std::to_string(i) + " " + show(l.rate) + " " + show(l.phase) + " " + std::to_string(l.epoch);
     }
     line += " sent " + (brain.echo.sent ? show(*brain.echo.sent) : std::string("u"));
+    line += " sentB " + (brain.echoB.sent ? show(*brain.echoB.sent) : std::string("u"));
+    line += " gen " + show(gen.tone().delayMs) + " " + show(gen.toneB().delayMs);
     std::printf("%s\n", line.c_str());
   }
 }

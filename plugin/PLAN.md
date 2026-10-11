@@ -2129,6 +2129,32 @@ harness caught the page's own worklet missing the slot's name from the
 list it builds its module from - the page's generator would have thrown in
 the worklet the first time a routing reached the turn.
 
+5r gives B an echo and a chorus of its own, under 5o's switch. B's own
+effects are its plane and its time together, both or neither, so there is
+no third state for a setup or a hand to reach. The Delay and chorus section
+has the Plane's Layers row again: the same choice. Each layer's time stage
+is a `Time` (the page's `timeOf`) beside its `Shape`, and B's is A's very
+object until B has its own, so with it off every pair goes through the
+arithmetic it always did. With it on, each layer's share of the heard pair
+goes through its own plane and its own line and the two are added: one more
+pair of delay lines, which the governor counts as a second time stage. B's
+echo level and time take B's pushes through B's fade, B's chorus sweeps at
+B's rate from a phase of its own, and B's synced time follows the tempo as
+A's does. The core's clock frame returned as soon as A's time had been
+sent, which would have skipped B's in any frame where both moved; it now
+sends both. Setup codes carry B's ten fields only while bPlane is on, and a
+field a code lacks is A's; no migration, since nothing changes meaning.
+
+Held by parity.py: the plane harness with B's time at each oversampling,
+both layers' at once, B's line kept running by a routing, and B's own
+switched under a chorus; whole-generator runs that move B's picture and
+sound and leave A's picture exact, including one where B's echo is all that
+turns the plane on; the clock with B's synced time; 80 fuzzed setups; 1,072
+hands on the section; each with its nulls. layerplanetest.py reads it as a
+cancellation: an echo half a period of B's note late, at half level, halves
+B and leaves A's samples alone. Mutation: 15 of 15 in the core, once a bare
+run and the clock's run were added for the two that lived.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

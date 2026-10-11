@@ -482,6 +482,11 @@ one for the page. Bending two chords apart is not bending their sum: a mirror
 on the sum also makes their difference tones. So leaving Together changes the
 sound at once though the picture does not move. plugin/PLAN.md has the rest.
 
+**Built later (5r):** B's own is its delay and chorus as well. The Delay and
+chorus section has the same Layers row, the same switch, and each layer's share
+of the heard pair now goes through its own plane and its own echo and chorus
+before the two are added, so one layer can echo while the other stays dry.
+
 ### I1 · time, which the plane does not have
 
 Two classic effects are worth adding because they have honest pictures:

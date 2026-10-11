@@ -4217,3 +4217,16 @@ plane starts as a copy of A's and the picture does not move. That is what
 the honest sound of two planes is, and the cheat sheet says so. A test of
 "switching it on changes nothing" would have to be a test of the picture
 only.
+
+**An echo on a steady tone shows only at the right lateness.** A delay is
+linear and time-invariant, so on a sine it changes only the amplitude and
+the phase, and by how much depends on where the lateness falls in the
+tone's period. Picked at random, B's echo might have moved B's peak by a
+few per cent, an amount easy to lose among other effects. So the fixture
+sets it: half a period of B's note late, at half level and with no
+feedback, the echo cancels half the note, and B's peak reads 0.500 against
+1.000 dry. On the instrument the panel's shortest time is 10 ms, so the
+test picks 21 ms, ten periods and a fiftieth of B's 523 Hz note, and reads
+the opposite: half as big again. Before writing a check on a linear
+effect, work out what it does to the fixture, and choose the fixture so
+the answer is large.

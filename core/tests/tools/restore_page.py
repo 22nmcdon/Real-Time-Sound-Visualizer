@@ -150,6 +150,9 @@ DUMP = """(setups) => {
       echo: { mix: echo.mix, ms: echo.ms, sync: echo.sync, feedback: echo.feedback, pingPong: echo.pingPong,
               chorus: echo.chorus, rate: echo.rate, depthMs: echo.depthMs, centreMs: echo.centreMs,
               chorusFeedback: echo.chorusFeedback },
+      echoB: { mix: echoB.mix, ms: echoB.ms, sync: echoB.sync, feedback: echoB.feedback, pingPong: echoB.pingPong,
+               chorus: echoB.chorus, rate: echoB.rate, depthMs: echoB.depthMs, centreMs: echoB.centreMs,
+               chorusFeedback: echoB.chorusFeedback },
     }));
   }
   return out;

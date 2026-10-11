@@ -10,6 +10,8 @@
    A file is runs of `run`, then one command a line, then `end`:
      at MS   tick   rt STATUS   start   stop   tap   tempo BPM   step
      sync LFO VALUE   echo SYNC MS   phase LFO P      (a SYNC of - is free)
+     echob OWN SYNC MS   (layer B's own echo, and whether B has its own)
+   Each line ends with the delay time each layer's generator was last given.
    Usage: node clock_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -43,16 +45,19 @@ const log = [];
 const el = {};
 const lfos = [{ sync: "", rate: 0.2, phase: 0, epoch: 0 }, { sync: "", rate: 0.5, phase: 0, epoch: 0 }];
 const echo = { sync: "", ms: 375 };
+const echoB = { sync: "", ms: 375 };
+const planeB = { own: false };
+const gen = [{ delayMs: 375 }, { delayMs: 375 }];
 const DELAY_SYNC = ${definition("DELAY_SYNC").replace(/^const DELAY_SYNC = /, "").replace(/;\n$/, "")};
 ${definition("delayTimeMs")}
-const genSet = (key, value) => { log.push(key + " " + value); };
+const genSet = (key, value, layer) => { log.push(key + (layer === 1 ? "B" : "") + " " + value); gen[layer === 1 ? 1 : 0][key] = value; };
 // The score as the clock touches it: its anchor resets the column, and Stop lets go.
 const score = { set last(v) { log.push("anchor"); }, get last() { return -1; }, steps: 0 };
 function scoreStop() { log.push("stop"); }
 `;
 
 const source = STUBS + LIFTED.map(definition).join("\n") + `
-return { transport, lfos, echo, log, clockTick, transportBeat, transportStart, transportStop, transportContinue,
+return { transport, lfos, echo, echoB, planeB, gen, log, clockTick, transportBeat, transportStart, transportStop, transportContinue,
          transportSaid, clockTap, setTempo, clockStep, midiRealtime, setClock: (ms) => { clock = ms; } };`;
 
 const show = (v) => (v === undefined ? "u" : v === true ? "1" : v === false ? "0" : Number(v).toPrecision(17));
@@ -74,6 +79,7 @@ function run(commands) {
     else if (cmd === "step") c.clockStep(now);
     else if (cmd === "sync") c.lfos[Number(a[0])].sync = a[1] === "-" ? "" : a[1];
     else if (cmd === "echo") { c.echo.sync = a[0] === "-" ? "" : a[0]; c.echo.ms = Number(a[1]); }
+    else if (cmd === "echob") { c.planeB.own = a[0] === "1"; c.echoB.sync = a[1] === "-" ? "" : a[1]; c.echoB.ms = Number(a[2]); }
     else if (cmd === "phase") c.lfos[Number(a[0])].phase = Number(a[1]);
     else throw new Error("unknown command " + cmd);
     const t = c.transport;
@@ -81,7 +87,8 @@ function run(commands) {
                 "running", show(t.running), "base", show(t.base), "at", show(t.baseAt), "ticking", show(t.onTicks),
                 "ticks", t.ticks.length, "taps", t.taps.length, "beat", show(c.transportBeat(now)), "said", c.transportSaid(now),
                 ...c.lfos.flatMap((l, i) => ["lfo" + i, show(l.rate), show(l.phase), l.epoch]),
-                "sent", show(c.echo.sent)].join(" "));
+                "sent", show(c.echo.sent), "sentB", show(c.echoB.sent), "gen", show(c.gen[0].delayMs),
+                show(c.gen[1].delayMs)].join(" "));
   }
   return lines.join("\n");
 }

@@ -95,15 +95,16 @@ SWEEP = """async ([rack]) => {
     }
   }
   /* Two layers, with layer B's own plane on the panel: the Plane section
-     grows its Layers row and B's Turn, and the clip at the radius shows the
-     radius's. A rack keeps a split without applying it, so only the tone. */
+     grows its Layers row and B's Turn, the clip at the radius shows the
+     radius's, and Delay and chorus grows its own Layers row. A rack keeps a
+     split without applying it, so only the tone. */
   if (!rack) {
     el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
     setMidiMode('poly');
     el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
     el.planeLayerB.click();
     el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
-    planeRows = [el.planeLayerRow.hidden, el.planeTurnRow.hidden, el.planeRadiusRow.hidden];
+    planeRows = [el.planeLayerRow.hidden, el.planeTurnRow.hidden, el.planeRadiusRow.hidden, el.timeLayerRow.hidden];
     measure('tone+keys+photo+layers+planeB');
     el.planeLayerBoth.click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
@@ -142,8 +143,8 @@ with sync_playwright() as pw:
         check("thirty controllers are thirty rows, and the list scrolls inside itself rather than the tab",
               r["list"] == {"rows": 30, "scrolls": True}, str(r["list"]))
         if name == "tone":
-            check("the layered case had the Plane section's Layers, Turn and Radius rows all showing",
-                  r["planeRows"] == [False, False, False], str(r["planeRows"]))
+            check("the layered case had the Plane section's Layers, Turn and Radius rows and Delay and chorus's Layers row all showing",
+                  r["planeRows"] == [False, False, False, False], str(r["planeRows"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

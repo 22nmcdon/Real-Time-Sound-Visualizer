@@ -284,7 +284,9 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
                       chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
                       etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
-                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0, ev="")
+                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0,
+                      bDelayMix=0, bDelayMs=375, bDelayFeedback=0.35, bDelayPingPong=0, bChorusMix=0,
+                      bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -341,6 +343,19 @@ def plane_scenarios():
     # B's own switched on and off under the pairs, and moved while it is on.
     out.append(dict(planeTwist=0.9, bMirror=1, bTurn=0.5,
                     ev="600:bown:1;1100:bKaleido:5;1500:bown:0;2000:bown:1;2200:bTurn:-0.3"))
+    # B's own echo and chorus (5r): B's alone with A's dry, at each
+    # oversampling, pushed by B's own routings; both layers with different
+    # ones; B's line kept running at nought by a routing; and B's own
+    # switched under a chorus, whose sweep must carry on where it was.
+    for os_ in (1, 2, 4):
+        out.append(dict(planeOS=os_, planeScaleX=1.1, bown=1, bDelayMix=0.4, bDelayMs=6, bDelayFeedback=0.5,
+                        bChorusMix=0.5, bChorusRate=1.7, bChorusDepthMs=2, bChorusMs=9, bepush=0.5, betpush=0.4))
+    out.append(dict(planeMirror=1, delayMix=0.3, delayMs=8, chorusMix=0.4, chorusRate=2.3, bown=1, bMirror=2,
+                    bDelayMix=0.5, bDelayMs=5, bDelayPingPong=1, bDelayFeedback=0.6, bChorusMix=0.6, bChorusRate=0.9,
+                    bChorusFeedback=0.4, epush=0.3, bepush=-0.4))
+    out.append(dict(planeScaleX=1.1, bown=1, ecr=1, bDelayMs=7, bepush=0.8, betpush=-0.3))
+    out.append(dict(planeShear=0.3, chorusMix=0.5, chorusRate=3.1, bChorusMix=0.5, bChorusRate=1.3, bDelayMix=0.4,
+                    bDelayMs=6, ev="700:bown:1;1300:bown:0;1800:bown:1;2100:bDelayMs:9;2300:bChorusRate:4"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -511,6 +526,19 @@ bturn = next(i for i, l in enumerate(lines) if "bTurn=-1.9" in l)
 turnr = next(i for i, l in enumerate(lines) if "bturnpush=0.8" in l and "bown=1" in l)
 check("and against layer B's turn left unrouted",
       worst(js_one(lines[turnr].replace("bturnpush=0.8", "bturnpush=0.0")), row(cpp_rows[turnr])) > 1e-6)
+# B's own echo and chorus: a page whose B echo read A's pushes, or whose B
+# chorus swept at A's rate, or that put B's pairs through A's time stage.
+btime = next(i for i, l in enumerate(lines) if "bepush=0.5" in l and "planeOS=2" in l)
+check("and against layer B's echo left unpushed by B's routings",
+      worst(js_one(lines[btime].replace("bepush=0.5", "bepush=0.0")), row(cpp_rows[btime])) > 1e-6)
+btwo = next(i for i, l in enumerate(lines) if "bChorusRate=0.9" in l)
+check("and against layer B's chorus swept at layer A's rate",
+      worst(js_one(lines[btwo].replace("bChorusRate=0.9", "bChorusRate=2.3")), row(cpp_rows[btwo])) > 1e-6)
+check("and against layer B's echo the same as layer A's",
+      worst(js_one(lines[btwo].replace("bDelayMs=5", "bDelayMs=8")), row(cpp_rows[btwo])) > 1e-6)
+bnought = next(i for i, l in enumerate(lines) if "bepush=0.8" in l)
+check("and against layer B's line not kept running by a routing",
+      worst(js_one(lines[bnought].replace("ecr=1", "ecr=0")), row(cpp_rows[bnought])) > 1e-6)
 check("and against layer B turned the other way",
       worst(js_one(lines[bturn].replace("bTurn=-1.9", "bTurn=1.9")), row(cpp_rows[bturn])) > 1e-6)
 flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
@@ -744,6 +772,26 @@ def gen_runs():
     add("plane-own-turn", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                            (0, "set planeOwn true 1"), (0, "set planeTurn -1.2 1"), (1024, "set planeScaleX 1.3 1"),
                            (2048, "set planeOwn false 1"), (3072, "set planeOwn true 1")])
+    # B's own echo and chorus (5r): A's a short echo, B's a shorter ping-pong
+    # one and a chorus, each pushed through its own fade; and the same with
+    # B's own off, so the two can be compared. Then B's switched under them.
+    for own in ("true", "false"):
+        add("plane-own-time" + ("" if own == "true" else "-off"),
+            [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((76, "xy"), (81, "u"))),
+             (0, "set planeScaleX 1.1"), (0, "set planeOwn %s 1" % own), (0, "set delayMix 0.3"),
+             (0, "set delayMs 7"), (0, "set delayMix 0.5 1"), (0, "set delayMs 4 1"), (0, "set delayFeedback 0.6 1"),
+             (0, "set delayPingPong true 1"), (0, "set chorusMix 0.6 1"), (0, "set chorusRate 2.5 1"),
+             (0, "set chorusMs 8 1"), (0, "set chorusDepthMs 2 1"),
+             (0, "routes " + "+".join([route(ECHO, 0.5, index=0, amountB=-0.4), route(ECHOT, 0.3, index=1, amountB=0.6)]))])
+    # And bare: B's echo with nothing of A's, so B's time is all that turns
+    # the plane on.
+    add("plane-own-time-bare", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                                (0, "set planeOwn true 1"), (0, "set delayMix 0.5 1"), (0, "set delayMs 4 1")])
+    add("plane-own-time-switch", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                                  (0, "set chorusMix 0.4"), (0, "set chorusRate 1.5"), (0, "set chorusMix 0.5 1"),
+                                  (0, "set chorusRate 4 1"), (0, "set delayMix 0.4 1"), (0, "set delayMs 6 1"),
+                                  (1024, "set planeOwn true 1"), (2048, "set planeOwn false 1"),
+                                  (2560, "set planeOwn true 1"), (3072, "set delayMs 9 1")])
     # The crossings, the score, and the input three ways and from the second generator.
     add("crossings", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set crossOn true"), (0, "set crossX 0.2"),
                       (0, "set crossY -0.3"), (0, "set crossDecayMs 40"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"), (2560, "strike 550 1"),
@@ -823,6 +871,11 @@ check("layer B's own plane bends B's picture and its share of the sound, and lea
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
       and max(abs(a - b) for a, b in zip(col(own, 2), col(off, 2))) > 0.05
       and col(own, 0) == col(off, 0) and col(own, 1) == col(off, 1))
+own, off = grow("plane-own-time")[0], grow("plane-own-time-off")[0]
+check("layer B's own echo and chorus change B's picture and its share of the sound, and leave A's picture as it was",
+      max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
+      and max(abs(a - b) for a, b in zip(col(own, 2), col(off, 2))) > 0.05
+      and col(own, 0) == col(off, 0) and col(own, 1) == col(off, 1))
 body, _ = grow("poly")
 check("in a chord the heard pair is not the picture",
       max(abs(a - b) for a, b in zip(col(body, 0), col(body, 2))) > 0.05)
@@ -857,6 +910,8 @@ gnull("poly", "/0.7/y", "/0.69/y", "a chord with one velocity a hundredth less")
 gnull("input-3", "input 97 0.6", "input 98 0.6", "a clock a hertz faster")
 gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never had four times to give up")
 gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
+gnull("plane-own-time", "set delayMs 4 1", "set delayMs 7 1", "layer B's own echo as long as layer A's")
+gnull("plane-own-time-switch", "set chorusRate 4 1", "set chorusRate 1.5 1", "layer B's own chorus at layer A's rate")
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
@@ -1558,6 +1613,10 @@ cruns = [
     # A delay in note values is sent again when the tempo moves it, and only then.
     ("echo", crun("echo 1/8d 200", "step", "step", "tempo 100", "step", "step", "echo - 200", "tempo 120", "step",
                   "echo 1/2 300", "tempo 30", "step", "echo 1/16 300", "step", *ticks(100, 41.666, 6, every=True))),
+    # Layer B's own echo (5r): followed only while B has its own, apart from
+    # A's, and both in one frame.
+    ("echo-b", crun("echob 1 1/4 300", "step", "tempo 100", "step", "echob 0 1/8 300", "tempo 120", "step",
+                    "echob 1 1/8 300", "step", "echo 1/8d 200", "tempo 90", "step", "echob 1 - 300", "tempo 60", "step")),
     # More than two dozen ticks: the oldest go.
     ("many-ticks", crun(*ticks(0, 20, 40), "step")),
 ]
@@ -1635,6 +1694,12 @@ said = [L[i].split(":: ")[1].split(" |")[0] for i in sent]
 check("a delay in note values is sent when the tempo moves it, not again until it does, and never past two seconds",
       sent[:4] == [1, 4, 11, 13] and said[:4] == ["delayMs 375", "delayMs 450", "delayMs 2000", "delayMs 500"],
       "%s %s" % (sent[:5], said[:5]))
+L = cout("echo-b")
+sentB = [(i, L[i].split(":: delayMsB ")[1].split(" ")[0]) for i, l in enumerate(L) if ":: delayMsB" in l]
+check("layer B's own echo in note values follows the tempo into layer B, only while B has its own, beside A's",
+      [i for i, _ in sentB] == [1, 3, 8, 11] and [round(float(v), 3) for _, v in sentB] == [500, 600, 250, 333.333]
+      and ":: delayMs 500 :: delayMsB" in L[11] and [round(float(v), 3) for v in L[-1].split(" gen ")[1].split()[0:2]] == [750, 333.333],
+      "%s | %s" % (sentB, L[-1].split(" gen ")[1]))
 # Nulls: the page told something different, and the port must disagree.
 def cnull(what, name, old, new):
     text = dict(cruns)[name]
@@ -1646,6 +1711,7 @@ cnull("a tempo a beat a minute faster", "tempo-mid-bar", "tempo 90\n", "tempo 91
 cnull("a tick a millisecond late", "midi-120", "at 1041.666666", "at 1042.666666")
 cnull("an oscillator locked to a quaver instead of a quaver triplet", "locked", "sync 0 1/8t", "sync 0 1/8")
 cnull("a Continue instead of a Start", "start-on-clock", "rt 250", "rt 251")
+cnull("layer B's echo followed while B has none of its own", "echo-b", "echob 0 1/8 300", "echob 1 1/8 300")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
 
@@ -2937,8 +3003,26 @@ def bplane_setup():
     if brng.random() < 0.5: st.update(layers=brng.choice(["split", "layer"]), midiMode="poly")
     return _json.dumps(st)
 BPLANE = [bplane_setup() for _ in range(80)]
+# And B's own echo and chorus (5r), from a generator of their own too.
+trng = random.Random(132)
+def btime_setup():
+    st = {"bPlane": trng.choice([True, True, True, False, "true", None])}
+    pick = lambda: trng.choice([trng.randint(-120, 2600), trng.uniform(-60, 600), "40", "", None, True, [5], -0.0, 1e21])
+    for key in ("bDelayMix", "bDelayMs", "bDelayFeedback", "bChorusMix", "bChorusRate", "bChorusDepth", "bChorusTime",
+                "bChorusFeedback"):
+        if trng.random() < 0.6: st[key] = pick()
+    if trng.random() < 0.6: st["bDelaySync"] = trng.choice(["", "1/4", "1/8d", "1/5", 4, None])
+    if trng.random() < 0.6: st["bDelayPingPong"] = trng.choice([True, False, 1, "true", None])
+    for key in ("delayMix", "delayFeedback", "chorusMix", "chorusRate"):
+        if trng.random() < 0.5: st[key] = trng.randint(0, 100)
+    if trng.random() < 0.5: st["delaySync"] = trng.choice(["", "1/8", "1/2"])
+    if trng.random() < 0.5: st["delayPingPong"] = trng.random() < 0.5
+    if trng.random() < 0.5: st["tempo"] = trng.randint(40, 240)
+    if trng.random() < 0.5: st.update(layers=trng.choice(["split", "layer"]), midiMode="poly")
+    return _json.dumps(st)
+BTIME = [btime_setup() for _ in range(80)]
 rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BPLANE
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BTIME + BPLANE
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
@@ -2950,6 +3034,13 @@ check("the setups reach layer B's own plane, with fields of its own and fields f
       and any(r["planeB"]["own"] and r["planeB"]["kaleido"] != r["plane"]["kaleido"] for r in bown)
       and any(r["planeB"]["own"] and r["planeB"]["kaleido"] == r["plane"]["kaleido"] != 0 for r in bown)
       and any(r["planeB"]["turn"] != 0 for r in bown))
+btown = [_json.loads(l) for l in rpg[-len(BPLANE) - len(BTIME):-len(BPLANE)]]
+check("and B's own echo and chorus, with fields of their own and fields falling back to A's, a synced time and a free one",
+      any(r["planeB"]["own"] and r["echoB"]["mix"] != r["echo"]["mix"] for r in btown)
+      and any(r["planeB"]["own"] and r["echoB"]["rate"] == r["echo"]["rate"] for r in btown)
+      and any(r["planeB"]["own"] and r["echoB"]["sync"] and r["echoB"]["sync"] != r["echo"]["sync"] for r in btown)
+      and any(r["planeB"]["own"] and r["b"]["delayMs"] != r["a"]["delayMs"] for r in btown)
+      and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] for r in btown))
 check("the setups reach every kind, both layers, the old LFO enum, the morph, the controllers and the tempo",
       {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
       and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
@@ -3413,6 +3504,77 @@ def pnull(what, index, change):
 pnull("A's own chosen where B's was", 5, lambda o: o | {"id": "planeLayerA"})
 pnull("Together chosen where B's was", 5, lambda o: o | {"id": "planeLayerBoth"})
 check("and the comparison fails against the page's operations one out of step", rbad(ppg[1:], ppt[:-1]) != [])
+
+# The Delay and chorus section with the layers on (5r): its own Layers row,
+# the same switch as the Plane's, and its controls writing whichever layer's
+# echo is shown. Its own generator, so the runs above are the ones they were.
+trng2 = random.Random(133)
+TSLIDERS = ["delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback"]
+def tvalue(id):
+    r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
+    return trng2.choice([round(trng2.uniform(lo, hi)), round(trng2.uniform(lo, hi), 1), lo - 5, hi + 5, "abc", "7.5"])
+def top():
+    c = trng2.random()
+    if c < 0.4: id = trng2.choice(TSLIDERS); return {"op": "slider", "id": id, "value": tvalue(id)}
+    if c < 0.5: return {"op": "change", "id": "delaySync", "value": trng2.choice(pctl["selects"]["delaySync"]["options"])}
+    if c < 0.56: return {"op": "change", "id": "delayPingPong", "value": trng2.random() < 0.5}
+    if c < 0.75: return {"op": "click", "id": trng2.choice(["timeLayerBoth", "timeLayerA", "timeLayerB", "timeLayerB",
+                                                            "planeLayerBoth", "planeLayerB"])}
+    if c < 0.83: return {"op": "click", "id": trng2.choice(["midiEditA", "midiEditB"])}
+    if c < 0.87: return {"op": "change", "id": "midiLayers", "value": trng2.choice(["off", "split", "layer", "layer"])}
+    if c < 0.9: return {"op": "keys", "value": trng2.random() < 0.8}
+    if c < 0.93: return {"op": "slider", "id": "tempo", "value": trng2.randint(40, 240)}
+    return _json.loads(trng2.choice(presets))
+def trun():
+    start = [_json.loads(trng2.choice(presets)) if trng2.random() < 0.5 else {}, {"op": "keys", "value": True},
+             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "change", "id": "midiLayers", "value": trng2.choice(["split", "layer"])},
+             {"op": "click", "id": trng2.choice(["timeLayerA", "timeLayerB"])}]
+    return start + [top() for _ in range(trng2.randint(6, 16))]
+# Made to be read: an echo on both; B given its own, which starts as a copy;
+# B's echo time and chorus moved; A's echo level; B shown from the Play tab;
+# back to Together; a setup of B's own loaded.
+TMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                        # 0-2
+         {"op": "change", "id": "midiLayers", "value": "layer"},                                     # 3
+         {"op": "slider", "id": "delayMix", "value": 30}, {"op": "click", "id": "timeLayerB"},       # 4, 5
+         {"op": "slider", "id": "delayMs", "value": 120}, {"op": "slider", "id": "chorusMix", "value": 60},  # 6, 7
+         {"op": "click", "id": "timeLayerA"}, {"op": "slider", "id": "delayMix", "value": 70},       # 8, 9
+         {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "timeLayerBoth"},                 # 10, 11
+         {"bPlane": True, "bDelayMix": 45, "bDelaySync": "1/8", "delayMix": 20, "layers": "layer", "midiMode": "poly"},  # 12
+         {"op": "click", "id": "midiEditB"}]                                                         # 13
+tlines = [_json.dumps(o) for o in TMADE] + [_json.dumps(o) for _ in range(60) for o in trun()]
+tpg, tpt = rboth(tlines, "timeb_ops.txt")
+tb = rbad(tpg, tpt)
+check("%d hands on the Delay and chorus section with the layers on, Together, A and B in turn, leave the same instrument"
+      % len(tlines), not tb and len(tlines) > 700, tb[0] if tb else "")
+tp = [_json.loads(l) for l in tpg]
+check("leaving Together there gives B an echo of its own that starts as A's, and its plane with it",
+      not tp[4]["planeB"]["own"] and tp[5]["planeB"]["own"] and tp[5]["echoB"]["mix"] == 0.3 and tp[5]["b"]["delayMix"] == 0.3
+      and tp[5]["ranges"]["delayMix"] == 30 and tp[5]["panelLayer"] == 1, repr(tp[5]["echoB"]))
+check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
+      tp[7]["echoB"]["ms"] == 120 and tp[7]["echoB"]["chorus"] == 0.6 and tp[7]["b"]["delayMs"] == 120
+      and tp[7]["echo"]["ms"] == 375 and tp[7]["a"]["delayMs"] == 375 and tp[7]["a"]["chorusMix"] == 0, repr(tp[7]["echo"]))
+check("A shows A's echo and writes it, and B's own stays B's",
+      tp[8]["ranges"]["delayMs"] == 375 and tp[9]["echo"]["mix"] == 0.7 and tp[9]["echoB"]["mix"] == 0.3
+      and tp[9]["b"]["delayMix"] == 0.3, repr(tp[9]["echoB"]))
+check("B chosen on the Play tab shows B's echo here too",
+      tp[10]["ranges"]["delayMs"] == 120 and tp[10]["ranges"]["delayMix"] == 30, repr(tp[10]["ranges"]["delayMs"]))
+check("Together lets B's own go, and B's echo follows A's again",
+      not tp[11]["planeB"]["own"] and tp[11]["echoB"]["mix"] == 0.7 and tp[11]["echoB"]["ms"] == 375
+      and tp[11]["b"]["delayMix"] == 0.7, repr(tp[11]["echoB"]))
+check("a setup with B's own echo loads it, a field it lacks being A's, and B's shown after it",
+      tp[12]["echoB"]["mix"] == 0.45 and tp[12]["echoB"]["sync"] == "1/8" and tp[12]["echoB"]["feedback"] == tp[12]["echo"]["feedback"]
+      and tp[12]["echo"]["mix"] == 0.2 and tp[13]["ranges"]["delayMix"] == 45, repr(tp[12]["echoB"]))
+twrote = sum(1 for i in range(1, len(tp)) if tp[i]["echoB"] != tp[i - 1]["echoB"] and tp[i]["planeB"]["own"])
+check("the runs write B's own echo %d times" % twrote, twrote > 100)
+def tnull(what, index, change):
+    lines = list(tlines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "timeb_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(tpt[index])) != [])
+tnull("A's own chosen where B's was", 5, lambda o: o | {"id": "timeLayerA"})
+tnull("Together chosen where B's was", 5, lambda o: o | {"id": "timeLayerBoth"})
+check("and the comparison fails against the page's operations one out of step", rbad(tpg[1:], tpt[:-1]) != [])
 
 print("\n--- the fade from the plugin ---")
 # The fade the page keeps in its own storage, sent whole to the plugin when

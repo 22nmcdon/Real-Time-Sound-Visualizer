@@ -244,6 +244,10 @@ struct Brain {
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
+  // Layer B's own echo and chorus (the page's `echoB`), under the plane's
+  // switch: kept a copy of A's while B has none, as its plane is.
+  EchoState echoB;
+  std::string echoShown;  // which layer's echo the section last showed
   // drawnCycle: the four slots' points, and the tables built from them.
   std::array<CyclePoints, kCycleSlots> cycles;
   std::shared_ptr<const std::vector<CycleTables>> cycleBank;
@@ -499,11 +503,13 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
 // The plane section's, defined with the other refreshers below.
 inline std::string planeSide(const Brain& b, const Keyboard& keys);
 inline void syncPlanePanel(Brain& b, const Keyboard& keys);
+inline void syncEchoPanel(Brain& b, const Keyboard& keys);
 // syncLayerPanel: the layer the keyboard says is being edited, on the panel.
 inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys) {
   showLayerOnPanel(b, gen, b.panelHeldOnA ? 0 : keys.editLayer());
   // syncPlaneLayer: the plane section says whose plane it shows the moment that changes.
   if (planeSide(b, keys) != b.planeShown) syncPlanePanel(b, keys);
+  if (planeSide(b, keys) != b.echoShown) syncEchoPanel(b, keys);
 }
 
 // Layer B's sound: B's own field where the setup gives one, else what the
@@ -593,16 +599,29 @@ inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
   b.panel.setRange("planeScaleY", pct(p.scaleY));
   b.panel.setRange("planeShear", pct(p.shear));
 }
-inline double delayTimeMs(const Brain& b) {
-  const double beats = delayBeats(b.echo.sync);
-  return beats > 0 ? std::fmin(2000, beats * 60000 / b.clock.bpm) : b.echo.ms;
+// A's echo's time in force, or B's own.
+inline double delayTimeMs(const Brain& b, const Brain::EchoState& e) {
+  const double beats = delayBeats(e.sync);
+  return beats > 0 ? std::fmin(2000, beats * 60000 / b.clock.bpm) : e.ms;
+}
+inline double delayTimeMs(const Brain& b) { return delayTimeMs(b, b.echo); }
+// echoBFollow, echoTarget: B's own echo a copy of A's, and which of the two
+// the section's controls write - the plane's choice, one switch for both.
+inline void echoBFollow(Brain& b) {
+  const std::optional<double> sent = b.echoB.sent;
+  b.echoB = b.echo;
+  b.echoB.sent = sent;
+}
+inline Brain::EchoState& echoTarget(Brain& b, const Keyboard& keys) {
+  return planeEditsB(b, keys) ? b.echoB : b.echo;
 }
 // The time a synced echo shows is the tempo's, and its slider stands still.
-inline void syncEchoPanel(Brain& b) {
+inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   const auto n = [](double v) { return toU16(jsNumberToString(v)); };
-  const Brain::EchoState& e = b.echo;
+  b.echoShown = planeSide(b, keys);
+  const Brain::EchoState& e = echoTarget(b, keys);
   b.panel.setRange("delayMix", n(jsMathRound(e.mix * 100)));
-  b.panel.setRange("delayMs", n(!e.sync.empty() ? jsMathRound(delayTimeMs(b)) : e.ms));
+  b.panel.setRange("delayMs", n(!e.sync.empty() ? jsMathRound(delayTimeMs(b, e)) : e.ms));
   b.panel.setRange("delayFeedback", n(jsMathRound(e.feedback * 100)));
   b.panel.setRange("chorusMix", n(jsMathRound(e.chorus * 100)));
   b.panel.setRange("chorusRate", n(jsMathRound(e.rate * 100)));
@@ -631,7 +650,17 @@ inline void syncPlane(Brain& b, Generator& gen) {
   gen.set("planeSnap", p.snap); gen.set("planeScaleX", p.scaleX); gen.set("planeScaleY", p.scaleY);
   gen.set("planeShear", p.shear);
 }
-inline void syncEcho(const Brain& b, Generator& gen) {
+// Layer B's, into layer B, following A's while it has none of its own.
+inline void syncEchoB(Brain& b, Generator& gen) {
+  if (!b.planeB.own) echoBFollow(b);
+  const Brain::EchoState& e = b.echoB;
+  gen.set("delayMix", e.mix, 1); gen.set("delayMs", delayTimeMs(b, e), 1); gen.set("delayFeedback", e.feedback, 1);
+  gen.set("delayPingPong", e.pingPong ? 1 : 0, 1); gen.set("chorusMix", e.chorus, 1); gen.set("chorusRate", e.rate, 1);
+  gen.set("chorusDepthMs", e.depthMs, 1); gen.set("chorusMs", e.centreMs, 1);
+  gen.set("chorusFeedback", e.chorusFeedback, 1);
+}
+inline void syncEcho(Brain& b, Generator& gen) {
+  syncEchoB(b, gen);
   const Brain::EchoState& e = b.echo;
   gen.set("delayMix", e.mix); gen.set("delayMs", delayTimeMs(b)); gen.set("delayFeedback", e.feedback);
   gen.set("delayPingPong", e.pingPong ? 1 : 0); gen.set("chorusMix", e.chorus); gen.set("chorusRate", e.rate);
@@ -673,11 +702,17 @@ class ClockIn : public RealtimeIn {
 // again when the tempo has moved it - and whether it was.
 inline bool clockFrame(Brain& b, Generator& gen, double now) {
   b.clock.step(now);
+  bool sent = false;
   if (!b.echo.sync.empty()) {
     const double ms = delayTimeMs(b);
-    if (!b.echo.sent || *b.echo.sent != ms) { b.echo.sent = ms; gen.set("delayMs", ms); return true; }
+    if (!b.echo.sent || *b.echo.sent != ms) { b.echo.sent = ms; gen.set("delayMs", ms); sent = true; }
   }
-  return false;
+  // And layer B's own, while it has one.
+  if (b.planeB.own && !b.echoB.sync.empty()) {
+    const double ms = delayTimeMs(b, b.echoB);
+    if (!b.echoB.sent || *b.echoB.sent != ms) { b.echoB.sent = ms; gen.set("delayMs", ms, 1); sent = true; }
+  }
+  return sent;
 }
 // setTempo, with the slider it writes.
 inline void setTempo(Brain& b, double bpm, double at) {
@@ -1238,7 +1273,32 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("delayPingPong", e.pingPong ? 1 : 0);
     setA("chorusMix", e.chorus); setA("chorusRate", e.rate); setA("chorusDepthMs", e.depthMs);
     setA("chorusMs", e.centreMs); setA("chorusFeedback", e.chorusFeedback);
-    syncEchoPanel(brain);
+    /* Layer B's own echo and chorus, with its plane (bPlane): a field the
+       setup lacks is A's, as B's plane's are. */
+    echoBFollow(brain);
+    if (brain.planeB.own) {
+      Brain::EchoState& f = brain.echoB;
+      const auto own = [&](std::string_view key) -> const Json* { return given ? partial.get(key) : nullptr; };
+      const auto slide = [&](std::string_view key, double lo, double hi, double scale, double a) {
+        const double v = jsToNumber(own(key));
+        return std::isfinite(v) ? std::fmax(lo, std::fmin(hi, v)) / scale : a;
+      };
+      f.mix = slide("bDelayMix", 0, 100, 100, e.mix);
+      const double ms = jsToNumber(own("bDelayMs"));
+      f.ms = std::isfinite(ms) ? jsMathRound(std::fmax(10.0, std::fmin(2000.0, ms))) : e.ms;
+      const Json* sync = own("bDelaySync");
+      f.sync = sync && sync->type == Json::Type::String ? (delaySyncKnown(sync->s) ? utf16To8(sync->s) : "") : e.sync;
+      f.feedback = slide("bDelayFeedback", 0, 90, 100, e.feedback);
+      const Json* ping = own("bDelayPingPong");
+      f.pingPong = ping && ping->type == Json::Type::Bool ? ping->b : e.pingPong;
+      f.chorus = slide("bChorusMix", 0, 100, 100, e.chorus);
+      f.rate = slide("bChorusRate", 5, 500, 100, e.rate);
+      f.depthMs = slide("bChorusDepth", 0, 100, 10, e.depthMs);
+      f.centreMs = slide("bChorusTime", 10, 300, 10, e.centreMs);
+      f.chorusFeedback = slide("bChorusFeedback", 0, 90, 100, e.chorusFeedback);
+    }
+    syncEchoB(brain, gen);
+    syncEchoPanel(brain, keys);
   }
 
   // The routings: the setup's list, or the old enum when it has none.
@@ -1415,7 +1475,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "planeTurn") { b.planeB.turn = v / 100; syncPlanePanel(b, keys); syncPlane(b, gen); }
   else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "chorusMix" || id == "chorusRate"
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback") {
-    Brain::EchoState& e = b.echo;
+    Brain::EchoState& e = echoTarget(b, keys);
     if (id == "delayMix") e.mix = v / 100;
     else if (id == "delayMs") e.ms = v;
     else if (id == "delayFeedback") e.feedback = v / 100;
@@ -1424,7 +1484,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     else if (id == "chorusDepth") e.depthMs = v / 10;
     else if (id == "chorusTime") e.centreMs = v / 10;
     else e.chorusFeedback = v / 100;
-    syncEchoPanel(b);
+    syncEchoPanel(b, keys);
     syncEcho(b, gen);
   }
   // The view's sliders, each as the page's handler reads it.
@@ -1525,8 +1585,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     (id == "planeMirror" ? p.mirror : id == "planeLimit" ? p.limit : id == "planeKaleido" ? p.kaleido : p.snap) = number;
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
-  else if (id == "delaySync") { b.echo.sync = text; syncEchoPanel(b); syncEcho(b, gen); }
-  else if (id == "delayPingPong") { b.echo.pingPong = checked; syncEcho(b, gen); }
+  else if (id == "delaySync") { echoTarget(b, keys).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }
+  else if (id == "delayPingPong") { echoTarget(b, keys).pingPong = checked; syncEcho(b, gen); }
   // The crossings, the key and the quantiser.
   else if (id == "crossOn") { b.cross.on = checked; syncCrossings(b, gen); }
   else if (id == "crossNoteX") { b.cross.noteX = number; syncCrossings(b, gen); }
@@ -1640,13 +1700,17 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
   /* setPlaneLayer: Together lets B's own go; A or B gives B its own - which
-     is already a copy of A's, kept one by syncPlaneB - and puts that layer
-     on the panel. */
-  else if (id == "planeLayerBoth") { b.planeB.own = false; syncPlanePanel(b, keys); syncPlane(b, gen); }
-  else if (id == "planeLayerA" || id == "planeLayerB") {
+     is already a copy of A's, kept one by syncPlaneB and syncEchoB - and
+     puts that layer on the panel. The Delay and chorus section's Layers row
+     is the same choice. */
+  else if (id == "planeLayerBoth" || id == "timeLayerBoth") {
+    b.planeB.own = false;
+    syncPlanePanel(b, keys); syncPlane(b, gen); syncEchoPanel(b, keys); syncEcho(b, gen);
+  }
+  else if (id == "planeLayerA" || id == "planeLayerB" || id == "timeLayerA" || id == "timeLayerB") {
     b.planeB.own = true;
-    keys.setEdit(id == "planeLayerB" ? 1 : 0);
-    syncPlanePanel(b, keys); syncPlane(b, gen);
+    keys.setEdit(id == "planeLayerB" || id == "timeLayerB" ? 1 : 0);
+    syncPlanePanel(b, keys); syncPlane(b, gen); syncEchoPanel(b, keys); syncEcho(b, gen);
   }
   // The view's buttons.
   else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");

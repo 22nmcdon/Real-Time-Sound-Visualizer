@@ -76,9 +76,9 @@ struct LayerSettings : LayerTone {
   }
 };
 
-// Layer B's: the voice, and a plane of its own that is in force only while
-// `planeOwn` is on. `planeTurn` is radians, B's alone.
-struct LayerBSettings : LayerSettings, PlaneShapeTone {
+// Layer B's: the voice, and a plane, echo and chorus of its own that are in
+// force only while `planeOwn` is on. `planeTurn` is radians, B's alone.
+struct LayerBSettings : LayerSettings, PlaneLayerTone {
   bool planeOwn = false;
   double planeTurn = 0;
 };
@@ -162,13 +162,13 @@ class Generator {
     LayerSettings& t = layer == 1 ? static_cast<LayerSettings&>(b_) : a_;
     if (setLayerNumber(t, field, value)) return;
     if (layer == 1) {
-      if (setPlaneShape(b_, field, value)) return;
+      if (setPlaneShape(b_, field, value) || setPlaneTime(b_, field, value)) return;
       if (field == "planeOwn") b_.planeOwn = value != 0;
       else if (field == "planeTurn") b_.planeTurn = value;
       return;
     }
     Tone& a = a_;
-    if (setPlaneShape(a, field, value)) return;
+    if (setPlaneShape(a, field, value) || setPlaneTime(a, field, value)) return;
     if (field == "freq") a.freq = value;
     else if (field == "interval") a.interval = static_cast<int>(value);
     else if (field == "octaves") a.octaves = value;
@@ -202,15 +202,6 @@ class Generator {
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "planeOS") a.planeOS = value;
-    else if (field == "delayMix") a.delayMix = value;
-    else if (field == "delayMs") a.delayMs = value;
-    else if (field == "delayFeedback") a.delayFeedback = value;
-    else if (field == "delayPingPong") a.delayPingPong = value != 0;
-    else if (field == "chorusMix") a.chorusMix = value;
-    else if (field == "chorusRate") a.chorusRate = value;
-    else if (field == "chorusDepthMs") a.chorusDepthMs = value;
-    else if (field == "chorusMs") a.chorusMs = value;
-    else if (field == "chorusFeedback") a.chorusFeedback = value;
   }
 
   void set(std::string_view field, std::string_view value, int layer = 0) {
@@ -338,7 +329,7 @@ class Generator {
       sumRoutes();
       if (planeOn) {
         planeTick(dt);
-        plane_.step(Plane::A, a_, inL[i], inR[i]);
+        plane_.step(Plane::A, inL[i], inR[i]);
         outL[i] = static_cast<float>(plane_.x); outR[i] = static_cast<float>(plane_.y);
       } else {
         outL[i] = inL[i]; outR[i] = inR[i];
@@ -536,7 +527,7 @@ class Generator {
 
       if (planeOn) {
         planeTick(dt);
-        plane_.step(Plane::A, a_, l, r); l = plane_.x; r = plane_.y;
+        plane_.step(Plane::A, l, r); l = plane_.x; r = plane_.y;
       }
       outL[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, l)));
       outR[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, r)));
@@ -552,7 +543,7 @@ class Generator {
         bhl = ctx_.mix[2]; bhr = ctx_.mix[3];
         if (outBL) {
           double bx = ctx_.mix[0], by = ctx_.mix[1];
-          if (planeOn) { plane_.step(Plane::B, a_, bx, by, true); bx = plane_.x; by = plane_.y; }
+          if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
           outBL[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, bx)));
           outBR[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, by)));
         }
@@ -579,17 +570,16 @@ class Generator {
       }
 
       if (heardL) {
-        // With B's own shape, each layer's share bent apart and the two
-        // through the time stage together; see the page.
+        // With B's own effects, each layer's share through its own plane,
+        // echo and chorus, and the two added; see the page.
         double hx, hy;
         if (planeOn && heard && plane_.ownB() && layered) {
-          plane_.step(Plane::Heard, a_, hl, hr, false, false); hx = plane_.x; hy = plane_.y;
-          plane_.step(Plane::HeardB, a_, bhl, bhr, true, false); hx += plane_.x; hy += plane_.y;
-          plane_.timeOnly(Plane::Heard, a_, hx, hy); hx = plane_.x; hy = plane_.y;
+          plane_.step(Plane::Heard, hl, hr); hx = plane_.x; hy = plane_.y;
+          plane_.step(Plane::HeardB, bhl, bhr, true); hx += plane_.x; hy += plane_.y;
         } else {
           hx = (heard ? hl : static_cast<double>(outL[i])) + bhl;
           hy = (heard ? hr : static_cast<double>(outR[i])) + bhr;
-          if (planeOn && heard) { plane_.step(Plane::Heard, a_, hx, hy); hx = plane_.x; hy = plane_.y; }
+          if (planeOn && heard) { plane_.step(Plane::Heard, hx, hy); hx = plane_.x; hy = plane_.y; }
         }
         heardL[i] = static_cast<float>(hx + pluck);
         heardR[i] = static_cast<float>(hy + pluck);
@@ -620,6 +610,22 @@ class Generator {
     const double m = std::fmod(t, 4294967296.0);
     const double u = m < 0 ? m + 4294967296.0 : m;
     return static_cast<int>(static_cast<std::uint32_t>(u));
+  }
+
+  // The plane's echo and chorus, which layer A has in its tone and layer B
+  // of its own.
+  static bool setPlaneTime(PlaneTimeTone& p, std::string_view field, double v) {
+    if (field == "delayMix") p.delayMix = v;
+    else if (field == "delayMs") p.delayMs = v;
+    else if (field == "delayFeedback") p.delayFeedback = v;
+    else if (field == "delayPingPong") p.delayPingPong = v != 0;
+    else if (field == "chorusMix") p.chorusMix = v;
+    else if (field == "chorusRate") p.chorusRate = v;
+    else if (field == "chorusDepthMs") p.chorusDepthMs = v;
+    else if (field == "chorusMs") p.chorusMs = v;
+    else if (field == "chorusFeedback") p.chorusFeedback = v;
+    else return false;
+    return true;
   }
 
   // The plane's shape, which layer A has in its tone and layer B of its own.
@@ -721,9 +727,10 @@ class Generator {
   }
 
   void planeTick(double dt) {
-    const double e = mod(slot::EchoTime);
-    plane_.tick(a_, modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), std::isnan(e) ? 0 : e, dt,
-                &b_, modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Turn));
+    const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0 };
+    const PlanePushes b { modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Echo), modBOr0(slot::EchoTime),
+                          modBOr0(slot::Turn) };
+    plane_.tick(a_, a, dt, &b_, b);
   }
 
   // --- S10: the governor ------------------------------------------------------
@@ -777,10 +784,12 @@ class Generator {
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;
     const int passes = 1 + (poly ? 1 : 0) + (layered ? 1 : 0);
     const double planeCost = plane_.factor() == 1 ? 3.3 : plane_.factor() == 2 ? 30 : plane_.factor() == 4 ? 60 : 0;
-    // And B's share of the heard pair through B's own shape.
+    // And B's share of the heard pair through B's own shape and time.
     const bool ownHeard = poly && layered && plane_.ownB() && plane_.shapeB().nonlinear;
+    const bool ownHeardTime = poly && layered && plane_.ownB() && plane_.timeB().on;
     const double fixed = !planeOn ? 0
-      : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0)) + (ownHeard ? planeCost : 0);
+      : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0)) + (ownHeard ? planeCost : 0)
+        + (ownHeardTime ? 5.3 : 0);
     const double costA = voiceCost(a_, askedA, askedF, fmRouted, syncRouted, shapeRouted);
     const double costB = voiceCost(b_, askedB, askedF, fmRouted, syncRouted, shapeRouted);
     const bool free = ctx_.chordMoved || costA != askedCostA_ || costB != askedCostB_ || fixed != askedFixed_;

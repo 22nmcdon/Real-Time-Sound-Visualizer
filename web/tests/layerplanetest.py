@@ -32,7 +32,17 @@ What would go wrong, and what is checked for it:
 - a setup code: B's own written and read back, a field it lacks falling
   back to A's, and a code with B's own off the code it always was;
 - the site's default, the instrument: the same hands on its panel, read
-  from the lanes it draws, folded with B's own and not with Together.
+  from the lanes it draws, folded with B's own and not with Together;
+- B's own echo and chorus (5r) going through A's line, or A's through B's.
+  An echo half a period of B's note late, at half level and no feedback,
+  cancels half of B's note and nothing of A's chord: B's picture is required
+  to halve and A's to be the same samples, and the heard pair to lose half
+  its B and keep its A. Together, the same echo as A's halves B and moves A.
+  A routing on the echo's level through B's fade does the same, and through
+  A's fade alone does nothing to B;
+- the Delay and chorus section's Layers row, the same switch as the Plane's,
+  its controls writing B's echo while B's is shown, the tempo moving B's
+  synced time, and B's echo in setup codes.
 
 Frequencies are read by a Hann-windowed single-bin transform, as polytest
 and layertest do.
@@ -176,6 +186,43 @@ with sync_playwright() as pw:
     check("the Turn row takes a routing like any destination, and it is the table's last slot",
           way == {"dest": "gen.turn", "open": True, "listed": True}, str(way))
 
+    print("\n--- the core: B's own echo and chorus ---")
+    # B's note is 440 Hz: an echo half a period late, at half level, is the
+    # note less half of itself. A's chord is 131 and 196 Hz, which the same
+    # echo moves rather than cancels.
+    half = 1000 / (2 * fb)
+    b_echo = [["delayMix", 0.5, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]]
+    a_echo = [["delayMix", 0.5, 0], ["delayMs", half, 0], ["delayFeedback", 0, 0]]
+    dry = core({"sets": []})
+    e_own = core({"sets": [["planeOwn", True, 1]] + b_echo})
+    e_off = core({"sets": b_echo})
+    e_both = core({"sets": a_echo})
+    ratio = lambda lanes, k: peak(lanes[k]) / peak(dry[k])
+    print("    B's X against dry: its own echo %.3f, the same fields with B's own off %.3f, A's echo Together %.3f"
+          % (ratio(e_own, 4), ratio(e_off, 4), ratio(e_both, 4)))
+    check("B's own echo half a period late cancels half of B's picture, and leaves A's the same samples",
+          abs(ratio(e_own, 4) - 0.5) < 0.02 and same(e_own[0], dry[0]) and same(e_own[1], dry[1]), "%.4f" % ratio(e_own, 4))
+    check("and with B's own off its echo's fields do nothing", same(e_off[4], dry[4]) and same(e_off[2], dry[2]))
+    check("Together, the same echo as A's halves B's picture as well, and moves A's",
+          abs(ratio(e_both, 4) - 0.5) < 0.02 and not same(e_both[0], dry[0]), "%.4f" % ratio(e_both, 4))
+    hb = lambda lanes, f: p.evaluate("([x, f]) => window.__bin(x, f, 44100)", [lanes[2], f])
+    print("    heard, B's note and A's lower one against dry: B's own echo %.3f %.3f; Together %.3f %.3f"
+          % (hb(e_own, fb) / hb(dry, fb), hb(e_own, fa) / hb(dry, fa), hb(e_both, fb) / hb(dry, fb), hb(e_both, fa) / hb(dry, fa)))
+    check("in the heard pair B's own echo halves B's note and leaves A's",
+          abs(hb(e_own, fb) / hb(dry, fb) - 0.5) < 0.03 and abs(hb(e_own, fa) / hb(dry, fa) - 1) < 1e-3)
+    check("and Together the echo, A's, moves A's note too",
+          abs(hb(e_both, fb) / hb(dry, fb) - 0.5) < 0.03 and abs(hb(e_both, fa) / hb(dry, fa) - 1) > 0.1)
+    # The echo's level routed, with nothing of its own: a held value of one,
+    # so B's depth of one is a push of half - the same half-level echo.
+    eroute = lambda a, bb: {"sets": [["planeOwn", True, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]],
+                            "routes": [{"dest": "gen.echo", "held": 1, "heldB": 1, "amount": a, "amountB": bb}]}
+    r_b, r_a = core(eroute(0, 1)), core(eroute(1, 0))
+    print("    B's X against dry, the echo's level routed: through B's fade %.3f, through A's alone %.3f"
+          % (ratio(r_b, 4), ratio(r_a, 4)))
+    check("a routing on the echo's level through B's fade gives B's own echo its level",
+          abs(ratio(r_b, 4) - 0.5) < 0.02, "%.4f" % ratio(r_b, 4))
+    check("and through A's fade alone it leaves B's picture as it was", abs(ratio(r_a, 4) - 1) < 1e-3, "%.4f" % ratio(r_a, 4))
+
     print("\n--- the panel ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -283,6 +330,69 @@ with sync_playwright() as pw:
     check("a code from before it has B following A, and with it off nothing of it is written",
           not codes["old"]["own"] and codes["old"]["kaleido"] == 4 and not codes["offHas"]
           and codes["onHas"] == ["bMirror", "bPlane", "bSnap", "bTurn"], str(codes["onHas"]))
+
+    print("\n--- Delay and chorus: B's own ---")
+    tp = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const read = () => ({ row: el.timeLayerRow.hidden, title: el.timeTitle.textContent, own: planeB.own,
+        edit: midi.layers.edit, aMix: echo.mix, bMix: echoB.mix, aMs: echo.ms, bMs: echoB.ms, bChorus: echoB.chorus,
+        shownMix: el.delayMix.value, shownMs: el.delayMs.value, genA: genSettings(0).delayMix, genB: genSettings(1).delayMix,
+        genBMs: genSettings(1).delayMs, genBChorus: genSettings(1).chorusMix,
+        checked: ['Both', 'A', 'B'].filter((k) => el['timeLayer' + k].getAttribute('aria-checked') === 'true'),
+        planeChecked: ['Both', 'A', 'B'].filter((k) => el['planeLayer' + k].getAttribute('aria-checked') === 'true') });
+      const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
+      const out = {};
+      // The codes above loaded setups with the layers off.
+      setScreenKeys(true); setMidiMode('poly');
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(50);
+      el.planeLayerBoth.click(); await wait(20);
+      slide('delayMix', 30); out.together = read();
+      el.timeLayerB.click(); await wait(20); out.b = read();
+      slide('delayMs', 120); slide('chorusMix', 60); out.bMoved = read();
+      el.timeLayerA.click(); await wait(20); slide('delayMix', 70); out.a = read();
+      el.midiEditB.click(); await wait(20); out.playB = read();
+      // B's synced to the tempo, and the tempo moved: the time follows, as A's does.
+      el.delaySync.value = '1/4'; el.delaySync.dispatchEvent(new Event('change'));
+      setTempo(120); clockStep(performance.now()); const at120 = genSettings(1).delayMs;
+      setTempo(60); clockStep(performance.now()); const at60 = genSettings(1).delayMs;
+      out.tempo = { at120, at60, aSync: echo.sync, bSync: echoB.sync };
+      const code = encodeSetup(snapshot()), saved = { ...echoB };
+      el.timeLayerBoth.click(); await wait(20); out.both = read();
+      const offCode = encodeSetup(snapshot());
+      restore(decodeSetup(code)); await wait(20);
+      out.back = { ...echoB }; delete out.back.sent; delete saved.sent; out.saved = saved;
+      restore({ bPlane: true, bDelayMix: 45, delayMix: 20, delayFeedback: 60 });
+      out.partial = { ...echoB };
+      out.onHas = Object.keys(decodeSetup(code)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
+      out.offHas = Object.keys(decodeSetup(offCode)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
+      el.planeLayerBoth.click(); await wait(20);
+      return out;
+    }""")
+    tog, tb, tbm, ta, tplay, tboth = (tp[k] for k in ("together", "b", "bMoved", "a", "playB", "both"))
+    check("with two layers Delay and chorus has a Layers row, on Together, and its controls write both layers' echo",
+          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay and chorus" and tog["genA"] == 0.3
+          and tog["genB"] == 0.3, str(tog))
+    check("B there gives B its own effects - the Plane's row says so too - starting as A's, and shows B's",
+          tb["own"] and tb["checked"] == ["B"] and tb["planeChecked"] == ["B"] and tb["bMix"] == 0.3
+          and tb["title"] == "Delay and chorus \u00b7 layer B" and tb["edit"] == 1, str(tb))
+    check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
+          tbm["bMs"] == 120 and tbm["genBMs"] == 120 and tbm["bChorus"] == 0.6 and tbm["genBChorus"] == 0.6
+          and tbm["aMs"] == 375, str(tbm))
+    check("A shows A's echo and writes A's alone",
+          ta["title"] == "Delay and chorus \u00b7 layer A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
+          and ta["shownMs"] == "375", str(ta))
+    check("the Play tab's B button shows B's echo here as well",
+          tplay["checked"] == ["B"] and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))
+    check("B's own echo synced to a crotchet follows the tempo: 500 ms at 120, 1000 at 60, and A's stays free",
+          tp["tempo"] == {"at120": 500, "at60": 1000, "aSync": "", "bSync": "1/4"}, str(tp["tempo"]))
+    check("Together lets B's own go: B's echo follows A's again, and the generator is told",
+          not tboth["own"] and tboth["bMix"] == 0.7 and tboth["bMs"] == 375 and tboth["genB"] == 0.7
+          and tboth["checked"] == ["Both"] and tboth["planeChecked"] == ["Both"], str(tboth))
+    check("B's own echo is written into a code and read back as it was",
+          tp["back"] == tp["saved"] and tp["saved"]["sync"] == "1/4" and tp["saved"]["chorus"] == 0.6 and tp["onHas"] == 10,
+          "%r / %r" % (tp["saved"], tp["back"]))
+    check("a code of B's own with a field missing takes A's for it, and with it off none of it is written",
+          tp["partial"]["mix"] == 0.45 and tp["partial"]["feedback"] == 0.6 and tp["offHas"] == 0, str(tp["partial"]))
     p.close()
 
     print("\n--- the site's default: the instrument ---")
@@ -307,8 +417,23 @@ with sync_playwright() as pw:
       const own = await lows();
       el.planeLayerBoth.click();
       const together = await lows();
+      // B's own echo, 21 ms late at half level: B's 523 Hz note is ten
+      // periods and a fiftieth late, so it adds near enough in step - B's
+      // lanes half as big again, A's as they were.
+      const big = async () => {
+        await wait(500);
+        const w = state.source.getLatestWindow(4096);
+        return { a: Math.max(...w[0].map(Math.abs)), b: Math.max(...w[2].map(Math.abs)) };
+      };
+      const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
+      const eDry = await big();
+      el.timeLayerB.click(); await wait(50);
+      slide('delayFeedback', 0); slide('delayMs', 21); slide('delayMix', 50);
+      const eOwn = await big();
+      el.timeLayerBoth.click();
+      const eBack = await big();
       midiPanic();
-      return { own, together, kind: state.source.kind, driver: lfoDriver() };
+      return { own, together, eDry, eOwn, eBack, kind: state.source.kind, driver: lfoDriver() };
     }""")
     print("    %s: lowest X, A's and B's: B's own mirror %.3f %.3f; Together %.3f %.3f"
           % (inst["kind"], inst["own"]["aX"], inst["own"]["bX"], inst["together"]["aX"], inst["together"]["bX"]))
@@ -316,6 +441,13 @@ with sync_playwright() as pw:
           inst["kind"] == "host" and inst["own"]["lanes"] == 4 and inst["own"]["bX"] > -1e-3 and inst["own"]["bPeak"] > 0.05
           and inst["own"]["aX"] < -0.05, str(inst["own"]))
     check("and Together, with A's plane bare, folds neither", inst["together"]["bX"] < -0.05, str(inst["together"]))
+    ed, eo, ebk = inst["eDry"], inst["eOwn"], inst["eBack"]
+    print("    B's lanes and A's, largest: dry %.3f %.3f; B's own echo %.3f %.3f; Together again %.3f %.3f"
+          % (ed["b"], ed["a"], eo["b"], eo["a"], ebk["b"], ebk["a"]))
+    check("on the instrument, B's own echo moved on its panel makes B's lanes half as big again, and not A's",
+          abs(eo["b"] / ed["b"] - 1.5) < 0.05 and abs(eo["a"] / ed["a"] - 1) < 0.02, "%.3f %.3f" % (eo["b"] / ed["b"], eo["a"] / ed["a"]))
+    check("and Together, where the echo is A's and dry, B's are as they were", abs(ebk["b"] / ed["b"] - 1) < 0.02,
+          "%.3f" % (ebk["b"] / ed["b"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

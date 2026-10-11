@@ -45,9 +45,13 @@ Json layerJson(const scope::LayerSettings& t) {
   return o;
 }
 
-// Layer B's, with its own plane.
+// Layer B's, with its own plane, echo and chorus.
 Json layerBJson(const scope::LayerBSettings& t) {
   Json o = layerJson(t);
+  o.set("delayMix", num(t.delayMix)); o.set("delayMs", num(t.delayMs));
+  o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
+  o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
+  o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
@@ -390,12 +394,15 @@ int main(int argc, char** argv) {
     planeB.set("snap", num(q.snap)); planeB.set("scaleX", num(q.scaleX)); planeB.set("scaleY", num(q.scaleY));
     planeB.set("shear", num(q.shear)); planeB.set("turn", num(q.turn));
     out.set("planeB", planeB);
-    const auto& e = brain.echo;
-    Json echo = Json::object();
-    echo.set("mix", num(e.mix)); echo.set("ms", num(e.ms)); echo.set("sync", str(e.sync)); echo.set("feedback", num(e.feedback));
-    echo.set("pingPong", flag(e.pingPong)); echo.set("chorus", num(e.chorus)); echo.set("rate", num(e.rate));
-    echo.set("depthMs", num(e.depthMs)); echo.set("centreMs", num(e.centreMs)); echo.set("chorusFeedback", num(e.chorusFeedback));
-    out.set("echo", echo);
+    const auto echoJson = [&](const scope::Brain::EchoState& e) {
+      Json echo = Json::object();
+      echo.set("mix", num(e.mix)); echo.set("ms", num(e.ms)); echo.set("sync", str(e.sync)); echo.set("feedback", num(e.feedback));
+      echo.set("pingPong", flag(e.pingPong)); echo.set("chorus", num(e.chorus)); echo.set("rate", num(e.rate));
+      echo.set("depthMs", num(e.depthMs)); echo.set("centreMs", num(e.centreMs)); echo.set("chorusFeedback", num(e.chorusFeedback));
+      return echo;
+    };
+    out.set("echo", echoJson(brain.echo));
+    out.set("echoB", echoJson(brain.echoB));
     std::printf("%s\n", scope::utf16To8(scope::jsonStringify(out)).c_str());
   }
   return 0;
