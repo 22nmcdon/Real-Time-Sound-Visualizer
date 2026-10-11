@@ -168,7 +168,12 @@ CONTROLS = """() => {
 
 def main():
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
+        # No leave to play sound unasked, so the instrument's worklet never
+        # starts: it runs on the audio thread's clock, which no pause here
+        # reaches, and since it posts its oscillators back for the page's
+        # to be them, it moved them between one batch and the next. Held
+        # back, the site plays its stand-in, which the page's frames step.
+        browser = pw.chromium.launch(executable_path=CHROME)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))

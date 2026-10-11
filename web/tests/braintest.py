@@ -874,6 +874,48 @@ with sync_playwright() as pw:
     check("and in a rack a split is kept, not applied, and the panel says why",
           lines["rack"]["lane"] and not lines["rack"]["on"] and lines["rack"]["mode"] == "split" and "one layer" in lines["rack"]["note"],
           str(lines["rack"]))
+    # One oscillator on the sound and on the picture: LFO 1 at 1 Hz on the
+    # instrument's level, read off the picture as each window's peak, and on
+    # the page's trigger position. The page used to step copies of its own,
+    # started at another moment: r was 0.10, and -0.96 on a run that landed
+    # half a cycle out. In a rack holding the instrument's generator lane
+    # nobody stepped them at all, and the position stood still.
+    lfo = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const r = (a, b) => { const n = a.length, ma = a.reduce((x, y) => x + y) / n, mb = b.reduce((x, y) => x + y) / n;
+        let sab = 0, saa = 0, sbb = 0;
+        for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+        return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : 0; };
+      const watch = async () => {
+        const peaks = [], pos = [];
+        for (let i = 0; i < 50; i++) {
+          await wait(60);
+          peaks.push(Math.max(...state.source.getLatestWindow(1024)[0].map(Math.abs))); pos.push(state.positionMod);
+        }
+        return { peaks, pos };
+      };
+      applyPreset('b:Pure sine'); await wait(300);
+      const setup = Object.assign(snapshot(), { l0s: 'sine', l0r: 100, l0a: 100, mod: 'lfo1>gen.amp@0.500;lfo1>trig.position@1.000' });
+      hostQuietly(() => restore(setup)); hostSendSetup(); await wait(800);
+      const alone = await watch();
+      // LFO 2 alone, at another rate, so the two cannot stand in for each other.
+      const setup2 = Object.assign(snapshot(), { l1s: 'sine', l1r: 150, l1a: 100, mod: 'lfo2>gen.amp@0.500;lfo2>trig.position@1.000' });
+      hostQuietly(() => restore(setup2)); hostSendSetup(); await wait(800);
+      const second = await watch();
+      hostQuietly(() => restore(setup)); hostSendSetup(); await wait(800);
+      el.rackSynth.checked = true; await setRackSynth(true); await wait(900);
+      const rack = await watch();
+      el.srcTone.click(); await wait(300);
+      // The null: the position read a quarter of a cycle - four samples of 60 ms - after the peak.
+      return { alone: r(alone.peaks, alone.pos), late: r(alone.peaks.slice(0, -4), alone.pos.slice(4)),
+               second: r(second.peaks, second.pos), rack: r(rack.peaks, rack.pos), rackMoves: Math.max(...rack.pos) - Math.min(...rack.pos), driver: lfoDriver() };
+    }""")
+    check("one oscillator on the sound and on the picture moves them in step: the instrument's level and the page's trigger position",
+          lfo["alone"] > 0.85 and lfo["driver"] == "instrument", "r %.3f, the oscillators %s's" % (lfo["alone"], lfo["driver"]))
+    check("and the reading fails against the position a quarter of a cycle late", not abs(lfo["late"]) > 0.85, "r %.3f" % lfo["late"])
+    check("and LFO 2, at its own rate, the same", lfo["second"] > 0.85, "r %.3f" % lfo["second"])
+    check("and in a rack holding the instrument's generator lane, the picture's oscillator moves, in step",
+          lfo["rackMoves"] > 0.3 and lfo["rack"] > 0.85, "moves %.2f, r %.3f" % (lfo["rackMoves"], lfo["rack"]))
     # The fade is kept in the page's storage, not in a setup: the instrument's
     # first state, taken back at connect as the plugin's is, reset it to off.
     p.evaluate("() => { setFade('both'); setFadeEnvelope({ attack: 1.25 }); saveFade(); }")

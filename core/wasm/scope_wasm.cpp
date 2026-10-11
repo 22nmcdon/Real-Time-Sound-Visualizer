@@ -518,7 +518,10 @@ EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(
 // What the page reads off the generator, as scope_state gives it for the
 // page's own: the envelope, whether it is gated, the crossings' counts, the
 // budget, and the drawing's readings - for the meters and the readouts, which
-// with the instrument playing had nothing to read and stood at nought.
+// with the instrument playing had nothing to read and stood at nought. Then
+// each oscillator's phase, held value and value, for the page's picture to
+// be moved by the oscillators that move the sound rather than by copies of
+// its own, started at another moment and never in step.
 std::vector<double> brainRead;
 EXPORT(brain_readings) double* brainReadings() {
   const auto& g = instrument->generator();
@@ -530,6 +533,7 @@ EXPORT(brain_readings) double* brainReadings() {
                      static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
                      static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0],
                      d.turn[1], d.turn[2], d.facing });
+  for (const auto& o : instrument->lfos()) brainRead.insert(brainRead.end(), { o.phase, o.held, o.value });
   return brainRead.data();
 }
 // How many lanes the picture has now: two, or a rack's.

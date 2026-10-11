@@ -448,6 +448,8 @@ class Instrument {
   }
   // The generator, for what the page reads off it: its envelope, gate, crossings, budget and drawing.
   const Generator& generator() const { return *core_; }
+  // The two oscillators, which move the picture's destinations on the page as well as the sound here.
+  const std::vector<Lfo>& lfos() const { return lfos_; }
   // How many lanes the picture has: two, four for two figures, or a rack's.
   int pictureLanes() const { return pictureSource_.channels; }
 

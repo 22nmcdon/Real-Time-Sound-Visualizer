@@ -1982,10 +1982,10 @@ and each held by a check on the default:
   the instrument's monitor chain is always there. A silent chain is not
   speakers.
 
-What the default does not do, and says so on the cheat sheet: the
-oscillators that move the picture are the page's and those that move the
-sound are the instrument's, so one routed to both moves them at the same
-rate but not in step. This was so in the plugin from stage 3.
+What the default did not do, and said so on the cheat sheet: the
+oscillators that moved the picture were the page's and those that moved the
+sound the instrument's, so one routed to both moved them at the same rate
+but not in step. 5n mends it on the site; in the plugin it is still so.
 
 The suites. Thirty-seven reach into the page's own brain: its worklets, its
 gate flags, `genSet`, `midiControl`, `setMidiMode`, `restore()` and its
@@ -2038,6 +2038,37 @@ With the default the instrument, the suites stand at:
 
 Four of parity's harnesses lift page functions that now ask
 `playingKind()`, and each takes the helper too.
+
+5n is one oscillator for the picture and the sound. The page moves the
+picture's destinations (the trigger's position, the filter, the zoom)
+with LFOs of its own, stepped once a frame. With the instrument playing,
+the sound's LFOs were the instrument's, stepped a sample at a time, and
+the two sets were copies started at different moments. Measured with one
+LFO at 1 Hz on the instrument's level and the page's trigger position, the
+two correlated at r = 0.10, and at -0.96 on a run that landed half a cycle
+out. A random LFO drew from different generators, and a frame longer than
+250 ms (the page's cap) lost the page's copy that much time for good. In a
+rack holding the instrument's generator lane, `lfoDriver` found the lane
+and answered "worklet", so nobody stepped the page's LFOs at all and the
+picture's stood still.
+
+The bridge now gives each LFO's phase, held value and value with the
+readings, and the worklet posts them with every chunk. The page takes them
+in place of stepping its own (`lfoDriver` answers "instrument"), as it
+already does from its own worklet. The same probe reads r = 0.94, as the
+page's own brain does. The plugin's page is given none and still steps its
+own; the cheat sheet says so.
+
+Held by braintest.py: the level and the position in step (r > 0.85),
+nulled against the position read a quarter of a cycle late; and in a rack
+with the generator lane, the position moves and is in step.
+
+It cost parity's restore harness its footing. That harness pauses the
+page's clock so nothing moves between batches, but the audio thread has a
+clock of its own, and once its LFOs were the page's they ran on from the
+phase the harness set. Its browser now has no leave to play sound unasked,
+so the worklet never starts and the stand-in, stepped by the paused frames,
+is what plays there.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

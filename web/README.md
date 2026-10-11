@@ -4192,3 +4192,11 @@ library and the WebAssembly one may round differently in the last place.
 Those runs are held to the file's 1e-12, with the reason beside them. Any
 other run that drifts from exact is a real difference, and should be read
 as one.
+
+**To show something used to be wrong, run the old code, not a guess at it.**
+Checking that stage 5n's oscillators were in step, the "before" was first
+made by reverting one line. It read as in step too, r = 0.93, which seemed
+to show there had been nothing to fix. The other half of the change was
+still copying the instrument's values in. Loading the committed page
+(`git show HEAD:web/scope.html`) gave the real before: r = 0.10. Partial
+reverts are mutations, and they answer a different question.
