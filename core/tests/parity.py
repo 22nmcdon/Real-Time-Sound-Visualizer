@@ -3993,6 +3993,22 @@ check("and in a rack a split is kept, not applied: with layer B silent, B's note
       rack_b > 0.05 and iheard_at("layered rack", 130.81) > 0.05, "B's note heard %.3f in a rack" % rack_b)
 check("and the reading fails without the rack, where the split is applied and B's note is silent", not split_b > 0.05,
       "%.4f" % split_b)
+# The grid the instrument draws for itself (5p), read natively, as the
+# compiled instrument does not hand its grid out. Two layers, only B playing:
+# B's figure is in the grid, where until 5p the walk took A's pair alone and
+# the grid held A's silent dot and nothing else. And with B's own plane the
+# screen's rotation leaves B's figure as it was, where Together turns it.
+def igrid(*hands, note=True):
+    lines = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "dispXY"], ["click", "midiPoly"],
+             ["control", "midiLayers", "split"], *hands] + ([NOTE_ON(72)] if note else []) + blocks(60, 128, 64) + [["grid"]]
+    return tuple(float(v) for v in [l for l in icpp(iscript("grid", lines)) if l.startswith("grid ")][-1].split()[1:])
+g_quiet = igrid(note=False)
+g_b, g_own_turned = igrid(), igrid(["click", "planeLayerB"], ["slider", "rotate", "12"])
+g_own_still, g_together_turned = igrid(["click", "planeLayerB"]), igrid(["slider", "rotate", "12"])
+check("the instrument's own grid draws layer B's figure when B alone is playing",
+      g_b != g_quiet and g_b[1] > 2 * g_quiet[1], "%r against %r" % (g_b, g_quiet))
+check("and with B's own plane the screen's rotation leaves B's figure alone, where Together turns it",
+      g_own_turned == g_own_still and g_together_turned != g_own_still, "%r %r %r" % (g_own_turned, g_own_still, g_together_turned))
 input_a, input_b = iheard_at("layered input", 130.81), iheard_at("layered input", 523.25)
 check("and a slider moved with B chosen while the input is drawn is A's, as the page shows A then: A's note silent after, B's heard",
       input_a < 0.01 and input_b > 0.05, "A %.4f, B %.3f" % (input_a, input_b))

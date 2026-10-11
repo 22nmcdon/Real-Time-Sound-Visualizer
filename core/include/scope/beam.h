@@ -155,9 +155,7 @@ struct Screen {
   LanePair xyPair;
   std::vector<LanePair> figures;  // what the source asks for, or none
   // Layer B's figure turned by its own Turn, in the generator, rather than by
-  // the screen's rotation: the page's layerTurnsItself. The instrument walks
-  // the one pair the menus chose (it is never given the figures), so in the
-  // plugin's own grid this has nothing yet to act on.
+  // the screen's rotation: the page's layerTurnsItself.
   bool ownTurn = false;
   std::string beam = "moderate";
   bool beamXY = true, beamYT = false;

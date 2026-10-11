@@ -15,6 +15,7 @@
 //   ["feedlanes", p0, p1, ...]       a rack's lanes from now on, up to six: lane k a saw of
 //                                    pk samples, at half scale
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
+//   ["grid"]                         the instrument's own grid, by two sums (native only)
 //
 // `instrument_cpp --code NAME...` prints each preset's setup code instead, and
 // `instrument_cpp --names` every preset's name.
@@ -98,6 +99,15 @@ int main(int argc, char** argv) {
       feedLanes.clear();
       for (std::size_t i = 1; i < a.size() && feedLanes.size() < 6; ++i) feedLanes.push_back(a[i].n);
       feedL = feedR = 0;
+    } else if (cmd == "grid") {
+      // The grid the instrument draws for itself, by two sums: weighted by
+      // place, so where a figure lies shows, and squared. Native only - the
+      // compiled instrument does not hand its grid out - so a script with
+      // this in it is not one the two are compared on.
+      const auto& g = instrument.picture().phosphor().grid();
+      double a1 = 0, a2 = 0;
+      for (std::size_t i = 0; i < g.size(); ++i) { a1 += g[i] * static_cast<double>(i + 1); a2 += static_cast<double>(g[i]) * g[i]; }
+      std::printf("grid %.17g %.17g\n", a1, a2);
     } else if (cmd == "block") {
       const std::size_t n = static_cast<std::size_t>(arg(1).n);
       inL.assign(n, 0.0f); inR.assign(n, 0.0f);

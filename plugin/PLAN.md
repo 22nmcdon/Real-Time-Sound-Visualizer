@@ -2109,6 +2109,20 @@ oscillators - and its first readings wrote its own phases over them, by a
 fixed step, in about one run in two. The harness now loads the page's own
 brain, the reference it holds the core to and what it loaded before 5m.
 
+5p is the instrument's own picture laid out as the page's. The grid the
+instrument draws for itself - which the plugin's photocell and the
+picture's sources read - was never told the generator's layout: the view
+kept two lanes and the walk was given no figures, so with two layers, or
+the second generator, it walked layer A's pair alone and never saw B. The
+instrument now does what the page's syncLayers, fitChannels and
+sourceFigures do: four lanes and a figure each while the generator lays
+out two, and B's figure left to its own turn while B has a plane of its
+own. parity.py reads the native grid (the compiled instrument does not
+hand its grid out): with only B playing, B's figure is in it, where the
+committed instrument held A's silent dot and nothing else; and with B's
+own plane the screen's rotation leaves B's figure as it was, where
+Together turns it. Mutation: 5 of 5.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

@@ -605,6 +605,34 @@ class Instrument {
     const double synth = comma == std::string::npos ? -1 : jsStringToNumber(toU16(text.substr(comma + 1)));
     drawRack(std::isfinite(count) ? static_cast<int>(count) : 0, std::isfinite(synth) ? static_cast<int>(synth) : -1);
   }
+  /* The page's view of a layout (syncLayers, buildLaneRows, fitChannels,
+     sourceFigures, layerTurnsItself), for the grid the instrument draws
+     itself: four lanes and a figure each, or two and the one pair the menus
+     chose; and layer B's figure left to its own turn while it has a plane
+     of its own and is drawn as a figure of its own. Until this the grid was
+     given neither, so it walked layer A's pair alone, and the photocell and
+     the picture's sources in the plugin never saw layer B or the second
+     generator. Worked out every block, and written only when it changes:
+     the lanes' vector can grow, which allocates, once, the first time two
+     figures are drawn. */
+  void layOutPicture(Layout lay) {
+    const int lanes = lay == Layout::Each ? 4 : 2;
+    Brain::ViewState& w = brain_->view;
+    // The lanes' settings too: a setup restores two lanes' worth of them.
+    if (w.lanes != lanes || w.capture.channels.size() != static_cast<std::size_t>(lanes)) {
+      w.lanes = lanes;
+      brain_->panel.setLanes(lanes);
+      w.capture.channels.resize(static_cast<std::size_t>(lanes));
+      fitView(*brain_);
+    }
+    const bool each = lay == Layout::Each;
+    if (each != !w.screen.figures.empty()) {
+      w.screen.figures.clear();
+      if (each) w.screen.figures = { { 0, 1 }, { 2, 3 } };
+    }
+    w.screen.ownTurn = keyboard_->layersOn() && brain_->planeB.own && lay != Layout::Against;
+  }
+
   void drawRack(int count, int synth) {
     const int lanes = std::clamp(count, 0, kRingLanes);
     if (lanes == rack_ && synth == synthLane_) return;
@@ -844,6 +872,7 @@ class Instrument {
          B and the second generator were heard and never drawn. */
       const Layout lay = drawsInput_ ? Layout::One : notes_->layout();
       pictureSource_.channels = lay == Layout::Each ? 4 : 2;
+      layOutPicture(lay);
       std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
       for (int k = 0; k < n; ++k) {
         float* row = &picture_[ring * kRingLanes];
