@@ -1108,8 +1108,8 @@ switching to X-Y when the kind menu chooses a drawing was found there.
 
 What differs, said in `screen.h`: the page's verdict reads its monitor
 limiters, Web Audio nodes the plugin has not got, so a picture cannot run
-away by the limiter here; the automatic lag's lock is not ported, and the
-lag is the slider's; the canvas is a fixed 846 by 534, the page's trace at its
+away by the limiter here; the automatic lag's lock was not ported until 5u,
+and the lag was the slider's; the canvas is a fixed 846 by 534, the page's trace at its
 usual size, which matters only to Y-T's peak bars, one a pixel; and the
 capture is always Auto's.
 
@@ -2195,6 +2195,47 @@ the estimator never ran cannot pass, and the making's allocations as the
 proof the counter counts. The morph's walk and the host's parameters
 written as sliders still allocate, and stay where they are; that is the
 next of these.
+
+5u is the instrument's own picture where it still differed from the page's.
+
+The automatic lag's lock. The core kept a `lagLock` that nothing set, so
+the lag lane in the instrument's grid - what the photocell and the
+picture's sources read with the window closed - was the slider's.
+`lagLockUpdate` is now the page's, every fifth of a second of frames after
+the draw, as the page's readout runs it: a held note sets a quarter of its
+period at once while the note is the measurements' truth; otherwise the
+period heard in its own fifth of a second, through 5t's estimator, trusted
+only when its aperiodicity is under 0.15 and between 20 Hz and 5 kHz, and
+approached slowly in the log domain. Its readouts count from the first
+frame where the page's count from when it loaded. Held by parity.py through
+`lagLockRun`, the page's own function lifted with stand-ins for the state
+it reads, against the core's: a tone locked at once and a new one
+approached; noise, silence, and a tone in noise the estimator still
+answers for (0.30) but the gate must refuse; a held key, and the same key
+not believed once the note is not the truth; an equal-tempered chord; the
+switches; pitches past either end; a small capacity. Exact, step for step.
+The shell test holds the wiring: with the note not the truth the lock is
+the quarter period the picture's own estimate gives, and not the note's;
+with it the note's exactly; with the lag off, no lock.
+
+Normal. The capture was always Auto's, so a Normal trigger with nothing to
+trigger on drew the untriggered sweep into the grid that the page's screen
+was holding back. It now holds the last frame an edge was found in, as the
+page does. Single is held the same way and not stopped: the page stops
+itself after its capture and is set going by its Run button, which the core
+does not hear, and a grid frozen while the page moved on would leave the
+photocell reading a picture nobody could see. The shell test: A4 held and
+let go, then silence with no edge; Normal and Single keep the last of the
+note, Auto draws the silence.
+
+The limiter stays as it was, a decision rather than a gap: the page's
+verdict reads its monitor chain's limiters, which the plugin has not got,
+and adding one to read would change what the host is given.
+
+Mutation: 11, all caught, one only after a run was added for it - the
+aperiodicity gate taken away lived while the only aperiodic fixture was
+noise, which the estimator does not answer for at all; the tone in noise is
+that run.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

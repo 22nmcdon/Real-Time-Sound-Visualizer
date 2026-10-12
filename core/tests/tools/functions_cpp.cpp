@@ -16,6 +16,7 @@
 #include "scope/noise.h"
 #include "scope/osc.h"
 #include "scope/plane.h"
+#include "scope/screen.h"
 #include "scope/voice.h"
 #include "scope/voices.h"
 #include "scope/wave.h"
@@ -181,6 +182,54 @@ int main(int argc, char** argv) {
         out.insert(out.end(), c.mix.begin(), c.mix.end());
       }
       show(out);
+      continue;
+    }
+    if (name == "lagLockRun") {
+      // The core's lagLockUpdate through the steps functions_js.mjs reads; see there.
+      std::map<std::string, std::string> p;
+      for (std::size_t i = 1; i < w.size(); i++) { const auto eq = w[i].find('='); p[w[i].substr(0, eq)] = w[i].substr(eq + 1); }
+      const double rate = num(p["rate"]);
+      scope::Random random(static_cast<std::uint32_t>(num(p["seed"])));
+      scope::View v;
+      v.lagOn = p["on"] == "1"; v.lagAuto = p["auto"] == "1";
+      bool truth = p["truth"] == "1";
+      scope::PitchScratch scratch;
+      const double step = scope::jsMathRound(0.2 * rate);
+      std::vector<double> values;
+      std::string signal = "s";
+      scope::CaptureSource source;
+      source.rate = rate;
+      source.capacity = num(p["cap"]);
+      source.latest = [&](std::size_t n) {
+        std::vector<scope::Lane> lanes(1, scope::Lane(n, 0.0f));
+        const double end = (static_cast<double>(values.size()) + 1) * step;
+        const auto f = splitOn(signal, ':');
+        for (std::size_t k = 0; k < n; k++) {
+          const double t = (end - static_cast<double>(n) + static_cast<double>(k)) / rate;
+          double x = 0;
+          if (f[0] == "t") x = num(f[2]) * std::sin(2 * M_PI * num(f[1]) * t);
+          else if (f[0] == "tn") x = num(f[2]) * std::sin(2 * M_PI * num(f[1]) * t) + num(f[3]) * (random.next() * 2 - 1);
+          else if (f[0] == "c") { for (const auto& hz : splitOn(f[1], ',')) x += 0.2 * std::sin(2 * M_PI * num(hz) * t); }
+          else if (f[0] == "n") x = num(f[1]) * (random.next() * 2 - 1);
+          lanes[0][k] = static_cast<float>(x);
+        }
+        return lanes;
+      };
+      for (const auto& s : splitOn(p["steps"], ';')) {
+        if (s == "on" || s == "off") v.lagOn = s == "on";
+        else if (s == "auto" || s == "manual") v.lagAuto = s == "auto";
+        else if (s == "truth" || s == "lie") truth = s == "truth";
+        else if (s == "reset") v.lagLock.reset();
+        else {
+          const bool key = s.rfind("k:", 0) == 0;
+          signal = key ? "s" : s;
+          std::optional<double> played;
+          if (key && truth) played = scope::midiHz(num(s.substr(2)));
+          scope::lagLockUpdate(v, source, played, scratch);
+        }
+        values.push_back(v.lagLock ? *v.lagLock : -1);
+      }
+      show(values);
       continue;
     }
     if (name == "planeRun") {

@@ -331,7 +331,17 @@ class Instrument {
     morphStep(*brain_, *core_, *keyboard_, lfos_);
     // The zoom made again from what the matrix wrote, and the frame's deposits, as the page draws after its matrix.
     pictureRun_->afterMatrix();
-    if (pictureFrame) pictureRun_->draw(pictureSource_, kCanvas);
+    if (pictureFrame) {
+      pictureRun_->draw(pictureSource_, kCanvas);
+      // And the readout's: the automatic lag locked to the held note while the note is the truth, else to what is heard.
+      std::optional<double> played;
+      if (keyboard_->settings().truth && !keyboard_->notes().empty()) {
+        int low = keyboard_->notes().front().note;
+        for (const auto& held : keyboard_->notes()) low = std::min(low, held.note);
+        played = midiHz(low);
+      }
+      pictureRun_->readout(pictureSource_, played);
+    }
     core_->setRoutes(matrix_->routes(nowMs_));
     const double blockMs = nowMs_;
     lastBlockMs_ = 1000.0 * frames / rate_;

@@ -4230,3 +4230,15 @@ test picks 21 ms, ten periods and a fiftieth of B's 523 Hz note, and reads
 the opposite: half as big again. Before writing a check on a linear
 effect, work out what it does to the fixture, and choose the fixture so
 the answer is large.
+
+**A constant with a comment after it can swallow the next definition.** The
+parity harnesses lift the page's code by name, and a one-line `const` was
+taken to its next `;` followed by a newline. `const LAG_LOCK_SECONDS = 1;`
+with a comment after it has no such ending, so the lift ran on into the
+next definition, and asking for that one too declared it twice: a
+`SyntaxError` in the harness, not the page. `clock_js.mjs` had already met
+this and ends a one-line constant at its line; `pageScopeWith` in
+`js_core.mjs` does the same now, and `pageScope` still does not, which is
+why the lag's harness uses the former. The failure is loud. What would not
+be is a lifted constant that happened to swallow one the harness never asks
+for, so when a lift reads oddly, print what it lifted.

@@ -24,6 +24,7 @@ void check(const std::string& name, bool ok, const std::string& detail = {}) {
   if (!ok) ++failures;
 }
 std::string num(double v) { char b[64]; std::snprintf(b, sizeof b, "%.6g", v); return b; }
+std::string exact(double v) { char b[64]; std::snprintf(b, sizeof b, "%.12g", v); return b; }
 }  // namespace
 
 int main() {
@@ -2027,6 +2028,84 @@ int main() {
           && std::fabs(late[0] - std::sin(late[2])) > 1e-3,
           "phases " + num(late[0]) + ", " + num(late[3]) + "; held " + num(late[1]) + ", " + num(late[4])
           + "; values off their sines by " + num(sineOff));
+  }
+
+  std::printf("\n--- the automatic lag ---\n");
+  {
+    /* The lag lane's lock in the instrument's own picture (5u), with "Playing,
+       lag X-Y" and A4 held. With the note not taken as the measurements'
+       truth, a quarter period of what the picture plays, as the core's
+       estimator hears it on its own - to a part in a hundred thousand, the
+       lock being an approach over several readouts where the test's is one
+       window, and not the note's exactly, which would be the note read
+       anyway; with it taken, a quarter period of 440 Hz exactly. The null is "Playing, waveform", whose lag is off,
+       where the lock is never made. */
+    const auto lagRun = [&](const char* preset, int note, bool truth) {
+      setenv("SCOPE_PRESET", preset, 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      if (!truth) p->pageControl("midiTruth", scope::Json::boolean(false));
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 200; ++k) {
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0 && note > 0) m.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
+        p->processBlock(buf, m);
+      }
+      const auto lock = p->view().capture.lagLock;
+      const auto served = p->pictureServed();
+      std::vector<float> left(served.size() / 2);
+      for (std::size_t i = 0; i < left.size(); ++i) left[i] = served[i * 2];
+      scope::PitchScratch scratch;
+      const auto heard = scope::estimatePeriod(left.data() + left.size() - 9600, 9600, rate, scratch);
+      return std::make_pair(lock, heard ? 0.25 / heard->hz : -1.0);
+    };
+    const auto [free, own] = lagRun("Playing, lag X\u2013Y", 69, false);
+    const auto [held, unused] = lagRun("Playing, lag X\u2013Y", 69, true);
+    const auto [off, unusedOff] = lagRun("Playing, waveform", 69, true);
+    (void)unused; (void)unusedOff;
+    check("the instrument's own lag locks to a quarter period of what it plays, as its estimator hears the picture",
+          free && own > 0 && std::fabs(*free - own) < 1e-5 * own && *free != 0.25 / 440,
+          "locked to " + (free ? exact(*free * 1000) : std::string("nothing")) + " ms, the picture's quarter period " + exact(own * 1000)
+          + " ms, the note's " + exact(250.0 / 440));
+    check("and to A4 held, a quarter period of 440 Hz exactly; and with the lag off it makes no lock",
+          held && *held == 0.25 / 440 && !off, (held ? num(*held * 1000) : std::string("nothing")) + " ms; off "
+          + (off ? num(*off) : std::string("none")));
+  }
+
+  std::printf("\n--- the trigger's mode ---\n");
+  {
+    /* Normal holds the last frame an edge was found in when nothing triggers
+       (5u), so the grid and the photocell read the picture the screen shows:
+       A4 held half a second and let go, then a second and a half of silence,
+       which has no edge. Normal's frame is still the note - the last of it
+       that crossed the trigger's level, late in the release, so small - and
+       Auto's is the silence, untriggered; the frame Normal holds is one an
+       edge was found in, and says so. Single is held as Normal is. */
+    const auto modeRun = [&](const char* button) {
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      p->pageClick(button);
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 188; ++k) {
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 69, static_cast<juce::uint8>(100)), 0);
+        if (k == 47) m.addEvent(juce::MidiMessage::noteOff(1, 69), 0);
+        p->processBlock(buf, m);
+      }
+      const auto& frame = p->picture().frame();
+      double peak = 0;
+      for (const auto& lane : frame.channels) for (const float v : lane) peak = std::fmax(peak, std::fabs(v));
+      return std::make_pair(peak, frame.triggered);
+    };
+    const auto [normal, normalNow] = modeRun("modeNormal");
+    const auto [single, singleNow] = modeRun("modeSingle");
+    const auto [autoPeak, autoNow] = modeRun("modeAuto");
+    check("Normal holds the last triggered frame through a silence with no edge, Single too, where Auto draws the silence",
+          normal > 0.01 && single == normal && autoPeak == 0 && normalNow && singleNow && !autoNow,
+          "Normal " + num(normal) + ", Single " + num(single) + ", Auto " + num(autoPeak));
   }
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");

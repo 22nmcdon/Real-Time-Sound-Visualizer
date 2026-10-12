@@ -36,6 +36,25 @@ export function pageScope(names, random) {
                       + parts.join("\n") + "\nreturn { " + names.join(", ") + " };")(random);
 }
 
+/* The same with a prelude of the harness's own before the page's definitions -
+   stand-ins for the page's state that the lifted code reads by name - and
+   members of the harness's own in what comes back, such as a getter for a
+   `let` the lifted code writes. */
+export function pageScopeWith(prelude, names, extras = []) {
+  const parts = names.map((name) => {
+    let start = page.indexOf("\nfunction " + name + "(");
+    if (start >= 0) return page.slice(start + 1, page.indexOf("\n}\n", start) + 2);
+    start = page.indexOf("\nconst " + name + " = ");
+    if (start < 0) throw new Error("no definition of " + name + " in scope.html");
+    const line = page.slice(start + 1, page.indexOf("\n", start + 1));
+    // A constant on one line with a comment after it ends at the line, not at the next ";\n" (as clock_js.mjs reads one).
+    if (/;\s*(\/\/.*)?$/.test(line)) return line + "\n";
+    const close = line.endsWith("[") ? "\n];\n" : line.endsWith("{") ? "\n};\n" : ";\n";
+    return page.slice(start + 1, page.indexOf(close, start) + close.length);
+  });
+  return new Function(prelude + "\n" + parts.join("\n") + "\nreturn { " + names.concat(extras).join(", ") + " };")();
+}
+
 /* A stretch of the page between two markers, evaluated whole, with the
    definitions it reaches for: for code that is not a list of named
    definitions, such as the solids, built by a loose block of statements. */

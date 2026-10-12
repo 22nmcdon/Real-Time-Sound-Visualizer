@@ -224,6 +224,7 @@ def calls():
                                                                              rng.choice([0, 0.7]), xs, envs, field, moved))
     out += [voices_call(v) for v in voice_scenarios()]
     out += [plane_call(v) for v in plane_scenarios()]
+    out += LAG_RUNS
     out += drawing_calls()
     return out
 
@@ -291,6 +292,25 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
     return "planeRun " + " ".join("%s=%s" % (k, v if isinstance(v, str) else repr(v)) for k, v in p.items())
+
+# The automatic lag's lock (5u), one readout a step: a tone locking at once
+# and a new one approached slowly; noise and silence, which must not move
+# it; a held key, believed at once, and not believed once the note is not
+# the truth; a chord in equal temperament, periodic at its common period;
+# the switches; and pitches past 5 kHz and under 20 Hz, refused. Then a
+# small capacity, where the probe is the source's whole window, at 44.1 kHz.
+CHORD = "c:261.6256,329.6276,391.9954"
+LAG_RUNS = [
+    "lagLockRun rate=48000.0 cap=96000 on=1 auto=1 truth=1 seed=3 steps=" + ";".join(
+        ["t:440:0.5", "t:440:0.5", "t:330:0.5", "t:330:0.5", "t:330:0.5", "n:0.4", "s", "k:57", "t:220:0.5", "lie", "k:69",
+         CHORD, CHORD, "off", "t:880:0.5", "on", "manual", "t:880:0.5", "auto", "reset", "t:4000:0.3", "t:6000:0.3",
+         "t:15:0.5"]),
+    "lagLockRun rate=44100.0 cap=4096 on=1 auto=1 truth=0 seed=5 steps=t:110:0.5;t:110:0.5;k:69;t:440:0.5;n:0.9;t:440:0.5",
+    # A tone in enough noise that the estimator still answers - aperiodicity
+    # 0.30, under its own 0.35 - and the lag's 0.15 gate must refuse it.
+    "lagLockRun rate=48000.0 cap=96000 on=1 auto=1 truth=1 seed=3 steps=t:440:0.5;tn:660:0.5:0.4;tn:660:0.5:0.4;t:660:0.5",
+    "lagLockRun rate=48000.0 cap=0 on=0 auto=1 truth=1 seed=7 steps=t:440:0.5;on;t:440:0.5;k:81;manual;k:45",
+]
 
 def plane_scenarios():
     """Every stage of the plane alone at each oversampling, then together,
@@ -522,6 +542,24 @@ check("and against a kaleidoscope of 5.6 answered as one of 5.5",
 bown = next(i for i, l in enumerate(lines) if "brpush=0.6" in l)
 check("and against layer B's pair put through layer A's shape",
       worst(js_one(lines[bown].replace("bown=1", "bown=0")), row(cpp_rows[bown])) > 1e-6)
+# The lag's lock, read for what it says as well as held to the core.
+lag = row(js_rows[lines.index(LAG_RUNS[0])])
+check("the automatic lag locks to a quarter period at once, follows a new note slowly, and holds through noise and silence",
+      abs(lag[0] - 0.25 / 440) < 1e-9 and 0.25 / 440 < lag[2] < lag[3] < lag[4] < 0.25 / 330 and lag[5] == lag[4] == lag[6],
+      "%s" % lag[:7])
+check("a held key is believed at once, and not once the note is not the truth; past 5 kHz and under 20 Hz it is refused",
+      lag[7] == 0.25 / 220 and lag[10] == lag[9] and abs(lag[10] - 0.25 / 220) < 1e-9 and lag[19] == -1 and abs(lag[20] - 0.25 / 4000) < 1e-9
+      and lag[21] == lag[20] == lag[22], "%s %s %s" % (lag[7:11], lag[19:], 0.25 / 220))
+gate = row(js_rows[lines.index(next(r for r in LAG_RUNS if "tn:660" in r))])
+check("a tone in noise the estimator still answers for, but past the lag's gate, does not move it; the same tone clean does",
+      gate[0] == gate[1] == gate[2] and abs(gate[0] - 0.25 / 440) < 1e-9 and gate[3] < gate[2] - 1e-6, "%s" % gate)
+check("off or manual, the lock stands still, and the chord's common period is locked to",
+      lag[13] == lag[14] == lag[15] == lag[16] == lag[17] and lag[12] > lag[11] > lag[10], "%s" % lag[10:18])
+lagc = next(i for i, l in enumerate(lines) if l in LAG_RUNS)
+check("and against a lock that moved at once rather than slowly",
+      worst(js_one(LAG_RUNS[0].replace("t:330:0.5;t:330:0.5;t:330:0.5", "k:52;k:52;k:52")), row(cpp_rows[lagc])) > 1e-6)
+check("and against A4 believed though the note is not the truth",
+      worst(js_one(LAG_RUNS[0].replace("lie;k:69", "truth;k:69")), row(cpp_rows[lagc])) > 1e-6)
 bturn = next(i for i, l in enumerate(lines) if "bTurn=-1.9" in l)
 turnr = next(i for i, l in enumerate(lines) if "bturnpush=0.8" in l and "bown=1" in l)
 check("and against layer B's turn left unrouted",

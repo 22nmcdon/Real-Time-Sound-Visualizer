@@ -5,7 +5,7 @@
    `T:most:t0;t1;...` (each table a list), or a bank of them `B:` with the
    cycles split by `!`. Usage: node functions_js.mjs <calls> */
 import fs from "node:fs";
-import { pageScope, pageSpan, coreScope, mulberry32 } from "./js_core.mjs";
+import { pageScope, pageScopeWith, pageSpan, coreScope, mulberry32 } from "./js_core.mjs";
 
 const f = pageScope(["TWO_PI", "DRAWBAR_HARMONICS", "INTERVALS", "cycleOf", "polyBlep", "polyBlamp",
                      "drawbarGain", "drawbarWeights", "intervalRatio", "svfG", "svfStep", "cycleRead", "waveAt"]);
@@ -136,6 +136,57 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       const bend = n("bend") + (n("bend2") - n("bend")) * i / samples;
       c.sound(voices, t, bars, n("amount"), bend, n("duck"), c.dtOf, n("glide"), x);
       values.push(c.mix[0], c.mix[1], c.mix[2], c.mix[3]);
+    }
+    out.push(show(values));
+    continue;
+  }
+  if (name === "lagLockRun") {
+    /* The page's `lagLockUpdate` at one readout after another, each on a
+       signal of its own: `t:hz:amp` a sine, `tn:hz:amp:noise` a sine in noise,
+       `c:hz,hz,...` a chord of sines at a fifth of full scale each, `n:amp`
+       noise, `s` silence, `k:note` a key
+       held (over silence), and `on`, `off`, `auto`, `manual`, `truth`, `lie`
+       and `reset` changing the switches between readouts. The signal runs on
+       from one readout to the next, a fifth of a second apart; the window is
+       the newest `probe` samples of it. A line of the lock after each step,
+       -1 for none. */
+    const p = Object.fromEntries(rest.map((kv) => { const i = kv.indexOf("="); return [kv.slice(0, i), kv.slice(i + 1)]; }));
+    const rate = Number(p.rate), cap = Number(p.cap), random = mulberry32(Number(p.seed));
+    const L = pageScopeWith(`
+      let lagLock = null;
+      const state = { lagOn: ${p.on === "1"}, lagAuto: ${p.auto === "1"}, source: null };
+      const midi = { truth: ${p.truth === "1"}, notes: [] };`,
+      ["midiHz", "midiPitch", "midiPitchHz", "PITCH_MAX_WINDOW", "PITCH_DIP", "PITCH_TRUST", "fft", "pitchPass",
+       "estimatePeriod", "READOUT_MS", "LAG_LOCK_SECONDS", "LAG_APERIODIC_MAX", "LAG_PROBE_SECONDS", "lagLockUpdate"],
+      ["state", "midi", "get lock() { return lagLock; }", "reset() { lagLock = null; }"]);
+    const step = Math.round(0.2 * rate), values = [];
+    let signal = "s";
+    L.state.source = {
+      capacity: cap,
+      getLatestWindow(n) {
+        const out = new Float32Array(n), end = (values.length + 1) * step;
+        const [kind, a, b, c] = signal.split(":");
+        for (let k = 0; k < n; k++) {
+          const t = (end - n + k) / rate;
+          out[k] = kind === "t" ? Number(b) * Math.sin(2 * Math.PI * Number(a) * t)
+            : kind === "tn" ? Number(b) * Math.sin(2 * Math.PI * Number(a) * t) + Number(c) * (random() * 2 - 1)
+            : kind === "c" ? a.split(",").reduce((s, hz) => s + 0.2 * Math.sin(2 * Math.PI * Number(hz) * t), 0)
+            : kind === "n" ? Number(a) * (random() * 2 - 1) : 0;
+        }
+        return [out];
+      },
+    };
+    for (const s of p.steps.split(";")) {
+      if (s === "on" || s === "off") L.state.lagOn = s === "on";
+      else if (s === "auto" || s === "manual") L.state.lagAuto = s === "auto";
+      else if (s === "truth" || s === "lie") L.midi.truth = s === "truth";
+      else if (s === "reset") L.reset();
+      else {
+        signal = s.startsWith("k:") ? "s" : s;
+        L.midi.notes = s.startsWith("k:") ? [{ note: Number(s.slice(2)) }] : [];
+        L.lagLockUpdate({ rate });
+      }
+      values.push(L.lock === null ? -1 : L.lock);
     }
     out.push(show(values));
     continue;

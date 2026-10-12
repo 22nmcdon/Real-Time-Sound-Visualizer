@@ -20,15 +20,19 @@
 //   plugin does not have; the host's output is the host's. The owner passes
 //   nought, so a picture cannot read as running away by the limiter here,
 //   only by its ink.
-// - The automatic lag's lock. The page listens for a lag to lock to and the
-//   core has not got that analysis yet; the lag is the slider's until it has.
+// - The automatic lag's lock, which listens every fifth of a second from the
+//   first frame, where the page's counts from when it loaded. The held note
+//   it locks to is the one the owner says, as the page asks `midiPitchHz`.
 // - The canvas. The page's is the window it is drawn in; this one is a size
 //   the owner chooses (Canvas), and with it the graticule the grid lies over.
 //   A reticle's u and v are fractions of the graticule, so they read the same
 //   picture whatever the size, give or take where a stroke meets a cell edge.
-// - Normal and Single. The trigger's mode is kept, and the capture here is
-//   always Auto's: what the page holds for a frame Normal could not trigger
-//   is the page's screen, and the grid follows the signal.
+// - Single. Normal holds the last triggered frame when nothing triggers, as
+//   the page does, so the grid and the photocell read what the screen shows.
+//   Single is held the same way and is not stopped by its capture: the page
+//   stops itself and is set going again by its Run button, which the core
+//   does not hear, and a grid held for good while the page had moved on would
+//   leave the photocell reading a picture nobody could see.
 
 #pragma once
 
@@ -39,6 +43,7 @@
 
 #include "scope/beam.h"
 #include "scope/capture.h"
+#include "scope/hearing.h"  // estimatePeriod, for the lag's lock
 #include "scope/matrix.h"
 #include "scope/picture.h"
 #include "scope/restore.h"
@@ -80,6 +85,36 @@ class PictureSource : public ModSource {
   std::string key_;
   const PictureSources& p_;
 };
+
+constexpr double kReadoutMs = 200;       // READOUT_MS: words are read, not watched
+constexpr double kLagLockSeconds = 1;    // how long the automatic lag takes to follow a new note
+constexpr double kLagAperiodicMax = 0.15;
+constexpr double kLagProbeSeconds = 4.0 / 20;  // four periods of 20 Hz
+
+/* lagLockUpdate: the automatic lag, a quarter period of what is playing.
+   A held note is not an estimate, and sets it at once; otherwise the period
+   heard in its own fifth of a second, trusted only when it is periodic and
+   between 20 Hz and 5 kHz, approached slowly in the log domain so vibrato
+   precesses the figure rather than holding it at a circle. `playedHz` is
+   the held note's pitch when the hands' note is the measurements' truth. */
+inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double> playedHz, PitchScratch& scratch) {
+  if (!v.lagOn || !v.lagAuto) return;
+  if (playedHz) { v.lagLock = 0.25 / *playedHz; return; }
+  const double want = jsMathRound(kLagProbeSeconds * s.rate);
+  // `source.capacity || want`: a capacity of nought, or none, is no limit.
+  const double room = s.capacity == 0 || std::isnan(s.capacity) ? want : s.capacity;
+  const auto probe = static_cast<std::size_t>(std::fmin(want, room));
+  if (!s.latest) return;
+  const auto lanes = s.latest(probe);
+  if (lanes.empty()) return;
+  const auto found = estimatePeriod(lanes[0].data(), lanes[0].size(), s.rate, scratch);
+  if (!found || found->aperiodicity > kLagAperiodicMax) return;
+  if (found->hz < 20 || found->hz > 5000) return;
+  const double target = 0.25 / found->hz;
+  if (!v.lagLock) { v.lagLock = target; return; }
+  const double a = 1 - std::exp(-(kReadoutMs / 1000) / kLagLockSeconds);
+  v.lagLock = std::pow(2, std::log2(*v.lagLock) + a * (std::log2(target) - std::log2(*v.lagLock)));
+}
 
 class PictureRun {
  public:
@@ -149,7 +184,13 @@ class PictureRun {
     pics_.u = brain_.photo.u;
     pics_.v = brain_.photo.v;
     const View& view = captureView(brain_);
-    frame_ = capture(view, source);
+    /* Auto, or an edge found: this frame, and the one held. Normal and Single
+       with nothing to show keep the frame held, as the page does rather than
+       drawing the untriggered sweep the mode exists to suppress; before
+       anything has been held, the sweep. */
+    Frame fresh = capture(view, source);
+    if (brain_.view.mode == "auto" || fresh.triggered) { frame_ = std::move(fresh); held_ = true; }
+    else if (!held_) frame_ = std::move(fresh);
     const bool spect = brain_.view.screen.display == "spect";
     pics_.photoStep(phosphor_, elapsed_, spect);
     const Screen& sc = brain_.view.screen;
@@ -186,6 +227,17 @@ class PictureRun {
     plot_ = drawPicture(beam_, phosphor_, w.capture, w.screen, source, frame_, c, elapsed_);
   }
 
+  /* The readout's work, every fifth of a second of frames, after the draw as
+     the page's comes after its frame: the automatic lag's lock. Its
+     estimator was made with room for the probe, so after its first pass it
+     allocates nothing; the capture it reads does, as the frame's does. */
+  void readout(const CaptureSource& source, std::optional<double> playedHz) {
+    if (readAt_ < 0) readAt_ = last_;
+    if (last_ - readAt_ < kReadoutMs) return;
+    readAt_ = last_;
+    lagLockUpdate(brain_.view.capture, source, playedHz, lagScratch_);
+  }
+
   const Phosphor& phosphor() const { return phosphor_; }
   const PictureSources& pictures() const { return pics_; }
   const Frame& frame() const { return frame_; }
@@ -201,9 +253,11 @@ class PictureRun {
   std::vector<std::unique_ptr<PictureSource>> sources_;
   Frame frame_;
   Plot plot_;
-  bool registered_ = false;
+  bool registered_ = false, held_ = false;
   int restored_ = -1;
   double last_ = -1, next_ = 0, elapsed_ = 16;
+  double readAt_ = -1;
+  PitchScratch lagScratch_;
 };
 
 }  // namespace scope
