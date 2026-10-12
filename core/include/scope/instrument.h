@@ -450,6 +450,17 @@ class Instrument {
   const Generator& generator() const { return *core_; }
   // The two oscillators, which move the picture's destinations on the page as well as the sound here.
   const std::vector<Lfo>& lfos() const { return lfos_; }
+  /* The same, as they stood when the picture's newest frame was written, for
+     a reader on another thread: each oscillator's phase, held value and value.
+     The plugin's page moves the picture's destinations with these, as the
+     site's page does with the ones the worklet posts, so an oscillator routed
+     to both moves the picture and the sound in step. */
+  std::array<double, 6> lfosServed() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, 6> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = lfosServed_[i].load(std::memory_order_relaxed);
+    return out;
+  }
   // How many lanes the picture has: two, four for two figures, or a rack's.
   int pictureLanes() const { return pictureSource_.channels; }
 
@@ -787,6 +798,18 @@ class Instrument {
      the input is the generator's, for its live-input modes, as one channel:
      the two summed and halved, which is how the page's worklet takes a
      stereo input on its one-channel input. */
+  /* The picture's newest frame made known, with the oscillators as they
+     stand at it: the oscillators first, so a reader that sees the frame sees
+     them too. Each value is whole; the six together may be a block apart,
+     which on the page is a frame's worth of nothing. */
+  void publish(std::size_t ring) {
+    for (std::size_t i = 0; i < 2 && i < lfos_.size(); ++i) {
+      lfosServed_[i * 3].store(lfos_[i].phase, std::memory_order_relaxed);
+      lfosServed_[i * 3 + 1].store(lfos_[i].held, std::memory_order_relaxed);
+      lfosServed_[i * 3 + 2].store(lfos_[i].value, std::memory_order_relaxed);
+    }
+    pictureAt_.store(ring, std::memory_order_release);
+  }
   void render(float* left, float* right, int from, int to) {
     // In pieces no longer than the buffers made for them: a host may hand
     // over a bigger block than it said it would.
@@ -822,7 +845,7 @@ class Instrument {
             heardR[k] = static_cast<float>(hr);
             ring = (ring + 1) % kPictureFrames;
           }
-          pictureAt_.store(ring, std::memory_order_release);
+          publish(ring);
           continue;
         }
         for (int k = 0; k < n; ++k) {
@@ -845,7 +868,7 @@ class Instrument {
           alignAt_ = (alignAt_ + 1) % alignFrames_;
           ring = (ring + 1) % kPictureFrames;
         }
-        pictureAt_.store(ring, std::memory_order_release);
+        publish(ring);
         continue;
       }
       if (drawsInput_) {
@@ -890,7 +913,7 @@ class Instrument {
         for (int c = 4; c < kRingLanes; ++c) row[c] = 0.0f;
         ring = (ring + 1) % kPictureFrames;
       }
-      pictureAt_.store(ring, std::memory_order_release);
+      publish(ring);
     }
   }
 
@@ -961,6 +984,7 @@ class Instrument {
   std::array<double, kBandCount> bandGain_ { 1, 1, 1, 1 };
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
+  std::array<std::atomic<double>, 6> lfosServed_ {};
 };
 
 }  // namespace scope

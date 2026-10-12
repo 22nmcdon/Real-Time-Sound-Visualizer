@@ -63,6 +63,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
   static constexpr std::size_t kPictureFrames = scope::Instrument::kPictureFrames;
   std::vector<float> pictureSnapshot() const { return instrument_.pictureSnapshot(); }
   std::vector<float> pictureServed() const { return instrument_.pictureServed(); }
+  // The oscillators as they stood at the picture's newest frame: phase, held and value, each of two.
+  std::array<double, 6> lfosServed() const { return instrument_.lfosServed(); }
   bool bands() const { return instrument_.bands(); }
   int rack() const { return instrument_.rack(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }

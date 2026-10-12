@@ -84,8 +84,15 @@ FAKE = """
       both[2 * k + 1] = 0.3 * Math.sin(2 * Math.PI * 661.5 * k / RATE + 1);
     }
     window.__hostTest.picture = both;
+    // The plugin's two oscillators, each a phase, a held value and a value, for a host that names them.
+    window.__hostTest.lfos = new Float64Array([0, 0, 0, 0, 0, 0]);
+    window.__hostTest.lfoFetches = 0;
     const realFetch = window.fetch.bind(window);
     window.fetch = (url, options) => {
+      if (url === 'scope-test://lfos.bin') {
+        window.__hostTest.lfoFetches++;
+        return Promise.resolve(new Response(window.__hostTest.lfos.buffer.slice(0)));
+      }
       if (url !== 'scope-test://picture.bin') return realFetch(url, options);
       const t = window.__hostTest;
       t.fetches++; t.inFlight++; t.mostInFlight = Math.max(t.mostInFlight, t.inFlight);
@@ -107,6 +114,10 @@ def code(setup):
 
 # The plugin's state on load: a cutoff in its setup, and the level moved since.
 FAKE = FAKE.replace("STATE_CODE", json.dumps(code({"vcfCut": 333, "pluginSliders": "amp=99"})))
+# And a plugin that names its oscillators, as the plugin's editor does since 5s.
+FAKE_LFOS = FAKE.replace("pictureUrl: 'scope-test://picture.bin' }",
+                         "pictureUrl: 'scope-test://picture.bin', lfosUrl: 'scope-test://lfos.bin' }")
+assert FAKE_LFOS != FAKE
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -473,6 +484,46 @@ with sync_playwright() as pw:
           split["early"] == [4, 0, True] and split["tone"] == [False, 2], str(split["early"]) + " " + str(split["tone"]))
     check("a file split asked for inside the plugin says the host plays files there, and sends nothing",
           split["noFile"] == ["The host plays files here.", [], False], str(split["noFile"]))
+
+    print("\n--- the plugin's oscillators ---")
+    # An oscillator routed to the sound and the picture moves both in step
+    # only if the page's is the plugin's: fetched after each picture and
+    # taken whole, never stepped here. Served values the page's own stepping
+    # could not reach - a phase standing still while frames go by, then
+    # jumping back - so a page still stepping its own reads as not taking them.
+    OSC = """async (values) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const t = window.__hostTest, read = () => ({ driver: lfoDriver(), phases: lfos.map((l) => l.phase),
+        helds: lfos.map((l) => l.held), values: lfos.map((l) => l.value), source: MOD_SOURCES.get('lfo1').value() });
+      const out = {};
+      t.lfos = new Float64Array(values[0]); await wait(400); out.first = read();
+      await wait(400); out.still = read();
+      t.lfos = new Float64Array(values[1]); await wait(400); out.second = read();
+      out.fetched = [t.lfoFetches, t.fetches];
+      return out;
+    }"""
+    SERVED = [[1.25, 0.4, -0.7, 4.0, -0.2, 0.33], [0.5, -0.9, 0.12, 6.0, 0.8, -0.45]]
+    def osc(fake):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.add_init_script(fake)
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1500)
+        # Both oscillators running fast, so a page stepping its own moves them well past any served value.
+        q.evaluate("() => { lfos[0].rate = 3; lfos[1].rate = 5; }")
+        got = q.evaluate(OSC, SERVED)
+        q.close()
+        return got
+    named, unnamed = osc(FAKE_LFOS), osc(FAKE)
+    taken = lambda r, s: r["phases"] == [s[0], s[3]] and r["helds"] == [s[1], s[4]] and r["values"] == [s[2], s[5]]
+    check("a plugin that names its oscillators drives the page's: the instrument steps them, and the page takes them whole",
+          named["first"]["driver"] == "instrument" and taken(named["first"], SERVED[0]) and taken(named["still"], SERVED[0])
+          and named["first"]["source"] == SERVED[0][2], str(named["first"]))
+    check("and follows them when they move, even backwards, fetched as often as the picture",
+          taken(named["second"], SERVED[1]) and named["fetched"][0] > 10 and abs(named["fetched"][0] - named["fetched"][1]) <= 2,
+          "%s, fetched %s" % (named["second"]["phases"], named["fetched"]))
+    check("and against a plugin that names none: the page steps its own and takes nothing",
+          unnamed["first"]["driver"] == "main" and not taken(unnamed["first"], SERVED[0])
+          and unnamed["first"]["phases"] != unnamed["still"]["phases"] and unnamed["fetched"][0] == 0, str(unnamed["first"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

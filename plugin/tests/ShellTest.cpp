@@ -1986,6 +1986,49 @@ int main() {
         mismatch <= 0.0 && swapped > 0.1 && moving > 0.25,
         "mismatch " + num(mismatch) + ", swapped would be " + num(swapped) + ", taken at " + num(moving));
 
+  /* The oscillators, served for the page to move the picture's destinations
+     with (5s): the plugin's own, as they stand at the picture's newest frame.
+     Read across two blocks, each must have moved by exactly its own rate's
+     worth of one block - which a copy stepped anywhere else, or LFO 2's read
+     as LFO 1's, could not do - and the bytes served must be those values. */
+  {
+    ScopeProcessor osc;
+    osc.prepareToPlay(rate, block);
+    juce::AudioBuffer<float> buf(2, block);
+    const auto served = [&] {
+      const auto r = scopeResource("/lfos.bin", osc);
+      std::array<double, 6> v {};
+      if (r && r->data.size() == sizeof v) std::memcpy(v.data(), r->data.data(), sizeof v);
+      return std::make_pair(v, r ? r->data.size() : 0);
+    };
+    for (int k = 0; k < 3; ++k) { buf.clear(); juce::MidiBuffer m; osc.processBlock(buf, m); }
+    const auto [before, size] = served();
+    buf.clear();
+    juce::MidiBuffer m;
+    osc.processBlock(buf, m);
+    const auto [after, sizeAfter] = served();
+    const double step = scope::kTwoPi * block / rate;
+    const double off1 = std::fabs(after[0] - before[0] - osc.lfoRate(0) * step);
+    const double off2 = std::fabs(after[3] - before[3] - osc.lfoRate(1) * step);
+    const double asOther = std::fabs(after[0] - before[0] - osc.lfoRate(1) * step);
+    check("the page is served the plugin's oscillators: each a block on by its own rate, the bytes the values at the newest frame",
+          size == 48 && sizeAfter == 48 && off1 < 1e-12 && off2 < 1e-12 && asOther > 1e-4 && before[0] > 0
+          && after == osc.lfosServed() && osc.lfoRate(0) != osc.lfoRate(1),
+          "LFO 1 off by " + num(off1) + ", LFO 2 by " + num(off2) + "; LFO 1 at LFO 2's rate would be off by " + num(asOther));
+    /* And each value in its place. Past two seconds LFO 2, at half a hertz,
+       has come round once and drawn a held value, where LFO 1, at a fifth,
+       has not; and each value is its sine at its phase. Phase, held and value
+       swapped about, or one oscillator's in the other's slots, reads wrong. */
+    for (int k = 0; k < 200; ++k) { buf.clear(); juce::MidiBuffer more; osc.processBlock(buf, more); }
+    const auto [late, lateSize] = served();
+    const double sineOff = std::fmax(std::fabs(late[2] - std::sin(late[0])), std::fabs(late[5] - std::sin(late[3])));
+    check("and each one's phase, held value and value in its place: LFO 2 round once and holding, LFO 1 not yet",
+          lateSize == 48 && sineOff < 1e-12 && late[1] == 0 && late[4] != 0 && late[3] < late[0]
+          && std::fabs(late[0] - std::sin(late[2])) > 1e-3,
+          "phases " + num(late[0]) + ", " + num(late[3]) + "; held " + num(late[1]) + ", " + num(late[4])
+          + "; values off their sines by " + num(sineOff));
+  }
+
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");
   return failures ? 1 : 0;
 }

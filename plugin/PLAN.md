@@ -1985,7 +1985,7 @@ and each held by a check on the default:
 What the default did not do, and said so on the cheat sheet: the
 oscillators that moved the picture were the page's and those that moved the
 sound the instrument's, so one routed to both moved them at the same rate
-but not in step. 5n mends it on the site; in the plugin it is still so.
+but not in step. 5n mends it on the site, and 5s in the plugin.
 
 The suites. Thirty-seven reach into the page's own brain: its worklets, its
 gate flags, `genSet`, `midiControl`, `setMidiMode`, `restore()` and its
@@ -2154,6 +2154,29 @@ hands on the section; each with its nulls. layerplanetest.py reads it as a
 cancellation: an echo half a period of B's note late, at half level, halves
 B and leaves A's samples alone. Mutation: 15 of 15 in the core, once a bare
 run and the clock's run were added for the two that lived.
+
+5s is 5n in the plugin. The plugin's page ran oscillators of its own for
+the picture - the trigger's position, the filter, the zoom - at the
+instrument's rates but from its own start, so one routed to both moved the
+picture and the sound at one rate and never in step. The instrument now
+keeps its two oscillators beside the picture's newest frame: each phase,
+held value and value is written to an atomic before the frame's position
+is released, so a reader on the message thread that sees the frame sees
+them too, and nothing on the audio thread waits. The editor serves them as
+`lfos.bin`, six float64s, named to the page as `lfosUrl`; the page fetches
+it after each picture and takes them whole, and `lfoDriver` answers
+"instrument" there, as on the site. Apart from the picture, not appended to
+it, because the picture's length is how the page and the shell test count
+its lanes. A host that names none leaves the page its own.
+
+Held by the shell test: across one block each oscillator moves by exactly
+its own rate's worth (LFO 1 read at LFO 2's rate is 0.02 off), and past
+two seconds LFO 2 has come round and holds a value where LFO 1 has not,
+with each value its sine at its phase, which pins every slot. hosttest.py:
+served values the page's own stepping could not reach - a phase standing
+still, then jumping back - taken whole and fetched as often as the picture;
+nulled with a host that names none, where the page steps its own. Mutation:
+6 of 6 in the plugin and the instrument, 5 of 5 on the page.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

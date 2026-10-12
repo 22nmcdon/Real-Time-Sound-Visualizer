@@ -23,6 +23,7 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         // Named here rather than assumed by the page: JUCE's resource root is
         // a different scheme on each platform.
         info->setProperty("pictureUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "picture.bin");
+        info->setProperty("lfosUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "lfos.bin");
         complete(juce::var(info));
       })
       /* The page as the plugin's face: a slider moved, a setup loaded, a
@@ -119,6 +120,15 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
   if (path == "/picture.bin") {
     const auto frames = processor.pictureServed();
     return bytes(frames.data(), frames.size() * sizeof(float), "application/octet-stream");
+  }
+  /* The two oscillators as they stood at the picture's newest frame, as six
+     little-endian float64s - each one's phase, held value and value - which
+     the page fetches after the picture and makes its own, so the picture's
+     destinations move with the oscillators that move the sound. Apart from
+     the picture so that its length goes on saying how many lanes it has. */
+  if (path == "/lfos.bin") {
+    const auto lfos = processor.lfosServed();
+    return bytes(lfos.data(), lfos.size() * sizeof(double), "application/octet-stream");
   }
   return std::nullopt;
 }
