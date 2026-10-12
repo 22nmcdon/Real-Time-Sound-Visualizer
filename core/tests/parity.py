@@ -2418,6 +2418,20 @@ pcnull("strained", "limit -8", "limit -5", "a limiter under six decibels")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(pcjs.strip().split("\n")[1:]), "\n".join(pccpp.strip().split("\n")[:-1])) is not None)
 
+print("\n--- the hearing, on the audio thread ---")
+# The plugin steps the hearing once a block on the audio thread, where an
+# allocation can wait on a lock. Made once, it must allocate nothing after:
+# a steady tone, so the period estimator runs every other frame, and the
+# pitch it reaches read back, so a run where it never ran - and so could not
+# allocate - fails. What the making allocates is the null: the counter counts.
+aexe = build("alloc_cpp")
+for hz in (440, 196):
+    a = subprocess.run([aexe, str(hz)], check=True, capture_output=True, text=True).stdout.split()
+    made, stepped, pitch = int(a[1]), int(a[3]), float(a[5])
+    check("the hearing made for a %d Hz tone allocates nothing in 120 frames, and its estimator still finds the pitch" % hz,
+          stepped == 0 and made > 0 and abs(pitch - math.log2(hz / 261.6256) / 2) < 1e-5,
+          "%d made, %d stepped, pitch %.6f" % (made, stepped, pitch))
+
 print("\n--- the hearing ---")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)
 # The page's hearing - a window of the sound analysed once a frame into a

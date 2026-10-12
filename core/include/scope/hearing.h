@@ -20,6 +20,11 @@
 //   page's windows always are one; on any other length its FFT reads and
 //   writes past the end of its arrays, which JavaScript forgives with NaN and
 //   C++ would not.
+// - Its memory. The page makes the period estimator's arrays afresh on every
+//   pass; here they are made once, for a window of the hearing's length, and
+//   written over after that, so a step on the audio thread allocates nothing.
+//   A window of another length is made room for when it first arrives - which
+//   allocates, once - and the plugin's never changes.
 
 #pragma once
 
@@ -79,11 +84,27 @@ inline void fft(double* re, double* im, std::size_t n) {
 
 struct Period { double hz, aperiodicity; };
 
+/* The estimator's working arrays, made once and written over: the block, the
+   two halves of its transform, its running energy and the normalised
+   difference. `reserve` makes room for a pass of up to `window` samples, so
+   that the passes after it, the hearing's every other frame, allocate
+   nothing - `assign` within what is reserved only writes. */
+struct PitchScratch {
+  std::vector<double> y, re, im, cum, dn;
+  void reserve(std::size_t window) {
+    std::size_t size = 1;
+    while (size < 2 * window) size <<= 1;
+    y.reserve(window); re.reserve(size); im.reserve(size); cum.reserve(window + 1); dn.reserve(window / 2 + 2);
+  }
+};
+
 // pitchPass: `count` samples, every `step`th from `from`, averaged in steps,
 // as a zero-mean block; the period by YIN's normalised difference.
-inline std::optional<Period> pitchPass(const float* x, std::size_t from, std::size_t count, std::size_t step, double rate) {
+inline std::optional<Period> pitchPass(const float* x, std::size_t from, std::size_t count, std::size_t step, double rate,
+                                       PitchScratch& s) {
   const std::size_t w = count;
-  std::vector<double> y(w);
+  std::vector<double>& y = s.y;
+  y.assign(w, 0.0);
   double mean = 0;
   for (std::size_t i = 0; i < w; i++) {
     double v = 0;
@@ -98,21 +119,25 @@ inline std::optional<Period> pitchPass(const float* x, std::size_t from, std::si
 
   std::size_t size = 1;
   while (size < 2 * w) size <<= 1;
-  std::vector<double> re(size, 0.0), im(size, 0.0);
+  std::vector<double>& re = s.re;
+  std::vector<double>& im = s.im;
+  re.assign(size, 0.0); im.assign(size, 0.0);
   for (std::size_t i = 0; i < w; i++) re[i] = y[i];
   fft(re.data(), im.data(), size);
   for (std::size_t i = 0; i < size; i++) { re[i] = re[i] * re[i] + im[i] * im[i]; im[i] = 0; }
   fft(re.data(), im.data(), size);  // real and even, so forward is inverse
   const double sz = static_cast<double>(size);
 
-  std::vector<double> cum(w + 1, 0.0);
+  std::vector<double>& cum = s.cum;
+  cum.assign(w + 1, 0.0);
   for (std::size_t i = 0; i < w; i++) cum[i + 1] = cum[i] + y[i] * y[i];
 
   const double fs = rate / static_cast<double>(step);
   const long tauMin = static_cast<long>(jsMax(2, std::floor(fs / 8000)));
   const long tauMax = static_cast<long>(std::floor(static_cast<double>(w) / 2));
   if (tauMax <= tauMin + 2) return std::nullopt;
-  std::vector<double> dn(static_cast<std::size_t>(tauMax + 2), 0.0);
+  std::vector<double>& dn = s.dn;
+  dn.assign(static_cast<std::size_t>(tauMax + 2), 0.0);
   double running = 0;
   dn[0] = 1;
   const long wl = static_cast<long>(w);
@@ -165,15 +190,15 @@ inline std::optional<Period> pitchPass(const float* x, std::size_t from, std::si
 
 // estimatePeriod: the newest stretch of up to 16384 samples, and if that is
 // not trusted and there is more, the whole window decimated to fit.
-inline std::optional<Period> estimatePeriod(const float* x, std::size_t n, double rate) {
+inline std::optional<Period> estimatePeriod(const float* x, std::size_t n, double rate, PitchScratch& s) {
   if (n < 16) return std::nullopt;
   const std::size_t w = std::min(n, kPitchMaxWindow);
-  const auto near = pitchPass(x, n - w, w, 1, rate);
+  const auto near = pitchPass(x, n - w, w, 1, rate, s);
   if (near && near->aperiodicity <= kPitchTrust) return near;
   if (n <= kPitchMaxWindow) return near;
   const std::size_t step = static_cast<std::size_t>(std::ceil(static_cast<double>(n) / kPitchMaxWindow));
   const std::size_t count = n / step;
-  const auto far = pitchPass(x, n - count * step, count, step, rate);
+  const auto far = pitchPass(x, n - count * step, count, step, rate, s);
   if (!far) return near;
   if (!near) return far;
   return far->aperiodicity < near->aperiodicity ? far : near;
@@ -200,6 +225,22 @@ class Hearing {
   std::optional<double> pitchWant;
   struct Onset { int count = 0; double last = -HUGE_VAL; bool armed = true; } onset;
 
+  // Room made, on whatever thread makes it, for the window it will hear.
+  Hearing() { prepare(kHearN); }
+
+  /* Everything a window of `n` samples needs, made now: the transform's
+     arrays and its window, the two spectra the flux compares, and the
+     estimator's. Called again by `step` only when the window's length
+     changes, which the plugin's does not; that is the one time a step
+     allocates. */
+  void prepare(std::size_t n) {
+    re_.assign(n, 0.0); im_.assign(n, 0.0); hann_.assign(n, 0.0);
+    for (std::size_t i = 0; i < n; i++) hann_[i] = 0.5 - 0.5 * std::cos(2 * M_PI * static_cast<double>(i) / static_cast<double>(n - 1));
+    mags_.assign(n >> 1, 0.0); prev_.assign(n >> 1, 0.0);
+    pitch_.reserve(std::min(n, kPitchMaxWindow));
+    hasPrev_ = false;
+  }
+
   // hearingFollow and hearingSlew.
   static double follow(double now, double want, double elapsed) {
     const double tau = want > now ? kEnvAttack : kEnvRelease;
@@ -216,11 +257,7 @@ class Hearing {
   void step(const float* x, const float* a, const float* b, std::size_t n, double rate, double elapsed,
             std::optional<double> heldHz, double now) {
     if (!x || n < 256 || (n & (n - 1)) != 0) return;
-    if (re_.size() != n) {
-      re_.assign(n, 0.0); im_.assign(n, 0.0); hann_.assign(n, 0.0);
-      for (std::size_t i = 0; i < n; i++) hann_[i] = 0.5 - 0.5 * std::cos(2 * M_PI * static_cast<double>(i) / static_cast<double>(n - 1));
-      hasPrev_ = false;
-    }
+    if (re_.size() != n) prepare(n);
     double sum = 0, w2 = 0, early = 0;
     for (std::size_t i = 0; i < n; i++) {
       const double v = x[i];
@@ -273,7 +310,7 @@ class Hearing {
       if ((frame++ & 1) == 0) {
         std::optional<double> hz = heldHz;
         if (!hz && steady) {
-          const auto found = estimatePeriod(x, n, rate);
+          const auto found = estimatePeriod(x, n, rate, pitch_);
           if (found && found->aperiodicity <= kPitchTrust) hz = found->hz;
         }
         if (hz && *hz > 0) pitchWant = jsMax(-1, jsMin(1, std::log2(*hz / kPitchRef) / 2));
@@ -297,6 +334,7 @@ class Hearing {
   }
 
   std::vector<double> re_, im_, hann_, mags_, prev_;
+  PitchScratch pitch_;
   bool hasPrev_ = false;
 };
 

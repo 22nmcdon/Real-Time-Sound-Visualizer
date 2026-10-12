@@ -757,8 +757,8 @@ the onset fires, because an event that hears the generator it would strike is
 refused. ("Brightness adds points" was the first choice and showed nothing,
 rightly: a star's points are whole, and the brightness its reach allows adds
 less than half of one.) Seven mutants of the wiring, all caught. Its period
-estimator allocates as it goes, which is not yet fit for an audio thread and
-moves with the morph's walk.
+estimator allocated as it went, which was not fit for an audio thread; 5t
+makes its room once, and it allocates nothing on the audio thread now.
 
 **2g: the host's parameters, and the state.** Eight parameters, a curated
 few rather than every control: the four macros, the morph's fader, and the
@@ -2177,6 +2177,24 @@ served values the page's own stepping could not reach - a phase standing
 still, then jumping back - taken whole and fetched as often as the picture;
 nulled with a host that names none, where the page steps its own. Mutation:
 6 of 6 in the plugin and the instrument, 5 of 5 on the page.
+
+5t makes the hearing fit for the audio thread. The plugin steps it once a
+block there, and its period estimator made five arrays afresh on every
+pass, every other frame - 305 allocations in two seconds of a steady tone,
+any one of which can wait on the allocator's lock. The arrays are now kept
+in a `PitchScratch` with room made when the hearing is, for a window of the
+hearing's length, and written over with `assign`, which within what is
+reserved only writes; the transform's own arrays, sized on the first step
+until now, are made at the same time. A window of another length is made
+room for when it first comes, which allocates once, and the plugin's never
+changes. What it reads is not changed: the hearing's 7,120 lines of parity
+runs come out byte for byte as before. `alloc_cpp` counts every `operator
+new` while the hearing is stepped over a steady tone for 120 frames, at
+440 and 196 Hz: none, with the pitch it finds read back so that a run where
+the estimator never ran cannot pass, and the making's allocations as the
+proof the counter counts. The morph's walk and the host's parameters
+written as sliders still allocate, and stay where they are; that is the
+next of these.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

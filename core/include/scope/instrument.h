@@ -280,9 +280,8 @@ class Instrument {
     window(levelLane_, nullptr);
     sources_->level().update(levelLane_.data(), levelLane_.size(), lastBlockMs_);
     /* And the hearing, from the last 4096 frames, its held key the lowest the
-       hands hold. Once a block where the page's is once a frame; its period
-       estimator allocates as it goes, which is not yet fit for an audio
-       thread and is to move with the morph's walk (PLAN.md, stage 2). */
+       hands hold. Once a block where the page's is once a frame. It was made
+       with room for this window, so it allocates nothing here (5t). */
     window(hearL_, &hearR_);
     std::optional<double> heldHz;
     if (!keyboard_->notes().empty()) {
