@@ -7,7 +7,10 @@ with the page as its UI, over `core/`, the C++ core that will be shared by the
 plugin and (as WebAssembly) the site - read `plugin/PLAN.md` before touching
 either. The core is a port held to the page sample for sample by
 `core/tests/parity.py`; a ported piece is not done until it passes that, with
-its nulls. Read `web/README.md` before changing the web build — most of it is a list
+its nulls. How it looks is `DESIGN.md`: which parts are the brand it shares with the
+jazz and guitar learning apps (not this repository's to change alone) and which
+are the oscilloscope's own. A new colour token goes into one of its tables, or
+`designtest.py` fails. Read `web/README.md` before changing the web build — most of it is a list
 of things this page has already got wrong once, each with the reason, and it
 will save you rediscovering them.
 

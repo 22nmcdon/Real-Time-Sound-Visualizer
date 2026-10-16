@@ -24,6 +24,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 | `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, S10's voice budget and S6's start and stop. The plan is built |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
+| `../DESIGN.md` | how the instrument looks, sorted into the brand it shares with the jazz and guitar apps and the decisions that are the oscilloscope's own, with where the page departs from the brand today. `tests/designtest.py` holds its colour tables to the page |
 
 Band-limiting is built, ahead of the sound that needs it: `waveAt` takes a
 `step` — how much of a cycle one sample covers — and corrects the square and
@@ -4242,3 +4243,17 @@ this and ends a one-line constant at its line; `pageScopeWith` in
 why the lag's harness uses the former. The failure is loud. What would not
 be is a lifted constant that happened to swallow one the harness never asks
 for, so when a lift reads oddly, print what it lifted.
+
+**A token nobody defined fails without a sound.** `.drop-hint` paints its
+background with `var(--wash-strong)`, the brand's selection wash, and the
+page has never defined it. A `var()` of an undefined custom property with no
+fallback is not a parse error; the declaration becomes invalid at computed
+time and the property falls back to its initial value, so the overlay that
+should tint the page while a file is dragged over it is transparent, with
+only its dashed border showing. No console line, no failing check, and the
+border makes it look finished. `DESIGN.md` lists it with the other places
+the page departs from the brand, and `tests/designtest.py` now fails on any
+`var()` in the stylesheet that nothing defines, with this one allowed by name
+until it is fixed. It reads the stylesheet only: the script builds
+`var(--ch' + n + ')` by concatenation, which a pattern over the whole file
+takes for a token called `--ch`.
