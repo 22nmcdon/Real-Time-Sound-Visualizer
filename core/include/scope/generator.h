@@ -226,8 +226,9 @@ class Generator {
   }
 
   // Copied and clamped; the page ignores a registration that is not nine.
-  void setBars(const std::vector<double>& value, int layer = 0) {
-    if (value.size() != 9) return;
+  void setBars(const std::vector<double>& value, int layer = 0) { setBars(value.data(), value.size(), layer); }
+  void setBars(const double* value, std::size_t n, int layer = 0) {
+    if (n != 9) return;
     LayerSettings& t = layer == 1 ? static_cast<LayerSettings&>(b_) : a_;
     for (std::size_t k = 0; k < 9; k++) {
       const double v = std::isnan(value[k]) ? 0 : value[k];

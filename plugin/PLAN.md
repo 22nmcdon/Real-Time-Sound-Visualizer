@@ -2193,8 +2193,7 @@ new` while the hearing is stepped over a steady tone for 120 frames, at
 440 and 196 Hz: none, with the pitch it finds read back so that a run where
 the estimator never ran cannot pass, and the making's allocations as the
 proof the counter counts. The morph's walk and the host's parameters
-written as sliders still allocate, and stay where they are; that is the
-next of these.
+written as sliders still allocated; 5v is those.
 
 5u is the instrument's own picture where it still differed from the page's.
 
@@ -2236,6 +2235,42 @@ Mutation: 11, all caught, one only after a run was added for it - the
 aperiodicity gate taken away lived while the only aperiodic fixture was
 noise, which the estimator does not answer for at all; the tone in noise is
 that run.
+
+5v makes the morph's walk and the host's parameters allocate nothing on
+the audio thread. They were going to move to the message thread, and do
+not: in a host's offline render the message thread does not run in step
+with the audio, so a morph walked there would be rendered at the wrong
+moments, and the core's brain and generator would need every write handed
+across. What allocated was narrow. The panel already keeps each slider as
+a number, but every move wrote the browser's text of it - a UTF-16 string
+the size of the number - and read it back through the browser's
+sanitising, and the panel refreshes some handlers make did the same; the
+drawbars' handler gathered its nine into a fresh vector. A slider is now
+set by its number (`setRangeNumber`), sanitised as the text of that number
+would be - a finite number written as the browser writes it reads back as
+itself, and NaN and the infinities are not valid floats and become the
+slider's middle - and the refreshers and the host's parameters use it; the
+drawbars are read into an array. One walk over every slider the morph
+moves went from 14,375 allocations to none.
+
+Held by parity.py through `morph_alloc_cpp`: each of the 80 sliders the
+morph walks, alone and all at once, and the host's eight parameters moved
+across their ranges, every operator new counted - none, with each slider
+seen to move, and the making's allocations as the null. And the claim the
+change stands on, tested directly: for every slider, twelve awkward values
+- out of range either side, NaN, the infinities, minus nought, half a step,
+1e21 - set by number and by text, 1,116 in all, agree. The restore runs
+(the morph's hands among them) are the page's as before. Mutation: 9, all
+caught, one - the number left unclamped - only once the agreement check
+was there, since nothing the morph or a refresher hands it is ever out of
+range.
+
+What still allocates on the audio thread: a host parameter's move is kept
+as a hand for the saved state, and a block that changed anything encodes
+the whole state at its end for the page (`publish`) - the state's
+bookkeeping, which needs either the state double-buffered or its encoding
+moved to the message thread with the instrument's state copied across. And
+the picture's capture and walk, each frame. Those are the next of these.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

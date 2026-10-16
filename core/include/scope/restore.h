@@ -129,6 +129,20 @@ inline double rangeSanitise(const RangeSpec& r, std::string_view written) {
   return snapped == 0 ? 0 : snapped;  // no minus nought: the browser writes "0"
 }
 
+/* The same for a number, which is what the page's text is made from: a
+   finite number written as the browser writes it reads back as itself, and
+   anything else - NaN, an infinity - is not a valid float and becomes the
+   slider's middle. So no text need be made at all, which on the audio thread
+   is an allocation saved for every slider the morph's walk or a host
+   parameter moves. */
+inline double rangeSanitiseNumber(const RangeSpec& r, double v) {
+  if (!std::isfinite(v)) v = r.max < r.min ? r.min : r.min + (r.max - r.min) / 2;
+  v = std::fmax(r.min, std::fmin(r.max, v));
+  double snapped = r.min + std::floor((v - r.min) / r.step + 0.5) * r.step;
+  if (snapped > r.max) snapped -= r.step;
+  return snapped == 0 ? 0 : snapped;
+}
+
 // The controls: every slider and menu the page has, holding what the page's
 // control would hold - a slider's number, a menu's chosen value or "".
 class Controls {
@@ -142,6 +156,11 @@ class Controls {
     std::string ascii;
     for (const char16_t c : written) ascii += c < 0x80 ? static_cast<char>(c) : '\x7f';
     ranges_[id] = rangeSanitise(*r, ascii);
+  }
+  // A slider given a number rather than the text of one: the same value, and nothing made.
+  void setRangeNumber(const std::string& id, double v) {
+    const RangeSpec* r = rangeSpec(id);
+    ranges_.find(id)->second = rangeSanitiseNumber(*r, v);
   }
   void setSelect(const std::string& id, const std::u16string& written) {
     const SelectSpec* s = selectSpec(id);
@@ -564,12 +583,15 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
   }
 }
 
-// The panel's refreshers: the sliders written back from the state they show.
+/* The panel's refreshers: the sliders written back from the state they show.
+   By number rather than by the text of it, which comes to the same value
+   (setRangeNumber) and makes nothing, since a slider's handler - the morph's
+   walk, a host parameter - calls these on the audio thread. */
 inline void syncCrossPanel(Brain& b) {
-  b.panel.setRange("crossX", toU16(jsNumberToString(jsMathRound(b.cross.x * 100))));
-  b.panel.setRange("crossY", toU16(jsNumberToString(jsMathRound(b.cross.y * 100))));
-  b.panel.setRange("crossDecay", toU16(jsNumberToString(b.cross.decayMs)));
-  b.panel.setRange("crossLevel", toU16(jsNumberToString(jsMathRound(b.cross.level * 100))));
+  b.panel.setRangeNumber("crossX", jsMathRound(b.cross.x * 100));
+  b.panel.setRangeNumber("crossY", jsMathRound(b.cross.y * 100));
+  b.panel.setRangeNumber("crossDecay", b.cross.decayMs);
+  b.panel.setRangeNumber("crossLevel", jsMathRound(b.cross.level * 100));
 }
 /* planeEditsB, planeTarget: which layer's plane the section's controls are -
    B's while B has its own and is the layer on the panel, A's otherwise. */
@@ -584,20 +606,20 @@ inline std::string planeSide(const Brain& b, const Keyboard& keys) {
 }
 inline void planeBFollow(Brain& b) { static_cast<Brain::PlaneShape&>(b.planeB) = b.plane; }
 inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
-  const auto pct = [](double v) { return toU16(jsNumberToString(jsMathRound(v * 100))); };
+  const auto pct = [](double v) { return jsMathRound(v * 100); };
   const auto n = [](double v) { return toU16(jsNumberToString(v)); };
   b.planeShown = planeSide(b, keys);
   const Brain::PlaneShape& p = planeTarget(b, keys);
-  b.panel.setRange("planeTurn", pct(b.planeB.turn));
+  b.panel.setRangeNumber("planeTurn", pct(b.planeB.turn));
   b.panel.setSelect("planeMirror", n(p.mirror));
   b.panel.setSelect("planeLimit", n(p.limit));
-  b.panel.setRange("planeRadius", pct(p.radius));
-  b.panel.setRange("planeTwist", pct(p.twist));
+  b.panel.setRangeNumber("planeRadius", pct(p.radius));
+  b.panel.setRangeNumber("planeTwist", pct(p.twist));
   b.panel.setSelect("planeKaleido", n(p.kaleido));
   b.panel.setSelect("planeSnap", n(p.snap));
-  b.panel.setRange("planeScaleX", pct(p.scaleX));
-  b.panel.setRange("planeScaleY", pct(p.scaleY));
-  b.panel.setRange("planeShear", pct(p.shear));
+  b.panel.setRangeNumber("planeScaleX", pct(p.scaleX));
+  b.panel.setRangeNumber("planeScaleY", pct(p.scaleY));
+  b.panel.setRangeNumber("planeShear", pct(p.shear));
 }
 // A's echo's time in force, or B's own.
 inline double delayTimeMs(const Brain& b, const Brain::EchoState& e) {
@@ -617,17 +639,16 @@ inline Brain::EchoState& echoTarget(Brain& b, const Keyboard& keys) {
 }
 // The time a synced echo shows is the tempo's, and its slider stands still.
 inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
-  const auto n = [](double v) { return toU16(jsNumberToString(v)); };
   b.echoShown = planeSide(b, keys);
   const Brain::EchoState& e = echoTarget(b, keys);
-  b.panel.setRange("delayMix", n(jsMathRound(e.mix * 100)));
-  b.panel.setRange("delayMs", n(!e.sync.empty() ? jsMathRound(delayTimeMs(b, e)) : e.ms));
-  b.panel.setRange("delayFeedback", n(jsMathRound(e.feedback * 100)));
-  b.panel.setRange("chorusMix", n(jsMathRound(e.chorus * 100)));
-  b.panel.setRange("chorusRate", n(jsMathRound(e.rate * 100)));
-  b.panel.setRange("chorusDepth", n(jsMathRound(e.depthMs * 10)));
-  b.panel.setRange("chorusTime", n(jsMathRound(e.centreMs * 10)));
-  b.panel.setRange("chorusFeedback", n(jsMathRound(e.chorusFeedback * 100)));
+  b.panel.setRangeNumber("delayMix", jsMathRound(e.mix * 100));
+  b.panel.setRangeNumber("delayMs", !e.sync.empty() ? jsMathRound(delayTimeMs(b, e)) : e.ms);
+  b.panel.setRangeNumber("delayFeedback", jsMathRound(e.feedback * 100));
+  b.panel.setRangeNumber("chorusMix", jsMathRound(e.chorus * 100));
+  b.panel.setRangeNumber("chorusRate", jsMathRound(e.rate * 100));
+  b.panel.setRangeNumber("chorusDepth", jsMathRound(e.depthMs * 10));
+  b.panel.setRangeNumber("chorusTime", jsMathRound(e.centreMs * 10));
+  b.panel.setRangeNumber("chorusFeedback", jsMathRound(e.chorusFeedback * 100));
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
@@ -717,12 +738,12 @@ inline bool clockFrame(Brain& b, Generator& gen, double now) {
 // setTempo, with the slider it writes.
 inline void setTempo(Brain& b, double bpm, double at) {
   b.clock.setTempo(bpm, at);
-  b.panel.setRange("tempo", toU16(jsNumberToString(b.clock.set)));
+  b.panel.setRangeNumber("tempo", b.clock.set);
 }
 // clockTap, with the slider a tap's tempo writes.
 inline void tapTempo(Brain& b, double at) {
   b.clock.tap(at);
-  b.panel.setRange("tempo", toU16(jsNumberToString(b.clock.set)));
+  b.panel.setRangeNumber("tempo", b.clock.set);
 }
 
 // cycleSend(true): every slot's tables, to the generator - the drawn cycle
@@ -1459,9 +1480,11 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "crossDecay") { b.cross.decayMs = v; syncCrossings(b, gen); }
   else if (id == "crossLevel") { b.cross.level = v / 100; syncCrossings(b, gen); }
   else if (id.size() == 4 && id.compare(0, 3, "bar") == 0) {
-    std::vector<double> bars;
-    for (int k = 0; k < 9; k++) bars.push_back(b.panel.range("bar" + std::to_string(k)));
-    gen.setBars(bars, layer);
+    // The nine read into an array and handed over as one, nothing made: the morph walks them.
+    static constexpr const char* barIds[] { "bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8" };
+    std::array<double, 9> bars {};
+    for (std::size_t k = 0; k < 9; k++) bars[k] = b.panel.range(barIds[k]);
+    gen.setBars(bars.data(), bars.size(), layer);
   }
   else if (id == "planeRadius" || id == "planeTwist" || id == "planeScaleX" || id == "planeScaleY" || id == "planeShear") {
     Brain::PlaneShape& p = planeTarget(b, keys);
@@ -1516,6 +1539,13 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
 inline void moveSlider(const std::string& id, std::u16string written, Brain& b, Generator& gen, Keyboard& keys,
                        std::vector<Lfo>& lfos) {
   b.panel.setRange(id, std::move(written));
+  sliderInput(id, b, gen, keys, lfos);
+}
+// And to a number, as a host parameter moves it: the slider's value as the
+// text of that number would leave it, with no text made.
+inline void moveSliderTo(const std::string& id, double value, Brain& b, Generator& gen, Keyboard& keys,
+                         std::vector<Lfo>& lfos) {
+  b.panel.setRangeNumber(id, value);
   sliderInput(id, b, gen, keys, lfos);
 }
 
@@ -1806,7 +1836,8 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
     if (va == vb) continue;
     const double want = id == "freq" && va > 0 && vb > 0 ? va * std::pow(vb / va, t) : va + (vb - va) * t;
     const double before = b.panel.range(id);
-    b.panel.setRange(id, toU16(jsNumberToString(want)));
+    // The page writes String(want) into the slider; the number is what that text reads back as.
+    b.panel.setRangeNumber(id, want);
     if (b.panel.range(id) != before) sliderInput(id, b, gen, keys, lfos);
   }
 }

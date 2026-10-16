@@ -269,11 +269,11 @@ class Instrument {
     brain_->clock.setNow(nowMs_);
     if (transport) brain_->clock.host(transport->bpm, transport->ppq, transport->playing, nowMs_);
     clockFrame(*brain_, *core_, nowMs_);
-    /* The host's parameters, each as a hand on its slider: the value written
-       as the browser would hold it, the slider's handler run. Which
-       allocates, as the morph's walk does, and moves with it to the message
-       thread (PLAN.md, stage 2). */
-    for (std::size_t i = 0; i < sliderCount; ++i) moveTo(sliders[i].id, jsToString(Json::number(sliders[i].value)), true);
+    /* The host's parameters, each as a hand on its slider: the slider set by
+       the number, as the text of it would set it, and its handler run, all
+       without allocating (5v). Keeping the hand for the state still does, as
+       the state's publishing at the block's end does (PLAN.md, 5v). */
+    for (std::size_t i = 0; i < sliderCount; ++i) moveToNumber(sliders[i].id, sliders[i].value);
     /* The level over the last of the picture, the page's screen, as the frame
        before this one left it. The page's window is its fetch, which follows
        the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
@@ -312,8 +312,7 @@ class Instrument {
        capture, and the photocell and the picture's sources stepped from the
        grid the last frame left, before the matrix reads them - with no
        limiter to read, the output being the owner's. Its capture and its
-       walk allocate as they go, a known cost on this thread like the
-       hearing's, until the brain's work moves off it (PLAN.md, stage 2). */
+       walk allocate as they go, a known cost on this thread (PLAN.md, 5v). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
     if (pictureFrame) pictureRun_->before(*matrix_, pictureSource_, 0);
     // A controller the keyboard learned last block is a source now, and its routings are heard.
@@ -323,11 +322,11 @@ class Instrument {
     matrix_->setStrikes(keyboard_->strikes());
     matrix_->frame(nowMs_);
     endDue(brain_->notesOut.pluckOffs, nowMs_, midiOut_.get());
-    /* After the matrix, so a source on the fader is already counted. A walk
-       moves sliders and fires their handlers, which allocate (a slider's
-       value is the text the browser would hold): not yet fit for an audio
-       thread, and the morph's place is the message thread once there is one
-       to hand it to (PLAN.md, stage 2). */
+    /* After the matrix, so a source on the fader is already counted. The walk
+       moves sliders by number and fires their handlers, none of which
+       allocates (5v). It stays here, on the audio thread, rather than going
+       to the message thread: here it moves in step with the audio, live or
+       in a host's offline render, where the message thread does not. */
     morphStep(*brain_, *core_, *keyboard_, lfos_);
     // The zoom made again from what the matrix wrote, and the frame's deposits, as the page draws after its matrix.
     pictureRun_->afterMatrix();
@@ -504,8 +503,19 @@ class Instrument {
  private:
   // A slider moved, by the host's parameter or the page, and remembered as
   // moved since the setup was loaded.
+  /* A host parameter's move: the slider moved by the number, with no text
+     made, which is the same value the text would have left (5v). Then kept
+     as a hand, which still allocates - the state's bookkeeping, on this
+     thread with the state's publishing (PLAN.md, 5v). */
+  void moveToNumber(const std::string& id, double value) {
+    scope::moveSliderTo(id, value, *brain_, *core_, *keyboard_, lfos_);
+    keepSlider(id, true);
+  }
   void moveTo(const std::string& id, const std::u16string& text, bool fromHost) {
     scope::moveSlider(id, text, *brain_, *core_, *keyboard_, lfos_);
+    keepSlider(id, fromHost);
+  }
+  void keepSlider(const std::string& id, bool fromHost) {
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("s"))); hand.a.push_back(Json::string(std::string_view(id)));
     hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->panel.range(id)))));

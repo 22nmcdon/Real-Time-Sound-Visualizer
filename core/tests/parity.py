@@ -2470,6 +2470,24 @@ for hz in (440, 196):
           stepped == 0 and made > 0 and abs(pitch - math.log2(hz / 261.6256) / 2) < 1e-5,
           "%d made, %d stepped, pitch %.6f" % (made, stepped, pitch))
 
+# And the morph's walk and the host's parameters (5v), which the plugin also
+# runs on the audio thread: every slider the morph walks, alone and all at
+# once, and the host's eight, moved across their ranges - nothing allocated,
+# and each line's slider seen to move, so a walk that moved nothing cannot
+# pass. The making's allocations are the null.
+mexe = build("morph_alloc_cpp")
+mrows = [l.split() for l in subprocess.run([mexe], check=True, capture_output=True, text=True).stdout.strip().split("\n")]
+made = int(mrows[0][1])
+agree, tried = int(mrows[-1][1]), int(mrows[-1][2])
+walked = mrows[1:-1]
+check("a slider set by a number holds what the text of that number would leave, for every slider and %d awkward values" % tried,
+      agree == tried and tried > 1000, "%d of %d agree" % (agree, tried))
+spent = [r[0] for r in walked if int(r[1]) != 0]
+still = [r[0] for r in walked if float(r[2]) == 0]
+check("the morph's walk over each of its %d sliders, all of them together, and the host's eight parameters allocate nothing"
+      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 89 and walked[-9][0] == "all",
+      "%d made; allocating: %s; unmoved: %s" % (made, spent[:4], still[:4]))
+
 print("\n--- the hearing ---")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)
 # The page's hearing - a window of the sound analysed once a frame into a
