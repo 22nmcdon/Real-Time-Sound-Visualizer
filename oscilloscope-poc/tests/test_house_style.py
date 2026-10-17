@@ -62,6 +62,27 @@ class NoLooseColour(unittest.TestCase):
                 f"{token} is one of the five and has to stay a colour",
             )
 
+    def test_the_right_channel_is_a_lane_ink_not_a_meaning(self):
+        """The right channel in the page's second lane ink, and its key with it.
+
+        It was the accent doing work, which is the trigger line's own colour
+        here, so the right channel and the level it was compared against
+        were drawn in one ink. Read from the source rather than by importing
+        the renderer, which needs pyqtgraph and this check does not.
+        """
+        import branding as house
+
+        found = re.search(r"^TRACE_RIGHT = house\.(\w+)$", (ROOT / "renderer.py").read_text(), re.M)
+        self.assertIsNotNone(found, "TRACE_RIGHT is no longer one token")
+        ink = getattr(house, found.group(1))
+        self.assertEqual(ink, house.CH2, "the right channel is lane two's ink on both builds")
+        meanings = {"BLUSH": house.BLUSH, "BLUSH_DEEP": house.BLUSH_DEEP, "GOLD": house.GOLD,
+                    "SAGE": house.SAGE, "RUST": house.RUST, "UNRESOLVED": house.UNRESOLVED}
+        for name, value in meanings.items():
+            self.assertNotEqual(ink, value, f"the right channel is drawn in {name}, which means something here")
+        self.assertTrue('self._legend(render.TRACE_RIGHT, "right")' in (ROOT / "main_window.py").read_text(),
+                        "the legend's swatch is not the trace's own ink")
+
 
 def qt_available():
     """Whether there is a Qt to open a window with at all.

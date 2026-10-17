@@ -99,7 +99,18 @@ def main(argv):
         if want and name not in want:
             continue
         print("\n=== %s — %s ===" % (name, blurb), flush=True)
-        if subprocess.run(cmd, cwd=HERE).returncode != 0:
+        # A printed FAIL is a failure whatever the exit code. Two suites
+        # printed theirs and exited 0, and this said "everything passes" over
+        # them for the whole of 5m to 5v (README). Read as it streams, so a
+        # long suite still shows its progress.
+        proc = subprocess.Popen(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, bufsize=1)
+        printed_fail = False
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            if line.lstrip().startswith("FAIL "): printed_fail = True
+        if proc.wait() != 0 or printed_fail:
             failed.append(name)
 
     print()

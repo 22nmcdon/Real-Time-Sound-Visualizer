@@ -4251,9 +4251,25 @@ fallback is not a parse error; the declaration becomes invalid at computed
 time and the property falls back to its initial value, so the overlay that
 should tint the page while a file is dragged over it is transparent, with
 only its dashed border showing. No console line, no failing check, and the
-border makes it look finished. `DESIGN.md` lists it with the other places
-the page departs from the brand, and `tests/designtest.py` now fails on any
-`var()` in the stylesheet that nothing defines, with this one allowed by name
-until it is fixed. It reads the stylesheet only: the script builds
-`var(--ch' + n + ')` by concatenation, which a pattern over the whole file
-takes for a token called `--ch`.
+border makes it look finished. The token is defined now, and
+`tests/designtest.py` fails on any `var()` in the stylesheet that nothing
+defines. It reads the stylesheet only: the script builds `var(--ch' + n + ')`
+by concatenation, which a pattern over the whole file takes for a token
+called `--ch`.
+
+**A suite that prints FAIL and exits 0 has not failed.** `sources.py` and
+`regress.py` were the two of seventy that printed their own ` FAIL ` and
+ended without an exit code, so `run.py` said *everything passes* over them
+and a count of `PASS` lines never saw them either. From 5m, when the
+instrument became the site's default, to 5v, both failed on every run and
+nobody knew. Most of what they caught was a probe asking the wrong question
+- `state.source.kind`, which is `"host"` for the instrument whatever it
+draws, where `playingKind()` asks what is playing on either brain - but
+under it were three real faults on the live site: a refused microphone left
+the instrument drawing an input it never got, with the rack or tone it
+replaced let go; a rack let go for the tone left its legend naming the
+rack's lanes; and the generator's section sat over a rack of stems,
+steering a generator nobody could hear. Both scripts now print in the
+shared format and raise `SystemExit(1)` on a failure, and `run.py` counts a
+printed `FAIL` as a failure whatever the exit code, so a third cannot hide
+the same way.

@@ -15,7 +15,11 @@ the table, and then it is believed. So this holds it to the source:
   paints with is not a decision any more;
 - every var() the stylesheet uses is defined somewhere, because an undefined
   one is not an error: the property quietly takes its initial value. That is
-  how the drop hint lost its wash.
+  how the drop hint lost its wash;
+- every rgba() outside :root is the charcoal shadow, since a colour spelled
+  where it is used will not follow a light, and the house's shadows are ink;
+- a radius outside the house's three - 1px, 20-30px, 50% - is on one of the
+  instrument's own marks, named below, and never on the chrome.
 
 No browser: all three are text files. Each check is first fed a known-wrong
 input below and has to report it, so none of them is believed before it has
@@ -67,11 +71,39 @@ def undefined_vars(html):
     defined |= set(re.findall(r"setProperty\(\s*[\"']--([a-z0-9-]+)", html))
     return used - defined
 
-# Departures DESIGN.md already lists in Part three, allowed here so that the
-# check can hold everything else today. An allowance is not a requirement:
-# once one is defined, the check below asks for it to come off this list and
-# out of Part three, so neither goes on describing a bug that has gone.
-KNOWN_UNDEFINED = {"wash-strong"}   # Part three, row 1: the drop hint
+def stylesheet_rules(html):
+    # Innermost rules only: a selector cannot hold a brace, so an @media
+    # block's own opening never matches and the rules inside it do. After the
+    # tag, or the first rule's selector is "<style> :root".
+    css = html[html.index("<style>") + len("<style>"):html.index("</style>")]
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    return [(m.group(1).strip(), m.group(2)) for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css)]
+
+def loose_rgba(html):
+    out = []
+    for selector, body in stylesheet_rules(html):
+        if selector == ":root": continue   # tokens are where a colour is allowed to be spelled
+        for m in re.finditer(r"rgba?\(([^)]*)\)", body):
+            if not re.match(r"\s*36\s*,\s*31\s*,\s*29\s*,", m.group(1)):
+                out.append("%s: %s" % (selector, m.group(0)))
+    return out
+
+BRAND_RADII = {"1px", "20px", "30px", "50%"}
+# The instrument drawn on the paper, which the house leaves to the product as
+# the guitar app rounds its fretboard (DESIGN.md, section 5): a piano key's
+# rounded foot, a source's meter, and the modulation lane's marks. Chrome is
+# not here, and a new entry wants a reason in DESIGN.md.
+INSTRUMENT_MARKS = {".key", ".src-meter", ".mod-lane", ".lane-now", ".lane-cap"}
+
+def off_brand_radii(html):
+    out = []
+    for selector, body in stylesheet_rules(html):
+        for m in re.finditer(r"border-radius:\s*([^;]+);", body):
+            value = m.group(1).strip()
+            if all(part in BRAND_RADII or part == "0" for part in value.split()): continue
+            if selector in INSTRUMENT_MARKS: continue
+            out.append("%s: %s" % (selector, value))
+    return out
 
 def layer_of(text):
     return "brand" if text.startswith("Brand") else "product" if text.startswith("Product") else None
@@ -89,8 +121,9 @@ def problems(page, poc, rows):
             out.append("--%s has no side of the line (%r)" % (name, layer))
         if name not in page and name not in poc:
             out.append("--%s is in DESIGN.md and in neither build" % name)
-        if kind == "brand" and name in poc and poc[name] != value:
-            out.append("--%s is brand, %s in DESIGN.md and %s in branding.py" % (name, value, poc[name]))
+        # Brand or product: a colour both builds define is the same colour in both.
+        if name in poc and poc[name] != value:
+            out.append("--%s is %s, %s in DESIGN.md and %s in branding.py" % (name, kind, value, poc[name]))
         if kind == "product" and name not in page:
             out.append("--%s is product and the page does not paint with it" % name)
     return out
@@ -123,7 +156,7 @@ caught("a page colour changed and the doc left alone",
 caught("a row with no side of the line",
        page, poc, {**rows, "sage": (rows["sage"][0], "Shared")}, "--sage has no side")
 caught("a row left behind after its colour went",
-       {k: v for k, v in page.items() if k != "ch5"}, poc, rows, "--ch5 is in DESIGN.md and in neither")
+       {k: v for k, v in page.items() if k != "ch5"}, poc, rows, "--ch5 is product and the page does not")
 caught("a brand colour that has drifted from the desktop build",
        page, {**poc, "approach": "#8fae6e"}, rows, "--approach is brand")
 caught("a product colour nobody paints with",
@@ -132,9 +165,20 @@ caught("a product row for a colour only the desktop build has",
        page, {**poc, "plum": "#72245e"}, {**rows, "plum": ("#72245e", "Product")},
        "--plum is product and the page does not")
 
+caught("a lane ink the desktop build has drifted from",
+       page, {**poc, "ch2": "#c07f79"}, rows, "--ch2 is product")
+
 probe = "<style>\n.a { color: var(--nowhere); }\n.b { --here: 1; width: var(--here); }\n</style>"
 check("caught: a var() of a token nobody defined", undefined_vars(probe) == {"nowhere"},
       repr(undefined_vars(probe)))
+probe = ("<style>\n:root { --w: rgba(217, 166, 160, 0.16); }\n.s { box-shadow: 0 1px 2px rgba(36, 31, 29, 0.1); }\n"
+         "@media (x) { .m { box-shadow: 0 1px 2px rgba(0,0,0,0.12); } }\n/* rgba(1,2,3,0.1) */\n</style>")
+check("caught: a black shadow inside @media, and not a token or a comment", loose_rgba(probe) == [".m: rgba(0,0,0,0.12)"],
+      repr(loose_rgba(probe)))
+probe = ("<style>\n.a { border-radius: 1px; }\n.b { border-radius: 6px; }\n.key { border-radius: 0 0 4px 4px; }\n"
+         "@media (x) { .c { border-radius: 0 0 4px 4px; } }\n.d { border-radius: 30px 30px 0 0; }\n</style>")
+check("caught: chrome radii outside the three, inside @media too, and not the instrument's",
+      off_brand_radii(probe) == [".b: 6px", ".c: 0 0 4px 4px"], repr(off_brand_radii(probe)))
 
 print("\n--- the document against the builds ---")
 found = problems(page, poc, rows)
@@ -146,12 +190,16 @@ check("the lane inks are product and the core palette is brand",
       and all(layer_of(rows[n][1]) == "brand" for n in
               ("cream", "cream-2", "paper", "charcoal", "text", "text-soft",
                "line", "blush", "blush-deep", "gold", "sage", "rust", "unresolved")))
-missing = undefined_vars(read("web", "scope.html"))
-check("every var() in the stylesheet is defined, apart from Part three's",
-      not (missing - KNOWN_UNDEFINED), ", ".join(sorted(missing - KNOWN_UNDEFINED)) or "")
-check("each allowance is still undefined, and still in Part three",
-      KNOWN_UNDEFINED <= missing and all("`--%s`" % k in md.split("# Part three")[1] for k in KNOWN_UNDEFINED),
-      "undefined now: " + (", ".join(sorted(missing)) or "none"))
+html = read("web", "scope.html")
+missing = undefined_vars(html)
+check("every var() in the stylesheet is defined", not missing, ", ".join(sorted(missing)))
+loose = loose_rgba(html)
+check("every rgba() outside :root is the charcoal shadow", not loose, "; ".join(loose))
+radii = off_brand_radii(html)
+check("every radius is the house's three, or one of the instrument's marks", not radii, "; ".join(radii))
+check("the instrument's marks are all still in the stylesheet",
+      INSTRUMENT_MARKS <= {s for s, _ in stylesheet_rules(html)},
+      ", ".join(sorted(INSTRUMENT_MARKS - {s for s, _ in stylesheet_rules(html)})))
 
 # Not a value check: DESIGN.md names the brand's source, and if that ever
 # changes the document should be read again, not just its tables.

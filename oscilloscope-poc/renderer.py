@@ -13,10 +13,11 @@ dock, and by the time you have looked down the signal has moved.  It is the
 argument the jazz page makes for putting guide tones on the keys rather than
 over the chart.
 
-The second is the right channel, which is the accent.  Two traces need
-telling apart and the house has exactly one way to say "this one, not that
-one".  It is the accent at rest rather than the accent doing work, because
-the right channel is not more important than the left - it is the other one.
+The second is the right channel, in the web page's second lane ink, slate.
+It used to be the accent, and the accent doing work - the trigger line's own
+colour, so the right channel and the level it was being compared against were
+one ink.  The page measured six lane inks against each other and the paper,
+and the right channel is the second of them on both builds now.
 
 Deliberately not rust.  A signal with no edge in it is silence or noise, not
 a fault, and nothing on screen calls the person in front of it wrong.
@@ -37,7 +38,7 @@ import branding as house
 # the rest of the surface.
 TRACE_LOCKED = house.CHARCOAL
 TRACE_FREE = house.UNRESOLVED
-TRACE_RIGHT = house.BLUSH_DEEP
+TRACE_RIGHT = house.CH2
 
 YT = "y-t"
 XY = "x-y"

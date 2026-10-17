@@ -9,8 +9,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Oscilloscope</title>
 
-<link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<!-- The webfonts are asked for by script, not written here with an href: a
+     stylesheet in the head blocks rendering until it arrives, and inside the
+     plugin the page is a webview that may have no route out, which waiting on
+     a font server paints no text at all. The house's rule, as the jazz and
+     guitar apps keep it (DESIGN.md). On the site the script promotes this at
+     once; inside the plugin it does not, and the page is set in the fallback
+     faces each stack names - Georgia and the system sans - which is the cost
+     until the plugin carries the fonts itself. -->
+<link id="webfonts"
+      data-href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
 
 <style>
 /* ---------------------------------------------------------------------------
@@ -37,6 +45,14 @@
   --sage:       #6f7f63;
   --rust:       #a4553f;
   --unresolved: #b6afa4;
+
+  /* The accent laid over something - hover, then selection - as the house
+     spells it. Tokens rather than an rgba() where they are used, so a second
+     light would carry them; the page has none, but the drop hint used
+     --wash-strong for a long time without it being defined anywhere, and drew
+     no fill at all (web/README.md). */
+  --wash:        rgba(217, 166, 160, 0.16);
+  --wash-strong: rgba(217, 166, 160, 0.26);
 
   /* Two channels need two inks, and the house had one. CH2 borrows the slate
      accent from solo practice's palette - already in the family, and the only
@@ -68,6 +84,12 @@
   --sans:   "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:   ui-monospace, Menlo, Consolas, monospace;
 
+  /* Wider than the house's 1080px, and a preference rather than a need:
+     the screen is what is being read, and on a wide window it is a tenth
+     bigger for it. Not the Bench's fit - fittest.py passes with this at
+     1080 too - so the cost is only that this is the one surface in the house
+     wider than the others, and 1080 is a one-line change if that matters
+     more. */
   --max: 1180px;
   --gutter: 24px;
 }
@@ -159,7 +181,11 @@ button { font-family: inherit; cursor: pointer; }
 .switch button[aria-checked="true"] { background: var(--charcoal); color: var(--cream); }
 .cycle-slots button { padding: 2px 7px; font-size: 11.5px; }
 
-/* Filled: the primary action of a section, at most one per section. */
+/* A state you are in, so a pill, as the house sets every state - and the
+   one pill that is filled, because a running scope is the thing that has to
+   be seen from across the room. Stopped, it is outlined in rust like the
+   house's armed button. The house's filled buttons are actions and square;
+   this is neither quite, and the exception is this one button. */
 .run-btn {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--charcoal); color: var(--cream);
@@ -173,7 +199,7 @@ button { font-family: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) {
   .run-btn[data-armed="true"] .dot { animation: armed 1.6s ease-in-out infinite; }
 }
-@keyframes armed { 50% { opacity: 0.2; } }
+@keyframes armed { 50% { opacity: 0.25; } }
 
 /* Underlined: no box at all. A pressed state thickens the rule. */
 .link-btn {
@@ -244,7 +270,7 @@ select, input[type="number"] {
 }
 .lane:last-child { border-bottom: 0; }
 .lane-swatch {
-  width: 10px; height: 10px; border-radius: 5px; flex: 0 0 auto;
+  width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto;
 }
 .lane-name {
   flex: 1 1 auto; min-width: 0; font-family: var(--sans); font-size: 12.5px;
@@ -360,7 +386,7 @@ select, input[type="number"] {
 .keys-hint { font-size: 12px; color: var(--text-soft); }
 .keys-hint kbd {
   font-family: var(--mono); font-size: 11px; border: 1px solid var(--line);
-  border-radius: 3px; padding: 0 4px; background: var(--paper);
+  border-radius: 1px; padding: 0 4px; background: var(--paper);
 }
 .keys-bar .close-btn { margin-left: auto; }
 .keys-bed {
@@ -466,7 +492,7 @@ dialog::backdrop { background: rgba(36, 31, 29, 0.42); }
 .preset-heading:first-child { margin-top: 0; }
 .preset-card {
   display: flex; flex-direction: column; gap: 5px; text-align: left; background: var(--paper);
-  border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px 11px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 1px; padding: 10px 12px 11px; cursor: pointer;
   font-family: var(--sans); color: var(--charcoal);
 }
 .preset-card:hover { border-color: var(--blush); }
@@ -579,7 +605,7 @@ dialog[open] { display: flex; flex-direction: column; }
 .photo-reticle {
   position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px;
   border: 1.5px solid var(--ch6); border-radius: 50%; z-index: 2;
-  background: rgba(166, 85, 45, calc(var(--lit, 0) * 0.55));
+  background: color-mix(in srgb, var(--ch6) calc(var(--lit, 0) * 55%), transparent);
   cursor: grab; touch-action: none;
 }
 .photo-reticle[hidden] { display: none; }
@@ -652,26 +678,26 @@ body[data-view="bench"] .dock  { order: 3; }
 .bench-search { position: relative; }
 .bench-search input {
   width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px;
-  padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 1px;
   background: var(--paper); color: var(--charcoal);
 }
 /* Over the body rather than in the rail, so a long list pushes nothing. */
 .bench-results {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; width: 340px;
   max-height: 60vh; overflow-y: auto; background: var(--paper);
-  border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  border: 1px solid var(--line); border-radius: 1px; box-shadow: 0 6px 24px rgba(36, 31, 29, 0.12);
   padding: 4px;
 }
 .bench-results button {
   display: block; width: 100%; text-align: left; background: none; border: 0;
-  padding: 6px 8px; border-radius: 4px; cursor: pointer; color: var(--charcoal);
+  padding: 6px 8px; border-radius: 1px; cursor: pointer; color: var(--charcoal);
   font-family: var(--sans); font-size: 12.5px;
 }
 .bench-results button[aria-selected="true"], .bench-results button:hover { background: var(--cream-2); }
 .bench-results .crumb { display: block; font-size: 10.5px; color: var(--text-soft); }
 .bench-results .none { padding: 6px 8px; font-size: 12px; color: var(--text-soft); margin: 0; }
 /* Where a search landed, for a moment. */
-.search-hit { outline: 2px solid var(--blush-deep); outline-offset: 3px; border-radius: 3px;
+.search-hit { outline: 2px solid var(--blush-deep); outline-offset: 3px; border-radius: 1px;
               transition: outline-color 0.6s; }
 .bench-rail button {
   background: none; border: none; border-left: 2px solid transparent;
@@ -3847,8 +3873,9 @@ body[data-view="bench"] .dock  { order: 3; }
 
       <li><b>Free run is not a fault</b>
         <span>When nothing crosses the level the trace goes grey and keeps moving. A signal
-        with no edge in it is silence, not an error. The only thing here painted in rust is
-        clipping.</span></li>
+        with no edge in it is silence, not an error. Rust is kept for what wants your
+        attention - clipping, a level over, an input that would not open, a scope stopped,
+        recording or muted - and free run is never one of them.</span></li>
 
       <li><b>Autoset</b>
         <span>Reads the signal and picks a timebase, a level and a vertical scale that fit it.</span></li>
@@ -4386,6 +4413,14 @@ body[data-view="bench"] .dock  { order: 3; }
 
 <script>
 "use strict";
+
+/* The webfonts, on the site and never inside the plugin (the head says why).
+   rel is set with the href and never before it: a stylesheet link with no
+   href counts as one still on its way, and holds up every script after it. */
+if (!window.__JUCE__) {
+  const webfonts = document.getElementById("webfonts");
+  if (webfonts) { webfonts.href = webfonts.dataset.href; webfonts.rel = "stylesheet"; }
+}
 
 /* ---------------------------------------------------------------------------
    audio in -> trigger -> screen
@@ -18355,6 +18390,21 @@ function genSettings(layer) {
   return layer === 1 ? lane.core.toneB : lane.core.tone;
 }
 
+/* Whether the generator's section has a generator to steer: one that is
+   heard or drawn. genSettings answers where the generator lives, which for
+   the page's own brain is the same question - a microphone or a rack without
+   a synth lane has no generator at all. The instrument always has one, and
+   keeps running it for the oscillators every modulation reads, so its
+   settings always answer; but over a rack without its lane nothing of it is
+   heard, and drawing its input it hears the input. So it is asked what it is
+   playing, as the page's brain is asked what it holds, and the section no
+   longer sat over a rack of stems steering a generator nobody could hear. */
+function generatorSteered() {
+  const source = state.source;
+  if (source && source.kind === "host" && playingKind(source) !== "tone") return !!genLane();
+  return !!genSettings();
+}
+
 function genSet(field, value, layer) {
   const source = state.source;
   if (source && source.settings) { source.set(field, value, layer); return true; }
@@ -22410,7 +22460,7 @@ function showSource(pending) {
      as "the source is the test tone": a rack with a synth lane in it has one,
      and its controls have to reach it or the lane is a thing you can put on
      the screen and not steer. */
-  if (genSettings()) delete el.toneRows.dataset.off;
+  if (generatorSteered()) delete el.toneRows.dataset.off;
   else el.toneRows.dataset.off = "1";
   /* The oscillators stay, whatever the source is: an LFO on the filter cutoff,
      the rotation or the zoom is the same patch whether the signal came from
@@ -22568,6 +22618,64 @@ function hostDraw(input, fromState) {
   else source.drawsInput = input;
   showSource();
   showGenerator();
+  /* The lanes change with what is drawn - a rack's three or four, a pair -
+     so their rows and the legend are built again, as toTone builds them for
+     the page's own generator. Without it a rack let go for the tone left the
+     legend naming the rack's lanes over a pair. */
+  buildLaneRows();
+  buildLaneList();
+}
+
+/* Mic on the site's instrument: the stream is opened first and the
+   instrument told to draw it only once it is open, as toMic opens a new
+   source before stopping the old one. It used to switch first and open after
+   (syncGenInput), and a refused microphone then drew nothing: the rack or the
+   tone it replaced had been let go, the panel sat on Mic, and the credit said
+   only that the input could not be opened, every press after that included.
+   Now a refusal leaves whatever was playing playing, and the next press asks
+   again. Inside the plugin the input is the host's bus, which is always there
+   to be drawn, and so is a stream already open for the generator's input.
+
+   The press reaches the instrument from here rather than from hostClick,
+   which sends a hand the moment it lands. Sent then, it had the instrument in
+   the worklet drawing an input that never came while the page, refused,
+   still showed the tone: a scope reading silence under a credit saying the
+   tone still worked. Inside the plugin hostClick still sends it. */
+async function hostToMic() {
+  const source = state.source;
+  if (!source.setInput || genInput.stream || genInput.opening) {
+    if (source.setInput) hostSendClick("srcMic");
+    hostDraw(true);
+    hostSplit(state.micBands);
+    return;
+  }
+  const build = ++rackBuild;
+  showSource("mic");
+  el.status.textContent = "asking";
+  el.status.dataset.state = "loading";
+  const device = el.device.value || undefined;
+  let stream;
+  try {
+    stream = await openLiveStream(device);
+  } catch (error) {
+    if (build !== rackBuild || state.source !== source) return;
+    el.status.textContent = "no mic";
+    el.status.dataset.state = "failed";
+    showSource();
+    el.credit.textContent = micRefusal(error);
+    return;
+  }
+  // Something else was chosen while the browser asked, so the stream is not what is wanted now.
+  if (build !== rackBuild || state.source !== source) { releaseLiveStream(device); return; }
+  // Handed to genInput, which holds it from here and releases it when it is no longer wanted.
+  genInput.stream = stream;
+  genInput.device = device;
+  genInput.fault = null;
+  hostSendClick("srcMic");
+  hostDraw(true);
+  hostSplit(state.micBands);
+  syncGenInput();
+  await listDevices();
 }
 
 function toTone() {
@@ -22780,8 +22888,13 @@ function hostControl(event) {
 
 function hostClick(event) {
   const button = event.target && event.target.closest ? event.target.closest("button[id]") : null;
-  if (!hostSync.on || hostSync.applying || !button || !HOST_CLICKS.has(button.id)) return;
-  scopeHost.call("scopeClick", button.id);
+  if (!button || !HOST_CLICKS.has(button.id)) return;
+  // On the site Mic is sent by hostToMic, once there is a microphone to draw.
+  if (button.id === "srcMic" && state.source && state.source.setInput) return;
+  hostSendClick(button.id);
+}
+function hostSendClick(id) {
+  if (hostSync.on && !hostSync.applying) scopeHost.call("scopeClick", id);
 }
 
 /* The routings as they stand, each depth to its last digit: a setup code's
@@ -22920,11 +23033,16 @@ async function toMic(deviceId) {
     // credit is written after it, because `showSource` fills that in too and
     // what wants saying here is why the switch did not take.
     showSource();
-    el.credit.textContent = error && error.name === "NotAllowedError"
-      ? "microphone blocked — allow it in the address bar, then press Mic again"
-      : "no microphone available — " + (playingKind() === "tone"
-        ? "the test tone still works" : "what was playing still is");
+    el.credit.textContent = micRefusal(error);
   }
+}
+
+// Why a press of Mic did not take, and what to do about it: the page's brain and the instrument's say it alike.
+function micRefusal(error) {
+  return error && error.name === "NotAllowedError"
+    ? "microphone blocked — allow it in the address bar, then press Mic again"
+    : "no microphone available — " + (playingKind() === "tone"
+      ? "the test tone still works" : "what was playing still is");
 }
 
 /* Only after permission is granted does a browser hand over device labels, so
@@ -23185,7 +23303,7 @@ el.micBands.addEventListener("click", () => setMicShape(true));
 
 el.srcTone.addEventListener("click", toTone);
 el.srcMic.addEventListener("click", () => {
-  if (state.source.kind === "host") { rackBuild++; hostDraw(true); hostSplit(state.micBands); return; }
+  if (state.source.kind === "host") { hostToMic(); return; }
   showSource("mic");
   toMic(el.device.value || undefined);
 });

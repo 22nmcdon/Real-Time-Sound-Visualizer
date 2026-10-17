@@ -532,7 +532,7 @@ class MainWindow(QMainWindow):
         self._foot = house.Reflow(
             lead=[
                 self._legend(house.CHARCOAL, "left"),
-                self._legend(house.BLUSH_DEEP, "right"),
+                self._legend(render.TRACE_RIGHT, "right"),
                 self._legend(house.UNRESOLVED, "free run"),
             ],
             trail=[self._colophon()],

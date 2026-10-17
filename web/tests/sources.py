@@ -15,11 +15,20 @@ os.makedirs(SHOTS, exist_ok=True)
 
 import fixtures
 STEMS = fixtures.ensure()
+# Reported in the format the other suites use and failing the run, which this
+# did not do: it printed " FAIL " and exited 0 whatever happened, so neither
+# run.py nor a count of PASS lines saw anything, and from the day the
+# instrument became the site's default (5m) to 5v it failed on every run
+# unseen. What failed was real twice over - a refused microphone stranded
+# the instrument on an input it never got, and a rack let go left its legend
+# behind - and a probe the rest of the time: it asked state.source.kind,
+# which is "host" whatever the instrument draws, where playingKind() asks
+# what is playing on either brain.
 ok = True
 
 def check(name, cond, detail=""):
     global ok
-    print(("  ok  " if cond else " FAIL ") + name + (("  " + str(detail)) if detail else ""))
+    print(("  PASS  " if cond else "  FAIL  ") + name + (("   " + str(detail)) if detail else ""))
     if not cond: ok = False
 
 with sync_playwright() as pw:
@@ -65,11 +74,11 @@ with sync_playwright() as pw:
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(200)
     p.locator("#rackInput").set_input_files([f"{STEMS}/{n}.wav" for n in ("drums","bass","other")])
     p.wait_for_timeout(1800)
-    check("rack loaded", p.evaluate("state.source.kind") == "rack")
+    check("rack loaded", p.evaluate("playingKind()") == "rack")
     check("head says Stems", mark() == "STEMS", mark())
     check("three lanes", p.evaluate("laneCount()") == 3)
     p.locator("#srcTone").click(); p.wait_for_timeout(400)
-    check("tone loaded", p.evaluate("state.source.kind") == "tone")
+    check("tone loaded", p.evaluate("playingKind()") == "tone")
     check("tone editor is back", tone_visible())
     check("head says Test tone", mark() == "TEST TONE", mark())
     check("back to two lanes", p.evaluate("laneCount()") == 2)
@@ -78,7 +87,7 @@ with sync_playwright() as pw:
     # again - and a file added now goes in beside the three, not instead.
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(1800)
     check("Lanes brings the rack back as it was", p.evaluate("laneCount()") == 3
-          and p.evaluate("state.source.kind") == "rack")
+          and p.evaluate("playingKind()") == "rack")
     p.locator("#rackInput").set_input_files([f"{STEMS}/vocals.wav"])
     p.wait_for_timeout(1800)
     check("and a file added goes in beside them: four lanes", p.evaluate("laneCount()") == 4,
@@ -88,7 +97,7 @@ with sync_playwright() as pw:
     p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(200)
     p.locator("#fileInput").set_input_files(f"{STEMS}/other.wav")
     p.wait_for_timeout(1800)
-    check("file loaded", p.evaluate("state.source.kind") == "file")
+    check("file loaded", p.evaluate("playingKind()") == "file")
     check("two lanes, named L/R", p.evaluate("[laneName(0), laneName(1)]") == ["Left","Right"])
     check("rack rows put away", not rack_visible())
     p.locator("#srcTone").click(); p.wait_for_timeout(400)
@@ -101,7 +110,7 @@ with sync_playwright() as pw:
     p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(1800)
     p.locator("#srcMic").click(); p.wait_for_timeout(900)
     check("no mic in this container, so the rack's rows came back",
-          p.evaluate("state.source.kind") == "rack" and rack_visible() and not tone_visible())
+          p.evaluate("playingKind()") == "rack" and rack_visible() and not tone_visible())
     credit = p.locator("#credit").inner_text().lower()
     check("credit explains, without promising the test tone", "microphone" in credit
           and "test tone" not in credit, credit)
@@ -122,3 +131,4 @@ with sync_playwright() as pw:
     b.close()
 print()
 print("SOURCE SWITCHING", "PASS" if ok else "FAIL")
+raise SystemExit(0 if ok else 1)

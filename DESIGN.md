@@ -93,8 +93,7 @@ never bad news, rust is never good news, and unresolved is never a verdict.
 - **Shadows and backdrops are charcoal at low alpha** - `rgba(36, 31, 29, a)` - never black.
 - **The wash.** `--wash` and `--wash-strong` are the accent laid over something: hover,
   then selection. The mechanism is brand. The strong value has drifted across the family -
-  `0.26` in the jazz app and the desktop build, `0.3` in the guitar app - and the page here
-  does not define either (see Part three).
+  `0.26` in the jazz app, the desktop build and the page, `0.3` in the guitar app.
 
 ## 3. Lights and modes
 
@@ -128,8 +127,8 @@ Brand, all three apps:
 - Headings in the serif at 600; the script for a credit or a lede, never for a control.
 - **Webfonts are never render-blocking.** The `<link>` carries `data-href` and script
   promotes it when the page is served over the web. A webview that cannot reach the font
-  server and is waiting on a stylesheet paints no text at all. The page here does not yet
-  do this (Part three).
+  server and is waiting on a stylesheet paints no text at all. The page promotes it on the
+  site and never inside the plugin, as the guitar app does inside its own JUCE shell.
 
 The desktop build has to fake two of these, because Qt has neither `text-transform` nor
 `letter-spacing`: `small_caps()` in `branding.py` is the brand's small caps done by hand.
@@ -158,7 +157,9 @@ Brand, too:
 What the brand does not settle is the radius of the *instrument* drawn on the paper. The
 guitar app rounds its fretboard and its finger dots at 6-14px, because a neck is not a
 sheet of paper. By the same reasoning the radii of things drawn inside this app's screen
-are product. Its chrome is not, and Part three lists where it strays.
+are product. Its chrome is not. The marks that keep radii of their own are the piano key's
+rounded foot, a source's meter, and the modulation lane's span, now-mark and cap, and
+`designtest.py` names them, so a rounded corner anywhere else fails the suite.
 
 ## 6. Motion
 
@@ -217,7 +218,7 @@ ruling on it, and the traces are what is written. Two consequences follow, both 
 |---|---|
 | `--sage` | The trigger is locked; in tune; channels in phase. The run button's live dot. |
 | `--unresolved` | Free run. The trace goes this grey when nothing crosses the level, because a signal with no edge in it is not a fault. |
-| `--rust` | Clipping, a level over, a source that failed to start. |
+| `--rust` | Clipping, a level over, an input that would not open; and, as the house's armed, a scope stopped, recording or muted. A tuner's sharp or flat, which is "outside", never "wrong". |
 | `--gold` | Ready (the status chip), and the cursors. |
 | `--blush-deep` | The trigger line and its marker, the slider thumb, the selected tab: the accent doing work. |
 
@@ -314,7 +315,9 @@ user-facing documentation in the same voice, and it goes stale first.
 
 - **The desktop build.** `oscilloscope-poc/branding.py` is the brand's drop-in block
   translated into the one form Qt can read - brand, kept hex for hex with the jazz app.
-  `renderer.py` is product, and Part three lists where it departs from the page.
+  Below it, marked off, are the page's six lane inks - product, and equal to the page's.
+  `renderer.py` is product: ink for the left channel, slate for the right, the accent for
+  the trigger line, as on the page.
 - **The plugin.** Its interface is the page, served from JUCE's resource provider, so
   everything above applies unchanged. One brand rule matters more there than anywhere: a
   plugin window in a studio that is offline is exactly the webview the font rule is
@@ -322,24 +325,34 @@ user-facing documentation in the same voice, and it goes stale first.
 
 ---
 
-# Part three: where the oscilloscope disagrees with the brand
+# Part three: where the oscilloscope departs from the brand
 
-Found while writing this. None has been changed yet. Each says what the brand asks, what
-the page does, and which way it should probably go.
+Writing this document found eleven places where the page or the desktop build departed
+from the brand. Eight were fixed. Three stay, as decisions rather than oversights, and
+are written down here and where they are set, so that nobody fixes them back by accident.
 
-| # | Where | The brand says | Here | Probably |
-|---|---|---|---|---|
-| 1 | `.drop-hint` in `scope.html` | `--wash-strong` is a token | Used but never defined, so the drop overlay has no fill - only its dashed border shows | Define `--wash` and `--wash-strong` in `:root`. A bug, not a judgement. |
-| 2 | The webfont `<link>` at the top of `scope.html` | Never render-blocking; `data-href` promoted by script | A plain `rel="stylesheet" href` | Adopt the brand's pattern. Matters most in the plugin. |
-| 3 | `--max` | `1080px` | `1180px`, with no comment saying why | Keep the width - a screen wants it - and write down why where it is set, or come back to 1080. |
-| 4 | `@keyframes armed` | 50% at `opacity: 0.25` | `0.2` | Use 0.25. |
-| 5 | `.run-btn` | A filled button is square (1px); a pill is outlined | Filled *and* 30px | The run state is something you are in, so the pill is right and the comment calling it "Filled: the primary action" is wrong. Keep the shape and say it is a state. |
-| 6 | `.bench-results` | Shadows are charcoal-tinted | `rgba(0, 0, 0, 0.12)` | `rgba(36, 31, 29, 0.12)`. |
-| 7 | Radii in the chrome | `1px`, `20`-`30px`, `50%` | Also 2px (preset cards), 3px, 4px (search box, results) and 6px (results panel) | Bring the chrome back to the three. Radii inside the screen and the lanes are product and may stay. |
-| 8 | Rust's meaning | Rust is a problem | The cheat sheet says "the only thing here painted in rust is clipping", but rust also marks a failed source, a level over, a stopped run button, the record dot, a muted lane, a drawbar's brown and a negative correlation | Correct the cheat sheet line, and reconsider two uses that call something a fault when it is not one: a *stopped* scope (compare "Free run is not a fault") and a *muted* lane. |
-| 9 | The desktop build's right channel | One accent, one meaning | `TRACE_RIGHT = BLUSH_DEEP` - the same colour as its own trigger line - while its docstring says "the accent at rest"; the page uses slate `--ch2` | Give the desktop build the page's lane inks. |
-| 10 | `branding.py`'s source note | - | Cites a `BRANDING.md` that is not in this repository | Point it at this document, which points at the jazz app's. |
-| 11 | `.photo-reticle` | Tokens, not literals | Its fill is `rgba(166, 85, 45, ...)`, `--ch6` spelled out so its alpha can follow the reading | `color-mix(in srgb, var(--ch6) ..., transparent)` keeps the reading and the token. |
+### Staying, on purpose
+
+| Where | The brand says | Here, and why |
+|---|---|---|
+| `--max` | `1080px` | `1180px`. A preference, not a need: the screen is what is read, and on a wide window it is a tenth bigger. `fittest.py` passes at 1080 too, so this is the only cost-free one to reverse - one line. |
+| `.run-btn` | A filled button is an action, square; a state is an outlined pill | A filled pill while running, outlined in rust when stopped. Running is a state you are in, so it is a pill, and the one pill that is filled, because a running scope is what has to be seen from across the room. |
+| Rust | A problem; outside; armed | Clipping, a level over and an input that would not open are problems. A stopped, recording or muted scope is the brand's armed - a state to be seen from across the room. A tuner's sharp or flat is the jazz app's "outside, never wrong". A drawbar's brown is a drawing of a Hammond's drawbars, as the guitar app's rosewood is of a neck. Free run is none of these, and stays `--unresolved`. |
+
+### Fixed
+
+| What it was | What it is now |
+|---|---|
+| The drop hint painted `var(--wash-strong)`, which was never defined, so it drew no fill at all | `--wash` and `--wash-strong` are defined in `:root` at the house's values. |
+| The webfonts were a render-blocking stylesheet in the head | `data-href`, promoted by script on the site and never inside the plugin, which sets the page in each stack's fallback faces until it carries the fonts itself. |
+| The armed dot breathed to `0.2` | `0.25`, as the house has it. |
+| `.run-btn`'s comment called it "the primary action" | It says it is a state, and why it is filled (above). |
+| `.bench-results` had a black shadow | Charcoal at the same alpha. |
+| The chrome had 2, 3, 4 and 6px corners (preset cards, the search box and its results, a found control's ring, a key hint) and a 5px "dot" | All 1px, and the dot `50%`. The instrument's own marks keep theirs: the piano key's foot, a source's meter and the modulation lane's marks (section 5). |
+| The cheat sheet said "the only thing here painted in rust is clipping" | It lists what rust marks, and that free run is never one. |
+| The desktop build drew its right channel in `BLUSH_DEEP`, its own trigger line's colour, under a docstring calling it the accent at rest | The page's lane inks are in `branding.py` as a product block, and the right channel and its legend are slate, `CH2`. |
+| `branding.py` cited a `BRANDING.md` not in this repository | It names the jazz app's, and this document. |
+| `.photo-reticle`'s fill was `--ch6` spelled out as an `rgba()` | `color-mix()` of `var(--ch6)`, so the reading still sets its strength. |
 
 Two more belong to the brand rather than to this app, and are recorded here only because
 they were found from here:
@@ -357,8 +370,11 @@ they were found from here:
    for sage on a new surface? Then the mechanism is brand and the value is product: follow
    the rule and write the value down in Part two.
 3. Otherwise it is product. Write it in Part two with its reason, and if it departs from
-   a brand rule, add it to Part three rather than leaving it to be found.
+   a brand rule, add it to Part three's *Staying, on purpose* rather than leaving it to be
+   found.
 
-`web/tests/designtest.py` holds the colour tables in this document to the tokens in
-`scope.html` and `branding.py`, so a colour added to the page has to be put on one side of
-the line or the other here before the suite passes.
+`web/tests/designtest.py` holds this document to the builds. A colour token in the page has
+to be in one of the tables above, at its value, on one side of the line, and the desktop
+build's copy of any colour must match. Every `var()` in the stylesheet must be defined;
+every `rgba()` outside `:root` must be the charcoal shadow; and every radius must be one of
+the house's three or sit on one of the instrument's marks, which the test names.

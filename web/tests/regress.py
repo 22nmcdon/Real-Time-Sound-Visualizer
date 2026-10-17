@@ -19,13 +19,16 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(300)
 
+    # As sources.py: the shared format, and a failure that fails the run. It
+    # failed unseen from 5m to 5v on state.source.kind, "host" for the
+    # instrument whatever it draws.
     def check(name, cond, detail=""):
         global ok
-        print(("  ok  " if cond else " FAIL ") + name + ("  " + str(detail) if detail else ""))
+        print(("  PASS  " if cond else "  FAIL  ") + name + ("   " + str(detail) if detail else ""))
         if not cond: ok = False
 
     print("-- the tone, untouched --")
-    check("source is the tone", p.evaluate("state.source.kind") == "tone")
+    check("source is the tone", p.evaluate("playingKind()") == "tone")
     check("two lanes", p.evaluate("laneCount()") == 2)
     check("not stacked", p.evaluate("stacked()") is False)
     check("mid/side offered", p.evaluate("!el.midSide.parentElement.hidden"))
@@ -58,7 +61,7 @@ with sync_playwright() as pw:
     p.evaluate("setMenuOpen(true)"); p.wait_for_timeout(150)
     p.locator("#fileInput").set_input_files(f"{STEMS}/other.wav")
     p.wait_for_timeout(1800)
-    check("file source", p.evaluate("state.source.kind") == "file")
+    check("file source", p.evaluate("playingKind()") == "file")
     check("two lanes", p.evaluate("laneCount()") == 2)
     check("named L/R", p.evaluate("[laneName(0), laneName(1)]") == ["Left","Right"])
     check("choose-a-file row back", p.evaluate("!el.fileChooseRow.hidden"))
@@ -66,7 +69,7 @@ with sync_playwright() as pw:
 
     print("-- and back to the tone --")
     p.evaluate("toTone()"); p.wait_for_timeout(400)
-    check("tone again", p.evaluate("state.source.kind") == "tone")
+    check("tone again", p.evaluate("playingKind()") == "tone")
     check("transport put away", p.evaluate("el.fileRows.hidden"))
     check("rack rows put away", p.evaluate("el.rackRows.hidden"))
 
@@ -76,3 +79,4 @@ with sync_playwright() as pw:
     b.close()
 print()
 print("REGRESSION", "PASS" if ok else "FAIL")
+raise SystemExit(0 if ok else 1)

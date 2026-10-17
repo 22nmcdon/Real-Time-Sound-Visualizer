@@ -1,7 +1,9 @@
 """The house style, as one block of tokens.
 
-`BRANDING.md` is the source; this is its drop-in block in the one form a Qt
-app can read. The rule that document leads with is the rule here: a colour
+The jazz learning app's `docs/BRANDING.md` is the source - this repository's
+`DESIGN.md` says which parts of the look are that house's and which are the
+oscilloscope's own - and this is its drop-in block in the one form a Qt app
+can read. The rule that document leads with is the rule here: a colour
 written as a literal is a colour that will not follow the light, so nothing
 below this file spells a hex digit.
 
@@ -78,6 +80,17 @@ APPROACH = "#8fae6d"
 ENCLOSURE = "#3f8f88"
 RUST = "#a4553f"
 UNRESOLVED = "#b6afa4"
+
+# The lane inks. Not the house's: the oscilloscope's own (DESIGN.md, part
+# two), one per lane, measured on the web page and kept equal to it there by
+# designtest.py. This build draws two lanes and so uses the first two; the
+# other four are here so a third lane takes its ink from the measured set.
+CH1 = "#241f1d"          # charcoal - the ink, and the left channel
+CH2 = "#5c6488"          # slate - the right channel
+CH3 = "#4c4921"          # olive
+CH4 = "#6f9169"          # a lighter, greener sage
+CH5 = "#72245e"          # plum
+CH6 = "#a6552d"          # terracotta
 
 # The accent laid over something - hover, then selection. Tokens rather than
 # an rgba() at the call site, for the reason above.
