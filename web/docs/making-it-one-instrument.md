@@ -447,7 +447,7 @@ the synth's features should be chosen knowing that.
   symmetric figure out of tune (the three-petalled rose three times too high), and an
   off-centre path fixes that for five of the six. The go or no-go is the owner's ears on
   the renders, recorded here when they have been heard.
-- **P3 — The picture stage. Half built.** Three reads, one amount on by default, meters on
+- **P3 — The picture stage. Built but for its polish.** Three reads, one amount on by default, meters on
   screen, stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After
   P3 the first-minute test should pass on the default sound.
   - *Built:* Glow (coverage), Motion (change) and Memory (boredom), on the fold, the echo,
@@ -472,9 +472,20 @@ the synth's features should be chosen knowing that.
     heard at the old limits (the fold alone made the default tone four times brighter),
     so nothing was raised; `looptest.py`'s stability run now has the stage at its top
     beside every picture source, and every bound held.
-  - *Left:* the routing matrix to a drawer; each control lit while the picture moves it;
-    *running away* pulling the amount down; Memory taking novelty as well as boredom; the
-    amount on the expression pedal; and the ring, which is P7's path as much as P3's.
+  - *The drawer, built:* *Advanced*, under the Bench's rail, opens it. Shut - as a first
+    visit finds it - the Bench is the loop's five tabs, with no source chips beside the
+    screen and no hollow ring on every control; whatever is patched still plays, and a
+    control with something on it keeps its dots. Open, the Sources tab, the chips and the
+    rings come back. It is a view, remembered per viewer and never stored in a setup, and
+    built to take P8's other residents by naming their tabs. The stage's three reads are
+    never offered by hand: they were leaking into the chips, the editor and the search as
+    three inkless sources.
+  - *Left:* each control lit while the picture moves it; *running away* pulling the amount
+    down; Memory taking novelty as well as boredom; the amount on the expression pedal;
+    and the ring, which is P7's path as much as P3's. And the Photocell's button: its
+    reading reaches the sound only through a routing, which now lives in the drawer, so
+    on the top bar it is a switch that does nothing until the drawer is opened - until
+    the ring replaces it.
 - **P4 — Coherence.** One pair out of the core; the generator always heard; every drawn
   note heard and every heard note drawn.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the

@@ -74,9 +74,63 @@ with sync_playwright() as pw:
     check("the device picker is there over the tone, greyed with the reason",
           dev["shown"] and dev["disabled"] and "Mic" in dev["why"], str(dev))
 
+    print("\n--- the drawer ---")
+    # The routing matrix behind one switch (P3 of making-it-one-instrument.md):
+    # shut on a first visit, and shut it takes the Sources tab, the chips
+    # beside the screen and the hollow rings with it - but nothing patched
+    # stops playing, and a control with something on it keeps its dots.
+    drawer = p.evaluate("""() => {
+      const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.textContent);
+      const shown = (node) => !!(node && node.offsetParent);
+      const empties = () => [...document.querySelectorAll('.mod-open.empty')].filter(shown).length;
+      const ring = (dest) => document.querySelector('.mod-open[data-dest="' + dest + '"]');
+      setBenchTab('play');
+      state.modRoutings = []; addRouting('lfo1', 'gen.freq'); touchRoutings(); paintRoutings();
+      const look = () => ({ drawer: document.body.dataset.drawer, rail: rail(), chips: shown(el.benchSources),
+                            empty: empties(), attached: shown(ring('gen.freq')),
+                            heard: routingsHeard().filter((r) => r.sourceId === 'lfo1').map((r) => r.destId),
+                            label: el.benchDrawer.getAttribute('aria-expanded') });
+      const out = { first: look() };
+      el.benchDrawer.click(); paintRoutings();
+      out.open = look();
+      setBenchTab('sources');
+      el.benchDrawer.click();
+      out.back = { tab: benchTab, rail: rail() };
+      showControl('fadeMode');
+      out.shown = { tab: benchTab, drawer: document.body.dataset.drawer };
+      el.benchDrawer.click();
+      state.modRoutings = []; touchRoutings();
+      return out;
+    }""")
+    print("    shut %s; open %s" % (drawer["first"], drawer["open"]))
+    loop_tabs = ["Play", "Picture", "Shape", "Effects", "Measure"]
+    check("a first visit opens with the drawer shut: the loop's five tabs, no chips, no hollow rings",
+          drawer["first"]["drawer"] == "shut" and drawer["first"]["rail"] == loop_tabs and not drawer["first"]["chips"]
+          and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
+    check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
+          drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
+    check("opened, the Sources tab comes after the loop's, with the chips and a ring on every control",
+          drawer["open"]["rail"] == loop_tabs + ["Sources"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
+          and drawer["open"]["label"] == "true", str(drawer["open"]))
+    check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
+          str(drawer["back"]))
+    check("and a control in it, shown from anywhere, opens it", drawer["shown"] == {"tab": "sources", "drawer": "open"},
+          str(drawer["shown"]))
+    hidden = p.evaluate("""() => {
+      el.benchDrawer.click(); setBenchTab('sources');
+      const chips = [...el.benchSources.querySelectorAll('.mod-chip')].map((c) => c.dataset.source);
+      el.benchSearch.value = 'glow'; el.benchSearch.dispatchEvent(new Event('input'));
+      const found = [...el.benchResults.querySelectorAll('button')].map((b) => b.textContent);
+      el.benchSearch.value = ''; el.benchSearch.dispatchEvent(new Event('input'));
+      return { chips: chips.filter((id) => id.startsWith('stage.')), lfo: chips.includes('lfo1'), found };
+    }""")
+    check("the stage's reads are not offered by hand: no chip, and not found by a search",
+          hidden["chips"] == [] and hidden["lfo"] and not any("Glow" in f for f in hidden["found"]), str(hidden))
+
     print("\n--- the tabs ---")
     # Tabs again, on the evidence: the rail was a table of contents with every
-    # section on show at once, and a rack could not fit that way.
+    # section on show at once, and a rack could not fit that way. With the
+    # drawer open, so its tab is walked too.
     tabs = p.evaluate("""() => {
       const titles = Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.textContent);
       const seen = {}, wrong = [];
@@ -98,8 +152,10 @@ with sync_playwright() as pw:
     }""")
     print("    tabs:", ", ".join(tabs["titles"]))
     # Six since Stage H put the voice's oscillator on Shape and moved the
-    # plane and the delay to Effects.
-    check("six tabs by task, and a tab list", tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Sources", "Measure"]
+    # plane and the delay to Effects; the five of the loop and the drawer's
+    # one, last, since P3.
+    check("six tabs by task with the drawer open, its own last, and a tab list",
+          tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Measure", "Sources"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
@@ -250,9 +306,9 @@ with sync_playwright() as pw:
     print("\n--- the view is remembered ---")
     p.reload(); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab })")
-    check("the bench and its tab survive a reload",
-          kept["view"] == "bench" and kept["tab"] == "sources", str(kept))
+    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab, drawer: document.body.dataset.drawer })")
+    check("the bench, its tab and the drawer open survive a reload",
+          kept == {"view": "bench", "tab": "sources", "drawer": "open"}, str(kept))
     check("no errors after reload", not bad, "; ".join(bad[:3]))
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
 

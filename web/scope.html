@@ -721,6 +721,23 @@ body[data-view="bench"] .dock  { order: 3; }
 .bench-rail button[aria-selected="true"] {
   color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
 }
+/* The drawer's tabs under a rule, and its switch beneath them, quieter than a
+   tab: it opens a place rather than being one. */
+.bench-rail button.drawer-first { margin-top: 8px; box-shadow: 0 -1px 0 var(--line); }
+.bench-drawer {
+  align-self: flex-start; background: none; border: 0; cursor: pointer;
+  padding: 4px 10px; color: var(--text-soft); font-family: var(--sans);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em;
+}
+.bench-drawer::after { content: " \25BE"; }
+.bench-drawer[aria-expanded="true"]::after { content: " \25B4"; }
+.bench-drawer:hover { color: var(--blush-deep); }
+/* With the drawer shut, the matrix's way in goes with it: the chips beside the
+   screen, and the hollow ring on a control with nothing on it. A control with
+   something on it keeps its inks, so what a preset patched is still seen and
+   can still be opened and taken off. */
+body[data-drawer="shut"] #benchSources { display: none; }
+body[data-drawer="shut"] .mod-open.empty { display: none; }
 
 /* --- the bench body --------------------------------------------------------
    Every section at once, in columns, rather than one at a time behind a rail.
@@ -3328,6 +3345,11 @@ body[data-view="bench"] .dock  { order: 3; }
         <div class="bench-results" id="benchResults" role="listbox" hidden></div>
       </div>
       <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench"></nav>
+      <!-- The drawer (P3 of making-it-one-instrument.md): the tabs that are not
+           the loop - the routing matrix, for now - behind one switch, so the
+           Bench opens on what the instrument is. -->
+      <button type="button" class="bench-drawer" id="benchDrawer" aria-expanded="false"
+              title="The routing matrix: oscillators, controllers and every other source, patched by hand onto any control">Advanced</button>
     </div>
     <div class="bench-body" id="benchBody" role="tabpanel"></div>
     <!-- The sections of the tabs not showing. Kept in the document rather than
@@ -3759,13 +3781,18 @@ body[data-view="bench"] .dock  { order: 3; }
         <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
         nowhere else.
         <br><br>
-        The Bench is six tabs, by task: <i>Play</i> (the source, the keyboard, the
+        The Bench is five tabs, by task: <i>Play</i> (the source, the keyboard, the
         generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger, the trace filter),
         <i>Shape</i> (the drawbars, the voice's oscillator, shaping and filter), <i>Effects</i> (the
-        plane, the delay and chorus), <i>Sources</i> and <i>Measure</i>. Each section's title
+        plane, the delay and chorus) and <i>Measure</i>. Each section's title
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
-        handful of settings reached for rarely. The source chips stay beside the screen on
-        every tab, so a chip can be dragged onto a control wherever it is.
+        handful of settings reached for rarely.
+        <br><br>
+        <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
+        oscillators, controllers and the rest on any control by hand. The picture moves the
+        sound without it. Open, it adds the <i>Sources</i> tab, the source chips beside the
+        screen on every tab, and a ring on every control; shut, what is patched still plays,
+        and a control with something on it still shows its dots.
         <br><br>
         Press <b>/</b> to find any control by name &mdash; it knows a few other words for
         things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
@@ -4369,15 +4396,15 @@ body[data-view="bench"] .dock  { order: 3; }
         unbroken route could manage.</span></li>
 
       <li><b>Every control that can be moved says so</b>
-        <span>At the right-hand end of a slider: a small hollow ring means nothing is on
-        it, coloured dots mean something is. Press it and a panel opens for that one
+        <span>With the drawer open, at the right-hand end of a slider: a small hollow ring
+        means nothing is on it, coloured dots mean something is. Press it and a panel opens for that one
         parameter &mdash; a row per source with an ordinary slider for the depth, a cross
         to take it off, and the sources not on it yet as buttons to add. That is the whole
         gesture, and it is the same with a mouse, a thumb or a keyboard.
         <br><br>
         The sources are the two low-frequency oscillators, <i>Level</i> &mdash; how hard
         you are playing &mdash; what your hands are doing on a keyboard, every controller you
-        have moved since it was connected, and with the photocell on, the picture itself.
+        have moved since it was connected, and the picture itself.
         The <i>Sources</i> tab explains each one. Dragging a chip from beside the screen
         straight onto a control is the quick way when you already know where it
         goes.</span></li>
@@ -4622,7 +4649,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "liveKindRow", "kindMic", "kindLine", "monitorRow", "monitorLive",
                   "monitorLatency",
                   "alongInput", "alignRow", "align", "alignValue", "alignNote",
-                  "viewScope", "viewBench", "benchRail", "benchBody",
+                  "viewScope", "viewBench", "benchRail", "benchDrawer", "benchBody",
                   "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "measurePre", "measurePost", "benchSources",
                   "genSoundRow", "genSound", "genSoundNote",
@@ -16537,6 +16564,10 @@ function stageRoutings() {
   return stageRoutingsMade;
 }
 const isStageKey = (key) => key.startsWith("stage.");
+/* A source a hand can patch: all but the stage's reads, which are routed by
+   the stage alone. Offering them in the chips, the editor and the search put
+   three inkless chips called Glow, Motion and Memory beside the oscillators. */
+const byHand = (source) => source.byHand !== false;
 // Whether anything heard comes from the picture: when there is a loop at all.
 function pictureHeard() {
   return routingsHeard().some((r) => { const s = MOD_SOURCES.get(r.sourceId); return !!(s && s.fromPicture); });
@@ -19497,7 +19528,7 @@ function buildSourceDetail() {
   const lfo = lfoIndex !== undefined ? lfos[lfoIndex] : null;
   const cc = source.id.startsWith("cc.") ? midi.cc.get(Number(source.id.slice(3))) : null;
   const isThresh = source.id === "threshold";
-  const watchable = isThresh ? Array.from(MOD_SOURCES.values()).filter((s) => s.event !== true)
+  const watchable = isThresh ? Array.from(MOD_SOURCES.values()).filter((s) => s.event !== true && byHand(s))
     .sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
 
   el.srcDetail.innerHTML =
@@ -25243,6 +25274,40 @@ try {
   const saved = window.localStorage.getItem(TAB_KEY);
   if (BENCH_TABS.some(([id]) => id === saved)) benchTab = saved;
 } catch (error) { /* private window */ }
+
+/* The drawer (P3 of web/docs/making-it-one-instrument.md): the tabs that are
+   not the loop, behind one switch, so the Bench opens on what the instrument
+   is rather than on everything it can do. The routing matrix went first,
+   since the picture no longer needs it - the stage moves the sound with
+   nothing patched - and it was the biggest thing on show: a tab, the chips
+   beside the screen on every other tab, and a ring on every control. The
+   plan's P8 puts measurements, inputs, the arpeggiator, the splits and the
+   clock in here too.
+
+   A view, like the tab: remembered for this viewer, never in a setup, and
+   nothing in it stops being heard when it is shut - what is patched plays,
+   and a control with something on it still shows its inks. Going to one of
+   its tabs opens it (a search result, showControl), and shutting it while on
+   one goes back to the tab before. */
+const BENCH_DRAWER = new Set(["sources"]);
+const DRAWER_KEY = "scope.benchDrawer";
+let benchDrawer = false;
+let benchTabBefore = BENCH_DRAWER.has(benchTab) ? "play" : benchTab;
+try { benchDrawer = window.localStorage.getItem(DRAWER_KEY) === "open"; } catch (error) { /* private window */ }
+if (BENCH_DRAWER.has(benchTab)) benchDrawer = true;
+// The loop's tabs, then the drawer's under them while it is open.
+const railTabs = () => BENCH_TABS.filter(([id]) => !BENCH_DRAWER.has(id))
+  .concat(benchDrawer ? BENCH_TABS.filter(([id]) => BENCH_DRAWER.has(id)) : []);
+
+function setDrawer(open) {
+  benchDrawer = open;
+  document.body.dataset.drawer = open ? "open" : "shut";
+  el.benchDrawer.setAttribute("aria-expanded", String(open));
+  try { window.localStorage.setItem(DRAWER_KEY, open ? "open" : "shut"); } catch (error) { /* private window */ }
+  if (!open && BENCH_DRAWER.has(benchTab)) { setBenchTab(benchTabBefore); return; }
+  if (document.body.dataset.view === "bench") buildBenchRail();
+  requestAnimationFrame(paintRoutings);
+}
 const tabOf = (group) => group.dataset.tab || "play";
 
 function settingsGroups() {
@@ -25294,8 +25359,10 @@ const benchable = () =>
    Tabs by task keep the map - five of them, named for what you are doing -
    and one tab always fits. */
 function buildBenchRail() {
-  el.benchRail.innerHTML = BENCH_TABS.map(([id, label]) =>
+  const tabs = railTabs();
+  el.benchRail.innerHTML = tabs.map(([id, label], i) =>
     '<button type="button" role="tab" id="benchTab-' + id + '" data-tab="' + id + '"'
+    + (BENCH_DRAWER.has(id) && !(i > 0 && BENCH_DRAWER.has(tabs[i - 1][0])) ? ' class="drawer-first"' : "")
     + ' aria-selected="' + (id === benchTab) + '" aria-controls="benchBody"'
     + ' tabindex="' + (id === benchTab ? 0 : -1) + '">' + label + "</button>").join("");
 
@@ -25309,8 +25376,9 @@ function buildBenchRail() {
       event.preventDefault();
       // The page's own arrows move the timebase and the trigger level.
       event.stopPropagation();
-      const at = BENCH_TABS.findIndex(([id]) => id === benchTab);
-      const next = BENCH_TABS[(at + step + BENCH_TABS.length) % BENCH_TABS.length][0];
+      const tabs = railTabs();
+      const at = tabs.findIndex(([id]) => id === benchTab);
+      const next = tabs[(at + step + tabs.length) % tabs.length][0];
       setBenchTab(next);
       const focus = document.getElementById("benchTab-" + next);
       if (focus) focus.focus();
@@ -25320,6 +25388,8 @@ function buildBenchRail() {
 
 function setBenchTab(id) {
   if (!BENCH_TABS.some(([tab]) => tab === id)) return;
+  if (!BENCH_DRAWER.has(id)) benchTabBefore = id;
+  else if (!benchDrawer) setDrawer(true);
   benchTab = id;
   try { window.localStorage.setItem(TAB_KEY, id); } catch (error) { /* private window */ }
   if (document.body.dataset.view === "bench") {
@@ -25671,6 +25741,7 @@ function searchEntries() {
                hay: rowWords(field, label, "top") });
   }
   for (const source of MOD_SOURCES.values()) {
+    if (!byHand(source)) continue;
     const family = (SOURCE_FAMILIES.find(([id]) => id === source.family) || [0, "Other"])[1];
     out.push({ kind: "source", id: source.id, label: source.label,
                crumb: "Sources \u203a " + family,
@@ -25785,6 +25856,9 @@ el.benchSearch.addEventListener("blur", () => { el.benchResults.hidden = true; }
 
 el.viewScope.addEventListener("click", () => setView("scope"));
 el.viewBench.addEventListener("click", () => setView("bench"));
+el.benchDrawer.addEventListener("click", () => setDrawer(!benchDrawer));
+document.body.dataset.drawer = benchDrawer ? "open" : "shut";
+el.benchDrawer.setAttribute("aria-expanded", String(benchDrawer));
 
 /* --- patching -----------------------------------------------------------------
    One gesture: press the dots on a control and the editor opens. It reads the
@@ -25842,7 +25916,7 @@ function buildSourceChips() {
      turns under a waveform - unless one is still on something, which has to
      stay in reach to be taken off. */
   const tone = genSettings();
-  const sources = Array.from(MOD_SOURCES.values())
+  const sources = Array.from(MOD_SOURCES.values()).filter(byHand)
     .filter((source) => !source.modes || (tone && source.modes.includes(tone.mode))
       || state.modRoutings.some((r) => r.sourceId === source.id))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -26139,7 +26213,7 @@ function openModEditor(destId, anchor, reading) {
   openOverlay(anchor, dest.label, reading || "", (body) => {
     // Only the sources that may reach this destination are offered here.
     const sources = () => Array.from(MOD_SOURCES.values())
-      .filter((source) => routingAllowed(source, dest))
+      .filter((source) => byHand(source) && routingAllowed(source, dest))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const draw = () => {
@@ -26317,6 +26391,8 @@ function paintOpener(row, destId, dest, list, host) {
 
 function fillOpener(button, dest, list) {
   const shown = list.slice(0, 3);
+  // Empty, it is the matrix's invitation, and goes when the drawer is shut.
+  button.classList.toggle("empty", list.length === 0);
   button.innerHTML = list.length === 0
     ? '<span class="ring"></span>'
     : shown.map((routing) => {
@@ -26532,7 +26608,7 @@ for (const source of PICTURE_SOURCES) {
 }
 for (const source of STAGE_SOURCES) {
   registerSource({ id: source.id, label: source.label, family: "stage", bipolar: false, reach: source.reach,
-                   fromPicture: true, value: () => pictureStage[source.key] });
+                   fromPicture: true, byHand: false, value: () => pictureStage[source.key] });
 }
 
 let photoDrag = null;

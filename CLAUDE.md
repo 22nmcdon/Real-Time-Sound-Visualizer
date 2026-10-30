@@ -182,8 +182,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **A control's appearance must not depend on how many modulation sources are on
   it.** Two designs failed here. `patchtest.py` measures the row's height and
   box with nought, one, two and three sources and requires all four identical.
-- **No Bench tab may scroll.** The Bench is six tabs by task (Play, Picture,
-  Shape, Effects, Sources, Measure), and one tab at a time must fit. `patchtest.py`
+- **No Bench tab may scroll.** The Bench is six tabs by task - the loop's five
+  (Play, Picture, Shape, Effects, Measure) and the drawer's Sources - and one
+  tab at a time must fit. `patchtest.py`
   measures every tab across every generator mode; `racktest.py` does it with a
   rack of six lanes. This replaced "every section on show at once, and neither
   panel scrolls", which held for the tone and never for a rack - and is why a
@@ -193,6 +194,14 @@ Do not re-litigate these without a reason; each replaced something that failed.
   every combination of generator kind, tone or rack of six, keyboard and
   Photocell, and the Sources tab with each family on show, which is how
   Macros and Key and tempo came to be on Measure.
+- **What is not the loop goes in the drawer.** *Advanced*, under the rail,
+  opens it; shut, it takes its tabs, the source chips beside the screen and a
+  control's hollow ring with it, and leaves everything patched playing and
+  shown. It is a view, remembered per viewer and never in a setup, and going
+  to one of its tabs opens it, so `showControl` and the search need nothing
+  new. The routing matrix went first (P3); the plan's P8 adds measurements,
+  inputs, the arpeggiator, the splits and the clock. Add a tab to it by
+  naming it in `BENCH_DRAWER`. `benchtest.py` holds it.
 - **The Sources tab shows one family at a time.** Families, the chosen
   family's sources as rows with meters, the chosen source - in that order, one
   column each. A grid of every source at once was forty chips of one weight

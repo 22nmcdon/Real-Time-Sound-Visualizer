@@ -31,6 +31,10 @@ ROUTES = "() => state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' +
 def open_bench(page):
     page.goto(f"file://{ART}/scope.html"); page.wait_for_timeout(700)
     if page.locator("#helpClose").is_visible(): page.locator("#helpClose").click()
+    # The routing matrix is in the drawer since P3, shut on a first visit and
+    # with it the hollow rings this suite presses; benchtest.py holds the
+    # drawer itself.
+    page.evaluate("() => setDrawer(true)")
     page.wait_for_timeout(150)
     page.evaluate("""() => {
       setView('bench'); state.modRoutings = []; focusSource = null; paintRoutings();
@@ -87,7 +91,9 @@ with sync_playwright() as pw:
     # Every source that may reach a value: an event source - the onset -
     # strikes things and is never offered on a slider (S3), which the counts
     # below would otherwise call a missing row.
-    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true).length")
+    # Every source a hand can patch: the picture stage's three reads are
+    # registered and routed by the stage alone (byHand), so never offered.
+    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true && byHand(s)).length")
     check("nothing on it yet, so every source is offered",
           len(opened["add"]) == every, "%d offered of %d registered"
           % (len(opened["add"]), every))

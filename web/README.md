@@ -4337,3 +4337,15 @@ fold at its top. Only `stagetest.py`, which opens the site as it opens for
 anyone, holds a chord and measures whether the timbre moves, could see that
 nothing was moving. Keep a test at that level for anything whose point is
 how it feels to play.
+
+**A source registered for one job turns up in every list of sources.** The
+picture stage registers its three reads as sources so the matrix can route
+them under the loop's rules, and kept them out of the Sources tab by giving
+them a family the tab does not list. They appeared anyway as three inkless
+chips beside the screen, in every control's patch editor and in the search,
+because each of those builds its own list from `MOD_SOURCES` - and the first
+half of the stage shipped with them there, since the chips are only seen with
+the matrix open and no check counted them. A source that is not for patching
+says so (`byHand: false`), and every list asks `byHand`. When adding a source
+with a narrow job, grep for `MOD_SOURCES.values()`: each hit is a place it
+will show up.
