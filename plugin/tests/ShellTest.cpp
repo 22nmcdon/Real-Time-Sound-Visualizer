@@ -25,6 +25,13 @@ void check(const std::string& name, bool ok, const std::string& detail = {}) {
 }
 std::string num(double v) { char b[64]; std::snprintf(b, sizeof b, "%.6g", v); return b; }
 std::string exact(double v) { char b[64]; std::snprintf(b, sizeof b, "%.12g", v); return b; }
+/* The picture stage at nought (P3), as the page's Picture slider sets it. A
+   check that holds the plugin to the core's generator, keyboard or matrix by
+   themselves - references that draw no picture - or that wants a silence or
+   an input passed through untouched, takes the stage out, as it would take
+   out any routing its reference does not make. The stage, which is on in
+   everything the plugin plays, has its own checks under the picture. */
+void unstaged(ScopeProcessor& p) { p.pageSlider("pictureAmount", u"0"); }
 }  // namespace
 
 int main() {
@@ -33,6 +40,7 @@ int main() {
   constexpr int block = 512;
   ScopeProcessor processor;
   processor.prepareToPlay(rate, block);
+  unstaged(processor);
 
   // Two seconds: a note struck at sample 100 of the first block, let go at one second.
   const int total = static_cast<int>(rate * 2);
@@ -114,6 +122,7 @@ int main() {
     if (preset) setenv("SCOPE_PRESET", preset, 1);
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
+    unstaged(p);
     if (routed) { p.matrix().add("lfo1", "gen.freq", 0.5); p.matrix().add("midi.key", "gen.amp", 0.6); }
     if (morphed) {
       p.moveSlider("amp", 20); p.storeMorph(false);
@@ -581,8 +590,8 @@ int main() {
     struct Run {
       std::vector<float> l, r, picture;
       int frames = 0;
-      double lit = 0, most = -1, least = 2;
-      bool registered = false;
+      double lit = 0, most = -1, least = 2, glow = 0, motion = 0;
+      bool registered = false, staged = false;
       std::string display;
     };
     const auto run = [&](const char* preset, bool held, int blocks, const std::function<void(ScopeProcessor&)>& before) {
@@ -604,11 +613,15 @@ int main() {
           const double reading = p->picture().pictures().photo();
           out.most = std::fmax(out.most, reading);
           out.least = std::fmin(out.least, reading);
+          out.glow = std::fmax(out.glow, p->picture().stage().glow());
+          out.motion = std::fmax(out.motion, p->picture().stage().motion());
         }
       }
       out.frames = p->picture().phosphor().frames();
       for (const float c : p->picture().phosphor().grid()) out.lit += c;
       out.registered = p->matrix().source("photo.1") && p->matrix().source("picture.round") && p->matrix().source("picture.bored");
+      out.staged = p->matrix().source("stage.glow") && p->matrix().source("stage.motion") && p->matrix().source("stage.memory")
+                && p->matrix().stage().size() == 4;
       out.display = p->view().screen.display;
       out.picture = p->pictureSnapshot();
       return out;
@@ -639,7 +652,7 @@ int main() {
     check("the loop goes round with no window: the photocell bends the figure the pendulums draw, against the same without its routings",
           bentApart > 0.01, "the pictures apart by " + num(bentApart));
     const double offPicture = most(off.picture, open.picture), offSound = most(off.l, open.l) + most(off.r, open.r);
-    check("and the photocell switched off from the page is that null exactly, picture and sound, its sources gone",
+    check("and the photocell switched off from the page is that null exactly, picture and sound, its source gone",
           offPicture == 0 && offSound == 0 && !off.registered && off.most == 0 && off.least == 0,
           "picture off by " + num(offPicture) + ", sound by " + num(offSound));
     check("and Y-T chosen on the page is the plugin's view, drawn into its grid in place of the figure",
@@ -766,8 +779,10 @@ int main() {
     };
     const auto wentOff = midRun(false), cameOn = midRun(true);
     const double cameApart = most(cameOn->pictureSnapshot(), off.picture);
-    check("the photocell switched off mid-run takes its sources away and reads nought; switched on from off, the loop starts",
-          !wentOff->matrix().source("photo.1") && !wentOff->matrix().source("picture.bored") && wentOff->picture().pictures().photo() == 0
+    // Its own source only: since the picture stage the picture's are always
+    // there, and this used to require picture.bored gone with it.
+    check("the photocell switched off mid-run takes its source away and reads nought, the picture's staying; switched on from off, the loop starts",
+          !wentOff->matrix().source("photo.1") && wentOff->matrix().source("picture.bored") && wentOff->picture().pictures().photo() == 0
           && cameOn->matrix().source("photo.1") && cameApart > 0.01, "the picture apart from never on by " + num(cameApart));
     double refilled = 0, clearedNow = 0;
     {
@@ -827,14 +842,63 @@ int main() {
     check("the view's buttons are kept as hands, a display undoing the last, every press of the photocell's switch, and no Clear",
           viewHands == "[[\"k\",\"midiDyad\"],[\"k\",\"photoButton\"],[\"k\",\"photoButton\"],[\"k\",\"dispYT\"]]", viewHands);
     const char* ellipse = "Brightness opens the ellipse";
-    // The reticle put on the line the held sine draws, at the middle of the screen, by the page's drag.
-    const auto centred = [](ScopeProcessor& p) { p.pageControl("photoReticle", scope::Json::string(std::string_view("0.5,0.5"))); };
+    // The reticle put on the line the held sine draws, at the middle of the
+    // screen, by the page's drag; and the stage out, since with it the phase
+    // the light turns changes the picture the stage reads, and both channels
+    // with it - the loop going round, but not this check's loop.
+    const auto centred = [](ScopeProcessor& p) {
+      unstaged(p);
+      p.pageControl("photoReticle", scope::Json::string(std::string_view("0.5,0.5")));
+    };
     const Run heard = run(ellipse, true, blocks, centred);
     const Run unheard = run(ellipse, true, blocks, [&](ScopeProcessor& p) { centred(p); p.matrix().remove("photo.1", "gen.phase"); });
     const double opened = most(heard.r, unheard.r), sameLeft = most(heard.l, unheard.l);
     check("and the loop reaches the sound: the light turns the phase of the held sine's right channel, and leaves its left alone",
           opened > 0.05 && sameLeft < opened / 10 && heard.most > 0,
           "right apart by " + num(opened) + ", left by " + num(sameLeft) + ", reading in the second second up to " + num(heard.most));
+    /* The picture stage (P3), on in everything the plugin plays: the default
+       tone held, with the photocell off and nothing routed by hand, against
+       the same with the Picture slider at nought. Its sources there, its four
+       routes made, its reads moving in the second second, and the picture
+       and sound apart from the unstaged run - which is itself the null, the
+       same run twice at nought agreeing exactly, so the difference is the
+       stage's and not the run's. */
+    const char* tone = "Harmonic tone";
+    const Run staged = run(tone, true, blocks, nullptr);
+    const Run flat = run(tone, true, blocks, [](ScopeProcessor& p) { unstaged(p); });
+    const Run flatAgain = run(tone, true, blocks, [](ScopeProcessor& p) { unstaged(p); });
+    const double stagedSound = most(staged.l, flat.l) + most(staged.r, flat.r), stagedPicture = most(staged.picture, flat.picture);
+    const double twice = most(flat.l, flatAgain.l) + most(flat.picture, flatAgain.picture);
+    check("the picture stage plays in the plugin with the photocell off and nothing routed: its reads move and the tone is not the unstaged one",
+          staged.staged && !staged.registered && staged.glow + staged.motion > 0.1 && stagedSound > 0.05 && stagedPicture > 0.01
+          && twice == 0,
+          "glow up to " + num(staged.glow) + ", motion " + num(staged.motion) + "; sound apart by " + num(stagedSound)
+          + ", picture by " + num(stagedPicture) + "; at nought twice, apart by " + num(twice));
+    check("and at nought it makes no routes at all", !flat.staged);
+    /* The slider moved mid-run, as a hand moves it: the plugin's frame hands
+       the matrix the new amount, and the generator's routes are made again
+       from it - which the page does by touching its routings in the slider's
+       handler, and the core by the amount marking them dirty, so only here
+       is the core's own way of doing it seen. The routes counted before the
+       move are the null: four, one a control. */
+    std::size_t before = 0, after = 0;
+    {
+      setenv("SCOPE_PRESET", tone, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < blocks; ++k) {
+        juce::MidiBuffer m;
+        if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+        if (k == blocks / 2) { before = p.matrix().routes(0).size(); p.pageSlider("pictureAmount", u"0"); }
+        buf.clear();
+        p.processBlock(buf, m);
+      }
+      after = p.matrix().routes(0).size();
+    }
+    check("and the slider moved to nought mid-run takes the stage's routes out of what the generator is given",
+          before == 4 && after == 0, std::to_string(before) + " routes before, " + std::to_string(after) + " after");
   }
 
   std::printf("\n--- the sources ---\n");
@@ -1580,6 +1644,7 @@ int main() {
        one pair again: the generator puts A on X and B on Y. */
     ScopeProcessor layered;
     layered.prepareToPlay(rate, block);
+    unstaged(layered);
     layered.pageClick("midiPoly");
     layered.pageControl("midiLayers", scope::Json::string(std::u16string(u"split")));
     juce::AudioBuffer<float> buf(2, block);
@@ -1652,6 +1717,7 @@ int main() {
     ScopeProcessor fx;
     fx.enableAllBuses();
     fx.prepareToPlay(rate, block);
+    unstaged(fx);
     long long at = 0;
     const Fed tone = feed(fx, at, 8, nullptr);
     check("with the input on and the generator drawn, the output is the generator's, not the input",
@@ -1925,6 +1991,7 @@ int main() {
       layout.outputBuses.add(juce::AudioChannelSet::stereo());
       mono.setBusesLayout(layout);
       mono.prepareToPlay(rate, block);
+      unstaged(mono);
       mono.pageClick("srcMic");
       juce::AudioBuffer<float> buf(2, block);
       double apart = 0, peak = 0;
@@ -2093,6 +2160,7 @@ int main() {
     const auto modeRun = [&](const char* button) {
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
+      unstaged(*p);
       p->pageClick(button);
       juce::AudioBuffer<float> buf(2, block);
       for (int k = 0; k < 188; ++k) {

@@ -107,7 +107,9 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    # The picture stage out (?picture=0): this suite measures something else,
+    # and the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate(HELPERS)
@@ -316,7 +318,10 @@ with sync_playwright() as pw:
           len(live["registered"]) == 6 and live["rules"], str(live["registered"]))
     check("since E3 a picture source may reach the filter too", not live["refused"], "")
     check("the readout says what the loop is doing", "loop settled" in live["readout"], live["readout"])
-    check("and they go when the photocell does", live["gone"] == [], str(live["gone"]))
+    # Since the picture stage (P3) the picture's sources are always there and
+    # only the photocell comes and goes; this used to require all six gone.
+    check("and only the photocell goes when it is switched off: the picture's stay",
+          live["gone"] == live["registered"][1:] and len(live["gone"]) == 5, str(live["gone"]))
     print("    circle to line: roundness %.3f -> %.3f (raw %.3f); over the slew envelope by %.3f"
           % (live["top"], live["end"], live["endRaw"], live["over"]))
     check("roundness follows the picture as the screen forgets the old one",

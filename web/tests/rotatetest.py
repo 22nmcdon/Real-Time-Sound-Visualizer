@@ -86,7 +86,9 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    # The picture stage out (?picture=0): this suite measures something else,
+    # and the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("(shape) => { window.__shape = eval(shape); }", SHAPE)

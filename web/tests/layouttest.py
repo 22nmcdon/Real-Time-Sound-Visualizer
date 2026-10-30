@@ -86,11 +86,17 @@ with sync_playwright() as pw:
     check("each family's sources are its own, one family on show at a time",
           bf["oscillators"]["rows"] == ["lfo1", "lfo2"] and bf["signal"]["rows"] == ["env.live", "env.note", "threshold"]
           and bf["signal"]["title"] == "Signal", str(bf))
+    # The picture's family used to be the second empty one, until the
+    # photocell was on; since the picture stage (P3) its sources are always
+    # there, and only the photocell joins them.
     check("an empty family is listed, quieter, and says how to get something when chosen",
           bf["controllers"]["rows"] == [] and "keyboard" in bf["controllers"]["hint"]
-          and bf["picture"]["rows"] == [] and "Photocell" in bf["picture"]["hint"]
           and {f["id"]: f["empty"] for f in fam["order"]}["controllers"] is True
           and {f["id"]: f["empty"] for f in fam["order"]}["oscillators"] is False, str(bf))
+    check("the picture's family holds its six sources with the photocell off, and the photocell joins them when it is on",
+          len(bf["picture"]["rows"]) == 6 and "photo.1" not in bf["picture"]["rows"]
+          and fam["after"]["picture"]["rows"][:1] == ["photo.1"] and len(fam["after"]["picture"]["rows"]) == 7,
+          str((bf["picture"]["rows"], fam["after"]["picture"]["rows"])))
     check("choosing a family shows its first source beside it, not whatever was chosen before",
           fam["chosen"]["selected"] == "env.live" and fam["chosen"]["title"] == "Level", str(fam["chosen"]))
     a = fam["after"]
@@ -222,12 +228,16 @@ with sync_playwright() as pw:
     p.evaluate("() => { setMidiMode('dyad'); setScreenKeys(false); }")
     check("the index is read when the search runs: poly's Draw row is found once it exists",
           not any(r[0] == "Draw" for r in dyad) and any(r[0] == "Draw" for r in poly), str((dyad, poly)))
+    # The photocell's source, which comes and goes with its switch. (Boredom
+    # was the source here until the picture's sources stopped going with the
+    # photocell.)
     p.evaluate("() => setPhoto(false)")
-    gone = search("boredom")
+    gone = search("photocell")
     p.evaluate("() => setPhoto(true)")
-    back = search("boredom")
+    back = search("photocell")
+    cell = ["Photocell", "Sources › Picture"]
     check("and a source is found only while it exists",
-          gone == [] and back == [["Boredom", "Sources › Picture"]], str((gone, back)))
+          cell not in gone and cell in back and len(back) == len(gone) + 1, str((gone, back)))
 
     jump = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -16,6 +16,7 @@
      route SRC DEST AMOUNT   unroute SRC DEST   amount SRC DEST A
      load SRC>DEST@A;...   edit SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
      env LAYER key=value...   layers 0|1   strike LAYER   at MS   frame   routes   encode   dests
+     stage PERCENT (the Picture slider moved, as its handler takes it)
    Usage: node matrix_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -59,6 +60,7 @@ const LIFTED = [
   "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
   "eventSeen", "fireEvents", "genMod", "genRoutes", "modDirty", "repaintQueued", "touchRoutings", "compileRoutes",
   "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings",
+  "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutings", "isStageKey",
 ];
 
 const STUBS = `
@@ -73,12 +75,16 @@ const noop = () => {};
 // The page in the plugin sends its routings after an edit; this harness is no plugin.
 const saveFade = noop, paintRoutings = noop, hostRoutings = noop;
 const requestAnimationFrame = (f) => f();
+// The Picture slider at nought, where the page's starts at sixty, so that the
+// runs from before the picture stage hear what they always heard; the
+// stage's own runs move it.
+const el = { pictureAmount: { value: "0" } };
 `;
 
 const source = STUBS + LIFTED.map(definition).join("\n")
   + statement('for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));')
   + visualLoop() + `
-return { state, midi, log, fade, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
+return { state, midi, log, fade, el, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
          setFadeEnvelope, fadeStep, fireEvents, applyVisual, workletRoutes, encodeRoutings, decodeRoutings,
          routingsHeard, routeKey,
          setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty };`;
@@ -151,7 +157,8 @@ function run(commands) {
         part[k] = v === "true" ? true : v === "false" ? false : Number(v);
       }
       m.setFadeEnvelope(part, Number(a[0]));
-    } else if (cmd === "layers") m.setLayered(a[0] === "1");
+    } else if (cmd === "stage") { m.el.pictureAmount.value = a[0]; m.touchRoutings(); }
+    else if (cmd === "layers") m.setLayered(a[0] === "1");
     else if (cmd === "strike") m.midi.strikesBy[Number(a[0])]++;
     else if (cmd === "at") m.setClock(Number(a[0]));
     else if (cmd === "frame") {

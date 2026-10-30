@@ -27,6 +27,7 @@ std::vector<std::string> split(const std::string& s, char c) {
 void run(const std::vector<std::vector<std::string>>& commands) {
   scope::Phosphor phosphor;
   scope::PictureSources sources;
+  scope::PictureStage stage;
   scope::Plot plot;
   double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0, zoom = 1;
   bool spect = false, hasFrame = false;
@@ -80,6 +81,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       sources.photoStep(phosphor, elapsed, spect);
       const scope::PairShape s = hasFrame ? shape() : scope::PairShape {};
       sources.pictureStep(phosphor, hasFrame ? &s : nullptr, elapsed, spect, limiting);
+      stage.step(sources.values(), elapsed, spect);
       const auto& v = sources.values();
       const auto& r = sources.raw();
       const auto& m = sources.meter();
@@ -90,7 +92,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
             + show(r.signed_) + " " + show(r.edge) + " " + show(r.bored)
             + " meter " + show(m.coverage()) + " " + show(m.lit()) + " " + show(m.change()) + " " + show(m.novelty()) + " "
             + std::to_string(m.depth()) + " " + m.verdict()
-            + " shape " + show(s.signed_) + " " + show(s.edge);
+            + " shape " + show(s.signed_) + " " + show(s.edge)
+            + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory());
     } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     double a1 = 0, a2 = 0;
     const auto& g = phosphor.grid();

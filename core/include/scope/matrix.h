@@ -138,6 +138,19 @@ inline bool routingAllowed(const ModSource* source, const ModDest* dest) {
   return true;
 }
 
+// The picture stage's routes (P3), STAGE_BUNDLES: each read on the controls
+// it pushes, at a weight the one Picture amount scales. They are not the
+// setup's routings - nothing stores them and no fade eases them - but they are
+// heard as routings are, from picture sources, so the loop's bounds hold.
+struct StageBundle { const char* source; const char* dest; double weight; };
+inline constexpr StageBundle kStageBundles[] = {
+  { "stage.glow", "gen.fold", 0.8 },
+  { "stage.motion", "gen.echo", 0.8 },
+  { "stage.memory", "gen.twist", 0.6 },
+  { "stage.memory", "gen.phase", 0.4 },
+};
+inline bool isStageKey(const std::string& key) { return key.rfind("stage.", 0) == 0; }
+
 // routingAmount: a picture source's depth, held within its reach.
 inline double routingAmount(const ModSource* source, double amount) {
   if (!source || !(source->reach > 0)) return amount;
@@ -329,18 +342,21 @@ class Matrix {
   void setLayered(bool on) { layered_ = on; }
   void setStrikes(std::array<int, 2> strikes) { strikes_ = strikes; }
 
-  // fadeGain: how much of a routing is on, for one layer.
+  // fadeGain: how much of a routing is on, for one layer. The stage's are
+  // always all on: they are not made or dropped, so there is nothing to ease.
   double fadeGain(const std::string& key, int layer = 0) const {
-    if (mode_ == FadeMode::Off) return 1;
+    if (mode_ == FadeMode::Off || isStageKey(key)) return 1;
     const Gain* entry = gain(key);
     if (!entry) return fadesIn() ? 0 : 1;
     return rampAt(entry->ramps[static_cast<std::size_t>(layer)], now_);
   }
 
-  // routingsHeard: the routings in the setup, and those fading out.
+  // routingsHeard: the routings in the setup, the stage's, and those fading out.
   const std::vector<Routing>& heard() const {
-    if (!fadesOut() || gains_.empty()) return routings_;
+    if ((!fadesOut() || gains_.empty()) && stage_.empty()) return routings_;
     heard_ = routings_;
+    heard_.insert(heard_.end(), stage_.begin(), stage_.end());
+    if (!fadesOut() || gains_.empty()) return heard_;
     for (const auto& g : gains_) {
       if (inSetup(g.key)) continue;
       bool sounding = false;
@@ -350,6 +366,20 @@ class Matrix {
     return heard_;
   }
   std::size_t fading() const { return gains_.size(); }
+
+  // stageRoutings: the stage's routes at a Picture amount (nought to one),
+  // made again only when the amount changes, and none at nought.
+  void setStageAmount(double amount) {
+    if (amount == stageAt_) return;
+    stageAt_ = amount;
+    stage_.clear();
+    if (amount > 0) {
+      long serial = 0;
+      for (const auto& b : kStageBundles) stage_.push_back({ b.source, b.dest, amount * b.weight, --serial });
+    }
+    dirty_ = true;
+  }
+  const std::vector<Routing>& stage() const { return stage_; }
   // How many times the routings have been touched, for a harness to read.
   int touches() const { return touches_; }
   bool dirty() const { return dirty_; }
@@ -664,6 +694,8 @@ class Matrix {
   std::vector<Compiled> compiled_;
   std::vector<Route> routes_;
   mutable std::vector<Routing> heard_;
+  std::vector<Routing> stage_;
+  double stageAt_ = -1;  // no amount yet, so the first is made
   std::array<int, 2> strikes_ { 0, 0 };
   bool layered_ = false;
   bool dirty_ = true;

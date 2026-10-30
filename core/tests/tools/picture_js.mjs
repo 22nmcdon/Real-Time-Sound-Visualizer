@@ -11,7 +11,7 @@
      plot X Y W H   persist P   fade [1]   seg X0 Y0 X1 Y1 LEVEL
      poly X,Y;X,Y;... [S,S,...]   read U V   photo 0|1 [U V]   spect 0|1
      pair ellipse A B CYCLES N PHASE | pair noise SEED AMP N | pair none
-     view GX GY OX OY SPIN ZOOM   limit DB   step ELAPSED
+     view GX GY OX OY SPIN ZOOM   limit DB   step ELAPSED (the photocell, the picture, then its stage)
    Usage: node picture_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -60,14 +60,15 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "CHANGE_FLOOR", "NOVELTY_FLOOR",
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
-  "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep"];
+  "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
+  "STAGE_MIN_SPAN", "STAGE_RELAX", "pictureStage", "stageRescale", "pictureStageStep"];
 const WASM_BYTES = MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
   return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
 })() : null;
 const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
 return { state, gains, phosphor, phosphorFade, phosphorSegment, phosphorDeposit, phosphorRead, photo, photoStep,
-         pictureMeter, shapeOfPair, picture, pictureStep, engine: pictureEngine,
+         pictureMeter, shapeOfPair, picture, pictureStep, pictureStage, engine: pictureEngine,
          setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
@@ -89,10 +90,11 @@ function run(commands) {
       s.phosphorDeposit(xs, ys, points.length, a[1] ? a[1].split(",").map(Number) : undefined);
     } else if (cmd === "read") extra = " read " + show(s.phosphorRead(Number(a[0]), Number(a[1])));
     else if (cmd === "photo") {
-      // setPhoto's part that is not the panel's.
+      // setPhoto's part that is not the panel's. The meter is not started
+      // afresh: since the picture stage it never stops.
       s.photo.on = a[0] === "1";
       if (a.length > 2) { s.photo.u = Number(a[1]); s.photo.v = Number(a[2]); }
-      if (s.photo.on) s.pictureMeter.reset(); else { s.photo.value = 0; s.photo.raw = 0; }
+      if (!s.photo.on) { s.photo.value = 0; s.photo.raw = 0; }
     } else if (cmd === "spect") s.state.display = a[0] === "1" ? "spect" : "xy";
     else if (cmd === "pair") {
       if (a[0] === "none") frame = null;
@@ -125,7 +127,8 @@ function run(commands) {
                "values", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(p[k])),
                "raw", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(r[k])),
                "meter", show(m.coverage), show(m.lit), show(m.change), show(m.novelty), m.depth, m.verdict(),
-               "shape", show(shape.signed), show(shape.edge)].join(" ");
+               "shape", show(shape.signed), show(shape.edge),
+               "stage", ...["glow", "motion", "memory"].map((k) => show(s.pictureStage[k]))].join(" ");
     } else throw new Error("unknown command " + cmd);
     let a1 = 0, a2 = 0;
     const g = s.phosphor.grid;

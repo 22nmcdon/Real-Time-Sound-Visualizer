@@ -15,10 +15,10 @@ every chain. So what is checked:
   drains when the picture moves, and cannot wind up;
 - that the photocell reaches the sound itself, through the worklet;
 - and the plan's stability run: every picture source routed at the most it is
-  allowed onto the most sensitive destinations, from silence and from a
-  full-scale figure, run headless, with every bound checked every tenth of a
-  second - and checked to have MOVED, because a loop that did nothing would
-  pass any bound there is.
+  allowed onto the most sensitive destinations, and the picture stage (P3) at
+  its top as well, from silence and from a full-scale figure, run headless,
+  with every bound checked every tenth of a second - and checked to have
+  MOVED, because a loop that did nothing would pass any bound there is.
 
 The plan asked for 60 seconds. It is 30 from each seed, 60 in all, because the
 suite is run while working and a minute per seed would double this file.
@@ -166,6 +166,9 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       genSet('just', true); genSet('interval', 0); genSet('phase', Math.PI / 2);
       state.persistence = 0.12; el.persistence.value = '0.12';
+      // The picture stage out: a stuck picture is what this needs, and the
+      // stage exists to unstick one - its Memory is this boredom, on the twist.
+      el.pictureAmount.value = '0'; touchRoutings();
       el.clearButton.click();
       const rise = [];
       const start = performance.now();
@@ -182,6 +185,7 @@ with sync_playwright() as pw:
       const again = performance.now();
       while (performance.now() - again < 6000) { await wait(250); fall.push([(performance.now() - again) / 1000, picture.bored]); }
       genSet('interval', 0); genSet('just', true);
+      el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
       return { rise, applied, fall };
     }""")
     at = lambda series, t: min(series, key=lambda row: abs(row[0] - t))[1]
@@ -298,6 +302,10 @@ with sync_playwright() as pw:
                     ['picture.signed', 'view.zoom']];
       for (const [s, d] of plan) addRouting(s, d);
       for (const r of state.modRoutings) r.amount = 1;
+      // And the picture stage at its top, on the fold, the echo, the twist
+      // and the phase, which nothing above routes: its totals are read with
+      // the rest below, so a stage route outside the loop's bound fails here.
+      el.pictureAmount.value = '100';
       touchRoutings();
       // Silence has to get going somehow: the generator comes up a little way
       // into the run, from nothing, with the loop already closed around it.
@@ -311,7 +319,8 @@ with sync_playwright() as pw:
       const buf = new Float32Array(2048);
       const peakOf = (a) => { a.getFloatTimeDomainData(buf); let m = 0; for (const v of buf) { if (!Number.isFinite(v)) return Infinity; m = Math.max(m, Math.abs(v)); } return m; };
       const worst = { post: 0, pre: 0, res: 0, rot: 0, zoom: 0, total: 0, grid: 0, nan: false };
-      const moved = { res: [Infinity, -Infinity], rot: [Infinity, -Infinity], freq: [Infinity, -Infinity] };
+      const moved = { res: [Infinity, -Infinity], rot: [Infinity, -Infinity], freq: [Infinity, -Infinity],
+                      fold: [Infinity, -Infinity] };
       const verdicts = {};
       const until = performance.now() + seconds * 1000;
       while (performance.now() < until) {
@@ -333,9 +342,12 @@ with sync_playwright() as pw:
         moved.res = [Math.min(moved.res[0], state.resMod), Math.max(moved.res[1], state.resMod)];
         moved.rot = [Math.min(moved.rot[0], state.rotateMod), Math.max(moved.rot[1], state.rotateMod)];
         moved.freq = [Math.min(moved.freq[0], fTotal), Math.max(moved.freq[1], fTotal)];
+        const fold = genRoutes.find((r) => r.loopTotal && r.slot === FOLD_SLOT);
+        const fv = fold ? fold.source.value() : 0;
+        moved.fold = [Math.min(moved.fold[0], fv), Math.max(moved.fold[1], fv)];
         const v = pictureMeter.verdict(); verdicts[v] = (verdicts[v] || 0) + 1;
       }
-      state.modRoutings = []; touchRoutings();
+      state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
       state.genSound = false; await applyGeneratorSound();
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
@@ -358,10 +370,11 @@ with sync_playwright() as pw:
               w["res"] <= 0.5 * 50 + 1e-6 and w["rot"] <= 0.5 + 1e-9 and w["zoom"] <= 0.5 * 8 + 1e-9
               and w["total"] <= 0.5 + 1e-9, str(w))
         check("from %s, and the grid stays inside the phosphor's range" % seed, w["grid"] <= 1, str(w["grid"]))
-        check("from %s, and the loop was really running - it moved what it drives" % seed,
-              (mv["res"][1] - mv["res"][0]) > 1 and (mv["freq"][1] - mv["freq"][0]) > 0.01,
-              "resonance range %.2f, pitch total range %.3f"
-              % (mv["res"][1] - mv["res"][0], mv["freq"][1] - mv["freq"][0]))
+        check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
+              (mv["res"][1] - mv["res"][0]) > 1 and (mv["freq"][1] - mv["freq"][0]) > 0.01
+              and (mv["fold"][1] - mv["fold"][0]) > 0.05,
+              "resonance range %.2f, pitch total range %.3f, fold total range %.3f"
+              % (mv["res"][1] - mv["res"][0], mv["freq"][1] - mv["freq"][0], mv["fold"][1] - mv["fold"][0]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

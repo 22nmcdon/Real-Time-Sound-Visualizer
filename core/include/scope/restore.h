@@ -1085,6 +1085,14 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   if (!std::isfinite(brain.photo.u)) brain.photo.u = 0.75;
   if (!std::isfinite(brain.photo.v)) brain.photo.v = 0.5;
   brain.photo.on = isTrue("photoOn");
+  // The picture stage's amount, only when the setup names it: it is the
+  // player's, and a preset that does not say leaves it where the hand left
+  // it (the page's restoreInto). Held as the slider holds it, and the
+  // default rather than the range's middle for a value that is not a number.
+  if (const Json* named = partial.type == Json::Type::Object ? partial.get("pictureAmount") : nullptr) {
+    const double want = jsToNumber(named);
+    panel.setRangeNumber("pictureAmount", std::isfinite(want) ? want : 60);
+  }
   k.hold = isTrue("midiHold");
   {
     const Json* t = s("midiTruth");

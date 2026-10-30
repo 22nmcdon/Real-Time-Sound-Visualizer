@@ -91,7 +91,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
-| `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale |
+| `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
+| `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and a rack of six, keyboard and Photocell on and off, every kind, ten learned controllers |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
@@ -4193,7 +4194,13 @@ apart. A drawn cycle's tables are built with `sin` and `cos`, which the C
 library and the WebAssembly one may round differently in the last place.
 Those runs are held to the file's 1e-12, with the reason beside them. Any
 other run that drifts from exact is a real difference, and should be read
-as one.
+as one. The picture stage put nine runs that far apart at once (2.8e-17 at
+most): its Memory pushes the plane's twist, a `cos` and a `sin` of an angle,
+in runs where nothing had routed the twist before. A source on in every run
+reaches code no run used to reach. Rather than hold every run to the
+tolerance, the runs take the stage out and are exact again, and two staged
+runs of their own are held to it, each checked to be apart from its
+unstaged twin.
 
 **To show something used to be wrong, run the old code, not a guess at it.**
 Checking that stage 5n's oscillators were in step, the "before" was first
@@ -4300,3 +4307,33 @@ The general rule: a layout that fits by
 square root of a cancellation all pass until the machine changes. Leave
 margin, measure elapsed time, and make what is exact by construction exact
 in the code.
+
+**Since the picture stage, nothing is still by default, and a check that
+needs stillness has to say so.** The stage moves the fold, the echo, the
+twist and the phase from the picture in everything played, so a test that
+held the plugin to the bare generator, waited for a silence, wanted a stuck
+picture, or passed an input through untouched found the picture in its
+sound: fifteen of the shell test's checks, seven of parity's on the
+compiled instrument, and looptest's boredom, which never rose because the
+stage exists to unstick exactly that picture - and thirty of the
+page's suites, which measure the generator, the scope or the photocell's own
+loops. Each now sets the Picture slider to nought, with the reason
+(`unstaged` in `ShellTest.cpp`, the instrument runs in `parity.py`, and
+`?picture=0` on the page's address in the suites), as it would take out any
+routing its reference does not make; the stage has its own checks with it
+on. What made that one token rather than a line after every preset load:
+the amount is the player's, like the pedal it is meant for, so a setup that
+does not name it - every preset - leaves it alone. Do not set it to nought
+anywhere else to make a check pass: that is the picture stage switched off
+in the one place it is being looked at.
+
+**The first-minute test is the only check that hears what a visitor hears,
+and the first version of the stage failed it with every other check green.**
+Parity held the page and the core together to the last bit, the reads were
+seen to rescale, and looptest held every bound, while the default sound was a
+bright tone that never moved: the coverage climbing as a chord struck kept
+Glow's range open for eleven seconds at the first relax rate, pinning the
+fold at its top. Only `stagetest.py`, which opens the site as it opens for
+anyone, holds a chord and measures whether the timbre moves, could see that
+nothing was moving. Keep a test at that level for anything whose point is
+how it feels to play.

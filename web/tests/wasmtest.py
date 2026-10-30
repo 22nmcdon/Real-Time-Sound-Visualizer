@@ -198,7 +198,8 @@ with sync_playwright() as pw:
         # worklets and its main thread run - the page's own brain, which
         # core/tests/parity.py holds the instrument to. The instrument, the
         # site's default since 5m, is braintest.py's and hosttest.py's.
-        query = query + "&brain=js" if query else "?brain=js"
+        # The picture stage out, as in every suite that measures something else.
+        query = (query + "&brain=js" if query else "?brain=js") + "&picture=0"
         p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(700)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         p.wait_for_timeout(200)
@@ -366,8 +367,9 @@ with sync_playwright() as pw:
       let turnedOnScreen = 0;
       // And one long enough for the meter to give a verdict - it says nothing
       // until four seconds of history - on a preset that keeps finding new shapes.
-      // Five seconds of it, then the photocell off and on, which starts the
-      // meter's history again.
+      // Five seconds of it, then the photocell off and on - which used to
+      // start the meter's history again, and since the picture stage (P3)
+      // leaves it alone, the readings being the stage's and never stopping.
       scenarios.push(["Something new each time, then the photocell off and on", async () => {
         applyPreset("b:Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
       }, 800]);
@@ -444,9 +446,9 @@ with sync_playwright() as pw:
           % (deposits, steps, len(lit), len(lightly), sorted(verdicts)),
           deposits > 1000 and steps > 500 and len(lit) >= len(prow) - 3 and len(lightly) >= 5 and len(verdicts) >= 2)
     reset = next((r for r in prow if "off and on" in r["name"]), {"verdicts": [], "last": None})
-    check("and the edge, a reset mid-run, the limiters and a still picture: %s clipped, %s then %s across the reset, %s with the limiters down, %s when still"
+    check("and the edge, the photocell switched mid-run, the limiters and a still picture: %s clipped, %s then %s across the switch, %s with the limiters down, %s when still"
           % (clipped, sorted(reset["verdicts"]), reset["last"], sorted(strained["verdicts"]), still["last"]),
-          clipped and set(reset["verdicts"]) - {"listening"} and reset["last"] == "listening"
+          clipped and set(reset["verdicts"]) - {"listening"} and reset["last"] not in (None, "listening")
           and "running away" in strained["verdicts"] and still["last"] == "settled")
     check("and the comparison fails against persistence a thousandth more, or every walk a step brighter",
           len(ran["nulls"]) == 2 and all(n > TOL for n in ran["nulls"]), str(ran["nulls"]))

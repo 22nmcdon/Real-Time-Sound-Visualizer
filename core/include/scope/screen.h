@@ -86,6 +86,25 @@ class PictureSource : public ModSource {
   const PictureSources& p_;
 };
 
+// stage.*: the picture stage's three reads (P3). Memory is boredom, and has
+// boredom's lower reach.
+class StageSource : public ModSource {
+ public:
+  StageSource(std::string key, const PictureStage& s) : ModSource("stage." + key), key_(std::move(key)), s_(s) {
+    reach = key_ == "memory" ? kBoredReach : kPhotoReach;
+    fromPicture = true;
+  }
+  double value() const override {
+    if (key_ == "glow") return s_.glow();
+    if (key_ == "motion") return s_.motion();
+    return s_.memory();
+  }
+
+ private:
+  std::string key_;
+  const PictureStage& s_;
+};
+
 constexpr double kReadoutMs = 200;       // READOUT_MS: words are read, not watched
 constexpr double kLagLockSeconds = 1;    // how long the automatic lag takes to follow a new note
 constexpr double kLagAperiodicMax = 0.15;
@@ -122,6 +141,12 @@ class PictureRun {
     // PICTURE_SOURCES, with SIXTH ("signed") the one of the drawn pair's two that is offered.
     for (const char* key : { "round", "cover", "change", "novelty", "signed", "bored" })
       sources_.push_back(std::make_unique<PictureSource>(key, pics_));
+    for (const char* key : { "glow", "motion", "memory" })
+      stageSources_.push_back(std::make_unique<StageSource>(key, stage_));
+    // Registered always, since the picture stage: the photocell alone comes
+    // and goes with its switch.
+    for (auto& s : sources_) matrix.registerSource(s.get());
+    for (auto& s : stageSources_) matrix.registerSource(s.get());
     // VISUAL_DESTS, and each lane's full scale (registerLaneDests).
     View& v = brain_.view.capture;
     const auto add = [&](std::string id, double span, double min, double max, std::function<double()> base,
@@ -172,13 +197,8 @@ class PictureRun {
     if (brain_.photo.on != registered_) {
       registered_ = brain_.photo.on;
       pics_.setOn(registered_);
-      if (registered_) {
-        matrix.registerSource(&photo_);
-        for (auto& s : sources_) matrix.registerSource(s.get());
-      } else {
-        matrix.unregisterSource(photo_.id);
-        for (auto& s : sources_) matrix.unregisterSource(s->id);
-      }
+      if (registered_) matrix.registerSource(&photo_);
+      else matrix.unregisterSource(photo_.id);
       matrix.touch();
     }
     pics_.u = brain_.photo.u;
@@ -207,6 +227,8 @@ class PictureRun {
     } else {
       pics_.pictureStep(phosphor_, nullptr, elapsed_, spect, limiting);
     }
+    stage_.step(pics_.values(), elapsed_, spect);
+    matrix.setStageAmount(brain_.panel.range("pictureAmount") / 100);
   }
 
   // The zoom made again from its step and what is pointed at it, after the
@@ -240,6 +262,7 @@ class PictureRun {
 
   const Phosphor& phosphor() const { return phosphor_; }
   const PictureSources& pictures() const { return pics_; }
+  const PictureStage& stage() const { return stage_; }
   const Frame& frame() const { return frame_; }
   const Plot& plot() const { return plot_; }
 
@@ -251,6 +274,8 @@ class PictureRun {
   PictureSources pics_;
   PhotoSource photo_ { pics_ };
   std::vector<std::unique_ptr<PictureSource>> sources_;
+  PictureStage stage_;
+  std::vector<std::unique_ptr<StageSource>> stageSources_;
   Frame frame_;
   Plot plot_;
   bool registered_ = false, held_ = false;

@@ -115,7 +115,9 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    # The picture stage out (?picture=0): this suite measures something else,
+    # and the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- the generator, heard ---")
@@ -350,7 +352,7 @@ with sync_playwright() as pw:
     qbad = []
     q.on("pageerror", lambda e: qbad.append("pageerror: " + str(e)))
     q.add_init_script(STUB)
-    q.goto(f"file://{ART}/scope.html?brain=core"); q.wait_for_timeout(700)
+    q.goto(f"file://{ART}/scope.html?picture=0&brain=core"); q.wait_for_timeout(700)
     if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
     q.mouse.click(5, 5); q.wait_for_timeout(1500)
     core = q.evaluate("""async () => {

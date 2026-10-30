@@ -354,8 +354,10 @@ class PictureSources {
 
   // pictureStep: the meter fed, boredom risen or drained, each value slewed.
   // `shape` is the drawn pair's, or nothing when there is no frame.
+  // Whether or not the photocell is on (P3): the readings are the picture
+  // stage's, which is always on. The switch is the reticle's.
   void pictureStep(const Phosphor& phosphor, const PairShape* shape, double elapsedMs, bool spectrogram, double limiting) {
-    if (!on || spectrogram || !shape) { values_ = {}; raw_ = {}; bored_ = 0; return; }
+    if (spectrogram || !shape) { values_ = {}; raw_ = {}; bored_ = 0; return; }
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
     meter_.update(phosphor.grid(), dt, limiting);
     const double stuck = std::fmax(0.0, std::fmin(1.0, 1 - std::fmax(meter_.change() / (2 * kChangeFloor),
@@ -384,11 +386,11 @@ class PictureSources {
   // The meter alone started afresh, as the page's `pictureMeter.reset()` does.
   void resetMeter() { meter_.reset(); }
 
-  // setPhoto: on, the meter starts afresh; off, the photocell reads nothing.
+  // setPhoto: off, the photocell reads nothing. The meter no longer starts
+  // afresh when it comes on, because since the picture stage it never stopped.
   void setOn(bool want) {
     on = want;
-    if (on) meter_.reset();
-    else { photo_ = 0; photoRaw_ = 0; }
+    if (!on) { photo_ = 0; photoRaw_ = 0; }
   }
 
   double photo() const { return photo_; }
@@ -402,6 +404,46 @@ class PictureSources {
   double photo_ = 0, photoRaw_ = 0, bored_ = 0;
   PictureValues values_, raw_;
   PictureMeter meter_;
+};
+
+// The picture stage (P3 of making-it-one-instrument.md): three reads of the
+// picture that move the sound always, with no routing made by hand. Glow is
+// the coverage and Motion the change, each rescaled to the range it has had
+// lately, with a least span so that a still picture stays still rather than
+// having its jitter stretched into full swings; Memory is boredom as it is.
+// The page's `pictureStageStep`, held to it by parity.
+constexpr double kStageRelax = 0.5;  // of the way back to the reading, a second: see STAGE_RELAX
+constexpr double kStageGlowSpan = 0.1, kStageMotionSpan = 0.05;
+constexpr double kStageDefault = 60;   // the Picture slider's start, in per cent
+
+class PictureStage {
+ public:
+  void step(const PictureValues& values, double elapsedMs, bool spectrogram) {
+    if (spectrogram) { glow_ = motion_ = memory_ = 0; return; }
+    const double dt = std::fmax(0.0, elapsedMs) / 1000;
+    glow_ = rescale(glowRange_, values.cover, dt, kStageGlowSpan);
+    motion_ = rescale(motionRange_, values.change, dt, kStageMotionSpan);
+    memory_ = values.bored;
+  }
+  double glow() const { return glow_; }
+  double motion() const { return motion_; }
+  double memory() const { return memory_; }
+
+ private:
+  struct Range { double lo = 0, hi = 0; bool seen = false; };
+  // The range follows a reading outwards at once and relaxes back towards it
+  // at kStageRelax a second, so a quiet spell narrows it again. The first
+  // reading is its own range, and reads nought.
+  static double rescale(Range& range, double x, double dt, double least) {
+    if (!range.seen) { range = { x, x, true }; return 0; }
+    const double k = std::fmin(1.0, kStageRelax * dt);
+    const double hi = std::fmax(x, range.hi - (range.hi - x) * k);
+    const double lo = std::fmin(x, range.lo + (x - range.lo) * k);
+    range.lo = lo; range.hi = hi;
+    return std::fmax(0.0, std::fmin(1.0, (x - lo) / std::fmax(hi - lo, least)));
+  }
+  double glow_ = 0, motion_ = 0, memory_ = 0;
+  Range glowRange_, motionRange_;
 };
 
 }  // namespace scope

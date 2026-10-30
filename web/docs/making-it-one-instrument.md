@@ -447,9 +447,34 @@ the synth's features should be chosen knowing that.
   symmetric figure out of tune (the three-petalled rose three times too high), and an
   off-centre path fixes that for five of the six. The go or no-go is the owner's ears on
   the renders, recorded here when they have been heard.
-- **P3 — The picture stage.** Three reads, one amount on by default, meters on screen,
-  stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After P3 the
-  first-minute test should pass on the default sound.
+- **P3 — The picture stage. Half built.** Three reads, one amount on by default, meters on
+  screen, stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After
+  P3 the first-minute test should pass on the default sound.
+  - *Built:* Glow (coverage), Motion (change) and Memory (boredom), on the fold, the echo,
+    and the twist and right channel's phase, under one *Picture* amount at 60 per cent by
+    default, with three bars beside it; in the page and in the core, held together by
+    parity, so the plugin and the site's instrument play it. The amount is the
+    player's, as a pedal's would be: a setup that names it sets it, and a preset, which
+    does not, leaves it where the hand put it. The picture's readings no
+    longer wait for the photocell, which is now only the reticle's switch. Glow and Motion
+    are rescaled to their recent range with a least span. `stagetest.py` is the
+    first-minute test, run on the site as a visitor opens it, and it passes: a held chord's
+    brightness moves between 0.06 and 0.27 within the first second, where the same chord
+    at nought stays within 1 per cent.
+  - *Found on the way:* the range has to close back quickly. At an eighth a second a
+    struck chord held Glow at the top for eleven seconds, and the default sound became a
+    bright tone that stood still, which the first-minute test failed. At a half a second,
+    a strike blooms and lets go, and the fold, the coverage and Glow make a slow loop of
+    their own, about every four or five seconds on the default tone. That is the first
+    thing to listen to: it may be too much, or the wrong control, and the amount and the
+    bundles are where to change it.
+  - *Not changed:* the reach and the per-control total. Rescaling made the effect plainly
+    heard at the old limits (the fold alone made the default tone four times brighter),
+    so nothing was raised; `looptest.py`'s stability run now has the stage at its top
+    beside every picture source, and every bound held.
+  - *Left:* the routing matrix to a drawer; each control lit while the picture moves it;
+    *running away* pulling the amount down; Memory taking novelty as well as boredom; the
+    amount on the expression pedal; and the ring, which is P7's path as much as P3's.
 - **P4 — Coherence.** One pair out of the core; the generator always heard; every drawn
   note heard and every heard note drawn.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the

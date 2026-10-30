@@ -1273,9 +1273,11 @@ def mboth(text, name="matrix_one.txt"):
 # and two event sources, one from the picture.
 MSETUP = ["source lfo1 index=0", "source lfo2 index=1", "source level", "source key stepped", "source pedal stepped",
           "source photo picture reach=0.5", "source shape picture reach=0.5", "source hear reach=0.5 varies",
-          "source onset event", "source pic.hit event picture", "visual view.rotate 1 -2 2 0.25",
+          "source onset event", "source pic.hit event picture", "source stage.glow picture reach=0.5",
+          "source stage.memory picture reach=0.3", "visual view.rotate 1 -2 2 0.25",
           "visual view.zoom 8 0 24 20", "event gen.kick", "event gen.pluck",
-          "value level 0.6", "value photo 0.7", "value shape 0.9", "value hear 0.8", "value lfo1 0.3"]
+          "value level 0.6", "value photo 0.7", "value shape 0.9", "value hear 0.8", "value lfo1 0.3",
+          "value stage.glow 0.4", "value stage.memory 0.5"]
 def mrun(*commands): return "run\n%s\nend\n" % "\n".join(MSETUP + list(commands))
 def frames(start, stop, step): return ["at %d" % t if i % 2 == 0 else "frame" for t in range(start, stop, step) for i in (0, 1)]
 
@@ -1356,13 +1358,21 @@ mruns = [
     # itself. Found by the edits' fuzz; the port's fade held a stale copy.
     ("fade-depth", mrun("route level gen.freq 0.8", "fade out 1", "at 0", "frame", "amount level gen.freq 0.3",
                         "unroute level gen.freq", *frames(50, 1200, 100))),
+    # The picture stage (P3): its routes heard at the Picture amount, each
+    # within its source's reach, counted in the loop's total with a routing
+    # made by hand onto the same control, never faded, made again when the
+    # amount moves and gone at nought.
+    ("stage", mrun("at 0", "stage 60", "frame", "route photo gen.fold 0.4", "frame", "value stage.glow 1", "frame",
+                   "stage 100", "frame", "fade both 1", "at 10", "frame", "route level gen.twist 0.5",
+                   *frames(100, 700, 200), "unroute photo gen.fold", *frames(700, 1500, 200), "stage 0", "frame",
+                   "stage 35", "frame", "fade off", "frame")),
     ("codes", mrun("load a>b@1;;x>y@1.2.3;level>gen.freq@-0.0625;bad;@;c>d@;e>f@.5;g>h>i@0.1875;j@k>l@1;m>n@-.25;o>p@5.;q>r@-",
                    "encode", "frame", "load level>gen.amp@0.0005;level>gen.fm@1.9995;level>gen.freq@-0.00049;p0>q0@-0;p9>q9@9.9996;pm>qm@-99.9999", "encode",
                    "load", "encode")),
 ]
 
 mrng = random.Random(96)
-MSRC = ["lfo1", "lfo2", "level", "key", "pedal", "photo", "shape", "hear", "onset", "pic.hit", "ghost"]
+MSRC = ["lfo1", "lfo2", "level", "key", "pedal", "photo", "shape", "hear", "onset", "pic.hit", "ghost", "stage.glow"]
 MDST = ["gen.freq", "gen.amp", "gen.fm", "gen.bar2", "gen.twist", "view.rotate", "view.zoom", "gen.kick", "gen.pluck"]
 def mfuzz(n):
     out, t = ["at 0"], 0
@@ -1380,6 +1390,7 @@ def mfuzz(n):
         elif r < 0.63: out.append("strike %d" % mrng.randint(0, 1))
         elif r < 0.65: out.append("load " + ";".join("%s>%s@%.3f" % (mrng.choice(MSRC), mrng.choice(MDST), mrng.uniform(-1, 1)) for _ in range(mrng.randint(0, 4))))
         elif r < 0.66: out.append("forget " + mrng.choice(["level", "photo", "onset"]))
+        elif r < 0.67: out.append("stage %d" % mrng.choice([0, 35, 60, 100]))
         # Never a pair twice: the page's list cannot hold one twice.
         elif r < 0.70: out.append("edit " + ";".join("%s>%s@%r" % (src, dst, mrng.uniform(-1, 1)) for src, dst in mrng.sample(
             [(src, dst) for src in ("level", "onset", "photo") for dst in ("gen.freq", "gen.kick", "view.rotate")], mrng.randint(0, 3))))
@@ -1416,6 +1427,27 @@ fo = frame_lines("fade-out")
 check("a routing taken off is heard fading, then forgotten", "heard 3" in "\n".join(fo) and fo[-1].split("heard ")[1].startswith("0"))
 check("the loop's total into one slot is held to a half", "/1.0000000000000000/1.0000000000000000/0" in mout("reach")
       and "u/0.50000000000000000/" in mout("reach"))
+def route_list(line):
+    m = re.search(r"routes (\S+)", line)
+    if not m or m.group(1) == "-": return []
+    return [(float(r.split("/")[1]), int(r.split("/")[3]), float(r.split("/")[4])) for r in m.group(1).split("+")]
+def stage_holds(out):
+    # What the stage's routes are for, read off one run: at sixty per cent
+    # glow at 0.4 pushes the fold by 0.4 x 0.6 x 0.8; a fade eases a routing
+    # made by hand (the twist from nought) and leaves the stage's memory on
+    # the same control whole, at its reach of 0.3; and the amount at nought
+    # leaves only what the setup holds.
+    lines = out.split("\n")
+    frames_ = [l for l in lines if l.startswith("frame")]
+    stages = [l for l in lines if l.startswith("stage")]
+    if not frames_ or len(stages) < 4: return False
+    fold = any(slot == 22 and abs(held - 0.192) < 1e-12 for held, slot, _ in route_list(frames_[0]))
+    eased = any(any(s == 18 and a == 0 for _, s, a in route_list(l)) and
+                any(s == 18 and a == 1 and abs(h - 0.15) < 1e-12 for h, s, a in route_list(l)) for l in frames_)
+    heard = [int(l.split("heard ")[1].split()[0]) for l in stages]
+    return fold and eased and heard == [4, 5, 2, 6]
+check("the stage's routes: heard at the amount, within reach, never faded, gone at nought", stage_holds(mout("stage")))
+check("and the check fails on a run with no stage in it", not stage_holds(mout("reach")))
 check("events fire on a new count only, never on the count found, and never at no depth",
       mout("events").count(":: fire gen.kick") == 5 and "fire gen.pluck" not in mout("events")
       and ":: fire gen.kick -0.29" in mout("events"))
@@ -2330,6 +2362,12 @@ pcruns = [
                      *pcframes(30, 700, lambda i: pcellipse(340 + 100 * ((i // 2) % 2), 255, 60, 40)))),
     # The drawn pair: round each way, a line, through a gain, an offset, a
     # turn and a zoom that reaches the edge; no frame at all.
+    # The picture stage (P3): a picture drawn once and left, for eight
+    # seconds, then one that never stops moving, then the spectrogram.
+    ("stage", pcrun(*PC[:1], "photo 0", "persist -1", "fade", pcellipse(340, 255, 120, 80), "pair ellipse 0.5 0.3 3 4096 0",
+                    *["step 50" for _ in range(160)], "persist 0",
+                    *pcframes(200, 50, lambda i: pcellipse(60 + (i * 37) % 520, 40 + (i * 53) % 380, 30 + i % 17, 20 + i % 11)),
+                    "spect 1", "step 50", "spect 0", "step 50")),
     ("shape", pcrun(*PC, "fade", "pair ellipse 0.5 0.3 3 4096 0", "step 16", "pair ellipse 0.5 0.3 3 4096 3.1416",
                     "step 16", "pair ellipse 0.5 0.5 3 4096 1.5708", "step 16", "view 2 0.5 0.1 -0.2 0.125 1.5", "step 16",
                     "pair ellipse 0.9 0.9 5 9000 0", "view 1 1 0 0 0 1.1", "step 16", "pair noise 7 0.4 3000", "step 16",
@@ -2413,10 +2451,32 @@ check("the photocell climbs at two swings a second to what is under it, falls on
       abs(ph[0] - 0.032) < 1e-12 and ph[39] > 0.3 and ph[59] < ph[39] and ph[60] == 0 and ph[61] == 0, repr([round(x, 3) for x in ph[:3] + ph[38:41] + ph[58:62]]))
 bo = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][:160]
 bo2 = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][160:]
-check("and the photocell turned off lets boredom go: on again, it starts from nothing rather than where it was",
-      bo[-1] > 0.5 and bo2 == [0.0, 0.0], repr(bo2))
+# Since the picture stage (P3) the readings are always on, and the photocell's
+# switch is the reticle's alone. This used to assert the opposite - off let
+# boredom go, and on started it from nothing - which is what made the picture
+# a thing that moved nothing until it was switched on.
+def kept(after): return bo[-1] > 0.5 and len(after) == 2 and after[0] >= bo[-1] - 1e-9 and after[1] >= after[0] - 1e-9
+check("and the photocell switched off and on again leaves boredom where it was: the readings go on without it",
+      kept(bo2), repr(bo2))
+check("and the check fails on boredom let go, as the photocell used to let it go", not kept([0.0, 0.0]))
 check("boredom rises while the picture is still, toward eight tenths over ten seconds of stillness",
       bo[-1] > 0.5 and all(b2 >= b1 for b1, b2 in zip(bo[10:], bo[11:])), repr(round(bo[-1], 3)))
+# The picture stage's reads (P3), which parity holds to the page above; here,
+# what they are for. Each check is also fed the half of the run it should
+# fail on, since a check on a still picture that a moving one also passes
+# says nothing about stillness.
+sg = [[float(pcfield(l, "stage", k)) for k in range(3)] for l in pcsteps("stage")]
+def still_stays(reads): return len(reads) > 100 and all(r[0] == 0 and r[1] == 0 for r in reads) and reads[-1][2] > 0.5 \
+    and all(b >= a for (_, _, a), (_, _, b) in zip(reads[10:], reads[11:]))
+def moving_moves(reads, before): return len(reads) > 100 and max(r[1] for r in reads) == 1 and reads[-1][2] < before / 2
+check("a still picture: Glow and Motion stay at nought, its jitter not stretched into swings, and Memory climbs past a half",
+      still_stays(sg[:160]), repr([[round(v, 3) for v in r] for r in sg[150:160:3]]))
+check("and that fails on a picture that never stops moving", not still_stays(sg[160:360]))
+check("a moving picture: Motion reaches the top of its range, and Memory drains to under half of where stillness left it",
+      moving_moves(sg[160:360], sg[159][2]), repr([[round(v, 3) for v in r] for r in sg[350:360:3]]))
+check("and that fails on the still one", not moving_moves(sg[:160], sg[0][2] + 1))
+check("every read stays between nought and one, and the spectrogram reads all three as nought, and only it",
+      all(0 <= v <= 1 for r in sg for v in r) and sg[360] == [0, 0, 0] and sg[361] != [0, 0, 0], repr(sg[360:]))
 sh = [(float(pcfield(l, "shape")), float(pcfield(l, "shape", 1))) for l in pcsteps("shape")]
 check("the drawn pair: anticlockwise one way and clockwise the other, a line nought, and the edge reached when zoomed",
       sh[0][0] > 0.5 and sh[1][0] < -0.5 and abs(sh[2][0]) < 0.05 and sh[4][1] > 0.1 and sh[7] == (0.0, 0.0), repr(sh))
@@ -2894,7 +2954,8 @@ SLIDERS = ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay",
            "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel", "scoreVoices", "scoreOctaves",
            "arpOctaves", "threshLevel", "pluckNote", "planeRadius", "planeTwist", "planeScaleX", "planeScaleY", "planeShear",
            "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
-           "qGlide", "bpm", "l0r", "l1r", "l0a", "l1a", "photoU", "photoV", "midiDrawCount", "midiDrawCountB", "splitAt"]
+           "qGlide", "bpm", "l0r", "l1r", "l0a", "l1a", "photoU", "photoV", "midiDrawCount", "midiDrawCountB", "splitAt",
+           "pictureAmount"]
 def rnumber():
     return rrng.choice([rrng.randint(-200, 4500), rrng.uniform(-50, 300), rrng.randint(0, 200) + 0.5, -0.0, 0, 1e21, -3e-7,
                         "12", " 12", "1e2", "+5", ".5", "5.", "abc", "", None, True, False, [3], [], "Infinity", "0x10"])
@@ -4038,13 +4099,29 @@ iruns["drawn figure"] = FIG + [["control", "drawn", _json.dumps({"figDrawn": "-0
 iruns["drawn figure none"] = FIG + blocks(30)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
+# The picture stage (P3) is on in everything the instrument plays, and moves
+# the fold, the echo, the twist and the phase from the picture - so the runs
+# above, which hold the instrument's plumbing and read its sound for an input
+# passed through, a pitch or a crest, take it out first, as the plugin's shell
+# test does (unstaged). A setup loaded part-way leaves it out, since the
+# amount is the player's and a preset does not name it - which these runs
+# also hold, the ones that load "Pluck" mid-run being exact only if it does.
+# The stage is held by runs of its own: the held note and the hands with it
+# on, against the same with it out.
+STAGED = {"staged notes": iruns["notes"], "staged hands": iruns["hands"]}
+for name in list(iruns):
+    if name != "refused": iruns[name] = iruns[name][:1] + [["slider", "pictureAmount", "0"]] + iruns[name][1:]
+iruns.update(STAGED)
 
 iout = {}
 # Every sample alike, except where a drawn cycle is played: its tables are
 # built with sin and cos, which the C library and the WebAssembly one are
 # allowed to round differently in the last place - 1.9e-17 apart, where every
-# other run is exact - so those runs are held to the file's 1e-12 (TOL).
-ILIBM = {"drawn", "drawn none"}
+# other run is exact - so those runs are held to the file's 1e-12 (TOL). The
+# same for the stage's runs: its Memory pushes the plane's twist, which is a
+# cos and a sin of the angle, 2.8e-17 apart at most. With the stage on, nine
+# of the runs above were that far apart; with it out, all of them are exact.
+ILIBM = {"drawn", "drawn none", "staged notes", "staged hands"}
 for name, lines in iruns.items():
     path = iscript(name, lines)
     a, b = icpp(path), ijs(path)
@@ -4054,6 +4131,15 @@ for name, lines in iruns.items():
     check("%s: the compiled instrument is the native one, every sample, every state and every message out" % name,
           most <= (TOL if name in ILIBM else 0) and not other, "worst %g; %d states, %d sends, %d refusals%s" % (most, said[0], said[1], said[2],
                                                                                     ("; " + other) if other else ""))
+# The stage's runs are the stage: their sound apart from the same notes and
+# hands with it out, which is the null for their agreeing with the native
+# instrument meaning anything about the stage.
+def iblocks(name): return [float(v) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]]
+for staged, plain in (("staged notes", "notes"), ("staged hands", "hands")):
+    a, b = iblocks(staged), iblocks(plain)
+    apart = max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")
+    check("%s: the picture stage is heard in the compiled instrument, against the same with it out" % staged,
+          0.05 < apart < float("inf"), "apart by %g" % apart)
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)

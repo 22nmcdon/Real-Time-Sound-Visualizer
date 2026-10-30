@@ -84,7 +84,9 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    # The picture stage out (?picture=0): this suite measures something else,
+    # and the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -461,7 +463,7 @@ with sync_playwright() as pw:
     # quarters across by default - which on the default figure is dark, so it
     # read about 0.02 and moved nothing. The fixture has to show that dark spot
     # first, or a pass below would prove nothing about the landing.
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(900)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     land = p.evaluate("""async () => {
       const frames = (n) => new Promise((done) => { let k = 0;

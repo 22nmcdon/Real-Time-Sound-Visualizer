@@ -57,7 +57,7 @@ inline const Json& setupDefaults() {
   "c0o":0,"c1on":true,"c1ac":false,"c1s":0,"c1o":0,"midSide":false,"acHz":100,"octaves":0,
   "midiMode":"dyad","midiHold":false,"midiTruth":true,"midiFollow":false,"midiDrawCount":2,
   "midiDrawWhich":"outer","midiPolyJust":false,"midiDrawCountB":2,"midiDrawWhichB":"outer",
-  "layers":"off","splitAt":60,"layerPair":"each","photoOn":false,"photoU":0.75,"photoV":0.5,
+  "layers":"off","splitAt":60,"layerPair":"each","photoOn":false,"photoU":0.75,"photoV":0.5,"pictureAmount":60,
   "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
   "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeKaleido":0,"planeSnap":0,
   "planeScaleX":100,"planeScaleY":100,"planeShear":0,"bPlane":false,"delayMix":0,"delayMs":375,"delaySync":"",

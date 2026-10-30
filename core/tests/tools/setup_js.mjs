@@ -36,7 +36,7 @@ function definition(name) {
    compiled core's codec (5e), from the module the page carries, as the site
    now makes them; otherwise by the page's own JavaScript. */
 const MODE = process.env.CORE || "js";
-const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "DEFAULTS",
+const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "DEFAULTS",
                 "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", "migrateSetup", "makeWasmSetupCodec"];
 const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
   : MODE === "wasm" ? (() => {

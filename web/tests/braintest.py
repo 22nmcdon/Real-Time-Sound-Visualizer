@@ -66,7 +66,9 @@ def opened(b, query, settle=2500, close=True):
     p = b.new_page(viewport={"width": 1400, "height": 900})
     errors = []
     p.on("pageerror", lambda e: errors.append(str(e)))
-    p.goto(PAGE + query)
+    # The picture stage out: this suite holds the instrument's plumbing, and
+    # the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.goto(PAGE + query + ("&" if "?" in query else "?") + "picture=0")
     p.wait_for_timeout(settle)
     # Closing the help sheet is a press, so a check on an unpressed page leaves it open.
     if close and p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
@@ -945,7 +947,7 @@ with sync_playwright() as pw:
     })()""")
     errors = []
     q.on("pageerror", lambda e: errors.append(str(e)))
-    q.goto(PAGE)
+    q.goto(PAGE + "?picture=0")
     q.wait_for_timeout(2000)
     WAIT = """() => ({ kind: state.source.kind, waiting: state.source.waiting, standing: state.source.standing,
       credit: el.credit.textContent, seen: hostSync.seen, peak: Math.max(...state.source.getLatestWindow(2048)[0].map(Math.abs)) })"""

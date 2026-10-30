@@ -2462,6 +2462,20 @@ redone natively or left out.
   so the standalone's audio thread runs the processor as fast as it can and
   takes a core. Fine for checking the picture end to end; not a measure of
   anything the processor costs.
+- **The picture stage runs in the plugin's frame, not its page's** (P3 of
+  `web/docs/making-it-one-instrument.md`). `PictureStage` steps after the
+  picture's readings in `PictureRun::before`, and the matrix takes the
+  Picture slider's amount from the panel each frame and makes the stage's
+  four routes again when it changes - so the plugin with its window closed
+  plays the stage exactly as the site's instrument does, and the page's bars
+  are the page's own reading of the same picture. The picture's sources are
+  registered once, at construction, and only the photocell comes and goes
+  with its switch; the shell test's checks that the photocell took them
+  away with it were the old design, and now ask the opposite. A stage route
+  is never faded and never stored: `fadeGain` answers one for a `stage.` key,
+  and `heard()` puts the stage's routes between the setup's and the ghosts,
+  in the page's order, since the order the loop's parts are summed in is
+  what parity compares to the last bit.
 
 ## Building and testing
 

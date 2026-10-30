@@ -84,6 +84,9 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "load") m.load(scope::Matrix::decode(arg(1)));
     else if (cmd == "edit") m.setRoutings(scope::Matrix::decode(arg(1)));
     else if (cmd == "forget") { m.unregisterSource(arg(1)); m.touch(); }
+    // The Picture slider, in per cent: PictureRun hands the amount over each
+    // frame, and the page's handler touches the routings.
+    else if (cmd == "stage") { m.setStageAmount(num(arg(1)) / 100); m.touch(); }
     else if (cmd == "fade") {
       const std::string mode = arg(1);
       const scope::FadeMode f = mode == "in" ? scope::FadeMode::In : mode == "out" ? scope::FadeMode::Out

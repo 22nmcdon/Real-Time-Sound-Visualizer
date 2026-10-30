@@ -18,6 +18,7 @@ inline constexpr RangeSpec kRanges[] = {
   { "level", -1000, 1000, 1, 0 },
   { "timebase", 0, 8, 1, 7 },
   { "zoom", 0, 24, 1, 0 },
+  { "pictureAmount", 0, 100, 1, 60 },
   { "fileSeek", 0, 1000, 1, 0 },
   { "align", -100, 200, 1, 0 },
   { "freq", 30, 4000, 1, 220 },
