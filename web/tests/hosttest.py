@@ -255,6 +255,7 @@ with sync_playwright() as pw:
       send('trigger', () => document.getElementById('trigSource1').click());
       send('reticle', () => movePhoto(0.25, 1.5));
       send('photo', () => el.photoButton.click());
+      out.photoAt = photo.u + ',' + photo.v;
       send('keyDisplay', () => key('1'));
       send('keyZoom', () => key('+'));
       send('wheel', () => el.trace.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true })));
@@ -265,7 +266,14 @@ with sync_playwright() as pw:
     check("the view's buttons, a lane's switch, the trigger's lane and the reticle are sent; the cursors, which no grid shows, are not",
           view["display"] == [["scopeClick", "dispXY"]] and view["lane"] == [["scopeControl", "ch2On", False]]
           and view["trigger"] == [["scopeClick", "trigSource1"]] and view["reticle"] == [["scopeControl", "photoReticle", "0.25,1"]]
-          and view["photo"] == [["scopeClick", "photoButton"]] and view["cursors"] == [], str(view))
+          and view["photo"][:1] == [["scopeClick", "photoButton"]] and view["cursors"] == [], str(view))
+    # Switched on, the page lands the reticle on the figure (P1) and sends the
+    # plugin where it landed, after the press: the plugin's instrument does not
+    # land by itself, so without this second message the two would read the
+    # screen at different places. Checked as the place the page holds, exactly.
+    check("pressing the photocell on sends the press, then the place the reticle landed",
+          view["photo"] == [["scopeClick", "photoButton"], ["scopeControl", "photoReticle", view["photoAt"]]]
+          and view["photoAt"] != "0.25,1", str(view["photo"]) + " at " + view["photoAt"])
     check("the display from a key is its button, and the zoom from a key or the wheel is the slider, one step each",
           view["keyDisplay"] == [["scopeClick", "dispYT"]] and len(view["keyZoom"]) == 1 and len(view["wheel"]) == 1
           and view["keyZoom"][0][:2] == ["scopeSlider", "zoom"] and view["wheel"][0][:2] == ["scopeSlider", "zoom"]

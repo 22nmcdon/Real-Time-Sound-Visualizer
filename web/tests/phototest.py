@@ -456,6 +456,52 @@ with sync_playwright() as pw:
           cycle["back"] == {"on": True, "u": 0.3, "v": 0.7, "registered": True}, str(cycle["back"]))
     check("and a code from before it existed has it off", cycle["old"]["on"] is False, str(cycle["old"]))
 
+    print("\n--- switched on by hand, it lands on the figure ---")
+    # The fault this is for: switched on, the reticle stayed where it was - three
+    # quarters across by default - which on the default figure is dark, so it
+    # read about 0.02 and moved nothing. The fixture has to show that dark spot
+    # first, or a pass below would prove nothing about the landing.
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(900)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    land = p.evaluate("""async () => {
+      const frames = (n) => new Promise((done) => { let k = 0;
+        const f = () => (++k >= n ? done() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      await frames(30);
+      const before = { u: photo.u, v: photo.v, read: phosphorRead(photo.u, photo.v),
+                       most: Math.max(...pictureEngine.cells) };
+      el.photoButton.click();
+      await frames(45);
+      const after = { u: photo.u, v: photo.v, raw: photo.raw, value: photo.value, on: photo.on };
+      // Already on the trace, but a third of a cell off a cell's centre: a
+      // landing that ignored being lit would snap it back to a centre.
+      movePhoto(photo.u + 0.33 / PHOSPHOR_N, photo.v);
+      const nudged = { u: photo.u, v: photo.v, read: phosphorRead(photo.u, photo.v) };
+      el.photoButton.click(); el.photoButton.click(); await frames(5);
+      const again = { u: photo.u, v: photo.v };
+      // A setup that turns it on keeps its own placement, even in the dark:
+      // the corner, where a landing would certainly have moved it.
+      const snap = snapshot(); snap.photoOn = true; snap.photoU = 0.05; snap.photoV = 0.05;
+      restore(snap); await frames(10);
+      const dark = { u: photo.u, v: photo.v, on: photo.on, read: phosphorRead(0.05, 0.05) };
+      applyPreset('b:The knot leans into the light'); await frames(10);
+      const preset = { u: photo.u, v: photo.v, on: photo.on };
+      return { before, after, nudged, again, dark, preset };
+    }""")
+    b4, af = land["before"], land["after"]
+    check("the fixture: at its default spot on the default figure the photocell is in the dark",
+          b4["read"] < 0.1 * b4["most"] and b4["most"] > 0.5, str(b4))
+    check("switched on, it moves onto the figure and reads it",
+          af["on"] and (af["u"], af["v"]) != (b4["u"], b4["v"]) and af["raw"] > 0.3 and af["value"] > 0.3,
+          "from %.3f,%.3f to %.3f,%.3f, reading %.3f" % (b4["u"], b4["v"], af["u"], af["v"], af["raw"]))
+    nd = land["nudged"]
+    check("on the figure already, off a cell's centre, switching it off and on leaves it exactly there",
+          nd["read"] >= 0.25 and land["again"] == {"u": nd["u"], "v": nd["v"]}, "%s -> %s" % (nd, land["again"]))
+    check("a setup that turns it on in the dark corner keeps it there",
+          land["dark"]["on"] and (land["dark"]["u"], land["dark"]["v"]) == (0.05, 0.05) and land["dark"]["read"] < 0.05,
+          str(land["dark"]))
+    check("a preset that turns it on keeps its own placement, not a landing",
+          land["preset"] == {"u": 0.55, "v": 0.45, "on": True}, str(land["preset"]))
+
     print("\n--- what it costs ---")
     cost = p.evaluate("""async () => {
       el.photoButton.click();

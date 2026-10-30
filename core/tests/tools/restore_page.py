@@ -83,6 +83,15 @@ DUMP = """(setups) => {
     // The fade as the plugin hands it back, through the page's own fadeFromHost.
     else if (o.op === "fade") fadeFromHost(o.value);
   };
+  // Nothing drawn, as the core here has drawn nothing: its instrument is given
+  // setups and hands, never audio, so its phosphor is blank. The page has been
+  // drawing its default tone since it loaded, and every line below runs in this
+  // one synchronous loop, so no frame is drawn during it - blanking once is
+  // enough. Without it, pressing the photocell on lands the page's reticle on
+  // the figure (P1) and the core's, with nothing to land on, stays put. The
+  // landing itself is the web suite's (phototest.py); in the plugin the page
+  // sends the instrument the place it landed on.
+  pictureEngine.blank();
   for (const setup of setups) {
     let error = null;
     // A frame first, as the page has between anything a hand does: the matrix
