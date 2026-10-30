@@ -1,6 +1,10 @@
 # A Z axis: brightness as a third signal
 
-Not built. This is the design as it stood when stages one and two shipped, written
+Not built. Moved here from the desktop build when that was retired (stage P0 of
+`making-it-one-instrument.md`), and kept as an idea for the plugin: brightness is
+what the phosphor remembers, which is what that plan makes the instrument out of.
+The rest is as it was written, so "this repository's Python app" below is the
+retired build. This is the design as it stood when stages one and two shipped, written
 down so it can be picked up without re-deriving it.
 
 It concerns the **web surface** — `scope.html`, published at

@@ -1,11 +1,14 @@
 # Working in this repository
 
-Two builds of one instrument. `web/scope.html` is the live one and where work
-lands first; `oscilloscope-poc/` is a native Python/PyQt6 build of the same
-thing. And a third on the way: `plugin/` is the instrument as a JUCE plugin
-with the page as its UI, over `core/`, the C++ core that will be shared by the
-plugin and (as WebAssembly) the site - read `plugin/PLAN.md` before touching
-either. The core is a port held to the page sample for sample by
+One instrument, two faces. `web/scope.html` is the live one and where work
+lands first; `plugin/` is the instrument as a JUCE plugin with the page as its
+UI, over `core/`, the C++ core shared by the plugin and (as WebAssembly) the
+site - read `plugin/PLAN.md` before touching either. The plugin is the
+product and the site its interface and demo. Where it is going is
+`web/docs/making-it-one-instrument.md`: read that before adding anything,
+because its first rule is that a feature has to act on the loop it describes.
+(A native Python/PyQt6 build, `oscilloscope-poc/`, was retired in that plan's
+P0; it is in the history.) The core is a port held to the page sample for sample by
 `core/tests/parity.py`; a ported piece is not done until it passes that, with
 its nulls. How it looks is `DESIGN.md`: which parts are the brand it shares with the
 jazz and guitar learning apps (not this repository's to change alone) and which
@@ -24,7 +27,6 @@ silently broken instrument.
 python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
 python3 web/tests/run.py                                    # everything, ~6 min
 python3 web/tests/run.py lane patch                         # just those
-cd oscilloscope-poc && python -m unittest discover -s tests
 python3 core/tests/parity.py                                # the C++ core against the page
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 ```

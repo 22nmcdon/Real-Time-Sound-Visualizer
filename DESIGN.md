@@ -2,9 +2,9 @@
 
 How the oscilloscope looks, and which parts of that are the **brand** - the house it
 shares with the jazz and guitar learning apps - and which are the **product**, decisions
-that belong to an oscilloscope and to nothing else. It covers all three builds: the page
-(`web/scope.html`), the desktop build (`oscilloscope-poc/branding.py` and
-`renderer.py`), and the plugin, whose interface *is* the page.
+that belong to an oscilloscope and to nothing else. It covers the page (`web/scope.html`)
+and the plugin, whose interface *is* the page. (A desktop build in Python and Qt carried
+the brand too until it was retired in P0 of `web/docs/making-it-one-instrument.md`.)
 
 The brand has a source of truth, and it is not in this repository. It is
 [`docs/BRANDING.md` in the jazz learning app](https://github.com/22nmcdon/jazz_learning_app/blob/main/docs/BRANDING.md),
@@ -77,8 +77,8 @@ These say the same thing in every mode of every app, which is why no mode moves 
 | `--sage` | `#6f7f63` | Brand | This matches. Good. |
 | `--rust` | `#a4553f` | Brand | A problem. Outside. Armed. |
 | `--unresolved` | `#b6afa4` | Brand | Open, undecided - deliberately not a verdict. |
-| `--approach` | `#8fae6d` | Brand (jazz meaning) | An approach note. Nothing here means it, so the page does not define it; the desktop build keeps it in its block so the set stays whole. |
-| `--enclosure` | `#3f8f88` | Brand (jazz meaning) | An enclosure. The guitar app reuses the hex as `--extension`. Not used here. |
+| `--approach` | `#8fae6d` | Brand (not used here) | An approach note, in the jazz app. Nothing on an oscilloscope means it, so the page does not define it. |
+| `--enclosure` | `#3f8f88` | Brand (not used here) | An enclosure, in the jazz app; the guitar app reuses the hex as `--extension`. The page does not define it. |
 
 What each one is *called on to mean* on a given surface is product: sage means "chord
 tone" on the jazz app, "the third" on the guitar app and "trigger locked" here. Part two,
@@ -88,12 +88,11 @@ never bad news, rust is never good news, and unresolved is never a verdict.
 ### Rules
 
 - **Tokens, not literals.** A colour spelled as a hex or an `rgba()` at the call site will
-  not follow the light. If it needs to, it is a token. The desktop build states the same
-  rule at the top of `branding.py`: nothing below that file spells a hex digit.
+  not follow the light. If it needs to, it is a token.
 - **Shadows and backdrops are charcoal at low alpha** - `rgba(36, 31, 29, a)` - never black.
 - **The wash.** `--wash` and `--wash-strong` are the accent laid over something: hover,
   then selection. The mechanism is brand. The strong value has drifted across the family -
-  `0.26` in the jazz app, the desktop build and the page, `0.3` in the guitar app.
+  `0.26` in the jazz app and the page, `0.3` in the guitar app.
 
 ## 3. Lights and modes
 
@@ -129,9 +128,6 @@ Brand, all three apps:
   promotes it when the page is served over the web. A webview that cannot reach the font
   server and is waiting on a stylesheet paints no text at all. The page promotes it on the
   site and never inside the plugin, as the guitar app does inside its own JUCE shell.
-
-The desktop build has to fake two of these, because Qt has neither `text-transform` nor
-`letter-spacing`: `small_caps()` in `branding.py` is the brand's small caps done by hand.
 
 ## 5. Shape, edge and depth
 
@@ -311,23 +307,17 @@ locked.* *Free run.* *Clipping.* *Waiting for an edge.* Each names what the scop
 None of them names what the person did. The cheat sheet inside `scope.html` is
 user-facing documentation in the same voice, and it goes stale first.
 
-## 15. The other two builds
+## 15. The plugin
 
-- **The desktop build.** `oscilloscope-poc/branding.py` is the brand's drop-in block
-  translated into the one form Qt can read - brand, kept hex for hex with the jazz app.
-  Below it, marked off, are the page's six lane inks - product, and equal to the page's.
-  `renderer.py` is product: ink for the left channel, slate for the right, the accent for
-  the trigger line, as on the page.
-- **The plugin.** Its interface is the page, served from JUCE's resource provider, so
-  everything above applies unchanged. One brand rule matters more there than anywhere: a
-  plugin window in a studio that is offline is exactly the webview the font rule is
-  written for.
+Its interface is the page, served from JUCE's resource provider, so everything above
+applies unchanged. One brand rule matters more there than anywhere: a plugin window in a
+studio that is offline is exactly the webview the font rule is written for.
 
 ---
 
 # Part three: where the oscilloscope departs from the brand
 
-Writing this document found eleven places where the page or the desktop build departed
+Writing this document found eleven places where the page or the (since retired) desktop build departed
 from the brand. Eight were fixed. Three stay, as decisions rather than oversights, and
 are written down here and where they are set, so that nobody fixes them back by accident.
 
@@ -350,7 +340,7 @@ are written down here and where they are set, so that nobody fixes them back by 
 | `.bench-results` had a black shadow | Charcoal at the same alpha. |
 | The chrome had 2, 3, 4 and 6px corners (preset cards, the search box and its results, a found control's ring, a key hint) and a 5px "dot" | All 1px, and the dot `50%`. The instrument's own marks keep theirs: the piano key's foot, a source's meter and the modulation lane's marks (section 5). |
 | The cheat sheet said "the only thing here painted in rust is clipping" | It lists what rust marks, and that free run is never one. |
-| The desktop build drew its right channel in `BLUSH_DEEP`, its own trigger line's colour, under a docstring calling it the accent at rest | The page's lane inks are in `branding.py` as a product block, and the right channel and its legend are slate, `CH2`. |
+| The desktop build drew its right channel in `BLUSH_DEEP`, its own trigger line's colour, under a docstring calling it the accent at rest | The page's lane inks went into `branding.py` as a product block, and the right channel and its legend became slate, `CH2`; the build was retired soon after. |
 | `branding.py` cited a `BRANDING.md` not in this repository | It names the jazz app's, and this document. |
 | `.photo-reticle`'s fill was `--ch6` spelled out as an `rgba()` | `color-mix()` of `var(--ch6)`, so the reading still sets its strength. |
 
@@ -373,8 +363,9 @@ they were found from here:
    a brand rule, add it to Part three's *Staying, on purpose* rather than leaving it to be
    found.
 
-`web/tests/designtest.py` holds this document to the builds. A colour token in the page has
-to be in one of the tables above, at its value, on one side of the line, and the desktop
-build's copy of any colour must match. Every `var()` in the stylesheet must be defined;
+`web/tests/designtest.py` holds this document to the page. A colour token in the page has
+to be in one of the tables above, at its value, on one side of the line; a product row has
+to be painted by the page; and a brand row the page does not paint has to say *not used
+here*, and one that says so must not be painted. Every `var()` in the stylesheet must be defined;
 every `rgba()` outside `:root` must be the charcoal shadow; and every radius must be one of
 the house's three or sit on one of the instrument's marks, which the test names.

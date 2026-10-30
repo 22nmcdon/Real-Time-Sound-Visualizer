@@ -1,4 +1,4 @@
-"""DESIGN.md's colour tables against the tokens the builds actually paint with.
+"""DESIGN.md's colour tables against the tokens the page actually paints with.
 
 The design document sorts every colour into brand (the house this app shares
 with the jazz and guitar apps) or product (the oscilloscope's own). A document
@@ -7,12 +7,14 @@ the table, and then it is believed. So this holds it to the source:
 
 - every colour token in the page's :root is in a table, with the same value and
   a side of the line;
-- every row in a table is a colour the page or the desktop build defines, with
-  the same value, so a token removed from the page cannot linger in the doc;
-- a brand row agrees with the desktop build's copy of the brand block, which is
-  the repository's only other copy of the house palette;
 - a product row is a colour the page defines, because a product colour nobody
-  paints with is not a decision any more;
+  paints with is not a decision any more, and a token removed from the page
+  cannot linger in the doc;
+- a brand row the page does not paint says so ("not used here"), and one that
+  says so is not painted: the brand is the house's, so the page need not use all
+  of it, but the table must not claim a colour is in use when it has gone, or
+  unused when it is there. (The retired desktop build used to be a second copy of
+  the palette to check against; the jazz app's document is the source now.)
 - every var() the stylesheet uses is defined somewhere, because an undefined
   one is not an error: the property quietly takes its initial value. That is
   how the drop hint lost its wash;
@@ -21,7 +23,7 @@ the table, and then it is believed. So this holds it to the source:
 - a radius outside the house's three - 1px, 20-30px, 50% - is on one of the
   instrument's own marks, named below, and never on the chrome.
 
-No browser: all three are text files. Each check is first fed a known-wrong
+No browser: both are text files. Each check is first fed a known-wrong
 input below and has to report it, so none of them is believed before it has
 been seen to fail.
 """
@@ -48,11 +50,6 @@ def page_tokens(html):
     block = html[start:html.index("\n}", start)]
     return {m.group(1): m.group(2).lower()
             for m in re.finditer(r"--([a-z0-9-]+):\s*(" + HEX + r")\s*;", block)}
-
-def poc_tokens(py):
-    # CREAM_2 is --cream-2: the Qt build spells the CSS names in Python.
-    return {m.group(1).lower().replace("_", "-"): m.group(2).lower()
-            for m in re.finditer(r'^([A-Z][A-Z0-9_]*) = "(' + HEX + r')"', py, re.M)}
 
 def doc_rows(md):
     rows = {}
@@ -108,7 +105,9 @@ def off_brand_radii(html):
 def layer_of(text):
     return "brand" if text.startswith("Brand") else "product" if text.startswith("Product") else None
 
-def problems(page, poc, rows):
+UNUSED = "not used here"
+
+def problems(page, rows):
     out = []
     for name, value in sorted(page.items()):
         if name not in rows:
@@ -119,54 +118,47 @@ def problems(page, poc, rows):
         kind = layer_of(layer)
         if kind is None:
             out.append("--%s has no side of the line (%r)" % (name, layer))
-        if name not in page and name not in poc:
-            out.append("--%s is in DESIGN.md and in neither build" % name)
-        # Brand or product: a colour both builds define is the same colour in both.
-        if name in poc and poc[name] != value:
-            out.append("--%s is %s, %s in DESIGN.md and %s in branding.py" % (name, kind, value, poc[name]))
         if kind == "product" and name not in page:
             out.append("--%s is product and the page does not paint with it" % name)
+        if kind == "brand" and name not in page and UNUSED not in layer:
+            out.append("--%s is brand, not painted by the page, and not marked %r" % (name, UNUSED))
+        if kind == "brand" and name in page and UNUSED in layer:
+            out.append("--%s is marked %r and the page paints with it" % (name, UNUSED))
     return out
 
 page = page_tokens(read("web", "scope.html"))
-poc = poc_tokens(read("oscilloscope-poc", "branding.py"))
 md = read("DESIGN.md")
 rows = doc_rows(md)
 
 print("\n--- what was read ---")
-print("  page :root %d colours, branding.py %d, DESIGN.md %d rows (%d brand, %d product)" % (
-    len(page), len(poc), len(rows),
+print("  page :root %d colours, DESIGN.md %d rows (%d brand, %d product)" % (
+    len(page), len(rows),
     sum(layer_of(l) == "brand" for _, l in rows.values()),
     sum(layer_of(l) == "product" for _, l in rows.values())))
 # A parser that found nothing would pass every check below vacuously.
 check("the page's tokens were read: the ten core, three pigments and six inks",
       len(page) >= 19 and "ch6" in page and "unresolved" in page, "%d" % len(page))
-check("branding.py's block was read", len(poc) >= 15 and "blush-deep" in poc, "%d" % len(poc))
 check("DESIGN.md's rows were read", len(rows) >= 21 and "ch1" in rows, "%d" % len(rows))
 
 print("\n--- null tests: each check fed something wrong on purpose ---")
-def caught(name, p, q, r, needle):
-    found = problems(p, q, r)
+def caught(name, p, r, needle):
+    found = problems(p, r)
     check("caught: " + name, any(needle in f for f in found), "; ".join(found) or "nothing reported")
 
 caught("a colour added to the page and not to the doc",
-       {**page, "ch7": "#123456"}, poc, rows, "--ch7 is painted by the page")
+       {**page, "ch7": "#123456"}, rows, "--ch7 is painted by the page")
 caught("a page colour changed and the doc left alone",
-       {**page, "gold": "#b08d58"}, poc, rows, "--gold is #b08d58 in the page")
+       {**page, "gold": "#b08d58"}, rows, "--gold is #b08d58 in the page")
 caught("a row with no side of the line",
-       page, poc, {**rows, "sage": (rows["sage"][0], "Shared")}, "--sage has no side")
-caught("a row left behind after its colour went",
-       {k: v for k, v in page.items() if k != "ch5"}, poc, rows, "--ch5 is product and the page does not")
-caught("a brand colour that has drifted from the desktop build",
-       page, {**poc, "approach": "#8fae6e"}, rows, "--approach is brand")
+       page, {**rows, "sage": (rows["sage"][0], "Shared")}, "--sage has no side")
+caught("a product row left behind after its colour went",
+       {k: v for k, v in page.items() if k != "ch5"}, rows, "--ch5 is product and the page does not")
 caught("a product colour nobody paints with",
-       page, poc, {**rows, "ch9": ("#000001", "Product")}, "--ch9 is in DESIGN.md and in neither")
-caught("a product row for a colour only the desktop build has",
-       page, {**poc, "plum": "#72245e"}, {**rows, "plum": ("#72245e", "Product")},
-       "--plum is product and the page does not")
-
-caught("a lane ink the desktop build has drifted from",
-       page, {**poc, "ch2": "#c07f79"}, rows, "--ch2 is product")
+       page, {**rows, "ch9": ("#000001", "Product")}, "--ch9 is product and the page does not")
+caught("a brand colour gone from the page and still claimed in use",
+       {k: v for k, v in page.items() if k != "rust"}, rows, "--rust is brand, not painted")
+caught("a brand colour marked unused that the page paints",
+       page, {**rows, "sage": (rows["sage"][0], "Brand (" + UNUSED + ")")}, "--sage is marked")
 
 probe = "<style>\n.a { color: var(--nowhere); }\n.b { --here: 1; width: var(--here); }\n</style>"
 check("caught: a var() of a token nobody defined", undefined_vars(probe) == {"nowhere"},
@@ -180,8 +172,8 @@ probe = ("<style>\n.a { border-radius: 1px; }\n.b { border-radius: 6px; }\n.key 
 check("caught: chrome radii outside the three, inside @media too, and not the instrument's",
       off_brand_radii(probe) == [".b: 6px", ".c: 0 0 4px 4px"], repr(off_brand_radii(probe)))
 
-print("\n--- the document against the builds ---")
-found = problems(page, poc, rows)
+print("\n--- the document against the page ---")
+found = problems(page, rows)
 for f in found: print("    " + f)
 check("every colour in the page is in DESIGN.md, on one side of the line, at its value",
       not found, "%d problems" % len(found))

@@ -10,10 +10,9 @@ picture's own sources, the phosphor grid, the photocell and the meter, and
 for setup codes - unless the address says `?core=js`. Nothing else is built. It is also published as an artifact, but
 this copy is the source of truth — the published page is a deployment of it.
 
-The desktop app in `../oscilloscope-poc/` is a separate implementation of the
-same instrument. Work usually lands here first, because the browser has an audio
-graph and a canvas and the Qt app has neither in the same shape; see
-`../oscilloscope-poc/docs/z-axis-lane.md` for a design that spells out why.
+The plugin in `../plugin/` is the same instrument with this page as its face,
+over the C++ core. A native desktop build in Python and Qt was retired in P0 of
+`docs/making-it-one-instrument.md`; it is in the history.
 
 ## Designs written down, and how much of each is built
 
@@ -24,7 +23,7 @@ graph and a canvas and the Qt app has neither in the same shape; see
 | `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, S10's voice budget and S6's start and stop. The plan is built |
 | `docs/making-it-one-instrument.md` | the plan that comes before any new feature, measured by whether the instrument gets reached for: what it is (*the sound is made from what the screen remembers* - the phosphor read back at audio rate as Scan, at control rate as the picture stage, at tempo as the score), why the picture barely moves the sound today (measured), two plugins from one codebase with the synth first (it adds only what needs an ink the loop can reach) and the effect after, what goes and the rule for the host's parameters, and stages P0-P9 with the Scan experiment run from the start. Not built |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
-| `../oscilloscope-poc/docs/z-axis-lane.md` | brightness as a third axis, and why the desktop build is the place for it |
+| `docs/z-axis-lane.md` | brightness as a third axis: written for the retired desktop build, kept as an idea for the plugin |
 | `../DESIGN.md` | how the instrument looks, sorted into the brand it shares with the jazz and guitar apps and the decisions that are the oscilloscope's own, with where the page departs from the brand today. `tests/designtest.py` holds its colour tables to the page |
 
 Band-limiting is built, ahead of the sound that needs it: `waveAt` takes a

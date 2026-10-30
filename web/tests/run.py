@@ -11,7 +11,7 @@ import os, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SUITES = [
     ("beam", ["node", "beam.test.mjs"], "the beam-intensity mapping, no browser"),
-    ("design", [sys.executable, "designtest.py"], "DESIGN.md's colours against the page and the desktop build: every token sorted into brand or product, at its value, no browser"),
+    ("design", [sys.executable, "designtest.py"], "DESIGN.md's colours against the page: every token sorted into brand or product, at its value; every var() defined, no loose rgba(), the house's radii; no browser"),
     ("lag", [sys.executable, "lagtest.py"], "lag X-Y: geometry, the lock, exclusivity"),
     ("cap", [sys.executable, "captest.py"], "what capture asks a source for"),
     ("live", [sys.executable, "livetest.py"], "live input: shared stream, wiring, crossovers"),

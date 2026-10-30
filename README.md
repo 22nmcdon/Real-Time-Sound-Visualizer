@@ -1,66 +1,66 @@
 # Real-Time Sound Visualizer
 
-Two implementations of one instrument: an oscilloscope that behaves like a bench
-scope rather than like a plotting library, and that is meant to be **played**
-as much as read.
+An oscilloscope you play. It draws sound the way a bench scope does, phosphor and
+all, and it is becoming an instrument whose sound is made from its own picture:
 
-| | |
-|---|---|
-| [`web/`](web/) | `scope.html` — the whole application in one file. No build step, no dependencies. This is where work lands first. |
-| [`oscilloscope-poc/`](oscilloscope-poc/) | A native Python/PyQt6 build of the same instrument. |
+> **You play → the beam draws → the screen remembers → it is read back → you hear it →
+> the beam draws.**
+
+That loop is where it is going rather than all of where it is. Today the picture can
+already shape the sound, through the photocell, the picture's readings and a score read
+off the screen; the plan that makes it the heart of the instrument, and says what goes to
+make room, is [`web/docs/making-it-one-instrument.md`](web/docs/making-it-one-instrument.md).
+Read it before adding anything: its first rule is that a feature has to act on one of the
+arrows above.
 
 ## Seeing it
 
-The web build is served from this repository by GitHub Pages:
+The site is served from this repository by GitHub Pages:
 
 **https://22nmcdon.github.io/Real-Time-Sound-Visualizer/**
 
-Or open `web/scope.html` in a browser — it runs from disk. Chromium or Firefox:
-some of what it does (microphone input, and MIDI when that lands) needs APIs
-Safari does not have.
+Or open `web/scope.html` in Chromium or Firefox; it runs from disk. Safari has no Web
+MIDI, so a MIDI keyboard does not reach it there; the keys on screen still do.
 
-## What it does
+## What is here
 
-A test tone is synthesised in the page, so it draws something the moment it
-opens. From there it takes a **microphone or line input**, an **audio file**, or
-several files at once as separate **lanes** — and it will put a backing track
-and your live playing on one graticule, aligned to the sample.
+| | |
+|---|---|
+| [`web/`](web/) | `scope.html`: the whole page in one file, the instrument's face on the site and inside the plugin. Work lands here first. |
+| [`core/`](core/) | The instrument in C++, held to the page sample for sample by `core/tests/parity.py`, and compiled to WebAssembly so the site runs it too. |
+| [`plugin/`](plugin/) | The instrument as a JUCE plugin, with the page as its interface. The plugin is the product; the site is its demo. Its staged history is [`plugin/PLAN.md`](plugin/PLAN.md). |
+| [`DESIGN.md`](DESIGN.md) | How it looks: which parts are the house it shares with the jazz and guitar learning apps, and which are the oscilloscope's own. |
+| [`CLAUDE.md`](CLAUDE.md) | How work is done here: the tests, the house style, and the layout decisions already made. |
 
-The scope half is the ordinary one done properly: a real trigger with hysteresis
-and holdoff, calibrated 1‑2‑5 timebases, pre-trigger position, persistence, and
-a beam whose brightness goes as one over its speed, the way a cathode-ray tube's
-does.
+## What it does now
 
-The instrument half is the reason it exists. **X‑Y** draws one channel against
-another, so an interval becomes a Lissajous figure and a stereo field becomes a
-shape. **Lag X‑Y** plots a signal against a delayed copy of itself, which gives a
-single mono input a second axis and turns one instrument into a moving picture.
-A **modulation matrix** lets oscillators and your own playing level drive almost
-any control on the page — the filter, the rotation, the zoom, the generator —
-additively, several sources at once.
+A scope done properly: a real trigger with hysteresis and holdoff, calibrated 1-2-5
+timebases, persistence, and a beam whose brightness goes as one over its speed, laid on a
+64-by-64 phosphor grid that remembers it.
+
+**X-Y** draws one channel against another, so an interval becomes a Lissajous figure.
+**Lag X-Y** plots a signal against a delayed copy of itself, which gives a mono sound a
+figure of its own. A generator draws figures and plays them, from a MIDI keyboard or the
+keys on screen, and the picture's transforms (mirror, fold, twist, kaleidoscope) shape
+the sound as well as the image. The **photocell** and the picture's readings feed back
+into the sound, and the **score** plays notes read off the screen.
+
+It also does a good deal the plan intends to cut, because it grew into three instruments
+sharing one screen: a synth, an image generator and a visualizer. The plan says which is
+which.
 
 ## Working on it
 
 ```
-python3 web/tests/run.py            # every check
-python3 web/tests/run.py lag cap    # just those
+python3 web/extract.py && node --check web/tests/check.js   # the page's syntax, seconds
+python3 web/tests/run.py                                    # every check on the page
+python3 core/tests/parity.py                                # the C++ core against the page
+python3 core/wasm/build.py                                  # after any change to core/
 ```
 
-Needs Playwright with a Chromium, and node for the one non-browser suite. See
-[`web/README.md`](web/README.md) for the suites and — more usefully — for the
+The page's suites need Playwright with a Chromium (point `CHROME` at it if the default
+path is wrong). [`web/README.md`](web/README.md) lists the suites and, more usefully, the
 things this page has already got wrong once, each written down with the reason.
 
-The desktop build has its own instructions in
-[`oscilloscope-poc/README.md`](oscilloscope-poc/README.md).
-
-## Designed, written down, not built
-
-| note | what it covers |
-|---|---|
-| [`web/docs/midi-and-the-audio-path.md`](web/docs/midi-and-the-audio-path.md) | MIDI in from a Nord Electro 6D; giving the generator a real audio path; letting the picture's own transforms shape the sound; two visualisers at once |
-| [`oscilloscope-poc/docs/z-axis-lane.md`](oscilloscope-poc/docs/z-axis-lane.md) | brightness as a third axis, and why the desktop build is the place for it |
-
-Also recorded and not built: **band-limited waveforms**. The generator's `waveAt`
-is not band-limited, which is correct for a silent generator drawing a *picture*
-of a square wave and wrong the moment the generator is audible — this app ships a
-"Harmonics and THD" preset that would report the foldover as content.
+A native desktop build in Python and Qt lived in `oscilloscope-poc/` until it was retired
+in the plan's first stage; it is in the history.
