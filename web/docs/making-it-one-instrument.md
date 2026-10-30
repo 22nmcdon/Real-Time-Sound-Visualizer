@@ -91,7 +91,11 @@ Four causes, and they compound:
    a cell of a point), and its default spot, three-quarters across the screen, is off the
    default figure. Switched on, it reads about 0.02.
 4. **One reading is dead by design.** `edge` is how much of the figure touches the edge
-   of the screen, and the code notes it sits at nought for most pictures.
+   of the screen, and the code notes it sits at nought for most pictures. (Found in P1:
+   it was never offered as a source either. It lost the survey for the sixth slot to
+   signed area and is still computed and passed between the page and the core, so it
+   costs a little and does nothing, but it was not one of the reasons the photocell felt
+   inert. Removing it is cleanup, and moves to P5.)
 
 The lesson under all four is the one scanned synthesis learned in 1999: a frozen shape
 read as sound goes dull within seconds. **An always-on picture stage over a still picture
@@ -350,7 +354,7 @@ experiment.
   its own instance.
 - **Recording a clip.** The host records. Kept only if the demo needs a way to share.
 - **File playback** shrinks to one demo file on the site, or goes.
-- **`edge`**, the dead reading.
+- **`edge`**, the reading that is computed and never offered (in P5, as cleanup).
 
 ### By the loop sentence
 
@@ -431,13 +435,18 @@ Scan experiment runs from the start, beside the first stages, because the identi
 or falls on it: if it fails, the instrument is the picture stage alone, and the cuts and
 the synth's features should be chosen knowing that.
 
-- **P0 — The front door.** Retire the desktop build. Rewrite the root README around the
-  loop sentence.
-- **P1 — Quick wins.** The photocell lands on the figure when switched on. `edge` goes.
-- **P2 — The Scan experiment**, offline, alongside P0, P1 and P3. The C++ core lays the
-  phosphor from the presets as the parity tools already run it; scan it with a few paths
-  and softness settings, render the tables as sound, and listen. It touches nothing in the
-  app. Go or no-go.
+- **P0 — The front door. Built.** The desktop build is retired (it is in the history), the
+  root README says what the instrument is and where it is going, and `designtest.py`
+  holds `DESIGN.md` to the page alone.
+- **P1 — Quick wins. Built.** Switched on by hand, the photocell lands on the nearest
+  bright part of the figure, where it used to read about 0.02 at its default spot; a
+  setup's own placement is kept. `edge` moved to P5 (see cause 4 above).
+- **P2 — The Scan experiment. Run; waiting on the listening.** Six presets' phosphor
+  recorded from the page, scanned four ways at three softnesses, rendered and measured:
+  `scan-experiment/README.md`. Softness turns buzzy tables warm; a centred path plays a
+  symmetric figure out of tune (the three-petalled rose three times too high), and an
+  off-centre path fixes that for five of the six. The go or no-go is the owner's ears on
+  the renders, recorded here when they have been heard.
 - **P3 — The picture stage.** Three reads, one amount on by default, meters on screen,
   stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After P3 the
   first-minute test should pass on the default sound.
