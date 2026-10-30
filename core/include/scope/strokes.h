@@ -26,6 +26,7 @@
 #include "scope/figures.h"
 #include "scope/json.h"
 #include "scope/setup.h"
+#include "scope/wireframe.h"  // jsHypot, as V8 computes it
 
 namespace scope {
 
@@ -262,7 +263,10 @@ inline PathRead svgStrokes(const std::u16string& text) {
           if (grow > 1) { rx *= std::sqrt(grow); ry *= std::sqrt(grow); }
           const double num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
           const double den = rx * rx * y1 * y1 + ry * ry * x1 * x1;
-          const double k = (large == sweep ? -1 : 1) * std::sqrt(jsMax(0, num / den));
+          // Grown radii put the centre at the chord's midpoint: the radicand is
+          // nought by construction, and its computed rounding noise, square-rooted,
+          // made a last-place difference one part in a billion (the page's note).
+          const double k = grow > 1 ? 0 : (large == sweep ? -1 : 1) * std::sqrt(jsMax(0, num / den));
           const double cx1 = k * rx * y1 / ry, cy1 = -k * ry * x1 / rx;
           const double cx = cs * cx1 - sn * cy1 + (x0 + ex) / 2, cy = sn * cx1 + cs * cy1 + (y0 + ey) / 2;
           const auto angle = [](double ux, double uy, double vx, double vy) { return std::atan2(ux * vy - uy * vx, ux * vx + uy * vy); };
@@ -324,7 +328,10 @@ inline std::shared_ptr<const FigurePath> compilePath(const Strokes& strokes) {
     for (std::size_t k = 0; k < stroke.size(); k++) {
       const auto& p = stroke[k];
       if (prev) {
-        const double len = std::hypot(p[0] - (*prev)[0], p[1] - (*prev)[1]);
+        // jsHypot, not std::hypot, as picture.h and wireframe.h already use:
+        // V8's Math.hypot is a different algorithm from glibc's, and the two can
+        // differ in the last place.
+        const double len = jsHypot({ p[0] - (*prev)[0], p[1] - (*prev)[1] });
         total += k == 0 ? len / kTravelSpeed : len;
         weight.push_back(total);
       }
@@ -333,7 +340,7 @@ inline std::shared_ptr<const FigurePath> compilePath(const Strokes& strokes) {
     }
   }
   if (xy.size() < 4) return nullptr;
-  total += std::hypot(xy[0] - (*prev)[0], xy[1] - (*prev)[1]) / kTravelSpeed;
+  total += jsHypot({ xy[0] - (*prev)[0], xy[1] - (*prev)[1] }) / kTravelSpeed;
   weight.push_back(total);
   xy.push_back(xy[0]); xy.push_back(xy[1]);
   if (!(total > 0)) return nullptr;
