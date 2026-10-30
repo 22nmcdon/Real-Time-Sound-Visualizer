@@ -29,7 +29,8 @@ tests, each one checkable:
 | The plugin is the product; the site is its interface and a free demo | **Taken** |
 | The desktop build (`oscilloscope-poc/`) is retired | **Taken** |
 | What the instrument *is* | **Proposed** below: the sound is made from what the screen remembers |
-| Where the sound comes from: its oscillator, the track it sits on, or both | **Largely answered** by the proposal: both are *ink* (see Question 1) |
+| Where the sound comes from: its oscillator, the track it sits on, or both | **Taken:** both, as **two plugins from one codebase**: an effect whose ink is the track, and a synth whose ink is its own oscillator (see *Two plugins, one instrument*) |
+| What makes the synth worth having | **Proposed:** only what needs an ink the loop can reach; the synth is the effect plus those (see *What only the synth can do*) |
 | What "the picture always affects the sound" means | **Proposed:** the picture *steers* the sound, by reading back the phosphor; the picture-is-the-sound rule is kept, as coherence rather than identity (see Question 2) |
 
 ---
@@ -133,17 +134,46 @@ plugin sits on. Ink is played; the phosphor remembers; the readings make the sou
 A feature stays if it acts on one of those arrows, and moves to a drawer or goes if it
 does not.
 
-### Question 1, answered by ink
+### Two plugins, one instrument
 
-The first version asked whether this is an instrument, an effect, or both, and set out
-each side. With the phosphor as the instrument, the question mostly dissolves: the
-oscillator and an incoming track are two kinds of ink, and everything after the beam is
-the same. The instrument plays from the keyboard; a line input, or the host's input bus,
-is another ink to draw with.
+The first version asked whether this is an instrument, an effect, or both. The answer is
+both, as **two plugins**:
 
-What remains open is only packaging. A music program treats instruments and effects
-differently, so "the track as ink" may need its own build later. It is not a reason to
-keep two products inside one panel.
+- **The effect.** Its ink is the track it sits on: a vocal, drums, the Nord's own audio, a
+  mix. Notes into it are optional, and only set the pitch Scan reads at, as a vocoder takes
+  notes. With no notes held, the picture stage still shapes the input, so it works on drums
+  too.
+- **The synth.** Its ink is its own oscillator, played from the keys.
+
+They are two plugins rather than one with a switch for three reasons. The effect never
+carries the synth's panel, presets or state, which a switch would only hide. A music
+program loads instruments and effects in different slots, and each lands in the right one.
+And each gets its own first minute: *put it on a track* for one, *hold a chord* for the
+other.
+
+They are **one codebase**, not two:
+
+- **One C++ core.** Both builds compile the same engine, wired to a different ink. The
+  instrument already draws either its generator or its input (5g), so the split is mostly
+  packaging.
+- **One page.** The plugin tells the page which build it is, and the page shows that
+  build's ink panel and preset bank. Two copies of `scope.html` would drift apart within a
+  month: controls are moved, never copied.
+- **One setup format.** A setup from either loads in the other, which ignores the ink
+  fields it does not have.
+- **Two JUCE targets** from one project.
+
+The website has no track to process, so by default it is the synth's demo; a couple of
+bundled loops can let it show the effect too.
+
+**The rule that keeps it from sprawling: the synth is the effect plus whatever needs an
+ink the loop can reach.** Everything the effect shows, the synth shows. The synth adds only
+its ink panel, its preset bank, and a named list of features that act on its own
+oscillator (*What only the synth can do*). Anything else that differs between the builds
+is the old synth panel coming back. Because the difference is a build flag, the rule is a
+test, not an intention: load the page as each build, list every control on show, and fail
+unless the effect's set is contained in the synth's and the synth's extras are all on the
+named list.
 
 ### Question 2, answered
 
@@ -233,6 +263,59 @@ The experiment: scan the real grid offline across the presets with a few paths a
 softness settings, render the tables as sound, and listen. If no setting sounds good, Scan
 does not go in, and the picture stage carries the identity alone.
 
+## What only the synth can do
+
+The synth must not feel like the effect with an oscillator bolted on. What justifies it is
+one difference, and everything below follows from it: **in the synth, the picture can
+change the thing that is drawing it.**
+
+The effect's ink is a track. The picture can reshape what is heard, but it cannot change
+the vocal that went in, so the effect is an open chain: input, screen, output. The synth
+owns its ink, so its loop closes all the way round: the oscillator draws, the screen
+remembers, the reading changes the oscillator, the oscillator draws something new. And
+because it is the synth's own oscillator, the synth knows exactly what it is doing, to the
+sample and the phase. Anything that needs either of those can exist only in the synth.
+
+The test for a proposed synth feature: **does it need to change the ink, or to know
+exactly what the ink is doing?** If so, it belongs in the synth. If it is another way to
+make a sound (more waveforms, more voice tricks, more unison), it is the old synth panel,
+and it fails. The current Shape and Effects tabs mostly fail it.
+
+Seven features pass, ranked by what to build first:
+
+1. **Harmony as geometry.** The synth knows its notes' exact ratios and controls their
+   phase, so a fifth draws a closed, still figure and a slightly detuned chord *turns*:
+   the beat rate becomes the rotation speed. Consonance looks still and dissonance
+   restless, reliably; real audio drifts too much for that. This is what makes the synth
+   look good by construction. *Partly built: a held interval's ratio closes the rose, and
+   Play the figure locks the trace to the note.*
+2. **Touch the picture to change the sound.** Every point of the figure is a pair of
+   sample values, so dragging the figure is editing the waveform: grab part of the shape,
+   bend it, and hear the oscillator change. A recording cannot be edited by dragging its
+   picture. The most immediately striking thing to show anyone. *Partly built: your
+   drawing and the drawn cycle; bending a live figure is new.*
+3. **The picture plays the oscillator back.** The picture stage's reads drive the
+   oscillator's own shape (morph, fold, sync), so the figure reshapes itself and the sound
+   moves under one held chord. In the effect the same reads can only shape the output.
+   *Partly built: the loop presets, through routing by hand; the picture stage makes it
+   the default.*
+4. **It keeps going on its own.** With Scan reading the screen and that reading also
+   feeding the ink, the loop sustains itself: the *Breathing* and *Wandering* presets. When
+   the effect's input stops, the effect stops. *New, with Scan.*
+5. **Each note draws its own picture.** The synth knows which voice laid which light, so
+   each held note can be read back on its own, and a chord stays a chord rather than
+   smearing into one scan. The effect only ever sees the mix. *New.*
+6. **Notes strike the screen.** The synth knows the exact moment and velocity of every
+   note, so a note can hit the phosphor with light, as the hammers did in scanned
+   synthesis. The effect can only guess at onsets, and late. *New.*
+7. **The picture writes the oscillator's tune.** The score reads the screen and plays the
+   synth's own voice, whose figure is drawn back onto the screen it reads. *Built: "The
+   rose writes its own tune".*
+
+Harmony as geometry and touching the picture come first: one is mostly built and makes the
+synth beautiful by construction, the other is the thing nobody else does. The
+self-sustaining loop is the deepest of the seven and waits on the Scan experiment.
+
 ---
 
 ## What goes
@@ -263,11 +346,11 @@ does not go in, and the picture stage carries the identity alone.
 | The plane | Nine X–Y operations, rotation, layer B's plane, delay and chorus on the pair | **Keep, as Space:** transforms of the picture change what the phosphor holds, so with Scan they change the sound twice |
 | Figures | Harmonograph, thirteen figures, text, SVG, your drawing, solids, a second generator | **Keep what draws while you play.** Generators that ignore the keyboard are the image-generator product: cut or drawer. Your drawing becomes drawing onto the phosphor |
 | Grab, drawn cycle | A cycle from the input's audio; a cycle drawn by hand | **Keep as ink tools.** (Grab reads audio, not the picture; it is not a scan) |
-| Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep.** Scan starts mono or dyad: one phosphor, a read rate per voice |
+| Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
 | Splits, layers, arpeggiator, macros | Multi-timbral and hands-free performance | **Drawer, or cut** if unused |
 | Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage |
-| Input sources | Mic or line in, file, rack, band split, input into the generator | **A line in stays, as ink.** The rack goes; the band split goes unless it earns a place |
+| Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input. The rack goes; the band split goes unless it earns a place; *input into the generator* goes, as a mixing of the two inks that the two builds now keep apart |
 | Spectrogram, measurements | THD, harmonics, readouts | **Drawer.** They also verify Scan's band-limiting |
 | Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below) |
 | Root README | Still says "two implementations", "MIDI when that lands", band-limiting "not built" | **Rewritten** around the loop sentence |
@@ -285,7 +368,8 @@ What makes it possible to use is mostly what is on show, not what exists.
      softness and depth when it lands.
 
   A drawer holds the rest: the routing matrix, measurements, inputs, the arpeggiator,
-  splits, macros, the clock.
+  splits, macros, the clock. In the effect, Ink is the input (its level, Lag X–Y, a
+  band split if one survives) and Play holds only the notes that set Scan's pitch.
 - **The loop on the screen.** The ring with a moving read-head over the phosphor; the
   current table as a thumbnail beside the scope; the classifier's state as a small badge
   on the ring.
@@ -297,8 +381,9 @@ What makes it possible to use is mostly what is on show, not what exists.
   - **Open:** the loop off, a small honest bank for the plain sound, labelled as the loop
     open rather than as another product.
 
-  Every preset passes the first-minute test, and every one but the Open bank has the
-  picture moving the sound.
+  Each build has its own bank under those four headings: the effect's are about what
+  happens to a sound, the synth's have to *be* sounds. Every preset passes its build's
+  first-minute test, and every one but the Open bank has the picture moving the sound.
 
 ## Removing things properly
 
@@ -327,15 +412,22 @@ audible on its own: the first thing worth playing arrives at P2, not at the end.
 - **P3 — Coherence.** One pair out of the core; the generator always heard; every drawn
   note heard and every heard note drawn.
 - **P4 — Cuts**, by the table, area by area, each its own commit with its migration.
-- **P5 — The Scan experiment**, offline. Go or no-go on whether a scanned phosphor can
+- **P5 — Two plugins.** The build flag, the page asking which build it is, each build's
+  ink panel and preset bank, two JUCE targets, and the test that the effect's controls are
+  contained in the synth's and the synth's extras are all on the named list.
+- **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
+  buildable without Scan, and the first reasons to choose the synth.
+- **P7 — The Scan experiment**, offline. Go or no-go on whether a scanned phosphor can
   sound good.
-- **P6 — Scan**, if P5 says go: in the core, with parity, the ring as its path, softness,
-  Memory in seconds, under the loop's defences.
-- **P7 — The Bench along the loop** (four tabs and a drawer) and **presets rebuilt** by
-  what the loop does.
+- **P8 — Scan**, if P7 says go: in the core, with parity, the ring as its path, softness,
+  Memory in seconds, under the loop's defences; in the effect pitched by its notes, in the
+  synth by its keys. Then the synth's loop on its own ink: the self-sustaining loop, a
+  picture per note, notes striking the screen.
+- **P9 — The Bench along the loop** (four tabs and a drawer) and **two preset banks**
+  rebuilt by what the loop does.
 
 ## What does not change
 
 The C++ core and its parity harness; the brand (`DESIGN.md`); the house rules on testing,
-null tests and mutation; and CLAUDE.md's *Layout decisions already made*, unless P7 brings
+null tests and mutation; and CLAUDE.md's *Layout decisions already made*, unless P9 brings
 a reason to revisit one.
