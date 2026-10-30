@@ -130,6 +130,24 @@ with sync_playwright() as pw:
     p.locator('.mod-add-one[data-add="env.live"]').click(); p.wait_for_timeout(250)
     # Whatever else is registered, so "nothing left to offer" stays a
     # statement about the panel rather than about how many sources exist.
+    # Added in the page rather than by pointer, so that an overlay grown off the
+    # foot of the window fails the check below with a measurement instead of a
+    # thirty-second timeout on a click - which is how this was found, in a
+    # newer Chromium whose rows are taller, and how it read until then.
+    grown = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (let i = 0; i < 80 && document.querySelector('.mod-add-one'); i++) {
+        document.querySelector('.mod-add-one').click(); await wait(60);
+      }
+      await wait(200);
+      const node = document.querySelector('.over'), r = node.getBoundingClientRect();
+      node.scrollTop = node.scrollHeight;
+      const last = node.querySelectorAll('.mod-edit'), end = last[last.length - 1].getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, h: r.height, win: window.innerHeight,
+               scrolls: node.scrollHeight > node.clientHeight, lastBottom: end.bottom };
+    }""")
+    check("grown by every source, the overlay stays inside the window and its last row can be scrolled to",
+          grown["top"] >= 0 and grown["bottom"] <= grown["win"] and grown["lastBottom"] <= grown["win"], str(grown))
     while p.locator(".mod-add-one").count() > 0:
         p.locator(".mod-add-one").first.click(); p.wait_for_timeout(200)
     many = p.evaluate("""() => ({

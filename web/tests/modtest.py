@@ -288,27 +288,33 @@ with sync_playwright() as pw:
     # The trap the two paths create: the tone source steps them per sample and
     # everything else steps them per frame. Both would run at double rate, and
     # double is exactly the kind of wrong that looks plausible.
+    # Counted against the seconds that actually passed, not the ones asked for:
+    # fifty polls of 40 ms each took three seconds on a loaded machine and
+    # counted six cycles of a 2 Hz oscillator that was running perfectly. What
+    # this exists to catch is double rate, and twice the elapsed seconds is still
+    # the measure of that.
     def cycles(seconds=2.0):
         p.evaluate("() => { lfos[0].shape = 'sine'; lfos[0].rate = 2; lfos[0].phase = 0; }")
-        last = p.evaluate("() => lfos[0].phase")
+        last, t0 = p.evaluate("() => [lfos[0].phase, performance.now()]")
         wraps = 0
         for _ in range(int(seconds / 0.04)):
             p.wait_for_timeout(40)
             now = p.evaluate("() => lfos[0].phase")
             if now < last: wraps += 1
             last = now
-        return wraps
+        elapsed = (p.evaluate("() => performance.now()") - t0) / 1000
+        return wraps, elapsed
 
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(500)
-    onTone = cycles()
-    check("2 Hz is 2 Hz on the tone source", abs(onTone - 4) <= 1, "%d cycles in 2 s" % onTone)
+    onTone, tTone = cycles()
+    check("2 Hz is 2 Hz on the tone source", abs(onTone - 2 * tTone) <= 1.5, "%d cycles in %.2f s" % (onTone, tTone))
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
     p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
     p.wait_for_timeout(1800)
-    onFile = cycles()
-    check("and 2 Hz on a file source, not 4", abs(onFile - 4) <= 1, "%d cycles in 2 s" % onFile)
+    onFile, tFile = cycles()
+    check("and 2 Hz on a file source, not 4", abs(onFile - 2 * tFile) <= 1.5, "%d cycles in %.2f s" % (onFile, tFile))
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(400)
 
     print("\n--- every modulatable control drives something ---")

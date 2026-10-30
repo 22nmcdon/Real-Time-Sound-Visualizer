@@ -4273,3 +4273,29 @@ steering a generator nobody could hear. Both scripts now print in the
 shared format and raise `SystemExit(1)` on a failure, and `run.py` counts a
 printed `FAIL` as a failure whatever the exit code, so a third cannot hide
 the same way.
+
+**A new machine is a new measurement, and three checks were written for one
+machine.** A fresh container brought a newer Chromium and a newer C library,
+and the suites failed in five places where nothing in the instrument had
+changed. Two were the layout: the newer browser draws form controls taller,
+so the Sources tab with a rack of six came out 21 px over the Bench (the
+family rows are now 4 px tighter for a mouse, giving 32 px back), and a
+control's modulation overlay, placed once when it opened, grew past the foot
+of the window as sources were added until a click on its last row timed out
+(it is now moved up as it grows; `patchtest.py` measures it rather than
+waiting for the timeout). One was a check that counted a 2 Hz oscillator's
+cycles over fifty 40 ms polls and assumed they took two seconds; loaded, they
+took three, and it counted six (`modtest.py` now counts against the seconds
+that passed). And one was parity's random setup 578, an SVG arc whose radii
+had to grow: the radicand is nought by construction there, and the square
+root of its rounding noise turned a last-place difference in the maths
+library into one part in a billion, over parity's tolerance (both sides now
+take nought when the radii grew). And one was the plugin's shell test, which
+estimated the period of the last 9,600 frames of a picture that holds 8,192:
+the start wrapped round below the buffer, and what the estimator read there
+was sound on one build and garbage on the next (it reads what there is now).
+The general rule: a layout that fits by
+3 px, a timing that assumes the machine is idle, and a formula that takes the
+square root of a cancellation all pass until the machine changes. Leave
+margin, measure elapsed time, and make what is exact by construction exact
+in the code.

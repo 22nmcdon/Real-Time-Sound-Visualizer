@@ -2058,7 +2058,14 @@ int main() {
       std::vector<float> left(served.size() / 2);
       for (std::size_t i = 0; i < left.size(); ++i) left[i] = served[i * 2];
       scope::PitchScratch scratch;
-      const auto heard = scope::estimatePeriod(left.data() + left.size() - 9600, 9600, rate, scratch);
+      /* The last of the picture as served, never more than there is. It read
+         the last 9,600 frames of a picture that holds 8,192 (kPictureFrames),
+         so the start wrapped round below the buffer: undefined, and on one
+         build what lay there happened to be sound and the check passed, while
+         on another it was garbage the estimator called 8 kHz. 8,192 frames is
+         186 ms, many periods of any note this plays. */
+      const std::size_t take = std::min<std::size_t>(left.size(), 9600);
+      const auto heard = scope::estimatePeriod(left.data() + left.size() - take, take, rate, scratch);
       return std::make_pair(lock, heard ? 0.25 / heard->hz : -1.0);
     };
     const auto [free, own] = lagRun("Playing, lag X\u2013Y", 69, false);

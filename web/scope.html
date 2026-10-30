@@ -1030,6 +1030,12 @@ body[data-view="bench"] .dock  { order: 3; }
 /* A family with nothing in it now - no keyboard, the Photocell off - is
    still listed, quieter, and says how to get something when it is chosen. */
 .src-fam[data-empty="1"] { opacity: 0.55; }
+/* Four pixels above and below rather than six, for a mouse: with a rack of six
+   the Bench is 421px tall, and a newer Chromium drew the families column 21px
+   past it (its form controls grew), so the Sources tab scrolled, which no tab
+   may. Eight families at 24px give back 32px, room for the next such change. A
+   finger keeps the six, as the house sizes a tap target for touch. */
+@media (pointer: fine) { .src-fam { padding-block: 4px; } }
 /* The fade's envelope, under the families. */
 .fade-env { margin-top: 6px; }
 .fade-env svg { display: block; width: 100%; height: auto; touch-action: none; }
@@ -25805,6 +25811,7 @@ function closeOverlay() {
   if (!overlay) return;
   const open = overlay;
   overlay = null;
+  if (open.watch) open.watch.disconnect();
   if (open.restore) open.restore();
   open.node.remove();
   open.back.remove();
@@ -25821,9 +25828,25 @@ function placeOverlay(node, anchor) {
   if (top + size.height > window.innerHeight - pad) {
     top = Math.max(pad, box.top - size.height - 8);
   }
+  // Room neither under nor above: held inside the window, and its own scroll
+  // (max-height) does the rest. Without this a tall one opened from low down
+  // ran off the foot of the window, where scrolling cannot reach.
+  top = Math.max(pad, Math.min(top, window.innerHeight - pad - size.height));
   left = Math.max(pad, Math.min(left, window.innerWidth - size.width - pad));
   node.style.left = left + "px";
   node.style.top = top + "px";
+}
+
+/* An overlay grows while it is open - a control's modulation gains a row for
+   every source added - and was placed only once, so it grew down past the
+   foot of the window and its last buttons could not be reached: patchtest's
+   every-source-on-one-control run timed out on one, in a newer Chromium whose
+   rows are taller. It is moved up only when it would spill over, and only as
+   far as it must, so it never shifts under a hand for any other reason. */
+function keepOverlayOnScreen(node) {
+  const pad = 10, rect = node.getBoundingClientRect();
+  if (rect.bottom <= window.innerHeight - pad) return;
+  node.style.top = Math.max(pad, window.innerHeight - pad - rect.height) + "px";
 }
 
 function openOverlay(anchor, title, sub, fill) {
@@ -25846,6 +25869,8 @@ function openOverlay(anchor, title, sub, fill) {
   overlay = { node, back, restore, opener: anchor };
 
   placeOverlay(node, anchor);
+  overlay.watch = new ResizeObserver(() => keepOverlayOnScreen(node));
+  overlay.watch.observe(node);
   back.addEventListener("pointerdown", closeOverlay);
   node.querySelector(".over-close").addEventListener("click", closeOverlay);
   node.querySelector(".over-close").focus();
