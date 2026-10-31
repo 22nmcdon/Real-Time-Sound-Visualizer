@@ -265,8 +265,10 @@ What has to be solved first, and the reason Scan begins as an experiment:
   (The same blind spot CLAUDE.md warns about for test fixtures.)
 - **It must neither collapse nor run away.** Normalise inside the loop, keep a floor of
   the ink oscillator so the pitch never vanishes, freeze the table across preset changes,
-  count Scan's depth inside `LOOP_TOTAL`, and slew the table's harmonics rather than its
-  samples so the timbre glides.
+  count Scan's depth inside `LOOP_TOTAL`. (This said "slew the table's harmonics so the
+  timbre glides"; the experiment tried exactly that, and it took the interest out of the
+  best picture. A new table each frame, crossfaded, is the character; a glide is at most
+  a control.)
 - **Persistence becomes the Memory knob**, in seconds: a short half-life tracks the
   current cycle (near the signal, so near boring), a long one makes the timbre remember the
   phrase.
@@ -441,12 +443,28 @@ the synth's features should be chosen knowing that.
 - **P1 — Quick wins. Built.** Switched on by hand, the photocell lands on the nearest
   bright part of the figure, where it used to read about 0.02 at its default spot; a
   setup's own placement is kept. `edge` moved to P5 (see cause 4 above).
-- **P2 — The Scan experiment. Run; waiting on the listening.** Six presets' phosphor
-  recorded from the page, scanned four ways at three softnesses, rendered and measured:
-  `scan-experiment/README.md`. Softness turns buzzy tables warm; a centred path plays a
-  symmetric figure out of tune (the three-petalled rose three times too high), and an
-  off-centre path fixes that for five of the six. The go or no-go is the owner's ears on
-  the renders, recorded here when they have been heard.
+- **P2 — The Scan experiment. Go, on motion.** Six presets' phosphor recorded from the
+  page, scanned four ways at three softnesses, rendered, measured and heard over two
+  rounds: `scan-experiment/README.md`. What the owner heard:
+  - Raw and centred readings are jarring and never reach a player. The off-centre,
+    softened reading has the right feel.
+  - **The morphing rose is by far the best, and its round-one take the favourite of
+    all**: a picture that never repeats, read sixty times a second, each frame's table
+    crossfaded into the next.
+  - **The still pictures sound alike**, and nothing done to them changes that much: the
+    just fifth eased is almost identical to the just fifth as it was, and gentler is
+    only softer. A still picture gives a still table, which is an ordinary tone.
+  - **Easing the table took the interest out of the morphing rose.** The frame-rate
+    step that round two measured as grain, and set out to remove, is part of what makes
+    it good.
+
+  So Scan goes in (P7), and what it is for is settled: it turns the picture's *motion*
+  into timbre, and it is worth having only where the picture moves. That is the picture
+  stage's job already - Memory exists to unstick a still or cycling picture - and it
+  points the synth at ink that keeps changing. Its defaults come from the listening: the
+  off-centre path, softness about three cells, a new table every frame crossfaded into
+  the next as round one made it, and no easing; a glide may be offered as a control, at
+  nought.
 - **P3 — The picture stage. Built.** Three reads, one amount on by default, meters on
   screen, stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After
   P3 the first-minute test should pass on the default sound.
@@ -497,8 +515,10 @@ the synth's features should be chosen knowing that.
   host parameters replaced before any is removed, and the input path left whole.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth.
-- **P7 — Scan**, if P2 said go: in the core, with parity, the ring as its path, softness,
-  Memory in seconds, under the loop's defences, pitched by the keys. Then the synth's loop
+- **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
+  softness, a table a frame as round one made them, Memory in seconds, under the loop's
+  defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
+  rose's, since a still one gives an ordinary tone by design. Then the synth's loop
   on its own ink: the self-sustaining loop, a picture per note, notes striking the screen,
   cross-scan, and the sidechain's final form.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt

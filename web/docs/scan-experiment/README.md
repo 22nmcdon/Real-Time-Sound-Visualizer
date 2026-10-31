@@ -115,11 +115,21 @@ the single note is held; the default tone alone reads 0.0007.
 | Rose | 0.004 | 0.002 | 0.002 | 0.002 |
 
 Easing cuts the grain two to eight times on every picture, most on the two that move.
-Whether that is the jarring the owner heard is for the second listening page.
+
+## Round two, heard
+
+The morphing rose is by far the best of all, and its take **A**, round one's, the
+favourite: easing it (B) lost a lot of what made it interesting. Across the other
+pictures A to D are hardly told apart; the just fifth eased is almost identical to the
+just fifth as it was, and gentler is only softer. So the grain measured here was not the
+jarring that mattered: on the picture that moves it is part of the character, and on the
+pictures that stand still there is little grain and little else - a still picture is a
+still table, which is an ordinary tone.
 
 ## The decision
 
-The numbers say a softened, off-centre scan makes tables in a musical range, in tune for
-most figures. Whether they *sound* good is a judgement for ears, not numbers: the renders
-are on a listening page made for the owner, and the go or no-go is recorded in the plan
-once they have been heard.
+**Go, on motion.** Scan turns the picture's motion into timbre, and is worth having where
+the picture moves; the instrument keeps it moving (the picture stage's Memory, and ink that
+changes). The defaults are the listening's: the off-centre path, softness about three
+cells, a new table every frame crossfaded into the next as round one made it, no easing.
+Recorded in the plan under P2 and P7.
