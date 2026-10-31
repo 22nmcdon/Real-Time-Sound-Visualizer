@@ -238,6 +238,9 @@ class Keyboard {
     Controller& entry = learn(number);
     entry.raw = raw;
     entry.target = raw / 127.0;
+    // 11, the expression pedal, is also the Picture amount (the page's
+    // midiControl says why); whoever keeps the panel is told.
+    if (number == 11 && onSwell_) onSwell_(raw / 127.0 * 100);
   }
 
   // midiLearn: merged into what is known, never replacing it.
@@ -533,6 +536,7 @@ class Keyboard {
   int editLayer() const { return layersOn() && layers_.edit == 1 ? 1 : 0; }
   void setEdit(int layer) { layers_.edit = layer == 1 ? 1 : 0; if (onLayers_) onLayers_(); }
   void setLayerPanel(std::function<void()> f) { onLayers_ = std::move(f); }
+  void setSwell(std::function<void(double)> f) { onSwell_ = std::move(f); }
 
  private:
   struct Interval { int index = 0, octaves = 0; };
@@ -856,6 +860,7 @@ class Keyboard {
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
   std::function<void()> onLayers_;  // the panel's syncLayerPanel
+  std::function<void(double)> onSwell_;  // the Picture slider, from the expression pedal
   ArpState arp_;
   double now_ = 0, bpm_ = 120;
   NoteOut* out_ = nullptr;

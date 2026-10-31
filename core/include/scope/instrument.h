@@ -140,6 +140,12 @@ class Instrument {
     keyboard_ = std::make_unique<Keyboard>(*notes_, clockIn_.get());
     // The layer the panel shows follows the keyboard, as the page's syncLayers has it.
     keyboard_->setLayerPanel([this] { syncLayerPanel(*brain_, *core_, *keyboard_); });
+    // The expression pedal is the Picture amount, held as the slider holds it.
+    // A known limitation: the plugin's page is not told, so its slider stays
+    // where the hand left it while the sound follows the foot. Telling it as a
+    // host parameter is told - a kept hand and hostVersion - would have the
+    // page restore its whole setup at a pedal's message rate, dozens a second.
+    keyboard_->setSwell([this](double amount) { brain_->panel.setRangeNumber("pictureAmount", amount); });
     matrix_ = std::make_unique<Matrix>();
     sources_ = std::make_unique<CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
     /* What it hears is the picture, the generator's unless it is drawing its

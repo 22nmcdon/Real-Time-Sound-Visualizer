@@ -899,6 +899,28 @@ int main() {
     }
     check("and the slider moved to nought mid-run takes the stage's routes out of what the generator is given",
           before == 4 && after == 0, std::to_string(before) + " routes before, " + std::to_string(after) + " after");
+    /* The expression pedal from the host, CC 11, is the Picture amount: a
+       quarter of the way down is the stage's routes at a quarter, all the
+       way up at full, and the volume (CC 7) moved after it changes nothing -
+       its null. Read off the stage's own routes, the amount the frame handed
+       the matrix, a frame after each move. */
+    std::vector<double> swell;
+    {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      juce::AudioBuffer<float> buf(2, block);
+      const auto send = [&](int number, int value) {
+        juce::MidiBuffer m;
+        m.addEvent(juce::MidiMessage::controllerEvent(1, number, value), 0);
+        for (int k = 0; k < 4; ++k) { buf.clear(); p.processBlock(buf, m); m.clear(); }
+        swell.push_back(p.matrix().stage().empty() ? 0 : p.matrix().stage()[0].amount);
+      };
+      send(11, 32); send(11, 127); send(7, 10); send(11, 0);
+    }
+    check("the expression pedal from the host sets the Picture amount; the volume does not",
+          swell.size() == 4 && std::fabs(swell[0] - 0.25 * 0.8) < 1e-12 && std::fabs(swell[1] - 0.8) < 1e-12
+          && swell[2] == swell[1] && swell[3] == 0,
+          "fold route " + num(swell[0]) + ", " + num(swell[1]) + ", " + num(swell[2]) + ", " + num(swell[3]));
   }
 
   std::printf("\n--- the sources ---\n");

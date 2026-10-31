@@ -185,6 +185,22 @@ with sync_playwright() as pw:
     check("and ?picture=0 opens it at nought, with no stage routes, and keeps it so through a preset",
           opened == {"value": "0", "routes": 0}, str(opened))
 
+    print("\n--- under the foot ---")
+    # The expression pedal (CC 11, the Nord's swell) is the Picture amount,
+    # on the slider's step, and still learned as a controller; the volume
+    # (CC 7), moved the same way, is the null.
+    b, p, bad = open_page(pw)
+    foot = p.evaluate("""() => {
+      const after = (bytes) => { midiBytes(new Uint8Array(bytes)); return el.pictureAmount.value; };
+      return { swell: after([0xB0, 11, 32]), heel: after([0xB0, 11, 0]), toe: after([0xB0, 11, 127]),
+               volume: after([0xB0, 7, 20]), learned: MOD_SOURCES.has('cc.11'),
+               routes: stageRoutings().map((r) => r.amount) };
+    }""")
+    b.close()
+    check("the expression pedal sets the Picture amount, on its step, and is still learned; another controller does not",
+          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": True, "routes": [0.8, 0.8, 0.6, 0.4]},
+          str(foot))
+
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
