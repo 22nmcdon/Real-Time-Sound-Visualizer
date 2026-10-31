@@ -447,7 +447,7 @@ the synth's features should be chosen knowing that.
   symmetric figure out of tune (the three-petalled rose three times too high), and an
   off-centre path fixes that for five of the six. The go or no-go is the owner's ears on
   the renders, recorded here when they have been heard.
-- **P3 — The picture stage. Built but for its polish.** Three reads, one amount on by default, meters on
+- **P3 — The picture stage. Built.** Three reads, one amount on by default, meters on
   screen, stronger limits re-proved by `looptest.py`, the routing matrix to a drawer. After
   P3 the first-minute test should pass on the default sound.
   - *Built:* Glow (coverage), Motion (change) and Memory (boredom), on the fold, the echo,
@@ -480,12 +480,17 @@ the synth's features should be chosen knowing that.
     built to take P8's other residents by naming their tabs. The stage's three reads are
     never offered by hand: they were leaking into the chips, the editor and the search as
     three inkless sources.
-  - *Left:* each control lit while the picture moves it; *running away* pulling the amount
-    down; Memory taking novelty as well as boredom; the amount on the expression pedal;
-    and the ring, which is P7's path as much as P3's. And the Photocell's button: its
-    reading reaches the sound only through a routing, which now lives in the drawer, so
-    on the top bar it is a switch that does nothing until the drawer is opened - until
-    the ring replaces it.
+  - *The polish, built:* Memory hears novelty as well as boredom, so a figure that goes
+    round and round is remembered as one that stands still is; *running away* holds the
+    stage's push down to a quarter, its bars rust while it holds, and lets go slowly;
+    each control's name lights with how far the picture is moving it; and the expression
+    pedal (controller 11, the Nord's swell) is the amount - though in the plugin the
+    page's slider does not follow the pedal, which `instrument.h` says why. The
+    Photocell's switch goes with the drawer while it is off, by the rings' rule.
+  - *Moved to P7:* the ring. It is Scan's path before it is the photocell's, and the
+    reads coming from inside it only mean something once P2's verdict says what the path
+    is; until then the stage reads the whole screen, and the photocell stays a point
+    that lands on the figure.
 - **P4 — Coherence.** One pair out of the core; the generator always heard; every drawn
   note heard and every heard note drawn.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the

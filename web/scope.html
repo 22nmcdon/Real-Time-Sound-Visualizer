@@ -748,6 +748,12 @@ body[data-view="bench"] .dock  { order: 3; }
    can still be opened and taken off. */
 body[data-drawer="shut"] #benchSources { display: none; }
 body[data-drawer="shut"] .mod-open.empty { display: none; }
+/* And the Photocell's switch while it is off: its reading reaches the sound
+   only through a routing, which is the matrix's, so off and with the drawer
+   shut it is a switch that would do nothing. On - a preset that uses it - it
+   stays, by the same rule as a ring with something on it, so it can be seen
+   and switched off. The ring the plan puts in its place (P7) ends this. */
+body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { display: none; }
 
 /* --- the bench body --------------------------------------------------------
    Every section at once, in columns, rather than one at a time behind a rail.
@@ -3194,7 +3200,7 @@ body[data-drawer="shut"] .mod-open.empty { display: none; }
         <!-- What is on the right-hand side, set from above it rather than
              from three levels down a settings panel. It sits with the other
              two display controls because that is what it is. -->
-        <div class="field fixed">
+        <div class="field fixed photo-field">
           <span class="eyebrow">&nbsp;</span>
           <button type="button" class="link-btn caps" id="photoButton" aria-pressed="false"
                   title="A light sensor on the screen, as a modulation source">Photocell</button>
@@ -3717,7 +3723,9 @@ body[data-drawer="shut"] .mod-open.empty { display: none; }
         with the photocell and with anything you route from the picture yourself.</span></li>
 
       <li><b>The photocell: the picture moving the controls</b>
-        <span><i>Photocell</i>, above the screen, puts a light sensor on it &mdash; drag the
+        <span><i>Photocell</i>, above the screen, puts a light sensor on it (with the
+        <i>Advanced</i> drawer shut, its switch shows only while it is on, since what it
+        reads reaches the sound through a routing) &mdash; drag the
         reticle onto the picture, or give it focus and move it a cell at a time with the arrow
         keys. How bright the phosphor is under it becomes a source, <i>Photocell</i>, which can
         be put on a control like an LFO: park it on the edge of a figure and it pulses as the

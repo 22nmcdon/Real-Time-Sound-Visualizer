@@ -124,6 +124,18 @@ with sync_playwright() as pw:
       el.benchSearch.value = ''; el.benchSearch.dispatchEvent(new Event('input'));
       return { chips: chips.filter((id) => id.startsWith('stage.')), lfo: chips.includes('lfo1'), found };
     }""")
+    # The Photocell's switch goes with the drawer while it is off, and stays
+    # while it is on, by the rings' rule; open, it is always there.
+    cell = p.evaluate("""() => {
+      const shown = () => !!el.photoButton.offsetParent;
+      const out = {};
+      setDrawer(false); setPhoto(false); out.shutOff = shown();
+      setPhoto(true); out.shutOn = shown();
+      setPhoto(false); setDrawer(true); out.openOff = shown();
+      return out;
+    }""")
+    check("the Photocell's switch is hidden with the drawer shut and the photocell off, shown on, and shown with the drawer open",
+          cell == {"shutOff": False, "shutOn": True, "openOff": True}, str(cell))
     check("the stage's reads are not offered by hand: no chip, and not found by a search",
           hidden["chips"] == [] and hidden["lfo"] and not any("Glow" in f for f in hidden["found"]), str(hidden))
 
