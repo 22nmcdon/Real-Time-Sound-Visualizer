@@ -4349,3 +4349,22 @@ the matrix open and no check counted them. A source that is not for patching
 says so (`byHand: false`), and every list asks `byHand`. When adding a source
 with a narrow job, grep for `MOD_SOURCES.values()`: each hit is a place it
 will show up.
+
+**Arithmetic done in the glue between two tested pieces is tested by
+neither.** The picture stage's hold - how much of each read reaches the
+matrix while the loop runs away - was applied in the core inside the source
+object that hands a read to the matrix (`StageSource`, in `screen.h`).
+Parity's picture runs compare `PictureStage`; the matrix runs drive stand-in
+sources; the shell test never runs a loop away. So a core that worked the
+hold out and never applied it passed everything, and only a mutant showed
+it. The multiplication now lives in `PictureStage` (and the page's
+`stagePush`), where parity prints and compares it. When a number is worked
+out in one place and applied in another, put the application where a
+harness reads it.
+
+**Parity run beside a browser suite can die with no traceback.** Twice in
+this container a full parity run stopped at the start of a section that
+compiles a tool, exit status 1 and nothing on stderr, while a page suite was
+running in another shell; once clang itself died of a bus error. Run alone,
+the same tree passed every time. Run parity and the page's suites one after
+the other.
