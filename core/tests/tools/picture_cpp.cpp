@@ -81,7 +81,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       sources.photoStep(phosphor, elapsed, spect);
       const scope::PairShape s = hasFrame ? shape() : scope::PairShape {};
       sources.pictureStep(phosphor, hasFrame ? &s : nullptr, elapsed, spect, limiting);
-      stage.step(sources.values(), elapsed, spect);
+      stage.step(sources.values(), sources.raw(), elapsed, spect);
       const auto& v = sources.values();
       const auto& r = sources.raw();
       const auto& m = sources.meter();

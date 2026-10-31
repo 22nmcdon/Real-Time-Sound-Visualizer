@@ -410,7 +410,8 @@ class PictureSources {
 // picture that move the sound always, with no routing made by hand. Glow is
 // the coverage and Motion the change, each rescaled to the range it has had
 // lately, with a least span so that a still picture stays still rather than
-// having its jitter stretched into full swings; Memory is boredom as it is.
+// having its jitter stretched into full swings; Memory is how long it has
+// been repeating itself, still or cycling, and never less than boredom.
 // The page's `pictureStageStep`, held to it by parity.
 constexpr double kStageRelax = 0.5;  // of the way back to the reading, a second: see STAGE_RELAX
 constexpr double kStageGlowSpan = 0.1, kStageMotionSpan = 0.05;
@@ -418,12 +419,17 @@ constexpr double kStageDefault = 60;   // the Picture slider's start, in per cen
 
 class PictureStage {
  public:
-  void step(const PictureValues& values, double elapsedMs, bool spectrogram) {
-    if (spectrogram) { glow_ = motion_ = memory_ = 0; return; }
+  // `values` slewed, as the sources read them; `raw` for novelty, as the page's
+  // pictureStageStep says why.
+  void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram) {
+    if (spectrogram) { glow_ = motion_ = memory_ = familiar_ = 0; return; }
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
+    const double repeating = std::fmax(0.0, std::fmin(1.0, 1 - raw.novelty / (2 * kNoveltyFloor)));
+    familiar_ += dt * (kBoredRise * repeating - kBoredLeak * familiar_);
+    familiar_ = std::fmax(0.0, std::fmin(1.0, familiar_));
     glow_ = rescale(glowRange_, values.cover, dt, kStageGlowSpan);
     motion_ = rescale(motionRange_, values.change, dt, kStageMotionSpan);
-    memory_ = values.bored;
+    memory_ = std::fmax(values.bored, familiar_);
   }
   double glow() const { return glow_; }
   double motion() const { return motion_; }
@@ -442,7 +448,7 @@ class PictureStage {
     range.lo = lo; range.hi = hi;
     return std::fmax(0.0, std::fmin(1.0, (x - lo) / std::fmax(hi - lo, least)));
   }
-  double glow_ = 0, motion_ = 0, memory_ = 0;
+  double glow_ = 0, motion_ = 0, memory_ = 0, familiar_ = 0;
   Range glowRange_, motionRange_;
 };
 

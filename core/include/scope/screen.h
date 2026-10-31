@@ -227,7 +227,7 @@ class PictureRun {
     } else {
       pics_.pictureStep(phosphor_, nullptr, elapsed_, spect, limiting);
     }
-    stage_.step(pics_.values(), elapsed_, spect);
+    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect);
     matrix.setStageAmount(brain_.panel.range("pictureAmount") / 100);
   }
 

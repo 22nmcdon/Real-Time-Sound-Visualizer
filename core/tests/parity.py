@@ -2475,6 +2475,20 @@ check("and that fails on a picture that never stops moving", not still_stays(sg[
 check("a moving picture: Motion reaches the top of its range, and Memory drains to under half of where stillness left it",
       moving_moves(sg[160:360], sg[159][2]), repr([[round(v, 3) for v in r] for r in sg[350:360:3]]))
 check("and that fails on the still one", not moving_moves(sg[:160], sg[0][2] + 1))
+# Memory reads a cycle, which boredom cannot: the circle swinging half its
+# way round and back moves every frame, so it is never stuck, and keeps coming
+# back, so it is never new. The wandering run, which never comes back, is the
+# null - and the check is fed boredom in place of Memory, which must fail it.
+def cycle_remembered(steps, read=lambda l: float(pcfield(l, "stage", 2))):
+    end = steps[-1]
+    return read(end) > 0.4 and float(pcfield(end, "raw", 6)) < 0.1
+check("Memory climbs on a picture that cycles, where boredom stays down",
+      cycle_remembered(pcsteps("cycling")), "memory %s, boredom %s" % (pcfield(pcsteps("cycling")[-1], "stage", 2),
+                                                                        pcfield(pcsteps("cycling")[-1], "raw", 6)))
+check("and not on one that wanders, nor read as boredom",
+      not cycle_remembered(pcsteps("wandering"))
+      and not cycle_remembered(pcsteps("cycling"), lambda l: float(pcfield(l, "raw", 6))),
+      "wandering memory %s" % pcfield(pcsteps("wandering")[-1], "stage", 2))
 check("every read stays between nought and one, and the spectrogram reads all three as nought, and only it",
       all(0 <= v <= 1 for r in sg for v in r) and sg[360] == [0, 0, 0] and sg[361] != [0, 0, 0], repr(sg[360:]))
 sh = [(float(pcfield(l, "shape")), float(pcfield(l, "shape", 1))) for l in pcsteps("shape")]
