@@ -94,10 +94,11 @@ class StageSource : public ModSource {
     reach = key_ == "memory" ? kBoredReach : kPhotoReach;
     fromPicture = true;
   }
+  // Held back while the loop runs away (PictureStage::hold).
   double value() const override {
-    if (key_ == "glow") return s_.glow();
-    if (key_ == "motion") return s_.motion();
-    return s_.memory();
+    if (key_ == "glow") return s_.glow() * s_.hold();
+    if (key_ == "motion") return s_.motion() * s_.hold();
+    return s_.memory() * s_.hold();
   }
 
  private:
@@ -227,7 +228,7 @@ class PictureRun {
     } else {
       pics_.pictureStep(phosphor_, nullptr, elapsed_, spect, limiting);
     }
-    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect);
+    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away");
     matrix.setStageAmount(brain_.panel.range("pictureAmount") / 100);
   }
 

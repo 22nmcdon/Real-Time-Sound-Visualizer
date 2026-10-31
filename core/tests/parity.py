@@ -2338,11 +2338,13 @@ pcruns = [
                       *pcframes(200, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 0.8), 255, 60, 40)))),
     ("wandering", pcrun(*PC, "persist 0", "pair ellipse 0.5 0.3 3 4096 0",
                         *pcframes(200, 50, lambda i: pcellipse(60 + (i * 37) % 520, 40 + (i * 53) % 380, 30 + i % 17, 20 + i % 11)))),
-    # The screen full of ink, and a limiter held under six decibels: running away.
+    # The screen full of ink, and a limiter held under six decibels: running
+    # away. Ten seconds each, so the stage's hold has time to reach its floor
+    # after the four the meter listens for (P3); five left it half way.
     ("running", pcrun(*PC, "persist -1", "fade", *["seg 40 %d 640 %d 1" % (30 + y, 30 + y) for y in range(0, 450, 4)],
-                      "pair ellipse 0.5 0.3 3 4096 0", *["step 50" for _ in range(100)])),
+                      "pair ellipse 0.5 0.3 3 4096 0", *["step 50" for _ in range(200)])),
     ("strained", pcrun(*PC, "persist 0.5", "pair ellipse 0.5 0.3 3 4096 0", "limit -8",
-                       *pcframes(100, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 1.3), 255, 60, 40)), "limit -2", "step 50")),
+                       *pcframes(200, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 1.3), 255, 60, 40)), "limit -2", "step 50")),
     # A figure whose whole path weighs less than the moments' floor reads
     # nought; a cell given more than full ink still counts as one.
     ("tiny", pcrun("plot 0 0 400 400", "fade", "poly 200,200;200.00000001,200;200.00000001,200.00000001;200,200.00000001;200,200",
@@ -2489,6 +2491,19 @@ check("and not on one that wanders, nor read as boredom",
       not cycle_remembered(pcsteps("wandering"))
       and not cycle_remembered(pcsteps("cycling"), lambda l: float(pcfield(l, "raw", 6))),
       "wandering memory %s" % pcfield(pcsteps("wandering")[-1], "stage", 2))
+# The hold: the verdict that reports a loop running away reins it in. The
+# screen full of ink is running away, and the hold falls to its floor of a
+# quarter, no lower; the strained run, held under the limiter, too; the
+# cycling and wandering runs never run away, and keep it whole. Fed the
+# cycling run, the first check has to fail.
+def held_down(steps): return min(float(pcfield(l, "stage", 3)) for l in steps) == 0.25
+check("a loop running away has the stage's push held down to a quarter, and no lower: the screen full, or the limiter working",
+      held_down(pcsteps("running")) and held_down(pcsteps("strained")[:-1]),
+      "least %s, %s" % (min(float(pcfield(l, "stage", 3)) for l in pcsteps("running")),
+                        min(float(pcfield(l, "stage", 3)) for l in pcsteps("strained"))))
+check("and one that is not keeps it whole; and the check fails on such a run",
+      all(float(pcfield(l, "stage", 3)) == 1 for n in ("cycling", "wandering") for l in pcsteps(n))
+      and not held_down(pcsteps("cycling")))
 check("every read stays between nought and one, and the spectrogram reads all three as nought, and only it",
       all(0 <= v <= 1 for r in sg for v in r) and sg[360] == [0, 0, 0] and sg[361] != [0, 0, 0], repr(sg[360:]))
 sh = [(float(pcfield(l, "shape")), float(pcfield(l, "shape", 1))) for l in pcsteps("shape")]

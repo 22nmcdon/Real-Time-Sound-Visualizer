@@ -61,7 +61,7 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
-  "STAGE_MIN_SPAN", "STAGE_RELAX", "pictureStage", "stageRescale", "pictureStageStep"];
+  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep"];
 const WASM_BYTES = MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
   return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
@@ -128,7 +128,7 @@ function run(commands) {
                "raw", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(r[k])),
                "meter", show(m.coverage), show(m.lit), show(m.change), show(m.novelty), m.depth, m.verdict(),
                "shape", show(shape.signed), show(shape.edge),
-               "stage", ...["glow", "motion", "memory"].map((k) => show(s.pictureStage[k]))].join(" ");
+               "stage", ...["glow", "motion", "memory", "hold"].map((k) => show(s.pictureStage[k]))].join(" ");
     } else throw new Error("unknown command " + cmd);
     let a1 = 0, a2 = 0;
     const g = s.phosphor.grid;

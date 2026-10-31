@@ -416,14 +416,18 @@ class PictureSources {
 constexpr double kStageRelax = 0.5;  // of the way back to the reading, a second: see STAGE_RELAX
 constexpr double kStageGlowSpan = 0.1, kStageMotionSpan = 0.05;
 constexpr double kStageDefault = 60;   // the Picture slider's start, in per cent
+// The hold on the stage's push while the meter says the loop is running away:
+// the page's STAGE_HOLD_*, and its comment says why these.
+constexpr double kStageHoldFall = 0.5, kStageHoldRise = 0.1, kStageHoldFloor = 0.25;
 
 class PictureStage {
  public:
   // `values` slewed, as the sources read them; `raw` for novelty, as the page's
   // pictureStageStep says why.
-  void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram) {
+  void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram, bool running) {
     if (spectrogram) { glow_ = motion_ = memory_ = familiar_ = 0; return; }
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
+    hold_ = running ? std::fmax(kStageHoldFloor, hold_ - kStageHoldFall * dt) : std::fmin(1.0, hold_ + kStageHoldRise * dt);
     const double repeating = std::fmax(0.0, std::fmin(1.0, 1 - raw.novelty / (2 * kNoveltyFloor)));
     familiar_ += dt * (kBoredRise * repeating - kBoredLeak * familiar_);
     familiar_ = std::fmax(0.0, std::fmin(1.0, familiar_));
@@ -434,6 +438,7 @@ class PictureStage {
   double glow() const { return glow_; }
   double motion() const { return motion_; }
   double memory() const { return memory_; }
+  double hold() const { return hold_; }
 
  private:
   struct Range { double lo = 0, hi = 0; bool seen = false; };
@@ -448,7 +453,7 @@ class PictureStage {
     range.lo = lo; range.hi = hi;
     return std::fmax(0.0, std::fmin(1.0, (x - lo) / std::fmax(hi - lo, least)));
   }
-  double glow_ = 0, motion_ = 0, memory_ = 0, familiar_ = 0;
+  double glow_ = 0, motion_ = 0, memory_ = 0, familiar_ = 0, hold_ = 1;
   Range glowRange_, motionRange_;
 };
 

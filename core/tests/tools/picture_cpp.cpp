@@ -81,7 +81,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       sources.photoStep(phosphor, elapsed, spect);
       const scope::PairShape s = hasFrame ? shape() : scope::PairShape {};
       sources.pictureStep(phosphor, hasFrame ? &s : nullptr, elapsed, spect, limiting);
-      stage.step(sources.values(), sources.raw(), elapsed, spect);
+      stage.step(sources.values(), sources.raw(), elapsed, spect, sources.meter().verdict() == "running away");
       const auto& v = sources.values();
       const auto& r = sources.raw();
       const auto& m = sources.meter();
@@ -93,7 +93,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
             + " meter " + show(m.coverage()) + " " + show(m.lit()) + " " + show(m.change()) + " " + show(m.novelty()) + " "
             + std::to_string(m.depth()) + " " + m.verdict()
             + " shape " + show(s.signed_) + " " + show(s.edge)
-            + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory());
+            + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory()) + " " + show(stage.hold());
     } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     double a1 = 0, a2 = 0;
     const auto& g = phosphor.grid();

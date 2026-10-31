@@ -322,6 +322,7 @@ with sync_playwright() as pw:
       const moved = { res: [Infinity, -Infinity], rot: [Infinity, -Infinity], freq: [Infinity, -Infinity],
                       fold: [Infinity, -Infinity] };
       const verdicts = {};
+      let leastHold = 1;
       const until = performance.now() + seconds * 1000;
       while (performance.now() < until) {
         await wait(100);
@@ -346,13 +347,14 @@ with sync_playwright() as pw:
         const fv = fold ? fold.source.value() : 0;
         moved.fold = [Math.min(moved.fold[0], fv), Math.max(moved.fold[1], fv)];
         const v = pictureMeter.verdict(); verdicts[v] = (verdicts[v] || 0) + 1;
+        leastHold = Math.min(leastHold, pictureStage.hold);
       }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
       state.genSound = false; await applyGeneratorSound();
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       genSet('amp', 0.55);
-      return { worst, moved, verdicts };
+      return { worst, moved, verdicts, leastHold };
     }"""
     for seed in ("silence", "full scale"):
         run = p.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS])
@@ -370,6 +372,13 @@ with sync_playwright() as pw:
               w["res"] <= 0.5 * 50 + 1e-6 and w["rot"] <= 0.5 + 1e-9 and w["zoom"] <= 0.5 * 8 + 1e-9
               and w["total"] <= 0.5 + 1e-9, str(w))
         check("from %s, and the grid stays inside the phosphor's range" % seed, w["grid"] <= 1, str(w["grid"]))
+        # The verdict governs as well as reports: running away for more than a
+        # couple of seconds holds the stage down to its floor, and a run that
+        # never runs away is never held - the second is the first's null.
+        running = run["verdicts"].get("running away", 0)
+        check("from %s, running away holds the stage's push down to a quarter, and nothing else holds it" % seed,
+              (run["leastHold"] == 0.25) if running > 30 else (running == 0 and run["leastHold"] == 1),
+              "%d tenths running away, the hold down to %.3f" % (running, run["leastHold"]))
         check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
               (mv["res"][1] - mv["res"][0]) > 1 and (mv["freq"][1] - mv["freq"][0]) > 0.01
               and (mv["fold"][1] - mv["fold"][0]) > 0.05,
