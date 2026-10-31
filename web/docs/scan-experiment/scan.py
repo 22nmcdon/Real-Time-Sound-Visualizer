@@ -7,7 +7,6 @@ import numpy as np
 
 SR, N, FPS = 44100, 2048, 60
 NOTES = [110.0, 164.81, 220.0]          # A2, E3, A3, a second each
-GRIDS, OUT = sys.argv[1], sys.argv[2]
 
 def blur(g, sigma):
     if sigma <= 0: return g
@@ -110,23 +109,28 @@ def reference(shape):
     tab = (tab - tab.mean()) / np.sqrt(((tab - tab.mean()) ** 2).mean())
     return np.repeat(tab[None, :], 180, axis=0)
 
-results = {}
-os.makedirs(OUT, exist_ok=True)
-for ref in ("sine", "saw"):
-    tabs = reference(ref); results["ref-" + ref] = {"preset": "reference", "path": ref, "softness": 0, **metrics(tabs)}
-    write_wav(os.path.join(OUT, "ref-%s.wav" % ref), render(tabs))
-for fn in sorted(os.listdir(GRIDS)):
-    if not fn.endswith(".npy"): continue
-    frames = np.load(os.path.join(GRIDS, fn)).astype(np.float64)
-    slug = fn[:-4]
-    for kind in ("wide", "tight", "lissajous", "offset"):
-        for soft in (0.0, 1.5, 3.0):
-            tabs = tables(frames, kind, soft)
-            key = "%s--%s--s%s" % (slug, kind, str(soft).replace(".", "_"))
-            results[key] = {"preset": slug, "path": kind, "softness": soft, **metrics(tabs)}
-            write_wav(os.path.join(OUT, key + ".wav"), render(tabs))
-            np.save(os.path.join(OUT, key + "-tables.npy"), tabs[::30].astype(np.float32))
-json.dump(results, open(os.path.join(OUT, "metrics.json"), "w"), indent=1)
-print("%-44s %6s %6s %8s %7s %6s %7s" % ("variant", "lowest", "crest", "dB/oct", "centr", "fund", "motion"))
-for k, m in results.items():
-    print("%-44s %6.0f %6.2f %8.2f %7.1f %6.3f %7.3f" % (k, m["lowest"], m["crest"], m["slope_db_oct"], m["centroid_h"], m["fundamental"], m["motion"]))
+def main(GRIDS, OUT):
+    results = {}
+    os.makedirs(OUT, exist_ok=True)
+    for ref in ("sine", "saw"):
+        tabs = reference(ref); results["ref-" + ref] = {"preset": "reference", "path": ref, "softness": 0, **metrics(tabs)}
+        write_wav(os.path.join(OUT, "ref-%s.wav" % ref), render(tabs))
+    for fn in sorted(os.listdir(GRIDS)):
+        if not fn.endswith(".npy"): continue
+        frames = np.load(os.path.join(GRIDS, fn)).astype(np.float64)
+        slug = fn[:-4]
+        for kind in ("wide", "tight", "lissajous", "offset"):
+            for soft in (0.0, 1.5, 3.0):
+                tabs = tables(frames, kind, soft)
+                key = "%s--%s--s%s" % (slug, kind, str(soft).replace(".", "_"))
+                results[key] = {"preset": slug, "path": kind, "softness": soft, **metrics(tabs)}
+                write_wav(os.path.join(OUT, key + ".wav"), render(tabs))
+                np.save(os.path.join(OUT, key + "-tables.npy"), tabs[::30].astype(np.float32))
+    json.dump(results, open(os.path.join(OUT, "metrics.json"), "w"), indent=1)
+    print("%-44s %6s %6s %8s %7s %6s %7s" % ("variant", "lowest", "crest", "dB/oct", "centr", "fund", "motion"))
+    for k, m in results.items():
+        print("%-44s %6.0f %6.2f %8.2f %7.1f %6.3f %7.3f" % (k, m["lowest"], m["crest"], m["slope_db_oct"], m["centroid_h"], m["fundamental"], m["motion"]))
+
+# Round two (scan2.py) imports the reading and the measures without running this.
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])

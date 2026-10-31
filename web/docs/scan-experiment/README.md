@@ -79,6 +79,44 @@ change in the table's spectrum between frames.
    change by under 6% between frames; the equal fifth and the morphing rose by 5-30%. The
    pictures that move are the ones that sound alive, as the plan expected.
 
+## Round one, heard
+
+All six pictures have potential, and every one was jarring. Raw it was terrible (the
+morphing rose raw and softened especially); the off-centre, softer takes had the right
+feel, the moving ones most, and the jarring carried over into them. The kaleidoscope was
+the most promising.
+
+## Round two: where the jarring comes from
+
+```
+python3 scan2.py grids/ out2/
+```
+
+Two causes were in how round one made the sound, not in the pictures. Each frame's table
+was crossfaded whole into the next sixty times a second, and evened in level on its own,
+so any change in the picture stepped the note at 60 Hz. And a path across thin lit lines
+reads sharp pulses, which stand the harmonics in a jagged comb. `scan2.py` plays each
+picture's off-centre, softer reading four ways, each adding one fix: **A** as round one
+made it; **B** eased, every harmonic's level gliding to the picture's over 150 ms at a
+fixed phase on a bank of oscillators; **C** B with the comb smoothed across neighbouring
+harmonics and 3 dB an octave more fall; **D** C at equal level with the default tone.
+Each plays A2 for a second, then an A minor chord for two.
+
+*Grain* is how much the sound's spectrum steps from one picture frame to the next while
+the single note is held; the default tone alone reads 0.0007.
+
+| Picture | A | B | C | D |
+|---|---|---|---|---|
+| Morphing rose | 0.153 | 0.030 | 0.020 | 0.012 |
+| Perfect fifth, equal | 0.067 | 0.020 | 0.014 | 0.009 |
+| Kaleidoscope | 0.013 | 0.001 | 0.001 | 0.001 |
+| Harmonograph | 0.013 | 0.006 | 0.005 | 0.003 |
+| Perfect fifth, just | 0.026 | 0.004 | 0.003 | 0.002 |
+| Rose | 0.004 | 0.002 | 0.002 | 0.002 |
+
+Easing cuts the grain two to eight times on every picture, most on the two that move.
+Whether that is the jarring the owner heard is for the second listening page.
+
 ## The decision
 
 The numbers say a softened, off-centre scan makes tables in a musical range, in tune for
