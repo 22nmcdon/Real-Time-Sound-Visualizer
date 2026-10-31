@@ -16625,6 +16625,8 @@ function stageRoutings() {
   return stageRoutingsMade;
 }
 const isStageKey = (key) => key.startsWith("stage.");
+// What a read hands the matrix: the read, held back while the loop runs away.
+function stagePush(key) { return pictureStage[key] * pictureStage.hold; }
 /* A source a hand can patch: all but the stage's reads, which are routed by
    the stage alone. Offering them in the chips, the editor and the search put
    three inkless chips called Glow, Motion and Memory beside the oscillators. */
@@ -26669,7 +26671,7 @@ for (const source of PICTURE_SOURCES) {
 }
 for (const source of STAGE_SOURCES) {
   registerSource({ id: source.id, label: source.label, family: "stage", bipolar: false, reach: source.reach,
-                   fromPicture: true, byHand: false, value: () => pictureStage[source.key] * pictureStage.hold });
+                   fromPicture: true, byHand: false, value: () => stagePush(source.key) });
 }
 
 let photoDrag = null;

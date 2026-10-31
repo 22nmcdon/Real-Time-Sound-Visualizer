@@ -2343,6 +2343,12 @@ pcruns = [
     # after the four the meter listens for (P3); five left it half way.
     ("running", pcrun(*PC, "persist -1", "fade", *["seg 40 %d 640 %d 1" % (30 + y, 30 + y) for y in range(0, 450, 4)],
                       "pair ellipse 0.5 0.3 3 4096 0", *["step 50" for _ in range(200)])),
+    # Running away and then let go: the full screen for nine seconds, then
+    # wiped and a small figure drawn, so the verdict changes and the stage's
+    # hold climbs back.
+    ("let go", pcrun(*PC, "persist -1", "fade", *["seg 40 %d 640 %d 1" % (30 + y, 30 + y) for y in range(0, 450, 4)],
+                     "pair ellipse 0.5 0.3 3 4096 0", *["step 50" for _ in range(180)], "persist 0.12", "fade 1",
+                     *pcframes(160, 50, lambda i: pcellipse(340 + 30 * math.sin(i * 0.4), 255, 40, 30)))),
     ("strained", pcrun(*PC, "persist 0.5", "pair ellipse 0.5 0.3 3 4096 0", "limit -8",
                        *pcframes(200, 50, lambda i: pcellipse(340 + 120 * math.sin(i * 1.3), 255, 60, 40)), "limit -2", "step 50")),
     # A figure whose whole path weighs less than the moments' floor reads
@@ -2501,6 +2507,24 @@ check("a loop running away has the stage's push held down to a quarter, and no l
       held_down(pcsteps("running")) and held_down(pcsteps("strained")[:-1]),
       "least %s, %s" % (min(float(pcfield(l, "stage", 3)) for l in pcsteps("running")),
                         min(float(pcfield(l, "stage", 3)) for l in pcsteps("strained"))))
+# Let go, it climbs back at a tenth a second and no faster: slower back than
+# down, so a loop that runs away again at once spends most of its time held.
+# The rise is read step by step against the rate; one as fast as the fall
+# would put five tenths a second where the check allows one.
+lg = [float(pcfield(l, "stage", 3)) for l in pcsteps("let go")]
+rises = [b - a for a, b in zip(lg, lg[1:]) if b > a]
+check("let go, the hold climbs back at a tenth a second and no faster",
+      min(lg) == 0.25 and lg[-1] > 0.4 and max(rises) <= 0.1 * 0.05 + 1e-12,
+      "down to %.2f, back to %.3f, at most %.4f a step" % (min(lg), lg[-1], max(rises) if rises else 0))
+# And it is what the matrix is handed: held at the floor, the full screen's
+# Memory - it stands still, so boredom climbs - reaches the sources at a
+# quarter of itself. Read off the sources, so a hold worked out and not
+# applied fails; the unheld read in its place is the null.
+end = pcsteps("running")[-1]
+mem_read, mem_push = float(pcfield(end, "stage", 2)), float(pcfield(end, "pushes", 2))
+check("held, the stage's sources hand the matrix a quarter of what they read",
+      mem_read > 0.2 and abs(mem_push - 0.25 * mem_read) < 1e-15 and not abs(mem_read - 0.25 * mem_read) < 1e-15,
+      "Memory reads %.4f, pushes %.4f" % (mem_read, mem_push))
 check("and one that is not keeps it whole; and the check fails on such a run",
       all(float(pcfield(l, "stage", 3)) == 1 for n in ("cycling", "wandering") for l in pcsteps(n))
       and not held_down(pcsteps("cycling")))

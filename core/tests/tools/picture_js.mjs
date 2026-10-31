@@ -61,7 +61,7 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
-  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep"];
+  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep", "stagePush"];
 const WASM_BYTES = MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
   return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
@@ -69,6 +69,7 @@ const WASM_BYTES = MODE === "wasm" ? (() => {
 const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
 return { state, gains, phosphor, phosphorFade, phosphorSegment, phosphorDeposit, phosphorRead, photo, photoStep,
          pictureMeter, shapeOfPair, picture, pictureStep, pictureStage, engine: pictureEngine,
+         stageSources: { glow: () => stagePush("glow"), motion: () => stagePush("motion"), memory: () => stagePush("memory") },
          setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
@@ -128,7 +129,9 @@ function run(commands) {
                "raw", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(r[k])),
                "meter", show(m.coverage), show(m.lit), show(m.change), show(m.novelty), m.depth, m.verdict(),
                "shape", show(shape.signed), show(shape.edge),
-               "stage", ...["glow", "motion", "memory", "hold"].map((k) => show(s.pictureStage[k]))].join(" ");
+               "stage", ...["glow", "motion", "memory", "hold"].map((k) => show(s.pictureStage[k])),
+               // What the stage's sources hand the matrix, read from the sources themselves.
+               "pushes", ...["glow", "motion", "memory"].map((k) => show(s.stageSources[k]()))].join(" ");
     } else throw new Error("unknown command " + cmd);
     let a1 = 0, a2 = 0;
     const g = s.phosphor.grid;

@@ -93,7 +93,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
             + " meter " + show(m.coverage()) + " " + show(m.lit()) + " " + show(m.change()) + " " + show(m.novelty()) + " "
             + std::to_string(m.depth()) + " " + m.verdict()
             + " shape " + show(s.signed_) + " " + show(s.edge)
-            + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory()) + " " + show(stage.hold());
+            + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory()) + " " + show(stage.hold())
+            + " pushes " + show(stage.pushGlow()) + " " + show(stage.pushMotion()) + " " + show(stage.pushMemory());
     } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     double a1 = 0, a2 = 0;
     const auto& g = phosphor.grid();

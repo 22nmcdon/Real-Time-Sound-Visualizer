@@ -96,9 +96,9 @@ class StageSource : public ModSource {
   }
   // Held back while the loop runs away (PictureStage::hold).
   double value() const override {
-    if (key_ == "glow") return s_.glow() * s_.hold();
-    if (key_ == "motion") return s_.motion() * s_.hold();
-    return s_.memory() * s_.hold();
+    if (key_ == "glow") return s_.pushGlow();
+    if (key_ == "motion") return s_.pushMotion();
+    return s_.pushMemory();
   }
 
  private:

@@ -439,6 +439,11 @@ class PictureStage {
   double motion() const { return motion_; }
   double memory() const { return memory_; }
   double hold() const { return hold_; }
+  // What each read hands the matrix: the read, held back while the loop runs
+  // away. The page's stage sources' value.
+  double pushGlow() const { return glow_ * hold_; }
+  double pushMotion() const { return motion_ * hold_; }
+  double pushMemory() const { return memory_ * hold_; }
 
  private:
   struct Range { double lo = 0, hi = 0; bool seen = false; };
