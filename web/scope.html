@@ -340,6 +340,14 @@ select, input[type="number"] {
 .menu-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
 .menu-row:first-of-type { margin-top: 0; }
 .menu-label { font-size: 12.5px; color: var(--text-soft); flex: 0 0 96px; }
+/* A control the picture stage is moving, its label coloured by how far: the
+   quiet label at nought, blush-deep with the loop's whole total on it. The
+   colour alone, so the row's box is the same lit or not - a control's
+   appearance must not depend on what is on it (CLAUDE.md), and a label that
+   grew a marker would move the slider beside it while it played. */
+[data-mod-dest][style*="--picture"] > .menu-label {
+  color: color-mix(in srgb, var(--blush-deep) calc(var(--picture) * 100%), var(--text-soft));
+}
 .menu-row .grow { flex: 1 1 110px; min-width: 0; display: flex; align-items: center; gap: 8px; }
 /* A select is as wide as its longest option and a slider has a width of its
    own, and a flex item will not shrink below either unless told: the
@@ -3699,7 +3707,9 @@ body[data-drawer="shut"] .mod-open.empty { display: none; }
         stretched into a swing.
         <br><br>
         <i>Picture</i>, beside the photocell, is how much. At nought it is an ordinary
-        synthesiser, and the three bars beside it show what each read is doing. It is
+        synthesiser, and the three bars beside it show what each read is doing; the
+        name of each control the picture is moving lights up with how far it is moving
+        it. It is
         yours rather than the preset's, like a pedal: loading a preset leaves it where
         you put it. The reads live
         under the same rules as the photocell below: on any one control they share its half
@@ -26726,6 +26736,22 @@ function paintStage() {
     bar.style.setProperty("--v", (pictureStage[bar.dataset.read] || 0).toFixed(3));
   }
   el.pictureReads.style.opacity = String(0.35 + 0.65 * amount);
+  /* Each control the stage moves, lit by how far it moves it: the stage's
+     routes onto it summed and held to the loop's total, as the matrix does,
+     over that total. The rows are found each frame rather than kept, since
+     layer B's panel and the detail overlays move them about. */
+  const pushes = new Map();
+  for (const routing of stageRoutings()) {
+    const source = MOD_SOURCES.get(routing.sourceId);
+    if (!source) continue;
+    pushes.set(routing.destId, (pushes.get(routing.destId) || 0) + source.value() * routingAmount(source, routing.amount));
+  }
+  for (const [, destId] of STAGE_BUNDLES) {
+    const lit = Math.abs(clampLoop(pushes.get(destId) || 0)) / LOOP_TOTAL;
+    for (const row of document.querySelectorAll('[data-mod-dest="' + destId + '"]')) {
+      row.style.setProperty("--picture", lit.toFixed(3));
+    }
+  }
   const held = pictureStage.hold < 0.995;
   if (held !== (el.pictureReads.dataset.held === "1")) {
     if (held) el.pictureReads.dataset.held = "1"; else delete el.pictureReads.dataset.held;

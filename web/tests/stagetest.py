@@ -62,7 +62,15 @@ RUN = """async ([amount, seconds]) => {
     });
     out.push({ t: (performance.now() - start) / 1000, bright: e > 1e-9 ? Math.sqrt(d / e) : 0, rms: Math.sqrt(e / l.length),
                glow: pictureStage.glow, motion: pictureStage.motion, memory: pictureStage.memory, bars,
-               faded: Number(getComputedStyle(el.pictureReads).opacity) });
+               faded: Number(getComputedStyle(el.pictureReads).opacity),
+               // How lit each control is, and the label colours it makes:
+               // the fold, which the stage moves, and the frequency, which it
+               // does not.
+               lit: Object.fromEntries(['gen.fold', 'gen.echo', 'gen.twist', 'gen.phase', 'gen.freq'].map((d) => {
+                 const row = document.querySelector('[data-mod-dest="' + d + '"]');
+                 return [d, row ? row.style.getPropertyValue('--picture') : null]; })),
+               foldInk: getComputedStyle(document.querySelector('[data-mod-dest="gen.fold"] > .menu-label')).color,
+               freqInk: getComputedStyle(document.querySelector('[data-mod-dest="gen.freq"] > .menu-label')).color });
   }
   for (const n of [60, 64, 67]) midiBytes(new Uint8Array([0x80, n, 0]));
   return { out, brain: BRAIN_IN_CORE && state.source.kind === 'host', photo: photo.on, routings: state.modRoutings.length };
@@ -130,6 +138,24 @@ with sync_playwright() as pw:
     check("and the check fails on bars held at nought", bar_gap([dict(s, bars=[0, 0, 0]) for s in on]) >= 0.1)
     check("and at nought they are faded to a third", on[-1]["faded"] > 0.7 and abs(off[-1]["faded"] - 0.35) < 0.01,
           "%.2f with the stage, %.2f at nought" % (on[-1]["faded"], off[-1]["faded"]))
+    # Each control the stage moves is lit by how far, and nothing else is.
+    STAGED = ("gen.fold", "gen.echo", "gen.twist", "gen.phase")
+    # A colour as three channels out of 255, whichever way the browser wrote
+    # it: color-mix comes back as color(srgb 0.42 ...), a plain one as rgb().
+    def ink(text):
+        import re
+        nums = [float(x) for x in re.findall(r"[\d.]+", text)][:3]
+        return tuple(round(n * 255) if text.startswith("color(") else round(n) for n in nums)
+    def lit(run, d): return [float(s["lit"][d] or 0) for s in run]
+    def lights(run):
+        most = max(max(lit(run, d)) for d in STAGED)
+        peak = max(run, key=lambda s: float(s["lit"]["gen.fold"] or 0))
+        return most > 0.3 and all(s["lit"]["gen.freq"] == "" for s in run) and ink(peak["foldInk"]) != ink(peak["freqInk"])
+    check("each control the picture moves is lit by how far, its label coloured; one it does not move, never",
+          lights(on), "most lit %s; fold %s" % ({d: round(max(lit(on, d)), 2) for d in STAGED}, sorted(set(lit(on, "gen.fold")))[-3:]))
+    check("and at nought none is lit, every label its own colour - which the check also fails on",
+          all(max(lit(off, d)) == 0 for d in STAGED) and all(ink(s["foldInk"]) == ink(s["freqInk"]) for s in off) and not lights(off),
+          "%s against %s" % (off[-1]["foldInk"], off[-1]["freqInk"]))
     check("no page errors", not runs[60]["bad"] and not runs[0]["bad"], "; ".join((runs[60]["bad"] + runs[0]["bad"])[:3]))
 
     print("\n--- the amount is the player's ---")
