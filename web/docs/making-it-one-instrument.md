@@ -562,6 +562,13 @@ the synth's features should be chosen knowing that.
     rewritten with the code that made them false.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the
   host parameters replaced before any is removed, and the input path left whole.
+  - *Edge contact, cut:* the reading that was computed and never offered, in the page,
+    the core and the compiled engine's readings. It had been kept so the survey that
+    chose Direction for the sixth source could ask again; the survey now asks whether
+    Direction still earns its slot - 1.29 bits the other five do not hold - beside a copy
+    of roundness that has to add nothing. With it went the only place the screen's turn
+    and zoom showed in what the picture says, since direction does not change with
+    either. No setup ever stored it, so no code needs a decode pass.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,

@@ -16,9 +16,9 @@ picture, one that repeats, one that never does, one that fills the screen.
 Each verdict is checked to be the one its fixture should give AND not the one
 any other fixture gives, which is the null test for a classifier.
 
-Then the survey that chose the sixth source, re-run, with the choice checked
-against it: if a change ever makes edge contact the better candidate, this is
-the test that says so.
+Then the survey that chose the sixth source, re-run: Direction has to add
+information the other five do not hold, beside a copy of roundness that has to
+add none. Edge contact, the candidate it was chosen over, was cut in P5.
 """
 # On ?brain=js (5m): this suite reads the page's own brain - genSet called
 # directly - which core/tests/parity.py holds the instrument to, sample for
@@ -372,21 +372,17 @@ with sync_playwright() as pw:
     check("and no faster than two full swings a second", live["over"] <= 0, "%.3f" % live["over"])
 
     print("\n--- the sixth slot, surveyed with the loop closed ---")
-    p.evaluate("""() => { setPhoto(true);
-      for (const [key, label] of [['edge', 'Edge contact']])
-        if (!MOD_SOURCES.has('picture.' + key))
-          registerSource({ id: 'picture.' + key, label, ink: 'ch3', fromPicture: true,
-                           reach: PHOTO_REACH, start: PHOTO_START, value: () => picture[key] }); }""")
+    p.evaluate("() => setPhoto(true)")
     survey = p.evaluate(open(SURVEY).read(), [4])
     for name, r in survey["result"].items():
         print("    %-7s entropy %.2f bits; shares %s; adds %.2f bits; not nought %.0f%% of the time"
               % (name, r["entropy"], r["shared"], r["adds"], 100 * r["nonzero"]))
     chosen = p.evaluate("() => SIXTH")
-    other = "edge" if chosen == "signed" else "signed"
-    check("the source in the sixth slot is the one that adds more",
-          survey["result"][chosen]["adds"] > survey["result"][other]["adds"],
-          "%s %.2f against %s %.2f" % (chosen, survey["result"][chosen]["adds"],
-                                       other, survey["result"][other]["adds"]))
+    # Half a bit: when it was chosen Direction added 1.6 and edge contact 0.7.
+    check("the source in the sixth slot adds what the other five do not hold, half a bit or more",
+          chosen == "signed" and survey["result"][chosen]["adds"] > 0.5, "%.2f bits" % survey["result"][chosen]["adds"])
+    check("and a copy of roundness, the null, adds nothing", abs(survey["result"]["copy of round"]["adds"]) < 0.01,
+          "%.3f bits" % survey["result"]["copy of round"]["adds"])
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

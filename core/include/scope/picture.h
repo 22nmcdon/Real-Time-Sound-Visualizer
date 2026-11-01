@@ -1,7 +1,7 @@
 // The picture's own sources, ported from web/scope.html (stage 4): the
 // phosphor grid the photocell reads, the beam's moments for roundness, the
 // picture meter (coverage, change, novelty and the verdict), the drawn pair's
-// direction and edge contact, the photocell's slewed reading, and boredom.
+// direction, the photocell's slewed reading, and boredom.
 // `phosphor`, `makeMoments`, `makePictureMeter`, `shapeOfPair`, `photoStep`
 // and `pictureStep`.
 //
@@ -306,25 +306,23 @@ class PictureMeter {
 };
 
 // shapeOfPair: the drawn pair, turned and scaled as it is drawn, for which
-// way round the beam goes (signed) and how much the screen's edge clips
-// (edge). Strided to 2048 points, which the page keeps as floats.
-struct PairShape { double signed_ = 0, edge = 0; };
+// way round the beam goes (signed). Strided to 2048 points, which the page
+// keeps as floats. Edge contact went in P5; the page's comment says why.
+struct PairShape { double signed_ = 0; };
 inline PairShape shapeOfPair(const float* left, const float* right, std::size_t n, double gx, double gy,
-                             double ox, double oy, double spinTurns, double zoom) {
+                             double ox, double oy, double spinTurns) {
   static constexpr std::size_t kShape = 2048;
   std::array<float, kShape> sx {}, sy {};
   const double angle = spinTurns * 2 * 3.14159265358979323846;
   const double rc = std::cos(angle), rs = std::sin(angle);
   const std::size_t stride = std::max<std::size_t>(1, (n + kShape - 1) / kShape);
   std::size_t m = 0;
-  double mx = 0, my = 0, edge = 0;
+  double mx = 0, my = 0;
   for (std::size_t i = 0; i < n && m < kShape; i += stride, m++) {
     const double l = left[i], r = right[i];
     const double x = (spinTurns != 0 ? l * rc - r * rs : l) * gx + ox;
     const double y = (spinTurns != 0 ? l * rs + r * rc : r) * gy + oy;
     sx[m] = static_cast<float>(x); sy[m] = static_cast<float>(y); mx += x; my += y;
-    const double reach = std::fmax(std::fabs(x), std::fabs(y)) * zoom;
-    edge += std::fmax(0.0, std::fmin(1.0, (reach - 0.9) / 0.1));
   }
   if (m < 3) return {};
   mx /= static_cast<double>(m); my /= static_cast<double>(m);
@@ -335,7 +333,7 @@ inline PairShape shapeOfPair(const float* left, const float* right, std::size_t 
     swept += x * dy - y * dx;
     path += jsHypot({ x, y }) * jsHypot({ dx, dy });
   }
-  return { path > 1e-9 ? std::fmax(-1.0, std::fmin(1.0, swept / (path + 1e-6))) : 0, edge / static_cast<double>(m) };
+  return { path > 1e-9 ? std::fmax(-1.0, std::fmin(1.0, swept / (path + 1e-6))) : 0 };
 }
 
 // The photocell and the picture's sources, with their defences: half the
@@ -344,7 +342,7 @@ inline PairShape shapeOfPair(const float* left, const float* right, std::size_t 
 constexpr double kPhotoStart = 0.2, kPhotoSlew = 2;  // and PHOTO_REACH, in loop.h
 constexpr double kBoredReach = 0.3, kBoredRise = 0.25, kBoredLeak = 0.2;
 
-struct PictureValues { double round = 0, cover = 0, change = 0, novelty = 0, signed_ = 0, edge = 0, bored = 0; };
+struct PictureValues { double round = 0, cover = 0, change = 0, novelty = 0, signed_ = 0, bored = 0; };
 
 // photo and picture, stepped once a frame: photoStep, then pictureStep.
 class PictureSources {
@@ -374,7 +372,6 @@ class PictureSources {
     bored_ = std::fmax(0.0, std::fmin(1.0, bored_));
     raw_.round = phosphor.moments().roundness();
     raw_.signed_ = shape->signed_;
-    raw_.edge = shape->edge;
     raw_.cover = meter_.coverage();
     raw_.change = meter_.change();
     raw_.novelty = meter_.novelty();
@@ -382,7 +379,7 @@ class PictureSources {
     const double most = kPhotoSlew * std::fmax(0.0, elapsedMs) / 1000;
     const auto slew = [&](double& value, double target) { value += std::fmax(-most, std::fmin(most, target - value)); };
     slew(values_.round, raw_.round); slew(values_.cover, raw_.cover); slew(values_.change, raw_.change);
-    slew(values_.novelty, raw_.novelty); slew(values_.signed_, raw_.signed_); slew(values_.edge, raw_.edge);
+    slew(values_.novelty, raw_.novelty); slew(values_.signed_, raw_.signed_);
     slew(values_.bored, raw_.bored);
   }
 

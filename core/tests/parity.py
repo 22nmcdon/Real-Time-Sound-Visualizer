@@ -2525,8 +2525,8 @@ check("roundness reads near one for a circle, under two thirds for two to one at
 ph = [float(pcfield(l, "photo", 1)) for l in pcsteps("photo")]
 check("the photocell climbs at two swings a second to what is under it, falls on a dark cell, and reads nothing off or on the spectrogram",
       abs(ph[0] - 0.032) < 1e-12 and ph[39] > 0.3 and ph[59] < ph[39] and ph[60] == 0 and ph[61] == 0, repr([round(x, 3) for x in ph[:3] + ph[38:41] + ph[58:62]]))
-bo = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][:160]
-bo2 = [float(pcfield(l, "raw", 6)) for l in pcsteps("settled")][160:]
+bo = [float(pcfield(l, "raw", 5)) for l in pcsteps("settled")][:160]
+bo2 = [float(pcfield(l, "raw", 5)) for l in pcsteps("settled")][160:]
 # Since the picture stage (P3) the readings are always on, and the photocell's
 # switch is the reticle's alone. This used to assert the opposite - off let
 # boredom go, and on started it from nothing - which is what made the picture
@@ -2557,13 +2557,13 @@ check("and that fails on the still one", not moving_moves(sg[:160], sg[0][2] + 1
 # null - and the check is fed boredom in place of Memory, which must fail it.
 def cycle_remembered(steps, read=lambda l: float(pcfield(l, "stage", 2))):
     end = steps[-1]
-    return read(end) > 0.4 and float(pcfield(end, "raw", 6)) < 0.1
+    return read(end) > 0.4 and float(pcfield(end, "raw", 5)) < 0.1
 check("Memory climbs on a picture that cycles, where boredom stays down",
       cycle_remembered(pcsteps("cycling")), "memory %s, boredom %s" % (pcfield(pcsteps("cycling")[-1], "stage", 2),
-                                                                        pcfield(pcsteps("cycling")[-1], "raw", 6)))
+                                                                        pcfield(pcsteps("cycling")[-1], "raw", 5)))
 check("and not on one that wanders, nor read as boredom",
       not cycle_remembered(pcsteps("wandering"))
-      and not cycle_remembered(pcsteps("cycling"), lambda l: float(pcfield(l, "raw", 6))),
+      and not cycle_remembered(pcsteps("cycling"), lambda l: float(pcfield(l, "raw", 5))),
       "wandering memory %s" % pcfield(pcsteps("wandering")[-1], "stage", 2))
 # The hold: the verdict that reports a loop running away reins it in. The
 # screen full of ink is running away, and the hold falls to its floor of a
@@ -2598,9 +2598,11 @@ check("and one that is not keeps it whole; and the check fails on such a run",
       and not held_down(pcsteps("cycling")))
 check("every read stays between nought and one, and the spectrogram reads all three as nought, and only it",
       all(0 <= v <= 1 for r in sg for v in r) and sg[360] == [0, 0, 0] and sg[361] != [0, 0, 0], repr(sg[360:]))
-sh = [(float(pcfield(l, "shape")), float(pcfield(l, "shape", 1))) for l in pcsteps("shape")]
-check("the drawn pair: anticlockwise one way and clockwise the other, a line nought, and the edge reached when zoomed",
-      sh[0][0] > 0.5 and sh[1][0] < -0.5 and abs(sh[2][0]) < 0.05 and sh[4][1] > 0.1 and sh[7] == (0.0, 0.0), repr(sh))
+# The pair's direction alone since P5 cut edge contact, which the zoomed
+# ellipse (the fifth step) was here to reach.
+sh = [float(pcfield(l, "shape")) for l in pcsteps("shape")]
+check("the drawn pair: anticlockwise one way and clockwise the other, a line nought, and nought with too few points or none",
+      sh[0] > 0.5 and sh[1] < -0.5 and abs(sh[2]) < 0.05 and sh[6] == 0.0 and sh[7] == 0.0, repr(sh))
 def pcnull(name, old, new, what):
     text = dict(pcruns)[name]
     assert old in text, old

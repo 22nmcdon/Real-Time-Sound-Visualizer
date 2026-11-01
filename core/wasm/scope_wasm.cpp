@@ -299,9 +299,9 @@ EXPORT(picture_lanes) float* pictureLanes(int n) {
 }
 // The drawn pair's shape from the `n` samples a lane in the picture lanes,
 // turned, scaled and offset as the page draws them.
-EXPORT(picture_shape) void pictureShape(int n, double gx, double gy, double ox, double oy, double spin, double zoom) {
+EXPORT(picture_shape) void pictureShape(int n, double gx, double gy, double ox, double oy, double spin) {
   const std::size_t m = static_cast<std::size_t>(n);
-  pairShape = scope::shapeOfPair(pairLanes.data(), pairLanes.data() + m, m, gx, gy, ox, oy, spin, zoom);
+  pairShape = scope::shapeOfPair(pairLanes.data(), pairLanes.data() + m, m, gx, gy, ox, oy, spin);
 }
 // photoStep, from the page's photocell as it stands: on, where, and the value
 // it last slewed to.
@@ -314,10 +314,9 @@ EXPORT(picture_photo) void picturePhoto(int on, double u, double v, double value
 // pictureStep, from the page's slewed values as they stand, with the shape
 // last made or none.
 EXPORT(picture_step) void pictureStep(int on, int hasShape, double elapsed, int spect, double limiting, double round,
-                                      double cover, double change, double novelty, double signedArea, double edge,
-                                      double bored) {
+                                      double cover, double change, double novelty, double signedArea, double bored) {
   pictures->on = on != 0;
-  pictures->carry(pictures->photo(), scope::PictureValues { round, cover, change, novelty, signedArea, edge, bored });
+  pictures->carry(pictures->photo(), scope::PictureValues { round, cover, change, novelty, signedArea, bored });
   pictures->pictureStep(*phosphor, hasShape ? &pairShape : nullptr, elapsed, spect != 0, limiting);
 }
 EXPORT(picture_reset_meter) void pictureResetMeter() { pictures->resetMeter(); }
@@ -331,11 +330,10 @@ EXPORT(picture_state) double* pictureStateOut() {
   const auto& m = pictures->meter();
   const std::string said = m.verdict();
   const double verdict = said == "running away" ? 1 : said == "settled" ? 2 : said == "cycling" ? 3 : said == "wandering" ? 4 : 0;
-  pictureState.assign({ pictures->photo(), pictures->photoRaw(), v.round, v.cover, v.change, v.novelty, v.signed_, v.edge,
-                        v.bored, r.round, r.cover, r.change, r.novelty, r.signed_, r.edge, r.bored, pictures->bored(),
+  pictureState.assign({ pictures->photo(), pictures->photoRaw(), v.round, v.cover, v.change, v.novelty, v.signed_,
+                        v.bored, r.round, r.cover, r.change, r.novelty, r.signed_, r.bored, pictures->bored(),
                         m.coverage(), m.lit(), m.change(), m.novelty(), static_cast<double>(m.depth()), verdict,
-                        static_cast<double>(phosphor->frames()), phosphor->moments().roundness(), pairShape.signed_,
-                        pairShape.edge });
+                        static_cast<double>(phosphor->frames()), phosphor->moments().roundness(), pairShape.signed_ });
   return pictureState.data();
 }
 

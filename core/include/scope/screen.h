@@ -77,7 +77,6 @@ class PictureSource : public ModSource {
     if (key_ == "change") return v.change;
     if (key_ == "novelty") return v.novelty;
     if (key_ == "signed") return v.signed_;
-    if (key_ == "edge") return v.edge;
     return v.bored;
   }
 
@@ -223,7 +222,7 @@ class PictureRun {
       const double spin = frame_.turned || !view.shaping ? 0 : view.rotate + view.rotateMod;
       const auto offset = [&](std::size_t ch) { return ch < view.channels.size() ? view.channels[ch].offset : 0.0; };
       const PairShape shape = shapeOfPair(left->data(), right->data(), std::min(left->size(), right->size()),
-                                          gainOf(view, sc.xyPair.x), gainOf(view, sc.xyPair.y), offset(ax), offset(ay), spin, sc.zoom);
+                                          gainOf(view, sc.xyPair.x), gainOf(view, sc.xyPair.y), offset(ax), offset(ay), spin);
       pics_.pictureStep(phosphor_, &shape, elapsed_, spect, limiting);
     } else {
       pics_.pictureStep(phosphor_, nullptr, elapsed_, spect, limiting);

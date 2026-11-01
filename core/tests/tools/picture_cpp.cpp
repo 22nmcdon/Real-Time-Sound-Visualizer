@@ -29,14 +29,14 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   scope::PictureSources sources;
   scope::PictureStage stage;
   scope::Plot plot;
-  double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0, zoom = 1;
+  double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0;
   bool spect = false, hasFrame = false;
   std::vector<float> left, right;
   for (const auto& w : commands) {
     const std::string& cmd = w[0];
     const auto arg = [&](std::size_t i) { return i < w.size() ? w[i] : std::string(); };
     std::string extra;
-    const auto shape = [&] { return scope::shapeOfPair(left.data(), right.data(), left.size(), gx, gy, ox, oy, spin, zoom); };
+    const auto shape = [&] { return scope::shapeOfPair(left.data(), right.data(), left.size(), gx, gy, ox, oy, spin); };
     if (cmd == "plot") plot = { num(arg(1)), num(arg(2)), num(arg(3)), num(arg(4)) };
     else if (cmd == "persist") persistence = num(arg(1));
     else if (cmd == "fade") phosphor.fade(persistence, arg(1) == "1");
@@ -74,7 +74,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
           }
         }
       }
-    } else if (cmd == "view") { gx = num(arg(1)); gy = num(arg(2)); ox = num(arg(3)); oy = num(arg(4)); spin = num(arg(5)); zoom = num(arg(6)); }
+    } else if (cmd == "view") { gx = num(arg(1)); gy = num(arg(2)); ox = num(arg(3)); oy = num(arg(4)); spin = num(arg(5)); }  // the zoom, arg 6, fed only edge contact, cut in P5
     else if (cmd == "limit") limiting = num(arg(1));
     else if (cmd == "step") {
       const double elapsed = num(arg(1));
@@ -87,12 +87,12 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       const auto& m = sources.meter();
       extra = " photo " + show(sources.photoRaw()) + " " + show(sources.photo())
             + " values " + show(v.round) + " " + show(v.cover) + " " + show(v.change) + " " + show(v.novelty) + " "
-            + show(v.signed_) + " " + show(v.edge) + " " + show(v.bored)
+            + show(v.signed_) + " " + show(v.bored)
             + " raw " + show(r.round) + " " + show(r.cover) + " " + show(r.change) + " " + show(r.novelty) + " "
-            + show(r.signed_) + " " + show(r.edge) + " " + show(r.bored)
+            + show(r.signed_) + " " + show(r.bored)
             + " meter " + show(m.coverage()) + " " + show(m.lit()) + " " + show(m.change()) + " " + show(m.novelty()) + " "
             + std::to_string(m.depth()) + " " + m.verdict()
-            + " shape " + show(s.signed_) + " " + show(s.edge)
+            + " shape " + show(s.signed_)
             + " stage " + show(stage.glow()) + " " + show(stage.motion()) + " " + show(stage.memory()) + " " + show(stage.hold())
             + " pushes " + show(stage.pushGlow()) + " " + show(stage.pushMotion()) + " " + show(stage.pushMemory());
     } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }

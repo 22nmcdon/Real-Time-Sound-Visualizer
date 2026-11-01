@@ -4426,3 +4426,12 @@ care how it was split between frames. The fixture that shows it has to overlap
 itself from frame to frame, as a real figure does: a dot jumping round a circle
 saturates the distance at one a step, so three steps in one frame read as one,
 and a rate could not be seen on it.
+
+**On the site's instrument, `restore()` alone is not a preset.** A probe that
+called `restore(setup)` and then measured the rose found the photocell at 0.05
+and the screen dark, and looked like a broken loop. `restore` moves the page's
+controls, and with the compiled instrument as the source only the slider moves
+reach it; `applyPreset` and Load also send the whole setup (`hostSendSetup`).
+Every path a person can reach sends it, so it is a trap only for tests and
+probes: on the default page, follow a `restore` with `hostSendSetup()`, or use
+`applyPreset`.

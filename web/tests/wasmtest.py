@@ -314,7 +314,7 @@ with sync_playwright() as pw:
         return log;
       };
       const readings = (e) => [e.roundness, e.bored, e.frames, e.meter.coverage, e.meter.lit, e.meter.change, e.meter.novelty,
-                               e.meter.depth, e.shape.signed, e.shape.edge];
+                               e.meter.depth, e.shape.signed];
       // Both engines through one log in step; `bend` changes what one of
       // them is given, for the nulls.
       const replay = (log, bend) => {
@@ -357,7 +357,7 @@ with sync_playwright() as pw:
             lit = Math.max(lit, gj[i]);
           }
         }
-        return { worst, worstAt, lit, photoMost, verdicts: [...verdicts], counts, last: js.meter.verdict(), edge: js.shape.edge };
+        return { worst, worstAt, lit, photoMost, verdicts: [...verdicts], counts, last: js.meter.verdict() };
       };
       const uses = (setup) => setup.photoOn === true;
       const scenarios = [];
@@ -373,11 +373,12 @@ with sync_playwright() as pw:
       scenarios.push(["Something new each time, then the photocell off and on", async () => {
         applyPreset("b:Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
       }, 800]);
-      // A word turned and zoomed until the screen's edge clips it: the only
-      // place the turn shows in what the picture says, since a turn leaves
-      // which way round the beam goes alone - and a word, because a figure
-      // with a mirror in it (a 3:2 Lissajous, a heart) clips the same turned
-      // either way, which hid a turn applied backwards.
+      // A word turned and zoomed until the screen's edge clips it, which the
+      // two engines have to draw alike. It was also the one place the turn
+      // showed in what the picture says, through edge contact, which P5 cut;
+      // direction does not change with a turn. A word, because a figure with
+      // a mirror in it (a 3:2 Lissajous, a heart) clips the same turned either
+      // way, which hid a turn applied backwards.
       scenarios.push(["a word turned and clipped", () => {
         applyPreset("b:Written on the screen"); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
       }]);
@@ -435,7 +436,6 @@ with sync_playwright() as pw:
     deposits = sum(r["counts"].get("deposit", 0) + r["counts"].get("segment", 0) for r in prow)
     steps = sum(r["counts"].get("pictureStep", 0) for r in prow)
     verdicts = set(v for r in prow for v in r["verdicts"])
-    clipped = [r["name"] for r in prow if r["edge"] > 0.01]
     check("and the lag's figure is turned by the screen, not the signal, a tenth of a turn", abs(ran["turnedOnScreen"] - 0.1) < 1e-9,
           str(ran["turnedOnScreen"]))
     strained = prow[-2]
@@ -446,9 +446,9 @@ with sync_playwright() as pw:
           % (deposits, steps, len(lit), len(lightly), sorted(verdicts)),
           deposits > 1000 and steps > 500 and len(lit) >= len(prow) - 3 and len(lightly) >= 5 and len(verdicts) >= 2)
     reset = next((r for r in prow if "off and on" in r["name"]), {"verdicts": [], "last": None})
-    check("and the edge, the photocell switched mid-run, the limiters and a still picture: %s clipped, %s then %s across the switch, %s with the limiters down, %s when still"
-          % (clipped, sorted(reset["verdicts"]), reset["last"], sorted(strained["verdicts"]), still["last"]),
-          clipped and set(reset["verdicts"]) - {"listening"} and reset["last"] not in (None, "listening")
+    check("and the photocell switched mid-run, the limiters and a still picture: %s then %s across the switch, %s with the limiters down, %s when still"
+          % (sorted(reset["verdicts"]), reset["last"], sorted(strained["verdicts"]), still["last"]),
+          set(reset["verdicts"]) - {"listening"} and reset["last"] not in (None, "listening")
           and "running away" in strained["verdicts"] and still["last"] == "settled")
     check("and the comparison fails against persistence a thousandth more, or every walk a step brighter",
           len(ran["nulls"]) == 2 and all(n > TOL for n in ran["nulls"]), str(ran["nulls"]))

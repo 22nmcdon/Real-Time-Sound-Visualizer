@@ -123,12 +123,12 @@ function run(commands) {
       s.photoStep(Number(a[0]));
       s.pictureStep(frame, Number(a[0]));
       const p = s.picture, r = p.raw, m = s.pictureMeter;
-      const shape = frame ? s.shapeOfPair(frame) : { signed: 0, edge: 0 };
+      const shape = frame ? s.shapeOfPair(frame) : { signed: 0 };
       extra = [" photo", show(s.photo.raw), show(s.photo.value),
-               "values", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(p[k])),
-               "raw", ...["round", "cover", "change", "novelty", "signed", "edge", "bored"].map((k) => show(r[k])),
+               "values", ...["round", "cover", "change", "novelty", "signed", "bored"].map((k) => show(p[k])),
+               "raw", ...["round", "cover", "change", "novelty", "signed", "bored"].map((k) => show(r[k])),
                "meter", show(m.coverage), show(m.lit), show(m.change), show(m.novelty), m.depth, m.verdict(),
-               "shape", show(shape.signed), show(shape.edge),
+               "shape", show(shape.signed),
                "stage", ...["glow", "motion", "memory", "hold"].map((k) => show(s.pictureStage[k])),
                // What the stage's sources hand the matrix, read from the sources themselves.
                "pushes", ...["glow", "motion", "memory"].map((k) => show(s.stageSources[k]()))].join(" ");

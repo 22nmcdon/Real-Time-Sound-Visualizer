@@ -1,7 +1,11 @@
 /* The survey that chose the sixth picture source: the loop closed across five
    kinds of picture, and for each candidate its own entropy less the most it
-   shares with any one of the other five. Run by shapetest.py; kept as a file of
-   its own so it can be run on its own when the question is asked again. */
+   shares with any one of the other five. It chose signed area (Direction) over
+   edge contact, which P5 cut; it now asks whether Direction still earns its
+   slot, beside a copy of roundness, which shares everything with roundness and
+   so has to add nothing - the null that shows the measure can read nought.
+   Run by shapetest.py; kept as a file of its own so it can be run on its own
+   when the question is asked again. */
 async ([seconds]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const frame = () => new Promise((r) => requestAnimationFrame(r));
@@ -34,7 +38,7 @@ async ([seconds]) => {
     while (performance.now() < until) {
       await frame();
       rows.push([photo.raw, picture.raw.round, picture.raw.cover, picture.raw.change,
-                 picture.raw.novelty, picture.raw.signed, picture.raw.edge, name]);
+                 picture.raw.novelty, picture.raw.signed, picture.raw.round, name]);
     }
     el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
   }
@@ -50,7 +54,7 @@ async ([seconds]) => {
   const H = (a) => { const c = new Map(); for (const x of a) c.set(x, (c.get(x) || 0) + 1);
     let h = 0; for (const n of c.values()) { const p = n / a.length; h -= p * Math.log2(p); } return h; };
   const I = (a, b) => H(a) + H(b) - H(a.map((x, i) => x * BINS + b[i]));
-  const names = ["photo", "round", "cover", "change", "novelty", "signed", "edge"];
+  const names = ["photo", "round", "cover", "change", "novelty", "signed", "copy of round"];
   const cols = names.map((_, k) => binned(k));
   const result = {};
   for (const cand of [5, 6]) {
@@ -60,6 +64,6 @@ async ([seconds]) => {
                             adds: H(cols[cand]) - most, nonzero: rows.filter((r) => Math.abs(r[cand]) > 0.01).length / rows.length };
   }
   const perConfig = {};
-  for (const r of rows) { const k = r[7]; perConfig[k] = perConfig[k] || { n: 0, signedAbs: 0, edge: 0 }; perConfig[k].n++; perConfig[k].signedAbs += Math.abs(r[5]); perConfig[k].edge += r[6]; }
+  for (const r of rows) { const k = r[7]; perConfig[k] = perConfig[k] || { n: 0, signedAbs: 0 }; perConfig[k].n++; perConfig[k].signedAbs += Math.abs(r[5]); }
   return { samples: rows.length, result, perConfig };
 }
