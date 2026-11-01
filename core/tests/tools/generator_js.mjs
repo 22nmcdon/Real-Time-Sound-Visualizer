@@ -66,7 +66,7 @@ const sourcesText = (() => {
   return page.slice(env + 1, page.indexOf("\n});\n", env) + 5) + page.slice(draw + 1, page.indexOf("\n}));\n", draw) + 5);
 })();
 // They ask what is playing (playingKind, since 5m), lifted from the page beside them.
-const readSources = new Function("state", "genLane", "registerSource", definition("playingKind") + "\n" + sourcesText);
+const readSources = new Function("state", "registerSource", definition("playingKind") + "\n" + sourcesText);
 const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
 const MODE = process.env.CORE || "";
@@ -177,7 +177,7 @@ function run(head, events) {
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
            d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length);
   const sources = new Map();
-  readSources({ source: { kind: "tone", gated, envelope: core.envelope, drawing: core.drawing } }, () => null,
+  readSources({ source: { kind: "tone", gated, envelope: core.envelope, drawing: core.drawing } },
               (entry) => sources.set(entry.id, entry));
   for (const id of SOURCE_IDS) out.push(sources.get(id).value());
   return show(out);

@@ -141,7 +141,6 @@ with sync_playwright() as pw:
       capacity: state.source.capacity,
       mark: el.sourceMark.textContent,
       describe: state.source.describe(),
-      playable: playable(),
       toDestination: window.__connects.filter((c) => c.isDestination).length,
       stacked: stacked(),
     })""")
@@ -152,17 +151,13 @@ with sync_playwright() as pw:
           str(got["names"]))
     check("NOTHING reaches the speakers", got["toDestination"] == 0,
           "%d connections to destination" % got["toDestination"])
-    check("no transport is offered", got["playable"] is False)
     check("the head says so", got["mark"].strip().lower() == "live bands", got["mark"])
     check("and says it is not monitored", "not monitored" in got["describe"], got["describe"])
 
     ui = p.evaluate("""() => ({
-      fileRows: el.fileRows.hidden, rackRows: el.rackRows.hidden,
       deviceRow: el.deviceRow.hidden, shapeRow: el.micShapeRow.hidden,
     })""")
-    check("the panel shows live rows and no file rows",
-          ui["fileRows"] and ui["rackRows"] and not ui["deviceRow"] and not ui["shapeRow"],
-          str(ui))
+    check("the panel shows the live rows", not ui["deviceRow"] and not ui["shapeRow"], str(ui))
 
     solo = p.evaluate("""() => {
       state.source.lanes[0].mute = true;

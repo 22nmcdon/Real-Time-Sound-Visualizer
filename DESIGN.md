@@ -225,7 +225,9 @@ ruling on it, and the traces are what is written. Two consequences follow, both 
 The house had one ink and a scope needs one per lane. Six, and the number is measured
 rather than chosen: every lane is on screen at once and they cross each other, so the bar
 is the all-pairs separation, and six is where the paper stops telling one trace from the
-next. Six is also what the largest stem separator produces, which is why `MAX_LANES` is 6.
+next. Six is also what the largest stem separator produces, which is why `MAX_LANES` is 6: the
+stem rack that drew six went in P5, and the band split draws four, but the inks and the limit
+stay six, the paper's own.
 
 | Token | Value | Layer | Where it comes from |
 |---|---|---|---|

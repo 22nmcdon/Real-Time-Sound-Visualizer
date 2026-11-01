@@ -137,8 +137,8 @@ with sync_playwright() as pw:
       el.morphStoreB.click();
       out.both = { pos: el.morphPos.value, b: el.morphStoreB.getAttribute('aria-pressed'),
                    note: el.morphNote.textContent, moving: morphMoving() };
-      out.kept = MORPH_IDS.filter((id) => ['macro1', 'macro2', 'macro3', 'macro4', 'morphPos', 'fileSeek',
-                                          'keysVelocity', 'align'].includes(id));
+      out.kept = MORPH_IDS.filter((id) => ['macro1', 'macro2', 'macro3', 'macro4', 'morphPos',
+                                          'keysVelocity', 'pictureAmount'].includes(id));
       out.has = ['freq', 'vcfCut', 'delayMix', 'planeRadius', 'timebase'].every((id) => MORPH_IDS.includes(id));
       __set('morphPos', 50); await __wait(120);
       out.half = { freq: Number(el.freq.value), amp: Number(el.amp.value), genFreq: genSettings().freq,
@@ -169,7 +169,7 @@ with sync_playwright() as pw:
           "%s, %s" % (blend["half"]["genFreq"], blend["half"]["genAmp"]))
     check("at nought it is A, but a menu set differently in A and B stays where it is",
           blend["zero"] == {"freq": 220, "amp": 55, "shape": "square"}, str(blend["zero"]))
-    check("the knobs, the fader, where a file is up to, the keys' strike and the rack's alignment are never stored",
+    check("the knobs, the fader, the keys' strike and the Picture amount are never stored",
           blend["kept"] == [] and blend["has"], "%s, %s" % (blend["kept"], blend["has"]))
     check("at rest it leaves a slider the hand has moved, and moving the fader takes it back",
           blend["hand"] == 20 and blend["moved"] == round(55 + 45 * 0.6), "%s then %s" % (blend["hand"], blend["moved"]))

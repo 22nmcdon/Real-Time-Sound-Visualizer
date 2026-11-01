@@ -373,26 +373,31 @@ with sync_playwright() as pw:
     check("the Draw row is there only where a chord can play",
           rowed == {"wave": True, "wireframe": False, "dyad": False}, str(rowed))
 
-    # In a rack the generator is a lane, one signal - its left channel - so a
-    # note leaning right would be heard there at half and a note on Y not
-    # drawn at all. Every note is on both instead. Asked of the rule itself,
-    # under a source that has lanes; the null is the same chord on the
-    # generator's own, which has an outline.
+    # While the input is drawn, whole or in bands, the generator's own figure
+    # is not, so there is no second figure to lay notes across: every note is
+    # on both sides. Asked of the rule itself, under a source that draws its
+    # input and one that has the band split's lanes; the null is the same
+    # chord on the generator's own, which has an outline. Until P5 the stand-in
+    # was the generator as a rack's lane.
     racked = p.evaluate("""() => {
       setMidiMode('poly');
       el.midiDrawCount.value = '2'; el.midiDrawCount.dispatchEvent(new Event('change'));
       for (const n of [48, 52, 55]) midiNoteOn(n, 100);
       const own = polyVoices(0).map((v) => v.role);
       const saved = state.source;
-      state.source = Object.create(saved, { lanes: { value: [{ synth: true }] }, drawsInput: { value: false } });
-      let lane;
-      try { lane = polyVoices(0).map((v) => v.role); } finally { state.source = saved; }
+      let lane, bands;
+      try {
+        state.source = Object.create(saved, { lanes: { value: null }, drawsInput: { value: true } });
+        lane = polyVoices(0).map((v) => v.role);
+        state.source = Object.create(saved, { lanes: { value: [{}, {}, {}, {}] }, drawsInput: { value: false } });
+        bands = polyVoices(0).map((v) => v.role);
+      } finally { state.source = saved; }
       for (const n of [48, 52, 55]) midiNoteOff(n);
-      return { own, lane };
+      return { own, lane, bands };
     }""")
-    print("    roles of C, E, G: on its own %s, as a lane %s" % (racked["own"], racked["lane"]))
-    check("as a rack's lane every note of a chord is on both sides, so all of it is in the one signal",
-          racked["lane"] == ["xy", "xy", "xy"], str(racked))
+    print("    roles of C, E, G: on its own %s, input drawn %s, in bands %s" % (racked["own"], racked["lane"], racked["bands"]))
+    check("with the input drawn, whole or in bands, every note of a chord is on both sides",
+          racked["lane"] == ["xy", "xy", "xy"] and racked["bands"] == ["xy", "xy", "xy"], str(racked))
     check("and on its own the same chord has an outline, which the check would not pass",
           racked["own"] != racked["lane"] and "x" in racked["own"], str(racked))
 

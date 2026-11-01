@@ -578,18 +578,8 @@ with sync_playwright() as pw:
           % len(js_set["out"]), wa_set["kind"] == "wasm" and js_set["kind"] == "js" and len(wa_set["out"]) == len(js_set["out"])
           and not differ, ", ".join(differ[:4]))
     check("and they can show it: %d presets leave the settings other than the one before" % moved, moved >= 200)
-    # And the rack's generator lane, which makes its core the same way.
-    LANE = """async () => {
-      el.rackSynth.checked = true; await setRackSynth(true);
-      await new Promise((r) => setTimeout(r, 600));
-      const lane = genLane();
-      genSet("freq", 331);
-      return { source: state.source.kind, kind: lane && lane.mainCoreKind, freq: lane && lane.core.tone.freq };
-    }"""
-    la, lb = pa.evaluate(LANE), pb.evaluate(LANE)
-    check("the rack's generator lane runs the compiled core, and keeps its settings where the page reads them",
-          la["source"] == "rack" and la["kind"] == "wasm" and la["freq"] == 331, str(la))
-    check("and the JavaScript one with ?core=js", lb["source"] == "rack" and lb["kind"] == "js" and lb["freq"] == 331, str(lb))
+    # The rack's generator lane, which made its core the same way, was
+    # checked here until P5 cut the rack.
     check("with no errors on either page", not bad_a and not bad_b, "; ".join((bad_a + bad_b)[:3]))
     pa.close(); pb.close()
 

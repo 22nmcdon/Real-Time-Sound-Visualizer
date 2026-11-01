@@ -230,12 +230,12 @@ with sync_playwright() as pw:
       restore({}); await wait(30);
       const old = { root: state.keyRoot, scale: state.keyScale, q: state.quantise, mask: genSettings().qMask };
       restore(code); await wait(30);
-      el.rackSynth.checked = true; await setRackSynth(true); await wait(100);
-      const lane = genSettings().qMask;
-      el.rackSynth.checked = false; await setRackSynth(false);
-      toTone(); await wait(100);
+      // The source dropped and Tone pressed, so toTone builds a new one from the
+      // panel (generatorFromPanel) rather than finding a tone and keeping it.
+      // Until P5 this went away to a file and back, or built a rack's lane.
+      state.source.stop(); state.source = null; toTone(); await wait(100);
       const tone = genSettings().qMask;
-      return { one, old, lane, tone, blues: keyMask(7, 'blues') };
+      return { one, old, tone, blues: keyMask(7, 'blues') };
     }""", [code])
     print("    %s" % codes)
     check("restored, a code's key reaches the panel and the generator",
@@ -245,8 +245,8 @@ with sync_playwright() as pw:
           and codes["blues"] == 1191, str(codes["one"]))
     check("a code from before the key has C chromatic, quantiser off",
           codes["old"] == {"root": 0, "scale": "chromatic", "q": False, "mask": 0}, str(codes["old"]))
-    check("a generator built later - a rack's lane, a new tone - has the key",
-          codes["lane"] == 2741 and codes["tone"] == 2741, str((codes["lane"], codes["tone"])))
+    check("a generator built later, from the panel, has the key",
+          codes["tone"] == 2741, str(codes["tone"]))
 
     def search(q):
         p.evaluate("(q) => { el.benchSearch.value = q; el.benchSearch.dispatchEvent(new Event('input')); }", q)

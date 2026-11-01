@@ -10,17 +10,24 @@ ART = os.path.dirname(HERE)                    # web/, which holds scope.html
 SHOTS = os.path.join(HERE, "shots")
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 os.makedirs(SHOTS, exist_ok=True)
-
 import fixtures
 STEMS = fixtures.ensure()
+
 fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
 with sync_playwright() as pw:
-    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
-    p = b.new_page(viewport={"width": 1400, "height": 900})
+    # The microphone, faked: the one real graph source with a ring of its own
+    # since P5 cut file playback, which is what this suite used until then.
+    # Fed the fifth from a file, looping, because the fake device's own signal
+    # is a beep a second, and its silence reads as a flatline at the left edge.
+    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required",
+                                                          "--use-fake-device-for-media-stream",
+                                                          "--use-file-for-fake-audio-capture=%s/test-fifth.wav" % STEMS,
+                                                          "--use-fake-ui-for-media-stream"])
+    p = b.new_context(permissions=["microphone"], viewport={"width": 1400, "height": 900}).new_page()
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
@@ -30,16 +37,14 @@ with sync_playwright() as pw:
     p.wait_for_timeout(200)
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
-    p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
-    p.wait_for_timeout(2000)
+    p.evaluate("() => toMic()"); p.wait_for_timeout(2000)
 
     info = p.evaluate("""() => ({ kind: state.source.kind, rate: state.source.sampleRate,
                                   cap: state.source.capacity })""")
     print("\n--- the source under test ---")
     print("  %s at %d Hz, buffer holds %d samples (%.0f ms)"
           % (info["kind"], info["rate"], info["cap"], info["cap"] / info["rate"] * 1000))
-    check("a real graph source is loaded", info["kind"] == "file" and info["cap"] == 32768)
+    check("a real graph source is loaded", info["kind"] == "mic" and info["cap"] == 32768)
 
     print("\n--- what capture asks for, at every timebase and trigger position ---")
     rows = p.evaluate("""() => {

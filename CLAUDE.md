@@ -185,13 +185,14 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **No Bench tab may scroll.** The Bench is seven tabs by task - the loop's five
   (Play, Picture, Shape, Effects, Measure) and the drawer's Sources and Perform - and one
   tab at a time must fit. `patchtest.py`
-  measures every tab across every generator mode; `racktest.py` does it with a
-  rack of six lanes. This replaced "every section on show at once, and neither
-  panel scrolls", which held for the tone and never for a rack - and is why a
+  measures every tab across every generator mode; `fittest.py` does it on the
+  band split as well. This replaced "every section on show at once, and neither
+  panel scrolls", which held for the tone and never for a rack of six (cut in
+  P5) - and is why a
   section that would crowd a tab goes to another one (Lanes is on Picture
   because Play had four sections for three columns, and Effects exists because
   the voice's oscillator made Shape five). `fittest.py` measures every tab in
-  every combination of generator kind, tone or rack of six, keyboard and
+  every combination of generator kind, tone or band split, keyboard and
   Photocell, and the Sources tab with each family on show, which is how
   Macros and Key and tempo came to be on Measure.
 - **What is not the loop goes in the drawer.** *Advanced*, under the rail,

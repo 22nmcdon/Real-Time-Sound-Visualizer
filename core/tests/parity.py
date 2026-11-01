@@ -2135,8 +2135,9 @@ bmruns = [
                  "beam bright", "draw 16", "beam off", "draw 16", "beam moderate", "beamxy 0", "draw 16", "beamxy 1", "zoom 3", "draw 16",
                  "offset 0 0.3", "fs 1 -6", "draw 16", "canvas 60 50", "resize", "draw 16", "canvas 800 500", "resize", "draw 0", "draw 2000")),
     # A diagonal line - both lanes one signal, so a turn is plain to see -
-    # unturned, turned by the capture as a stereo pair, turned by the walk as a
-    # rack, by modulation, not at all on the input's side, and with the lag.
+    # unturned, turned by the capture as a stereo pair, turned by the walk as
+    # lanes (the band split's, since P5 cut the rack), by modulation, not at all on
+    # the input's side, and with the lag.
     # Unshaded, because this is about where the line goes: the capture rounds
     # the lanes it turns to floats and the walk turns in doubles, and the beam
     # reads lengths through a histogram whose bins that rounding can cross -
@@ -2252,7 +2253,7 @@ ci = bmdraws("circle")
 check("a circle at 220 Hz lays the same grid with the beam on or off, and a fifth, which changes speed, lays less with it on",
       bmgrid(ci[0]) == bmgrid(ci[1]) and bmgrid(ci[2])[0] < bmgrid(ci[3])[0], " ".join(str(bmgrid(l)[0]) for l in ci))
 tu = bmdraws("turn")
-check("the walk turns a rack's pair as the capture turns a stereo pair, and either is a different picture from the line unturned",
+check("the walk turns a pair of lanes as the capture turns a stereo pair, and either is a different picture from the line unturned",
       bmgrid(tu[1]) == bmgrid(tu[2]) and bmgrid(tu[0]) != bmgrid(tu[1]) and bmgrid(tu[4]) == bmgrid(tu[0]),
       " ".join(str(bmgrid(l)[0]) for l in tu))
 st = bmdraws("stack")
@@ -3047,7 +3048,7 @@ MENUS = {
     "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3], "planeKaleido": [0, 2, 8, 7],
     "planeSnap": [0, 6, 7], "macroNames": ["", "Wide|Bright||Fold", "a" * 20 + "|  b  |c|d|e", "|", 5],
     "morphA": ["", "=freq:330,amp:40", "=bogus:1,freq:x,amp:20:9", "=", "freq:1", 5, "=morphPos:50,freq:330",
-               "=macro1:20,fileSeek:5,align:3,keysVelocity:9,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
+               "=macro1:20,keysVelocity:9,pictureAmount:3,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
     "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5,
             "threshold>gen.freq@0.500;lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"],
 }
@@ -4098,15 +4099,6 @@ iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73
 # A state that opens with the input drawn, as a project reopened does.
 iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": True})], ["feed", 90, 61]] + blocks(10) \
     + [["click", "srcTone"], NOTE_ON(60)] + blocks(10)
-# A rack (5i): four lanes of the page's, then five with the generator's
-# first and a note in it, the trigger moved off the generator's lane and the
-# pair set across two lanes; a preset loaded meanwhile; back to the generator
-# for longer than the ring holds, so the last blocks read rows the rack wrote
-# once - which the pair has to have cleared of its lanes.
-iruns["rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 100, 73, 51, 37, 29]] + blocks(2) \
-    + [["control", "srcLanes", "4,-1"]] + blocks(8) + [["control", "srcLanes", "5,0"], NOTE_ON(57)] + blocks(10) \
-    + [["click", "trigSource2"], ["control", "xyY", "3"]] + blocks(10) + [["setup", icode["Pluck"]]] + blocks(6) \
-    + [["control", "srcLanes", "4,-1"], NOTE_ON(60)] + blocks(6) + [["click", "srcTone"]] + blocks(40)
 # The band split (5j): the input split into four bands, a mix on the bands
 # heard, a preset loaded over them, the input whole again, the split again
 # from fresh memory, and the generator. And a state that opens split.
@@ -4114,19 +4106,6 @@ iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73
     + [["control", "srcBands", "1"]] + blocks(16) + [["control", "laneMix", "0,1,0.5,0"]] + blocks(6) \
     + [["setup", icode["Pluck"]]] + blocks(4) + [["control", "srcBands", "0"]] + blocks(4) \
     + [["control", "srcBands", "1"]] + blocks(4) + [["click", "srcTone"]] + blocks(4)
-# And the split after a rack of six for longer than the ring holds, so the
-# rows it writes were last the rack's: its lanes past four have to be cleared.
-iruns["bands after rack"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57),
-                             ["control", "srcLanes", "6,5"]] + blocks(66) + [["control", "srcBands", "1"]] + blocks(8)
-# The alignment for playing along (5k): a rack of four with the generator's
-# lane first, the track's lanes held back 100 samples to meet the live one
-# on the third, then the live one held back 250 instead, then a new rack,
-# which starts aligned nowhere; then another held back 300 samples at once,
-# which has nothing behind it for those 300 but silence.
-iruns["aligned"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feedlanes", 100, 73, 51, 37], NOTE_ON(57),
-                    ["control", "srcLanes", "4,0"]] + blocks(10) + [["control", "laneDelay", "100,100,0,100"]] + blocks(10) \
-    + [["control", "laneDelay", "0,0,250,0"]] + blocks(10) + [["control", "srcLanes", "3,-1"]] + blocks(6) \
-    + [["control", "srcLanes", "2,-1"], ["control", "laneDelay", "300,300"]] + blocks(6)
 # A keyboard there or not (5m): the site's page says none, and the generator
 # plays with no note; then one, and it is gated until a note; then none again.
 iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"]] + blocks(10) \
@@ -4138,13 +4117,6 @@ iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "k
 LAYERED = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "midiPoly"], ["control", "midiLayers", "split"]]
 iruns["layered"] = LAYERED + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 iruns["layered against"] = LAYERED + [["control", "midiLayerPair", "against"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
-# And in a rack, whose generator lane is one signal: the split is kept and not
-# applied. Layer B's level is put at nought first, so a split applied is B's
-# note silent, and one kept is that note at A's level; and the same without
-# the rack, where the split is applied, for the reading to be seen to fail.
-LAYERED_B = LAYERED + [["click", "midiEditB"], ["slider", "amp", "0"], ["click", "midiEditA"]]
-iruns["layered rack"] = LAYERED_B + [["feedlanes", 100], ["control", "srcLanes", "2,0"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
-iruns["layered quiet B"] = LAYERED_B + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 # And while the input is drawn, when the page shows layer A whatever was chosen:
 # B chosen, the level put at nought there is A's, so back on the generator A's
 # note is the silent one and B's is heard.
@@ -4239,30 +4211,6 @@ check("and the input drawn is heard as it was fed, the reopened state's from its
       drawn_plain == 0 and drawn_open == 0 and folded > 0.1 and generated > 0.1,
       "drawn %g and %g; folded %g, generator %g" % (drawn_plain, drawn_open, folded, generated))
 check("and the reading fails against the input a sample late", iheard("input", 7, 9, 100, 73, 7 * 128 + 1) > 0)
-# A rack's lanes, read off the samples: each of the page's lanes the input it
-# was fed, at its own index; the generator's lane what the generator plays
-# (Harmonic tone, whose heard pair is its picture pair); nothing past the
-# count; and back at the generator, two lanes again.
-def irack(row, lane): return row[(2 + lane) * 128:(3 + lane) * 128]
-def isaw(k, p): return array("f", [0.5 * (2 * ((k % p) / p) - 1)]).tolist()[0]
-rrows = [ifloats(l) for l in iout["rack"][1] if l.startswith("block ")]
-def ilane_fed(b, lane, period, fed_lane=None):
-    return max(abs(irack(rrows[b], lane)[k] - isaw(b * 128 + k, period)) for k in range(128))
-four = max(ilane_fed(b, c, p) for b in range(3, 10) for c, p in enumerate([100, 73, 51, 37]))
-past = max(abs(v) for b in range(3, 10) for c in (4, 5) for v in irack(rrows[b], c))
-five = max(ilane_fed(b, c, p) for b in range(12, 20) for c, p in ((1, 73), (2, 51), (3, 37), (4, 29)))
-synth = max(abs(irack(rrows[b], 0)[k] - rrows[b][k]) for b in range(12, 20) for k in range(128))
-synth_peak = max(abs(v) for b in range(12, 20) for v in irack(rrows[b], 0))
-after = max(abs(v) for b in range(len(rrows) - 4, len(rrows)) for c in (2, 3, 4, 5) for v in irack(rrows[b], c))
-check("and a rack's lanes are what they were fed at their own places, the generator's lane the generator, nothing past the count",
-      four == 0 and past == 0 and five == 0 and synth == 0 and synth_peak > 0.1 and after == 0,
-      "fed %g and %g, past %g, generator %g at %.3f, after %g" % (four, five, past, synth, synth_peak, after))
-check("and the reading fails against the lanes one place along", ilane_fed(15, 2, 73) > 0)
-# A rack with no generator lane, a note held: nothing of the generator heard.
-# Its blocks counted from the start - 2, 8, 10, 10 and 6 before it - since the
-# run after it is as long as it has to be to wrap the ring.
-unheard = max(abs(v) for b in range(37, 42) for v in rrows[b][:256])
-check("and a rack with no generator lane sends nothing out, a note held or not", unheard == 0, "peak %g" % unheard)
 # The band split read off the samples, against the browser's own biquad
 # done here in its arithmetic - coefficients and memory in doubles, each
 # output a float sample - so a split that agreed with itself on both sides
@@ -4337,35 +4285,6 @@ bsaid = [isays(l, "pluginBands") for l in bstates]
 check("and the band split is the page's crossovers in the browser's arithmetic: the four lanes, the mix heard, fresh each time it begins, the input whole between",
       split_even < 1e-6 and split_mixed < 1e-6 and split_again < 1e-6 and split_opened < 1e-6 and whole == 0 and whole_lanes == 0,
       "split %g, mixed %g, again %g, opened %g; whole %g, lanes after %g" % (split_even, split_mixed, split_again, split_opened, whole, whole_lanes))
-# The alignment read off the samples: each fed lane its saw from as many
-# samples back as it was told, the generator's lane what was heard that far
-# back, a change taking at once, and a new rack read now.
-lrows = [ifloats(l) for l in iout["aligned"][1] if l.startswith("block ")]
-def ialigned(first, count, delays, periods, shift=0):
-    most = 0.0
-    heard = [v for row in lrows for v in row[:128]]
-    for b in range(first, first + count):
-        for k in range(128):
-            t = b * 128 + k
-            for c, (d, p) in enumerate(zip(delays, periods)):
-                got = lrows[b][(2 + c) * 128 + k]
-                want = heard[t - d - shift] if p == 0 else isaw(t - d - shift, p)
-                most = max(most, abs(got - want))
-    return most
-held = ialigned(10, 10, (100, 100, 0, 100), (0, 73, 51, 37))
-live_held = ialigned(20, 10, (0, 0, 250, 0), (0, 73, 51, 37))
-fresh = ialigned(30, 6, (0, 0, 0), (100, 73, 51))
-behind = max(abs(lrows[b][(2 + c) * 128 + k] - (0.0 if b * 128 + k - 36 * 128 < 300 else isaw(b * 128 + k - 300, p)))
-             for b in range(36, 42) for k in range(128) for c, p in enumerate((100, 73)))
-check("and the alignment draws each of a rack's lanes from as far back as it is told: the track's, the generator's, the live one's, and a new rack from now",
-      held == 0 and live_held == 0 and fresh == 0 and behind == 0 and max(abs(v) for v in lrows[15][2 * 128:3 * 128]) > 0.1,
-      "held %g, the live one held %g, a new rack %g, one held back at once %g" % (held, live_held, fresh, behind))
-check("and the reading fails a sample further back", ialigned(10, 10, (100, 100, 0, 100), (0, 73, 51, 37), shift=1) > 0)
-arows = [ifloats(l) for l in iout["bands after rack"][1] if l.startswith("block ")]
-rack_five = max(abs(v) for b in range(2, 10) for v in arows[b][7 * 128:8 * 128])
-after_rack = max(abs(v) for b in range(66, 74) for v in arows[b][6 * 128:8 * 128])
-check("and the split after a rack of six clears the rack's lanes past four in rows the rack last wrote",
-      rack_five > 0.1 and after_rack == 0, "the rack's sixth lane %.3f, after the split %g" % (rack_five, after_rack))
 # Two layers drawn: a figure each is A's pair then B's, at their notes'
 # pitches; A against B is one pair, A's on X and B's on Y, as the generator
 # makes it - the pair B would add is silent then, so the page's sum of the
@@ -4391,11 +4310,6 @@ def igoertzel(xs, hz):
     return 2 * math.hypot(re_, im) / len(xs)
 def iheard_at(name, hz):
     return igoertzel([v for l in [l for l in iout[name][1] if l.startswith("block ")][10:40] for v in ifloats(l)[:128]], hz)
-rack_b, split_b = iheard_at("layered rack", 523.25), iheard_at("layered quiet B", 523.25)
-check("and in a rack a split is kept, not applied: with layer B silent, B's note is heard, at A's level",
-      rack_b > 0.05 and iheard_at("layered rack", 130.81) > 0.05, "B's note heard %.3f in a rack" % rack_b)
-check("and the reading fails without the rack, where the split is applied and B's note is silent", not split_b > 0.05,
-      "%.4f" % split_b)
 # The grid the instrument draws for itself (5p), read natively, as the
 # compiled instrument does not hand its grid out. Two layers, only B playing:
 # B's figure is in the grid, where until 5p the walk took A's pair alone and
@@ -4466,14 +4380,11 @@ def inull(what, old, new, runs):
     seen = [n for n in runs if icompare(iout[n][1], ijs(iout[n][0], bad_mod)) != (0.0, "")]
     check("and the comparison fails against a module with %s" % what, seen == runs, ", ".join(seen))
 inull("the input's lanes the wrong way round",
-      "const scope::Instrument::Input input { brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr, inputLanes.data(), count };",
-      "const scope::Instrument::Input input { count >= 2 ? brainInput.data() + frames : brainInput.data(), count >= 2 ? brainInput.data() : nullptr, inputLanes.data(), count };",
+      "const scope::Instrument::Input input { brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr };",
+      "const scope::Instrument::Input input { count >= 2 ? brainInput.data() + frames : brainInput.data(), count >= 2 ? brainInput.data() : nullptr };",
       ["input", "opened"])
-inull("a stereo input taken as mono", "brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr, inputLanes.data(), count }",
-      "brainInput.data(), nullptr, inputLanes.data(), count }", ["input", "opened"])
-inull("a rack's lanes handed over one place along",
-      "inputLanes[static_cast<std::size_t>(c)] = brainInput.data() + static_cast<std::size_t>(c) * frames;",
-      "inputLanes[static_cast<std::size_t>(c)] = brainInput.data() + static_cast<std::size_t>((c + 1) % count) * frames;", ["rack"])
+inull("a stereo input taken as mono", "brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr }",
+      "brainInput.data(), nullptr }", ["input", "opened"])
 inull("every message padded to three bytes", "std::clamp(length, 1, 3)", "std::clamp(length, 3, 3)", ["realtime"])
 inull("the page's MIDI dropped", "  midiLengths.push_back(n);\n", "  midiIn.resize(midiIn.size() - n);\n", ["notes", "clock"])
 # Only the sweep can see this one: the presets the other runs play make a

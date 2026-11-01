@@ -249,8 +249,7 @@ EXPORT(scope_lanes) float* scopeLanes(int n) {
 
 // `given` says which the caller has: 1 an input, 2 the heard pair, 4 B's
 // pair. One it has not got is passed as none, as the JavaScript core is
-// passed null - the main thread draws without the heard pair, and the rack's
-// lane without B's.
+// passed null - the main thread draws without the heard pair.
 EXPORT(scope_block) void scopeBlock(int n, int given) {
   float* l = lanes.data();
   const std::size_t m = laneLength;
@@ -408,11 +407,11 @@ std::vector<std::uint8_t> midiIn;            // the bytes of every message waiti
 std::vector<std::size_t> midiLengths;        // and each one's length
 std::vector<scope::Instrument::Event> midiEvents;
 std::vector<std::uint8_t> midiOut;           // each message sent, its length first
-// Eight lanes of a block: the heard pair, then the picture's six (a pair, or a rack's lanes).
+// Eight lanes of a block: the heard pair, then the picture's six (a pair, two, or the band split's four).
 constexpr std::size_t kBrainLanes = 2 + scope::Instrument::kRingLanes;
 std::vector<float> brainLanes;
 std::size_t brainLength = 0;
-// Six of a block: the input's lanes - left and right, or a rack's.
+// Six of a block: the input's lanes, of which the instrument reads left and right.
 std::vector<float> brainInput;
 
 std::string brainAscii(std::size_t from) { return scope::utf16To8(brainIn.substr(std::min(from, brainIn.size()))); }
@@ -488,8 +487,8 @@ EXPORT(brain_input) float* brainInputAt(int n) {
 }
 
 // One block of n frames: the heard pair into lanes 0 and 1, the picture's six
-// into 2 to 7; with `given` lanes of input - one a mono input, two a pair,
-// more a rack's. Returns how many bytes of MIDI went out, each message its
+// into 2 to 7; with `given` lanes of input - one a mono input, two a pair;
+// a rack's more were read until P5 cut the rack. Returns how many bytes of MIDI went out, each message its
 // length and then its bytes, read with brain_midi_out.
 EXPORT(brain_block) int brainBlock(int n, int given) {
   const std::size_t frames = static_cast<std::size_t>(n);
@@ -502,9 +501,7 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
   float* lanes = brainLanes.data();
   const int count = std::clamp(given, 0, scope::Instrument::kRingLanes);
   if (brainInput.size() < scope::Instrument::kRingLanes * frames) brainInput.resize(scope::Instrument::kRingLanes * frames);
-  std::array<const float*, scope::Instrument::kRingLanes> inputLanes {};
-  for (int c = 0; c < count; ++c) inputLanes[static_cast<std::size_t>(c)] = brainInput.data() + static_cast<std::size_t>(c) * frames;
-  const scope::Instrument::Input input { brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr, inputLanes.data(), count };
+  const scope::Instrument::Input input { brainInput.data(), count >= 2 ? brainInput.data() + frames : nullptr };
   instrument->block(lanes, lanes + frames, n, midiEvents.data(), midiEvents.size(), nullptr, nullptr, 0, count ? &input : nullptr);
   for (int c = 0; c < scope::Instrument::kRingLanes; ++c)
     instrument->latestLane(c, lanes + (2 + static_cast<std::size_t>(c)) * frames, frames);
@@ -532,7 +529,7 @@ EXPORT(brain_readings) double* brainReadings() {
   for (const auto& o : instrument->lfos()) brainRead.insert(brainRead.end(), { o.phase, o.held, o.value });
   return brainRead.data();
 }
-// How many lanes the picture has now: two, or a rack's.
+// How many lanes the picture has now: two, or four.
 EXPORT(brain_picture_lanes) int brainPictureLanes() { return instrument->pictureLanes(); }
 
 // The state for the page, when it has changed: the code into the out text and

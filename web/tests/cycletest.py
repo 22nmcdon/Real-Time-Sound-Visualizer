@@ -163,16 +163,12 @@ with sync_playwright() as pw:
       const bare = Math.max(...drawnCycle.points.map((v, i) => Math.abs(v - Math.sin(2 * Math.PI * i / CYCLE_POINTS))));
       restore({ cycle: code });
       const back = Math.max(...drawnCycle.points.map((v, i) => Math.abs(v - kept[i])));
-      // A new generator, built from the panel, is given the drawn cycle too:
-      // away to a file and back to the tone.
-      const rate = 44100, nn = rate / 4, bytes = 44 + nn * 2, buf = new ArrayBuffer(bytes), dv = new DataView(buf);
-      const str = (o, t) => { for (let i = 0; i < t.length; i++) dv.setUint8(o + i, t.charCodeAt(i)); };
-      str(0, 'RIFF'); dv.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt '); dv.setUint32(16, 16, true);
-      dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
-      dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, nn * 2, true);
+      // A new generator, built from the panel, is given the drawn cycle too.
+      // The source dropped and Tone pressed, so toTone builds a new one from the
+      // panel (generatorFromPanel) rather than finding a tone and keeping it.
+      // Until P5 this went away to a file and back, or built a rack's lane.
       return (async () => {
-      await toFile(new File([buf], 'x.wav', { type: 'audio/wav' }));
-      el.srcTone.click(); await new Promise((r) => setTimeout(r, 300));
+      state.source.stop(); state.source = null; el.srcTone.click(); await new Promise((r) => setTimeout(r, 300));
       const fresh = playingKind() === 'tone' && JSON.stringify(genSettings().cycle) === JSON.stringify(drawnCycle.bank[0]);
       el.cycleSine.click();
       const sine = Math.max(...drawnCycle.points.map((v, i) => Math.abs(v - Math.sin(2 * Math.PI * i / CYCLE_POINTS))));

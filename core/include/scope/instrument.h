@@ -73,14 +73,12 @@ class Instrument {
   // A host parameter moved since the last block: a hand on its slider.
   struct HostSlider { const char* id; double value; };
   /* A block's input: what a host's input bus or a page's microphone hands
-     over, its right channel null for a mono input; and for a rack, its lanes,
-     one signal each, up to kMaxLanes of them (the first two are left and
-     right as well). */
+     over, its right channel null for a mono input. It also carried a rack's
+     lanes until P5 cut the rack: a host plays files, each track its own
+     instance. */
   struct Input {
     const float* left;
     const float* right;
-    const float* const* lanes = nullptr;
-    int laneCount = 0;
   };
   // The most lanes the ring keeps: the page's MAX_LANES.
   static constexpr int kRingLanes = kMaxLanes;
@@ -88,8 +86,6 @@ class Instrument {
      the lower edge, a lowpass at the upper, nought for none. */
   static constexpr int kBandCount = 4;
   static constexpr std::array<std::array<double, 2>, kBandCount> kBandEdges { { { 0, 120 }, { 120, 800 }, { 800, 4000 }, { 4000, 0 } } };
-  // The furthest back a rack's lane is drawn, for the alignment: the page's slider reaches 200 ms.
-  static constexpr double kAlignMostSeconds = 0.2;
 
   /* One hand from the page: a slider moved (by id and the value the browser
      holds), a setup loaded (a preset, a code), a menu, a switch or a text box
@@ -175,10 +171,6 @@ class Instrument {
     pictureRun_ = std::make_unique<PictureRun>(*matrix_, *brain_);
     pictureSource_.rate = sampleRate;
     bandFilters();
-    alignFrames_ = static_cast<std::size_t>(std::ceil(kAlignMostSeconds * sampleRate)) + 1;
-    alignLine_.assign(alignFrames_ * kRingLanes, 0.0f);
-    alignAt_ = 0;
-    laneDelay_.fill(0);
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;
     pictureSource_.lanes = false;
@@ -239,8 +231,8 @@ class Instrument {
       drawFrom(drawn->type == Json::Type::Bool && drawn->b);
     if (const Json* split = setup_.type == Json::Type::Object ? setup_.get("pluginBands") : nullptr)
       drawBands(split->type == Json::Type::Bool && split->b);
-    // A setup restores two lanes' worth of view; a rack drawn has more, and keeps them.
-    if (rack_ > 0) { brain_->view.capture.channels.resize(static_cast<std::size_t>(std::max(2, rack_))); fitView(*brain_); }
+    // A setup restores two lanes' worth of view; the band split has four, and keeps them.
+    if (bands_) { brain_->view.capture.channels.resize(static_cast<std::size_t>(kBandCount)); fitView(*brain_); }
     if (hooks.loaded) hooks.loaded();
     changed_ = true;
     if (fromHost) hostVersion_++;
@@ -432,8 +424,8 @@ class Instrument {
     return out;
   }
   /* The picture as the plugin serves it to its page: the whole ring, oldest
-     first, as many lanes as the picture has interleaved - two, or a rack's or
-     the band split's - so the page, which knows how many frames the ring is,
+     first, as many lanes as the picture has interleaved - two, four, or the
+     band split's - so the page, which knows how many frames the ring is,
      reads the lane count off the length. Two lanes are pictureSnapshot's. */
   std::vector<float> pictureServed() const {
     const std::size_t lanes = static_cast<std::size_t>(std::clamp(pictureSource_.channels, 1, kRingLanes));
@@ -469,7 +461,7 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = lfosServed_[i].load(std::memory_order_relaxed);
     return out;
   }
-  // How many lanes the picture has: two, four for two figures, or a rack's.
+  // How many lanes the picture has: two, or four for two figures or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
 
   // What the owners and their tests read.
@@ -485,8 +477,8 @@ class Instrument {
   const PictureRun& picture() const { return *pictureRun_; }
   const Brain::ViewState& view() const { return brain_->view; }
   bool drawsInput() const { return drawsInput_; }
-  int rack() const { return rack_; }
-  int synthLane() const { return synthLane_; }
+  // How many lanes the input is drawn as: the band split's four, or none.
+  int lanes() const { return bands_ ? kBandCount : 0; }
   bool bands() const { return bands_; }
   double bandGain(int lane) const { return bandGain_[static_cast<std::size_t>(lane)]; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
@@ -529,10 +521,8 @@ class Instrument {
   void change(const std::string& id, const Json& value) {
     const std::u16string text = value.type == Json::Type::String ? value.s : u"";
     const bool checked = value.type == Json::Type::Bool && value.b;
-    if (id == "srcLanes") { bands_ = false; rackFrom(utf16To8(text)); return; }
     if (id == "srcBands") { drawBands(text == u"1"); return; }
     if (id == "laneMix") { mixFrom(utf16To8(text)); return; }
-    if (id == "laneDelay") { delayFrom(utf16To8(text)); return; }
     /* Whether there is a keyboard to wait for, which the site's page knows
        (a MIDI port or the screen's keys) and the plugin never says, being
        always one. Not a hand on the setup: it is where the instrument is
@@ -570,7 +560,7 @@ class Instrument {
   }
 
   void press(const std::string& id) {
-    if (id == "srcTone" || id == "srcMic") { bands_ = false; drawRack(0, -1); drawFrom(id == "srcMic"); return; }
+    if (id == "srcTone" || id == "srcMic") { if (bands_) { bands_ = false; drawLanes(0); } drawFrom(id == "srcMic"); return; }
     if (!controlClick(id, *brain_, *core_, *keyboard_)) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -618,22 +608,10 @@ class Instrument {
     drawsInput_ = input;
     // What it hears is its own sound only while that is the generator's: a loop then, and not otherwise.
     hearing_->hears(!input);
-    keyboard_->setLayable(rack_ == 0 && !drawsInput_);
+    keyboard_->setLayable(!bands_ && !drawsInput_);
     changed_ = true;
   }
 
-  /* A rack: how many lanes, and which of them the generator draws - "4,0" is
-     four with the generator first, "3,-1" three of the page's own, "0" none
-     and back to the generator alone. The page's rack is the page's - files a
-     setup cannot hold, a microphone's lane, the mixer - and what reaches the
-     instrument is its lanes, as an input of that many channels. Not kept in
-     the state, as a rack's files cannot be. */
-  void rackFrom(const std::string& text) {
-    const std::size_t comma = text.find(',');
-    const double count = jsStringToNumber(toU16(text.substr(0, comma)));
-    const double synth = comma == std::string::npos ? -1 : jsStringToNumber(toU16(text.substr(comma + 1)));
-    drawRack(std::isfinite(count) ? static_cast<int>(count) : 0, std::isfinite(synth) ? static_cast<int>(synth) : -1);
-  }
   /* The page's view of a layout (syncLayers, buildLaneRows, fitChannels,
      sourceFigures, layerTurnsItself), for the grid the instrument draws
      itself: four lanes and a figure each, or two and the one pair the menus
@@ -662,16 +640,13 @@ class Instrument {
     w.screen.ownTurn = keyboard_->layersOn() && brain_->planeB.own && lay != Layout::Against;
   }
 
-  void drawRack(int count, int synth) {
-    const int lanes = std::clamp(count, 0, kRingLanes);
-    if (lanes == rack_ && synth == synthLane_) return;
-    rack_ = lanes;
-    synthLane_ = lanes > 0 && synth >= 0 && synth < lanes ? synth : -1;
-    /* A new rack starts aligned nowhere and with nothing behind it, as the
-       page's new lanes do: the alignment is the page's to send again. */
-    laneDelay_.fill(0);
-    std::fill(alignLine_.begin(), alignLine_.end(), 0.0f);
-    // A rack replaces the input rather than sitting over it: leaving one is the generator again, and no state says the input.
+  /* The lanes the input is drawn as: the band split's four, or none - the
+     generator, or the input whole. A rack of the page's files, with the
+     generator and the live input as lanes of it, was the other way to have
+     lanes until P5 cut it. */
+  void drawLanes(int lanes) {
+    /* A rack replaced the input rather than sitting over it, and the band
+       split still does: leaving it is the input whole (drawBands). */
     if (lanes > 0) drawsInput_ = false;
     // The view's lanes, as the page's fitChannels has them: the trigger's lane and the pair held to them.
     brain_->view.lanes = lanes > 0 ? lanes : 2;
@@ -681,12 +656,12 @@ class Instrument {
     fitView(*brain_);
     pictureSource_.channels = lanes > 0 ? lanes : 2;
     pictureSource_.lanes = lanes > 0;
-    // Two layers are two figures, and a rack's generator lane is one signal: a split is kept, not applied (layersOn).
-    keyboard_->setLayable(rack_ == 0 && !drawsInput_);
+    // Two layers are two figures, and an input has no layers: a split is kept, not applied (layersOn).
+    keyboard_->setLayable(lanes == 0 && !drawsInput_);
     changed_ = true;
   }
   /* The band split: the input, split by the page's four crossovers into a
-     rack of four lanes, each one signal - the two channels filtered apart
+     set of four lanes, each one signal - the two channels filtered apart
      and halved together, as the page's analysers take a stereo band - and
      what is heard the bands' two channels summed, each band at the gain the
      page's mixer gives it, so a band soloed is the part you are looking at.
@@ -695,21 +670,21 @@ class Instrument {
   void drawBands(bool on) {
     if (on == bands_) return;
     if (on) {
-      drawRack(kBandCount, -1);
       bands_ = true;
+      drawLanes(kBandCount);
       bandGain_.fill(1.0);
       for (auto& band : bandMemory_) for (auto& channel : band) for (auto& stage : channel) stage = BiquadMemory {};
     } else {
       bands_ = false;
-      drawRack(0, -1);
+      drawLanes(0);
       drawFrom(true);
     }
     changed_ = true;
   }
   /* The page's mixer, "g0,g1,...": each lane's gain, mute and solo already in
      it, taken as sent - nothing the page's mixer makes is below nought, and
-     a gain that was would only turn its band over. Not a hand, as the rack
-     is not. */
+     a gain that was would only turn its band over. Not a hand: the mixer is
+     the page's. */
   void mixFrom(const std::string& text) {
     std::size_t at = 0;
     for (std::size_t lane = 0; lane < bandGain_.size() && at <= text.size(); ++lane) {
@@ -719,21 +694,6 @@ class Instrument {
       at = end + 1;
     }
   }
-  /* The alignment for playing along, "d0,d1,...": how many samples back
-     each of a rack's lanes is drawn, as the page's applyAlignment works it
-     out - the track's lanes held back to meet a late input, or the input
-     held back instead. The picture only: what is heard is not moved, as the
-     page's is not. Not a hand, as the rack is not. */
-  void delayFrom(const std::string& text) {
-    std::size_t at = 0;
-    for (std::size_t lane = 0; lane < laneDelay_.size() && at <= text.size(); ++lane) {
-      const std::size_t end = std::min(text.find(',', at), text.size());
-      const double samples = jsStringToNumber(toU16(text.substr(at, end - at)));
-      if (std::isfinite(samples)) laneDelay_[lane] = static_cast<std::size_t>(std::clamp(samples, 0.0, static_cast<double>(alignFrames_ - 1)));
-      at = end + 1;
-    }
-  }
-
   /* One band's filters for a rate: the page's Butterworth crossovers as its
      BiquadFilterNodes make them (biquadNodeCoefficients), not as the page's
      own JavaScript biquad would, since the page's band split is the nodes. */
@@ -756,11 +716,8 @@ class Instrument {
     if (edge[1] > 0) x = memory[1].step(bandLp_[static_cast<std::size_t>(band)], x);
     return x;
   }
-  // Whether what it hears is its own sound: the generator, or a rack's trigger on the generator's lane.
-  bool hearsItself() const {
-    if (rack_ > 0) return synthLane_ >= 0 && static_cast<int>(brain_->view.trigSource) == synthLane_;
-    return !drawsInput_;
-  }
+  // Whether what it hears is its own sound: the generator's, and not an input's, whole or split.
+  bool hearsItself() const { return !bands_ && !drawsInput_; }
 
   // A hand put back from a saved state, as the page sends it.
   void replay(const Json& hand) {
@@ -837,53 +794,26 @@ class Instrument {
       float* heardR = right ? right + at : spare_.data();
       const float* inL = input_ ? input_->left + at : nullptr;
       const float* inR = input_ ? (input_->right ? input_->right + at : inL) : nullptr;
-      if (rack_ > 0) {
-        /* A rack: each lane its input's, the generator's lane its picture's
-           left channel - one signal, as the page's generator lane is - and
-           what is heard is that lane alone, on both sides, as the page's goes
-           to its lane's gain. The generator runs whether or not it has a lane,
-           since it steps the oscillators every modulation reads; with none,
-           nothing of it is heard. The rest of what is heard is the page's: it
-           mixes the lanes it plays itself. */
+      if (bands_) {
+        /* The band split: the input split into four lanes, each one signal,
+           and what is heard the bands summed at the page's mixer's gains.
+           The generator runs all the same, since it steps the oscillators
+           every modulation reads; nothing of it is heard. */
         core_->block(pictureL_.data(), pictureR_.data(), n, heardL_.data(), heardR_.data());
         std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
-        if (bands_) {
-          for (int k = 0; k < n; ++k) {
-            float* row = &picture_[ring * kRingLanes];
-            const float xl = inL ? inL[k] : 0.0f, xr = inR ? inR[k] : xl;
-            double hl = 0, hr = 0;
-            for (int c = 0; c < kRingLanes; ++c) {
-              if (c >= kBandCount) { row[c] = 0.0f; continue; }
-              const float yl = bandStep(c, 0, xl), yr = bandStep(c, 1, xr);
-              row[c] = (yl + yr) * 0.5f;
-              hl += bandGain_[static_cast<std::size_t>(c)] * yl;
-              hr += bandGain_[static_cast<std::size_t>(c)] * yr;
-            }
-            left[at + k] = static_cast<float>(hl);
-            heardR[k] = static_cast<float>(hr);
-            ring = (ring + 1) % kPictureFrames;
-          }
-          publish(ring);
-          continue;
-        }
-        for (int k = 0; k < n; ++k) {
-          const float h = synthLane_ >= 0 ? heardL_[static_cast<std::size_t>(k)] : 0.0f;
-          left[at + k] = h;
-          heardR[k] = h;
-        }
-        /* Each lane through its own delay line, written every sample whatever
-           its delay, so the alignment moved reads further back at once, as
-           the page's analysers let it. */
         for (int k = 0; k < n; ++k) {
           float* row = &picture_[ring * kRingLanes];
-          float* now = &alignLine_[alignAt_ * kRingLanes];
+          const float xl = inL ? inL[k] : 0.0f, xr = inR ? inR[k] : xl;
+          double hl = 0, hr = 0;
           for (int c = 0; c < kRingLanes; ++c) {
-            const float* lane = input_ && c < input_->laneCount && input_->lanes[c] ? input_->lanes[c] + at : nullptr;
-            now[c] = c >= rack_ ? 0.0f : c == synthLane_ ? pictureL_[static_cast<std::size_t>(k)] : lane ? lane[k] : 0.0f;
-            const std::size_t back = laneDelay_[static_cast<std::size_t>(c)];
-            row[c] = alignLine_[((alignAt_ + alignFrames_ - back) % alignFrames_) * kRingLanes + static_cast<std::size_t>(c)];
+            if (c >= kBandCount) { row[c] = 0.0f; continue; }
+            const float yl = bandStep(c, 0, xl), yr = bandStep(c, 1, xr);
+            row[c] = (yl + yr) * 0.5f;
+            hl += bandGain_[static_cast<std::size_t>(c)] * yl;
+            hr += bandGain_[static_cast<std::size_t>(c)] * yr;
           }
-          alignAt_ = (alignAt_ + 1) % alignFrames_;
+          left[at + k] = static_cast<float>(hl);
+          heardR[k] = static_cast<float>(hr);
           ring = (ring + 1) % kPictureFrames;
         }
         publish(ring);
@@ -927,7 +857,7 @@ class Instrument {
         }
         row[2] = lay == Layout::Each ? pictureBL_[i] : 0.0f;
         row[3] = lay == Layout::Each ? pictureBR_[i] : 0.0f;
-        // A rack's lanes past these, gone: nothing stale to read if a rack is drawn again.
+        // Lanes past these, nought: nothing stale to read in rows the band split last wrote.
         for (int c = 4; c < kRingLanes; ++c) row[c] = 0.0f;
         ring = (ring + 1) % kPictureFrames;
       }
@@ -937,11 +867,11 @@ class Instrument {
 
   /* The last of the picture, the page's screen, for the level and the hearing
      to read: its left channel for both, and its right for the hearing's
-     width. A rack's, as the page reads a rack: the trigger's lane for both,
-     and for the width the X-Y pair's other lane. */
+     width. The band split's, as the page reads lanes: the trigger's lane for
+     both, and for the width the X-Y pair's other lane. */
   void window(std::vector<float>& left, std::vector<float>* right) const {
-    const int a = rack_ > 0 ? std::clamp(static_cast<int>(brain_->view.trigSource), 0, rack_ - 1) : 0;
-    const int b = rack_ > 0 ? std::clamp(static_cast<int>(brain_->view.xy[1]), 0, rack_ - 1) : 1;
+    const int a = bands_ ? std::clamp(static_cast<int>(brain_->view.trigSource), 0, kBandCount - 1) : 0;
+    const int b = bands_ ? std::clamp(static_cast<int>(brain_->view.xy[1]), 0, kBandCount - 1) : 1;
     latestLane(a, left.data(), left.size());
     if (right) latestLane(b, right->data(), right->size());
   }
@@ -981,13 +911,8 @@ class Instrument {
   std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, or the second generator's, as the generator draws it
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator
-  int rack_ = 0;                  // drawing a rack of this many lanes, or none
-  int synthLane_ = -1;            // the rack's lane the generator draws, or none
-  bool bands_ = false;            // the rack is the input split into bands
+  bool bands_ = false;            // the input split into four bands, drawn as lanes
   // The alignment's delay lines, a frame of every lane at a time, and how far back each lane is read.
-  std::vector<float> alignLine_;
-  std::size_t alignFrames_ = 1, alignAt_ = 0;
-  std::array<std::size_t, kRingLanes> laneDelay_ {};
   // A biquad's memory as the browser keeps it: doubles, fed and feeding back float samples.
   struct BiquadMemory {
     double x1 = 0, x2 = 0, y1 = 0, y2 = 0;

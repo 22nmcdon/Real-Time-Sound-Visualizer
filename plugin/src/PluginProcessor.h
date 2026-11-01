@@ -66,7 +66,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The oscillators as they stood at the picture's newest frame: phase, held and value, each of two.
   std::array<double, 6> lfosServed() const { return instrument_.lfosServed(); }
   bool bands() const { return instrument_.bands(); }
-  int rack() const { return instrument_.rack(); }
+  int lanes() const { return instrument_.lanes(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }
   double sampleRateNow() const { return rate_.load(); }
 
@@ -92,7 +92,6 @@ class ScopeProcessor final : public juce::AudioProcessor {
   double lfoRate(int i) const { return instrument_.lfoRate(i); }
   bool drawsInput() const { return instrument_.drawsInput(); }
   int pictureLanes() const { return instrument_.pictureLanes(); }
-  int synthLane() const { return instrument_.synthLane(); }
   // A hand on one of the panel's sliders, not remembered, and an end of the morph stored: the shell test's way in.
   void moveSlider(const std::string& id, double value) { instrument_.moveSlider(id, value); }
   void storeMorph(bool endB) { instrument_.storeMorph(endB); }

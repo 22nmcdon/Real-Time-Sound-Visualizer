@@ -1,5 +1,5 @@
 """The effects on a live input (S1): the plane, the delay and the chorus on a
-microphone, a line input or a file, drawn and heard.
+microphone or a line input, drawn and heard.
 
 What would go wrong, and what is checked for it:
 
@@ -10,14 +10,15 @@ What would go wrong, and what is checked for it:
   mirrored exactly as what is drawn is;
 - the wrong arithmetic: it is the generator's own code, so a kaleidoscope on
   a microphone folds every angle into its wedge as the generator's does, and
-  a delay on a file puts each repeat at the delay time to within a few
-  samples - measured from the file's own burst, not from a guess at when it
-  started;
+  a delay on a live input puts each repeat at the delay time to within a few
+  samples - measured from the input's own burst, not from a guess at when it
+  started (a file's, until P5 cut file playback);
 - a routing that does not reach it: an oscillator on the twist swirls a
   mono input's diagonal off itself, and the mono input shows as two lanes
   while it does, because what the effect made of it is a pair;
-- a rack's stems twisted into each other: a rack gets no insert, and the
-  sections say what the effects are acting on.
+- a band split's lanes twisted into each other: the split gets no insert,
+  and the sections say what the effects are acting on. (A rack's stems were
+  the case until P5 cut the rack.)
 
 The fixture is two oscillators behind getUserMedia - 220 Hz on the left and
 330 Hz on the right, never a circle: a 3:2 pair has a length and a direction
@@ -72,21 +73,6 @@ SETUP = """() => {
   };
   window.__win = (n) => state.source.getLatestWindow(n || 4410);
   window.__set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-  // A file: a 20 ms burst of 1 kHz at the start of a second of silence.
-  window.__burst = (rate) => {
-    const n = rate, bytes = 44 + n * 4;
-    const b = new ArrayBuffer(bytes), v = new DataView(b);
-    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-    str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt ');
-    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true);
-    v.setUint32(24, rate, true); v.setUint32(28, rate * 4, true); v.setUint16(32, 4, true);
-    v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 4, true);
-    for (let i = 0; i < n; i++) {
-      const s = i < rate * 0.02 ? Math.round(16000 * Math.sin(2 * Math.PI * 1000 * i / rate)) : 0;
-      v.setInt16(44 + i * 4, s, true); v.setInt16(46 + i * 4, s, true);
-    }
-    return new File([b], 'burst.wav', { type: 'audio/wav' });
-  };
 }"""
 
 with sync_playwright() as pw:
@@ -233,66 +219,72 @@ with sync_playwright() as pw:
           and mono["activeAfter"] is False,
           str(mono))
 
-    print("\n--- a file, and its echoes ---")
+    print("\n--- a burst, and its echoes ---")
+    # A 20 ms burst of 1 kHz every half second, behind getUserMedia as the
+    # oscillators are. It was a file until P5 cut file playback, and the
+    # repeat is measured the same way: from the burst itself.
     echo = p.evaluate("""async () => {
-      await toFile(__burst(48000)); await __wait(300);
-      const rate = state.source.sampleRate;
+      const ctx = new AudioContext(), rate = ctx.sampleRate;
+      const buf = ctx.createBuffer(2, rate / 2, rate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < rate * 0.02; i++) d[i] = 0.5 * Math.sin(2 * Math.PI * 1000 * i / rate);
+      }
+      const src = ctx.createBufferSource(), dest = ctx.createMediaStreamDestination();
+      src.buffer = buf; src.loop = true; src.connect(dest); src.start();
+      navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
+      if (state.source && state.source.kind === 'mic') { el.srcTone.click(); await __wait(300); }
+      el.srcMic.click(); await __wait(1200);
       __set('delayMix', 100, 'input'); __set('delayFeedback', 0, 'input'); __set('delayMs', 150, 'input');
       await __wait(900);
-      state.source.seek(0); state.source.play(); await __wait(400);
+      const srate = state.source.sampleRate;
       const w = state.source.getLatestWindow(state.source.capacity)[0];
       // Onsets: the first sample over a threshold after at least 10 ms quiet.
       const onsets = [];
-      let quiet = rate;
+      let quiet = srate;
       for (let i = 0; i < w.length; i++) {
-        if (Math.abs(w[i]) > 0.1) { if (quiet > rate * 0.01) onsets.push(i); quiet = 0; } else quiet++;
+        if (Math.abs(w[i]) > 0.1) { if (quiet > srate * 0.01) onsets.push(i); quiet = 0; } else quiet++;
       }
       const where = el.planeWhere.textContent, active = state.source.fx.active;
       __set('delayMix', 0, 'input'); await __wait(200);
-      return { rate, onsets, where, active };
+      return { rate: srate, onsets, where, active };
     }""")
     print("    %s" % echo)
-    # The last two onsets are the burst just played and its one repeat. The
-    # first gap can be anything: the window reaches back into the play before.
+    # Burst, repeat, burst: the gaps go 150 ms and 350 ms by turns, and where
+    # the window starts decides which comes first, so every 150 ms one is held
+    # to it and there has to be one.
     gaps = [b2 - a2 for a2, b2 in zip(echo["onsets"], echo["onsets"][1:])]
     want = 0.15 * echo["rate"]
-    check("a delay on a file puts the repeat 150 ms after the burst, to within 2 samples",
-          echo["active"] and len(gaps) >= 1 and abs(gaps[-1] - want) <= 2,
+    short = [g for g in gaps if g < 0.25 * echo["rate"]]
+    check("a delay on a live input puts the repeat 150 ms after the burst, to within 2 samples",
+          echo["active"] and len(short) >= 1 and all(abs(g - want) <= 2 for g in short),
           "gaps %s against %.0f" % (gaps, want))
-    check("and a file's effects are drawn and heard", echo["where"] == "On the file, drawn and heard.", echo["where"])
+    check("and its effects are drawn", echo["where"].startswith("On your input, drawn"), echo["where"])
 
     print("\n--- where it does not go ---")
-    rack = p.evaluate("""async () => {
-      window.__wav = (name, hz) => {
-        const rate = 44100, n = rate / 4, bytes = 44 + n * 2;
-        const b = new ArrayBuffer(bytes), v = new DataView(b);
-        const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-        str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt ');
-        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-        v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
-        v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-        for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(12000 * Math.sin(2 * Math.PI * hz * i / rate)), true);
-        return new File([b], name + '.wav', { type: 'audio/wav' });
-      };
-      // The file's insert, with an effect on, as the page leaves the file:
-      // the page has no other handle on it once the source is replaced.
+    split = p.evaluate("""async () => {
+      // The microphone's insert, with an effect on, as the page leaves it for
+      // the band split: the page has no other handle on it once the source is
+      // replaced.
       __set('delayMix', 60, 'input'); await __wait(500);
       const left = state.source.fx, leftActive = left.active;
-      await toRack([__wav('a', 220), __wav('b', 330)]); await __wait(500);
+      el.micBands.click(); await __wait(600);
       __set('delayMix', 0, 'input');
       __set('planeMirror', 1, 'change'); await __wait(400);
-      const out = { leftActive, leftAfter: left.active, kind: state.source.kind, fx: 'fx' in state.source, where: el.planeWhere.textContent };
+      const out = { leftActive, leftAfter: left.active, lanes: state.source.channels, fx: 'fx' in state.source,
+                    where: el.planeWhere.textContent };
       __set('planeMirror', 0, 'change');
+      el.micWhole.click(); await __wait(300);
       el.srcTone.click(); await __wait(400);
       out.tone = el.planeWhere.textContent;
       return out;
     }""")
-    print("    %s" % rack)
-    check("a rack of stems gets no effects insert, and the sections say why",
-          rack["kind"] == "rack" and rack["fx"] is False and "not one stereo pair" in rack["where"], str(rack))
+    print("    %s" % split)
+    check("a band split gets no effects insert, and the sections say why",
+          split["lanes"] == 4 and split["fx"] is False and "not one stereo pair" in split["where"], str(split))
     check("and the source it replaced has let its effects node go, rather than leave it running on a closed input",
-          rack["leftActive"] is True and rack["leftAfter"] is False, str(rack))
-    check("and on the tone the effects are the generator's", rack["tone"] == "On the generator.", rack["tone"])
+          split["leftActive"] is True and split["leftAfter"] is False, str(split))
+    check("and on the tone the effects are the generator's", split["tone"] == "On the generator.", split["tone"])
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

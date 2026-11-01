@@ -255,15 +255,11 @@ with sync_playwright() as pw:
       out.drawn = { l: Array.from(l), r: Array.from(r), amp: genSettings().amp, path: genSettings().figPath };
       // A code, and back.
       el.figure.value = 'Text'; el.figure.dispatchEvent(new Event('change'));
-      // A new generator, built from the panel, draws the same word: away to a
-      // file and back to the tone.
-      const rate = 44100, n = rate / 4, bytes = 44 + n * 2, buf = new ArrayBuffer(bytes), v = new DataView(buf);
-      const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-      str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
-      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
-      v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-      await toFile(new File([buf], 'x.wav', { type: 'audio/wav' }));
-      el.srcTone.click(); await wait(300);
+      // A new generator, built from the panel, draws the same word.
+      // The source dropped and Tone pressed, so toTone builds a new one from the
+      // panel (generatorFromPanel) rather than finding a tone and keeping it.
+      // Until P5 this went away to a file and back, or built a rack's lane.
+      state.source.stop(); state.source = null; el.srcTone.click(); await wait(300);
       out.fresh = state.source.kind === 'tone'
         && JSON.stringify(genSettings().figPath) === JSON.stringify(compilePath(textStrokes('SCOPE')));
       const code = snapshot();

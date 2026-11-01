@@ -318,14 +318,14 @@ with sync_playwright() as pw:
     built = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.morph.value = '250'; el.morph.dispatchEvent(new Event('input'));
-      el.rackSynth.checked = true; await setRackSynth(true); await wait(100);
-      const lane = genSettings().morph;
-      el.rackSynth.checked = false; await setRackSynth(false);
-      toTone(); await wait(100);
-      return { lane, tone: genSettings().morph, b: genSettings(1).morph };
+      // The source dropped and Tone pressed, so toTone builds a new one from the
+      // panel (generatorFromPanel) rather than finding a tone and keeping it.
+      // Until P5 this went away to a file and back, or built a rack's lane.
+      state.source.stop(); state.source = null; toTone(); await wait(100);
+      return { tone: genSettings().morph, b: genSettings(1).morph };
     }""")
-    check("a generator built later - a rack's lane, a new tone - takes the slider's position",
-          built == {"lane": 2.5, "tone": 2.5, "b": 2.5}, str(built))
+    check("a generator built later, from the panel, takes the slider's position on both layers",
+          built == {"tone": 2.5, "b": 2.5}, str(built))
 
     def search(q):
         p.evaluate("(q) => { el.benchSearch.value = q; el.benchSearch.dispatchEvent(new Event('input')); }", q)

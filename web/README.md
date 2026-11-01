@@ -52,7 +52,6 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
 | `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
 | `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
-| `alongtest.py` | a backing track and a live input as lanes, and the alignment in samples |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
 | `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
@@ -69,12 +68,10 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `envtest.py` | the gate, the envelope and the legato rule |
 | `taptest.py` | the two taps, all four combinations, and the block they straddle |
 | `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
-| `contracttest.py` | the lane contract, the generator as a lane, and a rack with no files in it |
-| `keystest.py` | the keyboard on the screen: pointer, latch, the letters, and a generator lane following it |
-| `voicetest.py` | the generator heard as a lane: left channel only, notes reaching the worklet, the mixer, rebuilds |
+| `contracttest.py` | the lane contract on the band split, and a lane with no audio behind it |
+| `keystest.py` | the keyboard on the screen: pointer, latch and the letters |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
 | `layouttest.py` | the layout: source families and their hints, the selected source's panel and meter, reaching any control, search and where it lands |
-| `racktest.py` | the rack built a lane at a time: files added beside the others, the right lane taken out, Play along as a membership, builds in flight, the Bench with a rack in it |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
@@ -92,11 +89,11 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
-| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and a rack of six, keyboard and Photocell on and off, every kind, ten learned controllers |
+| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, every kind, ten learned controllers |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
-| `sources.py` | rack, file, tone, and a microphone that is denied |
+| `sources.py` | Tone over a tone, and a microphone that is denied |
 
 **Two brains, and which suite runs on which.** Since stage 5m the site plays
 through the instrument (`plugin/PLAN.md`): the plugin's brain and sound,
@@ -4453,3 +4450,22 @@ what the page has, so they could never have survived a save. They are deleted
 anyway, so that a migrated setup - the core reads them too - says only what
 this build means, and the check reads them off the decoded setup rather than a
 snapshot, which could not have shown them.
+
+**Tone over a tone builds nothing.** `toTone` finds a tone already playing and
+only puts its panel back, so a check of "a generator built later takes the
+panel's settings" has to drop the source first (`state.source.stop();
+state.source = null; toTone()`). Four suites (`keytest`, `morphtest`,
+`pulsetest`, `drawbartest`) asked the question as "build the rack's generator
+lane, let it go, then `toTone()`", and their tone half was a real rebuild only
+because the rack had gone before it; with the rack cut in P5 the same lines
+would have read the old tone back and passed whatever `generatorFromPanel`
+did.
+
+**Chromium's fake microphone is a beep a second, not a signal.** With
+`--use-fake-device-for-media-stream` alone, most of what the page hears is
+silence, and a check that a capture has no flat run at its left edge reads
+21,189 samples of nought and fails for a reason of its own. `captest.py` feeds
+it the fifth from `fixtures/` with `--use-file-for-fake-audio-capture`; a check
+that wants a known signal on the microphone should do the same, or hand over
+an oscillator's stream where the page asks for one, as `livefxtest.py` and
+`braintest.py` do.

@@ -384,9 +384,6 @@ with sync_playwright() as pw:
       out.sent = t.log.slice();
       out.mic = el.srcMic.getAttribute('aria-checked');
       out.device = el.device.disabled;
-      out.file = el.srcFile.disabled;
-      out.fileTitle = el.srcFile.title;
-      out.rack = [el.srcRack.disabled, el.srcRack.title];
       out.micTitle = el.srcMic.title;
       t.log.length = 0;
       el.srcTone.click();
@@ -408,9 +405,7 @@ with sync_playwright() as pw:
     }""", [code({"pluginInput": True}), code({})])
     check("inside the plugin, Mic is sent to the plugin as the host's input, Tone as its generator, and the device is the host's",
           inp["sent"] == [["scopeClick", "srcMic"]] and inp["toneSent"] == [["scopeClick", "srcTone"]] and inp["mic"] == "true"
-          and inp["device"] is True and inp["file"] is True and inp["micTitle"] == "The host's input"
-          and inp["fileTitle"] == "The host plays files here"
-          and inp["rack"] == [True, "The host plays them here"]
+          and inp["device"] is True and inp["micTitle"] == "The host's input"
           and inp["where"] == "From the host's input, once the host gives the plugin one.", str(inp))
     check("and the plugin's state puts the input back as drawn, or the generator, sending nothing back",
           inp["restored"] == [True, "true"] and inp["back"] == [False, "true"] and inp["log"] == [], str(inp))
@@ -474,10 +469,6 @@ with sync_playwright() as pw:
       el.srcTone.click();
       out.tone = [state.source.bands, state.source.channels];
       el.micWhole.click();
-      // A file split asked for in the plugin, whose host plays the files: said, and nothing sent.
-      t.log.length = 0;
-      await toBands(new File([new Uint8Array(64)], 'x.wav', { type: 'audio/wav' }));
-      out.noFile = [el.rackNote.textContent, t.log.slice(), state.source.bands];
       return out;
     }""", [code({"pluginBands": True}), code({})])
     check("inside the plugin, Into bands is offered and sent, and the four lanes the plugin serves are drawn as served",
@@ -490,8 +481,6 @@ with sync_playwright() as pw:
           split["restored"] == [True, True, 4, "true", "true"] and split["back"] == [False, 2, "true"] and split["log"] == [], str(split))
     check("a lane the plugin has not served yet reads as silence, and Tone lets the split go",
           split["early"] == [4, 0, True] and split["tone"] == [False, 2], str(split["early"]) + " " + str(split["tone"]))
-    check("a file split asked for inside the plugin says the host plays files there, and sends nothing",
-          split["noFile"] == ["The host plays files here.", [], False], str(split["noFile"]))
 
     print("\n--- the plugin's oscillators ---")
     # An oscillator routed to the sound and the picture moves both in step

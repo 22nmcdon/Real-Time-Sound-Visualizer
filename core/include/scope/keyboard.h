@@ -21,9 +21,9 @@
 //   first (`setPresent`) is yes in the plugin, whose host is always a
 //   keyboard, and on the site the page says it, through the instrument's
 //   `keyboardPresent` control. The second (`setLayable`) the instrument sets
-//   itself: no while it draws a rack or its input, since a rack's generator
-//   lane is one signal and layer B's figure has nowhere to go. Until 5m it
-//   was always yes, which was true until the instrument had racks and inputs.
+//   itself: no while it draws its input, whole or split into bands, since
+//   layer B's figure has nowhere to go. (And while it drew a rack, until P5
+//   cut the rack.)
 // - The page's `genInput.from` is the generator's `inputFrom`; here it is read
 //   from the tone, where the two are always the same.
 // - The arpeggiator's first step waits 25 ms for the rest of the chord, on a
@@ -343,7 +343,7 @@ class Keyboard {
     if (on) applyNotes(); else undrive();
   }
   void setPresent(bool on) { present_ = on; }
-  // Whether the generator is on its own, to lay out two figures: not as a rack's lane, nor while the input is drawn.
+  // Whether the generator is on its own, to lay out two figures: not while the input is drawn.
   void setLayable(bool on) { layable_ = on; }
   Panel& panel() { return panel_; }
 
@@ -629,7 +629,7 @@ class Keyboard {
       v.note = held.note;
       v.velocity = held.velocity;
       v.freq = polyHz(held.note, root);
-      // As a rack's lane, one signal: every note on both sides (the page's polyVoices).
+      // While the input is drawn, whole or in bands, the generator's figure is not: every note on both sides (the page's polyVoices).
       v.role = !layable_ ? "xy"
              : !isDrawn(held.note) ? "u"
              : against ? (which == 1 ? "yonly" : "xonly")

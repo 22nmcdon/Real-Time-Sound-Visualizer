@@ -15,7 +15,7 @@ What would go wrong, and what is checked for it:
   plays A's, a setup code that loses a slot or the position;
 - a pane that draws the wrong slot: with the wavetable the switch chooses,
   with the drawn cycle it is always slot one, and Grab fills the slot chosen;
-- a section that crowds its tab: with a rack of six and the wavetable
+- a section that crowds its tab: with the wavetable
   chosen, no tab scrolls.
 """
 import math, os, sys
@@ -241,38 +241,27 @@ with sync_playwright() as pw:
 
     fit = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      // Off its default first, so a lane built with the core's own could not
-      // pass for one built from the slider.
+      // Off its default first, so a generator built with the core's own could
+      // not pass for one built from the slider.
       el.table.value = '275'; el.table.dispatchEvent(new Event('input'));
-      el.rackSynth.checked = true; state.rackSynth = false; await setRackSynth(true);
-      // Five short files beside the generator: a rack of six, as racktest.py
-      // builds one.
-      const wav = (name, hz) => {
-        const rate = 44100, n = rate / 4, bytes = 44 + n * 2;
-        const buf = new ArrayBuffer(bytes), v = new DataView(buf);
-        const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-        str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt ');
-        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-        v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
-        v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-        for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(12000 * Math.sin(2 * Math.PI * hz * i / rate)), true);
-        return new File([buf], name + '.wav', { type: 'audio/wav' });
-      };
-      await addRackFiles([1, 2, 3, 4, 5].map((i) => wav('f' + i, 200 + 60 * i)));
-      await wait(900);
+      // The source dropped and Tone pressed, so toTone builds a new generator
+      // from the panel. Until P5 this was a rack of six, the generator's lane
+      // beside five files, which was also the worst case for the tabs' fit.
+      state.source.stop(); state.source = null; toTone();
+      await wait(300);
       el.shape.value = 'wavetable'; el.shape.dispatchEvent(new Event('change'));
       setView('bench');
       const over = {};
       for (const [tab] of BENCH_TABS) { setBenchTab(tab); over[tab] = el.benchBody.scrollHeight - el.benchBody.clientHeight; }
-      const out = { lanes: state.source.lanes ? state.source.lanes.length : 0, over, table: genSettings().table,
+      const out = { over, table: genSettings().table,
                     bank: JSON.stringify(genSettings().wavetable) === JSON.stringify(drawnCycle.bank) };
       setView('scope');
       return out;
     }""")
     print("    %s" % fit)
-    check("with a rack of six and the wavetable chosen, the Position row and the slot switch showing, no tab scrolls",
-          fit["lanes"] == 6 and max(fit["over"].values()) <= 0, str(fit))
-    check("and the rack's generator lane takes the slider's position, 2.75, and the bank - slot three as drawn",
+    check("with the wavetable chosen, the Position row and the slot switch showing, no tab scrolls",
+          max(fit["over"].values()) <= 0, str(fit))
+    check("and a generator built from the panel takes the slider's position, 2.75, and the bank - slot three as drawn",
           fit["table"] == 2.75 and fit["bank"], "%s, %s" % (fit["table"], fit["bank"]))
 
     def search(q):

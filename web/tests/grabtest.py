@@ -1,9 +1,11 @@
 """G2's Grab: one cycle of what is playing, taken as the drawn cycle.
 
-The fixture is a file lane in a rack beside the generator, which is how the
-feature is meant to be played - your instrument on one lane, the generator on
-another - with a file standing in for the instrument so that its cycle is
-known exactly. It is 220 Hz with a second, third and twelfth harmonic at
+The fixture is a stand-in source of five lanes, looping three seconds each,
+put in for the generator's source while the scope is stopped: it stands in
+for your instrument so that its cycle is known exactly. Until P5 it was five
+files in a rack beside the generator, which is how the feature was meant to
+be played; with the rack and the files cut, a live input is the way, and a
+live input's cycle is not known. The tone lane is 220 Hz with a second, third and twelfth harmonic at
 phases of their own, so the cycle is lopsided: a grab read backwards, upside down or
 half a cycle out cannot pass for it. And 44100 / 220 is 200.45 samples, not a
 whole number, so a grab that rounds the period to a sample drifts a little
@@ -22,22 +24,20 @@ Against the way it would fail:
   that happens to agree;
 - nothing without a keyboard: with no note held the scope's own measure
   stands in, the result is still close, and the note says it was measured;
-- a grab from the wrong lane: with the trigger on the generator's own lane,
-  where it starts, Grab looks past it to the file, not back into itself;
-  moved to another lane, it takes that one; and with the tone alone, where
-  there is nothing else, it takes the generator's own output;
+- a grab from the wrong lane: moved to another lane, it takes that one; and
+  with the tone alone it takes the generator's own output (looking past the
+  generator's own lane in a rack went with the rack, in P5);
 - a grab of nothing: a silent lane, and a steady level that is loud but has
   no cycle in it, are each refused with a reason, and the cycle is left as
   it was;
 - averaging that does not average: on a noisy copy of the tone, the grab is
   closer to the true cycle than one cycle of it could be, and still starts
   at the crossing rather than at a wiggle of the noise;
-- a reading that crowds the tab, or is not there: with a rack of six, the
-  longest reading showing and the pane open, it has a size and no tab
-  scrolls;
+- a reading that crowds the tab, or is not there: with the longest reading
+  showing and the pane open, it has a size and no tab scrolls;
 - a stale reading: drawing afterwards takes it away.
 """
-import json, math, os, random, struct, tempfile, wave
+import json, math, os
 import numpy as np
 from playwright.sync_api import sync_playwright
 
@@ -59,39 +59,49 @@ def cycle(theta):
     return (0.5 * math.sin(theta) + 0.25 * math.sin(2 * theta + 0.7) + 0.15 * math.sin(3 * theta + 1.3)
             + 0.04 * math.sin(12 * theta + 0.4))
 
-HOME = tempfile.mkdtemp(prefix="grabtest-")
-def wav(name, fn, seconds):
-    # Three seconds of 220 Hz is 660 whole cycles, so the loop joins without
-    # a seam for a grab to land on.
-    frames = int(seconds * RATE)
-    data = bytearray()
-    for i in range(frames):
-        data += struct.pack("<h", int(max(-1.0, min(1.0, fn(i / RATE))) * 32767))
-    path = os.path.join(HOME, name)
-    with wave.open(path, "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(RATE); w.writeframes(bytes(data))
-    return path
-
-# All as long as each other: a rack loops at its longest file, so a shorter
-# lane is silent for the rest of the loop - which is how a sine lane first
-# read here as "silent".
-# The silent lane comes before the tone, so that looking past the generator
-# has to look past silence as well: with the tone next to the generator, a
-# look-past that took the first other lane, heard or not, passed.
-# And a noisy copy of the tone, a twentieth of full scale of seeded noise,
-# since on a clean tone one cycle is as good as four and nothing could show
-# that the averaging averages.
-NOISE = random.Random(7)
-NOISE = [NOISE.gauss(0, 1) for _ in range(3 * RATE)]
-FILES = [wav("silent.wav", lambda t: 0.0, 3.0),
-         wav("tone.wav", lambda t: cycle(2 * math.pi * 220 * t), 3.0),
-         # A steady level with a ripple of two bits of 16 in it: loud, and with
-         # no cycle worth the name. Held exactly steady it averaged to exactly
-         # nought, and a refusal of only exactly nought passed as well as the
-         # threshold did - and would have blown the ripple up to full scale.
-         wav("level.wav", lambda t: 0.3 + 2 / 32767 * math.sin(2 * math.pi * 220 * t), 3.0),
-         wav("fill1.wav", lambda t: 0.3 * math.sin(2 * math.pi * 330 * t), 3.0),
-         wav("noisy.wav", lambda t: cycle(2 * math.pi * 220 * t) + 0.05 * NOISE[min(round(t * RATE), 3 * RATE - 1)], 3.0)]
+# The lanes, made in the page (FIXTURE): three seconds of 220 Hz is 660 whole
+# cycles, so the loop joins without a seam for a grab to land on. A silent
+# lane; a steady level with a ripple of two sixteen-bit steps in it, loud and
+# with no cycle worth the name (held exactly steady it averaged to exactly
+# nought, and a refusal of only exactly nought passed as well as the
+# threshold did - and would have blown the ripple up to full scale); a 330 Hz
+# sine; and a noisy copy of the tone, a twentieth of full scale of seeded
+# noise, since on a clean tone one cycle is as good as four and nothing could
+# show that the averaging averages.
+FIXTURE = """() => {
+  const RATE = 44100, N = 3 * RATE;
+  const cyc = (t) => 0.5 * Math.sin(t) + 0.25 * Math.sin(2 * t + 0.7) + 0.15 * Math.sin(3 * t + 1.3)
+                     + 0.04 * Math.sin(12 * t + 0.4);
+  let seed = 7;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+                      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+  const make = (fn) => { const a = new Float64Array(N); for (let i = 0; i < N; i++) a[i] = fn(i / RATE); return a; };
+  const names = ['tone', 'silent', 'level', 'fill1', 'noisy'];
+  const loops = [make((t) => cyc(2 * Math.PI * 220 * t)), make(() => 0),
+                 make((t) => 0.3 + 2 / 32767 * Math.sin(2 * Math.PI * 220 * t)),
+                 make((t) => 0.3 * Math.sin(2 * Math.PI * 330 * t)),
+                 make((t) => cyc(2 * Math.PI * 220 * t) + 0.05 * gauss())];
+  const t0 = performance.now();
+  // Where the loop is up to moves with the clock, so grabs a moment apart land at different places in it.
+  const getLatestWindow = (n) => {
+    const end = Math.floor((performance.now() - t0) / 1000 * RATE);
+    return loops.map((loop) => {
+      const out = new Float32Array(n);
+      for (let i = 0; i < n; i++) out[i] = loop[(((end - n + i) % N) + N) % N];
+      return out;
+    });
+  };
+  window.__tone = state.source;
+  setRunning(false);
+  state.source = Object.create(window.__tone, {
+    sampleRate: { value: RATE }, capacity: { value: N }, channels: { value: loops.length },
+    lanes: { value: names.map((name) => ({ name })) }, getLatestWindow: { value: getLatestWindow },
+  });
+  state.trigSource = 0;
+  // The lanes' rows for five, as a source of five lanes gets them, or what draws reads a lane with no row.
+  buildLaneRows();
+}"""
 
 def expected(fn):
     """The cycle as Grab should take it: from its upward crossing of nought -
@@ -147,19 +157,15 @@ with sync_playwright() as pw:
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
-    p.locator("#rackInput").set_input_files(FILES); p.wait_for_timeout(1500)
-    p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }"); p.wait_for_timeout(800)
     p.evaluate("() => { el.shape.value = 'drawn'; el.shape.dispatchEvent(new Event('change')); }")
     p.wait_for_timeout(300)
-    rack = p.evaluate("() => ({ lanes: state.source.lanes.length, gen: state.source.lanes.indexOf(genLane()), "
-                      "names: state.source.lanes.map((l) => l.name), trig: state.trigSource, pane: !el.cycleGroup.hidden })")
-    print("    %s" % rack)
-    GEN = rack["gen"]
-    # The generator is lane 0 and the trigger starts there - which is the case
-    # Grab has to look past to find what you are playing.
-    if not (rack["names"] == ["Generator", "silent", "tone", "level", "fill1", "noisy"]
-            and GEN == 0 and rack["trig"] == 0 and rack["pane"]):
-        check("the rack is the generator and five files, triggered on the generator", False, str(rack))
+    p.evaluate(FIXTURE)
+    stand = p.evaluate("() => ({ names: state.source.lanes.map((l) => l.name), trig: state.trigSource, "
+                       "pane: !el.cycleGroup.hidden, rms: Math.sqrt(state.source.getLatestWindow(4410)[0].reduce((a, v) => a + v * v, 0) / 4410) })")
+    print("    %s" % stand)
+    if not (stand["names"] == ["tone", "silent", "level", "fill1", "noisy"] and stand["trig"] == 0
+            and stand["pane"] and stand["rms"] > 0.3):
+        check("the stand-in is five lanes, triggered on the tone, and the pane is open", False, str(stand))
         raise SystemExit(1)
 
     GRAB = """(how) => {
@@ -207,7 +213,7 @@ with sync_playwright() as pw:
     # The layout, with the longest reading there is on show.
     fit = p.evaluate("""() => {
       setView('bench');
-      const out = { note: !el.cycleNote.hidden, pane: !el.cycleGroup.hidden, lanes: state.source.lanes.length, over: {} };
+      const out = { note: !el.cycleNote.hidden, pane: !el.cycleGroup.hidden, over: {} };
       for (const [tab] of BENCH_TABS) { setBenchTab(tab); out.over[tab] = el.benchBody.scrollHeight - el.benchBody.clientHeight; }
       setBenchTab('shape');
       out.shown = el.cycleNote.getBoundingClientRect().height;
@@ -215,14 +221,13 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    %s" % fit)
-    check("with a rack of six, the note showing and the pane open, no tab scrolls",
-          fit["note"] and fit["pane"] and fit["lanes"] == 6 and fit["shown"] > 0
+    check("with the note showing and the pane open, no tab scrolls",
+          fit["note"] and fit["pane"] and fit["shown"] > 0
           and max(fit["over"].values()) <= 0, str(fit))
 
     print("\n--- which lane, and when not to ---")
-    # The first grab above was taken with the trigger on the generator, and it
-    # was the file: that is the looking-past. Here, a lane chosen on purpose.
-    p.evaluate("() => { state.trigSource = 4; }"); p.wait_for_timeout(200)  # fill1
+    # A lane chosen on purpose.
+    p.evaluate("() => { state.trigSource = 3; }"); p.wait_for_timeout(200)  # fill1
     other = p.evaluate(GRAB, "call")
     scorr, _ = match(other["points"], SINE)
     fcorr2, _ = match(other["points"], FILE_CYCLE)
@@ -239,7 +244,7 @@ with sync_playwright() as pw:
     # is twelve, which is how many it took to see that twice more.
     noisy = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      state.trigSource = 5;
+      state.trigSource = 4;
       const out = [];
       for (let k = 0; k < 12; k++) { grabCycle(); out.push(drawnCycle.points.slice()); await wait(137); }
       return out;
@@ -263,7 +268,7 @@ with sync_playwright() as pw:
     refused = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = {};
-      for (const [name, lane] of [['silent', 1], ['level', 3]]) {
+      for (const [name, lane] of [['silent', 1], ['level', 2]]) {
         state.trigSource = lane;
         await wait(200);
         const before = JSON.stringify(drawnCycle.points);
@@ -295,6 +300,7 @@ with sync_playwright() as pw:
     p.evaluate("(pts) => { drawnCycle.points = pts; cycleSend(); }", json.loads(json.dumps(FILE_CYCLE.tolist())))
     alone = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      state.source = window.__tone; buildLaneRows(); setRunning(true);
       el.srcTone.click(); await wait(500);
       el.shape.value = 'drawn'; el.shape.dispatchEvent(new Event('change'));
       el.cycleSine.click(); midiNoteOn(57, 100); await wait(500);

@@ -16,8 +16,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
-import fixtures
-STEMS = fixtures.ensure()
 
 fails = []
 def check(name, ok, detail=""):
@@ -25,8 +23,10 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 with sync_playwright() as pw:
-    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
-    p = b.new_page(viewport={"width": 1400, "height": 900})
+    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required",
+                                                          "--use-fake-device-for-media-stream",
+                                                          "--use-fake-ui-for-media-stream"])
+    p = b.new_context(permissions=["microphone"], viewport={"width": 1400, "height": 900}).new_page()
 
     # two helpers that only this suite needs
     p.add_init_script("""
@@ -232,13 +232,12 @@ with sync_playwright() as pw:
           % (cost["off"], cost["on"], cost["lanes"]))
     check("it fits in a frame", cost["on"] < 8, "%.2f ms of a 16.7 ms frame" % cost["on"])
 
-    # Six lanes is the worst case the page allows, and the one where a
-    # per-sample filter could stop being affordable.
+    # The band split's four lanes are the most the page draws, and the case
+    # where a per-sample filter could stop being affordable. (A rack's six
+    # were, until P5 cut the rack.) The microphone is faked.
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(150)
-    p.locator("#rackInput").set_input_files(
-        [f"{STEMS}/{n}.wav" for n in ("drums", "bass", "other", "vocals")])
-    p.wait_for_timeout(2500)
+    p.evaluate("() => toMic()"); p.wait_for_timeout(1500)
+    p.evaluate("() => el.micBands.click()"); p.wait_for_timeout(1000)
     rack = p.evaluate("""() => {
       state.timebase = 8;
       const run = () => {
@@ -256,10 +255,10 @@ with sync_playwright() as pw:
     }""")
     print("    %d lanes at 50 ms/div: %.2f ms off, %.2f ms on, %.2f ms with half hidden"
           % (rack["lanes"], rack["off"], rack["all"], rack["some"]))
-    check("still fits a frame at full width", rack["all"] < 12,
-          "%.2f ms" % rack["all"])
+    check("still fits a frame at full width, on the band split's four lanes", rack["lanes"] == 4 and rack["all"] < 12,
+          "%d lanes, %.2f ms" % (rack["lanes"], rack["all"]))
     skipped = p.evaluate("""() => {
-      /* A fixed signal, because three captures of a playing file are three
+      /* A fixed signal, because three captures of a live input are three
          different moments and comparing them says nothing. A square is the
          clearest thing to see a low pass act on. */
       const source = state.source;
@@ -342,8 +341,13 @@ with sync_playwright() as pw:
       };
     }""")
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
-    p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
+    # The generator, built afresh so its chain is made under the hook above,
+    # and its sound asked for: the source that goes to the speakers since P5
+    # cut file playback, which is what this read until then.
+    p.evaluate("""async () => {
+      state.source.stop(); state.source = null; el.srcTone.click();
+      await applyGeneratorSound();
+    }""")
     p.wait_for_timeout(2200)
 
     wiring = p.evaluate("""() => ({
@@ -488,9 +492,12 @@ with sync_playwright() as pw:
     # The source's own chain, by name: since P4 the tone source that replaces
     # it is heard and has a chain of its own, so "no chains left" stopped
     # being the question. The null is the same chain read before the switch.
+    # The source is the generator since P5 cut file playback, so it is
+    # dropped and Tone pressed: Tone on a tone keeps it, and nothing would go.
     held = p.evaluate("""() => { window.__chain = Array.from(monitorChains)[0] || null;
                                  return !!window.__chain && monitorChains.has(window.__chain); }""")
-    p.evaluate("() => { state.filter.on = false; el.srcTone.click(); }")
+    p.evaluate("""async () => { state.filter.on = false; state.source.stop(); state.source = null;
+                                el.srcTone.click(); await applyGeneratorSound(); }""")
     p.wait_for_timeout(400)
     gone = p.evaluate("() => ({ kept: monitorChains.has(window.__chain), size: monitorChains.size, kind: state.source.kind })")
     check("the chain goes when the source does, and only the new source's own is left",

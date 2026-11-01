@@ -13,7 +13,7 @@ It is now two rules rather than one, and both are asserted here.
 On a stereo pair rotation is a transform on the SIGNAL. `capture` turns the
 lanes before the trigger reads them, so Y-T, the figure, the trigger and the
 speakers are one rotation rather than several that happen to agree. On
-anything that is not a pair - a rack of stems, a band split, the lag lane's
+anything that is not a pair - a band split, the lag lane's
 delayed copy of one signal - it stays a display knob and turns the figure at
 draw time, because there is no stereo image there to turn.
 
@@ -554,15 +554,16 @@ with sync_playwright() as pw:
     p.wait_for_timeout(300)
 
     print("\n--- and on anything that is not a stereo pair, it is a display knob ---")
-    # The rule, as a truth table taken from the page's own predicate. A rack
-    # is several real signals; the lag lane's second channel is the first one
-    # delayed. Neither is a stereo image, and the speakers are still being
+    # The rule, as a truth table taken from the page's own predicate. A band
+    # split is four filters of one signal; the lag lane's second channel is the
+    # first one delayed. (A rack of several real signals was the first case,
+    # until P5 cut it.) Neither is a stereo image, and the speakers are still being
     # handed left against right in both cases.
     rule = p.evaluate("""() => {
       const src = state.source, lagOn = state.lagOn;
       const out = { pair: rotatesSignal() };
-      state.source = { channels: 2, lanes: [{ name: 'a' }, { name: 'b' }] };
-      out.rack = rotatesSignal();
+      state.source = { channels: 4, lanes: ['Low', 'Low mid', 'High mid', 'High'].map((name) => ({ name })) };
+      out.bands = rotatesSignal();
       state.source = { channels: 1 };
       out.mono = rotatesSignal();
       state.source = src;
@@ -571,13 +572,13 @@ with sync_playwright() as pw:
       state.lagOn = lagOn; state.lagAuto = true;
       return out;
     }""")
-    check("a stereo pair turns; a rack, a mono input and the lag lane do not",
-          rule["pair"] and not rule["rack"] and not rule["mono"] and not rule["lag"],
+    check("a stereo pair turns; a band split, a mono input and the lag lane do not",
+          rule["pair"] and not rule["bands"] and not rule["mono"] and not rule["lag"],
           str(rule))
 
     # And it is a question asked every capture rather than an answer stored
     # when a source was chosen. A stereo input that drops to one channel
-    # mid-session, or a lane appearing in a rack, moves this predicate while
+    # mid-session, or splits into bands, moves this predicate while
     # the page keeps running - and a predicate that was right when it was set
     # and wrong four frames later is the shape of bug this project has already
     # shipped twice, once in who owns an LFO and once in a stale full scale.
@@ -614,7 +615,8 @@ with sync_playwright() as pw:
 
     # And the figure still turns there, at draw time, exactly as it always
     # did. Without this the widening could have quietly removed rotation from
-    # every rack in the page and no other check would have noticed.
+    # every band split and lag lane in the page and no other check would have
+    # noticed.
     rack = p.evaluate("""(shape) => {
       const was = { display: state.display, rotate: state.rotate,
                     lagOn: state.lagOn, auto: state.lagAuto, persist: state.persistence };
@@ -777,8 +779,8 @@ with sync_playwright() as pw:
           worst_against(dry, 0) == 0, "worst %.3g" % worst_against(dry, 0))
 
     # And the other half of the rule the picture obeys: where rotation is a
-    # display knob, the speakers must not turn either. Otherwise a rack would
-    # have its stems mixed into each other by a control that, on screen, only
+    # display knob, the speakers must not turn either. Otherwise the lag lane
+    # would have its delayed copy mixed into the signal by a control that, on screen, only
     # tilts a figure.
     lagged = p.evaluate(RENDER, [0.3, "post", "merger", True])
     check("and where the figure is only a figure, the speakers do not turn",

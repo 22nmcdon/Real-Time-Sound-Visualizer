@@ -15,8 +15,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
-import fixtures
-STEMS = fixtures.ensure()
 
 fails = []
 def check(name, ok, detail=""):
@@ -24,8 +22,10 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 with sync_playwright() as pw:
-    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
-    p = b.new_page(viewport={"width": 1400, "height": 900})
+    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required",
+                                                          "--use-fake-device-for-media-stream",
+                                                          "--use-fake-ui-for-media-stream"])
+    p = b.new_context(permissions=["microphone"], viewport={"width": 1400, "height": 900}).new_page()
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
@@ -339,11 +339,12 @@ with sync_playwright() as pw:
     check("2 Hz is 2 Hz on the tone source", abs(onTone - 2 * tTone) <= 1.5, "%d cycles in %.2f s" % (onTone, tTone))
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(150)
-    p.locator("#fileInput").set_input_files(f"{STEMS}/test-fifth.wav")
-    p.wait_for_timeout(1800)
-    onFile, tFile = cycles()
-    check("and 2 Hz on a file source, not 4", abs(onFile - 2 * tFile) <= 1.5, "%d cycles in %.2f s" % (onFile, tFile))
+    # The microphone, faked, as the source that is not the tone: it was a file
+    # until P5 cut file playback.
+    p.evaluate("() => toMic()"); p.wait_for_timeout(1800)
+    onMic, tMic = cycles()
+    check("and 2 Hz on the microphone, not 4", p.evaluate("() => playingKind()") == "mic"
+          and abs(onMic - 2 * tMic) <= 1.5, "%d cycles in %.2f s" % (onMic, tMic))
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(400)
 
     print("\n--- every modulatable control drives something ---")

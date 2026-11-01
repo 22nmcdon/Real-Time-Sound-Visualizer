@@ -93,7 +93,7 @@ function run(commands) {
   const place = () => {
     const w = window();
     s.state.source = gen ? { kind: "tone", sampleRate: rate, getLatestWindow: () => w }
-                         : { kind: "file", sampleRate: rate, lanes: w.map(() => ({})), getLatestWindow: () => w };
+                         : { kind: "mic", sampleRate: rate, getLatestWindow: () => w };
   };
   const lines = [];
   for (const words of commands) {

@@ -6,8 +6,6 @@ SHOTS = os.path.join(HERE, "shots")
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 os.makedirs(SHOTS, exist_ok=True)
 
-import fixtures
-STEMS = fixtures.ensure()
 ok = True
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -57,21 +55,10 @@ with sync_playwright() as pw:
     p.screenshot(path=f"{SHOTS}/10-tone-regression.png")
     p.evaluate("""() => { el.midSide.checked = false; el.midSide.dispatchEvent(new Event('change')); }""")
 
-    print("-- a single stereo file still behaves --")
-    p.evaluate("setMenuOpen(true)"); p.wait_for_timeout(150)
-    p.locator("#fileInput").set_input_files(f"{STEMS}/other.wav")
-    p.wait_for_timeout(1800)
-    check("file source", p.evaluate("playingKind()") == "file")
-    check("two lanes", p.evaluate("laneCount()") == 2)
-    check("named L/R", p.evaluate("[laneName(0), laneName(1)]") == ["Left","Right"])
-    check("choose-a-file row back", p.evaluate("!el.fileChooseRow.hidden"))
-    check("plays", p.evaluate("state.source.playing"))
-
-    print("-- and back to the tone --")
-    p.evaluate("toTone()"); p.wait_for_timeout(400)
-    check("tone again", p.evaluate("playingKind()") == "tone")
-    check("transport put away", p.evaluate("el.fileRows.hidden"))
-    check("rack rows put away", p.evaluate("el.rackRows.hidden"))
+    # A single stereo file, and the tone again with the transport and the
+    # rack's rows put away, were checked here until P5 cut both.
+    check("two lanes, named L/R, on the tone", p.evaluate("laneCount()") == 2
+          and p.evaluate("[laneName(0), laneName(1)]") == ["Left", "Right"])
 
     print()
     print("problems:", bad if bad else "none")

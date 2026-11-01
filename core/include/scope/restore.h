@@ -170,8 +170,8 @@ class Controls {
   }
   /* The X-Y pair's two menus hold an option a lane, as the page builds them
      again for whatever is drawn (buildLaneRows), where every other menu's
-     options are fixed: a pair on a rack's fourth lane is a value only a rack
-     of four or more has. Two lanes, the generator's pair, until told. */
+     options are fixed: a pair on a fourth lane is a value only four lanes -
+     two figures, or the band split - have. Two lanes, the generator's pair, until told. */
   void setLanes(int n) { lanes_ = std::max(1, n); }
   double range(const std::string& id) const { return ranges_.at(id); }
   const std::string& select(const std::string& id) const { return selects_.at(id); }

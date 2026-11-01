@@ -248,20 +248,8 @@ with sync_playwright() as pw:
 
     fit = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const wav = (name, hz) => {
-        const rate = 44100, n = rate / 4, bytes = 44 + n * 2;
-        const buf = new ArrayBuffer(bytes), v = new DataView(buf);
-        const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-        str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt ');
-        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-        v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
-        v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-        for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(12000 * Math.sin(2 * Math.PI * hz * i / rate)), true);
-        return new File([buf], name + '.wav', { type: 'audio/wav' });
-      };
-      el.rackSynth.checked = true; state.rackSynth = false; await setRackSynth(true);
-      await addRackFiles([1, 2, 3, 4, 5].map((i) => wav('f' + i, 200 + 60 * i)));
-      await wait(900);
+      // The generator on its own: a rack of six, the worst case until P5 cut
+      // the rack, was built here first.
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
       await wait(300);
       setView('bench'); setBenchTab('sources');
@@ -276,17 +264,17 @@ with sync_playwright() as pw:
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change')); await wait(150);
       const lane = [MOD_SOURCES.get('draw.turnX').value(), MOD_SOURCES.get('draw.facing').value()];
       setView('scope');
-      return { lanes: state.source.lanes.length, over, lane, play };
+      return { over, lane, play };
     }""")
     print("    %s" % fit)
-    check("with a rack of six and a solid, the Sources tab does not scroll, and the lane's solid is read",
-          fit["lanes"] == 6 and fit["over"] <= 0 and fit["lane"] != [0, 0], str(fit))
+    check("with a solid, the Sources tab does not scroll, and the solid is read",
+          fit["over"] <= 0 and fit["lane"] != [0, 0], str(fit))
 
     # Frequency and Phase where they move something: a waveform both, a
     # harmonograph swinging on its own its phase, a figure and a solid
     # neither. Their room is what the spin axes' lanes took: before, a rack
     # of six put a solid's Play tab 30 px over, and the harmonograph's 6.
-    check("Play shows Frequency and Phase only where they move something, and fits with a rack of six in every kind",
+    check("Play shows Frequency and Phase only where they move something, and fits in every kind",
           {m: v[1:] for m, v in fit["play"].items()} == {"wave": [True, True], "harmonograph": [False, True],
                                                          "figure": [False, False], "wireframe": [False, False]}
           and all(v[0] <= 0 for v in fit["play"].values()), str(fit["play"]))

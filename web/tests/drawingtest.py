@@ -236,18 +236,8 @@ with sync_playwright() as pw:
     check("and an onset hearing the generator it would strike is refused", fire["refused"] is False,
           str(fire["refused"]))
 
-    # Which lane of a rack counts as the generator, synchronously so no frame
-    # runs with the stand-in installed: the trigger lane's, not the rack's.
-    lanes = p.evaluate("""() => {
-      const was = state.source, trig = state.trigSource;
-      state.source = { kind: 'rack', lanes: [{ synth: false }, { synth: true }] };
-      state.trigSource = 0; const live = hearsGenerator();
-      state.trigSource = 1; const gen = hearsGenerator();
-      state.source = was; state.trigSource = trig;
-      return { live, gen };
-    }""")
-    check("in a rack, an onset hears the generator only when the trigger is on the generator's lane",
-          lanes == {"live": False, "gen": True}, str(lanes))
+    # Which lane of a rack counted as the generator was checked here until P5
+    # cut the rack: on the tone it is always the generator, as above.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

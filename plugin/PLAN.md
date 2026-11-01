@@ -2518,6 +2518,23 @@ redone natively or left out.
   bell" kept its other half: the level, read off the picture's newest
   frames on "Harmonograph", with the oldest frames as its null.
 
+- **The rack and file playback cut in P5.** Stage 5i (the rack), 5k
+  (alignment) and the rack-shaped parts of 5j above are history now. The
+  instrument has no rack (`rack_`, `synthLane_`, the `srcLanes` and
+  `laneDelay` controls, the alignment's delay lines and `kAlignMostSeconds`
+  went); the band split is the only thing with lanes, and `drawLanes(n)` is
+  what fits the view, the panel, the picture and the keyboard's `setLayable`
+  to it, four or none. `Instrument::Input` is a left and a right, the lanes'
+  pointers gone, and the compiled engine and both parity harnesses build it
+  so (`feedlanes` went). The processor's `synthLane()` went and `lanes()`
+  says four or nothing. The keyboard's every-note-on-both-sides role stays:
+  it was the generator as a rack's lane and is also the input drawn, whole
+  or in bands. The shell test's rack checks became the band split's: what
+  the generator hears is its own sound only while neither the input nor the
+  split is drawn, and a setup loaded over the split keeps four lanes, the
+  pair able to take the fourth. No setup stored the rack, so the codec
+  needed no pass.
+
 ## Building and testing
 
 ```

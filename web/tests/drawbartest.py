@@ -341,19 +341,18 @@ with sync_playwright() as pw:
     built = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.bars.value = '888000000'; el.bar0.dispatchEvent(new Event('input'));
-      el.rackSynth.checked = true; await setRackSynth(true); await wait(100);
-      const lane = { rack: !!genLane(), bars: genSettings().bars.slice() };
-      el.rackSynth.checked = false; await setRackSynth(false);
-      toTone(); await wait(100);
+      // The source dropped and Tone pressed, so toTone builds a new one from
+      // the panel rather than finding a tone and keeping it. Until P5 a rack's
+      // generator lane was built here first, and the plain toTone() after it
+      // was a real rebuild only because the rack had gone before it.
+      state.source.stop(); state.source = null; toTone(); await wait(100);
       const tone = { kind: state.source.kind, a: genSettings().bars.slice(), b: genSettings(1).bars.slice() };
       el.bars.value = '008740000'; el.bar0.dispatchEvent(new Event('input'));
       genSet('bars', [0, 0, 8, 7, 4, 0, 0, 0, 0], 1);
-      return { lane, tone };
+      return { tone };
     }""")
     print("    %s" % built)
-    check("a rack's generator lane is built with the sliders' registration, not the core's default",
-          built["lane"] == {"rack": True, "bars": J}, str(built["lane"]))
-    check("and so is a new test tone, both its layers",
+    check("a new test tone is built with the sliders' registration, not the core's default, both its layers",
           built["tone"] == {"kind": "tone", "a": J, "b": J}, str(built["tone"]))
 
     print("\n--- the panel ---")

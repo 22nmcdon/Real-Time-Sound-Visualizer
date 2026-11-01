@@ -1,9 +1,10 @@
-"""Every source button, from every state, including pickers that are cancelled.
+"""Every source button, from every state: Tone, and Mic refused.
 
 The bug this exists for: clicking Stems showed the rack rows before any rack
 existed, the picker was cancelled, and Tone returned on its first line because
 a tone was already loaded - so nothing put the panel back and the switch was a
-one-way door.
+one-way door. Stems and File, and their pickers, went in P5; Tone over a tone
+still has to put the panel back, and a refused microphone must not strand it.
 """
 from playwright.sync_api import sync_playwright
 import os, sys
@@ -13,8 +14,6 @@ SHOTS = os.path.join(HERE, "shots")
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 os.makedirs(SHOTS, exist_ok=True)
 
-import fixtures
-STEMS = fixtures.ensure()
 # Reported in the format the other suites use and failing the run, which this
 # did not do: it printed " FAIL " and exited 0 whatever happened, so neither
 # run.py nor a count of PASS lines saw anything, and from the day the
@@ -42,83 +41,26 @@ with sync_playwright() as pw:
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
 
     tone_visible = lambda: p.locator("#genMode").is_visible()
-    # The rack's own rows, by the box that puts the generator in it. It was the
-    # Stacked button, which moved to the Lanes section when the lanes got one
-    # - and that section is off until a rack is loaded, which is the point.
-    rack_visible = lambda: p.locator("#rackSynth").is_visible()
     mark = lambda: p.locator("#sourceMark").inner_text()
 
-    print("-- Stems, picker cancelled, then back to Tone --")
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(250)
-    check("rack rows shown", rack_visible())
-    check("head still says the tone is playing", mark() == "TEST TONE", mark())
-    p.locator("#srcTone").click(); p.wait_for_timeout(250)
-    check("tone editor is back", tone_visible())
-    check("rack rows put away", not rack_visible())
-
-    print("-- File, picker cancelled, then back to Tone --")
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(250)
-    check("file rows shown", p.locator("#fileChooseRow").is_visible())
-    check("head still says the tone is playing", mark() == "TEST TONE", mark())
-    p.locator("#srcTone").click(); p.wait_for_timeout(250)
-    check("tone editor is back", tone_visible())
-
-    print("-- Stems cancelled, then straight to File, then back --")
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(200)
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(250)
-    check("file rows shown, rack rows gone", p.locator("#fileChooseRow").is_visible() and not rack_visible())
-    p.locator("#srcTone").click(); p.wait_for_timeout(250)
-    check("tone editor is back", tone_visible())
-
-    print("-- a real rack, then back to Tone, then back to the rack --")
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(200)
-    p.locator("#rackInput").set_input_files([f"{STEMS}/{n}.wav" for n in ("drums","bass","other")])
-    p.wait_for_timeout(1800)
-    check("rack loaded", p.evaluate("playingKind()") == "rack")
-    check("head says Stems", mark() == "STEMS", mark())
-    check("three lanes", p.evaluate("laneCount()") == 3)
-    p.locator("#srcTone").click(); p.wait_for_timeout(400)
-    check("tone loaded", p.evaluate("playingKind()") == "tone")
-    check("tone editor is back", tone_visible())
-    check("head says Test tone", mark() == "TEST TONE", mark())
-    check("back to two lanes", p.evaluate("laneCount()") == 2)
-    check("legend back to two", p.evaluate("el.laneLegend.children.length") == 2)
-    # Lanes remembers what was in the rack, so coming back is not starting
-    # again - and a file added now goes in beside the three, not instead.
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(1800)
-    check("Lanes brings the rack back as it was", p.evaluate("laneCount()") == 3
-          and p.evaluate("playingKind()") == "rack")
-    p.locator("#rackInput").set_input_files([f"{STEMS}/vocals.wav"])
-    p.wait_for_timeout(1800)
-    check("and a file added goes in beside them: four lanes", p.evaluate("laneCount()") == 4,
-          str(p.evaluate("state.source.lanes.map((l) => l.name)")))
-
-    print("-- a real file over a rack, then Tone --")
-    p.locator("#srcFile").click(no_wait_after=True); p.wait_for_timeout(200)
-    p.locator("#fileInput").set_input_files(f"{STEMS}/other.wav")
-    p.wait_for_timeout(1800)
-    check("file loaded", p.evaluate("playingKind()") == "file")
-    check("two lanes, named L/R", p.evaluate("[laneName(0), laneName(1)]") == ["Left","Right"])
-    check("rack rows put away", not rack_visible())
-    p.locator("#srcTone").click(); p.wait_for_timeout(400)
-    check("tone editor is back", tone_visible())
+    # Tone over a tone: it keeps the tone, but puts the panel back, which is
+    # what the one-way door above lacked.
+    p.locator("#srcTone").click(); p.wait_for_timeout(300)
+    check("Tone over a tone keeps the tone and shows its editor",
+          p.evaluate("playingKind()") == "tone" and tone_visible() and mark() == "TEST TONE", mark())
 
     print("-- Mic, denied, must not strand the panel --")
-    # Lanes brings the rack back now, so the mic is refused over a rack: the
-    # panel goes back to the rack's rows, and the credit does not promise a
-    # test tone that is not playing - which it did, whatever was loaded.
-    p.locator("#srcRack").click(no_wait_after=True); p.wait_for_timeout(1800)
+    # No microphone in this container, so the press is refused: the panel
+    # goes back to the tone's rows and the credit says the tone still works.
+    # (Until P5 it was also refused over a rack, where the credit must not
+    # promise a test tone that is not playing; the rack went in P5.)
     p.locator("#srcMic").click(); p.wait_for_timeout(900)
-    check("no mic in this container, so the rack's rows came back",
-          p.evaluate("playingKind()") == "rack" and rack_visible() and not tone_visible())
+    check("the tone rows came back, and the tone is what plays",
+          tone_visible() and p.evaluate("playingKind()") == "tone")
     credit = p.locator("#credit").inner_text().lower()
-    check("credit explains, without promising the test tone", "microphone" in credit
-          and "test tone" not in credit, credit)
-    p.locator("#srcTone").click(); p.wait_for_timeout(400)
-    p.locator("#srcMic").click(); p.wait_for_timeout(900)
-    check("and over the tone, the tone rows came back", tone_visible())
-    check("saying the tone still works", "test tone" in p.locator("#credit").inner_text().lower(),
-          p.locator("#credit").inner_text())
+    check("the credit explains, and says the tone still works", "microphone" in credit and "test tone" in credit,
+          credit)
+    check("and the head says the tone again", mark() == "TEST TONE", mark())
 
     print("-- the tone still works after all of that --")
     check("triggers", p.evaluate("capture().triggered"))

@@ -9,9 +9,8 @@ note numbers rather than read back from the page.
 The failures this is written against: a key that stays lit after a panic, a
 latch that forgets it was holding something, a finger lifted after an octave
 shift releasing the wrong note, two ways of holding one key where lifting one
-ends it, letters that fire the shortcut as well as the note, and a note played
-into a rack that reaches nothing because the code asked what the source was
-rather than where the generator is.
+ends it, and letters that fire the shortcut as well as the note. (And a note
+played into a rack that reached nothing, until P5 cut the rack.)
 """
 # On ?brain=js (5m): this suite reads the page's own brain - its gate, read
 # directly - which core/tests/parity.py holds the instrument to, sample for
@@ -297,44 +296,10 @@ with sync_playwright() as pw:
     p.evaluate("() => setMode('auto')")
     check("with the keys closed, S is Single again", shortcut == "single", shortcut)
 
-    print("\n--- a generator lane follows the keys ---")
-    # A rack of the generator alone: the case where `state.source` is a rack
-    # and the generator is one of its lanes, which is what the note path
-    # stopped being able to reach.
-    p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
-    p.wait_for_timeout(800)
-    p.evaluate("() => el.keysOpen.click()"); p.wait_for_timeout(150)
-    lane_before = p.evaluate("() => genLane() ? genLane().core.tone.freq : null")
-    press(52)
-    lane_down = p.evaluate("() => genLane().core.tone.freq")
-    lift()
-    lane_up = p.evaluate("() => ({ freq: genLane().core.tone.freq, "
-                         "kind: state.source.kind, notes: midi.notes.length })")
-    print("    lane at %s Hz, E3 down %.3f Hz, released %s" % (lane_before, lane_down, lane_up))
-    check("the source is a rack, so this is the lane and not the tone source",
-          lane_up["kind"] == "rack" and lane_before is not None, str(lane_up))
-    check("a note reaches the generator lane",
-          abs(lane_down - HZ(52)) < 1e-6 and abs(lane_before - HZ(52)) > 1,
-          "%.3f Hz against %.3f" % (lane_down, HZ(52)))
-    check("and the lane is a drone: releasing the key leaves the pitch where it was",
-          lane_up["notes"] == 0 and abs(lane_up["freq"] - HZ(52)) < 1e-6, str(lane_up))
-
-    display_before = p.evaluate("() => state.display")
-    p.evaluate("() => { el.genMode.value = 'harmonograph'; "
-               "el.genMode.dispatchEvent(new Event('change')); }")
-    p.wait_for_timeout(100)
-    kind = p.evaluate("() => ({ mode: genLane().core.tone.mode, display: state.display })")
-    p.evaluate("() => { el.midiDrive.checked = false; "
-               "el.midiDrive.dispatchEvent(new Event('change')); }")
-    drive = p.evaluate("() => ({ harmonograph: midi.drive.harmonograph, wave: midi.drive.wave })")
-    p.evaluate("() => { el.midiDrive.checked = true; "
-               "el.midiDrive.dispatchEvent(new Event('change')); }")
-    print("    Kind set to harmonograph: %s; Drive unticked: %s" % (kind, drive))
-    check("the Kind menu reaches the lane", kind["mode"] == "harmonograph", str(kind))
-    check("without switching the whole screen to X-Y, which is for the source",
-          kind["display"] == display_before, "%s -> %s" % (display_before, kind["display"]))
-    check("and the Drive box records its answer for the lane's kind",
-          drive == {"harmonograph": False, "wave": True}, str(drive))
+    # A generator lane following the keys - a note played into a rack reaching
+    # the generator as one of its lanes, the Kind menu reaching the lane, and
+    # Drive recording its answer for the lane's kind - was checked here until
+    # P5 cut the rack.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

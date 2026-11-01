@@ -178,7 +178,7 @@ struct CaptureSource {
   double rate = 48000;
   double capacity = HUGE_VAL;  // Infinity, when it has no limit
   int channels = 2;
-  bool lanes = false;           // a rack, or a band split: lanes of its own
+  bool lanes = false;           // the band split: lanes of its own
   // getLatestWindow: the most recent n samples of each channel.
   std::function<std::vector<Lane>(std::size_t)> latest;
 };

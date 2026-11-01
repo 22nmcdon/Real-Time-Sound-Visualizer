@@ -12,8 +12,6 @@
 //                                    left and a triangle of periodR on the right, at half
 //                                    scale, by arithmetic alone so both sides make it to the
 //                                    bit; one period is a mono input, none is no input
-//   ["feedlanes", p0, p1, ...]       a rack's lanes from now on, up to six: lane k a saw of
-//                                    pk samples, at half scale
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
 //   ["grid"]                         the instrument's own grid, by two sums (native only)
 //
@@ -60,7 +58,6 @@ int main(int argc, char** argv) {
   std::vector<std::size_t> lengths;
   std::vector<std::vector<int>> sent;
   double feedL = 0, feedR = 0;
-  std::vector<double> feedLanes;
   long long fed = 0;
   std::vector<float> inL, inR;
   instrument.hooks.midiOut = [&](const std::uint8_t* bytes, int length, int) { sent.emplace_back(bytes, bytes + length); };
@@ -94,11 +91,6 @@ int main(int argc, char** argv) {
     } else if (cmd == "feed") {
       feedL = a.size() > 1 ? a[1].n : 0;
       feedR = a.size() > 2 ? a[2].n : 0;
-      feedLanes.clear();
-    } else if (cmd == "feedlanes") {
-      feedLanes.clear();
-      for (std::size_t i = 1; i < a.size() && feedLanes.size() < 6; ++i) feedLanes.push_back(a[i].n);
-      feedL = feedR = 0;
     } else if (cmd == "grid") {
       // The grid the instrument draws for itself, by two sums: weighted by
       // place, so where a figure lies shows, and squared. Native only - the
@@ -119,29 +111,14 @@ int main(int argc, char** argv) {
           inR[k] = static_cast<float>(0.5 * (u < 0.5 ? 4 * u - 1 : 3 - 4 * u));
         }
       }
-      std::vector<std::vector<float>> rack(feedLanes.size(), std::vector<float>(n));
-      std::vector<const float*> rackLanes;
-      for (std::size_t c = 0; c < feedLanes.size(); ++c) {
-        for (std::size_t k = 0; k < n; ++k) {
-          const double t = std::fmod(static_cast<double>(fed + static_cast<long long>(k)), feedLanes[c]) / feedLanes[c];
-          rack[c][k] = static_cast<float>(0.5 * (2 * t - 1));
-        }
-        rackLanes.push_back(rack[c].data());
-      }
-      if (!feedLanes.empty()) fed += static_cast<long long>(n);
-      // A pair is lanes too, as the bridge hands over whatever channels it is given: one, or two.
-      const float* pairLanes[2] = { inL.data(), inR.data() };
-      const scope::Instrument::Input input = feedLanes.empty()
-        ? scope::Instrument::Input { inL.data(), feedR > 0 ? inR.data() : nullptr, pairLanes, feedR > 0 ? 2 : 1 }
-        : scope::Instrument::Input { rackLanes[0], rackLanes.size() > 1 ? rackLanes[1] : nullptr, rackLanes.data(),
-                                     static_cast<int>(rackLanes.size()) };
+      const scope::Instrument::Input input { inL.data(), feedR > 0 ? inR.data() : nullptr };
       std::vector<float> lanes(8 * n);  // the heard pair, then the picture's six lanes
       std::vector<scope::Instrument::Event> events;
       std::size_t at = 0;
       for (const std::size_t length : lengths) { events.push_back({ 0, midi.data() + at, length }); at += length; }
       sent.clear();
       instrument.block(lanes.data(), lanes.data() + n, static_cast<int>(n), events.data(), events.size(), nullptr, nullptr, 0,
-                       feedL > 0 || !feedLanes.empty() ? &input : nullptr);
+                       feedL > 0 ? &input : nullptr);
       for (int c = 0; c < scope::Instrument::kRingLanes; ++c)
         instrument.latestLane(c, lanes.data() + (2 + static_cast<std::size_t>(c)) * n, n);
       midi.clear(); lengths.clear();

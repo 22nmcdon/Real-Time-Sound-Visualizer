@@ -171,15 +171,12 @@ with sync_playwright() as pw:
 
     rack = p.evaluate("""async () => {
       el.inputFrom.value = 'gen2'; el.inputFrom.dispatchEvent(new Event('change'));
-      const rate = 44100, n = rate / 4, bytes = 44 + n * 2, buf = new ArrayBuffer(bytes), v = new DataView(buf);
-      const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-      str(0, 'RIFF'); v.setUint32(4, bytes - 8, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
-      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
-      v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-      await toFile(new File([buf], 'x.wav', { type: 'audio/wav' }));
-      await __wait(200);
-      const out = { rows: !el.gen2Rows.hidden, where: el.inputWhere.textContent };
-      el.srcTone.click(); await __wait(300);
+      // The source dropped and Tone pressed, so toTone builds a new generator
+      // from the panel. Until P5 this went away to a file and back, which
+      // also showed the rows put away off the tone; the microphone is refused
+      // on this page, so that leg went with the file.
+      const out = {};
+      state.source.stop(); state.source = null; el.srcTone.click(); await __wait(300);
       out.backRows = !el.gen2Rows.hidden;
       // The tone just built is a new generator, made from the panel: it has to
       // be told where its input comes from.
@@ -199,8 +196,7 @@ with sync_playwright() as pw:
     check("and heard, with the input from the second generator, no device is asked for",
           rack["heard"]["asked"] == 0 and rack["heard"]["where"].startswith("The second generator, into the first"),
           str(rack["heard"]))
-    check("off the test tone its rows are gone and the note says where it works; back on the tone they return",
-          rack["rows"] is False and rack["where"].startswith("On the test tone only") and rack["backRows"] is True, str(rack))
+    check("on the new tone its rows are on show", rack["backRows"] is True, str(rack))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

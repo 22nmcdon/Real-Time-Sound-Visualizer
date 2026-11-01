@@ -490,18 +490,27 @@ with sync_playwright() as pw:
     check("and coming back to poly splits the held notes again",
           gone["back"]["on"] and gone["back"]["a"] == [48] and gone["back"]["b"] == [72], str(gone["back"]))
 
-    rack = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      el.rackSynth.checked = true; await setRackSynth(true);
-      await wait(600);
-      const out = { lane: !!genLane(), on: layersOn(), mode: midi.layers.mode,
-                    note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
-      return out;
+    # While the input is drawn the generator cannot lay out two figures. Asked
+    # under a stand-in source that says so, synchronously so no frame runs
+    # with it installed; the null is the same split on the generator's own,
+    # which applies it. Until P5 this built a rack's generator lane.
+    kept = p.evaluate("""() => {
+      const saved = state.source;
+      syncMidi();
+      const own = { on: layersOn(), note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
+      state.source = Object.create(saved, { layoutable: { value: false }, drawsInput: { value: true } });
+      let drawn;
+      try {
+        syncMidi();
+        drawn = { on: layersOn(), mode: midi.layers.mode,
+                  note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
+      } finally { state.source = saved; syncMidi(); }
+      return { own, drawn };
     }""")
-    print("    %s" % rack)
-    check("in a rack a split is kept, not applied, and the panel says why",
-          rack["lane"] and not rack["on"] and rack["mode"] == "split" and "one layer" in rack["note"],
-          str(rack))
+    print("    %s" % kept)
+    check("with the input drawn a split is kept, not applied, and the panel says why",
+          not kept["drawn"]["on"] and kept["drawn"]["mode"] == "split" and "one layer" in kept["drawn"]["note"]
+          and kept["own"]["on"] and kept["own"]["note"] == "", str(kept))
 
     if bad: print("    first error inside the page: %s" % p.evaluate("() => window.__errs[0]"))
     check("no page errors", not bad, "; ".join(bad[:3]))

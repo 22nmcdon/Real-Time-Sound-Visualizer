@@ -353,10 +353,11 @@ experiment.
   or goes.
 - **The stem rack.** Up to six lanes from files, the rack's generator and live lanes,
   alignment for playing along. In a music program the host plays files and each track is
-  its own instance.
+  its own instance. *Cut in P5, with file playback.*
 - **Recording a clip.** The host records. Kept only if the demo needs a way to share.
   *Cut in P5, by the owner's decision.*
-- **File playback** shrinks to one demo file on the site, or goes.
+- **File playback** shrinks to one demo file on the site, or goes. *Cut in P5, with no
+  demo file: the owner's call - a player of the synth has a keyboard.*
 - **`edge`**, the reading that is computed and never offered (in P5, as cleanup).
 
 ### By the loop sentence
@@ -378,7 +379,7 @@ experiment.
 | Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across |
 | Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
-| Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need |
+| Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
 | Spectrogram, measurements | THD, harmonics, readouts | **Drawer.** They also verify Scan's band-limiting |
 | Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below) |
 | Root README | Still says "two implementations", "MIDI when that lands", band-limiting "not built" | **Rewritten** around the loop sentence |
@@ -593,6 +594,24 @@ the synth's features should be chosen knowing that.
     read. The instrument's always-there monitor chain keeps its `silent` hook: the
     readout's note on what the speakers get still asks it. Nothing about a clip was ever
     in a setup, so there is no decode pass.
+  - *The rack and file playback, cut:* the File source with its picker, transport and
+    drag-and-drop; Lanes, Stems and Play along; the rack with its generator lane, live
+    lane, mixer, lane budget and the alignment that held a backing track back to meet
+    your playing - in the page, the core (`srcLanes`, `laneDelay`, the instrument's rack
+    and its delay lines), the compiled engine and the plugin. Owner's decisions: no demo
+    file ("if somebody plugs into the synth, they can just use their keyboard"), and the
+    rack goes with the files. What stays whole is every input: mic and line, the host's
+    input, the input into the generator (FM, ride, clock, the second generator), and the
+    band split, deferred - which is now the only source with lanes, so the lane panel
+    (show, solo, mute, layout) is on Picture for it rather than for the rack.
+    `racktest.py`, `alongtest.py` and `voicetest.py` went; the suites that borrowed a file
+    or a rack as a fixture use the microphone, faked, a stand-in source or the generator
+    built afresh. No setup stored the rack or a file - its membership, alignment and files
+    were state only - so there is no decode pass. One question is left open: *Drawn by
+    your playing* drew the generator while its hearing heard your input only in a rack
+    with the trigger on your lane, and there is now no way to do that; on the tone those
+    presets hear the generator, a loop held to reach, and a hit is refused. Whether they
+    go, or the hearing learns to hear the open input, is the owner's.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth. And first, from the
   owner in P5: **each layer's picture, and whose sound it moves.** Split into two sounds,
