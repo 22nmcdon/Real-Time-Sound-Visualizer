@@ -109,7 +109,7 @@ PRESET_RUN = """async () => {
         for (const buf of bufs) for (let i = 0; i < N; i++) out.push(buf[i]);
         for (let i = 0; i < N; i++) out.peak = Math.max(out.peak, Math.abs(bufs[0][i]), Math.abs(bufs[1][i]));
         const d = c.drawing, g = c.budget;
-        out.push(c.envelope, c.crossings.x, c.crossings.y, g.units, g.asked[0], g.asked[1], g.unison[0], g.unison[1],
+        out.push(c.envelope, g.units, g.asked[0], g.asked[1], g.unison[0], g.unison[1],
                  g.askedFactor, g.factor, g.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing);
         for (const l of ls) out.push(l.phase, l.held, l.value);
       }

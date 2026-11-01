@@ -58,11 +58,9 @@ const performance = { now: () => 0 };
 const laneName = (i) => "lane " + i;
 const drawCursors = () => {};
 const drawSpectrogram = () => { throw new Error("the spectrogram is not walked"); };
-const cross = { on: false };
 // Layer B turning itself, as the run says (the page's asks the layers and B's plane).
 let ownTurn = false;
 const layerTurnsItself = () => ownTurn;
-const crossSeen = {};
 `;
 const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS", "MAX_SEARCH_SECONDS", "LAG_MAX_MS",
   "LAG_MIN_SPAN_SECONDS", "lagLock", "Q_IN_DECIBELS", "CUTOFF_STEPS", "cutoffHz", "TIMEBASE", "FULL_SCALE_DB", "TWO_PI",

@@ -26,13 +26,10 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   scope::linkClock(brain, lfos);
   scope::Clock& clock = brain.clock;
   scope::ScoreState& score = brain.score;
-  scope::NotesOut& notes = brain.notesOut;
   std::vector<float> grid(64 * 64, 0.0f);
-  bool running = true, crossOn = false;
+  bool running = true;
   double keyRoot = 0;
   std::string keyScale = "chromatic";
-  int noteX = 60, noteY = 67, pluckNote = 60;
-  std::array<int, 2> counts { 0, 0 };
   const scope::Strike strike = [&log](double hz, double v) { log.push_back("strike " + show(hz) + " " + show(v)); };
   double now = 0;
   for (const auto& words : commands) {
@@ -45,11 +42,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "stop") clock.stop(now);
     else if (cmd == "tick") clock.tick(now);
     else if (cmd == "midistart") clock.start(now, true);
-    else if (cmd == "frame") {
-      scope::crossStep(notes, now, crossOn, counts, noteX, noteY, &out);
-      scope::scoreTick(score, now, running, clock, grid.data(), scope::keyMask(keyRoot, keyScale), strike, &out);
-      scope::endDue(notes.pluckOffs, now, &out);
-    } else if (cmd == "running") running = arg(1) == "1";
+    else if (cmd == "frame") scope::scoreTick(score, now, running, clock, grid.data(), scope::keyMask(keyRoot, keyScale), strike, &out);
+    else if (cmd == "running") running = arg(1) == "1";
     else if (cmd == "key") { keyRoot = num(arg(1)); keyScale = arg(2); }
     else if (cmd == "score") {
       const auto orElse = [](double v, double d) { return v == 0 || std::isnan(v) ? d : v; };
@@ -66,24 +60,18 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     } else if (cmd == "cell") grid[static_cast<std::size_t>(num(arg(1)) * 64 + num(arg(2)))] = static_cast<float>(num(arg(3)));
     else if (cmd == "port") out.choose(arg(1) == "1", static_cast<int>(num(arg(2))));
     else if (cmd == "panic") out.panic();
-    else if (cmd == "pluck") scope::pluckFire(notes, pluckNote, num(arg(1)), now, strike, &out);
-    else if (cmd == "pluckNote") pluckNote = static_cast<int>(num(arg(1)));
-    else if (cmd == "cross") { crossOn = arg(1) == "1"; noteX = static_cast<int>(num(arg(2))); noteY = static_cast<int>(num(arg(3))); }
-    else if (cmd == "counts") counts = { static_cast<int>(num(arg(1))), static_cast<int>(num(arg(2))) };
+    else if (cmd == "note") out.noteOut(static_cast<int>(num(arg(1))), num(arg(2)), now);
+    else if (cmd == "off") out.noteOutOff(static_cast<int>(num(arg(1))));
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 
     std::string line = cmd;
     for (const auto& l : log) line += " :: " + l;
-    std::string ns, sounding, coffs, poffs;
+    std::string ns, sounding;
     for (const auto& [n, v] : score.notes) ns += (ns.empty() ? "" : "+") + std::to_string(n) + "/" + show(v);
     for (const auto& [n, t] : out.sounding()) sounding += (sounding.empty() ? "" : "+") + std::to_string(n);
-    for (const auto& [n, t] : notes.crossOffs) coffs += (coffs.empty() ? "" : "+") + std::to_string(n) + "/" + show(t);
-    for (const auto& [n, t] : notes.pluckOffs) poffs += (poffs.empty() ? "" : "+") + std::to_string(n) + "/" + show(t);
     line += " | col " + std::to_string(score.col) + " last " + show(score.last) + " steps " + show(score.steps)
           + " notes " + (ns.empty() ? "-" : ns) + " sounding " + (sounding.empty() ? "-" : sounding)
           + " recent " + std::to_string(out.recent()) + " dropped " + std::to_string(out.dropped())
-          + " seen " + std::to_string(notes.seenX) + " " + std::to_string(notes.seenY)
-          + " crossoffs " + (coffs.empty() ? "-" : coffs) + " pluckoffs " + (poffs.empty() ? "-" : poffs)
           + " beat " + show(clock.beat(now));
     std::printf("%s\n", line.c_str());
   }

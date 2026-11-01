@@ -1,21 +1,14 @@
-/* The page's level and threshold - the envelope follower over the screen's
-   signal lane that is the source `env.live`, and K1's threshold, a value
-   source made into an event by rising through a level - lifted out of
-   web/scope.html by name and driven through the runs in a file, one result
-   line per command, as signal_cpp prints them.
+/* The page's level - the envelope follower over the screen's signal lane
+   that is the source `env.live` - lifted out of web/scope.html by name and
+   driven through the runs in a file, one result line per command, as
+   signal_cpp prints them. K1's threshold, which watched it, was here too and
+   went in P5.
 
-   The lane is the run's (`sine`, `noise`); the threshold watches one of the
-   run's stand-in sources - `test.v`, a value the run sets, `test.e`, an event
-   source, `test.p`, the same value marked as the picture's - or the level, or
-   anything not registered. The clock is the run's: `performance.now()` reads
-   what `at` last said.
+   The lane is the run's (`sine`, `noise`). The clock is the run's:
+   `performance.now()` reads what `at` last said.
 
    A file is runs of `run`, then one command a line, then `end`:
      at MS   sine AMP CYCLES LENGTH   noise SEED AMP LENGTH   frame ELAPSED
-     v VALUE   watch ID   level FRACTION   thresh   drop   add   restore WATCH LEVEL
-   `drop` and `add` take `test.v` away and bring it back, as forgetting a
-   controller and moving it again do; `restore` is the threshold's part of
-   the page's `restore`, given those two fields.
    Usage: node signal_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -42,11 +35,6 @@ function registration(first) {
   if (start < 0) throw new Error("no registration " + first);
   return page.slice(start + 1, page.indexOf("\n});\n", start) + 5);
 }
-// A statement the page runs in a handler, taken as it stands.
-function statement(text) {
-  if (page.indexOf(text) < 0) throw new Error("no statement " + text.slice(0, 60));
-  return text + "\n";
-}
 
 const STUBS = `
 let clock = 0;
@@ -55,24 +43,11 @@ const MOD_SOURCES = new Map();
 function registerSource(entry) { MOD_SOURCES.set(entry.id, entry); return entry; }
 const state = { trigSource: 0 };
 let testValue = 0;
-registerSource({ id: "test.v", value: () => testValue });
-registerSource({ id: "test.e", event: true, value: () => testValue, count: 0 });
-registerSource({ id: "test.p", fromPicture: true, value: () => testValue });
-const touchRoutings = () => {};
 `;
 
-const source = STUBS + ["ENV_ATTACK", "ENV_FULL", "envLive", "updateEnvelope", "THRESH_HYST", "thresh", "thresholdStep"]
-  .map(definition).join("\n")
-  + registration('  id: "env.live"') + registration('  id: "threshold"') + `
-function watch(e) {
-` + statement("      thresh.watch = e.target.value; thresh.armed = false; touchRoutings();") + `}
-function restoreThreshold(s) {
-` + statement("  const within = (v, lo, hi, dflt) => (Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Number(v))) : dflt);")
-  + statement(`  thresh.watch = typeof s.threshWatch === "string" && s.threshWatch ? s.threshWatch : "env.live";
-  thresh.level = within(s.threshLevel, 5, 95, 50) / 100; thresh.armed = false;`) + `}
-const testV = MOD_SOURCES.get("test.v");
-return { MOD_SOURCES, thresh, updateEnvelope, thresholdStep, watch, restoreThreshold, testV, envLive: () => envLive,
-         setClock: (ms) => { clock = ms; }, setValue: (v) => { testValue = v; } };`;
+const source = STUBS + ["ENV_ATTACK", "ENV_FULL", "envLive", "updateEnvelope"].map(definition).join("\n")
+  + registration('  id: "env.live"') + `
+return { MOD_SOURCES, updateEnvelope, envLive: () => envLive, setClock: (ms) => { clock = ms; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
 
@@ -92,18 +67,9 @@ function run(commands) {
       lane = new Float32Array(n);
       for (let i = 0; i < n; i++) lane[i] = (next() * 2 - 1) * amp;
     } else if (cmd === "frame") s.updateEnvelope({ signal: [lane] }, Number(a[0]));
-    else if (cmd === "v") s.setValue(Number(a[0]));
-    else if (cmd === "watch") s.watch({ target: { value: a[0] } });
-    else if (cmd === "level") s.thresh.level = Number(a[0]);
-    else if (cmd === "thresh") s.thresholdStep(now);
-    else if (cmd === "drop") s.MOD_SOURCES.delete("test.v");
-    else if (cmd === "add") s.MOD_SOURCES.set("test.v", s.testV);
-    else if (cmd === "restore") s.restoreThreshold({ threshWatch: a[0], threshLevel: Number(a[1]) });
     else throw new Error("unknown command " + cmd);
-    const live = s.MOD_SOURCES.get("env.live"), th = s.MOD_SOURCES.get("threshold");
-    lines.push([cmd, "| env", show(s.envLive()), "level", show(live.value()), "count", th.count, "armed", s.thresh.armed ? 1 : 0,
-                "last", show(s.thresh.last), "flash", show(s.thresh.flash), "value", show(th.value()),
-                "loop", th.fromPicture ? 1 : 0].join(" "));
+    const live = s.MOD_SOURCES.get("env.live");
+    lines.push([cmd, "| env", show(s.envLive()), "level", show(live.value())].join(" "));
   }
   return lines.join("\n");
 }

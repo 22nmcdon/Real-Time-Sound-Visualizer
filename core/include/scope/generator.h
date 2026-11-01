@@ -1,7 +1,7 @@
 // The generator, ported from `makeGeneratorCore` in web/scope.html: the
 // per-sample loop that makes every mode's pair - the dyad, the chord on two
 // layers, the figure, the solid, the pendulums - through the routings, the
-// governor, the plane, the crossings and the score's voices, and the calls the
+// governor, the plane and the score's voices, and the calls the
 // worklet makes of it. It is held to the page's own `makeGeneratorCore` whole,
 // driven through the same calls, by core/tests/parity.py.
 //
@@ -24,8 +24,8 @@
 //   page's `|| 0` gives for most of them; the page reads `undefined` from the
 //   seven it does not guard, and no caller makes a core that small.
 // - The outputs are float, as an AudioWorklet's are, and the loop reads its
-//   own picture back from them as the page does - the crossings and the heard
-//   pair see the picture as rounded, not as computed.
+//   own picture back from them as the page does - the heard pair sees the
+//   picture as rounded, not as computed.
 
 #pragma once
 
@@ -111,8 +111,6 @@ struct Tone : LayerSettings, PlaneTone {
   double shapeOS = 2, glideMs = 0;
   int qMask = 0;
   double qGlideMs = 0;
-  bool crossOn = false;
-  double crossX = 0, crossY = 0, crossHzX = 261.63, crossHzY = 392, crossDecayMs = 180, crossLevel = 0.4;
   double scoreDecayMs = 400, scoreLevel = 0.4;
 };
 
@@ -141,8 +139,7 @@ class Generator {
         genMod_(static_cast<std::size_t>(std::max(slots, slot::Used)), 0.0f), genModB_(genMod_),
         reletSamples_(std::max(1, static_cast<int>(jsRound(10 * rate / 1000)))),
         env_(rate, a_.env), fenv_(rate, a_.fenv), plane_(rate), ctx_(rate),
-        crossHold_(std::max(1, static_cast<int>(jsRound(0.04 * rate)))),
-        crossAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
+        scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
         noiseL_(random_), noiseR_(random_) {
     ctx_.random = &random_;
@@ -192,13 +189,6 @@ class Generator {
     else if (field == "glideMs") a.glideMs = value;
     else if (field == "qMask") a.qMask = static_cast<int>(value);
     else if (field == "qGlideMs") a.qGlideMs = value;
-    else if (field == "crossOn") a.crossOn = value != 0;
-    else if (field == "crossX") a.crossX = value;
-    else if (field == "crossY") a.crossY = value;
-    else if (field == "crossHzX") a.crossHzX = value;
-    else if (field == "crossHzY") a.crossHzY = value;
-    else if (field == "crossDecayMs") a.crossDecayMs = value;
-    else if (field == "crossLevel") a.crossLevel = value;
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "planeOS") a.planeOS = value;
@@ -296,7 +286,6 @@ class Generator {
   }
   bool gated() const { return gated_; }
   double pitch() const { return lastHz_; }
-  std::array<int, 2> crossings() const { return { cross_[0].count, cross_[1].count }; }
   const std::vector<Voice>& voices() const { return voices_; }
   const std::vector<Voice>& voicesB() const { return voicesB_; }
   const Budget& budget() const { return budget_; }
@@ -369,7 +358,6 @@ class Generator {
     voiceFxFor(b_, vxB_, fmRouted, syncRouted, shapeRouted);
     ctx_.qMask = a_.qMask;
     ctx_.qGlide = a_.qGlideMs > 0 ? poleFor(a_.qGlideMs, rate_) : 1;
-    crossFade_ = std::exp(-1 / std::fmax(1.0, a_.crossDecayMs * rate_ / 1000));
     scoreFade_ = std::exp(-1 / std::fmax(1.0, a_.scoreDecayMs * rate_ / 1000));
 
     const double octave = std::pow(2.0, a_.octaves);
@@ -549,14 +537,7 @@ class Generator {
       }
       if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
 
-      // The crossings' notes on their own axes, drawn and heard, after the
-      // plane; the score's heard and not drawn. The page's block says why.
-      if (a_.crossOn) {
-        crossStep(cross_[0], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outL[i]))), a_.crossX);
-        crossStep(cross_[1], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outR[i]))), a_.crossY);
-        outL[i] = static_cast<float>(outL[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[0], a_.crossHzX));
-        outR[i] = static_cast<float>(outR[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[1], a_.crossHzY));
-      }
+      // The score's voice, heard and not drawn; the page's block says why.
       double scored = 0;
       if (scoreStruck_ > 0) {
         double sum = 0;
@@ -591,7 +572,6 @@ class Generator {
   static constexpr double kSwingDriveRate = 3;
   static constexpr double kClockHyst = 0.01;
   static constexpr int kRoseTurns = 10080;
-  static constexpr double kCrossHysteresis = 0.05;
 
   // JavaScript's `| 0`: towards nought, and a value past 32 bits wrapped.
   static int toInt32(double v) {
@@ -808,37 +788,13 @@ class Generator {
     budget_.askedFactor = askedF; budget_.factor = factor; budget_.silenced = silenced;
   }
 
-  // --- the crossings and the score's voices ------------------------------------
+  // --- the score's voices -----------------------------------------------------
 
-  struct CrossLine { bool armed = false; int wait = 0, count = 0; double env = 0; bool attacking = false; double phase = 0; };
   struct ScoreVoice { double hz = 0, vel = 0, env = 0, phase = 0; bool attacking = false; long age = 0; };
-
-  void crossStep(CrossLine& line, double beam, double at) const {
-    if (line.wait > 0) line.wait--;
-    if (beam < at - kCrossHysteresis) line.armed = true;
-    else if (line.armed && beam >= at && line.wait == 0) {
-      line.armed = false;
-      line.wait = crossHold_;
-      line.count++;
-      line.attacking = true;
-    }
-  }
-
-  double crossVoice(CrossLine& line, double hz) const {
-    if (line.attacking) {
-      line.env += crossAttack_;
-      if (line.env >= 1) { line.env = 1; line.attacking = false; }
-    } else {
-      line.env *= crossFade_;
-    }
-    line.phase += kTwoPi * hz / rate_;
-    if (line.phase >= kTwoPi) line.phase -= kTwoPi;
-    return line.env * std::sin(line.phase);
-  }
 
   double scoreVoice(ScoreVoice& v) const {
     if (v.attacking) {
-      v.env += crossAttack_;
+      v.env += scoreAttack_;
       if (v.env >= 1) { v.env = 1; v.attacking = false; }
     } else if (v.env > 0) {
       v.env *= scoreFade_;
@@ -881,10 +837,7 @@ class Generator {
   VoiceContext ctx_;
   Quantiser qA_;
   double lastHz_ = 0;
-  int crossHold_;
-  double crossAttack_;
-  std::array<CrossLine, 2> cross_;
-  double crossFade_ = 0;
+  double scoreAttack_;
   std::array<ScoreVoice, 4> score_;
   double scoreFade_ = 0;
   int scoreStruck_ = 0;

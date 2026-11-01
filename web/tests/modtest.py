@@ -167,6 +167,33 @@ with sync_playwright() as pw:
     check("still loads, and points where it said",
           legacy == ["lfo1>gen.phase@1", "lfo2>gen.ratio@0.2"], str(legacy))
 
+    # Version 5 cut the crossings, the threshold and Pluck (P5). The routing
+    # list keeps ids it does not know, so a route from the threshold or to
+    # the pluck would otherwise ride along in every code saved after it. The
+    # same code marked 5 is the null: it keeps them, so the check can fail.
+    print("\n--- a code written before the crossings, the threshold and Pluck went ---")
+    cut = p.evaluate("""() => {
+      const code = (v) => btoa(JSON.stringify({ v, crossOn: true, threshWatch: 'lfo1', pluckNote: 64,
+        mod: 'threshold>gen.freq@0.500;lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000' })).replace(/=+$/, '');
+      // The fields are read off the decoded setup itself: a snapshot could
+      // not show them, since it writes only what the page has.
+      const load = (v) => {
+        const decoded = decodeSetup(code(v));
+        restore(decoded);
+        return { routes: state.modRoutings.map((r) => r.sourceId + '>' + r.destId), mod: snapshot().mod,
+                 stale: ['crossOn', 'threshWatch', 'pluckNote'].filter((k) => k in decoded) };
+      };
+      const out = { four: load(4), five: load(5) };
+      state.modRoutings = []; touchRoutings();
+      return out;
+    }""")
+    check("a version-4 code loads without the routes from the threshold or to the pluck, and saves without them",
+          cut["four"]["routes"] == ["lfo1>gen.amp"] and "threshold" not in cut["four"]["mod"]
+          and "pluck" not in cut["four"]["mod"] and cut["four"]["stale"] == [], str(cut["four"]))
+    check("and the same code marked version 5 keeps them, so the pass is what took them out",
+          "threshold>gen.freq" in cut["five"]["routes"] and "lfo2>gen.pluck" in cut["five"]["routes"]
+          and cut["five"]["stale"] == ["crossOn", "threshWatch", "pluckNote"], str(cut["five"]))
+
     # The Sources tab is the view of the list now, where the one-destination
     # dropdown was: Add makes a routing, its row's slider is its depth, and
     # the row's cross removes it.

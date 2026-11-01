@@ -19,7 +19,7 @@
 // instrument. What is the processor's own is what only a host has: the
 // host's MIDI, handed to the instrument byte for byte at its sample, and its
 // MIDI out, which gets what the page would send to a port - the arpeggio's
-// steps, the crossings' notes, the pluck's and the score's - each at the
+// steps and the score's notes - each at the
 // sample of what sent it; the host's transport; eight parameters, each one
 // of the panel's sliders; the page's commands, queued under a lock for the
 // top of the next block; and the state, saved as a setup code - the setup it
@@ -84,7 +84,6 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The routings, for the shell test to set. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return instrument_.matrix(); }
   double level() const { return instrument_.level(); }
-  int thresholdCount() const { return instrument_.thresholdCount(); }
   const scope::Hearing& hearing() const { return instrument_.hearing(); }
   const scope::Clock& clock() const { return instrument_.clock(); }
   const scope::ScoreState& score() const { return instrument_.score(); }

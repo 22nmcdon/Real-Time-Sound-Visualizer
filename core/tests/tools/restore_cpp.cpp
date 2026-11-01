@@ -74,9 +74,7 @@ Json toneJson(const scope::Tone& t) {
   o.set("spin", spin);
   o.set("spinRate", num(t.spinRate)); o.set("depth", num(t.depth)); o.set("shapeOS", num(t.shapeOS));
   o.set("glideMs", num(t.glideMs)); o.set("qMask", num(t.qMask)); o.set("qGlideMs", num(t.qGlideMs));
-  o.set("crossOn", flag(t.crossOn)); o.set("crossX", num(t.crossX)); o.set("crossY", num(t.crossY));
-  o.set("crossHzX", num(t.crossHzX)); o.set("crossHzY", num(t.crossHzY)); o.set("crossDecayMs", num(t.crossDecayMs));
-  o.set("crossLevel", num(t.crossLevel)); o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
+  o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
   o.set("planeLimit", num(t.planeLimit)); o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY));
   o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist)); o.set("planeKaleido", num(t.planeKaleido));
@@ -245,11 +243,6 @@ int main(int argc, char** argv) {
     key.set("root", num(brain.keyRoot)); key.set("scale", str(brain.keyScale)); key.set("quantise", flag(brain.quantise));
     key.set("glide", num(brain.quantiseGlide)); key.set("bpm", num(brain.clock.set));
     out.set("key", key);
-    Json cross = Json::object();
-    cross.set("on", flag(brain.cross.on)); cross.set("x", num(brain.cross.x)); cross.set("y", num(brain.cross.y));
-    cross.set("noteX", num(brain.cross.noteX)); cross.set("noteY", num(brain.cross.noteY));
-    cross.set("decayMs", num(brain.cross.decayMs)); cross.set("level", num(brain.cross.level));
-    out.set("cross", cross);
     Json score = Json::object();
     score.set("on", flag(brain.score.on)); score.set("step", str(brain.score.step)); score.set("voices", num(brain.score.voices));
     score.set("low", num(brain.score.low)); score.set("octaves", num(brain.score.octaves));
@@ -283,10 +276,6 @@ int main(int argc, char** argv) {
                             "planeMirror", "planeLimit", "planeKaleido", "planeSnap" })
       menus.set(std::string_view(id), str(brain.panel.select(id)));
     out.set("menus", menus);
-    Json thresh = Json::object();
-    thresh.set("watch", Json::string(brain.threshWatch)); thresh.set("level", num(brain.threshLevel)); thresh.set("armed", flag(brain.thresh.armed));
-    out.set("thresh", thresh);
-    out.set("pluck", num(brain.pluckNote));
     Json macros = Json::array();
     for (const auto& m : brain.macros) { Json o = Json::object(); o.set("name", Json::string(m.name)); o.set("value", num(m.value)); macros.a.push_back(o); }
     out.set("macros", macros);

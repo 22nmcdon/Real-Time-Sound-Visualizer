@@ -52,10 +52,6 @@ inline constexpr RangeSpec kRanges[] = {
   { "lfoRate0", 1, 800, 1, 20 },
   { "quantiseGlide", 0, 300, 1, 0 },
   { "tempo", 30, 300, 1, 120 },
-  { "crossX", -100, 100, 1, 0 },
-  { "crossY", -100, 100, 1, 0 },
-  { "crossDecay", 20, 1000, 1, 180 },
-  { "crossLevel", 0, 100, 1, 40 },
   { "ch1Scale", 0, 8, 1, 0 },
   { "ch1Offset", -100, 100, 1, 0 },
   { "ch2Scale", 0, 8, 1, 0 },
@@ -138,8 +134,6 @@ inline constexpr SelectSpec kSelects[] = {
   { "srcDetail-add", "" "\x1f" "gen.freq" "\x1f" "gen.amp" "\x1f" "gen.phase" "\x1f" "gen.ratio" "\x1f" "gen.detail" "\x1f" "gen.tumble" "\x1f" "gen.depth" "\x1f" "gen.bar0" "\x1f" "gen.bar1" "\x1f" "gen.bar2" "\x1f" "gen.bar3" "\x1f" "gen.bar4" "\x1f" "gen.bar5" "\x1f" "gen.bar6" "\x1f" "gen.bar7" "\x1f" "gen.bar8" "\x1f" "gen.morph" "\x1f" "gen.radius" "\x1f" "gen.twist" "\x1f" "gen.fm" "\x1f" "gen.sync" "\x1f" "gen.drive" "\x1f" "gen.fold" "\x1f" "gen.vcf" "\x1f" "gen.echo" "\x1f" "gen.echoTime" "\x1f" "gen.swing" "\x1f" "gen.width" "\x1f" "gen.table" "\x1f" "gen.spinX" "\x1f" "gen.spinY" "\x1f" "gen.spinZ" "\x1f" "gen.turn" "\x1f" "view.rotate" "\x1f" "view.lag" "\x1f" "filter.cutoff" "\x1f" "filter.res" "\x1f" "view.zoom" "\x1f" "trig.position" "\x1f" "morph.pos" "\x1f" "view.scale1" "\x1f" "view.scale2", "" },
   { "keyRoot", "0" "\x1f" "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8" "\x1f" "9" "\x1f" "10" "\x1f" "11", "0" },
   { "keyScale", "chromatic" "\x1f" "major" "\x1f" "minor" "\x1f" "dorian" "\x1f" "phrygian" "\x1f" "lydian" "\x1f" "mixolydian" "\x1f" "locrian" "\x1f" "harmonic" "\x1f" "pentatonic" "\x1f" "minorpent" "\x1f" "blues" "\x1f" "whole", "chromatic" },
-  { "crossNoteX", "36" "\x1f" "37" "\x1f" "38" "\x1f" "39" "\x1f" "40" "\x1f" "41" "\x1f" "42" "\x1f" "43" "\x1f" "44" "\x1f" "45" "\x1f" "46" "\x1f" "47" "\x1f" "48" "\x1f" "49" "\x1f" "50" "\x1f" "51" "\x1f" "52" "\x1f" "53" "\x1f" "54" "\x1f" "55" "\x1f" "56" "\x1f" "57" "\x1f" "58" "\x1f" "59" "\x1f" "60" "\x1f" "61" "\x1f" "62" "\x1f" "63" "\x1f" "64" "\x1f" "65" "\x1f" "66" "\x1f" "67" "\x1f" "68" "\x1f" "69" "\x1f" "70" "\x1f" "71" "\x1f" "72" "\x1f" "73" "\x1f" "74" "\x1f" "75" "\x1f" "76" "\x1f" "77" "\x1f" "78" "\x1f" "79" "\x1f" "80" "\x1f" "81" "\x1f" "82" "\x1f" "83" "\x1f" "84", "60" },
-  { "crossNoteY", "36" "\x1f" "37" "\x1f" "38" "\x1f" "39" "\x1f" "40" "\x1f" "41" "\x1f" "42" "\x1f" "43" "\x1f" "44" "\x1f" "45" "\x1f" "46" "\x1f" "47" "\x1f" "48" "\x1f" "49" "\x1f" "50" "\x1f" "51" "\x1f" "52" "\x1f" "53" "\x1f" "54" "\x1f" "55" "\x1f" "56" "\x1f" "57" "\x1f" "58" "\x1f" "59" "\x1f" "60" "\x1f" "61" "\x1f" "62" "\x1f" "63" "\x1f" "64" "\x1f" "65" "\x1f" "66" "\x1f" "67" "\x1f" "68" "\x1f" "69" "\x1f" "70" "\x1f" "71" "\x1f" "72" "\x1f" "73" "\x1f" "74" "\x1f" "75" "\x1f" "76" "\x1f" "77" "\x1f" "78" "\x1f" "79" "\x1f" "80" "\x1f" "81" "\x1f" "82" "\x1f" "83" "\x1f" "84", "67" },
   { "oscRatio", "0.5" "\x1f" "1" "\x1f" "1.25" "\x1f" "1.3333333333333333" "\x1f" "1.5" "\x1f" "1.6666666666666667" "\x1f" "2" "\x1f" "2.5" "\x1f" "3" "\x1f" "3.5" "\x1f" "4" "\x1f" "5" "\x1f" "7", "1" },
   { "oscUnison", "1" "\x1f" "2" "\x1f" "3" "\x1f" "5" "\x1f" "7", "1" },
   { "oscSubOct", "1" "\x1f" "2", "1" },
@@ -160,7 +154,6 @@ inline constexpr SelectSpec kSelects[] = {
   { "scoreVoices", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4", "2" },
   { "scoreLow", "36" "\x1f" "48" "\x1f" "60", "48" },
   { "scoreOctaves", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4", "3" },
-  { "pluckNote", "36" "\x1f" "37" "\x1f" "38" "\x1f" "39" "\x1f" "40" "\x1f" "41" "\x1f" "42" "\x1f" "43" "\x1f" "44" "\x1f" "45" "\x1f" "46" "\x1f" "47" "\x1f" "48" "\x1f" "49" "\x1f" "50" "\x1f" "51" "\x1f" "52" "\x1f" "53" "\x1f" "54" "\x1f" "55" "\x1f" "56" "\x1f" "57" "\x1f" "58" "\x1f" "59" "\x1f" "60" "\x1f" "61" "\x1f" "62" "\x1f" "63" "\x1f" "64" "\x1f" "65" "\x1f" "66" "\x1f" "67" "\x1f" "68" "\x1f" "69" "\x1f" "70" "\x1f" "71" "\x1f" "72" "\x1f" "73" "\x1f" "74" "\x1f" "75" "\x1f" "76" "\x1f" "77" "\x1f" "78" "\x1f" "79" "\x1f" "80" "\x1f" "81" "\x1f" "82" "\x1f" "83" "\x1f" "84", "60" },
   { "filterType", "lowpass" "\x1f" "highpass" "\x1f" "bandpass" "\x1f" "notch", "lowpass" },
 };
 
@@ -172,8 +165,7 @@ inline constexpr SelectSpec kSelects[] = {
 inline constexpr const char* kMorphIds[] = {
   "freq", "amp", "morph", "width", "table", "phase", "detail", "spinX", "spinY", "spinZ", "spinRate",
   "depth", "envAttack", "envDecay", "envSustain", "envRelease", "glide", "figureRate", "ringTime",
-  "swingRate", "decay", "detune", "swingDrive", "quantiseGlide", "tempo", "crossX", "crossY", "crossDecay",
-  "crossLevel", "lag", "lagMix", "acCorner", "rotate", "bar0", "bar1", "bar2", "bar3", "bar4", "bar5",
+  "swingRate", "decay", "detune", "swingDrive", "quantiseGlide", "tempo", "lag", "lagMix", "acCorner", "rotate", "bar0", "bar1", "bar2", "bar3", "bar4", "bar5",
   "bar6", "bar7", "bar8", "oscFm", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold",
   "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "planeTurn", "planeTwist",
   "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "delayMix", "delayMs", "delayFeedback",

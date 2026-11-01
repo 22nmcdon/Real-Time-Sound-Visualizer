@@ -227,7 +227,7 @@ with sync_playwright() as pw:
       const t = window.__hostTest, out = {};
       const send = (name, act) => { t.log.length = 0; act(); out[name] = t.log.slice(); };
       send('menu', () => { el.planeKaleido.value = '6'; el.planeKaleido.dispatchEvent(new Event('change', { bubbles: true })); });
-      send('switch', () => { el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change', { bubbles: true })); });
+      send('switch', () => { el.quantise.checked = true; el.quantise.dispatchEvent(new Event('change', { bubbles: true })); });
       send('view', () => { el.persistence.value = '0.3'; el.persistence.dispatchEvent(new Event('change', { bubbles: true })); });
       send('button', () => el.planeOS4.click());
       send('other', () => el.reswing.click());
@@ -238,7 +238,7 @@ with sync_playwright() as pw:
       return out;
     }""")
     check("a menu turned on the page is sent to the plugin by id and value, a switch as true or false, once each",
-          sent["menu"] == [["scopeControl", "planeKaleido", "6"]] and sent["switch"] == [["scopeControl", "crossOn", True]], str(sent))
+          sent["menu"] == [["scopeControl", "planeKaleido", "6"]] and sent["switch"] == [["scopeControl", "quantise", True]], str(sent))
     check("a button that reaches the sound is sent by its id, and so is the view's persistence; a button the plugin has no handler for is not",
           sent["button"] == [["scopeClick", "planeOS4"]] and sent["view"] == [["scopeControl", "persistence", "0.3"]]
           and sent["other"] == [], str(sent))
@@ -283,11 +283,11 @@ with sync_playwright() as pw:
           len(sent["route"]) == 1 and sent["route"][0][0] == "scopeRoutings" and route.startswith("lfo1>gen.freq@")
           and sent["depth"] == [["scopeRoutings", sent["route"][0][1].rsplit("@", 1)[0] + "@0.123456789012345"]]
           and sent["again"] == [] and len(sent["tiny"]) == 1 and sent["tiny"][0][1].endswith("@0.00000010000000000000"), str(sent))
-    hands = [["c", "planeKaleido", "4"], ["c", "crossOn", True], ["k", "planeOS1"], ["c", "lfoShape1", "square"],
+    hands = [["c", "planeKaleido", "4"], ["c", "quantise", True], ["k", "planeOS1"], ["c", "lfoShape1", "square"],
              ["r", "", "lfo2>gen.amp@-0.3456789"], ["s", "amp", "42"], ["k", "dispXY"], ["c", "photoReticle", "0.3,0.7"]]
     applied = p.evaluate("""async (code) => {
       const t = window.__hostTest;
-      cross.on = false; el.crossOn.checked = false;
+      state.quantise = false; el.quantise.checked = false; syncQuantiser();
       const shown = selectedSource;
       t.log.length = 0;
       t.state = { version: 3, code };
@@ -295,12 +295,12 @@ with sync_playwright() as pw:
       // The routings it put back are the plugin's already: touched again
       // unchanged, they are not sent back.
       touchRoutings();
-      return { kaleido: plane.kaleido, menu: el.planeKaleido.value, cross: cross.on, os: plane.os, lfo: lfos[1].shape,
+      return { kaleido: plane.kaleido, menu: el.planeKaleido.value, quantise: state.quantise, os: plane.os, lfo: lfos[1].shape,
                mod: state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount).join(';'), amp: el.amp.value,
                display: state.display, reticle: [photo.u, photo.v], shown: selectedSource === shown, log: t.log.slice() };
     }""", code({"vcfCut": 222, "pluginHands": hands}))
     check("the plugin's state puts its hands back on the page in order, menus, switches, buttons, routings, sliders, the view and the reticle, and sends nothing back",
-          applied == {"kaleido": 4, "menu": "4", "cross": True, "os": 1, "lfo": "square", "mod": "lfo2>gen.amp@-0.3456789",
+          applied == {"kaleido": 4, "menu": "4", "quantise": True, "os": 1, "lfo": "square", "mod": "lfo2>gen.amp@-0.3456789",
                       "amp": "42", "display": "xy", "reticle": [0.3, 0.7], "shown": True, "log": []}, str(applied))
 
     more = p.evaluate("""() => {

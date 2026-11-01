@@ -139,7 +139,7 @@ with sync_playwright() as pw:
                    note: el.morphNote.textContent, moving: morphMoving() };
       out.kept = MORPH_IDS.filter((id) => ['macro1', 'macro2', 'macro3', 'macro4', 'morphPos', 'fileSeek',
                                           'keysVelocity', 'align'].includes(id));
-      out.has = ['freq', 'vcfCut', 'delayMix', 'crossX', 'timebase'].every((id) => MORPH_IDS.includes(id));
+      out.has = ['freq', 'vcfCut', 'delayMix', 'planeRadius', 'timebase'].every((id) => MORPH_IDS.includes(id));
       __set('morphPos', 50); await __wait(120);
       out.half = { freq: Number(el.freq.value), amp: Number(el.amp.value), genFreq: genSettings().freq,
                    genAmp: genSettings().amp, shape: el.shape.value };

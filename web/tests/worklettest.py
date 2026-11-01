@@ -184,11 +184,6 @@ with sync_playwright() as pw:
               bu["posts"] > 0 and got.get("askedFactor") == 4 and got.get("factor") == 2
               and got.get("asked", [0])[0] == 7 and 1 < got.get("unison", [7])[0] < 7
               and got.get("units", 1e9) <= got.get("most", 0), str(bu))
-        c = report["crossings"]
-        # 800 blocks at 48 kHz is 2.13 s: a 4 Hz beam crosses the X line 8
-        # times, and Y - a quarter cycle on - 8 or 9.
-        check("the crossings run in the worklet: a 4 Hz beam over 2.1 s fires each line eight times or so",
-              8 <= c["x"] <= 9 and 8 <= c["y"] <= 9, str(c))
         fx = report.get("fx")
         print("    effects processor: %s" % fx)
         check("the effects processor is in the module too, and with nothing on it is an exact copy of its input",

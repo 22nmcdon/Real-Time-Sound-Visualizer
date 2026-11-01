@@ -23,7 +23,7 @@
    With CORE=wasm in the environment the core is the page's `makeWasmCore`
    over the module the page carries, and with CORE=js the page's JavaScript
    core printed the same way: the samples, then what the worklets and the
-   main thread read of a core - the envelope, the crossings, the budget, the
+   main thread read of a core - the envelope, the budget, the
    drawing, the pitch, the kick, the swing's envelope, whether gated - and the
    oscillators as it left them, the effect's runs included.
    Usage: node generator_js.mjs <runs> */
@@ -167,13 +167,13 @@ function run(head, events) {
   // And what the core says of itself at the end, as the worklet posts it.
   const b = core.budget, d = core.drawing;
   if (MODE) {
-    out.push(core.envelope, core.crossings.x, core.crossings.y, b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1],
+    out.push(core.envelope, b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1],
              b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing,
              core.pitch, core.spinKick, core.swingLevel, core.gated ? 1 : 0);
     for (const l of lfos) out.push(l.phase, l.held, l.value);
     return show(out);
   }
-  out.push(core.envelope, core.pitch, core.crossings.x, core.crossings.y, core.spinKick, core.swingLevel,
+  out.push(core.envelope, core.pitch, core.spinKick, core.swingLevel,
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
            d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length);
   const sources = new Map();

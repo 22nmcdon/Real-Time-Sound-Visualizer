@@ -826,9 +826,9 @@ with sync_playwright() as pw:
           and seen["dot"] == "visible", str(seen))
     # What a suite on ?brain=js checks of the page's own brain, held here for
     # the instrument where it is something seen: a controller on the
-    # frequency moves the pitch (miditest), the crossings' count climbs beside
-    # its switch (crosstest), and the readout says why a gated screen is empty
-    # (envtest).
+    # frequency moves the pitch (miditest), and the readout says why a gated
+    # screen is empty (envtest). The crossings' count climbing beside its
+    # switch was held here too, until P5 cut the crossings.
     more = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const hz = () => estimateFrequency(state.source.getLatestWindow(8192)[0], state.source.sampleRate);
@@ -840,12 +840,6 @@ with sync_playwright() as pw:
       await wait(400); out.low = hz();
       midiBytes(Uint8Array.from([0xB0, 16, 127])); await wait(500); out.high = hz();
       state.modRoutings = []; touchRoutings();
-      // A slow harmonograph and the crossings on: the count beside the switch climbs, read off the instrument.
-      applyPreset('b:Harmonograph'); await wait(300);
-      el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change'));
-      await wait(300); const c0 = state.source.crossings; await wait(1500); const c1 = state.source.crossings;
-      out.counts = [c0.x + c0.y, c1.x + c1.y];
-      el.crossOn.checked = false; el.crossOn.dispatchEvent(new Event('change'));
       // The screen's keys open and nothing held: the waveform is gated, and the readout says why it is empty.
       applyPreset('b:Harmonic tone'); setScreenKeys(true); await wait(600);
       out.gated = el.readoutDetail.textContent;
@@ -856,38 +850,15 @@ with sync_playwright() as pw:
     check("a controller routed to the frequency moves the instrument's pitch: an octave at full", abs(more["low"] - 220) < 0.5
           and abs(more["high"] - 440) < 1, "%s then %s" % (more["low"], more["high"]))
     check("and the reading fails against the pitch it started at", not abs(more["low"] - 440) < 1)
-    check("the crossings' count climbs, read off the instrument", more["counts"][1] > more["counts"][0], str(more["counts"]))
     check("and the readout says why a gated screen is empty, and stops once nothing gates it",
           "gated \u00b7 no note held" in more["gated"] and "gated" not in more["free"], str(more))
-    # The crossings' lines drawn over the instrument's generator (crosstest's
-    # reading: blush in the X line's column and the Y line's row), and a split
-    # in a rack kept and not applied, the panel saying why (layertest's).
+    # A split in a rack kept and not applied, the panel saying why
+    # (layertest's). The crossings' lines drawn over the instrument's
+    # generator were read here too, until P5 cut them.
     lines = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setScreenKeys(false); applyPreset('b:Harmonic tone'); await wait(300);
       setView('scope');
-      el.amp.value = '2'; el.amp.dispatchEvent(new Event('input'));
-      el.dispXY.click(); el.persistence.value = '0'; el.persistence.dispatchEvent(new Event('change'));
-      el.crossX.value = '37'; el.crossX.dispatchEvent(new Event('input'));
-      el.crossY.value = '-37'; el.crossY.dispatchEvent(new Event('input'));
-      const read = async () => {
-        await wait(300);
-        const ctx = el.trace.getContext('2d'), k = ctx.getTransform().a;
-        const scale = plot.w / 2 * state.zoom;
-        const x = Math.round((plot.x + plot.w / 2 + 0.37 * gainOf(0) * scale) * k);
-        const col = ctx.getImageData(x - 1, Math.round(plot.y * k), 3, Math.round(plot.h * k)).data;
-        const rows = col.length / 4 / 3; let n = 0;
-        for (let j = 0; j < rows; j++) {
-          let most = 0;
-          for (let c = 0; c < 3; c++) { const i = (j * 3 + c) * 4; most = Math.max(most, col[i] - col[i + 2]); }
-          if (most > 25) n++;
-        }
-        return n / rows;
-      };
-      el.crossOn.checked = true; el.crossOn.dispatchEvent(new Event('change'));
-      const on = await read();
-      el.crossOn.checked = false; el.crossOn.dispatchEvent(new Event('change'));
-      const off = await read();
       // A rack with the generator in it, the keyboard split.
       setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -896,10 +867,8 @@ with sync_playwright() as pw:
                      note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       el.srcTone.click(); await wait(300); setScreenKeys(false);
-      return { on, off, rack };
+      return { rack };
     }""")
-    check("the crossings' lines are drawn over the instrument's generator, and go when the crossings do",
-          lines["on"] > 0.3 and lines["off"] < 0.05, "inked %.2f on, %.2f off" % (lines["on"], lines["off"]))
     check("and in a rack a split is kept, not applied, and the panel says why",
           lines["rack"]["lane"] and not lines["rack"]["on"] and lines["rack"]["mode"] == "split" and "one layer" in lines["rack"]["note"],
           str(lines["rack"]))

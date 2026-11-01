@@ -97,7 +97,6 @@ struct NoteWant {
 // is drawn (P4). The outer notes lean to their sides, full on their own and
 // half on the other; an inner voice is on both at an outer note's power. The
 // page's ROLES says why leaning and not splitting.
-constexpr double kSqrtHalf = 0.70710678118654752440;  // Math.SQRT1_2, for the crossings
 constexpr double kPolyLean = 0.5;
 inline std::array<double, 2> roleGains(const std::string& role) {
   const double inner = std::sqrt((1 + kPolyLean * kPolyLean) / 2);  // POLY_INNER

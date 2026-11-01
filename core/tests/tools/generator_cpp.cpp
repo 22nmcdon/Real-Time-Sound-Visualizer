@@ -151,9 +151,7 @@ void run(const std::vector<std::string>& head, const Events& events) {
   }
   const auto& b = core.budget();
   const auto d = core.drawing();
-  const auto c = core.crossings();
-  out.insert(out.end(), { core.envelope(), core.pitch(), static_cast<double>(c[0]), static_cast<double>(c[1]),
-                          core.spinKick(), core.swingLevel(), b.units, static_cast<double>(b.asked[0]),
+  out.insert(out.end(), { core.envelope(), core.pitch(), core.spinKick(), core.swingLevel(), b.units, static_cast<double>(b.asked[0]),
                           static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                           static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor),
                           static_cast<double>(b.factor), static_cast<double>(b.silenced), d.swing, d.pendulum,

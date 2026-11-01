@@ -84,7 +84,7 @@ with sync_playwright() as pw:
           fam["opened"] == "oscillators", fam["opened"])
     bf = fam["before"]
     check("each family's sources are its own, one family on show at a time",
-          bf["oscillators"]["rows"] == ["lfo1", "lfo2"] and bf["signal"]["rows"] == ["env.live", "env.note", "threshold"]
+          bf["oscillators"]["rows"] == ["lfo1", "lfo2"] and bf["signal"]["rows"] == ["env.live", "env.note"]
           and bf["signal"]["title"] == "Signal", str(bf))
     # The picture's family used to be the second empty one, until the
     # photocell was on; since the picture stage (P3) its sources are always

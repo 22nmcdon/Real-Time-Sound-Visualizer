@@ -232,10 +232,14 @@ with sync_playwright() as pw:
     check("a version 3 setup is left alone entirely",
           migrated["v3"]["level"] == 250 and migrated["v3"]["c0s"] == -12
           and migrated["v3"]["c1s"] == -30, str(migrated["v3"]))
-    # Version 4 is the plane's limit menu (planetest.py); a scale code passes
-    # through its pass untouched and comes out saying the current version.
-    check("and everything comes out saying version 4",
-          all(migrated[k]["v"] == 4 for k in ("v1", "v2", "v3")),
+    # Version 4 is the plane's limit menu (planetest.py) and 5 the cut of the
+    # crossings, the threshold and Pluck (modtest.py); a scale code passes
+    # through both untouched and comes out saying the current version - the
+    # page's number, not a digit written here, which failed this suite at the
+    # cut that had nothing to do with scales.
+    version = p.evaluate("() => SETUP_VERSION")
+    check("and everything comes out saying the version the page is on",
+          version >= 5 and all(migrated[k]["v"] == version for k in ("v1", "v2", "v3")),
           str([migrated[k]["v"] for k in ("v1", "v2", "v3")]))
 
     trip = p.evaluate("""() => {

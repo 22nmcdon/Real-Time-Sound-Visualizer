@@ -373,15 +373,14 @@ EXPORT(setup_decode) int setupDecode() {
   return 2;
 }
 
-// What goes back with the samples: the envelope, the crossings' counts, the
+// What goes back with the samples: the envelope, the
 // budget, the drawing's readings, the pitch layer A last played, the kick on
 // the spin and the swing's envelope, and each oscillator's phase, held value
 // and value.
 EXPORT(scope_state) double* scopeState() {
-  const auto c = core->crossings();
   const auto& b = core->budget();
   const auto d = core->drawing();
-  state.assign({ core->envelope(), static_cast<double>(c[0]), static_cast<double>(c[1]), b.units,
+  state.assign({ core->envelope(), b.units,
                  static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                  static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
                  static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0], d.turn[1],
@@ -514,7 +513,7 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }
 // What the page reads off the generator, as scope_state gives it for the
-// page's own: the envelope, whether it is gated, the crossings' counts, the
+// page's own: the envelope, whether it is gated, the
 // budget, and the drawing's readings - for the meters and the readouts, which
 // with the instrument playing had nothing to read and stood at nought. Then
 // each oscillator's phase, held value and value, for the page's picture to
@@ -523,10 +522,9 @@ EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(
 std::vector<double> brainRead;
 EXPORT(brain_readings) double* brainReadings() {
   const auto& g = instrument->generator();
-  const auto c = g.crossings();
   const auto& b = g.budget();
   const auto d = g.drawing();
-  brainRead.assign({ g.envelope(), g.gated() ? 1.0 : 0.0, static_cast<double>(c[0]), static_cast<double>(c[1]), b.units,
+  brainRead.assign({ g.envelope(), g.gated() ? 1.0 : 0.0, b.units,
                      static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                      static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
                      static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0],

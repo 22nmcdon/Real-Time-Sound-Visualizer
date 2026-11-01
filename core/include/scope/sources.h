@@ -13,11 +13,10 @@
 // - The level (`env.live`), the note envelope (`env.note`) and the drawings'
 //   six - Swing, Pendulum, Tilt, Turn, Roll and Facing - read from the
 //   generator, as the page reads them from its core.
-// - Swing again, Kick and Pluck, the three things a hit can strike. Pluck
-//   strikes the score's voice at the page's pitch for it (C4); the Brain's
-//   sources replace it with the setup's pitch, sent out as MIDI.
+// - Swing again and Kick, the two things a hit can strike. Pluck, a third,
+//   went in P5 with the threshold.
 //
-// The macros and the threshold are the Brain's (restore.h), and the hearing's
+// The macros are the Brain's (restore.h), and the hearing's
 // are its own (hearing.h); the picture's sources arrive with stage 4.
 
 #pragma once
@@ -171,12 +170,9 @@ class CoreSources {
     Generator* g = &gen;
     struck("gen.reswing", [g](double) { g->reswing(); });
     struck("gen.kick", [g](double amount) { g->kick(amount); });
-    struck("gen.pluck", [g](double amount) { g->strike(midiHz(kPluckNote), std::fmax(0.0, std::fmin(1.0, std::fabs(amount)))); });
   }
   CoreSources(const CoreSources&) = delete;
   CoreSources& operator=(const CoreSources&) = delete;
-
-  static constexpr int kPluckNote = 60;  // pluck.note
 
   // midiLearn's registration, once a frame: a controller the keyboard has
   // learned since the last becomes a source, and the routes are compiled

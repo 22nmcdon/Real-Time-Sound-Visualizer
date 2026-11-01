@@ -170,7 +170,7 @@ class Instrument {
     keyboard_->setOut(midiOut_.get());
     Generator* gen = core_.get();
     strike_ = [gen](double hz, double velocity) { gen->strike(hz, velocity); };
-    brainSources_ = std::make_unique<BrainSources>(*matrix_, *brain_, core_.get());
+    brainSources_ = std::make_unique<BrainSources>(*matrix_, *brain_);
     // The view's destinations before any setup, so a preset's routings onto them are heard.
     pictureRun_ = std::make_unique<PictureRun>(*matrix_, *brain_);
     pictureSource_.rate = sampleRate;
@@ -302,15 +302,11 @@ class Instrument {
     keyboard_->setTempo(brain_->clock.bpm);
     keyboard_->frame(lastBlockMs_);
     outAt_ = 0;  // what is sent before the block's events is sent at its top
-    /* The crossings' notes from the counts the generator reached by the end
-       of the last block, the score's step, the arpeggio's, the threshold, the
-       events, and the pluck's note-offs due, in the page's frame's order:
-       once a block, as the page does them once a frame, so a note-off due
-       inside a block goes at the next block's top - 11 ms late at most at
-       512 samples, where the page's frames are 17 ms apart. The score reads
-       the grid drawn here, as the last picture frame left it. */
-    crossStep(brain_->notesOut, nowMs_, brain_->cross.on, core_->crossings(), static_cast<int>(brain_->cross.noteX),
-              static_cast<int>(brain_->cross.noteY), midiOut_.get());
+    /* The score's step, the arpeggio's and the events, in the page's frame's
+       order: once a block, as the page does them once a frame, so a note-off
+       due inside a block goes at the next block's top - 11 ms late at most
+       at 512 samples, where the page's frames are 17 ms apart. The score
+       reads the grid drawn here, as the last picture frame left it. */
     scoreTick(brain_->score, nowMs_, true, brain_->clock, pictureRun_->phosphor().grid().data(),
               keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
     keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
@@ -323,11 +319,9 @@ class Instrument {
     if (pictureFrame) pictureRun_->before(*matrix_, pictureSource_, 0);
     // A controller the keyboard learned last block is a source now, and its routings are heard.
     sources_->learn(*matrix_, *keyboard_);
-    brainSources_->frame(*brain_, *matrix_, nowMs_);
     matrix_->setLayered(keyboard_->layersOn());
     matrix_->setStrikes(keyboard_->strikes());
     matrix_->frame(nowMs_);
-    endDue(brain_->notesOut.pluckOffs, nowMs_, midiOut_.get());
     /* After the matrix, so a source on the fader is already counted. The walk
        moves sliders by number and fires their handlers, none of which
        allocates (5v). It stays here, on the audio thread, rather than going
@@ -460,7 +454,7 @@ class Instrument {
     for (std::size_t k = 0; k < n - take; ++k) out[k] = 0.0f;
     for (std::size_t k = 0; k < take; ++k) out[n - take + k] = picture_[((at + kPictureFrames - take + k) % kPictureFrames) * kRingLanes + c];
   }
-  // The generator, for what the page reads off it: its envelope, gate, crossings, budget and drawing.
+  // The generator, for what the page reads off it: its envelope, gate, budget and drawing.
   const Generator& generator() const { return *core_; }
   // The two oscillators, which move the picture's destinations on the page as well as the sound here.
   const std::vector<Lfo>& lfos() const { return lfos_; }
@@ -485,7 +479,6 @@ class Instrument {
   const Keyboard& keyboard() const { return *keyboard_; }
   Matrix& matrix() { return *matrix_; }
   double level() const { return sources_->level().value(); }
-  int thresholdCount() const { return brain_->thresh.count; }
   const Hearing& hearing() const { return hearing_->hearing(); }
   const Clock& clock() const { return brain_->clock; }
   const ScoreState& score() const { return brain_->score; }
@@ -967,7 +960,7 @@ class Instrument {
   std::unique_ptr<CoreSources> sources_;
   std::unique_ptr<Brain> brain_;  // what a setup sets beyond the generator
   std::unique_ptr<ClockIn> clockIn_;  // MIDI's real-time bytes, to the brain's clock
-  std::unique_ptr<BrainSources> brainSources_;  // the macros, the morph's fader and the pluck as destinations
+  std::unique_ptr<BrainSources> brainSources_;  // the macros, and the morph's fader as a destination
   std::unique_ptr<MidiOut> midiOut_;  // to the owner, through `hooks.midiOut`
   Strike strike_;  // the score's notes, struck in the generator's score voice
   int outAt_ = 0;  // the sample in the block that what the out sends now is sent at

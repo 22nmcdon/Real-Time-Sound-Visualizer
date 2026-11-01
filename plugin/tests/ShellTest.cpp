@@ -413,22 +413,12 @@ int main() {
   /* What the plugin hands back to the host: every message, with its sample
      counted from the start of the run. */
   struct Sent { int sample; std::uint8_t a, b, c; };
-  struct Hits : scope::ModSource {
-    Hits() : ModSource("test.hits") { event = true; }
-    double value() const override { return 0; }
-    int count() const override { return n; }
-    int n = 0;
-  };
   const auto sendOut = [&](const char* preset, const std::vector<std::pair<int, juce::MidiMessage>>& played, int blocksToRun,
-                           Hits* hits = nullptr, int hitAt = 0, juce::AudioPlayHead* head = nullptr) {
+                           juce::AudioPlayHead* head = nullptr) {
     setenv("SCOPE_PRESET", preset, 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
-    /* The preset's own threshold routing is taken away for a hit of the
-       test's own: its pendulums swing from the start, and the level they
-       make plucks once by itself (see "the sources", below). */
-    if (hits) { p->matrix().remove("threshold", "gen.pluck"); p->matrix().registerSource(hits); p->matrix().add("test.hits", "gen.pluck", 0.8); }
     if (head) p->setPlayHead(head);
     std::vector<Sent> sent;
     juce::AudioBuffer<float> buf(2, block);
@@ -438,7 +428,6 @@ int main() {
       juce::MidiBuffer m;
       for (const auto& [sample, msg] : played)
         if (sample >= start && sample < start + block) m.addEvent(msg, sample - start);
-      if (hits && start == hitAt) hits->n++;
       p->processBlock(buf, m);
       for (const auto event : m) {
         const auto* d = event.data;
@@ -487,43 +476,8 @@ int main() {
           + std::to_string(off.size()) + " ended");
   }
   {
-    /* "Three against two": the crossings on, a note held so the figure is
-       drawn, and each crossing of a line sent as its note at velocity 102 and
-       ended a tenth of a second on - both at a block's top, the crossings'
-       frame. At three against two both lines are crossed together, twice in
-       the second. The boot preset, the crossings off, is the null: nothing. */
-    const std::vector<std::pair<int, juce::MidiMessage>> held { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } };
-    const auto [p, sent] = sendOut("Three against two", held, 94);
-    const auto [q, quiet] = sendOut("Harmonic tone", held, 94);
-    const auto on = ons(sent), off = offs(sent);
-    bool tops = true, notes = true;
-    for (const auto& e : on) { tops = tops && e.sample % block == 0; notes = notes && (e.b == 60 || e.b == 67) && e.c == 102; }
-    for (const auto& e : off) tops = tops && e.sample % block == 0;
-    const bool both = std::any_of(on.begin(), on.end(), [](const Sent& e) { return e.b == 60; })
-                      && std::any_of(on.begin(), on.end(), [](const Sent& e) { return e.b == 67; });
-    // Each note's own note-off: two notes struck in one block are ended in the other order.
-    bool later = on.size() >= 2 && off.size() >= 2;
-    for (std::size_t k = 0; later && k < 2; ++k) {
-      const auto end = std::find_if(off.begin(), off.end(), [&](const Sent& e) { return e.b == on[k].b; });
-      later = end != off.end() && end->sample - on[k].sample >= rate / 10 && end->sample - on[k].sample < rate / 10 + block;
-    }
-    check("a crossing goes out as its line's note at a block's top, both lines' notes, each ended a tenth of a second on",
-          on.size() == 4 && tops && notes && both && later && quiet.empty(),
-          std::to_string(on.size()) + " sent, " + std::to_string(off.size()) + " ended"
-          + "; with the crossings off " + std::to_string(quiet.size()));
-  }
-  {
-    /* A routing fires the pluck: "Pendulums ring a bell" has it at C5, 72,
-       where the core's own stand-in strikes middle C and sends nothing. Struck
-       in the block after the hit, sent at velocity 102 and ended 150 ms on. */
-    Hits hits;
-    const auto [p, sent] = sendOut("Pendulums ring a bell", {}, 40, &hits, 10 * block);
-    const auto on = ons(sent), off = offs(sent);
-    check("the pluck, fired by a routing, is struck at the setup's pluck note and sent, and ended 150 ms on",
-          on.size() == 1 && on[0].b == 72 && on[0].c == 102 && on[0].sample == 10 * block && off.size() == 1 && off[0].b == 72
-          && off[0].sample - on[0].sample >= rate * 0.15 && off[0].sample - on[0].sample < rate * 0.15 + block,
-          on.empty() ? "nothing sent" : "note " + std::to_string(on[0].b) + " at " + std::to_string(on[0].sample)
-          + (off.empty() ? ", never ended" : ", ended at " + std::to_string(off[0].sample)));
+    /* The crossings' notes and the pluck's, sent here once, were cut in P5:
+       notes from the figure's geometry, not from the phosphor. */
   }
   {
     /* "A sine, sung" has the score on, a step a semiquaver, reading the grid
@@ -984,59 +938,42 @@ int main() {
           off == 0 && unswept > 0.05, "off by " + num(off) + "; without the routing it differs by " + num(unswept));
   }
   {
-    /* "Pendulums ring a bell": the threshold watches the level at 0.40 and
-       plucks C5. The pendulums swing from the moment the preset is loaded -
-       a drawing is not gated by the keys - and their picture is what the
-       level reads, so it rises through the threshold within a few blocks and
-       plucks once, and cannot again until the level has fallen back below
-       0.35. Read a block at a time: the first firing is on the first block
-       whose level is through 0.40, and the pluck is sent at that block's top.
-       The same with the threshold's routing taken away is the null: it still
-       fires, and nothing is sent. */
-    const auto ring = [&](bool routed) {
-      setenv("SCOPE_PRESET", "Pendulums ring a bell", 1);
-      auto p = std::make_unique<ScopeProcessor>();
-      p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
-      if (!routed) p->matrix().remove("threshold", "gen.pluck");
-      std::vector<double> levels;
-      std::vector<int> counts;
-      std::vector<Sent> sent;
-      /* And the level held to the picture: the newest 2048 frames of its left
-         channel, as the page is handed them before the block, followed by a
-         scope::Level of the test's own. Reading the right channel, or the
-         oldest of the ring, fires on the same block for this preset. */
-      scope::Level own;
-      double levelOff = 0;
-      juce::AudioBuffer<float> buf(2, block);
-      for (int k = 0; k < 94; ++k) {
-        const auto picture = scopeResource("/picture.bin", *p);
-        std::vector<float> lane(2048);
-        const std::size_t frames = picture->data.size() / sizeof(float) / 2;
-        for (std::size_t i = 0; i < lane.size(); ++i)
-          std::memcpy(&lane[i], picture->data.data() + ((frames - lane.size() + i) * 2) * sizeof(float), sizeof(float));
-        own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * block / rate);
-        buf.clear();
-        juce::MidiBuffer m;
-        p->processBlock(buf, m);
-        levelOff = std::fmax(levelOff, std::fabs(p->level() - own.value()));
-        levels.push_back(p->level());
-        counts.push_back(p->thresholdCount());
-        for (const auto event : m) sent.push_back({ k * block + event.samplePosition, event.data[0], event.data[1], event.data[2] });
+    /* The level held to the picture: the newest 2048 frames of its left
+       channel, as the page is handed them before the block, against a
+       scope::Level of the test's own, a block at a time, on pendulums that
+       swing from the moment the preset is loaded - a drawing is not gated by
+       the keys. The null is the same Level fed the oldest 2048 frames of the
+       ring instead, which reads another moment of the swing. Before P5 this
+       was half of a check on the threshold, which watched this level and
+       plucked when it rose through 0.40; the threshold went, and the level's
+       half stays. */
+    setenv("SCOPE_PRESET", "Harmonograph", 1);
+    auto p = std::make_unique<ScopeProcessor>();
+    p->prepareToPlay(rate, block);
+    unsetenv("SCOPE_PRESET");
+    scope::Level own, oldest;
+    double levelOff = 0, oldestOff = 0, peak = 0;
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < 94; ++k) {
+      const auto picture = scopeResource("/picture.bin", *p);
+      std::vector<float> lane(2048), early(2048);
+      const std::size_t frames = picture->data.size() / sizeof(float) / 2;
+      for (std::size_t i = 0; i < lane.size(); ++i) {
+        std::memcpy(&lane[i], picture->data.data() + ((frames - lane.size() + i) * 2) * sizeof(float), sizeof(float));
+        std::memcpy(&early[i], picture->data.data() + (i * 2) * sizeof(float), sizeof(float));
       }
-      return std::make_tuple(levels, counts, ons(sent), levelOff);
-    };
-    const auto [levels, counts, on, levelOff] = ring(true);
-    const auto [levelsU, countsU, onU, levelOffU] = ring(false);
-    const auto first = static_cast<std::size_t>(std::find(counts.begin(), counts.end(), 1) - counts.begin());
-    const auto through = static_cast<std::size_t>(std::find_if(levels.begin(), levels.end(), [](double l) { return l >= 0.4; }) - levels.begin());
-    check("the pendulums' level rising through the threshold plucks C5 at the top of the block it gets there, once; unrouted, it fires and sends nothing",
-          first < counts.size() && first == through && first > 0 && on.size() == 1 && on[0].b == 72
-          && on[0].sample == static_cast<int>(first) * block && counts.back() == 1 && countsU == counts && onU.empty()
-          && levelOff == 0 && levels[20] > 0.1,
-          "fired in block " + std::to_string(first) + ", the level through 0.40 in block " + std::to_string(through) + ", "
-          + std::to_string(on.size()) + " plucked" + (on.empty() ? "" : " at " + std::to_string(on[0].sample)) + "; unrouted "
-          + std::to_string(onU.size()) + " sent, " + std::to_string(countsU.back()) + " fired; the level off the picture's by " + num(levelOff));
+      own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * block / rate);
+      oldest.update(early.data(), early.size(), k == 0 ? 0 : 1000.0 * block / rate);
+      buf.clear();
+      juce::MidiBuffer m;
+      p->processBlock(buf, m);
+      levelOff = std::fmax(levelOff, std::fabs(p->level() - own.value()));
+      oldestOff = std::fmax(oldestOff, std::fabs(p->level() - oldest.value()));
+      peak = std::fmax(peak, p->level());
+    }
+    check("the level is read off the picture's newest frames, block for block, as the page reads it",
+          levelOff == 0 && peak > 0.1 && oldestOff > 1e-3,
+          "off by " + num(levelOff) + ", at most " + num(peak) + "; read off the oldest frames it is off by " + num(oldestOff));
   }
 
   std::printf("\n--- the hearing ---\n");

@@ -36,7 +36,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 4;  // SETUP_VERSION
+constexpr int kSetupVersion = 5;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 inline const Json& setupDefaults() {
@@ -48,10 +48,8 @@ inline const Json& setupDefaults() {
   "atk":8,"dec":120,"sus":70,"rel":180,"glide":0,"model":"Cube","spinX":11,"spinY":17,"spinZ":0,
   "spinRate":100,"depth":45,"l0d":"none","l0s":"sine","l0r":20,"l0a":50,"l1d":"none","l1s":"sine",
   "l1r":50,"l1a":30,"l0y":"","l1y":"","keyRoot":0,"keyScale":"chromatic","quant":false,"qGlide":0,
-  "bpm":120,"crossOn":false,"crossX":0,"crossY":0,"crossNoteX":60,"crossNoteY":67,"crossDecay":180,
-  "crossLevel":40,"scoreOn":false,"scoreStep":"1/16","scoreVoices":2,"scoreLow":48,"scoreOctaves":3,
-  "arpMode":"off","arpRate":"1/8","arpOctaves":1,"threshWatch":"env.live","threshLevel":50,
-  "pluckNote":60,"mac1":0,"mac2":0,"mac3":0,"mac4":0,"macroNames":"","morphA":"","morphB":"",
+  "bpm":120,"scoreOn":false,"scoreStep":"1/16","scoreVoices":2,"scoreLow":48,"scoreOctaves":3,
+  "arpMode":"off","arpRate":"1/8","arpOctaves":1,"mac1":0,"mac2":0,"mac3":0,"mac4":0,"macroNames":"","morphA":"","morphB":"",
   "morphPos":0,"mod":"","display":"yt","persistence":"0","span":"5","zoom":0,"timebase":4,"level":0,
   "edge":"rising","trig":0,"position":10,"holdoff":0,"trigMode":"auto","c0on":true,"c0ac":false,"c0s":0,
   "c0o":0,"c1on":true,"c1ac":false,"c1s":0,"c1o":0,"midSide":false,"acHz":100,"octaves":0,
@@ -241,6 +239,30 @@ inline bool migrateSetup(Json& setup) {
     const Json* clip = field("planeClip");
     if (clip && clip->type == Json::Type::Bool && clip->b) setup.set("planeLimit", Json::number(1));
     if (setup.type == Json::Type::Object) setup.erase("planeClip");
+  }
+  // 4 -> 5: crossings, the threshold and the pluck cut (P5) - their fields, and
+  // any routing from the threshold or to the pluck, each other one as written.
+  if (!(v >= 5) && setup.type == Json::Type::Object) {
+    for (const char* key : { "crossOn", "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel",
+                             "threshWatch", "threshLevel", "pluckNote" }) setup.erase(key);
+    const Json* mod = field("mod");
+    if (mod && mod->type == Json::Type::String && !mod->s.empty()) {
+      const std::u16string& text = mod->s;
+      std::u16string kept;
+      bool first = true;
+      std::size_t at = 0;
+      while (true) {
+        const std::size_t end = text.find(u';', at);
+        const std::u16string part = text.substr(at, end == std::u16string::npos ? std::u16string::npos : end - at);
+        const std::u16string p = jsTrim(part);
+        const bool fromThreshold = p.rfind(u"threshold>", 0) == 0;
+        const bool toPluck = p.find(u">gen.pluck@") != std::u16string::npos;
+        if (!fromThreshold && !toPluck) { if (!first) kept += u';'; kept += part; first = false; }
+        if (end == std::u16string::npos) break;
+        at = end + 1;
+      }
+      setup.set("mod", Json::string(kept));
+    }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;

@@ -2500,6 +2500,24 @@ redone natively or left out.
   the plugin always was: the page takes it as its source once its worklet
   is ready, and asks for its sound then.
 
+- **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
+  and of the score's stage describes them; it is history now. The generator
+  has no crossings (no `crossings()`, no lines, no voice of their own - the
+  score's voice keeps the 2 ms rise it shared with them, as `scoreAttack_`),
+  so the compiled engine's `scope_state` and `brain_readings` are two
+  numbers shorter and the page reads them at indices moved to match.
+  `NotesOut`, `crossStep`, `pluckFire` and `endDue` went from the score:
+  what sends a note now is the out's own `noteOut` and `noteOutOff`, which
+  parity drives directly. `ThresholdSource`, the `gen.pluck` destination and
+  the Brain's crossing, threshold and pluck fields went from the sources and
+  `restore.h`; `BrainSources` is the macros and the morph's position, with no
+  frame of its own, and the processor no longer counts threshold firings.
+  The setup codec is version 5 (`kSetupVersion`), whose pass deletes the ten
+  fields and drops any route from `threshold` or to `gen.pluck`, as the
+  page's does. The shell test's routed-threshold check on "Pendulums ring a
+  bell" kept its other half: the level, read off the picture's newest
+  frames on "Harmonograph", with the oldest frames as its null.
+
 ## Building and testing
 
 ```

@@ -239,28 +239,6 @@ with sync_playwright() as pw:
           out["burst"] == {"ons": 40, "dropped": 60}, str(out["burst"]))
     check("and an empty grid sends nothing at all", out["quiet"] == 0, str(out["quiet"]))
 
-    print("\n--- crossings out ---")
-    crossed = p.evaluate("""() => {
-      const src = state.source, counts = { x: 5, y: 3 };
-      Object.defineProperty(src, 'crossings', { get: () => counts, configurable: true });
-      cross.on = true; crossSeen.x = 5; crossSeen.y = 3; __sent.length = 0;
-      const t = performance.now() + 5000; midiOut.times = [];
-      counts.x = 6; crossStepPanel(t);
-      const on = __sent.map((m) => m.slice());
-      crossStepPanel(t + 150);
-      const off = __sent.map((m) => m.slice());
-      // A new generator's count from nought is not a crossing.
-      __sent.length = 0; counts.x = 0; crossStepPanel(t + 300);
-      const reset = __sent.length;
-      cross.on = false; delete src.crossings;
-      return { on, off, reset, note: cross.noteX };
-    }""")
-    print("    %s" % crossed)
-    check("a crossing goes out as its line's note and is ended a tenth of a second later",
-          [0x92, crossed["note"], 102] in crossed["on"] and [0x82, crossed["note"], 0] in crossed["off"],
-          str(crossed))
-    check("and a count starting again from nought sends nothing", crossed["reset"] == 0, str(crossed["reset"]))
-
     # With real frames: the box ticked, a figure drawn, a second of playing.
     live = p.evaluate("""async () => {
       setTempo(120); state.persistence = -1;

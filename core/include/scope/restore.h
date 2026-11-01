@@ -1,8 +1,8 @@
 // A setup loaded into the instrument: the page's `restore`, ported for what
 // it does to the sound - both layers of the generator, the keyboard, the
-// LFOs, the routings, the key, the quantiser and the tempo, the crossings,
+// LFOs, the routings, the key, the quantiser and the tempo,
 // the plane, the echo, the arpeggiator, the score, the macros and the morph's
-// ends and the threshold - and for the settings it keeps for pieces still to
+// ends - and for the settings it keeps for pieces still to
 // come (the photocell). It is held to the page's own `restore`, run in a
 // browser, by core/tests/parity.py.
 //
@@ -207,16 +207,9 @@ struct Brain {
   bool quantise = false;
   double quantiseGlide = 0;
   Clock clock;  // transport: the tempo, the bar, and the oscillators locked to it
-  struct Cross { bool on = false; double x = 0, y = 0, noteX = 60, noteY = 67, decayMs = 180, level = 0.4; } cross;
   ScoreState score;
-  NotesOut notesOut;       // the crossings' and the pluck's notes out, and their note-offs due
   NoteOut* out = nullptr;  // the MIDI out, where its owner has given one
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
-  std::u16string threshWatch = u"env.live";
-  double threshLevel = 0.5, pluckNote = 60;
-  // The threshold's own state: how many times it has fired, when it last did,
-  // and whether its source has fallen far enough below to fire again.
-  struct Thresh { int count = 0; double last = -HUGE_VAL, flash = -HUGE_VAL; bool armed = false; } thresh;
   struct Macro { std::u16string name; double value = 0; };
   std::array<Macro, 4> macros { { { u"Macro 1", 0 }, { u"Macro 2", 0 }, { u"Macro 3", 0 }, { u"Macro 4", 0 } } };
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
@@ -587,12 +580,6 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
    By number rather than by the text of it, which comes to the same value
    (setRangeNumber) and makes nothing, since a slider's handler - the morph's
    walk, a host parameter - calls these on the audio thread. */
-inline void syncCrossPanel(Brain& b) {
-  b.panel.setRangeNumber("crossX", jsMathRound(b.cross.x * 100));
-  b.panel.setRangeNumber("crossY", jsMathRound(b.cross.y * 100));
-  b.panel.setRangeNumber("crossDecay", b.cross.decayMs);
-  b.panel.setRangeNumber("crossLevel", jsMathRound(b.cross.level * 100));
-}
 /* planeEditsB, planeTarget: which layer's plane the section's controls are -
    B's while B has its own and is the layer on the panel, A's otherwise. */
 inline bool planeEditsB(const Brain& b, const Keyboard& keys) {
@@ -686,11 +673,6 @@ inline void syncEcho(Brain& b, Generator& gen) {
   gen.set("delayMix", e.mix); gen.set("delayMs", delayTimeMs(b)); gen.set("delayFeedback", e.feedback);
   gen.set("delayPingPong", e.pingPong ? 1 : 0); gen.set("chorusMix", e.chorus); gen.set("chorusRate", e.rate);
   gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
-}
-inline void syncCrossings(const Brain& b, Generator& gen) {
-  gen.set("crossOn", b.cross.on ? 1 : 0); gen.set("crossX", b.cross.x); gen.set("crossY", b.cross.y);
-  gen.set("crossHzX", midiHz(b.cross.noteX)); gen.set("crossHzY", midiHz(b.cross.noteY));
-  gen.set("crossDecayMs", b.cross.decayMs); gen.set("crossLevel", b.cross.level);
 }
 inline void syncQuantiser(const Brain& b, Generator& gen) {
   gen.set("qMask", b.quantise ? keyMask(b.keyRoot, b.keyScale) : 0);
@@ -1158,24 +1140,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("qGlideMs", brain.quantiseGlide);
   panel.setRange("quantiseGlide", toU16(jsNumberToString(brain.quantiseGlide)));  // syncKeyPanel
 
-  // The crossings.
-  brain.cross.on = isTrue("crossOn");
-  brain.cross.x = within("crossX", -100, 100, 0) / 100;
-  brain.cross.y = within("crossY", -100, 100, 0) / 100;
-  brain.cross.noteX = jsMathRound(within("crossNoteX", 36, 84, 60));
-  brain.cross.noteY = jsMathRound(within("crossNoteY", 36, 84, 67));
-  brain.cross.decayMs = jsMathRound(within("crossDecay", 20, 1000, 180));
-  brain.cross.level = within("crossLevel", 0, 100, 40) / 100;
-  setA("crossOn", brain.cross.on ? 1 : 0);
-  setA("crossX", brain.cross.x);
-  setA("crossY", brain.cross.y);
-  setA("crossHzX", midiHz(brain.cross.noteX));
-  setA("crossHzY", midiHz(brain.cross.noteY));
-  setA("crossDecayMs", brain.cross.decayMs);
-  setA("crossLevel", brain.cross.level);
-  syncCrossPanel(brain);
-
-  // The score, the arpeggiator, the threshold and the pluck: kept for their pieces.
+  // The score and the arpeggiator: kept for their pieces.
   brain.score.on = isTrue("scoreOn");
   brain.score.step = isString("scoreStep", u"1/8") ? "1/8" : isString("scoreStep", u"1/4") ? "1/4" : "1/16";
   brain.score.voices = jsMathRound(within("scoreVoices", 1, 4, 2));
@@ -1194,13 +1159,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     brain.arp.octaves = jsNumberToString(jsMathRound(within("arpOctaves", 1, 3, 1)));
   }
   keys.setArp(brain.arp.mode, brain.arp.rate, jsStringToNumber(toU16(brain.arp.octaves)));  // arpSet
-  {
-    const Json* w = s("threshWatch");
-    brain.threshWatch = w && w->type == Json::Type::String && !w->s.empty() ? w->s : u"env.live";
-    brain.threshLevel = within("threshLevel", 5, 95, 50) / 100;
-    brain.thresh.armed = false;
-    brain.pluckNote = jsMathRound(within("pluckNote", 36, 84, 60));
-  }
 
   // The macros and the morph.
   {
@@ -1483,10 +1441,6 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
-  else if (id == "crossX") { b.cross.x = v / 100; syncCrossings(b, gen); }
-  else if (id == "crossY") { b.cross.y = v / 100; syncCrossings(b, gen); }
-  else if (id == "crossDecay") { b.cross.decayMs = v; syncCrossings(b, gen); }
-  else if (id == "crossLevel") { b.cross.level = v / 100; syncCrossings(b, gen); }
   else if (id.size() == 4 && id.compare(0, 3, "bar") == 0) {
     // The nine read into an array and handed over as one, nothing made: the morph walks them.
     static constexpr const char* barIds[] { "bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8" };
@@ -1557,12 +1511,6 @@ inline void moveSliderTo(const std::string& id, double value, Brain& b, Generato
   sliderInput(id, b, gen, keys, lfos);
 }
 
-// The panel's menu of what it watches: another source, and armed afresh.
-inline void setThresholdWatch(Brain& b, const std::u16string& id) {
-  b.threshWatch = id;
-  b.thresh.armed = false;
-}
-
 // --- a menu or a switch changed: its handler ----------------------------------------------
 
 /* What the page's "change" handler for a menu, a checkbox or a text box does,
@@ -1580,15 +1528,12 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   Controls& panel = b.panel;
   const int layer = b.panelLayer;
   // A menu takes only a value it has; one it has not got reads "". LFO 2's
-  // menus are made when it is chosen, from the lists LFO 1's are, and the
-  // threshold's lists every source that is not an event.
+  // menus are made when it is chosen, from the lists LFO 1's are.
   const bool menu = selectSpec(id) != nullptr;
   const SelectSpec* like = selectSpec(id == "lfoShape1" ? "lfoShape0" : id == "lfoSync1" ? "lfoSync0" : "");
-  const ModSource* watch = id == "threshWatch" ? matrix.source(utf16To8(written)) : nullptr;
   if (menu) panel.setSelect(id, written);
   const std::u16string value = menu ? utf8To16(panel.select(id))
-                             : like ? (selectHas(*like, utf16To8(written)) ? written : u"")
-                             : id == "threshWatch" ? (watch && !watch->event ? written : u"") : written;
+                             : like ? (selectHas(*like, utf16To8(written)) ? written : u"") : written;
   const std::string text = utf16To8(value);
   const double number = jsStringToNumber(value);
   const auto orElse = [](double v, double d) { return v == 0 || std::isnan(v) ? d : v; };
@@ -1625,10 +1570,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   }
   else if (id == "delaySync") { echoTarget(b, keys).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }
   else if (id == "delayPingPong") { echoTarget(b, keys).pingPong = checked; syncEcho(b, gen); }
-  // The crossings, the key and the quantiser.
-  else if (id == "crossOn") { b.cross.on = checked; syncCrossings(b, gen); }
-  else if (id == "crossNoteX") { b.cross.noteX = number; syncCrossings(b, gen); }
-  else if (id == "crossNoteY") { b.cross.noteY = number; syncCrossings(b, gen); }
+  // The key and the quantiser.
   else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }
   else if (id == "keyScale") { b.keyScale = text; syncQuantiser(b, gen); }
   else if (id == "quantise") { b.quantise = checked; syncQuantiser(b, gen); }
@@ -1643,7 +1585,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
   else if (id == "midiDrive") keys.setDrive(checked);
   else if (id == "midiPlay") keys.setPlay(checked);
-  // The arpeggiator, the pluck and the score.
+  // The arpeggiator and the score.
   else if (id == "arpMode") {
     // arpSet reads all three menus. The other two are the brain's, which a
     // setup restores without writing the panel's copies of them.
@@ -1652,7 +1594,6 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   }
   else if (id == "arpRate") { b.arp.rate = text; keys.setArpRate(text); }
   else if (id == "arpOctaves") { b.arp.octaves = text; keys.setArpOctaves(number); }
-  else if (id == "pluckNote") b.pluckNote = orElse(number, 60);
   else if (id == "scoreOn") { b.score.on = checked; if (!b.score.on) scoreStop(b.score, b.out); }
   else if (id == "scoreStep") b.score.step = text;
   else if (id == "scoreVoices") b.score.voices = orElse(number, 1);
@@ -1673,8 +1614,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     b.clock.step(b.clock.now());
     if (!l.sync.empty()) { lfos[i].phase = 0; lfos[i].epoch++; }
   }
-  // The threshold, and a macro renamed.
-  else if (id == "threshWatch") { setThresholdWatch(b, value); matrix.touch(); }
+  // A macro renamed.
   else if (id.size() == 10 && id.compare(0, 9, "macroName") == 0 && id[9] >= '1' && id[9] <= '4') {
     // nameMacro: the bar is a code's separator and an empty name no name.
     std::u16string clean;
@@ -1850,39 +1790,6 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
   }
 }
 
-// K1's threshold (thresholdStep), once a frame before the events fire: the
-// source it watches rising through the level is a hit, and it can fire again
-// only once that source has fallen 0.05 below and 80 ms have passed. An event
-// source, or none, is nothing to watch.
-constexpr double kThreshHyst = 0.05, kThreshGap = 80;
-inline void thresholdStep(Brain& b, const Matrix& matrix, double now) {
-  const ModSource* watched = matrix.source(utf16To8(b.threshWatch));
-  if (!watched || watched->event) { b.thresh.armed = false; return; }
-  const double v = watched->value();
-  if (v < b.threshLevel - kThreshHyst) b.thresh.armed = true;
-  else if (b.thresh.armed && v >= b.threshLevel && now - b.thresh.last >= kThreshGap) {
-    b.thresh.armed = false; b.thresh.count++; b.thresh.last = now; b.thresh.flash = now;
-  }
-}
-class ThresholdSource : public ModSource {
- public:
-  ThresholdSource(const Brain& b, const Matrix& matrix) : ModSource("threshold"), b_(b), matrix_(matrix) { event = true; }
-  // A flash that fades over 150 ms, for the chip's meter.
-  double value() const override { return jsMax(0, 1 - (b_.clock.now() - b_.thresh.flash) / 150); }
-  int count() const override { return b_.thresh.count; }
-  // It is a loop when what it watches is one, asked afresh each time. An
-  // event source is never watched, so it makes no loop - and asking it would
-  // ask this, for ever, were a setup to have it watching itself.
-  bool picture() const override {
-    const ModSource* watched = matrix_.source(utf16To8(b_.threshWatch));
-    return watched && !watched->event && watched->picture();
-  }
-
- private:
-  const Brain& b_;
-  const Matrix& matrix_;
-};
-
 // The macros as sources, and the fader as a destination the matrix moves.
 class MacroSource : public ModSource {
  public:
@@ -1895,22 +1802,10 @@ class MacroSource : public ModSource {
 };
 class BrainSources {
  public:
-  // With a generator, the pluck too: struck at the setup's pluck note and sent
-  // out, where the core's own stand-in strikes middle C and sends nothing.
-  BrainSources(Matrix& matrix, Brain& b, Generator* gen = nullptr) : threshold_(b, matrix) {
-    if (gen) {
-      ModDest pluck;
-      pluck.id = "gen.pluck"; pluck.kind = DestKind::Event;
-      Brain* brain = &b;
-      pluck.fire = [brain, gen](double amount) {
-        pluckFire(brain->notesOut, static_cast<int>(brain->pluckNote), jsMax(0, jsMin(1, std::fabs(amount))), brain->clock.now(),
-                  [gen](double hz, double velocity) { gen->strike(hz, velocity); }, brain->out);
-      };
-      matrix.registerDest(std::move(pluck));
-    }
+  // The threshold and the pluck it struck were here too, and went in P5.
+  BrainSources(Matrix& matrix, Brain& b) {
     for (int i = 0; i < 4; i++) macros_.emplace_back(i, b);
     for (auto& m : macros_) matrix.registerSource(&m);
-    matrix.registerSource(&threshold_);
     ModDest d;
     d.id = "morph.pos"; d.kind = DestKind::Visual; d.span = 1; d.min = 0; d.max = 1;
     Brain* brain = &b;
@@ -1921,12 +1816,9 @@ class BrainSources {
   BrainSources(const BrainSources&) = delete;
   BrainSources& operator=(const BrainSources&) = delete;
 
-  // thresholdStep, once a frame before the matrix fires its events.
-  void frame(Brain& b, const Matrix& matrix, double now) { thresholdStep(b, matrix, now); }
 
  private:
   std::vector<MacroSource> macros_;
-  ThresholdSource threshold_;
 };
 
 }  // namespace scope

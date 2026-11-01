@@ -81,7 +81,6 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
-| `crosstest.py` | crossings: a just 3:2 figure fires twenty against thirty in ten seconds, an equal one drifts at the predicted rate, no rattle, the rate limit, notes heard and not drawn, the lines where they are measured |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
@@ -4435,3 +4434,20 @@ reach it; `applyPreset` and Load also send the whole setup (`hostSendSetup`).
 Every path a person can reach sends it, so it is a trap only for tests and
 probes: on the default page, follow a `restore` with `hostSendSetup()`, or use
 `applyPreset`.
+
+**Cutting a source or a destination needs a decode pass even though nothing
+reads it.** The routing list keeps ids it does not know, on purpose: a code
+from a build with a source this one lacks should not lose that routing on the
+way through. So when the threshold and Pluck went (P5), a route from the one
+or to the other would have loaded without error and then ridden along in every
+code saved afterwards, inert and invisible, for ever. Version 5's pass drops
+those routes, as well as the cut features' own fields, and it filters the
+routing text part by part so every other route keeps its spelling exactly; the
+core's pass does the same. `modtest.py` loads a version-4 code through the page
+and finds the routes gone, and the same code marked version 5 is the null: it
+keeps them, so the check can fail. The cut features' own fields are a
+different case: `restore` reads only what it knows and `snapshot` writes only
+what the page has, so they could never have survived a save. They are deleted
+anyway, so that a migrated setup - the core reads them too - says only what
+this build means, and the check reads them off the decoded setup rather than a
+snapshot, which could not have shown them.

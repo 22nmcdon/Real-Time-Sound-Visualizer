@@ -2,8 +2,7 @@
 the page loads a preset or a code, and what it leaves in the instrument
 written out as one JSON line - both layers' tones as the generator holds them,
 the keyboard's settings and the panel it reads, the LFOs, the routings, the
-key and the quantiser, the crossings, the score, the arpeggiator, the
-threshold, the macros, the morph, the plane and the echo, the drawn cycles
+key and the quantiser, the score, the arpeggiator, the macros, the morph, the plane and the echo, the drawn cycles
 and the figures made of strokes, and every slider.
 A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
@@ -68,10 +67,10 @@ DUMP = """(setups) => {
     // The reticle moved, "u,v", as a drag or a key moves it.
     else if (o.op === "change" && o.id === "photoReticle") { const [u, v] = String(o.value).split(","); movePhoto(Number(u), Number(v)); }
     else if (o.op === "change") {
-      // An LFO's menus and the threshold's are in the page only while theirs
-      // is the chosen source, as LFO 1's rate is.
+      // An LFO's menus are in the page only while theirs is the chosen
+      // source, as LFO 1's rate is.
       const lfo = /^lfo(?:Shape|Sync)(\\d)$/.exec(o.id);
-      if (!document.getElementById(o.id)) selectSource(lfo ? "lfo" + (Number(lfo[1]) + 1) : "threshold");
+      if (!document.getElementById(o.id) && lfo) selectSource("lfo" + (Number(lfo[1]) + 1));
       const e = document.getElementById(o.id);
       if (e.type === "checkbox") e.checked = o.value === true; else e.value = String(o.value);
       e.dispatchEvent(new Event("change"));
@@ -116,7 +115,6 @@ DUMP = """(setups) => {
                                phase: l.phase, epoch: l.epoch, plays: l.shape === "random" ? "random" : waveAt(l.shape, 1) })),
       mod: encodeRoutings(state.modRoutings),
       key: { root: state.keyRoot, scale: state.keyScale, quantise: state.quantise, glide: state.quantiseGlide, bpm: transport.set },
-      cross: { on: cross.on, x: cross.x, y: cross.y, noteX: cross.noteX, noteY: cross.noteY, decayMs: cross.decayMs, level: cross.level },
       score: { on: score.on, step: score.step, voices: score.voices, low: score.low, octaves: score.octaves },
       arp: { mode: el.arpMode.value, rate: el.arpRate.value, octaves: el.arpOctaves.value },
       arpPlays: { mode: arp.mode, rate: arp.rate, octaves: arp.octaves },
@@ -125,7 +123,6 @@ DUMP = """(setups) => {
       panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
                                              "planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
         .map((id) => [id, el[id].value])),
-      thresh: { watch: thresh.watch, level: thresh.level, armed: thresh.armed }, pluck: pluck.note,
       macros: macros.map((m) => ({ name: m.name, value: m.value })),
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
@@ -222,8 +219,8 @@ def main():
             print(page.evaluate("() => JSON.stringify(PRESETS)"))
         elif sys.argv[1] == "--sources":
             # The sources the page has registered, with the reach `touchRoutings`
-            # holds a stored depth to, and which are events, which the threshold cannot
-            # watch: the C++ runner registers stand-ins for them.
+            # holds a stored depth to, and which are events: the C++ runner
+            # registers stand-ins for them.
             print(page.evaluate("""() => JSON.stringify([...MOD_SOURCES.values()].map((s) =>
               ({ id: s.id, reach: s.reach > 0 ? s.reach : 0, varies: !!s.reachVaries, event: s.event === true })))"""))
         else:

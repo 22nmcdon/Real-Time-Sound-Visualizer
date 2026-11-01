@@ -569,6 +569,17 @@ the synth's features should be chosen knowing that.
     of roundness that has to add nothing. With it went the only place the screen's turn
     and zoom showed in what the picture says, since direction does not change with
     either. No setup ever stored it, so no code needs a decode pass.
+  - *Crossings, thresholds and Pluck, cut:* the two lines that played a note when the
+    beam crossed them, the Threshold that turned any value into an event, and Pluck, the
+    note it struck - in the page, the core, the compiled engine (which reads back two
+    numbers fewer) and the plugin. They read the beam, not the phosphor. Four presets
+    went with them (*Pendulums ring a bell*, *Three against two*, *Four against three*,
+    *Drifting fifth*), and the Effects tab lost its Crossings section. Setup codes are
+    version 5: the pass deletes the ten fields and drops any route from the threshold or
+    to the pluck, which the routing list would otherwise have kept, inert, in every code
+    saved after. The score's voice kept the struck sine they shared, and the parity run
+    that shows it heard beyond the picture strikes it directly. None of the three was a
+    host parameter, so nothing in a saved session moves.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,

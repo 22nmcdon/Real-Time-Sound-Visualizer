@@ -225,7 +225,7 @@ try {
      220 Hz it sounds, and a reswing while it sounds is a strike rather than
      a restart from nothing. */
   node.port.onmessage({ data: { tone: { mode: "harmonograph", pitched: true, freq: 220, ringMs: 400,
-                                        interval: 0, octaves: 0, crossOn: false } } });
+                                        interval: 0, octaves: 0 } } });
   let pitchedPeak = 0, pitchedFinite = true;
   for (let round = 0; round < 200; round++) {
     if (round === 100) node.port.onmessage({ data: { reswing: true } });
@@ -336,10 +336,6 @@ try {
                                         subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0,
                                         vcfType: 0 } } });
 
-  // The crossings, in the thread they run in: a 4 Hz beam fires both lines.
-  node.port.onmessage({ data: { tone: { freq: 4, amp: 0.9, interval: 0, octaves: 0, crossOn: true } } });
-  for (let round = 0; round < 800; round++) node.process([], [out], {});
-  report.crossings = node.core.crossings;
   // A kick is an event sent by message, as a reswing is; it has to land in
   // the worklet's own core, which is the one drawing while the voice sounds.
   node.port.onmessage({ data: { kick: 1 } });
@@ -360,7 +356,6 @@ try {
   let worst = 0, energy = 0;
   for (let i = 0; i < 128; i++) { worst = Math.max(worst, Math.abs(oFed[0][i] - 1.5 * oBare[0][i])); energy += Math.abs(oBare[0][i]); }
   report.input = { worst, energy };
-  node.port.onmessage({ data: { tone: { crossOn: false } } });
 
   /* A restart counted on the main thread reaching the oscillators here: a
      new count puts the phase back to nought, and the same count sent again

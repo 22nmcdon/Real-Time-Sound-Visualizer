@@ -860,15 +860,13 @@ def gen_runs():
                                   (0, "set chorusRate 4 1"), (0, "set delayMix 0.4 1"), (0, "set delayMs 6 1"),
                                   (1024, "set planeOwn true 1"), (2048, "set planeOwn false 1"),
                                   (2560, "set planeOwn true 1"), (3072, "set delayMs 9 1")])
-    # The crossings, the score, and the input three ways and from the second generator.
-    add("crossings", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set crossOn true"), (0, "set crossX 0.2"),
-                      (0, "set crossY -0.3"), (0, "set crossDecayMs 40"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"), (2560, "strike 550 1"),
-                      (2688, "strike 660 0.4"), (2816, "strike 880 0.9"), (2944, "strike 990 0.7")], samples=8192)
-    # The harmonic's two peaks either side of a dip, the line between the dip
-    # and five hundredths above it: the beam falls below the line without
-    # falling far enough to arm it again, and the peaks are 50 ms apart.
-    add("crossings-dip", [(0, "set freq 5"), (0, "set crossOn true"), (0, "set crossX 0.39"), (0, "set crossY 0.9")],
-        samples=12288)
+    # The score's voice, and the input three ways and from the second
+    # generator. Five strikes on a traced figure, the fifth taking the voice
+    # furthest into its decay. (The crossings had a run here, and a second
+    # where the beam dipped below a line without re-arming it; both went in P5.)
+    add("score-struck", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"),
+                         (2560, "strike 550 1"), (2688, "strike 660 0.4"), (2816, "strike 880 0.9"), (2944, "strike 990 0.7")],
+        samples=8192)
     # A clock input that never goes below nought: it dips into the
     # hysteresis and out again, which re-arms nothing.
     add("input-clock-dc", [(0, "input 97 0.295 0.3"), (0, "set inputMode 3"), (0, "set mode figure")])
@@ -913,12 +911,12 @@ for family in sorted(gworst):
 
 # Each run has to be able to show what it is for: a comparison of two cores
 # doing nothing would pass. The report at the end of a row is envelope, pitch,
-# the two crossings' counts, the kick, the swing, then the budget (units,
+# the kick, the swing, then the budget (units,
 # asked A and B, unison A and B, asked factor, factor, silenced), the drawing
 # (swing, pendulum, three turns, facing), the voices on each layer, and then
 # the sources that read the generator, the page's registrations against the
 # core's: the note envelope and the drawings' six.
-TAIL = 29
+TAIL = 27
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -928,10 +926,8 @@ quiet = [n for n, _ in runs if max(abs(x) for x in col(grow(n)[0], 0)) < 0.01]
 check("every run puts something on the screen", not quiet, ", ".join(quiet))
 body, tail = grow("governed-held")
 check("the governor, given everything, takes copies and voices away",
-      tail[9] < tail[7] and tail[10] < tail[8] and tail[12] < tail[11] and tail[13] > 0,
-      "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[7], tail[8], tail[9], tail[10], tail[12], tail[11], tail[13]))
-body, tail = grow("crossings")
-check("the crossings fire on both lines", tail[2] > 0 and tail[3] > 0, "%d and %d" % (tail[2], tail[3]))
+      tail[7] < tail[5] and tail[8] < tail[6] and tail[10] < tail[9] and tail[11] > 0,
+      "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[5], tail[6], tail[7], tail[8], tail[10], tail[9], tail[11]))
 body, _ = grow("layered")
 check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 0.05)
 own, off = grow("plane-own")[0], grow("plane-own-off")[0]
@@ -945,8 +941,8 @@ check("layer B's own echo and chorus change B's picture and its share of the sou
       and max(abs(a - b) for a, b in zip(col(own, 2), col(off, 2))) > 0.05
       and col(own, 0) == col(off, 0) and col(own, 1) == col(off, 1))
 # One pair (P4): in every run, what is heard is A's lanes and B's summed,
-# sample for sample - a chord's inner voices, the crossings' notes and the
-# score's included, which used to be heard and never drawn. Columns: A's
+# sample for sample - a chord's inner voices included, which used to be
+# heard and never drawn. Columns: A's
 # lanes, the heard pair, B's lanes. This used to assert the opposite, that
 # in a chord the heard pair is not the picture. Fed A's left in place of
 # B's, or the heard pair of the run with its inner voice taken away, the
@@ -973,11 +969,11 @@ lay = grow("layered")[0]
 swapped = [x for k in range(len(col(lay, 0))) for x in (col(lay, 0)[k], col(lay, 1)[k], col(lay, 2)[k], col(lay, 3)[k],
                                                         col(lay, 0)[k], col(lay, 5)[k])]
 check("and the check fails on B's lanes read as A's", not one_pair(swapped))
-# The score's voice is heard and not drawn: in the crossings run, struck five
-# times, there is something heard beyond the lanes - which is also the null
-# for the check above holding a struck run to nothing.
+# The score's voice is heard and not drawn: in a run struck five times, there
+# is something heard beyond the lanes - which is also the null for the check
+# above holding a run with nothing struck to nothing.
 check("and the score's voice is heard beyond the picture, where a run with nothing struck would fail",
-      "crossings" in struck_runs and not one_pair(grow("crossings")[0], False) and one_pair(grow("crossings")[0], True))
+      "score-struck" in struck_runs and not one_pair(grow("score-struck")[0], False) and one_pair(grow("score-struck")[0], True))
 body, _ = grow("poly")
 def inner_drawn(with_, without):
     a, b = col(with_, 0)[:1000], col(without, 0)[:1000]
@@ -988,15 +984,15 @@ check("and the check fails on two pictures of one chord", not inner_drawn(body, 
 check("the second generator is drawn while there is no layer B", all(max(abs(x) for x in col(grow("gen2-%d" % m)[0], 4)) > 0.1
                                                                      for m in (1, 2, 3)))
 _, tail = grow("solid-Cube")
-check("a solid turns, and a kick is still spinning it", abs(tail[16]) + abs(tail[17]) > 0.01 and tail[4] != 0)
+check("a solid turns, and a kick is still spinning it", abs(tail[14]) + abs(tail[15]) > 0.01 and tail[2] != 0)
 # The sources: a solid whose three turns all differ, so a swapped axis is not
 # hidden; the envelope as a source somewhere non-zero; and somewhere ungated,
 # where the generator reports one and the source has to read nought.
 tails = {n: grow(n)[1] for n, _ in runs}
-turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[25:28]}) == 3 and min(abs(x) for x in t[25:28]) > 1e-3]
-swung = [n for n, t in tails.items() if abs(t[23]) > 1e-3 and abs(t[24]) > 1e-3]
-enveloped = [n for n, t in tails.items() if t[22] > 1e-3]
-ungated = [n for n, t in tails.items() if t[0] == 1 and t[22] == 0]
+turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[23:26]}) == 3 and min(abs(x) for x in t[23:26]) > 1e-3]
+swung = [n for n, t in tails.items() if abs(t[21]) > 1e-3 and abs(t[22]) > 1e-3]
+enveloped = [n for n, t in tails.items() if t[20] > 1e-3]
+ungated = [n for n, t in tails.items() if t[0] == 1 and t[20] == 0]
 check("the runs can show the sources: a solid's three turns apart, the pendulums swinging, an envelope, and an ungated one",
       turned and swung and enveloped and ungated, "%d, %d, %d, %d" % (len(turned), len(swung), len(enveloped), len(ungated)))
 _, tail = grow("swing-pitched")
@@ -1343,7 +1339,7 @@ MSETUP = ["source lfo1 index=0", "source lfo2 index=1", "source level", "source 
           "source photo picture reach=0.5", "source shape picture reach=0.5", "source hear reach=0.5 varies",
           "source onset event", "source pic.hit event picture", "source stage.glow picture reach=0.5",
           "source stage.memory picture reach=0.3", "visual view.rotate 1 -2 2 0.25",
-          "visual view.zoom 8 0 24 20", "event gen.kick", "event gen.pluck",
+          "visual view.zoom 8 0 24 20", "event gen.kick", "event gen.reswing",
           "value level 0.6", "value photo 0.7", "value shape 0.9", "value hear 0.8", "value lfo1 0.3",
           "value stage.glow 0.4", "value stage.memory 0.5"]
 def mrun(*commands): return "run\n%s\nend\n" % "\n".join(MSETUP + list(commands))
@@ -1361,10 +1357,10 @@ mruns = [
     ("visual", mrun("route level view.rotate 1", "route photo view.rotate 0.5", "route shape view.rotate 0.5",
                     "frame", "value level 2.5", "frame", "route level view.zoom 1", "frame", "value level -9", "frame",
                     "route hear view.zoom -0.9", "frame", "visual view.rotate 1 -2 2 -0.5", "frame")),
-    ("events", mrun("route onset gen.kick 0.6", "route pic.hit gen.kick 1", "route onset gen.pluck 0", "frame",
+    ("events", mrun("route onset gen.kick 0.6", "route pic.hit gen.kick 1", "route onset gen.reswing 0", "frame",
                     "count onset 1", "frame", "frame", "count onset 3", "frame", "amount onset gen.kick -0.3",
                     "count onset 4", "frame", "count pic.hit 2", "frame", "load onset>gen.kick@0.9", "count onset 5",
-                    "frame", "count onset 6", "frame", "route onset gen.pluck 0.5", "count onset 7", "frame")),
+                    "frame", "count onset 6", "frame", "route onset gen.reswing 0.5", "count onset 7", "frame")),
     ("forget", mrun("route level gen.freq 0.5", "route photo gen.twist 0.3", "frame", "forget level", "frame",
                     "source level", "frame", "forget photo", "frame")),
     ("fade-in", mrun("fade in 1", "at 0", "frame", "route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "routes",
@@ -1441,7 +1437,7 @@ mruns = [
 
 mrng = random.Random(96)
 MSRC = ["lfo1", "lfo2", "level", "key", "pedal", "photo", "shape", "hear", "onset", "pic.hit", "ghost", "stage.glow"]
-MDST = ["gen.freq", "gen.amp", "gen.fm", "gen.bar2", "gen.twist", "view.rotate", "view.zoom", "gen.kick", "gen.pluck"]
+MDST = ["gen.freq", "gen.amp", "gen.fm", "gen.bar2", "gen.twist", "view.rotate", "view.zoom", "gen.kick", "gen.reswing"]
 def mfuzz(n):
     out, t = ["at 0"], 0
     for _ in range(n):
@@ -1517,7 +1513,7 @@ def stage_holds(out):
 check("the stage's routes: heard at the amount, within reach, never faded, gone at nought", stage_holds(mout("stage")))
 check("and the check fails on a run with no stage in it", not stage_holds(mout("reach")))
 check("events fire on a new count only, never on the count found, and never at no depth",
-      mout("events").count(":: fire gen.kick") == 5 and "fire gen.pluck" not in mout("events")
+      mout("events").count(":: fire gen.kick") == 5 and "fire gen.reswing" not in mout("events")
       and ":: fire gen.kick -0.29" in mout("events"))
 check("the picture's offsets are held to their ranges", "visual view.rotate 1.75" in mout("visual")
       and "visual view.zoom -20" in mout("visual"))
@@ -1602,9 +1598,17 @@ def snapshot():
     for k in srng.sample(DEFAULT_KEYS, srng.randint(0, len(DEFAULT_KEYS))): snap[k] = rvalue()
     for _ in range(srng.randint(0, 3)): snap[srng.choice(["extra", "0", "12", "007", "4294967294", "4294967295", "v"])] = rvalue()
     return snap
+# What version 5 took out (P5): the crossings', the threshold's and the pluck's
+# fields, and a routing list with routes from the threshold and to the pluck
+# among others - spaced, empty between semicolons, a near miss each way.
+GONE_V5 = ["crossOn", "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel", "threshWatch",
+           "threshLevel", "pluckNote"]
+MOD_V4 = ["threshold>gen.freq@0.500;lfo1>gen.amp@0.400", " threshold>gen.amp@1;lfo2>gen.pluck@1.000 ;macro.1>gen.pluck@-0.5",
+          "lfo1>gen.pluck@0.250", "threshold>", ";;", "lfo1>gen.freq@0.400;;\u00a0threshold>gen.amp@0.2;",
+          "xthreshold>gen.freq@0.1;lfo1>gen.pluckx@1;threshold2>gen.amp@1", "lfo1>gen.amp@0.4"]
 def old_setup():
     st = {}
-    if srng.random() < 0.8: st["v"] = srng.choice([1, 2, 3, 4, 5, "2", "x", None, [3], 1.5, True])
+    if srng.random() < 0.8: st["v"] = srng.choice([1, 2, 3, 4, 5, 6, "2", "4", "x", None, [3], 1.5, 4.5, True])
     if srng.random() < 0.7: st["trig"] = srng.choice([0, 1, 2, "1", "x", [1], [], None, True, 0.5, -1, {"a": 1}])
     for key in ("c0s", "c1s", "c2s"):
         if srng.random() < 0.6: st[key] = srng.choice([0, 3, 8, 9, -1, "3", " 3", "03", 3.0, 2.5, "length", True, None, [5], -0.0])
@@ -1612,6 +1616,8 @@ def old_setup():
     if srng.random() < 0.4: st["planeClip"] = srng.choice([True, False, 1, "true", None])
     if srng.random() < 0.3: st["planeLimit"] = srng.choice([0, 2])
     for _ in range(srng.randint(0, 2)): st[srng.choice(["gen", "freq", "mod", "5"])] = rvalue()
+    if srng.random() < 0.4: st["mod"] = srng.choice(MOD_V4)
+    for key in srng.sample(GONE_V5, srng.randint(0, 3)): st[key] = rvalue()
     return st
 def code_of(text):
     raw = text.encode("latin-1") if all(ord(c) < 256 for c in text) else text.encode("utf-8")
@@ -1654,10 +1660,13 @@ for raw in ['{"v":4,"gen":"figure"}', '{"v":2,"trig":1,"c1s":"5","level":7}']:
     c = code_of(raw)
     scmds += ["decode " + c[:4] + "\t" + c[4:], "decode " + c[:4] + "\f" + c[4:8] + "\r\u000b" + c[8:]]
 scmds += ['encode {"freq":330,"gen":"figure"}', "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}')]
+V4_CODE = '{"v":4,"crossOn":true,"crossX":40,"threshWatch":"env.live","pluckNote":64,"freq":330,' \
+          '"mod":"threshold>gen.freq@0.500; lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"}'
+scmds += ["decode " + code_of(V4_CODE)]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
-check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 180)
+check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 170)
 enc = [i for i, c in enumerate(scmds) if c.startswith("encode")]
 dec = [i for i, c in enumerate(scmds) if c.startswith("decode")]
 check("%d snapshots encode to the page's code, character for character" % len(enc),
@@ -1670,6 +1679,15 @@ check("the runs reach codes that throw, codes that do not read, migrated levels 
       sjs.count("throws") >= 3 and sjs.count("unreadable") >= 10 and '"planeLimit":1' in sj
       and re.search(r'"level":-?\d+', sj) and "1e+21" in sj and "1e-7" in sj and "\\ud800" in sj and "{u+d83c}{u+dfb5}" in sj)
 check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"9":1,"b":3,"a":4') for l in sjs))
+# Version 5, read off the page's own line: a version-4 code loses the cut
+# features' fields and their routes and keeps everything else as written.
+v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
+check("a version-4 code comes up to 5 without the crossings', threshold's and pluck's fields or routes, the rest as written",
+      v4_read.startswith("read ") and '"v":5' in v4_read and '"freq":330' in v4_read
+      and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
+check("and the random codes reach the pass both ways: routes it drops, routes it keeps, fields it takes out",
+      sum(1 for l in sjs if '"mod":"threshold>gen.freq@0.500;' in l) >= 2 and sum(1 for l in sjs if '"mod":"lfo1>gen.amp@0.400"' in l) >= 3
+      and sum(1 for l in sjs if '"crossOn"' in l) >= 2)
 # Nulls: the page told something else, and the port must disagree.
 def snull(what, before, after):
     i = scmds.index(before)
@@ -1680,6 +1698,8 @@ snull("an old code's level one more", "decode " + code_of('{"v":1,"trig":1,"c1s"
       "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":101}'))
 snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
+snull("the version-4 code marked 5, which keeps what it says", "decode " + code_of(V4_CODE),
+      "decode " + code_of(V4_CODE.replace('"v":4', '"v":5')))
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
 # The site's codec (5e): the compiled core's, made from the module the page
 # carries and driven through the page's own wrapper, on every command above.
@@ -1853,12 +1873,12 @@ cnull("layer B's echo followed while B has none of its own", "echo-b", "echob 0 
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
 
-print("\n--- the level and the threshold ---")
+print("\n--- the level ---")
 # The page's `env.live` - an envelope follower over the screen's signal lane -
-# and K1's threshold, a value made into an event, lifted by name, against
-# scope::Level and the Brain's threshold, through the same commands. A line a
-# command: the follower and the source's value, then the threshold's count,
-# whether it is armed, when it last fired, its flash, and whether it is a loop.
+# lifted by name, against scope::Level, through the same commands. A line a
+# command: the follower and the source's value. K1's threshold, which watched
+# it and fired when it rose through a level, was compared here too, and went
+# in P5 with the crossings and the pluck.
 lvexe = build("signal_cpp")
 def lvboth(text, name="signal_one.txt"):
     path = os.path.join(BUILD, name)
@@ -1875,49 +1895,18 @@ lvruns = [
     ("level-stride", lvrun(*sum((["noise %d 0.8 %d" % (n, n), "frame 33"] for n in (511, 512, 1023, 1024, 1025, 1533, 1536, 2047, 4096)), []))),
     # A full-scale sine is one; louder is still one, while the follower goes on rising.
     ("level-full", lvrun("sine 1 4 1024", *["frame 50"] * 10, "sine 1.6 4 1024", *["frame 50"] * 10)),
-    # Rising through the level fires once; falling short of the hysteresis does not arm it; 80 ms must pass.
-    ("thresh-fire", lvrun("watch test.v", "level 0.5", "at 0", "v 0.2", "thresh", "at 10", "v 0.6", "thresh", "at 20", "thresh",
-                         "at 30", "v 0.47", "thresh", "at 40", "v 0.44", "thresh", "at 50", "v 0.6", "thresh", "at 89", "thresh",
-                         "at 90", "thresh", "at 200", "v 0.1", "thresh", "at 300", "v 0.5", "thresh", "at 400", "thresh")),
-    # The gap and the level, each exactly: 80 ms after the last is allowed, the level itself is through it. And
-    # the hysteresis: 0.3 - 0.05 is 0.24999999999999997 in doubles, so 0.25 is not below it and 0.2499 is.
-    ("thresh-exact", lvrun("watch test.v", "level 0.3", "at 1000", "v 0", "thresh", "v 0.3", "thresh", "v 0.2", "thresh",
-                          "at 1079", "v 0.3", "thresh", "at 1080", "thresh", "v 0.25", "thresh", "at 1500", "v 0.3", "thresh",
-                          "v 0.2499", "thresh", "at 2000", "v 0.3", "thresh")),
-    # What it watches: an event source disarms it, the picture's makes it a loop, nothing is nothing, itself is an event.
-    ("thresh-kinds", lvrun("watch test.v", "v 0", "thresh", "watch test.e", "thresh", "v 0.9", "thresh", "watch test.p", "v 0",
-                          "thresh", "v 0.9", "at 100", "thresh", "watch nothing", "thresh", "watch threshold", "thresh",
-                          "watch test.v", "v 0", "thresh", "v 0.9", "at 300", "thresh")),
-    # The source it watches forgotten, as a controller can be, and moved again: it has to fall below again first.
-    ("thresh-forgot", lvrun("watch test.v", "level 0.5", "at 0", "v 0", "thresh", "drop", "at 100", "thresh", "add", "v 0.9",
-                           "at 200", "thresh", "v 0", "at 300", "thresh", "v 0.9", "at 400", "thresh")),
-    # A setup loaded: what it watches and its level from the code, and armed afresh. 120 is held to 95 hundredths, so
-    # 0.96 is through it; 1 to 5, so nought cannot arm it (0.05 - 0.05 is not below nought) and a hair under can.
-    ("thresh-restore", lvrun("watch test.v", "at 0", "v 0", "thresh", "restore test.v 60", "v 0.9", "at 100", "thresh",
-                            "v 0", "at 200", "thresh", "restore test.p 120", "v 0.96", "at 300", "thresh", "v 0", "at 400", "thresh",
-                            "v 0.96", "at 500", "thresh", "restore test.v 1", "v 0", "at 600", "thresh", "v -0.01", "at 650", "thresh",
-                            "v 0.06", "at 700", "thresh")),
-    # Watching the level itself, the default: a tone arriving fires it.
-    ("thresh-level", lvrun("level 0.3", "sine 0 1 1024", "at 0", "frame 16", "thresh", *sum((["at %d" % (16 * k), "sine 0.6 3 1024" if k == 4 else "frame 16",
-                          "frame 16", "thresh"] for k in range(1, 30)), []))),
 ]
 def lvfuzz(n):
     out = []
     for _ in range(n):
-        t, cmds = 0, ["watch " + lvrng.choice(["test.v", "env.live", "test.p", "test.e"])]
+        t, cmds = 0, []
         for _ in range(lvrng.randint(30, 120)):
             t += lvrng.choice([0, 1, 16, 33, 79, 80, 81, 200])
             cmds.append("at %d" % t)
             r = lvrng.random()
-            if r < 0.3: cmds.append("thresh")
-            elif r < 0.5: cmds.append("v %r" % lvrng.choice([0, 0.1, 0.44, 0.45, 0.46, 0.5, 0.55, 0.9, 1.2, -0.3]))
-            elif r < 0.65: cmds.append("frame %r" % lvrng.choice([0, 1, 16, 16.7, 33, 100, 1000]))
-            elif r < 0.72: cmds.append("sine %r %d %d" % (lvrng.choice([0, 0.1, 0.5, 1, 1.5]), lvrng.randint(1, 12), lvrng.choice([100, 511, 512, 1024, 1025, 2048])))
-            elif r < 0.78: cmds.append("noise %d %r %d" % (lvrng.randint(1, 99), lvrng.choice([0.2, 0.7, 1]), lvrng.choice([300, 512, 777, 2049])))
-            elif r < 0.86: cmds.append("level %r" % lvrng.choice([0.05, 0.3, 0.5, 0.95]))
-            elif r < 0.93: cmds.append("watch " + lvrng.choice(["test.v", "test.v", "env.live", "test.p", "test.e", "threshold", "nothing"]))
-            elif r < 0.96: cmds.append(lvrng.choice(["drop", "add"]))
-            else: cmds.append("restore %s %r" % (lvrng.choice(["test.v", "env.live", "test.p", "nothing"]), lvrng.choice([1, 30, 50, 95, 200])))
+            if r < 0.6: cmds.append("frame %r" % lvrng.choice([0, 1, 16, 16.7, 33, 100, 1000]))
+            elif r < 0.8: cmds.append("sine %r %d %d" % (lvrng.choice([0, 0.1, 0.5, 1, 1.5]), lvrng.randint(1, 12), lvrng.choice([100, 511, 512, 1024, 1025, 2048])))
+            else: cmds.append("noise %d %r %d" % (lvrng.randint(1, 99), lvrng.choice([0.2, 0.7, 1]), lvrng.choice([300, 512, 777, 2049])))
         out.append(lvrun(*cmds))
     return out
 lvrng = random.Random(47)
@@ -1925,7 +1914,7 @@ lvfuzzed = lvfuzz(60)
 lvtext = "".join(r for _, r in lvruns) + "".join(lvfuzzed)
 lvjs, lvcpp = lvboth(lvtext, "signal.txt")
 lvd = kdiff(lvjs, lvcpp)
-check("%d runs of the level and the threshold, %d of them random, are the page's line for line" % (len(lvruns) + len(lvfuzzed), len(lvfuzzed)),
+check("%d runs of the level, %d of them random, are the page's line for line" % (len(lvruns) + len(lvfuzzed), len(lvfuzzed)),
       lvd is None and len(lvjs.split("\n")) > 4000, lvd or "%d lines" % len(lvjs.split("\n")))
 def lvout(name):
     js, _ = lvboth(dict(lvruns)[name])
@@ -1946,37 +1935,6 @@ L = lvout("level-full")
 check("a full-scale sine reads one, and louder reads one still, while the follower itself goes on up",
       abs(float(lvfield(L[10], "level")) - 1) < 2e-3 and lvfield(L[-1], "level") == "1.0000000000000000" and float(lvfield(L[-1], "env")) > 1.1,
       "%s, then %s at %s" % (lvfield(L[10], "level"), lvfield(L[-1], "level"), lvfield(L[-1], "env")))
-L = lvout("thresh-fire")
-counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
-# thresh at 0 (arms), 10 fires, 20 no, 30 (0.47, not re-armed), 40 (0.44, arms), 50 (0.6, 40 ms after the last: no), 89 no, 90 fires,
-# 200 arms, 300 (0.5, the level itself) fires, 400 no.
-check("rising through the level fires once; falling short of the hysteresis does not arm it again; 80 ms must pass; the level itself is through",
-      counts == [0, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3], str(counts))
-L = lvout("thresh-exact")
-counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
-check("80 ms after the last firing is allowed and 79 is not; 0.05 below the level does not arm it, a hair more below does",
-      counts == [0, 1, 1, 1, 2, 2, 2, 2, 3], str(counts))
-L = lvout("thresh-kinds")
-th = [l for l in L if l.startswith("thresh")]
-check("watching an event source disarms it and never fires; watching the picture's makes it a loop; nothing and itself are nothing",
-      [int(lvfield(l, "count")) for l in th] == [0, 0, 0, 0, 1, 1, 1, 1, 2] and lvfield(th[3], "loop") == "1"
-      and all(lvfield(l, "loop") == "0" for l in th[:3] + th[5:]) and lvfield(th[1], "armed") == "0",
-      str([(lvfield(l, "count"), lvfield(l, "armed"), lvfield(l, "loop")) for l in th]))
-L = lvout("thresh-forgot")
-counts = [int(lvfield(l, "count")) for l in L if l.startswith("thresh")]
-check("the source it watches forgotten and brought back has to fall below the level again before it fires",
-      counts == [0, 0, 0, 0, 1], str(counts))
-L = lvout("thresh-restore")
-th = [l for l in L if l.startswith("thresh")]
-check("a setup loaded sets what it watches and its level, held within 5 and 95 hundredths, and arms it afresh",
-      [int(lvfield(l, "count")) for l in th] == [0, 0, 0, 0, 0, 1, 1, 1, 2] and lvfield(th[0], "armed") == "1"
-      and lvfield(th[1], "armed") == "0" and lvfield(th[3], "loop") == "1" and lvfield(th[6], "armed") == "0",
-      str([(lvfield(l, "count"), lvfield(l, "armed"), lvfield(l, "loop")) for l in th]))
-L = lvout("thresh-level")
-fired = next((l for l in L if l.startswith("thresh") and lvfield(l, "count") == "1"), None)
-check("watching the level, as it does unless told otherwise, a tone arriving fires it once",
-      fired is not None and lvfield(L[-1], "count") == "1" and 0.3 <= float(lvfield(fired, "level")) < 0.6,
-      fired[:100] if fired else "never fired")
 def lvnull(what, name, old, new):
     text = dict(lvruns)[name]
     assert text.count(old) >= 1, old
@@ -1985,8 +1943,7 @@ def lvnull(what, name, old, new):
     check("and against " + what, kdiff(js, cpp) is not None)
 lvnull("the tone a twentieth louder", "level-rise", "sine 0.5 8 2048", "sine 0.525 8 2048")
 lvnull("a lane one sample longer", "level-stride", "noise 1024 0.8 1024", "noise 1024 0.8 1025")
-lvnull("the level a hundredth higher, over the value it is crossed by", "thresh-exact", "level 0.3", "level 0.31")
-lvnull("a firing a millisecond later", "thresh-fire", "at 90", "at 91")
+lvnull("a frame a millisecond longer", "level-full", "frame 50", "frame 51")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
@@ -2668,7 +2625,7 @@ check("a slider set by a number holds what the text of that number would leave, 
 spent = [r[0] for r in walked if int(r[1]) != 0]
 still = [r[0] for r in walked if float(r[2]) == 0]
 check("the morph's walk over each of its %d sliders, all of them together, and the host's eight parameters allocate nothing"
-      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 89 and walked[-9][0] == "all",
+      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 85 and walked[-9][0] == "all",
       "%d made; allocating: %s; unmoved: %s" % (made, spent[:4], still[:4]))
 
 print("\n--- the hearing ---")
@@ -2830,12 +2787,13 @@ check("and the comparison fails against the page's lines one command out of step
       kdiff("\n".join(hjs.split("\n")[1:]), "\n".join(hcpp.split("\n")[:-1])) is not None)
 
 print("\n--- the score and MIDI out ---")
-# The page's score, its MIDI out and the crossings' and pluck's notes, on its
-# bar, lifted by name, and scope's on a scope::Clock, through the same
-# commands. A line a command: what was struck and every byte sent, then the
-# playhead, the chord, what is sounding, the rate limit's count, and the
-# note-offs due. The grid is the run's: the picture's, in the page, until
-# stage 4.
+# The page's score and its MIDI out, on its bar, lifted by name, and scope's
+# on a scope::Clock, through the same commands. A line a command: what was
+# struck and every byte sent, then the playhead, the chord, what is sounding
+# and the rate limit's count. The grid is the run's: the picture's, in the
+# page, until stage 4. The out's own calls are driven directly (`note`,
+# `off`); before P5 the crossings and the pluck made them here, and the runs
+# that watched those features' note-offs fall due went with them.
 sexe = build("score_cpp")
 def sboth(text, name="score_one.txt"):
     path = os.path.join(BUILD, name)
@@ -2866,19 +2824,13 @@ sruns = [
     # due on that tick all the same. Just after a MIDI Start the bar is a tick short of nought, and nothing plays.
     ("score-midi", srun("port 1 0", "grid 9 0.5", "score on 1/16 2 48 2", "at 0", "midistart", "frame",
                         *sum((["at %r" % (k * 20.833), "tick", "frame"] for k in range(1, 40)), []))),
-    # Note-offs due on the frame's own millisecond go on it.
-    ("offs-exact", srun("port 1 0", "cross 1 60 67", "at 1000", "counts 1 0", "frame", "at 1100", "frame",
-                        "at 2000", "pluck 0.5", "at 2150", "frame")),
-    # Forty note-ons a second and no more; the note-offs always go.
-    ("out-rate", srun("port 1 0", *sum((["at %d" % (t * 20), "pluck 0.5", "frame"] for t in range(60)), []), "at 2000", "frame",
-                      *sum((["at %d" % (2000 + t * 30), "pluck 0.7"] for t in range(10)), []))),
-    # A note already sounding is ended first; a new port or channel lets everything go on the old one first.
-    ("out-notes", srun("port 1 5", "pluckNote 64", "at 0", "pluck 0.3", "at 50", "pluck 1", "at 60", "port 1 6", "pluck 0.01",
-                       "at 300", "frame", "port 0 0", "pluck 0.9", "panic")),
-    # A crossing's count gone up is a note, ended a tenth of a second on; down - a new generator - is not.
-    ("crossings", srun("port 1 0", "cross 1 60 67", "at 0", "counts 1 0", "frame", "at 50", "counts 3 2", "frame", "at 120", "frame",
-                       "at 160", "frame", "counts 0 0", "frame", "counts 1 1", "cross 0 60 67", "frame", "counts 2 2", "frame",
-                       "cross 1 72 74", "at 400", "frame", "at 600", "frame")),
+    # Forty note-ons a second and no more; every note-off goes, and a dropped note's off sends nothing. Each step
+    # strikes a pitch of its own and ends the one before, so a note's off is never its next strike's.
+    ("out-rate", srun("port 1 0", *sum((["at %d" % (t * 20), "note %d 0.5" % (36 + t), "off %d" % (35 + t)] for t in range(60)), []),
+                      "at 2000", "off 95", *sum((["at %d" % (2000 + t * 30), "note %d 0.7" % (60 + t)] for t in range(10)), []))),
+    # A note already sounding is ended first; a new port or channel lets everything go on the old one first; no port, nothing.
+    ("out-notes", srun("port 1 5", "at 0", "note 64 0.3", "at 50", "note 64 1", "at 60", "port 1 6", "note 64 0.01",
+                       "at 300", "frame", "port 0 0", "note 64 0.9", "panic")),
 ]
 def sfuzz(n):
     out = []
@@ -2889,18 +2841,17 @@ def sfuzz(n):
             cmds.append("at %d" % t)
             r = srng.random()
             if r < 0.4: cmds.append("frame")
-            elif r < 0.5: cmds.append("pluck %r" % srng.choice([0.2, 0.5, 1, 1.4, -0.3]))
+            elif r < 0.5: cmds.append("note %d %r" % (srng.randint(36, 84), srng.choice([0.2, 0.5, 1, 1.4, -0.3, 0.001])))
             elif r < 0.56: cmds.append("score %s %s %s %s %s" % (srng.choice(["on", "on", "off"]), srng.choice(["1/16", "1/8", "1/4", "x"]),
                                                               srng.choice(["1", "2", "4", "0", "-1", "-2"]), srng.choice(["36", "48", "60"]), srng.choice(["1", "2", "3", "4"])))
             elif r < 0.62: cmds.append("grid %d %r" % (srng.randint(1, 99), srng.choice([0.05, 0.2, 0.6])))
             elif r < 0.66: cmds.append("key %d %s" % (srng.randint(0, 11), srng.choice(["chromatic", "major", "minorpent", "whole"])))
-            elif r < 0.71: cmds.append("counts %d %d" % (srng.randint(0, 6), srng.randint(0, 6)))
-            elif r < 0.74: cmds.append("cross %d %d %d" % (srng.randint(0, 1), srng.randint(48, 72), srng.randint(48, 72)))
+            elif r < 0.74: cmds.append("off %d" % srng.randint(36, 84))
             elif r < 0.78: cmds.append("port %d %d" % (srng.randint(0, 1), srng.randint(0, 15)))
             elif r < 0.81: cmds.append(srng.choice(["start", "stop", "midistart", "tick", "tick"]))
             elif r < 0.84: cmds.append("tempo %d" % srng.choice([60, 120, 180, 300]))
             elif r < 0.87: cmds.append("running %d" % srng.randint(0, 1))
-            elif r < 0.9: cmds.append("pluckNote %d" % srng.randint(36, 84))
+            elif r < 0.9: cmds.append("note %d %r" % (srng.randint(60, 64), srng.choice([0.3, 1])))
             elif r < 0.92: cmds.append("panic")
             else: cmds.append("cell %d %d %r" % (srng.randint(0, 63), srng.randint(0, 63), srng.choice([0.1, 0.15, 0.5, 1])))
         out.append(srun(*cmds))
@@ -2960,29 +2911,20 @@ check("after a MIDI Start nothing plays until the clock's next tick, which is th
       sfield(L[5], "col") == "-1" and "send" not in L[5] and sfield(L[8], "col") == "0" and sfield(L[23], "col") == "0"
       and sfield(L[25], "beat") == "0.24999999999999997" and sfield(L[26], "col") == "1",
       "%s %s %s %s" % (sfield(L[5], "col"), sfield(L[8], "col"), sfield(L[25], "beat"), sfield(L[26], "col")))
-L = sout("offs-exact")
-check("a crossing's note-off and the pluck's each go on the frame of their own millisecond, not the next",
-      "send 128,60,0" in L[6] and sfield(L[6], "crossoffs") == "-" and "send 128,60,0" in L[10] and sfield(L[10], "pluckoffs") == "-",
-      "%s | %s" % (L[6][:40], L[10][:40]))
 L = sout("out-rate")
-# Fifty plucks 20 ms apart in the first second, then ten more as the window frees.
+# Fifty notes 20 ms apart in the first second, then ten more as the window frees. Line 1 + 3t is step t's "at",
+# then its note, then the off of the step before's pitch.
 ons = sum(l.count("send 144,") for l in L[:150])
-offs = sum(l.count("send 128,") for l in L[:182])  # to the frame at 2000 ms, which ends the first burst's last notes
+offs = sum(l.count("send 128,") for l in L[:183])  # to the off at 2000 ms, which ends the last note of the burst
 check("the out sends forty note-ons in a second and drops the rest, counting them, then sends again as the second passes; every note-off goes",
       ons == 40 and int(sfield(L[149], "dropped")) == 10 and sum(l.count("send 144,") for l in L[:180]) == 50
-      and offs == sum(l.count("send 144,") for l in L[:180]),
+      and offs == 50 and sfield(L[182], "sounding") == "-",
       "%d on, %s dropped, %d off" % (ons, sfield(L[149], "dropped"), offs))
 L = sout("out-notes")
 check("a note already sounding is ended before it is struck again, and a new channel lets the old one's notes go first",
-      "send 133,64,0 :: send 149,64,127" in L[5] and "send 133,64,0 :: send 181,123,0" in L[7] and "send 150,64,1" in L[8],
-      "%s | %s | %s" % (L[5][:70], L[7][:70], L[8][:70]))
-L = sout("crossings")
-check("a crossing's count gone up is its line's note, ended a tenth of a second on; a count gone down, or the lines off, is none",
-      "send 144,60,102" in L[4] and "send 144,60,102" in L[7] and "send 144,67,102" in L[7] and "send 128,60,0" in L[9]
-      and "send 144" not in L[13] and "send 144" not in L[16] and "send 144" not in L[18], " / ".join(l[:50] for l in L[4:19:3]))
-# The count is not watched while the lines are off, so what it gained meanwhile is heard when they come on.
-check("and a count that rose while the lines were off is heard when they come back on, at their new notes",
-      "send 144,72,102" in L[21] and "send 144,74,102" in L[21], L[21][:90])
+      "send 133,64,0 :: send 149,64,127" in L[4] and "send 133,64,0 :: send 181,123,0" in L[6] and "send 150,64,1" in L[7]
+      and "send" not in L[11],
+      "%s | %s | %s | %s" % (L[4][:70], L[6][:70], L[7][:70], L[11][:40]))
 def snull(what, name, old, new):
     text = dict(sruns)[name]
     assert text.count(old) >= 1, old
@@ -2991,7 +2933,7 @@ def snull(what, name, old, new):
     check("and against " + what, kdiff(js, cpp) is not None)
 snull("a cell a row lower, over the line between two pitches", "score-rows", "cell 31 2 0.7", "cell 32 2 0.7")
 snull("the next key", "score-rows", "key 2 major", "key 3 major")
-snull("a pluck a millisecond later", "out-rate", "at 400\npluck", "at 401\npluck")
+snull("a note a millisecond later", "out-rate", "at 400\nnote", "at 401\nnote")
 snull("another channel", "out-notes", "port 1 6", "port 1 7")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(sjs.split("\n")[1:]), "\n".join(scpp.split("\n")[:-1])) is not None)
@@ -3001,7 +2943,7 @@ print("\n--- restore ---")
 # scope::restoreSetup: every preset the page ships and random setups, each
 # loaded in turn as the page loads them, and what each leaves in the
 # instrument compared field by field - both layers' tones, the keyboard, the
-# LFOs, the routings, the key, the crossings, the macros, the morph, the plane
+# LFOs, the routings, the key, the macros, the morph, the plane
 # and the echo. A number to 1e-12: a cutoff is `Math.pow` against `std::pow`.
 rexe = build("restore_cpp")
 RTOOL = os.path.join(HERE, "tools", "restore_page.py")
@@ -3074,8 +3016,7 @@ SLIDERS = ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay",
            "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "bAmp", "bAtk", "bDec", "bSus", "bRel",
            "bMorph", "bWidth", "bTable", "bFm", "bRing", "bSync", "bSub", "bSpread", "bDrive", "bFold", "bVcfCut", "bVcfRes",
            "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel", "mac1", "mac2", "mac3", "mac4", "morphPos",
-           "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel", "scoreVoices", "scoreOctaves",
-           "arpOctaves", "threshLevel", "pluckNote", "planeRadius", "planeTwist", "planeScaleX", "planeScaleY", "planeShear",
+           "scoreVoices", "scoreOctaves", "arpOctaves", "planeRadius", "planeTwist", "planeScaleX", "planeScaleY", "planeShear",
            "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
            "qGlide", "bpm", "l0r", "l1r", "l0a", "l1a", "photoU", "photoV", "midiDrawCount", "midiDrawCountB", "splitAt",
            "pictureAmount"]
@@ -3100,16 +3041,17 @@ MENUS = {
     "bShape": ["sine", "square", 5, None], "bRatio": [2, "3", 9], "bSubShape": ["sine", 3], "bUnison": [3, "x"],
     "l0y": ["", "1/4", "1/8t", "4", "bogus"], "l1y": ["", "2", "1/16"], "l0d": ["none", "phase", "freq", "amp", "bogus"],
     "l1d": ["none", "tumble", "depth", "ratio"], "keyScale": ["chromatic", "major", "blues", "whole", "bogus", ["major"]],
-    "keyRoot": [-3, 14, 2.5, "2", 7, -0.0, 11], "crossX": [-150, -50, 50, 150, "x"], "crossY": [-120, -30, 30, 120],
+    "keyRoot": [-3, 14, 2.5, "2", 7, -0.0, 11],
     "scoreStep": ["1/16", "1/8", "1/4", "1/2"], "scoreLow": [36, 48, 60, 50, "48"], "arpMode": ["off", "up", "random", "x"],
-    "arpRate": ["1/4", "1/16t", "1/2"], "threshWatch": ["env.live", "", "midi.key", 5], "delaySync": ["", "1/4", "1/8d", "x"],
+    "arpRate": ["1/4", "1/16t", "1/2"], "delaySync": ["", "1/4", "1/8d", "x"],
     "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3], "planeKaleido": [0, 2, 8, 7],
     "planeSnap": [0, 6, 7], "macroNames": ["", "Wide|Bright||Fold", "a" * 20 + "|  b  |c|d|e", "|", 5],
     "morphA": ["", "=freq:330,amp:40", "=bogus:1,freq:x,amp:20:9", "=", "freq:1", 5, "=morphPos:50,freq:330",
                "=macro1:20,fileSeek:5,align:3,keysVelocity:9,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
-    "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5],
+    "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5,
+            "threshold>gen.freq@0.500;lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"],
 }
-BOOLS = ["midiPolyJust", "midiHold", "midiTruth", "midiFollow", "photoOn", "quant", "crossOn", "scoreOn", "delayPingPong", "just"]
+BOOLS = ["midiPolyJust", "midiHold", "midiTruth", "midiFollow", "photoOn", "quant", "scoreOn", "delayPingPong", "just"]
 # The drawn cycles and the figures made of strokes, in and out of their
 # grammars: a cycle of 256 bytes, of the wrong length, with white space atob
 # forgives and with a character it does not, and one that is a default slot
@@ -3484,12 +3426,11 @@ print("\n--- menus, switches and buttons ---")
 # them, and with values a menu has not got.
 CMENUS = ["genMode", "interval", "figure", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS", "oscRatio",
           "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType", "planeMirror", "planeLimit",
-          "planeKaleido", "planeSnap", "delaySync", "crossNoteX", "crossNoteY", "keyRoot", "keyScale", "midiDrawCount",
-          "midiDrawWhich", "midiLayers", "midiLayerPair", "arpMode", "arpRate", "arpOctaves", "pluckNote", "scoreStep",
+          "planeKaleido", "planeSnap", "delaySync", "keyRoot", "keyScale", "midiDrawCount",
+          "midiDrawWhich", "midiLayers", "midiLayerPair", "arpMode", "arpRate", "arpOctaves", "scoreStep",
           "scoreVoices", "scoreLow", "scoreOctaves", "lfoShape0", "lfoSync0"]
-CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"],
-         "threshWatch": ["lfo1", "lfo2", "env.live", "macro.1", "onset", "threshold", "nobody", ""]}
-CSWITCHES = ["delayPingPong", "crossOn", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "midiDrive",
+CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"]}
+CSWITCHES = ["delayPingPong", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "midiDrive",
              "midiPlay", "scoreOn"]
 CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""],
          **{"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}}
@@ -3514,8 +3455,9 @@ def crun():
     return [_json.loads(rrng.choice(presets)) if rrng.random() < 0.7 else {}] + [cop() for _ in range(rrng.randint(4, 14))]
 # Made to be read: each family once, with what it should leave. The figure's
 # path is drawn while the Path figure is chosen; the LFO is locked to a
-# quarter at 120 and let go; the threshold is set to watch an event, which it
-# cannot.
+# quarter at 120 and let go. (Lines 14, 15, 28 and 29 switched the crossings
+# on and set the threshold watching, until P5 cut both; the switches and menus
+# in their places keep every index after them.)
 CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},                                  # 1
          {"op": "change", "id": "genMode", "value": "figure"}, {"op": "change", "id": "figure", "value": "Path"},
          {"op": "change", "id": "figPathD", "value": "M0 0 L20 5 L5 20 Z"},                              # 4
@@ -3523,8 +3465,8 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "change", "id": "vcfType", "value": "2"},  # 7, 8
          {"op": "change", "id": "shpOS", "value": "4"}, {"op": "change", "id": "planeKaleido", "value": "6"},  # 9, 10
          {"op": "click", "id": "planeOS4"}, {"op": "change", "id": "delaySync", "value": "1/4"},             # 11, 12
-         {"op": "change", "id": "delayPingPong", "value": True}, {"op": "change", "id": "crossOn", "value": True},
-         {"op": "change", "id": "crossNoteX", "value": "60"}, {"op": "change", "id": "keyScale", "value": "major"},
+         {"op": "change", "id": "delayPingPong", "value": True}, {"op": "change", "id": "midiHold", "value": True},
+         {"op": "change", "id": "keyRoot", "value": "0"}, {"op": "change", "id": "keyScale", "value": "major"},
          {"op": "change", "id": "quantise", "value": True},                                                  # 17
          {"op": "change", "id": "midiLayers", "value": "split"}, {"op": "change", "id": "midiLayerPair", "value": "against"},
          {"op": "click", "id": "midiPoly"}, {"op": "click", "id": "tuneEqual"},                              # 20, 21
@@ -3532,7 +3474,7 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "arpOctaves", "value": "2"},                                                 # 24
          {"op": "change", "id": "lfoSync0", "value": "1/4"}, {"op": "change", "id": "lfoSync0", "value": ""},  # 25, 26
          {"op": "change", "id": "lfoShape1", "value": "square"},                                             # 27
-         {"op": "change", "id": "threshWatch", "value": "lfo2"}, {"op": "change", "id": "threshWatch", "value": "onset"},
+         {"op": "change", "id": "lfoShape0", "value": "ramp"}, {"op": "change", "id": "midiFollow", "value": True},  # 28, 29
          {"op": "change", "id": "macroName2", "value": "Wob|ble  "}, {"op": "change", "id": "macroName3", "value": "   "},
          {"op": "change", "id": "scoreOn", "value": True}, {"op": "change", "id": "scoreVoices", "value": "4"},  # 32, 33
          {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
@@ -3556,8 +3498,8 @@ check("the kaleidoscope's menu and the plane's 4x button reach the tone",
       cp[10]["a"]["planeKaleido"] == 6 and cp[11]["plane"]["os"] == 4 and cp[11]["a"]["planeOS"] == 4)
 check("the echo synced to a quarter at 120 is 500 ms, and ping-pong switched on",
       cp[12]["a"]["delayMs"] == 500 and cp[13]["a"]["delayPingPong"] is True, repr(cp[12]["a"]["delayMs"]))
-check("the crossings switched on at middle C, and C major quantised is the mask 2741",
-      cp[14]["a"]["crossOn"] is True and abs(cp[15]["a"]["crossHzX"] - 261.6255653005986) < 1e-9
+check("the keyboard's hold switched on, and C major quantised is the mask 2741",
+      cp[13]["midi"]["hold"] is False and cp[14]["midi"]["hold"] is True and cp[15]["key"]["root"] == 0
       and cp[17]["a"]["qMask"] == 2741, repr(cp[17]["a"]["qMask"]))
 check("the split, the pairing, poly and the tuning both ways reach the keyboard and the tone",
       cp[18]["midi"]["layers"]["mode"] == "split" and cp[19]["midi"]["layers"]["pair"] == "against"
@@ -3569,8 +3511,9 @@ check("LFO 1 locked to a quarter at 120 runs at 2 Hz from the beat, and let go g
       cp[25]["lfos"][0]["rate"] == 2 and cp[24]["lfos"][0]["phase"] == 1 and cp[25]["lfos"][0]["phase"] == 0 and cp[25]["lfos"][0]["epoch"] > cp[24]["lfos"][0]["epoch"]
       and cp[26]["lfos"][0]["rate"] == cp[24]["lfos"][0]["rate"] and cp[27]["lfos"][1]["shape"] == "square",
       repr(cp[25]["lfos"][0]))
-check("the threshold watches another source, and an event is nothing it can watch",
-      cp[28]["thresh"]["watch"] == "lfo2" and cp[29]["thresh"]["watch"] == "", repr(cp[29]["thresh"]))
+check("LFO 1's shape menu reaches what it plays, and the keyboard's follow its switch",
+      cp[28]["lfos"][0]["shape"] == "ramp" and cp[28]["lfos"][0]["plays"] != cp[27]["lfos"][0]["plays"]
+      and cp[28]["midi"]["follow"] is False and cp[29]["midi"]["follow"] is True, repr(cp[28]["lfos"][0]))
 check("a macro's name loses its bars and spaces, and a name of spaces is no name",
       cp[30]["macros"][1]["name"] == "Wobble" and cp[31]["macros"][2]["name"] == "Macro 3")
 check("with the quantiser on, the key's root and its scale each move the mask at once",
@@ -3596,7 +3539,7 @@ def cnull(what, index, change):
 cnull("the other kind", 1, lambda o: o | {"value": "wireframe"})
 cnull("the 2x button", 11, lambda o: o | {"id": "planeOS2"})
 cnull("the LFO locked to an eighth", 25, lambda o: o | {"value": "1/8"})
-cnull("the threshold watching LFO 1", 28, lambda o: o | {"value": "lfo1"})
+cnull("LFO 1 a square", 28, lambda o: o | {"value": "square"})
 cnull("another name", 30, lambda o: o | {"value": "Wibble"})
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
@@ -3983,7 +3926,7 @@ print("\n--- the generator in WebAssembly ---")
 # carries, driven through the page's own `makeWasmCore` - the bridge the
 # worklet uses - and held to the page's JavaScript generator driven the same
 # way, run for run, through what the worklet reads back of a core: the
-# samples, the envelope, the crossings, the budget, the drawing, and the
+# samples, the envelope, the budget, the drawing, and the
 # oscillators as each left them. The same runs as the whole generator's, the
 # effect's among them, which the effects worklet runs.
 WBUILD = os.path.join(CORE, "wasm", "build.py")
@@ -4115,7 +4058,7 @@ FADE = _json.dumps({"mode": "both", "envs": [{"delay": 0, "attack": 0.3, "attack
                     "sustain": 1, "release": 0.4, "releaseMid": 0.5, "restart": True, "loop": False}] * 2})
 iruns["hands"] = [["make", 44100, 128, icode["Harmonic tone"]], NOTE_ON(57)] + blocks(10) \
     + [["slider", "amp", "30"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
-    + [["control", "crossOn", True], ["click", "planeOS4"]] + blocks(10) \
+    + [["control", "delayPingPong", True], ["click", "planeOS4"]] + blocks(10) \
     + [["routings", "lfo1>gen.vcf@0.55;lfo1>gen.freq@0.35"]] + blocks(20) + [["fade", FADE]] + blocks(10) \
     + [["control", "genMode", "harmonograph"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
     + [["slider", "lfoRate1", "300"], ["click", "dispXY"], ["control", "persistence", "0.3"], ["click", "photoButton"]] \

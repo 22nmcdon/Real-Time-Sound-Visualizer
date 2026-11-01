@@ -1,11 +1,11 @@
 // The score (Stage K3) and MIDI out (K4), ported from web/scope.html: the
 // phosphor grid read as a graphical score, a playhead crossing its 64 columns
 // on the clock's bar, the brightest few pitches of the key in a column struck
-// in the generator's score voice and sent out; and the out they share with the
-// crossings, the pluck and the arpeggiator - one port and one channel, a rate
-// limit on note-ons and never on note-offs, and a panic. `scorePitches`,
-// `scoreColumn`, `scoreTick`, `scoreStop`, `midiOutNote`, `midiOutOff`,
-// `midiOutPanic`, `crossStepPanel`'s notes and `pluckFire`.
+// in the generator's score voice and sent out; and the out it shares with the
+// arpeggiator - one port and one channel, a rate limit on note-ons and never
+// on note-offs, and a panic. `scorePitches`, `scoreColumn`, `scoreTick`,
+// `scoreStop`, `midiOutNote`, `midiOutOff` and `midiOutPanic`. The crossings'
+// notes and the pluck's went in P5.
 //
 // What differs from the page, and why, so nobody goes looking:
 //
@@ -14,8 +14,8 @@
 //   plugin it is handed none yet, so it plays nothing.
 // - What the out sends is bytes handed to a sink: in the page a Web MIDI port,
 //   in the plugin the host's MIDI out.
-// - The readouts - the count beside the crossings' switch, the out's status,
-//   the playhead over the picture - are the page's.
+// - The readouts - the out's status, the playhead over the picture - are the
+//   page's.
 
 #pragma once
 
@@ -193,39 +193,6 @@ inline void scoreTick(ScoreState& score, double now, bool scopeRunning, const Cl
   if (score.notes.empty()) return;
   for (const auto& [note, velocity] : score.notes) if (strike) strike(midiHz(note), velocity);
   for (const auto& [note, velocity] : score.notes) if (out) out->noteOut(note, velocity, now);
-}
-
-// The crossings' notes out (crossStepPanel): a count gone up is a crossing, sent
-// as a note and ended a tenth of a second later; and the pluck's (pluckFire),
-// ended after 150 ms. Their pending note-offs, oldest last.
-struct NotesOut {
-  int seenX = 0, seenY = 0;
-  std::vector<std::pair<int, double>> crossOffs, pluckOffs;
-};
-inline void endDue(std::vector<std::pair<int, double>>& offs, double now, NoteOut* out) {
-  for (std::size_t k = offs.size(); k-- > 0;) {
-    if (now >= offs[k].second) {
-      if (out) out->noteOutOff(offs[k].first);
-      offs.erase(offs.begin() + static_cast<std::ptrdiff_t>(k));
-    }
-  }
-}
-inline void crossStep(NotesOut& n, double now, bool crossOn, std::array<int, 2> counts, int noteX, int noteY, NoteOut* out) {
-  endDue(n.crossOffs, now, out);
-  if (!crossOn) return;
-  // Up, not merely changed: a new generator starts its count again from nought.
-  if (counts[0] != n.seenX) {
-    if (counts[0] > n.seenX && out && out->noteOut(noteX, 0.8, now)) n.crossOffs.push_back({ noteX, now + 100 });
-    n.seenX = counts[0];
-  }
-  if (counts[1] != n.seenY) {
-    if (counts[1] > n.seenY && out && out->noteOut(noteY, 0.8, now)) n.crossOffs.push_back({ noteY, now + 100 });
-    n.seenY = counts[1];
-  }
-}
-inline void pluckFire(NotesOut& n, int note, double velocity, double now, const Strike& strike, NoteOut* out) {
-  if (strike) strike(midiHz(note), velocity);
-  if (out && out->noteOut(note, velocity, now)) n.pluckOffs.push_back({ note, now + 150 });
 }
 
 }  // namespace scope
