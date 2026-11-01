@@ -485,11 +485,16 @@ with sync_playwright() as pw:
     p.wait_for_timeout(400)
     check("and not when the screen reads the input",
           "post-filter" not in p.evaluate("() => el.readoutDetail.textContent"))
+    # The source's own chain, by name: since P4 the tone source that replaces
+    # it is heard and has a chain of its own, so "no chains left" stopped
+    # being the question. The null is the same chain read before the switch.
+    held = p.evaluate("""() => { window.__chain = Array.from(monitorChains)[0] || null;
+                                 return !!window.__chain && monitorChains.has(window.__chain); }""")
     p.evaluate("() => { state.filter.on = false; el.srcTone.click(); }")
     p.wait_for_timeout(400)
-    check("the chain goes when the source does",
-          p.evaluate("() => monitorChains.size") == 0,
-          str(p.evaluate("() => monitorChains.size")))
+    gone = p.evaluate("() => ({ kept: monitorChains.has(window.__chain), size: monitorChains.size, kind: state.source.kind })")
+    check("the chain goes when the source does, and only the new source's own is left",
+          held and not gone["kept"] and gone["size"] <= 1 and gone["kind"] == "tone", str(gone))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

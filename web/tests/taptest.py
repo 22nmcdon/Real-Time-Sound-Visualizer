@@ -193,7 +193,7 @@ with sync_playwright() as pw:
     print("\n--- and it says which one you are looking at ---")
     words = p.evaluate("""async () => {
       const was = { see: state.analyseAt, hear: state.monitorAt, on: state.filter.on,
-                    rotate: state.rotate, sound: state.genSound,
+                    rotate: state.rotate,
                     ac: state.channels.map((c) => c.ac) };
       const read = () => { writeReadout(capture()); return el.readoutDetail.textContent; };
 
@@ -219,16 +219,14 @@ with sync_playwright() as pw:
 
       /* And the mirror. It needs real speakers, because the speakers' switch
          changes nothing when there is no chain to change - so the generator is
-         actually switched on for this one. */
-      state.genSound = true;
+         sounding, as it always is, for this one. */
       await applyGeneratorSound();
       const audible = state.source.audible ? state.source.audible() : false;
       state.monitorAt = 'pre';
       const speakersDry = read();
       state.monitorAt = 'post';
       const bothShaped = read();
-      state.genSound = false;
-      await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       // The same switch position, with nothing listening: no note, because
       // there is nothing on the other side of the mismatch.
       state.monitorAt = 'pre';
@@ -236,7 +234,7 @@ with sync_playwright() as pw:
 
       state.analyseAt = was.see; state.monitorAt = was.hear;
       state.filter.on = was.on; state.rotate = was.rotate;
-      state.genSound = was.sound;
+      await applyGeneratorSound();
       state.channels.forEach((c, i) => { c.ac = was.ac[i]; });
       return { bare, bareOnInput, filtered, coupled, onInput,
                audible, speakersDry, bothShaped, speakersDrySilent };

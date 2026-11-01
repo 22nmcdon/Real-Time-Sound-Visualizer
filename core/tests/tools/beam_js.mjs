@@ -72,7 +72,7 @@ const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS"
   "capture", "findTriggerIndex",
   "PAD", "plot", "wipeScreen", "clearOrFade", "stacked", "sourceFigures", "drawMain", "drawXY", "playingKind",
   "PHOSPHOR_N", "phosphor", "makeMoments", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
-  "phosphorDeposit", "phosphorReadGrid", "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW",
+  "phosphorDeposit", "phosphorReadGrid", "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "METER_DRIFT",
   "makePictureMeter", "PICTURE_KEYS", "makePictureEngine", "const pictureEngine = makePictureEngine();",
   "BEAM_K", "BEAM_EPS2", "BEAM_TAU", "BEAM_LEVELS", "beamRamps", "hexToRgb", "buildBeamRamps", "beamStep",
   "BEAM_ANCHOR_Q", "BEAM_HIST_LO", "beamHist", "beamRefs", "beamAnchor", "BEAM_MAX", "beamX", "beamY", "beamL2",

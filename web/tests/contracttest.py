@@ -304,10 +304,13 @@ with sync_playwright() as pw:
     check("the generator is a lane of the rack",
           withSynth["found"] and withSynth["lanes"][0] == "Generator"
           and len(withSynth["lanes"]) == 3, str(withSynth["lanes"]))
-    check("and it keeps the contract like any other lane",
-          withSynth["keeps"] and withSynth["monitored"] is False, str(withSynth))
-    check("the oscillators are driven by the lane's own loop, not the frame",
-          withSynth["driver"] == "fill", withSynth["driver"])
+    # Before P4 the lane came up silent - not monitored, its loop on this
+    # thread ("fill") - and these asserted it. It is heard now, from its own
+    # worklet, which is still the lane's own loop and not the frame's.
+    check("and it keeps the contract like any other lane, heard as one",
+          withSynth["keeps"] and withSynth["monitored"] is True, str(withSynth))
+    check("the oscillators are driven by the lane's own loop, its worklet, not the frame",
+          withSynth["driver"] == "worklet", withSynth["driver"])
     check("and the generator's controls reach it",
           withSynth["panel"] and withSynth["settings"], str(withSynth))
 
@@ -557,9 +560,9 @@ with sync_playwright() as pw:
       el.rackSynth.checked = false;
       await setRackSynth(false);
       await toTone();
-      state.genSound = true;
       await applyGeneratorSound();
       await wait(300);
+      window.__oldTone = state.source;
       out.asSource = { driver: lfoDriver(),
                        audible: state.source.audible(),
                        kind: state.source.kind };
@@ -580,7 +583,8 @@ with sync_playwright() as pw:
       kind: state.source.kind,
       synth: state.source.lanes.some((l) => l.synth),
       // The generator that WAS the source has been stopped, so nothing of it
-      // is still producing.
+      // is still producing; and the lane, always heard since P4, is.
+      oldQuiet: window.__oldTone.audible() === false,
       soundFlag: state.genSound,
     })""")
     print("    as a source: %s; after adopting a rack with a lane: %s"
@@ -588,9 +592,12 @@ with sync_playwright() as pw:
     check("as the source and sounding, the worklet owns the oscillators",
           both["asSource"]["driver"] == "worklet" and both["asSource"]["audible"],
           str(both["asSource"]))
+    # Before P4 the lane came up silent, its loop on this thread ("fill"),
+    # and this asserted that. Now the lane sounds, so its own worklet drives,
+    # and what matters is the same: the old source's worklet stopped.
     check("and adopting a rack hands them to the lane's loop, not to both",
-          swapped["driver"] == "fill" and swapped["synth"]
-          and swapped["soundFlag"] is False, str(swapped))
+          swapped["driver"] == "worklet" and swapped["synth"] and swapped["oldQuiet"]
+          and swapped["soundFlag"] is True, str(swapped))
 
     # A second of real running, because the throw happens on a block rather
     # than on a switch: if anything else were still stepping them, this is
@@ -598,20 +605,18 @@ with sync_playwright() as pw:
     p.wait_for_timeout(1000)
     ran = p.evaluate("""() => ({ driver: lfoDriver(), value: lfos[0].value })""")
     check("and a second of running produces no ownership complaint",
-          not [x for x in [] ] and ran["driver"] == "fill", str(ran))
+          ran["driver"] == "worklet", str(ran))
 
     # And back the other way: a rack with a lane, then the generator alone
     # with its sound on.
     back = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       await toTone();
-      state.genSound = true;
       await applyGeneratorSound();
       await wait(400);
       const out = { driver: lfoDriver(), kind: state.source.kind,
                     audible: state.source.audible() };
-      state.genSound = false;
-      await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    back to the generator alone: %s" % back)
@@ -673,8 +678,8 @@ with sync_playwright() as pw:
     check("the generator and a live input make a rack of two, with no files",
           pair["names"] == ["Generator", "You"] and pair["synth"] == 1
           and pair["live"] == 1, str(pair["names"]))
-    check("neither of them can reach the speakers",
-          pair["monitored"] == [False, False], str(pair["monitored"]))
+    check("the generator reaches the speakers and the input does not, the microphone rule unchanged",
+          pair["monitored"] == [True, False], str(pair["monitored"]))
     check("and there is no transport over a rack with nothing to play",
           pair["duration"] == 0 and pair["playable"] is False, str(pair))
     check("it describes what is in it rather than which shape it is",
@@ -716,7 +721,7 @@ with sync_playwright() as pw:
     check("unticking the input leaves the generator lane where it was",
           alone["names"] == ["Generator"] and alone["live"] == 0, str(alone))
     check("and the oscillators are still the lane's to advance",
-          alone["driver"] == "fill", alone["driver"])
+          alone["driver"] == "worklet", alone["driver"])
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

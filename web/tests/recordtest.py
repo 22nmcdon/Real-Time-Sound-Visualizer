@@ -123,7 +123,7 @@ with sync_playwright() as pw:
     print("\n--- the generator, heard ---")
     tone = p.evaluate("""async () => {
       __set('shape', 'saw', 'change'); __set('freq', 220, 'input');
-      state.genSound = true; await applyGeneratorSound(); await __wait(600);
+      await applyGeneratorSound(); await __wait(600);
       // The file as the browser wrote it, kept aside to be held against the
       // one this page hands over.
       let raw = null;
@@ -248,7 +248,7 @@ with sync_playwright() as pw:
     print("\n--- what is heard ---")
     heard = p.evaluate("""async () => {
       const out = {};
-      state.genSound = false; await applyGeneratorSound(); await __wait(300);
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); } await __wait(300);
       const quiet = await __sound(await __record(1200));
       out.silent = { peak: quiet.peak, note: rec.note };
       await __mic(440);
@@ -286,9 +286,11 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    %s" % heard)
+    # Silent only before the browser lets sound start, since P4; the note says
+    # what starts it, where it used to name the switch.
     check("a silent generator makes a silent clip, and the note says why and what puts the sound in",
           heard["silent"]["peak"] < 0.01 and "silent: nothing was heard" in heard["silent"]["note"]
-          and "Hear the generator" in heard["silent"]["note"], str(heard["silent"]))
+          and "pressed something" in heard["silent"]["note"], str(heard["silent"]))
     check("a live input nobody hears is in the clip, and the note says it is your input",
           abs(heard["unheard"]["pitch"] - 440) < 10 and 0.35 < heard["unheard"]["peak"] < 0.65
           and "the sound is your input." in heard["unheard"]["note"], str(heard["unheard"]))
@@ -359,13 +361,15 @@ with sync_playwright() as pw:
       const out = { kind: state.source.kind };
       applyPreset('b:Harmonic tone');
       midiNoteOn(57, 100); await __wait(300);
+      // Hushed by hand: since P4 the instrument is heard from the first press.
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); } await __wait(300);
       const quiet = await __sound(await __record(1200));
       out.silent = { peak: quiet.peak, note: rec.note };
-      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change')); await __wait(400);
+      await applyGeneratorSound(); await __wait(400);
       const tone = await __sound(await __record(1500));
       out.tone = { pitch: tone.pitch(0.4, 1.3), peak: tone.peak, note: rec.note };
       midiNoteOff(57);
-      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       await __mic(440);
       const mic = await __sound(await __record(1500));
       out.mic = { draws: state.source.drawsInput, pitch: mic.pitch(0.4, 1.3), peak: mic.peak, note: rec.note };

@@ -363,7 +363,7 @@ with sync_playwright() as pw:
     heard = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       genSet('shape', 'sine'); genSet('shape', 'sine', 1);
-      state.genSound = true; await applyGeneratorSound();
+      await applyGeneratorSound();
       for (const n of [48, 55, 76]) midiNoteOn(n, 100);
       const chain = Array.from(monitorChains)[0];
       const ctx = chain.input.context;
@@ -379,7 +379,7 @@ with sync_playwright() as pw:
         aX: hz.map((f) => window.__bin(w[0], f, rate)),
         bX: hz.map((f) => window.__bin(w[2], f, rate)) };
       midiPanic();
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    C, G, E - heard %s; A's X %s; B's X %s"

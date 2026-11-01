@@ -951,19 +951,33 @@ check("layer B's own echo and chorus change B's picture and its share of the sou
 # in a chord the heard pair is not the picture. Fed A's left in place of
 # B's, or the heard pair of the run with its inner voice taken away, the
 # check fails; the second is also what shows the inner voice is drawn.
-def one_pair(v):
-    return all(abs(col(v, 2)[k] - (col(v, 0)[k] + col(v, 4)[k])) <= 1e-6 * (1 + abs(col(v, 2)[k]))
-               and abs(col(v, 3)[k] - (col(v, 1)[k] + col(v, 5)[k])) <= 1e-6 * (1 + abs(col(v, 3)[k]))
-               for k in range(len(col(v, 0))))
+def one_pair(v, struck=False):
+    """What is heard is A's lanes and B's summed, and one thing more: the
+    score's voice, heard in the middle and not drawn (the page's block says
+    why). So what is heard beyond the lanes is the same in both ears, and in
+    a run with nothing struck it is nothing."""
+    al, ar, hls, hrs, bl, br = (col(v, c) for c in range(6))
+    for k in range(len(al)):
+        hl, hr = hls[k], hrs[k]
+        left, right = hl - (al[k] + bl[k]), hr - (ar[k] + br[k])
+        tol = 1e-6 * (1 + abs(hl) + abs(hr))
+        if abs(left - right) > tol or (not struck and abs(left) > tol): return False
+    return True
 # The effect runs are a live input through the plane, not the generator's
 # block: they have no heard pair to hold.
-apart = [n for n, _ in runs if not n.startswith("effect") and not one_pair(grow(n)[0])]
-check("in every run what is heard is what is drawn: A's lanes and B's, summed, sample for sample", not apart,
-      ", ".join(apart[:4]))
+struck_runs = {n for n, text in runs if " strike " in text}
+apart = [n for n, _ in runs if not n.startswith("effect") and not one_pair(grow(n)[0], n in struck_runs)]
+check("in every run what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
+      not apart and struck_runs, ", ".join(apart[:4]))
 lay = grow("layered")[0]
 swapped = [x for k in range(len(col(lay, 0))) for x in (col(lay, 0)[k], col(lay, 1)[k], col(lay, 2)[k], col(lay, 3)[k],
                                                         col(lay, 0)[k], col(lay, 5)[k])]
 check("and the check fails on B's lanes read as A's", not one_pair(swapped))
+# The score's voice is heard and not drawn: in the crossings run, struck five
+# times, there is something heard beyond the lanes - which is also the null
+# for the check above holding a struck run to nothing.
+check("and the score's voice is heard beyond the picture, where a run with nothing struck would fail",
+      "crossings" in struck_runs and not one_pair(grow("crossings")[0], False) and one_pair(grow("crossings")[0], True))
 body, _ = grow("poly")
 def inner_drawn(with_, without):
     a, b = col(with_, 0)[:1000], col(without, 0)[:1000]

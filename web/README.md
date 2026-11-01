@@ -4387,3 +4387,42 @@ list.** `functions_js.mjs` hands `coreScope` the names it needs, and a new
 constant one of them reads - `POLY_LEAN`, under `ROLES` - is a
 `ReferenceError` in a harness that otherwise looks unchanged. Add the name
 there with the code.
+
+**A source that arrives late is not read by the code that runs when the page
+opens.** Taking away *Hear the generator* meant asking for the generator's
+sound wherever the panel read the generator back (`showGenerator`), and on
+`?brain=js` that worked. On the site it never asked: the compiled instrument
+becomes the source after the page's last `showGenerator`, so nothing heard
+it until somebody touched a control. A suite that asked for the sound itself
+- every one did, through the switch - could not see it. The asking now lives
+in `showSource`, which every source change passes, and `braintest.py` checks
+the instrument is heard without being asked. When something has to happen
+"whenever there is a generator", put it where sources change, not where the
+generator's panel is drawn.
+
+**A loop that cannot run away in level can still run away in coverage.**
+P4 drew the score's voice, and its comment said the loop it closed was safe
+because the voice has two notes at a fixed level. True, and beside the
+point: a note alone is drawn as a diagonal through the middle of the screen,
+the score reads every row that diagonal crosses as a note, and so each step
+played its full chord and redrew the diagonal. The level stayed bounded and
+the picture filled - 1,489 cells lit where the rose alone lit 140. It did not
+show until the generator was always heard, because the page's own thread,
+which the suites had been drawing on, lit hardly any of it. When reasoning
+about a feedback loop's bound, ask what it saturates, not only how loud it
+gets; and run the loop on the path users hear.
+
+**A median of per-frame values measures the delivery as much as the
+picture.** The picture meter called a picture *settled* when the median change
+from one frame to the next was under 0.02. On the page's own thread every
+frame brings a frame's worth of samples; heard, the audio thread posts them in
+bursts, so most frames bring nothing new and a few bring several frames'
+worth. The median of that is near nought for a picture going visibly round,
+and the site - whose compiled instrument has always drawn this way - said
+"loop settled" over moving pictures; no suite saw it, because they drew on the
+page's own thread until the generator was always heard. Change is now judged as
+a rate: its sum over a stretch of time, per sixtieth of a second, which does not
+care how it was split between frames. The fixture that shows it has to overlap
+itself from frame to frame, as a real figure does: a dot jumping round a circle
+saturates the distance at one a step, so three steps in one frame read as one,
+and a rate could not be seen on it.

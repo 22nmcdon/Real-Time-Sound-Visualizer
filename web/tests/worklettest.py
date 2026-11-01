@@ -243,7 +243,6 @@ with sync_playwright() as pw:
       // A snapshot first, so "there are samples" cannot be satisfied by the
       // ones this thread put there before the switch was touched.
       window.__before = state.source.getLatestWindow(4096)[0].slice();
-      state.genSound = true;
       await applyGeneratorSound();
       return {
         wanted: true, got: state.genSound,
@@ -358,8 +357,7 @@ with sync_playwright() as pw:
 
     print("\n--- and switching it off again ---")
     off = p.evaluate("""async () => {
-      state.genSound = false;
-      await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       const driver = lfoDriver();
       let threw = null;
       try { assertLfoDriver("worklet"); } catch (error) { threw = error.message; }
@@ -379,6 +377,26 @@ with sync_playwright() as pw:
     }""")
     check("and the picture is still there, drawn on this thread again",
           after > 1e-4, "mean square %.5f" % after)
+
+    print("\n--- when it cannot be heard, it says why ---")
+    # Where "Hear the generator" was, since P4, there is only the reason the
+    # generator is not heard. A module that will not load, made to fail here;
+    # the null is the same line before, hidden while the generator plays.
+    faulted = p.evaluate("""async () => {
+      const v = genVoice();
+      await applyGeneratorSound();
+      const before = { shown: !el.genFault.hidden, got: state.genSound };
+      await v.setSound(false); syncGeneratorSound();
+      const real = loadGeneratorModule;
+      loadGeneratorModule = async () => { throw new Error('no module for this test'); };
+      try { await v.setSound(true); } finally { loadGeneratorModule = real; }
+      syncGeneratorSound();
+      return { before, shown: !el.genFault.hidden, said: el.genFault.textContent, got: state.genSound };
+    }""")
+    print("    %s" % faulted)
+    check("a generator that cannot be heard says so, and why, where the switch was",
+          faulted["shown"] and "no module for this test" in faulted["said"] and faulted["got"] is False, str(faulted))
+    check("and while it is heard the line is not there", faulted["before"] == {"shown": False, "got": True}, str(faulted))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -241,19 +241,37 @@ with sync_playwright() as pw:
     print("\n--- the verdict, on constructed sequences ---")
     verdicts = p.evaluate("""() => {
       const N = PHOSPHOR_N, dt = 1 / 60, frames = 60 * 10;
-      const run = (grid) => {
+      const run = (grid, every = 1, step = dt) => {
         const m = makePictureMeter();
-        let first = null;
+        const frames = Math.round(10 / step);
+        let first = null, shown = null;
+        const changes = [], drifts = [];
         for (let f = 0; f < frames; f++) {
-          m.update(grid(f * dt), dt);
-          if (first === null && m.verdict() !== 'listening') first = f * dt;
+          // `every`: the picture moves on only every so many frames and is
+          // held between, as one heard from the audio thread arrives.
+          if (f % every === 0 || shown === null) shown = grid(f * step);
+          m.update(shown, step);
+          if (f >= frames - 240) { changes.push(m.change); drifts.push(m.drift); }
+          if (first === null && m.verdict() !== 'listening') first = f * step;
         }
-        return { verdict: m.verdict(), from: first, novelty: m.novelty, change: m.change };
+        const mean = changes.reduce((a, b) => a + b, 0) / changes.length;
+        changes.sort((a, b) => a - b);
+        return { verdict: m.verdict(), from: first, novelty: m.novelty, change: m.change, mean,
+                 median: changes[changes.length >> 1], drift: drifts.reduce((a, b) => a + b, 0) / drifts.length };
       };
+      /* For the bursts: an ellipse turning once in eight seconds, which
+         overlaps itself from frame to frame as a real figure does. A dot
+         jumping round a circle does not, and its distance saturates at one
+         a step, so three steps in one frame read as one - a fixture that
+         cannot show a rate. */
+      const turning = (t) => __ellipse(0.6, 0.25, 1, t * 2 * Math.PI / 8);
       const still = __ellipse(0.5, 0.3, 1);
       return {
         frozen: run(() => still),
         repeating: run((t) => __dot(0.5 + 0.35 * Math.cos(t * 2 * Math.PI), 0.5 + 0.35 * Math.sin(t * 2 * Math.PI))),
+        turning: run(turning),
+        bursts: run(turning, 3),
+        fast: run(turning, 1, 1 / 120),
         // A path that never comes back: a spiral out, then across the rest.
         never: run((t) => {
           const s = t / 10;
@@ -274,6 +292,31 @@ with sync_playwright() as pw:
               str({o: verdicts[o]["verdict"] for o in want}))
     check("and nothing is said until there is history to say it from",
           verdicts["early"] == "listening", verdicts["early"])
+    # The same motion, arriving every third frame and held between - as a
+    # heard picture comes from the audio thread. Judged frame by frame its
+    # median change is nought, and it read as settled while visibly going
+    # round (P4b found it on "The rose writes its own tune"); judged as a
+    # rate it is the motion it is. The fixture's median is the null: it
+    # shows the old reading would have failed here.
+    bursts, even = verdicts["bursts"], verdicts["turning"]
+    print("    in bursts: %s, median per-frame change %.4f, rate %.4f against %.4f evenly"
+          % (bursts["verdict"], bursts["median"], bursts["drift"], even["drift"]))
+    check("the same motion in bursts is judged as it is evenly, and not as settled",
+          bursts["verdict"] == even["verdict"] != "settled" and abs(bursts["drift"] - even["drift"]) < 0.15 * even["drift"],
+          str({k: bursts[k] for k in ("verdict", "median", "drift")}))
+    check("where its median per-frame change, the old reading, is under the floor", bursts["median"] < 0.02,
+          "%.4f" % bursts["median"])
+    # The rate's unit: per sixtieth of a second. At sixty frames a second it is
+    # the mean change of a frame, and at a hundred and twenty, where each frame
+    # changes half as much, it is the same; per frame it would halve.
+    fast = verdicts["fast"]
+    print("    evenly at 60 a second: rate %.4f, mean per frame %.4f; at 120: rate %.4f, mean per frame %.4f"
+          % (even["drift"], even["mean"], fast["drift"], fast["mean"]))
+    check("the rate is the change per sixtieth of a second: a frame's mean at sixty, the same at a hundred and twenty",
+          abs(even["drift"] - even["mean"]) < 0.02 * even["mean"] and abs(fast["drift"] - even["drift"]) < 0.15 * even["drift"],
+          "%.4f, %.4f; %.4f" % (even["drift"], even["mean"], fast["drift"]))
+    check("and at a hundred and twenty a frame does change about half as much, so per frame would not do",
+          fast["mean"] < 0.65 * even["mean"], "%.4f against %.4f" % (fast["mean"], even["mean"]))
 
     print("\n--- on the page ---")
     live = p.evaluate("""async () => {

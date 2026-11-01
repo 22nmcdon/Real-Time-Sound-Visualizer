@@ -234,13 +234,13 @@ with sync_playwright() as pw:
       const count = el.crossCount.textContent;
       // Heard, the picture and the counts come from the worklet's core: the
       // count has to keep climbing from what it posts back.
-      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change'));
+      await applyGeneratorSound();
       await wait(700);
       const driver = lfoDriver();
       const from = state.source.crossings;
       await wait(2500);
       const to = state.source.crossings;
-      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       await wait(200);
       return { shown, core, count, heard: { driver, from, to } };
     }""")

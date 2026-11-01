@@ -516,8 +516,8 @@ the synth's features should be chosen knowing that.
     In poly every held note is drawn: the two the draw rule picks lean onto X and Y - full
     on their side, half on the other - and the rest are inner voices in the middle, along
     the diagonal, at the same power. The crossings' notes are drawn on the axis whose line
-    fired them, the score's on both, and the second generator, when it is drawn in B's
-    lanes, is heard with them. Nothing is clamped any more; the screen clips where it
+    fired them, and the second generator, when it is drawn in B's lanes, is heard with
+    them. The score's voice is the one exception, heard and not drawn (below). Nothing is clamped any more; the screen clips where it
     draws and the limiter holds the speakers.
   - *Decided, and what it cost:* the lean rather than a hard split, because the first poly
     split the outer notes hard and a chord came apart across the ears; leaning keeps the
@@ -528,9 +528,38 @@ the synth's features should be chosen knowing that.
     note leaning right would be heard there at half.
   - *Found on the way:* fourteen checks in six suites asserted the gap between the two
     pairs, each correctly; all were rewritten to the one pair, with nulls, and none was
-    dropped. The score now draws its notes into the picture it reads - the loop of this
-    plan's seventh idea - which cannot run away in level but which no suite yet runs for
-    long.
+    dropped.
+  - *Always heard, built:* *Hear the generator* is gone. Whatever generator is playing -
+    the site's instrument, the page's own, a rack's lane - asks for its sound as it
+    arrives, and a press anywhere asks again, since a browser starts sound only after one.
+    What is left of the switch is a line that says why the generator is not heard, when it
+    cannot be. It was off on purpose, so that nothing made a noise unasked; that is the
+    decision reversed, and what it cost is an off: the level, a lane's *Mute*, or the
+    browser's own.
+  - *Found on the way:* the site's instrument was never asked for its sound at all - it
+    arrives after the last time a page opening reads the generator - so the asking moved
+    to where every source change passes.
+  - *The score's voice, heard and not drawn:* drawn, a note alone is the same signal on
+    both axes, a diagonal through the middle of the screen, and the score reads that
+    diagonal as every row it crosses. Once the generator was always heard, "The rose writes
+    its own tune" lit 1,489 cells where the rose alone lit 140, struck its full chord every
+    step, and read "settled" with its photocell loop on or off. Lowering the score's level
+    did not cure it. So the score's voice is heard in the middle and not drawn, as before
+    P4, the one named exception to the rule. A drawn score - this plan's seventh idea, the
+    score writing into the picture it reads - comes back in P7, with the loop defences Scan
+    needs as much.
+  - *And the meter, which had misread every heard picture:* a picture that is heard
+    reaches the screen in bursts from the audio thread, and the picture meter judged
+    motion by the median of the change from one frame to the next, so most frames read
+    still and a moving picture read *settled* - on the site since the compiled instrument
+    became its default, unseen because the suites drew on the page's own thread. The
+    verdict and boredom now judge change as a rate, all of it over a stretch of time per
+    sixtieth of a second, which is the same however the motion is split between frames
+    and at any frame rate. The *Motion* read keeps the frame's own.
+  - *Coherence, done:* nothing is heard that is not drawn but the score's voice, nothing
+    drawn is silent, and the generator is always heard. The words that said otherwise - the cheat sheet, the
+    *Chords drawn* presets, the readout, the generator's input line, the clip's note - were
+    rewritten with the code that made them false.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the
   host parameters replaced before any is removed, and the input path left whole.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
@@ -540,7 +569,8 @@ the synth's features should be chosen knowing that.
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
   rose's, since a still one gives an ordinary tone by design. Then the synth's loop
   on its own ink: the self-sustaining loop, a picture per note, notes striking the screen,
-  cross-scan, and the sidechain's final form.
+  cross-scan, and the sidechain's final form. And the score's voice drawn again, under the
+  same defences: P4 found it filling the screen it reads.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** The build flag, the page asking which build it is, the effect's ink

@@ -200,14 +200,14 @@ with sync_playwright() as pw:
     heard = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
-      state.genSound = true; await applyGeneratorSound(); await wait(700);
+      await applyGeneratorSound(); await wait(700);
       const read = () => ['draw.turnX', 'draw.turnY', 'draw.facing'].map((id) => MOD_SOURCES.get(id).value());
       const a = read(); await wait(400); const c = read();
       // Heard, the page's own core stands still - `tick` fills from it only
       // while the generator is not heard - so readings that move are the
       // worklet's.
       const out = { audible: state.source.audible(), a, c };
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    %s" % heard)

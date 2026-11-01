@@ -100,13 +100,12 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
-    print("\n--- the switch is offered where the generator is ---")
+    print("\n--- a rack's generator lane is heard, with no switch ---")
     # The tone source sounding first, so that replacing it has something to
     # stop: two generators' loops at once is what `assertLfoDriver` exists
     # for, and the plan named this as the check to extend the day a lane got
     # a worklet of its own.
-    p.evaluate("""async () => { window.__tone = state.source; state.genSound = true;
-                                await applyGeneratorSound(); }""")
+    p.evaluate("""async () => { window.__tone = state.source; await applyGeneratorSound(); }""")
     p.wait_for_timeout(300)
     tone_was = p.evaluate("() => window.__tone.audible()")
     p.evaluate("() => { el.rackSynth.checked = true; return setRackSynth(true); }")
@@ -114,26 +113,16 @@ with sync_playwright() as pw:
     tone_after = p.evaluate("() => ({ audible: window.__tone.audible(), chains: monitorChains.size })")
     check("a sounding tone source is silent once a rack replaces it",
           tone_was is True and tone_after["audible"] is False, "%s then %s" % (tone_was, tone_after))
-    silent = p.evaluate("""() => ({
-      kind: state.source.kind, lane: !!genLane(), row: !el.genSoundRow.hidden,
-      audible: genLane().audible(), monitored: genLane().monitored, driver: lfoDriver() })""")
-    print("    %s" % silent)
-    check("a rack with the generator in it offers Hear the generator",
-          silent["kind"] == "rack" and silent["lane"] and silent["row"], str(silent))
-    check("and it starts silent, with this thread driving the oscillators",
-          silent["audible"] is False and silent["monitored"] is False
-          and silent["driver"] == "fill", str(silent))
-
-    print("\n--- switched on ---")
-    # Through the checkbox, the way it is used.
-    p.evaluate("() => { el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change')); }")
-    p.wait_for_timeout(700)
-    on = p.evaluate("""() => ({ got: state.genSound, box: el.genSound.checked,
+    # Before P4 the lane started silent, with a switch offered to hear it,
+    # and these checks asserted both and then ticked it. Now nothing asks.
+    p.wait_for_timeout(400)
+    on = p.evaluate("""() => ({ kind: state.source.kind, lane: !!genLane(), got: state.genSound,
+      switch: !!document.getElementById('genSound'),
       audible: genLane().audible(), monitored: genLane().monitored, driver: lfoDriver(),
       blocks: genLane().blocks, fault: genLane().fault })""")
     print("    %s" % on)
-    check("the lane says it is sounding, and the box agrees",
-          on["got"] and on["box"] and on["audible"], str(on))
+    check("a rack with the generator in it sounds without being asked, and offers no switch",
+          on["kind"] == "rack" and on["lane"] and on["got"] and on["audible"] and not on["switch"], str(on))
     check("the worklet drives the oscillators now",
           on["driver"] == "worklet", on["driver"])
     check("and the mixer counts it as a lane that can be heard",
@@ -221,13 +210,13 @@ with sync_playwright() as pw:
       await new Promise((r) => setTimeout(r, 700));
       const lane = genLane();
       return { fresh: lane !== old, oldQuiet: old.audible() === false,
-               audible: lane.audible(), got: state.genSound, box: el.genSound.checked,
+               audible: lane.audible(), got: state.genSound,
                driver: lfoDriver(), freq: lane.core.tone.freq, panel: Number(el.freq.value),
                shape: lane.core.tone.shape, panelShape: el.shape.value };
     }""")
     print("    %s" % rebuilt)
     check("rebuilding the rack around a sounding lane leaves the new lane sounding",
-          rebuilt["fresh"] and rebuilt["audible"] and rebuilt["got"] and rebuilt["box"]
+          rebuilt["fresh"] and rebuilt["audible"] and rebuilt["got"]
           and rebuilt["driver"] == "worklet", str(rebuilt))
     check("and the old lane's voice was stopped, not left running in a closed rack",
           rebuilt["oldQuiet"], str(rebuilt))
@@ -239,9 +228,11 @@ with sync_playwright() as pw:
           abs(rebuilt["freq"] - rebuilt["panel"]) < 1e-9 and abs(rebuilt["freq"] - 220) > 1
           and rebuilt["shape"] == rebuilt["panelShape"], str(rebuilt))
 
-    print("\n--- switched off ---")
+    print("\n--- before the sound can start ---")
+    # Hushed by hand: the state a lane is in until the browser lets sound
+    # start, or when its worklet cannot load.
     off = p.evaluate("""async () => {
-      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       await new Promise((r) => setTimeout(r, 300));
       const lane = genLane();
       /* A pitch that cannot line up with the wait. The first version of this
@@ -262,20 +253,23 @@ with sync_playwright() as pw:
                got: state.genSound, moved };
     }""")
     print("    %s" % off)
-    check("off, the lane is silent and this thread has the oscillators back",
+    check("hushed, the lane is silent and this thread has the oscillators back",
           off["audible"] is False and off["monitored"] is False
           and off["driver"] == "fill" and off["got"] is False, str(off))
     check("and it is still drawn, from this thread's loop again",
           off["moved"] > 0.01, "moved by %.3f" % off["moved"])
 
-    # And from a sounding lane to the tone source: a different source, so the
-    # speakers stay off until asked.
-    p.evaluate("() => { el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change')); }")
+    # And from a lane to the tone source: a different source, which sounds as
+    # every generator does. Before P4 the speakers stayed off until asked, and
+    # this asserted it.
+    p.evaluate("async () => { await applyGeneratorSound(); }")
     p.wait_for_timeout(500)
-    toned = p.evaluate("""() => { toTone(); return { kind: state.source.kind,
-      got: state.genSound, audible: state.source.audible(), chains: monitorChains.size }; }""")
-    check("choosing Tone does not carry the sound across",
-          toned["kind"] == "tone" and toned["got"] is False and toned["audible"] is False,
+    toned = p.evaluate("""async () => { window.__lane = genLane(); toTone();
+      await new Promise((r) => setTimeout(r, 700));
+      return { kind: state.source.kind, got: state.genSound, audible: state.source.audible(),
+               laneQuiet: window.__lane.audible() === false, chains: monitorChains.size }; }""")
+    check("choosing Tone brings the tone source up sounding, and the lane's sound goes with the lane",
+          toned["kind"] == "tone" and toned["got"] is True and toned["audible"] is True and toned["laneQuiet"],
           str(toned))
 
     check("no page errors", not bad, "; ".join(bad[:3]))

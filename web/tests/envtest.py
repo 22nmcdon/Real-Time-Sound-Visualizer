@@ -423,7 +423,6 @@ with sync_playwright() as pw:
     # exists to make.
     played = p.evaluate("""async () => {
       await midiConnect();
-      state.genSound = false;
       midi.drive.wave = true;
       el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));

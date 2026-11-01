@@ -2485,11 +2485,20 @@ redone natively or left out.
   sit in the middle (`roleGains`), A against B is hard, and in a rack every
   note is `xy`, since a lane takes the left channel alone and a leaning
   note would be heard at half there (`setLayable`). The crossings' notes go
-  on their own axes and the score's on both; nothing is clamped, so the
+  on their own axes, drawn; the score's voice alone is heard in the middle
+  and not drawn, since drawn it filled the screen the score reads (the
+  page's block says how), so a heard pair is the lanes plus that voice,
+  the same in both ears. `PictureMeter`'s verdict and boredom judge change
+  as a rate over time (`rate`, `drift`), since a heard picture - the
+  plugin's always, and the site's - arrives in bursts and the median of the
+  per-frame change read it as settled. Nothing is clamped, so the
   output's limiter is what holds the speakers. The plane's separate heard
   pass is gone, and with it a governed cost: two layers through the plane
   are two passes, not three. Held by parity's `one_pair` over every
-  generator run, and by the instrument's run of A against B.
+  generator run, and by the instrument's run of A against B. The page's
+  *Hear the generator* is gone too, so the site's instrument is heard as
+  the plugin always was: the page takes it as its source once its worklet
+  is ready, and asks for its sound then.
 
 ## Building and testing
 

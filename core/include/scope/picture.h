@@ -203,6 +203,7 @@ constexpr int kMeterCoarse = 16;                         // METER_COARSE
 constexpr double kMeterEvery = 0.25;                     // METER_EVERY, seconds
 constexpr std::size_t kMeterDepth = 60, kMeterRecent = 8;  // METER_DEPTH, METER_RECENT
 constexpr double kMeterWindow = 4;                       // METER_WINDOW, seconds
+constexpr double kMeterDrift = 0.25;                     // METER_DRIFT, seconds; the page says why
 constexpr double kChangeFloor = 0.02, kNoveltyFloor = 0.2, kSaturated = 0.35, kStrained = -6;
 
 // makePictureMeter: what the picture says - how much is lit, how much it
@@ -214,6 +215,7 @@ class PictureMeter {
   double coverage() const { return coverage_; }
   double lit() const { return lit_; }
   double change() const { return change_; }
+  double drift() const { return rate(kMeterDrift); }
   double novelty() const { return novelty_; }
   std::size_t depth() const { return history_.size(); }
 
@@ -243,15 +245,15 @@ class PictureMeter {
       history_.push_back(c);
       if (history_.size() > kMeterDepth) history_.erase(history_.begin());
     }
-    recent_.push_back({ clock_, change_, novelty_, lit_, limiting_ });
+    recent_.push_back({ clock_, dt, change_, novelty_, lit_, limiting_ });
     while (!recent_.empty() && clock_ - recent_.front().t > kMeterWindow) recent_.erase(recent_.begin());
   }
 
-  // Medians over the window; nothing said until "been here before" can mean anything.
+  // Medians over the window, and the change as a rate over it; nothing said until "been here before" can mean anything.
   std::string verdict() const {
     if (clock_ < kMeterWindow || history_.size() <= kMeterRecent + 4) return "listening";
     if (median(&Row::lit) > kSaturated || median(&Row::limiting) < kStrained) return "running away";
-    if (median(&Row::change) < kChangeFloor) return "settled";
+    if (rate(kMeterWindow) < kChangeFloor) return "settled";
     return median(&Row::novelty) < kNoveltyFloor ? "cycling" : "wandering";
   }
 
@@ -262,7 +264,7 @@ class PictureMeter {
   }
 
  private:
-  struct Row { double t, change, novelty, lit, limiting; };
+  struct Row { double t, dt, change, novelty, lit, limiting; };
   static Coarse coarse(const Phosphor::Grid& grid) {
     constexpr int N = kPhosphorN, C = kMeterCoarse, B = N / C;
     Coarse c;
@@ -287,6 +289,12 @@ class PictureMeter {
     for (const auto& r : recent_) values.push_back(r.*key);
     std::sort(values.begin(), values.end());
     return values[values.size() >> 1];
+  }
+  // The change over the last `seconds`, per sixtieth of a second (METER_DRIFT).
+  double rate(double seconds) const {
+    double sum = 0, span = 0;
+    for (std::size_t k = recent_.size(); k-- > 0 && span < seconds;) { sum += recent_[k].change; span += recent_[k].dt; }
+    return span > 0 ? sum / span / 60 : 0;
   }
 
   Phosphor::Grid last_ {};
@@ -360,7 +368,7 @@ class PictureSources {
     if (spectrogram || !shape) { values_ = {}; raw_ = {}; bored_ = 0; return; }
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
     meter_.update(phosphor.grid(), dt, limiting);
-    const double stuck = std::fmax(0.0, std::fmin(1.0, 1 - std::fmax(meter_.change() / (2 * kChangeFloor),
+    const double stuck = std::fmax(0.0, std::fmin(1.0, 1 - std::fmax(meter_.drift() / (2 * kChangeFloor),
                                                                      meter_.novelty() / (2 * kNoveltyFloor))));
     bored_ += dt * (kBoredRise * stuck - kBoredLeak * bored_);
     bored_ = std::fmax(0.0, std::fmin(1.0, bored_));

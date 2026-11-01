@@ -421,7 +421,7 @@ with sync_playwright() as pw:
       setScreenKeys(true); setMidiMode('poly');
       genSet('shape', 'sine');
       el.midiDrawCount.value = '2'; el.midiDrawCount.dispatchEvent(new Event('change'));
-      state.genSound = true; await applyGeneratorSound();
+      await applyGeneratorSound();
       for (const n of [48, 52, 55]) midiNoteOn(n, 100);
       const chain = Array.from(monitorChains)[0];
       const ctx = chain.input.context;
@@ -437,7 +437,7 @@ with sync_playwright() as pw:
         drawnL: tone.map((f) => window.__bin(w[0], f, rate)),
         drawnR: tone.map((f) => window.__bin(w[1], f, rate)) };
       for (const n of [48, 52, 55]) midiNoteOff(n);
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    C, E, G - heard %s; drawn X %s; drawn Y %s"

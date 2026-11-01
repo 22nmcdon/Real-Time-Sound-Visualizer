@@ -549,14 +549,15 @@ class Generator {
       }
       if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
 
-      // The crossings' notes on their own axes and the score's on both, drawn
-      // and heard, after the plane; the page's block says why.
+      // The crossings' notes on their own axes, drawn and heard, after the
+      // plane; the score's heard and not drawn. The page's block says why.
       if (a_.crossOn) {
         crossStep(cross_[0], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outL[i]))), a_.crossX);
         crossStep(cross_[1], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outR[i]))), a_.crossY);
         outL[i] = static_cast<float>(outL[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[0], a_.crossHzX));
         outR[i] = static_cast<float>(outR[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[1], a_.crossHzY));
       }
+      double scored = 0;
       if (scoreStruck_ > 0) {
         double sum = 0;
         int live = 0;
@@ -564,15 +565,14 @@ class Generator {
           sum += scoreVoice(v);
           if (v.env > 0) live++;
         }
-        outL[i] = static_cast<float>(outL[i] + a_.scoreLevel * sum / 2);
-        outR[i] = static_cast<float>(outR[i] + a_.scoreLevel * sum / 2);
+        scored = a_.scoreLevel * sum / 2;
         if (live == 0) scoreStruck_ = 0;
       }
 
-      // What is heard: the lanes, summed.
+      // What is heard: the lanes, summed, and the score's voice.
       if (heardL) {
-        heardL[i] = static_cast<float>(outL[i] + bx);
-        heardR[i] = static_cast<float>(outR[i] + by);
+        heardL[i] = static_cast<float>(outL[i] + bx + scored);
+        heardR[i] = static_cast<float>(outR[i] + by + scored);
       }
     }
 

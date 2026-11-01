@@ -187,9 +187,9 @@ with sync_playwright() as pw:
       /* Heard, a live input would open the device; from the second generator
          nothing is opened, whatever the mode. */
       el.inputMode.value = '1'; el.inputMode.dispatchEvent(new Event('change'));
-      state.genSound = true; await applyGeneratorSound(); await __wait(600);
+      await applyGeneratorSound(); await __wait(600);
       out.heard = { asked: __asked, where: el.inputWhere.textContent };
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       el.inputMode.value = '0'; el.inputMode.dispatchEvent(new Event('change'));
       el.inputFrom.value = 'live'; el.inputFrom.dispatchEvent(new Event('change'));
       return out;

@@ -162,13 +162,16 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       __device();
       const out = {};
-      // Not heard: the input has nowhere to go, and is not opened.
+      // Not heard: the input has nowhere to go, and is not opened. Hushed by
+      // hand, the state before the browser lets sound start - since P4 the
+      // only time the generator is not heard.
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       el.inputMode.value = '2'; el.inputMode.dispatchEvent(new Event('change'));
       await __wait(400);
       out.silent = { where: el.inputWhere.textContent, open: __open() };
       // Heard: opened, connected, and the drawn size swings with the input.
       el.inputDepth.value = '100'; el.inputDepth.dispatchEvent(new Event('input'));
-      state.genSound = true; await applyGeneratorSound(); await __wait(1200);
+      await applyGeneratorSound(); await __wait(1200);
       const peaks = [];
       for (let k = 0; k < 16; k++) {
         const w = state.source.getLatestWindow(441)[0];
@@ -182,12 +185,12 @@ with sync_playwright() as pw:
       el.inputMode.value = '0'; el.inputMode.dispatchEvent(new Event('change'));
       await __wait(300);
       out.off = { open: __open(), connected: state.source.inputConnected, where: el.inputWhere.textContent };
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    %s" % page)
     check("not heard, it says so and opens nothing: the input would have nowhere to go",
-          page["silent"]["open"] == 0 and page["silent"]["where"].startswith("Heard only"), str(page["silent"]))
+          page["silent"]["open"] == 0 and page["silent"]["where"].startswith("Waiting for the sound to start"), str(page["silent"]))
     check("heard, the input is opened and connected, and the drawn size swings with it from near nought to twice",
           page["heard"]["open"] == 1 and page["heard"]["connected"] is True
           and page["heard"]["where"] == "Your input, into the generator."

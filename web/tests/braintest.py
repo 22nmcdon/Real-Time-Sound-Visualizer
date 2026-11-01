@@ -95,6 +95,23 @@ with sync_playwright() as pw:
     check("and ?brain=core, the old switch, is the instrument", p.evaluate("() => BRAIN_IN_CORE && state.source.kind === 'host'"))
     p.close()
 
+    # Heard on a page nobody has pressed (P4): the instrument is asked for its
+    # sound as it arrives. A press asks again, which would hide a page that
+    # never asked - this suite closes the help sheet, and that is a press.
+    # The null is the same page hushed by hand, which reads silent.
+    p, _ = opened(b, "", 2500, close=False)
+    unpressed = p.evaluate("""async () => {
+      const read = () => [state.genSound, state.source.audible(), Math.round(state.source.gain * 100) / 100];
+      const on = read();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
+      await new Promise((r) => setTimeout(r, 300));
+      return { kind: state.source.kind, on, off: read() };
+    }""")
+    check("the instrument is heard on a page nobody has pressed",
+          unpressed["kind"] == "host" and unpressed["on"] == [True, True, 1], str(unpressed))
+    check("and the reading there can say otherwise", unpressed["off"] == [False, False, 0], str(unpressed))
+    p.close()
+
     # With no switch at all: the site, which since 5m is the instrument.
     p, errors = opened(b, "")
     first = p.evaluate("""async () => ({ kind: state.source.kind, mark: el.sourceMark.textContent, on: hostSync.on,
@@ -112,9 +129,9 @@ with sync_playwright() as pw:
     p.evaluate("() => setView('bench')")
     p.wait_for_timeout(300)
     panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null, freq: el.freq ? el.freq.offsetParent !== null : null,
-      sound: !el.genSoundRow.hidden, mode: genSettings() && genSettings().mode,
+      sound: !!genVoice(), mode: genSettings() && genSettings().mode,
       others: ![el.srcTone, el.srcMic, el.srcFile, el.srcRack].some((b) => b.disabled) })""")
-    check("and keeps the generator's panel, kind and frequency, and the switch to hear it",
+    check("and keeps the generator's panel, kind and frequency, and its voice",
           panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
     check("and offers Tone, Mic, File and Lanes as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
@@ -233,17 +250,27 @@ with sync_playwright() as pw:
           port["passed"][4:] == [[0xb0, 64, 127], [0xb0, 64, 0], [0xb0, 123, 0], [0xb0, 64, 127], [0xb0, 64, 0]],
           str(port["passed"][4:]))
 
-    # The sound switch: the instrument plays either way; the switch opens its way out.
+    # Always heard (P4): nothing here asks for the sound, and the way out is
+    # open. Before P4 this ticked a switch, and asserted it opened and shut
+    # the way out. Hushed by hand - the state before the browser lets sound
+    # start - the reading is seen to be false, and a press asks again.
     sound = p.evaluate("""async () => {
-      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change'));
-      await new Promise((r) => setTimeout(r, 300));
-      const on = [state.genSound, state.source.audible(), Math.round(state.source.gain * 100) / 100];
-      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
-      await new Promise((r) => setTimeout(r, 300));
-      return { on, off: [state.genSound, state.source.audible(), Math.round(state.source.gain * 100) / 100] };
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const read = () => [state.genSound, state.source.audible(), Math.round(state.source.gain * 100) / 100];
+      await wait(300);
+      const on = read();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
+      await wait(300);
+      const off = read();
+      window.dispatchEvent(new PointerEvent('pointerdown'));
+      await wait(300);
+      return { on, off, back: read(), row: !!document.getElementById('genSound') };
     }""")
-    check("the switch to hear it opens and closes the instrument's way out",
-          sound == {"on": [True, True, 1], "off": [False, False, 0]}, str(sound))
+    check("the instrument is heard without being asked: its way out is open",
+          sound["on"] == [True, True, 1], str(sound))
+    check("and the reading can say otherwise: hushed, it is shut", sound["off"] == [False, False, 0], str(sound))
+    check("and a press anywhere opens it again, and there is no switch for it", sound["back"] == [True, True, 1]
+          and not sound["row"], str(sound))
 
     # The input (5g). In place of the microphone, a known pair: 441 Hz on the
     # left and 661.5 Hz on the right, from oscillators in a second context,
@@ -273,7 +300,7 @@ with sync_playwright() as pw:
       const s = await scopeHost.call('scopeState');
       return { left: pitchOf(l), right: pitchOf(r), connected: state.source.inputConnected, mic: el.srcMic.getAttribute('aria-checked'),
                state: decodeSetup(s.code).pluginInput === true, gain: Math.round(state.source.gain * 100) / 100,
-               soundRow: el.genSoundRow.hidden, device: el.device.disabled, bands: el.micShapeRow.hidden,
+               soundRow: !genVoice(), device: el.device.disabled, bands: el.micShapeRow.hidden,
                file: el.srcFile.disabled, opened: window.__fakeIn.opened };
     }""")
     check("Mic in ?brain=core: the instrument draws your input, left as left, and keeps that in its state",
@@ -379,7 +406,7 @@ with sync_playwright() as pw:
       const s = await scopeHost.call('scopeState');
       return { draws: state.source.drawsInput, connected: state.source.inputConnected, released: window.__fakeIn.released - before,
                state: decodeSetup(s.code).pluginInput === undefined, tone: el.srcTone.getAttribute('aria-checked'),
-               soundRow: el.genSoundRow.hidden };
+               soundRow: !genVoice() };
     }""")
     check("Tone draws the generator again: the input let go, the switch to hear it back, and the state says nothing of an input",
           back == {"draws": False, "connected": False, "released": 1, "state": True, "tone": "true", "soundRow": False}, str(back))
@@ -513,14 +540,14 @@ with sync_playwright() as pw:
       out.unposted = [unposted.length, unposted[0][0], unposted[0][1023], Math.max(...unposted[2].map(Math.abs))];
       out.stemsHeard = [state.source.lanes[1].gain.gain.value, state.source.lanes[2].gain.gain.value];
       // The generator's lane is heard through the instrument, as its switch and the mixer say.
-      el.genSound.checked = true; el.genSound.dispatchEvent(new Event('change'));
+      await applyGeneratorSound();
       await new Promise((r) => setTimeout(r, 300));
       out.genHeard = Math.round(state.source.gain * 100) / 100;
       state.source.lanes[0].mute = true; state.source.remix();
       await new Promise((r) => setTimeout(r, 300));
       out.genMuted = Math.round(state.source.gain * 100) / 100;
       state.source.lanes[0].mute = false; state.source.remix();
-      el.genSound.checked = false; el.genSound.dispatchEvent(new Event('change'));
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       // The trigger on the second stem reaches the instrument as a hand.
       document.getElementById('trigSource2').click();
       await new Promise((r) => setTimeout(r, 300));

@@ -206,7 +206,7 @@ with sync_playwright() as pw:
         return p, bad
 
     def sound(p):
-        p.evaluate("async () => { state.genSound = true; await applyGeneratorSound(); }")
+        p.evaluate("async () => { await applyGeneratorSound(); }")
         p.wait_for_timeout(700)
         return p.evaluate("""() => {
           const f = capture();
@@ -528,7 +528,10 @@ with sync_playwright() as pw:
     print("\n--- a module the browser will not make ---")
     p, bad = open_page("")
     # Eight bytes with the module's magic and a version nobody has written.
-    p.evaluate("() => { wasmCore = () => new Uint8Array([0, 97, 115, 109, 9, 0, 0, 0]); }")
+    # Hushed first: since P4 the generator's worklet starts as the page opens,
+    # on the good module, and only a worklet made afresh reads the bad one.
+    p.evaluate("""async () => { const v = genVoice(); await v.setSound(false); syncGeneratorSound();
+                                wasmCore = () => new Uint8Array([0, 97, 115, 109, 9, 0, 0, 0]); }""")
     fell = sound(p)
     check("the generator's worklet makes the JavaScript core instead, says why, and plays",
           fell["switch"] and fell["kind"] == "js" and bool(fell["why"]) and fell["fault"] is None and fell["blocks"] > 3

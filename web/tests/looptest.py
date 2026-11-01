@@ -213,7 +213,7 @@ with sync_playwright() as pw:
     heard = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       genSet('freq', 220); genSet('interval', 0); genSet('phase', Math.PI / 2);
-      state.genSound = true; await applyGeneratorSound();
+      await applyGeneratorSound();
       const chain = Array.from(monitorChains)[0];
       const ctx = chain.input.context, rate = ctx.sampleRate;
       const tap = ctx.createAnalyser(); tap.fftSize = 16384; chain.input.connect(tap);
@@ -232,7 +232,7 @@ with sync_playwright() as pw:
       const out = { audible: state.source.audible(), atWant: bin(x, want), atBase: bin(x, 220) };
       MOD_SOURCES.get('photo.1').value = saved;
       state.modRoutings = []; touchRoutings();
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")
     print("    photocell held at 0.6, onto pitch at 0.5, generator heard: energy at 220 x 2^0.3 %.4f, at 220 %.4f"
@@ -258,16 +258,16 @@ with sync_playwright() as pw:
     strained.update(p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const quiet = monitorLimiting();
-      state.genSound = true; await applyGeneratorSound();
+      await applyGeneratorSound();
       await wait(200);
       const chain = [...monitorChains][0];
-      if (!chain) { state.genSound = false; await applyGeneratorSound(); return { quiet, hot: null }; }
+      if (!chain) { { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); } return { quiet, hot: null }; }
       const osc = chain.ctx.createOscillator(), gain = chain.ctx.createGain();
       gain.gain.value = 12; osc.connect(gain); gain.connect(chain.input); osc.start();
       await wait(400);
       const hot = monitorLimiting();
       osc.stop(); gain.disconnect();
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       await wait(300);
       return { quiet, hot };
     }"""))
@@ -290,7 +290,7 @@ with sync_playwright() as pw:
       state.filter.on = true; el.filterOn.checked = true; el.filterOn.dispatchEvent(new Event('change'));
       state.filter.res = 80; state.monitorAt = 'post';
       el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change'));
-      state.genSound = true; await applyGeneratorSound();
+      await applyGeneratorSound();
       if (!photo.on) setPhoto(true);
       // Everything the picture has, at the most it is allowed, onto the
       // destinations that can do the most - two of them onto resonance at once,
@@ -350,7 +350,7 @@ with sync_playwright() as pw:
         leastHold = Math.min(leastHold, pictureStage.hold);
       }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
-      state.genSound = false; await applyGeneratorSound();
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       genSet('amp', 0.55);

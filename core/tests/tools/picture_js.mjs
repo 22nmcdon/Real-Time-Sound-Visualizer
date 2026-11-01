@@ -57,7 +57,7 @@ const ENGINE = MODE === "wasm"
 const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
   "phosphorDeposit", "phosphorRead", "phosphorReadGrid",
   "BEAM_K", "PHOTO_REACH", "PHOTO_START", "PHOTO_SLEW", "photo", "photoStep",
-  "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "CHANGE_FLOOR", "NOVELTY_FLOOR",
+  "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "METER_DRIFT", "CHANGE_FLOOR", "NOVELTY_FLOOR",
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",

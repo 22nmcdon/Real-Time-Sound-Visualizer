@@ -354,7 +354,7 @@ with sync_playwright() as pw:
       setView('bench');
       await new Promise((r) => setTimeout(r, 200));
       out.shown = el.genMode.offsetParent !== null && el.freq.offsetParent !== null;
-      out.sound = !el.genSoundRow.hidden;
+      out.sound = !!genVoice();
       t.log.length = 0;
       el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));
       out.sent = t.log.slice();
@@ -371,7 +371,7 @@ with sync_playwright() as pw:
     check("inside the plugin the page keeps the generator's panel, its kind menu moves the page's generator and is sent",
           gen["shown"] and gen["mode"] == "harmonograph" and gen["rows"]
           and gen["sent"] == [["scopeControl", "genMode", "harmonograph"]], str(gen))
-    check("and the plugin's state puts the generator's kind back on the page; with no way to hear it but the host's, no switch",
+    check("and the plugin's state puts the generator's kind back on the page; heard through the host, the page has no voice of its own",
           gen["restored"] == "figure" and gen["menu"] == "figure" and gen["sound"] is False, str(gen))
 
     # The input (5g): inside the plugin, Mic is the host's input bus. The press
