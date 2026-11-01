@@ -373,8 +373,8 @@ experiment.
 | Figures | Harmonograph, thirteen figures, text, SVG, your drawing, solids, a second generator | **Keep what draws while you play.** Generators that ignore the keyboard are the image-generator product: cut or drawer. Your drawing becomes drawing onto the phosphor |
 | Grab, drawn cycle | A cycle from the input's audio; a cycle drawn by hand | **Keep as ink tools.** (Grab reads audio, not the picture; it is not a scan) |
 | Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
-| Layers | Layer B, split or layered over A: its own voice, envelope, figure, plane, turn and echo | **Keep their pictures, in the synth:** two figures at once, A against B, B's own plane and turn (*What only the synth can do*, 5). **Trim** what only makes B a second synth: its separate voice settings and envelope |
-| Splits as two sounds, arpeggiator | Multi-timbral and hands-free performance | **Drawer, or cut** if unused |
+| Layers | Layer B, split or layered over A: its own voice, envelope, figure, plane, turn and echo | **Keep, whole, in the synth** (the owner, in P5, over this table's first verdict, which trimmed B's own voice): a split with two sounds is how the instrument is played, and two sounds draw two figures, one in each colour (*What only the synth can do*, 5). Its loops grow defences of their own: see *Each layer's picture, and whose sound it moves* in P6 |
+| Splits as two sounds, arpeggiator | Multi-timbral and hands-free performance | **Splits stay on Play**, with the layers. **The arpeggiator goes to the drawer** (done in P5) |
 | Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across |
 | Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
@@ -594,7 +594,15 @@ the synth's features should be chosen knowing that.
     readout's note on what the speakers get still asks it. Nothing about a clip was ever
     in a setup, so there is no decode pass.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
-  buildable without Scan, and the first reasons to choose the synth.
+  buildable without Scan, and the first reasons to choose the synth. And first, from the
+  owner in P5: **each layer's picture, and whose sound it moves.** Split into two sounds,
+  the keyboard draws two figures, one in each colour, and today the picture stage reads
+  the whole screen, both of them, and pushes one set of controls. Each layer's picture
+  becomes its own read, and a choice per layer says whose sound it moves - its own, the
+  other's, or both - with the defences two loops need: each bounded by the loop's total
+  on its own, and a pair that moves each other held so that it cannot chase itself (the
+  governor's *running away* per layer, or a cap on the cross term). It needs no Scan, and
+  it gives Scan two pictures to read when cross-scan comes in P7.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
