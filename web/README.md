@@ -4368,3 +4368,22 @@ compiles a tool, exit status 1 and nothing on stderr, while a page suite was
 running in another shell; once clang itself died of a bus error. Run alone,
 the same tree passed every time. Run parity and the page's suites one after
 the other.
+
+**A test that reads one pair beside another can be asserting the gap between
+them.** Before P4 the generator had two pairs, the picture and what was heard,
+and the suites had grown checks for every way they differed: an undrawn voice
+in one and not the other, the crossings' notes heard and not seen, the score
+untouched in the picture, the picture clamped at full scale while the sound
+was not. Making them one pair failed fourteen checks across six suites, every
+one of them correct about the old design. Each was rewritten to assert the
+new one - heard equals the lanes summed, sample for sample, with the sides
+crossed as its null - and none was deleted. When a design change fails many
+checks at once, read each as a statement of the old design before reading it
+as a regression; but read the ones that do not mention the change (the
+budget's model, here) as possible regressions first.
+
+**The constants the parity harness lifts out of the generator are named in a
+list.** `functions_js.mjs` hands `coreScope` the names it needs, and a new
+constant one of them reads - `POLY_LEAN`, under `ROLES` - is a
+`ReferenceError` in a harness that otherwise looks unchanged. Add the name
+there with the code.

@@ -10,8 +10,9 @@ Against the way each would fail:
 - a playhead not at the tempo: 120 BPM in semiquavers is a step every
   125 ms, nine steps in a second counted from nought, and half the tempo is
   half the steps;
-- a voice that is drawn: the score's notes are in the heard pair and the
-  picture pair is untouched, sample for sample;
+- a voice that is not drawn, or drawn on one axis: since P4 the score's notes
+  are on both lanes alike, along the diagonal, and what is heard is the
+  picture, sample for sample;
 - MIDI out that sends on the wrong channel, leaves a note hanging, or keeps
   sending when the scope stops or the page is hidden;
 - a rate limit that is not one: a hundred note-ons at once are forty sent.
@@ -139,21 +140,34 @@ with sync_playwright() as pw:
         if (struck) core.strike(1000, 1);
         const L = new Float32Array(n), R = new Float32Array(n), HL = new Float32Array(n), HR = new Float32Array(n);
         core.block(L, R, n, HL, HR);
-        return { L, HL };
+        return { L, R, HL };
       };
       const a = run(false), b = run(true);
-      let picture = 0, early = 0, late = 0;
-      for (let i = 0; i < 44100; i++) picture = Math.max(picture, Math.abs(a.L[i] - b.L[i]));
+      // Before P4 the note went to the ears only, and this asserted the
+      // picture untouched. Now it is drawn on both lanes alike, and heard as
+      // drawn; the nulls are the two lanes' notes against nought and the
+      // heard pair against the unstruck picture.
+      let diagonal = 0, drawn = 0, heard = 0, wrong = 0, early = 0, late = 0;
+      for (let i = 0; i < 44100; i++) {
+        diagonal = Math.max(diagonal, Math.abs((b.L[i] - a.L[i]) - (b.R[i] - a.R[i])));
+        drawn = Math.max(drawn, Math.abs(b.L[i] - a.L[i]));
+        heard = Math.max(heard, Math.abs(b.HL[i] - b.L[i]));
+        wrong = Math.max(wrong, Math.abs(b.HL[i] - a.L[i]));
+      }
       // The heard difference is the struck note alone: its peak just after
       // the strike, and after one decay time of 400 ms.
       for (let i = 200; i < 2400; i++) early = Math.max(early, Math.abs(b.HL[i] - a.HL[i]));
       for (let i = 17640; i < 17640 + 441; i++) late = Math.max(late, Math.abs(b.HL[i] - a.HL[i]));
-      return { picture, early, late };
+      return { diagonal, drawn, heard, wrong, early, late };
     }""")
-    print("    picture difference %.2e; heard note %.4f just after the strike (want 0.2), %.4f at 400 ms "
-          "(want %.4f)" % (voice["picture"], voice["early"], voice["late"], 0.2 / math.e))
-    check("a struck note is heard at its level, 0.4 times its velocity over two, and the picture is untouched",
-          voice["picture"] == 0 and abs(voice["early"] - 0.2) < 0.005, str(voice))
+    print("    drawn %.4f, off the diagonal %.2e, heard against drawn %.2e; heard note %.4f just after the strike "
+          "(want 0.2), %.4f at 400 ms (want %.4f)" % (voice["drawn"], voice["diagonal"], voice["heard"],
+                                                     voice["early"], voice["late"], 0.2 / math.e))
+    check("a struck note is heard at its level, 0.4 times its velocity over two",
+          abs(voice["early"] - 0.2) < 0.005, str(voice))
+    check("and it is drawn on both lanes alike, along the diagonal, and heard as drawn",
+          voice["drawn"] > 0.15 and voice["diagonal"] < 1e-6 and voice["heard"] < 1e-6, str(voice))
+    check("and the heard check fails against the picture without the note", voice["wrong"] > 0.15, str(voice))
     check("and it dies away to 1/e over its 400 ms", abs(voice["late"] - 0.2 / math.e) < 0.006, str(voice))
 
     print("\n--- MIDI out ---")

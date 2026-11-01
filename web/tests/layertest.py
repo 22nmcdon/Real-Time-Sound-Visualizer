@@ -129,6 +129,24 @@ with sync_playwright() as pw:
         aEarly: peak(al, Math.round(rate * 0.03), Math.round(rate * 0.05)),
         bEarly: peak(bl, Math.round(rate * 0.03), Math.round(rate * 0.05)),
         bLate: peak(bl, n - 4096, n),
+        // Since P4 the heard pair is the lanes summed and nothing else; the
+        // null is A's lanes alone. Not B's crossed: B's note is on both, so
+        // its two lanes are one signal and crossing them proves nothing.
+        // And a caller that does not ask for B's lanes still hears B: the
+        // same chord again, from a second core, with only the heard pair.
+        alone: (() => {
+          const again = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+          again.set('shape', 'sine'); again.set('shape', 'square', 1);
+          again.set('attackMs', 2); again.set('attackMs', 400, 1);
+          again.set('voices', A); again.set('voices', B, 1);
+          const x = new Float32Array(n), y = new Float32Array(n), h = new Float32Array(n), k = new Float32Array(n);
+          again.block(x, y, n, h, k);
+          let w = 0; for (let i = 0; i < n; i++) w = Math.max(w, Math.abs(h[i] - hl[i]));
+          return w;
+        })(),
+        sum: (() => { let w = 0, z = 0; for (let i = 0; i < n; i++) {
+          w = Math.max(w, Math.abs(hl[i] - al[i] - bl[i]), Math.abs(hr[i] - ar[i] - br[i]));
+          z = Math.max(z, Math.abs(hl[i] - al[i])); } return { w, z }; })(),
       };
     }""", [A, B])
     print("    C, G, E  - A's X %s, A's Y %s, B's X %s, heard %s"
@@ -140,8 +158,14 @@ with sync_playwright() as pw:
     check("layer B's picture has B's note and not A's",
           core["bX"][2] > 0.05 and core["bX"][0] < top * 0.01 and core["bX"][1] < top * 0.01,
           str(rounded(core["bX"])))
+    # The left ear, where G leans in at half its level: 0.048 of A's 0.096.
     check("and the heard pair has all three",
-          min(core["heard"]) > 0.05, str(rounded(core["heard"])))
+          min(core["heard"]) > 0.03, str(rounded(core["heard"])))
+    check("because it is A's lanes and B's summed, sample for sample",
+          core["sum"]["w"] < 1e-6, "worst %.3g" % core["sum"]["w"])
+    check("and the comparison fails with B left out", core["sum"]["z"] > 0.05, "%.3g" % core["sum"]["z"])
+    check("and a caller that asks for no lanes of B's hears exactly the same",
+          core["alone"] < 1e-6, "worst %.3g" % core["alone"])
     print("    third harmonic over fundamental: B %.3f, A %.3f" % (core["bThird"], core["aThird"]))
     check("layer B plays its own shape - a square under A's sine",
           0.25 < core["bThird"] < 0.4 and core["aThird"] < 0.02, str(core))
@@ -239,8 +263,8 @@ with sync_playwright() as pw:
     print("    A (lowest two) draws %s, B (highest two) draws %s" % (rules["a"], rules["b"]))
     check("layer A draws by its rule and layer B by its own",
           rules["a"] == [48, 52] and rules["b"] == [76, 79], str(rules))
-    check("and the readout says which layer is leaving notes out",
-          "drawing A 2 of 3, B 2 of 3" in rules["readout"] and "split at C4" in rules["readout"],
+    check("and the readout says each layer's outline",
+          "outline A 2 of 3, B 2 of 3" in rules["readout"] and "split at C4" in rules["readout"],
           rules["readout"][:200])
 
     print("\n--- A against B ---")

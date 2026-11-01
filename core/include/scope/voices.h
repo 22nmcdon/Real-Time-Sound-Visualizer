@@ -86,19 +86,31 @@ struct LayerTone : VoiceTone {
 };
 
 // What the keyboard asks a layer for: a note, its pitch and strength, and
-// its role in the picture - x, y, both, or heard only.
+// its role in the picture - x, y, both alone, or an inner voice (u).
 struct NoteWant {
   int note = 60;
   double freq = 261.63, velocity = 1;
   std::string role = "u";
 };
 
-// Picture X, picture Y, heard left, heard right.
-inline std::array<double, 4> roleGains(const std::string& role) {
-  if (role == "x") return { 1, 0, 1, 1 };
-  if (role == "y") return { 0, 1, 1, 1 };
-  if (role == "xy") return { 1, 1, 1, 1 };
-  return { 0, 0, 1, 1 };
+// Left and right, which is picture X and picture Y: a voice is heard where it
+// is drawn (P4). The outer notes lean to their sides, full on their own and
+// half on the other; an inner voice is on both at an outer note's power. The
+// page's ROLES says why leaning and not splitting.
+constexpr double kSqrtHalf = 0.70710678118654752440;  // Math.SQRT1_2, for the crossings
+constexpr double kPolyLean = 0.5;
+inline std::array<double, 2> roleGains(const std::string& role) {
+  const double inner = std::sqrt((1 + kPolyLean * kPolyLean) / 2);  // POLY_INNER
+  if (role == "x") return { 1, kPolyLean };
+  if (role == "y") return { kPolyLean, 1 };
+  if (role == "xy") return { 1, 1 };
+  // A against B: hard, so the one figure the two layers make is not sheared.
+  if (role == "xonly") return { 1, 0 };
+  if (role == "yonly") return { 0, 1 };
+  return { inner, inner };
+}
+inline bool innerRole(const std::string& role) {
+  return role != "x" && role != "y" && role != "xy" && role != "xonly" && role != "yonly";
 }
 
 constexpr int kPolyTails = 8;
@@ -106,10 +118,10 @@ constexpr int kPolyTails = 8;
 struct Voice {
   int note = 0;
   double phase = 0, freq = 0;
-  bool held = true, wanted = false, gone = false;
+  bool held = true, wanted = false, gone = false, inner = false;
   int born = 0, fade = 0;
   Envelope env, fenv;
-  std::array<double, 4> gains {}, targets {};
+  std::array<double, 2> gains {}, targets {};
   Quantiser q;
   std::optional<NoiseState> nz;
   Osc osc;
@@ -132,7 +144,7 @@ struct VoiceContext {
   int shapeFactor = 2;
   std::vector<double> taps2 = lowpassTaps(2), taps4 = lowpassTaps(4);
   Random* random = nullptr;
-  std::array<double, 4> mix {};
+  std::array<double, 2> mix {};  // left and right, drawn and heard
 
   explicit VoiceContext(double r)
       : rate(r), qHold(std::max(1, static_cast<int>(jsRound(0.025 * r)))),
@@ -165,6 +177,7 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
     }
     voice->wanted = true;
     voice->freq = want.freq;
+    voice->inner = innerRole(want.role);  // the budget cuts an inner voice first
     voice->targets = gains;
   }
   for (auto& v : voices) {
@@ -181,7 +194,7 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
 // heard pair, `c.mix`.
 inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveTables& bars, double amount,
                   double bend, double duck, double dt, double roleGlide, const VoiceFx& vx, VoiceContext& c) {
-  c.mix = { 0, 0, 0, 0 };
+  c.mix = { 0, 0 };
   for (auto& voice : voices) {
     if (voice.gone) continue;
     const double f = c.qMask ? quantise(voice.q, voice.freq * bend, c.qMask, c.qHold, c.qGlide) : voice.freq * bend;
@@ -213,9 +226,7 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     const auto& t = voice.targets;
     g[0] += (t[0] - g[0]) * roleGlide;
     g[1] += (t[1] - g[1]) * roleGlide;
-    g[2] += (t[2] - g[2]) * roleGlide;
-    g[3] += (t[3] - g[3]) * roleGlide;
-    c.mix[0] += a * g[0]; c.mix[1] += a * g[1]; c.mix[2] += a * g[2]; c.mix[3] += a * g[3];
+    c.mix[0] += a * g[0]; c.mix[1] += a * g[1];
   }
 }
 

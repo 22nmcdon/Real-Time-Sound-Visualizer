@@ -16,7 +16,7 @@ values shifted by one sample, and against a run with one tone value changed,
 must both fail - a comparison that could not tell those apart would pass
 whatever the port did.
 """
-import os, subprocess, sys, glob, math
+import os, re, subprocess, sys, glob, math
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORE = os.path.dirname(HERE)
@@ -413,6 +413,9 @@ def voice_scenarios():
     out.append(dict(r=900, ev=";".join("%d:%s" % (40 * k, chord(*[(48 + 3 * k + j, "xy"[j % 2]) for j in range(3)]))
                                        for k in range(6)) + ";260:none"))
     out.append(dict(ev="0:" + chord((C, "x"), (G, "y")) + ";700:null;900:" + chord((E, "xy"))))
+    # A against B's hard roles (P4): a layer's notes on one side alone.
+    out.append(dict(ev="0:" + chord((C, "xonly"), (G, "xonly", 0.6)) + ";800:none"))
+    out.append(dict(layer="b", ev="0:" + chord((E, "yonly")) + ";800:none"))
     # One key held while its pitch is retuned under it: the same voice, at
     # the new pitch.
     out.append(dict(ev="0:60/261.63/1.0/x+67/392.0/1.0/y;500:60/270.0/1.0/x+67/392.0/1.0/y;1500:none"))
@@ -499,14 +502,36 @@ check("and the comparison fails against the page's answers a line out of step",
 # first such call found there could not tell 0.3 from 0.31.
 pulse = next(i for i, l in enumerate(lines) if l.startswith("waveAt pulse") and l.endswith(" 0.3")
              and 0.4 < (float(l.split()[2]) / TWO_PI) % 1 < 0.9)
-# The voices: every run sounds on each of its four mixes, so no comparison of
-# them is a comparison of silence.
-quiet = [l[:60] for l, a in zip(lines, js_rows) if l.startswith("voicesRun")
-         and min(max(abs(v) for v in row(a)[k::4]) for k in (2, 3)) < 0.05]
-check("every chord sounds, heard left and right", not quiet, "; ".join(quiet[:2]))
-pictured = [l for l, a in zip(lines, js_rows) if l.startswith("voicesRun")
-            and min(max(abs(v) for v in row(a)[k::4]) for k in (0, 1)) > 0.05]
-check("and most draw on both picture channels", len(pictured) > 30, "%d" % len(pictured))
+# The voices: one pair since P4, left and right, drawn and heard. Every role
+# reaches both sides - X leans left with half its level on the right, Y the
+# mirror, a note alone or inner sits in the middle - so every chord sounds on
+# both, and a run of X notes alone (there is one) has its right side exactly
+# half its left, sample by sample, since both gains glide to targets in that
+# ratio. Read with the sides swapped, that run fails the check.
+POLY_LEAN = 0.5
+def sides_right(call, values, swap=False):
+    roles = set(re.findall(r"/(x|y|xy|u)\b", call))
+    left, right = (values[1::2], values[0::2]) if swap else (values[0::2], values[1::2])
+    if min(max(abs(v) for v in left), max(abs(v) for v in right)) <= 0.05: return False
+    if roles == {"x"}: return max(abs(r - POLY_LEAN * l) for l, r in zip(left, right)) < 1e-9
+    if roles == {"y"}: return max(abs(l - POLY_LEAN * r) for l, r in zip(left, right)) < 1e-9
+    return True
+# A against B (P4) is hard: a run of X-only notes is silent on the right, and
+# of Y-only notes on the left, and sounds on its own side.
+def hard_right(call, values, swap=False):
+    roles = set(re.findall(r"/(xonly|yonly)\b", call))
+    left, right = (values[1::2], values[0::2]) if swap else (values[0::2], values[1::2])
+    side, other = (left, right) if roles == {"xonly"} else (right, left)
+    return max(abs(v) for v in side) > 0.05 and max(abs(v) for v in other) == 0
+voiced = [(l, row(a)) for l, a in zip(lines, js_rows) if l.startswith("voicesRun")]
+wrong = [l[:60] for l, v in voiced if not re.search(r"/(xonly|yonly)\b", l) and not sides_right(l, v)]
+check("every chord sounds on both sides, and X notes alone lean left by half", not wrong, "; ".join(wrong[:2]))
+lone = [(l, v) for l, v in voiced if set(re.findall(r"/(x|y|xy|u)\b", l)) == {"x"}]
+check("and the check fails on X notes read with the sides swapped", lone and not sides_right(*lone[0], swap=True))
+hard = [(l, v) for l, v in voiced if re.search(r"/(xonly|yonly)\b", l)]
+check("A against B's notes sound on their own side alone, X's on the left and Y's on the right",
+      len(hard) == 2 and all(hard_right(l, v) for l, v in hard), "%d runs" % len(hard))
+check("and the check fails with the sides swapped", hard and not any(hard_right(l, v, swap=True) for l, v in hard))
 def js_one(call):
     return row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(call)], check=True,
                               capture_output=True, text=True).stdout)
@@ -530,8 +555,9 @@ still = []
 for l, a in zip(lines, js_rows):
     if not l.startswith("planeRun"): continue
     rate, v, held = float(l.split("rate=")[1].split()[0]), row(a), " inp=1 " in l
-    if max(max(abs(v[6 * i] - plane_input(i, rate, held)[0]), abs(v[6 * i + 1] - plane_input(i, rate, held)[1]))
-           for i in range(len(v) // 6)) < 0.01:
+    # Four a sample, A's pair and B's: since P4 there is no heard pair of its own.
+    if max(max(abs(v[4 * i] - plane_input(i, rate, held)[0]), abs(v[4 * i + 1] - plane_input(i, rate, held)[1]))
+           for i in range(len(v) // 4)) < 0.01:
         still.append(l[:70])
 check("every plane run changes the pair it is given", not still, "; ".join(still[:2]))
 kal = next(i for i, l in enumerate(lines) if "planeKaleido=5.5" in l)
@@ -684,6 +710,10 @@ def gen_runs():
                            route(FREQ, 0.1, index=1), route(30, 1.0, held=1)]))], slots=8)
     # The chord, on one layer and on two, roles changing under it; then the
     # governor: everything on at once, past its budget, then the chord changed.
+    # The same chord without its inner voice: since P4 the two pictures differ,
+    # where an inner voice used to be heard and never drawn.
+    add("poly-no-inner", [(0, "voices 0 " + notes((60, "x"), (64, "y", 0.7))), (0, "routes " + vib),
+                          (0, "set releaseMs 6")], samples=1024)
     add("poly", [(0, "voices 0 " + notes((60, "x"), (64, "y", 0.7), (67, "u"))), (0, "routes " + vib),
                  (0, "set releaseMs 6"),
                  (1024, "voices 0 " + notes((60, "xy"), (64, "y", 0.7), (71, "x"))), (2048, "voices 0 none"),
@@ -779,7 +809,7 @@ def gen_runs():
     add("swing-pitched", [(0, "set mode harmonograph"), (0, "set pitched true"), (0, "set ringMs 40"),
                           (0, "set freq 330"), (0, "set qMask 2741"), (1024, "reswing"), (2048, "set freq 290"),
                           (2560, "reswing"), (3584, "set decay 0.5")])
-    # The plane on a dyad and on a chord, where the heard pair is its own.
+    # The plane on a dyad and on a chord.
     add("plane-dyad", [(0, "set planeTwist 0.9"), (0, "set planeLimit 1"), (0, "set planeRadius 0.3"),
                        (0, "set chorusMix 0.5"), (0, "set chorusRate 3"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
                        (0, "routes " + "+".join([route(RADIUS, 0.4, index=0), route(ECHOT, 0.3, index=1)]))])
@@ -787,8 +817,8 @@ def gen_runs():
                        (0, "set planeMirror 1"), (0, "set planeKaleido 4"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
                        (0, "routes " + "+".join([route(TWIST, 0.6, index=0), route(ECHO, 0.5, index=1)]))])
     # Layer B with a plane of its own: bent and turned apart from A, its twist
-    # pushed through its own fade, its share of the heard pair joining A's
-    # before the echo; and the same with it off, so the two can be compared.
+    # pushed through its own fade; and the same with it off, so the two can be
+    # compared.
     # Then a turn alone, with nothing of A's on, switched off mid-run.
     for own in ("true", "false"):
         add("plane-own" + ("" if own == "true" else "-off"),
@@ -914,9 +944,33 @@ check("layer B's own echo and chorus change B's picture and its share of the sou
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
       and max(abs(a - b) for a, b in zip(col(own, 2), col(off, 2))) > 0.05
       and col(own, 0) == col(off, 0) and col(own, 1) == col(off, 1))
+# One pair (P4): in every run, what is heard is A's lanes and B's summed,
+# sample for sample - a chord's inner voices, the crossings' notes and the
+# score's included, which used to be heard and never drawn. Columns: A's
+# lanes, the heard pair, B's lanes. This used to assert the opposite, that
+# in a chord the heard pair is not the picture. Fed A's left in place of
+# B's, or the heard pair of the run with its inner voice taken away, the
+# check fails; the second is also what shows the inner voice is drawn.
+def one_pair(v):
+    return all(abs(col(v, 2)[k] - (col(v, 0)[k] + col(v, 4)[k])) <= 1e-6 * (1 + abs(col(v, 2)[k]))
+               and abs(col(v, 3)[k] - (col(v, 1)[k] + col(v, 5)[k])) <= 1e-6 * (1 + abs(col(v, 3)[k]))
+               for k in range(len(col(v, 0))))
+# The effect runs are a live input through the plane, not the generator's
+# block: they have no heard pair to hold.
+apart = [n for n, _ in runs if not n.startswith("effect") and not one_pair(grow(n)[0])]
+check("in every run what is heard is what is drawn: A's lanes and B's, summed, sample for sample", not apart,
+      ", ".join(apart[:4]))
+lay = grow("layered")[0]
+swapped = [x for k in range(len(col(lay, 0))) for x in (col(lay, 0)[k], col(lay, 1)[k], col(lay, 2)[k], col(lay, 3)[k],
+                                                        col(lay, 0)[k], col(lay, 5)[k])]
+check("and the check fails on B's lanes read as A's", not one_pair(swapped))
 body, _ = grow("poly")
-check("in a chord the heard pair is not the picture",
-      max(abs(a - b) for a, b in zip(col(body, 0), col(body, 2))) > 0.05)
+def inner_drawn(with_, without):
+    a, b = col(with_, 0)[:1000], col(without, 0)[:1000]
+    return max(abs(x - y) for x, y in zip(a, b)) > 0.05
+check("a chord's inner voice is drawn: the picture differs from the same chord without it",
+      inner_drawn(body, grow("poly-no-inner")[0]))
+check("and the check fails on two pictures of one chord", not inner_drawn(body, body))
 check("the second generator is drawn while there is no layer B", all(max(abs(x) for x in col(grow("gen2-%d" % m)[0], 4)) > 0.1
                                                                      for m in (1, 2, 3)))
 _, tail = grow("solid-Cube")

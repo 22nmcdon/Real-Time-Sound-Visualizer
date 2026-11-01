@@ -104,7 +104,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "makeOsc", "wrapJump", "oscStep", "makeVoiceFx", "voiceFxFor", "unisonAsked", "lowpassTaps",
                          "shapeTaps", "shDrive", "shapeFactor", "shapeSample", "setShaping", "makeShaper", "shaperOf",
                          "makeCrush", "crushStep", "KEY_REF", "makeVcf", "vcfHz", "vcfCoef", "CUT_SAMPLES", "fenvView",
-                         "fviewA", "POLY_TAILS", "ROLES", "chordMoved", "reconcileVoices", "sound"],
+                         "fviewA", "POLY_TAILS", "POLY_LEAN", "POLY_INNER", "ROLES", "chordMoved", "reconcileVoices", "sound"],
                         rate, mulberry32(n("seed")), { tone, toneB });
     c.__set("qMaskNow", n("qmask")); c.__set("qGlide", n("qglide")); c.__set("shapeFactor", n("factor"));
     const x = c.makeVoiceFx();
@@ -135,7 +135,8 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       }
       const bend = n("bend") + (n("bend2") - n("bend")) * i / samples;
       c.sound(voices, t, bars, n("amount"), bend, n("duck"), c.dtOf, n("glide"), x);
-      values.push(c.mix[0], c.mix[1], c.mix[2], c.mix[3]);
+      // Left and right, drawn and heard: since P4 one pair.
+      values.push(c.mix[0], c.mix[1]);
     }
     out.push(show(values));
     continue;
@@ -253,22 +254,13 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.
       if (n("inp") === 1) { x = -0.375; y = 0.625; }
-      if (!on) { values.push(x, y, y, x, x, y); continue; }
+      if (!on) { values.push(x, y, y, x); continue; }
       c.planeTick(1 / rate);
       c.planeStep(c.__get("osA"), c.fxA, x, y); values.push(c.__get("opX"), c.__get("opY"));
       const shapeOfB = c.__get("shapeOfB");
       const timeOfB = c.__get("timeOfB");
+      // Each layer's pair once: since P4 there is no heard pair of its own.
       c.planeStep(c.__get("osB"), c.__get("fxB"), 0.8 * y, 1.1 * x, shapeOfB, timeOfB); values.push(c.__get("opX"), c.__get("opY"));
-      if (shapeOfB !== c.shapeA) {
-        c.planeStep(c.__get("osHeard"), c.__get("fxHeard"), 0.6 * (x + y), 0.6 * (x - y), c.shapeA, c.timeA);
-        let hx = c.__get("opX"), hy = c.__get("opY");
-        c.planeStep(c.__get("osHeardB"), c.__get("fxHeardB"), 0.4 * y, 0.3 * x, shapeOfB, timeOfB);
-        hx += c.__get("opX"); hy += c.__get("opY");
-        values.push(hx, hy);
-        continue;
-      }
-      c.planeStep(c.__get("osHeard"), c.__get("fxHeard"), 0.6 * (x + y), 0.6 * (x - y));
-      values.push(c.__get("opX"), c.__get("opY"));
     }
     out.push(show(values));
     continue;

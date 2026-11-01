@@ -9,8 +9,10 @@ What would go wrong, and what is checked for it:
 - a beam idling on a line rattling it, or a line that never fires passing
   that check;
 - more than twenty-five notes a second under a noise fixture;
-- the notes getting into the picture, being the wrong notes, decaying at the
-  wrong rate, or starting with a click;
+- the notes on the wrong axis - since P4 the line X crosses plays on X and
+  Y's on Y, drawn, and what is heard is the picture - being the wrong notes,
+  firing the lines themselves, decaying at the wrong rate, or starting with
+  a click;
 - the lines not drawn where the beam is measured against, the panel not
   reaching the generator, a setup code losing it.
 """
@@ -57,7 +59,8 @@ CORE = """(setup) => {
   const L = new Float32Array(block), R = new Float32Array(block);
   const HL = new Float32Array(block), HR = new Float32Array(block);
   const fires = { x: [], y: [] };
-  const keep = setup.keep ? { L: new Float32Array(n), HL: new Float32Array(n) } : null;
+  const keep = setup.keep ? { L: new Float32Array(n), R: new Float32Array(n), HL: new Float32Array(n),
+                              HR: new Float32Array(n) } : null;
   let last = core.crossings;
   for (let done = 0; done < n; done += block) {
     core.block(L, R, block, HL, HR);
@@ -65,10 +68,11 @@ CORE = """(setup) => {
     if (now.x !== last.x) fires.x.push((done + block) / 44100);
     if (now.y !== last.y) fires.y.push((done + block) / 44100);
     last = now;
-    if (keep && done + block <= n) { keep.L.set(L, done); keep.HL.set(HL, done); }
+    if (keep && done + block <= n) { keep.L.set(L, done); keep.R.set(R, done); keep.HL.set(HL, done); keep.HR.set(HR, done); }
   }
-  return { fires, counts: core.crossings,
-           L: keep ? Array.from(keep.L) : null, HL: keep ? Array.from(keep.HL) : null };
+  const out = { fires, counts: core.crossings };
+  for (const k of ['L', 'R', 'HL', 'HR']) out[k] = keep ? Array.from(keep[k]) : null;
+  return out;
 }"""
 
 with sync_playwright() as pw:
@@ -142,48 +146,75 @@ with sync_playwright() as pw:
     check("under noise, each line fires at most twenty-five times a second - and does fire",
           all(20 <= v <= 25 for v in per.values()), str(per))
 
-    print("\n--- the notes: heard, not drawn ---")
+    print("\n--- the notes: drawn on their axes, and heard as drawn ---")
+    # Before P4 the notes went to the ears only, and these checks asserted
+    # the picture was the same with them on or off. Now each is drawn on the
+    # axis whose line fired it, so a lane's notes are that lane with the
+    # crossings on, less the same lane with them off - which the next check
+    # but one shows is the figure under the notes.
     heard = run({"freq": 2, "interval": 7}, n=2 * RATE, keep=True)
     quiet = run({"freq": 2, "interval": 7, "crossOn": False}, n=2 * RATE, keep=True)
-    pluck = np.asarray(heard["HL"]) - np.asarray(heard["L"])
-    none = np.asarray(quiet["HL"]) - np.asarray(quiet["L"])
-    same_picture = heard["L"] == quiet["L"]
-    spec, hz = spectrum(pluck)
-    near = lambda f: spec[np.abs(hz - f) < 3].max()
-    c4, g4, between = near(261.63), near(392.0), near(320.0)
+    level0 = run({"freq": 2, "interval": 7, "crossLevel": 0}, n=2 * RATE, keep=True)
+    on_x = np.asarray(heard["L"]) - np.asarray(quiet["L"])
+    on_y = np.asarray(heard["R"]) - np.asarray(quiet["R"])
+    def peaks(x):
+        spec, hz = spectrum(x)
+        near = lambda f: spec[np.abs(hz - f) < 3].max()
+        return near(261.63), near(392.0), near(320.0)
+    cx, gx_, bx_ = peaks(on_x)
+    cy, gy_, by_ = peaks(on_y)
+    print("    on X: C4 %.0f, G4 %.0f, half-way %.1f; on Y: C4 %.0f, G4 %.0f, half-way %.1f"
+          % (cx, gx_, bx_, cy, gy_, by_))
+    on_axes = lambda cx, gx, cy, gy: cx > 20 * gx and gy > 20 * cy and min(cx, gy) > 0
+    check("X's line plays C4 on X, and Y's plays G4 on Y, each on its own axis alone",
+          on_axes(cx, gx_, cy, gy_), "X %.0f/%.0f, Y %.0f/%.0f" % (cx, gx_, cy, gy_))
+    check("and the check fails with the axes swapped", not on_axes(cy, gy_, cx, gx_))
     # Where the peaks are, rather than how far above a gap they stand: notes
     # retriggered two and three times a second have sidebands a hertz apart,
     # and the tails of both reach half-way between them.
+    spec, hz = spectrum(on_x + on_y)
     lo, hi = (hz >= 200) & (hz < 330), (hz >= 330) & (hz < 500)
     at_lo, at_hi = float(hz[lo][np.argmax(spec[lo])]), float(hz[hi][np.argmax(spec[hi])])
-    print("    loudest %.2f Hz and %.2f Hz; C4 %.0f, G4 %.0f against %.1f half-way" % (at_lo, at_hi, c4, g4, between))
-    check("what is heard beyond the picture is the two notes, C4 for X and G4 for Y",
-          abs(at_lo - 261.63) < 1 and abs(at_hi - 392.0) < 1 and min(c4, g4) > 20 * between,
+    print("    loudest %.2f Hz and %.2f Hz" % (at_lo, at_hi))
+    check("the notes are C4 and G4 and stand clear of the gap between them",
+          abs(at_lo - 261.63) < 1 and abs(at_hi - 392.0) < 1 and min(cx, gy_) > 20 * max(bx_, by_),
           "%.2f, %.2f" % (at_lo, at_hi))
-    check("the picture is sample for sample the same with the notes on or off",
-          same_picture, "")
-    check("and with the crossings off nothing is added to what is heard",
-          float(np.abs(none).max()) == 0.0, str(float(np.abs(none).max())))
+    figure = heard["fires"] == level0["fires"] and level0["L"] == quiet["L"] and level0["R"] == quiet["R"]
+    check("the beam is measured before the notes go on: at level nought the figure and every firing are the same",
+          figure and len(heard["fires"]["x"]) > 0, str({k: len(v) for k, v in heard["fires"].items()}))
+    worst = max(float(np.abs(np.asarray(heard["HL"]) - np.asarray(heard["L"])).max()),
+                float(np.abs(np.asarray(heard["HR"]) - np.asarray(heard["R"])).max()))
+    crossed = float(np.abs(np.asarray(heard["HL"]) - np.asarray(heard["R"])).max())
+    check("what is heard is the picture, notes and all, sample for sample", worst == 0.0, "%.3g" % worst)
+    check("and the comparison fails with the sides crossed", crossed > 0.05, "%.3g" % crossed)
 
     # One note on its own: X fires at 1 s on a 1 Hz beam, and Y's line is
     # out of reach. Its envelope after 180 ms, the decay's time constant, is
     # 1/e of its peak; and it rises over 2 ms rather than jumping.
     # 1 Hz, so the first crossing is at a second: armed in the half-cycle
     # below the line and fired coming back up through it.
-    single = run({"freq": 1, "crossY": 2, "crossDecayMs": 180, "crossLevel": 1}, n=int(1.6 * RATE), keep=True)
-    solo = np.abs(np.asarray(single["HL"]) - np.asarray(single["L"]))
+    one = {"freq": 1, "crossY": 2, "crossDecayMs": 180, "crossLevel": 1}
+    single = run(one, n=int(1.6 * RATE), keep=True)
+    bare = run(dict(one, crossOn=False), n=int(1.6 * RATE), keep=True)
+    note = np.asarray(single["L"]) - np.asarray(bare["L"])
+    solo = np.abs(note)
     t0 = int(round(single["fires"]["x"][0] * RATE)) if single["fires"]["x"] else 0
     window = lambda a, b2: solo[t0 + int(a * RATE / 1000): t0 + int(b2 * RATE / 1000)].max()
     ratio = window(185, 195) / window(5, 15)
-    steps = np.abs(np.diff(np.asarray(single["HL"]) - np.asarray(single["L"])))
+    steps = np.abs(np.diff(note))
     print("    fired at %.3f s; 180 ms on it is %.3f of its peak (1/e = 0.368); worst step %.4f"
           % (t0 / RATE, ratio, steps.max()))
     check("a note decays to 1/e of its peak in the decay's 180 ms",
-          abs(ratio - math.exp(-1)) < 0.02, "%.3f" % ratio)
-    # A 261 Hz sine at half level moves at most 2 pi 261.63 / 44100 x 0.5 =
-    # 0.0186 a sample. A note that jumped in would step by up to 0.5.
+          t0 > 0 and abs(ratio - math.exp(-1)) < 0.02, "%.3f" % ratio)
+    check("and Y's lane has no note, its line out of reach",
+          single["R"] == bare["R"], "")
+    # A 261 Hz sine of peak A moves at most 2 pi 261.63 / 44100 x A a sample:
+    # 0.0264 at the 0.707 a note has on its axis since P4 (it was 0.5, in the
+    # middle of what was heard, when this was a fixed 0.02). A note that
+    # jumped in would step by up to A, twenty-seven times that.
+    smooth = 2 * math.pi * 261.63 / RATE * solo.max()
     check("and starts without a click: no sample steps further than the sine itself moves",
-          steps.max() < 0.02, "%.4f" % steps.max())
+          solo.max() > 0.3 and steps.max() < smooth * 1.05, "%.4f against %.4f" % (steps.max(), smooth))
 
     print("\n--- the panel and the screen ---")
     panel = p.evaluate("""async () => {

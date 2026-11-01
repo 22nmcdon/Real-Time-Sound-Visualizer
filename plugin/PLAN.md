@@ -2477,6 +2477,20 @@ redone natively or left out.
   in the page's order, since the order the loop's parts are summed in is
   what parity compares to the last bit.
 
+- **One pair since P4** (of `web/docs/making-it-one-instrument.md`). The
+  generator's `block` still takes a heard pair, and it is now nothing but
+  the lanes summed - A's and B's, each through its own plane - so a host
+  that hands one gets what the picture shows and nothing more. Every held
+  note is in the lanes: the outer two lean onto X and Y by half, the rest
+  sit in the middle (`roleGains`), A against B is hard, and in a rack every
+  note is `xy`, since a lane takes the left channel alone and a leaning
+  note would be heard at half there (`setLayable`). The crossings' notes go
+  on their own axes and the score's on both; nothing is clamped, so the
+  output's limiter is what holds the speakers. The plane's separate heard
+  pass is gone, and with it a governed cost: two layers through the plane
+  are two passes, not three. Held by parity's `one_pair` over every
+  generator run, and by the instrument's run of A against B.
+
 ## Building and testing
 
 ```

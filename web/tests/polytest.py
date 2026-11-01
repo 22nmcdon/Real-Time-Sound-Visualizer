@@ -6,14 +6,16 @@ What would go wrong, and what is checked for it:
   an order that is not their pitch order, with the top note pressed FIRST, so
   that "outer", "highest" and "most recent" all give different answers and no
   two rules can pass for each other;
-- an undrawn note leaking into the picture, or a drawn one missing from what
-  is heard. Checked at the core, by energy at each note's own frequency in the
-  picture pair and the heard pair separately, and again through the worklet,
-  where the picture crosses a thread and the sound goes to the speakers;
+- what is heard and what is drawn coming apart. Since P4 of the plan they are
+  one pair: every held note is drawn, the outer two leaning onto their axes
+  and the rest in the middle, and what is heard is the picture. Checked at the
+  core, by energy at each note's own frequency in each lane, and again through
+  the worklet, where the picture crosses a thread and the sound goes to the
+  speakers;
 - voices sharing an envelope, so releasing one note ends the chord;
 - the tuning: just is the lowest note's small whole-number ratios, exactly;
 - the chord being clamped, when louder was asked for and the limiter is what
-  catches it - while the picture keeps its full-scale edge;
+  catches it - and the picture with it, since it is the sound;
 - the cap, the readout, the sources and the setup code;
 - poly lingering after the thing that made it poly has gone.
 
@@ -112,19 +114,32 @@ with sync_playwright() as pw:
     print("    energy at C, E, G - picture L %s, picture R %s, heard L %s, heard R %s"
           % (rounded(r["pl"]), rounded(r["pr"]), rounded(r["hl"]), rounded(r["hr"])))
     full = max(r["pl"][0], 1e-9)
-    check("the picture's X is the bass alone", r["pl"][1] < full * 0.01 and r["pl"][2] < full * 0.01,
-          str(rounded(r["pl"])))
-    check("the picture's Y is the drawn upper note alone",
-          r["pr"][2] > full * 0.5 and r["pr"][0] < full * 0.01 and r["pr"][1] < full * 0.01,
-          str(rounded(r["pr"])))
-    check("the undrawn E is heard in both ears",
-          r["hl"][1] > full * 0.5 and r["hr"][1] > full * 0.5,
-          "left %.4f, right %.4f" % (r["hl"][1], r["hr"][1]))
+    # The lean: X's note on the left at full and the right at half, Y's the
+    # mirror, an inner note in the middle at the power of a leaning one. The
+    # first hard pan - X's note on the left alone - came apart across the
+    # ears; the version before P4 drew the outer two hard and left the inner
+    # note out of the picture. Both are read here as wrong, by feeding the
+    # check their shape.
+    LEAN, INNER = 0.5, ((1 + 0.25) / 2) ** 0.5
+    def leans(pl, pr):
+        near = lambda a, b: abs(a - b) < 0.03
+        return (near(pl[2] / pl[0], LEAN) and near(pr[0] / pr[2], LEAN) and near(pr[2], pl[0])
+                and near(pl[1] / pl[0], INNER) and near(pr[1] / pr[2], INNER))
+    check("X's note leans left and Y's right, by half, and the inner E is drawn in the middle",
+          leans(r["pl"], r["pr"]), "X %s, Y %s" % (rounded(r["pl"]), rounded(r["pr"])))
+    check("and the check fails on the hard pan, and on the inner note left out",
+          not leans([1, INNER, 0], [0, INNER, 1]) and not leans([1, 0, LEAN], [LEAN, 0, 1]))
+    same = p.evaluate("""() => { const { pl, pr, hl, hr } = window.__run; let w = 0;
+      for (let i = 0; i < pl.length; i++) w = Math.max(w, Math.abs(hl[i] - pl[i]), Math.abs(hr[i] - pr[i]));
+      let z = 0; for (let i = 0; i < pl.length; i++) z = Math.max(z, Math.abs(hl[i] - pr[i]));
+      return { w, z }; }""")
+    check("what is heard is the picture, sample for sample", same["w"] < 1e-6, "worst %.3g" % same["w"])
+    check("and the comparison fails with the heard sides crossed", same["z"] > 0.05, "%.3g" % same["z"])
     # The first version panned the drawn notes as a dyad does - bass left,
     # melody right - and this check asserted it. Played, a chord came apart
     # across the ears: the root alone in one and everything else in the other.
-    check("and every note, drawn or not, is heard in both ears",
-          all(r[side][k] > full * 0.5 for side in ("hl", "hr") for k in range(3)),
+    check("and every note is heard in both ears",
+          all(r[side][k] > full * 0.4 for side in ("hl", "hr") for k in range(3)),
           "heard L %s, heard R %s" % (rounded(r["hl"]), rounded(r["hr"])))
 
     # Louder, not normalised - and the picture keeps its edge.
@@ -140,32 +155,39 @@ with sync_playwright() as pw:
           many["hl"]["max"] > 1.0, "peak %.3f" % many["hl"]["max"])
     p.evaluate(CORE, [[dict(v, role="xy") for v in four], 0.5, "sine"])
     edge = p.evaluate(READ, [[C], 0.3])["peak"]
-    check("while the picture stops at full scale, which is the edge of the screen",
-          edge["pl"]["max"] <= 1.0 and edge["pl"]["max"] > 0.99, "peak %.4f" % edge["pl"]["max"])
+    # Before P4 the picture was held to full scale, the edge of the screen,
+    # and this check asserted it. With the picture the sound, a clamp there
+    # would clip every loud chord; the screen clips where it draws instead.
+    check("and nor is the picture, which is the sound: the screen clips where it draws",
+          edge["pl"]["max"] > 1.0 and abs(edge["pl"]["max"] - edge["hl"]["max"]) < 1e-6,
+          "picture %.4f, heard %.4f" % (edge["pl"]["max"], edge["hl"]["max"]))
 
-    # A note changing role - joining the picture as the chord changes - has
-    # its gains glide rather than step. A square wave, because its value is
-    # always near full either way: with a sine the switch could land near a
-    # zero crossing and a step would look like a glide by luck.
-    jump = p.evaluate("""([C, G]) => {
+    # A note changing role - from leaning left to leaning right as the chord
+    # changes - has its gains glide rather than step. A square wave, because
+    # its value is always near full either way: with a sine the switch could
+    # land near a zero crossing and a step would look like a glide by luck.
+    # Read as the peak of a few samples either side of the switch, so a
+    # square's edge in the window does not decide it.
+    jump = p.evaluate("""([C]) => {
       const rate = 44100;
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
       const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
       core.set('shape', 'square');
-      const x = { note: 48, freq: C, velocity: 1, role: 'x' };
-      core.set('voices', [x, { note: 55, freq: G, velocity: 1, role: 'u' }]);
+      core.set('voices', [{ note: 48, freq: C, velocity: 1, role: 'x' }]);
       const a = [0, 1, 2, 3].map(() => new Float32Array(8820));
       core.block(a[0], a[1], 8820, a[2], a[3]);
-      const before = Math.abs(a[1][8819]);
-      core.set('voices', [x, { note: 55, freq: G, velocity: 1, role: 'y' }]);
+      core.set('voices', [{ note: 48, freq: C, velocity: 1, role: 'y' }]);
       const b = [0, 1, 2, 3].map(() => new Float32Array(2205));
       core.block(b[0], b[1], 2205, b[2], b[3]);
-      return { before, first: Math.abs(b[1][0]), later: Math.abs(b[1][2204]) };
-    }""", [C, G])
-    print("    G joining the picture: Y was %.4f, first sample after %.4f, 50 ms later %.4f"
+      const peak = (x, from, to) => { let m = 0; for (let i = from; i < to; i++) m = Math.max(m, Math.abs(x[i])); return m; };
+      return { before: peak(a[1], 8800, 8820), first: peak(b[1], 0, 20), later: peak(b[1], 2005, 2205) };
+    }""", [C])
+    print("    C moving from X to Y: its right side was %.4f, first samples after %.4f, 50 ms later %.4f"
           % (jump["before"], jump["first"], jump["later"]))
-    check("a note joining the picture fades in over milliseconds, not in one sample",
-          jump["before"] < 1e-6 and jump["first"] < 0.02 and jump["later"] > 0.3, str(jump))
+    glides = lambda j: j["first"] < j["before"] * 1.25 and j["later"] > j["before"] * 1.8
+    check("a note moving across the picture glides over milliseconds, not in one sample",
+          glides(jump), str(jump))
+    check("and the check fails on a step", not glides(dict(jump, first=jump["later"])))
 
     print("\n--- each voice has its own envelope ---")
     env = p.evaluate("""([chord]) => {
@@ -244,8 +266,8 @@ with sync_playwright() as pw:
 
     p.wait_for_timeout(450)
     readout = p.evaluate("() => el.readoutDetail.textContent")
-    check("the readout says the picture is leaving notes out",
-          "drawing 2 of 5 notes" in readout, readout)
+    check("the readout says how many notes make the outline",
+          "outline 2 of 5 notes" in readout, readout)
 
     # Two notes: every rule is the dyad.
     p.evaluate("(order) => { for (const n of order) midiNoteOff(n); }", ORDER)
@@ -351,6 +373,29 @@ with sync_playwright() as pw:
     check("the Draw row is there only where a chord can play",
           rowed == {"wave": True, "wireframe": False, "dyad": False}, str(rowed))
 
+    # In a rack the generator is a lane, one signal - its left channel - so a
+    # note leaning right would be heard there at half and a note on Y not
+    # drawn at all. Every note is on both instead. Asked of the rule itself,
+    # under a source that has lanes; the null is the same chord on the
+    # generator's own, which has an outline.
+    racked = p.evaluate("""() => {
+      setMidiMode('poly');
+      el.midiDrawCount.value = '2'; el.midiDrawCount.dispatchEvent(new Event('change'));
+      for (const n of [48, 52, 55]) midiNoteOn(n, 100);
+      const own = polyVoices(0).map((v) => v.role);
+      const saved = state.source;
+      state.source = Object.create(saved, { lanes: { value: [{ synth: true }] }, drawsInput: { value: false } });
+      let lane;
+      try { lane = polyVoices(0).map((v) => v.role); } finally { state.source = saved; }
+      for (const n of [48, 52, 55]) midiNoteOff(n);
+      return { own, lane };
+    }""")
+    print("    roles of C, E, G: on its own %s, as a lane %s" % (racked["own"], racked["lane"]))
+    check("as a rack's lane every note of a chord is on both sides, so all of it is in the one signal",
+          racked["lane"] == ["xy", "xy", "xy"], str(racked))
+    check("and on its own the same chord has an outline, which the check would not pass",
+          racked["own"] != racked["lane"] and "x" in racked["own"], str(racked))
+
     print("\n--- it stops being poly when it should ---")
     gone = p.evaluate("""() => {
       midiNoteOn(48, 100); midiNoteOn(55, 100);
@@ -399,11 +444,21 @@ with sync_playwright() as pw:
           % (rounded(heard["heard"]), rounded(heard["drawnL"]), rounded(heard["drawnR"])))
     top = max(heard["drawnL"][0], 1e-9)
     check("the worklet is sounding", heard["audible"] and heard["chains"] == 1, str(heard))
-    check("the speakers get the undrawn E",
-          heard["heard"][1] > heard["heard"][0] * 0.3, str(rounded(heard["heard"])))
-    check("and the picture it posts back does not have it",
-          heard["drawnL"][1] < top * 0.01 and heard["drawnR"][1] < top * 0.01,
+    # Before P4 the speakers had the E and the picture did not, and these
+    # two checks asserted it. Now the picture posted back has every note, and
+    # the speakers have them in the picture's proportions: the analyser
+    # hears the two lanes' average, so each note's share is its two lanes'.
+    check("the picture it posts back has the inner E, on both lanes",
+          heard["drawnL"][1] > top * 0.5 and heard["drawnR"][1] > top * 0.5,
           "X %s, Y %s" % (rounded(heard["drawnL"]), rounded(heard["drawnR"])))
+    def shares(h, dl, dr):
+        both = [a + b for a, b in zip(dl, dr)]
+        return all(abs(h[k] / h[0] - both[k] / both[0]) < 0.12 * both[k] / both[0] for k in (1, 2))
+    check("and the speakers have the notes in the picture's proportions",
+          shares(heard["heard"], heard["drawnL"], heard["drawnR"]),
+          "heard %s" % rounded(heard["heard"]))
+    check("and the check fails on the E missing from what is heard",
+          not shares([heard["heard"][0], 0, heard["heard"][2]], heard["drawnL"], heard["drawnR"]))
 
     print("\n--- the setup code carries it ---")
     trip = p.evaluate("""() => {

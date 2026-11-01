@@ -434,8 +434,6 @@ class Generator {
       }
 
       double l, r;
-      bool heard = false;
-      double hl = 0, hr = 0;
 
       if (a_.mode == Mode::Figure) {
         if (clockHz > 0) figurePhase_ = std::fmod(static_cast<double>(clock_.since) / clock_.period, 1.0);
@@ -485,7 +483,7 @@ class Generator {
         r = amp * gain * (std::sin(phaseR_ + phase) + std::sin(phaseR_ * k)) / 2;
       } else if (poly) {
         sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq)), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_);
-        l = ctx_.mix[0]; r = ctx_.mix[1]; hl = ctx_.mix[2]; hr = ctx_.mix[3]; heard = true;
+        l = ctx_.mix[0]; r = ctx_.mix[1];
       } else {
         const double hz = (clockHz > 0 ? clockHz
                            : ctx_.qMask ? quantise(qA_, freq, ctx_.qMask, ctx_.qHold, ctx_.qGlide) : freq) * fmIn;
@@ -523,17 +521,20 @@ class Generator {
       if (inMode == 2) {
         const double g = 1 + inDepth * 2 * xin;
         l *= g; r *= g;
-        if (heard) { hl *= g; hr *= g; }
       }
 
       if (planeOn) {
         planeTick(dt);
         plane_.step(Plane::A, l, r); l = plane_.x; r = plane_.y;
       }
-      outL[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, l)));
-      outR[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, r)));
+      // Nothing clamped: the page's block says why.
+      outL[i] = static_cast<float>(l);
+      outR[i] = static_cast<float>(r);
 
-      double bhl = 0, bhr = 0;
+      // Layer B through its plane whether or not its lanes were asked for,
+      // since it is heard either way; the second generator, drawn in B's
+      // lanes, heard with them.
+      double bx = 0, by = 0;
       if (layered) {
         const WaveTables barsOfB = tablesFor(b_, barsB_, genModB_);
         const double amountOfB = shapeAmount(b_, modBOr0(slot::Morph) * 1.5, modBOr0(slot::Width) * 0.45,
@@ -541,23 +542,20 @@ class Generator {
         if (vxB_.shaping) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
         sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq)), 1 - modB(slot::Amp), dt, roleGlide,
               vxB_, ctx_);
-        bhl = ctx_.mix[2]; bhr = ctx_.mix[3];
-        if (outBL) {
-          double bx = ctx_.mix[0], by = ctx_.mix[1];
-          if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
-          outBL[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, bx)));
-          outBR[i] = static_cast<float>(std::fmax(-1.0, std::fmin(1.0, by)));
-        }
-      } else if (outBL) {
-        outBL[i] = fromGen2 ? static_cast<float>(std::fmax(-1.0, std::fmin(1.0, g2x))) : 0.0f;
-        outBR[i] = fromGen2 ? static_cast<float>(std::fmax(-1.0, std::fmin(1.0, g2y))) : 0.0f;
+        bx = ctx_.mix[0]; by = ctx_.mix[1];
+        if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
+      } else if (fromGen2) {
+        bx = g2x; by = g2y;
       }
+      if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
 
-      double pluck = 0;
+      // The crossings' notes on their own axes and the score's on both, drawn
+      // and heard, after the plane; the page's block says why.
       if (a_.crossOn) {
-        crossStep(cross_[0], outL[i], a_.crossX);
-        crossStep(cross_[1], outR[i], a_.crossY);
-        pluck = a_.crossLevel * (crossVoice(cross_[0], a_.crossHzX) + crossVoice(cross_[1], a_.crossHzY)) / 2;
+        crossStep(cross_[0], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outL[i]))), a_.crossX);
+        crossStep(cross_[1], std::fmax(-1.0, std::fmin(1.0, static_cast<double>(outR[i]))), a_.crossY);
+        outL[i] = static_cast<float>(outL[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[0], a_.crossHzX));
+        outR[i] = static_cast<float>(outR[i] + a_.crossLevel * kSqrtHalf * crossVoice(cross_[1], a_.crossHzY));
       }
       if (scoreStruck_ > 0) {
         double sum = 0;
@@ -566,24 +564,15 @@ class Generator {
           sum += scoreVoice(v);
           if (v.env > 0) live++;
         }
-        pluck += a_.scoreLevel * sum / 2;
+        outL[i] = static_cast<float>(outL[i] + a_.scoreLevel * sum / 2);
+        outR[i] = static_cast<float>(outR[i] + a_.scoreLevel * sum / 2);
         if (live == 0) scoreStruck_ = 0;
       }
 
+      // What is heard: the lanes, summed.
       if (heardL) {
-        // With B's own effects, each layer's share through its own plane,
-        // echo and chorus, and the two added; see the page.
-        double hx, hy;
-        if (planeOn && heard && plane_.ownB() && layered) {
-          plane_.step(Plane::Heard, hl, hr); hx = plane_.x; hy = plane_.y;
-          plane_.step(Plane::HeardB, bhl, bhr, true); hx += plane_.x; hy += plane_.y;
-        } else {
-          hx = (heard ? hl : static_cast<double>(outL[i])) + bhl;
-          hy = (heard ? hr : static_cast<double>(outR[i])) + bhr;
-          if (planeOn && heard) { plane_.step(Plane::Heard, hx, hy); hx = plane_.x; hy = plane_.y; }
-        }
-        heardL[i] = static_cast<float>(hx + pluck);
-        heardR[i] = static_cast<float>(hy + pluck);
+        heardL[i] = static_cast<float>(outL[i] + bx);
+        heardR[i] = static_cast<float>(outR[i] + by);
       }
     }
 
@@ -760,14 +749,14 @@ class Generator {
     return n;
   }
 
-  // Releasing before held, undrawn before drawn, and the oldest of a rank.
+  // Releasing before held, inner voices before the outline, and the oldest of a rank.
   Voice* victim(const std::vector<std::vector<Voice>*>& pools) {
     Voice* best = nullptr;
     double bestRank = INFINITY;
     for (auto* pool : pools) {
       for (auto& voice : *pool) {
         if (cutting(voice)) continue;
-        const double rank = (!voice.held ? 0 : voice.targets[0] == 0 && voice.targets[1] == 0 ? 1 : 2) * 1e9 + voice.born;
+        const double rank = (!voice.held ? 0 : voice.inner ? 1 : 2) * 1e9 + voice.born;
         if (rank < bestRank) { bestRank = rank; best = &voice; }
       }
     }
@@ -783,14 +772,12 @@ class Generator {
     int countA = !waving ? 0 : poly ? liveIn(voices_) : 2;
     int countB = layered ? liveIn(voicesB_) : 0;
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;
-    const int passes = 1 + (poly ? 1 : 0) + (layered ? 1 : 0);
+    // A pass through the plane for each layer's pair; the heard pair's own
+    // passes went with it in P4 (the page's govern).
+    const int passes = 1 + (layered ? 1 : 0);
     const double planeCost = plane_.factor() == 1 ? 3.3 : plane_.factor() == 2 ? 30 : plane_.factor() == 4 ? 60 : 0;
-    // And B's share of the heard pair through B's own shape and time.
-    const bool ownHeard = poly && layered && plane_.ownB() && plane_.shapeB().nonlinear;
-    const bool ownHeardTime = poly && layered && plane_.ownB() && plane_.timeB().on;
     const double fixed = !planeOn ? 0
-      : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0)) + (ownHeard ? planeCost : 0)
-        + (ownHeardTime ? 5.3 : 0);
+      : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0));
     const double costA = voiceCost(a_, askedA, askedF, fmRouted, syncRouted, shapeRouted);
     const double costB = voiceCost(b_, askedB, askedF, fmRouted, syncRouted, shapeRouted);
     const bool free = ctx_.chordMoved || costA != askedCostA_ || costB != askedCostB_ || fixed != askedFixed_;

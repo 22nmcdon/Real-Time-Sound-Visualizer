@@ -629,8 +629,10 @@ class Keyboard {
       v.note = held.note;
       v.velocity = held.velocity;
       v.freq = polyHz(held.note, root);
-      v.role = !isDrawn(held.note) ? "u"
-             : against ? (which == 1 ? "y" : "x")
+      // As a rack's lane, one signal: every note on both sides (the page's polyVoices).
+      v.role = !layable_ ? "xy"
+             : !isDrawn(held.note) ? "u"
+             : against ? (which == 1 ? "yonly" : "xonly")
              : count == 1 ? "xy"
              : held.note == bass ? "x" : "y";
       out.push_back(std::move(v));

@@ -304,19 +304,11 @@ int main(int argc, char** argv) {
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
-        if (!on) { out.insert(out.end(), { x, y, y, x, x, y }); continue; }
+        if (!on) { out.insert(out.end(), { x, y, y, x }); continue; }
         plane.tick(t, { rp, tp, ep, etp, 0 }, 1 / rate, &b, { brp, btp, bep, betp, bup });
         plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
+        // Each layer's pair once: since P4 there is no heard pair of its own.
         plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });
-        if (plane.ownB()) {
-          plane.step(scope::Plane::Heard, 0.6 * (x + y), 0.6 * (x - y));
-          double hx = plane.x, hy = plane.y;
-          plane.step(scope::Plane::HeardB, 0.4 * y, 0.3 * x, true);
-          hx += plane.x; hy += plane.y;
-          out.insert(out.end(), { hx, hy });
-          continue;
-        }
-        plane.step(scope::Plane::Heard, 0.6 * (x + y), 0.6 * (x - y)); out.insert(out.end(), { plane.x, plane.y });
       }
       show(out);
       continue;

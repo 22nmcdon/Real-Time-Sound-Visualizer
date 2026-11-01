@@ -66,7 +66,9 @@ struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn 
 
 class Plane {
  public:
-  enum Pair { A = 0, B = 1, Heard = 2, HeardB = 3 };
+  // A pair a layer: since P4 the heard pair is the layers' pictures summed,
+  // and no longer goes through the plane apart from them.
+  enum Pair { A = 0, B = 1 };
 
   // A layer's shape as `setup` and `tick` work it out: the page's `planeOf`.
   struct Shape {
@@ -326,8 +328,8 @@ class Plane {
   double delayGlide_;
   std::vector<double> taps2_, taps4_;
   int factor_ = 0;
-  std::array<Oversampler, 4> os_;
-  std::array<TimeFx, 4> fx_;
+  std::array<Oversampler, 2> os_;
+  std::array<TimeFx, 2> fx_;
   bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, ownB_ = false, turnRoutedB_ = false;
   double turnB_ = 0;
   Shape shapeA_, shapeB_;

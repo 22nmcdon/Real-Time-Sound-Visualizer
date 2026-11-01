@@ -511,6 +511,26 @@ the synth's features should be chosen knowing that.
     that lands on the figure.
 - **P4 — Coherence.** One pair out of the core; the generator always heard; every drawn
   note heard and every heard note drawn.
+  - *One pair, built:* what is heard is the lanes summed, layer A's and B's, sample for
+    sample, in the page and the core alike, and parity holds it over every generator run.
+    In poly every held note is drawn: the two the draw rule picks lean onto X and Y - full
+    on their side, half on the other - and the rest are inner voices in the middle, along
+    the diagonal, at the same power. The crossings' notes are drawn on the axis whose line
+    fired them, the score's on both, and the second generator, when it is drawn in B's
+    lanes, is heard with them. Nothing is clamped any more; the screen clips where it
+    draws and the limiter holds the speakers.
+  - *Decided, and what it cost:* the lean rather than a hard split, because the first poly
+    split the outer notes hard and a chord came apart across the ears; leaning keeps the
+    root in both ears and draws the old figure under one linear map, a little narrower.
+    *A against B* stays hard - A's notes on X alone, B's on Y alone - because that mode is
+    asked for to draw one figure, and what comes apart there is two layers, not a chord.
+    In a rack every note is in the middle, since a lane is the left channel alone and a
+    note leaning right would be heard there at half.
+  - *Found on the way:* fourteen checks in six suites asserted the gap between the two
+    pairs, each correctly; all were rewritten to the one pair, with nulls, and none was
+    dropped. The score now draws its notes into the picture it reads - the loop of this
+    plan's seventh idea - which cannot run away in level but which no suite yet runs for
+    long.
 - **P5 — Cuts**, by the table, area by area, each its own commit with its migration, the
   host parameters replaced before any is removed, and the input path left whole.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both

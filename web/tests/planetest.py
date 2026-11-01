@@ -13,9 +13,9 @@ What would go wrong, and what is checked for it:
 - aliasing: what the operations put above Nyquist folded back. Measured at
   1x, 2x and 4x and pinned, against the floor the page already lives with,
   the band-limited square's;
-- applied twice, or not at all where it should be: once to the picture and
-  heard pair outside poly, and in poly to the heard pair as well as the
-  picture, and to layer B;
+- applied twice, or not at all where it should be: once to each layer's
+  picture, and what is heard their sum - since P4 there is no heard pair of
+  its own to forget or to do twice;
 - the delay the oversampling costs, stated in the code and measured here;
 - the panel, a source on the radius and on the twist - the latter with its
   slider at nought, which once did nothing - and setup codes, with the
@@ -166,15 +166,16 @@ with sync_playwright() as pw:
         ang = np.mod(np.arctan2(y0, x0), wedge)
         ang = np.where(ang > wedge / 2, wedge - ang, ang)
         # The figure reaches 1.08, and turned onto the X axis that is past
-        # full scale: the output's clamp at 1 is part of what is expected,
-        # and the length is kept wherever the clamp did not act.
-        ex, ey = np.clip(m0 * np.cos(ang), -1, 1), np.clip(m0 * np.sin(ang), -1, 1)
+        # full scale. Before P4 the output was clamped at 1 and this
+        # expected it; now nothing is clamped, the screen clips where it
+        # draws, and the length is kept everywhere - including past 1, which
+        # the last condition requires so the check cannot pass on a clamp.
+        ex, ey = m0 * np.cos(ang), m0 * np.sin(ang)
         err = max(np.abs(xk - ex).max(), np.abs(yk - ey).max())
-        inside = np.abs(m0 * np.cos(ang)) < 1
-        got = np.arctan2(yk, xk)[moving & inside]
+        got = np.arctan2(yk, xk)[moving]
         check("a kaleidoscope of %d folds every angle into 0 to pi/%d, length kept, to float precision" % (n, n),
               err < 1e-5 and got.min() > -1e-5 and got.max() < np.pi / n + 1e-5
-              and np.abs(np.hypot(xk, yk) - m0)[inside].max() < 1e-5,
+              and np.abs(np.hypot(xk, yk) - m0).max() < 1e-5 and np.abs(xk).max() > 1,
               "worst %.2e, angles %.3f to %.3f" % (err, got.min(), got.max()))
 
     folded = run(dict(fig, planeLimit=2, planeRadius=r))
@@ -241,6 +242,7 @@ with sync_playwright() as pw:
             # full scale on one axis, and the output's clamp - at the base
             # rate, outside the oversampling - set a floor of -55 dB at every
             # factor alike, which read as the oversampling doing nothing.
+            # P4 took the clamp out; 0.6 stays so the pins keep their meaning.
             floors[("twist", f, os_)] = alias_floor(run(dict(base, amp=0.6, planeTwist=2), n=48510, skip=4410)["L"], f)
             floors[("kaleido", f, os_)] = alias_floor(run(dict(base, amp=0.6, planeKaleido=5), n=48510, skip=4410)["L"], f)
             floors[("snap", f, os_)] = alias_floor(run(dict(base, planeSnap=5), n=48510, skip=4410)["L"], f)
@@ -275,9 +277,10 @@ with sync_playwright() as pw:
     solo = run({"freq": 220, "interval": 7, "planeMirror": 3, "planeLimit": 1, "planeRadius": 0.3}, heard=True)
     check("outside poly what is heard is exactly what is drawn - the pair is not done twice",
           solo["HL"] == solo["L"] and solo["HR"] == solo["R"], "")
-    # In poly the heard pair is its own, nearly mono, and gets the operation
-    # too; so does layer B's picture. A chord in both ears, mirrored, has no
-    # negative half left in what is heard.
+    # In poly, and with a second layer, each layer's picture is mirrored and
+    # what is heard is the two summed. Before P4 the heard pair was its own,
+    # nearly mono, and went through the plane apart from the picture: these
+    # checks asserted it was mirrored too, and that it was not the picture.
     v = [{"note": 57, "freq": 220, "velocity": 1, "role": "x"}, {"note": 64, "freq": 329.63, "velocity": 1, "role": "y"}]
     chord = run({"voices": v, "planeMirror": 3}, n=8820, skip=4410, heard=True,
                 toneB={"shape": "sine", "amp": 0.8, "voices": [{"note": 69, "freq": 440, "velocity": 1, "role": "xy"}]})
@@ -286,10 +289,18 @@ with sync_playwright() as pw:
     lows = {k: round(float(np.min(chord[k])), 4) for k in ("L", "R", "HL", "HR", "BL", "BR")}
     raw = {k: round(float(np.min(loose[k])), 3) for k in ("HL", "BL")}
     print("    lowest sample, mirrored: %s; unmirrored heard %s" % (lows, raw))
-    check("in poly the heard pair, layer A's picture and layer B's picture are all mirrored",
+    check("in poly layer A's picture and layer B's are each mirrored, and so what is heard",
           all(v2 > -0.02 for v2 in lows.values()) and raw["HL"] < -0.5 and raw["BL"] < -0.5, str(lows))
-    check("and the heard pair is not the picture pair there: it was done as its own",
-          chord["HL"] != chord["L"], "")
+    summed = max(np.abs(np.asarray(chord["HL"]) - np.asarray(chord["L"]) - np.asarray(chord["BL"])).max(),
+                 np.abs(np.asarray(chord["HR"]) - np.asarray(chord["R"]) - np.asarray(chord["BR"])).max())
+    # The wrong answer this rules out is the old one: the sum mirrored, which
+    # is |a + b| where each mirrored is |a| + |b|, apart wherever the layers
+    # have opposite signs.
+    once = np.abs(np.asarray(loose["L"]) + np.asarray(loose["BL"]))
+    apart = np.abs(np.asarray(chord["HL"]) - once).max()
+    check("and what is heard is the two mirrored pictures summed, sample for sample",
+          summed < 1e-6, "worst %.2e" % summed)
+    check("and not the sum mirrored, which the comparison tells apart", apart > 0.05, "%.3f" % apart)
 
     print("\n--- the delay oversampling costs ---")
     one = np.asarray(run({"freq": 220, "interval": 0, "planeMirror": 3, "planeOS": 1}, n=8820)["L"])
