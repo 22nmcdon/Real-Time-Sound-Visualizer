@@ -20535,35 +20535,6 @@ const PRESETS = [
      was the one way to draw the generator while hearing your playing; with
      the rack cut there is none, and what these are for is an open question
      (the P5 note in web/docs/making-it-one-instrument.md). */
-  ["Drawn by your playing", [
-    ["Hits restart the pendulums", { gen: "harmonograph", interval: 4, detune: 30, decay: 30, display: "xy",
-                                     persistence: "0.04", timebase: 5, pGoni: false,
-                                     mod: "hear.onset>gen.reswing@1.000" },
-     "Every hit or new note lets the pendulums go again, so a rhythm is a drawing started over on each beat."],
-    ["Playing keeps it swinging", { gen: "harmonograph", interval: 7, detune: 20, decay: 40, display: "xy",
-                                    persistence: "0.04", timebase: 5, pGoni: false,
-                                    mod: "env.live>gen.swing@1.000" },
-     "Your level is the pendulums' energy: play and they keep swinging, stop and they run down as they always did."],
-    ["Hits spin the solid", { gen: "wireframe", model: "Cube", spinRate: 40, display: "xy", persistence: "0.12",
-                              timebase: 5, pGoni: false, mod: "hear.onset>gen.kick@0.600" },
-     "Each hit kicks the cube into a spin that coasts down with friction, which reads as something with weight."],
-    ["Bass turns the solid", { gen: "wireframe", model: "Octahedron", display: "xy", persistence: "0.12",
-                               timebase: 5, pGoni: false, mod: "hear.band1>gen.tumble@0.600" },
-     "The bass band on the spin rate: a low note speeds the octahedron up, and it slows as the note dies."],
-    ["Brightness adds points", { gen: "figure", figure: "Star", detail: 4, display: "xy", persistence: "0.12",
-                                 timebase: 5, mod: "hear.bright>gen.detail@0.600" },
-     "The brighter the sound, the more points the star has: a filter opening or a harder attack draws more."],
-    ["Hits kick the knot", { gen: "wireframe", model: "Knot", figureRate: 20, depth: 60, display: "xy",
-                             persistence: "0.04", timebase: 5, pGoni: false, mod: "hear.onset>gen.kick@0.600" },
-     "Each hit kicks the Lissajous knot into a spin that coasts down, so a rhythm keeps it turning and a pause lets it rest."],
-    ["Bass swings the pendulums", { gen: "harmonograph", interval: 5, detune: 25, decay: 35, display: "xy",
-                                    persistence: "0.04", timebase: 5, pGoni: false,
-                                    mod: "hear.band1>gen.swing@1.000" },
-     "The bass band keeps the pendulums swinging: a bass line feeds the drawing, and when it stops the figure winds in."],
-    ["Pitch adds petals", { gen: "figure", figure: "Star", detail: 5, display: "xy", persistence: "0.12", timebase: 5,
-                            mod: "hear.pitch>gen.detail@0.500" },
-     "Your pitch on the number of points: play higher and the star grows points, lower and it loses them."],
-  ], "generator"],
 
   /* J3: the live input fed into the generator itself, on the test tone and
      while it is heard - the input reaches the core in the worklet. */
@@ -20975,9 +20946,6 @@ const PRESET_ABOUT = {
   "Motion": "The low-frequency oscillators, pointed at the figure: it turns, drifts, breathes.",
   "Drawings": "The generator as a pen: figures traced by the beam, and pendulums that draw and run down.",
   "Solids": "Wireframe solids, turning, each drawn in a single stroke of the beam.",
-  "Drawn by your playing": "The drawings answering what they hear: hits restart and spin them, the "
-    + "level keeps them swinging, brightness and bass reshape them. On the tone what they hear is the generator "
-    + "itself, a loop held to the picture's reach, and a hit is refused there, since every strike would be the next.",
   "Played into the drawing": "Your microphone or line input fed into the generator itself: it bends, rides or "
     + "clocks what the generator draws. On the test tone.",
   "Rhythm and key": "The score reads the picture as a melody at the tempo; the quantiser turns a wandering "
@@ -21005,7 +20973,7 @@ const PRESET_MENUS = [
    ["Start here", "The picture plays itself", "Lissajous", "Drawings", "Solids", "Motion", "The plane", "Echoes", "Rhythm and key", "Analysis"]],
   ["answer", "Answering your playing",
    "What you play, drawn, and drawings that answer it: for a microphone or a line input, and drawings struck from the keyboard.",
-   ["Live", "Live effects", "Listening", "Drawn by your playing", "Played into the drawing", "Drawings you play"]],
+   ["Live", "Live effects", "Listening", "Played into the drawing", "Drawings you play"]],
   ["live", "Playing live",
    "Instruments for the keyboard: voices, chords, splits and layers, and your hands - how hard, how many, how far apart, the wheel and the pedal - on the sound.",
    ["Organ", "Keys and leads", "Bass", "Pads", "Bells and metal", "Grit", "Poly keys", "Chords drawn",

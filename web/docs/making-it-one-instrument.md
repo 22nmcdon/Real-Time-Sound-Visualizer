@@ -607,11 +607,12 @@ the synth's features should be chosen knowing that.
     `racktest.py`, `alongtest.py` and `voicetest.py` went; the suites that borrowed a file
     or a rack as a fixture use the microphone, faked, a stand-in source or the generator
     built afresh. No setup stored the rack or a file - its membership, alignment and files
-    were state only - so there is no decode pass. One question is left open: *Drawn by
-    your playing* drew the generator while its hearing heard your input only in a rack
-    with the trigger on your lane, and there is now no way to do that; on the tone those
-    presets hear the generator, a loop held to reach, and a hit is refused. Whether they
-    go, or the hearing learns to hear the open input, is the owner's.
+    were state only - so there is no decode pass. *Drawn by your playing* went after it,
+    by the owner's decision: those presets drew the generator while its hearing heard
+    your input, which only a rack with the trigger on your lane could do, and on the tone
+    they heard the generator itself, with a hit refused. The other way - the hearing
+    listening to the open input while the generator plays - is the effect in miniature,
+    and is revisited in P9, when the effect build exists.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth. And first, from the
   owner in P5: **each layer's picture, and whose sound it moves.** Split into two sounds,
@@ -631,7 +632,8 @@ the synth's features should be chosen knowing that.
   same defences: P4 found it filling the screen it reads.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
-- **P9 — The effect.** The build flag, the page asking which build it is, the effect's ink
+- **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
+  while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the
   test that the effect's controls are contained in the synth's and the synth's extras are
   all on the named list.
