@@ -214,7 +214,7 @@ ruling on it, and the traces are what is written. Two consequences follow, both 
 |---|---|
 | `--sage` | The trigger is locked; in tune; channels in phase. The run button's live dot. |
 | `--unresolved` | Free run. The trace goes this grey when nothing crosses the level, because a signal with no edge in it is not a fault. |
-| `--rust` | Clipping, a level over, an input that would not open; and, as the house's armed, a scope stopped, recording or muted. A tuner's sharp or flat, which is "outside", never "wrong". |
+| `--rust` | Clipping, a level over, an input that would not open; and, as the house's armed, a scope stopped or muted. A tuner's sharp or flat, which is "outside", never "wrong". |
 | `--gold` | Ready (the status chip), and the cursors. |
 | `--blush-deep` | The trigger line and its marker, the slider thumb, the selected tab: the accent doing work. |
 
@@ -327,7 +327,7 @@ are written down here and where they are set, so that nobody fixes them back by 
 |---|---|---|
 | `--max` | `1080px` | `1180px`. A preference, not a need: the screen is what is read, and on a wide window it is a tenth bigger. `fittest.py` passes at 1080 too, so this is the only cost-free one to reverse - one line. |
 | `.run-btn` | A filled button is an action, square; a state is an outlined pill | A filled pill while running, outlined in rust when stopped. Running is a state you are in, so it is a pill, and the one pill that is filled, because a running scope is what has to be seen from across the room. |
-| Rust | A problem; outside; armed | Clipping, a level over and an input that would not open are problems. A stopped, recording or muted scope is the brand's armed - a state to be seen from across the room. A tuner's sharp or flat is the jazz app's "outside, never wrong". A drawbar's brown is a drawing of a Hammond's drawbars, as the guitar app's rosewood is of a neck. Free run is none of these, and stays `--unresolved`. |
+| Rust | A problem; outside; armed | Clipping, a level over and an input that would not open are problems. A stopped or muted scope is the brand's armed - a state to be seen from across the room. A tuner's sharp or flat is the jazz app's "outside, never wrong". A drawbar's brown is a drawing of a Hammond's drawbars, as the guitar app's rosewood is of a neck. Free run is none of these, and stays `--unresolved`. |
 
 ### Fixed
 

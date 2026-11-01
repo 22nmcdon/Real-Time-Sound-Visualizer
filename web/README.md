@@ -2646,7 +2646,9 @@ event that can strike *Swing again*, *Kick* or the new *Pluck*.
 
 **Record (Stage L).** A clip of the screen and what it sounds like: Record
 along the top, and the finished clip under a Clip button beside it, with a
-preview, Save and Discard.
+preview, Save and Discard. *Cut in P5 of making-it-one-instrument.md*, with
+`recordtest.py` and every source's `unheard`: in a music program the host
+records. What follows is the history of how it worked.
 
 - *The picture is one canvas, and that is why this was simple.* The
   graticule, the trace, the phosphor and the score's playhead are all

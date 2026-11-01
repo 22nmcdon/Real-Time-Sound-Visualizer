@@ -268,7 +268,7 @@ select, input[type="number"] {
    what happened: a 272px "sheet" pinned to the left edge of a phone. */
 @media (min-width: 761px) {
   #panesPanel { width: min(272px, calc(100vw - 32px)); }
-  #recordPanel { width: min(360px, calc(100vw - 32px)); }
+  
   #menuPanel { width: min(430px, calc(100vw - 32px)); }
 }
 
@@ -359,18 +359,6 @@ select, input[type="number"] {
 #lagRow .grow { flex-wrap: wrap; row-gap: 6px; }
 #lagRow .grow > input[type="range"] { flex: 1 1 60px; }
 .menu-note { font-size: 12.5px; color: var(--text-soft); margin: 8px 0 0; max-width: 62ch; }
-/* The recorder. A dot that is there only while it records, in the colour the
-   run button uses for a scope that is not running as it was: something is
-   different about this moment and it should be seen from across the room. */
-.rec-wrap { display: flex; gap: 12px; align-items: center; }
-.rec-dot { display: none; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--rust); margin-right: 6px; vertical-align: 1px; }
-#recordButton[aria-pressed="true"] .rec-dot { display: inline-block; }
-#recordButton[aria-pressed="true"] { color: var(--rust); border-bottom-color: var(--rust); }
-#recordButton span#recordLabel { font-variant-numeric: tabular-nums; }
-#recordVideo { display: block; width: 100%; background: var(--paper); border: 1px solid var(--line); }
-.rec-actions { margin-top: 10px; }
-.rec-actions a { text-decoration: none; cursor: pointer; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .check input { accent-color: var(--blush-deep); margin: 0; }
 .close-btn {
@@ -3214,33 +3202,6 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                   title="Wipe the screen and start the persistence over">Clear</button>
         </div>
 
-        <!-- A clip of the screen and what it sounds like. The button starts
-             and stops; the clip waits under its own button until it is saved,
-             discarded or replaced by the next one. -->
-        <div class="field fixed">
-          <span class="eyebrow">&nbsp;</span>
-          <div class="menu-wrap rec-wrap">
-            <button type="button" class="link-btn caps" id="recordButton" aria-pressed="false"
-                    title="Record a clip of the screen and what you hear"><span class="rec-dot" aria-hidden="true"></span><span id="recordLabel">Record</span></button>
-            <button type="button" class="link-btn caps" id="recordClip" hidden
-                    aria-expanded="false" aria-controls="recordPanel">Clip</button>
-
-            <div class="menu-panel" id="recordPanel" hidden>
-              <div class="menu-head">
-                <span class="eyebrow">Clip</span>
-                <button type="button" class="close-btn" id="recordClose" aria-label="Close">&times;</button>
-              </div>
-              <div class="menu-group">
-                <video id="recordVideo" controls playsinline preload="metadata"></video>
-                <p class="menu-note" id="recordNote"></p>
-                <div class="menu-row rec-actions">
-                  <a class="link-btn caps" id="recordSave" download>Save</a>
-                  <button type="button" class="link-btn caps" id="recordDiscard">Discard</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -3630,16 +3591,6 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
         X&ndash;Y, where the figure is built up a pass at a time.</span></li>
 
-      <li><b>Record makes a clip to share</b>
-        <span><i>Record</i>, along the top, starts a clip of the screen and what it sounds
-        like; press it again to stop. The clip waits under <i>Clip</i> beside it, to watch,
-        save as a video file or discard. The sound is what the speakers play, and your input
-        too when it is drawn but not heard &mdash; so a clip of you playing has you in it. If
-        a microphone can hear the speakers, what they play is in the clip twice; headphones
-        avoid that. The
-        panes beside the screen are not in the clip, and a clip stops by itself at three
-        minutes.</span></li>
-
       <li><b>The picture plays the sound, always</b>
         <span>Whatever is drawn is read back and moves the sound, with nothing to route.
         There are three reads of the screen: <i>Glow</i>, how much of it is lit; <i>Motion</i>,
@@ -3906,8 +3857,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
       <li><b>Free run is not a fault</b>
         <span>When nothing crosses the level the trace goes grey and keeps moving. A signal
         with no edge in it is silence, not an error. Rust is kept for what wants your
-        attention - clipping, a level over, an input that would not open, a scope stopped,
-        recording or muted - and free run is never one of them.</span></li>
+        attention &mdash; clipping, a level over, an input that would not open, a scope
+        stopped or muted &mdash; and free run is never one of them.</span></li>
 
       <li><b>Autoset</b>
         <span>Reads the signal and picks a timebase, a level and a vertical scale that fit it.</span></li>
@@ -4100,7 +4051,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         waveform waits for a note only once there is something to play one on. Every source
         is its: <i>Mic</i> is drawn through its plane effects and heard only if it is a line
         input you have asked to hear; <i>File</i>, <i>Lanes</i>, <i>Into bands</i> and the
-        alignment for playing along are its own, and a clip records what it plays.
+        alignment for playing along are its own.
         <i>?brain=js</i> on the address is the way back: the page's own brain, written in
         JavaScript, driving the compiled sound, as the site played before. It stays because
         the compiled instrument is checked against it, sample for sample. The oscillators
@@ -4591,8 +4542,6 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "macro1", "macro2", "macro3", "macro4",
                   "macro1Value", "macro2Value", "macro3Value", "macro4Value",
                   "morphPos", "morphStoreA", "morphStoreB", "morphNote",
-                  "recordButton", "recordLabel", "recordClip", "recordPanel", "recordClose",
-                  "recordVideo", "recordNote", "recordSave", "recordDiscard",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow", "midiEditA",
                   "midiEditB", "midiLayerPair", "midiLayersNote", "layerBNote", "genTitle",
@@ -11312,7 +11261,7 @@ const CORE_IN_WASM = typeof WebAssembly === "object"
    of the instrument compiled whole - the plugin's brain and engine, in a
    worklet - as it is the face of the plugin. The default since 5m, once the
    instrument had live inputs, files, the rack, the band split, the alignment
-   and recording, and drew before the first press (makeBrainHost's stand-in).
+   and recording (cut in P5), and drew before the first press (makeBrainHost's stand-in).
 
    ?brain=js is the way back: the page's own brain driving the compiled
    engine, as the site played before. It is not kept only as a fallback. The
@@ -12407,11 +12356,6 @@ async function makeMicSource(deviceId) {
     get monitored() { return chain !== null; },
     // What the speakers are handed, for a test to listen to.
     get monitorChain() { return chain; },
-    /* A live input that reaches no speaker, for a recording to hear: after
-       the effects, because that is what the picture draws. Nothing once it is
-       monitored, when the speakers already carry it and a clip taking both
-       would have it twice. */
-    get unheard() { return chain ? null : insert.output; },
     /* What the browser admits to, which is the output side plus its own
        buffer; the converter's own latency is not in it and neither is the
        driver's. It is a floor rather than the round trip, and the panel says
@@ -13326,11 +13270,6 @@ async function makeRackSource(entries, label, deviceId, { context = null, synthL
     name: label,
     lanes,
     hasLive: wantsLive,
-    // The live lane, which is only looked at; see `unheard` on the mic.
-    get unheard() {
-      const live = lanes.find((lane) => lane.live);
-      return live ? live.node : null;
-    },
     suggestedAlignMs,
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
@@ -13509,9 +13448,6 @@ async function makeLiveBandSource(deviceId) {
     lanes,
     bands: true,
     live: true,
-    // The whole input rather than the bands: they add back up to it, and the
-    // four resonant filters are what the picture splits, not what was played.
-    get unheard() { return node; },
     get sampleRate() { return ctx.sampleRate; },
     get channels() { return lanes.length; },
     get capacity() { return lanes[0].frames; },
@@ -13739,8 +13675,8 @@ function makeBrainHost() {
     const chain = makeMonitorChain(ctx);
     level.connect(chain.input);
     /* Always there, as the instrument always plays, so it says when nothing
-       is going through it: a clip records the speakers only while they play
-       something, and is silent, and says why, when they do not. */
+       is going through it: the readout's note on what the speakers get is
+       only worth making when they get something (see `writeReadout`). */
     chain.silent = () => levelOn === 0;
     unwire = () => dropMonitorChain(chain);
     if (ctx.state === "suspended") {
@@ -13928,19 +13864,6 @@ function makeBrainHost() {
     if (inputStream && node && ctx) { inputNode = ctx.createMediaStreamSource(inputStream); inputNode.connect(node); }
   };
   Object.defineProperty(source, "inputConnected", { get: () => !!inputNode });
-  /* The live input it draws and nobody hears, for a clip to take as the
-     page's sources give theirs: the instrument's output before its silent
-     way out, which is the input through the plane, as the page's insert
-     gives it; split into bands, the input whole, as the page's band split
-     gives it; and a rack's live lane, the rack's. A file, or a line input
-     monitored, is heard, and is in the clip already. */
-  Object.defineProperty(source, "unheard", {
-    get: () => {
-      if (rack) return rack.unheard || null;
-      if (!source.drawsInput || player || monitored) return null;
-      return bands ? inputNode : node;
-    },
-  });
   source.audible = () => audible;
   // Where the way out stands: what the switch is judged by, rather than the flag it sets.
   Object.defineProperty(source, "gain", { get: () => (level ? level.gain.value : 0) });
@@ -18011,7 +17934,6 @@ function frameLoop(now) {
   // or not: a switch thrown while the scope is stopped still takes.
   syncLiveFx();
   syncGenInput();
-  syncRecording();
 
   if (state.running) {
     const fresh = capture();
@@ -26241,13 +26163,13 @@ function paintRoutings() {
 function setMenuOpen(open) {
   el.menuPanel.hidden = !open;
   el.menuButton.setAttribute("aria-expanded", String(open));
-  if (open) { setPanesOpen(false); setRecordOpen(false); }
+  if (open) setPanesOpen(false);
 }
 
 function setPanesOpen(open) {
   el.panesPanel.hidden = !open;
   el.panesButton.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setRecordOpen(false); }
+  if (open) setMenuOpen(false);
 }
 
 el.menuButton.addEventListener("click", () => setMenuOpen(el.menuPanel.hidden));
@@ -26260,7 +26182,6 @@ document.addEventListener("click", (event) => {
   if (event.target.closest(".menu-wrap")) return;
   setMenuOpen(false);
   setPanesOpen(false);
-  setRecordOpen(false);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -26497,289 +26418,6 @@ el.clearButton.addEventListener("click", () => {
   wipeScreen = true;
   clearSpectro();
 });
-
-/* --- recording (Stage L) ---------------------------------------------------
-   A clip of the screen and what it sounds like, which is the first thing
-   anyone will want to do with something they made here: show it to somebody.
-
-   The picture is the trace canvas as a stream. Everything the screen shows is
-   painted into that one canvas - the graticule, the trace, the phosphor and
-   the score's playhead - so a stream of it is the screen, and persistence
-   comes along because the canvas is never cleared between frames unless the
-   picture asks it to be. The panes beside it are not in the clip, and neither
-   is the photocell's reticle, which is a control laid over the canvas rather
-   than painted into it.
-
-   The sound is what the speakers play, and that decision could have gone
-   another way. What the scope DRAWS is not always what it plays: a live input
-   is drawn and deliberately not heard, and a clip of somebody's guitar with no
-   guitar on it would be the wrong clip. So an unheard live input is recorded
-   too - `unheard` on the source - and a silent generator stays silent, because
-   its sound is a switch the player has left off. The cost of taking the room's
-   input is that a microphone hearing a backing track through the speakers puts
-   that track in the clip twice, the second time late; headphones avoid it, and
-   it is what the picture was showing anyway.
-
-   Mixed in a context of the recorder's own rather than in any source's. The
-   speakers are fed from as many contexts as there are things making sound -
-   the tone keeps one, each file or rack makes another - and a source can
-   change while the clip runs, so the recorder cannot live in any one of them.
-   Each tap crosses over as a stream, which costs a few tens of milliseconds:
-   the sound in a clip trails its picture by that much. Known, and small next
-   to a frame of video at thirty. */
-const RECORD_FPS = 60;
-const RECORD_VIDEO_BPS = 6e6;       // thin lines on paper compress badly
-const RECORD_MAX_S = 180;           // about 135 MB at that rate; held in memory
-const RECORD_TYPES = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus",
-                      "video/webm", "video/mp4"];
-const rec = { recorder: null, ctx: null, mix: null, dest: null, video: null,
-              taps: new Map(), chunks: [], started: 0, cap: null, heard: new Set(),
-              clip: null, url: null, ms: 0, note: "",
-              // The longest clip, as a field so that a test need not wait three minutes.
-              maxS: RECORD_MAX_S };
-
-function recordType() {
-  if (typeof MediaRecorder === "undefined") return null;
-  return RECORD_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) || "";
-}
-
-/* What the clip should be hearing now: every chain into the speakers, and a
-   live input nobody hears. By node, so a chain rebuilt in the same context -
-   the generator switched off and on - is a new tap and not a stale one. */
-function recordSources() {
-  const want = new Map();
-  for (const chain of monitorChains) if (!(chain.silent && chain.silent())) want.set(chain.clamp, "speakers");
-  const source = state.source;
-  const live = source && source.unheard;
-  if (live) want.set(live, "input");
-  return want;
-}
-
-function recordTap(node) {
-  const out = node.context.createMediaStreamDestination();
-  node.connect(out);
-  const into = rec.ctx.createMediaStreamSource(out.stream);
-  into.connect(rec.mix);
-  return { out, into };
-}
-
-function recordUntap(node, tap) {
-  // Already cut when a chain is dropped - `dropMonitorChain` disconnects its
-  // clamp from everything - and gone with its context when a source stops.
-  try { node.disconnect(tap.out); } catch (error) { /* already */ }
-  tap.into.disconnect();
-}
-
-/* Once a frame while recording: the taps follow what is sounding. */
-function syncRecording() {
-  if (!rec.recorder) return;
-  const want = recordSources();
-  for (const [node, tap] of rec.taps) {
-    if (!want.has(node)) { recordUntap(node, tap); rec.taps.delete(node); }
-  }
-  for (const [node, kind] of want) {
-    if (rec.taps.has(node)) continue;
-    try {
-      rec.taps.set(node, recordTap(node));
-      rec.heard.add(kind);
-    } catch (error) { /* a closing context; the next frame has the new one */ }
-  }
-  el.recordLabel.textContent = "Stop " + clock((performance.now() - rec.started) / 1000);
-}
-
-async function startRecording() {
-  const type = recordType();
-  if (type === null) { showRecordNote("This browser cannot record the page."); return; }
-  discardClip();
-  rec.ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (rec.ctx.state === "suspended") await rec.ctx.resume();
-  rec.mix = rec.ctx.createGain();
-  rec.dest = rec.ctx.createMediaStreamDestination();
-  rec.mix.connect(rec.dest);
-  rec.video = el.trace.captureStream(RECORD_FPS);
-  const stream = new MediaStream([...rec.video.getVideoTracks(), ...rec.dest.stream.getAudioTracks()]);
-  const options = { videoBitsPerSecond: RECORD_VIDEO_BPS };
-  if (type) options.mimeType = type;
-  const recorder = new MediaRecorder(stream, options);
-  rec.chunks = [];
-  rec.heard = new Set();
-  recorder.ondataavailable = (event) => { if (event.data.size > 0) rec.chunks.push(event.data); };
-  recorder.onstop = () => finishRecording(recorder);
-  rec.recorder = recorder;
-  syncRecording();                  // the taps before the first sample
-  recorder.start(1000);
-  rec.started = performance.now();
-  /* A timer rather than the frame loop, which stops in a hidden tab while the
-     recorder does not. */
-  rec.capped = false;
-  rec.cap = setTimeout(() => { rec.capped = true; stopRecording(); }, rec.maxS * 1000);
-  el.recordButton.setAttribute("aria-pressed", "true");
-  syncRecording();
-}
-
-function stopRecording() {
-  if (!rec.recorder || rec.recorder.state === "inactive") return;
-  clearTimeout(rec.cap);
-  rec.ms = performance.now() - rec.started;
-  rec.recorder.stop();
-}
-
-async function finishRecording(recorder) {
-  for (const [node, tap] of rec.taps) recordUntap(node, tap);
-  rec.taps.clear();
-  rec.video.getTracks().forEach((track) => track.stop());
-  rec.ctx.close();
-  rec.recorder = null;
-  el.recordButton.setAttribute("aria-pressed", "false");
-  el.recordLabel.textContent = "Record";
-
-  const type = (recorder.mimeType || "video/webm").split(";")[0];
-  let bytes = new Uint8Array(await new Blob(rec.chunks, { type }).arrayBuffer());
-  rec.chunks = [];
-  if (type === "video/webm") bytes = webmWithDuration(bytes, rec.ms);
-  rec.clip = new Blob([bytes], { type });
-  rec.url = URL.createObjectURL(rec.clip);
-
-  const heard = rec.heard;
-  const sound = heard.has("speakers") && heard.has("input") ? "what the speakers played, and your input"
-    : heard.has("speakers") ? "what the speakers played"
-    : heard.has("input") ? "your input"
-    : null;
-  const size = rec.clip.size / 1048576;
-  rec.note = clock(rec.ms / 1000) + " · " + (size < 10 ? size.toFixed(1) : Math.round(size)) + " MB · "
-    + (sound ? "the sound is " + sound + "."
-             : "silent: nothing was heard, so there was nothing to record. The generator is heard once you have pressed something on the page.")
-    + (rec.capped ? " It stopped at " + clock(rec.maxS) + ", the longest clip." : "");
-  el.recordVideo.src = rec.url;
-  el.recordSave.href = rec.url;
-  el.recordSave.download = "scope-" + stampNow() + (type === "video/mp4" ? ".mp4" : ".webm");
-  el.recordClip.hidden = false;
-  showRecordNote(rec.note);
-}
-
-function showRecordNote(text) {
-  el.recordNote.textContent = text;
-  setRecordOpen(true);
-}
-
-function discardClip() {
-  if (rec.url) URL.revokeObjectURL(rec.url);
-  rec.clip = null; rec.url = null;
-  el.recordVideo.removeAttribute("src");
-  el.recordVideo.load();
-  el.recordSave.removeAttribute("href");
-  el.recordClip.hidden = true;
-  setRecordOpen(false);
-}
-
-function stampNow() {
-  const d = new Date(), two = (n) => String(n).padStart(2, "0");
-  return d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate())
-    + "-" + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
-}
-
-/* The length, written into the file. A recorder cannot know how long a clip
-   will be when it writes the header, so Chrome's webm says nothing - and a
-   player given a clip of unknown length shows no duration and will not seek,
-   which is most of what a person does with a clip they have been sent.
-
-   So the Info element gets a Duration once the clip is finished. Matroska is
-   a tree of elements, each an id and a size in a variable-length form; this
-   finds the Segment, then the Info inside it, and rebuilds that one element
-   with an eight-byte float after what it already held. Nothing else moves
-   that anything points at, with two exceptions this refuses rather than
-   handles: a Segment of known size, which would need its size rewritten, and
-   a SeekHead, whose offsets would all be wrong. Chrome writes neither while
-   it streams. Anything it does not recognise comes back untouched - a clip
-   without a length is still a clip. */
-const EBML = { header: 0x1A45DFA3, segment: 0x18538067, info: 0x1549A966,
-               seekHead: 0x114D9B74, cluster: 0x1F43B675, duration: 0x4489, scale: 0x2AD7B1 };
-function ebmlVint(bytes, at, keepMarker) {
-  const first = bytes[at];
-  if (first === undefined || first === 0) return null;
-  let length = 1;
-  while (!(first & (0x80 >> (length - 1)))) length++;
-  let value = keepMarker ? first : first & (0xff >> length);
-  let allOnes = value === (0xff >> length);
-  for (let i = 1; i < length; i++) {
-    if (at + i >= bytes.length) return null;
-    value = value * 256 + bytes[at + i];
-    if (bytes[at + i] !== 0xff) allOnes = false;
-  }
-  return { value, length, unknown: !keepMarker && allOnes };
-}
-function ebmlElement(bytes, at) {
-  const id = ebmlVint(bytes, at, true);
-  if (!id) return null;
-  const size = ebmlVint(bytes, at + id.length, false);
-  if (!size) return null;
-  const body = at + id.length + size.length;
-  return { id: id.value, body, size: size.unknown ? null : size.value,
-           end: size.unknown ? bytes.length : body + size.value };
-}
-function webmWithDuration(bytes, ms) {
-  const head = ebmlElement(bytes, 0);
-  if (!head || head.id !== EBML.header) return bytes;
-  const segment = ebmlElement(bytes, head.end);
-  if (!segment || segment.id !== EBML.segment || segment.size !== null) return bytes;
-  let at = segment.body, info = null;
-  while (at < bytes.length) {
-    const child = ebmlElement(bytes, at);
-    if (!child || child.size === null) return bytes;
-    if (child.id === EBML.seekHead) return bytes;
-    if (child.id === EBML.info) { info = child; break; }
-    if (child.id === EBML.cluster) return bytes;
-    at = child.end;
-  }
-  if (!info) return bytes;
-  // The unit is the TimecodeScale, in nanoseconds; a millisecond unless it
-  // says otherwise, and a Duration already there means nothing to do.
-  let scale = 1e6;
-  for (let k = info.body; k < info.end;) {
-    const child = ebmlElement(bytes, k);
-    if (!child || child.size === null) return bytes;
-    if (child.id === EBML.duration) return bytes;
-    if (child.id === EBML.scale) {
-      scale = 0;
-      for (let i = child.body; i < child.end; i++) scale = scale * 256 + bytes[i];
-    }
-    k = child.end;
-  }
-  if (!(scale > 0)) return bytes;
-  const duration = new Uint8Array(11);
-  duration[0] = 0x44; duration[1] = 0x89; duration[2] = 0x88;
-  new DataView(duration.buffer).setFloat64(3, ms * 1e6 / scale);
-  const body = bytes.subarray(info.body, info.end);
-  const size = body.length + duration.length;
-  // The size as an eight-byte vint, whatever it was before: simplest, legal,
-  // and room for any Info there will ever be.
-  const sized = new Uint8Array(8);
-  sized[0] = 0x01;
-  for (let i = 7, v = size; i >= 1; i--, v = Math.floor(v / 256)) sized[i] = v & 0xff;
-  const idBytes = bytes.subarray(at, at + 4);                        // Info's id is four bytes
-  const out = new Uint8Array(at + 4 + 8 + size + (bytes.length - info.end));
-  out.set(bytes.subarray(0, at), 0);
-  out.set(idBytes, at);
-  out.set(sized, at + 4);
-  out.set(body, at + 12);
-  out.set(duration, at + 12 + body.length);
-  out.set(bytes.subarray(info.end), at + 12 + size);
-  return out;
-}
-
-function setRecordOpen(open) {
-  el.recordPanel.hidden = !open;
-  el.recordClip.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setPanesOpen(false); }
-  else if (!el.recordVideo.paused) el.recordVideo.pause();
-}
-
-el.recordButton.addEventListener("click", () => {
-  if (rec.recorder) stopRecording(); else startRecording();
-});
-el.recordClip.addEventListener("click", () => setRecordOpen(el.recordPanel.hidden));
-el.recordClose.addEventListener("click", () => { setRecordOpen(false); el.recordClip.focus(); });
-el.recordDiscard.addEventListener("click", () => { discardClip(); el.recordButton.focus(); });
 
 /* Its own pointer, captured. The reticle sits beside the canvas rather than
    inside it, so the trace's own drag - which moves the trigger level - never

@@ -355,6 +355,7 @@ experiment.
   alignment for playing along. In a music program the host plays files and each track is
   its own instance.
 - **Recording a clip.** The host records. Kept only if the demo needs a way to share.
+  *Cut in P5, by the owner's decision.*
 - **File playback** shrinks to one demo file on the site, or goes.
 - **`edge`**, the reading that is computed and never offered (in P5, as cleanup).
 
@@ -585,6 +586,13 @@ the synth's features should be chosen knowing that.
     the clock too. A running arpeggio keeps running with the drawer shut, by the drawer's
     rule that what is patched still plays. Decided by the owner, as were the two that
     follow: clip recording is cut, and file playback shrinks to one demo file.
+  - *Clip recording, cut:* the Record button along the top, the Clip popover with its
+    preview, Save and Discard, the recorder that mixed the speakers with any input drawn
+    and not heard, and the code that wrote a webm's length into it after the fact.
+    `recordtest.py` went with it, and every source's `unheard`, which only the recorder
+    read. The instrument's always-there monitor chain keeps its `silent` hook: the
+    readout's note on what the speakers get still asks it. Nothing about a clip was ever
+    in a setup, so there is no decode pass.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
