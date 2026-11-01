@@ -182,8 +182,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **A control's appearance must not depend on how many modulation sources are on
   it.** Two designs failed here. `patchtest.py` measures the row's height and
   box with nought, one, two and three sources and requires all four identical.
-- **No Bench tab may scroll.** The Bench is six tabs by task - the loop's five
-  (Play, Picture, Shape, Effects, Measure) and the drawer's Sources - and one
+- **No Bench tab may scroll.** The Bench is seven tabs by task - the loop's five
+  (Play, Picture, Shape, Effects, Measure) and the drawer's Sources and Perform - and one
   tab at a time must fit. `patchtest.py`
   measures every tab across every generator mode; `racktest.py` does it with a
   rack of six lanes. This replaced "every section on show at once, and neither
@@ -199,8 +199,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   control's hollow ring with it, and leaves everything patched playing and
   shown. It is a view, remembered per viewer and never in a setup, and going
   to one of its tabs opens it, so `showControl` and the search need nothing
-  new. The routing matrix went first (P3); the plan's P8 adds measurements,
-  inputs, the arpeggiator, the splits and the clock. Add a tab to it by
+  new. The routing matrix went first (P3) and the arpeggiator, on Perform,
+  second (P5); the plan's P8 adds measurements, inputs, the splits and the
+  clock. Add a tab to it by
   naming it in `BENCH_DRAWER`. `benchtest.py` holds it.
 - **The Sources tab shows one family at a time.** Families, the chosen
   family's sources as rows with meters, the chosen source - in that order, one

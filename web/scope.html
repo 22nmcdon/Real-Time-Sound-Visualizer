@@ -1492,26 +1492,6 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <button type="button" class="caps" id="midiPoly" role="radio" aria-checked="false">Poly</button>
               </div>
             </div>
-            <!-- K5: the arpeggiator. Three menus that may shrink, as the Draw
-                 row's do, because the column is 255 px. -->
-            <div class="menu-row">
-              <label class="menu-label" for="arpMode">Arp</label>
-              <div class="grow">
-                <select id="arpMode" style="flex:2 1 0; min-width:0">
-                  <option value="off">off</option><option value="up">up</option>
-                  <option value="down">down</option><option value="updown">up-down</option>
-                  <option value="played">as played</option><option value="random">random</option>
-                </select>
-                <select id="arpRate" aria-label="Arpeggio step" style="flex:1 1 0; min-width:0">
-                  <option value="1/4">1/4</option><option value="1/8" selected>1/8</option>
-                  <option value="1/16">1/16</option><option value="1/8t">1/8t</option>
-                  <option value="1/16t">1/16t</option>
-                </select>
-                <select id="arpOctaves" aria-label="Octaves the arpeggio climbs" style="flex:1 1 0; min-width:0">
-                  <option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option>
-                </select>
-              </div>
-            </div>
             <div class="menu-row" id="midiLayersRow" hidden>
               <label class="menu-label" for="midiLayers">Layers</label>
               <div class="grow">
@@ -1578,6 +1558,37 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               menu. A note is also the one pitch on this page that is not estimated, which is
               why the lag, the tuner and the timebase can be told to take it as read.
               The port and the learned controllers are under <i>Settings &rarr; MIDI</i>.</p>
+          </div>
+
+          <!-- K5: the arpeggiator, in the drawer since P5 of
+               making-it-one-instrument.md: hands-free playing is not the loop,
+               so it is behind Advanced with the routing matrix, and a running
+               arpeggio keeps running when the drawer is shut, as everything
+               patched does. Its own tab, Perform, which the plan's P8 means
+               for the splits and the clock as well. Three menus that may
+               shrink, as the Draw row's do. -->
+          <div class="menu-group" id="arpGroup" data-tab="perform" data-home="bench">
+            <span class="menu-title">Arpeggiator</span>
+            <div class="menu-row">
+              <label class="menu-label" for="arpMode">Arp</label>
+              <div class="grow">
+                <select id="arpMode" style="flex:2 1 0; min-width:0">
+                  <option value="off">off</option><option value="up">up</option>
+                  <option value="down">down</option><option value="updown">up-down</option>
+                  <option value="played">as played</option><option value="random">random</option>
+                </select>
+                <select id="arpRate" aria-label="Arpeggio step" style="flex:1 1 0; min-width:0">
+                  <option value="1/4">1/4</option><option value="1/8" selected>1/8</option>
+                  <option value="1/16">1/16</option><option value="1/8t">1/8t</option>
+                  <option value="1/16t">1/16t</option>
+                </select>
+                <select id="arpOctaves" aria-label="Octaves the arpeggio climbs" style="flex:1 1 0; min-width:0">
+                  <option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option>
+                </select>
+              </div>
+            </div>
+            <p class="menu-note">Plays a held chord a note at a time at the tempo. Letting go
+              stops it; its notes go out through MIDI out.</p>
           </div>
 
           <!-- Where sound comes in and whether you hear it: set once for the room
@@ -3581,7 +3592,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         tempo</i> silences it; see below.</span></li>
 
       <li><b>The arpeggiator</b>
-        <span><i>Arp</i>, in the Keyboard section, plays a held chord a note at a time at the tempo:
+        <span><i>Arp</i>, on the <i>Perform</i> tab behind <i>Advanced</i>, plays a held chord a note
+        at a time at the tempo:
         up, down, up and back, in the order you played it, or at random, from a crotchet to a
         semiquaver triplet, over one to three octaves. In the dyad each step pairs your lowest
         note with the next, so the figure steps through the shapes of the chord's intervals in
@@ -3743,9 +3755,10 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <br><br>
         <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
         oscillators, controllers and the rest on any control by hand. The picture moves the
-        sound without it. Open, it adds the <i>Sources</i> tab, the source chips beside the
-        screen on every tab, and a ring on every control; shut, what is patched still plays,
-        and a control with something on it still shows its dots.
+        sound without it. Open, it adds the <i>Sources</i> and <i>Perform</i> tabs &mdash; the
+        arpeggiator is on <i>Perform</i> &mdash; the source chips beside the screen on every tab,
+        and a ring on every control; shut, what is patched still plays, a running arpeggio
+        keeps running, and a control with something on it still shows its dots.
         <br><br>
         Press <b>/</b> to find any control by name &mdash; it knows a few other words for
         things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
@@ -25021,7 +25034,7 @@ let benchGroups = null;      // in the order the popover had them
    another one. */
 const BENCH_TABS = [
   ["play", "Play"], ["picture", "Picture"], ["shape", "Shape"], ["effects", "Effects"],
-  ["sources", "Sources"], ["measure", "Measure"],
+  ["sources", "Sources"], ["measure", "Measure"], ["perform", "Perform"],
 ];
 const TAB_KEY = "scope.benchTab";
 let benchTab = "play";
@@ -25044,7 +25057,7 @@ try {
    and a control with something on it still shows its inks. Going to one of
    its tabs opens it (a search result, showControl), and shutting it while on
    one goes back to the tab before. */
-const BENCH_DRAWER = new Set(["sources"]);
+const BENCH_DRAWER = new Set(["sources", "perform"]);
 const DRAWER_KEY = "scope.benchDrawer";
 let benchDrawer = false;
 let benchTabBefore = BENCH_DRAWER.has(benchTab) ? "play" : benchTab;

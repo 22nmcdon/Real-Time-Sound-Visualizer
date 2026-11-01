@@ -109,13 +109,39 @@ with sync_playwright() as pw:
           and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
     check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
           drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
-    check("opened, the Sources tab comes after the loop's, with the chips and a ring on every control",
-          drawer["open"]["rail"] == loop_tabs + ["Sources"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
+    check("opened, the Sources and Perform tabs come after the loop's, with the chips and a ring on every control",
+          drawer["open"]["rail"] == loop_tabs + ["Sources", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
           and drawer["open"]["label"] == "true", str(drawer["open"]))
     check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
           str(drawer["back"]))
     check("and a control in it, shown from anywhere, opens it", drawer["shown"] == {"tab": "sources", "drawer": "open"},
           str(drawer["shown"]))
+    # The arpeggiator, moved to the drawer in P5: on Perform and not on Play,
+    # reached from anywhere by showControl, which opens the drawer, and still
+    # playing a held chord with the drawer shut, as everything patched does.
+    # The null is the same chord with the arpeggiator off, which is not one.
+    arp = p.evaluate("""() => {
+      const shown = (node) => !!(node && node.offsetParent);
+      const out = {};
+      setBenchTab('play'); out.onPlay = shown(el.arpMode);
+      showControl('arpMode'); out.shown = { tab: benchTab, drawer: document.body.dataset.drawer, seen: shown(el.arpMode) };
+      el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
+      el.benchDrawer.click();
+      out.shut = document.body.dataset.drawer;
+      for (const n of [48, 52, 55]) midiNoteOn(n, 100);
+      out.running = arpActive();
+      for (const n of [48, 52, 55]) midiNoteOff(n);
+      el.arpMode.value = 'off'; el.arpMode.dispatchEvent(new Event('change'));
+      for (const n of [48, 52, 55]) midiNoteOn(n, 100);
+      out.offRunning = arpActive();
+      for (const n of [48, 52, 55]) midiNoteOff(n);
+      return out;
+    }""")
+    print("    arpeggiator: %s" % arp)
+    check("the arpeggiator is on Perform, in the drawer, not on Play, and showing it opens the drawer there",
+          arp["onPlay"] is False and arp["shown"] == {"tab": "perform", "drawer": "open", "seen": True}, str(arp))
+    check("and with the drawer shut it still plays a held chord, where switched off it does not",
+          arp["shut"] == "shut" and arp["running"] is True and arp["offRunning"] is False, str(arp))
     hidden = p.evaluate("""() => {
       el.benchDrawer.click(); setBenchTab('sources');
       const chips = [...el.benchSources.querySelectorAll('.mod-chip')].map((c) => c.dataset.source);
@@ -165,9 +191,9 @@ with sync_playwright() as pw:
     print("    tabs:", ", ".join(tabs["titles"]))
     # Six since Stage H put the voice's oscillator on Shape and moved the
     # plane and the delay to Effects; the five of the loop and the drawer's
-    # one, last, since P3.
-    check("six tabs by task with the drawer open, its own last, and a tab list",
-          tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Measure", "Sources"]
+    # one, last, since P3; seven since P5 put the arpeggiator on Perform.
+    check("seven tabs by task with the drawer open, its own two last, and a tab list",
+          tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Measure", "Sources", "Perform"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]

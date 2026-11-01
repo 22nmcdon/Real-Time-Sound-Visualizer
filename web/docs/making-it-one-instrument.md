@@ -580,6 +580,11 @@ the synth's features should be chosen knowing that.
     saved after. The score's voice kept the struck sine they shared, and the parity run
     that shows it heard beyond the picture strikes it directly. None of the three was a
     host parameter, so nothing in a saved session moves.
+  - *The arpeggiator, into the drawer:* its row leaves the Keyboard section on Play for a
+    section of its own on a new drawer tab, *Perform*, which P8 means for the splits and
+    the clock too. A running arpeggio keeps running with the drawer shut, by the drawer's
+    rule that what is patched still plays. Decided by the owner, as were the two that
+    follow: clip recording is cut, and file playback shrinks to one demo file.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
