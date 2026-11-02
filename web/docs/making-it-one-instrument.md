@@ -371,13 +371,13 @@ experiment.
 | Waveforms | Fourteen shapes, drawbars, morph, wavetable, drawn cycle, noises | **Reframe as ink.** Fewer on show; morph as the one knob; drawbars stay for the Nord |
 | The voice | Second oscillator (FM, ring, sync, sub, unison), drive, fold, crush, voice filter, the budget | **Ink modifiers.** Sync and fold up front (the strongest change to the picture); the rest trimmed hard or in a fold-out. Unison is why the budget exists |
 | The plane | Nine X–Y operations, rotation, layer B's plane, delay and chorus on the pair | **Keep, as Space:** transforms of the picture change what the phosphor holds, so with Scan they change the sound twice. **One addition, after the cuts: a phaser.** It turns different harmonics by different amounts, so on X–Y the figure twists unevenly and lines open into loops, which nothing in the plane does; steered by the picture stage |
-| Figures | Harmonograph, thirteen figures, text, SVG, your drawing, solids, a second generator | **Keep what draws while you play.** Generators that ignore the keyboard are the image-generator product: cut or drawer. Your drawing becomes drawing onto the phosphor |
+| Figures | Harmonograph, thirteen figures, text, SVG, your drawing, solids, a second generator | **Keep what draws while you play.** Generators that ignore the keyboard are the image-generator product: cut or drawer. Your drawing becomes drawing onto the phosphor. *Done in P5: all of them to the drawer, nothing deleted, by the owner's choice - a drawing is picture first and plays one note; P7 decides whether Scan wants one as a picture source* |
 | Grab, drawn cycle | A cycle from the input's audio; a cycle drawn by hand | **Keep as ink tools.** (Grab reads audio, not the picture; it is not a scan) |
 | Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
 | Layers | Layer B, split or layered over A: its own voice, envelope, figure, plane, turn and echo | **Keep, whole, in the synth** (the owner, in P5, over this table's first verdict, which trimmed B's own voice): a split with two sounds is how the instrument is played, and two sounds draw two figures, one in each colour (*What only the synth can do*, 5). Its loops grow defences of their own: see *Each layer's picture, and whose sound it moves* in P6 |
 | Splits as two sounds, arpeggiator | Multi-timbral and hands-free performance | **Splits stay on Play**, with the layers. **The arpeggiator goes to the drawer** (done in P5) |
 | Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across |
-| Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** |
+| Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** *Done in P5: key, scale, the quantiser and its glide, the tempo and Tap stay on Measure - the quantiser keeps a picture-pushed pitch in key, which is the loop's; the clock's source and the bar go to the drawer, on Perform* |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
 | Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
 | Spectrogram, measurements | THD, harmonics, readouts | **Drawer.** They also verify Scan's band-limiting |
@@ -613,6 +613,17 @@ the synth's features should be chosen knowing that.
     they heard the generator itself, with a hit refused. The other way - the hearing
     listening to the open input while the generator plays - is the effect in miniature,
     and is revisited in P9, when the effect build exists.
+  - *The drawings and the clock, into the drawer:* the harmonograph, the figures (text, a
+    path and your drawing among them) and the solids, and the second generator, by the
+    owner's choice of "all to the drawer" over cutting text, SVG and the solids outright.
+    Each draws a picture first and makes a sound of it, and plays one note - harsh with
+    more, as the owner found - so the generator's *Kind* offers the waveform alone while
+    the drawer is shut, and *Input into the generator* your input alone; open, they come
+    back. By the drawer's rule a drawing already chosen, or loaded by a preset, stays
+    chosen, offered and drawn with it shut, and a search for one opens it. The clock's
+    source and the bar move to a *Clock* section on *Perform*; the tempo and *Tap* stay on
+    Measure with the key and the quantiser. Nothing stored changes, so no decode pass. P7
+    decides whether Scan wants a drawing as a picture source.
 - **P6 — The synth's first two:** harmony as geometry and touching the picture. Both
   buildable without Scan, and the first reasons to choose the synth. And first, from the
   owner in P5: **each layer's picture, and whose sound it moves.** Split into two sounds,

@@ -1470,6 +1470,38 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               stops it; its notes go out through MIDI out.</p>
           </div>
 
+          <!-- The clock, in the drawer since P5: where the tempo comes from and
+               where the bar is matter to someone syncing gear over MIDI clock,
+               and to nobody else, so they left Key and tempo for Perform. The
+               tempo and Tap stayed on Measure: the score, the arpeggiator and
+               the echo's sync all play at the tempo, and setting it is not
+               hands-free. The readings run with the drawer shut, as everything
+               does. -->
+          <div class="menu-group" id="clockGroup" data-tab="perform" data-home="bench">
+            <span class="menu-title">Clock</span>
+            <div class="menu-row">
+              <span class="menu-label">From</span>
+              <div class="grow">
+                <span class="reading" id="clockFrom">internal</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <span class="menu-label">Bar</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="transportPlay">Stop</button>
+                <span class="reading" id="transportAt">1.1</span>
+              </div>
+            </div>
+            <p class="menu-note">A keyboard or a sequencer sending MIDI clock sets the tempo while it
+              runs, and its Start restarts the locked oscillators; <i>From</i> says which.
+              <i>Bar</i> is where the page is in the music, counted in fours: the score reads its
+              columns from it, so its first column is always a downbeat. <i>Stop</i> holds it and
+              silences the score; <i>Start</i> puts it back to the one and restarts the locked
+              oscillators with it. A tap is the one while it runs. A device's Start, Stop and
+              Continue do the same, on its first tick, and under its clock the bar counts its
+              ticks. The arpeggiator follows your hands, not the bar.</p>
+          </div>
+
           <!-- Where sound comes in and whether you hear it: set once for the room
                you are in, so its home is Settings. Visible whatever is loaded -
                a setting that vanishes when the source changes cannot be found -
@@ -1556,9 +1588,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <div class="grow">
                   <select id="genMode" style="flex:1 1 auto">
                     <option value="wave" selected>Waveform</option>
-                    <option value="harmonograph">Harmonograph</option>
-                    <option value="figure">Figure</option>
-                    <option value="wireframe">Wireframe</option>
+                    <option value="harmonograph" data-drawer="1">Harmonograph</option>
+                    <option value="figure" data-drawer="1">Figure</option>
+                    <option value="wireframe" data-drawer="1">Wireframe</option>
                   </select>
                 </div>
               </div>
@@ -2003,20 +2035,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               <div class="grow">
                 <input type="range" id="tempo" min="30" max="300" value="120">
                 <span class="reading" id="tempoValue">120 BPM</span>
-              </div>
-            </div>
-            <div class="menu-row">
-              <span class="menu-label">Clock</span>
-              <div class="grow">
                 <button type="button" class="link-btn caps" id="tempoTap">Tap</button>
-                <span class="reading" id="clockFrom">internal</span>
-              </div>
-            </div>
-            <div class="menu-row">
-              <span class="menu-label">Bar</span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="transportPlay">Stop</button>
-                <span class="reading" id="transportAt">1.1</span>
               </div>
             </div>
             <p class="menu-note">One key and one tempo for the page. <i>Quantise</i> takes the
@@ -2031,15 +2050,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               <br><br>
               An oscillator's <i>Sync</i>, on the Sources tab, locks its rate to the tempo in note
               values. <i>Tap</i> sets the tempo from your taps and starts the locked oscillators on
-              the last one. A keyboard or a sequencer sending MIDI clock sets the tempo while it
-              runs, and its Start restarts them.
-              <br><br>
-              <i>Bar</i> is where the page is in the music, counted in fours: the score reads its
-              columns from it, so its first column is always a downbeat. <i>Stop</i> holds it and
-              silences the score; <i>Start</i> puts it back to the one and restarts the locked
-              oscillators with it. A tap is the one while it runs. A device's Start, Stop and
-              Continue do the same, on its first tick, and under its clock the bar counts its
-              ticks. The arpeggiator follows your hands, not the bar.</p>
+              the last one. Where the tempo comes from and where the bar is are in the
+              <i>Clock</i> section, behind <i>Advanced</i>.</p>
           </div>
 
           <div class="menu-group" data-fold="1" data-home="settings">
@@ -2720,7 +2732,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               <label class="menu-label" for="inputFrom">From</label>
               <div class="grow"><select id="inputFrom" style="flex:1 1 auto">
                 <option value="live">Your input</option>
-                <option value="gen2">A second generator</option></select></div>
+                <option value="gen2" data-drawer="1">A second generator</option></select></div>
             </div>
             <div id="gen2Rows" hidden>
               <div class="menu-row">
@@ -3471,7 +3483,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         its own. It works on the test tone once its sound has started &mdash; a press anywhere
         starts it &mdash; and the line under the title says when it is not reaching it.
         <br><br>
-        <i>From</i> can be <i>A second generator</i> instead: a figure of its own, traced at
+        With <i>Advanced</i> open, <i>From</i> can be <i>A second generator</i> instead: a figure of its own, traced at
         its own rate, drawn beside the first on lanes three and four and needing no device.
         The same three modes carry it into the first &mdash; slowly, a figure pulled faster
         and slower as you watch; at audio rates, FM between two generators, the sidebands
@@ -3598,9 +3610,12 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
         oscillators, controllers and the rest on any control by hand. The picture moves the
         sound without it. Open, it adds the <i>Sources</i> and <i>Perform</i> tabs &mdash; the
-        arpeggiator is on <i>Perform</i> &mdash; the source chips beside the screen on every tab,
-        and a ring on every control; shut, what is patched still plays, a running arpeggio
-        keeps running, and a control with something on it still shows its dots.
+        arpeggiator and the clock are on <i>Perform</i> &mdash; the source chips beside the
+        screen on every tab, a ring on every control, and the drawings: the harmonograph, the
+        figures and the solids in the generator's <i>Kind</i>, and the second generator in
+        <i>Input into the generator</i>. Shut, what is patched still plays, a running arpeggio
+        keeps running, a drawing already chosen stays chosen and drawn, and a control with
+        something on it still shows its dots. A search for a drawing opens it.
         <br><br>
         Press <b>/</b> to find any control by name &mdash; it knows a few other words for
         things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
@@ -3691,7 +3706,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, on the Measure tab, is one key, one scale and one
-        tempo for the whole page. <i>Quantise the generator's pitch</i> takes the pitch, after
+        tempo for the whole page, with <i>Tap</i> beside the tempo. Where the tempo comes from and
+        the bar are in the <i>Clock</i> section, on <i>Perform</i> behind <i>Advanced</i>. <i>Quantise the generator's pitch</i> takes the pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
         photocell on the frequency plays a melody in D dorian rather than a siren. A key you
         play outside the scale is moved too, and a note exactly between two goes down.
@@ -4073,7 +4089,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         plugged in.</span></li>
 
       <li><b>Harmonograph</b>
-        <span>Two pendulums an axis, running down. Wants X&ndash;Y and infinite persistence.
+        <span>One of the drawings, in the generator's <i>Kind</i> with <i>Advanced</i> open, as the
+        figures and the solids are: each draws a picture and makes a sound of it, the other way
+        round from the loop. Two pendulums an axis, running down. Wants X&ndash;Y and infinite persistence.
         A tiny detune is what turns a closed figure into a spirograph.
         <br><br>
         With a keyboard playing it, <i>Swing at the note's pitch</i>, in the Keyboard section,
@@ -4424,7 +4442,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "layStack", "layOver", "laneList", "laneRows", "trigSources",
                   "xyX", "xyY",
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
-                  "keyGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
+                  "keyGroup", "clockGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
                   "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
                   "srcGroup", "srcFamilies", "fadeMode", "fadeEnv", "fadeEnvValue", "fadeLayers", "fadeEditA", "fadeEditB", "fadeRestart", "fadeLoop", "srcGroup2", "srcListTitle", "srcList", "srcDetailGroup", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
@@ -17665,6 +17683,7 @@ function showGenerator() {
   if (!tone) return;
 
   const mode = tone.mode;
+  syncDrawerMenus();
   el.figureRows.hidden = mode !== "figure";
   el.harmoRows.hidden = mode !== "harmonograph";
   el.wireRows.hidden = mode !== "wireframe";
@@ -17710,6 +17729,7 @@ function fillIntervals() {
 el.genMode.addEventListener("change", () => {
   if (!genSet("mode", el.genMode.value)) return;
   showGenerator();
+  syncDrawerMenus();
 
   // A figure and a harmonograph are both X-Y things; showing them against
   // time is a waveform nobody asked to look at. Not for a lane, which is one
@@ -18004,6 +18024,7 @@ el.inputDepth.addEventListener("input", () => {
 function syncGen2() {
   const on = genInput.from === "gen2";
   el.inputFrom.value = genInput.from;
+  syncDrawerMenus();
   el.gen2Rows.hidden = !on;
   genSet("inputFrom", genInput.from);
   syncLayers();
@@ -23413,8 +23434,37 @@ if (BENCH_DRAWER.has(benchTab)) benchDrawer = true;
 const railTabs = () => BENCH_TABS.filter(([id]) => !BENCH_DRAWER.has(id))
   .concat(benchDrawer ? BENCH_TABS.filter(([id]) => BENCH_DRAWER.has(id)) : []);
 
+/* The drawings - the harmonograph, the figures, the solids - and the second
+   generator are in the drawer since P5: each draws a picture first and makes a
+   sound of it, the other way round from the loop, and none plays a chord. So
+   while the drawer is shut the generator's Kind menu offers the waveform alone,
+   and Input into the generator's From menu your input alone. By the drawer's
+   rule what is playing keeps playing and showing: a drawing already chosen, or
+   loaded by a preset or a setup code with the drawer shut, stays selected and
+   in its menu with its rows, and only choosing another is behind Advanced. The
+   preset browser is left as it is for the same reason - a preset of drawings
+   loads its drawing, which then shows by this rule. Hidden and disabled both,
+   since Safari ignores `hidden` on an option; a value set from code still
+   selects a disabled option, so restore, genSet and the tests are untouched. */
+function syncDrawerMenus() {
+  for (const select of [el.genMode, el.inputFrom]) {
+    for (const option of select.options) {
+      if (!option.dataset.drawer) continue;
+      const offered = benchDrawer || option.value === select.value;
+      option.hidden = !offered;
+      option.disabled = !offered;
+    }
+  }
+}
+// A search for a drawing lands on a menu that would not offer it shut.
+function asksForDrawerOption(row, words) {
+  return Array.from(row.querySelectorAll("option[data-drawer]")).some((option) =>
+    words.some((word) => option.textContent.toLowerCase().includes(word)));
+}
+
 function setDrawer(open) {
   benchDrawer = open;
+  syncDrawerMenus();
   document.body.dataset.drawer = open ? "open" : "shut";
   el.benchDrawer.setAttribute("aria-expanded", String(open));
   try { window.localStorage.setItem(DRAWER_KEY, open ? "open" : "shut"); } catch (error) { /* private window */ }
@@ -23916,6 +23966,8 @@ function flash(node) {
 
 function chooseSearch(entry) {
   if (!entry) return;
+  const asked = el.benchSearch.value.toLowerCase().split(/\s+/).filter(Boolean);
+  if (entry.kind === "row" && !benchDrawer && asksForDrawerOption(entry.row, asked)) setDrawer(true);
   el.benchResults.hidden = true;
   el.benchSearch.value = "";
   if (entry.kind === "source") {
@@ -23972,6 +24024,9 @@ el.viewScope.addEventListener("click", () => setView("scope"));
 el.viewBench.addEventListener("click", () => setView("bench"));
 el.benchDrawer.addEventListener("click", () => setDrawer(!benchDrawer));
 document.body.dataset.drawer = benchDrawer ? "open" : "shut";
+// And the menus it governs, for a viewer who left it open: the generator's
+// first showing may have come before the drawer's state was read.
+syncDrawerMenus();
 el.benchDrawer.setAttribute("aria-expanded", String(benchDrawer));
 
 /* --- patching -----------------------------------------------------------------

@@ -142,6 +142,57 @@ with sync_playwright() as pw:
           arp["onPlay"] is False and arp["shown"] == {"tab": "perform", "drawer": "open", "seen": True}, str(arp))
     check("and with the drawer shut it still plays a held chord, where switched off it does not",
           arp["shut"] == "shut" and arp["running"] is True and arp["offRunning"] is False, str(arp))
+
+    # The drawings and the second generator, in the drawer since P5: shut, the
+    # Kind menu offers the waveform alone and From your input alone; open, all
+    # four and the second generator - the null, which shows the reading can
+    # say more than one. A drawing loaded by a preset with the drawer shut
+    # stays chosen, offered and drawn, by the drawer's rule; and a search for
+    # one opens the drawer, where a search for the tempo does not.
+    drawings = p.evaluate("""() => {
+      const offered = (sel) => Array.from(sel.options).filter((o) => !o.hidden && !o.disabled).map((o) => o.value);
+      const out = {};
+      if (benchDrawer) el.benchDrawer.click();
+      out.shut = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
+      el.benchDrawer.click();
+      out.open = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
+      el.benchDrawer.click();
+      applyPreset('b:Harmonograph');
+      out.loaded = { drawer: document.body.dataset.drawer, mode: genSettings().mode, menu: el.genMode.value,
+                     kinds: offered(el.genMode), rows: !el.harmoRows.hidden };
+      applyPreset('b:Harmonic tone');
+      out.after = offered(el.genMode);
+      const search = (q) => { el.benchSearch.value = q; showSearch(); const first = searchShown[0];
+                              chooseSearch(first); const opened = benchDrawer; if (benchDrawer) el.benchDrawer.click();
+                              return { found: first ? first.label : null, opened }; };
+      out.searchDrawing = search('harmonograph');
+      out.searchTempo = search('tempo');
+      return out;
+    }""")
+    print("    drawings: %s" % drawings)
+    check("with the drawer shut the generator offers the waveform alone, and From your input alone",
+          drawings["shut"] == {"kinds": ["wave"], "from": ["live"]}, str(drawings["shut"]))
+    check("and open it offers the harmonograph, the figures and the solids, and the second generator",
+          drawings["open"] == {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
+          str(drawings["open"]))
+    check("a drawing loaded by a preset with the drawer shut stays chosen, offered and drawn, and goes when it is left",
+          drawings["loaded"] == {"drawer": "shut", "mode": "harmonograph", "menu": "harmonograph",
+                                 "kinds": ["wave", "harmonograph"], "rows": True} and drawings["after"] == ["wave"],
+          str(drawings["loaded"]) + " " + str(drawings["after"]))
+    check("and a search for a drawing opens the drawer to choose it, where a search for the tempo does not",
+          drawings["searchDrawing"]["opened"] is True and drawings["searchTempo"]["opened"] is False
+          and drawings["searchTempo"]["found"] is not None, str(drawings))
+
+    # The clock and the bar, on Perform since P5; Tap beside the tempo on
+    # Measure. The null is the tempo itself, which stayed.
+    clock = p.evaluate("""() => {
+      const tab = (id) => { const g = document.getElementById(id).closest('.menu-group'); return g ? g.dataset.tab : null; };
+      return { clockFrom: tab('clockFrom'), bar: tab('transportPlay'), at: tab('transportAt'), tempo: tab('tempo'),
+               tapBesideTempo: el.tempoTap.closest('.menu-row') === el.tempo.closest('.menu-row') };
+    }""")
+    check("the clock's source and the bar are on Perform, in the drawer, and the tempo and Tap together on Measure",
+          clock == {"clockFrom": "perform", "bar": "perform", "at": "perform", "tempo": "measure", "tapBesideTempo": True},
+          str(clock))
     hidden = p.evaluate("""() => {
       el.benchDrawer.click(); setBenchTab('sources');
       const chips = [...el.benchSources.querySelectorAll('.mod-chip')].map((c) => c.dataset.source);

@@ -200,9 +200,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   control's hollow ring with it, and leaves everything patched playing and
   shown. It is a view, remembered per viewer and never in a setup, and going
   to one of its tabs opens it, so `showControl` and the search need nothing
-  new. The routing matrix went first (P3) and the arpeggiator, on Perform,
-  second (P5); the plan's P8 adds measurements, inputs, the splits and the
-  clock. Add a tab to it by
+  new. The routing matrix went first (P3); in P5 the arpeggiator and the
+  clock went to Perform, and the drawings - the harmonograph, the figures, the
+  solids and the second generator - behind it in their menus, offered only
+  while it is open unless one is already chosen (`syncDrawerMenus`); the
+  plan's P8 adds measurements and inputs. Add a tab to it by
   naming it in `BENCH_DRAWER`. `benchtest.py` holds it.
 - **The Sources tab shows one family at a time.** Families, the chosen
   family's sources as rows with meters, the chosen source - in that order, one
