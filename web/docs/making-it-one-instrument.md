@@ -650,13 +650,21 @@ the synth's features should be chosen knowing that.
     generator through the route's two held values, which were already there. The two
     screens cost about 0.2 ms a frame together. *Pictures*, a row of two menus in the
     Keyboard section where the arpeggiator's row was, sets it, and a setup carries it
-    (two additive fields, own and own by default, so no version pass). A against B, Y-T
-    and the site's compiled instrument keep the one shared picture: the last until the
-    core stage, which is next. `layerpicturetest.py` holds it. The compiled setup codec
-    writes a key it has no default for even at the default, so until then the two fields
-    are on `SETUP_AHEAD_OF_CORE` and taken out at their defaults before it sees a
-    snapshot; the core stage gives them defaults and empties the list, and `wasmtest.py`
-    goes red on any name left on it that the core has learnt.
+    (two additive fields, own and own by default, so no version pass). A against B and
+    Y-T keep the one shared picture. `layerpicturetest.py` holds it.
+  - *In the core, built:* `LayerPictures` (`core/include/scope/picture.h`) is the page's
+    `layerPictures` and `layerPush`, its two grids made up front rather than on the first
+    split, since the audio thread may not allocate. The instrument's own walk lays each
+    figure into its layer's grid, the picture run steps them after the shared one, the
+    stage's sources answer per layer, and the matrix asks per layer for the loop's route
+    and for any source that answers - so the site's compiled instrument and the plugin
+    have it too, with no window open. The two fields have core defaults, so
+    `SETUP_AHEAD_OF_CORE` is empty, and the two menus are hands the page sends.
+    Parity holds the grids, meters, stages, holds and pushes to the page's through every
+    pair of menus, a crossed pair with one governor running away, unsplit, the second
+    generator's two figures with no layers, and the codec; `layerpicturetest.py` reads
+    each layer's screen back from the compiled instrument on the default page, and the
+    shell test hears B's sound moved by B's picture in the plugin.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing

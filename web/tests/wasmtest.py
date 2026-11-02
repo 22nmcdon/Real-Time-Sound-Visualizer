@@ -523,6 +523,17 @@ with sync_playwright() as pw:
     check("every setup field the page is ahead of the core on (%s) is still one the core cannot leave out, and is left out for it"
           % ", ".join(ahead["names"]) if ahead["names"] else "the page is ahead of the core on no setup field",
           all(ahead["unknown"]) and not any(ahead["stripped"]) and not ahead["known"], str(ahead))
+    # P6's core stage emptied that list: each layer's picture menus have core
+    # defaults now, so the core leaves them out at the page's defaults by
+    # itself. The null: either set to something else, which it writes.
+    moves = p.evaluate("""() => {
+      const writes = (snap) => Object.keys(JSON.parse(atob(setupCodec.encode(snap))));
+      return { kind: setupCodec.kind, left: writes({ pictureMovesA: 'A', pictureMovesB: 'B', freq: 330 }),
+               set: writes({ pictureMovesA: 'both', pictureMovesB: 'A', freq: 330 }) };
+    }""")
+    check("the compiled codec leaves each layer's picture menus out at their defaults, unhelped, and writes them set",
+          moves["kind"] == "wasm" and "pictureMovesA" not in moves["left"] and "pictureMovesB" not in moves["left"]
+          and "freq" in moves["left"] and {"pictureMovesA", "pictureMovesB"} <= set(moves["set"]), str(moves))
     oddbad = [r for r in st["oddRows"] + st["nameRows"] if r[1] != r[2]]
     outcomes = set(r[2] if r[2] in ("throws", "null") else "read" for r in st["oddRows"] + st["nameRows"])
     check("%d awkward codes and snapshots, the same outcome from each, a throw as a throw: %s"

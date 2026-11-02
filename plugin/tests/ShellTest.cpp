@@ -612,6 +612,50 @@ int main() {
     check("and Y-T chosen on the page is the plugin's view, drawn into its grid in place of the figure",
           yt.display == "yt" && looped.display == "xy" && std::fabs(yt.lit - looped.lit) > 1,
           "lit " + num(yt.lit) + " against " + num(looped.lit));
+    /* Each layer's picture (P6), with no window: split into two sounds in
+       X-Y, layer A a fifth turning and layer B one note, each figure laid
+       into a grid of its own, and each sound moved by its own picture. The
+       fold hears Glow at 0.6 x 0.8 of the stage, so B's sound's fold is 0.48
+       of B's glow through B's hold, and A's of A's, and the two are apart.
+       The null is B's picture moving A's sound: B's sound then hears none. */
+    struct Layered { bool live = true, own = true, apart = false; int lines = 0; };
+    const auto layered = [&](const char* movesB) {
+      setenv("SCOPE_PRESET", "Harmonic tone", 1);
+      auto p = std::make_unique<ScopeProcessor>();
+      p->prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      p->pageClick("dispXY");
+      p->pageClick("midiPoly");
+      p->pageClick("tuneEqual");
+      p->pageControl("midiLayers", scope::Json::string(std::string_view("split")));
+      p->pageControl("pictureMovesB", scope::Json::string(std::string_view(movesB)));
+      Layered out;
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      for (int k = 0; k < 4 * blocks; ++k) {
+        buf.clear();
+        m.clear();
+        if (k == 0) for (const int note : { 48, 55, 72 }) m.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
+        p->processBlock(buf, m);
+        if (k < blocks) continue;
+        const auto& layers = p->picture().layers();
+        out.live = out.live && layers.live();
+        for (const auto& r : p->matrix().lastRoutes()) {
+          if (r.index >= 0 || r.slot != scope::slot::Fold) continue;
+          const auto want = [&](int l) { return 0.48 * layers.stage(l).glow() * layers.stage(l).hold(); };
+          out.own = out.own && std::fabs(r.held - want(0)) < 1e-12 && std::fabs(r.heldB - want(1)) < 1e-12;
+          out.apart = out.apart || std::fabs(r.held - r.heldB) > 0.01;
+          out.lines++;
+        }
+      }
+      return out;
+    };
+    const Layered ownPictures = layered("B"), crossedB = layered("A");
+    check("split in X-Y with no window, each layer's figure is a picture of its own and B's sound is moved by B's picture",
+          ownPictures.live && ownPictures.own && ownPictures.apart && ownPictures.lines > 100,
+          "live " + std::to_string(ownPictures.live) + ", own " + std::to_string(ownPictures.own) + ", apart "
+          + std::to_string(ownPictures.apart) + " over " + std::to_string(ownPictures.lines));
+    check("and the reading fails with B's picture moving A's sound", crossedB.live && !crossedB.own);
     /* An oscillator on the zoom, sent from the page as its routings: the
        destination is the plugin's, the offset it writes is in the view, and
        the zoom the walk draws at is made again from it after the matrix -

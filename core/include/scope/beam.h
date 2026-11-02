@@ -176,10 +176,22 @@ inline Plot ytPlot(double w, double h, bool stacked, double widestName) {
   return { gutter, kPadTop, std::fmax(1.0, w - gutter - kPadRight), std::fmax(1.0, h - kPadTop - kPadBottom) };
 }
 
+// The figures the source asks for, when the screen can give them - the
+// page's sourceFigures: not while the lag has taken the lanes, and only while
+// every lane they name exists. Nothing means the one pair the menus chose.
+inline const std::vector<LanePair>* drawnFigures(const View& v, const Screen& s, bool lagging) {
+  if (lagging || s.figures.empty()) return nullptr;
+  const auto exists = [&](int ch) { return ch >= 0 && static_cast<std::size_t>(ch) < v.channels.size(); };
+  for (const auto& fig : s.figures) if (!exists(fig.x) || !exists(fig.y)) return nullptr;
+  return &s.figures;
+}
+
 // drawXY's walk: one figure, or one per layer while the source asks and the
-// lag has not taken the lanes.
+// lag has not taken the lanes. Each figure goes into its layer's grid as well
+// while the layers have pictures of their own (P6), shaded or plain as it
+// goes into the shown one.
 inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& s, const Frame& f,
-                   double w, double h, bool lagging, double elapsed) {
+                   double w, double h, bool lagging, double elapsed, LayerPictures* layers = nullptr) {
   if (f.channels.empty()) return;
   const double size = std::fmax(40.0, std::fmin(w - 2 * kPadRight, h - 2 * kPadTop));
   const double cx = w / 2, cy = h / 2, radius = size / 2;
@@ -187,11 +199,7 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
 
   const auto exists = [&](int ch) { return ch >= 0 && static_cast<std::size_t>(ch) < v.channels.size(); };
   std::vector<LanePair> figures { s.xyPair };
-  if (!lagging && !s.figures.empty()) {
-    bool all = true;
-    for (const auto& fig : s.figures) all = all && exists(fig.x) && exists(fig.y);
-    if (all) figures = s.figures;
-  }
+  if (const auto* asked = drawnFigures(v, s, lagging)) figures = *asked;
 
   const double ratio = s.beamXY ? beamRatio(s.beam) : 0;
   for (std::size_t figure = 0; figure < figures.size(); figure++) {
@@ -230,6 +238,7 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
     } else {
       beam.deposit(phosphor, plot, n, false);
     }
+    if (Phosphor* own = layers ? layers->grid(figure) : nullptr) beam.deposit(*own, plot, n, ratio > 0);
   }
 }
 
@@ -298,9 +307,13 @@ inline void walkYT(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
 
 // A frame's deposits, as `drawMain` makes them: the fade first, with the
 // canvas, then the walk for the display. Returns the graticule the grid lies
-// over, which is where a reticle's u and v are measured from.
+// over, which is where a reticle's u and v are measured from. `layers`, with
+// `layered` whether the keyboard has two layers, are each layer's grids:
+// faded with the shown one in X-Y while two figures are drawn and not
+// otherwise, and left alone on the spectrogram, as the page's are.
 inline Plot drawPicture(Beam& beam, Phosphor& phosphor, const View& v, const Screen& s, const CaptureSource& source,
-                        const Frame& f, const Canvas& canvas, double elapsed) {
+                        const Frame& f, const Canvas& canvas, double elapsed, LayerPictures* layers = nullptr,
+                        bool layered = false) {
   if (s.display == "spect") {
     phosphor.blank();
     return {};
@@ -308,12 +321,17 @@ inline Plot drawPicture(Beam& beam, Phosphor& phosphor, const View& v, const Scr
   const bool lagging = lagSeconds(v, source) > 0;
   if (s.display == "xy") {
     phosphor.fade(s.persistence, canvas.resized);
-    walkXY(beam, phosphor, v, s, f, canvas.w, canvas.h, lagging, elapsed);
+    if (layers) {
+      const auto* figures = drawnFigures(v, s, lagging);
+      layers->fade(layered && figures && figures->size() == 2, s.persistence, canvas.resized);
+    }
+    walkXY(beam, phosphor, v, s, f, canvas.w, canvas.h, lagging, elapsed, layers);
     return xyPlot(canvas.w, canvas.h);
   }
   const int lanes = laneCount(v, source);
   const Plot plot = ytPlot(canvas.w, canvas.h, s.stack && lanes > 2, canvas.widestName);
   phosphor.fade(s.persistence, canvas.resized);
+  if (layers) layers->fade(false, s.persistence, canvas.resized);  // Y-T draws lanes, not figures
   walkYT(beam, phosphor, v, s, f, plot, lanes, elapsed);
   return plot;
 }

@@ -291,6 +291,12 @@ int main(int argc, char** argv) {
     photo.set("on", flag(brain.photo.on)); photo.set("u", num(brain.photo.u)); photo.set("v", num(brain.photo.v));
     out.set("photo", photo);
     {
+      Json moves = Json::array();
+      for (const auto& m : brain.pictureMoves) moves.a.push_back(str(m));
+      for (const char* id : { "pictureMovesA", "pictureMovesB" }) moves.a.push_back(str(brain.panel.select(id)));
+      out.set("pictureMoves", moves);
+    }
+    {
       const auto& w = brain.view;
       const auto& v = w.capture;
       Json view = Json::object();

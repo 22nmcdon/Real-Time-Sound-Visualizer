@@ -2500,6 +2500,30 @@ redone natively or left out.
   the plugin always was: the page takes it as its source once its worklet
   is ready, and asks for its sound then.
 
+- **Each layer's picture since P6** (of `web/docs/making-it-one-instrument.md`).
+  `LayerPictures` in `picture.h` holds two more grids, each with its own
+  `PictureSources` and `PictureStage`, and `layerPush` as `push`. They are
+  live while the keyboard has layers, the display is X-Y and two figures are
+  drawn (`drawnFigures`, the page's `sourceFigures`, now shared by the walk
+  and the step) - which is a test for layers, not for two figures, because
+  the second generator draws two as well. `drawPicture` fades them with the
+  shown grid in X-Y, turns them off in Y-T and leaves them alone on the
+  spectrogram, as the page does; `walkXY` deposits each figure into its
+  layer's grid too; `PictureRun::before` steps them after the shared one,
+  with each figure's own shape. `ModSource` gained `perLayer` and
+  `perLayered`; the stage's sources answer per layer, and the matrix, told
+  by `setLayerPictures`, asks per layer in `sourceNow` and in the loop's
+  combined route (`loopValue(c, layer)`, at that layer's depth), and gives a
+  route its own `heldB` when its source answers - the page's `stepRoutes`.
+  The instrument tells it twice a block, before the frame's destinations and
+  again after the draw for the routes, since the draw is what turns them on.
+  The grids are made with the run rather than on the first split, so nothing
+  allocates on the audio thread; it costs the memory of two grids always.
+  `brain_readings` carries each layer's state after the oscillators, for the
+  page's test of the compiled instrument; nothing on the page reads it.
+  `pictureMovesA` and `pictureMovesB` are setup fields with defaults and
+  `pictureMovesA`/`B` hands; a value a menu has not got is the layer's own.
+
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator
   has no crossings (no `crossings()`, no lines, no voice of their own - the

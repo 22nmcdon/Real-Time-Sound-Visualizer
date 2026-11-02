@@ -119,6 +119,8 @@ inline constexpr SelectSpec kSelects[] = {
   { "arpOctaves", "1" "\x1f" "2" "\x1f" "3", "1" },
   { "midiLayers", "off" "\x1f" "split" "\x1f" "layer", "off" },
   { "midiLayerPair", "each" "\x1f" "against", "each" },
+  { "pictureMovesA", "A" "\x1f" "B" "\x1f" "both", "A" },
+  { "pictureMovesB", "B" "\x1f" "A" "\x1f" "both", "B" },
   { "midiDrawCount", "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8", "2" },
   { "midiDrawWhich", "outer" "\x1f" "lowest" "\x1f" "highest" "\x1f" "recent", "outer" },
   { "genMode", "wave" "\x1f" "harmonograph" "\x1f" "figure" "\x1f" "wireframe", "wave" },

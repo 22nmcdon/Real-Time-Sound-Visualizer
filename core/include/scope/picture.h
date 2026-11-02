@@ -449,6 +449,8 @@ class PictureStage {
   double pushGlow() const { return glow_ * hold_; }
   double pushMotion() const { return motion_ * hold_; }
   double pushMemory() const { return memory_ * hold_; }
+  // A harness's reads and hold put in, as the page's tests write `pictureStage`.
+  void put(double glow, double motion, double memory, double hold) { glow_ = glow; motion_ = motion; memory_ = memory; hold_ = hold; }
 
  private:
   struct Range { double lo = 0, hi = 0; bool seen = false; };
@@ -465,6 +467,103 @@ class PictureStage {
   }
   double glow_ = 0, motion_ = 0, memory_ = 0, familiar_ = 0, hold_ = 1;
   Range glowRange_, motionRange_;
+};
+
+/* EACH LAYER'S PICTURE (P6, the owner's): the page's `layerPictures`. Split
+   into two sounds, the keyboard draws a figure for each, and each figure is
+   also laid into a grid of its own behind the shown one, with its own meter,
+   values, stage and hold; `moves` says whose sound each picture moves - its
+   own, the other's, or both. The page's comment over `layerPictures` gives
+   the reasons: a sound hearing both takes their average, never more than one
+   picture's worth; a crossed pair's cross terms are held by the lower of the
+   two holds, so either governor reins the crossing in.
+
+   Live only while the layers draw a figure each in X-Y. The test is whether
+   there are layers, not whether two figures are drawn: the second generator
+   lays out two figures too, and with no layers they stay on the one picture.
+   Both grids are made up front, where the page makes them the first time a
+   split needs them, since nothing on the audio thread may allocate. */
+inline std::string pictureMovesOf(const std::string& value, const std::string& own) {
+  // LAYER_MOVES: each layer's menu offers its own, the other's and both.
+  static const char* const allowed[2][3] = { { "A", "B", "both" }, { "B", "A", "both" } };
+  for (const char* option : allowed[own == "A" ? 0 : 1]) if (value == option) return value;
+  return own;
+}
+
+class LayerPictures {
+ public:
+  std::array<std::string, 2> moves { { "A", "B" } };  // whose sound A's picture moves, and B's
+
+  bool live() const { return live_; }
+
+  /* layerPicturesFade: with the shown grid, once a frame, wiped rather than
+     faded when they come back after a frame without them, so a split taken
+     up again does not read what was left from last time. `on` is the page's
+     layerPicturesOn. */
+  void fade(bool on, double persistence, bool resized) {
+    if (on) {
+      const bool wipe = resized || !live_;
+      for (auto& grid : grids_) grid.fade(persistence, wipe);
+    }
+    live_ = on;
+  }
+
+  // Where figure `figure`'s deposits go as well as the shown grid: nowhere unless live.
+  Phosphor* grid(std::size_t figure) { return live_ && figure < 2 ? &grids_[figure] : nullptr; }
+  const Phosphor& layerGrid(int layer) const { return grids_[layer == 1 ? 1 : 0]; }
+
+  /* layerPicturesStep: each grid measured and staged on its own, from each
+     figure's own shape - nothing for a figure with no frame. Not two figures
+     any more, and the layers are not live until the next fade finds them. */
+  void step(bool two, const PairShape* a, const PairShape* b, double elapsedMs, bool spect, double limiting) {
+    if (!live_) return;
+    if (!two) { live_ = false; return; }
+    const PairShape* shapes[2] = { a, b };
+    for (std::size_t l = 0; l < 2; l++) {
+      pics_[l].pictureStep(grids_[l], shapes[l], elapsedMs, spect, limiting);
+      stages_[l].step(pics_[l].values(), pics_[l].raw(), elapsedMs, spect, pics_[l].meter().verdict() == "running away");
+    }
+  }
+
+  /* layerPush: what a read hands the matrix for one layer's sound - the
+     pictures that sound hears, each through its hold, averaged when it hears
+     both; the shared stage's push while the layers are not live. */
+  double push(const std::string& key, int layer, const PictureStage& shared) const {
+    if (!live_) return read(shared, key) * shared.hold();
+    const std::string& movesA = moves[0];
+    const std::string& movesB = moves[1];
+    // Whether this sound hears A's picture, and B's.
+    const bool hears[2] = { layer == 0 ? movesA != "B" : movesA != "A", layer == 0 ? movesB != "B" : movesB != "A" };
+    const bool crossed = movesA != "A" && movesB != "B";
+    const double both = std::fmin(stages_[0].hold(), stages_[1].hold());
+    const auto term = [&](int picture) {
+      const PictureStage& st = stages_[static_cast<std::size_t>(picture)];
+      return read(st, key) * (picture != layer && crossed ? both : st.hold());
+    };
+    if (hears[0] && hears[1]) return (term(0) + term(1)) / 2;
+    if (hears[0]) return term(0);
+    if (hears[1]) return term(1);
+    return 0;
+  }
+
+  const PictureSources& pictures(int layer) const { return pics_[layer == 1 ? 1 : 0]; }
+  const PictureStage& stage(int layer) const { return stages_[layer == 1 ? 1 : 0]; }
+  // For a harness: a stage's reads and hold put in, as the page's tests write them.
+  PictureStage& stage(int layer) { return stages_[layer == 1 ? 1 : 0]; }
+  void setLive(bool on) { live_ = on; }
+
+  // A stage's read by its source's key, before the hold.
+  static double read(const PictureStage& s, const std::string& key) {
+    if (key == "glow") return s.glow();
+    if (key == "motion") return s.motion();
+    return s.memory();
+  }
+
+ private:
+  std::array<Phosphor, 2> grids_ {};
+  std::array<PictureSources, 2> pics_ {};
+  std::array<PictureStage, 2> stages_ {};
+  bool live_ = false;
 };
 
 }  // namespace scope

@@ -12,6 +12,10 @@
      poly X,Y;X,Y;... [S,S,...]   read U V   photo 0|1 [U V]   spect 0|1
      pair ellipse A B CYCLES N PHASE | pair noise SEED AMP N | pair none
      view GX GY OX OY SPIN ZOOM   limit DB   step ELAPSED (the photocell, the picture, then its stage)
+   and each layer's picture (P6), whose lines add the layers' state:
+     lframe L ellipse A B CYCLES N PHASE | lframe L noise SEED AMP N  (layer L's two lanes, 2L and 2L+1)
+     lon ON TWO (keyboard layers in X-Y, and two figures drawn)   lfade [1]   lpoly L X,Y;... [S,...]
+     lstep ELAPSED   moves A B   lput L GLOW MOTION MEMORY HOLD   sput GLOW MOTION MEMORY HOLD   push
    Usage: node picture_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -38,10 +42,15 @@ const STUBS = `
 let clock = 0;
 const performance = { now: () => clock };
 const TWO_PI = Math.PI * 2;
-const state = { persistence: 0.12, display: "xy", xyPair: [0, 1], channels: [{ offset: 0 }, { offset: 0 }],
+const state = { persistence: 0.12, display: "xy", xyPair: [0, 1],
+                channels: [{ offset: 0 }, { offset: 0 }, { offset: 0 }, { offset: 0 }],
                 zoom: 1, analyseAt: "post", rotate: 0, rotateMod: 0 };
 let plot = { x: 0, y: 0, w: 1, h: 1 };
-const gains = [1, 1];
+const gains = [1, 1, 1, 1];
+// Each layer's picture: whether the page would have them (layerPicturesOn)
+// and whether two figures are drawn (sourceFigures) are the run's to say.
+let layersOnNow = false, twoFigures = false;
+const wasmModule = () => new WebAssembly.Module(WASM_BYTES);
 const gainOf = (ch) => gains[ch];
 let limiting = 0;
 function monitorLimiting() { return limiting; }
@@ -61,22 +70,72 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
-  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep", "stagePush"];
+  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep", "stagePush",
+  "pictureCoreKind", "LAYER_MOVES", "makeLayerValues", "makeLayerStage", "layerPictures", "pictureMovesOf", "layerPush",
+  "layerEnginesNeeded", "layerPicturesFade", "layerPicturesDeposit", "noPhotocell", "layerPicturesStep"];
 const WASM_BYTES = MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
   return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
 })() : null;
-const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + `
+/* After the lifted definitions, since a declaration later in a scope wins:
+   the one-line stagePush is lifted to the next closing brace on its own
+   line, which is the end of the page's layerPicturesOn. */
+const LAYER_STUBS = `
+function layerPicturesOn() { return layersOnNow; }
+function sourceFigures() { return twoFigures ? [[0, 1], [2, 3]] : null; }
+`;
+const source = STUBS + LIFTED.map((name) => (name.startsWith("const ") ? name + "\n" : definition(name))).join("\n") + LAYER_STUBS + `
 return { state, gains, phosphor, phosphorFade, phosphorSegment, phosphorDeposit, phosphorRead, photo, photoStep,
          pictureMeter, shapeOfPair, picture, pictureStep, pictureStage, engine: pictureEngine,
          stageSources: { glow: () => stagePush("glow"), motion: () => stagePush("motion"), memory: () => stagePush("memory") },
-         setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; } };`;
+         setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; }, getLimiting: () => limiting,
+         layerPictures, layerPush, pictureMovesOf, layerPicturesFade, layerPicturesDeposit, layerPicturesStep,
+         setLayers: (on, two) => { layersOnNow = on; twoFigures = two; }, setCoreKind: (k) => { pictureCoreKind = k; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
 
 function run(commands) {
   const s = new Function("WASM_BYTES", source)(WASM_BYTES);
+  // The layers' engines of the same kind as the shown one, as the page makes them.
+  s.setCoreKind(MODE);
   let frame = null;
+  const layerFrame = { channels: [0, 1, 2, 3].map(() => new Float32Array(0)), turned: false };
+  let layerFramed = false;
+  // A pair of lanes as the `pair` command makes them.
+  const lanesOf = (a) => {
+    const n = Number(a[a[0] === "ellipse" ? 4 : 3]);
+    const left = new Float32Array(n), right = new Float32Array(n);
+    if (a[0] === "ellipse") {
+      const A = Number(a[1]), B = Number(a[2]), cycles = Number(a[3]), phase = Number(a[5]);
+      for (let i = 0; i < n; i++) {
+        left[i] = A * Math.cos(2 * Math.PI * cycles * i / n);
+        right[i] = B * Math.sin(2 * Math.PI * cycles * i / n + phase);
+      }
+    } else {
+      const next = mulberry32(Number(a[1])), amp = Number(a[2]);
+      for (let i = 0; i < n; i++) { left[i] = (next() * 2 - 1) * amp; right[i] = (next() * 2 - 1) * amp; }
+    }
+    return [left, right];
+  };
+  const keys = ["round", "cover", "change", "novelty", "signed", "bored"];
+  const layerState = () => {
+    const L = s.layerPictures;
+    const sums = (engine) => {
+      if (!engine) return "- -";
+      let a1 = 0, a2 = 0;
+      const g = engine.cells;
+      for (let i = 0; i < g.length; i++) { a1 += g[i] * (i + 1); a2 += g[i] * g[i]; }
+      return show(a1) + " " + show(a2);
+    };
+    const out = [" layers", L.live ? "1" : "0", "moves", L.moves[0], L.moves[1]];
+    for (let l = 0; l < 2; l++) {
+      const v = L.values[l], st = L.stages[l], engine = L.engines && L.engines[l];
+      out.push("L" + l, "grid", sums(engine), "values", ...keys.map((k) => show(v[k])), "raw", ...keys.map((k) => show(v.raw[k])),
+               "verdict", engine ? engine.meter.verdict().replace(/ /g, "_") : "-", "stage", ...["glow", "motion", "memory", "hold"].map((k) => show(st[k])));
+    }
+    out.push("pushes", ...[0, 1].flatMap((l) => ["glow", "motion", "memory"].map((k) => show(s.layerPush(k, l)))));
+    return out.join(" ");
+  };
   const lines = [];
   for (const words of commands) {
     const [cmd, ...a] = words;
@@ -119,6 +178,22 @@ function run(commands) {
       s.state.channels[0].offset = Number(a[2]); s.state.channels[1].offset = Number(a[3]);
       s.state.rotate = Number(a[4]); s.state.zoom = Number(a[5]);
     } else if (cmd === "limit") s.setLimiting(Number(a[0]));
+    else if (cmd === "lframe") {
+      const [left, right] = lanesOf(a.slice(1));
+      layerFrame.channels[2 * Number(a[0])] = left; layerFrame.channels[2 * Number(a[0]) + 1] = right;
+      layerFramed = true;
+    } else if (cmd === "lon") s.setLayers(a[0] === "1", a[1] === "1");
+    else if (cmd === "lfade") s.layerPicturesFade(a[0] === "1");
+    else if (cmd === "lpoly") {
+      const points = a[1].split(";").map((p) => p.split(",").map(Number));
+      s.layerPicturesDeposit(Number(a[0]), points.map((p) => p[0]), points.map((p) => p[1]), points.length,
+                             a[2] ? a[2].split(",").map(Number) : null);
+    } else if (cmd === "lstep") s.layerPicturesStep(layerFramed ? layerFrame : null, Number(a[0]), s.state.display === "spect", s.getLimiting());
+    else if (cmd === "moves") { s.layerPictures.moves[0] = s.pictureMovesOf(a[0], "A"); s.layerPictures.moves[1] = s.pictureMovesOf(a[1], "B"); }
+    else if (cmd === "lput") Object.assign(s.layerPictures.stages[Number(a[0])],
+                                           { glow: Number(a[1]), motion: Number(a[2]), memory: Number(a[3]), hold: Number(a[4]) });
+    else if (cmd === "sput") Object.assign(s.pictureStage, { glow: Number(a[0]), motion: Number(a[1]), memory: Number(a[2]), hold: Number(a[3]) });
+    else if (cmd === "push") { /* the state alone */ }
     else if (cmd === "step") {
       s.photoStep(Number(a[0]));
       s.pictureStep(frame, Number(a[0]));
@@ -136,6 +211,7 @@ function run(commands) {
     let a1 = 0, a2 = 0;
     const g = s.phosphor.grid;
     for (let i = 0; i < g.length; i++) { a1 += g[i] * (i + 1); a2 += g[i] * g[i]; }
+    if (/^(l|moves|sput|push)/.test(cmd)) extra += layerState();
     lines.push(cmd + " | grid " + show(a1) + " " + show(a2) + " round "
                + show(s.engine.roundness) + extra);
   }

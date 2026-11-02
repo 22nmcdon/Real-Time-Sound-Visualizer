@@ -86,13 +86,18 @@ class PictureSource : public ModSource {
 };
 
 // stage.*: the picture stage's three reads (P3). Memory is boredom, and has
-// boredom's lower reach.
+// boredom's lower reach. Per layer (P6), each layer's sound is given the
+// pictures it hears (LayerPictures::push), the shared one while the layers
+// have none of their own.
 class StageSource : public ModSource {
  public:
-  StageSource(std::string key, const PictureStage& s) : ModSource("stage." + key), key_(std::move(key)), s_(s) {
+  StageSource(std::string key, const PictureStage& s, const LayerPictures& layers)
+      : ModSource("stage." + key), key_(std::move(key)), s_(s), layers_(layers) {
     reach = key_ == "memory" ? kBoredReach : kPhotoReach;
     fromPicture = true;
+    perLayered = true;
   }
+  double perLayer(int layer) const override { return layers_.push(key_, layer, s_); }
   // Held back while the loop runs away (PictureStage::hold).
   double value() const override {
     if (key_ == "glow") return s_.pushGlow();
@@ -103,6 +108,7 @@ class StageSource : public ModSource {
  private:
   std::string key_;
   const PictureStage& s_;
+  const LayerPictures& layers_;
 };
 
 constexpr double kReadoutMs = 200;       // READOUT_MS: words are read, not watched
@@ -142,7 +148,7 @@ class PictureRun {
     for (const char* key : { "round", "cover", "change", "novelty", "signed", "bored" })
       sources_.push_back(std::make_unique<PictureSource>(key, pics_));
     for (const char* key : { "glow", "motion", "memory" })
-      stageSources_.push_back(std::make_unique<StageSource>(key, stage_));
+      stageSources_.push_back(std::make_unique<StageSource>(key, stage_, layers_));
     // Registered always, since the picture stage: the photocell alone comes
     // and goes with its switch.
     for (auto& s : sources_) matrix.registerSource(s.get());
@@ -214,20 +220,33 @@ class PictureRun {
     const bool spect = brain_.view.screen.display == "spect";
     pics_.photoStep(phosphor_, elapsed_, spect);
     const Screen& sc = brain_.view.screen;
-    const std::size_t ax = static_cast<std::size_t>(sc.xyPair.x), ay = static_cast<std::size_t>(sc.xyPair.y);
-    const Lane* left = ax < frame_.channels.size() ? &frame_.channels[ax] : frame_.channels.empty() ? nullptr : &frame_.channels[0];
-    const Lane* right = ay < frame_.channels.size() ? &frame_.channels[ay]
-                      : frame_.channels.size() > 1 ? &frame_.channels[1] : left;
-    if (left && right) {
+    // A pair's shape, the page's pairOfFrame: false when the frame has no lanes to give it.
+    const auto shapeOf = [&](LanePair pair, PairShape& out) {
+      const std::size_t ax = static_cast<std::size_t>(pair.x), ay = static_cast<std::size_t>(pair.y);
+      const Lane* left = ax < frame_.channels.size() ? &frame_.channels[ax] : frame_.channels.empty() ? nullptr : &frame_.channels[0];
+      const Lane* right = ay < frame_.channels.size() ? &frame_.channels[ay]
+                        : frame_.channels.size() > 1 ? &frame_.channels[1] : left;
+      if (!left || !right) return false;
       const double spin = frame_.turned || !view.shaping ? 0 : view.rotate + view.rotateMod;
       const auto offset = [&](std::size_t ch) { return ch < view.channels.size() ? view.channels[ch].offset : 0.0; };
-      const PairShape shape = shapeOfPair(left->data(), right->data(), std::min(left->size(), right->size()),
-                                          gainOf(view, sc.xyPair.x), gainOf(view, sc.xyPair.y), offset(ax), offset(ay), spin);
-      pics_.pictureStep(phosphor_, &shape, elapsed_, spect, limiting);
-    } else {
-      pics_.pictureStep(phosphor_, nullptr, elapsed_, spect, limiting);
-    }
+      out = shapeOfPair(left->data(), right->data(), std::min(left->size(), right->size()),
+                        gainOf(view, pair.x), gainOf(view, pair.y), offset(ax), offset(ay), spin);
+      return true;
+    };
+    PairShape shape;
+    pics_.pictureStep(phosphor_, shapeOf(sc.xyPair, shape) ? &shape : nullptr, elapsed_, spect, limiting);
     stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away");
+    /* Each layer's picture, after the shared one as the page's pictureStep
+       has it: from the grids the last frame's walk left, each from its own
+       figure's shape. */
+    layers_.moves = brain_.pictureMoves;
+    if (layers_.live()) {
+      const auto* figures = drawnFigures(view, sc, lagSeconds(view, source) > 0);
+      const bool two = figures && figures->size() == 2;
+      PairShape a, b;
+      const bool hasA = two && shapeOf((*figures)[0], a), hasB = two && shapeOf((*figures)[1], b);
+      layers_.step(two, hasA ? &a : nullptr, hasB ? &b : nullptr, elapsed_, spect, limiting);
+    }
     matrix.setStageAmount(brain_.panel.range("pictureAmount") / 100);
   }
 
@@ -246,7 +265,7 @@ class PictureRun {
     Canvas c = canvas;
     c.resized = canvas.resized || w.wipe;
     w.wipe = false;
-    plot_ = drawPicture(beam_, phosphor_, w.capture, w.screen, source, frame_, c, elapsed_);
+    plot_ = drawPicture(beam_, phosphor_, w.capture, w.screen, source, frame_, c, elapsed_, &layers_, layered_);
   }
 
   /* The readout's work, every fifth of a second of frames, after the draw as
@@ -263,6 +282,9 @@ class PictureRun {
   const Phosphor& phosphor() const { return phosphor_; }
   const PictureSources& pictures() const { return pics_; }
   const PictureStage& stage() const { return stage_; }
+  const LayerPictures& layers() const { return layers_; }
+  // Whether the keyboard has two layers, which is what gives each figure a picture of its own.
+  void setLayered(bool on) { layered_ = on; }
   const Frame& frame() const { return frame_; }
   const Plot& plot() const { return plot_; }
 
@@ -275,10 +297,11 @@ class PictureRun {
   PhotoSource photo_ { pics_ };
   std::vector<std::unique_ptr<PictureSource>> sources_;
   PictureStage stage_;
+  LayerPictures layers_;
   std::vector<std::unique_ptr<StageSource>> stageSources_;
   Frame frame_;
   Plot plot_;
-  bool registered_ = false, held_ = false;
+  bool registered_ = false, held_ = false, layered_ = false;
   int restored_ = -1;
   double last_ = -1, next_ = 0, elapsed_ = 16;
   double readAt_ = -1;

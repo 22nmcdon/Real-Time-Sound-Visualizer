@@ -58,8 +58,13 @@ class ModSource {
   // Whether it is the picture's, asked each time: the page's is a getter for a
   // source whose answer depends on what it watches or hears.
   virtual bool picture() const { return fromPicture; }
+  /* What it gives one layer's sound, for a source that answers per layer
+     (`perLayered`: the stage's reads, while each layer has a picture of its
+     own) - the page's optional `perLayer`. Asked only while the matrix is
+     told the layers have pictures; anything else is its value. */
+  virtual double perLayer(int layer) const { (void)layer; return value(); }
   std::string id;
-  bool event = false, fromPicture = false, stepped = false, reachVaries = false;
+  bool event = false, fromPicture = false, stepped = false, reachVaries = false, perLayered = false;
   double reach = 0;
   int index = -1;
 };
@@ -340,6 +345,8 @@ class Matrix {
   // wherever it is asked, and how much is heard depends on it.
   void setTime(double now) { now_ = now; }
   void setLayered(bool on) { layered_ = on; }
+  // Whether each layer has a picture of its own this block (layerPictures.live).
+  void setLayerPictures(bool on) { pictured_ = on; }
   void setStrikes(std::array<int, 2> strikes) { strikes_ = strikes; }
 
   // fadeGain: how much of a routing is on, for one layer. The stage's are
@@ -406,9 +413,15 @@ class Matrix {
     for (auto& c : compiled_) {
       Route r;
       r.index = c.index;
-      if (c.index < 0) {
-        c.held = c.parts.empty() ? sourceNow(*c.source, 0) : loopValue(c);
-        c.heldB = layered ? (c.parts.empty() ? sourceNow(*c.source, 1) : loopValue(c)) : c.held;
+      /* Layer B's held value when B has its own depths, or while each layer
+         has a picture of its own and the source answers per layer - which a
+         loop route always does, as the page's combined source has `perLayer`. */
+      if (c.index < 0 && c.parts.empty()) {
+        c.held = sourceNow(*c.source, 0);
+        c.heldB = layered || (pictured_ && c.source->perLayered) ? sourceNow(*c.source, 1) : c.held;
+      } else if (c.index < 0) {
+        c.held = loopValue(c, 0);
+        c.heldB = layered || pictured_ ? loopValue(c, 1) : c.held;
       }
       c.amount = c.loop ? c.full : c.full * fadeGain(c.key, 0);
       c.amountB = c.loop || !layered ? c.amount : c.full * fadeGain(c.key, 1);
@@ -423,11 +436,15 @@ class Matrix {
     return routes_;
   }
 
+  // The routes the last block was given, for a harness to read.
+  const std::vector<Route>& lastRoutes() const { return routes_; }
+
   // sourceNow: a stepped source as one layer hears it - the value it last had
   // while notes were down, times where that layer's envelope has got to. Any
   // other source is its value.
   double sourceNow(const ModSource& source, int layer = 0) {
-    const double target = source.value();
+    // A source that answers per layer is asked for this layer's sound.
+    const double target = source.perLayered && pictured_ ? source.perLayer(layer) : source.value();
     if (mode_ == FadeMode::Off || !source.stepped) return target;
     auto found = stepFade_.find(source.id);
     if (found == stepFade_.end()) {
@@ -672,10 +689,16 @@ class Matrix {
     }
     dirty_ = false;
   }
-  double loopValue(const Compiled& c) const {
+  /* The loop's routes into one slot as one layer's sound hears them: while
+     the layers have pictures, each part that answers per layer asks for this
+     layer's, at this layer's depth (the page's combined `perLayer`); else
+     every part's value at layer A's depth, as the page's `value` - which is
+     what layer B was given before P6 too. */
+  double loopValue(const Compiled& c, int layer) const {
     double total = 0;
     for (const auto& part : c.parts) {
-      const double v = part.source->value(), amount = part.amount * fadeGain(part.key);
+      const double v = pictured_ && part.source->perLayered ? part.source->perLayer(layer) : part.source->value();
+      const double amount = part.amount * fadeGain(part.key, pictured_ ? layer : 0);
       total += part.unipolar ? amount * (1 - v) / 2 : amount * v;
     }
     return clampLoop(total);
@@ -698,6 +721,7 @@ class Matrix {
   double stageAt_ = -1;  // no amount yet, so the first is made
   std::array<int, 2> strikes_ { 0, 0 };
   bool layered_ = false;
+  bool pictured_ = false;
   bool dirty_ = true;
   int touches_ = 0;
   double now_ = 0;

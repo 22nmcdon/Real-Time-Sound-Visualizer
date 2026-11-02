@@ -1463,6 +1463,46 @@ def mfuzz(n):
             out += ["at %d" % t, "frame"]
     return mrun(*out)
 mruns += [("random-%d" % i, mfuzz(120)) for i in range(40)]
+# Each layer's picture (P6): a stage read that answers per layer (lstage, a
+# picture source) and a hand's source that does (lhand, which no page source
+# is, for the route that is not the loop's), with layer A's and B's values
+# apart from the shared one. Not pictured, every route hears the shared
+# value on both layers, exactly as before; pictured, the loop's route into
+# the fold hears each layer's own, the photocell's part shared, each at its
+# layer's depth while a fade is on; and the picture's destination hears
+# layer A's, as the page's sourceNow asks for layer nought.
+MLAYER = ["source lstage picture reach=0.5 perlayer", "source lhand perlayer", "value lstage 0.4", "lvalue lstage 0 0.2",
+          "lvalue lstage 1 0.6", "value lhand 0.3", "lvalue lhand 0 -0.5", "lvalue lhand 1 0.9"]
+MLAYER_ROUTES = ["route lstage gen.fold 0.8", "route photo gen.fold 0.2", "route lhand gen.fm 0.6", "route lstage view.rotate 0.5"]
+# Layer B's release four times A's, so a part fading out is at a different
+# depth on each layer: the loop's parts must be asked at each layer's own.
+mruns += [
+    ("layer pictures", mrun(*MLAYER, "at 0", *MLAYER_ROUTES, "frame", "pictured 1", "at 16", "frame", "layers 1", "at 32", "frame",
+                        "fade both 1", "env 1 release=4", "at 48", "frame", "unroute photo gen.fold", "at 300", "frame", "at 900", "frame",
+                        "pictured 0", "at 916", "frame")),
+    ("layer pictures off", mrun(*MLAYER, "at 0", *MLAYER_ROUTES, "frame", "layers 1", "at 16", "frame", "fade both 1", "at 32", "frame")),
+    ("layer pictures plain", mrun(*[c.replace(" perlayer", "") for c in MLAYER], "at 0", *MLAYER_ROUTES, "frame", "layers 1", "at 16",
+                                  "frame", "fade both 1", "at 32", "frame")),
+]
+def mlfuzz(n):
+    out, t = ["at 0"], 0
+    srcs, dsts = ["lstage", "lhand", "photo", "level", "lfo1"], ["gen.fold", "gen.fm", "gen.twist", "view.rotate"]
+    for _ in range(n):
+        r = mrng.random()
+        if r < 0.2: out.append("route %s %s %r" % (mrng.choice(srcs), mrng.choice(dsts), round(mrng.uniform(-1.2, 1.2), 3)))
+        elif r < 0.27: out.append("unroute %s %s" % (mrng.choice(srcs), mrng.choice(dsts)))
+        elif r < 0.4: out.append("lvalue %s %d %r" % (mrng.choice(["lstage", "lhand"]), mrng.randint(0, 1), round(mrng.uniform(-1, 1), 3)))
+        elif r < 0.47: out.append("value %s %r" % (mrng.choice(srcs), round(mrng.uniform(-1, 1), 3)))
+        elif r < 0.55: out.append("pictured %d" % mrng.randint(0, 1))
+        elif r < 0.6: out.append("layers %d" % mrng.randint(0, 1))
+        elif r < 0.64: out.append("fade %s %s" % (mrng.choice(["off", "in", "out", "both"]), mrng.choice(["", "0.3", "1"])))
+        elif r < 0.66: out.append("stage %d" % mrng.choice([0, 60, 100]))
+        elif r < 0.69: out.append("env %d %s=%r" % (mrng.randint(0, 1), mrng.choice(["attack", "release"]), round(mrng.uniform(0, 2), 2)))
+        else:
+            t += mrng.choice([16, 33, 100, 400])
+            out += ["at %d" % t, "frame"]
+    return mrun(*MLAYER, *out)
+mruns += [("random-layer-%d" % i, mlfuzz(100)) for i in range(20)]
 
 mtext = "".join(t for _, t in mruns)
 mjs, mcpp = mboth(mtext, "matrix.txt")
@@ -1476,7 +1516,8 @@ for i, (name, _) in enumerate(mruns):
     d = kdiff(mslice(mjs, i), mslice(mcpp, i))
     check("%s: %d commands, the same routes, events and offsets" % (name, mlines[i]), d is None, d or "")
 rbad = [n for i, (n, _) in enumerate(mruns) if n.startswith("random-") and kdiff(mslice(mjs, i), mslice(mcpp, i))]
-check("40 random sequences of 120 commands, the same routes, events and offsets", not rbad, ", ".join(rbad))
+check("60 random sequences of 100 and 120 commands, twenty of them with each layer's picture, the same routes, events and offsets",
+      not rbad, ", ".join(rbad))
 def mout(name): return mslice(mjs, next(i for i, (n, _) in enumerate(mruns) if n == name))
 def frame_lines(name): return [l for l in mout(name).split("\n") if l.startswith("frame")]
 def route_amounts(line):
@@ -1556,6 +1597,33 @@ mnull("reach", "source photo picture reach=0.5", "source photo picture reach=0.5
 mnull("events", "count onset 3", "count onset 1", "a count that did not move")
 mnull("layered", "strike 1", "strike 0", "the other layer struck")
 mnull("edit", "edit onset>gen.kick@0.7;", "load onset>gen.kick@0.7;", "the edit sent as a preset")
+mnull("layer pictures", "pictured 1", "pictured 0", "the layers' pictures never live")
+# What the per-layer runs are for, read off the page's lines. The fold's slot
+# is 22 and the FM's 19: pictured, the fold's loop route holds layer A's
+# 0.5 x 0.2 + 0.2 x 0.7 = 0.24 and B's 0.5 x 0.6 + 0.14 = 0.44, and the
+# hand's route its own -0.5 and 0.9; not pictured, the shared 0.34 and 0.3
+# on both. The null for each is the other state's line, which reads the
+# other numbers.
+def mheld(line, slot):
+    for r in (re.search(r"routes (\S+)", line).group(1).split("+")):
+        f = r.split("/")
+        if f[3] == str(slot): return float(f[1]), float(f[2])
+    return None
+def mclose(pair, want): return pair is not None and all(abs(x - y) < 1e-12 for x, y in zip(pair, want))
+lp = frame_lines("layer pictures")
+def lp_pictured(line): return mclose(mheld(line, 22), (0.24, 0.44)) and mclose(mheld(line, 19), (-0.5, 0.9))
+def lp_shared(line): return mclose(mheld(line, 22), (0.34, 0.34)) and mclose(mheld(line, 19), (0.3, 0.3))
+check("each layer's sound hears its own picture through the loop's route, and a per-layer hand's route its own, the photocell's part shared",
+      lp_pictured(lp[1]) and lp_pictured(lp[2]) and lp_shared(lp[0]) and mclose(mheld(lp[-1], 19), (0.3, 0.3)), "\n".join(lp[:3]))
+check("and the reading fails on the line before the layers had pictures, and on the one with them", not lp_pictured(lp[0]) and not lp_shared(lp[1]))
+check("and the picture's destination hears layer A's: the rotation offset by 0.5 x 0.2, where unpictured it was 0.5 x 0.4",
+      [round(float(re.search(r":: visual view.rotate (\S+)", l).group(1)), 12) for l in lp[:2]] == [0.2, 0.1], lp[1][:200])
+lpo, lpp = mout("layer pictures off"), mout("layer pictures plain")
+strip_sources = lambda out: "\n".join(l for l in out.split("\n") if not l.startswith("source"))
+check("with no layer pictures, sources that answer per layer are heard exactly as the same sources that do not",
+      strip_sources(lpo) == strip_sources(lpp) and "routes u/" in lpo)
+lpon = mboth(dict(mruns)["layer pictures off"].replace("frame\nlayers 1", "frame\npictured 1\nlayers 1", 1))[0]
+check("and the comparison sees them pictured", strip_sources(lpon) != strip_sources(lpp))
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(mjs.strip().split("\n")[1:]), "\n".join(mcpp.strip().split("\n")[:-1])) is not None)
 
@@ -1574,7 +1642,8 @@ def sboth(lines, name="setup_one.txt"):
 
 srng = random.Random(97)
 DEFAULT_KEYS = ["gen", "shape", "freq", "amp", "interval", "just", "phase", "figure", "detail", "figText", "mod", "bars",
-                "midiMode", "layers", "splitAt", "planeLimit", "delayMs", "oscFm", "vcfCut", "c0s", "c1s", "level", "trig"]
+                "midiMode", "layers", "splitAt", "planeLimit", "delayMs", "oscFm", "vcfCut", "c0s", "c1s", "level", "trig",
+                "pictureMovesA", "pictureMovesB"]
 NUMBERS = [0, -0.0, 1, -1, 0.1, 0.5, 1/3, 2/3, 123.456, 1e-6, 1e-7, 1.5e-7, 9.99e-7, 123456789012345680000.0, 1e21, 1.5e21,
            1e300, 5e-324, 1.7976931348623157e308, 2**53, 2**53 + 2, 0.1 + 0.2, -1e-7, 100, 1000000, 4.35, 220.0]
 STRINGS = ["", "plain", "quote\"back\\slash", "tab\tnew\nline\rcr\bfeed\f", "ctl\u0001\u001f\u007f", "caf\u00e9 \u00ff",
@@ -1660,6 +1729,14 @@ for raw in ['{"v":4,"gen":"figure"}', '{"v":2,"trig":1,"c1s":"5","level":7}']:
     c = code_of(raw)
     scmds += ["decode " + c[:4] + "\t" + c[4:], "decode " + c[:4] + "\f" + c[4:8] + "\r\u000b" + c[8:]]
 scmds += ['encode {"freq":330,"gen":"figure"}', "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}')]
+# Each layer's picture menus (P6): at their defaults left out of the code, as
+# the page leaves a default out; set otherwise, written; and read back as
+# written, nonsense and all, since the codec keeps what restore later holds
+# to the menu.
+PM_KEEP = 'encode {"pictureMovesA":"A","pictureMovesB":"B","freq":330}'
+PM_SET = 'encode {"pictureMovesA":"both","pictureMovesB":"A","freq":330}'
+PM_CODE = code_of('{"v":5,"pictureMovesA":"B","pictureMovesB":"both","freq":330}')
+scmds += [PM_KEEP, PM_SET, "decode " + PM_CODE, "decode " + code_of('{"v":5,"pictureMovesA":"nonsense","pictureMovesB":7}')]
 V4_CODE = '{"v":4,"crossOn":true,"crossX":40,"threshWatch":"env.live","pluckNote":64,"freq":330,' \
           '"mod":"threshold>gen.freq@0.500; lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"}'
 scmds += ["decode " + code_of(V4_CODE)]
@@ -1700,6 +1777,17 @@ snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
 snull("the version-4 code marked 5, which keeps what it says", "decode " + code_of(V4_CODE),
       "decode " + code_of(V4_CODE.replace('"v":4', '"v":5')))
+snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
+def pm_read(cmd):
+    code = scpp[scmds.index(cmd)].split(" ", 1)[1]
+    return _json.loads(base64.b64decode(code + "=" * (-len(code) % 4)))
+pm_keep, pm_set = pm_read(PM_KEEP), pm_read(PM_SET)
+pm_back = scpp[scmds.index("decode " + PM_CODE)]
+check("each layer's picture menus in the core's code: left out at A and B, written at both and A, and read back as written",
+      "pictureMovesA" not in pm_keep and "pictureMovesB" not in pm_keep and pm_keep.get("freq") == 330
+      and pm_set.get("pictureMovesA") == "both" and pm_set.get("pictureMovesB") == "A"
+      and '"pictureMovesA":"B"' in pm_back and '"pictureMovesB":"both"' in pm_back, "%r %r %s" % (pm_keep, pm_set, pm_back[:120]))
+check("and the reading sees a code that kept the defaults", "pictureMovesA" in pm_set and not "pictureMovesA" in pm_keep)
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
 # The site's codec (5e): the compiled core's, made from the module the page
 # carries and driven through the page's own wrapper, on every command above.
@@ -2468,6 +2556,165 @@ with open(pcbent, "w") as f:
     f.write(re.sub(r"^persist ([0-9.]+)$", lambda m: "persist %r" % (float(m.group(1)) + 0.01) if float(m.group(1)) > 0 else m.group(0),
                    pctext, flags=re.M))
 check("and the comparison fails against the runs with every persistence a hundredth more", kdiff(pcwasm(pcbent), pcjs) is not None)
+
+# Each layer's picture (P6): the page's layerPictures - each layer's grid,
+# meter, values, stage and hold, and layerPush, whose sound each picture
+# moves - lifted with the page's own fade, deposit and step, against
+# scope::LayerPictures through the same commands. Layer A's figure is an
+# ellipse turning a little each frame and layer B's a still dot, so a grid
+# that read its neighbour's figure would move where it should not. What the
+# page decides for itself (keyboard layers, X-Y, two figures drawn) the run
+# says with `lon`.
+def lpellipse(layer, cx, cy, rx, ry, n=48, turn=0.0): return "l" + pcellipse(cx, cy, rx, ry, n, turn).replace("poly ", "poly %d " % layer, 1)
+LPC = ["plot 40 30 600 450", "persist 0.12", "lframe 0 ellipse 0.8 0.5 3 400 0.3", "lframe 1 ellipse 0.02 0.02 1 400 0", "lon 1 1"]
+def lpframes(count, elapsed=16, a=None, b=None):
+    out = []
+    for i in range(count):
+        out += ["lfade", a(i) if a else lpellipse(0, 340, 255, 200, 120, 48, i * 0.07), b(i) if b else lpellipse(1, 340, 255, 3, 3, 8), "lstep %d" % elapsed]
+    return out
+# A's grid filled every frame, a serpentine down the graticule, for a verdict of running away.
+LP_FILL = "lpoly 0 " + ";".join("%d,%d" % (x, 30 + y) for y in range(0, 452, 4) for x in ((40, 640) if (y // 4) % 2 == 0 else (640, 40)))
+LP_MOVES = [(a, b) for a in ("A", "B", "both") for b in ("B", "A", "both")]
+lpruns = [
+    ("layers own", pcrun(*LPC, "moves A B", *lpframes(150), "push")),
+    ("layers crossed", pcrun(*LPC, "moves B A", *lpframes(150), "push")),
+    ("layers both", pcrun(*LPC, "moves both both", *lpframes(150), "moves both B", "push")),
+    ("layers runaway", pcrun(*LPC, "persist -1", "moves B A", *lpframes(200, 50, a=lambda i: LP_FILL), "push", "moves A B", "push")),
+    ("layers arithmetic", pcrun(*LPC, "lfade", "lput 0 0.5 0.4 0.3 0.8", "lput 1 0.2 0.9 0.6 0.25", "sput 0.7 0.1 0.35 0.5",
+                                *[c for a, b in LP_MOVES for c in ("moves %s %s" % (a, b), "push")], "moves nonsense 7", "push",
+                                "lon 0 0", "lfade", "push")),
+    ("layers unsplit", pcrun("plot 40 30 600 450", "persist 0.12", "lframe 0 ellipse 0.8 0.5 3 400 0.3", "sput 0.7 0.1 0.35 0.5",
+                             *lpframes(20), "push")),
+    ("layers lost", pcrun(*LPC, *lpframes(10), "lon 1 0", "lfade", "lstep 16", "push")),
+]
+lprng = random.Random(61)
+def lpfuzz(n):
+    out = list(LPC)
+    for _ in range(n):
+        r = lprng.random()
+        if r < 0.1: out.append("lon %d %d" % (lprng.random() < 0.8, lprng.random() < 0.85))
+        elif r < 0.3: out.append("lfade" + (" 1" if lprng.random() < 0.1 else ""))
+        elif r < 0.5: out.append(lpellipse(lprng.randint(0, 2), lprng.uniform(0, 680), lprng.uniform(0, 500), lprng.uniform(1, 300),
+                                           lprng.uniform(1, 300), lprng.randint(3, 40), lprng.random() * 6))
+        elif r < 0.68: out.append("lstep %d" % lprng.choice([16, 16, 33, 50, 250, 0]))
+        elif r < 0.75: out.append("moves %s %s" % (lprng.choice(["A", "B", "both", "x"]), lprng.choice(["A", "B", "both", ""])))
+        elif r < 0.8: out.append("lput %d %.3f %.3f %.3f %.3f" % (lprng.randint(0, 1), lprng.random(), lprng.random(), lprng.random(),
+                                                                  lprng.uniform(0.25, 1)))
+        elif r < 0.84: out.append("lframe %d %s" % (lprng.randint(0, 1), lprng.choice(["ellipse %.2f %.2f %d %d %.2f" % (
+            lprng.random(), lprng.random(), lprng.randint(1, 7), lprng.choice([2, 400, 3000]), lprng.random() * 6),
+            "noise %d %.2f %d" % (lprng.randint(1, 50), lprng.random(), lprng.choice([50, 900]))])))
+        elif r < 0.87: out.append("persist %s" % lprng.choice(["0", "-1", "0.04", "0.12"]))
+        elif r < 0.89: out.append("spect %d" % (lprng.random() < 0.3))
+        elif r < 0.91: out.append("limit %.1f" % lprng.choice([0, -7, -12]))
+        elif r < 0.93: out.append("view %.2f %.2f %.2f %.2f %.3f 1" % (lprng.uniform(0.2, 3), lprng.uniform(0.2, 3), lprng.uniform(-0.3, 0.3),
+                                  lprng.uniform(-0.3, 0.3), lprng.choice([0, lprng.uniform(-1, 1)])))
+        else: out.append("push")
+    return pcrun(*out)
+lpruns += [("random-%d" % i, lpfuzz(150)) for i in range(20)]
+lptext = "".join(t for _, t in lpruns)
+lpjs, lpcpp = pcboth(lptext, "layer_pictures.txt")
+lplines = [len(t.strip().split("\n")) - 2 for _, t in lpruns]
+def lpslice(out, i):
+    lines = out.strip().split("\n")
+    start = sum(lplines[:i])
+    return "\n".join(lines[start:start + lplines[i]])
+for i, (name, _) in enumerate(lpruns):
+    if name.startswith("random-"): continue
+    d = kdiff(lpslice(lpjs, i), lpslice(lpcpp, i))
+    check("%s: %d commands, each layer's grid, meter, values, stage, hold and push the page's" % (name, lplines[i]), d is None, d or "")
+lpbad = [n for i, (n, _) in enumerate(lpruns) if n.startswith("random-") and kdiff(lpslice(lpjs, i), lpslice(lpcpp, i))]
+check("20 random sequences of 150 commands, each layer's picture the page's", not lpbad, ", ".join(lpbad))
+lpwa = pcwasm(os.path.join(BUILD, "layer_pictures.txt"))
+# To the tolerance, not the character: one random run turns layer A's figure
+# by an angle whose cosine the compiled core's library and V8's differ on in
+# the last bit (as ILIBM below says of the instrument), and the signed area
+# carries it - 0.067803049880756541 against ...527, 1.4e-17 apart, one unit in
+# the last place, where TOL is 1e-12. The shared screen's runs
+# happen never to turn by such an angle.
+lpsame = sum(1 for x, y in zip(lpwa.split("\n"), lpjs.split("\n")) if x == y)
+check("and the site's compiled picture engines as the layers' screens: the page's output to %g, %d of %d lines to the character"
+      % (TOL, lpsame, len(lpjs.split("\n"))), kdiff(lpwa, lpjs) is None and lpsame > 0.9 * len(lpjs.split("\n")),
+      kdiff(lpwa, lpjs) or "")
+# The null at that tolerance: the page's runs with each figure laid into the
+# other layer's screen, A and B swapped, which the comparison has to see.
+lpswapped = os.path.join(BUILD, "layer_pictures_swapped.txt")
+with open(lpswapped, "w") as f:
+    f.write(re.sub(r"^lpoly ([01]) ", lambda m: "lpoly %d " % (1 - int(m.group(1))), lptext, flags=re.M))
+lpsw = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), lpswapped], check=True, capture_output=True, text=True).stdout
+check("and the comparison fails at that tolerance against the page with A's and B's figures swapped", kdiff(lpwa, lpsw) is not None)
+def lpnull(name, old, new, what):
+    text = dict(lpruns)[name]
+    assert old in text, old
+    js, _ = pcboth(text.replace(old, new, 1), "layer_pictures_null.txt")
+    i = next(k for k, (n, _) in enumerate(lpruns) if n == name)
+    check("and against " + what, kdiff(js, lpslice(lpcpp, i)) is not None)
+lpnull("layers crossed", "moves B A", "moves A B", "each picture moving its own sound, not the other's")
+lpnull("layers both", "moves both both", "moves both B", "B's picture moving B's sound alone")
+lpnull("layers runaway", "persist -1", "persist 0.12", "A's grid fading, so A's governor never holds")
+lpnull("layers lost", "lon 1 0", "lon 1 1", "the two figures still drawn")
+# Read off the page's lines: a layer's section is its grid, values, raw,
+# verdict and stage; the pushes are A's sound's glow, motion and memory, then B's.
+LP_KEYS = ["round", "cover", "change", "novelty", "signed", "bored"]
+def lpw(line, layer, part, k=0):
+    w = line.split()
+    at = w.index("L%d" % layer)
+    offset = {"grid": 2, "values": 5, "raw": 12, "verdict": 19, "stage": 21}[part]
+    return w[at + offset + k]
+def lpnum(line, layer, part, k=0): return float(lpw(line, layer, part, k))
+def lppush(line, layer, key): w = line.split(); return float(w[w.index("pushes") + 1 + 3 * layer + ["glow", "motion", "memory"].index(key)])
+def lpout(name): return lpslice(lpjs, next(i for i, (n, _) in enumerate(lpruns) if n == name)).split("\n")
+def lpsteps(name): return [l for l in lpout(name) if l.startswith("lstep")]
+own = lpsteps("layers own")
+def lp_moves_alone(layer_still, layer_moving):
+    return (all(lpnum(l, layer_still, "raw", 2) == 0 for l in own[5:]) and max(lpnum(l, layer_moving, "raw", 2) for l in own) > 0.01
+            and all(lpw(l, 0, "grid") != "-" for l in own))
+check("each layer's screen measures its own figure: A's turning ellipse changes, B's still dot does not",
+      lp_moves_alone(1, 0), "B's change at most %g, A's %g" % (max(lpnum(l, 1, "raw", 2) for l in own[5:]), max(lpnum(l, 0, "raw", 2) for l in own)))
+check("and the reading fails with the layers the other way round", not lp_moves_alone(0, 1))
+STG = {"glow": 0, "motion": 1, "memory": 2}
+def lpstage(line, layer, key): return lpnum(line, layer, "stage", STG[key])
+def lphold(line, layer): return lpnum(line, layer, "stage", 3)
+def lp_model(line, a, b, layer, key, average=True, lower=True):
+    """layerPush written out from its comment, for the lines that say what each stage holds."""
+    hears = [a != "B", b != "B"] if layer == 0 else [a != "A", b != "A"]
+    crossed = a != "A" and b != "B" and lower
+    both = min(lphold(line, 0), lphold(line, 1))
+    term = lambda pic: lpstage(line, pic, key) * (both if pic != layer and crossed else lphold(line, pic))
+    if hears[0] and hears[1]: return (term(0) + term(1)) / (2 if average else 1)
+    return term(0) if hears[0] else term(1) if hears[1] else 0
+ar = [l for l in lpout("layers arithmetic") if l.startswith("push")]
+def lp_all_moves(model):
+    return len(ar) == 11 and all(abs(lppush(l, layer, key) - model(l, a, b, layer, key)) < 1e-15
+                                 for l, (a, b) in zip(ar, LP_MOVES) for layer in (0, 1) for key in STG)
+check("every pair of menus moves each sound by the pictures it hears: its own, the other's, both averaged, a crossing held by the lower hold",
+      lp_all_moves(lp_model), "; ".join("%s%s %s" % (a, b, " ".join(l.split("pushes")[1].split()[:6])) for l, (a, b) in zip(ar, LP_MOVES)))
+check("and the reading fails against both summed rather than averaged",
+      not lp_all_moves(lambda l, a, b, layer, key: lp_model(l, a, b, layer, key, average=False)))
+check("and fails against a crossing held by each picture's own hold",
+      not lp_all_moves(lambda l, a, b, layer, key: lp_model(l, a, b, layer, key, lower=False)))
+check("a menu value it has not got is the layer's own, and with the layers gone each sound is the shared stage's push",
+      " moves A B " in ar[9] and all(lppush(ar[10], layer, key) == {"glow": 0.7, "motion": 0.1, "memory": 0.35}[key] * 0.5
+                                      for layer in (0, 1) for key in STG), ar[10][-160:])
+ra = lpout("layers runaway")
+ra_steps, ra_cross, ra_own = [l for l in ra if l.startswith("lstep")], [l for l in ra if l.startswith("push")][0], [l for l in ra if l.startswith("push")][1]
+check("a crossed pair with A's governor holding: A's hold at its floor, B's whole, and both cross terms carrying the quarter",
+      lpw(ra_steps[-1], 0, "verdict") == "running_away" and lphold(ra_cross, 0) == 0.25 and lphold(ra_cross, 1) == 1
+      and lpstage(ra_cross, 1, "memory") > 0.1
+      and abs(lppush(ra_cross, 0, "memory") - lpstage(ra_cross, 1, "memory") * 0.25) < 1e-15
+      and abs(lppush(ra_cross, 1, "memory") - lpstage(ra_cross, 0, "memory") * 0.25) < 1e-15,
+      "verdict %s, holds %g %g, B's memory %g, pushes %g %g" % (lpw(ra_steps[-1], 0, "verdict"), lphold(ra_cross, 0), lphold(ra_cross, 1),
+                                                              lpstage(ra_cross, 1, "memory"), lppush(ra_cross, 0, "memory"), lppush(ra_cross, 1, "memory")))
+check("and uncrossed, B's own picture moves B's sound whole while A's is held",
+      abs(lppush(ra_own, 1, "memory") - lpstage(ra_own, 1, "memory")) < 1e-15
+      and abs(lppush(ra_own, 1, "memory") - lpstage(ra_own, 1, "memory") * 0.25) > 0.01)
+un = lpout("layers unsplit")
+check("unsplit, the layers' screens are never made or measured, and both sounds hear exactly the shared stage's push",
+      all(" layers 0 " in l and " L0 grid - - " in l and " L1 grid - - " in l for l in un if " layers " in l)
+      and all(lppush(un[-1], layer, key) == {"glow": 0.7, "motion": 0.1, "memory": 0.35}[key] * 0.5 for layer in (0, 1) for key in STG))
+check("and the reading fails on a split's run, whose screens are made", not all(" L0 grid - - " in l for l in own))
+lost = lpout("layers lost")
+check("two figures no longer drawn, the layers are not live from that frame", " layers 1 " in lost[-4] and " layers 0 " in lost[-2],
+      "%s ... %s" % (lost[-4][:60], lost[-2][:60]))
 def pcout(name): return pcslice(pcjs, next(i for i, (n, _) in enumerate(pcruns) if n == name)).split("\n")
 def pcfield(line, word, k=0): w = line.split(); return w[w.index(word) + 1 + k]
 pcsteps = lambda name: [l for l in pcout(name) if l.startswith("step")]
@@ -3125,6 +3372,8 @@ def rdrawn():
         pts = ["%s,%s" % (round(rrng.uniform(-3, 3), rrng.randint(0, 4)), round(rrng.uniform(-3, 3), 4)) for _ in range(rrng.randint(1, 6))]
         strokes.append(rrng.choice([" ", "  ", "\t", " ", "　"]).join(pts))
     return rrng.choice([";", " ; ", ";;"]).join(strokes)
+PM_MENUS = {"pictureMovesA": ["A", "B", "both", "nonsense", 5, None], "pictureMovesB": ["B", "A", "both", "", "a"]}
+pmrng = random.Random(66)
 def rsetup():
     st = {}
     for key, make in (("cycle", rcycle), ("cycles", rcycles), ("figText", rtext), ("figPath", rsvg), ("figDrawn", rdrawn)):
@@ -3140,6 +3389,14 @@ def rsetup():
             st[k] = rrng.choice([True, False, 1, 0, "yes", "", None]) if k == "just" else rrng.choice([True, False, 1, "true", None])
         else: st["gen"] = rrng.choice(["wave", "harmonograph", "figure", "wireframe"])
     if rrng.random() < 0.3: st.pop("mod", None)
+    # Each layer's picture menus (P6), from a generator of their own so the
+    # rest of every random setup is the one it was before they existed. A
+    # known limitation this keeps out of sight rather than fixes: drawn from
+    # the shared generator they moved the morph runs on, and one of those
+    # (planeTwist walked by the morph at 25 with a mod of 1.2) the page
+    # rounds to 0.04 and the core to 0.05 - before P6 as after.
+    for key, values in PM_MENUS.items():
+        if pmrng.random() < 0.3: st[key] = pmrng.choice(values)
     return _json.dumps(st)
 # The first two are the slider's own rules, made to be read: a half goes up,
 # and a value that is not a number takes the slider's middle (detail runs from
@@ -3437,6 +3694,18 @@ CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""],
          **{"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}}
 CCLICKS = ["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4"]
 def cop():
+    # Each layer's picture menus, in place of an op drawn as before P6 - drawn
+    # all the same, from its own generator, so every op and run after it is
+    # the one it was. Only values the menus have, as for the layers' own
+    # menus above: the page sends the menu's value, and a value it has not
+    # got leaves the page's menu blank until the keyboard's panel is synced,
+    # which the core's panel does not copy. Restore's nonsense is the setups'.
+    op = cop_drawn()
+    if pmrng.random() < 0.06:
+        id = pmrng.choice(list(PM_MENUS))
+        return {"op": "change", "id": id, "value": pmrng.choice(pctl["selects"][id]["options"])}
+    return op
+def cop_drawn():
     c = rrng.random()
     if c < 0.5:
         id = rrng.choice(CMENUS)
@@ -3530,7 +3799,7 @@ check("the harmonograph played at the note's pitch by its switch",
 check("a shape the menu has not got is no shape", cp[34]["a"]["shape"] != "nonsense", repr(cp[34]["a"]["shape"]))
 cops = [_json.loads(l) for l in clines]
 cmoved = {o["id"] for i, o in enumerate(cops) if o.get("op") in ("change", "click") and i and rdiff(cp[i], cp[i - 1])}
-call = set(CMENUS) | set(CMORE) | set(CSWITCHES) | set(CTEXT) | set(CCLICKS)
+call = set(CMENUS) | set(CMORE) | set(CSWITCHES) | set(CTEXT) | set(CCLICKS) | set(PM_MENUS)
 check("the runs move something with every one of the %d controls" % len(call), cmoved >= call, ", ".join(sorted(call - cmoved)))
 def cnull(what, index, change):
     lines = list(clines[:index + 1])
@@ -4117,6 +4386,10 @@ iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "k
 LAYERED = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "midiPoly"], ["control", "midiLayers", "split"]]
 iruns["layered"] = LAYERED + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 iruns["layered against"] = LAYERED + [["control", "midiLayerPair", "against"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+# Each layer's picture (P6) in X-Y, crossed, the compiled against the native:
+# what each sound is moved by is heard, so the samples carry it.
+iruns["layer pictures"] = LAYERED + [["click", "dispXY"], ["click", "tuneEqual"], ["control", "pictureMovesA", "B"],
+                                     ["control", "pictureMovesB", "A"], NOTE_ON(48), NOTE_ON(55), NOTE_ON(72)] + blocks(120)
 # And while the input is drawn, when the page shows layer A whatever was chosen:
 # B chosen, the level put at nought there is A's, so back on the generator A's
 # note is the silent one and B's is heard.
@@ -4326,6 +4599,63 @@ check("the instrument's own grid draws layer B's figure when B alone is playing"
       g_b != g_quiet and g_b[1] > 2 * g_quiet[1], "%r against %r" % (g_b, g_quiet))
 check("and with B's own plane the screen's rotation leaves B's figure alone, where Together turns it",
       g_own_turned == g_own_still and g_together_turned != g_own_still, "%r %r %r" % (g_own_turned, g_own_still, g_together_turned))
+# Each layer's picture (P6), read natively off the instrument: a split in
+# X-Y, layer A a turning fifth and layer B one note, and the loop's routes as
+# the generator is given them. The fold's slot (22) hears Glow at 0.6 x 0.8:
+# layer A's sound held at 0.48 of A's glow through A's hold, B's of B's.
+def ilayers(*hands, split=True, display="dispXY", notes=(48, 55, 72)):
+    lines = [["make", 48000, 512, icode["Harmonic tone"]], ["click", display], ["click", "midiPoly"], ["click", "tuneEqual"]] \
+        + ([["control", "midiLayers", "split"]] if split else []) + list(hands) + [NOTE_ON(n) for n in notes]
+    for _ in range(8): lines += blocks(100, 512, 512) + [["layers"]]
+    out = []
+    for l in icpp(iscript("layers", lines)):
+        if not l.startswith("layers "): continue
+        w = l.split()
+        lay = lambda k: [float(x) for x in w[w.index("L%d" % k) + 1:w.index("L%d" % k) + 7]]
+        routes = {int(r.split(":")[0]): (float(r.split(":")[1]), float(r.split(":")[2])) for r in w[w.index("routes") + 1:]}
+        out.append({"live": w[1] == "1", "figures": int(w[3]), "L": [lay(0), lay(1)],
+                    "shared": [float(x) for x in w[w.index("shared") + 1:w.index("shared") + 5]], "fold": routes.get(22)})
+    return out
+def ifold(read, want_a, want_b):
+    """Every reading's fold route is 0.48 of the glow each layer's sound should hear, and the two differ somewhere."""
+    return bool(read) and all(abs(r["fold"][0] - 0.48 * want_a(r)) < 1e-12 and abs(r["fold"][1] - 0.48 * want_b(r)) < 1e-12 for r in read) \
+        and any(abs(r["fold"][0] - r["fold"][1]) > 0.01 for r in read)
+own_glow = lambda k: lambda r: r["L"][k][1] * r["L"][k][4]
+cross_glow = lambda k: lambda r: r["L"][k][1] * min(r["L"][0][4], r["L"][1][4])
+lo = ilayers()
+check("the instrument's split in X-Y gives each layer's figure a picture of its own, and each sound is moved by its own",
+      all(r["live"] and r["figures"] == 2 for r in lo) and ifold(lo, own_glow(0), own_glow(1)),
+      "; ".join("%.4f/%.4f" % r["fold"] for r in lo[:4]))
+lb = ilayers(["control", "pictureMovesB", "A"])
+check("and the reading fails with B's picture moving A's sound, where B's sound then hears no picture at all",
+      not ifold(lb, own_glow(0), own_glow(1)))
+lx = ilayers(["control", "pictureMovesA", "B"], ["control", "pictureMovesB", "A"])
+check("crossed, each sound is moved by the other's picture, held by the lower hold", ifold(lx, cross_glow(1), cross_glow(0)))
+check("and the reading fails against each picture moving its own", not ifold(lx, own_glow(0), own_glow(1)))
+lu = ilayers(split=False, notes=(48, 55))
+lg = ilayers(["control", "inputFrom", "gen2"], ["control", "inputMode", "1"], split=False, notes=(48,))
+lt = ilayers(display="dispYT")
+shared_fold = lambda r: abs(r["fold"][0] - 0.48 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
+check("unsplit, no layer pictures: both sounds hear exactly the shared picture, which moves",
+      all(not r["live"] and shared_fold(r) for r in lu) and any(r["fold"][0] > 0.01 for r in lu))
+check("the second generator's two figures with no layers stay on the one picture",
+      all(r["figures"] == 2 and not r["live"] and shared_fold(r) for r in lg), "%r" % [(r["figures"], r["live"]) for r in lg[:2]])
+check("and a split in Y-T draws lanes, not figures, so has none either", all(not r["live"] and shared_fold(r) for r in lt))
+check("and the readings fail on the split in X-Y, whose sounds hear their own", not all(not r["live"] and shared_fold(r) for r in lo))
+# Each grid holds its own figure, read by what the walk and the step give it:
+# with B alone playing a third, B's screen is lit and A's nearly dark, and
+# B's signed area is its own figure's where A's silent pair has none; with A
+# alone a fifth, the other way round. The shape is all that tells the step's
+# two figures apart, since the stage's reads never look at it.
+la, lb_only = ilayers(notes=(48, 55)), ilayers(notes=(72, 76))
+def iown_grid(read, lit, dark):
+    return bool(read) and all(r["L"][lit][0] > 5 * r["L"][dark][0] for r in read) \
+        and all(abs(r["L"][lit][5]) > 0.01 and r["L"][dark][5] == 0 for r in read)
+check("each layer's grid draws its own figure and measures its own shape: B alone lights B's, A alone A's",
+      iown_grid(lb_only, 1, 0) and iown_grid(la, 0, 1),
+      "B alone: covers %s, signed %s" % ([round(x, 4) for x in (lb_only[-1]["L"][0][0], lb_only[-1]["L"][1][0])],
+                                         [round(x, 4) for x in (lb_only[-1]["L"][0][5], lb_only[-1]["L"][1][5])]))
+check("and the reading fails with the layers the other way round", not iown_grid(lb_only, 0, 1) and not iown_grid(la, 1, 0))
 input_a, input_b = iheard_at("layered input", 130.81), iheard_at("layered input", 523.25)
 check("and a slider moved with B chosen while the input is drawn is A's, as the page shows A then: A's note silent after, B's heard",
       input_a < 0.01 and input_b > 0.05, "A %.4f, B %.3f" % (input_a, input_b))

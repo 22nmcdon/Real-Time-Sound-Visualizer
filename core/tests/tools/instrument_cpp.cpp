@@ -14,6 +14,10 @@
 //                                    bit; one period is a mono input, none is no input
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
 //   ["grid"]                         the instrument's own grid, by two sums (native only)
+//   ["layers"]                       each layer's picture (P6): whether live, the figures laid
+//                                    out, each layer's raw coverage, stage reads, hold and raw
+//                                    signed area, and
+//                                    the loop's routes as slot:held:heldB (native only)
 //
 // `instrument_cpp --code NAME...` prints each preset's setup code instead, and
 // `instrument_cpp --names` every preset's name.
@@ -100,6 +104,19 @@ int main(int argc, char** argv) {
       double a1 = 0, a2 = 0;
       for (std::size_t i = 0; i < g.size(); ++i) { a1 += g[i] * static_cast<double>(i + 1); a2 += static_cast<double>(g[i]) * g[i]; }
       std::printf("grid %.17g %.17g\n", a1, a2);
+    } else if (cmd == "layers") {
+      const auto& layers = instrument.layerPictures();
+      std::printf("layers %d figures %zu", layers.live() ? 1 : 0, instrument.figures());
+      for (int l = 0; l < 2; l++) {
+        const auto& st = layers.stage(l);
+        std::printf(" L%d %.17g %.17g %.17g %.17g %.17g %.17g", l, layers.pictures(l).raw().cover, st.glow(), st.motion(), st.memory(),
+                    st.hold(), layers.pictures(l).raw().signed_);
+      }
+      std::printf(" shared %.17g %.17g %.17g %.17g routes", instrument.picture().stage().glow(), instrument.picture().stage().motion(),
+                  instrument.picture().stage().memory(), instrument.picture().stage().hold());
+      for (const auto& r : instrument.routes())
+        if (r.index < 0) std::printf(" %d:%.17g:%.17g", r.slot, r.held, r.heldB);
+      std::printf("\n");
     } else if (cmd == "block") {
       const std::size_t n = static_cast<std::size_t>(arg(1).n);
       inL.assign(n, 0.0f); inR.assign(n, 0.0f);

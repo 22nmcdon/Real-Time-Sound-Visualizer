@@ -11,8 +11,8 @@
    clock is the run's: `performance.now()` reads what `at` last said.
 
    A file is runs of `run`, then one command a line, then `end`:
-     source ID [event] [picture] [stepped] [varies] [reach=R] [index=I]
-     value ID V   count ID N   visual ID SPAN MIN MAX BASE   event ID
+     source ID [event] [picture] [stepped] [varies] [perlayer] [reach=R] [index=I]
+     value ID V   lvalue ID LAYER V   count ID N   pictured 0|1 (each layer has a picture of its own)   visual ID SPAN MIN MAX BASE   event ID
      route SRC DEST AMOUNT   unroute SRC DEST   amount SRC DEST A
      load SRC>DEST@A;...   edit SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
      env LAYER key=value...   layers 0|1   strike LAYER   at MS   frame   routes   encode   dests
@@ -71,6 +71,9 @@ const state = { modRoutings: [] };
 const midi = { strikesBy: [0, 0] };
 let layered = false;
 function layersOn() { return layered; }
+// Each layer's picture (P6): only whether it is live, which sourceNow and
+// stepRoutes read; what a source gives each layer is the run's.
+const layerPictures = { live: false };
 const noop = () => {};
 // The page in the plugin sends its routings after an edit; this harness is no plugin.
 const saveFade = noop, paintRoutings = noop, hostRoutings = noop;
@@ -87,13 +90,14 @@ const source = STUBS + LIFTED.map(definition).join("\n")
 return { state, midi, log, fade, el, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
          setFadeEnvelope, fadeStep, fireEvents, applyVisual, workletRoutes, encodeRoutings, decodeRoutings,
          routingsHeard, routeKey,
-         setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty };`;
+         setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty,
+         setPictured: (on) => { layerPictures.live = on; } };`;
 
 const show = (v) => (v === undefined ? "u" : v === true ? "1" : v === false ? "0" : Number(v).toPrecision(17));
 
 function run(commands) {
   const m = new Function(source)();
-  const values = new Map(), counts = new Map();
+  const values = new Map(), counts = new Map(), layerValues = new Map();
   const lines = [];
   for (const words of commands) {
     const [cmd, ...a] = words;
@@ -106,6 +110,7 @@ function run(commands) {
       if (flags.has("picture")) entry.fromPicture = true;
       if (flags.has("stepped")) entry.stepped = true;
       if (flags.has("varies")) entry.reachVaries = true;
+      if (flags.has("perlayer")) entry.perLayer = (layer) => layerValues.get(a[0] + "/" + layer) || 0;
       for (const f of flags) {
         if (f.startsWith("reach=")) entry.reach = Number(f.slice(6));
         if (f.startsWith("index=")) entry.index = Number(f.slice(6));
@@ -113,6 +118,8 @@ function run(commands) {
       m.registerSource(entry);
       m.touchRoutings();
     } else if (cmd === "value") values.set(a[0], Number(a[1]));
+    else if (cmd === "lvalue") layerValues.set(a[0] + "/" + a[1], Number(a[2]));
+    else if (cmd === "pictured") m.setPictured(a[0] === "1");
     else if (cmd === "count") counts.set(a[0], Number(a[1]));
     else if (cmd === "visual") {
       const [id, span, min, max, base] = a;

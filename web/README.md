@@ -4491,3 +4491,17 @@ on all of them. Put such a field on `SETUP_AHEAD_OF_CORE`, which takes it out at
 its default before the core encodes; a value off the default still goes through,
 and the core writes it as read. The list empties when the core learns the field,
 and a check fails while a learnt name stays on it.
+
+**A page stage can break parity without touching the core.** The parity
+harnesses lift the page's functions by name, with stand-ins for what each one
+reads, so a page stage that makes a lifted function read something new breaks
+the harness that lifts it, though no line of C++ changed: P6's page stage made
+`sourceNow` read `layerPictures`, `phosphorFade` call `layerPicturesFade` and
+`makeWasmSetupCodec` read `SETUP_AHEAD_OF_CORE`, and the matrix, beam and setup
+harnesses all threw until the core stage gave them stand-ins. The setup one is
+the quiet kind - the codec's wrapper caught the `ReferenceError` and reported
+"throws" for every code. Run `core/tests/parity.py` after a page stage too. And a
+one-line function lifted by `definition()` runs to the next closing brace on a
+line of its own, which is the end of the function after it: `stagePush` carried
+the page's `layerPicturesOn` into the picture harness, over the harness's own,
+until the stand-in was put after the lifted code.

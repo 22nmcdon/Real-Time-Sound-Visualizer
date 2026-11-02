@@ -218,6 +218,8 @@ struct Brain {
   double morphMod = 0;                     // what the matrix pushes into the fader
   std::optional<double> morphApplied;      // where the sliders were last put, or nothing
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
+  // Whose sound layer A's picture moves, and B's (P6): "A", "B" or "both" - the page's layerPictures.moves.
+  std::array<std::string, 2> pictureMoves { { "A", "B" } };
   /* The view: what the screen is set to draw, as the page's `state` holds it
      - the capture's half and the walk's - with the zoom's step and what is
      pointed at it, the trigger's mode and the spectrogram's span. The
@@ -1056,6 +1058,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
             ? static_cast<int>(std::fmax(0, std::fmin(127, at->n))) : 60;
   }
   k.against = isString("layerPair", u"against");
+  // Whose sound each layer's picture moves: a value the menu has not got is the layer's own.
+  for (int l = 0; l < 2; l++) {
+    const Json* v = s(l == 0 ? "pictureMovesA" : "pictureMovesB");
+    const std::string own = l == 0 ? "A" : "B";
+    brain.pictureMoves[static_cast<std::size_t>(l)] = pictureMovesOf(v && v->type == Json::Type::String ? utf16To8(v->s) : own, own);
+    panel.setSelect(l == 0 ? "pictureMovesA" : "pictureMovesB", toU16(brain.pictureMoves[static_cast<std::size_t>(l)]));
+  }
 
   // Layer B: its own field where the setup gives one, else layer A's.
   applyLayerB(partial, s, gen, panel);
@@ -1580,6 +1589,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiPolyJust") keys.setPolyJust(checked);
   else if (id == "midiLayers") keys.setLayers(text == "split" ? LayerMode::Split : text == "layer" ? LayerMode::Layer : LayerMode::Off);
   else if (id == "midiLayerPair") keys.setPair(text == "against");
+  else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");
+  else if (id == "pictureMovesB") b.pictureMoves[1] = pictureMovesOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }

@@ -61,6 +61,9 @@ const drawSpectrogram = () => { throw new Error("the spectrogram is not walked")
 // Layer B turning itself, as the run says (the page's asks the layers and B's plane).
 let ownTurn = false;
 const layerTurnsItself = () => ownTurn;
+// Each layer's own screens (P6) are the picture harness's to hold; the walk
+// here lays nothing into them, as the core's walk lays nothing without layers.
+const layerPicturesFade = () => {}, layerPicturesDeposit = () => {};
 `;
 const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS", "MAX_SEARCH_SECONDS", "LAG_MAX_MS",
   "LAG_MIN_SPAN_SECONDS", "lagLock", "Q_IN_DECIBELS", "CUTOFF_STEPS", "cutoffHz", "TIMEBASE", "FULL_SCALE_DB", "TWO_PI",

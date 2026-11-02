@@ -127,6 +127,8 @@ DUMP = """(setups) => {
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
+      // Whose sound each layer's picture moves (P6), and what its menu shows.
+      pictureMoves: [...layerPictures.moves, el.pictureMovesA.value, el.pictureMovesB.value],
       // The view: what the screen draws by. Switches by their truth, which is
       // what anything reads them by, and words as words.
       view: (() => {

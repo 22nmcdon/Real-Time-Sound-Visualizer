@@ -24,9 +24,12 @@ wrong, and what is checked for it:
   governor, from a layer's own verdict, holds that layer and not the other;
 - the menus showing where they mean nothing, and a setup losing them.
 
-All of it on ?brain=js: the site's instrument computes its routes in the core,
-which P6's core stage holds to this by parity, so the default page has none of
-it until then.
+All of that on ?brain=js, whose page computes the routes itself. The default
+page plays the site's compiled instrument, which computes its routes in the
+core - held to the page by parity - and draws its own grids; the last leg
+reads them back from it: each layer's screen of its own there too, measuring
+its own figure, and the menus reaching it. Its null is the same split with
+the layers off.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -232,6 +235,49 @@ with sync_playwright() as pw:
           and menus["odd"] == ["B", "B"], str(menus))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
+    p.close()
+
+    print("\n--- the site's compiled instrument (the default page) ---")
+    p = b.new_page(viewport={"width": 1400, "height": 900})
+    bad = []
+    p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    # The hands go to the instrument as a hand's would - clicks on its buttons
+    # and changes on its menus - and what it measures comes back with its
+    # samples (the bridge's readings). Layer A a fifth turning, B one note.
+    COMPILED = """async (layers) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const pick = (id, value) => { el[id].value = value; el[id].dispatchEvent(new Event('change')); };
+      el.dispXY.click(); setScreenKeys(true); el.midiPoly.click(); el.tuneEqual.click();
+      pick('midiLayers', layers);
+      await wait(500);
+      midiPanic();
+      for (const n of [48, 55, 72]) midiNoteOn(n, 100);
+      await wait(3000);
+      const read = state.source.layerPictures;
+      const out = { kind: state.source.kind, layers: read && JSON.parse(JSON.stringify(read)) };
+      pick('pictureMovesA', 'both'); pick('pictureMovesB', 'A');
+      await wait(800);
+      out.moved = state.source.layerPictures.moves;
+      pick('pictureMovesA', 'A'); pick('pictureMovesB', 'B');
+      midiPanic();
+      return out;
+    }"""
+    split = p.evaluate(COMPILED, "split")
+    off = p.evaluate(COMPILED, "off")
+    print("    split: %s" % split)
+    print("    off: %s" % off)
+    def own_screens(r):
+        l = r["layers"]
+        return (r["kind"] == "host" and l is not None and l["live"] and l["stages"][0]["raw"]["cover"] > 0
+                and l["stages"][1]["raw"]["cover"] > 0 and l["stages"][0]["raw"]["cover"] != l["stages"][1]["raw"]["cover"])
+    check("the compiled instrument split in X-Y gives each layer's figure a screen of its own, each measuring its own figure",
+          own_screens(split), str(split["layers"]))
+    check("and the reading fails with the layers off, where there is one picture", not own_screens(off), str(off["layers"]))
+    check("and the menus reach it: A's picture to both and B's to A's sound, from A and B",
+          split["layers"] and split["layers"]["moves"] == ["A", "B"] and split["moved"] == ["both", "A"], str(split["moved"]))
+    check("no page errors on the default page", not bad, "; ".join(bad[:3]))
     b.close()
 
 print()

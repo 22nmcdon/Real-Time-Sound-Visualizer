@@ -515,7 +515,11 @@ EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(
 // with the instrument playing had nothing to read and stood at nought. Then
 // each oscillator's phase, held value and value, for the page's picture to
 // be moved by the oscillators that move the sound rather than by copies of
-// its own, started at another moment and never in step.
+// its own, started at another moment and never in step. Last, each layer's
+// picture (P6): whether the layers have their own, then for A and for B the
+// raw coverage and change and the stage's three reads and its hold - which
+// the page cannot see otherwise, the instrument's grids being its own - and
+// whose sound each picture moves, nought for A, one for B, two for both.
 std::vector<double> brainRead;
 EXPORT(brain_readings) double* brainReadings() {
   const auto& g = instrument->generator();
@@ -527,6 +531,14 @@ EXPORT(brain_readings) double* brainReadings() {
                      static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0],
                      d.turn[1], d.turn[2], d.facing });
   for (const auto& o : instrument->lfos()) brainRead.insert(brainRead.end(), { o.phase, o.held, o.value });
+  const auto& layers = instrument->layerPictures();
+  brainRead.push_back(layers.live() ? 1.0 : 0.0);
+  for (int l = 0; l < 2; l++) {
+    const auto& raw = layers.pictures(l).raw();
+    const auto& st = layers.stage(l);
+    brainRead.insert(brainRead.end(), { raw.cover, raw.change, st.glow(), st.motion(), st.memory(), st.hold() });
+  }
+  for (const auto& m : layers.moves) brainRead.push_back(m == "A" ? 0 : m == "B" ? 1 : 2);
   return brainRead.data();
 }
 // How many lanes the picture has now: two, or four.

@@ -25,6 +25,9 @@ namespace scope {
 
 inline std::string jsToFixed(double x, int digits) {
   if (std::isnan(x)) return "NaN";
+  // An LFO's depth of "Infinity" in a setup makes a routing of infinite
+  // depth, which the page writes as JavaScript does and printf as "inf".
+  if (std::isinf(x)) return x > 0 ? "Infinity" : "-Infinity";
   std::string sign = x < 0 ? "-" : "";
   const double a = std::fabs(x);
   if (a >= 1e21) {  // toFixed hands these to ToString; nothing the page writes is this big

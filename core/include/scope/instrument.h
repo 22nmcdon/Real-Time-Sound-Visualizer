@@ -313,6 +313,8 @@ class Instrument {
     sources_->learn(*matrix_, *keyboard_);
     matrix_->setLayered(keyboard_->layersOn());
     matrix_->setStrikes(keyboard_->strikes());
+    // Whether each layer's sound is moved by its own picture (P6): as the frame's step left it, for the frame's destinations.
+    matrix_->setLayerPictures(pictureRun_->layers().live());
     matrix_->frame(nowMs_);
     /* After the matrix, so a source on the fader is already counted. The walk
        moves sliders by number and fires their handlers, none of which
@@ -323,6 +325,7 @@ class Instrument {
     // The zoom made again from what the matrix wrote, and the frame's deposits, as the page draws after its matrix.
     pictureRun_->afterMatrix();
     if (pictureFrame) {
+      pictureRun_->setLayered(keyboard_->layersOn());
       pictureRun_->draw(pictureSource_, kCanvas);
       // And the readout's: the automatic lag locked to the held note while the note is the truth, else to what is heard.
       std::optional<double> played;
@@ -333,6 +336,8 @@ class Instrument {
       }
       pictureRun_->readout(pictureSource_, played);
     }
+    // And as the draw left it, for the routes: the page's routes read it after its frame's draw.
+    matrix_->setLayerPictures(pictureRun_->layers().live());
     core_->setRoutes(matrix_->routes(nowMs_));
     const double blockMs = nowMs_;
     lastBlockMs_ = 1000.0 * frames / rate_;
@@ -448,6 +453,8 @@ class Instrument {
   }
   // The generator, for what the page reads off it: its envelope, gate, budget and drawing.
   const Generator& generator() const { return *core_; }
+  // Each layer's picture (P6), for the page's readings and a harness.
+  const LayerPictures& layerPictures() const { return pictureRun_->layers(); }
   // The two oscillators, which move the picture's destinations on the page as well as the sound here.
   const std::vector<Lfo>& lfos() const { return lfos_; }
   /* The same, as they stood when the picture's newest frame was written, for
@@ -475,6 +482,9 @@ class Instrument {
   const Clock& clock() const { return brain_->clock; }
   const ScoreState& score() const { return brain_->score; }
   const PictureRun& picture() const { return *pictureRun_; }
+  // The routes the generator was last given, and the figures the screen lays out, for a harness.
+  const std::vector<Route>& routes() const { return matrix_->lastRoutes(); }
+  std::size_t figures() const { return brain_->view.screen.figures.size(); }
   const Brain::ViewState& view() const { return brain_->view; }
   bool drawsInput() const { return drawsInput_; }
   // How many lanes the input is drawn as: the band split's four, or none.

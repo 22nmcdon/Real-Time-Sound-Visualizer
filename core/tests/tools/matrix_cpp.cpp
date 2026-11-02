@@ -27,6 +27,11 @@ class Scripted : public scope::ModSource {
   Scripted(const std::string& id, const std::map<std::string, double>& values, const std::map<std::string, int>& counts)
       : ModSource(id), values_(values), counts_(counts) {}
   double value() const override { const auto at = values_.find(id); return at == values_.end() ? 0 : at->second; }
+  // What it gives each layer's sound, for a source made `perlayer`.
+  double perLayer(int layer) const override {
+    const auto at = values_.find(id + "/" + std::to_string(layer));
+    return at == values_.end() ? 0 : at->second;
+  }
   int count() const override { const auto at = counts_.find(id); return at == counts_.end() ? 0 : at->second; }
 
  private:
@@ -55,6 +60,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
         else if (f == "picture") s->fromPicture = true;
         else if (f == "stepped") s->stepped = true;
         else if (f == "varies") s->reachVaries = true;
+        else if (f == "perlayer") s->perLayered = true;
         else if (f.rfind("reach=", 0) == 0) s->reach = num(f.substr(6));
         else if (f.rfind("index=", 0) == 0) s->index = static_cast<int>(num(f.substr(6)));
       }
@@ -62,6 +68,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       sources.push_back(std::move(s));
       m.touch();
     } else if (cmd == "value") values[arg(1)] = num(arg(2));
+    else if (cmd == "lvalue") values[arg(1) + "/" + arg(2)] = num(arg(3));
+    else if (cmd == "pictured") m.setLayerPictures(arg(1) == "1");
     else if (cmd == "count") counts[arg(1)] = static_cast<int>(num(arg(2)));
     else if (cmd == "visual") {
       scope::ModDest d;

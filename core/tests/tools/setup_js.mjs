@@ -37,7 +37,7 @@ function definition(name) {
    now makes them; otherwise by the page's own JavaScript. */
 const MODE = process.env.CORE || "js";
 const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "DEFAULTS",
-                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", "migrateSetup", "makeWasmSetupCodec"];
+                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", "migrateSetup", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
 const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
   : MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
