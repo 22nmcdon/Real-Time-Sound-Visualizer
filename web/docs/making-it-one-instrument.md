@@ -634,6 +634,14 @@ the synth's features should be chosen knowing that.
   on its own, and a pair that moves each other held so that it cannot chase itself (the
   governor's *running away* per layer, or a cap on the cross term). It needs no Scan, and
   it gives Scan two pictures to read when cross-scan comes in P7.
+  - *Decided (the owner, at the start of P6):* one menu per layer - "A's picture moves:
+    A / B / both", and B's likewise - so any combination is open, crossed included; a
+    sound that hears both pictures takes their average, so it never gets more than one
+    picture's worth of push; and a split starts with each picture moving its own sound.
+    Each layer's picture is its own screen behind the one shown - the photocell and the
+    eye still see both figures on one - measured with its own meter, ranges and governor;
+    a crossed pair's cross push is held whenever either layer's governor holds. Unsplit,
+    nothing changes. Built on the page first, then ported to the core under parity.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
