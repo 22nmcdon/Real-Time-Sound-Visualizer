@@ -36,6 +36,7 @@ SUITES = [
     ("keys", [sys.executable, "keystest.py"], "the keyboard on the screen, and the letters"),
     ("poly", [sys.executable, "polytest.py"], "every held note sounding, and which are drawn"),
     ("layer", [sys.executable, "layertest.py"], "a split or a layer: two sets of voices from one keyboard"),
+    ("harmony", [sys.executable, "harmonytest.py"], "harmony as geometry: a chord built a note at a time draws the struck chord's figure, and the readout names the outline and how fast it turns"),
     ("layerpicture", [sys.executable, "layerpicturetest.py"], "each layer's picture, and whose sound it moves: own, the other's or both, averaged, a crossed pair held"),
     ("layout", [sys.executable, "layouttest.py"], "the Sources tab, reaching any control, and search"),
     ("pedal", [sys.executable, "pedaltest.py"], "the sustain pedal: holding notes, and a source"),

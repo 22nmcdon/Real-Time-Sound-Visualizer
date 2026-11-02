@@ -460,6 +460,18 @@ def voice_scenarios():
                         fs=0.3, fr=300, vpush=0.2, bend2=1.06, ev=shaped))
     out.append(dict(shape="square", vtype=3, vcut=1500, venv=-1, fa=1, fd=60, fs=0, fr=40, drive=0.3, cbits=7,
                     ev=shaped, layer="b"))
+    # Harmony as geometry (P6): a chord built a note at a time, at sample
+    # counts that are no whole number of cycles of anything here, so a note
+    # joining at nought would be somewhere else in its cycle than in step;
+    # the same chord struck at once, and struck 37 samples late for the null
+    # (read below); and the unison copies, which keep their detune spread
+    # and so are held to the page here but not to the struck chord.
+    quick = dict(shape="ramp", a=1, d=1, s=1, samples=4800)
+    out.append(dict(ev="0:%s;733:%s;1517:%s" % (chord((C, "x")), chord((C, "x"), (E, "u")),
+                                                chord((C, "x"), (E, "u"), (G, "y"))), **quick))
+    out.append(dict(ev="0:" + chord((C, "x"), (E, "u"), (G, "y")), **quick))
+    out.append(dict(ev="37:" + chord((C, "x"), (E, "u"), (G, "y")), **quick))
+    out.append(dict(ev="0:%s;733:%s" % (chord((C, "x")), chord((C, "x"), (G, "y"))), n=3, cents=12, **quick))
     # Sliders moved mid-note and mid-release: the envelopes read their tone
     # per sample, which is what holding the tone by pointer is for.
     out.append(dict(shape="ramp", vtype=1, vcut=600, venv=1.5, ev=";".join([
@@ -532,6 +544,15 @@ hard = [(l, v) for l, v in voiced if re.search(r"/(xonly|yonly)\b", l)]
 check("A against B's notes sound on their own side alone, X's on the left and Y's on the right",
       len(hard) == 2 and all(hard_right(l, v) for l, v in hard), "%d runs" % len(hard))
 check("and the check fails with the sides swapped", hard and not any(hard_right(l, v, swap=True) for l, v in hard))
+# Harmony as geometry (P6), in the core's own answers: the chord built a note
+# at a time is the chord struck at once, once the envelopes have settled. The
+# page is held to it by web/tests/harmonytest.py, and to the core above.
+geo = [i for i, l in enumerate(lines) if l.startswith("voicesRun") and " a=1 d=1 s=1 " in l and " n=1 " in l]
+built, struck, late = (row(cpp_rows[i]) for i in geo)
+check("the core: a chord built a note at a time draws the struck chord's figure",
+      len(geo) == 3 and worst(built[4800:], struck[4800:]) < 1e-9, "%.3g" % worst(built[4800:], struck[4800:]))
+check("and the comparison fails against it struck 37 samples late", worst(built[4800:], late[4800:]) > 0.05,
+      "%.3g" % worst(built[4800:], late[4800:]))
 def js_one(call):
     return row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(call)], check=True,
                               capture_output=True, text=True).stdout)

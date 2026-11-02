@@ -2524,6 +2524,18 @@ redone natively or left out.
   `pictureMovesA` and `pictureMovesB` are setup fields with defaults and
   `pictureMovesA`/`B` hands; a value a menu has not got is the layer's own.
 
+- **Harmony as geometry since P6.** A `Voice` keeps `span`, its phase since
+  it began, unwrapped, beside `phase`, which wraps at two cycles: a wrapped
+  phase cannot be scaled by a ratio that is not whole. `reconcileVoices`
+  copies the lowest held voice's span and pitch before any birth - a birth
+  may move the vector - and a joining note is born at that span times the
+  ratio of the two pitches, wrapped, so a chord built up is the chord struck
+  at once. A double carries the span for hours of one held note before its
+  last bits matter at the rates here; a voice let go starts again from
+  nought. Parity runs a chord built a note at a time against the page, and
+  against the same chord struck at once in the core's own answers, with the
+  chord struck 37 samples late as the null.
+
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator
   has no crossings (no `crossings()`, no lines, no voice of their own - the

@@ -301,8 +301,10 @@ Seven features pass, ranked by what to build first:
    phase, so a fifth draws a closed, still figure and a slightly detuned chord *turns*:
    the beat rate becomes the rotation speed. Consonance looks still and dissonance
    restless, reliably; real audio drifts too much for that. This is what makes the synth
-   look good by construction. *Partly built: a held interval's ratio closes the rose, and
-   Play the figure locks the trace to the note.*
+   look good by construction. *Built in P6: a chord draws one figure, the same however it
+   was played into, and the readout names the outline's interval and how fast it turns.
+   Before that, a held interval's ratio closed the rose, and Play the figure locked the
+   trace to the note.*
 2. **Touch the picture to change the sound.** Every point of the figure is a pair of
    sample values, so dragging the figure is editing the waveform: grab part of the shape,
    bend it, and hear the oscillator change. A recording cannot be edited by dragging its
@@ -668,6 +670,23 @@ the synth's features should be chosen knowing that.
     generator's two figures with no layers, and the codec; `layerpicturetest.py` reads
     each layer's screen back from the compiled instrument on the default page, and the
     shell test hears B's sound moved by B's picture in the plugin.
+  - *Harmony as geometry, built:* a chord now draws one figure. A note joining notes
+    already held used to start its cycle at nought wherever the others were, so the same
+    chord drew a different figure each time it was built up; now it is born at the phase it
+    would have had if struck with them - the lowest held voice's phase since it began,
+    scaled by the two pitches' ratio - in the page and the core alike, on both layers, each
+    against its own lowest voice. Unison copies keep their detune spread. What it costs is
+    a peakier entrance: a triad built a note at a time now peaks where the triad struck at
+    once always did (a sine 1.10 where it was 1.03, a saw 1.07 where it was 0.95), and the
+    limiter is there for it. The dyad is left as it was: its two phases run on through a
+    change of interval, so the same dyad reached two ways draws two figures, and lining
+    them up legato would click. The readout says what the outline is and how fast it
+    turns - "fifth, still", "fifth, turning 0.74 a second", "no simple ratio" for a tritone,
+    each layer's with a split and A against B as one - from the nearest ratio of numbers to
+    eight, within one per cent, and the rate |q·f_high − p·f_low|, where it used to say
+    only "beating", only for the dyad, only in equal tuning. `harmonytest.py` holds it,
+    with the loop: a held just fifth reads settled to the picture and an equal third does
+    not. Parity holds the joining voices to the page's.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing

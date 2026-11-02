@@ -116,7 +116,9 @@ constexpr int kPolyTails = 8;
 
 struct Voice {
   int note = 0;
-  double phase = 0, freq = 0;
+  // `span` is the phase unwrapped, since the voice was born: what a note
+  // joining a held chord scales to start in step with it (the page says why).
+  double phase = 0, span = 0, freq = 0;
   bool held = true, wanted = false, gone = false, inner = false;
   int born = 0, fade = 0;
   Envelope env, fenv;
@@ -151,13 +153,21 @@ struct VoiceContext {
 };
 
 // The voices against what the keyboard now asks of this layer: notes kept
-// where they are held, new ones born at nought, released ones let go into
+// where they are held, new ones born at nought - or, joining notes already
+// held, in step with them (P6, harmony as geometry) - released ones let go into
 // their tails, and the oldest tails cut past `kPolyTails`. No list at all is
 // the layer switched off, and empties it.
 inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWant>* list, const LayerTone& tone,
                             VoiceContext& c) {
   c.chordMoved = true;
   if (list == nullptr) { voices.clear(); return; }
+  // Copied before any birth: a voice born below may move the vector. The
+  // lowest held voice is the reference only where held voices are out of step
+  // (a key retuned under it); in step, any would do. See the page's comment.
+  double refSpan = 0, refFreq = 0;
+  for (const auto& v : voices) {
+    if (v.held && !v.gone && v.freq > 0 && (refFreq == 0 || v.freq < refFreq)) { refFreq = v.freq; refSpan = v.span; }
+  }
   for (auto& v : voices) v.wanted = false;
   for (const auto& want : *list) {
     const auto gains = roleGains(want.role);
@@ -167,6 +177,8 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
       voices.emplace_back(c.rate, tone);
       voice = &voices.back();
       voice->note = want.note;
+      voice->span = refFreq > 0 ? refSpan * (want.freq / refFreq) : 0;
+      voice->phase = voice->span - kPhaseWrap * std::floor(voice->span / kPhaseWrap);
       voice->gains = gains; voice->targets = gains;
       voice->born = ++c.births;
       voice->env.reset(0);
@@ -198,6 +210,7 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     if (voice.gone) continue;
     const double f = c.qMask ? quantise(voice.q, voice.freq * bend, c.qMask, c.qHold, c.qGlide) : voice.freq * bend;
     voice.phase += kTwoPi * f * dt;
+    voice.span += kTwoPi * f * dt;
     if (voice.phase >= kPhaseWrap) voice.phase -= kPhaseWrap;
     if (voice.phase < 0) voice.phase += kPhaseWrap;
     double wave;

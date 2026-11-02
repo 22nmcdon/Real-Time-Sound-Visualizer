@@ -4505,3 +4505,12 @@ one-line function lifted by `definition()` runs to the next closing brace on a
 line of its own, which is the end of the function after it: `stagePush` carried
 the page's `layerPicturesOn` into the picture harness, over the harness's own,
 until the stand-in was put after the lifted code.
+
+**A wrapped phase cannot be scaled.** The voices' phase wraps at two cycles,
+which is a whole number of cycles of the voice and nothing else, so P6's
+joining note - born at the lowest held voice's phase times the ratio of their
+pitches - cannot be worked out from it: four-thirds of a phase that has wrapped
+is not four-thirds of the phase. The voices carry `span`, the phase since birth,
+unwrapped, for it. And the core's `voices` getter hands out copies, so a test
+that sets a voice's phase through it to prove a check can fail changes nothing
+and reads nought; the nulls in `harmonytest.py` compare out of step instead.
