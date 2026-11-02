@@ -4469,3 +4469,25 @@ it the fifth from `fixtures/` with `--use-file-for-fake-audio-capture`; a check
 that wants a known signal on the microphone should do the same, or hand over
 an oscillator's stream where the page asks for one, as `livefxtest.py` and
 `braintest.py` do.
+
+**"A figure each" is not only a split.** Each layer's picture (P6) turns on
+while the source lays out two figures - but the second generator, with no
+split at all, lays out a figure each too, its figure in layer B's lanes. A
+condition that asked only for two figures would have given the second
+generator a layer's screen and split its push from the generator's; a mutant
+that dropped the split from `layerPicturesOn` lived until a check drew the
+second generator unsplit. Ask whether there are layers, not how many figures.
+And a still layer's screen is nearly empty: its change, being relative to its
+own small energy, reads large from the tail of notes just let go, so the
+layer checks judge activity - coverage times change - not change alone.
+
+**The compiled codec writes what it does not know.** A setup field added on the
+page alone - built there first, as the plan's page stages are - is written into
+every code the site copies, even at its default: the core's codec leaves out a
+key that equals *its* default, and has none for a key it has never heard of.
+Nothing breaks, since the page reads the field back as its default, but the
+codes stop being the page's own and `wasmtest.py`'s preset comparison goes red
+on all of them. Put such a field on `SETUP_AHEAD_OF_CORE`, which takes it out at
+its default before the core encodes; a value off the default still goes through,
+and the core writes it as read. The list empties when the core learns the field,
+and a check fails while a learnt name stays on it.

@@ -1397,6 +1397,26 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <option value="against">A against B</option>
               </select>
             </div>
+            <!-- P6: each layer's picture, and whose sound it moves. One row, two
+                 menus, where the arpeggiator's row was before it went to the
+                 drawer, so a split does not make Play taller than it was. Shown
+                 only while the layers draw a figure each: A against B is one
+                 figure, with one picture to read. -->
+            <div class="menu-row" id="pictureMovesRow" hidden>
+              <span class="menu-label">Pictures</span>
+              <div class="grow">
+                <select id="pictureMovesA" aria-label="Whose sound layer A's picture moves"
+                        title="Whose sound layer A's picture moves" style="flex:1 1 0; min-width:0">
+                  <option value="A" selected>A &rarr; A</option><option value="B">A &rarr; B</option>
+                  <option value="both">A &rarr; both</option>
+                </select>
+                <select id="pictureMovesB" aria-label="Whose sound layer B's picture moves"
+                        title="Whose sound layer B's picture moves" style="flex:1 1 0; min-width:0">
+                  <option value="B" selected>B &rarr; B</option><option value="A">B &rarr; A</option>
+                  <option value="both">B &rarr; both</option>
+                </select>
+              </div>
+            </div>
             <p class="menu-note" id="midiLayersNote" hidden></p>
             <div class="menu-row" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
@@ -3514,7 +3534,17 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         you put it. And it is on a pedal: a keyboard's expression pedal (the Nord's swell,
         controller 11) sets it. The reads live
         under the same rules as the photocell below: on any one control they share its half
-        with the photocell and with anything you route from the picture yourself.</span></li>
+        with the photocell and with anything you route from the picture yourself.
+        <br><br>
+        Split into two sounds, each layer's figure is also a picture of its own, read on its
+        own, and <i>Pictures</i>, in the Keyboard section, says whose sound each moves:
+        <i>A &rarr; A</i> and <i>B &rarr; B</i> to start, each picture its own sound's;
+        <i>A &rarr; B</i> to send A's picture to the other sound; <i>both</i> to send it to
+        both. A sound that hears two pictures takes their average, so it is never pushed
+        harder than by one. When the two pictures move each other's sounds, either one
+        running away reins in the crossing as well as itself, so the pair cannot chase
+        itself up. On the site's compiled instrument this comes with the next update; on
+        <i>?brain=js</i> it is here now.</span></li>
 
       <li><b>The photocell: the picture moving the controls</b>
         <span><i>Photocell</i>, above the screen, puts a light sensor on it (with the
@@ -4071,7 +4101,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         note layer A draws on X and every note B draws on Y &mdash; the comping against the
         melody. With a split on, the readout says where, and when a layer is leaving notes
         out of its outline it says which: <i>outline A 2 of 4, B 1 of 1</i>. While your input is drawn the
-        generator plays one layer: B's picture would have nowhere to go.</span></li>
+        generator plays one layer: B's picture would have nowhere to go. With a figure each,
+        each figure is also a picture that moves a sound: see <i>Pictures</i> under the
+        picture stage.</span></li>
 
       <li><b>No keyboard? Keys on the screen</b>
         <span><i>Show keys</i>, in the Bench's <i>Play</i> tab, puts two octaves along the
@@ -4402,6 +4434,7 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow", "midiEditA",
                   "midiEditB", "midiLayerPair", "midiLayersNote", "layerBNote", "genTitle",
+                  "pictureMovesRow", "pictureMovesA", "pictureMovesB",
                   "midiPolyJustRow", "midiPolyJust",
                   "midiDrive", "midiHold", "midiTruth", "midiFollow",
                   "keysOpen", "screenKeys", "keysBed", "keysDown", "keysUp",
@@ -6265,7 +6298,9 @@ function fadeStep() {
    hears the same envelope on a layer. */
 const stepFade = new Map();
 function sourceNow(source, layer = 0) {
-  const target = source.value();
+  // A source that answers per layer (the stage's reads, while each layer has
+  // a picture of its own) is asked for this layer's sound.
+  const target = source.perLayer && layerPictures.live ? source.perLayer(layer) : source.value();
   if (fade.mode === "off" || source.stepped !== true) return target;
   const now = performance.now();
   let st = stepFade.get(source.id);
@@ -6816,6 +6851,19 @@ function compileRoutes() {
           }
           return clampLoop(total);
         },
+        /* The same per layer's sound. Each part bounded as before; the
+           stage's parts ask for that layer's pictures, every other part
+           (the photocell, a picture source routed by hand) is the shared
+           picture for both sounds. */
+        perLayer: (layer) => {
+          let total = 0;
+          for (const part of parts) {
+            const v = part.source.perLayer ? part.source.perLayer(layer) : part.source.value();
+            const amount = part.amount * fadeGain(part.key, layer);
+            total += part.unipolar ? amount * (1 - v) / 2 : amount * v;
+          }
+          return clampLoop(total);
+        },
       },
     });
   }
@@ -6831,11 +6879,12 @@ function stepRoutes() {
   if (modDirty) compileRoutes();
   // Layer B's own depths only while there is a layer B; otherwise A's.
   const layered = fade.mode !== "off" && fadeLayered();
+  const pictured = layerPictures.live;
   for (let k = 0; k < genRoutes.length; k++) {
     const route = genRoutes[k];
     if (route.index === undefined) {
       route.held = sourceNow(route.source, 0);
-      route.heldB = layered ? sourceNow(route.source, 1) : route.held;
+      route.heldB = layered || (pictured && route.source.perLayer) ? sourceNow(route.source, 1) : route.held;
     }
     route.amount = route.key === undefined ? route.full : route.full * fadeGain(route.key, 0);
     route.amountB = route.key === undefined || !layered ? route.amount : route.full * fadeGain(route.key, 1);
@@ -14837,6 +14886,7 @@ const phosphor = {
 function phosphorFade(resized) {
   phosphor.cost = 0;
   pictureEngine.fade(state.persistence, resized);
+  layerPicturesFade(resized);
 }
 
 /* The fade, on a grid and its path's moments: once a frame, as the canvas
@@ -15218,9 +15268,9 @@ const shapeX = new Float32Array(2048), shapeY = new Float32Array(2048);
    the engine, so the compiled core is given exactly what the JavaScript
    reads. */
 const NO_LANE = new Float32Array(0);
-function pairOfFrame(frame) {
+function pairOfFrame(frame, lanes = state.xyPair) {
   if (!frame) return null;
-  const [ax, ay] = state.xyPair;
+  const [ax, ay] = lanes;
   const left = frame.channels[ax] || frame.channels[0];
   const right = frame.channels[ay] || frame.channels[1] || left;
   if (!left || !right) return { left: NO_LANE, right: NO_LANE, n: 0, gx: 1, gy: 1, ox: 0, oy: 0, spin: 0 };
@@ -15316,8 +15366,10 @@ function monitorLimiting() {
 }
 
 function pictureStep(frame, elapsed) {
-  pictureEngine.pictureStep(photo, picture, pairOfFrame(frame), elapsed, state.display === "spect", monitorLimiting());
-  pictureStageStep(picture, elapsed, state.display === "spect", pictureMeter.verdict() === "running away");
+  const spect = state.display === "spect", limiting = monitorLimiting();
+  pictureEngine.pictureStep(photo, picture, pairOfFrame(frame), elapsed, spect, limiting);
+  pictureStageStep(picture, elapsed, spect, pictureMeter.verdict() === "running away");
+  layerPicturesStep(frame, elapsed, spect, limiting);
 }
 
 /* --- the picture stage (P3 of making-it-one-instrument.md) ------------------
@@ -15389,6 +15441,44 @@ const STAGE_DEFAULT = 60;      // the amount, in percent, when a setup does not 
 const STAGE_HOLD_FALL = 0.5, STAGE_HOLD_RISE = 0.1, STAGE_HOLD_FLOOR = 0.25;
 const pictureStage = { glow: 0, motion: 0, memory: 0, familiar: 0, hold: 1, range: { glow: null, motion: null } };
 
+/* EACH LAYER'S PICTURE (P6, the owner's): split into two sounds, the keyboard
+   draws two figures, one in each colour, and each is also laid into a screen
+   of its own behind the one shown - the shown screen, the photocell and the
+   eye still see both on one. Each layer's screen has its own meter, its own
+   stage (reads, ranges, familiarity) and its own hold, and a menu per layer
+   says whose sound its picture moves: its own, the other's, or both.
+
+   A sound that hears both pictures takes their AVERAGE, so it never gets more
+   than one picture's worth of push - the loop's total per destination is the
+   other bound, as it always was. A CROSSED pair - A's picture moving B's sound
+   while B's moves A's - can chase itself: B's sound draws B's picture, which
+   moves A's sound, which draws A's picture, which moves B's sound. So in a
+   crossed pair each cross term is held by the lower of the two holds: either
+   layer's governor reining its loop in reins the crossing in too. A picture
+   moving only its own sound keeps its own hold, as unsplit.
+
+   Only while the layers draw a figure each, in X-Y, on a generator whose
+   routes the page computes (the tone source): A against B is one figure with
+   one picture; Y-T draws lanes, not figures; and the site's instrument
+   computes its routes in the core, which has none of this until P6's core
+   stage. Anywhere else both sounds hear the one shared picture, exactly as
+   before, and the layer screens are neither drawn nor measured. */
+const LAYER_MOVES = [["A", "B", "both"], ["B", "A", "both"]];
+const makeLayerValues = () => ({ round: 0, cover: 0, change: 0, novelty: 0, signed: 0, bored: 0,
+                                 raw: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, bored: 0 } });
+const makeLayerStage = () => ({ glow: 0, motion: 0, memory: 0, familiar: 0, hold: 1, range: { glow: null, motion: null } });
+const layerPictures = {
+  moves: ["A", "B"],           // whose sound A's picture moves, and B's
+  engines: null,               // made the first time a split needs them
+  values: [makeLayerValues(), makeLayerValues()],
+  stages: [makeLayerStage(), makeLayerStage()],
+  live: false,                 // drawn into this frame
+};
+function pictureMovesOf(value, own) {
+  const allowed = LAYER_MOVES[own === "A" ? 0 : 1];
+  return allowed.includes(value) ? value : own;
+}
+
 /* A read against the range it has had lately: the top follows a rise at once
    and relaxes back slowly, the bottom likewise, and the reading is where it
    sits between them, over a span of at least `least`. */
@@ -15401,26 +15491,26 @@ function stageRescale(range, x, dt, least) {
   return { range: { lo, hi }, out };
 }
 
-function pictureStageStep(values, elapsedMs, spect, running) {
-  if (spect) { pictureStage.glow = pictureStage.motion = pictureStage.memory = pictureStage.familiar = 0; return; }
+function pictureStageStep(values, elapsedMs, spect, running, stage = pictureStage) {
+  if (spect) { stage.glow = stage.motion = stage.memory = stage.familiar = 0; return; }
   const dt = Math.max(0, elapsedMs) / 1000;
-  pictureStage.hold = running ? Math.max(STAGE_HOLD_FLOOR, pictureStage.hold - STAGE_HOLD_FALL * dt)
-                              : Math.min(1, pictureStage.hold + STAGE_HOLD_RISE * dt);
+  stage.hold = running ? Math.max(STAGE_HOLD_FLOOR, stage.hold - STAGE_HOLD_FALL * dt)
+                              : Math.min(1, stage.hold + STAGE_HOLD_RISE * dt);
   // How much it is repeating itself: one with novelty at nought, nought at
   // twice its floor - the same scale boredom reads novelty on. The raw
   // reading, not the slewed: the slewed one climbs from nought towards the
   // meter's "nothing known yet, so new" of one, and for its first half second
   // read as a picture repeating itself before anything had been seen.
   const repeating = Math.max(0, Math.min(1, 1 - values.raw.novelty / (2 * NOVELTY_FLOOR)));
-  pictureStage.familiar += dt * (BORED_RISE * repeating - BORED_LEAK * pictureStage.familiar);
-  pictureStage.familiar = Math.max(0, Math.min(1, pictureStage.familiar));
+  stage.familiar += dt * (BORED_RISE * repeating - BORED_LEAK * stage.familiar);
+  stage.familiar = Math.max(0, Math.min(1, stage.familiar));
   for (const key of ["glow", "motion"]) {
     const reading = key === "glow" ? values.cover : values.change;
-    const next = stageRescale(pictureStage.range[key], reading, dt, STAGE_MIN_SPAN[key]);
-    pictureStage.range[key] = next.range;
-    pictureStage[key] = next.out;
+    const next = stageRescale(stage.range[key], reading, dt, STAGE_MIN_SPAN[key]);
+    stage.range[key] = next.range;
+    stage[key] = next.out;
   }
-  pictureStage.memory = Math.max(values.bored, pictureStage.familiar);
+  stage.memory = Math.max(values.bored, stage.familiar);
 }
 
 // The stage's routings: made afresh when the amount moves, never saved.
@@ -15438,6 +15528,73 @@ function stageRoutings() {
 const isStageKey = (key) => key.startsWith("stage.");
 // What a read hands the matrix: the read, held back while the loop runs away.
 function stagePush(key) { return pictureStage[key] * pictureStage.hold; }
+
+function layerPicturesOn() {
+  const source = state.source;
+  if (!source || source.kind === "host" || state.display !== "xy" || !layersOn()) return false;
+  const figures = sourceFigures();
+  return !!figures && figures.length === 2;
+}
+
+/* What a read hands the matrix for one layer's sound: the pictures that sound
+   hears, each through its hold, averaged when it hears both. */
+function layerPush(key, layer) {
+  if (!layerPictures.live) return stagePush(key);
+  const [movesA, movesB] = layerPictures.moves;
+  // Whether this sound hears A's picture, and B's.
+  const hears = layer === 0 ? [movesA !== "B", movesB !== "B"] : [movesA !== "A", movesB !== "A"];
+  const crossed = movesA !== "A" && movesB !== "B";
+  const stages = layerPictures.stages;
+  const both = Math.min(stages[0].hold, stages[1].hold);
+  const term = (picture) => stages[picture][key]
+    * (picture !== layer && crossed ? both : stages[picture].hold);
+  if (hears[0] && hears[1]) return (term(0) + term(1)) / 2;
+  if (hears[0]) return term(0);
+  if (hears[1]) return term(1);
+  return 0;
+}
+
+/* The two layer screens, once a frame after the shown one: faded with it,
+   measured and staged each on its own. Made the first time they are needed,
+   of the same kind as the shown screen's engine, and wiped whenever they come
+   back after a frame without them, so a split taken up again does not read
+   what was left from last time. */
+function layerEnginesNeeded() {
+  if (!layerPictures.engines) {
+    const make = () => {
+      if (pictureCoreKind === "wasm") {
+        try { return makeWasmPictureEngine(wasmModule()); } catch (error) { /* the JavaScript one, as the shown screen falls back */ }
+      }
+      return makePictureEngine();
+    };
+    layerPictures.engines = [make(), make()];
+  }
+  return layerPictures.engines;
+}
+function layerPicturesFade(resized) {
+  const on = layerPicturesOn();
+  if (on) {
+    const wipe = resized || !layerPictures.live;
+    for (const engine of layerEnginesNeeded()) engine.fade(state.persistence, wipe);
+  }
+  layerPictures.live = on;
+}
+function layerPicturesDeposit(figure, xs, ys, count, steps) {
+  if (!layerPictures.live || figure > 1) return;
+  layerPictures.engines[figure].deposit(plot, xs, ys, count, steps);
+}
+const noPhotocell = { on: false, u: 0, v: 0, value: 0, raw: 0 };
+function layerPicturesStep(frame, elapsed, spect, limiting) {
+  if (!layerPictures.live) return;
+  const figures = sourceFigures();
+  if (!figures || figures.length !== 2) { layerPictures.live = false; return; }
+  for (let l = 0; l < 2; l++) {
+    const engine = layerPictures.engines[l];
+    engine.pictureStep(noPhotocell, layerPictures.values[l], pairOfFrame(frame, figures[l]), elapsed, spect, limiting);
+    pictureStageStep(layerPictures.values[l], elapsed, spect, engine.meter.verdict() === "running away",
+                     layerPictures.stages[l]);
+  }
+}
 /* A source a hand can patch: all but the stage's reads, which are routed by
    the stage alone. Offering them in the chips, the editor and the search put
    three inkless chips called Glow, Motion and Memory beside the oscillators. */
@@ -16068,8 +16225,10 @@ function drawXY(frame, fit, elapsed) {
   if (colours !== null) {
     strokeBeam(ctx, figure === 0 ? "xy" : "xy" + figure, n, colours, elapsed, 1.4);
     phosphorDeposit(beamX, beamY, n, beamStepOf);
+    layerPicturesDeposit(figure, beamX, beamY, n, beamStepOf);
   } else {
     phosphorDeposit(beamX, beamY, n, null);
+    layerPicturesDeposit(figure, beamX, beamY, n, null);
     // Drawn in the accent rather than in either channel's ink: the figure is
     // both channels at once and belongs to neither. Always the accent: X-Y
     // throws time away, so there is nothing for a trigger to align and
@@ -18599,6 +18758,9 @@ function syncMidi() {
     el.midiLayerRow.hidden = !on;
     el.midiLayers.value = midi.layers.mode;
     el.midiLayerPair.value = midi.layers.pair;
+    el.pictureMovesRow.hidden = !(on && midi.layers.pair === "each");
+    el.pictureMovesA.value = layerPictures.moves[0];
+    el.pictureMovesB.value = layerPictures.moves[1];
     el.midiSplitLearn.hidden = midi.layers.mode !== "split";
     // Short, because it sits beside the menu in a 255 px column: "split" in
     // the menu and "at C4" beside it read as one phrase.
@@ -18729,7 +18891,10 @@ el.midiLayerPair.addEventListener("change", () => {
   midi.layers.pair = el.midiLayerPair.value;
   syncLayers();
   midiApplyNotes();
+  syncMidi();
 });
+el.pictureMovesA.addEventListener("change", () => { layerPictures.moves[0] = pictureMovesOf(el.pictureMovesA.value, "A"); });
+el.pictureMovesB.addEventListener("change", () => { layerPictures.moves[1] = pictureMovesOf(el.pictureMovesB.value, "B"); });
 el.midiEditA.addEventListener("click", () => { midi.layers.edit = 0; syncLayerPanel(); syncMidi(); });
 el.midiEditB.addEventListener("click", () => { midi.layers.edit = 1; syncLayerPanel(); syncMidi(); });
 
@@ -19077,7 +19242,7 @@ const DEFAULTS = {
      layers has none, and B should then sound like A - which is what a
      default of its own could not say. `restore` falls back to A's. */
   midiDrawCountB: 2, midiDrawWhichB: "outer",
-  layers: "off", splitAt: 60, layerPair: "each",
+  layers: "off", splitAt: 60, layerPair: "each", pictureMovesA: "A", pictureMovesB: "B",
   photoOn: false, photoU: 0.75, photoV: 0.5, pictureAmount: STAGE_DEFAULT,
   midiDrive: "wave,harmonograph,figure", cc: "",
   // Additive: a code from before these plays no drawing at its note's pitch.
@@ -19235,6 +19400,7 @@ function snapshot() {
     midiDrawCount: midi.draws[0].count, midiDrawWhich: midi.draws[0].which,
     midiDrawCountB: midi.draws[1].count, midiDrawWhichB: midi.draws[1].which,
     layers: midi.layers.mode, splitAt: midi.layers.point, layerPair: midi.layers.pair,
+    pictureMovesA: layerPictures.moves[0], pictureMovesB: layerPictures.moves[1],
     midiPolyJust: midi.polyJust,
     photoOn: photo.on, photoU: Math.round(photo.u * 1000) / 1000,
     photoV: Math.round(photo.v * 1000) / 1000,
@@ -19408,6 +19574,8 @@ function restoreInto(partial) {
   midi.layers.mode = ["split", "layer"].includes(s.layers) ? s.layers : "off";
   midi.layers.point = Number.isInteger(s.splitAt) ? Math.max(0, Math.min(127, s.splitAt)) : 60;
   midi.layers.pair = s.layerPair === "against" ? "against" : "each";
+  layerPictures.moves[0] = pictureMovesOf(s.pictureMovesA, "A");
+  layerPictures.moves[1] = pictureMovesOf(s.pictureMovesB, "B");
   midi.layers.learning = false;
   // Layer B's sound, or layer A's where the code has none of B's.
   const given = partial || {};
@@ -20870,6 +21038,17 @@ function migrateSetup(setup) {
    throws - a unit past 0xFF in a code being made, a setup the migration
    cannot stamp - this throws too, and where it reads nothing - a code that is
    not base64, or not a string at all - so does this. */
+/* Setup fields the page has and the compiled core does not yet: each layer's
+   picture menus (P6a), built on the page first because the page's engine is
+   the reference the core is ported to. The core encodes a key it has no
+   default for even at the page's default, so every code copied on the site
+   would carry them; at their defaults they are taken out before the core
+   sees the snapshot, which gives the code the page's own codec makes. Set to
+   anything else they go through and the core writes them as it reads them.
+   The core stage gives them defaults and empties this list; wasmtest.py goes
+   red on any name here the core has learnt, so it cannot be left behind. */
+const SETUP_AHEAD_OF_CORE = ["pictureMovesA", "pictureMovesB"];
+
 function makeWasmSetupCodec(module) {
   const wasi = { fd_close: () => 0, fd_seek: () => 0, fd_write: () => 0 };
   const x = new WebAssembly.Instance(module, { wasi_snapshot_preview1: wasi }).exports;
@@ -20894,7 +21073,14 @@ function makeWasmSetupCodec(module) {
       // and null as null, where the page's throws. The page only ever hands
       // over a snapshot; this keeps the two from differing on what it does not.
       if (snap === null || typeof snap !== "object" || Array.isArray(snap)) return encodeSetupHere(snap);
-      put(JSON.stringify(snap));
+      let handed = snap;
+      for (const key of SETUP_AHEAD_OF_CORE) {
+        if (key in handed && handed[key] === DEFAULTS[key]) {
+          if (handed === snap) handed = { ...snap };
+          delete handed[key];
+        }
+      }
+      put(JSON.stringify(handed));
       if (x.setup_encode() < 0) throw new Error("The string to be encoded contains characters outside of the Latin1 range.");
       return taken();
     },
@@ -24776,7 +24962,8 @@ for (const source of PICTURE_SOURCES) {
 }
 for (const source of STAGE_SOURCES) {
   registerSource({ id: source.id, label: source.label, family: "stage", bipolar: false, reach: source.reach,
-                   fromPicture: true, byHand: false, value: () => stagePush(source.key) });
+                   fromPicture: true, byHand: false, value: () => stagePush(source.key),
+                   perLayer: (layer) => layerPush(source.key, layer) });
 }
 
 let photoDrag = null;

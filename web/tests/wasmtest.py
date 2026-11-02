@@ -504,6 +504,25 @@ with sync_playwright() as pw:
     check("%d presets: each codec makes the same code from the snapshot, and reads each code back the same" % len(srows),
           srows and not sbad and all(r[2] > 10 for r in srows), ", ".join(sbad[:4]))
     check("and the comparison sees a frequency a hertz higher", all(r[3] for r in srows))
+    # The page's fields the core has no default for yet (SETUP_AHEAD_OF_CORE)
+    # are taken out at their defaults before the core encodes, which is what
+    # makes the codes above agree. That list is meant to empty at the core
+    # stage, so each name on it has to be one the core still writes at the
+    # page's default when it is not taken out - a name the core has learnt
+    # goes red here. The null: a field the core does know, 'freq' at its
+    # default, which the core leaves out, so the same test of it reads false.
+    ahead = p.evaluate("""() => {
+      const saved = SETUP_AHEAD_OF_CORE.splice(0);
+      const writes = (key) => JSON.parse(atob(setupCodec.encode({ [key]: DEFAULTS[key] }))).hasOwnProperty(key);
+      try { return { names: saved.slice(), unknown: saved.map(writes), known: writes("freq"),
+                     stripped: saved.map((key) => { SETUP_AHEAD_OF_CORE.push(key);
+                       const kept = JSON.parse(atob(setupCodec.encode({ [key]: DEFAULTS[key] }))).hasOwnProperty(key);
+                       SETUP_AHEAD_OF_CORE.pop(); return kept; }) }; }
+      finally { SETUP_AHEAD_OF_CORE.splice(0, 0, ...saved); }
+    }""")
+    check("every setup field the page is ahead of the core on (%s) is still one the core cannot leave out, and is left out for it"
+          % ", ".join(ahead["names"]) if ahead["names"] else "the page is ahead of the core on no setup field",
+          all(ahead["unknown"]) and not any(ahead["stripped"]) and not ahead["known"], str(ahead))
     oddbad = [r for r in st["oddRows"] + st["nameRows"] if r[1] != r[2]]
     outcomes = set(r[2] if r[2] in ("throws", "null") else "read" for r in st["oddRows"] + st["nameRows"])
     check("%d awkward codes and snapshots, the same outcome from each, a throw as a throw: %s"

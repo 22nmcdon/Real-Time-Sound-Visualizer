@@ -642,6 +642,21 @@ the synth's features should be chosen knowing that.
     eye still see both figures on one - measured with its own meter, ranges and governor;
     a crossed pair's cross push is held whenever either layer's governor holds. Unsplit,
     nothing changes. Built on the page first, then ported to the core under parity.
+  - *On the page, built:* while the layers draw a figure each in X-Y, each figure is also
+    laid into a screen of its own (two more picture engines, of the shown screen's kind,
+    made the first time a split needs them), faded with the shown one and measured on
+    its own - meter, stage, hold. The stage's reads answer per layer (`layerPush`), the
+    loop's combined route asks its parts per layer, and the layers' pushes reach the
+    generator through the route's two held values, which were already there. The two
+    screens cost about 0.2 ms a frame together. *Pictures*, a row of two menus in the
+    Keyboard section where the arpeggiator's row was, sets it, and a setup carries it
+    (two additive fields, own and own by default, so no version pass). A against B, Y-T
+    and the site's compiled instrument keep the one shared picture: the last until the
+    core stage, which is next. `layerpicturetest.py` holds it. The compiled setup codec
+    writes a key it has no default for even at the default, so until then the two fields
+    are on `SETUP_AHEAD_OF_CORE` and taken out at their defaults before it sees a
+    snapshot; the core stage gives them defaults and empties the list, and `wasmtest.py`
+    goes red on any name left on it that the core has learnt.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
