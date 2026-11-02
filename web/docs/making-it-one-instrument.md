@@ -307,7 +307,10 @@ Seven features pass, ranked by what to build first:
    sample values, so dragging the figure is editing the waveform: grab part of the shape,
    bend it, and hear the oscillator change. A recording cannot be edited by dragging its
    picture. The most immediately striking thing to show anyone. *Partly built: your
-   drawing and the drawn cycle; bending a live figure is new.*
+   drawing and the drawn cycle; bending a live figure is new.* An idea from the owner, to
+   think through before it is built: the bend on a knob as well as under the hand - turning
+   it alters the picture, and so the sound - which a host could automate, and which may be
+   one of the knobs that replace the macros.
 3. **The picture plays the oscillator back.** The picture stage's reads drive the
    oscillator's own shape (morph, fold, sync), so the figure reshapes itself and the sound
    moves under one held chord. In the effect the same reads can only shape the output.
