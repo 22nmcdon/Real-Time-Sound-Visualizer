@@ -59,7 +59,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "unisonAsked", "oscStep"], p.rate);
     const t = { shape: p.shape, width: 0.25, table: 1.5, morph: 0, fmIndex: p.fm, modRatio: p.mod, ringMix: p.ring,
                 syncRatio: p.sync, subLevel: p.sub, subOctave: p.suboct, subShape: p.subsine ? "sine" : "square",
-                unison: p.n, unisonCents: p.cents, vcfType: 0, vcfQ: 0.707, drive: 0, fold: 0, crushBits: 0, crushHz: 0 };
+                unison: p.n, unisonCents: p.cents, warp: p.warp, warpAt: p.at, vcfType: 0, vcfQ: 0.707, drive: 0, fold: 0, crushBits: 0, crushHz: 0 };
     const o = c.makeOsc(), x = c.makeVoiceFx(), bars = p.bars === "-" ? undefined : p.bars, values = [];
     c.voiceFxFor(t, x, p.fmr === 1, p.syncr === 1, false);
     let base = 0;
@@ -68,6 +68,9 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       const hz = p.hz + (p.hz2 - p.hz) * i / p.samples;
       x.fmI = p.fm;
       x.syncR = p.sync + p.sweep * i / p.samples;
+      // The bend, its centre swept so it wraps past the end of the cycle.
+      const at = p.at + p.atsweep * i / p.samples;
+      x.warpA = p.warp; x.warpC = at - Math.floor(at);
       base += f.TWO_PI * hz / p.rate;
       if (base >= c.PHASE_WRAP) base -= c.PHASE_WRAP;
       values.push(c.oscStep(o, base, p.offset, hz, t, bars, p.amount, x));
@@ -92,7 +95,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       drive: n("drive"), fold: n("fold"), crushBits: n("cbits"), crushHz: n("chz"), unison: n("n"),
       unisonCents: n("cents"), fmIndex: n("fm"), modRatio: n("mod"), ringMix: n("ring"), syncRatio: n("sync"),
       subLevel: n("sub"), subOctave: n("suboct"), subShape: n("subsine") === 1 ? "sine" : "square",
-      width: n("width"), table: n("table"), morph: n("morph"),
+      width: n("width"), table: n("table"), morph: n("morph"), warp: n("warp"), warpAt: n("wat"),
     });
     /* On layer B the other layer's filter envelope is different, so a voice
        that read layer A's view would be told apart from one reading B's. */
@@ -109,7 +112,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     c.__set("qMaskNow", n("qmask")); c.__set("qGlide", n("qglide")); c.__set("shapeFactor", n("factor"));
     const x = c.makeVoiceFx();
     c.voiceFxFor(t, x, n("fmr") === 1, n("syncr") === 1, n("shr") === 1);
-    x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = n("vpush");
+    x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = n("vpush"); x.warpA = t.warp; x.warpC = t.warpAt;
     c.setShaping(t, n("dp"), n("fp"));
     const bars = p.bars === "-" ? undefined : arg(p.bars);
     const events = new Map();

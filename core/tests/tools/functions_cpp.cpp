@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
       t.fmIndex = d("fm"); t.modRatio = d("mod"); t.ringMix = d("ring"); t.syncRatio = d("sync");
       t.subLevel = d("sub"); t.subOctave = static_cast<int>(d("suboct")); t.subSine = d("subsine") == 1;
       t.unison = d("n"); t.unisonCents = d("cents");
+      t.warp = d("warp"); t.warpAt = d("at");
       std::array<double, 9> weights {};
       scope::WaveTables bars;
       if (p["bars"] != "-") { const auto v = numbers(p["bars"]); for (std::size_t k = 0; k < 9; k++) weights[k] = v[k]; bars.weights = &weights; }
@@ -102,6 +103,8 @@ int main(int argc, char** argv) {
         const double hz = d("hz") + (d("hz2") - d("hz")) * static_cast<double>(i) / static_cast<double>(samples);
         x.fmI = d("fm");
         x.syncR = d("sync") + d("sweep") * static_cast<double>(i) / static_cast<double>(samples);
+        const double at = d("at") + d("atsweep") * static_cast<double>(i) / static_cast<double>(samples);
+        x.warpA = d("warp"); x.warpC = at - std::floor(at);
         base += scope::kTwoPi * hz / rate;
         if (base >= scope::kPhaseWrap) base -= scope::kPhaseWrap;
         out.push_back(scope::oscStep(o, base, d("offset"), hz, t, bars, d("amount"), x, rate));
@@ -127,6 +130,7 @@ int main(int argc, char** argv) {
       t.fmIndex = d("fm"); t.modRatio = d("mod"); t.ringMix = d("ring"); t.syncRatio = d("sync");
       t.subLevel = d("sub"); t.subOctave = static_cast<int>(d("suboct")); t.subSine = d("subsine") == 1;
       t.width = d("width"); t.table = d("table"); t.morph = d("morph");
+      t.warp = d("warp"); t.warpAt = d("wat");
       std::array<double, 9> weights {};
       scope::WaveTables bars;
       if (p["bars"] != "-") { const auto v = numbers(p["bars"]); for (std::size_t k = 0; k < 9; k++) weights[k] = v[k]; bars.weights = &weights; }
@@ -136,7 +140,7 @@ int main(int argc, char** argv) {
       c.qMask = static_cast<int>(d("qmask")); c.qGlide = d("qglide"); c.shapeFactor = static_cast<int>(d("factor"));
       scope::VoiceFx x;
       scope::voiceFxFor(t, x, d("fmr") == 1, d("syncr") == 1, d("shr") == 1);
-      x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = d("vpush");
+      x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = d("vpush"); x.warpA = t.warp; x.warpC = t.warpAt;
       scope::setShaping(c.shaping, t, d("dp"), d("fp"));
       std::map<long, std::vector<std::string>> events;
       for (const auto& e : splitOn(p["ev"], ';')) {

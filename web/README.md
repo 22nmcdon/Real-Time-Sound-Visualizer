@@ -83,6 +83,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
 | `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
+| `bendtest.py` | the Bend: off at nought to the bit, FM at one to one at a centre of nought, the pinch where Bend at puts it and its DC, the centroid rising, aliasing on every sharp shape against the note-rate and uncorrected warps, chords, the dyad, layer B, sources and the wrap, the panel and setup codes |
 | `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
@@ -4514,3 +4515,22 @@ is not four-thirds of the phase. The voices carry `span`, the phase since birth,
 unwrapped, for it. And the core's `voices` getter hands out copies, so a test
 that sets a voice's phase through it to prove a check can fail changes nothing
 and reads nought; the nulls in `harmonytest.py` compare out of step instead.
+
+**An alias test at a note that divides the rate cannot fail.** `bendtest.py`
+first measured the bend's folding at 2205 Hz, a twentieth of 44.1 kHz, and read
+-99 dB for every shape - including a warp with no correction at all. At a
+note that divides the rate, every harmonic past Nyquist folds back onto
+another harmonic, so a test that calls anything off the harmonics an alias
+sees nothing. At 2345.6 Hz the same three warps read about -45, -30 and -22 dB.
+The null beside the floor - the uncorrected warp must fail it - is what caught
+it; pick a note whose harmonics do not land on each other's folds, as
+`voicefxtest.py`'s 1.5 kHz does.
+
+**Parity's generator runs are built with 32 slots, and a destination past
+them is read as nought on both sides.** That is how a core built with fewer
+slots is meant to behave - the `|| 0` beside every push - and it made the
+bend's first parity runs blind: its two slots are 33 and 34, so a routing on
+either did nothing in the page and nothing in the core, and a wrong push or a
+wrong clamp passed. A run for a new destination past the 32nd needs
+`slots=` as many as `GEN_DESTS` has (35 since the bend), and a mutation of
+its push to prove it.

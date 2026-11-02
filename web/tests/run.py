@@ -51,6 +51,7 @@ SUITES = [
     ("drive", [sys.executable, "drivetest.py"], "shaping inside the voice: the drive's curve, the fold's Bessel harmonics, each voice on its own, before the envelope, crush, layers, the cost"),
     ("vcf", [sys.executable, "vcftest.py"], "the voice filter: Web Audio's biquad to 0.01 dB, swept at audio rate, key tracking, its envelope per note"),
     ("voicefx", [sys.executable, "voicefxtest.py"], "inside the voice: FM against Bessel, ring, sync band-limited and corrected once, the sub, unison, layers, setup codes"),
+    ("bend", [sys.executable, "bendtest.py"], "the Bend: off at nought to the bit, FM at one to one, the pinch where Bend at says, brighter, band-limited, chords, the dyad, layer B, sources, setup codes"),
     ("time", [sys.executable, "timetest.py"], "delay and chorus: repeats to the sample, ping-pong, feedback held, the tempo, sidebands, every pair once"),
     ("livefx", [sys.executable, "livefxtest.py"], "the plane and the delay on a live input: drawn and heard, the generator's arithmetic, a routing on a mono input, a burst's repeats, where it does not go"),
     ("hearing", [sys.executable, "hearingtest.py"], "the sound as sources: pitch, brightness, bands, width, flux, their continuity, and the loop"),

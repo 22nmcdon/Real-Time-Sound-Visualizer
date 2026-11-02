@@ -34,7 +34,8 @@ Json layerJson(const scope::LayerSettings& t) {
   for (const double b : t.bars) bars.a.push_back(num(b));
   o.set("bars", bars);
   o.set("morph", num(t.morph)); o.set("width", num(t.width)); o.set("table", num(t.table));
-  o.set("modRatio", num(t.modRatio)); o.set("fmIndex", num(t.fmIndex)); o.set("ringMix", num(t.ringMix));
+  o.set("modRatio", num(t.modRatio)); o.set("fmIndex", num(t.fmIndex));
+  o.set("warp", num(t.warp)); o.set("warpAt", num(t.warpAt)); o.set("ringMix", num(t.ringMix));
   o.set("syncRatio", num(t.syncRatio)); o.set("subLevel", num(t.subLevel)); o.set("subOctave", num(t.subOctave));
   o.set("subShape", str(t.subShapeName)); o.set("unison", num(t.unison)); o.set("unisonCents", num(t.unisonCents));
   o.set("drive", num(t.drive)); o.set("fold", num(t.fold)); o.set("crushBits", num(t.crushBits)); o.set("crushHz", num(t.crushHz));

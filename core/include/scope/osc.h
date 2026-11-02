@@ -27,6 +27,7 @@ struct VoiceTone {
   Shape shape = Shape::Harmonic;
   double width = 0.25, table = 1.5, morph = 0;
   double fmIndex = 0, modRatio = 1, ringMix = 0, syncRatio = 1;
+  double warp = 0, warpAt = 0.25;  // the bend (P6c): radians, and where in the cycle
   double subLevel = 0;
   int subOctave = 1;
   bool subSine = false;
@@ -69,7 +70,7 @@ struct VoiceFx {
   bool on = false, syncing = false, shaping = false, crushing = false, filtering = false;
   double vcfK = 1, vcfPush = 0;
   int n = 1;
-  double fmI = 0, syncR = 1, crushQ = 0;
+  double fmI = 0, syncR = 1, crushQ = 0, warpA = 0, warpC = 0;
   int cap = kUnisonMax;
   std::array<double, kUnisonMax> det {};
 };
@@ -82,7 +83,7 @@ inline void voiceFxFor(const VoiceTone& t, VoiceFx& x, bool fmRouted, bool syncR
   x.crushQ = t.crushBits > 0 ? std::pow(2.0, t.crushBits - 1) : 0;
   x.n = std::min(unisonAsked(t), x.cap);
   x.syncing = t.syncRatio != 1 || syncRouted;
-  x.on = t.fmIndex > 0 || fmRouted || t.ringMix > 0 || x.syncing || t.subLevel > 0 || x.n > 1;
+  x.on = t.fmIndex > 0 || t.warp != 0 || fmRouted || t.ringMix > 0 || x.syncing || t.subLevel > 0 || x.n > 1;
   for (int k = 0; k < x.n; k++) {
     x.det[static_cast<std::size_t>(k)] =
         x.n == 1 ? 1 : std::pow(2.0, t.unisonCents * (2.0 * k / (x.n - 1) - 1) / 1200);
@@ -126,8 +127,16 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
     o.m[k] += kTwoPi * f * t.modRatio * dtOf;
     if (o.m[k] >= kTwoPi) o.m[k] -= kTwoPi;
     if (o.m[k] < 0) o.m[k] += kTwoPi;
-    const double pm = fmI > 0 ? fmI * std::sin(o.m[k]) : 0;
-    const double inst = fmI > 0 ? f * (1 + fmI * t.modRatio * std::cos(o.m[k])) : f;
+    double pm = fmI > 0 ? fmI * std::sin(o.m[k]) : 0;
+    double inst = fmI > 0 ? f * (1 + fmI * t.modRatio * std::cos(o.m[k])) : f;
+    // The bend: phase modulation at one-to-one, locked to this copy's own
+    // phase and turned to `warpC` of the cycle; its rate joins FM's in
+    // `inst`, so the band-limiting is asked where the bend has taken it.
+    if (x.warpA != 0) {
+      const double d = master - kTwoPi * x.warpC;
+      pm += x.warpA * std::sin(d);
+      inst += f * x.warpA * std::cos(d);
+    }
     double v;
     if (x.syncing) {
       const double sHz = f * syncR;

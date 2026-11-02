@@ -2536,6 +2536,19 @@ redone natively or left out.
   against the same chord struck at once in the core's own answers, with the
   chord struck 37 samples late as the null.
 
+- **The Bend since P6.** `VoiceTone` has `warp` and `warpAt`, `VoiceFx` the
+  block's `warpA` and `warpC`, and `oscStep` adds `warpA * sin(master - 2 pi
+  warpC)` to FM's phase push and its derivative to FM's instantaneous
+  frequency, in that order, after FM's own terms - so the band-limiting is
+  FM's and the off case is untouched (`voiceFxFor` turns the oscillator on for
+  a bend or a routing on either half, which costs what FM costs in the
+  governor). `slot::Bend` and `slot::BendAt` follow `slot::Turn`, so a core
+  sized by the page's destinations has them and an older count reads nought.
+  `oscBend`/`oscBendAt` and B's `bBend`/`bBendAt` are setup fields with core
+  defaults and B's key map, held by parity's codec and restore runs; no
+  version pass, being additive. Bend is a candidate host parameter in place
+  of a macro; `kKnobs` is unchanged until P8 decides the eight.
+
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator
   has no crossings (no `crossings()`, no lines, no voice of their own - the

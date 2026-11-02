@@ -184,8 +184,13 @@ with sync_playwright() as pw:
     check("and with B's own plane off the routing turns nothing",
           same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
     way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: !!el.planeTurnRow.querySelector('.mod-open'),
-                                 listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === GEN_DESTS.length - 1 })""")
-    check("the Turn row takes a routing like any destination, and it is the table's last slot",
+                                 listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === SPIN_SLOT + 3
+                                   && GEN_DESTS.findIndex((d) => d.id === 'gen.turn') === SPIN_SLOT + 3 })""")
+    # It was the table's last slot when it came, so that no slot before it
+    # moved, and this asserted exactly that; since P6c the bend's two come
+    # after it, so what is held is the same thing said directly - it sits
+    # after the third axis, and the table's order is the slots'.
+    check("the Turn row takes a routing like any destination, and it sits after the third axis, where it was added",
           way == {"dest": "gen.turn", "open": True, "listed": True}, str(way))
 
     print("\n--- the core: B's own echo and chorus ---")

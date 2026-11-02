@@ -57,7 +57,8 @@ constexpr int Drawbar = 7, Morph = Drawbar + 9, Radius = Morph + 1, Twist = Radi
 constexpr int Drive = Sync + 1, Fold = Drive + 1, Vcf = Fold + 1, Echo = Vcf + 1, EchoTime = Echo + 1;
 constexpr int Swing = EchoTime + 1, Width = Swing + 1, Table = Width + 1, Spin = Table + 1;
 constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
-constexpr int Used = Turn + 1;  // the slots the loop reads
+constexpr int Bend = Turn + 1, BendAt = Bend + 1;  // the voice's bend and where it centres
+constexpr int Used = BendAt + 1;  // the slots the loop reads
 }  // namespace slot
 
 enum class Mode { Wave, Harmonograph, Figure, Wireframe };
@@ -341,7 +342,8 @@ class Generator {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
       if (r.slot == slot::Turn) turnRouted = true;
-      if (r.slot == slot::Fm) fmRouted = true;
+      // The bend is phase modulation as FM is, and switches the oscillator on alike.
+      if (r.slot == slot::Fm || r.slot == slot::Bend || r.slot == slot::BendAt) fmRouted = true;
       if (r.slot == slot::Sync) syncRouted = true;
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
@@ -392,6 +394,12 @@ class Generator {
       vxA_.syncR = std::fmax(1.0, std::fmin(8.0, a_.syncRatio + syncPush));
       vxB_.fmI = std::fmax(0.0, std::fmin(20.0, b_.fmIndex + modBOr0(slot::Fm) * 5));
       vxB_.syncR = std::fmax(1.0, std::fmin(8.0, b_.syncRatio + modBOr0(slot::Sync) * 3.5));
+      vxA_.warpA = std::fmax(-0.9, std::fmin(0.9, a_.warp + modOr0(slot::Bend) * 0.9));
+      vxB_.warpA = std::fmax(-0.9, std::fmin(0.9, b_.warp + modBOr0(slot::Bend) * 0.9));
+      const double bendAtA = a_.warpAt + modOr0(slot::BendAt) * 0.5;
+      const double bendAtB = b_.warpAt + modBOr0(slot::BendAt) * 0.5;
+      vxA_.warpC = bendAtA - std::floor(bendAtA);
+      vxB_.warpC = bendAtB - std::floor(bendAtB);
       const double drivePush = modOr0(slot::Drive) * 0.5, foldPush = modOr0(slot::Fold) * 0.5;
       vxA_.vcfPush = modOr0(slot::Vcf) * 3;
       vxB_.vcfPush = modBOr0(slot::Vcf) * 3;
@@ -629,6 +637,8 @@ class Generator {
     else if (field == "table") t.table = v;
     else if (field == "modRatio") t.modRatio = v;
     else if (field == "fmIndex") t.fmIndex = v;
+    else if (field == "warp") t.warp = v;
+    else if (field == "warpAt") t.warpAt = v;
     else if (field == "ringMix") t.ringMix = v;
     else if (field == "syncRatio") t.syncRatio = v;
     else if (field == "subLevel") t.subLevel = v;
@@ -709,7 +719,7 @@ class Generator {
     double c = 2.5;
     if (t.noise) c += 3;
     else {
-      const bool fm = t.fmIndex > 0 || fmRouted, sync = t.syncRatio != 1 || syncRouted;
+      const bool fm = t.fmIndex > 0 || t.warp != 0 || fmRouted, sync = t.syncRatio != 1 || syncRouted;
       const bool ring = t.ringMix > 0, sub = t.subLevel > 0;
       const std::string& s = t.shapeName;
       if (fm || sync || ring || sub || n > 1) {

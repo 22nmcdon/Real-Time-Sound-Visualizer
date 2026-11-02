@@ -103,6 +103,7 @@ inline std::vector<ModDest> genDests() {
   add("gen.swing", slot::Swing); add("gen.width", slot::Width); add("gen.table", slot::Table);
   add("gen.spinX", slot::Spin); add("gen.spinY", slot::Spin + 1); add("gen.spinZ", slot::Spin + 2);
   add("gen.turn", slot::Turn);
+  add("gen.bend", slot::Bend); add("gen.bendAt", slot::BendAt);
   return out;
 }
 

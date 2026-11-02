@@ -390,6 +390,9 @@ inline const std::vector<LayerControl>& layerControls() {
     { "table", "table", LayerControl::Range, hundred, byHundredRound },
     { "oscRatio", "modRatio", LayerControl::Menu, same, same },
     { "oscFm", "fmIndex", LayerControl::Range, [](double v) { return v / 10; }, [](double v) { return jsMathRound(v * 10); } },
+    { "oscBend", "warp", LayerControl::Range, [](double v) { return v * 0.009; },
+      [](double v) { return jsMathRound(v / 0.009); } },
+    { "oscBendAt", "warpAt", LayerControl::Range, hundred, byHundredRound },
     { "oscRing", "ringMix", LayerControl::Range, hundred, byHundredRound },
     { "oscSync", "syncRatio", LayerControl::Range, hundred, byHundredRound },
     { "oscSub", "subLevel", LayerControl::Range, hundred, byHundredRound },
@@ -443,6 +446,8 @@ inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
   if (f == "table") return t.table;
   if (f == "modRatio") return t.modRatio;
   if (f == "fmIndex") return t.fmIndex;
+  if (f == "warp") return t.warp;
+  if (f == "warpAt") return t.warpAt;
   if (f == "ringMix") return t.ringMix;
   if (f == "syncRatio") return t.syncRatio;
   if (f == "subLevel") return t.subLevel;
@@ -535,7 +540,8 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
   static const std::pair<const char*, const char*> keys[] = {
     { "amp", "bAmp" }, { "shape", "bShape" }, { "envAttack", "bAtk" }, { "envDecay", "bDec" }, { "envSustain", "bSus" },
     { "envRelease", "bRel" }, { "bars", "bBars" }, { "morph", "bMorph" }, { "width", "bWidth" }, { "table", "bTable" },
-    { "oscRatio", "bRatio" }, { "oscFm", "bFm" }, { "oscRing", "bRing" }, { "oscSync", "bSync" }, { "oscSub", "bSub" },
+    { "oscRatio", "bRatio" }, { "oscFm", "bFm" }, { "oscBend", "bBend" }, { "oscBendAt", "bBendAt" },
+    { "oscRing", "bRing" }, { "oscSync", "bSync" }, { "oscSub", "bSub" },
     { "oscSubOct", "bSubOct" }, { "oscSubShape", "bSubShape" }, { "oscUnison", "bUnison" }, { "oscSpread", "bSpread" },
     { "shpDrive", "bDrive" }, { "shpFold", "bFold" }, { "shpBits", "bBits" }, { "shpRate", "bRate" }, { "vcfType", "bVcf" },
     { "vcfCut", "bVcfCut" }, { "vcfRes", "bVcfRes" }, { "vcfTrack", "bVcfTrack" }, { "vcfEnvAmt", "bVcfEnv" },
@@ -985,7 +991,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   // The voice's oscillator, shaping and filter: sliders held to their range,
   // menus to their options, then each through its law.
   static const std::pair<const char*, std::pair<double, double>> oscRanges[] = {
-    { "oscFm", { 0, 100 } }, { "oscRing", { 0, 100 } }, { "oscSync", { 100, 800 } }, { "oscSub", { 0, 100 } },
+    { "oscFm", { 0, 100 } }, { "oscBend", { -100, 100 } }, { "oscBendAt", { 0, 100 } }, { "oscRing", { 0, 100 } }, { "oscSync", { 100, 800 } }, { "oscSub", { 0, 100 } },
     { "oscSpread", { 0, 50 } }, { "shpDrive", { 0, 100 } }, { "shpFold", { 0, 100 } }, { "vcfCut", { 0, 1000 } },
     { "vcfRes", { 0, 100 } }, { "vcfTrack", { 0, 100 } }, { "vcfEnvAmt", { -40, 40 } }, { "vcfAtk", { 0, 1000 } },
     { "vcfDec", { 1, 2000 } }, { "vcfSus", { 0, 100 } }, { "vcfRel", { 1, 2000 } },

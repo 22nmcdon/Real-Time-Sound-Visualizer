@@ -312,7 +312,11 @@ Seven features pass, ranked by what to build first:
    drawing and the drawn cycle; bending a live figure is new.* An idea from the owner, to
    think through before it is built: the bend on a knob as well as under the hand - turning
    it alters the picture, and so the sound - which a host could automate, and which may be
-   one of the knobs that replace the macros.
+   one of the knobs that replace the macros. *Decided in P6 (the owner chose the knob
+   first, the drag second, both setting one control): the knob is built. Bend and Bend at,
+   on the Shape tab, bend the voice's wave at one point of its cycle; the drag on the
+   screen, next, will set the same two. Bend is a candidate for a host parameter in place
+   of a macro, which P8 decides with the rest of the eight; `kKnobs` is unchanged.*
 3. **The picture plays the oscillator back.** The picture stage's reads drive the
    oscillator's own shape (morph, fold, sync), so the figure reshapes itself and the sound
    moves under one held chord. In the effect the same reads can only shape the output.
@@ -687,6 +691,23 @@ the synth's features should be chosen knowing that.
     only "beating", only for the dyad, only in equal tuning. `harmonytest.py` holds it,
     with the loop: a held just fifth reads settled to the picture and an equal third does
     not. Parity holds the joining voices to the page's.
+  - *Touching the picture, step 1, built: the Bend knob.* Two controls in the
+    Oscillator section, per layer: *Bend*, the whole travel either way with nought off,
+    and *Bend at*, where in the cycle it centres. The voice's phase is pushed on by
+    Bend times the sine of how far it is past Bend at, so the wave runs fastest there
+    (pinched) for a positive bend and slowest (swollen) for a negative one, and a
+    negative bend is a positive one half a cycle on. That is the voice's FM at one to one
+    with the modulator locked to the voice and turned: at a centre of nought it is FM at
+    ratio one, to rounding, and it shares FM's band-limiting, which asks every shape
+    about the frequency the bend has taken it to, up to 1.9 times the note. So it stays
+    in tune and harmonic on every shape, chords, the dyad and layer B, each channel of
+    a dyad bent at that point of its own cycle, which is what makes a circle stop being
+    one. Held under 0.9 radians, where the phase never runs backwards. What it costs: a
+    bent sine carries DC, since a pinched peak and a swollen trough no longer balance
+    (at full bend and a quarter cycle, 0.41 of the amplitude; the limiter and the
+    picture take it as an offset). *gen.bend* and *gen.bendAt* are destinations, not in
+    the picture stage's bundles: whether the loop turns the bend as well as the hand is
+    P7's and P8's question. `bendtest.py` holds it, and parity the core's.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing

@@ -175,12 +175,22 @@ def calls():
         dict(sub=0.8, suboct=2),
         dict(sub=0.4, subsine=1),
         dict(n=5, cents=20, fm=1.2, mod=2, ring=0.3, sync=1.5, sweep=0.7, sub=0.5, suboct=2, offset=0.4),
+        # The bend (P6c): alone at each sign, its centre swept past the end
+        # of the cycle so the wrap is crossed; with FM, sync and unison; on
+        # the dyad's right channel, whose phase starts on.
+        dict(warp=0.6, at=0.1),
+        dict(warp=-0.9, at=0.7, atsweep=1.3),
+        dict(warp=0.5, fm=1.3, at=0.25),
+        dict(warp=0.4, sync=1.6, syncr=1, at=0.9),
+        dict(warp=-0.5, n=3, cents=12, at=0.4, n2=5),
+        dict(warp=0.7, offset=1.1, at=0.55),
     ]
     for shape in ("sine", "triangle", "square", "ramp", "pulse", "morph", "drawbars", "harmonic"):
         for f in features:
             p = dict(shape=shape, rate=48000.0, hz=110.0, hz2=rng.choice([110.0, 330.0, 2600.0]), n=1, n2=1, flip=-1,
                      cents=0, fm=0, mod=1, ring=0, sync=1, sweep=0, sub=0, suboct=1, subsine=0, offset=0,
-                     amount=rng.choice([0, 0.3, 1.6, 2.5]), samples=700, fmr=0, syncr=0, bars="-")
+                     amount=rng.choice([0, 0.3, 1.6, 2.5]), samples=700, fmr=0, syncr=0, bars="-",
+                     warp=0, at=0.25, atsweep=0)
             p.update(f)
             if "n2" in f or "n" in f: p["flip"] = 350; p.setdefault("n2", p["n"])
             if shape == "drawbars" and rng.random() < 0.5: p["bars"] = weights
@@ -382,7 +392,7 @@ VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine
                       fa=5, fd=200, fs=1, fr=200, vtype=0, vcut=2000, vq=0.7071, vtrack=0, venv=0, drive=0, fold=0,
                       cbits=0, chz=0, n=1, cents=0, fm=0, mod=1, ring=0, sync=1, sub=0, suboct=1, subsine=0,
                       width=0.25, table=1.5, morph=0, qmask=0, qglide=1, factor=2, fmr=0, syncr=0, shr=0, vpush=0,
-                      dp=0, fp=0, bars="-", amount=0, bend=1, bend2=1, duck=0.9,
+                      dp=0, fp=0, bars="-", amount=0, bend=1, bend2=1, duck=0.9, warp=0, wat=0.25,
                       glide=1 - math.exp(-1 / 240), ev="0:none")
 
 def voices_call(over):
@@ -444,6 +454,9 @@ def voice_scenarios():
         out.append(dict(shape=shape, ev=two, **extra))
         # The oscillator on: unison, FM, a sub and hard sync together.
         out.append(dict(shape=shape, ev=two, n=3, cents=12, fm=0.8, mod=2, sub=0.4, sync=1.5, syncr=1, **extra))
+        # And bent (P6c), alone and on layer B.
+        out.append(dict(shape=shape, ev=two, warp=0.7, wat=0.3, **extra))
+        out.append(dict(shape=shape, layer="b", ev=two, warp=-0.6, wat=0.8, fm=0.5, **extra))
     shaped = "0:" + chord((C, "x"), (G, "y", 0.6)) + ";1200:none"
     for factor in (2, 4):
         out.append(dict(shape="square", factor=factor, drive=0.5, fold=0.2, dp=0.1, fp=-0.05, ev=shaped))
@@ -566,6 +579,18 @@ check("and against layer B's filter envelope read from layer A's tone",
       worst(js_one(lines[onb].replace("layer=b", "layer=a").replace("fa=20 fd=150 fs=0.3 fr=300",
                                                                     "fa=1 fd=37 fs=0.2 fr=23")),
             row(cpp_rows[onb])) > 1e-6)
+# The bend (P6c): its runs against the page's with the centre a hundredth of a
+# cycle off, the amount a hundredth smaller, and layer B's bend read as nought.
+# Each has to fail, or the runs above could not have told a bend that landed
+# in the wrong place, or that was not there at all, from the page's.
+bent = next(i for i, l in enumerate(lines) if l.startswith("oscRun") and " warp=0.6 " in l and " at=0.1 " in l)
+check("and against the bend centred a hundredth of a cycle off",
+      worst(js_one(lines[bent].replace(" at=0.1 ", " at=0.11 ")), row(cpp_rows[bent])) > 1e-6)
+check("and against the bend a hundredth smaller",
+      worst(js_one(lines[bent].replace(" warp=0.6 ", " warp=0.59 ")), row(cpp_rows[bent])) > 1e-6)
+bentB = next(i for i, l in enumerate(lines) if l.startswith("voicesRun") and "layer=b" in l and " warp=-0.6 " in l)
+check("and against layer B's bend left at nought",
+      worst(js_one(lines[bentB].replace(" warp=-0.6 ", " warp=0 ")), row(cpp_rows[bentB])) > 1e-6)
 # The plane: every run changes layer A's pair somewhere, so no comparison is of
 # the input passed through.
 def plane_input(i, rate, held):
@@ -647,6 +672,7 @@ print("\n--- the whole generator ---")
 FREQ, AMP, PHASE, RATIO, DETAIL, TUMBLE, DEPTH, BAR = 0, 1, 2, 3, 4, 5, 6, 7
 MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT, SWING, WIDTH, TABLE, SPIN = range(16, 30)
 TURN = SPIN + 3
+BEND, BEND_AT = TURN + 1, TURN + 2
 
 def route(slot, amount, index=-1, held=0, heldB=None, amountB=None, unipolar=0):
     return "%d/%r/%r/%d/%r/%r/%d" % (index, held, held if heldB is None else heldB, slot, amount,
@@ -707,6 +733,24 @@ def gen_runs():
                        (0, "set modRatio 2"), (0, "set subLevel 0.5"), (0, "set subOctave 2"), (0, "set subShape sine"),
                        (1024, "set syncRatio 1.7"), (1024, "routes " + "+".join([route(FM, 0.5, index=0),
                        route(SYNC, 0.3, index=1)])), (2048, "set ringMix 0.4"), (3072, "reswing")])
+    # The bend (P6c): set on the dyad, then pushed through the wrap by a
+    # routing on where it centres and past its end by a held one on its
+    # amount (an LFO at 0.7 Hz barely moves in a run this long); a
+    # chord on both layers bent apart; and a routing alone with the slider at
+    # nought, which switches the oscillator on as one on FM does. Thirty-five
+    # slots, the page's count since the bend: at the default 32 its two are
+    # past the end, read as nought on both sides, and the first mutation pass
+    # found that the push on where it centres and the clamp on its amount
+    # could each be wrong with every run still the same.
+    add("dyad-bend", [(0, "set shape ramp"), (0, "set warp 0.6"), (0, "set warpAt 0.85"), (0, "set interval 7"),
+                      (1024, "routes " + "+".join([route(BEND_AT, 0.6, index=0), route(BEND, 0.9, held=1)])),
+                      (2048, "set warp -0.4"), (3072, "set warp 0")], slots=35)
+    add("dyad-bend-routed", [(0, "set shape square"), (0, "routes " + route(BEND, 0.7, index=0))], slots=35)
+    add("layered-bend", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"), (76, "u"))),
+                         (0, "set shape morph"), (0, "set warp 0.5"), (0, "set warpAt 0.1"), (0, "set shape pulse 1"),
+                         (0, "set warp -0.7 1"), (0, "set warpAt 0.6 1"),
+                         (0, "routes " + route(BEND, 0.3, amountB=-0.5, index=1)),
+                         (1536, "set warp 0 1")], slots=35)
     add("dyad-shaped", [(0, "set shape square"), (0, "set drive 0.6"), (0, "set fold 0.3"), (0, "set shapeOS 4"),
                         (0, "set crushBits 6"), (0, "set crushHz 9000"), (1024, "routes " + route(DRIVE, 0.4, index=0)),
                         (2048, "set shapeOS 2"), (3072, "set fold 0")])
@@ -767,6 +811,11 @@ def gen_runs():
     add("governed-held", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"),
                           (0, "set drive 0.5"), (0, "set shapeOS 4"), (0, "set vcfType 2"), (0, "voices 0 " + chord),
                           (0, "voices 1 " + chord), (0, "set unison 7 1"), (0, "set fmIndex 2 1"), (0, "set drive 0.5 1")],
+        samples=2048)
+    # A bend alone on B is costed as FM is: B's copies given back or taken
+    # away differ from the page's if the core forgets it.
+    add("governed-bend", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set drive 0.5"), (0, "voices 0 " + chord),
+                          (0, "voices 1 " + chord), (0, "set unison 7 1"), (0, "set warp 0.5 1"), (0, "set drive 0.5 1")],
         samples=2048)
     # The costs of each shape's copies and single path, reported by the budget.
     for sa, sb in (("morph", "drawbars"), ("pulse", "wavetable")):
@@ -2894,7 +2943,7 @@ check("a slider set by a number holds what the text of that number would leave, 
 spent = [r[0] for r in walked if int(r[1]) != 0]
 still = [r[0] for r in walked if float(r[2]) == 0]
 check("the morph's walk over each of its %d sliders, all of them together, and the host's eight parameters allocate nothing"
-      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 85 and walked[-9][0] == "all",
+      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 87 and walked[-9][0] == "all",
       "%d made; allocating: %s; unmoved: %s" % (made, spent[:4], still[:4]))
 
 print("\n--- the hearing ---")
@@ -3281,9 +3330,9 @@ check("all %d of the page's presets load to the same instrument" % len(presets),
 rrng = random.Random(98)
 SLIDERS = ["freq", "amp", "phase", "detail", "figureRate", "swingRate", "decay", "swingDrive", "inputDepth", "detune",
            "atk", "dec", "sus", "rel", "glide", "spinX", "spinY", "spinZ", "spinRate", "depth", "morph", "width", "table",
-           "ring", "gen2Rate", "oscFm", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut",
+           "ring", "gen2Rate", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut",
            "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "bAmp", "bAtk", "bDec", "bSus", "bRel",
-           "bMorph", "bWidth", "bTable", "bFm", "bRing", "bSync", "bSub", "bSpread", "bDrive", "bFold", "bVcfCut", "bVcfRes",
+           "bMorph", "bWidth", "bTable", "bFm", "bBend", "bBendAt", "bRing", "bSync", "bSub", "bSpread", "bDrive", "bFold", "bVcfCut", "bVcfRes",
            "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel", "mac1", "mac2", "mac3", "mac4", "morphPos",
            "scoreVoices", "scoreOctaves", "arpOctaves", "planeRadius", "planeTwist", "planeScaleX", "planeScaleY", "planeShear",
            "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
@@ -3496,8 +3545,18 @@ def btime_setup():
     if trng.random() < 0.5: st.update(layers=trng.choice(["split", "layer"]), midiMode="poly")
     return _json.dumps(st)
 BTIME = [btime_setup() for _ in range(80)]
+# The bend's (P6c), made to be read, before B's echoes and planes, which are
+# read back from the end, and after the random ones, so no index moves: each
+# half in range on both layers, below and above each slider, B's alone (A's
+# left at its defaults), and B's falling back to A's. The random setups draw
+# a bend rarely enough that a range stopped at nought, not at -100, passed
+# all 779 of them in the first mutation pass.
+BEND_MADE = [_json.dumps(d) for d in ({"oscBend": -45, "oscBendAt": 80, "bBend": 30, "bBendAt": 5},
+                                      {"oscBend": -250, "oscBendAt": 130, "bBend": -101, "bBendAt": -7},
+                                      {"oscBend": 101, "bBend": "-60"}, {"bBend": -20, "bBendAt": 60},
+                                      {"oscBend": -70, "oscBendAt": 12.5}, {"oscBend": "abc", "bBendAt": None})]
 rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BTIME + BPLANE
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BEND_MADE + BTIME + BPLANE
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
@@ -3841,8 +3900,8 @@ print("\n--- layer B on the panel ---")
 # writes B's tone into them, each through its law back. The page's own
 # handlers against scope::showLayerOnPanel and the keyboard's editLayer,
 # with a keyboard there - the layers are only on with one.
-LSLIDERS = ["amp", "envAttack", "envDecay", "envSustain", "envRelease", "morph", "width", "table", "oscFm", "oscRing",
-            "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt",
+LSLIDERS = ["amp", "envAttack", "envDecay", "envSustain", "envRelease", "morph", "width", "table", "oscFm", "oscBend",
+            "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt",
             "vcfAtk", "vcfDec", "vcfSus", "vcfRel"] + ["bar%d" % k for k in range(9)]
 LMENUS = ["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"]
 def lop():
