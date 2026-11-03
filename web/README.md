@@ -4552,3 +4552,25 @@ the window lets the other notes in - the held voices' frequencies, fitted to
 the lane together, say where each is; and the cursors were catching presses in X-Y along
 lines that are only drawn in Y-T, which went unnoticed until a press there
 had something else to do.
+
+**Every suite switched off the rule a phone plays by, so the site was never
+heard on one.** The suites launch Chromium with
+`--autoplay-policy=no-user-gesture-required`, and the owner found what that hid
+with a keyboard plugged into an iPhone: the figure followed every key, the
+readout named every note, and nothing came out, on a tap of the on-screen keys
+as well. Two faults, each enough. The ask made as the page opened awaited
+`resume()`, which a browser that wants a press holds rather than refuses, and
+since `applyGeneratorSound` lets every later ask join the one in flight, no
+press could start the sound - while the stand-in brain went on drawing, which
+is why nothing looked wrong. And the presses listened for were `pointerdown`
+and `keydown`, where the rule browsers follow counts a pointerdown only from a
+mouse; a finger counts at its pointerup or touchend. Now resume is asked and
+never awaited, the context's `statechange` to running asks for the sound again,
+and `SOUND_PRESSES` names the ends of presses too. `soundstarttest.py` runs
+with the rule on and fails on the old page for a tap, a click and the page's
+own brain. What it cannot do: Chromium is more forgiving than WebKit - it lets
+a resume asked at a touch's start succeed once the touch ends - so with only
+the `statechange` in place it passes, and the other two halves are there for
+WebKit by the rule rather than by a measurement here. No WebKit is installed;
+a WebKit run of the same file is the check that is missing. Any new place that
+opens an `AudioContext` and waits on its `resume()` will hang the same way.

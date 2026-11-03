@@ -5435,6 +5435,13 @@ function routingAmount(source, amount) {
    opposite question - what depth puts the reach HERE - and that is answered by
    bisecting this function rather than by a second formula that could disagree
    with it. Two functions that must agree eventually do not. */
+/* The presses that may start sound. The end of a touch, not its start: the
+   rule browsers follow counts a pointerdown only from a mouse, and counts the
+   pointerup or touchend of a finger, so a page that listened for pointerdown
+   alone was never heard on a phone however often it was tapped. The click is
+   the end of either. */
+const SOUND_PRESSES = ["pointerdown", "pointerup", "touchend", "click", "keydown"];
+
 const GEN_DESTS = [
   { id: "gen.freq",   label: "Frequency",             slot: 0,
     reach: (v, s) => v * Math.pow(2, s) },                    // octaves
@@ -11871,8 +11878,13 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
     if (on === audible) return audible;
     if (!on) { hush(); return false; }
     try {
+      /* Asked inside the press, before anything is awaited, since a phone
+         counts only what is asked while the press is still being handled. */
+      if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
       ctx = await open();
-      if (ctx.state === "suspended") await ctx.resume();
+      /* Asked and never awaited: see the compiled instrument's setSound. Once
+         the context runs, its statechange asks for the sound again. */
+      if (ctx.state !== "running") { ctx.resume().catch(() => {}); return false; }
       await loadGeneratorModule(ctx);
 
       /* One input, mono: J3's, and nothing is connected to it unless an input
@@ -12044,6 +12056,8 @@ function makeToneSource(atRate) {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         noteDeviceRate(ctx.sampleRate);
+        const context = ctx;
+        context.addEventListener("statechange", () => { if (context.state === "running") applyGeneratorSound(); });
       }
       return ctx;
     },
@@ -13079,6 +13093,12 @@ function makeBrainHost() {
   async function start() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     noteDeviceRate(ctx.sampleRate);
+    /* Running at last - after the press a phone wanted - is when the sound is
+       asked for again, since the ask made before it was not waited on. */
+    const context = ctx;
+    context.addEventListener("statechange", () => {
+      if (context.state === "running" && state.source === source) applyGeneratorSound();
+    });
     source.rate = ctx.sampleRate;
     await loadGeneratorModule(ctx);
     const code = encodeSetup(snapshot());
@@ -13123,7 +13143,7 @@ function makeBrainHost() {
       // The credit says it is waiting, and says what it is once it is not.
       const said = () => { if (state.source === source) el.credit.textContent = source.describe(); };
       const wake = () => { if (ctx.state === "suspended") ctx.resume().then(said, () => {}); };
-      for (const kind of ["pointerdown", "keydown"]) window.addEventListener(kind, wake, { capture: true });
+      for (const kind of SOUND_PRESSES) window.addEventListener(kind, wake, { capture: true });
       ctx.resume().then(said, () => {});
     }
     return said;
@@ -13145,7 +13165,15 @@ function makeBrainHost() {
   };
   source.setSound = async (on) => {
     if (!level || !ready) return false;
-    if (on && ctx.state === "suspended") { try { await ctx.resume(); } catch (error) { return false; } }
+    if (on && ctx.state !== "running") {
+      /* Asked and not awaited. A browser that wants a press first holds
+         resume() unanswered - held, not refused - and an ask that awaited it
+         waited for ever; every press after joined that same wait, since
+         applyGeneratorSound shares one ask, so the instrument drew in silence
+         however often it was pressed. The statechange in start() asks again. */
+      ctx.resume().catch(() => {});
+      return false;
+    }
     audible = on;
     level_();
     syncMonitor();
@@ -22902,8 +22930,8 @@ function syncGeneratorSound() {
 
 /* A browser starts sound only once somebody has pressed something, so a press
    is when a generator that could not start asks again. Capturing, so a press
-   that a control stops still counts. */
-for (const kind of ["pointerdown", "keydown"]) {
+   that a control stops still counts. SOUND_PRESSES says which presses. */
+for (const kind of SOUND_PRESSES) {
   window.addEventListener(kind, () => {
     const voice = genVoice();
     if (voice && !voice.fault && !voice.audible()) applyGeneratorSound();

@@ -52,6 +52,7 @@ SUITES = [
     ("vcf", [sys.executable, "vcftest.py"], "the voice filter: Web Audio's biquad to 0.01 dB, swept at audio rate, key tracking, its envelope per note"),
     ("voicefx", [sys.executable, "voicefxtest.py"], "inside the voice: FM against Bessel, ring, sync band-limited and corrected once, the sub, unison, layers, setup codes"),
     ("bend", [sys.executable, "bendtest.py"], "the Bend: off at nought to the bit, FM at one to one, the pinch where Bend at says, brighter, band-limited, chords, the dyad, layer B, sources, setup codes"),
+    ("soundstart", [sys.executable, "soundstarttest.py"], "the first press starts the sound with the browser's rule on: nothing before it, a finger's tap on the site's instrument and the page's brain, a click"),
     ("hand", [sys.executable, "handtest.py"], "bend the figure by hand: the grabbed moment is the point's, the figure follows the pointer, only near the figure, double-click off, the reticle and cursors keep their drags, a split's own layer, a finger does not scroll, the site's instrument draws it"),
     ("time", [sys.executable, "timetest.py"], "delay and chorus: repeats to the sample, ping-pong, feedback held, the tempo, sidebands, every pair once"),
     ("livefx", [sys.executable, "livefxtest.py"], "the plane and the delay on a live input: drawn and heard, the generator's arithmetic, a routing on a mono input, a burst's repeats, where it does not go"),
