@@ -4534,3 +4534,21 @@ either did nothing in the page and nothing in the core, and a wrong push or a
 wrong clamp passed. A run for a new destination past the 32nd needs
 `slots=` as many as `GEN_DESTS` has (35 since the bend), and a mutation of
 its push to prove it.
+
+**A phase change cannot move a figure past its own edges, and a null at a
+symmetric point is the right answer.** Two things `handtest.py` learned the
+hard way. The bend moves each lane in time, so a circle's four extremes - where
+one lane is at its peak - cannot be pulled outward by any Bend at all: the
+first pulls were made there and read nought, correctly. The pulls are made on
+the diagonals, and a pull at an extreme is kept as a check that must do
+nothing. And on those diagonals X equals Y, so the first null for the grabbed
+moment - the angle measured as atan2(Y, X) instead of atan2(X, Y) - gave the
+same number as the right answer on two of the four and could not fail there;
+the angle counted the other way round is the null now. Two more, for whoever
+next reads the X-Y window: it is only as long as the timebase makes it, 441
+samples at the default, so a chord's common period often does not fit and a
+pitch tracker run on its lanes finds nothing, and one frequency's sum over
+the window lets the other notes in - the held voices' frequencies, fitted to
+the lane together, say where each is; and the cursors were catching presses in X-Y along
+lines that are only drawn in Y-T, which went unnoticed until a press there
+had something else to do.

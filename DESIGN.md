@@ -215,7 +215,7 @@ ruling on it, and the traces are what is written. Two consequences follow, both 
 | `--sage` | The trigger is locked; in tune; channels in phase. The run button's live dot. |
 | `--unresolved` | Free run. The trace goes this grey when nothing crosses the level, because a signal with no edge in it is not a fault. |
 | `--rust` | Clipping, a level over, an input that would not open; and, as the house's armed, a scope stopped or muted. A tuner's sharp or flat, which is "outside", never "wrong". |
-| `--gold` | Ready (the status chip), and the cursors. |
+| `--gold` | Ready (the status chip), the cursors, and the ring where the hand has hold of the figure. |
 | `--blush-deep` | The trigger line and its marker, the slider thumb, the selected tab: the accent doing work. |
 
 ## 10. Colour that is the oscilloscope's
@@ -264,6 +264,8 @@ anywhere on the scale, are product.
 - **The trigger**: a dashed `--blush-deep` line in the trigger source's own band only,
   with its marker. Dashed because it is a line you set, not one the signal drew.
 - **Cursors**: dotted `--gold`.
+- **The hand's mark**: a 10px ring of 1.5px `--gold`, over the trace rather than drawn into it
+  (the photocell's reticle's reason), only while the figure is held.
 - **Goniometer and tuner**: sage for in phase and in tune.
 - **Persistence**: a wash of the paper over the last frame, not a fade to black, because
   the screen is paper.

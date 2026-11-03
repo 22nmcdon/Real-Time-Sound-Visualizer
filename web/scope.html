@@ -614,6 +614,14 @@ dialog[open] { display: flex; flex-direction: column; }
 .photo-reticle[hidden] { display: none; }
 .photo-reticle:active { cursor: grabbing; }
 .photo-reticle:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+/* Where the hand has hold of the figure: the moment it grabbed, as the bend
+   now places it. Over the trace for the reticle's reason, and gold because
+   it is a marker, as the cursors are. It takes no presses. */
+.bend-mark {
+  position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  border: 1.5px solid var(--gold); border-radius: 50%; z-index: 2; pointer-events: none;
+}
+.bend-mark[hidden] { display: none; }
 .photo-reticle::before, .photo-reticle::after {
   content: ""; position: absolute; background: var(--ch6);
 }
@@ -3154,7 +3162,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 <main class="screen">
   <div class="wrap">
     <div class="panes" id="panes">
-      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
+      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><div class="bend-mark" id="bendMark" hidden></div></div>
       <div class="aside" id="aside">
         <div class="sheet pane" id="goniPane">
           <span class="pane-name">Goniometer</span>
@@ -3383,10 +3391,25 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <i>Unison</i> stacks detuned copies so the figure thickens and shimmers. <i>Bend</i>
         bends the wave at the point of its cycle <i>Bend at</i> names: up pinches it there, down
         swells it, and either way the figure bulges where you put it and the tone brightens,
-        still in tune. At nought it is off and the voice is exactly what it was. FM, Sync,
+        still in tune. At nought it is off and the voice is exactly what it was. You can also
+        set both by taking hold of the figure itself: see <i>Bend the figure by hand</i>. FM, Sync,
         Bend and Bend at can take sources. With a split, it is the layer being edited, so the
         two halves of the keyboard can be two different voices. Nothing gets louder: copies and
         the sub are mixed, not piled up.</span></li>
+
+      <li><b>Bend the figure by hand</b>
+        <span>In X&ndash;Y, the pointer turns to a hand near the figure. Take hold and pull, and
+        the figure bends where you took hold: <i>Bend at</i> goes to that moment of the cycle and
+        <i>Bend</i> to whatever brings the figure nearest your hand, so the sound changes as the
+        picture does. They are the same two sliders, moved as your hand would move them, and they
+        stay where you let go; a gold ring marks the moment you have hold of. Double-click the
+        figure to put the bend off. The bend moves the wave in time, never in level, so the figure
+        cannot be pulled past its own edges: a circle bulges on its diagonals and not at its four
+        ends, a straight line only slides along itself, and a pull it cannot follow does nothing.
+        On a chord it follows roughly, since each note bends in its own cycle. With a split, the
+        figure you take hold of is the layer you bend, and the panel goes to it. A press away from
+        the figure, the photocell's reticle and drawing on the screen are left as they were, and on
+        a phone a finger on the figure bends it rather than scrolling the page.</span></li>
 
       <li><b>Shaping: drive, fold and crush, in every note</b>
         <span>Under <i>Shaping</i>, on the Shape tab. <i>Drive</i> pushes the wave into a soft
@@ -3854,8 +3877,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 
       <li><b>Cursors are draggable</b>
         <span>Turn them on under the Bench's <i>Measure</i> tab. Two in time and two in
-        amplitude; the readout gives the difference between each pair, and &Delta;t as a
-        frequency.</span></li>
+        amplitude, on the Y&ndash;T display; the readout gives the difference between each pair,
+        and &Delta;t as a frequency.</span></li>
 
       <li><b>The longest timebase depends on the converter</b>
         <span>The scope reads its history out of an analyser, and Web Audio caps one at
@@ -16348,6 +16371,8 @@ function drawXY(frame, fit, elapsed) {
      rather than side by side, because the point of two figures on one
      graticule is to see them against each other. */
   const figures = sourceFigures() || [state.xyPair];
+  // Kept for the hand: where each figure's samples land, so a press can find one.
+  const view = { cx, cy, scale: radius * state.zoom, frame, figures: [] };
 
   ctx.save();
   ctx.beginPath();
@@ -16392,6 +16417,10 @@ function drawXY(frame, fit, elapsed) {
   const spin = frame.turned || state.analyseAt === "pre" || ownTurn ? 0 : rotateTurns();
   const { cos: rc, sin: rs } = turnOf(spin);
   const turning = spin !== 0;
+  // What turned the lanes before they arrived, which the hand takes off again to read the voice.
+  const arrived = frame.turned && figure === 0 ? rotateTurns() : 0;
+  const whole = turnOf(arrived + spin);
+  view.figures.push({ fx, fy, gainX, gainY, offX, offY, rc: whole.cos, rs: whole.sin, arrived });
 
   let n = 0;
   for (let i = 0; i < points && n < BEAM_MAX; i += stride, n++) {
@@ -16448,6 +16477,7 @@ function drawXY(frame, fit, elapsed) {
   });
 
   ctx.restore();
+  xyView = view;
 
   ctx.fillStyle = ink["text-soft"];
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
@@ -17415,7 +17445,10 @@ function canvasPoint(event) {
 }
 
 el.trace.addEventListener("pointerdown", (event) => {
-  if (!state.cursors) return;
+  /* Only in Y-T, where they are drawn. In X-Y they went on catching presses
+     along lines nobody could see, which was harmless until a press there
+     could take hold of the figure. */
+  if (!state.cursors || state.display !== "yt") return;
 
   const { x, y } = canvasPoint(event);
   const candidates = [
@@ -17454,6 +17487,405 @@ el.trace.addEventListener("pointerleave", () => { state.hoverY = null; });
 
 el.trace.addEventListener("pointerup", () => { dragging = null; });
 el.trace.addEventListener("pointercancel", () => { dragging = null; });
+
+/* --- the figure, bent by hand ------------------------------------------------
+   Take hold of the figure in X-Y and pull, and it bends where you took hold:
+   the grab sets Bend at to the moment of the cycle the grabbed point is, and
+   the pull sets Bend to whatever brings the figure nearest the hand. Nothing
+   here makes a sound or a picture of its own. It moves the two sliders as a
+   hand on them would, so the knob and the hand are one control, the site's
+   instrument and the plugin follow by the path a hand takes, and a setup
+   keeps what was pulled.
+
+   The moment is measured, not guessed from where the point sits on the
+   screen. The grabbed sample's place in its lane's cycle is the phase of the
+   lane's fundamental there, over whole cycles either side, less the phase
+   the shape's own fundamental has at the start of its cycle - which is
+   where the generator's phase is nought. So it is exact for one voice of a
+   plain shape, whatever the figure, a dyad's included, and the geometric
+   stand-in (the angle about the centre) was not: that is only right for a
+   one-to-one ellipse. With notes held, the cycle is that of the voice the
+   lane leans onto, fitted among the other notes (bendPhaseAmong). What it
+   costs is honesty about the rest: sync, FM, the sub, the filter and the
+   plane's shaping move the fundamental's phase, and the moment moves a
+   little with them; a source on Bend or Bend at moves the bend from where
+   the solution below assumed it; and B's own Turn is not taken off B's
+   lanes before they are read, so a B turned by its own knob is bent at a
+   moment a little off. In every case the bend lands where Bend at says -
+   only the choice of moment is approximate.
+
+   The pull is solved, not scaled. Every candidate Bend is tried on the
+   figure as it would be - each lane's samples read again at the time the
+   bend moves them to, through what the screen does to them - and the one
+   whose stretch of figure (a cycle centred on the grab) passes nearest the
+   pointer wins. That is why the figure follows the hand on every figure
+   rather than only on the one a sign was worked out for, and why a pull the
+   bend cannot follow does nothing rather than something arbitrary: a
+   diagonal line - one note in poly, or both lanes one signal - bends only
+   along itself, so it never moves at all. */
+const BEND_GRAB_PX = 16;   // how near the figure a press must land to take hold of it
+const BEND_MOVE_PX = 3;    // and how far it must move before it is a pull, not a click
+const BEND_NOISES = new Set(["noise", "pink", "brown", "stepped"]);
+let xyView = null;          // what drawXY drew last: where every figure's samples are
+let bendDrag = null;
+
+// Which layer a lane belongs to, or -1 for a lane that is no layer's voice.
+function bendLaneLayer(lane) {
+  const layout = state.source && state.source.layout;
+  if (layout === "each") {
+    if (lane < 2) return 0;
+    const toneB = genSettings(1);
+    return toneB && toneB.voices != null ? 1 : -1;   // the second generator's figure is not a layer
+  }
+  if (layout === "against") return lane === 0 ? 0 : 1;
+  return 0;
+}
+
+// The layer a figure's grab bends: its own in a split, otherwise A's. -1 if none.
+function bendFigureLayer(figure) {
+  if (state.display !== "xy" || !xyView || lagActive() || !generatorSteered()) return -1;
+  const fig = xyView.figures[figure];
+  if (!fig) return -1;
+  const layer = state.source.layout === "each" ? bendLaneLayer(fig.fx) : 0;
+  if (layer < 0) return -1;
+  const tone = genSettings(0), t = genSettings(layer);
+  if (!tone || !t || tone.mode !== "wave" || BEND_NOISES.has(t.shape)) return -1;
+  return layer;
+}
+
+// A lane's sample on the screen, through the figure's turn, gains and offsets.
+function bendScreen(fig, l, r) {
+  const rx = l * fig.rc - r * fig.rs, ry = l * fig.rs + r * fig.rc;
+  return [xyView.cx + (rx * fig.gainX + fig.offX) * xyView.scale,
+          xyView.cy - (ry * fig.gainY + fig.offY) * xyView.scale];
+}
+
+// The two lanes as they were before anything turned them on the way in.
+function bendLanes(fig) {
+  const ch = xyView.frame.channels;
+  const left = ch[fig.fx] || ch[0], right = ch[fig.fy] || ch[1] || left;
+  const n = Math.min(left.length, right.length);
+  if (fig.arrived === 0) return [left.subarray(0, n), right.subarray(0, n)];
+  const { cos, sin } = turnOf(-fig.arrived);
+  const l = new Float32Array(n), r = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    l[i] = left[i] * cos - right[i] * sin;
+    r[i] = left[i] * sin + right[i] * cos;
+  }
+  return [l, r];
+}
+
+// The nearest bendable figure's nearest sample to a point, within `limit` pixels.
+function bendNearest(x, y, limit) {
+  if (!xyView) return null;
+  let best = null;
+  xyView.figures.forEach((fig, figure) => {
+    if (bendFigureLayer(figure) < 0) return;
+    const [l, r] = bendLanes(fig);
+    for (let i = 0; i < l.length; i++) {
+      const [px, py] = bendScreen(fig, l[i], r[i]);
+      const d = Math.hypot(px - x, py - y);
+      if (d <= limit && (best === null || d < best.d)) best = { figure, at: i, d, lanes: [l, r] };
+    }
+  });
+  return best;
+}
+
+// waveAt's arguments for a layer's shape, without what modulation pushes.
+function bendWave(t) {
+  const shape = t.shape;
+  const bars = shape === "drawbars" ? (Array.isArray(t.bars) ? t.bars : null)
+    : shape === "drawn" ? t.cycle : shape === "wavetable" ? t.wavetable : null;
+  const amount = shape === "pulse" ? (t.width > 0 ? t.width : 0.25)
+    : shape === "wavetable" ? (Number.isFinite(t.table) ? t.table : 1.5) : t.morph;
+  return (phase) => waveAt(shape, phase, 0, bars, amount);
+}
+
+/* Where the shape's fundamental is at the top of its cycle, bent as it is
+   now: what to take off a lane's fundamental phase to leave the phase the
+   generator counts. A sine's is a quarter cycle back; a saw's is not. */
+function bendShapeOffset(t) {
+  const wave = bendWave(t), warp = t.warp || 0, at = TWO_PI * (t.warpAt || 0);
+  let re = 0, im = 0;
+  for (let k = 0; k < 256; k++) {
+    const v = TWO_PI * k / 256, m = wave(v + warp * Math.sin(v - at));
+    re += m * Math.cos(v); im -= m * Math.sin(v);
+  }
+  return Math.atan2(im, re);
+}
+
+/* A lane's phase at sample `at`, the generator's count of it: the
+   fundamental's, over as many whole cycles as fit up to four, less the
+   shape's offset. Null when the window holds less than a cycle. */
+function bendPhase(x, at, hz, rate, offset) {
+  const per = rate / hz;
+  const cycles = Math.min(4, Math.floor(x.length / per));
+  if (!(cycles >= 1)) return null;
+  const span = Math.round(cycles * per);
+  const from = Math.max(0, Math.min(x.length - span, Math.round(at - span / 2)));
+  const w = TWO_PI * hz / rate;
+  let re = 0, im = 0;
+  for (let n = from; n < from + span; n++) {
+    const a = w * (n - at);
+    re += x[n] * Math.cos(a); im -= x[n] * Math.sin(a);
+  }
+  return Math.atan2(im, re) - offset;
+}
+
+/* A voice's phase at sample `at` when other notes share the lane: a sine
+   and a cosine at every held note's frequency fitted to the whole window at
+   once, by least squares, and the voice's pair read off. A single
+   frequency's sum needs whole cycles of everything in the lane to keep the
+   others out, and a chord's common period seldom fits in the window - on
+   a low fifth the window held one cycle of the bass and a cycle and a half
+   of the fifth, which put the moment a twentieth of a cycle out. The
+   others' harmonics are left in the residual, so a rich shape on a chord is
+   still approximate. */
+function bendPhaseAmong(x, at, hz, others, rate, offset) {
+  const freqs = [hz, ...others], m = 2 * freqs.length;
+  const a = Array.from({ length: m }, () => new Float64Array(m + 1));
+  const basis = new Float64Array(m);
+  for (let n = 0; n < x.length; n++) {
+    freqs.forEach((f, k) => {
+      const ph = TWO_PI * f / rate * (n - at);
+      basis[2 * k] = Math.sin(ph); basis[2 * k + 1] = Math.cos(ph);
+    });
+    for (let i = 0; i < m; i++) {
+      for (let j = 0; j < m; j++) a[i][j] += basis[i] * basis[j];
+      a[i][m] += basis[i] * x[n];
+    }
+  }
+  // Gaussian elimination with partial pivoting: a dozen unknowns at most.
+  for (let c = 0; c < m; c++) {
+    let p = c;
+    for (let r = c + 1; r < m; r++) if (Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r;
+    [a[c], a[p]] = [a[p], a[c]];
+    if (Math.abs(a[c][c]) < 1e-9) return null;
+    for (let r = 0; r < m; r++) {
+      if (r === c) continue;
+      const k = a[r][c] / a[c][c];
+      for (let j = c; j <= m; j++) a[r][j] -= k * a[c][j];
+    }
+  }
+  const sinPart = a[0][m] / a[0][0], cosPart = a[1][m] / a[1][1];
+  // s sin(ph) + c cos(ph) is a sine at phase atan2(c, s), whose fundamental sits a quarter back.
+  return Math.atan2(cosPart, sinPart) - Math.PI / 2 - offset;
+}
+
+/* Which voice's cycle a lane is counted in. With notes held, the one it
+   leans onto - the lowest note for X, the highest for Y, as the outline
+   is drawn - since that is the voice whose bend moves the lane most, and a
+   pitch tracker on a chord finds the chord's common period instead, or
+   nothing in a window shorter than it. Otherwise what the lane measures,
+   or what the generator says it is playing. */
+function bendLaneHz(x, k, t, layer, rate) {
+  if (t.voices != null) {
+    const outline = outlineOf(polyVoices(layer));
+    return outline ? outline[k] : null;
+  }
+  return estimateFrequency(x, rate)
+    || t.freq * (k === 0 ? 1 : intervalRatio(t.interval, t.just) * Math.pow(2, t.octaves || 0));
+}
+
+/* Everything a pull is solved against, from the frame under the press: per
+   lane, its samples, its phase at the grab and the phase a sample, and
+   whether this layer's bend moves it; the stretch of figure that counts. */
+function bendModel(hit, layer) {
+  const fig = xyView.figures[hit.figure], rate = xyView.frame.rate;
+  const t = genSettings(layer), offset = bendShapeOffset(t);
+  const lanes = [fig.fx, fig.fy].map((lane, k) => {
+    const x = hit.lanes[k];
+    const bends = bendLaneLayer(lane) === layer;
+    if (!bends) return { x, bends };
+    const hz = bendLaneHz(x, k, t, layer, rate);
+    const others = t.voices != null ? [...new Set(polyVoices(layer).map((v) => v.freq))].filter((f) => f !== hz) : [];
+    const theta = !(hz > 0) ? null
+      : others.length ? bendPhaseAmong(x, hit.at, hz, others, rate, offset) : bendPhase(x, hit.at, hz, rate, offset);
+    return theta === null ? null : { x, bends, theta, w: TWO_PI * hz / rate };
+  });
+  if (lanes.includes(null) || !lanes.some((lane) => lane.bends)) return null;
+  const lead = lanes[0].bends ? lanes[0] : lanes[1];
+  const half = Math.round(Math.PI / lead.w);
+  const lo = Math.max(0, hit.at - half), hi = Math.min(lead.x.length - 1, hit.at + half);
+  const step = Math.max(1, Math.ceil((hi - lo) / 240));
+  const near = [];
+  for (let j = lo; j <= hi; j += step) near.push(j);
+  return { fig, lanes, near, at: hit.at, warp: t.warp || 0, warpAt: TWO_PI * (t.warpAt || 0),
+           moment: (((lead.theta / TWO_PI) % 1) + 1) % 1 };
+}
+
+// A lane's value at sample j with the layer bent by `a` at `c`, read from the lane as it is.
+function bendRead(model, lane, j, a, c) {
+  const x = lane.x;
+  if (!lane.bends) return x[j];
+  const theta = lane.theta + lane.w * (j - model.at);
+  const want = theta + a * Math.sin(theta - c);
+  // The lane now carries the bend it has: find the phase that reads `want` under it.
+  const a0 = model.warp, c0 = model.warpAt;
+  let u = want - a0 * Math.sin(want - c0);
+  for (let k = 0; k < 3; k++) u -= (u + a0 * Math.sin(u - c0) - want) / (1 + a0 * Math.cos(u - c0));
+  const n = model.at + (u - lane.theta) / lane.w;
+  const i = Math.max(0, Math.min(x.length - 2, Math.floor(n))), f = Math.max(0, Math.min(1, n - i));
+  return x[i] + (x[i + 1] - x[i]) * f;
+}
+
+// How near the stretch of figure passes to (px, py) with Bend `a` at `c`; and where the grab is.
+function bendReach(model, a, c, px, py) {
+  let best = Infinity, ax = 0, ay = 0, mark = null;
+  model.near.forEach((j, k) => {
+    const [sx, sy] = bendScreen(model.fig, bendRead(model, model.lanes[0], j, a, c),
+                                bendRead(model, model.lanes[1], j, a, c));
+    if (k > 0) {
+      // To the segment, not the sample, so a figure that only slides along
+      // itself reads as the same distance whatever the bend.
+      const dx = sx - ax, dy = sy - ay, len = dx * dx + dy * dy;
+      const s = len > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len)) : 0;
+      best = Math.min(best, Math.hypot(ax + s * dx - px, ay + s * dy - py));
+    }
+    ax = sx; ay = sy;
+  });
+  const g = model.at;
+  mark = bendScreen(model.fig, bendRead(model, model.lanes[0], g, a, c), bendRead(model, model.lanes[1], g, a, c));
+  return { d: best, mark };
+}
+
+/* The slider value whose figure passes nearest the pointer. Every other
+   step first, then the two either side of the best; a whisker of cost per
+   step from where the pull began, so that among bends that reach equally -
+   a line, which reaches the same whatever - the one that changes nothing
+   wins. */
+function bendSolve(model, c, px, py, from) {
+  const cost = (v) => bendReach(model, v * 0.009, c, px, py).d + 0.01 * Math.abs(v - from);
+  let best = from, bestCost = cost(from);
+  for (let v = -100; v <= 100; v += 2) {
+    const k = cost(v);
+    if (k < bestCost) { best = v; bestCost = k; }
+  }
+  for (const v of [best - 1, best + 1]) {
+    if (v < -100 || v > 100) continue;
+    const k = cost(v);
+    if (k < bestCost) { best = v; bestCost = k; }
+  }
+  return best;
+}
+
+/* A slider moved as a hand moves it: the value, then the input event every
+   listener a hand reaches hears - the section's own, the plugin's
+   (hostSlider), the site's instrument through genSet - and the glide told
+   a hand has taken it, as a trusted event would. */
+function handSlider(id, value) {
+  const input = el[id];
+  const before = input.value;
+  input.value = String(value);
+  if (input.value === before) return false;
+  if (glide.ids) {
+    glide.ids = glide.ids.filter((k) => k !== id);
+    if (!glide.ids.length) glide.ids = null;
+  }
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
+}
+
+// The mark at the grabbed moment, in the page's pixels; none to hide it.
+function bendMarkAt(mark) {
+  const node = document.getElementById("bendMark");
+  node.hidden = !mark;
+  if (!mark) return;
+  node.style.left = (el.trace.offsetLeft + mark[0]) + "px";
+  node.style.top = (el.trace.offsetTop + mark[1]) + "px";
+}
+
+// The panel onto the layer being bent, so the knob that moves is the one on show.
+function bendEdit(layer) {
+  if (editLayer() !== layer) (layer === 1 ? el.midiEditB : el.midiEditA).click();
+}
+
+el.trace.addEventListener("pointerdown", (event) => {
+  // Drawing on the screen took it in the capture phase, and the cursors before this.
+  if (event.defaultPrevented || event.button !== 0) return;
+  const { x, y } = canvasPoint(event);
+  const hit = bendNearest(x, y, BEND_GRAB_PX);
+  if (!hit) return;   // nowhere near the figure: the press is the page's
+  const layer = bendFigureLayer(hit.figure);
+  const model = bendModel(hit, layer);
+  if (!model) return;
+  bendDrag = { model, layer, x, y, id: event.pointerId, pulled: false, moved: false,
+               from: 0, c: 0, mark: bendScreen(model.fig, hit.lanes[0][hit.at], hit.lanes[1][hit.at]), pending: null };
+  bendMarkAt(bendDrag.mark);
+  el.trace.setPointerCapture(event.pointerId);
+  el.trace.style.cursor = "grabbing";
+  event.preventDefault();
+});
+
+// Solved once a frame, however many moves the pointer sent in it.
+function bendPull() {
+  const drag = bendDrag;
+  if (!drag || !drag.pending) return;
+  const { x, y } = drag.pending;
+  drag.pending = null;
+  if (!drag.pulled) {
+    if (Math.hypot(x - drag.x, y - drag.y) < BEND_MOVE_PX) return;
+    // The first real movement is the decision to bend here: the moment goes in now, not on a click.
+    drag.pulled = true;
+    bendEdit(drag.layer);
+    drag.from = Number(el.oscBend.value);
+    if (handSlider("oscBendAt", Math.round(drag.model.moment * 100) % 100)) drag.moved = true;
+    drag.c = TWO_PI * Number(el.oscBendAt.value) / 100;
+  }
+  const v = bendSolve(drag.model, drag.c, x, y, drag.from);
+  if (handSlider("oscBend", v)) drag.moved = true;
+  drag.mark = bendReach(drag.model, Number(el.oscBend.value) * 0.009, drag.c, x, y).mark;
+  bendMarkAt(drag.mark);
+}
+
+let bendHover = false;
+el.trace.addEventListener("pointermove", (event) => {
+  const drag = bendDrag;
+  if (drag && event.pointerId === drag.id) {
+    const first = !drag.pending;
+    drag.pending = canvasPoint(event);
+    if (first) requestAnimationFrame(bendPull);
+    return;
+  }
+  if (dragging || event.buttons) return;
+  // The hand's cursor near the figure, so the grab is found before it is tried.
+  const { x, y } = canvasPoint(event);
+  const near = state.display === "xy" && bendNearest(x, y, BEND_GRAB_PX) !== null;
+  if (near !== bendHover) { bendHover = near; el.trace.style.cursor = near ? "grab" : ""; }
+});
+
+function bendRelease(event) {
+  const drag = bendDrag;
+  if (!drag || event.pointerId !== drag.id) return;
+  if (drag.pending) bendPull();
+  bendDrag = null;
+  bendMarkAt(null);
+  el.trace.style.cursor = bendHover ? "grab" : "";
+  // Let go, as a hand lets go of a slider: the change event the plugin listens for.
+  if (drag.moved) for (const id of ["oscBendAt", "oscBend"]) el[id].dispatchEvent(new Event("change", { bubbles: true }));
+}
+el.trace.addEventListener("pointerup", bendRelease);
+el.trace.addEventListener("pointercancel", bendRelease);
+el.trace.addEventListener("pointerleave", () => {
+  if (!bendDrag && bendHover) { bendHover = false; el.trace.style.cursor = ""; }
+});
+
+/* A touch on the figure is a grab, not a scroll; everywhere else on the
+   screen the page still scrolls under a finger. `touch-action` would have to
+   be decided before the press is known to be near the figure, so it is the
+   touch's own default that is refused, and only for a grab. */
+el.trace.addEventListener("touchstart", (event) => { if (bendDrag) event.preventDefault(); }, { passive: false });
+
+// Twice on the figure: the bend off, as its knob's nought.
+el.trace.addEventListener("dblclick", (event) => {
+  if (drawingLive()) return;
+  const { x, y } = canvasPoint(event);
+  const hit = bendNearest(x, y, BEND_GRAB_PX);
+  if (!hit) return;
+  const layer = bendFigureLayer(hit.figure);
+  bendEdit(layer);
+  if (handSlider("oscBend", 0)) el.oscBend.dispatchEvent(new Event("change", { bubbles: true }));
+});
 
 /* --- controls ---------------------------------------------------------------- */
 

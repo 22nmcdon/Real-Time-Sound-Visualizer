@@ -314,8 +314,10 @@ Seven features pass, ranked by what to build first:
    it alters the picture, and so the sound - which a host could automate, and which may be
    one of the knobs that replace the macros. *Decided in P6 (the owner chose the knob
    first, the drag second, both setting one control): the knob is built. Bend and Bend at,
-   on the Shape tab, bend the voice's wave at one point of its cycle; the drag on the
-   screen, next, will set the same two. Bend is a candidate for a host parameter in place
+   on the Shape tab, bend the voice's wave at one point of its cycle. The drag is built
+   too: grab the figure in X-Y and pull, and Bend at goes to the moment of the cycle you
+   took hold of and Bend to whatever brings the figure nearest your hand - the same two
+   sliders, moved as a hand moves them. Bend is a candidate for a host parameter in place
    of a macro, which P8 decides with the rest of the eight; `kKnobs` is unchanged.*
 3. **The picture plays the oscillator back.** The picture stage's reads drive the
    oscillator's own shape (morph, fold, sync), so the figure reshapes itself and the sound
@@ -708,6 +710,31 @@ the synth's features should be chosen knowing that.
     picture take it as an offset). *gen.bend* and *gen.bendAt* are destinations, not in
     the picture stage's bundles: whether the loop turns the bend as well as the hand is
     P7's and P8's question. `bendtest.py` holds it, and parity the core's.
+  - *Touching the picture, step 2, built: the drag.* In X-Y, a press within 16 pixels of
+    the figure takes hold of it, and a pull of more than 3 sets the two sliders through
+    their own input events, so the hand and the knob are one control and the site's
+    instrument and the plugin follow by the path a hand takes; no core change. Bend at is
+    the grabbed sample's moment in its lane's cycle, measured: the fundamental's phase
+    there, less the phase the shape's own fundamental has at the top of its cycle - exact
+    for one voice of a plain shape on any figure, the dyad's included, where the angle
+    about the centre would only have been right for a one-to-one ellipse. With notes held
+    the cycle is the voice the lane leans onto (the lowest for X, the highest for Y),
+    found by fitting every held note's frequency to the lane at once, since a chord's
+    common period seldom fits in the window.
+    Bend is solved rather than scaled: every value is tried on the figure as it would be,
+    each lane read again at the time the bend moves it to, and the one whose cycle of
+    figure around the grab passes nearest the pointer wins, so the figure follows the
+    hand on any shape and a pull it cannot follow does nothing. What that costs is
+    honesty about the bend itself: it moves the wave in time and never in level, so the
+    figure cannot be pulled past its own extremes - a circle bulges on its diagonals and
+    not at its four ends - and a diagonal line bends only along itself. On a chord the
+    figure follows approximately, since each voice is bent in its own cycle and the
+    solution reads the lanes as one. In a split the nearest figure's layer is bent and the
+    panel goes to it; otherwise A. Drawing on the screen, the cursors (now only in Y-T,
+    where they are drawn) and the photocell's reticle keep their presses; a double-click
+    on the figure puts Bend to nought; a finger on the figure grabs rather than scrolls,
+    and scrolls everywhere else. A gold ring marks the grabbed moment while held.
+    `handtest.py` holds it, with real presses, on the page's brain and the compiled one.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's
   defences, pitched by the keys. Its first-minute test is a moving picture, the morphing
