@@ -534,6 +534,15 @@ with sync_playwright() as pw:
     check("the compiled codec leaves each layer's picture menus out at their defaults, unhelped, and writes them set",
           moves["kind"] == "wasm" and "pictureMovesA" not in moves["left"] and "pictureMovesB" not in moves["left"]
           and "freq" in moves["left"] and {"pictureMovesA", "pictureMovesB"} <= set(moves["set"]), str(moves))
+    # And Scan's core stage (P7a) emptied it again: the depth and the softness
+    # have core defaults, so they are left out at the page's, and written set.
+    scanned = p.evaluate("""() => {
+      const writes = (snap) => Object.keys(JSON.parse(atob(setupCodec.encode(snap))));
+      return { left: writes({ oscScan: 0, scanSoft: 30, freq: 330 }), set: writes({ oscScan: 40, scanSoft: 12, freq: 330 }) };
+    }""")
+    check("the compiled codec leaves Scan's depth and softness out at their defaults, unhelped, and writes them set",
+          "oscScan" not in scanned["left"] and "scanSoft" not in scanned["left"] and "freq" in scanned["left"]
+          and {"oscScan", "scanSoft"} <= set(scanned["set"]), str(scanned))
     oddbad = [r for r in st["oddRows"] + st["nameRows"] if r[1] != r[2]]
     outcomes = set(r[2] if r[2] in ("throws", "null") else "read" for r in st["oddRows"] + st["nameRows"])
     check("%d awkward codes and snapshots, the same outcome from each, a throw as a throw: %s"

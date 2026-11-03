@@ -4599,3 +4599,22 @@ after it on its line: `core/tests/tools/generator_js.mjs` lifts each bound
 name to the first semicolon followed by a newline, so `const SCAN_RATE = 60;
 // tables a second` was lifted with everything down to some later line, and
 parity died with a syntax error at line 2919 of a function it had built.
+
+**A control the page has and the core has not yet is a hole in the core's
+panel, not a missing feature.** The core's panel looked a slider up and used
+what it found, so the first hand on one of Scan's sliders after P7a's page
+stage - parity's morph runs pick sliders from the page's own list - read
+through a null and crashed `restore_cpp`, and every check after it went with
+it. The panel refuses an id it has not got now, and parity holds that a
+stranger moves nothing. Two more from the same port, for whoever adds the
+next control: Persistence's menu has a sixth, hidden option whose value is
+whatever time between the five was last shown, and which keeps that value
+when hidden again, so a menu written that value later still finds it - the
+core's panel keeps the option's value (`setCustomOption`) rather than
+checking against the five; and the instrument's picture frame lands on a
+block boundary while the generator's tick lands on a sample, both a sixtieth
+of a second of audio apart, so the table read at a frame is played from the
+next tick after it - the same in every render, but not in lockstep, and a
+harness that wanted the page's frames and the instrument's to agree sample
+for sample would be asking for something neither promises. Parity feeds both
+the same grids instead (`core/tests/tools/scan_js.mjs`).

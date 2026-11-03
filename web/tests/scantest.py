@@ -25,8 +25,12 @@ checked against the way it would fail:
   stopping the screen, Scan is an ordinary tone.
 
 The core runs on the main thread from `makeGeneratorCore`, the generator's
-one implementation; the page runs on `?brain=js&core=js`, since until P7's
-core port the compiled generator and the instrument do not play Scan.
+JavaScript implementation; most of the page runs on `?brain=js&core=js`,
+whose reading and timing are the ones under test, and the C++ port is held
+to them by core/tests/parity.py. The last section opens the site as a
+visitor does, on the compiled instrument, which reads its own screen at
+sixty frames a second of the sound: Scan has to be heard there too, and the
+page's own brain on the compiled generator has to send it its tables.
 Every assertion has its null beside it.
 """
 import math, os, statistics, sys
@@ -466,6 +470,58 @@ with sync_playwright() as pw:
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
+
+    # ------------------------------------------------------------------
+    print("\n--- on the site's instrument, and the compiled generator ---")
+    # The site as a visitor opens it: the compiled instrument, which reads
+    # its own grid at its own picture frame. Its sound read off its picture
+    # lanes, which are what is heard, as stagetest.py reads it; the picture
+    # stage at nought by the slider, so what moves the sound is Scan; and the
+    # depth at nought by the slider as the null, sent the way a hand's is.
+    SITE = """async ([scanOn, seconds]) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      applyPreset('b:Scanned fifth'); await wait(400);
+      el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
+      if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input', { bubbles: true })); }
+      await wait(600);
+      const out = [], t0 = performance.now();
+      while (performance.now() - t0 < seconds * 1000) {
+        await wait(250);
+        const [l] = state.source.getLatestWindow(4096);
+        let e = 0, d = 0;
+        for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
+        out.push([(performance.now() - t0) / 1000, e > 1e-9 ? Math.sqrt(d / e) : 0, Math.sqrt(e / l.length)]);
+      }
+      return { out, host: BRAIN_IN_CORE && state.source.kind === 'host' };
+    }"""
+    def site(query, scan_on):
+        bb = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
+        pp = bb.new_page(viewport={"width": 1400, "height": 900})
+        errs = []
+        pp.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        pp.goto(f"file://{ART}/scope.html" + query); pp.wait_for_timeout(1200)
+        if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
+        pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
+        pp.wait_for_timeout(800)
+        got = pp.evaluate(SITE, [scan_on, 5])
+        got["errors"] = errs
+        bb.close()
+        return got
+    on, off = site("", True), site("", False)
+    son, soff = sd([(t_, v) for t_, v, _ in on["out"]]), sd([(t_, v) for t_, v, _ in off["out"]])
+    print("    site: brightness with Scan +- %.4f, without +- %.4f; loud %.3f" % (son, soff, max(r for _, _, r in on["out"])))
+    check("on the site's instrument, the turning fifth read back moves its timbre",
+          on["host"] and son > 0.004 and max(r for _, _, r in on["out"]) > 0.02, "%.4f, on the instrument %s" % (son, on["host"]))
+    null("and with Depth at nought there it stands still", off["host"] and soff < 0.001, "%.4f" % soff)
+    # The page's brain on the compiled generator: the tables go to the
+    # module as numbers (scope_scan), and the module plays them.
+    gen_on, gen_off = site("?brain=js", True), site("?brain=js", False)
+    gon, goff = sd([(t_, v) for t_, v, _ in gen_on["out"]]), sd([(t_, v) for t_, v, _ in gen_off["out"]])
+    print("    page's brain, compiled generator: with Scan +- %.4f, without +- %.4f" % (gon, goff))
+    check("the page's brain on the compiled generator sends it the tables, and it plays them", gon > 0.004, "%.4f" % gon)
+    null("and with Depth at nought it stands still", goff < 0.001, "%.4f" % goff)
+    check("no page errors on the site", not (on["errors"] + off["errors"] + gen_on["errors"] + gen_off["errors"]),
+          "; ".join((on["errors"] + off["errors"] + gen_on["errors"] + gen_off["errors"])[:3]))
 
 print()
 if fails:

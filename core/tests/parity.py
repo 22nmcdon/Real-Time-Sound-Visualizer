@@ -962,6 +962,47 @@ def gen_runs():
                            (0, "set planeOS 4"), (0, "routes " + route(RADIUS, 0.4, index=0)), (2048, "set planeKaleido 3")])
     add("effect-off", [(0, "fx 1"), (0, "input 180 0.7"), (2048, "input 90 0.3 -0.2")])
     add("at-44100", [(0, "set shape square"), (0, "set unison 3"), (0, "routes " + vib)], rate=44100.0)
+    # Scan (P7a): the screen's readings as tables a layer is handed between
+    # blocks, taken at the core's own tick - 800 samples at 48 kHz, 735 at
+    # 44.1 and 367.5 at 22.05, where the tick falls between samples - and
+    # crossfaded across it; the depth under the hold, and both clamped; on the
+    # plain dyad, under the oscillator, under sync, on a chord and on two
+    # layers with a table each. A table is Scan's shape - a ceiling of 64 and
+    # seven levels - at 32 points a level, so the lines stay short and the
+    # reading between points is still asked. Eight thousand samples, about
+    # ten ticks, so several tables are faded through.
+    def stab():
+        return "T:64:" + ";".join(",".join("%r" % (grng.randint(-64, 64) / 64) for _ in range(32)) for _ in range(7))
+    sa, sb, sc, sd = stab(), stab(), stab(), stab()
+    feed = [(0, "scan 0 " + sa), (1024, "scan 0 " + sb), (2560, "scan 0 " + sc), (5120, "scan 0 " + sd)]
+    add("scan-dyad", [(0, "set shape ramp"), (0, "set interval 7"), (0, "set scan 1")] + feed
+        + [(4096, "set scanHold 0.25"), (6144, "set scanHold 1"), (7168, "set scan 0.4")], samples=8192)
+    # The same with no table yet, as a layer turned up before its first tick: the shape alone.
+    add("scan-before", [(0, "set shape ramp"), (0, "set interval 7"), (0, "set scan 1"), (3072, "scan 0 " + sa)], samples=8192)
+    add("scan-unset", [(0, "set shape ramp"), (0, "set interval 7")] + feed, samples=8192)
+    # Noise's pair, apart from it in the list, since two runs alike side by side would pass the out-of-step null.
+    add("scan-noise-off", [(0, "set shape pink")] + feed, samples=4096)
+    add("scan-poly-noise-off", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "set shape brown")] + feed, samples=4096)
+    add("scan-44100", [(0, "set shape triangle"), (0, "set scan 0.7")] + feed, samples=8192, rate=44100.0)
+    add("scan-22050", [(0, "set shape sine"), (0, "set scan 1")] + feed, samples=8192, rate=22050.0)
+    add("scan-osc", [(0, "set shape square"), (0, "set unison 3"), (0, "set unisonCents 15"), (0, "set fmIndex 0.5"),
+                     (0, "set scan 0.8")] + feed, samples=8192)
+    add("scan-sync", [(0, "set shape ramp"), (0, "set syncRatio 1.7"), (0, "set warp 0.4"), (0, "set scan 1")] + feed,
+        samples=8192, slots=35)
+    add("scan-poly", [(0, "voices 0 " + notes((60, "x"), (64, "y"), (67, "u"))), (0, "set shape sine"), (0, "set scan 1")]
+        + feed, samples=8192)
+    add("scan-layered", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                         (0, "set shape morph"), (0, "set scan 1"), (0, "set scan 0.5 1"), (0, "set unison 2 1"),
+                         (0, "scan 1 " + sd), (2048, "scan 1 " + sb), (3072, "set scanHold 0.25 1"),
+                         (5120, "scan 1 none")] + feed, samples=8192)
+    # Out of range both ways: a depth past one and a hold past one are one, below nought nought.
+    add("scan-clamped", [(0, "set shape ramp"), (0, "set scan 3"), (0, "set scanHold 7"), (3072, "set scan -2"),
+                         (4096, "set scan 0.6"), (4096, "set scanHold -1"), (6144, "set scanHold 0.5")] + feed, samples=8192)
+    # Noise is never read through a table, so Scan leaves it as it was.
+    add("scan-noise", [(0, "set shape pink"), (0, "set scan 1")] + feed, samples=4096)
+    # And a chord of noise, whose voices go through `sound` rather than the dyad's branch.
+    add("scan-poly-noise", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "set shape brown"), (0, "set scan 1")] + feed,
+        samples=4096)
     return runs
 
 runs = gen_runs()
@@ -1084,6 +1125,30 @@ gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never 
 gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
 gnull("plane-own-time", "set delayMs 4 1", "set delayMs 7 1", "layer B's own echo as long as layer A's")
 gnull("plane-own-time-switch", "set chorusRate 4 1", "set chorusRate 1.5 1", "layer B's own chorus at layer A's rate")
+# Scan (P7a): each run able to show it - the tables heard, and nothing
+# before the first, nothing on noise - and the port told apart from a page
+# given another depth, another hold, a table a block later, or B's depth.
+sdy, sbe, sun = grow("scan-dyad")[0], grow("scan-before")[0], grow("scan-unset")[0]
+def apart_by(a, b, upto=None): return max(abs(x - y) for x, y in zip(col(a, 0)[:upto], col(b, 0)[:upto]))
+check("Scan is heard: the tables change the dyad, and before the first one it is the shape alone",
+      apart_by(sdy, sun) > 0.1 and apart_by(sbe, sun, 3072) == 0 and apart_by(sbe, sun) > 0.1,
+      "%.3f, %.3g, %.3f" % (apart_by(sdy, sun), apart_by(sbe, sun, 3072), apart_by(sbe, sun)))
+check("and noise is left as it was, a dyad's and a chord's", grow("scan-noise")[0] == grow("scan-noise-off")[0]
+      and grow("scan-poly-noise")[0] == grow("scan-poly-noise-off")[0])
+check("and the check that it is heard fails against the run without it", apart_by(sun, sun) == 0)
+gnull("scan-dyad", "set scan 1", "set scan 0.9", "a depth a tenth less")
+gnull("scan-dyad", "set scanHold 0.25", "set scanHold 0.3", "another hold")
+# A table is taken at the tick, not when it is given: one given a block later,
+# still before the tick at 1600, plays the same to the bit; given after it, a
+# sixtieth of a second later.
+i_sd = next(k for k, (n, _) in enumerate(runs) if n == "scan-dyad")
+assert "at 1024 scan 0 " in runs[i_sd][1]
+later = gjs_one(runs[i_sd][1].replace("at 1024 scan 0 ", "at 1152 scan 0 "))
+check("a table is taken at the core's tick: given a block later, before the same tick, it plays the same",
+      worst(later, row(gcpp[i_sd])) == 0)
+gnull("scan-dyad", "at 1024 scan 0 ", "at 1664 scan 0 ", "a table given after the tick")
+gnull("scan-22050", "set scan 1", "set scan 0.999", "a depth a thousandth less, where the tick falls between samples")
+gnull("scan-layered", "set scan 0.5 1", "set scan 0.6 1", "layer B's depth a tenth more")
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
@@ -2914,6 +2979,131 @@ pcnull("strained", "limit -8", "limit -5", "a limiter under six decibels")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(pcjs.strip().split("\n")[1:]), "\n".join(pccpp.strip().split("\n")[:-1])) is not None)
 
+print("\n--- Scan's reading of the screen ---")
+# P7a: the page's scanStep - the path following the figure, the grid blurred
+# by the softness and read round the off-centre circle into tables, the hold
+# sent past 0.005, nothing on a dark path, nothing for a quarter of a second
+# after a setup, a layer at no depth forgetting its path, each layer's own
+# picture while the layers draw one each - against scope::ScanReader. The
+# page reads its live phosphor once a screen frame and the instrument its own
+# at sixty a second of audio, which no two runs would repeat, so both are fed
+# the same grids frame by frame (scan_js.mjs): what each does with a grid is
+# what is held, and the frame's timing is the instrument's own, run below.
+# The figures are asymmetric on purpose - an ellipse off the centre and
+# turned, a three-petalled rose, a line - since a circle about the centre
+# reads the same however the path is placed.
+SN = 64
+def sgrid(points, level=1.0):
+    g = [0.0] * (SN * SN)
+    for x, y in points:
+        i, j = int(x), int(y)
+        for di, dj, w in ((0, 0, 1.0), (1, 0, 0.5), (-1, 0, 0.5), (0, 1, 0.5), (0, -1, 0.5)):
+            a, b = i + di, j + dj
+            if 0 <= a < SN and 0 <= b < SN: g[b * SN + a] = max(g[b * SN + a], level * w)
+    return g
+def sellipse(cx, cy, a, b, turn, level=1.0):
+    return sgrid([(cx + a * math.cos(t) * math.cos(turn) - b * math.sin(t) * math.sin(turn),
+                   cy + a * math.cos(t) * math.sin(turn) + b * math.sin(t) * math.cos(turn))
+                  for t in (2 * math.pi * k / 1500 for k in range(1500))], level)
+def srose(cx, cy, r, turn):
+    return sgrid([(cx + r * math.cos(3 * t) * math.cos(t + turn), cy + r * math.cos(3 * t) * math.sin(t + turn))
+                  for t in (math.pi * k / 1500 for k in range(1500))])
+sgrids = {"e%d" % k: sellipse(34 + k * 0.7, 27 + k * 0.3, 15 - k * 0.2, 7 + k * 0.15, 0.4 + 0.05 * k) for k in range(14)}
+sgrids.update({"rose0": srose(30, 33, 18, 0.2), "rose1": srose(31, 32, 18, 0.35),
+               "line": sgrid([(8 + k * 0.04, 50 - k * 0.03) for k in range(1200)]),
+               "dot": sgrid([(41, 20)]), "dark": [0.0] * (SN * SN),
+               "faint": sellipse(30, 30, 12, 6, 0.3, 1e-7),
+               # Dim enough that its reading is darkness only because the
+               # blur's kernel sums to one: unnormalised, three cells of it
+               # would make it 56 times brighter, past the threshold.
+               "dim": sellipse(30, 30, 12, 6, 0.3, 3e-4)})
+def sframe(now, gs="e0", hs=1, d0=1, d1=0, count=1, spect=0, elapsed=16.67, live=None):
+    if live:
+        (g0, g1), (h0, h1) = live
+        return "frame elapsed=%r now=%r spect=%d count=%d live=1 d0=%r d1=%r h0=%r h1=%r g0=%s g1=%s" % (
+            elapsed, now, spect, count, d0, d1, h0, h1, g0, g1)
+    return "frame elapsed=%r now=%r spect=%d count=%d live=0 d0=%r d1=%r hs=%r gs=%s" % (elapsed, now, spect, count, d0, d1, hs, gs)
+SRUNS = []
+# The figure moving under a reading at three cells: the hold nudged below the
+# page's 0.005 and past it - by 0.006, which a threshold of 0.01 would not
+# send - then to within 0.005 of one and back to one, which is sent because
+# it is one; down to a quarter and back; a setup landing in the middle; a
+# frame on the spectrogram; the depth taken away and given back; a dark
+# screen, then a faint one and a dim one whose paths are lit but whose
+# readings are darkness.
+holds = [1, 1, 0.997, 0.99, 0.996, 1, 0.25, 0.2549, 0.26, 1, 1, 1, 1, 1]
+r1 = ["run soft=3"] + [sframe(17 * k, "e%d" % k, holds[k]) for k in range(6)] + ["freeze now=100"]
+r1 += [sframe(17 * k, "e%d" % k, holds[k]) for k in range(6, 14)]   # 102 to 221: inside the quarter-second, then 351 past it
+r1 += [sframe(351, "e13"), sframe(368, "e12", spect=1), sframe(385, "e11", d0=0), sframe(402, "e10"),
+       sframe(419, "dark"), sframe(436, "faint"), sframe(445, "dim"), sframe(453, "e9", elapsed=250),
+       sframe(470, "e8", elapsed=0), "end"]
+# Thin lines unblurred, a dot whose radius is the least the path is given -
+# first, since the path is taken at once only the first time - a rose blurred
+# as far as the slider goes and half a cell.
+r2 = ["run soft=0", sframe(0, "dot"), sframe(17, "line"), sframe(34, "rose0"), sframe(51, "rose1"), "end"]
+r3 = ["run soft=6", sframe(0, "rose0"), sframe(17, "rose1"), sframe(34, "e3"), "end"]
+# Two layers each reading its own picture under its own hold, then the one
+# screen for both, then layer B at no depth, then one layer.
+r4 = ["run soft=0.5", sframe(0, d1=0.5, count=2, live=(("e2", "rose0"), (1, 0.5))),
+      sframe(17, d1=0.5, count=2, live=(("e3", "rose1"), (0.25, 0.5))),
+      sframe(34, "e4", hs=0.8, d1=0.5, count=2), sframe(51, "e5", d1=0, count=2, hs=0.8),
+      sframe(68, d1=0.5, count=2, live=(("e6", "line"), (1, 1))), sframe(85, "e7", d1=0.5, count=1), "end"]
+SRUNS = [r1, r2, r3, r4]
+def stext(runs):
+    head = "\n".join("grid %s %s" % (n, ",".join(repr(v) for v in g)) for n, g in sgrids.items())
+    return head + "\n" + "\n".join("\n".join(r) for r in runs) + "\n"
+spath = os.path.join(BUILD, "scan.txt")
+with open(spath, "w") as f: f.write(stext(SRUNS))
+sexe = build("scan_cpp")
+def sjs(path): return [row(l) for l in subprocess.run(["node", os.path.join(HERE, "tools", "scan_js.mjs"), path],
+                                                       check=True, capture_output=True, text=True).stdout.splitlines()]
+scpp = [row(l) for l in subprocess.run([sexe, spath], check=True, capture_output=True, text=True).stdout.splitlines()]
+sjsr = sjs(spath)
+sw = max((worst(a, b) for a, b in zip(sjsr, scpp)), default=inf)
+frames = sum(1 for r in SRUNS for l in r if l.startswith("frame"))
+check("%d frames of four readings, the page's and the core's, the same to %g" % (frames, TOL),
+      len(sjsr) == len(scpp) == frames and sw <= TOL, "worst %.3g" % sw)
+# What each frame did: a hold sent (1), a table sent (2), per layer.
+def sdid(r):
+    out, k = [], 0
+    while k < len(r) and r[k] in (1, 2):
+        if r[k] == 1: out.append(("hold", int(r[k + 1]), r[k + 2])); k += 3
+        else:
+            out.append(("table", int(r[k + 1]))); n = int(r[k + 3]); k += 4
+            for _ in range(n): k += 1 + int(r[k])
+    return out
+sd = [sdid(r) for r in sjsr]
+holds_sent = [d[2] for f in sd[:14] for d in f if d[0] == "hold"]
+check("the runs can show it: tables sent, the hold past 0.005 sent and below it not, nothing while a setup lands, "
+      "on the spectrogram, at no depth or on a dark path, and B's own",
+      holds_sent == [0.99, 0.996, 1, 0.25, 0.26, 1]
+      and all(("table", 0) in f for f in sd[:6]) and not any(d[0] == "table" for f in sd[6:13] for d in f)
+      and ("table", 0) in sd[14] and sd[15] == [] and sd[16] == [] and sd[18] == [] and sd[19] == [] and sd[20] == []
+      and ("table", 0) in sd[23] and ("table", 1) in sd[30] and ("hold", 1, 0.5) in sd[30],
+      "%r" % (holds_sent,))
+# The nulls: the page given another softness, a threshold the 0.997 crosses,
+# no setup landing, and the page's frames one out of step.
+def snull(what, old, new):
+    t = stext(SRUNS)
+    assert old in t, old
+    with open(os.path.join(BUILD, "scan_null.txt"), "w") as f: f.write(t.replace(old, new, 1))
+    other = sjs(os.path.join(BUILD, "scan_null.txt"))
+    check("and the comparison fails against " + what,
+          len(other) != len(scpp) or max(worst(a, b) for a, b in zip(other, scpp)) > 1e-6)
+snull("a reading a tenth of a cell softer", "run soft=3", "run soft=3.1")
+snull("a hold moved by 0.006 rather than 0.003", "hs=0.997 ", "hs=0.994 ")
+snull("no setup landing", "freeze now=100", "freeze now=-1000")
+check("and against the page's frames one out of step", max(worst(a, b) for a, b in zip(sjsr[1:] + sjsr[:1], scpp)) > 1e-3)
+# The instrument reads on the audio thread, so once made the reader must not
+# allocate: two seconds of frames, two layers, the hold moving. The tables
+# sent are counted so a run that sent none, and could not allocate, fails;
+# the making is counted so a counter that saw nothing at all fails too.
+salloc = subprocess.run([sexe, "--alloc"], check=True, capture_output=True, text=True).stdout.split()
+check("once made, reading the screen allocates nothing: %s in the making, %s in %s tables' frames"
+      % (salloc[1], salloc[3], salloc[5]), int(salloc[1]) > 0 and int(salloc[3]) == 0 and int(salloc[5]) >= 200)
+check("and never writes a table the generator is reading - its latest, or the two it is fading between",
+      int(salloc[7]) == 0 and int(salloc[5]) >= 200, "%s clashes" % salloc[7])
+
 print("\n--- the hearing, on the audio thread ---")
 # The plugin steps the hearing once a block on the audio thread, where an
 # allocation can wait on a lock. Made once, it must allocate nothing after:
@@ -2942,8 +3132,14 @@ check("a slider set by a number holds what the text of that number would leave, 
       agree == tried and tried > 1000, "%d of %d agree" % (agree, tried))
 spent = [r[0] for r in walked if int(r[1]) != 0]
 still = [r[0] for r in walked if float(r[2]) == 0]
+# As many as the core's list of the sliders the morph walks (80 since Scan's
+# two, P7a), read from the panel's table rather than written here, so a slider
+# added to the walk is walked here as well rather than failing a count.
+_ids = open(os.path.join(CORE, "include", "scope", "panel_controls.h")).read()
+morph_count = len(re.findall(r'"([A-Za-z0-9]+)"', _ids[_ids.index("kMorphIds[]"):]))
 check("the morph's walk over each of its %d sliders, all of them together, and the host's eight parameters allocate nothing"
-      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == 87 and walked[-9][0] == "all",
+      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == morph_count + 9 and morph_count >= 80
+      and walked[-9][0] == "all",
       "%d made; allocating: %s; unmoved: %s" % (made, spent[:4], still[:4]))
 
 print("\n--- the hearing ---")
@@ -3704,6 +3900,53 @@ mpg, mpt = rboth(mlines, "morph_ops.txt")
 mb = rbad(mpg, mpt)
 check("%d operations on the sliders, the morph and the macros leave the same instrument" % len(mlines),
       not mb and len(mlines) > 1500, mb[0] if mb else "")
+# A slider the panel has not got - the page had Scan's three before the core
+# did (P7a), and a hand on one crashed the core in the middle of the morph's
+# walk, which is how this was found - does nothing, the walk going on. The
+# core alone, since the page has no such slider to move: the same lines with
+# and without the stranger, every state alike, the stranger's line the state
+# before it.
+sop = [_json.dumps(o) for o in MADE[:12]]
+alien = sop[:6] + [_json.dumps({"op": "slider", "id": "noSuchSlider", "value": 5})] + sop[6:]
+def rcpp(lines, name):
+    path = os.path.join(BUILD, name)
+    with open(path, "w", encoding="utf-8") as f: f.write("\n".join(lines) + "\n")
+    r = subprocess.run([rexe, path, rsources], capture_output=True, text=True)
+    return r.returncode, r.stdout.strip().split("\n")
+rc_a, out_a = rcpp(alien, "alien_ops.txt")
+rc_p, out_p = rcpp(sop, "plain_ops.txt")
+check("a slider the panel has not got moves nothing, and the morph's walk goes on",
+      rc_a == 0 and rc_p == 0 and out_a[:6] + out_a[7:] == out_p and out_a[6] == out_a[5], "exit %d" % rc_a)
+# Scan's settings (P7a), by setup and by hand: the depth on both layers, the
+# softness held to its slider and given nonsense, Persistence's slider, and
+# the persistence menu's sixth option - a time between its five shown as
+# itself, a named one chosen, and the sixth chosen again by the value it kept
+# while hidden. The last is filled in from the page's own answer, since what
+# the sixth holds is whatever the slider last made.
+SCANNED = [{}, {"oscScan": 50, "bScan": 70, "layers": "split", "midiMode": "poly"}, {"scanSoft": 17}, {"scanSoft": 99},
+           {"scanSoft": "abc"}, {"persistence": "0.05"}, {"display": "xy", "persistence": "0.0123"},
+           {"op": "slider", "id": "scanSoft", "value": 23}, {"op": "slider", "id": "scanMemory", "value": 50},
+           {"op": "slider", "id": "scanMemory", "value": 100}, {"op": "slider", "id": "scanMemory", "value": 37},
+           {"op": "change", "id": "persistence", "value": "weird"}, {"op": "slider", "id": "scanMemory", "value": 61},
+           {"op": "change", "id": "persistence", "value": "0.12"}]
+spg, _ = rboth([_json.dumps(o) for o in SCANNED], "scan_ops.txt")
+kept = _json.loads(spg[12])["scan"]["persistence"]
+SCANNED.append({"op": "change", "id": "persistence", "value": kept})
+# And X-Y chosen with no persistence, which nudges it to the menu's Medium -
+# the menu and Persistence's slider with it, since they are one field.
+SCANNED += [{}, {"op": "click", "id": "dispXY"}]
+spg, spt = rboth([_json.dumps(o) for o in SCANNED], "scan_ops.txt")
+sb = rbad(spg, spt)
+sp = [_json.loads(l) for l in spg]
+check("Scan's settings by setup and by hand leave the same instrument, Persistence's menu and its sixth option included",
+      not sb, sb[0] if sb else "")
+check("and the runs show it: B's depth, the softness held to its slider, a time between the five shown as itself, "
+      "and the sixth chosen again by the value it kept",
+      sp[1]["b"]["scan"] == 0.7 and sp[3]["scan"]["soft"] == 6 and sp[5]["scan"]["persistence"] == "0.05"
+      and kept not in ("0", "0.3", "0.12", "0.04", "-1", "") and sp[13]["scan"]["persistence"] == "0.12"
+      and sp[14]["scan"]["persistence"] == kept and sp[15]["scan"]["persistence"] == "0"
+      and sp[16]["scan"]["persistence"] == "0.12" and sp[16]["ranges"]["scanMemory"] == 25,
+      "kept %r; %r" % (kept, [r["scan"] for r in sp]))
 mp = [_json.loads(l) for l in mpg]
 check("storing an end moves nothing and puts the fader at it",
       mp[6]["ranges"]["amp"] == 80 and mp[6]["morph"]["pos"] == 1 and mp[3]["morph"]["pos"] == 0
@@ -4490,6 +4733,15 @@ iruns["drawn figure"] = FIG + [["control", "drawn", _json.dumps({"figDrawn": "-0
 iruns["drawn figure none"] = FIG + blocks(30)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
+# Scan (P7a): the instrument reading its own grid at its own picture frame,
+# the fifth that wanders because what it reads is what it draws - and the
+# same with the depth at nought, which is the null for the first meaning
+# anything, and a setup loaded in the middle, whose quarter of a second
+# reads nothing. Half a second at 48 kHz, every ninth sample.
+iruns["scanned"] = [["make", 48000, 128, icode["Scanned fifth"]], NOTE_ON(57)] + blocks(200, 128, 9) \
+    + [["setup", icode["Scanned interference"]]] + blocks(150, 128, 9)
+iruns["scanned off"] = [["make", 48000, 128, icode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
+    + blocks(200, 128, 9) + [["setup", icode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
 # The picture stage (P3) is on in everything the instrument plays, and moves
 # the fold, the echo, the twist and the phase from the picture - so the runs
 # above, which hold the instrument's plumbing and read its sound for an input
@@ -4512,7 +4764,8 @@ iout = {}
 # same for the stage's runs: its Memory pushes the plane's twist, which is a
 # cos and a sin of the angle, 2.8e-17 apart at most. With the stage on, nine
 # of the runs above were that far apart; with it out, all of them are exact.
-ILIBM = {"drawn", "drawn none", "staged notes", "staged hands"}
+# Scan's tables are read with exp, sin and cos too (the follow, the blur, the circle), so its runs are as well.
+ILIBM = {"drawn", "drawn none", "staged notes", "staged hands", "scanned", "scanned off"}
 for name, lines in iruns.items():
     path = iscript(name, lines)
     a, b = icpp(path), ijs(path)
@@ -4531,6 +4784,11 @@ for staged, plain in (("staged notes", "notes"), ("staged hands", "hands")):
     apart = max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")
     check("%s: the picture stage is heard in the compiled instrument, against the same with it out" % staged,
           0.05 < apart < float("inf"), "apart by %g" % apart)
+# Scan heard in the compiled instrument, against the same with its depth at nought.
+a, b = iblocks("scanned"), iblocks("scanned off")
+sapart = max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")
+check("scanned: Scan is heard in the compiled instrument, against the same with its depth at nought",
+      0.05 < sapart < float("inf"), "apart by %g" % sapart)
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)
@@ -4712,7 +4970,40 @@ check("and the reading fails with B's picture moving A's sound, where B's sound 
 lx = ilayers(["control", "pictureMovesA", "B"], ["control", "pictureMovesB", "A"])
 check("crossed, each sound is moved by the other's picture, held by the lower hold", ifold(lx, cross_glow(1), cross_glow(0)))
 check("and the reading fails against each picture moving its own", not ifold(lx, own_glow(0), own_glow(1)))
+# Scan's reading in the instrument (P7a), natively: a setup's landing starts
+# the quarter of a second in which nothing is read, at the audio time it
+# lands - made at nought, and loaded again ten blocks of 128 in, at 26.67 ms -
+# and a fifth that is scanned has a path to read once the picture has a
+# figure on it. A load that forgot the freeze would leave the first; a reader
+# never run would leave no path.
+sc_lines = [["make", 48000, 128, icode["Scanned fifth"]], ["scan"], NOTE_ON(57)] + blocks(10) + [["scan"],
+            ["setup", icode["Scanned fifth"]], ["scan"]] + blocks(60) + [["scan"]]
+sc = [[float(x) for x in l.split()[1:6]] for l in icpp(iscript("scan", sc_lines)) if l.startswith("scan ")]
+check("the instrument reads nothing for a quarter of a second of audio after each setup lands, and then reads its own screen",
+      len(sc) == 4 and sc[0][0] == 250 and sc[1][0] == 250 and abs(sc[2][0] - (250 + 1280 / 48)) < 1e-9
+      and sc[3][3] == 1 and sc[3][1] == 1, "%r" % (sc,))
+# And what each layer is handed, which no sound could show apart: in a split
+# in X-Y, each layer its own depth, its own picture's hold - B's put at a half,
+# so it differs from A's and the shared stage's - and its own picture's grid;
+# with no layers, the one screen's grid and the shared stage's hold.
+def iscan(setup, notes, hold_b=None):
+    lines = [["make", 48000, 512, icode_of(setup)]] + [NOTE_ON(n) for n in notes] + blocks(100, 512, 512) \
+        + ([["hold", 1, hold_b]] if hold_b is not None else []) + blocks(2, 512, 512) + [["scan"]]
+    w = [l for l in icpp(iscript("scan_layers", lines)) if l.startswith("scan ")][-1].split()
+    lay = lambda k: [float(x) for x in w[w.index("L%d" % k) + 1:w.index("L%d" % k) + 7]]
+    return lay(0), lay(1), w[-1] == "1"
+SPLIT = {"oscScan": 50, "bScan": 70, "layers": "split", "midiMode": "poly", "display": "xy", "persistence": "0.12",
+         "shape": "sine", "pictureAmount": 0}
+(a0, a1, live) = iscan(SPLIT, (48, 55, 72), hold_b=0.5)
+own = lambda v: v[0] == v[1] and v[2] == v[4]
+check("in a split, the instrument hands each layer its own depth, its own picture's hold and its own picture's grid",
+      live and own(a0) and own(a1) and a0[0] == 0.5 and a1[0] == 0.7 and a1[2] != a1[3] and a0[5] == 1 and a1[5] == 2,
+      "A %r, B %r" % (a0, a1))
+(u0, u1, ulive) = iscan(dict(SPLIT, layers="off"), (48, 55))
+check("and with no layers, the screen's grid and the shared stage's hold",
+      not ulive and u0[5] == 0 and u0[2] == u0[3], "A %r" % (u0,))
 lu = ilayers(split=False, notes=(48, 55))
+
 lg = ilayers(["control", "inputFrom", "gen2"], ["control", "inputMode", "1"], split=False, notes=(48,))
 lt = ilayers(display="dispYT")
 shared_fold = lambda r: abs(r["fold"][0] - 0.48 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]

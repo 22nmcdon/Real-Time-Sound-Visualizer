@@ -36,6 +36,7 @@ Json layerJson(const scope::LayerSettings& t) {
   o.set("morph", num(t.morph)); o.set("width", num(t.width)); o.set("table", num(t.table));
   o.set("modRatio", num(t.modRatio)); o.set("fmIndex", num(t.fmIndex));
   o.set("warp", num(t.warp)); o.set("warpAt", num(t.warpAt)); o.set("ringMix", num(t.ringMix));
+  o.set("scan", num(t.scan)); o.set("scanHold", num(t.scanHold));
   o.set("syncRatio", num(t.syncRatio)); o.set("subLevel", num(t.subLevel)); o.set("subOctave", num(t.subOctave));
   o.set("subShape", str(t.subShapeName)); o.set("unison", num(t.unison)); o.set("unisonCents", num(t.unisonCents));
   o.set("drive", num(t.drive)); o.set("fold", num(t.fold)); o.set("crushBits", num(t.crushBits)); o.set("crushHz", num(t.crushHz));
@@ -291,6 +292,10 @@ int main(int argc, char** argv) {
     Json photo = Json::object();
     photo.set("on", flag(brain.photo.on)); photo.set("u", num(brain.photo.u)); photo.set("v", num(brain.photo.v));
     out.set("photo", photo);
+    // Scan's softness as the brain holds it, and the persistence menu's value, its sixth option included (P7a).
+    Json scan = Json::object();
+    scan.set("soft", num(brain.scanSoft)); scan.set("persistence", str(brain.panel.select("persistence")));
+    out.set("scan", scan);
     {
       Json moves = Json::array();
       for (const auto& m : brain.pictureMoves) moves.a.push_back(str(m));

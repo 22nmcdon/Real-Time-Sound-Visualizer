@@ -36,6 +36,7 @@
 #include "scope/lfo.h"
 #include "scope/matrix.h"
 #include "scope/restore.h"
+#include "scope/scan.h"
 #include "scope/screen.h"
 #include "scope/sources.h"
 
@@ -129,6 +130,7 @@ class Instrument {
     lfos_.assign(2, Lfo {});
     lfos_[0].rate = 0.2; lfos_[0].depth = 0.5;
     lfos_[1].rate = 0.5; lfos_[1].depth = 0.3;
+    scan_ = std::make_unique<ScanReader>();  // its tables made here, off the audio thread
     core_ = std::make_unique<Generator>(sampleRate, slot::Used, lfos_);
     notes_ = std::make_unique<GeneratorNotes>(*core_);
     brain_ = std::make_unique<Brain>();
@@ -205,6 +207,8 @@ class Instrument {
     setup_ = setup;
     hands_.clear();
     restoreSetup(setup_, *brain_, *core_, *keyboard_, *matrix_, lfos_);
+    // Nothing read for a quarter of a second while it lands, as the page's restoreInto opens with scanFreeze.
+    scan_->freeze(nowMs_);
     /* The sliders moved since this setup was first loaded, as a state saved
        before the menus reached the plugin wrote them: "id=value;...", put back
        as hands on them. One saved since has none of these, and its hands
@@ -308,7 +312,10 @@ class Instrument {
        limiter to read, the output being the owner's. Its capture and its
        walk allocate as they go, a known cost on this thread (PLAN.md, 5v). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
-    if (pictureFrame) pictureRun_->before(*matrix_, pictureSource_, 0);
+    if (pictureFrame) {
+      pictureRun_->before(*matrix_, pictureSource_, 0);
+      scanFrame();
+    }
     // A controller the keyboard learned last block is a source now, and its routings are heard.
     sources_->learn(*matrix_, *keyboard_);
     matrix_->setLayered(keyboard_->layersOn());
@@ -412,6 +419,9 @@ class Instrument {
     const auto code = encodeSetup(setup);
     return code ? *code : std::string();
   }
+
+  // Scan's reading (P7a), for a harness: the paths, the holds, the freeze.
+  const ScanReader& scan() const { return *scan_; }
 
   /* The picture ring, oldest first, left and right interleaved, so the page
      reads it as a window of time. Written by the audio thread; read by the
@@ -774,6 +784,24 @@ class Instrument {
     hands_.push_back({ std::move(key), std::move(hand) });
   }
 
+  /* Scan's frame (P7a), the page's scanStep: after the picture's step, so
+     the hold is this frame's, and from the grid the last frame's draw left -
+     each layer's own while the layers draw a picture each, the one screen
+     otherwise. A layer at no depth forgets its path; one at any depth sends
+     its hold when it has moved by more than the page's 0.005, and a new
+     table unless the setup is still landing or the path reads darkness.
+     Here, unlike the page, the frame is a sixtieth of a second of audio, so
+     what a tick plays does not depend on a screen (scan.h). */
+  void scanFrame() {
+    const LayerPictures& layers = pictureRun_->layers();
+    const auto in = scanLayers<float>(layers.live(), { core_->tone().scan, core_->toneB().scan }, pictureRun_->stage().hold(),
+                                      { layers.stage(0).hold(), layers.stage(1).hold() }, pictureRun_->phosphor().grid().data(),
+                                      { layers.layerGrid(0).grid().data(), layers.layerGrid(1).grid().data() },
+                                      pictureRun_->phosphor().grid().size());
+    scan_->frame(*core_, brain_->view.screen.display == "spect", keyboard_->layersOn() ? 2 : 1, in,
+                 pictureRun_->elapsed(), brain_->scanSoft, nowMs_);
+  }
+
   /* Render [from, to) of the block into the output and the picture ring.
      Drawing the input, the input goes through the plane - the page's
      effects worklet, `effect` - and what comes out is both the picture and
@@ -890,6 +918,8 @@ class Instrument {
   std::vector<float> levelLane_, hearL_, hearR_;
   std::unique_ptr<HearingSources> hearing_;  // what it hears of itself, as sources
   std::unique_ptr<PictureRun> pictureRun_;
+  // Scan's paths and tables (P7a): the generator reads the tables, which are made in prepare.
+  std::unique_ptr<ScanReader> scan_;
   CaptureSource pictureSource_;
 
   std::vector<Lfo> lfos_;

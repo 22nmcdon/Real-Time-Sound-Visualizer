@@ -14,6 +14,14 @@
 //                                    bit; one period is a mono input, none is no input
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
 //   ["grid"]                         the instrument's own grid, by two sums (native only)
+//   ["hold", layer, value]           a layer's picture stage's hold put in (native only)
+//   ["scan"]                         Scan's reading (P7a): when the freeze after a setup ends, in
+//                                    milliseconds of audio, the hold each layer last sent, and
+//                                    whether each has a path; then what the last frame handed
+//                                    each layer against what is each layer's - its depth and the
+//                                    layer's, its hold, the shared stage's and its own picture's,
+//                                    and which grid (0 the screen, 1 and 2 A's and B's own) -
+//                                    and whether the layers draw a picture each (native only)
 //   ["layers"]                       each layer's picture (P6): whether live, the figures laid
 //                                    out, each layer's raw coverage, stage reads, hold and raw
 //                                    signed area, and
@@ -104,6 +112,28 @@ int main(int argc, char** argv) {
       double a1 = 0, a2 = 0;
       for (std::size_t i = 0; i < g.size(); ++i) { a1 += g[i] * static_cast<double>(i + 1); a2 += static_cast<double>(g[i]) * g[i]; }
       std::printf("grid %.17g %.17g\n", a1, a2);
+    } else if (cmd == "hold") {
+      // ["hold", layer, value]: a layer's picture stage's hold put in, as the
+      // page's tests write pictureStage - so a layer's hold can differ from
+      // the other's and from the shared stage's, which a harness reading what
+      // each layer is handed needs. Its reads are kept.
+      auto& stage = const_cast<scope::LayerPictures&>(instrument.layerPictures()).stage(static_cast<int>(arg(1).n));
+      stage.put(stage.glow(), stage.motion(), stage.memory(), arg(2).n);
+    } else if (cmd == "scan") {
+      const auto& scan = instrument.scan();
+      std::printf("scan %.17g %.17g %.17g %d %d", scan.frozenUntil, scan.held[0], scan.held[1], scan.paths[0] ? 1 : 0,
+                  scan.paths[1] ? 1 : 0);
+      const auto& layers = instrument.layerPictures();
+      const auto& pic = instrument.picture();
+      for (int l = 0; l < 2; l++) {
+        const auto& seen = scan.seen[static_cast<std::size_t>(l)];
+        const int grid = seen.grid == pic.phosphor().grid().data() ? 0 : seen.grid == layers.layerGrid(0).grid().data() ? 1
+                       : seen.grid == layers.layerGrid(1).grid().data() ? 2 : -1;
+        const double depth = l == 1 ? instrument.generator().toneB().scan : instrument.generator().tone().scan;
+        std::printf(" L%d %.17g %.17g %.17g %.17g %.17g %d", l, seen.depth, depth, seen.hold, pic.stage().hold(),
+                    layers.stage(l).hold(), grid);
+      }
+      std::printf(" live %d\n", layers.live() ? 1 : 0);
     } else if (cmd == "layers") {
       const auto& layers = instrument.layerPictures();
       std::printf("layers %d figures %zu", layers.live() ? 1 : 0, instrument.figures());

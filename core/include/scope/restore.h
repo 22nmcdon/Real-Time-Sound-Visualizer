@@ -44,6 +44,9 @@
 
 #include <array>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <map>
 #include <optional>
 #include <string>
@@ -151,22 +154,44 @@ class Controls {
     for (const auto& r : kRanges) ranges_[r.id] = r.value;
     for (const auto& s : kSelects) selects_[s.id] = s.value;
   }
-  void setRange(const std::string& id, std::u16string written) {
+  /* A slider or a menu the panel has not got is refused, and nothing is
+     written: false. Each used to look its id up and use what it found, and an
+     id the page had and the core did not yet - Scan's three sliders, between
+     P7a's page stage and its port - was a null read and a crash in the middle
+     of a morph's walk, where now it is a slider that does nothing, which
+     parity reports as the difference it is. */
+  bool setRange(const std::string& id, std::u16string written) {
     const RangeSpec* r = rangeSpec(id);
+    if (!r) return false;
     std::string ascii;
     for (const char16_t c : written) ascii += c < 0x80 ? static_cast<char>(c) : '\x7f';
     ranges_[id] = rangeSanitise(*r, ascii);
+    return true;
   }
   // A slider given a number rather than the text of one: the same value, and nothing made.
-  void setRangeNumber(const std::string& id, double v) {
+  bool setRangeNumber(const std::string& id, double v) {
     const RangeSpec* r = rangeSpec(id);
-    ranges_.find(id)->second = rangeSanitiseNumber(*r, v);
+    if (!r) return false;
+    ranges_[id] = rangeSanitiseNumber(*r, v);
+    return true;
   }
-  void setSelect(const std::string& id, const std::u16string& written) {
+  bool setSelect(const std::string& id, const std::u16string& written) {
     const SelectSpec* s = selectSpec(id);
     const std::string value = utf16To8(written);
-    if (id == "xyX" || id == "xyY") { selects_[id] = laneOption(value) ? value : ""; return; }
-    selects_[id] = selectHas(*s, value) ? value : "";
+    if (id == "xyX" || id == "xyY") { selects_[id] = laneOption(value) ? value : ""; return true; }
+    if (!s) return false;
+    const auto custom = custom_.find(id);
+    selects_[id] = selectHas(*s, value) || (custom != custom_.end() && value == custom->second) ? value : "";
+    return true;
+  }
+  /* The persistence menu's sixth option (P7a), for a time between its five:
+     the page writes it the value it shows, and keeps that value when the
+     menu goes back to one of the five, so a hand choosing it again finds it.
+     Chosen here as well, as setPersistence chooses it. */
+  void setCustomOption(const std::string& id, const std::string& value) {
+    if (!selectSpec(id)) return;
+    custom_[id] = value;
+    selects_[id] = value;
   }
   /* The X-Y pair's two menus hold an option a lane, as the page builds them
      again for whatever is drawn (buildLaneRows), where every other menu's
@@ -181,6 +206,7 @@ class Controls {
  private:
   std::map<std::string, double> ranges_;
   std::map<std::string, std::string> selects_;
+  std::map<std::string, std::string> custom_;  // a menu's option whose value is written as it is shown
   int lanes_ = 2;
   bool laneOption(const std::string& value) const {
     for (int k = 0; k < lanes_; ++k) if (value == std::to_string(k)) return true;
@@ -218,6 +244,8 @@ struct Brain {
   double morphMod = 0;                     // what the matrix pushes into the fader
   std::optional<double> morphApplied;      // where the sliders were last put, or nothing
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
+  // Scan's softness in cells (P7a), the page's `scan.soft`: the slider's tenths.
+  double scanSoft = 3;
   // Whose sound layer A's picture moves, and B's (P6): "A", "B" or "both" - the page's layerPictures.moves.
   std::array<std::string, 2> pictureMoves { { "A", "B" } };
   /* The view: what the screen is set to draw, as the page's `state` holds it
@@ -393,6 +421,8 @@ inline const std::vector<LayerControl>& layerControls() {
     { "oscBend", "warp", LayerControl::Range, [](double v) { return v * 0.009; },
       [](double v) { return jsMathRound(v / 0.009); } },
     { "oscBendAt", "warpAt", LayerControl::Range, hundred, byHundredRound },
+    // Scan's depth (P7a), in hundredths of its travel.
+    { "oscScan", "scan", LayerControl::Range, hundred, byHundredRound },
     { "oscRing", "ringMix", LayerControl::Range, hundred, byHundredRound },
     { "oscSync", "syncRatio", LayerControl::Range, hundred, byHundredRound },
     { "oscSub", "subLevel", LayerControl::Range, hundred, byHundredRound },
@@ -448,6 +478,7 @@ inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
   if (f == "fmIndex") return t.fmIndex;
   if (f == "warp") return t.warp;
   if (f == "warpAt") return t.warpAt;
+  if (f == "scan") return t.scan;
   if (f == "ringMix") return t.ringMix;
   if (f == "syncRatio") return t.syncRatio;
   if (f == "subLevel") return t.subLevel;
@@ -541,7 +572,7 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
     { "amp", "bAmp" }, { "shape", "bShape" }, { "envAttack", "bAtk" }, { "envDecay", "bDec" }, { "envSustain", "bSus" },
     { "envRelease", "bRel" }, { "bars", "bBars" }, { "morph", "bMorph" }, { "width", "bWidth" }, { "table", "bTable" },
     { "oscRatio", "bRatio" }, { "oscFm", "bFm" }, { "oscBend", "bBend" }, { "oscBendAt", "bBendAt" },
-    { "oscRing", "bRing" }, { "oscSync", "bSync" }, { "oscSub", "bSub" },
+    { "oscScan", "bScan" }, { "oscRing", "bRing" }, { "oscSync", "bSync" }, { "oscSub", "bSub" },
     { "oscSubOct", "bSubOct" }, { "oscSubShape", "bSubShape" }, { "oscUnison", "bUnison" }, { "oscSpread", "bSpread" },
     { "shpDrive", "bDrive" }, { "shpFold", "bFold" }, { "shpBits", "bBits" }, { "shpRate", "bRate" }, { "vcfType", "bVcf" },
     { "vcfCut", "bVcfCut" }, { "vcfRes", "bVcfRes" }, { "vcfTrack", "bVcfTrack" }, { "vcfEnvAmt", "bVcfEnv" },
@@ -822,14 +853,72 @@ inline void relane(Brain& b) {
   }
 }
 
+/* Number(x.toPrecision(4)), as the page rounds Persistence's slider to a
+   fraction: four significant figures of the exact value, a tie going to the
+   larger, read back as the nearest double. glibc's printf writes the exact
+   decimal expansion of a double, so eighty digits of it decide the rounding. */
+inline double jsToPrecision4(double x) {
+  if (!std::isfinite(x) || x == 0) return x;
+  char buf[128];
+  std::snprintf(buf, sizeof buf, "%.80e", std::fabs(x));
+  const char* e = std::strchr(buf, 'e');
+  int exponent = std::atoi(e + 1);
+  long n = (buf[0] - '0') * 1000L + (buf[2] - '0') * 100L + (buf[3] - '0') * 10L + (buf[4] - '0');
+  if (buf[5] >= '5') n++;
+  if (n == 10000) { n = 1000; exponent++; }
+  std::snprintf(buf, sizeof buf, "%lde%d", n, exponent - 3);
+  const double v = std::strtod(buf, nullptr);
+  return x < 0 ? -v : v;
+}
+
+/* Persistence as Scan's slider shows it (P7a): how long a stroke takes to
+   fade to half at sixty frames a second, on a log scale from 20 ms to ten
+   seconds, Off below and Infinite above. The page's memoryHalfLife,
+   memoryOfSlider and memorySliderOf. */
+constexpr double kMemoryLeast = 0.02, kMemoryMost = 10;
+inline double memoryHalfLife(double p) { return -1 / (60 * std::log2(1 - p)); }
+inline double memoryOfSlider(double m) {
+  if (m <= 0) return 0;
+  if (m >= 100) return -1;
+  const double h = kMemoryLeast * std::pow(kMemoryMost / kMemoryLeast, (m - 1) / 98);
+  return jsToPrecision4(1 - std::pow(2.0, -1 / (60 * h)));
+}
+inline double memorySliderOf(double p) {
+  if (p == 0) return 0;
+  if (p < 0) return 100;
+  const double h = memoryHalfLife(jsMin(0.999, p));
+  return jsMax(1, jsMin(99, jsMathRound(1 + 98 * std::log(h / kMemoryLeast) / std::log(kMemoryMost / kMemoryLeast))));
+}
+
+/* setPersistence: the screen's persistence, its menu and Scan's slider, one
+   field. The menu shows one of its five when the value is one, and otherwise
+   its sixth option, written as the value; the page's comment says why. */
+inline void setPersistence(Brain& b, double p) {
+  p = std::isfinite(p) ? p : 0;
+  b.view.screen.persistence = p;
+  std::string named;
+  bool found = false;
+  if (const SelectSpec* spec = selectSpec("persistence")) {
+    std::string_view options = spec->options;
+    while (!found) {
+      const std::size_t cut = options.find('\x1f');
+      const std::string_view option = options.substr(0, cut);
+      // The sixth option is the one with no value until it is given one.
+      if (!option.empty() && jsStringToNumber(utf8To16(option)) == p) { named = std::string(option); found = true; }
+      if (cut == std::string_view::npos) break;
+      options.remove_prefix(cut + 1);
+    }
+  }
+  if (found) b.panel.setSelect("persistence", utf8To16(named));
+  else b.panel.setCustomOption("persistence", jsNumberToString(p));
+  b.panel.setRangeNumber("scanMemory", memorySliderOf(p));
+}
+
 // setDisplay: X-Y with no persistence is a thin scribble, so it is nudged once, on the way in.
 inline void setDisplay(Brain& b, const std::string& mode) {
   Brain::ViewState& w = b.view;
   w.screen.display = mode;
-  if (mode == "xy" && w.screen.persistence == 0) {
-    w.screen.persistence = 0.12;
-    b.panel.setSelect("persistence", u"0.12");
-  }
+  if (mode == "xy" && w.screen.persistence == 0) setPersistence(b, 0.12);
 }
 
 // The view as the capture and the walk read it: the page's numbers held to
@@ -991,7 +1080,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   // The voice's oscillator, shaping and filter: sliders held to their range,
   // menus to their options, then each through its law.
   static const std::pair<const char*, std::pair<double, double>> oscRanges[] = {
-    { "oscFm", { 0, 100 } }, { "oscBend", { -100, 100 } }, { "oscBendAt", { 0, 100 } }, { "oscRing", { 0, 100 } }, { "oscSync", { 100, 800 } }, { "oscSub", { 0, 100 } },
+    { "oscFm", { 0, 100 } }, { "oscBend", { -100, 100 } }, { "oscBendAt", { 0, 100 } }, { "oscScan", { 0, 100 } }, { "oscRing", { 0, 100 } }, { "oscSync", { 100, 800 } }, { "oscSub", { 0, 100 } },
     { "oscSpread", { 0, 50 } }, { "shpDrive", { 0, 100 } }, { "shpFold", { 0, 100 } }, { "vcfCut", { 0, 1000 } },
     { "vcfRes", { 0, 100 } }, { "vcfTrack", { 0, 100 } }, { "vcfEnvAmt", { -40, 40 } }, { "vcfAtk", { 0, 1000 } },
     { "vcfDec", { 1, 2000 } }, { "vcfSus", { 0, 100 } }, { "vcfRel", { 1, 2000 } },
@@ -1394,8 +1483,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     w.restored++;  // beamRefs.clear()
     // Persistence after the display, because switching to X-Y nudges it.
     setDisplay(brain, text("display"));
-    panel.setSelect("persistence", str("persistence"));
-    sc.persistence = num("persistence");
+    setPersistence(brain, num("persistence"));
+    // Scan's softness, in tenths of a cell, held to its slider.
+    {
+      const double soft = num("scanSoft");
+      panel.setRange("scanSoft", toU16(jsNumberToString(std::isfinite(soft) ? jsMax(0, jsMin(60, soft)) : 30)));
+      brain.scanSoft = panel.range("scanSoft") / 10;
+    }
     w.spectroSpan = num("span");
     setZoom(brain, num("zoom"));
   }
@@ -1453,6 +1547,9 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     if (b.lfo[i].sync.empty()) lfos[i].rate = b.lfo[i].free;
   }
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
+  // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
+  else if (id == "scanSoft") b.scanSoft = v / 10;
+  else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
   else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
@@ -1515,15 +1612,13 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
 // slider's handler.
 inline void moveSlider(const std::string& id, std::u16string written, Brain& b, Generator& gen, Keyboard& keys,
                        std::vector<Lfo>& lfos) {
-  b.panel.setRange(id, std::move(written));
-  sliderInput(id, b, gen, keys, lfos);
+  if (b.panel.setRange(id, std::move(written))) sliderInput(id, b, gen, keys, lfos);
 }
 // And to a number, as a host parameter moves it: the slider's value as the
 // text of that number would leave it, with no text made.
 inline void moveSliderTo(const std::string& id, double value, Brain& b, Generator& gen, Keyboard& keys,
                          std::vector<Lfo>& lfos) {
-  b.panel.setRangeNumber(id, value);
-  sliderInput(id, b, gen, keys, lfos);
+  if (b.panel.setRangeNumber(id, value)) sliderInput(id, b, gen, keys, lfos);
 }
 
 // --- a menu or a switch changed: its handler ----------------------------------------------
@@ -1663,7 +1758,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "beamLevel") b.view.screen.beam = text;
   else if (id == "beamXY") b.view.screen.beamXY = checked;
   else if (id == "beamYT") b.view.screen.beamYT = checked;
-  else if (id == "persistence") b.view.screen.persistence = jsStringToNumber(value);
+  else if (id == "persistence") setPersistence(b, jsStringToNumber(value));
   else if (id == "xyX" || id == "xyY") {
     Brain::ViewState& w = b.view;
     const std::size_t which = id == "xyY" ? 1 : 0;

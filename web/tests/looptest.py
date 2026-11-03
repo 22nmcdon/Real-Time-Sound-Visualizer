@@ -379,8 +379,10 @@ with sync_playwright() as pw:
       genSet('amp', 0.55);
       return { worst, moved, verdicts, leastHold, bright, motion, leastScanHold };
     }"""
-    # Scan needs the page's JavaScript generator until P7's core port: the
-    # compiled one does not play it yet. So its run is on a page of its own.
+    # Scan's run is on the page's own brain and JavaScript generator, on a
+    # page of its own: the run reads the tables that brain sends, which the
+    # site's instrument reads inside its worklet and never hands out. The
+    # instrument's reading is held to this one by core/tests/parity.py.
     p2 = b.new_page(viewport={"width": 1400, "height": 900})
     p2.on("pageerror", lambda e: bad.append("pageerror (Scan's page): " + str(e)))
     p2.goto(f"file://{ART}/scope.html?brain=js&core=js"); p2.wait_for_timeout(700)

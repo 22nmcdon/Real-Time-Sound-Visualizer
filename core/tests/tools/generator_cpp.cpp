@@ -58,6 +58,7 @@ void run(const std::vector<std::string>& head, const Events& events) {
     lfos[static_cast<std::size_t>(i)].setShape(parts[0]);
     lfos[static_cast<std::size_t>(i)].rate = num(parts[1]);
   }
+  std::vector<std::unique_ptr<scope::CycleTables>> scans;  // outlives the core, which reads them by pointer
   scope::Generator core(rate, static_cast<int>(num(p["slots"])), lfos, static_cast<std::uint32_t>(num(p["seed"])));
   std::vector<double> out;
   std::vector<std::vector<float>> bufs(6, std::vector<float>(N, 0.0f));
@@ -109,6 +110,12 @@ void run(const std::vector<std::string>& head, const Events& events) {
         else if (cmd == "kick") core.kick(num(arg(1)));
         else if (cmd == "strike") core.strike(num(arg(1)), num(arg(2)));
         else if (cmd == "reswing") core.reswing();
+        // Scan's tables (P7a), kept for the run: the generator holds them by pointer, as it holds the instrument's.
+        else if (cmd == "scan" && arg(2) == "none") core.setScanTable(nullptr, static_cast<int>(num(arg(1))));
+        else if (cmd == "scan") {
+          scans.push_back(std::make_unique<scope::CycleTables>(tables(arg(2).substr(2))));
+          core.setScanTable(scans.back().get(), static_cast<int>(num(arg(1))));
+        }
         else if (cmd == "cycle" && arg(1) == "none") core.setCycle(nullptr);
         else if (cmd == "wavetable" && arg(1) == "none") core.setWavetable(nullptr);
         else if (cmd == "figPath" && arg(1) == "none") core.setFigPath(nullptr);

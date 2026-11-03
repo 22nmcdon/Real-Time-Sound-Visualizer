@@ -28,6 +28,13 @@ struct VoiceTone {
   double width = 0.25, table = 1.5, morph = 0;
   double fmIndex = 0, modRatio = 1, ringMix = 0, syncRatio = 1;
   double warp = 0, warpAt = 0.25;  // the bend (P6c): radians, and where in the cycle
+  /* Scan (P7a): how much of the voice is the screen read back, nought to one
+     of kScanMost; the running-away hold on it, a quarter to one; and the
+     latest table read, which the generator takes at its next tick. The table
+     is not the tone's: whoever reads the screen owns it and keeps it alive
+     while the generator may read it (ScanTables). */
+  double scan = 0, scanHold = 1;
+  const CycleTables* scanTable = nullptr;
   double subLevel = 0;
   int subOctave = 1;
   bool subSine = false;
@@ -73,7 +80,25 @@ struct VoiceFx {
   double fmI = 0, syncR = 1, crushQ = 0, warpA = 0, warpC = 0;
   int cap = kUnisonMax;
   std::array<double, kUnisonMax> det {};
+  /* Scan: how much of the voice it is this block, the tables it is fading
+     from and to, and how far through the tick this sample is - the page's
+     `scanX`, which is the core's and is kept here so the voice can read it. */
+  double scanW = 0;
+  const CycleTables* scanPrev = nullptr;
+  const CycleTables* scanNext = nullptr;
+  double scanX = 0;
 };
+
+// The voice's shape with Scan in it: `ink` is the shape at this phase, `x`
+// how far through the tick the crossfade is, `w` how much of the voice is
+// Scan. A layer with no table yet plays its shape, so turning Scan up before
+// the first tick is not a step to a sine.
+inline double scanMix(double ink, const CycleTables* prev, const CycleTables* next, double phase, double step, double x,
+                      double w) {
+  const double a = prev ? cycleRead(prev, phase, step) : ink;
+  const double b = next == prev ? a : next ? cycleRead(next, phase, step) : ink;
+  return ink + (a + (b - a) * x - ink) * w;
+}
 
 inline void voiceFxFor(const VoiceTone& t, VoiceFx& x, bool fmRouted, bool syncRouted, bool shapeRouted) {
   x.filtering = t.vcfType > 0;
@@ -147,21 +172,30 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
         const double past = master - cyc * kTwoPi;
         const double tau = std::fmin(1.0, past / std::fmax(1e-12, kTwoPi * std::fabs(f) * dtOf));
         const double slaveStep = kTwoPi * sHz * dtOf;
-        const double before = waveAt(t.shape, o.s[k] - tau * slaveStep + pm - 1e-9, 0, bars, amount);
-        const double jump = waveAt(t.shape, pm, 0, bars, amount) - before;
+        double before = waveAt(t.shape, o.s[k] - tau * slaveStep + pm - 1e-9, 0, bars, amount);
+        double restart = waveAt(t.shape, pm, 0, bars, amount);
+        double after = waveAt(t.shape, tau * slaveStep + pm, 0, bars, amount);
+        if (x.scanW > 0) {
+          before = scanMix(before, x.scanPrev, x.scanNext, o.s[k] - tau * slaveStep + pm - 1e-9, 0, x.scanX, x.scanW);
+          restart = scanMix(restart, x.scanPrev, x.scanNext, pm, 0, x.scanX, x.scanW);
+          after = scanMix(after, x.scanPrev, x.scanNext, tau * slaveStep + pm, 0, x.scanX, x.scanW);
+        }
+        const double jump = restart - before;
         o.s[k] = tau * slaveStep;
         owe += jump / 2 * tau * tau - o.r[k];
         o.r[k] = 0;
-        v = waveAt(t.shape, o.s[k] + pm, 0, bars, amount) + jump / 2 * (2 * tau - tau * tau - 1);
+        v = after + jump / 2 * (2 * tau - tau * tau - 1);
       } else {
         if (o.s[k] >= kPhaseWrap) o.s[k] -= kPhaseWrap;
         const double step = std::fabs(inst * syncR) / rate;
         v = waveAt(t.shape, o.s[k] + pm, step, bars, amount);
+        if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, o.s[k] + pm, step, x.scanX, x.scanW);
         const double sdt = std::fmin(0.49, step), c = cycleOf(o.s[k] + pm);
         o.r[k] = wrapHalf != 0 && sdt > 0 && c > 1 - sdt ? wrapHalf * std::pow((c - 1) / sdt + 1, 2) : 0;
       }
     } else {
       v = waveAt(t.shape, master + pm, std::fabs(inst) / rate, bars, amount);
+      if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, master + pm, std::fabs(inst) / rate, x.scanX, x.scanW);
     }
     if (ring > 0) {
       const double g = 1 - ring + ring * std::sin(o.m[k]);

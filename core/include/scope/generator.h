@@ -43,6 +43,7 @@
 #include "scope/noise.h"
 #include "scope/osc.h"
 #include "scope/plane.h"
+#include "scope/scan.h"
 #include "scope/voice.h"
 #include "scope/voices.h"
 #include "scope/wave.h"
@@ -151,6 +152,7 @@ class Generator {
   Generator& operator=(const Generator&) = delete;
 
   Tone& tone() { return a_; }
+  const Tone& tone() const { return a_; }
   LayerBSettings& toneB() { return b_; }
   const LayerBSettings& toneB() const { return b_; }
 
@@ -230,6 +232,14 @@ class Generator {
   void setCycle(std::shared_ptr<const CycleTables> c) { a_.cycle = std::move(c); }
   void setWavetable(std::shared_ptr<const std::vector<CycleTables>> w) { a_.wavetable = std::move(w); }
   void setFigPath(std::shared_ptr<const FigurePath> p) { a_.figPath = std::move(p); }
+  /* Scan's latest table for a layer, taken at the next tick (the page's
+     `scanTable`). Not owned: the caller keeps it alive while it is this, or
+     the one the layer is fading from or to (`scanPrev`, `scanNext`), which is
+     what ScanTables is for. */
+  void setScanTable(const CycleTables* table, int layer = 0) { (layer == 1 ? b_.scanTable : a_.scanTable) = table; }
+  const CycleTables* scanTable(int layer) const { return layer == 1 ? b_.scanTable : a_.scanTable; }
+  const CycleTables* scanPrev(int layer) const { return layer == 1 ? vxB_.scanPrev : vxA_.scanPrev; }
+  const CycleTables* scanNext(int layer) const { return layer == 1 ? vxB_.scanNext : vxA_.scanNext; }
 
   // The chord: a list of notes, or none for no chord on that layer.
   void setVoices(const std::vector<NoteWant>* list, int layer = 0) {
@@ -358,6 +368,9 @@ class Generator {
       shapeR_ = Shaper(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
     }
     voiceFxFor(b_, vxB_, fmRouted, syncRouted, shapeRouted);
+    // How much of each layer's voice is Scan this block: the depth, under the running-away hold.
+    vxA_.scanW = scanWeight(a_);
+    vxB_.scanW = scanWeight(b_);
     ctx_.qMask = a_.qMask;
     ctx_.qGlide = a_.qGlideMs > 0 ? poleFor(a_.qGlideMs, rate_) : 1;
     scoreFade_ = std::exp(-1 / std::fmax(1.0, a_.scoreDecayMs * rate_ / 1000));
@@ -373,6 +386,7 @@ class Generator {
     for (int i = 0; i < n; i++) {
       lfoStep(lfos_[0], rate_, random_);
       lfoStep(lfos_[1], rate_, random_);
+      scanAdvance();
       sumRoutes();
 
       freqNow_ += (a_.freq - freqNow_) * glide;
@@ -502,6 +516,10 @@ class Generator {
         } else {
           wl = waveAt(a_.shape, phaseL_, stepL, bars, amount);
           wr = waveAt(a_.shape, phaseR_ + phase, stepR, bars, amount);
+          if (vxA_.scanW > 0) {
+            wl = scanMix(wl, vxA_.scanPrev, vxA_.scanNext, phaseL_, stepL, vxA_.scanX, vxA_.scanW);
+            wr = scanMix(wr, vxA_.scanPrev, vxA_.scanNext, phaseR_ + phase, stepR, vxA_.scanX, vxA_.scanW);
+          }
         }
         if (vxA_.shaping) { wl = shapeL_.step(wl, ctx_.shaping); wr = shapeR_.step(wr, ctx_.shaping); }
         if (vxA_.crushing) { wl = crushStep(crushL_, wl, a_, vxA_, rate_); wr = crushStep(crushR_, wr, a_, vxA_, rate_); }
@@ -639,6 +657,8 @@ class Generator {
     else if (field == "fmIndex") t.fmIndex = v;
     else if (field == "warp") t.warp = v;
     else if (field == "warpAt") t.warpAt = v;
+    else if (field == "scan") t.scan = v;
+    else if (field == "scanHold") t.scanHold = v;
     else if (field == "ringMix") t.ringMix = v;
     else if (field == "syncRatio") t.syncRatio = v;
     else if (field == "subLevel") t.subLevel = v;
@@ -656,6 +676,28 @@ class Generator {
     else if (field == "vcfEnv") t.vcfEnv = v;
     else return false;
     return true;
+  }
+
+  /* The page's `Math.max(0, Math.min(1, tone.scan || 0)) * Math.max(0,
+     Math.min(1, tone.scanHold)) * SCAN_MOST`: a NaN depth is nought, a NaN
+     hold carries through and is not more than nought, so plays no Scan. */
+  static double scanWeight(const LayerSettings& t) {
+    const double depth = std::isnan(t.scan) ? 0 : t.scan;
+    return jsMax(0.0, jsMin(1.0, depth)) * jsMax(0.0, jsMin(1.0, t.scanHold)) * kScanMost;
+  }
+
+  /* Scan's tick: kScanRate a second of this core's samples, a sixtieth apart
+     however the blocks fall. At each a layer goes from the table it was
+     fading to, to the latest it has been given; `scanX` is how far through the
+     tick this sample is. The page's `scanAdvance`. */
+  void scanAdvance() {
+    scanClock_ += 1;
+    if (scanClock_ >= scanPer_) {
+      scanClock_ -= scanPer_;
+      vxA_.scanPrev = vxA_.scanNext; vxA_.scanNext = a_.scanTable;
+      vxB_.scanPrev = vxB_.scanNext; vxB_.scanNext = b_.scanTable;
+    }
+    vxA_.scanX = vxB_.scanX = scanClock_ / scanPer_;
   }
 
   void restartSwing() { swing_ = 0; swingEnv_ = 1; relet_ = 0; striking_ = false; }
@@ -853,6 +895,7 @@ class Generator {
   int scoreStruck_ = 0;
   Wireframe wire_;
   VoiceFx vxA_, vxB_;
+  double scanPer_ = rate_ / kScanRate, scanClock_ = 0;
   double askedCostA_ = -1, askedCostB_ = -1, askedFixed_ = -1;
   int govFactor_ = 4;
   Budget budget_;

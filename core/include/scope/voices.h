@@ -223,6 +223,10 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       wave = waveAt(tone.shape, voice.phase, std::fabs(f) / c.rate, bars, amount);
     }
     double w = wave;
+    // Scan, where the oscillator is off: under it, `oscStep` has mixed it in.
+    if (vx.scanW > 0 && !vx.on && !tone.noise) {
+      w = scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
+    }
     if (vx.shaping) {
       if (!voice.shp || voice.shp->factor() != c.shapeFactor) voice.shp.emplace(c.shapeFactor, c.shapeFactor == 4 ? c.taps4 : c.taps2);
       w = voice.shp->step(w, c.shaping);

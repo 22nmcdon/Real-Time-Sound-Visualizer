@@ -17,6 +17,7 @@
      spin a,b,c                   routes none | index/held/heldB/slot/amount/amountB/unipolar+...
      gate 0|1 VEL   gated 0|1     kick AMT   strike HZ VEL   reswing
      cycle T:...   wavetable B:...   figPath P:xy;at   (each, or none)   lfo I SHAPE RATE
+     scan LAYER T:... | none      (Scan's latest table for a layer, P7a)
      restart I   (an oscillator's phase to nought, as the worklet restarts one)
      input HZ AMP [DC]   (0 for none)  fx 0|1 (the effect instead of the block)
 
@@ -133,6 +134,8 @@ function run(head, events) {
       else if (cmd === "kick") core.kick(Number(a[0]));
       else if (cmd === "strike") core.strike(Number(a[0]), Number(a[1]));
       else if (cmd === "reswing") core.reswing();
+      // Scan's table for a layer (P7a): `scan LAYER T:...` or `scan LAYER none`.
+      else if (cmd === "scan") core.set("scanTable", a[1] === "none" ? null : tables(a[1]), Number(a[0]));
       else if (a[0] === "none" && ["cycle", "wavetable", "figPath"].includes(cmd)) core.set(cmd, null);
       else if (cmd === "cycle") core.set("cycle", tables(a[0]));
       else if (cmd === "wavetable") core.set("wavetable", a[0].slice(2).split("!").map((c) => tables("T:" + c)));

@@ -59,7 +59,7 @@ inline const Json& setupDefaults() {
   "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
   "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeKaleido":0,"planeSnap":0,
   "planeScaleX":100,"planeScaleY":100,"planeShear":0,"bPlane":false,"delayMix":0,"delayMs":375,"delaySync":"",
-  "delayFeedback":35,"delayPingPong":false,"oscRatio":1,"oscFm":0,"oscBend":0,"oscBendAt":25,"oscRing":0,"oscSync":100,"oscSub":0,
+  "delayFeedback":35,"delayPingPong":false,"oscScan":0,"scanSoft":30,"oscRatio":1,"oscFm":0,"oscBend":0,"oscBendAt":25,"oscRing":0,"oscSync":100,"oscSub":0,
   "oscSubOct":1,"oscSubShape":"square","oscUnison":1,"oscSpread":12,"shpDrive":0,"shpFold":0,
   "shpBits":0,"shpRate":0,"shpOS":2,"vcfType":0,"vcfCut":667,"vcfRes":0,"vcfTrack":0,"vcfEnvAmt":0,
   "vcfAtk":5,"vcfDec":300,"vcfSus":30,"vcfRel":300,"chorusMix":0,"chorusRate":60,"chorusDepth":30,

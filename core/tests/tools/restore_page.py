@@ -100,8 +100,9 @@ DUMP = """(setups) => {
     try { if (setup && setup.op) act(setup); else restore(setup); } catch (e) { error = String(e && e.message || e); }
     out.push(JSON.stringify({
       error,
-      a: tone(genSettings(), ["cycle", "wavetable", "voices", "figPath"]),
-      b: tone(genSettings(1), ["cycle", "wavetable", "voices"]),
+      // Scan's table is a reading of the screen, not a setting, as the chord is a playing (P7a).
+      a: tone(genSettings(), ["cycle", "wavetable", "voices", "figPath", "scanTable"]),
+      b: tone(genSettings(1), ["cycle", "wavetable", "voices", "scanTable"]),
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
               polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
               play: midi.play, cc: encodeCC() },
@@ -127,6 +128,8 @@ DUMP = """(setups) => {
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
+      // Scan's softness as the brain holds it, and the persistence menu's value, its sixth option included (P7a).
+      scan: { soft: scan.soft, persistence: el.persistence.value },
       // Whose sound each layer's picture moves (P6), and what its menu shows.
       pictureMoves: [...layerPictures.moves, el.pictureMovesA.value, el.pictureMovesB.value],
       // The view: what the screen draws by. Switches by their truth, which is

@@ -2549,6 +2549,27 @@ redone natively or left out.
   version pass, being additive. Bend is a candidate host parameter in place
   of a macro; `kKnobs` is unchanged until P8 decides the eight.
 
+- **Scan since P7a.** The voice's half: `VoiceTone` has the layer's `scan`,
+  `scanHold` and the latest `scanTable` (not owned), `VoiceFx` the block's
+  weight and the tables it is fading from and to, and `scanMix` mixes the
+  reading under the shape wherever the page does - on the dyad, inside
+  `oscStep` (the sync reset's three reads included) and in `sound` where the
+  oscillator is off, never on noise. The generator's tick is
+  `scanAdvance`, a sixtieth of a second of its own samples. The reading's
+  half is `scope/scan.h`: `ScanReader::frame` is the page's `scanStep`, run
+  by the instrument right after the picture's step, from its own grid; the
+  page's brain on the compiled generator sends tables through
+  `scope_scan`. Nothing in the reading allocates once made - each layer
+  has four tables, so the one written is never one the generator holds by
+  pointer - and parity counts it. `oscScan`, `scanSoft` and `bScan` are
+  additive setup fields with core defaults; `scanMemory` is the persistence
+  seen in seconds, so the persistence menu's sixth option, the value a time
+  between its five is written as, is a value the core's panel keeps
+  (`setCustomOption`). The panel now refuses a slider or a menu it has not
+  got, where it used to read through a null: Scan's sliders, on the page
+  before the core, crashed the morph's walk in parity that way. None of
+  the three is a host parameter yet; P8 decides the eight.
+
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator
   has no crossings (no `crossings()`, no lines, no voice of their own - the

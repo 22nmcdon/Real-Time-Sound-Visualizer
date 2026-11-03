@@ -29,6 +29,7 @@
 #include "scope/generator.h"
 #include "scope/instrument.h"
 #include "scope/picture.h"
+#include "scope/scan.h"
 #include "scope/setup.h"
 #include "scope/json.h"
 #include "scope/text.h"
@@ -205,6 +206,22 @@ EXPORT(scope_tables) void scopeTables(int which, int count) {
     path->at = r.list();
     core->setFigPath(path);
   }
+}
+
+/* Scan's latest table for a layer (P7a), as the page's brain reads it from
+   its phosphor once a screen frame: the shape `scope_tables` reads a drawn
+   cycle in, or none for a count of nought. Copied into one of the layer's
+   four, never one the generator is reading, as the instrument does with the
+   tables it reads itself. */
+std::unique_ptr<std::array<scope::ScanTables, 2>> scanPools;
+EXPORT(scope_scan) void scopeScan(int layer, int count) {
+  const int l = layer == 1 ? 1 : 0;
+  if (!count) { core->setScanTable(nullptr, l); return; }
+  if (!scanPools) scanPools = std::make_unique<std::array<scope::ScanTables, 2>>();
+  scope::CycleTables* into = (*scanPools)[static_cast<std::size_t>(l)].fresh(core->scanTable(l), core->scanPrev(l), core->scanNext(l));
+  Reader r { numbers.data(), numbers.data() + count };
+  *into = r.tables();
+  core->setScanTable(into, l);
 }
 
 // setRoutes: `count` routes, seven numbers each in the numbers buffer - index

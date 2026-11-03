@@ -767,10 +767,7 @@ the synth's features should be chosen knowing that.
   - *What it costs, and what is approximate:* the page reads its phosphor once a screen
     frame and hands the table over, so the tick is exact on the page but which picture a
     tick plays is whichever frame arrived last; and the page's phosphor fades once a frame,
-    so Persistence in seconds is seconds at sixty frames. The core reads its own grid at its
-    own tick in the audio thread, where both are exact - which is the core port, next. Until
-    it lands Scan plays in `?brain=js&core=js` only: the compiled generator and the site's
-    instrument ignore it. A table is 64 harmonics at 512 points, where the drawn cycle's is
+    so Persistence in seconds is seconds at sixty frames. A table is 64 harmonics at 512 points, where the drawn cycle's is
     128 at 2048, because a table a tick at that size would be most of a frame and three
     cells of softness leave almost nothing above the 30th. Noise shapes and the drawings
     have no Scan. The voice budget (S10) does not cost it yet.
@@ -784,6 +781,26 @@ the synth's features should be chosen knowing that.
     rose is a drawing, and the drawings as Scan's picture are deferred. *Memory* became
     *Persistence*: the picture stage has had a read called Memory since P3, and two controls
     of one name doing two things is a trap.
+  - *P7a, ported to the core:* Scan plays in the compiled generator, the site's instrument
+    and the plugin. The voice's half - the tick, the crossfade, the depth under the hold
+    with a fifth of the shape kept, on the dyad, under the oscillator and sync, on chords
+    and on both layers - is in `generator.h`, `osc.h` and `voices.h`, held to the page's
+    generator to the bit, in JavaScript and in WebAssembly. The reading's half is
+    `scope/scan.h`: the path, the blur, the circle and the tables, and the page's
+    `scanStep` as `ScanReader::frame`, which the instrument runs at its picture frame on
+    the grid it draws for itself - each layer's own while the layers draw one each. The
+    frame is a sixtieth of a second of audio, so in the instrument what a tick plays depends
+    on nothing but the sound, and Persistence is in seconds of it: the timing the page can
+    only approximate, the core has. What cannot be held sample for sample is therefore the
+    page's frames against the instrument's, so parity feeds both the same grids frame by
+    frame and holds what each does with them, to 1e-12 (`exp`, `sin` and `cos` are each
+    library's own). The reading allocates nothing once made, since it runs on the audio
+    thread: each layer has four tables, so the one written is never one the generator reads.
+    The page's brain on the compiled generator hands it each table as numbers, as the
+    drawn cycle goes. Found on the way: a slider the page had and the core did not yet -
+    Scan's three, between the page stage and this one - crashed the core in the middle of
+    the morph's walk, because the panel used whatever its lookup returned; it is refused
+    now, and parity holds that it does nothing.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
