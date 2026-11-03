@@ -144,14 +144,27 @@ with sync_playwright() as pw:
     s = screen()
     # On the first time cursor, a quarter of the way across.
     cx, cy = s["left"] + s["x"] + 0.25 * s["w"], s["top"] + s["y"] + s["h"] * 0.5
+    # Drawing is an X-Y thing and the cursors are a Y-T one: they are drawn
+    # only there, and since the figure could be bent by hand they take
+    # presses only there too. This used to assert that drawing won a press
+    # over a cursor in X-Y and that the cursor moved in X-Y once drawing was
+    # off - a drag of a line nobody could see. So the stroke has to land (the
+    # press really was the pen's), and the cursor's half is a press in Y-T,
+    # where a cursor that ignored presses altogether would fail it.
+    strokes0 = p.evaluate("() => figDrawing.strokes.length")
     p.mouse.move(cx, cy); p.mouse.down(); p.mouse.move(cx + 60, cy, steps=6); p.mouse.up()
     held = p.evaluate("() => state.cursor.t1")
-    p.evaluate("() => el.figDrawOn.click()")
+    strokes1 = p.evaluate("() => figDrawing.strokes.length")
+    p.evaluate("() => { el.figDrawOn.click(); el.dispYT.click(); }")
+    p.wait_for_timeout(200)
+    s = screen()
+    cx, cy = s["left"] + s["x"] + 0.25 * s["w"], s["top"] + s["y"] + s["h"] * 0.5
     p.mouse.move(cx, cy); p.mouse.down(); p.mouse.move(cx + 60, cy, steps=6); p.mouse.up()
     moved = p.evaluate("() => state.cursor.t1")
-    p.evaluate("() => { state.cursors = false; el.figDrawOn.click(); }")
-    check("while drawing the cursors stay put, and once drawing is off they move again",
-          held == 0.25 and moved > 0.25 + 0.05, "%.3f then %.3f" % (held, moved))
+    p.evaluate("() => { state.cursors = false; el.dispXY.click(); el.figDrawOn.click(); }")
+    check("while drawing the pen takes the press and the cursors stay put, and in Y-T they move",
+          held == 0.25 and strokes1 == strokes0 + 1 and moved > 0.25 + 0.05,
+          "%.3f then %.3f, strokes %d -> %d" % (held, moved, strokes0, strokes1))
 
     pen = p.evaluate("""() => {
       el.figDrawClear.click();
