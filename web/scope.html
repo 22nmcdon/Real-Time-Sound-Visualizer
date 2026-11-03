@@ -2818,6 +2818,48 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           </div>
 
           <!-- K3: the phosphor grid read as a score. -->
+          <!-- Scan (P7): the phosphor read back as the voice's wave. On the
+               Picture tab because what it plays is the picture; the depth is
+               the voice's and the layer's being edited, the softness and the
+               memory the screen's. -->
+          <div class="menu-group" id="scanGroup" data-home="bench" data-tab="picture">
+            <span class="menu-title" id="scanTitle">Scan</span>
+            <div class="menu-row">
+              <label class="menu-label" for="oscScan">Depth</label>
+              <div class="grow">
+                <input type="range" id="oscScan" min="0" max="100" value="0">
+                <span class="reading" id="oscScanValue">off</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <label class="menu-label" for="scanSoft">Softness</label>
+              <div class="grow">
+                <input type="range" id="scanSoft" min="0" max="60" value="30">
+                <span class="reading" id="scanSoftValue">3.0 cells</span>
+              </div>
+            </div>
+            <div class="menu-row">
+              <!-- The plan's "Memory knob". Called Persistence because the
+                   picture stage has had a read called Memory since P3, and two
+                   controls of one name doing two things is a trap. -->
+              <label class="menu-label" for="scanMemory">Persistence</label>
+              <div class="grow">
+                <input type="range" id="scanMemory" min="0" max="100" value="0">
+                <span class="reading" id="scanMemoryValue">off</span>
+              </div>
+            </div>
+            <p class="menu-note">The screen read back as the voice's wave: sixty times a second the
+              light is read round a circle near the figure, and that becomes one cycle of the
+              sound, at the note you play. <i>Depth</i> is how much of the voice it is; at the top
+              a fifth of the shape stays, so the note keeps its pitch. It is worth having where
+              the picture moves: a still picture is a still wave, which is an ordinary tone.
+              <i>Softness</i> blurs the light before it is read: at nought the thin lines read as
+              spikes and buzz. <i>Persistence</i> is the menu over the screen in seconds: how long
+              a stroke takes to fade to half, which is how much of what you played the wave
+              remembers. With a split, Depth is the layer being edited, and each layer reads its
+              own figure.</p>
+          </div>
+
           <div class="menu-group" id="scoreGroup" data-home="bench" data-tab="picture">
             <span class="menu-title">Score</span>
             <div class="menu-row">
@@ -3082,6 +3124,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
             <option value="0.12">Medium</option>
             <option value="0.04">Long</option>
             <option value="-1">Infinite</option>
+            <!-- Memory's, when it is set between the five: see setPersistence. -->
+            <option value="" data-memory="1" hidden></option>
           </select>
         </div>
 
@@ -3559,7 +3603,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
-        X&ndash;Y, where the figure is built up a pass at a time.</span></li>
+        X&ndash;Y, where the figure is built up a pass at a time. The same setting is a slider
+        in seconds under <i>Scan</i>, on the Picture tab: how long a stroke takes to fade to
+        half. Set between the menu's five, the menu shows the slider's time.</span></li>
 
       <li><b>The picture plays the sound, always</b>
         <span>Whatever is drawn is read back and moves the sound, with nothing to route.
@@ -3592,6 +3638,24 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         running away reins in the crossing as well as itself, so the pair cannot chase
         itself up. The site's compiled instrument and the plugin do all of this, as
         <i>?brain=js</i> does.</span></li>
+
+      <li><b>Scan: the screen read back as the wave</b>
+        <span>Under <i>Scan</i>, on the Picture tab. Sixty times a second the light on the
+        screen is read round a circle beside the figure, and the reading becomes one cycle of
+        the voice's wave, played at the note you hold, so the picture can change the timbre
+        and never the pitch. Each reading fades into the next across its sixtieth of a second,
+        and that step is part of the sound. <i>Depth</i> is how much of the voice it is; at the
+        top a fifth of the shape stays under it, so the note keeps its pitch even on a picture
+        whose strongest harmonic is not the first. A picture that moves is a wave that moves:
+        a turning fifth thickens and thins as it turns. A still picture is a still wave, an
+        ordinary tone. <i>Softness</i> blurs the light before it is read, three cells to start;
+        at nought the thin lines read as spikes and buzz. <i>Persistence</i> there is the
+        screen's, in seconds. The wave is evened to the same peak every reading, so the
+        picture cannot make it louder; a circle through darkness keeps the last wave rather
+        than reading nothing; and while the loop is running away its depth is reined in to a
+        quarter, as the picture's own reads are. With a split, Depth is the layer being edited
+        and each layer reads its own figure. For now Scan plays in <i>?brain=js&amp;core=js</i>
+        only: the site's compiled instrument and the plugin take it next.</span></li>
 
       <li><b>The photocell: the picture moving the controls</b>
         <span><i>Photocell</i>, above the screen, puts a light sensor on it (with the
@@ -4513,6 +4577,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "planeScaleX", "planeScaleXValue", "planeScaleY", "planeScaleYValue", "planeShear", "planeShearValue",
                   "oscGroup", "oscTitle", "oscRatio", "oscFm", "oscFmValue", "oscBend", "oscBendValue",
                   "oscBendAt", "oscBendAtValue", "oscRing", "oscRingValue",
+                  "scanGroup", "scanTitle", "oscScan", "oscScanValue", "scanSoft", "scanSoftValue",
+                  "scanMemory", "scanMemoryValue",
                   "oscSync", "oscSyncValue", "oscSub", "oscSubValue", "oscUnison", "oscSpread", "oscSpreadValue",
                   "oscSubOct", "oscSubShape",
                   "shpGroup", "shpDrive", "shpDriveValue", "shpFold", "shpFoldValue", "shpBits", "shpRate", "shpOS",
@@ -4820,6 +4886,218 @@ function cycleTables(points) {
   for (const v of levels[0]) peak = Math.max(peak, Math.abs(v));
   if (peak > 0) for (const table of levels) for (let i = 0; i < table.length; i++) table[i] /= peak;
   return { most, levels };
+}
+
+/* --- Scan (P7): the phosphor read back as the voice's wave -----------------
+   Sixty times a second of AUDIO time - never the screen's - the phosphor is
+   read round a closed path into one cycle of a wave, and the voice plays it
+   at the note's pitch, crossfaded from one tick's table into the next across
+   the tick. That is round one of the Scan experiment (docs/scan-experiment),
+   the take the owner liked best of all, with no easing: on a moving picture
+   the step from table to table is part of the character. The pitch is the
+   note's and the read rate's, so the picture changes the timbre and never
+   the tuning.
+
+   The path is P2's off-centre circle: round the figure's centre of
+   brightness, moved off it by 0.35 and 0.2 of its RMS radius and 0.8 of it
+   across. Read from its centre a symmetric figure repeats k times a lap and
+   plays k times too high; off-centre, five of the experiment's six pictures
+   read their fundamental strongest. The centre and the size follow the
+   figure over about a second (`SCAN_FOLLOW`), so a figure that moves does not
+   drag the path about every tick and smear the table. The grid is blurred
+   first by the softness, in cells, because a path across thin lit lines
+   reads spikes: 1 to 5 dB an octave raw, 10 to 17 softened by three.
+
+   Three of the loop's defences are in this arithmetic. A table is evened to
+   a peak of one, so the picture can make the voice neither louder nor
+   quieter; a path through darkness reads nothing, and the last table is
+   held rather than divided by nothing; and the depth never takes the whole
+   voice (`SCAN_MOST`), so a fifth of the shape is always there and the note
+   keeps its pitch on a picture whose lowest harmonic is not the first. The
+   fourth, the running-away hold, is the picture stage's (`scanStep`).
+
+   Each table carries 64 harmonics at most and is built at 512 points, half
+   the harmonics a level down to the fundamental alone, and read by
+   `cycleRead` as the drawn cycle's are: band-limited by leaving out what
+   would fold. The drawn cycle builds 128 at 2048, which costs milliseconds;
+   a table a tick at that size would be most of the frame, and three cells of
+   softness leave almost nothing above the 30th harmonic of a figure's
+   circumference. */
+/* Tables a second, of audio time; where the path is read; the most harmonics
+   a table carries; a level's length; the depth's top, so a fifth of the shape
+   stays; the softness to start, in cells; a reading quieter than SCAN_DARK
+   is darkness; the seconds the path takes to follow the figure; and the
+   least radius it is given, in cells. Each on a line of its own, comment
+   above: the parity harness lifts a bound constant to the first ";" and a
+   newline, which a comment after it would put somewhere else. */
+const SCAN_RATE = 60;
+const SCAN_POINTS = 256;
+const SCAN_HARMONICS = 64;
+const SCAN_TABLE = 512;
+const SCAN_MOST = 0.8;
+const SCAN_SOFT_DEFAULT = 3;
+const SCAN_DARK = 1e-4;
+const SCAN_FOLLOW = 1;
+const SCAN_LEAST = 2;
+
+/* The figure's centre of brightness and its RMS radius about it, in
+   fractions of the grid; null when nothing is lit. */
+function scanGeometry(grid) {
+  const n = Math.round(Math.sqrt(grid.length));
+  let s = 0, sx = 0, sy = 0;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const w = grid[y * n + x];
+      if (w > 0) { s += w; sx += w * (x + 0.5); sy += w * (y + 0.5); }
+    }
+  }
+  if (!(s > 1e-9)) return null;
+  const cx = sx / s, cy = sy / s;
+  let rr = 0;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const w = grid[y * n + x];
+      if (w > 0) rr += w * ((x + 0.5 - cx) * (x + 0.5 - cx) + (y + 0.5 - cy) * (y + 0.5 - cy));
+    }
+  }
+  return { cx: cx / n, cy: cy / n, r: Math.sqrt(rr / s) / n };
+}
+
+/* The path's geometry moved towards the grid's over `dt` seconds: taken at
+   once the first time, held while nothing is lit. */
+function scanFollow(path, grid, dt) {
+  const g = scanGeometry(grid);
+  if (!g) return path;
+  if (!path) return g;
+  const k = 1 - Math.exp(-Math.max(0, dt) / SCAN_FOLLOW);
+  return { cx: path.cx + (g.cx - path.cx) * k, cy: path.cy + (g.cy - path.cy) * k, r: path.r + (g.r - path.r) * k };
+}
+
+/* The grid blurred by `sigma` cells, a Gaussian along the rows and then the
+   columns, out to three sigma, with nought beyond the edge. */
+function scanBlur(grid, sigma) {
+  const n = Math.round(Math.sqrt(grid.length));
+  const out = new Float64Array(n * n);
+  if (!(sigma > 0)) { for (let i = 0; i < n * n; i++) out[i] = grid[i]; return out; }
+  const reach = Math.ceil(3 * sigma), kernel = new Float64Array(2 * reach + 1);
+  let sum = 0;
+  for (let j = -reach; j <= reach; j++) { kernel[j + reach] = Math.exp(-j * j / (2 * sigma * sigma)); sum += kernel[j + reach]; }
+  for (let j = 0; j < kernel.length; j++) kernel[j] /= sum;
+  const rows = new Float64Array(n * n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let v = 0;
+      for (let j = -reach; j <= reach; j++) {
+        const xx = x + j;
+        if (xx >= 0 && xx < n) v += kernel[j + reach] * grid[y * n + xx];
+      }
+      rows[y * n + x] = v;
+    }
+  }
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let v = 0;
+      for (let j = -reach; j <= reach; j++) {
+        const yy = y + j;
+        if (yy >= 0 && yy < n) v += kernel[j + reach] * rows[yy * n + x];
+      }
+      out[y * n + x] = v;
+    }
+  }
+  return out;
+}
+
+/* Brightness at u, v of a grid, bilinear between cell centres, nought
+   outside: the photocell's own read without its cross of five. */
+function scanBilinear(g, n, u, v) {
+  const fx = u * n - 0.5, fy = v * n - 0.5;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const cell = (cx, cy) => (cx < 0 || cy < 0 || cx >= n || cy >= n) ? 0 : g[cy * n + cx];
+  return cell(x0, y0) * (1 - tx) * (1 - ty) + cell(x0 + 1, y0) * tx * (1 - ty)
+       + cell(x0, y0 + 1) * (1 - tx) * ty + cell(x0 + 1, y0 + 1) * tx * ty;
+}
+
+/* The path read: SCAN_POINTS brightnesses round the off-centre circle, from
+   the grid blurred by `softness`. */
+function scanRead(grid, path, softness) {
+  const n = Math.round(Math.sqrt(grid.length));
+  const g = scanBlur(grid, softness);
+  const r = Math.max(path.r, SCAN_LEAST / n);
+  const cx = path.cx + 0.35 * r, cy = path.cy + 0.2 * r, across = 0.8 * r;
+  const points = new Float64Array(SCAN_POINTS);
+  for (let i = 0; i < SCAN_POINTS; i++) {
+    const th = 2 * Math.PI * i / SCAN_POINTS;
+    points[i] = scanBilinear(g, n, cx + across * Math.cos(th), cy + across * Math.sin(th));
+  }
+  return points;
+}
+
+/* A cosine over `n` points, kept: a table a tick would otherwise be a
+   hundred thousand calls to Math.cos. */
+const scanCosines = new Map();
+function scanCosine(n) {
+  let c = scanCosines.get(n);
+  if (!c) {
+    c = new Float64Array(n);
+    for (let i = 0; i < n; i++) c[i] = Math.cos(2 * Math.PI * i / n);
+    scanCosines.set(n, c);
+  }
+  return c;
+}
+
+/* A reading as `cycleRead`'s tables: its harmonics, a level with all of
+   them and each level after with half, one peak for every level - the
+   richest's, so a note does not change level as it climbs into a sparser
+   one - and no DC. Null for darkness, so the last table is held. */
+function scanTables(points) {
+  const n = points.length;
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += points[i];
+  mean /= n;
+  let power = 0;
+  for (let i = 0; i < n; i++) power += (points[i] - mean) * (points[i] - mean);
+  if (!(Math.sqrt(power / n) > SCAN_DARK)) return null;
+  const top = Math.min(SCAN_HARMONICS, n / 2 - 1), cn = scanCosine(n), q = 3 * n / 4;
+  const a = new Float64Array(top + 1), b = new Float64Array(top + 1);
+  for (let k = 1; k <= top; k++) {
+    let sa = 0, sb = 0;
+    // sin(x) is cos(x - a quarter turn), three quarters on.
+    for (let i = 0; i < n; i++) {
+      const p = points[i] - mean, m = (k * i) % n;
+      sa += p * cn[m];
+      sb += p * cn[(m + q) % n];
+    }
+    a[k] = 2 * sa / n; b[k] = 2 * sb / n;
+  }
+  const T = SCAN_TABLE, ct = scanCosine(T), qt = 3 * T / 4, levels = [];
+  for (let limit = SCAN_HARMONICS; limit >= 1; limit >>= 1) {
+    const table = new Float64Array(T), upto = Math.min(top, limit);
+    for (let i = 0; i < T; i++) {
+      let v = 0;
+      for (let k = 1; k <= upto; k++) {
+        const m = (k * i) % T;
+        v += a[k] * ct[m] + b[k] * ct[(m + qt) % T];
+      }
+      table[i] = v;
+    }
+    levels.push(table);
+  }
+  let peak = 0;
+  for (let i = 0; i < T; i++) peak = Math.max(peak, Math.abs(levels[0][i]));
+  if (!(peak > 0)) return null;
+  for (const table of levels) for (let i = 0; i < T; i++) table[i] /= peak;
+  return { most: SCAN_HARMONICS, levels };
+}
+
+/* The voice's shape with Scan in it: `ink` is the shape at this phase, `x`
+   how far through the tick the crossfade is, `w` how much of the voice is
+   Scan. A layer with no table yet plays its shape, so turning Scan up before
+   the first tick is not a step to a sine. */
+function scanMix(ink, prev, next, phase, step, x, w) {
+  const a = prev ? cycleRead(prev, phase, step) : ink;
+  const b = next === prev ? a : next ? cycleRead(next, phase, step) : ink;
+  return ink + (a + (b - a) * x - ink) * w;
 }
 
 /* The drawbars: nine sine partials at the footages of a tonewheel organ, in
@@ -6033,8 +6311,11 @@ function nameMacro(i, name) {
    itself, the on-screen keys' strike, and the Picture amount, which is the
    player's (restoreInto says why). Where a file was up to and the rack's
    alignment were skipped too, until P5 cut both. */
+/* And Scan's Persistence (P7a), which is the persistence menu's field seen
+   in seconds: walked, it landed the persistence on the slider's grid -
+   0.1185 for the menu's 0.12 - so a preset glided into ended near itself. */
 const MORPH_SKIP = new Set(["morphPos", "macro1", "macro2", "macro3", "macro4",
-                            "keysVelocity", "pictureAmount"]);
+                            "keysVelocity", "pictureAmount", "scanMemory"]);
 /* Frequency in hertz on a linear slider: halfway between 220 and 880 should be
    440, an octave from each, not 550. Everything else here is already in the
    units its law wants, so a straight line is the right line. */
@@ -6795,6 +7076,7 @@ function applyModMatrix(frame, elapsed) {
   syncMidiOut();
   photoStep(elapsed);
   pictureStep(frame, elapsed);
+  scanStep(elapsed);
   midiApplyGate();
   fireEvents();
 
@@ -9110,6 +9392,14 @@ function generatorSettings() {
        swells it. Held under 0.9 so the phase never runs backwards. */
     warp: 0,
     warpAt: 0.25,
+    /* Scan (P7): how much of the voice is the phosphor read back, nought to
+       one, of SCAN_MOST; the latest table the page read, which the core
+       takes at its next tick; and the running-away hold the page's picture
+       stage puts on the depth, a quarter to one. The table and the hold are
+       the page's to send and are never stored in a setup. */
+    scan: 0,
+    scanTable: null,
+    scanHold: 1,
     ringMix: 0,
     syncRatio: 1,
     subLevel: 0,
@@ -9255,6 +9545,9 @@ function generatorSettings() {
     fmIndex: 0,
     warp: 0,
     warpAt: 0.25,
+    scan: 0,
+    scanTable: null,
+    scanHold: 1,
     ringMix: 0,
     syncRatio: 1,
     subLevel: 0,
@@ -10236,7 +10529,7 @@ function makeGeneratorCore(rate, slots, lfos) {
   function makeVoiceFx() {
     return { on: false, syncing: false, shaping: false, crushing: false, filtering: false, vcfK: 1, vcfPush: 0,
              n: 1, fmI: 0, syncR: 1, crushQ: 0, warpA: 0, warpC: 0, cap: UNISON_MAX,
-             det: new Float64Array(UNISON_MAX) };
+             det: new Float64Array(UNISON_MAX), scanW: 0, scanPrev: null, scanNext: null };
   }
   function voiceFxFor(t, x, fmRouted, syncRouted, shapeRouted) {
     x.filtering = t.vcfType > 0;
@@ -10255,6 +10548,22 @@ function makeGeneratorCore(rate, slots, lfos) {
     }
   }
   const vxA = makeVoiceFx(), vxB = makeVoiceFx();
+  /* Scan's tick: SCAN_RATE a second of this core's samples, a sixtieth apart
+     however the blocks fall, so the tables change at the same samples
+     whatever the page's screen is doing. At each tick a layer's table goes
+     from the one it was fading to, to the latest the page has read; `scanX`
+     is how far through the tick this sample is. */
+  const scanPer = rate / SCAN_RATE;
+  let scanClock = 0, scanX = 0;
+  function scanAdvance() {
+    scanClock += 1;
+    if (scanClock >= scanPer) {
+      scanClock -= scanPer;
+      vxA.scanPrev = vxA.scanNext; vxA.scanNext = tone.scanTable || null;
+      vxB.scanPrev = vxB.scanNext; vxB.scanNext = toneB.scanTable || null;
+    }
+    scanX = scanClock / scanPer;
+  }
   function unisonAsked(t) { return Math.max(1, Math.min(UNISON_MAX, Math.round(t.unison) || 1)); }
 
   /* S10: what the voices cost, and what is given up when it is too much.
@@ -10548,16 +10857,24 @@ function makeGeneratorCore(rate, slots, lfos) {
           // Where the reset caught the slave, from the left: at a whole
           // ratio that is the very end of its cycle, where a saw is +1 and
           // not the -1 it would read a hair later.
-          const before = waveAt(t.shape, o.s[k] - tau * slaveStep + pm - 1e-9, 0, bars, amount);
-          const jump = waveAt(t.shape, pm, 0, bars, amount) - before;
+          let before = waveAt(t.shape, o.s[k] - tau * slaveStep + pm - 1e-9, 0, bars, amount);
+          let restart = waveAt(t.shape, pm, 0, bars, amount);
+          let after = waveAt(t.shape, tau * slaveStep + pm, 0, bars, amount);
+          if (x.scanW > 0) {
+            before = scanMix(before, x.scanPrev, x.scanNext, o.s[k] - tau * slaveStep + pm - 1e-9, 0, scanX, x.scanW);
+            restart = scanMix(restart, x.scanPrev, x.scanNext, pm, 0, scanX, x.scanW);
+            after = scanMix(after, x.scanPrev, x.scanNext, tau * slaveStep + pm, 0, scanX, x.scanW);
+          }
+          const jump = restart - before;
           o.s[k] = tau * slaveStep;
           owe += jump / 2 * tau * tau - o.r[k];
           o.r[k] = 0;
-          v = waveAt(t.shape, o.s[k] + pm, 0, bars, amount) + jump / 2 * (2 * tau - tau * tau - 1);
+          v = after + jump / 2 * (2 * tau - tau * tau - 1);
         } else {
           if (o.s[k] >= PHASE_WRAP) o.s[k] -= PHASE_WRAP;
           const step = Math.abs(inst * syncR) / rate;
           v = waveAt(t.shape, o.s[k] + pm, step, bars, amount);
+          if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, o.s[k] + pm, step, scanX, x.scanW);
           // The half of the wrap's correction `waveAt` has just put in, if
           // the slave is within a sample of wrapping.
           const sdt = Math.min(0.49, step), c = cycleOf(o.s[k] + pm);
@@ -10565,6 +10882,7 @@ function makeGeneratorCore(rate, slots, lfos) {
         }
       } else {
         v = waveAt(t.shape, master + pm, Math.abs(inst) / rate, bars, amount);
+        if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, master + pm, Math.abs(inst) / rate, scanX, x.scanW);
       }
       if (ring > 0) {
         const g = 1 - ring + ring * Math.sin(o.m[k]);
@@ -10610,6 +10928,10 @@ function makeGeneratorCore(rate, slots, lfos) {
         : vx.on ? oscStep(voice.osc || (voice.osc = makeOsc()), voice.phase, 0, f, tone, bars, amount, vx)
         : waveAt(tone.shape, voice.phase, Math.abs(f) / rate, bars, amount);
       let w = wave;
+      // Scan, where the oscillator is off: under it, `oscStep` has mixed it in.
+      if (vx.scanW > 0 && !vx.on && !NOISES.has(tone.shape)) {
+        w = scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, Math.abs(f) / rate, scanX, vx.scanW);
+      }
       if (vx.shaping) w = shaperOf(voice).step(w);
       if (vx.crushing) w = crushStep(voice.cr || (voice.cr = makeCrush()), w, tone, vx);
       if (vx.filtering) {
@@ -10725,6 +11047,11 @@ function makeGeneratorCore(rate, slots, lfos) {
     const wantShape = tone.shapeOS === 4 && govFactor === 4 ? 4 : 2;
     if (wantShape !== shapeFactor) { shapeFactor = wantShape; shapeL = makeShaper(); shapeR = makeShaper(); }
     voiceFxFor(toneB, vxB, fmRouted, syncRouted, shapeRouted);
+    /* How much of each layer's voice is Scan this block: the depth, under the
+       running-away hold. Here rather than in voiceFxFor, which parity lifts
+       on its own and runs without Scan's constants until the core has them. */
+    vxA.scanW = Math.max(0, Math.min(1, tone.scan || 0)) * Math.max(0, Math.min(1, tone.scanHold)) * SCAN_MOST;
+    vxB.scanW = Math.max(0, Math.min(1, toneB.scan || 0)) * Math.max(0, Math.min(1, toneB.scanHold)) * SCAN_MOST;
     // The quantiser's settings are layer A's and apply to both layers, like
     // the modulation: one key for the page.
     qMaskNow = tone.qMask;
@@ -10745,6 +11072,7 @@ function makeGeneratorCore(rate, slots, lfos) {
     for (let i = 0; i < n; i++) {
       lfoStep(lfos[0], rate);
       lfoStep(lfos[1], rate);
+      scanAdvance();
 
       sumRoutes();
 
@@ -10918,6 +11246,10 @@ function makeGeneratorCore(rate, slots, lfos) {
         } else {
           wl = waveAt(tone.shape, phaseL, stepL, bars, amount);
           wr = waveAt(tone.shape, phaseR + phase, stepR, bars, amount);
+          if (vxA.scanW > 0) {
+            wl = scanMix(wl, vxA.scanPrev, vxA.scanNext, phaseL, stepL, scanX, vxA.scanW);
+            wr = scanMix(wr, vxA.scanPrev, vxA.scanNext, phaseR + phase, stepR, scanX, vxA.scanW);
+          }
         }
         if (vxA.shaping) { wl = shapeL.step(wl); wr = shapeR.step(wr); }
         if (vxA.crushing) { wl = crushStep(crushL, wl, tone, vxA); wr = crushStep(crushR, wr, tone, vxA); }
@@ -11257,6 +11589,11 @@ function makeWasmCore(bytes, rate, slots, lfos, seed) {
     tone, toneB,
     set(field, value, layer) {
       storeGeneratorSetting(tone, toneB, field, value, layer);
+      /* Scan's table is not sent: the compiled core does not play it yet,
+         and as JSON a table a frame would be three thousand numbers
+         written out and parsed sixty times a second for nothing. P7's
+         core port gives it a way in, as the drawn cycle has. */
+      if (field === "scanTable") return;
       if (field in TABLES) { sendTables(TABLES[field], value); return; }
       const f = utf8(field), v = utf8(JSON.stringify(value === undefined ? null : value, plain));
       write(f, v);
@@ -11743,6 +12080,9 @@ function generatorModuleSource() {
     bind("drawbarGain", String(drawbarGain)),
     bind("drawbarWeights", String(drawbarWeights)),
     bind("cycleRead", String(cycleRead)),
+    bind("SCAN_RATE", SCAN_RATE),
+    bind("SCAN_MOST", SCAN_MOST),
+    bind("scanMix", String(scanMix)),
     bind("waveAt", String(waveAt)),
     bind("figureAt", String(figureAt)),
     bind("makeWireframe", String(makeWireframe)),
@@ -15262,6 +15602,94 @@ function phosphorReadGrid(g, u, v) {
   return (at(u, v) + at(u - d, v) + at(u + d, v) + at(u, v - d) + at(u, v + d)) / 5;
 }
 
+/* --- Scan's reading, on the page -------------------------------------------
+   The page's brain reads the phosphor here, once a screen frame, and hands
+   each layer playing Scan its latest table; the generator takes whichever is
+   latest at its own tick, sixty a second of audio time (`scanAdvance`). So
+   the tick is exact on the page too - the tables change at the same samples
+   whatever the screen does - but which picture a tick plays is whichever
+   frame last arrived: at sixty frames a second the one before or the one
+   before that, at 120 every other frame read and never played, at thirty one
+   table for two ticks. The core reads its own grid in its own thread at its
+   own tick and is exact (P7's core port, for the site's instrument and the
+   plugin). For the same reason Memory is in seconds of a screen at sixty:
+   the page's phosphor fades once a frame, so on a faster screen it is
+   shorter than it says.
+
+   Each layer reads the picture its figure draws when the layers draw one
+   each (`layerPictures`), and the one screen otherwise. Reading the OTHER
+   layer's picture - cross-scan - is P7b's.
+
+   The fourth defence is here: the picture stage's running-away hold, the
+   one that reins the stage in, reins Scan's depth in too, to a quarter while
+   the screen is saturated or the limiters strain. And for a quarter of a
+   second after a setup lands nothing is read, so a table is never made of
+   the moment the old picture is wiped and the new one has not been drawn. */
+const SCAN_FREEZE_MS = 250;
+const scan = { paths: [null, null], soft: SCAN_SOFT_DEFAULT, frozenUntil: 0, held: [1, 1], tables: [null, null] };
+function scanFreeze() { scan.frozenUntil = performance.now() + SCAN_FREEZE_MS; }
+function scanStep(elapsed) {
+  // The page's own generator only: the instrument reads its own grid.
+  if (state.display === "spect" || !state.source || state.source.kind !== "tone") return;
+  const live = layerPictures.live && layerPictures.engines;
+  for (let l = 0; l < (layersOn() ? 2 : 1); l++) {
+    const settings = genSettings(l);
+    if (!settings || !(settings.scan > 0)) { scan.paths[l] = null; continue; }
+    const hold = live ? layerPictures.stages[l].hold : pictureStage.hold;
+    if (Math.abs(hold - scan.held[l]) > 0.005 || (hold === 1 && scan.held[l] !== 1)) {
+      scan.held[l] = hold;
+      genSet("scanHold", hold, l);
+    }
+    const grid = live ? layerPictures.engines[l].cells : pictureEngine.cells;
+    scan.paths[l] = scanFollow(scan.paths[l], grid, elapsed / 1000);
+    if (!scan.paths[l] || performance.now() < scan.frozenUntil) continue;
+    const tables = scanTables(scanRead(grid, scan.paths[l], scan.soft));
+    if (tables) { scan.tables[l] = tables; genSet("scanTable", tables, l); }
+  }
+}
+
+/* Memory: the phosphor's persistence as how long a stroke takes to fade to
+   half, at sixty frames a second. The slider is a log scale from 20 ms to
+   ten seconds, with Off below it and Infinite above; Persistence's menu over
+   the screen is the same field, and each follows the other. The field is
+   what it always was, the fraction a frame fades, so no code changes
+   meaning: a value the menu does not have is shown in it as Memory's. */
+const MEMORY_LEAST = 0.02, MEMORY_MOST = 10;
+function memoryHalfLife(p) { return -1 / (60 * Math.log2(1 - p)); }
+function memoryOfSlider(m) {
+  if (m <= 0) return 0;
+  if (m >= 100) return -1;
+  const h = MEMORY_LEAST * Math.pow(MEMORY_MOST / MEMORY_LEAST, (m - 1) / 98);
+  return Number((1 - Math.pow(2, -1 / (60 * h))).toPrecision(4));
+}
+function memorySliderOf(p) {
+  if (p === 0) return 0;
+  if (p < 0) return 100;
+  const h = memoryHalfLife(Math.min(0.999, p));
+  return Math.max(1, Math.min(99, Math.round(1 + 98 * Math.log(h / MEMORY_LEAST) / Math.log(MEMORY_MOST / MEMORY_LEAST))));
+}
+function memoryReading(p) {
+  if (p === 0) return "off";
+  if (p < 0) return "infinite";
+  const h = memoryHalfLife(Math.min(0.999, p));
+  return h < 1 ? Math.round(h * 1000) + " ms" : h.toFixed(1) + " s";
+}
+function setPersistence(p) {
+  p = Number.isFinite(p) ? p : 0;
+  state.persistence = p;
+  const custom = el.persistence.querySelector("option[data-memory]");
+  const named = Array.from(el.persistence.options).find((o) => !o.dataset.memory && Number(o.value) === p);
+  if (named) { custom.hidden = true; el.persistence.value = named.value; }
+  else {
+    custom.value = String(p);
+    custom.textContent = memoryReading(p);
+    custom.hidden = false;
+    el.persistence.value = custom.value;
+  }
+  el.scanMemory.value = String(memorySliderOf(p));
+  el.scanMemoryValue.textContent = memoryReading(p);
+}
+
 /* --- the photocell --------------------------------------------------------
    A light sensor taped to the screen, driving the controls: a reticle you park
    on the picture, whose brightness is a modulation source. Stage E1 - it may
@@ -18332,6 +18760,9 @@ const LAYER_CONTROLS = [
   ["oscBendAt", "warpAt", (v) => v / 100, (v) => Math.round(v * 100), (v) => Math.round(v * 3.6) + "\u00b0",
    "oscBendAtValue"],
   ["oscRing", "ringMix", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "oscRingValue"],
+  // Scan's depth (P7), in hundredths of its travel, which is SCAN_MOST of the voice.
+  ["oscScan", "scan", (v) => v / 100, (v) => Math.round(v * 100), (v) => (v > 0 ? Math.round(v * SCAN_MOST) + "%" : "off"),
+   "oscScanValue"],
   ["oscSync", "syncRatio", (v) => v / 100, (v) => Math.round(v * 100),
    (v) => (v > 100 ? (v / 100).toFixed(2) + "\u00d7" : "off"), "oscSyncValue"],
   ["oscSub", "subLevel", (v) => v / 100, (v) => Math.round(v * 100), (v) => mixReading(v), "oscSubValue"],
@@ -18929,10 +19360,7 @@ function setDisplay(mode) {
   // X-Y with no persistence is a thin scribble - only the fraction of the
   // figure drawn on this one frame. Nudged once, on the way in, rather than
   // forced: change it afterwards and it stays changed.
-  if (mode === "xy" && state.persistence === 0) {
-    state.persistence = 0.12;
-    el.persistence.value = "0.12";
-  }
+  if (mode === "xy" && state.persistence === 0) setPersistence(0.12);
 
   // Whatever is on the screen belongs to the other mode.
   const fit = fitCanvas(el.trace);
@@ -18983,7 +19411,7 @@ el.trace.addEventListener("wheel", (event) => {
 }, { passive: false });
 
 el.persistence.addEventListener("change", () => {
-  state.persistence = Number(el.persistence.value);
+  setPersistence(Number(el.persistence.value));
   // Going to a shorter tail should not leave the longer one's smear behind.
   const fit = fitCanvas(el.trace);
   fit.ctx.fillStyle = ink.paper;
@@ -19920,6 +20348,10 @@ const DEFAULTS = {
      a code with it off is the code it always was. */
   bPlane: false,
   delayMix: 0, delayMs: 375, delaySync: "", delayFeedback: 35, delayPingPong: false,
+  // Additive: a code from before Scan plays no Scan, at the softness P2 chose.
+  // scanSoft is SCAN_SOFT_DEFAULT in tenths of a cell, written out: the
+  // parity harness lifts DEFAULTS without Scan's constants.
+  oscScan: 0, scanSoft: 30,
   oscRatio: 1, oscFm: 0, oscBend: 0, oscBendAt: 25, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square",
   oscUnison: 1, oscSpread: 12, shpDrive: 0, shpFold: 0, shpBits: 0, shpRate: 0, shpOS: 2,
   vcfType: 0, vcfCut: 667, vcfRes: 0, vcfTrack: 0, vcfEnvAmt: 0, vcfAtk: 5, vcfDec: 300, vcfSus: 30, vcfRel: 300,
@@ -19944,7 +20376,7 @@ const DEFAULTS = {
    the layer being shown. */
 const LAYER_KEYS = { amp: "bAmp", shape: "bShape", envAttack: "bAtk", envDecay: "bDec",
                      envSustain: "bSus", envRelease: "bRel", bars: "bBars", morph: "bMorph", width: "bWidth", table: "bTable",
-                     oscRatio: "bRatio", oscFm: "bFm", oscBend: "bBend", oscBendAt: "bBendAt", oscRing: "bRing",
+                     oscRatio: "bRatio", oscFm: "bFm", oscBend: "bBend", oscBendAt: "bBendAt", oscScan: "bScan", oscRing: "bRing",
                      oscSync: "bSync", oscSub: "bSub",
                      oscSubOct: "bSubOct", oscSubShape: "bSubShape", oscUnison: "bUnison", oscSpread: "bSpread",
                      shpDrive: "bDrive", shpFold: "bFold", shpBits: "bBits", shpRate: "bRate",
@@ -19955,7 +20387,7 @@ const LAYER_TEXT = new Set(["shape", "bars", "oscSubShape"]);
 /* Layer A's oscillator controls in a code, under their own ids, and what a
    value has to be to be used: a slider's range, or one of a menu's options.
    Additive fields, so a code from before them has everything off. */
-const OSC_RANGES = { oscFm: [0, 100], oscBend: [-100, 100], oscBendAt: [0, 100], oscRing: [0, 100],
+const OSC_RANGES = { oscFm: [0, 100], oscBend: [-100, 100], oscBendAt: [0, 100], oscScan: [0, 100], oscRing: [0, 100],
                      oscSync: [100, 800], oscSub: [0, 100],
                      oscSpread: [0, 50], shpDrive: [0, 100], shpFold: [0, 100],
                      vcfCut: [0, 1000], vcfRes: [0, 100], vcfTrack: [0, 100], vcfEnvAmt: [-40, 40],
@@ -19990,6 +20422,7 @@ function snapshot() {
     table: Number(a("table")),
     oscRatio: Number(a("oscRatio")), oscFm: Number(a("oscFm")), oscBend: Number(a("oscBend")),
     oscBendAt: Number(a("oscBendAt")), oscRing: Number(a("oscRing")),
+    oscScan: Number(a("oscScan")), scanSoft: Number(el.scanSoft.value),
     oscSync: Number(a("oscSync")), oscSub: Number(a("oscSub")), oscSubOct: Number(a("oscSubOct")),
     oscSubShape: a("oscSubShape"), oscUnison: Number(a("oscUnison")), oscSpread: Number(a("oscSpread")),
     shpDrive: Number(a("shpDrive")), shpFold: Number(a("shpFold")), shpBits: Number(a("shpBits")),
@@ -20138,6 +20571,7 @@ function restore(partial) {
 }
 
 function restoreInto(partial) {
+  scanFreeze();
   const s = Object.assign({}, DEFAULTS, partial || {});
   // The controls say layer A while a setup is being written into them.
   showLayerOnPanel(0);
@@ -20516,8 +20950,12 @@ function restoreInto(partial) {
   // Persistence after the display, because switching to X-Y nudges it and
   // the preset's own value is the one that should win.
   setDisplay(s.display);
-  el.persistence.value = s.persistence;
-  state.persistence = Number(s.persistence);
+  setPersistence(Number(s.persistence));
+  {
+    const soft = Number(s.scanSoft);
+    el.scanSoft.value = String(Number.isFinite(soft) ? Math.max(0, Math.min(60, soft)) : DEFAULTS.scanSoft);
+    el.scanSoft.dispatchEvent(new Event("input"));
+  }
   el.spectroSpan.value = s.span;
   state.spectroSpan = Number(s.span);
   setZoom(s.zoom);
@@ -20590,6 +21028,15 @@ const PRESETS = [
     ["Wavetable scan", { shape: "wavetable", freq: 110, timebase: 4, pHarm: true,
                          mod: "lfo1>gen.table@1.000", l0s: "triangle", l0r: 20 },
      "Four single cycles - a sine, an organ's three partials, a saw and a narrow pulse - scanned by an oscillator: the harmonics pane fills and empties as it goes. Open Shape to draw over any of the four, or Grab a cycle into one."],
+  ], "generator"],
+
+  // P7: Scan, on pictures that move, since a still one is an ordinary tone.
+  ["Scanned", [
+    ["Scanned fifth", Object.assign({ shape: "sine", interval: 7, just: false, timebase: 3, oscScan: 100 }, XY),
+     "The piano's fifth, turning slowly, read back as its own wave: the reading turns as the figure does, and since the figure is drawn by what was read, it wanders on its own. Press Stop and the screen holds still, and so does the tone."],
+    ["Scanned interference", { shape: "sine", display: "xy", persistence: "0.04", timebase: 4, oscScan: 100,
+                               l0d: "phase", l0r: 70, l0a: 100, l1d: "freq", l1r: 11, l1a: 15 },
+     "Phase and pitch moving at unrelated rates, so the picture never quite repeats and neither does the timbre read from it. Turn Softness down on the Picture tab to hear the thin lines buzz."],
   ], "generator"],
 
   ["The picture plays itself", [
@@ -21714,10 +22161,11 @@ function migrateSetup(setup) {
    defaults they are taken out before the core sees the snapshot, which gives
    the code the page's own codec makes. Set to anything else they go through
    and the core writes them as it reads them. Empty since P6's core stage gave
-   each layer's picture menus their defaults; wasmtest.py goes red on any name
+   each layer's picture menus their defaults, and Scan's two (P7a) are here
+   until its core stage; wasmtest.py goes red on any name
    here the core has learnt, so a field added ahead of the core next time
    cannot be left behind. */
-const SETUP_AHEAD_OF_CORE = [];
+const SETUP_AHEAD_OF_CORE = ["oscScan", "scanSoft"];
 
 function makeWasmSetupCodec(module) {
   const wasi = { fd_close: () => 0, fd_seek: () => 0, fd_write: () => 0 };
@@ -21810,6 +22258,9 @@ const PRESET_ABOUT = {
   "Chords drawn": "Chords in X\u2013Y: which of the notes you hold are drawn, and against what. The rest are still heard. Each has something your hands move. They wait for a keyboard, and the on-screen one will do.",
   "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab, or put a controller on them.",
   "The picture plays itself": "The screen as a source: the photocell reads the brightness under its reticle, and the picture's own sources read its shape, coverage, change and novelty, and each is patched back onto what draws the picture or makes the sound. So what the beam draws alters what it draws, and how it sounds. Drag the reticle anywhere; the readout says whether the loop is settled, cycling or wandering, and every loop is held to its bounds.",
+  "Scanned": "Scan: the screen read back as the voice's wave, sixty times a second. Where the picture moves the "
+    + "timbre moves with it, and where it stands still so does the tone. Depth, softness and memory are on the "
+    + "Picture tab.",
   "Many sources": "Everything your hands do at once, each on a different control: how hard, how many notes, how far apart, the melody, the inner voices, the envelope, the wheel and the pedal, three to eight in every preset. They wait for a keyboard, and the on-screen one will do.",
   "Played with the picture": "Your hands and the picture on one sound: the photocell keeps a loop going on its own, and what you play pushes it somewhere else. They sound before you play; the keyboard adds to them.",
   "Hands on the sound": "The mod wheel, the sustain pedal and the strike of a key, patched onto filter, fold, "
@@ -21847,7 +22298,7 @@ const PRESET_ABOUT = {
 const PRESET_MENUS = [
   ["sounds", "Pictures and sounds",
    "Nothing you play changes these: shapes, figures, drawings and effects that run on their own, and the picture patched back onto itself and its own sound.",
-   ["Start here", "The picture plays itself", "Lissajous", "Drawings", "Solids", "Motion", "The plane", "Echoes", "Rhythm and key", "Analysis"]],
+   ["Start here", "The picture plays itself", "Scanned", "Lissajous", "Drawings", "Solids", "Motion", "The plane", "Echoes", "Rhythm and key", "Analysis"]],
   ["answer", "Answering your playing",
    "What you play, drawn, and drawings that answer it: for a microphone or a line input, and drawings struck from the keyboard.",
    ["Live", "Live effects", "Listening", "Played into the drawing", "Drawings you play"]],
@@ -23729,6 +24180,13 @@ syncVcfRows();
 
 // Page-wide, so layer A's tone: the core reads it from there for both.
 el.shpOS.addEventListener("change", () => genSet("shapeOS", Number(el.shpOS.value)));
+
+// Scan's softness, in tenths of a cell, and Memory, which is the persistence.
+el.scanSoft.addEventListener("input", () => {
+  scan.soft = Number(el.scanSoft.value) / 10;
+  el.scanSoftValue.textContent = scan.soft.toFixed(1) + " cells";
+});
+el.scanMemory.addEventListener("input", () => setPersistence(memoryOfSlider(Number(el.scanMemory.value))));
 
 el.morph.addEventListener("input", () => {
   const at = Number(el.morph.value) / 100;

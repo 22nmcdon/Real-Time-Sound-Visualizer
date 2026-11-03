@@ -16,7 +16,8 @@ every chain. So what is checked:
 - that the photocell reaches the sound itself, through the worklet;
 - and the plan's stability run: every picture source routed at the most it is
   allowed onto the most sensitive destinations, and the picture stage (P3) at
-  its top as well, from silence and from a full-scale figure, run headless,
+  its top as well, from silence and from a full-scale figure, and once more
+  with Scan (P7a) at its top beside it all, run headless,
   with every bound checked every tenth of a second - and checked to have
   MOVED, because a loop that did nothing would pass any bound there is.
 
@@ -278,7 +279,7 @@ with sync_playwright() as pw:
           strained["hot"] is not None and strained["hot"] < -6, str(strained))
 
     print("\n--- the stability run ---")
-    RUN = """async ([seed, seconds]) => {
+    RUN = """async ([seed, seconds, scanDepth]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       toTone(); setDisplay('xy');
       genSet('shape', 'harmonic'); genSet('interval', 7); genSet('just', false);
@@ -307,6 +308,11 @@ with sync_playwright() as pw:
       // the rest below, so a stage route outside the loop's bound fails here.
       el.pictureAmount.value = '100';
       touchRoutings();
+      // Scan (P7a) at its top as well, when asked: the voice's wave read
+      // from the screen the rest of this loop is moving.
+      if (scanDepth) { el.oscScan.value = String(scanDepth); el.oscScan.dispatchEvent(new Event('input')); }
+      const bright = [], motion = [];
+      let leastScanHold = 1, lastTable = null;
       // Silence has to get going somehow: the generator comes up a little way
       // into the run, from nothing, with the loop already closed around it.
       if (seed === 'silence') setTimeout(() => genSet('amp', 0.3), 2000);
@@ -348,16 +354,42 @@ with sync_playwright() as pw:
         moved.fold = [Math.min(moved.fold[0], fv), Math.max(moved.fold[1], fv)];
         const v = pictureMeter.verdict(); verdicts[v] = (verdicts[v] || 0) + 1;
         leastHold = Math.min(leastHold, pictureStage.hold);
+        if (scanDepth) {
+          const [l] = state.source.getLatestWindow(4096);
+          let e = 0, d = 0;
+          for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
+          bright.push(Math.sqrt(d / Math.max(e, 1e-12)));
+          leastScanHold = Math.min(leastScanHold, genSettings().scanHold);
+          // How far the table moved since the last read: the mean change of
+          // its richest level, which is evened to a peak of one.
+          const table = genSettings().scanTable;
+          if (table && lastTable) {
+            let m = 0;
+            for (let k = 0; k < table.levels[0].length; k++) m += Math.abs(table.levels[0][k] - lastTable.levels[0][k]);
+            motion.push(m / table.levels[0].length);
+          }
+          lastTable = table;
+        }
       }
+      if (scanDepth) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
       { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       genSet('amp', 0.55);
-      return { worst, moved, verdicts, leastHold };
+      return { worst, moved, verdicts, leastHold, bright, motion, leastScanHold };
     }"""
-    for seed in ("silence", "full scale"):
-        run = p.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS])
+    # Scan needs the page's JavaScript generator until P7's core port: the
+    # compiled one does not play it yet. So its run is on a page of its own.
+    p2 = b.new_page(viewport={"width": 1400, "height": 900})
+    p2.on("pageerror", lambda e: bad.append("pageerror (Scan's page): " + str(e)))
+    p2.goto(f"file://{ART}/scope.html?brain=js&core=js"); p2.wait_for_timeout(700)
+    if p2.locator("#helpClose").is_visible(): p2.locator("#helpClose").click()
+    p2.wait_for_timeout(200)
+    p2.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
+    for seed in ("silence", "full scale", "full scale, with Scan at its top"):
+        page = p2 if "Scan" in seed else p
+        run = page.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS, 100 if "Scan" in seed else 0])
         w, mv = run["worst"], run["moved"]
         print("    from %s, %.0f s: output peak %.3f (before the limiter %.3f); resonance offset up to %.1f, "
               "rotation %.3f, zoom %.2f, generator total %.3f; grid %.2f; verdicts %s"
@@ -391,6 +423,20 @@ with sync_playwright() as pw:
               and (mv["fold"][1] - mv["fold"][0]) > 0.05,
               "resonance range %.2f, pitch total range %.3f, fold total range %.3f"
               % (mv["res"][1] - mv["res"][0], mv["freq"][1] - mv["freq"][0], mv["fold"][1] - mv["fold"][0]))
+        if "Scan" in seed:
+            mo = sorted(run["motion"])
+            median = mo[len(mo) // 2] if mo else 0
+            # Too strong a defence and Scan stops moving, which P2 found is a
+            # dull tone; so its table has to be seen still moving, read by
+            # read, under all of this - not only the sound, which the rest of
+            # the loop moves with or without Scan.
+            check("with Scan at its top, its wave was still moving: the table changed by a median of over 0.02 a tenth of a second",
+                  len(mo) > 0.8 * SECONDS * 10 - 10 and median > 0.02, "median %.3f over %d reads" % (median, len(mo)))
+            # Its null is scantest.py's: the same reading with the screen
+            # held still, where the brightness stands.
+            check("and Scan's depth was held by the stage's own hold, never less",
+                  abs(run["leastScanHold"] - least) < 0.02, "Scan's hold down to %.3f, the stage's to %.3f"
+                  % (run["leastScanHold"], least))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

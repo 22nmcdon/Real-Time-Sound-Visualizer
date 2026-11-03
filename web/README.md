@@ -83,6 +83,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
 | `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
+| `scantest.py` | Scan (P7a): a reading's tables, their band-limit and their level, darkness held, the off-centre path against P2's centred one on a rose, softness, the path following; the tick to the sample at 44.1, 48 and 22.05 kHz and the crossfade across it; nought to the bit, the note's pitch, the fifth of the shape kept, the hold, the bend reaching what is read, layer B; the controls, setup codes and Persistence in seconds, the freeze, the running-away hold, each layer's own picture; and the first minute, a turning fifth moving and the same held still |
 | `bendtest.py` | the Bend: off at nought to the bit, FM at one to one at a centre of nought, the pinch where Bend at puts it and its DC, the centroid rising, aliasing on every sharp shape against the note-rate and uncorrected warps, chords, the dyad, layer B, sources and the wrap, the panel and setup codes |
 | `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
 | `timetest.py` | delay and chorus: every repeat to the sample and its level, ping-pong, the feedback held at 0.9, the glide, the tempo, the chorus's sidebands against Bessel's, its quadrature, every pair once |
@@ -4571,6 +4572,30 @@ with the rule on and fails on the old page for a tap, a click and the page's
 own brain. What it cannot do: Chromium is more forgiving than WebKit - it lets
 a resume asked at a touch's start succeed once the touch ends - so with only
 the `statechange` in place it passes, and the other two halves are there for
-WebKit by the rule rather than by a measurement here. No WebKit is installed;
-a WebKit run of the same file is the check that is missing. Any new place that
+WebKit by the rule rather than by a measurement here. No WebKit is installed
+here; the owner confirmed the fix on an iPhone, through a Web MIDI browser,
+where sound came out after one tap. Any new place that
 opens an `AudioContext` and waits on its `resume()` will hang the same way.
+
+**A picture that stands still open-loop does not stand still under Scan, and
+the null for "a still picture is an ordinary tone" is a still screen.** P2
+scanned recorded grids with the loop open and found a still picture gives a
+still table. With Scan in the voice the wave it reads is the wave it draws, so
+the just fifth - the stillest figure there is - wanders: with the picture stage
+at nought its brightness swings by a sixth of itself, the turning fifth's by
+about as much, and the fifth without Scan by a three-hundredth. The null first
+planned for `scantest.py`, the just fifth, measured as moving as the check it
+was meant to fail. Stopping the screen holds the picture for real (the held frame is
+redrawn, so the grid stands), and there the brightness stands too. Two
+smaller ones from the same suite: where a sixtieth of a second is not a whole
+number of samples (22.05 kHz, 367.5) a tick lands part-way through one, so the
+crossfade has already begun at the tick's own sample, and a check that two
+renders part one sample after the tick is right at 44.1 and 48 kHz only; and a
+table evened to its peak is evened to the peak its 512 points reach, which for
+a cosine at an arbitrary phase is a little under one, so the reference has to
+be evened the same way or it disagrees by 1e-7 for no reason.
+And a constant bound into the generator's worklet must not carry a comment
+after it on its line: `core/tests/tools/generator_js.mjs` lifts each bound
+name to the first semicolon followed by a newline, so `const SCAN_RATE = 60;
+// tables a second` was lifted with everything down to some later line, and
+parity died with a syntax error at line 2919 of a function it had built.

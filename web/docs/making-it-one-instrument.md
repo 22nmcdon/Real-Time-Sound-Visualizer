@@ -742,13 +742,56 @@ the synth's features should be chosen knowing that.
   on its own ink: the self-sustaining loop, a picture per note, notes striking the screen,
   cross-scan, and the sidechain's final form. And the score's voice drawn again, under the
   same defences: P4 found it filling the screen it reads.
+  - *Decided before it was built (the owner):* Scan lives **inside the voice**, mixed under
+    its shape, so it works with the bend, layers, splits and chords, rather than as a
+    generator kind of its own; and its table changes at a **fixed sixty a second of audio
+    time**, never at the screen's rate, so the plugin and the site match and a render
+    repeats. P7 goes in three steps: **P7a**, Scan and its defences; **P7b**, notes striking
+    the screen, cross-scan and the self-sustaining presets; **P7c**, the score's voice drawn
+    again, kept only if it behaves. A picture per note and the drawings as a picture for
+    Scan are deferred (the owner agreed: one is the biggest unknown here, and P2 found still
+    pictures sound alike), and the sidechain's final form moves to P9, which has to take an
+    outside input anyway.
+  - *P7a, built on the page:* a Scan section on the Picture tab - *Depth*, per layer, of
+    which 80 per cent is the most, *Softness*, three cells to start, and *Persistence* in
+    seconds. Sixty times a second of the generator's own samples (`scanAdvance`, a sixtieth
+    apart however the blocks fall, so at 22.05 kHz a tick lands part-way through a sample)
+    each layer's table moves on to the latest the page has read, crossfaded across the tick;
+    the reading is P2's off-centre circle round the figure's centre of brightness, which
+    follows the figure over about a second, from the grid blurred by the softness, as 64
+    harmonics in halving levels read like the drawn cycle's. The defences: every table
+    evened to a peak of one, darkness holding the last table, a fifth of the shape always
+    under Scan, the picture stage's running-away hold on the depth, and nothing read for a
+    quarter of a second while a setup lands. `scantest.py` holds it and `looptest.py` runs
+    Scan at its top beside everything else the loop has.
+  - *What it costs, and what is approximate:* the page reads its phosphor once a screen
+    frame and hands the table over, so the tick is exact on the page but which picture a
+    tick plays is whichever frame arrived last; and the page's phosphor fades once a frame,
+    so Persistence in seconds is seconds at sixty frames. The core reads its own grid at its
+    own tick in the audio thread, where both are exact - which is the core port, next. Until
+    it lands Scan plays in `?brain=js&core=js` only: the compiled generator and the site's
+    instrument ignore it. A table is 64 harmonics at 512 points, where the drawn cycle's is
+    128 at 2048, because a table a tick at that size would be most of a frame and three
+    cells of softness leave almost nothing above the 30th. Noise shapes and the drawings
+    have no Scan. The voice budget (S10) does not cost it yet.
+  - *Found on the way:* the loop closes. A just fifth, which stands still open-loop and
+    which P2 heard as an ordinary tone, wanders under Scan, because the wave it reads is the
+    wave it draws: with the picture stage at nought its brightness swings by a sixth of itself where without
+    Scan it moves by a three-hundredth. So the null of the first-minute test is not a still
+    figure but a still screen - stopped, the screen held, Scan is an ordinary tone - and
+    the self-sustaining loop P7b was to build is partly here already. The first-minute test
+    itself is the turning fifth P2 measured second-most moving, not the morphing rose: the
+    rose is a drawing, and the drawings as Scan's picture are deferred. *Memory* became
+    *Persistence*: the picture stage has had a read called Memory since P3, and two controls
+    of one name doing two things is a trap.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the
   test that the effect's controls are contained in the synth's and the synth's extras are
-  all on the named list.
+  all on the named list. And, moved from P7, the sidechain's final form: another track
+  drawing onto the screen the synth reads.
 
 ## What does not change
 

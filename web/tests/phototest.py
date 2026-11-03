@@ -129,7 +129,18 @@ with sync_playwright() as pw:
       const inkOf = () => paperG - ctx.getImageData(pxX, pxY, 1, 1).data[1];
 
       genSet('amp', 0);                       // nothing new is drawn there
-      await wait(60);
+      /* Until the cell is fading: the lanes already on their way from the
+         audio thread were drawn at the old amplitude and lay that cell again
+         for 25 to 55 ms. This waited a fixed 60 ms, and with the page a
+         little heavier (P7a) one or two of those frames fell inside the
+         count, read as the grid fading at 0.888 or 0.895 rather than 0.88. */
+      let last = g[at];
+      for (let k = 0; k < 30; k++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        if (g[at] < last * 0.95) break;
+        last = g[at];
+      }
+      await new Promise((r) => requestAnimationFrame(r));
       const f0 = phosphor.frames, g0 = g[at], c0 = inkOf();
       await wait(250);
       const f1 = phosphor.frames, g1 = g[at], c1 = inkOf();
