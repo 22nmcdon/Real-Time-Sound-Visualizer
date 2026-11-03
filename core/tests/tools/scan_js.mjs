@@ -34,7 +34,8 @@ const __take = () => { const s = __sent; __sent = []; return s; };
 `;
 const names = ["SCAN_SOFT_DEFAULT", "SCAN_POINTS", "SCAN_HARMONICS", "SCAN_TABLE", "SCAN_DARK", "SCAN_FOLLOW",
                "SCAN_LEAST", "scanGeometry", "scanFollow", "scanBlur", "scanBilinear", "scanRead", "scanCosines",
-               "scanCosine", "scanTables", "SCAN_FREEZE_MS", "scan", "scanFreeze", "scanStep"];
+               "scanCosine", "scanTables", "SCAN_FREEZE_MS", "STRIKE_DEFAULT", "scan", "SCAN_READS", "scanReadsOf",
+               "scanPicturesOf", "scanFreeze", "scanStep"];
 const pageWith = () => pageScopeWith(prelude, names, ["layerPictures", "pictureStage", "pictureEngine", "__put", "__take"]);
 
 const show = (v) => v.map((x) => Number(x).toPrecision(17)).join(" ");

@@ -4618,3 +4618,46 @@ next tick after it - the same in every render, but not in lockstep, and a
 harness that wanted the page's frames and the instrument's to agree sample
 for sample would be asking for something neither promises. Parity feeds both
 the same grids instead (`core/tests/tools/scan_js.mjs`).
+
+**A strike changes the picture that answers it, so measure a strike where
+nothing can answer.** Three of `striketest.py`'s first checks were wrong in
+ways worth knowing. The meter's coverage under fast hard strikes on a running
+loop read *lower* than with Strike at nought, 0.58 against 0.95: the strikes
+changed the wave, the wave drew a thinner figure, and the figure outweighed
+the light the strikes laid. So what the meter sees of a strike is measured on
+a screen with a silent generator, where only the strike can light anything.
+"A harder note is a brighter tone" was measured on three presets and went up
+on one, down on another and either way on the third - a plateau on the read
+adds harmonics where the circle was dark and smooths them away where it
+crossed bright lines - so the check is how far the table moves, which holds on
+every picture, and the comment and the cheat sheet no longer promise
+brightness. And where on the circle a strike lands is read unblurred and as
+the circular mean of the reading's rise: at Softness's three cells a one-cell
+arc reads at an eighth of its light, which hides it under the blur, and an
+unblurred arc is a plateau whose highest point is anywhere along it, so its
+argmax put C ten points from where it was laid.
+
+**A typed array does not survive JSON, and a voice rebuilt with Scan on was
+built from JSON.** The page's own generator hands its worklet the settings as
+`JSON.parse(JSON.stringify(core.tone))`. Scan's table is levels of
+`Float64Array`, which JSON writes as an object of numbered keys with no
+length, so a voice rebuilt while a table was set - hushed and heard again,
+through `toTone` - read its first table as NaN, and the NaN went into the
+filters and stayed: the whole generator, silent for good. P7a's suites never
+rebuilt a voice with Scan on; P7b's looptest did on its second run, where the
+first had hushed the voice, and read an output peak of infinity. The clone now
+writes typed arrays as plain ones (`plainArrays`). Whether the stale table is
+heard is a race - a fresh one from the page usually lands before the first
+tick - so a check on the sound passed on the broken page twice, once alone and
+once only inside the full suite. The check that holds catches the
+`AudioWorkletNode` as the voice is rebuilt and reads the table it was handed:
+every level an array of its full length, which does not depend on who wins.
+
+**A preset must not name the Picture amount.** The amount is the player's:
+a setup that names it sets it, and a preset, which by convention does not,
+leaves it where the hand put it. So a preset that names it leaves it named
+for every preset loaded after - P7b's first *Scan remembers* set it to the
+top, and `wasmtest.py`, which loads every preset in turn and then puts a
+microphone through the effect, found the mirror pushed off its axis by a
+picture stage nobody had asked for. `presettest.py` now refuses a preset that
+names it.

@@ -17,7 +17,10 @@ every chain. So what is checked:
 - and the plan's stability run: every picture source routed at the most it is
   allowed onto the most sensitive destinations, and the picture stage (P3) at
   its top as well, from silence and from a full-scale figure, and once more
-  with Scan (P7a) at its top beside it all, run headless,
+  with Scan (P7a) at its top beside it all; then Scan at its top with every
+  note striking the screen at full (P7b) during fast repeated notes, and a
+  split with both layers at Scan's top, each reading the other's picture -
+  two feedback paths feeding each other. Run headless,
   with every bound checked every tenth of a second - and checked to have
   MOVED, because a loop that did nothing would pass any bound there is.
 
@@ -279,7 +282,7 @@ with sync_playwright() as pw:
           strained["hot"] is not None and strained["hot"] < -6, str(strained))
 
     print("\n--- the stability run ---")
-    RUN = """async ([seed, seconds, scanDepth]) => {
+    RUN = """async ([seed, seconds, scanDepth, mode]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       toTone(); setDisplay('xy');
       genSet('shape', 'harmonic'); genSet('interval', 7); genSet('just', false);
@@ -290,7 +293,11 @@ with sync_playwright() as pw:
       // The filter on, resonant, in the speakers' path.
       state.filter.on = true; el.filterOn.checked = true; el.filterOn.dispatchEvent(new Event('change'));
       state.filter.res = 80; state.monitorAt = 'post';
-      el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change'));
+      /* The lag on, except crossed: a lag draws one figure of a channel
+         against itself delayed, so there are no two figures and no layer
+         pictures for the layers to cross (the first crossed run was a run
+         of one picture and showed nothing). Its route onto view.lag stays. */
+      if (mode !== 'cross') { el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change')); }
       await applyGeneratorSound();
       if (!photo.on) setPhoto(true);
       // Everything the picture has, at the most it is allowed, onto the
@@ -311,8 +318,28 @@ with sync_playwright() as pw:
       // Scan (P7a) at its top as well, when asked: the voice's wave read
       // from the screen the rest of this loop is moving.
       if (scanDepth) { el.oscScan.value = String(scanDepth); el.oscScan.dispatchEvent(new Event('input')); }
-      const bright = [], motion = [];
-      let leastScanHold = 1, lastTable = null;
+      /* P7b. Struck: Strike at its top and a note every ninety milliseconds
+         at full velocity, round the twelve places on the circle, so light is
+         laid on the read as fast as a hand could lay it. Crossed: a split
+         with Scan at its top on both layers, each reading the other's
+         picture, and two notes held in each half so there are two figures. */
+      let hammer = null, k = 0;
+      if (mode === 'strike') {
+        el.scanStrike.value = '100'; el.scanStrike.dispatchEvent(new Event('input'));
+        setScreenKeys(true);
+        hammer = setInterval(() => { const n = 60 + (k++ * 7) % 12; midiNoteOn(n, 127); setTimeout(() => midiNoteOff(n), 60); }, 90);
+      }
+      if (mode === 'cross') {
+        setScreenKeys(true); setMidiMode('poly');
+        el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+        for (const n of [48, 55, 79, 84]) midiNoteOn(n, 127);
+        for (const l of [0, 1]) { midi.layers.edit = l; syncLayerPanel(); el.oscScan.value = '100'; el.oscScan.dispatchEvent(new Event('input')); }
+        midi.layers.edit = 0; syncLayerPanel();
+        el.scanReadsA.value = 'B'; el.scanReadsA.dispatchEvent(new Event('change'));
+        el.scanReadsB.value = 'A'; el.scanReadsB.dispatchEvent(new Event('change'));
+      }
+      const bright = [], motion = [], motionB = [];
+      let leastScanHold = 1, lastTable = null, lastTableB = null, leastLayerHold = 1, liveReads = 0;
       // Silence has to get going somehow: the generator comes up a little way
       // into the run, from nothing, with the loop already closed around it.
       if (seed === 'silence') setTimeout(() => genSet('amp', 0.3), 2000);
@@ -360,6 +387,20 @@ with sync_playwright() as pw:
           for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
           bright.push(Math.sqrt(d / Math.max(e, 1e-12)));
           leastScanHold = Math.min(leastScanHold, genSettings().scanHold);
+          if (mode === 'cross') {
+            leastScanHold = Math.min(leastScanHold, genSettings(1).scanHold);
+            if (layerPictures.live) {
+              liveReads++;
+              leastLayerHold = Math.min(leastLayerHold, layerPictures.stages[0].hold, layerPictures.stages[1].hold);
+            }
+            const tb = genSettings(1).scanTable;
+            if (tb && lastTableB) {
+              let m = 0;
+              for (let q = 0; q < tb.levels[0].length; q++) m += Math.abs(tb.levels[0][q] - lastTableB.levels[0][q]);
+              motionB.push(m / tb.levels[0].length);
+            }
+            lastTableB = tb;
+          }
           // How far the table moved since the last read: the mean change of
           // its richest level, which is evened to a peak of one.
           const table = genSettings().scanTable;
@@ -371,13 +412,22 @@ with sync_playwright() as pw:
           lastTable = table;
         }
       }
+      if (hammer) { clearInterval(hammer); el.scanStrike.value = '50'; el.scanStrike.dispatchEvent(new Event('input')); }
+      if (mode === 'cross') {
+        el.scanReadsA.value = 'A'; el.scanReadsA.dispatchEvent(new Event('change'));
+        el.scanReadsB.value = 'B'; el.scanReadsB.dispatchEvent(new Event('change'));
+        midi.layers.edit = 1; syncLayerPanel(); el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input'));
+        midi.layers.edit = 0; syncLayerPanel();
+        el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      }
+      if (mode) { midiPanic(); setScreenKeys(false); }
       if (scanDepth) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
       { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       genSet('amp', 0.55);
-      return { worst, moved, verdicts, leastHold, bright, motion, leastScanHold };
+      return { worst, moved, verdicts, leastHold, bright, motion, motionB, leastScanHold, leastLayerHold, liveReads };
     }"""
     # Scan's run is on the page's own brain and JavaScript generator, on a
     # page of its own: the run reads the tables that brain sends, which the
@@ -389,9 +439,12 @@ with sync_playwright() as pw:
     if p2.locator("#helpClose").is_visible(): p2.locator("#helpClose").click()
     p2.wait_for_timeout(200)
     p2.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
-    for seed in ("silence", "full scale", "full scale, with Scan at its top"):
+    SEEDS = [("silence", None), ("full scale", None), ("full scale, with Scan at its top", None),
+             ("full scale, Scan at its top, every note striking at full", "strike"),
+             ("full scale, a split at Scan's top, each layer reading the other's picture", "cross")]
+    for seed, mode in SEEDS:
         page = p2 if "Scan" in seed else p
-        run = page.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS, 100 if "Scan" in seed else 0])
+        run = page.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS, 100 if "Scan" in seed else 0, mode])
         w, mv = run["worst"], run["moved"]
         print("    from %s, %.0f s: output peak %.3f (before the limiter %.3f); resonance offset up to %.1f, "
               "rotation %.3f, zoom %.2f, generator total %.3f; grid %.2f; verdicts %s"
@@ -420,9 +473,16 @@ with sync_playwright() as pw:
                       else 1 - 0.5 * running / 10 - 0.1 <= least < 1)
         check("from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it" % seed,
               held_right, "%d tenths running away, the hold down to %.3f" % (running, least))
+        # Struck at full every ninety milliseconds the screen stays full, the
+        # coverage with it, and the pitch total and the stage's fold sit at
+        # their bound for the whole run: pinned there is the bound holding,
+        # which the totals check above reads, not a loop that did nothing,
+        # which would sit at nought. So for that run, at the bound counts as
+        # moved; the resonance still has to move, as everywhere.
+        pinned = lambda r: mode == "strike" and r[0] >= 0.5 - 1e-9
         check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
-              (mv["res"][1] - mv["res"][0]) > 1 and (mv["freq"][1] - mv["freq"][0]) > 0.01
-              and (mv["fold"][1] - mv["fold"][0]) > 0.05,
+              (mv["res"][1] - mv["res"][0]) > 1 and ((mv["freq"][1] - mv["freq"][0]) > 0.01 or pinned(mv["freq"]))
+              and ((mv["fold"][1] - mv["fold"][0]) > 0.05 or pinned(mv["fold"])),
               "resonance range %.2f, pitch total range %.3f, fold total range %.3f"
               % (mv["res"][1] - mv["res"][0], mv["freq"][1] - mv["freq"][0], mv["fold"][1] - mv["fold"][0]))
         if "Scan" in seed:
@@ -436,9 +496,21 @@ with sync_playwright() as pw:
                   len(mo) > 0.8 * SECONDS * 10 - 10 and median > 0.02, "median %.3f over %d reads" % (median, len(mo)))
             # Its null is scantest.py's: the same reading with the screen
             # held still, where the brightness stands.
-            check("and Scan's depth was held by the stage's own hold, never less",
-                  abs(run["leastScanHold"] - least) < 0.02, "Scan's hold down to %.3f, the stage's to %.3f"
-                  % (run["leastScanHold"], least))
+            if mode == "cross":
+                # Crossed, Scan's depths are held by the lower of the two
+                # layers' pictures' holds, not the shown screen's.
+                mb = sorted(run["motionB"])
+                medianB = mb[len(mb) // 2] if mb else 0
+                check("crossed, the run really had two pictures: the layers drew a figure each throughout",
+                      run["liveReads"] > 0.8 * SECONDS * 10 - 10, "%d of the reads" % run["liveReads"])
+                check("and B's wave was moving as well as A's", medianB > 0.02, "median %.3f" % medianB)
+                check("and both depths were held by the lower of the two pictures' holds, never less",
+                      abs(run["leastScanHold"] - run["leastLayerHold"]) < 0.02,
+                      "Scan's holds down to %.3f, the pictures' to %.3f" % (run["leastScanHold"], run["leastLayerHold"]))
+            else:
+                check("and Scan's depth was held by the stage's own hold, never less",
+                      abs(run["leastScanHold"] - least) < 0.02, "Scan's hold down to %.3f, the stage's to %.3f"
+                      % (run["leastScanHold"], least))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

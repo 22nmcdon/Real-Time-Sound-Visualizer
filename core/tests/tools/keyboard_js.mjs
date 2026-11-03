@@ -103,6 +103,9 @@ const syncMidi = noop, midiSayMonitor = noop, syncLayerPanel = noop, buildLaneRo
       paintScreenKeys = noop, buildSourceChips = noop, buildMidiRows = noop;
 // The routings' compile, which learning a controller asks for; the matrix's, not the keyboard's.
 const touchRoutings = noop;
+// A note's strike on the screen (P7b): the picture's, which the core's
+// keyboard does not have yet; when it does, this is where it is compared.
+const scanStrike = noop;
 const element = () => ({ value: "", textContent: "", checked: false, hidden: false, disabled: false, setAttribute: noop });
 const elements = { interval: Object.assign(element(), { value: "0" }), freq: Object.assign(element(), { value: "220" }),
                    figureRate: Object.assign(element(), { value: "40" }), detail: Object.assign(element(), { value: "5" }),

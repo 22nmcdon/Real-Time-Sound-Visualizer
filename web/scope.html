@@ -2831,6 +2831,15 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <span class="reading" id="oscScanValue">off</span>
               </div>
             </div>
+            <!-- P7b: each note lays light where Scan reads, as scanned
+                 synthesis's hammer does. One amount for the screen. -->
+            <div class="menu-row">
+              <label class="menu-label" for="scanStrike">Strike</label>
+              <div class="grow">
+                <input type="range" id="scanStrike" min="0" max="100" value="50">
+                <span class="reading" id="scanStrikeValue">50%</span>
+              </div>
+            </div>
             <div class="menu-row">
               <label class="menu-label" for="scanSoft">Softness</label>
               <div class="grow">
@@ -2848,6 +2857,24 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <span class="reading" id="scanMemoryValue">off</span>
               </div>
             </div>
+            <!-- P7b, cross-scan: what each layer's Scan reads, in P6's shape -
+                 one menu a layer, its own picture by default. Shown only while
+                 the layers draw a figure each, when there are two pictures. -->
+            <div class="menu-row" id="scanReadsRow" hidden>
+              <span class="menu-label">Reads</span>
+              <div class="grow">
+                <select id="scanReadsA" aria-label="Whose picture layer A's Scan reads"
+                        title="Whose picture layer A's Scan reads" style="flex:1 1 0; min-width:0">
+                  <option value="A" selected>A reads A</option><option value="B">A reads B</option>
+                  <option value="both">A reads both</option>
+                </select>
+                <select id="scanReadsB" aria-label="Whose picture layer B's Scan reads"
+                        title="Whose picture layer B's Scan reads" style="flex:1 1 0; min-width:0">
+                  <option value="B" selected>B reads B</option><option value="A">B reads A</option>
+                  <option value="both">B reads both</option>
+                </select>
+              </div>
+            </div>
             <p class="menu-note">The screen read back as the voice's wave: sixty times a second the
               light is read round a circle near the figure, and that becomes one cycle of the
               sound, at the note you play. <i>Depth</i> is how much of the voice it is; at the top
@@ -2856,8 +2883,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               <i>Softness</i> blurs the light before it is read: at nought the thin lines read as
               spikes and buzz. <i>Persistence</i> is the menu over the screen in seconds: how long
               a stroke takes to fade to half, which is how much of what you played the wave
-              remembers. With a split, Depth is the layer being edited, and each layer reads its
-              own figure.</p>
+              remembers. <i>Strike</i>: every note lays light where Scan reads, as bright as
+              you play it; at nought, none. With a split, Depth is the layer being edited, and
+              <i>Reads</i> says whose picture each layer's Scan reads.</p>
           </div>
 
           <div class="menu-group" id="scoreGroup" data-home="bench" data-tab="picture">
@@ -3658,6 +3686,32 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         own screen sixty times a second of the sound, so there it is the same on any display;
         the page's own brain (<i>?brain=js</i>) reads the screen as it is drawn, and plays the
         latest reading at the same ticks.</span></li>
+
+      <li><b>Notes strike the screen; each hand reads the other's picture</b>
+        <span><i>Strike</i>, under Scan: every note you play lays a short arc of light on the
+        circle Scan reads, as bright as you played it times the Strike amount, at the note's
+        own place round the circle &mdash; C where the reading starts, each semitone a twelfth
+        further round &mdash; so a chord strikes several places and a harder note moves the
+        timbre further. Not always brighter: where the circle crossed bright lines the arc
+        smooths them over. The light is like any other on the screen and fades by its
+        Persistence, so with a long one a run of notes builds up and dies away. It is laid only
+        where Scan is on, and at nought nothing is laid at all. The picture's meters see it, and
+        struck hard and fast enough to fill the screen the loop is reined in as it would be for
+        any picture running away.
+        <br><br>
+        <i>Reads</i>, under Scan while a split draws a figure for each hand: what each layer's
+        Scan reads &mdash; its own picture, the other layer's, or both averaged. Crossed, your
+        left hand's wave is your right hand's figure and the right's is the left's; the two
+        loops feed each other, so both are reined in together when either runs away.
+        <br><br>
+        The presets <i>Scan breathes</i> and <i>Scan remembers</i> keep going on their own:
+        the keys there strike the screen without playing the waveform, so the fifth sounds
+        whether a key is down or not, and letting go leaves the loop moving. <i>Stop</i> holds
+        the screen, which holds the tone still; Depth at nought takes Scan out. To have the keys
+        play the note again, tick <i>Notes play this generator</i> under MIDI. Strike and Reads
+        are on the page's own brain (<i>?brain=js&amp;core=js</i>) until the site's instrument
+        and the plugin learn them; there a note does not strike, and each layer reads its own
+        picture.</span></li>
 
       <li><b>The photocell: the picture moving the controls</b>
         <span><i>Photocell</i>, above the screen, puts a light sensor on it (with the
@@ -4580,7 +4634,8 @@ for (const id of ["sourceMark", "credit", "status", "menuButton", "menuPanel", "
                   "oscGroup", "oscTitle", "oscRatio", "oscFm", "oscFmValue", "oscBend", "oscBendValue",
                   "oscBendAt", "oscBendAtValue", "oscRing", "oscRingValue",
                   "scanGroup", "scanTitle", "oscScan", "oscScanValue", "scanSoft", "scanSoftValue",
-                  "scanMemory", "scanMemoryValue",
+                  "scanMemory", "scanMemoryValue", "scanStrike", "scanStrikeValue",
+                  "scanReadsRow", "scanReadsA", "scanReadsB",
                   "oscSync", "oscSyncValue", "oscSub", "oscSubValue", "oscUnison", "oscSpread", "oscSpreadValue",
                   "oscSubOct", "oscSubShape",
                   "shpGroup", "shpDrive", "shpDriveValue", "shpFold", "shpFoldValue", "shpBits", "shpRate", "shpOS",
@@ -4941,6 +4996,10 @@ const SCAN_SOFT_DEFAULT = 3;
 const SCAN_DARK = 1e-4;
 const SCAN_FOLLOW = 1;
 const SCAN_LEAST = 2;
+/* The Strike amount to start, in percent: a note at full velocity lays
+   light at half the beam's brightest, enough to be heard against a figure
+   and not so much that a chord fills the circle. */
+const STRIKE_DEFAULT = 50;
 
 /* The figure's centre of brightness and its RMS radius about it, in
    fractions of the grid; null when nothing is lit. */
@@ -5034,6 +5093,9 @@ function scanRead(grid, path, softness) {
   }
   return points;
 }
+
+// For JSON.stringify: a typed array as the plain array of its values.
+function plainArrays(key, value) { return ArrayBuffer.isView(value) ? Array.from(value) : value; }
 
 /* A cosine over `n` points, kept: a table a tick would otherwise be a
    hundred thousand calls to Math.cos. */
@@ -7658,6 +7720,8 @@ function midiNoteOn(note, velocity) {
   if (layersOn() && midi.layers.mode === "split") midi.strikesBy[note >= midi.layers.point ? 1 : 0]++;
   else { midi.strikesBy[0]++; midi.strikesBy[1]++; }
   midiApplyNotes();
+  // And on the screen, where Scan reads (P7b).
+  scanStrike(note, velocity / 127);
   // A key struck on a pitched harmonograph strikes the pendulums.
   const tone = genSettings();
   if (tone && tone.mode === "harmonograph" && tone.pitched) genReswing();
@@ -12244,8 +12308,14 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
           slots: GEN_DESTS.length,
           lfos: lfos.map((lfo) => ({ shape: lfo.shape, rate: lfo.rate, depth: lfo.depth,
                                      epoch: lfo.epoch })),
-          tone: JSON.parse(JSON.stringify(core.tone)),
-          toneB: JSON.parse(JSON.stringify(core.toneB)),
+          /* Through JSON, with typed arrays as plain ones. Scan's table is
+             levels of Float64Array, which JSON writes as objects of numbered
+             keys with no length: a voice rebuilt with Scan on - hushed and
+             heard again, or a source changed and changed back - read its
+             first table as nothing but NaN, and the whole generator went
+             with it (P7b's looptest found it, on its second run). */
+          tone: JSON.parse(JSON.stringify(core.tone, plainArrays)),
+          toneB: JSON.parse(JSON.stringify(core.toneB, plainArrays)),
           routes: plainRoutes(),
           /* Where the envelope already is. Switching the sound on with a key
              held down must not arrive with the gate shut, and switching it on
@@ -15626,8 +15696,19 @@ function phosphorReadGrid(g, u, v) {
    shorter than it says.
 
    Each layer reads the picture its figure draws when the layers draw one
-   each (`layerPictures`), and the one screen otherwise. Reading the OTHER
-   layer's picture - cross-scan - is P7b's.
+   each (`layerPictures`), and the one screen otherwise; or, by its menu
+   under Reads, the OTHER layer's picture, or both averaged - cross-scan, P7b,
+   in P6's shape. So the paths and the readings are kept per picture, not
+   per layer: a picture two layers read is followed and read once, and each
+   layer makes its table from the readings it hears. A crossed pair - A
+   reading B's picture while B reads A's - is two loops feeding each other,
+   B's sound drawing B's picture into A's wave and A's back into B's, so
+   there both layers' depths are held by the lower of the two pictures'
+   holds, as P6's crossed pictures are: either governor reining its loop in
+   reins the crossing in too. A layer that reads both, uncrossed, takes the
+   lower of the two it reads. Averaged, both pictures' light is one
+   picture's worth; each table is evened to a peak of one regardless, so no
+   crossing can make a voice louder.
 
    The fourth defence is here: the picture stage's running-away hold, the
    one that reins the stage in, reins Scan's depth in too, to a quarter while
@@ -15635,25 +15716,115 @@ function phosphorReadGrid(g, u, v) {
    second after a setup lands nothing is read, so a table is never made of
    the moment the old picture is wiped and the new one has not been drawn. */
 const SCAN_FREEZE_MS = 250;
-const scan = { paths: [null, null], soft: SCAN_SOFT_DEFAULT, frozenUntil: 0, held: [1, 1], tables: [null, null] };
+const scan = { paths: [null, null], soft: SCAN_SOFT_DEFAULT, frozenUntil: 0, held: [1, 1], tables: [null, null],
+               strike: STRIKE_DEFAULT / 100, reads: ["A", "B"] };
+const SCAN_READS = [["A", "B", "both"], ["B", "A", "both"]];
+function scanReadsOf(value, own) {
+  const allowed = SCAN_READS[own === "A" ? 0 : 1];
+  return allowed.includes(value) ? value : own;
+}
+// The pictures, 0 for A's and 1 for B's, that a layer's Scan reads.
+function scanPicturesOf(layer) {
+  const reads = scan.reads[layer];
+  return reads === "both" ? [0, 1] : [reads === "A" ? 0 : 1];
+}
 function scanFreeze() { scan.frozenUntil = performance.now() + SCAN_FREEZE_MS; }
 function scanStep(elapsed) {
   // The page's own generator only: the instrument reads its own grid.
   if (state.display === "spect" || !state.source || state.source.kind !== "tone") return;
-  const live = layerPictures.live && layerPictures.engines;
-  for (let l = 0; l < (layersOn() ? 2 : 1); l++) {
-    const settings = genSettings(l);
-    if (!settings || !(settings.scan > 0)) { scan.paths[l] = null; continue; }
-    const hold = live ? layerPictures.stages[l].hold : pictureStage.hold;
+  const live = !!(layerPictures.live && layerPictures.engines);
+  const count = layersOn() ? 2 : 1;
+  const wants = [false, false];
+  for (let l = 0; l < count; l++) { const s = genSettings(l); wants[l] = !!(s && s.scan > 0); }
+  const from = (l) => (live ? scanPicturesOf(l) : [0]);
+  const frozen = performance.now() < scan.frozenUntil;
+  // Each picture any playing layer reads: followed, and read once.
+  const readings = [null, null];
+  for (let p = 0; p < 2; p++) {
+    const used = [0, 1].some((l) => wants[l] && from(l).includes(p));
+    if (!used) { scan.paths[p] = null; continue; }
+    const grid = live ? layerPictures.engines[p].cells : pictureEngine.cells;
+    scan.paths[p] = scanFollow(scan.paths[p], grid, elapsed / 1000);
+    if (scan.paths[p] && !frozen) readings[p] = scanRead(grid, scan.paths[p], scan.soft);
+  }
+  const holds = live ? [layerPictures.stages[0].hold, layerPictures.stages[1].hold]
+                     : [pictureStage.hold, pictureStage.hold];
+  const crossed = live && scan.reads[0] !== "A" && scan.reads[1] !== "B";
+  for (let l = 0; l < count; l++) {
+    if (!wants[l]) continue;
+    const pictures = from(l);
+    const hold = crossed ? Math.min(holds[0], holds[1]) : Math.min(...pictures.map((p) => holds[p]));
     if (Math.abs(hold - scan.held[l]) > 0.005 || (hold === 1 && scan.held[l] !== 1)) {
       scan.held[l] = hold;
       genSet("scanHold", hold, l);
     }
-    const grid = live ? layerPictures.engines[l].cells : pictureEngine.cells;
-    scan.paths[l] = scanFollow(scan.paths[l], grid, elapsed / 1000);
-    if (!scan.paths[l] || performance.now() < scan.frozenUntil) continue;
-    const tables = scanTables(scanRead(grid, scan.paths[l], scan.soft));
+    if (pictures.some((p) => !readings[p])) continue;
+    let points = readings[pictures[0]];
+    if (pictures.length === 2) {
+      points = new Float64Array(SCAN_POINTS);
+      for (let i = 0; i < SCAN_POINTS; i++) points[i] = (readings[0][i] + readings[1][i]) / 2;
+    }
+    const tables = scanTables(points);
     if (tables) { scan.tables[l] = tables; genSet("scanTable", tables, l); }
+  }
+}
+
+/* --- notes strike the screen (P7b) -----------------------------------------
+   Scanned synthesis's hammer: the synth knows the moment and the velocity of
+   every note, so a note lays light on the phosphor as it starts, and Scan
+   reads it. It is laid where Scan reads - an arc of the off-centre circle,
+   a twelfth of the lap, at the note's place round it (C at the reading's
+   start, a semitone a twelfth on, so a chord strikes several places) - so
+   it is in the very next table: a bright plateau on the read, which the
+   table, evened to a peak of one, plays as a pulse whose height against the
+   figure's light is the note's velocity, so a harder note moves the timbre
+   further. Not always brighter: a plateau adds harmonics where the figure
+   was dark on the circle and smooths them away where it crossed bright
+   lines, so which way depends on the picture (striketest.py measured both).
+   Nothing about it is an envelope of its own: it is light laid once, and it
+   fades exactly as a stroke does, by the screen's Persistence, so a long
+   Persistence remembers a run of strikes and none forgets them at once.
+
+   Laid only where a layer's Scan is on - the path is Scan's, and with Scan
+   off there is no reading for a strike to be in - and into the pictures that
+   layer reads, and the shown screen, so it is seen where it is heard. Being
+   light on the screen, the picture stage's meters see it as they see the
+   figure, and so does the running-away hold: struck hard and fast it fills
+   the screen and the hold reins the loop in, which looptest.py holds.
+
+   On the page's own brain only, as the rest of this section is until the
+   core learns it (the instrument reads its own grid, which a strike laid
+   here never reaches). Notes the arpeggiator and the score play do not
+   strike: they reach the generator without passing midiNoteOn. */
+const STRIKE_ARC = 1 / 12;
+const STRIKE_SEGMENTS = 8;
+function scanStrike(note, velocity) {
+  if (!(scan.strike > 0) || !state.source || state.source.kind !== "tone" || state.display === "spect") return;
+  const level = Math.min(1, Math.max(0, velocity) * scan.strike);
+  if (!(level > 0)) return;
+  const layers = !layersOn() ? [0] : midi.layers.mode === "split" ? [note >= midi.layers.point ? 1 : 0] : [0, 1];
+  const live = !!(layerPictures.live && layerPictures.engines);
+  const at = 2 * Math.PI * (((note % 12) + 12) % 12) / 12;
+  const struck = new Set();
+  for (const l of layers) {
+    const settings = genSettings(l);
+    if (!settings || !(settings.scan > 0)) continue;
+    for (const p of live ? scanPicturesOf(l) : [0]) {
+      if (struck.has(p)) continue;
+      struck.add(p);
+      const grid = live ? layerPictures.engines[p].cells : pictureEngine.cells;
+      const path = scan.paths[p] || scanGeometry(grid) || { cx: 0.5, cy: 0.5, r: 0.25 };
+      // scanRead's circle, in the same fractions of the grid.
+      const r = Math.max(path.r, SCAN_LEAST / PHOSPHOR_N);
+      const cx = path.cx + 0.35 * r, cy = path.cy + 0.2 * r, across = 0.8 * r;
+      const point = (th) => [plot.x + (cx + across * Math.cos(th)) * plot.w, plot.y + (cy + across * Math.sin(th)) * plot.h];
+      for (let k = 0; k < STRIKE_SEGMENTS; k++) {
+        const [x0, y0] = point(at + 2 * Math.PI * STRIKE_ARC * (k / STRIKE_SEGMENTS - 0.5));
+        const [x1, y1] = point(at + 2 * Math.PI * STRIKE_ARC * ((k + 1) / STRIKE_SEGMENTS - 0.5));
+        if (live) layerPictures.engines[p].segment(plot, x0, y0, x1, y1, level);
+        pictureEngine.segment(plot, x0, y0, x1, y1, level);
+      }
+    }
   }
 }
 
@@ -19864,6 +20035,10 @@ function syncMidi() {
     el.pictureMovesRow.hidden = !(on && midi.layers.pair === "each");
     el.pictureMovesA.value = layerPictures.moves[0];
     el.pictureMovesB.value = layerPictures.moves[1];
+    // Scan's cross-reading, on the same condition: two pictures to read.
+    el.scanReadsRow.hidden = el.pictureMovesRow.hidden;
+    el.scanReadsA.value = scan.reads[0];
+    el.scanReadsB.value = scan.reads[1];
     el.midiSplitLearn.hidden = midi.layers.mode !== "split";
     // Short, because it sits beside the menu in a 255 px column: "split" in
     // the menu and "at C4" beside it read as one phrase.
@@ -20361,6 +20536,9 @@ const DEFAULTS = {
   // scanSoft is SCAN_SOFT_DEFAULT in tenths of a cell, written out: the
   // parity harness lifts DEFAULTS without Scan's constants.
   oscScan: 0, scanSoft: 30,
+  // P7b's, additive: a note's strike (in percent, STRIKE_DEFAULT written out
+  // for the same reason) and what each layer's Scan reads, its own picture.
+  scanStrike: 50, scanReadsA: "A", scanReadsB: "B",
   oscRatio: 1, oscFm: 0, oscBend: 0, oscBendAt: 25, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square",
   oscUnison: 1, oscSpread: 12, shpDrive: 0, shpFold: 0, shpBits: 0, shpRate: 0, shpOS: 2,
   vcfType: 0, vcfCut: 667, vcfRes: 0, vcfTrack: 0, vcfEnvAmt: 0, vcfAtk: 5, vcfDec: 300, vcfSus: 30, vcfRel: 300,
@@ -20432,6 +20610,7 @@ function snapshot() {
     oscRatio: Number(a("oscRatio")), oscFm: Number(a("oscFm")), oscBend: Number(a("oscBend")),
     oscBendAt: Number(a("oscBendAt")), oscRing: Number(a("oscRing")),
     oscScan: Number(a("oscScan")), scanSoft: Number(el.scanSoft.value),
+    scanStrike: Number(el.scanStrike.value), scanReadsA: scan.reads[0], scanReadsB: scan.reads[1],
     oscSync: Number(a("oscSync")), oscSub: Number(a("oscSub")), oscSubOct: Number(a("oscSubOct")),
     oscSubShape: a("oscSubShape"), oscUnison: Number(a("oscUnison")), oscSpread: Number(a("oscSpread")),
     shpDrive: Number(a("shpDrive")), shpFold: Number(a("shpFold")), shpBits: Number(a("shpBits")),
@@ -20964,6 +21143,13 @@ function restoreInto(partial) {
     const soft = Number(s.scanSoft);
     el.scanSoft.value = String(Number.isFinite(soft) ? Math.max(0, Math.min(60, soft)) : DEFAULTS.scanSoft);
     el.scanSoft.dispatchEvent(new Event("input"));
+    const strike = Number(s.scanStrike);
+    el.scanStrike.value = String(Number.isFinite(strike) ? Math.max(0, Math.min(100, strike)) : DEFAULTS.scanStrike);
+    el.scanStrike.dispatchEvent(new Event("input"));
+    scan.reads[0] = scanReadsOf(s.scanReadsA, "A");
+    scan.reads[1] = scanReadsOf(s.scanReadsB, "B");
+    el.scanReadsA.value = scan.reads[0];
+    el.scanReadsB.value = scan.reads[1];
   }
   el.spectroSpan.value = s.span;
   state.spectroSpan = Number(s.span);
@@ -21046,6 +21232,24 @@ const PRESETS = [
     ["Scanned interference", { shape: "sine", display: "xy", persistence: "0.04", timebase: 4, oscScan: 100,
                                l0d: "phase", l0r: 70, l0a: 100, l1d: "freq", l1r: 11, l1a: 15 },
      "Phase and pitch moving at unrelated rates, so the picture never quite repeats and neither does the timbre read from it. Turn Softness down on the Picture tab to hear the thin lines buzz."],
+    // P7b: the loop that keeps going, and the keys as hammers on it. The
+    // waveform is left out of what notes drive, so the fifth sounds whether
+    // a key is down or not and a note strikes the screen instead of starting
+    // the sound: let go and the loop goes on. Stop holds the screen, which
+    // holds the tone. None names the Picture amount: it is the player's, and
+    // a preset that set it left it set for every preset after (the first
+    // "Scan remembers" put the stage at its top on the microphone's effect).
+    ["Scan breathes", { shape: "sine", interval: 7, just: false, timebase: 3, display: "xy", persistence: "0.0255",
+                        oscScan: 100, scanStrike: 60, midiDrive: "harmonograph,figure" },
+     "The fifth read back as its own wave, with the picture stage swelling and easing it every few seconds: it breathes with no hands on it. Keys do not change the note - each one strikes the screen where Scan reads, harder for a harder key, and the light fades as you hear it. Press Stop and it holds still."],
+    ["Scan remembers", { shape: "sine", interval: 7, just: false, timebase: 3, display: "xy", persistence: "0.005278",
+                         oscScan: 100, scanStrike: 100, scanSoft: 20, midiDrive: "harmonograph,figure" },
+     "Two seconds of Persistence, so what the wave read a moment ago is still being read and the timbre drifts on however long you leave it. A run of struck keys stays in it as long as their light does - the screen calls it settled, since the picture changes slowly, while the sound does not stop moving. Press Stop to hold it, or turn Depth down on the Picture tab."],
+    ["Crossed hands", { shape: "sine", freq: 110, timebase: 4, display: "xy", persistence: "0.0255",
+                        midiMode: "poly", layers: "split", splitAt: 60, layerPair: "each",
+                        oscScan: 100, bScan: 100, scanReadsA: "B", scanReadsB: "A",
+                        bShape: "sine", bRatio: 1 },
+     "Each hand's sound is read from the other's picture: the left hand's wave is the right hand's figure, and the right's is the left's, so neither can be played without the other answering. Hold a note or two in each half of the keyboard."],
   ], "generator"],
 
   ["The picture plays itself", [
@@ -22169,11 +22373,12 @@ function migrateSetup(setup) {
    default, so every code copied on the site would carry them; at their
    defaults they are taken out before the core sees the snapshot, which gives
    the code the page's own codec makes. Set to anything else they go through
-   and the core writes them as it reads them. Empty since Scan's core stage
-   (P7a) taught the core its two, as P6's did each layer's picture menus;
-   wasmtest.py goes red on any name here the core has learnt, so a field
-   added ahead of the core next time cannot be left behind. */
-const SETUP_AHEAD_OF_CORE = [];
+   and the core writes them as it reads them. Scan's core stage (P7a) taught
+   the core its two, as P6's did each layer's picture menus; P7b's three - the
+   strike and what each layer's Scan reads - are here until its core stage
+   does the same. wasmtest.py goes red on any name here the core has learnt,
+   so a field added ahead of the core cannot be left behind. */
+const SETUP_AHEAD_OF_CORE = ["scanStrike", "scanReadsA", "scanReadsB"];
 
 function makeWasmSetupCodec(module) {
   const wasi = { fd_close: () => 0, fd_seek: () => 0, fd_write: () => 0 };
@@ -22267,8 +22472,9 @@ const PRESET_ABOUT = {
   "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab, or put a controller on them.",
   "The picture plays itself": "The screen as a source: the photocell reads the brightness under its reticle, and the picture's own sources read its shape, coverage, change and novelty, and each is patched back onto what draws the picture or makes the sound. So what the beam draws alters what it draws, and how it sounds. Drag the reticle anywhere; the readout says whether the loop is settled, cycling or wandering, and every loop is held to its bounds.",
   "Scanned": "Scan: the screen read back as the voice's wave, sixty times a second. Where the picture moves the "
-    + "timbre moves with it, and where it stands still so does the tone. Depth, softness and memory are on the "
-    + "Picture tab.",
+    + "timbre moves with it, and where it stands still so does the tone. Every key strikes the screen where Scan "
+    + "reads, and in a split each hand can read the other's picture. Depth, Strike, Softness and Persistence are "
+    + "on the Picture tab; Stop holds the screen, and the tone with it.",
   "Many sources": "Everything your hands do at once, each on a different control: how hard, how many notes, how far apart, the melody, the inner voices, the envelope, the wheel and the pedal, three to eight in every preset. They wait for a keyboard, and the on-screen one will do.",
   "Played with the picture": "Your hands and the picture on one sound: the photocell keeps a loop going on its own, and what you play pushes it somewhere else. They sound before you play; the keyboard adds to them.",
   "Hands on the sound": "The mod wheel, the sustain pedal and the strike of a key, patched onto filter, fold, "
@@ -24195,6 +24401,12 @@ el.scanSoft.addEventListener("input", () => {
   el.scanSoftValue.textContent = scan.soft.toFixed(1) + " cells";
 });
 el.scanMemory.addEventListener("input", () => setPersistence(memoryOfSlider(Number(el.scanMemory.value))));
+el.scanStrike.addEventListener("input", () => {
+  scan.strike = Number(el.scanStrike.value) / 100;
+  el.scanStrikeValue.textContent = scan.strike > 0 ? Math.round(scan.strike * 100) + "%" : "off";
+});
+el.scanReadsA.addEventListener("change", () => { scan.reads[0] = scanReadsOf(el.scanReadsA.value, "A"); });
+el.scanReadsB.addEventListener("change", () => { scan.reads[1] = scanReadsOf(el.scanReadsB.value, "B"); });
 
 el.morph.addEventListener("input", () => {
   const at = Number(el.morph.value) / 100;

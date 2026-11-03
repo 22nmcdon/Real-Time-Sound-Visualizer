@@ -382,6 +382,56 @@ with sync_playwright() as pw:
           "first table %s ms after, %d in 0.7 s" % (frz["first"], frz["count"]))
     null("and running, a table goes every frame", frz["before"] >= 10, "%d in 0.3 s" % frz["before"])
 
+    # A voice rebuilt with Scan on - hushed and heard again - is handed the
+    # settings through JSON, and a table's Float64Array levels came out of
+    # it as objects with no length: the new voice's first table was all NaN
+    # and took the generator with it (found by P7b's looptest on its second
+    # run, where the first had hushed the voice).
+    rebuilt = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      applyPreset('b:Scanned fifth'); await wait(1200);
+      const table = genSettings().scanTable;
+      const naive = JSON.parse(JSON.stringify(table)).levels[0].length;
+      // Depth at nought across the rebuild and back up after it, so the
+      // table the new voice was built with is the one it plays first: with
+      // Scan on throughout, a fresh table usually lands before the first
+      // tick and hides the old one, and this check passed on the broken page.
+      const depth = (v) => { el.oscScan.value = String(v); el.oscScan.dispatchEvent(new Event('input')); };
+      // And through toTone, as a source changed and changed back goes:
+      // without it the old voice's settings were not the ones rebuilt.
+      // What the rebuilt voice is handed, caught as it is made: whether the
+      // table reaches the worklet as tables at all is the cause, and it does
+      // not depend on which of a fresh table and the first tick wins - the
+      // sound below does, and in the full suite it passed on the broken page.
+      let handed = null;
+      const Real = window.AudioWorkletNode;
+      window.AudioWorkletNode = class extends Real {
+        constructor(context, name, options) {
+          super(context, name, options);
+          if (name === 'generator' && options && options.processorOptions) handed = options.processorOptions.tone.scanTable;
+        }
+      };
+      depth(0);
+      const v = genVoice(); await v.setSound(false); syncGeneratorSound();
+      toTone(); genSet('shape', 'sine');
+      await applyGeneratorSound();
+      window.AudioWorkletNode = Real;
+      const handedOk = !!(handed && handed.levels && handed.levels.every((L) => Array.isArray(L) && L.length === SCAN_TABLE && L.every(Number.isFinite)));
+      depth(100);
+      let finite = true, peak = 0;
+      for (let k = 0; k < 20; k++) {
+        await wait(75);
+        const [l, r] = state.source.getLatestWindow(2048);
+        for (const x of [...l, ...r]) { if (!Number.isFinite(x)) finite = false; else peak = Math.max(peak, Math.abs(x)); }
+      }
+      return { finite, peak, audible: genVoice().audible(), naive: naive === undefined ? null : naive, handedOk,
+               handed: handed ? typeof handed.levels[0].length : null };
+    }""")
+    check("a voice rebuilt with Scan on is handed its table as tables, every level its full length and finite",
+          rebuilt["handedOk"], str(rebuilt))
+    check("and stays finite and sounding", rebuilt["finite"] and rebuilt["peak"] > 0.05 and rebuilt["audible"], str(rebuilt))
+    null("a table taken through plain JSON has levels with no length", rebuilt["naive"] is None, str(rebuilt["naive"]))
+
     hold = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       applyPreset('b:Scanned fifth'); await wait(600);

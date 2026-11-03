@@ -801,6 +801,45 @@ the synth's features should be chosen knowing that.
     Scan's three, between the page stage and this one - crashed the core in the middle of
     the morph's walk, because the panel used whatever its lookup returned; it is refused
     now, and parity holds that it does nothing.
+  - *P7b, built on the page:* notes strike the screen, cross-scan, and loops that keep
+    going. **The strike**: every note lays light as it starts - a short arc of the circle
+    Scan reads, a twelfth of the lap, at the note's place round it (C at the reading's
+    start, a semitone a twelfth on), as bright as its velocity times *Strike* (under Scan,
+    half to start) - so it is in the very next table. It is light laid once into the
+    phosphor, the picture each layer reads and the shown screen, and fades by Persistence
+    exactly as a stroke does; no envelope of its own. Laid only where Scan is on, since
+    the path is Scan's, so with Scan off or Strike at nought nothing changes at all. A
+    harder note moves the timbre further, but not always brighter: a plateau on the read
+    adds harmonics where the circle was dark and smooths them away where it crossed
+    bright lines, and which way depends on the picture. The meters and the running-away
+    hold see it as they see the figure. **Cross-scan**: a *Reads* menu per layer, in P6's
+    shape and shown on the same condition - what that layer's Scan reads: its own picture
+    (the default), the other's, or both averaged. A crossed pair has both depths held by
+    the lower of the two pictures' holds, as P6's crossed pictures are; a layer reading
+    both, uncrossed, takes the lower of the two it reads. **The self-sustaining loop**:
+    *Scan breathes* and *Scan remembers*, in the Scanned presets, leave the waveform out
+    of what notes drive, so the fifth sounds whether a key is down or not and the keys
+    strike the screen rather than start the sound: let go and the loop goes on. Stop holds
+    the screen and so the tone, and Depth at nought takes Scan out. *Crossed hands* is
+    the split with each hand reading the other's picture. `striketest.py` holds it all,
+    and `looptest.py` runs Scan with every note striking at full during fast repeated
+    notes, and a split at Scan's top crossed both ways.
+  - *What it costs:* nothing beyond presets was needed for the loop to keep going, but
+    what those presets do is change what the keys are: there they hammer the screen and
+    no longer play the note. A loop that keeps going after you let go of a note that the
+    keys *did* play would need the voice to go on sounding after release - a latch, or a
+    drone the keys pitch without gating - and that is a control of its own, not built,
+    for the owner to decide. The plan's *Wandering* became *Scan remembers*: with two
+    seconds of Persistence the screen changes slowly enough that the meter reads it
+    settled while the sound never stops moving, and a preset named for wandering that the
+    readout calls settled would contradict itself. Strike and Reads are the page's until
+    the core learns them (the next step): on the site's instrument and in the plugin a note
+    does not strike and each layer reads its own picture, and the three setup fields are
+    named in `SETUP_AHEAD_OF_CORE`. Notes the arpeggiator and the score play reach the
+    generator without passing `midiNoteOn`, so they do not strike. For that core stage:
+    `scanStep` now keeps its paths per picture rather than per layer, so with the layers on
+    but one shared picture there is one path, not two identical ones - `ScanReader` must
+    follow, which is why parity's frames of Scan's readings differ until it does.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input

@@ -109,6 +109,25 @@ with sync_playwright() as pw:
     check("and that comparison catches a misspelt field and an out-of-range value",
           null == [["vcfEnv"], ["vcfCut"]], str(null))
 
+    # The Picture amount is the player's: a setup that names it sets it, and
+    # a preset that does not leaves it where it was. So a preset that named it
+    # left it named for every preset after - the first "Scan remembers" put
+    # the stage at its top on everything loaded after it, the microphone's
+    # effect included. None may name it.
+    sticky = p.evaluate("""() => {
+      const named = [];
+      for (const [, entries] of PRESETS) for (const [name, setup] of entries) if ('pictureAmount' in setup) named.push(name);
+      // The null: the same scan finds it in a library that has it.
+      const probe = [['x', [['y', { pictureAmount: 100 }]]]];
+      let found = 0;
+      for (const [, entries] of probe) for (const [, setup] of entries) if ('pictureAmount' in setup) found++;
+      return { named, found };
+    }""")
+    check("no preset names the Picture amount, which would stay set for every preset after it", sticky["named"] == [],
+          str(sticky["named"]))
+    null_ok = sticky["found"] == 1
+    check("null: the same scan finds one that does", null_ok, str(sticky["found"]))
+
     print("\n--- the browser ---")
     p.evaluate("() => applyPreset('b:Wah')")
     p.click("#preset"); p.wait_for_timeout(250)
