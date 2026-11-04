@@ -187,7 +187,9 @@ with sync_playwright() as pw:
       setMenuOpen(false);
       return { bench, settings };
     }""")
-    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "picture", "seen": True},
+    # The trace filter, on Measure in the drawer since P8: a control there
+    # opens the drawer too, which is the harder case of the two.
+    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "measure", "seen": True},
           str(reach["bench"]))
     check("and a setting opens Settings over the view you were in",
           reach["settings"] == {"view": "scope", "open": True, "seen": True}, str(reach["settings"]))

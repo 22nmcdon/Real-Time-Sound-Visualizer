@@ -385,8 +385,8 @@ with sync_playwright() as pw:
     check("Use drawbars chooses them, and the row under the menu shows the registration",
           panel["used"] == {"shape": "drawbars", "heard": "drawbars", "row": False,
                             "text": "00 8740 000 ›", "idle": False, "state": True}, str(panel["used"]))
-    check("pressing it goes to the bars, on the Shape tab",
-          panel["went"] == {"tab": "Shape", "shown": True}, str(panel["went"]))
+    check("pressing it goes to the bars, on the Ink tab",
+          panel["went"] == {"tab": "Ink", "shown": True}, str(panel["went"]))
     check("a figure has no waveform to colour, and does not offer to use them",
           panel["figure"]["idle"] and panel["figure"]["why"] == "Only a waveform has drawbars."
           and not panel["figure"]["use"], str(panel["figure"]))

@@ -296,7 +296,7 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('effects');
+      setView('bench'); setBenchTab('space');
       const shown = el.timeGroup.offsetHeight > 0;
       setTempo(120); await wait(30);
       set('delaySync', '1/4', 'change');

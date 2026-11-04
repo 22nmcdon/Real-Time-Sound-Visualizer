@@ -103,14 +103,14 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    shut %s; open %s" % (drawer["first"], drawer["open"]))
-    loop_tabs = ["Play", "Picture", "Shape", "Effects", "Measure"]
-    check("a first visit opens with the drawer shut: the loop's five tabs, no chips, no hollow rings",
+    loop_tabs = ["Play", "Ink", "Space & Memory", "Picture"]
+    check("a first visit opens with the drawer shut: the loop's four tabs, no chips, no hollow rings",
           drawer["first"]["drawer"] == "shut" and drawer["first"]["rail"] == loop_tabs and not drawer["first"]["chips"]
           and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
     check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
           drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
-    check("opened, the Sources and Perform tabs come after the loop's, with the chips and a ring on every control",
-          drawer["open"]["rail"] == loop_tabs + ["Sources", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
+    check("opened, the drawer's four tabs come after the loop's, with the chips and a ring on every control",
+          drawer["open"]["rail"] == loop_tabs + ["Sources", "Inputs", "Measure", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
           and drawer["open"]["label"] == "true", str(drawer["open"]))
     check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
           str(drawer["back"]))
@@ -148,7 +148,9 @@ with sync_playwright() as pw:
     # four and the second generator - the null, which shows the reading can
     # say more than one. A drawing loaded by a preset with the drawer shut
     # stays chosen, offered and drawn, by the drawer's rule; and a search for
-    # one opens the drawer, where a search for the tempo does not.
+    # one opens the drawer, where a search for the attack does not. (The
+    # tempo was that null until P8 put Key and tempo in the drawer, where a
+    # search for it now rightly opens it.)
     drawings = p.evaluate("""() => {
       const offered = (sel) => Array.from(sel.options).filter((o) => !o.hidden && !o.disabled).map((o) => o.value);
       const out = {};
@@ -166,6 +168,7 @@ with sync_playwright() as pw:
                               chooseSearch(first); const opened = benchDrawer; if (benchDrawer) el.benchDrawer.click();
                               return { found: first ? first.label : null, opened }; };
       out.searchDrawing = search('harmonograph');
+      out.searchAttack = search('attack');
       out.searchTempo = search('tempo');
       return out;
     }""")
@@ -179,19 +182,23 @@ with sync_playwright() as pw:
           drawings["loaded"] == {"drawer": "shut", "mode": "harmonograph", "menu": "harmonograph",
                                  "kinds": ["wave", "harmonograph"], "rows": True} and drawings["after"] == ["wave"],
           str(drawings["loaded"]) + " " + str(drawings["after"]))
-    check("and a search for a drawing opens the drawer to choose it, where a search for the tempo does not",
-          drawings["searchDrawing"]["opened"] is True and drawings["searchTempo"]["opened"] is False
-          and drawings["searchTempo"]["found"] is not None, str(drawings))
+    check("and a search for a drawing opens the drawer to choose it, where a search for the attack does not",
+          drawings["searchDrawing"]["opened"] is True and drawings["searchAttack"]["opened"] is False
+          and drawings["searchAttack"]["found"] is not None, str(drawings))
+    check("and a search for the tempo, in the drawer since P8, opens it",
+          drawings["searchTempo"]["opened"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
 
-    # The clock and the bar, on Perform since P5; Tap beside the tempo on
-    # Measure. The null is the tempo itself, which stayed.
+    # The clock and the bar, on Perform since P5; the tempo and Tap with them
+    # since P8 took Key and tempo off the old Measure tab. The null is Tap
+    # beside the tempo, which has always been so and would not be if the
+    # section had been split on the way.
     clock = p.evaluate("""() => {
       const tab = (id) => { const g = document.getElementById(id).closest('.menu-group'); return g ? g.dataset.tab : null; };
       return { clockFrom: tab('clockFrom'), bar: tab('transportPlay'), at: tab('transportAt'), tempo: tab('tempo'),
                tapBesideTempo: el.tempoTap.closest('.menu-row') === el.tempo.closest('.menu-row') };
     }""")
-    check("the clock's source and the bar are on Perform, in the drawer, and the tempo and Tap together on Measure",
-          clock == {"clockFrom": "perform", "bar": "perform", "at": "perform", "tempo": "measure", "tapBesideTempo": True},
+    check("the clock's source, the bar, and the tempo with Tap beside it are all on Perform, in the drawer",
+          clock == {"clockFrom": "perform", "bar": "perform", "at": "perform", "tempo": "perform", "tapBesideTempo": True},
           str(clock))
     hidden = p.evaluate("""() => {
       el.benchDrawer.click(); setBenchTab('sources');
@@ -242,15 +249,45 @@ with sync_playwright() as pw:
     print("    tabs:", ", ".join(tabs["titles"]))
     # Six since Stage H put the voice's oscillator on Shape and moved the
     # plane and the delay to Effects; the five of the loop and the drawer's
-    # one, last, since P3; seven since P5 put the arpeggiator on Perform.
-    check("seven tabs by task with the drawer open, its own two last, and a tab list",
-          tabs["titles"] == ["Play", "Picture", "Shape", "Effects", "Measure", "Sources", "Perform"]
+    # one, last, since P3; seven since P5 put the arpeggiator on Perform; and
+    # since P8 the loop's four in its own order, the drawer's four after.
+    check("four tabs along the loop and the drawer's four with it open, and a tab list",
+          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Picture", "Sources", "Inputs", "Measure", "Perform"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
     check("every Bench section is on exactly one tab", missing == [], str(missing) + " " + str(tabs["seen"]))
     check("Modulation is gone: the oscillators are sources, on the Sources tab",
           "Modulation" not in tabs["seen"] and tabs["seen"].get("Sources") == 1, str(tabs["seen"]))
+
+    # Where each section went in P8, by its title, against the owner's layout:
+    # what you play, what the beam draws with, what the screen does to it, the
+    # picture read back, and the drawer's. Written as the whole map so a
+    # section that strays fails here by name; the null is the layout before
+    # P8, which this must reject.
+    homes = p.evaluate("""() => {
+      const out = {};
+      for (const g of benchGroupsAll()) out[groupTitle(g).replace('\u22ef', '').trim()] = g.dataset.tab;
+      return out;
+    }""")
+    want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
+            "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
+            "Display": "space", "Plane": "space", "Delay and chorus": "space",
+            "Scan": "picture", "Score": "picture",
+            "Input": "inputs", "Input into the generator": "inputs",
+            "Lanes": "measure", "Vertical": "measure", "Filter": "measure", "Trigger": "measure",
+            "Measure": "measure", "Macros": "measure",
+            "Key and tempo": "perform", "Arpeggiator": "perform"}
+    before_p8 = dict(want, **{"Voice filter": "shape", "Oscillator": "shape", "Drawbars": "shape",
+                              "Shaping": "shape", "Drawn cycle": "shape", "Display": "picture",
+                              "Plane": "effects", "Delay and chorus": "effects", "Input": "play",
+                              "Input into the generator": "effects", "Lanes": "picture",
+                              "Vertical": "picture", "Filter": "picture", "Trigger": "picture",
+                              "Key and tempo": "measure"})
+    agree = lambda m: all(homes.get(k) == v for k, v in m.items())
+    stray = {k: (homes.get(k), v) for k, v in want.items() if homes.get(k) != v}
+    check("each section is on the tab the P8 layout gives it", agree(want), str(stray))
+    check("null: the layout before P8 is not what is there", not agree(before_p8), str(homes))
     keys = p.evaluate("""() => {
       setBenchTab('play');
       const tb = el.timebase.value;
@@ -260,7 +297,7 @@ with sync_playwright() as pw:
       return { tab: benchTab, focused: document.activeElement.id, timebase: el.timebase.value === tb };
     }""")
     check("the arrow keys walk the tabs, and do not also move the timebase",
-          keys["tab"] == "picture" and keys["focused"] == "benchTab-picture" and keys["timebase"], str(keys))
+          keys["tab"] == "ink" and keys["focused"] == "benchTab-ink" and keys["timebase"], str(keys))
     check("no section starts folded: a tab has room for all of it",
           p.evaluate("() => benchable().filter((g) => g.classList.contains('folded')).length") == 0)
 
@@ -287,8 +324,8 @@ with sync_playwright() as pw:
 
     print("\n--- the controls still work from the bench ---")
     live = p.evaluate("""() => {
-      // The Picture tab, and a slider and a checkbox that live on it.
-      setBenchTab('picture');
+      // The Measure tab, in the drawer since P8, and a slider and a checkbox on it.
+      setBenchTab('measure');
       el.holdoff.value = '30';
       el.holdoff.dispatchEvent(new Event('input'));
       const a = state.holdoffMs;
@@ -399,6 +436,19 @@ with sync_playwright() as pw:
     check("the bench, its tab and the drawer open survive a reload",
           kept == {"view": "bench", "tab": "sources", "drawer": "open"}, str(kept))
     check("no errors after reload", not bad, "; ".join(bad[:3]))
+    # A tab remembered from before P8 lands where its sections went, and a
+    # name that never was a tab lands on Play - the null, which shows the
+    # reading is the page's choice and not whatever was stored.
+    landed = {}
+    for stored in ("shape", "effects", "picture", "nonsense"):
+        p.evaluate("(t) => window.localStorage.setItem('scope.benchTab', t)", stored)
+        p.reload(); p.wait_for_timeout(700)
+        if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+        landed[stored] = p.evaluate("() => benchTab")
+    check("a tab remembered from before P8 lands where its sections went: Shape on Ink, Effects on Space & Memory",
+          landed["shape"] == "ink" and landed["effects"] == "space" and landed["picture"] == "picture", str(landed))
+    check("null: a stored name that was never a tab lands on Play", landed["nonsense"] == "play", str(landed))
+    p.evaluate("() => setBenchTab('sources')")
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
 
     print("\n--- wide ---")

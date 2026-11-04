@@ -193,8 +193,8 @@ with sync_playwright() as pw:
 
     print("\n--- the panel, and setup codes ---")
     panel = p.evaluate("""() => {
-      // On Measure since the Sources tab needed its room; see the markup.
-      setView('bench'); setBenchTab('measure');
+      // In the drawer on Perform since P8, beside the clock its tempo is.
+      setView('bench'); setBenchTab('perform');
       const shown = el.keyGroup.offsetHeight > 0;
       // Wide enough for "Major pentatonic", the longest: it was cut to "Chroma".
       const probe = document.createElement('canvas').getContext('2d');

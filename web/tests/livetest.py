@@ -125,7 +125,8 @@ with sync_playwright() as pw:
         return realConnect.call(this, dest, ...rest);
       };
     }""")
-    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
+    # On Inputs, in the drawer since P8: reached as a hand reaches it.
+    p.evaluate("() => { setView('bench'); setBenchTab('inputs'); }"); p.wait_for_timeout(150)
     p.locator("#srcMic").click(no_wait_after=True); p.wait_for_timeout(2000)
     check("the shape switch is reachable once Mic is chosen",
           p.locator("#micBands").is_visible())

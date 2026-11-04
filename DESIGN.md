@@ -292,7 +292,7 @@ anywhere on the scale, are product.
 The brand's layout is a page; this is an instrument, so most of it is product. The
 decisions, and the failures each one replaced, are in CLAUDE.md under *Layout decisions
 already made*, and are not repeated here. In outline: a top bar, the screen, and a dock;
-the Bench as six task tabs with a 160px rail and a 318px side column built from real
+the Bench as four tabs along the loop and a drawer of four, with a 160px rail and a 318px side column built from real
 column elements; a Sources tab showing one family at a time; every section with one home.
 
 Breakpoints beyond the brand's 760px, each added where something collided:

@@ -266,7 +266,7 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('play');
       const hidden = el.vcfCut.closest('.menu-row').hidden;
       set('vcfType', 3, 'change');
       const shownOn = el.vcfCut.closest('.menu-row').hidden === false && el.vcfGroup.offsetHeight > 0;

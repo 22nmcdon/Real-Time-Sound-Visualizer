@@ -4738,3 +4738,21 @@ settled less, not more. The harnesses are not in the repository; the numbers
 are in the plan, and the method (variant pages of the block, the page's own
 brain with the JavaScript generator, twenty seconds, the first quarter
 dropped) is quick to rebuild.
+
+**Moving a section between tabs moves the nulls that leaned on where it was.**
+P8b put the Bench in the loop's order - Play, Ink, Space & Memory, Picture,
+and the drawer's Sources, Inputs, Measure and Perform - and the layout itself
+was the easy part: one `data-tab` per section and the tab list. What broke
+were checks whose null depended on a section's old home. `benchtest.py`
+proved "a search opens the drawer only for what is in it" with the tempo as
+the thing that does not, and Key and tempo is in the drawer now, so the null
+became the attack and the tempo a check of its own. Before moving a section,
+grep the suites for its controls as well as for the tab's name. Two other
+things a reader would otherwise rediscover: a tab name is remembered per
+viewer in `scope.benchTab`, so a renamed tab needs `BENCH_TAB_RENAMED` or a
+returning visitor lands on Play; and how full a tab is can be read in a
+second from the columns the dealer builds (each column's sections' heights
+over the body's `clientHeight`), which is how the owner's question "are we
+still tight on space?" was answered with numbers before anything moved -
+worst case, at 1400x900 with a split and the keys, the old five were 49, 54,
+77, 57 and 31 per cent full.

@@ -215,7 +215,7 @@ with sync_playwright() as pw:
       setView('bench');
       const out = { note: !el.cycleNote.hidden, pane: !el.cycleGroup.hidden, over: {} };
       for (const [tab] of BENCH_TABS) { setBenchTab(tab); out.over[tab] = el.benchBody.scrollHeight - el.benchBody.clientHeight; }
-      setBenchTab('shape');
+      setBenchTab('ink');
       out.shown = el.cycleNote.getBoundingClientRect().height;
       setView('scope');
       return out;

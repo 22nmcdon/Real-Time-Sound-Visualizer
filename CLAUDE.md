@@ -188,19 +188,20 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **A control's appearance must not depend on how many modulation sources are on
   it.** Two designs failed here. `patchtest.py` measures the row's height and
   box with nought, one, two and three sources and requires all four identical.
-- **No Bench tab may scroll.** The Bench is seven tabs by task - the loop's five
-  (Play, Picture, Shape, Effects, Measure) and the drawer's Sources and Perform - and one
-  tab at a time must fit. `patchtest.py`
-  measures every tab across every generator mode; `fittest.py` does it on the
-  band split as well. This replaced "every section on show at once, and neither
-  panel scrolls", which held for the tone and never for a rack of six (cut in
-  P5) - and is why a
-  section that would crowd a tab goes to another one (Lanes is on Picture
-  because Play had four sections for three columns, and Effects exists because
-  the voice's oscillator made Shape five). `fittest.py` measures every tab in
-  every combination of generator kind, tone or band split, keyboard and
-  Photocell, and the Sources tab with each family on show, which is how
-  Macros and Key and tempo came to be on Measure.
+- **No Bench tab may scroll.** The Bench is four tabs along the loop - Play,
+  Ink, Space & Memory, Picture, in the order the sound goes round it - and the
+  drawer's Sources, Inputs, Measure and Perform, and one tab at a time must
+  fit. `patchtest.py` measures every tab across every generator mode;
+  `fittest.py` does it in every combination of generator kind, tone or band
+  split, keyboard and Photocell, and the Sources tab with each family on show.
+  This replaced "every section on show at once, and neither panel scrolls",
+  which held for the tone and never for a rack of six (cut in P5), and then
+  five tabs by task (Play, Picture, Shape, Effects, Measure), which existed
+  because Shape overflowed into Effects; after P5's cuts and the drawer they
+  were a third full in places, so P8 (`making-it-one-instrument.md`) put them
+  back in the loop's order. A section that would crowd a tab still goes to
+  another one. The Picture amount, its reads, persistence and the display
+  stay in the bar under the screen, where they are on show on every tab.
 - **What is not the loop goes in the drawer.** *Advanced*, under the rail,
   opens it; shut, it takes its tabs, the source chips beside the screen and a
   control's hollow ring with it, and leaves everything patched playing and
@@ -209,9 +210,13 @@ Do not re-litigate these without a reason; each replaced something that failed.
   new. The routing matrix went first (P3); in P5 the arpeggiator and the
   clock went to Perform, and the drawings - the harmonograph, the figures, the
   solids and the second generator - behind it in their menus, offered only
-  while it is open unless one is already chosen (`syncDrawerMenus`); the
-  plan's P8 adds measurements and inputs. Add a tab to it by
-  naming it in `BENCH_DRAWER`. `benchtest.py` holds it.
+  while it is open unless one is already chosen (`syncDrawerMenus`); in P8
+  the scope's own instruments (lanes, vertical, trigger, trace filter,
+  cursors) and the macros to Measure, the microphone and input into the
+  generator to Inputs, and the key and tempo to Perform beside the clock. Add
+  a tab to it by naming it in `BENCH_DRAWER`. A tab remembered from before a
+  rename lands where its sections went (`BENCH_TAB_RENAMED`). `benchtest.py`
+  holds it.
 - **The Sources tab shows one family at a time.** Families, the chosen
   family's sources as rows with meters, the chosen source - in that order, one
   column each. A grid of every source at once was forty chips of one weight

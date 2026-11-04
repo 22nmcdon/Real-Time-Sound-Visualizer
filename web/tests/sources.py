@@ -38,9 +38,17 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: "+m.text) if m.type=="error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
+    # The source switch is on Inputs, in the drawer since P8, and the tone's
+    # rows on Play: so the presses are made on Inputs, as a hand makes them
+    # (Advanced, then the tab), and "the rows came back" is read on Play.
+    to_inputs = lambda: (p.evaluate("() => { setView('bench'); setBenchTab('inputs'); }"), p.wait_for_timeout(150))
+    to_inputs()
 
-    tone_visible = lambda: p.locator("#genMode").is_visible()
+    def tone_visible():
+        p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(100)
+        seen = p.locator("#genMode").is_visible()
+        to_inputs()
+        return seen
     mark = lambda: p.locator("#sourceMark").inner_text()
 
     # Tone over a tone: it keeps the tone, but puts the panel back, which is

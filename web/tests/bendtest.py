@@ -301,7 +301,7 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('ink');
       const shown = el.oscBend.offsetHeight > 0 && el.oscBendAt.offsetHeight > 0
         && el.oscBend.closest('.menu-group') === el.oscGroup;
       const off = [el.oscBendValue.textContent, el.oscBendAtValue.textContent, genSettings().warp, genSettings().warpAt];

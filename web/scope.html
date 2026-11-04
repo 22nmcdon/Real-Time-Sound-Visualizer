@@ -779,7 +779,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 .bench-body .menu-note { display: none; }
 .bench-body [data-more] { display: none; }
 /* Layer B has eight fields, so the generator panel shows its seven controls
-   while it is being edited - the eighth, the drawbars, is on the Shape tab
+   while it is being edited - the eighth, the drawbars, is on the Ink tab
    and follows the layer there - rather than forty of which thirty-four would
    be writing into layer A. Hidden by a rule rather than by `hidden`, because the kind's
    own rows already toggle `hidden` and two writers of one flag disagree. */
@@ -1296,7 +1296,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
             <button type="button" class="close-btn" id="menuClose" aria-label="Close">&times;</button>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="play">
+          <div class="menu-group" data-home="bench" data-tab="inputs">
             <span class="menu-title">Input</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1307,7 +1307,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
             </div>
 
             <div class="menu-row" id="micShapeRow" hidden>
-              <!-- "Split" rather than "Lanes": Lanes is the Picture tab's section,
+              <!-- "Split" rather than "Lanes": Lanes is Measure's section,
                    and one control per name. -->
               <span class="menu-label">Split</span>
               <div class="grow">
@@ -1326,13 +1326,15 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           <!-- Its own section rather than rows under Input. A rack of five
                lanes made Input 145 px taller than the Bench, which must never
                scroll, and no dealing of whole sections into columns can fit
-               one section taller than a column. On the Picture tab, because
+               one section taller than a column. In the drawer on Measure
+               since P8, with the scope's other instruments; before that on the
+               Picture tab, because
                what it holds is mostly the screen's - which lanes are shown,
                stacked or overlaid, which pair is the X-Y - and because Play
                with a rack of six had four sections for three columns: the
                generator and the keyboard together were 488 px of a 426 px
                column. What goes into the rack is still chosen on Play. -->
-          <div class="menu-group" id="laneGroup" data-tab="picture" data-home="bench" data-off="1">
+          <div class="menu-group" id="laneGroup" data-tab="measure" data-home="bench" data-off="1">
             <span class="menu-title">Lanes</span>
             <div id="laneList"></div>
             <div class="menu-row">
@@ -1501,7 +1503,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           <!-- The clock, in the drawer since P5: where the tempo comes from and
                where the bar is matter to someone syncing gear over MIDI clock,
                and to nobody else, so they left Key and tempo for Perform. The
-               tempo and Tap stayed on Measure: the score, the arpeggiator and
+               tempo and Tap stayed on Measure until P8 brought them here too: the score, the arpeggiator and
                the echo's sync all play at the tempo, and setting it is not
                hands-free. The readings run with the drawer shut, as everything
                does. -->
@@ -1658,7 +1660,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 </div>
               </div>
               <!-- The registration, and the way to it: the nine bars are on the
-                   Shape tab, where the voice's colour lives. A row of its own, shown
+                   Ink tab, where the voice's colour lives. A row of its own, shown
                    only with the drawbars chosen: beside the menu it pushed the
                    menu down to a width that could not say "Drawbars". -->
               <!-- Shown only with Morph chosen, as the registration row is with the
@@ -1696,14 +1698,14 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <span class="menu-label">Cycle</span>
                 <div class="grow">
                   <button type="button" class="link-btn" id="cycleGo"
-                          title="The drawn cycle, on the Shape tab">Draw it &rsaquo;</button>
+                          title="The drawn cycle, on the Ink tab">Draw it &rsaquo;</button>
                 </div>
               </div>
               <div class="menu-row" id="barsGoRow" data-layer="b" hidden>
                 <span class="menu-label">Drawbars</span>
                 <div class="grow">
                   <button type="button" class="link-btn" id="barsGo"
-                          title="The drawbars, on the Shape tab"></button>
+                          title="The drawbars, on the Ink tab"></button>
                 </div>
               </div>
               <div class="menu-row" data-mod-dest="gen.ratio" data-mod-control="interval">
@@ -1929,7 +1931,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           <!-- Knobs of your own, and the fader between two sets of sliders.
                Together because the morph is a macro too: one control that
                moves many, which the matrix can drive like any other. On the
-               Measure tab, with the key and tempo: the Sources tab was its home,
+               Measure tab, in the drawer since P8 (until P8d takes the section
+               away, the host's knobs having replaced it): the Sources tab was its home,
                where a macro is patched, and a rack of six with a keyboard, the
                Photocell and a Nord's ten learned controllers put that tab past
                its columns in any arrangement while Macros stayed. What it costs:
@@ -2029,7 +2032,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               dots on a control, or drag a chip onto one.</p>
           </div>
 
-          <!-- On Measure, beside the cursors: the page's one clock and its one
+          <!-- On Perform since P8, beside the clock; before, on Measure beside the cursors: the page's one clock and its one
                key, which is to say its measure. It was beside the sources, since
                two of them answer to it - the quantiser takes the pitch to the
                key, and a locked oscillator takes its rate from the tempo - and
@@ -2038,7 +2041,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                three columns of 427 px in any order, and Measure had 100 px of
                three columns in use. What it costs: the tempo is a tab away from
                the oscillators it locks. -->
-          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="measure">
+          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="perform">
             <span class="menu-title">Key and tempo</span>
             <!-- Two rows, not one: side by side in a Bench column the scale's menu
                  was cut to "Chroma". -->
@@ -2122,7 +2125,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               copy it, send it, paste it back.</p>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="picture">
+          <div class="menu-group" data-home="bench" data-tab="measure">
             <span class="menu-title">Vertical</span>
             <div id="laneRows" data-more="1"></div>
             <label class="check" style="margin-top:10px">
@@ -2169,7 +2172,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               drop it to open up a quiet signal.</p>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="picture">
+          <div class="menu-group" data-home="bench" data-tab="space">
             <span class="menu-title">Display</span>
             <div class="menu-row" data-mod-dest="view.rotate" data-mod-control="rotate">
               <label class="menu-label" for="rotate">X&ndash;Y rotation</label>
@@ -2210,9 +2213,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           </div>
 
           <!-- G2: one period, drawn. Shown only while it is the shape: the
-               Shape tab has a dozen pixels to spare with a rack of six, and a
+               Shape tab (Ink's, since P8) had a dozen pixels to spare with a rack of six, and a
                pane nobody is using would take more than that. -->
-          <div class="menu-group" id="cycleGroup" data-home="bench" data-tab="shape" hidden>
+          <div class="menu-group" id="cycleGroup" data-home="bench" data-tab="ink" hidden>
             <span class="menu-title"><span id="cycleTitle">Drawn cycle</span></span>
             <canvas id="cycleCanvas" class="cycle-canvas" aria-label="One cycle of the wave: draw on it"></canvas>
             <div class="menu-row">
@@ -2243,7 +2246,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               says which, and its tooltip says the rest.</p>
           </div>
 
-          <div class="menu-group" id="barsGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="barsGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="barsTitle">Drawbars</span>
             <div class="bars-state" id="barsStateRow">
               <span class="reading" id="barsState"></span>
@@ -2324,7 +2327,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               each layer has its own registration.</p>
           </div>
 
-          <div class="menu-group" id="oscGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="oscTitle">Oscillator</span>
             <div class="menu-row">
               <label class="menu-label" for="oscRatio">Ratio</label>
@@ -2415,7 +2418,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               sync is on, the voice is one sample late.</p>
           </div>
 
-          <div class="menu-group" id="shpGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="shpGroup" data-home="bench" data-tab="ink">
             <span class="menu-title">Shaping</span>
             <div class="menu-row" data-mod-dest="gen.drive" data-mod-control="shpDrive">
               <label class="menu-label" for="shpDrive">Drive</label>
@@ -2465,7 +2468,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
           </div>
 
-          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="shape">
+          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="play">
             <span class="menu-title">Voice filter</span>
             <div class="menu-row">
               <label class="menu-label" for="vcfType">Type</label>
@@ -2540,7 +2543,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               pitch.</p>
           </div>
 
-          <div class="menu-group" id="planeGroup" data-home="bench" data-tab="effects">
+          <div class="menu-group" id="planeGroup" data-home="bench" data-tab="space">
             <span class="menu-title" id="planeTitle">Plane</span>
             <p class="fx-where" id="planeWhere"></p>
             <!-- With two layers playing: one plane for both, or one each and
@@ -2681,7 +2684,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               switching one on moves the picture by that much.</p>
           </div>
 
-          <div class="menu-group" id="timeGroup" data-home="bench" data-tab="effects">
+          <div class="menu-group" id="timeGroup" data-home="bench" data-tab="space">
             <span class="menu-title" id="timeTitle">Delay and chorus</span>
             <p class="fx-where" id="timeWhere"></p>
             <!-- The Plane section's Layers row again: B's own effects are its
@@ -2762,7 +2765,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               ghost figures trailing the live one; with <i>Ping-pong</i> each repeat comes back on
               the other channel, so the ghosts alternate between the figure and its reflection
               across the diagonal. <i>Sync</i> sets the time in note values from the tempo, on
-              the Measure tab, and follows it. <i>Feedback</i> stops short of one, and nothing
+              the Perform tab, and follows it. <i>Feedback</i> stops short of one, and nothing
               can be patched onto it: feedback that a source could push towards one would be a
               loop inside the loop. The longest time is two seconds.
               <br><br>
@@ -2774,7 +2777,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
           </div>
 
           <!-- J3: live audio into the generator, in the audio thread. -->
-          <div class="menu-group" id="inputGroup" data-home="bench" data-tab="effects">
+          <div class="menu-group" id="inputGroup" data-home="bench" data-tab="inputs">
             <span class="menu-title">Input into the generator</span>
             <p class="fx-where" id="inputWhere"></p>
             <div class="menu-row">
@@ -2918,7 +2921,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               sent out too, if MIDI out has a port.</p>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="picture">
+          <div class="menu-group" data-home="bench" data-tab="measure">
             <span class="menu-title">Filter</span>
             <label class="check">
               <input type="checkbox" id="filterOn"> Filter the trace
@@ -3006,7 +3009,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               which the limiter and the clamp are still the last things before.</p>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="picture">
+          <div class="menu-group" data-home="bench" data-tab="measure">
             <span class="menu-title">Trigger</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -3453,7 +3456,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         Point a source at the cutoff and it sweeps.</span></li>
 
       <li><b>The voice: a second oscillator inside it</b>
-        <span>Under <i>Oscillator</i>, on the Shape tab. A second oscillator runs at
+        <span>Under <i>Oscillator</i>, on the Ink tab. A second oscillator runs at
         <i>Ratio</i> times the note, and <i>FM</i> swings the voice's phase with it: pure at
         nought, then brighter, then bells and clangour. A 3:2 ratio sounds harmonic for the same
         reason a 3:2 figure closes. <i>Ring</i> multiplies by it instead and takes the note
@@ -3484,7 +3487,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         a phone a finger on the figure bends it rather than scrolling the page.</span></li>
 
       <li><b>Shaping: drive, fold and crush, in every note</b>
-        <span>Under <i>Shaping</i>, on the Shape tab. <i>Drive</i> pushes the wave into a soft
+        <span>Under <i>Shaping</i>, on the Ink tab. <i>Drive</i> pushes the wave into a soft
         ceiling, so a sine rounds towards a square; the reading is how much the quiet parts
         are lifted. <i>Fold</i> bends the wave back on itself each time it would pass full
         scale: the peaks fold into the wave, and in X&ndash;Y the figure grows petals. Put an
@@ -3496,7 +3499,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         costs twice as much, so a big chord gives it up first; see <i>The voice budget</i>.</span></li>
 
       <li><b>The voice filter: one in every note</b>
-        <span>Under <i>Voice filter</i>, on the Shape tab. A low, band or high pass or a notch
+        <span>Under <i>Voice filter</i>, on the Play tab. A low, band or high pass or a notch
         in each note, after its shaping and before its level. <i>Key track</i> makes the
         cutoff follow the note, so a high note is not duller than a low one. <i>Envelope</i>
         sweeps the cutoff up or down by that many octaves with the filter's own envelope,
@@ -3519,7 +3522,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         releases.</span></li>
 
       <li><b>The plane: what folds the picture folds the sound</b>
-        <span>Under <i>Plane</i>, on the Effects tab, for the generator and for a microphone or a
+        <span>Under <i>Plane</i>, on the Space &amp; Memory tab, for the generator and for a microphone or a
         line input. <i>Mirror</i> folds the
         figure onto one half of itself, X onto its right or Y onto its top, and to the ear that
         is full-wave rectification, the octave-up pedal: a mirrored sine is its octave, every
@@ -3565,7 +3568,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         doing.</span></li>
 
       <li><b>Delay and chorus: echoes you can see</b>
-        <span>Under <i>Delay and chorus</i>, on the Effects tab, after the plane, and on a live
+        <span>Under <i>Delay and chorus</i>, on the Space &amp; Memory tab, after the plane, and on a live
         input as well as the generator. <i>Echo</i> is
         how loud the repeats are, nought for off; <i>Time</i> is free, or <i>Sync</i> sets it to
         a note value of the tempo and it follows the tempo when that moves. <i>Feedback</i>
@@ -3612,7 +3615,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         changes; the readout says <i>sending</i> while they go.</span></li>
 
       <li><b>Your input, into the generator</b>
-        <span>Under <i>Input into the generator</i>, on the Effects tab: your microphone or line
+        <span>Under <i>Input into the generator</i>, on the Inputs tab behind <i>Advanced</i>: your microphone or line
         input fed into the generator itself. <i>FM</i> speeds and slows the trace with your
         waveform, so a figure is drawn faster and slower within every cycle you play.
         <i>Ride</i> scales the figure by it, so the sound rides on its outline. <i>Clock</i>
@@ -3797,17 +3800,21 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
         nowhere else.
         <br><br>
-        The Bench is five tabs, by task: <i>Play</i> (the source, the keyboard, the
-        generator), <i>Picture</i> (the lanes, the display, the vertical scale, the trigger, the trace filter),
-        <i>Shape</i> (the drawbars, the voice's oscillator, shaping and filter), <i>Effects</i> (the
-        plane, the delay and chorus) and <i>Measure</i>. Each section's title
+        The Bench is four tabs, in the order the sound goes round the loop: <i>Play</i> (the
+        keyboard, the generator, the voice filter), <i>Ink</i> (what the beam draws with: the
+        voice's oscillator, the drawbars, shaping, the drawn cycle), <i>Space &amp; Memory</i>
+        (what the screen does to the drawing: the display's rotation, the plane, the delay and
+        chorus) and <i>Picture</i> (the picture read back: Scan and the score). The Picture
+        amount, its three reads and the persistence stay under the screen. Each section's title
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
         handful of settings reached for rarely.
         <br><br>
         <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
         oscillators, controllers and the rest on any control by hand. The picture moves the
-        sound without it. Open, it adds the <i>Sources</i> and <i>Perform</i> tabs &mdash; the
-        arpeggiator and the clock are on <i>Perform</i> &mdash; the source chips beside the
+        sound without it. Open, it adds four tabs &mdash; <i>Sources</i>; <i>Inputs</i>, the
+        microphone and input into the generator; <i>Measure</i>, the scope's own instruments
+        (the lanes, the vertical scale, the trigger, the trace filter, the cursors) and the
+        macros; and <i>Perform</i>, the arpeggiator, the clock and the key and tempo &mdash; the source chips beside the
         screen on every tab, a ring on every control, and the drawings: the harmonograph, the
         figures and the solids in the generator's <i>Kind</i>, and the second generator in
         <i>Input into the generator</i>. Shut, what is patched still plays, a running arpeggio
@@ -3862,7 +3869,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         setup code, so loading a preset does not turn it off.</span></li>
 
       <li><b>Macros: one knob, many controls</b>
-        <span>Four knobs of your own, under <i>Macros</i> on the Measure tab. Each is a source
+        <span>Four knobs of your own, under <i>Macros</i> on the Measure tab, behind <i>Advanced</i>. Each is a source
         like an oscillator, except that nothing moves it but you: touch one and it is chosen,
         then <i>Add a destination</i> as many times as you like, and that one knob moves them
         all, each by its own depth. Type over its name to call it what it does; the name is
@@ -3902,9 +3909,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         can open a filter, or the pendulum can be an oscillator locked to the drawing.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
-        <span>The <i>Key and tempo</i> section, on the Measure tab, is one key, one scale and one
+        <span>The <i>Key and tempo</i> section, on <i>Perform</i> behind <i>Advanced</i>, is one key, one scale and one
         tempo for the whole page, with <i>Tap</i> beside the tempo. Where the tempo comes from and
-        the bar are in the <i>Clock</i> section, on <i>Perform</i> behind <i>Advanced</i>. <i>Quantise the generator's pitch</i> takes the pitch, after
+        the bar are in the <i>Clock</i> section beside it. <i>Quantise the generator's pitch</i> takes the pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
         photocell on the frequency plays a melody in D dorian rather than a siren. A key you
         play outside the scale is moved too, and a note exactly between two goes down.
@@ -3996,7 +4003,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         verdict stay on the signal either way.</span></li>
 
       <li><b>Cursors are draggable</b>
-        <span>Turn them on under the Bench's <i>Measure</i> tab. Two in time and two in
+        <span>Turn them on under the Bench's <i>Measure</i> tab, behind <i>Advanced</i>. Two in time and two in
         amplitude, on the Y&ndash;T display; the readout gives the difference between each pair,
         and &Delta;t as a frequency.</span></li>
 
@@ -4148,7 +4155,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <i>Unison</i> with some <i>Spread</i>, or load the preset.
         <br><br>
         <i>Drawn cycle</i> is one period of the wave, drawn with the pointer in the pane on
-        the <i>Shape</i> tab: whatever you draw is what you hear, and what the trace shows.
+        the <i>Ink</i> tab: whatever you draw is what you hear, and what the trace shows.
         <i>Sine</i> starts again and <i>Smooth</i> rounds the corners. <i>Grab</i> takes one
         cycle of what is playing instead: choose <i>Mic</i>, play a note into it, hold the same
         note on the keyboard, press it, and the generator plays that sound's cycle under your
@@ -4173,7 +4180,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         station and a half either way.
         <br><br>
         <i>Drawbars</i> are the organ's way of making a sound: nine sine partials at the
-        footages of a tonewheel organ, each drawn from nought to eight on the <i>Shape</i>
+        footages of a tonewheel organ, each drawn from nought to eight on the <i>Ink</i>
         tab. <i>8&prime;</i> is the note; <i>16&prime;</i> is an octave under it and
         <i>5&#8531;&prime;</i> a fifth above that, and the rest are the octaves, fifths and
         third above. Each step is about three decibels, as on the organ, and however many
@@ -4266,7 +4273,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         bends both layers. B starts as a copy of A, so a split changes where the notes go
         and nothing else until you change it.
         <br><br>
-        The Plane section on the Effects tab can give B a plane and a turn of its own; its
+        The Plane section on the <i>Space &amp; Memory</i> tab can give B a plane and a turn of its own; its
         <i>Layers</i> row says how.
         <br><br>
         By default each layer draws its own figure, overlaid: A in the accent and B in olive,
@@ -19669,7 +19676,7 @@ const SOURCE_FAMILIES = [
   ["keyboard", "Keyboard", "Connect one, or Show keys on Play."],
   ["controllers", "Controllers", "Move a knob on a connected keyboard."],
   ["picture", "Picture", ""],
-  // Their knobs are in the Macros section on Measure; here is where they go.
+  // Their knobs are in the Macros section on Measure, in the drawer; here is where they go.
   ["macros", "Macros", ""],
 ];
 let selectedSource = "lfo1";
@@ -21741,7 +21748,7 @@ const PRESETS = [
                                                     vcfType: 1, vcfCut: 480, delaySync: "1/4", delayFeedback: 40,
                                                     macroNames: "Brighten|Grit|Space|Swirl",
                                                     mod: "macro.1>gen.vcf@0.700;macro.2>gen.drive@0.800;macro.2>gen.fold@0.300;macro.3>gen.echo@1.000;macro.4>gen.twist@0.600" }, XY),
-     "A dark saw fifth and four knobs: Brighten opens the filter, Grit drives and folds, Space brings in the echo, Swirl twists the figure. Turn them on Measure."],
+     "A dark saw fifth and four knobs: Brighten opens the filter, Grit drives and folds, Space brings in the echo, Swirl twists the figure. Turn them under Macros, on Measure behind Advanced."],
     ["Registration knobs", { shape: "drawbars", bars: "008000000", freq: 220, timebase: 5,
                              macroNames: "Low bars|Middle bars|Top bars|Macro 4",
                              mod: "macro.1>gen.bar0@0.800;macro.1>gen.bar1@0.800;macro.2>gen.bar3@0.800;macro.2>gen.bar4@0.800;macro.3>gen.bar6@0.800;macro.3>gen.bar7@0.800;macro.3>gen.bar8@0.800" },
@@ -22473,7 +22480,7 @@ const PRESET_ABOUT = {
     + "at its pitch, and nothing else moves them.",
   "Arpeggios": "Hold a chord and it is played a note at a time at the tempo, each preset with a pattern of its own and something your hands move. They wait for a keyboard, and the on-screen one will do.",
   "Chords drawn": "Chords in X\u2013Y: which of the notes you hold are drawn, and against what. The rest are still heard. Each has something your hands move. They wait for a keyboard, and the on-screen one will do.",
-  "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab, or put a controller on them.",
+  "Macros": "Four knobs of your own, set up: each macro already on several controls, named for what it does. Turn them under Macros on the Measure tab behind Advanced, or put a controller on them.",
   "The picture plays itself": "The screen as a source: the photocell reads the brightness under its reticle, and the picture's own sources read its shape, coverage, change and novelty, and each is patched back onto what draws the picture or makes the sound. So what the beam draws alters what it draws, and how it sounds. Drag the reticle anywhere; the readout says whether the loop is settled, cycling or wandering, and every loop is held to its bounds.",
   "Scanned": "Scan: the screen read back as the voice's wave, sixty times a second. Where the picture moves the "
     + "timbre moves with it, and where it stands still so does the tone. Every key strikes the screen where Scan "
@@ -24429,7 +24436,7 @@ el.table.addEventListener("input", () => {
   genSet("table", at, panelLayer);
 });
 
-// To the 8' bar, which is the note, and brings the Shape tab with it.
+// To the 8' bar, which is the note, and brings the Ink tab with it.
 el.barsGo.addEventListener("click", () => showControl("bar2"));
 
 /* The drawn cycle's pane. Drawing sets the points under the pointer, and the
@@ -24651,7 +24658,7 @@ function cycleCrossing(cycle) {
 const GRAB_CYCLES = 4;
 function grabCycle() {
   /* A few words beside the button, and the sentence in its tooltip: notes are
-     hidden on the Bench, and the Shape tab has little to spare, which a
+     hidden on the Bench, and the Ink tab has little to spare, which a
      sentence wrapping under the buttons would take. */
   const say = (short, long) => {
     el.cycleNote.textContent = short; el.cycleNote.title = long; el.cycleNote.hidden = !short;
@@ -24940,14 +24947,32 @@ let benchGroups = null;      // in the order the popover had them
    to the pair afterwards, the plane and the delay: the two filled one tab
    past a column's height, and a section that would crowd a tab goes to
    another one. */
+/* P8: four tabs along the loop, in the order the signal goes round it - what
+   you play, what the beam draws with, what the screen does to the drawing,
+   and the picture read back - and the drawer under them. This replaced five
+   by task (Play, Picture, Shape, Effects, Measure), which had been five
+   because Shape overflowed and split into Effects; P5's cuts and the drawer
+   left them a third full or less in places (Measure 31 per cent, the old
+   Picture 54, at 1400x900 with a split and the keys), so the loop's own
+   order fits in four. What was not the loop went to the drawer: the scope's
+   own instruments (lanes, vertical, filter, trigger, cursors) to Measure, the
+   key and tempo to Perform beside the clock, the inputs to a tab of their
+   own. The Picture amount, its three reads, persistence and the display stay
+   in the bar under the screen, where P3 put them beside what they read and
+   where they are on show whatever the Bench is doing. */
 const BENCH_TABS = [
-  ["play", "Play"], ["picture", "Picture"], ["shape", "Shape"], ["effects", "Effects"],
-  ["sources", "Sources"], ["measure", "Measure"], ["perform", "Perform"],
+  ["play", "Play"], ["ink", "Ink"], ["space", "Space & Memory"], ["picture", "Picture"],
+  ["sources", "Sources"], ["inputs", "Inputs"], ["measure", "Measure"], ["perform", "Perform"],
 ];
+/* A tab remembered from the five before P8 lands where its sections went:
+   Shape's on Ink, Effects's on Space & Memory. Measure and Picture kept their
+   names, so they need nothing. */
+const BENCH_TAB_RENAMED = { shape: "ink", effects: "space" };
 const TAB_KEY = "scope.benchTab";
 let benchTab = "play";
 try {
-  const saved = window.localStorage.getItem(TAB_KEY);
+  let saved = window.localStorage.getItem(TAB_KEY);
+  if (saved in BENCH_TAB_RENAMED) saved = BENCH_TAB_RENAMED[saved];
   if (BENCH_TABS.some(([id]) => id === saved)) benchTab = saved;
 } catch (error) { /* private window */ }
 
@@ -24956,16 +24981,17 @@ try {
    is rather than on everything it can do. The routing matrix went first,
    since the picture no longer needs it - the stage moves the sound with
    nothing patched - and it was the biggest thing on show: a tab, the chips
-   beside the screen on every other tab, and a ring on every control. The
-   plan's P8 puts measurements, inputs, the arpeggiator, the splits and the
-   clock in here too.
+   beside the screen on every other tab, and a ring on every control. P5
+   added the arpeggiator and the clock (Perform), and P8 the scope's own
+   instruments (Measure), the inputs (Inputs) and the key and tempo, beside
+   the clock on Perform.
 
    A view, like the tab: remembered for this viewer, never in a setup, and
    nothing in it stops being heard when it is shut - what is patched plays,
    and a control with something on it still shows its inks. Going to one of
    its tabs opens it (a search result, showControl), and shutting it while on
    one goes back to the tab before. */
-const BENCH_DRAWER = new Set(["sources", "perform"]);
+const BENCH_DRAWER = new Set(["sources", "inputs", "measure", "perform"]);
 const DRAWER_KEY = "scope.benchDrawer";
 let benchDrawer = false;
 let benchTabBefore = BENCH_DRAWER.has(benchTab) ? "play" : benchTab;

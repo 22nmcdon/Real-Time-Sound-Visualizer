@@ -399,7 +399,8 @@ experiment.
 
 What makes it possible to use is mostly what is on show, not what exists.
 
-- **Four tabs, along the loop**, instead of six by task:
+- **Four tabs, along the loop**, instead of six by task (built in P8b; see there for
+  where each section went and the two departures from this list):
   1. **Play:** the keyboard, voices, envelope, filter.
   2. **Ink:** morph, sync, fold, the oscillator, the figures. *What the beam draws with.*
   3. **Space and Memory:** the plane, rotation, persistence, X–Y and Lag. *What the screen
@@ -505,7 +506,7 @@ the synth's features should be chosen knowing that.
     so nothing was raised; `looptest.py`'s stability run now has the stage at its top
     beside every picture source, and every bound held.
   - *The drawer, built:* *Advanced*, under the Bench's rail, opens it. Shut - as a first
-    visit finds it - the Bench is the loop's five tabs, with no source chips beside the
+    visit finds it - the Bench is the loop's five tabs (four since P8b), with no source chips beside the
     screen and no hollow ring on every control; whatever is patched still plays, and a
     control with something on it keeps its dots. Open, the Sources tab, the chips and the
     rings come back. It is a view, remembered per viewer and never stored in a setup, and
@@ -924,6 +925,22 @@ the synth's features should be chosen knowing that.
     panel shows, as their slider does for a hand, and read back when it turns; ids are
     stable strings, so the phaser's arrival moves the morph's index and not its
     automation. `plugin/PLAN.md` has the reasoning and the costs.
+  - *P8b, built: four tabs along the loop.* Play (the keyboard, the generator, the
+    voice filter), Ink (the oscillator, the drawbars, shaping, the drawn cycle), Space &
+    Memory (the display's rotation, the plane, the delay and chorus) and Picture (Scan
+    and the score), with today's sliders; the knobs come next. The drawer has four tabs:
+    Sources; Inputs (the microphone and input into the generator); Measure (the scope's
+    own instruments - lanes, vertical, trigger, trace filter, cursors - and the macros,
+    until P8d removes them); Perform (the arpeggiator, the clock, and the key and tempo
+    beside it). Measured at 1400x900 with a split and the keys, the worst case: Play 49
+    per cent full, Ink 73, Space & Memory 50, Picture 34. Two departures from the list
+    above, both deliberate. The Picture amount, its three reads and the persistence
+    stayed in the bar under the screen rather than moving onto the Picture tab: P3 put
+    them beside what they read, on show whatever the Bench is doing, and on a tab they
+    would be hidden behind the other three. And the score is on Picture, since what it
+    plays is the picture. A tab remembered from the old five lands where its sections
+    went, Shape's on Ink and Effects's on Space & Memory. Picture is light; the loop on
+    the screen and the phaser are the obvious residents for the room.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

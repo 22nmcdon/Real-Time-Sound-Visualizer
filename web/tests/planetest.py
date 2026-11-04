@@ -344,7 +344,7 @@ with sync_playwright() as pw:
     print("\n--- the panel, and a source on the radius ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setView('bench'); setBenchTab('effects');
+      setView('bench'); setBenchTab('space');
       const shown = el.planeGroup.offsetHeight > 0;
       el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change'));
       const mirror = genSettings().planeMirror;
@@ -398,7 +398,7 @@ with sync_playwright() as pw:
     rest = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('effects');
+      setView('bench'); setBenchTab('space');
       set('planeTwist', 25, 'input'); set('planeKaleido', 6, 'change'); set('planeSnap', 3, 'change');
       set('planeScaleX', 150, 'input'); set('planeScaleY', 50, 'input'); set('planeShear', -40, 'input');
       const g = genSettings();

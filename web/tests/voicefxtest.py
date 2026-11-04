@@ -265,7 +265,7 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('shape');
+      setView('bench'); setBenchTab('ink');
       const shown = el.oscGroup.offsetHeight > 0;
       set('oscRatio', 1.5, 'change'); set('oscFm', 25, 'input'); set('oscRing', 40, 'input');
       set('oscSync', 250, 'input'); set('oscSub', 30, 'input'); set('oscSubOct', 2, 'change');

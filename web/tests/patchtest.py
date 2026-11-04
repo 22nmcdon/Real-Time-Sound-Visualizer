@@ -208,7 +208,7 @@ with sync_playwright() as pw:
     # From the chips beside the screen onto a control on another tab than
     # the one the patch began on: the chips stay in the side column on every
     # tab so that this works wherever the control is.
-    p.evaluate("() => { state.modRoutings = []; setBenchTab('picture'); paintRoutings(); }")
+    p.evaluate("() => { state.modRoutings = []; setBenchTab('space'); paintRoutings(); }")
     p.wait_for_timeout(350)
     chip = p.locator('.mod-chip[data-source="lfo1"]')
     target = p.locator('[data-mod-dest="view.rotate"]')
@@ -227,7 +227,7 @@ with sync_playwright() as pw:
     # is that ALL of a section's secondary content moves and none of it stays
     # behind - not that the filter has two paragraphs, which is a fact about
     # today's prose and changed the first time a paragraph was added.
-    p.evaluate("() => setBenchTab('picture')"); p.wait_for_timeout(200)
+    p.evaluate("() => setBenchTab('measure')"); p.wait_for_timeout(200)
     had = p.evaluate("""() => ({
       notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
       rows: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
