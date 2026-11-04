@@ -4691,3 +4691,26 @@ the site the strike is laid on the instrument's own grid, which the page never
 draws, so the test reads it through the per-layer readings the instrument hands
 back - which exist only while a split draws two figures, which needs a keyboard
 present (`keyboardPresent`; the screen's will do) and a waveform the keys drive.
+
+**The suites run in two groups, and the ones that measure time go first.**
+`run.py` used to run every suite one after another, 42.6 minutes on the
+four-core container. Each suite now says in `SUITES` whether it may share the
+machine: 25 are `serial - why`, because they judge real seconds of motion, a
+cost in milliseconds, a fade over frames or a rate, or have flaked under load
+before; 53 are `parallel`, because they judge values, and run three at a time
+with their output held and printed whole. A full run is now 36 to 37 minutes.
+The saving is smaller than the 20 minutes the parallel suites took serially
+suggests, for two reasons that are the machine's: the pool is bound by the
+processor, each suite running about 1.8 times slower beside two others, so it
+takes 12 minutes rather than 7; and the serial group, 22 to 25 minutes, is a
+floor nothing here lowers. The serial group runs first because the container
+is slower after sustained load: run last, after the pool, `phototest.py`'s
+reading 900 ms after a move came in at exactly its threshold in two runs of
+two, and passed every time on a rested machine. Over five pool runs nothing in
+the parallel group failed. The serial-class suites flaked alone about as often
+as before - `mod`'s octave sweep and `strike`'s weak signal on the site's
+instrument, one each, in three runs, and `scan` and `loop` in the one-at-a-time
+baseline - which is their own load sensitivity and not the pool's. Peak memory
+was 6.6 of 15 GB with 37 Chromium processes. `-j1` gives the old order and
+streaming; a name that is not a suite is now an error, where it used to run
+nothing and say "everything passes".

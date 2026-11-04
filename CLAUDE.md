@@ -25,11 +25,17 @@ silently broken instrument.
 
 ```
 python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
-python3 web/tests/run.py                                    # everything, ~6 min
+python3 web/tests/run.py                                    # everything, ~37 min
 python3 web/tests/run.py lane patch                         # just those
+python3 web/tests/run.py -j1                                # one at a time, ~43 min
 python3 core/tests/parity.py                                # the C++ core against the page
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 ```
+
+Every suite in `run.py` says whether it is `parallel` or `serial - why`. The
+serial ones judge time and run first, alone; the rest run three at a time
+after. A new suite that measures anything over real seconds, a cost in
+milliseconds or a rate is serial; when in doubt, serial.
 
 `web/scope.html` is one file with the script inline. `extract.py` lifts the
 script out so `node --check` can parse it; do that after every edit, because a
