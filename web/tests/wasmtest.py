@@ -484,9 +484,9 @@ with sync_playwright() as pw:
       const b = (text) => btoa(text).replace(/=+$/, "");
       const odd = ["", "   ", "!!!", "not base64 at all", b("null"), b("5"), b('"x"'), b("[1,2]"), b("{}"), b("true"),
                    b('{"v":1,"trig":1,"c1s":3,"level":100}'), b('{"v":2,"c0s":4}'), b('{"v":3,"planeClip":true}'),
-                   b('{"v":9,"freq":1}'), b('{"1":5,"9":1,"b":3,"a":4}'), "  " + b('{"v":4,"freq":330}') + "\\n"];
+                   b('{"v":9,"freq":1}'), b('{"v":5,"mac1":40,"macroNames":"A|B","mod":"macro.1>gen.vcf@0.7;lfo1>gen.amp@0.4"}'), b('{"1":5,"9":1,"b":3,"a":4}'), "  " + b('{"v":4,"freq":330}') + "\\n"];
       const oddRows = odd.map((code) => [code, tried(() => wasm.decode(code)), tried(() => js.decode(code))]);
-      const names = [{ macroNames: "caf\\u00e9" }, { macroNames: "\\u4e2d\\u6587" }, { figText: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
+      const names = [{ figText: "caf\\u00e9" }, { figText: "\\u4e2d\\u6587" }, { figText: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
                      null, [1, 2], 5, "a string"];
       const nameRows = names.map((snap) => [JSON.stringify(snap), tried(() => wasm.encode(snap)), tried(() => js.encode(snap))]);
       // A setup longer than one of the reader's chunks - twenty thousand

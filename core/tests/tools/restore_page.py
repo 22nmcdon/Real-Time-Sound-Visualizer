@@ -2,11 +2,11 @@
 the page loads a preset or a code, and what it leaves in the instrument
 written out as one JSON line - both layers' tones as the generator holds them,
 the keyboard's settings and the panel it reads, the LFOs, the routings, the
-key and the quantiser, the score, the arpeggiator, the macros, the morph, the plane and the echo, the drawn cycles
+key and the quantiser, the score, the arpeggiator, the morph, the plane and the echo, the drawn cycles
 and the figures made of strokes, and every slider.
 A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
-for one frame ("mod") or from now on ("hold"), a macro's knob ("macro", "i"),
+for one frame ("mod") or from now on ("hold"),
 a frame ("step"), a menu, a switch or a text box changed ("change", "id",
 "value", which for a switch is true or false), a button pressed ("click"), or
 a keyboard come or gone ("keys", true or false), or the fade as the plugin
@@ -35,8 +35,8 @@ CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/c
 DUMP = """(setups) => {
   const out = [];
   // Every slider the page opened with, by id, less lfoRate0: that one is made
-  // again each time the source detail is, so choosing a macro takes it out of
-  // the page, and what it shows is the LFO's rate, which \`lfos\` has.
+  // again each time the source detail is, so choosing another source takes it
+  // out of the page, and what it shows is the LFO's rate, which \`lfos\` has.
   const rangeIds = window.__rangeIds || (window.__rangeIds =
     Array.from(document.querySelectorAll('input[type="range"][id]')).map((i) => i.id).filter((id) => id !== "lfoRate0"));
   const ranges = () => { const o = {}; for (const id of rangeIds) { const e = document.getElementById(id); o[id] = e ? Number(e.value) : null; } return o; };
@@ -51,7 +51,7 @@ DUMP = """(setups) => {
   const tone = (t, skip) => { const o = {}; for (const k of Object.keys(t)) if (!skip.includes(k)) o[k] = k === "just" ? !!t[k] : t[k]; return o; };
   // An operation rather than a setup: a hand on a slider, an end of the morph
   // stored, the fader moved, the matrix pushing it for a frame (mod) or from
-  // now on (hold), a macro's knob.
+  // now on (hold).
   const act = (o) => {
     const input = (e, v) => { e.value = String(v); e.dispatchEvent(new Event("input")); };
     // An LFO's rate is in the page only while that LFO is the chosen source.
@@ -62,7 +62,6 @@ DUMP = """(setups) => {
     else if (o.op === "pos") { input(el.morphPos, o.value); morphStep(); }
     else if (o.op === "mod") { morph.mod = o.value; morphStep(); }
     else if (o.op === "hold") { window.__held = o.value; morph.mod = o.value; morphStep(); }
-    else if (o.op === "macro") input(el["macro" + (o.i + 1)], o.value);
     else if (o.op === "step") morphStep();
     // The reticle moved, "u,v", as a drag or a key moves it.
     else if (o.op === "change" && o.id === "photoReticle") { const [u, v] = String(o.value).split(","); movePhoto(Number(u), Number(v)); }
@@ -124,7 +123,6 @@ DUMP = """(setups) => {
       panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
                                              "planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
         .map((id) => [id, el[id].value])),
-      macros: macros.map((m) => ({ name: m.name, value: m.value })),
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },

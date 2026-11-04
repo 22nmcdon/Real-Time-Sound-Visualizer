@@ -36,7 +36,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 5;  // SETUP_VERSION
+constexpr int kSetupVersion = 6;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 inline const Json& setupDefaults() {
@@ -49,7 +49,7 @@ inline const Json& setupDefaults() {
   "spinRate":100,"depth":45,"l0d":"none","l0s":"sine","l0r":20,"l0a":50,"l1d":"none","l1s":"sine",
   "l1r":50,"l1a":30,"l0y":"","l1y":"","keyRoot":0,"keyScale":"chromatic","quant":false,"qGlide":0,
   "bpm":120,"scoreOn":false,"scoreStep":"1/16","scoreVoices":2,"scoreLow":48,"scoreOctaves":3,
-  "arpMode":"off","arpRate":"1/8","arpOctaves":1,"mac1":0,"mac2":0,"mac3":0,"mac4":0,"macroNames":"","morphA":"","morphB":"",
+  "arpMode":"off","arpRate":"1/8","arpOctaves":1,"morphA":"","morphB":"",
   "morphPos":0,"mod":"","display":"yt","persistence":"0","span":"5","zoom":0,"timebase":4,"level":0,
   "edge":"rising","trig":0,"position":10,"holdoff":0,"trigMode":"auto","c0on":true,"c0ac":false,"c0s":0,
   "c0o":0,"c1on":true,"c1ac":false,"c1s":0,"c1o":0,"midSide":false,"acHz":100,"octaves":0,
@@ -258,6 +258,28 @@ inline bool migrateSetup(Json& setup) {
         const bool fromThreshold = p.rfind(u"threshold>", 0) == 0;
         const bool toPluck = p.find(u">gen.pluck@") != std::u16string::npos;
         if (!fromThreshold && !toPluck) { if (!first) kept += u';'; kept += part; first = false; }
+        if (end == std::u16string::npos) break;
+        at = end + 1;
+      }
+      setup.set("mod", Json::string(kept));
+    }
+  }
+  // 5 -> 6: the macros cut (P8d) - their values and names, and every routing
+  // from one; nothing moved a macro, so none to one. The rest as written.
+  if (!(v >= 6) && setup.type == Json::Type::Object) {
+    for (const char* key : { "mac1", "mac2", "mac3", "mac4", "macroNames" }) setup.erase(key);
+    const Json* mod = field("mod");
+    if (mod && mod->type == Json::Type::String && !mod->s.empty()) {
+      const std::u16string& text = mod->s;
+      std::u16string kept;
+      bool first = true;
+      std::size_t at = 0;
+      while (true) {
+        const std::size_t end = text.find(u';', at);
+        const std::u16string part = text.substr(at, end == std::u16string::npos ? std::u16string::npos : end - at);
+        const std::u16string p = jsTrim(part);
+        const bool fromMacro = p.size() >= 8 && p.compare(0, 6, u"macro.") == 0 && p[6] >= u'1' && p[6] <= u'4' && p[7] == u'>';
+        if (!fromMacro) { if (!first) kept += u';'; kept += part; first = false; }
         if (end == std::u16string::npos) break;
         at = end + 1;
       }

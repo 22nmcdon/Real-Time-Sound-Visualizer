@@ -7,7 +7,7 @@ working - and the face only follows it. So what this holds is the face and
 the input staying one control, each direction:
 
 - which rows became knobs, and that the ones kept as sliders are exactly the
-  ones meant to be (the drawbars, the macros, the setup morph);
+  ones meant to be (the drawbars and the setup morph; the macros were too, until P8d cut them);
 - the face points where the value says, at both ends, the middle, and from
   nought for a control either side of it - and follows a value written from
   code with no event, which is how a preset or a host move arrives;
@@ -71,9 +71,9 @@ with sync_playwright() as pw:
       return { knobs, sliders };
     }""")
     kept = sorted(rows["sliders"])
-    meant = sorted(["bar%d" % i for i in range(9)] + ["macro%d" % i for i in range(1, 5)] + ["morphPos"])
+    meant = sorted(["bar%d" % i for i in range(9)] + ["morphPos"])
     print("    %d knobs; kept as sliders: %s" % (len(rows["knobs"]), ", ".join(kept)))
-    check("every Bench slider is a knob but the drawbars, the macros and the setup morph",
+    check("every Bench slider is a knob but the drawbars and the setup morph",
           kept == meant and len(rows["knobs"]) >= 60, "%d knobs, %s" % (len(rows["knobs"]), kept))
     # A row the dressing has not reached is counted as a slider, and dressing it makes it a knob.
     fresh = p.evaluate("""() => {

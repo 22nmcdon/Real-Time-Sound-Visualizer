@@ -21,9 +21,11 @@ in the sound and a snap in the picture. The failures to guard against:
 - the setting stored in the setup code, where every preset load would put it
   back to off before its routings could fade.
 
-A constant source throughout - a macro at full - so the depth that reaches
+A constant source throughout - a hand at full - so the depth that reaches
 each destination IS the routing's amount times its fade, and nothing else
-moves it.
+moves it. It was a macro until P8d cut them; now this file registers two
+stand-ins of its own, `hand.1` and `hand.2`, sources with nothing behind them
+but a value the test sets, which is all a macro was to the matrix.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -44,6 +46,7 @@ HELPERS = """
     const found = workletRoutes().find((r) => r.slot === slot);
     return found ? +found.amount.toFixed(4) : null;
   };
+  const setHand = (i, v) => { window.__hands[i] = Math.max(0, Math.min(1, v)); };
   // Where the picture's rotation is being pushed, in the matrix's own units.
   const rotation = () => +state.rotateMod.toFixed(4);
 """
@@ -73,12 +76,16 @@ with sync_playwright() as pw:
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    p.evaluate("""() => { window.__hands = [0, 0];
+      for (const i of [0, 1]) registerSource({ id: 'hand.' + (i + 1), label: 'Hand ' + (i + 1), ink: 'ch2',
+        bipolar: false, family: 'controllers', description: "This suite's own constant source.", order: 90 + i,
+        value: () => window.__hands[i] }); }""")
 
     print("\n--- off, as it was: all or nothing ---")
     off = run(p, """
-      restore({}); await wait(100); setMacro(0, 1);
-      addRouting('macro.1', 'gen.fm'); const on = route('gen.fm');
-      dropRouting('macro.1', 'gen.fm'); const gone = route('gen.fm');
+      restore({}); await wait(100); setHand(0, 1);
+      addRouting('hand.1', 'gen.fm'); const on = route('gen.fm');
+      dropRouting('hand.1', 'gen.fm'); const gone = route('gen.fm');
       return { mode: fade.mode, on, gone };
     """)
     print("    %s" % off)
@@ -89,10 +96,10 @@ with sync_playwright() as pw:
     print("\n--- in and out, on the sound ---")
     both = run(p, """
       setFade('both', 1); await wait(50);
-      addRouting('macro.1', 'gen.fm');
+      addRouting('hand.1', 'gen.fm');
       const rise = [route('gen.fm')];
       for (let i = 0; i < 6; i++) { await wait(250); rise.push(route('gen.fm')); }
-      dropRouting('macro.1', 'gen.fm');
+      dropRouting('hand.1', 'gen.fm');
       const kept = state.modRoutings.length, saved = snapshot().mod;
       const fall = [route('gen.fm')];
       for (let i = 0; i < 6; i++) { await wait(250); fall.push(route('gen.fm')); }
@@ -111,14 +118,14 @@ with sync_playwright() as pw:
     print("\n--- only in, only out ---")
     one = run(p, """
       setFade('in', 1); await wait(50);
-      addRouting('macro.1', 'gen.fm'); const inFirst = route('gen.fm');
-      await wait(1200); dropRouting('macro.1', 'gen.fm'); const inGone = route('gen.fm');
+      addRouting('hand.1', 'gen.fm'); const inFirst = route('gen.fm');
+      await wait(1200); dropRouting('hand.1', 'gen.fm'); const inGone = route('gen.fm');
       setFade('out', 1); await wait(50);
       /* A frame between making it and taking it off: a routing made and
          taken off inside one frame was never seen by the fade, has no gain
          to fall from, and goes at once - which no hand can do. */
-      addRouting('macro.1', 'gen.fm'); const outFirst = route('gen.fm');
-      await wait(100); dropRouting('macro.1', 'gen.fm'); const outKept = route('gen.fm');
+      addRouting('hand.1', 'gen.fm'); const outFirst = route('gen.fm');
+      await wait(100); dropRouting('hand.1', 'gen.fm'); const outKept = route('gen.fm');
       await wait(1200); const outGone = route('gen.fm');
       return { inFirst, inGone, outFirst, outKept, outGone };
     """)
@@ -130,10 +137,10 @@ with sync_playwright() as pw:
     print("\n--- the picture's path, and the picture's own sources ---")
     pic = run(p, """
       setFade('both', 1); await wait(50);
-      addRouting('macro.1', 'view.rotate');
+      addRouting('hand.1', 'view.rotate');
       await wait(40); const early = rotation();
       await wait(1300); const full = rotation();
-      dropRouting('macro.1', 'view.rotate'); await wait(400); const leaving = rotation();
+      dropRouting('hand.1', 'view.rotate'); await wait(400); const leaving = rotation();
       await wait(1000); const after = rotation();
       /* A source of the picture's own, held at one, onto the sound: its route
          is folded into the bounded loop total, whose parts are faded inside
@@ -151,8 +158,8 @@ with sync_playwright() as pw:
          on the twist is one of those things: one fading out still is, or a
          microphone's picture would stop swirling at once instead of easing. */
       restore({}); await wait(100);
-      addRouting('macro.1', 'gen.twist'); await wait(1200);
-      dropRouting('macro.1', 'gen.twist');
+      addRouting('hand.1', 'gen.twist'); await wait(1200);
+      dropRouting('hand.1', 'gen.twist');
       const fxLeaving = liveFxWanted();
       await wait(1300); const fxAfter = liveFxWanted();
       return { early, full, leaving, after, loop, fxLeaving, fxAfter };
@@ -168,16 +175,16 @@ with sync_playwright() as pw:
 
     print("\n--- what does not dip, and what is not faded in ---")
     keep = run(p, """
-      setFade('off'); restore({ mod: 'macro.1>gen.fm@0.300' }); await wait(100); setMacro(0, 1); setMacro(1, 1);
+      setFade('off'); restore({ mod: 'hand.1>gen.fm@0.300' }); await wait(100); setHand(0, 1); setHand(1, 1);
       setFade('in', 1); const already = route('gen.fm');
       // A load that keeps one pair and brings another: restore, as a preset does.
-      restore({ mod: 'macro.1>gen.fm@0.300;macro.2>gen.vcf@0.300' }); setMacro(0, 1); setMacro(1, 1);
+      restore({ mod: 'hand.1>gen.fm@0.300;hand.2>gen.vcf@0.300' }); setHand(0, 1); setHand(1, 1);
       const kept = route('gen.fm'), arrived = route('gen.vcf');
       await wait(1200);
       // Taken off, half faded, and put back: from where it had got to.
-      setFade('both', 1); dropRouting('macro.1', 'gen.fm'); await wait(500);
-      const half = route('gen.fm'); addRouting('macro.1', 'gen.fm');
-      state.modRoutings.find((r) => r.sourceId === 'macro.1').amount = 0.3; touchRoutings();
+      setFade('both', 1); dropRouting('hand.1', 'gen.fm'); await wait(500);
+      const half = route('gen.fm'); addRouting('hand.1', 'gen.fm');
+      state.modRoutings.find((r) => r.sourceId === 'hand.1').amount = 0.3; touchRoutings();
       const back = route('gen.fm');
       return { already, kept, arrived, half, back };
     """)
@@ -223,9 +230,9 @@ with sync_playwright() as pw:
       __send([0x90, 60, 127]); await wait(1200); __send([0x80, 60, 0]); await wait(400);
       const before = pushed('gen.drive'); __send([0x90, 62, 127]); const after = pushed('gen.drive');
       await wait(1200); __send([0x80, 62, 0]); await wait(1200);
-      // A knob is a hand and is not eased: a macro onto the same control answers at once.
-      setMacro(0, 0); state.modRoutings.push({ sourceId: 'macro.1', destId: 'gen.fm', amount: 0.5 }); touchRoutings();
-      await wait(1200); setMacro(0, 1);
+      // A knob is a hand and is not eased: a hand onto the same control answers at once.
+      setHand(0, 0); state.modRoutings.push({ sourceId: 'hand.1', destId: 'gen.fm', amount: 0.5 }); touchRoutings();
+      await wait(1200); setHand(0, 1);
       const slot = MOD_DESTS.get('gen.fm').slot, r = workletRoutes().find((x) => x.slot === slot);
       const knob = +(r.held * r.amount).toFixed(4);
       setFade('off'); restore({}); await wait(100);
@@ -245,7 +252,7 @@ with sync_playwright() as pw:
           str(note["bothFall"]))
     check("a note struck while the last is still fading climbs from where the drive was, rather than dropping to rest",
           0.05 < note["before"] < 0.45 and abs(note["after"] - note["before"]) < 0.05, str(note))
-    check("and a knob is not eased: a macro on a control answers the hand at once", note["knob"] == 0.5, str(note))
+    check("and a knob is not eased: a hand's source on a control answers at once", note["knob"] == 0.5, str(note))
 
     print("\n--- a preset's sliders glide ---")
     first = p.evaluate("() => { setFade('off'); restore({ freq: 880 }); return el.freq.value; }")
@@ -308,16 +315,16 @@ with sync_playwright() as pw:
 
     print("\n--- the envelope: two times and two shapes ---")
     env = run(p, """
-      restore({}); await wait(100); setMacro(0, 1);
+      restore({}); await wait(100); setHand(0, 1);
       setFade('both'); setFadeEnvelope({ attack: 0.5, release: 2, attackMid: 0.5, releaseMid: 0.5, sustain: 1, delay: 0 });
-      addRouting('macro.1', 'gen.fm'); await wait(650); const inDone = route('gen.fm');
-      dropRouting('macro.1', 'gen.fm'); await wait(1000); const outHalf = route('gen.fm');
+      addRouting('hand.1', 'gen.fm'); await wait(650); const inDone = route('gen.fm');
+      dropRouting('hand.1', 'gen.fm'); await wait(1000); const outHalf = route('gen.fm');
       await wait(1300); const outDone = route('gen.fm');
       // The same second of fading in, along a curve quick to start and one slow to start.
-      setFadeEnvelope({ attack: 1, attackMid: 0.85 }); addRouting('macro.1', 'gen.fm');
-      await wait(250); const quick = route('gen.fm'); clearSource('macro.1'); await wait(2200);
-      setFadeEnvelope({ attackMid: 0.15 }); addRouting('macro.1', 'gen.fm');
-      await wait(250); const slow = route('gen.fm'); clearSource('macro.1'); await wait(2200);
+      setFadeEnvelope({ attack: 1, attackMid: 0.85 }); addRouting('hand.1', 'gen.fm');
+      await wait(250); const quick = route('gen.fm'); clearSource('hand.1'); await wait(2200);
+      setFadeEnvelope({ attackMid: 0.15 }); addRouting('hand.1', 'gen.fm');
+      await wait(250); const slow = route('gen.fm'); clearSource('hand.1'); await wait(2200);
       // A preset glides along the attack, so over its time and not the release's.
       restore({ freq: 880 }); await wait(100);
       setFadeEnvelope({ attack: 0.5, release: 5, attackMid: 0.5 });
@@ -405,10 +412,10 @@ with sync_playwright() as pw:
       __send([0x90, 60, 127]); await wait(400); const early = both(); await wait(1400); const late = both();
       __send([0x80, 60, 0]); await wait(800);
       // A routing patched while layered fades in on each layer's own attack too.
-      setMacro(0, 1); addRouting('macro.1', 'gen.fm'); await wait(400);
+      setHand(0, 1); addRouting('hand.1', 'gen.fm'); await wait(400);
       const fm = (() => { const slot = MOD_DESTS.get('gen.fm').slot; const r = workletRoutes().find((x) => x.slot === slot);
                           return [+(r.held * r.amount).toFixed(3), +(r.heldB * r.amountB).toFixed(3)]; })();
-      clearSource('macro.1'); await wait(500);
+      clearSource('hand.1'); await wait(500);
       // Unlayered, layer B's depth is layer A's, whatever its envelope says.
       restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
       __send([0x90, 60, 127]); await wait(400); const single = both(); __send([0x80, 60, 0]); await wait(800);
@@ -558,14 +565,14 @@ with sync_playwright() as pw:
           and ui["hiddenAfter"] and ui["back"] == 0 and ui["noGhost"], str(ui))
 
     dot = run(p, """
-      setFade('off'); restore({}); await wait(100); setMacro(0, 1);
+      setFade('off'); restore({}); await wait(100); setHand(0, 1);
       setFade('both'); setFadeEnvelope({ delay: 0, attack: 1, release: 1, sustain: 1, attackMid: 0.5, releaseMid: 0.5 });
       const g = () => envGeometry(fade.envs[0]), where = () => ({ x: +envParts.dot.getAttribute('cx'), y: +envParts.dot.getAttribute('cy'),
                                                     shown: envParts.dot.getAttribute('visibility') === 'visible' });
       const before = where();
-      addRouting('macro.1', 'gen.fm'); await wait(400); const rising = where();
+      addRouting('hand.1', 'gen.fm'); await wait(400); const rising = where();
       await wait(900); const holding = where();
-      dropRouting('macro.1', 'gen.fm'); await wait(400); const falling = where();
+      dropRouting('hand.1', 'gen.fm'); await wait(400); const falling = where();
       await wait(900); const gone = where();
       return { before, rising, holding, falling, gone, g: g() };
     """)

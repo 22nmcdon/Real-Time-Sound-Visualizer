@@ -4777,3 +4777,18 @@ now measures the cell and the face, since the hidden input is one pixel wide
 and out of the flow and would pass whatever the cell did. That check's null is
 an opener whose pips widen the cell; an opener merely put back into the flow
 does not fail it, because a cell is wider than three pips.
+
+**A test that opens on a preset by name opens on the boot preset when the
+name has gone, silently, and goes on passing.** P8d cut the Macros preset
+section, and "Brighten, grit, space, swirl" was the sound the plugin's shell
+test automated its knobs over: by its missing name the processor opened on
+"Harmonic tone", whose voice filter is off, and the cutoff's check failed for
+want of anything to filter. Looking for the others turned up one that had not
+failed: "Hits restart the pendulums", cut in P5, had left its check comparing
+the boot tone with itself since, where a routing that is not there is the
+same as one refused. The shell test now requires every preset it names to be
+in the library, and writes out the setups of the two that went. And
+`decodeSetup` on the site is the compiled core's codec, so a check of the
+page's own `migrateSetup` through it never runs the page's pass:
+`setupmorphtest.py` reads old codes through `decodeSetupHere` as well, which
+its first version did not, and passed with the page's pass taken out.

@@ -387,7 +387,7 @@ experiment.
 | Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
 | Layers | Layer B, split or layered over A: its own voice, envelope, figure, plane, turn and echo | **Keep, whole, in the synth** (the owner, in P5, over this table's first verdict, which trimmed B's own voice): a split with two sounds is how the instrument is played, and two sounds draw two figures, one in each colour (*What only the synth can do*, 5). Its loops grow defences of their own: see *Each layer's picture, and whose sound it moves* in P6 |
 | Splits as two sounds, arpeggiator | Multi-timbral and hands-free performance | **Splits stay on Play**, with the layers. **The arpeggiator goes to the drawer** (done in P5) |
-| Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across. *Done in P8a: the macros are no longer host parameters. The bank is Picture, Scan, Persistence, Bend, Cutoff, Level and Echo, the phaser's amount taking the eighth place when it is built, and the morph after them in a group of its own; nothing was mapped across, since the owner had no saved projects. The page's Macros section stays until the tab rework decides it* |
+| Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across. *Done in P8a: the macros are no longer host parameters. The bank is Picture, Scan, Persistence, Bend, Cutoff, Level and Echo, the phaser's amount taking the eighth place when it is built, and the morph after them in a group of its own; nothing was mapped across, since the owner had no saved projects. The page's Macros section stays until the tab rework decides it* *Done: the host knobs replaced them in P8a, and P8d cut them from the page and the core, an old code losing them in version 6's decode pass* |
 | Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** *Done in P5: key, scale, the quantiser and its glide, the tempo and Tap stay on Measure - the quantiser keeps a picture-pushed pitch in key, which is the loop's; the clock's source and the bar go to the drawer, on Perform. Settled after P6: the plugin takes its tempo from the host and the page from a MIDI clock when one is sent, both already built, and nothing more is wanted* |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
 | Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
@@ -409,7 +409,7 @@ What makes it possible to use is mostly what is on show, not what exists.
      softness and depth when it lands.
 
   A drawer holds the rest: the routing matrix, measurements, inputs, the arpeggiator,
-  splits, macros, the clock. In the effect, Ink is the input (its level, Lag X–Y, a
+  splits, the morph, the clock. In the effect, Ink is the input (its level, Lag X–Y, a
   band split if one survives) and Play holds only the notes that set Scan's pitch.
 - **The loop on the screen.** The ring with a moving read-head over the phosphor; the
   current table as a thumbnail beside the scope; the classifier's state as a small badge
@@ -931,7 +931,7 @@ the synth's features should be chosen knowing that.
     and the score), with today's sliders; the knobs come next. The drawer has four tabs:
     Sources; Inputs (the microphone and input into the generator); Measure (the scope's
     own instruments - lanes, vertical, trigger, trace filter, cursors - and the macros,
-    until P8d removes them); Perform (the arpeggiator, the clock, and the key and tempo
+    until P8d removed them); Perform (the arpeggiator, the clock, and the key and tempo
     beside it). Measured at 1400x900 with a split and the keys, the worst case: Play 49
     per cent full, Ink 73, Space & Memory 50, Picture 34. Two departures from the list
     above, both deliberate. The Picture amount, its three reads and the persistence
@@ -957,6 +957,22 @@ the synth's features should be chosen knowing that.
     knobs come several together; most sections here alternate a knob with a menu. The
     first cut, every knob a cell, made Space & Memory 62 per cent, which is why a lone
     knob is laid out in a line.
+  - *P8d, built: the macros cut.* The host's knobs (P8a) are the loop's own controls,
+    which is what the four macros had stood in for, so they went from the page and the
+    core together: their knobs and names, their four sources and their family on the
+    Sources tab, the Macros preset section (six presets, all of them the macros' own
+    demonstrations), and the Brain's macros, `MacroSource` and the slider and name
+    handlers in `restore.h`. The setup morph stays, in a section of its own on Measure:
+    nothing else crossfades a whole sound, and it is a host parameter. Setup codes are
+    version 6; its pass deletes `mac1`-`mac4` and `macroNames` and drops every routing
+    from `macro.1`-`macro.4`, which would otherwise hang there by name moving nothing.
+    Nothing moved a macro, so there was no routing to one to drop. The plugin's state is
+    a setup code, so an old project's macros go the same way. `macrotest.py` was two
+    suites in one; its morph half is `setupmorphtest.py` now, whole, with a source of
+    the suite's own on the fader where a macro was, and its macro half is replaced by
+    checks that they have gone and that an old code loses them - read by the site's
+    compiled codec and by the page's own, since the first version of that check read
+    only the compiled one and passed with the page's pass taken out.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

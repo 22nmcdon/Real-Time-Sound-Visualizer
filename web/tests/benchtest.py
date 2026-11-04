@@ -276,7 +276,7 @@ with sync_playwright() as pw:
             "Scan": "picture", "Score": "picture",
             "Input": "inputs", "Input into the generator": "inputs",
             "Lanes": "measure", "Vertical": "measure", "Filter": "measure", "Trigger": "measure",
-            "Measure": "measure", "Macros": "measure",
+            "Measure": "measure", "Morph": "measure",
             "Key and tempo": "perform", "Arpeggiator": "perform"}
     before_p8 = dict(want, **{"Voice filter": "shape", "Oscillator": "shape", "Drawbars": "shape",
                               "Shaping": "shape", "Drawn cycle": "shape", "Display": "picture",

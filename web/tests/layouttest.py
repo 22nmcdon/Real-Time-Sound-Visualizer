@@ -76,9 +76,9 @@ with sync_playwright() as pw:
     }""")
     print("    opened on %s; order %s" % (fam["opened"], [(f["id"], f["count"]) for f in fam["order"]]))
     print("    before: %s" % {k: (v["rows"] or v["hint"][:40]) for k, v in fam["before"].items()})
-    check("the families come in their order, In use first and the macros last, one list",
+    check("the families come in their order, In use first and the picture last, one list",
           [f["id"] for f in fam["order"]] == ["inuse", "oscillators", "signal", "hearing", "keyboard",
-                                             "controllers", "picture", "macros"],
+                                             "controllers", "picture"],
           str([f["id"] for f in fam["order"]]))
     check("with nothing patched it opens on the chosen source's family, the oscillators",
           fam["opened"] == "oscillators", fam["opened"])

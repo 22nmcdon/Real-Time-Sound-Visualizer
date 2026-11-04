@@ -1,6 +1,6 @@
 // scope::restoreSetup through the same setups as restore_page.py, one JSON
 // line per setup in the same shape, and the same operations on the sliders,
-// the morph, the macros, the menus, the switches and the buttons (see that
+// the morph, the menus, the switches and the buttons (see that
 // file). The page's sources are registered as stand-ins with their reach, so
 // a stored depth is held as the page holds it.
 //   restore_cpp <setups> <sources.json>
@@ -183,15 +183,10 @@ int main(int argc, char** argv) {
         scope::morphStep(brain, gen, keys, lfos);
       } else if (what == "mod") { brain.morphMod = value->n; scope::morphStep(brain, gen, keys, lfos); }
       else if (what == "hold") { held = brain.morphMod = value->n; scope::morphStep(brain, gen, keys, lfos); }
-      else if (what == "macro") {
-        const int i = static_cast<int>(setup->get("i")->n);
-        const std::string id = "macro" + std::to_string(i + 1);
-        brain.panel.setRange(id, written);
-        scope::setMacro(brain, i, brain.panel.range(id) / 100);
-      } else if (what == "step") scope::morphStep(brain, gen, keys, lfos);
+      else if (what == "step") scope::morphStep(brain, gen, keys, lfos);
       else if (what == "change") {
         const bool checked = value && value->type == Json::Type::Bool && value->b;
-        scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, matrix, lfos);
+        scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, lfos);
       } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys);
       else if (what == "fade") scope::fadeFromPage(matrix, value ? *value : Json::null());
       else if (what == "keys") { keys.setPresent(value && value->type == Json::Type::Bool && value->b); keys.frame(0); }
@@ -278,9 +273,6 @@ int main(int argc, char** argv) {
                             "planeMirror", "planeLimit", "planeKaleido", "planeSnap" })
       menus.set(std::string_view(id), str(brain.panel.select(id)));
     out.set("menus", menus);
-    Json macros = Json::array();
-    for (const auto& m : brain.macros) { Json o = Json::object(); o.set("name", Json::string(m.name)); o.set("value", num(m.value)); macros.a.push_back(o); }
-    out.set("macros", macros);
     Json morph = Json::object();
     morph.set("a", str(scope::encodeMorphEnd(brain.morphA, scope::morphHome)));
     morph.set("b", str(scope::encodeMorphEnd(brain.morphB, [&](const std::string& id) {

@@ -1,27 +1,25 @@
-"""Stage L's macros, and the morph between two sets of sliders.
+"""The morph between two sets of sliders, and the macros' going.
 
-Not morphtest.py, which is the shape morph - sine through square - and
-which this file once overwrote for sharing the word.
+Not morphtest.py, which is the shape morph - sine through square. This was
+macrotest.py, Stage L's macros and the morph, until P8d cut the macros (the
+plugin's host knobs are the loop's own controls now); the morph's checks are
+kept whole, and the macros' are replaced by checks that they have gone and
+that an old code naming them loads as its nearest survivor.
 
 Against the way each would fail:
 
-- a macro that reaches one control, or none: one knob routed to two, a
-  picture's rotation and the generator's pitch, moves both, by the amounts
-  routed - an octave at full, a fifth-and-a-bit at half - and at rest moves
-  neither, not by a hair;
-- a name that does not stick, or breaks a code: renamed, the source is called
-  that everywhere; a bar in it or an empty one comes back safe; a code
-  carries names and knobs, and a code without them brings the defaults;
 - a morph that is a straight line where it should not be, or reaches what it
   should not: halfway between 220 and 880 is 440, not 550; the amplitude is
   halfway; the generator hears both; a menu set differently in A and B is
-  left alone; the knobs, the fader and where a file is up to are never
+  left alone; the fader, the keys' strike and the Picture amount are never
   stored;
 - a morph that fights the hand: at rest it leaves a slider the hand moved,
   and only moving the fader takes it back;
-- a fader the matrix cannot drive: a macro on it moves every slider;
+- a fader the matrix cannot drive: a source on it moves every slider;
 - a morph that outlives its sound, or is lost with it: a preset clears it; a
-  code brings both ends back exactly, and short.
+  code brings both ends back exactly, and short;
+- macros half gone: a knob, a source, a family or a preset section left
+  behind, or an old code whose macro routes are kept by name, moving nothing.
 """
 import os
 from playwright.sync_api import sync_playwright
@@ -63,68 +61,49 @@ with sync_playwright() as pw:
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
-    print("\n--- a macro ---")
-    fan = p.evaluate("""async () => {
-      __set('shape', 'sine', 'change'); __set('freq', 220);
-      state.modRoutings = [{ sourceId: 'macro.1', destId: 'view.rotate', amount: 0.5 },
-                           { sourceId: 'macro.1', destId: 'gen.freq', amount: 1 }];
-      touchRoutings();
-      const at = async (k) => { __set('macro1', k); const hz = await __pitch();
-        return { hz, rotate: state.rotateMod, value: MOD_SOURCES.get('macro.1').value() }; };
-      const out = { rest: await at(0), half: await at(50), full: await at(100),
-                    reading: el.macro1Value.textContent, picked: selectedSource };
-      __set('macro1', 0); state.modRoutings = []; touchRoutings();
-      return out;
-    }""")
-    print("    %s" % fan)
-    check("one macro routed to two controls moves both: at full an octave and half a turn",
-          abs(fan["full"]["hz"] - 440) < 8 and abs(fan["full"]["rotate"] - 0.5) < 1e-9
-          and fan["reading"] == "100%", "%.1f Hz, %.3f" % (fan["full"]["hz"], fan["full"]["rotate"]))
-    check("at half, half an octave: the knob is a value, not a switch",
-          abs(fan["half"]["hz"] - 220 * 2 ** 0.5) < 8 and abs(fan["half"]["rotate"] - 0.25) < 1e-9,
-          "%.1f Hz, %.3f" % (fan["half"]["hz"], fan["half"]["rotate"]))
-    check("and at rest it moves nothing, not by a hair: a knob, not an oscillator",
-          fan["rest"]["value"] == 0 and fan["rest"]["rotate"] == 0 and abs(fan["rest"]["hz"] - 220) < 6,
-          str(fan["rest"]))
-    check("moving the knob chooses the macro, so the tab says where it goes", fan["picked"] == "macro.1",
-          fan["picked"])
-
-    named = p.evaluate("""() => {
-      const name = (k, v) => { el['macroName' + k].value = v; el['macroName' + k].dispatchEvent(new Event('change')); };
-      name(1, 'Open | up'); name(2, '   '); name(3, 'Swell');
-      selectSource('macro.3');
-      const shown = el.srcDetailGroup.textContent.includes('Swell');
-      __set('macro3', 40);
-      const code = snapshot();
-      const out = { labels: [1, 2, 3, 4].map((k) => MOD_SOURCES.get('macro.' + k).label), shown,
-                    code: [code.macroNames, code.mac3], field: el.macroName2.value };
-      // A code without them: every macro at rest with its own name.
+    print("\n--- the macros, gone ---")
+    gone = p.evaluate("""() => {
+      const ids = Array.from(document.querySelectorAll('[id]')).map((e) => e.id).filter((id) => /^macro/i.test(id));
+      const sources = Array.from(MOD_SOURCES.keys()).filter((id) => id.startsWith('macro.'));
+      const families = SOURCE_FAMILIES.map(([id]) => id);
+      const sections = PRESETS.map(([name]) => name);
+      const morphHome = el.morphGroup.dataset.tab, title = el.morphGroup.querySelector('.menu-title').textContent;
+      // A version-5 code with the macros set, named and routed, read the way
+      // a pasted code is read, and loaded.
+      const old = { v: 5, mac1: 40, mac3: 100, macroNames: 'Brighten|Grit|Space|Swirl', freq: 330,
+                    mod: 'macro.1>gen.vcf@0.700;lfo1>gen.amp@0.400;macro.2>gen.drive@0.800' };
+      /* Through both codecs: the site's reads codes with the compiled core
+         (setupCodec.kind "wasm"), so a check on decodeSetup alone never ran
+         the page's own pass - the first null below went green with that pass
+         taken out. The page's own is decodeSetupHere. */
+      const read = decodeSetup(btoa(JSON.stringify(old)));
+      const readHere = decodeSetupHere(btoa(JSON.stringify(old)));
+      const codec = setupCodec.kind;
+      restore(read);
+      const kept = state.modRoutings.map((r) => r.sourceId + '>' + r.destId);
+      // The null: the same code stamped version 6 keeps what it says, so a
+      // pass that did nothing would read the same as this.
+      const stamped = decodeSetup(btoa(JSON.stringify(Object.assign({}, old, { v: 6 }))));
+      const stampedHere = decodeSetupHere(btoa(JSON.stringify(Object.assign({}, old, { v: 6 }))));
       restore({});
-      out.bare = { labels: [1, 2, 3].map((k) => MOD_SOURCES.get('macro.' + k).label), mac3: macros[2].value };
-      restore(code);
-      out.back = { labels: [1, 2, 3].map((k) => MOD_SOURCES.get('macro.' + k).label), mac3: macros[2].value,
-                   knob: el.macro3.value };
-      const hit = searchEntries().find((e) => e.kind === 'source' && e.id === 'macro.3');
-      out.search = hit ? hit.crumb : null;
-      // A family on the Sources tab as well as knobs on Measure, since the tab
-      // shows one family at a time and has the room.
-      chooseSourceFamily('macros');
-      out.grid = Array.from(el.srcList.querySelectorAll('[data-select]')).map((r) => r.dataset.select);
-      restore({});
-      return out;
+      return { ids, sources, families, sections, morphHome, title, read, readHere, codec, kept, stamped, stampedHere,
+               version: SETUP_VERSION };
     }""")
-    print("    %s" % named)
-    check("a renamed macro is called that everywhere; a bar is taken out and an empty name comes back as the default",
-          named["labels"] == ["Open  up", "Macro 2", "Swell", "Macro 4"] and named["shown"]
-          and named["field"] == "Macro 2", str(named["labels"]))
-    check("a code carries the names and the knobs, and a code without them brings the defaults at rest",
-          named["code"] == ["Open  up|Macro 2|Swell|Macro 4", 40]
-          and named["bare"] == {"labels": ["Macro 1", "Macro 2", "Macro 3"], "mac3": 0}
-          and named["back"] == {"labels": ["Open  up", "Macro 2", "Swell"], "mac3": 0.4, "knob": "40"},
-          "%s / %s / %s" % (named["code"], named["bare"], named["back"]))
-    check("macros are found by search under Sources, and are a family there, all four, as well as knobs on Measure",
-          named["search"] == "Sources › Macros" and named["grid"] == ["macro.1", "macro.2", "macro.3", "macro.4"],
-          "%s, family %s" % (named["search"], named["grid"]))
+    print("    %s" % {k: gone[k] for k in ("ids", "sources", "morphHome", "title", "kept", "version")})
+    check("no macro knob, name, source, family or preset section is left on the page",
+          gone["ids"] == [] and gone["sources"] == [] and "macros" not in gone["families"]
+          and "Macros" not in gone["sections"], str(gone["ids"] + gone["sources"]))
+    check("the morph keeps a section of its own, on Measure in the drawer", gone["morphHome"] == "measure"
+          and gone["title"] == "Morph", "%s %s" % (gone["morphHome"], gone["title"]))
+    migrated = lambda r: (r["v"] == 6 and r["freq"] == 330 and r["mod"] == "lfo1>gen.amp@0.400"
+                          and not any(k in r for k in ("mac1", "mac3", "macroNames")))
+    check("a version-5 code loses the macros' values, names and routes, and keeps the rest as written - "
+          "read by the site's compiled codec and by the page's own",
+          gone["version"] == 6 and gone["codec"] == "wasm" and migrated(gone["read"]) and migrated(gone["readHere"])
+          and gone["kept"] == ["lfo1>gen.amp"], "%s / %s / %s" % (gone["read"], gone["readHere"], gone["kept"]))
+    check("null: the same code marked version 6 keeps its macro routes in both, so the pass is what took them",
+          all("macro.1>gen.vcf@0.700" in r["mod"] and r.get("mac1") == 40 for r in (gone["stamped"], gone["stampedHere"])),
+          "%s / %s" % (gone["stamped"], gone["stampedHere"]))
 
     print("\n--- the morph ---")
     blend = p.evaluate("""async () => {
@@ -137,8 +116,7 @@ with sync_playwright() as pw:
       el.morphStoreB.click();
       out.both = { pos: el.morphPos.value, b: el.morphStoreB.getAttribute('aria-pressed'),
                    note: el.morphNote.textContent, moving: morphMoving() };
-      out.kept = MORPH_IDS.filter((id) => ['macro1', 'macro2', 'macro3', 'macro4', 'morphPos',
-                                          'keysVelocity', 'pictureAmount'].includes(id));
+      out.kept = MORPH_IDS.filter((id) => ['morphPos', 'keysVelocity', 'pictureAmount'].includes(id));
       out.has = ['freq', 'vcfCut', 'delayMix', 'planeRadius', 'timebase'].every((id) => MORPH_IDS.includes(id));
       __set('morphPos', 50); await __wait(120);
       out.half = { freq: Number(el.freq.value), amp: Number(el.amp.value), genFreq: genSettings().freq,
@@ -169,25 +147,30 @@ with sync_playwright() as pw:
           "%s, %s" % (blend["half"]["genFreq"], blend["half"]["genAmp"]))
     check("at nought it is A, but a menu set differently in A and B stays where it is",
           blend["zero"] == {"freq": 220, "amp": 55, "shape": "square"}, str(blend["zero"]))
-    check("the knobs, the fader, the keys' strike and the Picture amount are never stored",
+    check("the fader, the keys' strike and the Picture amount are never stored",
           blend["kept"] == [] and blend["has"], "%s, %s" % (blend["kept"], blend["has"]))
     check("at rest it leaves a slider the hand has moved, and moving the fader takes it back",
           blend["hand"] == 20 and blend["moved"] == round(55 + 45 * 0.6), "%s then %s" % (blend["hand"], blend["moved"]))
 
     driven = p.evaluate("""async () => {
+      /* A source with nothing behind it but a value this suite sets - what a
+         macro was to the matrix, until P8d. */
+      window.__hand = 0;
+      if (!MOD_SOURCES.has('hand.1')) registerSource({ id: 'hand.1', label: 'Hand', ink: 'ch2', bipolar: false,
+        family: 'controllers', description: "This suite's own source.", order: 90, value: () => window.__hand });
       __set('morphPos', 0); await __wait(120);
-      state.modRoutings = [{ sourceId: 'macro.1', destId: 'morph.pos', amount: 1 }]; touchRoutings();
-      __set('macro1', 50); await __wait(150);
+      state.modRoutings = [{ sourceId: 'hand.1', destId: 'morph.pos', amount: 1 }]; touchRoutings();
+      window.__hand = 0.5; await __wait(150);
       const half = { freq: Number(el.freq.value), pitch: await __pitch() };
-      __set('macro1', 100); await __wait(150);
+      window.__hand = 1; await __wait(150);
       const full = { freq: Number(el.freq.value), pitch: await __pitch() };
-      __set('macro1', 0); await __wait(150);
+      window.__hand = 0; await __wait(150);
       const back = Number(el.freq.value);
       state.modRoutings = []; touchRoutings();
       return { half, full, back };
     }""")
     print("    %s" % driven)
-    check("a macro on the fader drives the morph: half is 440, full is B's 880, and the generator plays it",
+    check("a source on the fader drives the morph: half is 440, full is B's 880, and the generator plays it",
           driven["half"]["freq"] == 440 and driven["full"]["freq"] == 880 and driven["back"] == 220
           and abs(driven["full"]["pitch"] - 880) < 15, str(driven))
 

@@ -926,8 +926,12 @@ int main() {
      sends; `unrouted` takes one routing away first, for the null. */
   const auto playLeft = [&](const char* preset, const std::vector<std::pair<int, juce::MidiMessage>>& played, int blocksToRun,
                             const char* unroutedFrom = nullptr, const char* unroutedTo = nullptr) {
-    setenv("SCOPE_PRESET", preset, 1);
+    // A preset by name, or a setup written out as JSON where the preset is gone.
     ScopeProcessor p;
+    if (preset[0] == '{') {
+      const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(preset)));
+      if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
+    } else setenv("SCOPE_PRESET", preset, 1);
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
     if (unroutedFrom) p.matrix().remove(unroutedFrom, unroutedTo);
@@ -1078,14 +1082,22 @@ int main() {
     /* "Hits restart the pendulums": the onset on Swing again. What it hears
        is the generator it would strike, so the routing is refused - every
        strike would be the next onset - and the pendulums play as if it were
-       not there, though the onset fires. */
+       not there, though the onset fires. The preset went in P5 with Drawn by
+       your playing, and from then until P8d this ran on the boot preset by
+       its missing name, where a routing that is not there is trivially the
+       same as one refused; its setup is written out here now, and the check
+       requires the pendulums and the routing to be what it is played on. */
+    const char* pendulums = R"({"gen":"harmonograph","interval":4,"detune":30,"decay":30,"display":"xy",)"
+                            R"("persistence":"0.04","timebase":5,"pGoni":false,"mod":"hear.onset>gen.reswing@1.000"})";
     const std::vector<std::pair<int, juce::MidiMessage>> held { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(110)) } };
-    const auto routed = playLeft("Hits restart the pendulums", held, 94);
-    const auto plain = playLeft("Hits restart the pendulums", held, 94, "hear.onset", "gen.reswing");
-    setenv("SCOPE_PRESET", "Hits restart the pendulums", 1);
+    const auto routed = playLeft(pendulums, held, 94);
+    const auto plain = playLeft(pendulums, held, 94, "hear.onset", "gen.reswing");
     ScopeProcessor p;
+    if (const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(pendulums))))
+      p.setStateInformation(code->data(), static_cast<int>(code->size()));
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    bool hasRoute = false;
+    for (const auto& r : p.matrix().routings()) hasRoute = hasRoute || (r.sourceId == "hear.onset" && r.destId == "gen.reswing");
     juce::AudioBuffer<float> buf(2, block);
     for (int k = 0; k < 94; ++k) {
       buf.clear();
@@ -1094,7 +1106,7 @@ int main() {
       p.processBlock(buf, m);
     }
     check("an onset hearing the generator it would strike is refused it: the pendulums play as without the routing, though it fires",
-          apart(routed, plain, 0, routed.size()) == 0 && p.hearing().onset.count > 0,
+          apart(routed, plain, 0, routed.size()) == 0 && p.hearing().onset.count > 0 && hasRoute && p.tone().modeName == "harmonograph",
           std::to_string(p.hearing().onset.count) + " onsets; apart by " + num(apart(routed, plain, 0, routed.size())));
   }
 
@@ -1135,8 +1147,22 @@ int main() {
           && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 morph:1",
           grouped + " | " + ids);
   }
-  /* Each of the eight automated from block 20 on "Brighten, grit, space,
-     swirl": heard from that block and not a sample before, and its slider
+  /* Every preset this file opens on by name is in the library. One that is
+     not opens on the boot preset instead, silently: "Brighten, grit, space,
+     swirl" went with the macros (P8d) and three checks went on passing or
+     failing over the wrong sound, one of them over a voice filter that was
+     off; and "Hits restart the pendulums", cut in P5, had left one passing
+     vacuously ever since. The literal names here are the ones the file passes to
+     SCOPE_PRESET; the lists it loops over are checked where they are made. */
+  {
+    std::string missing;
+    for (const char* name : { "Wobble", "Intervals in turn", "A sine, sung", "Harmonic tone", "Harmonograph",
+                              "Brightness swirls it", "Stretched echoes", "Wah" })
+      if (!scope::findPreset(name)) missing += std::string(missing.empty() ? "" : ", ") + name;
+    check("every preset the shell test opens on by name is in the library", missing.empty(), missing);
+  }
+  /* Each of the eight automated from block 20 over the dark saw fifth below
+     (`opening`): heard from that block and not a sample before, and its slider
      where the host put it. The same unautomated is the null for both halves,
      and each target is somewhere the slider was not, so a parameter that
      wrote nothing could not pass on its slider. Persistence is only heard
@@ -1146,11 +1172,20 @@ int main() {
   /* The slider each parameter must reach is named here, not looked up in
      kKnobs: read through the processor's own table, a parameter wired to the
      wrong slider was checked on that wrong slider, and passed. */
+  /* The sound they are automated over: a dark saw fifth through the voice
+     filter, with the echo's time set and drawn in X-Y. It was the preset
+     "Brighten, grit, space, swirl" until P8d cut the macros' presets; it is
+     written out here now, as that preset's own setup less its macros, and
+     handed over as a host would hand a saved state over before the first
+     block. Over the boot preset, whose filter is off, the cutoff is not
+     heard at all - which is how its loss showed. */
+  const auto opening = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(
+      R"({"shape":"ramp","freq":220,"interval":7,"timebase":4,"vcfType":1,"vcfCut":480,"delaySync":"1/4",)"
+      R"("delayFeedback":40,"display":"xy","persistence":"0.12"})")));
   const auto automated = [&](const char* id, const char* slider, float value, const std::function<void(ScopeProcessor&)>& prep) {
-    setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
     ScopeProcessor p;
+    if (opening) p.setStateInformation(opening->data(), static_cast<int>(opening->size()));
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
     if (prep) prep(p);
     Automated out;
     auto* knob = id ? p.knob(std::string_view(id)) : nullptr;
@@ -1227,7 +1262,7 @@ int main() {
           "parameter " + num(p.knob("level")->get()) + "; B " + num(p.toneB().amp) + ", A " + num(p.tone().amp));
   }
   {
-    /* The state round trip. One plugin loads "Brighten, grit, space, swirl",
+    /* The state round trip. One plugin loads the dark saw fifth (`opening`),
        has Scan and the echo moved by the host and learns the mod wheel;
        its state, handed to a fresh plugin before it is prepared, is what
        that one loads instead of its own preset. Both then play the same
@@ -1251,10 +1286,9 @@ int main() {
       }
       return got;
     };
-    setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
     ScopeProcessor a;
+    if (opening) a.setStateInformation(opening->data(), static_cast<int>(opening->size()));
     a.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
     const auto heardA = play(a, true);
     juce::MemoryBlock state;
     a.getStateInformation(state);
@@ -1313,10 +1347,10 @@ int main() {
        so the page does not apply its own move back to itself; a parameter
        the host moves counts. */
     const auto played = [&](int how) {
-      setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
+      // Over the dark saw fifth the automation checks play over (see `opening`).
       auto p = std::make_unique<ScopeProcessor>();
+      if (opening) p->setStateInformation(opening->data(), static_cast<int>(opening->size()));
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
       std::vector<float> got;
       juce::AudioBuffer<float> buf(2, block);
       double waiting = 0;
@@ -1496,6 +1530,45 @@ int main() {
           r.size() == 1 && r[0].amount == 0.123456789012345 && rq.size() == 1 && rq[0].amount == 0.123456789012345 && rq[0].destId == "gen.freq",
           std::to_string(r.size()) + " routing" + (r.empty() ? "" : ", depth " + scope::jsNumberToString(r[0].amount))
           + (rq.empty() ? "; none saved" : ", saved " + scope::jsNumberToString(rq[0].amount)));
+  }
+  {
+    /* A state saved before P8d cut the macros: a version-5 setup code with
+       two of them set and named, and routed. It loads as its nearest
+       survivor - the macros' fields and their routings gone, the rest as
+       written - and is saved so. The null is the same state stamped version
+       6, which keeps what it says: a routing from a source the instrument has
+       not got is kept by name, as one from a controller not yet moved is, so
+       only the decode pass can be what dropped them. */
+    const auto stateOf = [](int v) {
+      const juce::String json = "{\"v\":" + juce::String(v) + ",\"mac1\":40,\"mac3\":100,\"macroNames\":\"Grit|Space\","
+                                "\"freq\":330,\"mod\":\"macro.1>gen.vcf@0.700;lfo1>gen.amp@0.400;macro.2>gen.drive@0.800\"}";
+      return juce::Base64::toBase64(json).toStdString();
+    };
+    const auto loaded = [&](int v) {
+      const std::string code = stateOf(v);
+      ScopeProcessor p;
+      p.setStateInformation(code.data(), static_cast<int>(code.size()));
+      p.prepareToPlay(rate, block);
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer none;
+      p.processBlock(buf, none);
+      std::string routes;
+      for (const auto& r : p.matrix().routings()) routes += r.sourceId + ">" + r.destId + ";";
+      const auto saved = scope::decodeSetup(p.pageState().code);
+      const bool read = saved.kind == scope::DecodedSetup::Kind::Read;
+      const scope::Json* mod = read ? saved.setup.get("mod") : nullptr;
+      const std::string savedMod = mod && mod->type == scope::Json::Type::String ? scope::utf16To8(mod->s) : "";
+      const bool fields = read && (saved.setup.get("mac1") || saved.setup.get("macroNames"));
+      return std::make_tuple(routes, savedMod, fields, p.tone().freq);
+    };
+    const auto [routes5, saved5, fields5, freq5] = loaded(5);
+    const auto [routes6, saved6, fields6, freq6] = loaded(6);
+    check("a state saved with the macros loads without them - their routings and fields gone, the rest as written - and is saved so",
+          routes5 == "lfo1>gen.amp;" && saved5.find("macro.") == std::string::npos && saved5.find("lfo1>gen.amp") != std::string::npos
+          && !fields5 && freq5 == 330, routes5 + " / " + saved5);
+    check("null: the same state marked version 6 keeps its macro routings, so the pass is what dropped them",
+          routes6.find("macro.1>gen.vcf") != std::string::npos || saved6.find("macro.1>gen.vcf") != std::string::npos,
+          routes6 + " / " + saved6 + (fields6 ? " (fields kept)" : "") + " at " + num(freq6));
   }
   {
     /* A state saved before the menus reached the plugin listed its sliders

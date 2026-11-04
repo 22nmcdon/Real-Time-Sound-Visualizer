@@ -1,7 +1,7 @@
 // A setup loaded into the instrument: the page's `restore`, ported for what
 // it does to the sound - both layers of the generator, the keyboard, the
 // LFOs, the routings, the key, the quantiser and the tempo,
-// the plane, the echo, the arpeggiator, the score, the macros and the morph's
+// the plane, the echo, the arpeggiator, the score and the morph's
 // ends - and for the settings it keeps for pieces still to
 // come (the photocell). It is held to the page's own `restore`, run in a
 // browser, by core/tests/parity.py.
@@ -249,8 +249,6 @@ struct Brain {
   ScoreState score;
   NoteOut* out = nullptr;  // the MIDI out, where its owner has given one
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
-  struct Macro { std::u16string name; double value = 0; };
-  std::array<Macro, 4> macros { { { u"Macro 1", 0 }, { u"Macro 2", 0 }, { u"Macro 3", 0 }, { u"Macro 4", 0 } } };
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
   std::optional<MorphEnd> morphA, morphB;
   double morphPos = 0;
@@ -1013,7 +1011,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     return dflt;
   };
   Controls& panel = brain.panel;
-  const auto u16 = [](std::string_view a) { return toU16(a); };
   const auto setA = [&](std::string_view field, double v) { gen.set(field, v, 0); };
 
   // The panel's own values first, each as its control takes it.
@@ -1288,29 +1285,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   }
   keys.setArp(brain.arp.mode, brain.arp.rate, jsStringToNumber(toU16(brain.arp.octaves)));  // arpSet
 
-  // The macros and the morph.
+  // The morph's ends (the macros beside them went in P8d).
   {
-    const Json* names = s("macroNames");
-    std::vector<std::u16string> list;
-    if (names && names->type == Json::Type::String) {
-      std::size_t at = 0;
-      for (;;) {
-        const std::size_t end = names->s.find(u'|', at);
-        list.push_back(names->s.substr(at, end == std::u16string::npos ? std::u16string::npos : end - at));
-        if (end == std::u16string::npos) break;
-        at = end + 1;
-      }
-    }
-    for (int i = 0; i < 4; i++) {
-      Brain::Macro& m = brain.macros[static_cast<std::size_t>(i)];
-      m.value = std::fmax(0, std::fmin(1, within("mac" + std::to_string(i + 1), 0, 100, 0) / 100));
-      std::u16string name = static_cast<std::size_t>(i) < list.size() ? list[static_cast<std::size_t>(i)] : u"";
-      std::u16string clean;
-      for (const char16_t c : name) if (c != u'|') clean += c;
-      clean = jsTrim(clean).substr(0, 16);
-      m.name = clean.empty() ? u"Macro " + u16(std::to_string(i + 1)) : clean;
-      panel.setRange("macro" + std::to_string(i + 1), toU16(jsNumberToString(jsMathRound(m.value * 100))));
-    }
     brain.morphA = decodeMorphEnd(s("morphA"), morphHome);
     const auto refB = [&](const std::string& id) {
       if (brain.morphA) for (const auto& [mid, v] : *brain.morphA) if (mid == id) return v;
@@ -1533,13 +1509,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
 
 namespace scope {
 
-// setMacro: nought to one, and its knob at the nearest hundredth.
-inline void setMacro(Brain& b, int i, double value) {
-  Brain::Macro& m = b.macros[static_cast<std::size_t>(i)];
-  m.value = jsMax(0, jsMin(1, value));
-  b.panel.setRange("macro" + std::to_string(i + 1), toU16(jsNumberToString(jsMathRound(m.value * 100))));
-}
-
 // --- a slider moved: its handler ---------------------------------------------------------
 
 // What the page's "input" handler for a slider does with its new value, for
@@ -1585,7 +1554,6 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "scanSoft") b.scanSoft = v / 10;
   else if (id == "scanStrike") b.scanStrike = v / 100;
   else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
-  else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
   else if (id.size() == 4 && id.compare(0, 3, "bar") == 0) {
@@ -1669,7 +1637,7 @@ inline void moveSliderTo(const std::string& id, double value, Brain& b, Generato
    swaps the panel between the layers (the panel here always writes layer A);
    and the MIDI out's port, which in the plugin is the host's. */
 inline bool controlChange(const std::string& id, const std::u16string& written, bool checked, Brain& b, Generator& gen,
-                          Keyboard& keys, Matrix& matrix, std::vector<Lfo>& lfos) {
+                          Keyboard& keys, std::vector<Lfo>& lfos) {
   Controls& panel = b.panel;
   const int layer = b.panelLayer;
   // A menu takes only a value it has; one it has not got reads "". LFO 2's
@@ -1762,15 +1730,6 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     if (l.sync.empty()) lfos[i].rate = l.free;
     b.clock.step(b.clock.now());
     if (!l.sync.empty()) { lfos[i].phase = 0; lfos[i].epoch++; }
-  }
-  // A macro renamed.
-  else if (id.size() == 10 && id.compare(0, 9, "macroName") == 0 && id[9] >= '1' && id[9] <= '4') {
-    // nameMacro: the bar is a code's separator and an empty name no name.
-    std::u16string clean;
-    for (const char16_t c : value) if (c != u'|') clean += c;
-    clean = jsTrim(clean).substr(0, 16);
-    b.macros[static_cast<std::size_t>(id[9] - '1')].name = clean.empty() ? u"Macro " + toU16(std::string(1, id[9])) : clean;
-    matrix.touch();
   }
   // The view's switches and menus.
   else if (id == "ch1On" || id == "ch2On" || id == "ch1Ac" || id == "ch2Ac") {
@@ -1898,7 +1857,7 @@ inline void fadeFromPage(Matrix& matrix, const Json& value) {
   }
 }
 
-// --- macros and the morph ------------------------------------------------------------------
+// --- the morph ----------------------------------------------------------------------------
 
 // morphCapture: every slider the morph walks, as it stands.
 inline Brain::MorphEnd morphCapture(const Brain& b) {
@@ -1939,22 +1898,11 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
   }
 }
 
-// The macros as sources, and the fader as a destination the matrix moves.
-class MacroSource : public ModSource {
- public:
-  MacroSource(int i, const Brain& b) : ModSource("macro." + std::to_string(i + 1)), i_(i), b_(b) {}
-  double value() const override { return b_.macros[static_cast<std::size_t>(i_)].value; }
-
- private:
-  int i_;
-  const Brain& b_;
-};
+// The fader as a destination the matrix moves. The macros were sources here
+// until P8d, and the threshold and the pluck it struck until P5.
 class BrainSources {
  public:
-  // The threshold and the pluck it struck were here too, and went in P5.
   BrainSources(Matrix& matrix, Brain& b) {
-    for (int i = 0; i < 4; i++) macros_.emplace_back(i, b);
-    for (auto& m : macros_) matrix.registerSource(&m);
     ModDest d;
     d.id = "morph.pos"; d.kind = DestKind::Visual; d.span = 1; d.min = 0; d.max = 1;
     Brain* brain = &b;
@@ -1964,10 +1912,6 @@ class BrainSources {
   }
   BrainSources(const BrainSources&) = delete;
   BrainSources& operator=(const BrainSources&) = delete;
-
-
- private:
-  std::vector<MacroSource> macros_;
 };
 
 }  // namespace scope

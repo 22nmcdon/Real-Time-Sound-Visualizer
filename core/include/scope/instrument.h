@@ -555,7 +555,7 @@ class Instrument {
        playing, not what it plays. The gate follows at the next block. */
     if (id == "keyboardPresent") { keyboard_->setPresent(text != u"0"); return; }
     if (id == "drawn") { drawnFrom(text); return; }
-    if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, *matrix_, lfos_)) return;
+    if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
     hand.a.push_back(value.type == Json::Type::Bool ? value : Json::string(text));
@@ -962,7 +962,7 @@ class Instrument {
   std::unique_ptr<CoreSources> sources_;
   std::unique_ptr<Brain> brain_;  // what a setup sets beyond the generator
   std::unique_ptr<ClockIn> clockIn_;  // MIDI's real-time bytes, to the brain's clock
-  std::unique_ptr<BrainSources> brainSources_;  // the macros, and the morph's fader as a destination
+  std::unique_ptr<BrainSources> brainSources_;  // the morph's fader as a destination
   std::unique_ptr<MidiOut> midiOut_;  // to the owner, through `hooks.midiOut`
   Strike strike_;  // the score's notes, struck in the generator's score voice
   int outAt_ = 0;  // the sample in the block that what the out sends now is sent at

@@ -2681,6 +2681,26 @@ redone natively or left out.
   pair able to take the fourth. No setup stored the rack, so the codec
   needed no pass.
 
+- **The macros cut in P8d.** The host's knobs (P8a) replaced them, so they
+  went from the core with the page: the Brain's `macros`, `setMacro`, the
+  slider's and the name's handlers, `MacroSource` (`BrainSources` is the
+  morph's fader as a destination now, and nothing else), the four sliders in
+  `panel_controls.h` and the Macros section of `presets.h`, which is written
+  out again from the page's library. `controlChange` lost its matrix, which
+  only a macro's rename used. The setup codec is version 6, whose pass
+  deletes `mac1`-`mac4` and `macroNames` and drops every routing from
+  `macro.1`-`macro.4`, as the page's does. The plugin's state is a setup
+  code, so an old project's macros go the same way: the shell test loads a
+  version-5 state with two macros routed and requires them gone and the rest
+  kept, against the same state stamped 6, which keeps them. Three shell
+  checks had opened on "Brighten, grit, space, swirl" by name; with the name
+  gone they opened on the boot preset, and the cutoff's failed over a filter
+  that was off. Its setup is written out in the test now, and the test
+  requires every preset it names to exist - which found "Hits restart the
+  pendulums", cut in P5, leaving the onset's refusal checked against the
+  boot tone ever since; that one is written out too, and its check requires
+  the pendulums and the routing to be what it plays.
+
 ## Building and testing
 
 ```

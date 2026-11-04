@@ -222,7 +222,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   solids and the second generator - behind it in their menus, offered only
   while it is open unless one is already chosen (`syncDrawerMenus`); in P8
   the scope's own instruments (lanes, vertical, trigger, trace filter,
-  cursors) and the macros to Measure, the microphone and input into the
+  cursors) and the setup morph to Measure (the macros beside it were cut in
+  P8d, the host's knobs having replaced them), the microphone and input into the
   generator to Inputs, and the key and tempo to Perform beside the clock. Add
   a tab to it by naming it in `BENCH_DRAWER`. A tab remembered from before a
   rename lands where its sections went (`BENCH_TAB_RENAMED`). `benchtest.py`

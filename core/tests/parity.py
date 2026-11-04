@@ -1810,6 +1810,13 @@ GONE_V5 = ["crossOn", "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDeca
 MOD_V4 = ["threshold>gen.freq@0.500;lfo1>gen.amp@0.400", " threshold>gen.amp@1;lfo2>gen.pluck@1.000 ;macro.1>gen.pluck@-0.5",
           "lfo1>gen.pluck@0.250", "threshold>", ";;", "lfo1>gen.freq@0.400;;\u00a0threshold>gen.amp@0.2;",
           "xthreshold>gen.freq@0.1;lfo1>gen.pluckx@1;threshold2>gen.amp@1", "lfo1>gen.amp@0.4"]
+# What version 6 took out (P8d): the macros' values and names, and every
+# routing from a macro - spaced, among others, and near misses each way (a
+# fifth macro, a macro without its number, one as a destination).
+GONE_V6 = ["mac1", "mac2", "mac3", "mac4", "macroNames"]
+MOD_V5 = ["macro.1>gen.vcf@0.700;lfo1>gen.amp@0.400", " macro.4>gen.twist@0.600 ;macro.2>gen.drive@0.800",
+          "lfo1>gen.freq@0.400;;\u00a0macro.3>gen.echo@1.000;", "macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1",
+          "xmacro.1>gen.freq@0.1;lfo2>gen.amp@0.3", "macro.1>"]
 def old_setup():
     st = {}
     if srng.random() < 0.8: st["v"] = srng.choice([1, 2, 3, 4, 5, 6, "2", "4", "x", None, [3], 1.5, 4.5, True])
@@ -1822,6 +1829,16 @@ def old_setup():
     for _ in range(srng.randint(0, 2)): st[srng.choice(["gen", "freq", "mod", "5"])] = rvalue()
     if srng.random() < 0.4: st["mod"] = srng.choice(MOD_V4)
     for key in srng.sample(GONE_V5, srng.randint(0, 3)): st[key] = rvalue()
+    return st
+# Version 6's codes from a generator of their own (P8d), so the runs above
+# are the ones they were: either side of the pass, with the macros' fields
+# and a routing list from MOD_V5.
+v6rng = random.Random(8086)
+def old_setup_v6():
+    st = {"v": v6rng.choice([4, 5, 5, 6, 7, "5", 5.5, None])}
+    if v6rng.random() < 0.8: st["mod"] = v6rng.choice(MOD_V5)
+    for key in v6rng.sample(GONE_V6, v6rng.randint(0, 3)): st[key] = v6rng.choice([0, 40, 100, "Grit|Space", "", None, [1]])
+    if v6rng.random() < 0.5: st["freq"] = v6rng.choice([220, 330, "440"])
     return st
 def code_of(text):
     raw = text.encode("latin-1") if all(ord(c) < 256 for c in text) else text.encode("utf-8")
@@ -1843,6 +1860,8 @@ scmds += ["encode {\"figText\":\"caf\u00e9 \u00ff\",\"gen\":\"figure\"}", "encod
 for _ in range(400):
     text = _json.dumps(old_setup(), separators=(",", ":"))
     scmds.append("decode " + mangle(code_of(text)))
+for _ in range(120):
+    scmds.append("decode " + code_of(_json.dumps(old_setup_v6(), separators=(",", ":"))))
 for text in ["5", "\"abc\"", "true", "false", "null", "0", "\"\"", "[1,2]", "-0", "{\"v\":\"4\"}", "{\"v\":4,\"level\":5}",
              "{bad json}", "{\"x\":\"caf\u00e9\"}", "{\"x\":\"\\ud800\"}", "  {\"trig\":1,\"c1s\":3,\"level\":64}  ", "{\"9\":1,\"1\":2,\"b\":3,\"a\":4,\"1\":5}"]:
     scmds.append("decode " + code_of(text))
@@ -1875,6 +1894,9 @@ scmds += [PM_KEEP, PM_SET, "decode " + PM_CODE, "decode " + code_of('{"v":5,"pic
 V4_CODE = '{"v":4,"crossOn":true,"crossX":40,"threshWatch":"env.live","pluckNote":64,"freq":330,' \
           '"mod":"threshold>gen.freq@0.500; lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"}'
 scmds += ["decode " + code_of(V4_CODE)]
+V5_CODE = '{"v":5,"mac1":40,"mac3":100,"macroNames":"Brighten|Grit|Space|Swirl","freq":330,' \
+          '"mod":"macro.1>gen.vcf@0.700; lfo1>gen.amp@0.400;macro.2>gen.drive@0.800"}'
+scmds += ["decode " + code_of(V5_CODE)]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
@@ -1894,9 +1916,19 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # Version 5, read off the page's own line: a version-4 code loses the cut
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
-check("a version-4 code comes up to 5 without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":5' in v4_read and '"freq":330' in v4_read
+check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
+      v4_read.startswith("read ") and '"v":6' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
+# Version 6 likewise: a version-5 code loses the macros' fields and every
+# route from a macro, and keeps the rest as written, spaces and all.
+v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
+check("a version-5 code comes up to 6 without the macros' values, names or routes, the rest as written",
+      v5_read.startswith("read ") and '"v":6' in v5_read and '"freq":330' in v5_read
+      and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
+check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
+      sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
+      and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
+      and sum(1 for l in sjs if '"mac1"' in l or '"macroNames"' in l) >= 2)
 check("and the random codes reach the pass both ways: routes it drops, routes it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"threshold>gen.freq@0.500;' in l) >= 2 and sum(1 for l in sjs if '"mod":"lfo1>gen.amp@0.400"' in l) >= 3
       and sum(1 for l in sjs if '"crossOn"' in l) >= 2)
@@ -1912,6 +1944,8 @@ snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":
       "decode " + code_of('{"v":2,"trig":1,"c1s":3,"level":100}'))
 snull("the version-4 code marked 5, which keeps what it says", "decode " + code_of(V4_CODE),
       "decode " + code_of(V4_CODE.replace('"v":4', '"v":5')))
+snull("the version-5 code marked 6, which keeps its macros", "decode " + code_of(V5_CODE),
+      "decode " + code_of(V5_CODE.replace('"v":5', '"v":6')))
 snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
 def pm_read(cmd):
     code = scpp[scmds.index(cmd)].split(" ", 1)[1]
@@ -3540,7 +3574,7 @@ print("\n--- restore ---")
 # scope::restoreSetup: every preset the page ships and random setups, each
 # loaded in turn as the page loads them, and what each leaves in the
 # instrument compared field by field - both layers' tones, the keyboard, the
-# LFOs, the routings, the key, the macros, the morph, the plane
+# LFOs, the routings, the key, the morph, the plane
 # and the echo. A number to 1e-12: a cutoff is `Math.pow` against `std::pow`.
 rexe = build("restore_cpp")
 RTOOL = os.path.join(HERE, "tools", "restore_page.py")
@@ -3642,7 +3676,7 @@ MENUS = {
     "scoreStep": ["1/16", "1/8", "1/4", "1/2"], "scoreLow": [36, 48, 60, 50, "48"], "arpMode": ["off", "up", "random", "x"],
     "arpRate": ["1/4", "1/16t", "1/2"], "delaySync": ["", "1/4", "1/8d", "x"],
     "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3], "planeKaleido": [0, 2, 8, 7],
-    "planeSnap": [0, 6, 7], "macroNames": ["", "Wide|Bright||Fold", "a" * 20 + "|  b  |c|d|e", "|", 5],
+    "planeSnap": [0, 6, 7],
     "morphA": ["", "=freq:330,amp:40", "=bogus:1,freq:x,amp:20:9", "=", "freq:1", 5, "=morphPos:50,freq:330",
                "=macro1:20,keysVelocity:9,pictureAmount:3,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
     "mod": ["", "lfo1>gen.freq@0.400;photo.1>gen.amp@0.900", "macro.1>gen.morph@1.000;nope", None, 0, 5,
@@ -3920,10 +3954,11 @@ pdraw = next(i for i, p in enumerate(presets) if '"figDrawn"' in p)
 rnull("the drawn preset with one point moved", pdraw, lambda st: st | {"figDrawn": st["figDrawn"].replace("0.6", "0.61", 1)})
 check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
 
-print("\n--- macros and the morph ---")
+print("\n--- the morph ---")
 # A hand on the sliders, the morph's ends stored and the fader moved - by hand
-# and by the matrix - and the macros' knobs, through the page's own handlers
-# against scope::moveSlider, morphStore, morphStep and setMacro. Each line is
+# and by the matrix - through the page's own handlers against
+# scope::moveSlider, morphStore and morphStep (the macros' knobs were here
+# too until P8d cut them). Each line is
 # an operation rather than a setup, and both runners put a frame (the matrix
 # letting go of the fader, then the morph's step) before every line, since the
 # page's own frames run between one batch of lines and the next.
@@ -3945,14 +3980,19 @@ def mrun():
         if c < 0.45: out.append({"op": "pos", "value": rrng.choice([0, 25, 50, 50.5, 75, 100, rrng.randint(0, 100)])})
         elif c < 0.6: out.append({"op": "mod", "value": rrng.choice([0, 0.1, -0.3, 0.5, 1.2, 0.00005, rrng.uniform(-1, 1)])})
         elif c < 0.65: out.append({"op": "hold", "value": rrng.choice([0, 0, -0.2, 0.3, rrng.uniform(-1, 1)])})
-        elif c < 0.8: out.append({"op": "macro", "i": rrng.randint(0, 3), "value": rrng.choice([0, 33, 100, 150, -4, "x", rrng.randint(0, 100)])})
+        elif c < 0.8:
+            # A macro's knob was drawn here until P8d cut them: drawn all the
+            # same, so every op and run after it is the one it was, and a step
+            # played in its place.
+            rrng.randint(0, 3); rrng.choice([0, 33, 100, 150, -4, "x", rrng.randint(0, 100)])
+            out.append({"op": "step"})
         elif c < 0.9: out.append({"op": "step"})
         else: out.append(mslider(ctl_ids))
     return out
 # Made to be read, first: amp from 20 to 80 and frequency from 220 to 880, the
 # fader a quarter and then half way; a push from the matrix below the step's
-# threshold, then a real one; a hand on a slider with the fader at rest; the
-# macros by their knobs and by their sliders, past the end; two sliders A
+# threshold, then a real one; a hand on a slider with the fader at rest; two
+# steps where the macros' knobs were, so every line after keeps its place; two sliders A
 # holds that the page found in a different order from the one it lays out;
 # the rates of a synced LFO and a synced delay moved; A stored with the fader
 # half way; B stored while the matrix holds the fader a quarter back; and a
@@ -3965,7 +4005,7 @@ MADE = [{}, {"op": "slider", "id": "amp", "value": 20}, {"op": "slider", "id": "
         {"op": "pos", "value": 25}, {"op": "pos", "value": 50},                                  # 7, 8
         {"op": "mod", "value": 0.00005}, {"op": "mod", "value": 0.25},                           # 9, 10
         {"op": "slider", "id": "amp", "value": 70}, {"op": "step"},                              # 11, 12
-        {"op": "macro", "i": 1, "value": 33}, {"op": "slider", "id": "macro3", "value": 150},    # 13, 14
+        {"op": "step"}, {"op": "step"},                                                          # 13, 14
         {}, {"op": "slider", "id": "timebase", "value": 4}, {"op": "slider", "id": "freq", "value": 300},
         {"op": "store", "end": "a"},                                                             # 18
         {"l0y": "1/4"}, {"op": "slider", "id": "lfoRate0", "value": 50},                          # 19, 20
@@ -3981,7 +4021,7 @@ MADE = [{}, {"op": "slider", "id": "amp", "value": 20}, {"op": "slider", "id": "
 mlines = [_json.dumps(o) for o in MADE] + [_json.dumps(o) for _ in range(90) for o in mrun()]
 mpg, mpt = rboth(mlines, "morph_ops.txt")
 mb = rbad(mpg, mpt)
-check("%d operations on the sliders, the morph and the macros leave the same instrument" % len(mlines),
+check("%d operations on the sliders and the morph leave the same instrument" % len(mlines),
       not mb and len(mlines) > 1500, mb[0] if mb else "")
 # A slider the panel has not got - the page had Scan's three before the core
 # did (P7a), and a hand on one crashed the core in the middle of the morph's
@@ -4062,9 +4102,6 @@ check("a push of five ten-thousandths is past the step's threshold, and moves a 
 check("a hand on a slider with the fader at rest stays where the hand put it",
       mp[11]["ranges"]["amp"] == 70 and mp[12]["ranges"]["amp"] == 70 and mp[12]["a"]["amp"] == 0.7,
       "%r %r" % (mp[11]["ranges"]["amp"], mp[12]["ranges"]["amp"]))
-check("a macro's knob sets it, and its slider past the end holds it at one",
-      mp[13]["macros"][1]["value"] == 0.33 and mp[14]["macros"][2]["value"] == 1 and mp[14]["ranges"]["macro3"] == 100,
-      "%r %r" % (mp[13]["macros"][1]["value"], mp[14]["macros"][2]["value"]))
 check("an end is written in the order the page found its sliders, not the order it lays them out",
       mp[18]["morph"]["a"] == "=freq:300,timebase:4", mp[18]["morph"]["a"])
 check("LFO 1's rate moved while it is synced is its free rate, and it runs on at the beat's",
@@ -4091,7 +4128,6 @@ def mnull(what, index, change):
     check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(mpt[index])) != [])
 mnull("the fader a point further", 7, lambda o: o | {"value": 26})
 mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
-mnull("the other macro", 13, lambda o: o | {"i": 2})
 mnull("the end stored without timebase", 16, lambda o: o | {"value": 7})
 check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
 
@@ -4109,8 +4145,10 @@ CMENUS = ["genMode", "interval", "figure", "inputMode", "inputFrom", "gen2Figure
 CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"]}
 CSWITCHES = ["delayPingPong", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "midiDrive",
              "midiPlay", "scoreOn"]
-CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""],
-         **{"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}}
+CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""]}
+# The four macros' names were text boxes here until P8d: still drawn from, so
+# every op and run after one is the one it was, and a step played instead.
+CTEXT_GONE = {"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}
 CCLICKS = ["tuneJust", "tuneEqual", "midiDyad", "midiMono", "midiPoly", "planeOS1", "planeOS2", "planeOS4"]
 def cop():
     # Each layer's picture menus, in place of an op drawn as before P6 - drawn
@@ -4136,7 +4174,10 @@ def cop_drawn():
         return {"op": "change", "id": id, "value": rrng.choice(["nonsense", "", "7"]) if odd else rrng.choice(opts)}
     if c < 0.6: id = rrng.choice(list(CMORE)); return {"op": "change", "id": id, "value": rrng.choice(CMORE[id] + ["nonsense"])}
     if c < 0.75: return {"op": "change", "id": rrng.choice(CSWITCHES), "value": rrng.random() < 0.5}
-    if c < 0.82: id = rrng.choice(list(CTEXT)); return {"op": "change", "id": id, "value": rrng.choice(CTEXT[id])}
+    if c < 0.82:
+        drawn = dict(CTEXT, **CTEXT_GONE)
+        id = rrng.choice(list(drawn)); value = rrng.choice(drawn[id])
+        return {"op": "change", "id": id, "value": value} if id in CTEXT else {"op": "step"}
     if c < 0.95: return {"op": "click", "id": rrng.choice(CCLICKS)}
     if c < 0.97: return {"op": "slider", "id": "lfoRate1", "value": mvalue("lfoRate0")}
     return mslider(ctl_ids)
@@ -4164,7 +4205,7 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "lfoSync0", "value": "1/4"}, {"op": "change", "id": "lfoSync0", "value": ""},  # 25, 26
          {"op": "change", "id": "lfoShape1", "value": "square"},                                             # 27
          {"op": "change", "id": "lfoShape0", "value": "ramp"}, {"op": "change", "id": "midiFollow", "value": True},  # 28, 29
-         {"op": "change", "id": "macroName2", "value": "Wob|ble  "}, {"op": "change", "id": "macroName3", "value": "   "},
+         {"op": "click", "id": "tuneEqual"}, {"op": "click", "id": "tuneEqual"},  # 30, 31: where two macro names were
          {"op": "change", "id": "scoreOn", "value": True}, {"op": "change", "id": "scoreVoices", "value": "4"},  # 32, 33
          {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
          {"op": "change", "id": "keyRoot", "value": "2"}, {"op": "change", "id": "keyScale", "value": "minor"},  # 36, 37
@@ -4203,8 +4244,6 @@ check("LFO 1 locked to a quarter at 120 runs at 2 Hz from the beat, and let go g
 check("LFO 1's shape menu reaches what it plays, and the keyboard's follow its switch",
       cp[28]["lfos"][0]["shape"] == "ramp" and cp[28]["lfos"][0]["plays"] != cp[27]["lfos"][0]["plays"]
       and cp[28]["midi"]["follow"] is False and cp[29]["midi"]["follow"] is True, repr(cp[28]["lfos"][0]))
-check("a macro's name loses its bars and spaces, and a name of spaces is no name",
-      cp[30]["macros"][1]["name"] == "Wobble" and cp[31]["macros"][2]["name"] == "Macro 3")
 check("with the quantiser on, the key's root and its scale each move the mask at once",
       cp[35]["key"]["quantise"] is True and len({cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]}) == 3,
       "%r %r %r" % (cp[35]["a"]["qMask"], cp[36]["a"]["qMask"], cp[37]["a"]["qMask"]))
@@ -4229,7 +4268,7 @@ cnull("the other kind", 1, lambda o: o | {"value": "wireframe"})
 cnull("the 2x button", 11, lambda o: o | {"id": "planeOS2"})
 cnull("the LFO locked to an eighth", 25, lambda o: o | {"value": "1/8"})
 cnull("LFO 1 a square", 28, lambda o: o | {"value": "square"})
-cnull("another name", 30, lambda o: o | {"value": "Wibble"})
+cnull("the just button where equal was pressed again", 30, lambda o: o | {"id": "tuneJust"})
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
 
@@ -4428,7 +4467,10 @@ TMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},  
          {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "timeLayerBoth"},                 # 10, 11
          {"bPlane": True, "bDelayMix": 45, "bDelaySync": "1/8", "delayMix": 20, "layers": "layer", "midiMode": "poly"},  # 12
          {"op": "click", "id": "midiEditB"}]                                                         # 13
-tlines = [_json.dumps(o) for o in TMADE] + [_json.dumps(o) for _ in range(60) for o in trun()]
+# Eighty-five runs: sixty reached B's own echo 90 times once P8d took the six
+# Macros presets out of the library they draw from, under the hundred below,
+# and seventy 98.
+tlines = [_json.dumps(o) for o in TMADE] + [_json.dumps(o) for _ in range(85) for o in trun()]
 tpg, tpt = rboth(tlines, "timeb_ops.txt")
 tb = rbad(tpg, tpt)
 check("%d hands on the Delay and chorus section with the layers on, Together, A and B in turn, leave the same instrument"
@@ -4751,7 +4793,7 @@ iruns["hands"] = [["make", 44100, 128, icode["Harmonic tone"]], NOTE_ON(57)] + b
     + [["routings", "lfo1>gen.vcf@0.55;lfo1>gen.freq@0.35"]] + blocks(20) + [["fade", FADE]] + blocks(10) \
     + [["control", "genMode", "harmonograph"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
     + [["slider", "lfoRate1", "300"], ["click", "dispXY"], ["control", "persistence", "0.3"], ["click", "photoButton"]] \
-    + blocks(40) + [["control", "macroName1", "Brückner — 🎹"], ["click", "clearButton"]] + blocks(10)
+    + blocks(40) + [["control", "figPathD", "Brückner — 🎹"], ["click", "clearButton"]] + blocks(10)
 iruns["refused"] = [["make", 48000, 128, "not a code at all"]] + blocks(4) + [["slider", "noSuchSlider", "1"],
     ["setup", "eyJub3QiOg=="], ["fade", "{not json"], ["slider", "amp", "20"]] + blocks(4)
 # Every preset in turn, a note held through each, so whatever a preset leaves

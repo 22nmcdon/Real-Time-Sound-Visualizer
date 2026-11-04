@@ -16,8 +16,8 @@
 // - Swing again and Kick, the two things a hit can strike. Pluck, a third,
 //   went in P5 with the threshold.
 //
-// The macros are the Brain's (restore.h), and the hearing's
-// are its own (hearing.h); the picture's sources arrive with stage 4.
+// The morph's fader is the Brain's (restore.h), and the hearing's
+// sources are its own (hearing.h); the picture's sources arrive with stage 4.
 
 #pragma once
 
