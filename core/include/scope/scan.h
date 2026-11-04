@@ -28,8 +28,10 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <vector>
 
+#include "scope/picture.h"  // pictureMovesOf, whose three choices Scan's Reads share
 #include "scope/setup.h"
 #include "scope/wave.h"
 
@@ -238,32 +240,86 @@ class ScanTables {
   std::array<CycleTables, 4> tables_;
 };
 
-/* What a frame's reading needs of one layer: its depth, the hold its
-   picture stage has on it, and the grid it reads - its own picture's while
-   the layers draw one each, the one screen otherwise. */
+/* One picture a frame can read: its grid and the hold its picture stage
+   has on what it moves. */
 template <typename Cell>
-struct ScanLayer {
-  double depth = 0, hold = 1;
+struct ScanPicture {
+  double hold = 1;
   const Cell* grid = nullptr;
   std::size_t length = 0;
 };
 
-/* What each layer reads, as the page's scanStep picks it: its own picture's
-   grid and hold while the layers draw a picture each (`live`), the one
-   screen's grid and the shared stage's hold otherwise. */
+/* What each layer's Scan reads (P7b, cross-scan), the page's SCAN_READS and
+   scanReadsOf: its own picture, the other layer's, or both - the same three
+   as the picture menus' (pictureMovesOf), with the layer's own the answer to
+   anything else. */
+inline std::string scanReadsOf(const std::string& value, const std::string& own) { return pictureMovesOf(value, own); }
+
+/* What a frame's reading is handed, as the page's scanStep picks it: each
+   layer's depth and what it reads, and the two pictures - each layer's own
+   grid and hold while the layers draw a picture each (`live`); otherwise the
+   one screen and the shared stage's hold, as both, and every layer reads it. */
 template <typename Cell>
-std::array<ScanLayer<Cell>, 2> scanLayers(bool live, const std::array<double, 2>& depth, double sharedHold,
-                                          const std::array<double, 2>& ownHold, const Cell* shared,
-                                          const std::array<const Cell*, 2>& own, std::size_t length) {
-  std::array<ScanLayer<Cell>, 2> in;
-  for (std::size_t l = 0; l < 2; l++)
-    in[l] = { depth[l], live ? ownHold[l] : sharedHold, live ? own[l] : shared, length };
+struct ScanInput {
+  bool live = false;
+  std::array<double, 2> depth { { 0, 0 } };
+  std::array<std::string, 2> reads { { "A", "B" } };
+  std::array<ScanPicture<Cell>, 2> pictures {};
+};
+
+template <typename Cell>
+ScanInput<Cell> scanInput(bool live, const std::array<double, 2>& depth, const std::array<std::string, 2>& reads,
+                          double sharedHold, const std::array<double, 2>& ownHold, const Cell* shared,
+                          const std::array<const Cell*, 2>& own, std::size_t length) {
+  ScanInput<Cell> in;
+  in.live = live;
+  in.depth = depth;
+  in.reads = reads;
+  for (std::size_t p = 0; p < 2; p++) in.pictures[p] = { live ? ownHold[p] : sharedHold, live ? own[p] : shared, length };
   return in;
 }
 
+// scanPicturesOf: the pictures, 0 for A's and 1 for B's, a layer reading `reads` reads.
+inline std::size_t scanPicturesOf(const std::string& reads, std::array<std::size_t, 2>& out) {
+  if (reads == "both") { out = { { 0, 1 } }; return 2; }
+  out = { { reads == "A" ? std::size_t { 0 } : std::size_t { 1 }, 0 } };
+  return 1;
+}
+
+/* Notes strike the screen (P7b): STRIKE_DEFAULT (the slider's percent to
+   start), STRIKE_ARC (a twelfth of the circle) and STRIKE_SEGMENTS. The
+   page's comment over scanStrike says why it is laid where Scan reads. */
+constexpr double kStrikeDefault = 50;
+constexpr double kStrikeArc = 1.0 / 12;
+constexpr int kStrikeSegments = 8;
+
+/* One picture's strike: the arc of scanRead's off-centre circle at the
+   note's place round it - C at the reading's start, a semitone a twelfth on -
+   as `lay(x0, y0, x1, y1)` calls in canvas pixels through `plot`, eight
+   segments a twelfth of the lap long. The circle is the picture's path, or
+   where its light is when it has none yet, or the middle of a dark one. */
+template <typename Cell, class Lay>
+void scanStrikeArc(const std::optional<ScanPath>& path, const Cell* grid, std::size_t length, const Plot& plot, int note,
+                   Lay&& lay) {
+  ScanPath at { 0.5, 0.5, 0.25 };
+  if (path) at = *path;
+  else if (const auto g = scanGeometry(grid, length)) at = *g;
+  const double r = jsMax(at.r, kScanLeast / kPhosphorN);
+  const double cx = at.cx + 0.35 * r, cy = at.cy + 0.2 * r, across = 0.8 * r;
+  const double start = 2 * kPi * static_cast<double>(((note % 12) + 12) % 12) / 12;
+  const auto x = [&](double th) { return plot.x + (cx + across * std::cos(th)) * plot.w; };
+  const auto y = [&](double th) { return plot.y + (cy + across * std::sin(th)) * plot.h; };
+  for (int k = 0; k < kStrikeSegments; k++) {
+    const double th0 = start + 2 * kPi * kStrikeArc * (static_cast<double>(k) / kStrikeSegments - 0.5);
+    const double th1 = start + 2 * kPi * kStrikeArc * (static_cast<double>(k + 1) / kStrikeSegments - 0.5);
+    lay(x(th0), y(th0), x(th1), y(th1));
+  }
+}
+
 /* The page's `scan` and `scanStep`: what is kept from frame to frame - each
-   layer's path, the hold it last sent, when a setup's quarter of a second
-   ends - and the frame itself. The generator is a template, so this need not
+   picture's path (P7b: per picture, so one two layers read is followed and
+   read once), each layer's hold as last sent, when a setup's quarter of a
+   second ends - and the frame itself. The generator is a template, so this need not
    know it: anything with the page's `genSet` for the hold, a way in for the
    table, and the three tables in use, which a harness can stand in for. */
 class ScanReader {
@@ -281,46 +337,111 @@ class ScanReader {
   void freeze(double nowMs) { frozenUntil = nowMs + kScanFreezeMs; }
 
   /* scanStep, for `count` layers (two while the keyboard is split or
-     layered): a layer at no depth forgets its path; at any depth it sends
-     its hold when that has moved by more than 0.005, or come back to one,
-     follows the figure over `elapsedMs`, and - unless frozen or the path
-     reads darkness - sends a new table, written into one of its four the
-     generator is not reading. Nothing on the spectrogram, which draws no
-     figure to read. */
+     layered). Each picture some playing layer reads is followed over
+     `elapsedMs` and - unless frozen - read once; a picture none reads
+     forgets its path. Then each layer at any depth sends its hold when that
+     has moved by more than 0.005, or come back to one - a crossed pair (A
+     reading B's or both while B reads A's or both) the lower of the two
+     pictures' holds, since the two loops feed each other, and otherwise the
+     lower of the pictures it reads - and, when every picture it reads gave
+     a reading, a new table made from that reading or the two averaged,
+     written into one of its four the generator is not reading. Nothing on
+     the spectrogram, which draws no figure to read. */
   template <class Gen, typename Cell>
-  void frame(Gen& core, bool spect, int count, const std::array<ScanLayer<Cell>, 2>& in, double elapsedMs, double soft,
-             double nowMs) {
-    for (std::size_t k = 0; k < 2; k++) seen[k] = { in[k].depth, in[k].hold, in[k].grid };
+  void frame(Gen& core, bool spect, int count, const ScanInput<Cell>& in, double elapsedMs, double soft, double nowMs) {
+    for (std::size_t k = 0; k < 2; k++) seen[k] = { in.depth[k], in.pictures[k].hold, in.pictures[k].grid };
     if (spect) return;
-    for (int l = 0; l < count && l < 2; l++) {
-      const std::size_t k = static_cast<std::size_t>(l);
-      const ScanLayer<Cell>& layer = in[k];
-      if (!(layer.depth > 0)) { paths[k].reset(); continue; }
-      if (std::fabs(layer.hold - held[k]) > 0.005 || (layer.hold == 1 && held[k] != 1)) {
-        held[k] = layer.hold;
-        core.set("scanHold", layer.hold, l);
+    const std::size_t layers = static_cast<std::size_t>(count < 0 ? 0 : count > 2 ? 2 : count);
+    std::array<bool, 2> wants { { false, false } };
+    for (std::size_t l = 0; l < layers; l++) wants[l] = in.depth[l] > 0;
+    std::array<std::array<std::size_t, 2>, 2> from {};
+    std::array<std::size_t, 2> reading { { 1, 1 } };
+    for (std::size_t l = 0; l < 2; l++) {
+      if (in.live) reading[l] = scanPicturesOf(in.reads[l], from[l]);
+      else from[l] = { { 0, 0 } };
+    }
+    const bool frozen = nowMs < frozenUntil;
+    std::array<bool, 2> read_ { { false, false } };
+    for (std::size_t p = 0; p < 2; p++) {
+      bool used = false;
+      for (std::size_t l = 0; l < 2; l++)
+        for (std::size_t i = 0; i < reading[l]; i++) used = used || (wants[l] && from[l][i] == p);
+      if (!used) { paths[p].reset(); continue; }
+      const ScanPicture<Cell>& pic = in.pictures[p];
+      paths[p] = scanFollow(paths[p], pic.grid, pic.length, elapsedMs / 1000);
+      if (paths[p] && !frozen) read_[p] = read(pic.grid, pic.length, *paths[p], soft, readings_[p]);
+    }
+    const bool crossed = in.live && in.reads[0] != "A" && in.reads[1] != "B";
+    for (std::size_t l = 0; l < layers; l++) {
+      if (!wants[l]) continue;
+      const int layer = static_cast<int>(l);
+      double hold = crossed ? jsMin(in.pictures[0].hold, in.pictures[1].hold) : in.pictures[from[l][0]].hold;
+      if (!crossed && reading[l] == 2) hold = jsMin(in.pictures[from[l][0]].hold, in.pictures[from[l][1]].hold);
+      if (std::fabs(hold - held[l]) > 0.005 || (hold == 1 && held[l] != 1)) {
+        held[l] = hold;
+        core.set("scanHold", hold, layer);
       }
-      paths[k] = scanFollow(paths[k], layer.grid, layer.length, elapsedMs / 1000);
-      if (!paths[k] || nowMs < frozenUntil) continue;
-      CycleTables* into = tables_[k].fresh(core.scanTable(l), core.scanPrev(l), core.scanNext(l));
-      if (into && read(layer.grid, layer.length, *paths[k], soft, *into)) core.setScanTable(into, l);
+      bool all = true;
+      for (std::size_t i = 0; i < reading[l]; i++) all = all && read_[from[l][i]];
+      if (!all) continue;
+      const std::array<double, kScanPoints>* points = &readings_[from[l][0]];
+      if (reading[l] == 2) {
+        for (std::size_t i = 0; i < kScanPoints; i++) averaged_[i] = (readings_[0][i] + readings_[1][i]) / 2;
+        points = &averaged_;
+      }
+      CycleTables* into = tables_[l].fresh(core.scanTable(layer), core.scanPrev(layer), core.scanNext(layer));
+      if (into && scanTables(*points, *into)) core.setScanTable(into, layer);
     }
   }
 
-  // The grid blurred by `soft` and read round `path` into `into`: false for darkness.
+  /* scanStrike: a note's light, at `velocity` (a fraction) times `amount`
+     (Strike), laid in each picture a layer the note is in reads - `layers`
+     has A as 1 and B as 2 - where that layer's Scan is on, each picture
+     once. `lay(picture, x0, y0, x1, y1, level)` lays one segment: into that
+     layer's own picture (0 or 1) while the layers draw one each, and into
+     the shown screen (-1) always, in the page's order. Nothing when Strike
+     is at nought, the note is silent, or on the spectrogram. */
+  template <typename Cell, class Lay>
+  void strike(int note, double velocity, int layers, double amount, bool spect, const ScanInput<Cell>& in,
+              const Plot& plot, Lay&& lay) const {
+    if (!(amount > 0) || spect) return;
+    const double level = jsMin(1, jsMax(0, velocity) * amount);
+    if (!(level > 0)) return;
+    std::array<bool, 2> struck { { false, false } };
+    for (std::size_t l = 0; l < 2; l++) {
+      if (!(layers & (1 << l)) || !(in.depth[l] > 0)) continue;
+      std::array<std::size_t, 2> from { { 0, 0 } };
+      const std::size_t count = in.live ? scanPicturesOf(in.reads[l], from) : 1;
+      for (std::size_t i = 0; i < count; i++) {
+        const std::size_t p = from[i];
+        if (struck[p]) continue;
+        struck[p] = true;
+        const ScanPicture<Cell>& pic = in.pictures[p];
+        scanStrikeArc(paths[p], pic.grid, pic.length, plot, note, [&](double x0, double y0, double x1, double y1) {
+          if (in.live) lay(static_cast<int>(p), x0, y0, x1, y1, level);
+          lay(-1, x0, y0, x1, y1, level);
+        });
+      }
+    }
+  }
+
+  /* The grid blurred by `soft` and read round `path` into `points` (the
+     page's scanRead): false only when the grid is not one this reader has
+     room for. */
   template <typename Cell>
-  bool read(const Cell* grid, std::size_t length, const ScanPath& path, double soft, CycleTables& into) {
+  bool read(const Cell* grid, std::size_t length, const ScanPath& path, double soft, std::array<double, kScanPoints>& points) {
     const int n = static_cast<int>(jsRound(std::sqrt(static_cast<double>(length))));
     if (static_cast<std::size_t>(n) * static_cast<std::size_t>(n) > blurred_.size()) return false;
     scanBlur(grid, n, soft, rows_.data(), blurred_.data());
-    scanRead(blurred_.data(), n, path, points_);
-    return scanTables(points_, into);
+    scanRead(blurred_.data(), n, path, points);
+    return true;
   }
 
  private:
   std::array<ScanTables, 2> tables_;
   std::vector<double> rows_ = std::vector<double>(64 * 64), blurred_ = std::vector<double>(64 * 64);
-  std::array<double, kScanPoints> points_ {};
+  std::array<std::array<double, kScanPoints>, 2> readings_ {};
+  std::array<double, kScanPoints> averaged_ {};
 };
 
 }  // namespace scope

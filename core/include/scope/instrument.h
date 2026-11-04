@@ -138,6 +138,8 @@ class Instrument {
     keyboard_ = std::make_unique<Keyboard>(*notes_, clockIn_.get());
     // The layer the panel shows follows the keyboard, as the page's syncLayers has it.
     keyboard_->setLayerPanel([this] { syncLayerPanel(*brain_, *core_, *keyboard_); });
+    // A note strikes the screen where Scan reads (P7b).
+    keyboard_->setStrike([this](int note, double velocity, int layers) { scanStrike(note, velocity, layers); });
     // The expression pedal is the Picture amount, held as the slider holds it.
     // A known limitation: the plugin's page is not told, so its slider stays
     // where the hand left it while the sound follows the foot. Telling it as a
@@ -793,13 +795,39 @@ class Instrument {
      Here, unlike the page, the frame is a sixtieth of a second of audio, so
      what a tick plays does not depend on a screen (scan.h). */
   void scanFrame() {
-    const LayerPictures& layers = pictureRun_->layers();
-    const auto in = scanLayers<float>(layers.live(), { core_->tone().scan, core_->toneB().scan }, pictureRun_->stage().hold(),
-                                      { layers.stage(0).hold(), layers.stage(1).hold() }, pictureRun_->phosphor().grid().data(),
-                                      { layers.layerGrid(0).grid().data(), layers.layerGrid(1).grid().data() },
-                                      pictureRun_->phosphor().grid().size());
-    scan_->frame(*core_, brain_->view.screen.display == "spect", keyboard_->layersOn() ? 2 : 1, in,
+    scan_->frame(*core_, brain_->view.screen.display == "spect", keyboard_->layersOn() ? 2 : 1, scanIn(),
                  pictureRun_->elapsed(), brain_->scanSoft, nowMs_);
+  }
+
+  /* What Scan is handed, a frame's reading and a strike alike: each layer's
+     depth and what it reads (P7b), and the two pictures - each layer's own
+     grid and hold while the layers draw a picture each, the one screen and
+     the shared stage's hold otherwise. */
+  ScanInput<float> scanIn() const {
+    const PictureRun& run = *pictureRun_;
+    const LayerPictures& layers = run.layers();
+    return scanInput<float>(layers.live(), { core_->tone().scan, core_->toneB().scan }, brain_->scanReads,
+                            run.stage().hold(), { layers.stage(0).hold(), layers.stage(1).hold() },
+                            run.phosphor().grid().data(), { layers.layerGrid(0).grid().data(), layers.layerGrid(1).grid().data() },
+                            run.phosphor().grid().size());
+  }
+
+  /* Notes strike the screen (P7b), the page's scanStrike: the keyboard's
+     note-on hands the note, its velocity as a fraction and its layers, and
+     the light is laid at once into the grids the next frame fades and reads
+     - each layer's own picture while they draw one each, and the shown
+     screen - through the last frame's graticule, as the page lays it
+     through `plot`. Notes the arpeggiator and the score play do not strike,
+     as on the page: they reach the generator without passing noteOn. */
+  void scanStrike(int note, double velocity, int layers) {
+    if (!pictureRun_ || !scan_) return;
+    PictureRun& run = *pictureRun_;
+    const Plot plot = run.plot();
+    scan_->strike(note, velocity, layers, brain_->scanStrike, brain_->view.screen.display == "spect", scanIn(), plot,
+                  [&](int picture, double x0, double y0, double x1, double y1, double level) {
+                    Phosphor* grid = picture < 0 ? &run.phosphor() : run.layers().grid(static_cast<std::size_t>(picture));
+                    if (grid) grid->segment(plot, x0, y0, x1, y1, level);
+                  });
   }
 
   /* Render [from, to) of the block into the output and the picture ring.

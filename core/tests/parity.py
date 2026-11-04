@@ -3017,12 +3017,19 @@ sgrids.update({"rose0": srose(30, 33, 18, 0.2), "rose1": srose(31, 32, 18, 0.35)
                # blur's kernel sums to one: unnormalised, three cells of it
                # would make it 56 times brighter, past the threshold.
                "dim": sellipse(30, 30, 12, 6, 0.3, 3e-4)})
-def sframe(now, gs="e0", hs=1, d0=1, d1=0, count=1, spect=0, elapsed=16.67, live=None):
+def sframe(now, gs="e0", hs=1, d0=1, d1=0, count=1, spect=0, elapsed=16.67, live=None, reads=None):
+    tail = "" if not reads else " r0=%s r1=%s" % reads
     if live:
         (g0, g1), (h0, h1) = live
-        return "frame elapsed=%r now=%r spect=%d count=%d live=1 d0=%r d1=%r h0=%r h1=%r g0=%s g1=%s" % (
-            elapsed, now, spect, count, d0, d1, h0, h1, g0, g1)
-    return "frame elapsed=%r now=%r spect=%d count=%d live=0 d0=%r d1=%r hs=%r gs=%s" % (elapsed, now, spect, count, d0, d1, hs, gs)
+        return "frame elapsed=%r now=%r spect=%d count=%d live=1 d0=%r d1=%r h0=%r h1=%r g0=%s g1=%s%s" % (
+            elapsed, now, spect, count, d0, d1, h0, h1, g0, g1, tail)
+    return "frame elapsed=%r now=%r spect=%d count=%d live=0 d0=%r d1=%r hs=%r gs=%s%s" % (
+        elapsed, now, spect, count, d0, d1, hs, gs, tail)
+# A note's strike (P7b), on the pictures a frame with the same words would
+# read: the note, its velocity as a fraction, Strike, the keyboard's split.
+def sstrike(note, vel, amount=0.5, split=0, point=60, plot="40,20,600,400", **frame):
+    words = sframe(0, **frame).split(" ", 3)[3]   # the frame's words but its elapsed and now
+    return "strike note=%d vel=%r amount=%r split=%d point=%d plot=%s %s" % (note, vel, amount, split, point, plot, words)
 SRUNS = []
 # The figure moving under a reading at three cells: the hold nudged below the
 # page's 0.005 and past it - by 0.006, which a threshold of 0.01 would not
@@ -3048,7 +3055,39 @@ r4 = ["run soft=0.5", sframe(0, d1=0.5, count=2, live=(("e2", "rose0"), (1, 0.5)
       sframe(17, d1=0.5, count=2, live=(("e3", "rose1"), (0.25, 0.5))),
       sframe(34, "e4", hs=0.8, d1=0.5, count=2), sframe(51, "e5", d1=0, count=2, hs=0.8),
       sframe(68, d1=0.5, count=2, live=(("e6", "line"), (1, 1))), sframe(85, "e7", d1=0.5, count=1), "end"]
-SRUNS = [r1, r2, r3, r4]
+# Cross-scan and the strike (P7b). Two pictures under holds that move every
+# frame, so each layer's hold says which rule picked it: crossed (A reading
+# B's while B reads A's) both take the lower of the two; A reading both with
+# B its own, A the lower and B its own; A its own with B reading both, A its
+# own and B the lower; both reading both, crossed again; both reading B's,
+# so A's picture is read by no one and forgets its path; A at no depth with
+# B reading A's, so B's picture is the one forgotten. Strikes between: before
+# any path (the light's centre is the circle), on a dark screen with no path
+# (the middle), a split's upper note on a crossed B landing in A's picture,
+# its lower note on the crossed A in B's, layered into both, the one screen, and the five that
+# lay nothing - Strike at nought, a silent note, a layer with Scan off, the
+# spectrogram, and a split's half whose layer is at no depth.
+L2 = dict(count=2, d1=0.5)
+r5 = ["run soft=2",
+      sstrike(64, 0.8, live=(("rose0", "e5"), (1, 1)), reads=("A", "B"), **L2),
+      sstrike(62, 1.0, gs="dark", d0=1),
+      sframe(0, live=(("e1", "rose0"), (0.25, 1)), reads=("B", "A"), **L2),
+      sstrike(67, 1.0, split=1, live=(("e1", "rose0"), (0.25, 1)), reads=("B", "A"), **L2),
+      sstrike(48, 0.6, split=1, live=(("e1", "rose0"), (0.25, 1)), reads=("B", "A"), **L2),
+      sframe(17, live=(("e2", "rose1"), (0.5, 0.9)), reads=("both", "B"), **L2),
+      sstrike(61, 0.9, live=(("e2", "rose1"), (0.5, 0.9)), reads=("both", "B"), **L2),
+      sframe(34, live=(("e3", "rose0"), (0.7, 0.3)), reads=("A", "both"), **L2),
+      sframe(51, live=(("e4", "rose1"), (1, 0.6)), reads=("both", "both"), **L2),
+      sframe(68, live=(("e5", "rose0"), (0.8, 0.45)), reads=("B", "B"), **L2),
+      sframe(85, d0=0, live=(("e6", "rose1"), (0.35, 0.7)), reads=("B", "A"), **L2),
+      sstrike(70, 0.7, gs="e6", d1=0, count=1),
+      sstrike(70, 0.7, amount=0, live=(("e6", "rose1"), (1, 1)), **L2),
+      sstrike(70, 0.0, live=(("e6", "rose1"), (1, 1)), **L2),
+      sstrike(70, 0.7, d0=0, d1=0, live=(("e6", "rose1"), (1, 1)), count=2),
+      sstrike(70, 0.7, spect=1, live=(("e6", "rose1"), (1, 1)), **L2),
+      sstrike(40, 0.7, split=1, live=(("e6", "rose1"), (1, 1)), count=2, d1=0.5, d0=0),
+      "end"]
+SRUNS = [r1, r2, r3, r4, r5]
 def stext(runs):
     head = "\n".join("grid %s %s" % (n, ",".join(repr(v) for v in g)) for n, g in sgrids.items())
     return head + "\n" + "\n".join("\n".join(r) for r in runs) + "\n"
@@ -3061,8 +3100,9 @@ scpp = [row(l) for l in subprocess.run([sexe, spath], check=True, capture_output
 sjsr = sjs(spath)
 sw = max((worst(a, b) for a, b in zip(sjsr, scpp)), default=inf)
 frames = sum(1 for r in SRUNS for l in r if l.startswith("frame"))
-check("%d frames of four readings, the page's and the core's, the same to %g" % (frames, TOL),
-      len(sjsr) == len(scpp) == frames and sw <= TOL, "worst %.3g" % sw)
+strikes = sum(1 for r in SRUNS for l in r if l.startswith("strike"))
+check("%d frames of four readings and %d strikes, the page's and the core's, the same to %g" % (frames, strikes, TOL),
+      len(sjsr) == len(scpp) == frames + strikes and sw <= TOL, "worst %.3g" % sw)
 # What each frame did: a hold sent (1), a table sent (2), per layer.
 def sdid(r):
     out, k = [], 0
@@ -3090,7 +3130,43 @@ def snull(what, old, new):
     other = sjs(os.path.join(BUILD, "scan_null.txt"))
     check("and the comparison fails against " + what,
           len(other) != len(scpp) or max(worst(a, b) for a, b in zip(other, scpp)) > 1e-6)
+# What the cross-scan run did, from the page's side: the holds each layer
+# was sent, each frame's pictures with a path, and which pictures each
+# strike laid in (the shown screen, -1, always beside a layer's own).
+r5at = sum(len([l for l in r if l.startswith(("frame", "strike"))]) for r in SRUNS[:4])
+r5rows = sjsr[r5at:]
+r5kinds = [l.split()[0] for l in r5 if l.startswith(("frame", "strike"))]
+def spaths(r):
+    k = 0
+    while k < len(r) and r[k] in (1, 2):
+        if r[k] == 1: k += 3
+        else:
+            n = int(r[k + 3]); k += 4
+            for _ in range(n): k += 1 + int(r[k])
+    out = []
+    while k < len(r):
+        if r[k] == 3: out.append(int(r[k + 1])); k += 5
+        else: k += 2
+    return out
+def slaid(r):
+    if r == [6]: return None
+    return sorted(set(int(r[k + 1]) for k in range(0, len(r), 7))), len(r) // 7
+r5holds = [[(d[1], d[2]) for d in sdid(row) if d[0] == "hold"] for row, kind in zip(r5rows, r5kinds) if kind == "frame"]
+r5paths = [spaths(row) for row, kind in zip(r5rows, r5kinds) if kind == "frame"]
+r5laid = [slaid(row) for row, kind in zip(r5rows, r5kinds) if kind == "strike"]
+check("the cross-scan run shows each rule: crossed, both the lower hold; one reading both, the lower of its two "
+      "and the other its own; both reading B's, A's picture forgotten; B reading A's alone, B's forgotten",
+      r5holds[:5] == [[(0, 0.25), (1, 0.25)], [(0, 0.5), (1, 0.9)], [(0, 0.7), (1, 0.3)], [(0, 0.6), (1, 0.6)], [(0, 0.45), (1, 0.45)]]
+      and r5paths[4] == [1] and r5paths[5] == [0] and r5paths[1] == [0, 1],
+      "%r %r" % (r5holds, r5paths))
+check("and the strikes land where they should: one picture's eight segments each on the shown screen as well, "
+      "a crossed pair's notes each in the other's picture, layered in both, the one screen alone, and the five that lay nothing",
+      r5laid == [([-1, 0, 1], 32), ([-1], 8), ([-1, 0], 16), ([-1, 1], 16), ([-1, 0, 1], 32), ([-1], 8),
+                 None, None, None, None, None], "%r" % (r5laid,))
 snull("a reading a tenth of a cell softer", "run soft=3", "run soft=3.1")
+snull("the crossed pair read as each its own", "g1=rose0 r0=B r1=A", "g1=rose0 r0=A r1=B")
+snull("a strike a semitone higher", "strike note=61 ", "strike note=62 ")
+snull("a strike at another Strike", "strike note=67 vel=1.0 amount=0.5 ", "strike note=67 vel=1.0 amount=0.55 ")
 snull("a hold moved by 0.006 rather than 0.003", "hs=0.997 ", "hs=0.994 ")
 snull("no setup landing", "freeze now=100", "freeze now=-1000")
 check("and against the page's frames one out of step", max(worst(a, b) for a, b in zip(sjsr[1:] + sjsr[:1], scpp)) > 1e-3)
@@ -3935,6 +4011,14 @@ SCANNED.append({"op": "change", "id": "persistence", "value": kept})
 # And X-Y chosen with no persistence, which nudges it to the menu's Medium -
 # the menu and Persistence's slider with it, since they are one field.
 SCANNED += [{}, {"op": "click", "id": "dispXY"}]
+# P7b's three: the strike held to its slider, given past its top and given
+# nonsense, and moved by hand; each layer's Reads by setup, given what its
+# menu has not got - B's "both" is fine, A's "nonsense" and B's 7 are each
+# layer's own - and changed by hand, nonsense again its own.
+SCANNED += [{"scanStrike": 30, "scanReadsA": "B", "scanReadsB": "both"}, {"scanStrike": 150, "scanReadsA": "nonsense", "scanReadsB": 7},
+            {"scanStrike": "x"}, {"op": "slider", "id": "scanStrike", "value": 70},
+            {"op": "change", "id": "scanReadsA", "value": "both"}, {"op": "change", "id": "scanReadsB", "value": "A"},
+            {"op": "change", "id": "scanReadsB", "value": "nonsense"}]
 spg, spt = rboth([_json.dumps(o) for o in SCANNED], "scan_ops.txt")
 sb = rbad(spg, spt)
 sp = [_json.loads(l) for l in spg]
@@ -3947,6 +4031,11 @@ check("and the runs show it: B's depth, the softness held to its slider, a time 
       and sp[14]["scan"]["persistence"] == kept and sp[15]["scan"]["persistence"] == "0"
       and sp[16]["scan"]["persistence"] == "0.12" and sp[16]["ranges"]["scanMemory"] == 25,
       "kept %r; %r" % (kept, [r["scan"] for r in sp]))
+check("and P7b's: the strike held to its slider and by hand, each layer's Reads by setup and by hand, "
+      "and what a menu has not got the layer's own",
+      [(r["scan"]["strike"], r["scan"]["reads"]) for r in sp[17:24]]
+      == [(0.3, ["B", "both"]), (1, ["A", "B"]), (0.5, ["A", "B"]), (0.7, ["A", "B"]), (0.7, ["both", "B"]),
+          (0.7, ["both", "A"]), (0.7, ["both", "B"])], "%r" % ([r["scan"] for r in sp[17:24]],))
 mp = [_json.loads(l) for l in mpg]
 check("storing an end moves nothing and puts the fader at it",
       mp[6]["ranges"]["amp"] == 80 and mp[6]["morph"]["pos"] == 1 and mp[3]["morph"]["pos"] == 0
@@ -5002,6 +5091,39 @@ check("in a split, the instrument hands each layer its own depth, its own pictur
 (u0, u1, ulive) = iscan(dict(SPLIT, layers="off"), (48, 55))
 check("and with no layers, the screen's grid and the shared stage's hold",
       not ulive and u0[5] == 0 and u0[2] == u0[3], "A %r" % (u0,))
+# A note's strike in the instrument (P7b), natively: the keyboard's note-on
+# lays the light at once, so the grid a block later is the same run's
+# without a strike plus the strike - every cell at least as bright, and the
+# weighted sum higher. A softer note less, Scan off nothing at all (the
+# same grid as at Strike nought, which is the null that the difference is
+# the strike's), and in a split the note's own layer's picture - or, with
+# B reading A's, A's - while the other's grid is untouched. On figures that
+# are drawn, not a dark screen: the fifth sounds with no key down (the keys
+# drive no waveform, as in Scan breathes), and the split holds a note in
+# each half first. Those held notes strike too, so Strike goes to nought
+# only just before the measured note (`late`), or the two runs would differ
+# from their first note on and every grid with them.
+def istrike(setup, note, vel=100, extra=(), read="grid", held=(), late=()):
+    lines = [["make", 48000, 512, icode_of(setup)]] + list(extra) + [NOTE_ON(n) for n in held] + blocks(40, 512, 512) \
+        + list(late) + [NOTE_ON(note, vel)] + blocks(1, 512, 512) + [[read]]
+    w = [l for l in icpp(iscript("strike", lines)) if l.startswith(read + " ")][-1].split()
+    return [float(x) for x in w[1:]]
+STRUCK = {"oscScan": 100, "display": "xy", "persistence": "0.12", "shape": "sine", "pictureAmount": 0, "interval": 7,
+          "midiDrive": "harmonograph,figure"}
+NOSTRIKE = [["slider", "scanStrike", "0"]]
+g_none, g_hard, g_soft = istrike(STRUCK, 60, extra=NOSTRIKE), istrike(STRUCK, 60), istrike(STRUCK, 60, vel=40)
+g_off, g_off0 = istrike(dict(STRUCK, oscScan=0), 60), istrike(dict(STRUCK, oscScan=0), 60, extra=NOSTRIKE)
+check("the instrument's note strikes its own screen where Scan is on, a softer note less, and Scan off lays nothing",
+      g_none[0] < g_soft[0] < g_hard[0] and g_off == g_off0 and g_none[1] > 5, "none %.6g soft %.6g hard %.6g; off %r against %r"
+      % (g_none[0], g_soft[0], g_hard[0], g_off, g_off0))
+HELD = (48, 55, 79)
+l_none = istrike(SPLIT, 72, late=NOSTRIKE, read="lgrid", held=HELD)
+l_own = istrike(SPLIT, 72, read="lgrid", held=HELD)
+l_crossed = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], read="lgrid", held=HELD)
+l_crossed0 = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], late=NOSTRIKE, read="lgrid", held=HELD)
+check("in a split, the upper note lands in B's picture and leaves A's alone; with B reading A's, in A's and not B's",
+      l_own[2] > l_none[2] and l_own[0:2] == l_none[0:2] and l_crossed[0] > l_crossed0[0]
+      and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))
 lu = ilayers(split=False, notes=(48, 55))
 
 lg = ilayers(["control", "inputFrom", "gen2"], ["control", "inputMode", "1"], split=False, notes=(48,))

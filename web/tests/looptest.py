@@ -473,18 +473,26 @@ with sync_playwright() as pw:
                       else 1 - 0.5 * running / 10 - 0.1 <= least < 1)
         check("from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it" % seed,
               held_right, "%d tenths running away, the hold down to %.3f" % (running, least))
-        # Struck at full every ninety milliseconds the screen stays full, the
-        # coverage with it, and the pitch total and the stage's fold sit at
-        # their bound for the whole run: pinned there is the bound holding,
-        # which the totals check above reads, not a loop that did nothing,
-        # which would sit at nought. So for that run, at the bound counts as
-        # moved; the resonance still has to move, as everywhere.
-        pinned = lambda r: mode == "strike" and r[0] >= 0.5 - 1e-9
+        # Struck at full every ninety milliseconds the screen can stay full
+        # for the whole run, the coverage with it, and then the pitch total
+        # and the stage's fold stop moving: pinned at their bound, which is
+        # the bound holding and which the totals check above reads - or, the
+        # fold, at nought, since a screen full from first to last gives Glow
+        # no range to rescale and the running-away hold reins the stage in.
+        # Which of the two depends on timing (the page stage saw the bound;
+        # the core stage saw nought in two runs of five). Nought is also what
+        # a loop that did nothing reads, so the exemption is not the value but
+        # evidence the loop was saturated: the grid full and running away for
+        # nine tenths of the run, which a dead loop - settled, never held -
+        # cannot show. The resonance still has to move, as everywhere.
+        tenths = sum(run["verdicts"].values())
+        saturated = mode == "strike" and w["grid"] >= 1 - 1e-9 and tenths > 0 and running >= 0.9 * tenths
+        pinned = lambda r: saturated and r[0] >= 0.5 - 1e-9
         check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
               (mv["res"][1] - mv["res"][0]) > 1 and ((mv["freq"][1] - mv["freq"][0]) > 0.01 or pinned(mv["freq"]))
-              and ((mv["fold"][1] - mv["fold"][0]) > 0.05 or pinned(mv["fold"])),
-              "resonance range %.2f, pitch total range %.3f, fold total range %.3f"
-              % (mv["res"][1] - mv["res"][0], mv["freq"][1] - mv["freq"][0], mv["fold"][1] - mv["fold"][0]))
+              and ((mv["fold"][1] - mv["fold"][0]) > 0.05 or pinned(mv["fold"]) or (saturated and mv["fold"][1] < 0.05)),
+              "resonance range %.2f, pitch total %r to %r, fold total %r to %r"
+              % (mv["res"][1] - mv["res"][0], mv["freq"][0], mv["freq"][1], mv["fold"][0], mv["fold"][1]))
         if "Scan" in seed:
             mo = sorted(run["motion"])
             median = mo[len(mo) // 2] if mo else 0

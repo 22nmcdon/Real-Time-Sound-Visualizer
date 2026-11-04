@@ -112,6 +112,17 @@ int main(int argc, char** argv) {
       double a1 = 0, a2 = 0;
       for (std::size_t i = 0; i < g.size(); ++i) { a1 += g[i] * static_cast<double>(i + 1); a2 += static_cast<double>(g[i]) * g[i]; }
       std::printf("grid %.17g %.17g\n", a1, a2);
+    } else if (cmd == "lgrid") {
+      // Each layer's own grid by the same two sums (P7b: where a note's strike
+      // lands in a split), A's then B's. Native only, as "grid" is.
+      std::printf("lgrid");
+      for (int l = 0; l < 2; l++) {
+        const auto& g = instrument.layerPictures().layerGrid(l).grid();
+        double a1 = 0, a2 = 0;
+        for (std::size_t i = 0; i < g.size(); ++i) { a1 += g[i] * static_cast<double>(i + 1); a2 += static_cast<double>(g[i]) * g[i]; }
+        std::printf(" %.17g %.17g", a1, a2);
+      }
+      std::printf("\n");
     } else if (cmd == "hold") {
       // ["hold", layer, value]: a layer's picture stage's hold put in, as the
       // page's tests write pictureStage - so a layer's hold can differ from

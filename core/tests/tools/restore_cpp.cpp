@@ -295,6 +295,11 @@ int main(int argc, char** argv) {
     // Scan's softness as the brain holds it, and the persistence menu's value, its sixth option included (P7a).
     Json scan = Json::object();
     scan.set("soft", num(brain.scanSoft)); scan.set("persistence", str(brain.panel.select("persistence")));
+    // P7b's: the strike as a fraction and what each layer's Scan reads, the brain's own and not the panel's.
+    scan.set("strike", num(brain.scanStrike));
+    Json reads = Json::array();
+    for (const auto& r : brain.scanReads) reads.a.push_back(str(r));
+    scan.set("reads", reads);
     out.set("scan", scan);
     {
       Json moves = Json::array();

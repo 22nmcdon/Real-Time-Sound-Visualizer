@@ -2569,6 +2569,19 @@ redone natively or left out.
   got, where it used to read through a null: Scan's sliders, on the page
   before the core, crashed the morph's walk in parity that way. None of
   the three is a host parameter yet; P8 decides the eight.
+- **The strike and cross-scan since P7b.** `ScanReader` keeps its paths
+  per picture rather than per layer (`ScanInput`: each layer's depth and
+  what it reads, and the two pictures), so a picture two layers read is
+  followed and read once, and a crossed pair is held by the lower of the
+  two pictures' holds. A note's strike is `ScanReader::strike`: the
+  keyboard's `noteOn` calls the instrument through `setStrike` with the
+  note, its velocity and its layers (`layersOf`), and the instrument lays
+  the arc into the shown grid and, while the layers draw one each, the
+  layers' own - at once, on the audio thread, as the note is handled, so
+  it is in the next frame's reading. The keyboard keeps no picture: as on
+  the page, the strike is the picture's. `scanStrike`, `scanReadsA` and
+  `scanReadsB` are additive setup fields with core defaults; neither is a
+  host parameter.
 
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator

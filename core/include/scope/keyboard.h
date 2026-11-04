@@ -193,6 +193,8 @@ class Keyboard {
     if (layersOn() && layers_.mode == LayerMode::Split) strikes_[note >= layers_.point ? 1 : 0]++;
     else { strikes_[0]++; strikes_[1]++; }
     applyNotes();
+    // And on the screen, where Scan reads (P7b): the layers the note is in, A's as 1 and B's as 2.
+    if (onStrike_) onStrike_(note, velocity / 127, layersOf(note));
     // A key struck on a pitched harmonograph strikes the pendulums.
     const Tone& tone = t_.tone();
     if (tone.mode == Mode::Harmonograph && tone.pitched) t_.reswing();
@@ -536,6 +538,16 @@ class Keyboard {
   int editLayer() const { return layersOn() && layers_.edit == 1 ? 1 : 0; }
   void setEdit(int layer) { layers_.edit = layer == 1 ? 1 : 0; if (onLayers_) onLayers_(); }
   void setLayerPanel(std::function<void()> f) { onLayers_ = std::move(f); }
+  /* Who lays a note's strike on the screen (P7b): the page's midiNoteOn calls
+     scanStrike, which is the picture's, so the keyboard only says the note,
+     its velocity as a fraction and the layers it is in. */
+  void setStrike(std::function<void(int, double, int)> f) { onStrike_ = std::move(f); }
+  // The layers a note is in, as scanStrike picks them: A alone without layers, its half in a split, both layered.
+  int layersOf(int note) const {
+    if (!layersOn()) return 1;
+    if (layers_.mode == LayerMode::Split) return note >= layers_.point ? 2 : 1;
+    return 3;
+  }
   void setSwell(std::function<void(double)> f) { onSwell_ = std::move(f); }
 
  private:
@@ -862,6 +874,7 @@ class Keyboard {
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
   std::function<void()> onLayers_;  // the panel's syncLayerPanel
+  std::function<void(int, double, int)> onStrike_;  // the instrument's scanStrike (P7b)
   std::function<void(double)> onSwell_;  // the Picture slider, from the expression pedal
   ArpState arp_;
   double now_ = 0, bpm_ = 120;

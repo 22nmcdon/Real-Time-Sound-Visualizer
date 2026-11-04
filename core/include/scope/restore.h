@@ -64,6 +64,7 @@
 #include "scope/lfo.h"
 #include "scope/matrix.h"
 #include "scope/panel_controls.h"
+#include "scope/scan.h"           // scanReadsOf
 #include "scope/score.h"
 #include "scope/setup.h"
 #include "scope/strokes.h"
@@ -246,6 +247,11 @@ struct Brain {
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
   // Scan's softness in cells (P7a), the page's `scan.soft`: the slider's tenths.
   double scanSoft = 3;
+  /* A note's strike on the screen (P7b), the page's `scan.strike`: the
+     slider's percent as a fraction, a full-velocity note's light. */
+  double scanStrike = 0.5;
+  // What each layer's Scan reads (P7b, cross-scan): the page's `scan.reads`, "A", "B" or "both".
+  std::array<std::string, 2> scanReads { { "A", "B" } };
   // Whose sound layer A's picture moves, and B's (P6): "A", "B" or "both" - the page's layerPictures.moves.
   std::array<std::string, 2> pictureMoves { { "A", "B" } };
   /* The view: what the screen is set to draw, as the page's `state` holds it
@@ -1489,6 +1495,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       const double soft = num("scanSoft");
       panel.setRange("scanSoft", toU16(jsNumberToString(std::isfinite(soft) ? jsMax(0, jsMin(60, soft)) : 30)));
       brain.scanSoft = panel.range("scanSoft") / 10;
+      // The strike, held to its slider, and what each layer's Scan reads (P7b).
+      const double strike = num("scanStrike");
+      panel.setRange("scanStrike", toU16(jsNumberToString(std::isfinite(strike) ? jsMax(0, jsMin(100, strike)) : 50)));
+      brain.scanStrike = panel.range("scanStrike") / 100;
+      for (int l = 0; l < 2; l++) {
+        const std::string own = l == 0 ? "A" : "B";
+        const Json* v = s(l == 0 ? "scanReadsA" : "scanReadsB");
+        brain.scanReads[static_cast<std::size_t>(l)] = scanReadsOf(v && v->type == Json::Type::String ? utf16To8(v->s) : own, own);
+        panel.setSelect(l == 0 ? "scanReadsA" : "scanReadsB", toU16(brain.scanReads[static_cast<std::size_t>(l)]));
+      }
     }
     w.spectroSpan = num("span");
     setZoom(brain, num("zoom"));
@@ -1549,6 +1565,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
+  else if (id == "scanStrike") b.scanStrike = v / 100;
   else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
   else if (id.size() == 6 && id.compare(0, 5, "macro") == 0 && id[5] >= '1' && id[5] <= '4') setMacro(b, id[5] - '1', v / 100);
   else if (id == "morphPos") b.morphPos = v / 100;
@@ -1692,6 +1709,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiLayerPair") keys.setPair(text == "against");
   else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");
   else if (id == "pictureMovesB") b.pictureMoves[1] = pictureMovesOf(text, "B");
+  else if (id == "scanReadsA") b.scanReads[0] = scanReadsOf(text, "A");
+  else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }

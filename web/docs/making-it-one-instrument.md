@@ -832,14 +832,21 @@ the synth's features should be chosen knowing that.
     for the owner to decide. The plan's *Wandering* became *Scan remembers*: with two
     seconds of Persistence the screen changes slowly enough that the meter reads it
     settled while the sound never stops moving, and a preset named for wandering that the
-    readout calls settled would contradict itself. Strike and Reads are the page's until
-    the core learns them (the next step): on the site's instrument and in the plugin a note
-    does not strike and each layer reads its own picture, and the three setup fields are
-    named in `SETUP_AHEAD_OF_CORE`. Notes the arpeggiator and the score play reach the
-    generator without passing `midiNoteOn`, so they do not strike. For that core stage:
-    `scanStep` now keeps its paths per picture rather than per layer, so with the layers on
-    but one shared picture there is one path, not two identical ones - `ScanReader` must
-    follow, which is why parity's frames of Scan's readings differ until it does.
+    readout calls settled would contradict itself. Notes the arpeggiator and the score play
+    reach the generator without passing `midiNoteOn`, so they do not strike.
+  - *P7b, in the core:* the site's instrument and the plugin strike and cross-read too.
+    `ScanReader` keeps its paths per picture, reads each picture once, and makes each
+    layer's table from the reading it hears or the two averaged, with the holds as the
+    page picks them; `ScanReader::strike` is the page's `scanStrike`, which the keyboard's
+    note-on calls with the note's layers, and the instrument lays the arc at once into the
+    grids its next frame fades and reads, through the last frame's graticule. The three
+    setup fields have core defaults, so `SETUP_AHEAD_OF_CORE` is empty again, and the
+    three presets are in `presets.h`. Parity feeds both sides the same grids and strikes
+    and compares the segments laid, to the bit; natively, a real note in the instrument
+    brightens its own screen where Scan is on, a softer one less, Scan off nothing, and
+    in a split the note's layer's picture or, crossed, the other's. On the site the
+    strike can only be seen through the per-layer readings the instrument hands back, so
+    `striketest.py` reads it there, in a split.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input

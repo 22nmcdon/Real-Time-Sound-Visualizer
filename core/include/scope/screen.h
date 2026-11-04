@@ -280,6 +280,9 @@ class PictureRun {
   }
 
   const Phosphor& phosphor() const { return phosphor_; }
+  // The shown grid and the layers' own, where a note's strike is laid (P7b).
+  Phosphor& phosphor() { return phosphor_; }
+  LayerPictures& layers() { return layers_; }
   const PictureSources& pictures() const { return pics_; }
   const PictureStage& stage() const { return stage_; }
   const LayerPictures& layers() const { return layers_; }

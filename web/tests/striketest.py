@@ -24,9 +24,10 @@ Three things Scan gained after it was built (scantest.py holds Scan itself):
   nulls are Stop, which holds the screen and so the tone, and the same
   preset with notes driving the waveform, which falls silent on release.
 
-Run on the page's own brain (`?brain=js&core=js`): the strike and the
-cross-reading are the page's until the core learns them, and the site's
-instrument reads its own grid. Every assertion has its null beside it.
+Run on the page's own brain (`?brain=js&core=js`), which draws the screen
+the page shows, and then on the site's instrument, which lays the strike in
+the core on the grid it draws itself and is read through each layer's
+picture readings it hands back. Every assertion has its null beside it.
 """
 import math, os, statistics, sys
 import numpy as np
@@ -393,6 +394,80 @@ with sync_playwright() as pw:
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
+
+    # ------------------------------------------------------------------
+    print("\n--- on the site's instrument ---")
+    # The site as a visitor opens it: the compiled instrument, which lays the
+    # strike on the grid it draws itself (scan.h's ScanReader::strike), so
+    # nothing the page draws can show it. What can: each layer's picture
+    # stage reads its own grid, and the instrument hands those readings back
+    # (state.source.layerPictures) - a split's two coverages. Crossed hands
+    # with a fifth held in each half, so each layer draws its figure, and A
+    # reading its own picture, so nothing but a strike landing there can move
+    # A's: then six new notes in B's half at full velocity, and A's coverage
+    # a tenth of a second later against the third of a second before. B's
+    # Reads set to A's - by its menu, as a hand sets it, so the crossing has
+    # to reach the instrument the way a hand's does (HOST_CONTROLS) - puts
+    # B's strikes in A's picture. The nulls are Strike at nought and B
+    # reading its own, where A's picture does not move. B's own picture is
+    # not read: B's new notes redraw it whatever the strike does.
+    SITE = """async ([strike, readsB]) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const setup = Object.assign({}, findPreset('b:Crossed hands'),
+                                  { pictureAmount: 0, scanStrike: strike, scanReadsA: 'A', scanReadsB: 'B' });
+      hostQuietly(() => restore(setup)); hostSendSetup();
+      await wait(300);
+      el.scanReadsB.value = readsB; el.scanReadsB.dispatchEvent(new Event('change', { bubbles: true }));
+      // A keyboard present, which the layers need: the screen's.
+      setScreenKeys(true);
+      for (const n of [43, 50, 72, 79]) midiNoteOn(n, 100);
+      await wait(1500);
+      const cover = () => { const l = state.source.layerPictures; return l ? [l.stages[0].raw.cover, l.stages[1].raw.cover] : null; };
+      const before = [];
+      for (let k = 0; k < 10; k++) { await wait(30); before.push(cover()); }
+      const burst = [73, 75, 77, 78, 80, 82];
+      for (const n of burst) midiNoteOn(n, 127);
+      const after = [];
+      for (let k = 0; k < 4; k++) { await wait(30); after.push(cover()); }
+      const live = !!(state.source.layerPictures && state.source.layerPictures.live);
+      for (const n of [43, 50, 72, 79, ...burst]) midiNoteOff(n);
+      setScreenKeys(false);
+      return { before, after, live, host: BRAIN_IN_CORE && state.source.kind === 'host' };
+    }"""
+    def site(strike, reads_b):
+        bb = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
+        pp = bb.new_page(viewport={"width": 1400, "height": 900})
+        errs = []
+        pp.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        pp.goto(f"file://{ART}/scope.html"); pp.wait_for_timeout(1200)
+        if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
+        pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
+        pp.wait_for_timeout(800)
+        got = pp.evaluate(SITE, [strike, reads_b])
+        got["errors"] = errs
+        bb.close()
+        # How far each layer's coverage rose: the most after against the most before.
+        got["rise"] = [max(a[l] for a in got["after"]) - max(b_[l] for b_ in got["before"]) for l in (0, 1)]
+        return got
+    crossed_site, quiet_site, own_site = site(100, "A"), site(0, "A"), site(100, "B")
+    for name, r in (("crossed", crossed_site), ("Strike at nought", quiet_site), ("B its own", own_site)):
+        print("    %s: A's coverage rose %.4f, B's %.4f (live %s, on the instrument %s)"
+              % (name, r["rise"][0], r["rise"][1], r["live"], r["host"]))
+    # A's coverage wanders by about a hundredth from one run to the next (the
+    # nulls fell by 0.009 to 0.019 over six runs, the crossed rose by 0.007 to
+    # 0.019), so the strike is judged against the nulls' own runs as well as
+    # against nought: crossed it must rise, and by a hundredth more than
+    # either null does.
+    check("on the site's instrument, B's notes strike A's picture when B reads A's",
+          crossed_site["host"] and crossed_site["live"] and crossed_site["rise"][0] > 0.004
+          and crossed_site["rise"][0] - max(quiet_site["rise"][0], own_site["rise"][0]) > 0.01,
+          "%.4f against %.4f and %.4f" % (crossed_site["rise"][0], quiet_site["rise"][0], own_site["rise"][0]))
+    null("at Strike nought A's picture does not rise", quiet_site["live"] and quiet_site["rise"][0] < 0.004,
+         str(quiet_site["rise"]))
+    null("with B reading its own, A's picture does not rise", own_site["live"] and own_site["rise"][0] < 0.004,
+         str(own_site["rise"]))
+    check("no page errors on the site", not (crossed_site["errors"] + quiet_site["errors"] + own_site["errors"]),
+          "; ".join((crossed_site["errors"] + quiet_site["errors"] + own_site["errors"])[:3]))
 
 print()
 if fails:

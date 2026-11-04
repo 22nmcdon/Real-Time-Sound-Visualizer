@@ -4661,3 +4661,33 @@ top, and `wasmtest.py`, which loads every preset in turn and then puts a
 microphone through the effect, found the mirror pushed off its axis by a
 picture stage nobody had asked for. `presettest.py` now refuses a preset that
 names it.
+
+**A fix that lets a phone start the sound let parity's page harness start it
+too, and the oscillators ran between batches.** `core/tests/tools/restore_page.py`
+holds the page's clock paused so nothing steps between one batch of fifty lines
+and the next, and it relied on the page's sound never starting: no press, no
+worklet. Since the page asks for its sound again on a `click` as well as a
+pointerdown (`SOUND_PRESSES`), a button the harness clicks from code is a press
+to that listener, and Chromium lets a `file://` page's context start without a
+gesture; the worklet then ran on the audio thread's clock, which no pause
+reaches, and posted its oscillators back, so parity read the two LFOs' phases
+wrong at setups 100 and 150 of five hand runs. It hid behind P7b's page stage,
+whose new setup field failed those runs at setup 0 first; a slider added to the
+random stream then moved an op onto a batch boundary. The harness now stands the
+page's ask down, since nothing it does is a press. Two things for next time: a
+phase that differs between two runs of the same lines is time leaking in, not a
+port that is wrong; and a launch flag cannot hold the context back here, since
+`--autoplay-policy=user-gesture-required` starts a `file://` page's sound with
+no press at all.
+
+**A menu the core has learnt is not heard on the site until it is in
+`HOST_CONTROLS`.** Sliders reach the instrument by type, every range at once;
+menus and switches only by name. P7b's page stage added the two *Reads* menus
+before the core knew them, so they stayed off the list, and parity cannot see
+it, since its hand runs drive the core by id. So `striketest.py` sets B's Reads
+on the site by its menu, as a hand does, and with the names taken off the list
+it fails: the crossing never arrives, and B's strikes stay in B's picture. On
+the site the strike is laid on the instrument's own grid, which the page never
+draws, so the test reads it through the per-layer readings the instrument hands
+back - which exist only while a split draws two figures, which needs a keyboard
+present (`keyboardPresent`; the screen's will do) and a waveform the keys drive.

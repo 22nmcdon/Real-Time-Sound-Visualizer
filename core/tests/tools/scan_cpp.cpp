@@ -100,9 +100,13 @@ int countAllocations() {
       a[static_cast<std::size_t>(y * 64 + x)] = 1;
       b[static_cast<std::size_t>((63 - y) * 64 + x)] = 0.5f;
     }
-    std::array<scope::ScanLayer<float>, 2> in;
-    in[0] = { 1, f % 30 < 15 ? 1.0 : 0.25, a.data(), a.size() };
-    in[1] = { 0.5, 1, b.data(), b.size() };
+    // Both layers reading both pictures (P7b): two readings and an average each frame.
+    scope::ScanInput<float> in;
+    in.live = true;
+    in.depth = { { 1, 0.5 } };
+    in.reads = { { f % 40 < 20 ? "both" : "B", "both" } };
+    in.pictures[0] = { f % 30 < 15 ? 1.0 : 0.25, a.data(), a.size() };
+    in.pictures[1] = { 1, b.data(), b.size() };
     const long start = allocations.load();
     reader.frame(gen, false, 2, in, 16.67, 3, f * 16.67 + 300);
     framed += allocations.load() - start;
@@ -140,14 +144,33 @@ int main(int argc, char** argv) {
     if (w[0] == "run") { reader = std::make_unique<scope::ScanReader>(); gen = std::make_unique<StandIn>(); soft = num(o["soft"]); continue; }
     if (w[0] == "end") continue;
     if (w[0] == "freeze") { reader->freeze(num(o["now"])); continue; }
-    // Through scanLayers, as the instrument picks each layer's grid and hold.
+    // Through scanInput, as the instrument picks each picture's grid and hold
+    // and takes each layer's Reads as restoreSetup does.
     const bool live = o["live"] == "1";
     static const std::vector<float> none(64 * 64, 0.0f);
     const auto grid = [&](const std::string& key) { return o.count(key) ? &grids[o[key]] : &none; };
-    const auto layers = scope::scanLayers<float>(live, { num(o["d0"]), num(o["d1"]) }, o.count("hs") ? num(o["hs"]) : 1,
-                                                 { o.count("h0") ? num(o["h0"]) : 1, o.count("h1") ? num(o["h1"]) : 1 },
-                                                 grid("gs")->data(), { grid("g0")->data(), grid("g1")->data() }, 64 * 64);
-    reader->frame(*gen, o["spect"] == "1", static_cast<int>(num(o["count"])), layers, num(o["elapsed"]), soft, num(o["now"]));
+    const std::array<std::string, 2> reads { { scope::scanReadsOf(o.count("r0") ? o["r0"] : "A", "A"),
+                                               scope::scanReadsOf(o.count("r1") ? o["r1"] : "B", "B") } };
+    const auto input = scope::scanInput<float>(live, { num(o["d0"]), num(o["d1"]) }, reads, o.count("hs") ? num(o["hs"]) : 1,
+                                            { o.count("h0") ? num(o["h0"]) : 1, o.count("h1") ? num(o["h1"]) : 1 },
+                                            grid("gs")->data(), { grid("g0")->data(), grid("g1")->data() }, 64 * 64);
+    if (w[0] == "strike") {
+      // The keyboard's layersOf, from the line's split and point.
+      const int note = static_cast<int>(num(o["note"]));
+      const int layers = num(o["count"]) < 2 ? 1 : o["split"] == "1" ? (note >= num(o["point"]) ? 2 : 1) : 3;
+      const auto box = splitOn(o["plot"], ',');
+      const scope::Plot plot { num(box[0]), num(box[1]), num(box[2]), num(box[3]) };
+      std::vector<double> row;
+      reader->strike(note, num(o["vel"]), layers, num(o["amount"]), o["spect"] == "1", input, plot,
+                     [&](int p, double x0, double y0, double x1, double y1, double level) {
+                       row.insert(row.end(), { 5.0, static_cast<double>(p), x0, y0, x1, y1, level });
+                     });
+      if (row.empty()) row.push_back(6);
+      for (std::size_t i = 0; i < row.size(); i++) std::printf(i ? " %.17g" : "%.17g", row[i]);
+      std::printf("\n");
+      continue;
+    }
+    reader->frame(*gen, o["spect"] == "1", static_cast<int>(num(o["count"])), input, num(o["elapsed"]), soft, num(o["now"]));
     for (std::size_t l = 0; l < 2; l++) {
       if (reader->paths[l]) {
         gen->row.insert(gen->row.end(), { 3.0, static_cast<double>(l), reader->paths[l]->cx, reader->paths[l]->cy, reader->paths[l]->r });

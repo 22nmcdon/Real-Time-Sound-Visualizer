@@ -101,6 +101,7 @@ inline constexpr RangeSpec kRanges[] = {
   { "gen2Rate", 1, 1000, 1, 110 },
   { "inputDepth", 0, 100, 1, 50 },
   { "oscScan", 0, 100, 1, 0 },
+  { "scanStrike", 0, 100, 1, 50 },
   { "scanSoft", 0, 60, 1, 30 },
   { "scanMemory", 0, 100, 1, 0 },
   { "filterCutoff", 0, 1000, 1, 566 },
@@ -126,6 +127,8 @@ inline constexpr SelectSpec kSelects[] = {
   { "midiLayerPair", "each" "\x1f" "against", "each" },
   { "pictureMovesA", "A" "\x1f" "B" "\x1f" "both", "A" },
   { "pictureMovesB", "B" "\x1f" "A" "\x1f" "both", "B" },
+  { "scanReadsA", "A" "\x1f" "B" "\x1f" "both", "A" },
+  { "scanReadsB", "B" "\x1f" "A" "\x1f" "both", "B" },
   { "midiDrawCount", "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8", "2" },
   { "midiDrawWhich", "outer" "\x1f" "lowest" "\x1f" "highest" "\x1f" "recent", "outer" },
   { "genMode", "wave" "\x1f" "harmonograph" "\x1f" "figure" "\x1f" "wireframe", "wave" },
@@ -174,7 +177,7 @@ inline constexpr const char* kMorphIds[] = {
   "bar6", "bar7", "bar8", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread",
   "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "planeTurn", "planeTwist",
   "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "delayMix", "delayMs", "delayFeedback",
-  "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback", "gen2Rate", "inputDepth", "oscScan", "scanSoft",
+  "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback", "gen2Rate", "inputDepth", "oscScan", "scanStrike", "scanSoft",
   "filterCutoff", "filterRes", "position", "holdoff", "level", "timebase", "zoom",
 };
 

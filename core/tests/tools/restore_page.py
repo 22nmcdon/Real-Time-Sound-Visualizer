@@ -129,7 +129,7 @@ DUMP = """(setups) => {
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
       // Scan's softness as the brain holds it, and the persistence menu's value, its sixth option included (P7a).
-      scan: { soft: scan.soft, persistence: el.persistence.value },
+      scan: { soft: scan.soft, persistence: el.persistence.value, strike: scan.strike, reads: scan.reads.slice() },
       // Whose sound each layer's picture moves (P6), and what its menu shows.
       pictureMoves: [...layerPictures.moves, el.pictureMovesA.value, el.pictureMovesB.value],
       // The view: what the screen draws by. Switches by their truth, which is
@@ -208,6 +208,14 @@ def main():
         # are set - and since its oscillators are the page's (5n) it wrote
         # its own phases over them: one run in two, by a fixed step.
         page.goto("file://" + os.path.abspath(PAGE) + "?brain=js")
+        # And it must stay unstarted. Since the page asks for its sound again
+        # on a click as well as a pointerdown (SOUND_PRESSES, so that a phone
+        # is heard), a button this harness clicks from code is a press to that
+        # listener, and on a file:// page Chromium lets the context start: the
+        # worklet then ran in real time and moved the oscillators between one
+        # batch of fifty and the next, which parity read as LFO phases wrong at
+        # setups 100 and 150. Nothing here is a press, so the ask stands down.
+        page.evaluate("() => { applyGeneratorSound = async () => {}; }")
         page.clock.pause_at(1000)
         page.clock.run_for(700)
         # The LFOs ran in those frames, and the core's have not: from one
