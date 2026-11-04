@@ -12,14 +12,21 @@ ScopeProcessor::ScopeProcessor()
        its generator can take the input for its live-input modes. */
     : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), false)
                                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+  /* Two groups, so a host that shows them - most do, as folders or
+     sections - puts the morph apart from the bank it plays with. */
+  auto main = std::make_unique<juce::AudioProcessorParameterGroup>("loop", "Instrument", "|");
+  auto setups = std::make_unique<juce::AudioProcessorParameterGroup>("setups", "Setups", "|");
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto* spec = scope::rangeSpec(kKnobs[i].slider);
-    knobs_[i] = new juce::AudioParameterFloat(juce::ParameterID { kKnobs[i].id, 1 }, kKnobs[i].name,
-                                              juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max),
-                                                                             static_cast<float>(spec->step)),
-                                              static_cast<float>(spec->value));
-    addParameter(knobs_[i]);
+    auto knob = std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { kKnobs[i].id, kKnobs[i].version }, kKnobs[i].name,
+        juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max), static_cast<float>(spec->step)),
+        static_cast<float>(spec->value));
+    knobs_[i] = knob.get();
+    (kKnobs[i].main ? main : setups)->addChild(std::move(knob));
   }
+  addParameterGroup(std::move(main));
+  addParameterGroup(std::move(setups));
   moved_.reserve(kKnobs.size());
   // What the out sends goes to the host's MIDI out, at its sample.
   instrument_.hooks.midiOut = [this](const std::uint8_t* bytes, int length, int sample) { outgoing_.addEvent(bytes, length, sample); };
@@ -32,13 +39,18 @@ ScopeProcessor::ScopeProcessor()
     }
   };
   // A setup loaded: the parameters read back from the panel, so the host shows what it set.
-  instrument_.hooks.loaded = [this] {
-    for (std::size_t i = 0; i < kKnobs.size(); ++i) {
-      const auto v = static_cast<float>(instrument_.slider(kKnobs[i].slider));
-      knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
-      applied_[i] = knobs_[i]->get();
-    }
-  };
+  instrument_.hooks.loaded = [this] { readBack(false); };
+}
+
+void ScopeProcessor::readBack(bool unmovedOnly) {
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    // One the host has moved since it was last applied keeps the host's value, to be applied below.
+    if (unmovedOnly && knobs_[i]->get() != applied_[i]) continue;
+    const auto v = static_cast<float>(instrument_.slider(kKnobs[i].slider));
+    knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
+    applied_[i] = knobs_[i]->get();
+  }
+  panelLayer_ = instrument_.panelLayer();
 }
 
 bool ScopeProcessor::queue(std::optional<scope::Instrument::Command> command) {
@@ -154,6 +166,11 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
       }
     }
   }
+  /* The panel turned to the other layer - by the page's edit switch, or by
+     the layers going off: the sliders a layer has now show that layer, so
+     their parameters read back, or the host would show A's cutoff while its
+     next move wrote B's. */
+  if (instrument_.panelLayer() != panelLayer_) readBack(true);
   // Each parameter the host has moved since the last block, to its slider.
   moved_.clear();
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {

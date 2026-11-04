@@ -317,8 +317,8 @@ Seven features pass, ranked by what to build first:
    on the Shape tab, bend the voice's wave at one point of its cycle. The drag is built
    too: grab the figure in X-Y and pull, and Bend at goes to the moment of the cycle you
    took hold of and Bend to whatever brings the figure nearest your hand - the same two
-   sliders, moved as a hand moves them. Bend is a candidate for a host parameter in place
-   of a macro, which P8 decides with the rest of the eight; `kKnobs` is unchanged.*
+   sliders, moved as a hand moves them. Bend became a host parameter in P8a, in place of
+   a macro, so a host can automate the bend as the hand and the knob move it.*
 3. **The picture plays the oscillator back.** The picture stage's reads drive the
    oscillator's own shape (morph, fold, sync), so the figure reshapes itself and the sound
    moves under one held chord. In the effect the same reads can only shape the output.
@@ -387,7 +387,7 @@ experiment.
 | Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
 | Layers | Layer B, split or layered over A: its own voice, envelope, figure, plane, turn and echo | **Keep, whole, in the synth** (the owner, in P5, over this table's first verdict, which trimmed B's own voice): a split with two sounds is how the instrument is played, and two sounds draw two figures, one in each colour (*What only the synth can do*, 5). Its loops grow defences of their own: see *Each layer's picture, and whose sound it moves* in P6 |
 | Splits as two sounds, arpeggiator | Multi-timbral and hands-free performance | **Splits stay on Play**, with the layers. **The arpeggiator goes to the drawer** (done in P5) |
-| Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across |
+| Macros | Four knobs fanning out to many controls | **Kept until replaced.** Macro 1-4 are four of the plugin's eight host parameters (`kKnobs` in `plugin/src/PluginProcessor.h`), so removing them removes a project's automation. The Picture amount and the three reads replace them, with saved automation mapped across. *Done in P8a: the macros are no longer host parameters. The bank is Picture, Scan, Persistence, Bend, Cutoff, Level and Echo, the phaser's amount taking the eighth place when it is built, and the morph after them in a group of its own; nothing was mapped across, since the owner had no saved projects. The page's Macros section stays until the tab rework decides it* |
 | Time and key | Key and scale, quantiser, clock, MIDI clock | **Keep only what the score needs** *Done in P5: key, scale, the quantiser and its glide, the tempo and Tap stay on Measure - the quantiser keeps a picture-pushed pitch in key, which is the loop's; the clock's source and the bar go to the drawer, on Perform. Settled after P6: the plugin takes its tempo from the host and the page from a MIDI clock when one is sent, both already built, and nothing more is wanted* |
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
 | Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
@@ -435,9 +435,10 @@ Each removal runs through five places, and the house rules apply to all of them.
 3. **The plugin's saved state and host parameters.** If nobody has saved a project yet,
    now is the cheapest time to change the state. The host parameters have a stricter rule:
    **none is removed until its replacement exists, and saved automation maps across.**
-   Today they are Macro 1-4, the setup morph, Level, Cutoff (the voice filter's) and Echo
-   (`kKnobs`), so the macros, the morph and the voice filter cannot be cut as plain
-   removals.
+   They were Macro 1-4, the setup morph, Level, Cutoff (the voice filter's) and Echo
+   (`kKnobs`); since P8a they are Picture, Scan, Persistence, Bend, Cutoff, Level and
+   Echo, then Morph, with the phaser's amount to come eighth. The voice filter and the
+   morph still cannot be cut as plain removals.
 4. **Tests:** a removed feature's suite goes with it; a suite that tested two things is
    rewritten, not left asserting less.
 5. **The words:** the cheat sheet, the presets' lines, `DESIGN.md`, the README.
@@ -907,7 +908,22 @@ the synth's features should be chosen knowing that.
     new design rather than a defence. The cheat sheet already says the score's notes are
     never drawn, and still does; the score's comments in the page now point here.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
-  by what the loop does, and the phaser.
+  by what the loop does, and the phaser. The owner's order, after going through it: the
+  host knobs first; then knobs in place of sliders on the page, after the owner's
+  Headroom (its `styles.css` and `src/lib/knob.js`: a CSS face over the range input,
+  which stays the value, the keyboard's and the screen reader's), together with the
+  four tabs, which measured at 2.7 tabs' worth of content across today's five; the
+  phaser; the loop on the screen as something switched on when wanted rather than
+  always shown; and the presets rebuilt from nothing under the four headings, most of
+  today's removed, the owner having liked none of them.
+  - *P8a, built: the host knobs.* Picture, Scan, Persistence, Bend, Cutoff, Level and
+    Echo, the phaser's amount eighth once it exists, and the morph after them in a
+    group of its own - automatable without the bank's placement, as the owner put it.
+    Strike is not a parameter. The macros stopped being parameters with nothing mapped
+    across, since no project had been saved. A layer's controls address the layer the
+    panel shows, as their slider does for a hand, and read back when it turns; ids are
+    stable strings, so the phaser's arrival moves the morph's index and not its
+    automation. `plugin/PLAN.md` has the reasoning and the costs.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

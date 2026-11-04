@@ -74,8 +74,10 @@ int main() {
   for (const auto& id : scope::morphIds()) walk({ id }, id.c_str());
   walk(scope::morphIds(), "all");
   // The host's parameters, as the instrument applies them: a slider moved by
-  // its number, a hundred times each across its range.
-  for (const char* id : { "macro1", "macro2", "macro3", "macro4", "morphPos", "amp", "vcfCut", "delayMix" }) {
+  // its number, a hundred times each across its range. The plugin's kKnobs
+  // names them (plugin/src/PluginProcessor.h, which this cannot include for
+  // JUCE's sake); parity reads that list and requires this one to be it.
+  for (const char* id : { "pictureAmount", "oscScan", "scanMemory", "oscBend", "vcfCut", "amp", "delayMix", "morphPos" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
     scope::moveSliderTo(id, r->min, brain, gen, keys, lfos);

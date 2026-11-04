@@ -1100,55 +1100,135 @@ int main() {
 
   std::printf("\n--- the host's parameters, and the state ---\n");
   {
-    /* Eight parameters, each a slider of the panel in its units, read back
-       from the setup loaded: "Stretched echoes" has its echo at 45, the
-       level and the cutoff at the page's defaults, the macros at nought. */
+    /* P8a's bank: the loop's seven in a group, the morph in one of its own,
+       each a slider of the panel in its units, read back from the setup
+       loaded: "Stretched echoes" has its echo at 45, the level and the cutoff
+       at the page's defaults, the Picture amount where a hand would find it.
+       The macros are no longer among them. Indexes are asked of the host's
+       own list, so the morph's place is the host's, not this file's. */
     setenv("SCOPE_PRESET", "Stretched echoes", 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
-    std::string names;
-    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) names += (i ? ", " : "") + p.knob(i)->name.toStdString();
-    check("eight parameters for the host, each one of the panel's sliders, read back from the setup it loads",
-          p.getParameters().size() == 8 && names == "Macro 1, Macro 2, Macro 3, Macro 4, Morph, Level, Cutoff, Echo"
-          && p.knob(7)->get() == 45 && p.knob(5)->get() == 55 && p.knob(6)->get() == 667 && p.knob(0)->get() == 0,
-          names + "; echo " + num(p.knob(7)->get()) + ", level " + num(p.knob(5)->get()) + ", cutoff " + num(p.knob(6)->get()));
+    std::string names, ids;
+    for (auto* parameter : p.getParameters()) {
+      auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter);
+      names += (names.empty() ? "" : ", ") + parameter->getName(32).toStdString();
+      ids += (ids.empty() ? "" : " ") + (ranged ? ranged->getParameterID().toStdString() : std::string("?"))
+             + ":" + std::to_string(parameter->getVersionHint());
+    }
+    const auto& groups = p.getParameterTree().getSubgroups(false);
+    std::string grouped;
+    for (const auto* g : groups) {
+      grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
+      for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
+    }
+    check("the host's parameters are the loop's seven and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 8 && names == "Picture, Scan, Persistence, Bend, Cutoff, Level, Echo, Morph"
+          && p.knob("echo")->get() == 45 && p.knob("level")->get() == 55 && p.knob("cutoff")->get() == 667
+          && p.knob("picture")->get() == 60 && p.knob("scan")->get() == 0 && p.knob("bend")->get() == 0,
+          names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
+          + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
+    check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
+          grouped == "Instrument: Picture Scan Persistence Bend Cutoff Level Echo; Setups: Morph"
+          && p.knob("morph") == p.getParameters()[7] && ids.find("macro") == std::string::npos
+          && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 morph:1",
+          grouped + " | " + ids);
   }
-  /* "Brighten, grit, space, swirl" has a routing from each macro. Automated
-     from block 20 - Macro 1 to full, the cutoff from 480 to 900 - each is
-     heard from that block and not a sample before; the same unautomated is
-     the null. */
-  const auto automated = [&](int knobIndex, float value) {
+  /* Each of the eight automated from block 20 on "Brighten, grit, space,
+     swirl": heard from that block and not a sample before, and its slider
+     where the host put it. The same unautomated is the null for both halves,
+     and each target is somewhere the slider was not, so a parameter that
+     wrote nothing could not pass on its slider. Persistence is only heard
+     through what reads the screen, so Scan is turned up for it first; the
+     morph needs two ends that differ, stored as a hand would. */
+  struct Automated { std::vector<float> got; double before = 0, after = 0; };
+  /* The slider each parameter must reach is named here, not looked up in
+     kKnobs: read through the processor's own table, a parameter wired to the
+     wrong slider was checked on that wrong slider, and passed. */
+  const auto automated = [&](const char* id, const char* slider, float value, const std::function<void(ScopeProcessor&)>& prep) {
     setenv("SCOPE_PRESET", "Brighten, grit, space, swirl", 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
-    std::vector<float> got;
+    if (prep) prep(p);
+    Automated out;
+    auto* knob = id ? p.knob(std::string_view(id)) : nullptr;
+    out.before = slider ? p.slider(slider) : 0;
     juce::AudioBuffer<float> buf(2, block);
-    for (int k = 0; k < 60; ++k) {
-      if (k == 20 && knobIndex >= 0) p.knob(static_cast<std::size_t>(knobIndex))->setValueNotifyingHost(p.knob(static_cast<std::size_t>(knobIndex))->convertTo0to1(value));
+    for (int k = 0; k < 100; ++k) {
+      if (k == 20 && knob) knob->setValueNotifyingHost(knob->convertTo0to1(value));
       buf.clear();
       juce::MidiBuffer m;
       if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 120); }
       p.processBlock(buf, m);
-      for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+      for (int i = 0; i < block; ++i) out.got.push_back(buf.getSample(0, i));
     }
-    return std::make_pair(got, std::make_pair(p.slider("macro1"), p.slider("vcfCut")));
+    out.after = slider ? p.slider(slider) : 0;
+    return out;
   };
   {
-    const auto [still, stillSliders] = automated(-1, 0);
-    const auto [macro, macroSliders] = automated(0, 100);
-    const auto [cutoff, cutoffSliders] = automated(6, 900);
-    check("automating Macro 1 or the cutoff is heard from the block it is moved in, and not a sample before",
-          apart(still, macro, 0, 20 * block) == 0 && apart(still, macro, 20 * block, still.size()) > 0.02
-          && apart(still, cutoff, 0, 20 * block) == 0 && apart(still, cutoff, 20 * block, still.size()) > 0.02
-          && macroSliders.first == 100 && cutoffSliders.second == 900,
-          "macro apart by " + num(apart(still, macro, 20 * block, still.size())) + ", cutoff by " + num(apart(still, cutoff, 20 * block, still.size()))
-          + "; sliders " + num(macroSliders.first) + ", " + num(cutoffSliders.second));
+    const auto scanOn = [](ScopeProcessor& p) { p.moveSlider("oscScan", 80); };
+    // Storing an end puts the fader at it, so the fader goes back to A's end by hand, which walks the sliders back too.
+    const auto morphEnds = [](ScopeProcessor& p) {
+      p.storeMorph(false);
+      p.moveSlider("vcfCut", 950); p.moveSlider("amp", 20); p.storeMorph(true);
+      p.moveSlider("morphPos", 0);
+    };
+    struct Case { const char* id; const char* slider; float value; std::function<void(ScopeProcessor&)> prep; };
+    const std::vector<Case> cases {
+      { "picture", "pictureAmount", 0, nullptr }, { "scan", "oscScan", 100, nullptr }, { "persistence", "scanMemory", 90, scanOn },
+      { "bend", "oscBend", 100, nullptr }, { "cutoff", "vcfCut", 900, nullptr }, { "level", "amp", 20, nullptr },
+      { "echo", "delayMix", 100, nullptr }, { "morph", "morphPos", 100, morphEnds },
+    };
+    for (const auto& c : cases) {
+      const auto still = automated(nullptr, nullptr, 0, c.prep);
+      const auto moved = automated(c.id, c.slider, c.value, c.prep);
+      const double early = apart(still.got, moved.got, 0, 20 * block), late = apart(still.got, moved.got, 20 * block, still.got.size());
+      check(std::string("automating ") + c.id + " is heard from the block it is moved in, not a sample before, its slider where it was put",
+            early == 0 && late > 0.01 && moved.after == c.value && moved.before != c.value,
+            "before the move " + num(early) + ", after " + num(late) + "; slider " + num(moved.before) + " then " + num(moved.after));
+    }
+  }
+  {
+    /* With the layers on, the panel's voice sliders show the layer being
+       edited, and so do their parameters: B's level, set on the page, is the
+       parameter's while B is shown, A's again once A is - read back as the
+       panel turns - and a host move then is A's, B keeping its own. Without
+       the read-back the parameter would still say B's 80 over A's slider,
+       which is the null this was written against. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    p.pageClick("midiPoly");
+    p.pageControl("midiLayers", scope::Json::string(std::string_view("layer")));
+    p.pageClick("midiEditB");
+    p.pageSlider("amp", u"80");
+    p.processBlock(buf, none);
+    const float onB = p.knob("level")->get();
+    p.pageClick("midiEditA");
+    p.processBlock(buf, none);
+    const float onA = p.knob("level")->get();
+    p.knob("level")->setValueNotifyingHost(p.knob("level")->convertTo0to1(30));
+    p.processBlock(buf, none);
+    check("a layer's parameter shows the layer the panel shows, read back as it turns, and a host move is that layer's alone",
+          onB == 80 && onA == 55 && p.tone().amp == 0.3 && p.toneB().amp == 0.8,
+          "on B " + num(onB) + ", on A " + num(onA) + "; then A " + num(p.tone().amp) + ", B " + num(p.toneB().amp));
+    /* And a host move in the very block the panel turns is the host's, on the
+       layer turned to: the read-back leaves a parameter the host has just
+       moved alone. Reading every parameter back would put B's 80 over it and
+       lose the move - the mutant this was added for. */
+    p.pageClick("midiEditB");
+    p.knob("level")->setValueNotifyingHost(p.knob("level")->convertTo0to1(40));
+    p.processBlock(buf, none);
+    check("a host move in the block the panel turns is kept, and is the turned-to layer's",
+          p.knob("level")->get() == 40 && p.toneB().amp == 0.4 && p.tone().amp == 0.3,
+          "parameter " + num(p.knob("level")->get()) + "; B " + num(p.toneB().amp) + ", A " + num(p.tone().amp));
   }
   {
     /* The state round trip. One plugin loads "Brighten, grit, space, swirl",
-       has Macro 2 and the echo moved by the host and learns the mod wheel;
+       has Scan and the echo moved by the host and learns the mod wheel;
        its state, handed to a fresh plugin before it is prepared, is what
        that one loads instead of its own preset. Both then play the same
        notes: the same sound, sample for sample, the same parameters, the
@@ -1158,8 +1238,8 @@ int main() {
       juce::AudioBuffer<float> buf(2, block);
       for (int k = 0; k < 80; ++k) {
         if (k == 0 && tweak) {
-          p.knob(1)->setValueNotifyingHost(p.knob(1)->convertTo0to1(70));
-          p.knob(7)->setValueNotifyingHost(p.knob(7)->convertTo0to1(30));
+          p.knob("scan")->setValueNotifyingHost(p.knob("scan")->convertTo0to1(70));
+          p.knob("echo")->setValueNotifyingHost(p.knob("echo")->convertTo0to1(30));
         }
         buf.clear();
         juce::MidiBuffer m;
@@ -1181,14 +1261,14 @@ int main() {
     ScopeProcessor b, none;
     b.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
     b.prepareToPlay(rate, block);
-    const float prepared = b.knob(1)->get();  // loaded by prepareToPlay itself, not left for the first block
+    const float prepared = b.knob("scan")->get();  // loaded by prepareToPlay itself, not left for the first block
     none.prepareToPlay(rate, block);
     const auto heardB = play(b, false), heardNone = play(none, false);
     bool same = true;
     for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) same = same && a.knob(i)->get() == b.knob(i)->get();
     check("a state handed to a fresh plugin is the setup it loads: the same sound, the same parameters, the wheel learned",
           apart(heardA, heardB, 0, heardA.size()) == 0 && apart(heardA, heardNone, 0, heardA.size()) > 0.02 && same
-          && b.knob(1)->get() == 70 && b.knob(7)->get() == 30 && b.learned() == 1 && none.learned() == 0 && state.getSize() > 20
+          && b.knob("scan")->get() == 70 && b.knob("echo")->get() == 30 && b.learned() == 1 && none.learned() == 0 && state.getSize() > 20
           && prepared == 70,
           std::to_string(state.getSize()) + " bytes; apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by "
           + num(apart(heardA, heardNone, 0, heardA.size())) + "; learned " + std::to_string(b.learned()));
@@ -1200,7 +1280,7 @@ int main() {
       d.prepareToPlay(rate, block);
       juce::AudioBuffer<float> held(2, block);
       juce::MidiBuffer none2;
-      d.knob(5)->setValueNotifyingHost(d.knob(5)->convertTo0to1(100));
+      d.knob("level")->setValueNotifyingHost(d.knob("level")->convertTo0to1(100));
       d.processBlock(held, none2);
       const double moved = d.slider("amp");
       d.moveSlider("amp", 20);
@@ -1215,13 +1295,13 @@ int main() {
     juce::AudioBuffer<float> buf(2, block);
     juce::MidiBuffer m;
     c.processBlock(buf, m);
-    const float before = c.knob(1)->get();
+    const float before = c.knob("scan")->get();
     c.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
-    const float waiting = c.knob(1)->get();
+    const float waiting = c.knob("scan")->get();
     c.processBlock(buf, m);
     check("a state handed over while it plays is loaded at the next block's top, and its parameters follow",
-          before == 0 && waiting == 0 && c.knob(1)->get() == 70 && c.knob(7)->get() == 30,
-          num(before) + ", " + num(waiting) + ", then " + num(c.knob(1)->get()));
+          before == 0 && waiting == 0 && c.knob("scan")->get() == 70 && c.knob("echo")->get() == 30,
+          num(before) + ", " + num(waiting) + ", then " + num(c.knob("scan")->get()));
   }
 
   std::printf("\n--- the page as the plugin's face ---\n");
@@ -1264,14 +1344,14 @@ int main() {
     const bool says = moved && scope::utf16To8(scope::jsonStringify(*moved)) == "[[\"s\",\"vcfCut\",\"900\"]]";
     check("a slider moved on the page is the same move at the next block's top, sample for sample, its parameter following",
           apart(paged, direct, 0, paged.size()) == 0 && apart(paged, still, 20 * block, paged.size()) > 0.02 && waiting == 480
-          && p->knob(6)->get() == 900,
+          && p->knob("cutoff")->get() == 900,
           "apart by " + num(apart(paged, direct, 0, paged.size())) + ", from unmoved by " + num(apart(paged, still, 20 * block, paged.size()))
-          + "; before the block " + num(waiting) + ", cutoff parameter " + num(p->knob(6)->get()));
+          + "; before the block " + num(waiting) + ", cutoff parameter " + num(p->knob("cutoff")->get()));
     check("and the state the page is shown carries it, not counted as the host's; a parameter the host moves is counted",
           says && after.version == before.version && after.code != before.code && before.version >= 1,
           "version " + std::to_string(before.version) + " then " + std::to_string(after.version) + (says ? ", vcfCut at 900 in it" : ", not in it"));
     const int was = p->pageState().version;
-    p->knob(0)->setValueNotifyingHost(p->knob(0)->convertTo0to1(60));
+    p->knob("picture")->setValueNotifyingHost(p->knob("picture")->convertTo0to1(30));
     juce::AudioBuffer<float> buf(2, block);
     juce::MidiBuffer none;
     p->processBlock(buf, none);

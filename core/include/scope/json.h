@@ -43,28 +43,50 @@ namespace scope {
 
 // --- Number.prototype.toString ------------------------------------------------
 
-inline std::string jsNumberToString(double x) {
-  if (std::isnan(x)) return "NaN";
-  if (std::isinf(x)) return x < 0 ? "-Infinity" : "Infinity";
-  if (x == 0) return "0";
-  std::string sign = x < 0 ? "-" : "";
-  char buf[64];
-  const auto res = std::to_chars(buf, buf + sizeof buf, std::fabs(x), std::chars_format::scientific);
-  const std::string sci(buf, res.ptr);  // d.ddde+NN, the shortest that reads back
-  const std::size_t e = sci.find('e');
-  std::string digits = sci.substr(0, 1) + (e > 2 ? sci.substr(2, e - 2) : "");
-  const int exp10 = std::atoi(sci.c_str() + e + 1);
-  const int k = static_cast<int>(digits.size()), n = exp10 + 1;  // value = 0.digits x 10^n
-  std::string out;
-  if (k <= n && n <= 21) out = digits + std::string(static_cast<std::size_t>(n - k), '0');
-  else if (0 < n && n <= 21) out = digits.substr(0, static_cast<std::size_t>(n)) + "." + digits.substr(static_cast<std::size_t>(n));
-  else if (-6 < n && n <= 0) out = "0." + std::string(static_cast<std::size_t>(-n), '0') + digits;
+/* Into a buffer of at least kJsNumberRoom, and nothing made: the length is
+   returned. jsNumberToString is this, so the two cannot write a number two
+   ways. It exists for the audio thread (P8a): the persistence, a host
+   parameter now, writes its menu's sixth option as the value it shows, and
+   the string-building version allocated on every move of it. The longest it
+   writes is a sign, "0.", five zeros and seventeen digits. */
+constexpr std::size_t kJsNumberRoom = 32;
+inline std::size_t jsNumberToChars(double x, char* out) {
+  const auto put = [&](const char* s) { std::size_t n = 0; while (s[n]) { out[n] = s[n]; ++n; } return n; };
+  if (std::isnan(x)) return put("NaN");
+  if (std::isinf(x)) return put(x < 0 ? "-Infinity" : "Infinity");
+  if (x == 0) return put("0");
+  std::size_t w = 0;
+  if (x < 0) out[w++] = '-';
+  char sci[64];
+  const auto res = std::to_chars(sci, sci + sizeof sci, std::fabs(x), std::chars_format::scientific);
+  *res.ptr = '\0';  // d.ddde+NN, the shortest that reads back
+  std::size_t e = 0;
+  while (sci[e] != 'e') ++e;
+  char digits[24];
+  int k = 0;
+  digits[k++] = sci[0];
+  for (std::size_t i = 2; i < e; ++i) digits[k++] = sci[i];
+  const int exp10 = std::atoi(sci + e + 1);
+  const int n = exp10 + 1;  // value = 0.digits x 10^n
+  const auto digit = [&](int from, int to) { for (int i = from; i < to; ++i) out[w++] = digits[i]; };
+  if (k <= n && n <= 21) { digit(0, k); for (int i = k; i < n; ++i) out[w++] = '0'; }
+  else if (0 < n && n <= 21) { digit(0, n); out[w++] = '.'; digit(n, k); }
+  else if (-6 < n && n <= 0) { out[w++] = '0'; out[w++] = '.'; for (int i = 0; i < -n; ++i) out[w++] = '0'; digit(0, k); }
   else {
     const int shown = n - 1;
-    out = digits.substr(0, 1) + (k > 1 ? "." + digits.substr(1) : "") + "e" + (shown < 0 ? "-" : "+")
-        + std::to_string(shown < 0 ? -shown : shown);
+    digit(0, 1);
+    if (k > 1) { out[w++] = '.'; digit(1, k); }
+    out[w++] = 'e';
+    out[w++] = shown < 0 ? '-' : '+';
+    const auto tail = std::to_chars(out + w, out + kJsNumberRoom, shown < 0 ? -shown : shown);
+    w = static_cast<std::size_t>(tail.ptr - out);
   }
-  return sign + out;
+  return w;
+}
+
+inline std::string jsNumberToString(double x) {
+  char buf[kJsNumberRoom];
+  return std::string(buf, jsNumberToChars(x, buf));
 }
 
 // --- strings ---------------------------------------------------------------------

@@ -151,9 +151,18 @@ inline double rangeSanitiseNumber(const RangeSpec& r, double v) {
 // control would hold - a slider's number, a menu's chosen value or "".
 class Controls {
  public:
+  /* Every menu's value is given room for any number up front, and so is a
+     sixth option's, so writing one later - the persistence, moved by a host
+     on the audio thread (P8a) - makes nothing: the writes below assign into
+     that room rather than handing a new string over. */
   Controls() {
     for (const auto& r : kRanges) ranges_[r.id] = r.value;
-    for (const auto& s : kSelects) selects_[s.id] = s.value;
+    for (const auto& s : kSelects) {
+      std::string& value = selects_[s.id];
+      value.reserve(kJsNumberRoom);
+      value.assign(s.value);
+      custom_[s.id].reserve(kJsNumberRoom);
+    }
   }
   /* A slider or a menu the panel has not got is refused, and nothing is
      written: false. Each used to look its id up and use what it found, and an
@@ -179,20 +188,21 @@ class Controls {
   bool setSelect(const std::string& id, const std::u16string& written) {
     const SelectSpec* s = selectSpec(id);
     const std::string value = utf16To8(written);
-    if (id == "xyX" || id == "xyY") { selects_[id] = laneOption(value) ? value : ""; return true; }
+    if (id == "xyX" || id == "xyY") { keep(selects_[id], laneOption(value) ? std::string_view(value) : std::string_view()); return true; }
     if (!s) return false;
     const auto custom = custom_.find(id);
-    selects_[id] = selectHas(*s, value) || (custom != custom_.end() && value == custom->second) ? value : "";
+    keep(selects_[id], selectHas(*s, value) || (custom != custom_.end() && !value.empty() && value == custom->second)
+                           ? std::string_view(value) : std::string_view());
     return true;
   }
   /* The persistence menu's sixth option (P7a), for a time between its five:
      the page writes it the value it shows, and keeps that value when the
      menu goes back to one of the five, so a hand choosing it again finds it.
      Chosen here as well, as setPersistence chooses it. */
-  void setCustomOption(const std::string& id, const std::string& value) {
+  void setCustomOption(const std::string& id, std::string_view value) {
     if (!selectSpec(id)) return;
-    custom_[id] = value;
-    selects_[id] = value;
+    keep(custom_[id], value);
+    keep(selects_[id], value);
   }
   /* The X-Y pair's two menus hold an option a lane, as the page builds them
      again for whatever is drawn (buildLaneRows), where every other menu's
@@ -209,6 +219,8 @@ class Controls {
   std::map<std::string, std::string> selects_;
   std::map<std::string, std::string> custom_;  // a menu's option whose value is written as it is shown
   int lanes_ = 2;
+  // Written into the room the string has, where an assignment of a new string would have replaced it.
+  static void keep(std::string& slot, std::string_view value) { slot.assign(value.data(), value.size()); }
   bool laneOption(const std::string& value) const {
     for (int k = 0; k < lanes_; ++k) if (value == std::to_string(k)) return true;
     return false;
@@ -902,21 +914,27 @@ inline double memorySliderOf(double p) {
 inline void setPersistence(Brain& b, double p) {
   p = std::isfinite(p) ? p : 0;
   b.view.screen.persistence = p;
-  std::string named;
+  /* Nothing made, since a host moves this on the audio thread (P8a). The
+     value is written once, as the page would show it, into a buffer; an
+     option is the value when it is that text, which is Number(option) ===
+     p, since a double's shortest text is its own (and -0 writes "0", as
+     0 === -0; the five are written as JS writes them). The sixth option
+     takes the text into the room the panel keeps for it. */
+  char written[kJsNumberRoom];
+  const std::string_view text(written, jsNumberToChars(p, written));
   bool found = false;
   if (const SelectSpec* spec = selectSpec("persistence")) {
     std::string_view options = spec->options;
     while (!found) {
       const std::size_t cut = options.find('\x1f');
-      const std::string_view option = options.substr(0, cut);
       // The sixth option is the one with no value until it is given one.
-      if (!option.empty() && jsStringToNumber(utf8To16(option)) == p) { named = std::string(option); found = true; }
+      if (!options.substr(0, cut).empty() && options.substr(0, cut) == text) found = true;
       if (cut == std::string_view::npos) break;
       options.remove_prefix(cut + 1);
     }
   }
-  if (found) b.panel.setSelect("persistence", utf8To16(named));
-  else b.panel.setCustomOption("persistence", jsNumberToString(p));
+  if (found) b.panel.setSelect("persistence", toU16(text));
+  else b.panel.setCustomOption("persistence", text);
   b.panel.setRangeNumber("scanMemory", memorySliderOf(p));
 }
 

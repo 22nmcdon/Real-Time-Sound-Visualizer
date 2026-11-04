@@ -505,6 +505,10 @@ class Instrument {
   double bandGain(int lane) const { return bandGain_[static_cast<std::size_t>(lane)]; }
   double lfoRate(int i) const { return lfos_[static_cast<std::size_t>(i)].rate; }
   double slider(const char* id) const { return brain_->panel.range(id); }
+  /* Which layer the panel's voice controls write: the plugin's host
+     parameters on those controls read back when it changes, since the same
+     slider then shows the other layer's value. */
+  int panelLayer() const { return brain_->panelLayer; }
   int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
   /* A hand on a slider that is not remembered, and an end of the morph
      stored: the plugin's shell test's way in. */

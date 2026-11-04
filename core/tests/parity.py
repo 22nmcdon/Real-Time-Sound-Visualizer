@@ -3213,10 +3213,17 @@ still = [r[0] for r in walked if float(r[2]) == 0]
 # added to the walk is walked here as well rather than failing a count.
 _ids = open(os.path.join(CORE, "include", "scope", "panel_controls.h")).read()
 morph_count = len(re.findall(r'"([A-Za-z0-9]+)"', _ids[_ids.index("kMorphIds[]"):]))
-check("the morph's walk over each of its %d sliders, all of them together, and the host's eight parameters allocate nothing"
-      % (len(walked) - 9), made > 0 and not spent and not still and len(walked) == morph_count + 9 and morph_count >= 80
-      and walked[-9][0] == "all",
-      "%d made; allocating: %s; unmoved: %s" % (made, spent[:4], still[:4]))
+# The host's are the plugin's own list, read from kKnobs, so a parameter
+# added there (the phaser's, in P8) is one this has to walk too.
+_knobs = open(os.path.join(os.path.dirname(CORE), "plugin", "src", "PluginProcessor.h")).read()
+_knobs = _knobs[_knobs.index("kKnobs {"):]
+host_sliders = re.findall(r'\{ "[a-z]+", "[A-Za-z ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', _knobs[:_knobs.index("} };")])
+host_walked = [r[0][len("host:"):] for r in walked if r[0].startswith("host:")]
+check("the morph's walk over each of its %d sliders, all of them together, and the host's %d parameters allocate nothing"
+      % (len(walked) - len(host_walked) - 1, len(host_walked)),
+      made > 0 and not spent and not still and len(walked) == morph_count + len(host_walked) + 1 and morph_count >= 80
+      and walked[-len(host_walked) - 1][0] == "all" and host_walked == host_sliders and len(host_sliders) >= 8,
+      "%d made; allocating: %s; unmoved: %s; host walked %s, the plugin's %s" % (made, spent[:4], still[:4], host_walked, host_sliders))
 
 print("\n--- the hearing ---")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)

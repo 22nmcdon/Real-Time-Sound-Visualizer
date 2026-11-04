@@ -762,7 +762,8 @@ makes its room once, and it allocates nothing on the audio thread now.
 
 **2g: the host's parameters, and the state.** Eight parameters, a curated
 few rather than every control: the four macros, the morph's fader, and the
-level, the cutoff and the echo, each one of the panel's sliders by id and in
+level, the cutoff and the echo (P8a replaced the bank - see *The host's
+parameters since P8a*, below - and what follows of how they apply holds), each one of the panel's sliders by id and in
 its units, so a parameter moved by the host is a hand on that slider - its
 value written as the browser would hold it, its handler run - and a
 parameter applies when the host moves it and not again, so a slider moved
@@ -2546,8 +2547,8 @@ redone natively or left out.
   sized by the page's destinations has them and an older count reads nought.
   `oscBend`/`oscBendAt` and B's `bBend`/`bBendAt` are setup fields with core
   defaults and B's key map, held by parity's codec and restore runs; no
-  version pass, being additive. Bend is a candidate host parameter in place
-  of a macro; `kKnobs` is unchanged until P8 decides the eight.
+  version pass, being additive. Bend became a host parameter in P8a, in
+  place of a macro.
 
 - **Scan since P7a.** The voice's half: `VoiceTone` has the layer's `scan`,
   `scanHold` and the latest `scanTable` (not owned), `VoiceFx` the block's
@@ -2568,7 +2569,8 @@ redone natively or left out.
   (`setCustomOption`). The panel now refuses a slider or a menu it has not
   got, where it used to read through a null: Scan's sliders, on the page
   before the core, crashed the morph's walk in parity that way. None of
-  the three is a host parameter yet; P8 decides the eight.
+  the three was a host parameter until P8a, which made Scan's depth and
+  the persistence two.
 - **The strike and cross-scan since P7b.** `ScanReader` keeps its paths
   per picture rather than per layer (`ScanInput`: each layer's depth and
   what it reads, and the two pictures), so a picture two layers read is
@@ -2582,6 +2584,67 @@ redone natively or left out.
   the page, the strike is the picture's. `scanStrike`, `scanReadsA` and
   `scanReadsB` are additive setup fields with core defaults; neither is a
   host parameter.
+- **The host's parameters since P8a.** `kKnobs` is the loop's bank, then the
+  morph: Picture (`pictureAmount`), Scan (`oscScan`), Persistence
+  (`scanMemory`), Bend (`oscBend`), Cutoff (`vcfCut`), Level (`amp`) and Echo
+  (`delayMix`) in a group called Instrument, and Morph (`morphPos`) in one
+  called Setups, which most hosts show as a folder or a section of its own:
+  the owner wanted the morph automatable without the bank's placement. The
+  phaser's amount takes the eighth place in the bank when the phaser is
+  built; Strike is deliberately not a parameter. The macros are not
+  parameters any more, and nothing was mapped across: the owner had no saved
+  projects, which made this the cheapest moment there will be. Whether the
+  page's Macros section survives is the tab rework's question, not this one.
+
+  Ids are stable strings with JUCE's version hint, the plugin version a
+  parameter arrived in: `level`, `cutoff`, `echo` and `morph` keep their
+  version 1 ids, so they mean what they meant, and the four loop controls
+  are version 2. VST3 and AU bind automation by that id (JUCE's default, no
+  legacy numbering), so inserting the phaser before the morph keeps the
+  morph's automation and moves only its index - a controller mapped by
+  position would find it one along. An inert placeholder for the phaser's
+  place was the alternative and was turned down: a knob in a host's list
+  that does nothing is worse than an index moving once, before anyone has
+  saved a project.
+
+  A layer's controls - Scan's depth, the bend, the cutoff, the level -
+  address the layer the panel shows, as the slider they are does for a hand:
+  the plugin has one slider for both layers, like the page. So the
+  parameters read back when the panel turns (the edit switch, or the layers
+  going off), except one the host moved that block, which keeps the host's
+  value and is applied; without that the host would show A's value while its
+  next move wrote B's. What it costs: automation written while B is shown is
+  B's, played back while A is shown it is A's. A parameter per layer was the
+  alternative, and would double the bank for a split most sessions never
+  use. Persistence and the Picture amount are the screen's and the stage's,
+  so they have no layer.
+
+  The shell test names the bank and its groups, ids and versions, requires
+  no macro among them and the morph at the bank's end; automates each of the
+  eight in "Brighten, grit, space, swirl" from block 20, heard from that
+  block and not a sample before, with its slider where the host put it and
+  somewhere it was not (Persistence with Scan up, since only what reads the
+  screen hears it; the morph between two stored ends); and turns a layered
+  panel from B to A, the level's parameter reading B's 80 and then A's 55,
+  and a host move then A's alone. Parity's allocation run walks the host's
+  sliders as the plugin's own list, read from `kKnobs`, so a parameter added
+  there is one it has to walk.
+
+  That run found the one real fault: moving the persistence allocated on the
+  audio thread, where the seven others did not - harmless while only a hand
+  on the page moved it, not once a host automates it. `setPersistence`
+  writes the menu's sixth option as the value it shows, and that went
+  through `jsNumberToString`'s temporaries and a first insert into the
+  panel's map of sixth options. Now `jsNumberToChars` writes the number into
+  a buffer (`jsNumberToString` is it, wrapped, and was held to the old one
+  over four million values, every one the same), the five options are
+  matched by that text rather than parsed, and the panel makes room for
+  every menu's value and sixth option when it is made and assigns into it.
+  Of the two mutants of that, taking the room away is caught (one
+  allocation, the map's first insert); handing a new string over instead
+  of assigning into the old is not, and is equivalent today, the
+  persistence's text being four figures and so inside a string's own
+  small buffer.
 
 - **Crossings, the threshold and Pluck cut in P5.** Much of stage 2e above
   and of the score's stage describes them; it is history now. The generator

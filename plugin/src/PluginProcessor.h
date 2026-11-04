@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -96,16 +97,44 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void moveSlider(const std::string& id, double value) { instrument_.moveSlider(id, value); }
   void storeMorph(bool endB) { instrument_.storeMorph(endB); }
 
-  /* The host's parameters: the four macros, the morph's fader, and three of
-     the main knobs, each one of the panel's sliders by id and in its units.
-     A curated few rather than every control, as the plan has it. */
-  struct HostKnob { const char* id; const char* name; const char* slider; };
+  /* The host's parameters (P8a): the loop's own controls in the main bank,
+     then the morph's fader in a group of its own. Each is one of the panel's
+     sliders by id and in its units, so a host moving one is a hand on that
+     slider, and a hand on the slider moves the parameter.
+
+     The main bank is the picture's amount, Scan's depth, the screen's
+     persistence, the bend, the voice filter's cutoff, the level and the echo.
+     The phaser's amount takes the eighth place when the phaser is built,
+     inserted before the morph. The macros were four of the first eight and
+     are not parameters any more: nobody had saved a project, so nothing was
+     mapped across (plugin/PLAN.md, P8a).
+
+     Hosts that bind automation by id (VST3 and AU here, JUCE's default ids)
+     keep the morph's automation when the phaser is inserted; what moves is
+     its index, so a controller mapped by position would find it one along.
+     Reserving the place now with an inert parameter was the alternative,
+     and was turned down: a knob in a host's list that does nothing is worse
+     than an index that moves once, before anyone has saved anything.
+
+     `version` is the plugin version a parameter arrived in, which AU hosts
+     use to order and JUCE asks for: the level, cutoff, echo and morph were
+     the first plugin's, the four loop controls this one's. A layer's
+     controls - Scan's depth, the bend, the cutoff, the level - address the
+     layer the panel shows, as the slider does for a hand (`readBack`). */
+  struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
   static constexpr std::array<HostKnob, 8> kKnobs { {
-    { "macro1", "Macro 1", "macro1" }, { "macro2", "Macro 2", "macro2" }, { "macro3", "Macro 3", "macro3" },
-    { "macro4", "Macro 4", "macro4" }, { "morph", "Morph", "morphPos" }, { "level", "Level", "amp" },
-    { "cutoff", "Cutoff", "vcfCut" }, { "echo", "Echo", "delayMix" },
+    { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
+    { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Bend", "oscBend", 2, true },
+    { "cutoff", "Cutoff", "vcfCut", 1, true }, { "level", "Level", "amp", 1, true },
+    { "echo", "Echo", "delayMix", 1, true }, { "morph", "Morph", "morphPos", 1, false },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
+  // By the parameter's id, which outlives its index: the shell test's way to a knob.
+  juce::AudioParameterFloat* knob(std::string_view id) const {
+    for (std::size_t i = 0; i < kKnobs.size(); ++i)
+      if (id == kKnobs[i].id) return knobs_[i];
+    return nullptr;
+  }
 
   /* The page as the plugin's face (stage 3), through the editor's native
      functions, on the message thread. A slider moved on the page is a hand
@@ -144,6 +173,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   juce::MidiBuffer outgoing_;  // what the out sent this block, handed over at its end
   std::array<juce::AudioParameterFloat*, kKnobs.size()> knobs_ {};
   std::array<float, kKnobs.size()> applied_ {};  // each parameter as last applied
+  int panelLayer_ = 0;                          // the layer the panel showed at the last block
+  // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
+  void readBack(bool unmovedOnly);
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
   std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block
   std::vector<float> inL_, inR_;                      // the host's input this block, copied out of the buffer
