@@ -249,6 +249,141 @@ input[type="range"]::-moz-range-thumb {
 input[type="range"]:hover::-webkit-slider-thumb { background: var(--charcoal); }
 input[type="range"]:hover::-moz-range-thumb { background: var(--charcoal); }
 
+/* --- knobs -------------------------------------------------------------------
+   A control on the Bench is a knob, not a slider: a slider is "a value
+   between two numbers", a knob is a control on a device, and a knob is a
+   fraction of a slider row's width - which is what let the Bench go to four
+   tabs without any of them scrolling. Ported from the owner's Headroom
+   (src/lib/knob.js and the .knob rules in styles.css), whose design this is:
+   the range input stays where it was and stays the value - announced by a
+   screen reader, moved by the arrow keys, written by every test, by a preset
+   and by the plugin's host knobs - and is only hidden from the eye; a face
+   drawn in CSS sits beside it, and a drag on the face writes the input and
+   fires the input event every listener already had.
+
+   The row is the knob's cell, in the order a knob is read down: what it is
+   set to, the knob, what it is. The label stays the row's own child so the
+   picture stage still lights it by how far it is moving the control. Any
+   parent holding knob cells wraps them side by side; anything else in it
+   (a title, a menu row, a switch) takes a line of its own. */
+:has(> .menu-row.knob-row) { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: 6px; }
+:has(> .menu-row.knob-row) > :not(.knob-row) { flex: 1 1 100%; min-width: 0; }
+.menu-row.knob-row {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "value" "face" "name" "extra";
+  justify-items: center; align-content: start; row-gap: 0;
+  /* As narrow as four to a 251-pixel column allows, and wider only for a
+     reading or a name that needs it: "0.0 dBFS" is a reading, and a cell
+     cut to a fixed width spilt it over its neighbour. */
+  flex: 0 0 auto; width: max-content; min-width: 56px; max-width: 84px;
+  margin-top: 4px; position: relative;
+}
+.menu-row.knob-row > .grow { display: contents; }
+.menu-row.knob-row > .menu-label {
+  grid-area: name; text-align: center; font-size: 10px; line-height: 1.2;
+  max-width: 100%;
+}
+.menu-row.knob-row > .grow > .reading { grid-area: value; font-size: 11px; line-height: 1.25; color: var(--charcoal); }
+/* A switch or a button that belongs to the control - the lag's Auto and Set,
+   the tempo's Tap - goes under its name rather than beside the knob. */
+.menu-row.knob-row > .grow > :not(.reading, .knob-face, .knob-dial, .mod-open, .mod-lane) { grid-area: extra; }
+/* A knob alone between menu rows - a section's one Twist among its mirrors -
+   is laid out as the rows around it are: its name in the label's column, the
+   knob, its reading. As a cell it stood 64 pixels tall where its slider had
+   been 38, and measured over the tabs that made Space & Memory fuller rather
+   than emptier; on one line it is the height of the menus beside it. Knobs
+   that come two or more together stay cells, where they save the room. */
+.menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) {
+  grid-template-columns: 96px auto auto minmax(0, 1fr);
+  grid-template-areas: "name face value extra";
+  justify-items: start; align-items: center; column-gap: 12px;
+  flex: 1 1 100%; width: auto; max-width: none; margin-top: 6px;
+}
+.menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) > .menu-label {
+  text-align: left; font-size: 12.5px; line-height: 1.3;
+}
+.bench-side .menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) { grid-template-columns: 58px auto auto minmax(0, 1fr); }
+.menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) > .grow > .reading { font-size: 12.5px; }
+.menu-row.knob-row > .grow > input.knob-dial {
+  position: absolute; width: 1px; height: 1px; min-width: 0; max-width: none;
+  margin: -1px; padding: 0; border: 0; overflow: hidden;
+  clip-path: inset(50%); pointer-events: none;
+}
+.knob-face {
+  --angle: 0deg; --lo: 0deg; --hi: 0deg;
+  grid-area: face; position: relative; width: 36px; height: 36px; margin: 1px 0;
+  display: grid; place-items: center;
+  /* The finger is turning this, not scrolling the page past it. */
+  touch-action: none; cursor: grab;
+}
+.knob-face.is-held { cursor: grabbing; }
+/* How far it is turned, as a ring: from the bottom left round to the bottom
+   right, and for a control either side of nought (the bend, the rotation, an
+   offset) from the top, where nought is, out to the value. The ninety degrees
+   it never reaches are transparent in the gradient itself. In the accent, as
+   the slider's thumb was, and charcoal under the pointer, as the thumb went. */
+.knob-face::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg,
+    var(--line) 0 var(--lo), var(--knob-arc, var(--blush-deep)) var(--lo) var(--hi),
+    var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+}
+.knob-face:hover, .knob-face.is-held { --knob-arc: var(--charcoal); }
+/* The skirt: eleven marks, every fifth longer, which is how a knob says where
+   the middle is without a number. */
+.knob-ticks { position: absolute; inset: 0; }
+.knob-ticks i { position: absolute; left: 50%; top: 0; bottom: 0; width: 0; transform: rotate(calc(var(--t) - 135deg)); }
+.knob-ticks i::before {
+  content: ""; position: absolute; left: -0.5px; top: 6.5px; width: 1px; height: 2px;
+  background: var(--line);
+}
+.knob-ticks i:nth-child(5n + 1)::before { background: var(--text-soft); height: 3px; }
+/* The cap, on the paper like every input, with its pointer cut into it. */
+.knob-cap {
+  position: relative; width: 52%; height: 52%; border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(36, 31, 29, 0.14);
+  transform: rotate(calc(var(--angle) - 135deg));
+}
+.knob-cap::after {
+  content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%;
+  margin-left: -1px; border-radius: 1px; background: var(--charcoal);
+}
+.knob-row:has(.knob-dial:focus-visible) .knob-face::before {
+  outline: 2px solid var(--blush-deep); outline-offset: 2px;
+}
+.knob-row:has(.knob-dial:disabled) .knob-face { opacity: 0.4; cursor: default; }
+/* What is on it. The editor's button sits at the face's shoulder, out of the
+   flow, so the cell measures the same with nought, one, two or three sources
+   (patchtest.py). The lane - one source's reach - is a thin ring outside the
+   value's, in the source's ink; the live sum is a dot on that ring, and the
+   reach's end a smaller one. The slider's lane rules are undone first, since
+   these are rings, not strips. */
+.menu-row.knob-row > .grow > .mod-open { grid-area: face; position: absolute; top: -4px; right: 0; bottom: auto; }
+.knob-face .mod-lane {
+  position: absolute; inset: 0; left: 0; top: 0; width: auto; height: auto;
+  border-radius: 50%; background: none; opacity: 1;
+}
+.knob-face .lane-span {
+  background: conic-gradient(from 225deg,
+    transparent 0 var(--lane-a, 0deg), var(--pip) var(--lane-a, 0deg) var(--lane-b, 0deg),
+    transparent var(--lane-b, 0deg));
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 1.5px), var(--charcoal) calc(50% - 1.5px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 1.5px), var(--charcoal) calc(50% - 1.5px));
+  opacity: 0.8;
+}
+.knob-face .lane-now, .knob-face .lane-cap { border-radius: 0; margin: 0; }
+.knob-face .lane-now { transform: rotate(calc(var(--now, 0deg) - 135deg)); }
+.knob-face .lane-cap { transform: rotate(calc(var(--cap, 0deg) - 135deg)); }
+.knob-face .lane-now::before, .knob-face .lane-cap::before {
+  content: ""; position: absolute; left: 50%; top: -1px; border-radius: 50%;
+}
+.knob-face .lane-now::before { width: 5px; height: 5px; margin-left: -2.5px; background: var(--blush-deep); }
+.knob-face .lane-cap::before { width: 3px; height: 3px; margin-left: -1.5px; top: 0; background: var(--pip); }
+.knob-face .lane-cap.clipped::before { opacity: 0.4; }
+
 select, input[type="number"] {
   background: var(--paper); border: 1px solid var(--line); border-radius: 1px;
   padding: 4px 6px; font-family: var(--sans); font-size: 13px; color: var(--charcoal);
@@ -1044,7 +1179,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 [data-mod-dest].modulated { outline: 1px dotted var(--blush-deep); outline-offset: 3px; }
 
 /* --- the editor ------------------------------------------------------------
-   A row per source with a slider the size of every other slider on the page,
+   A row per source with a slider for its depth - still a slider when the
+   Bench's controls became knobs, being a list of amounts in an overlay -
    and the sources not on it yet as buttons underneath. Nothing here needs a
    steady hand, which is the whole of what was wrong with the two before it. */
 .mod-edit { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
@@ -1973,14 +2109,15 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
                 <span class="reading" id="macro4Value">0%</span>
               </div>
             </div>
-            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos">
+            <!-- A slider, not a knob: a crossfader between the setups stored at its two ends. -->
+            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos" data-knob="no">
               <label class="menu-label" for="morphPos">Morph</label>
               <div class="grow">
                 <button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
-                        title="Store every slider as A">A</button>
+                        title="Store every knob as A">A</button>
                 <input type="range" id="morphPos" min="0" max="100" value="0">
                 <button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
-                        title="Store every slider as B">B</button>
+                        title="Store every knob as B">B</button>
               </div>
             </div>
             <p class="menu-note" id="morphNote"></p>
@@ -2003,7 +2140,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
             <div class="menu-row" id="fadeRow">
               <label class="menu-label" for="fadeMode">Fade</label>
               <div class="grow"><select id="fadeMode" style="flex:1 1 auto"
-                title="Whether modulation eases in and out: a routing you patch or take off, and each step of the keyboard's sources - a note struck, a note let go, the pedal. Loading a preset glides its sliders over the same time."></select></div>
+                title="Whether modulation eases in and out: a routing you patch or take off, and each step of the keyboard's sources - a note struck, a note let go, the pedal. Loading a preset glides its knobs over the same time."></select></div>
             </div>
             <div class="fade-env">
               <svg id="fadeEnv" viewBox="0 0 240 70" role="group" aria-label="The fade's envelope: drag the ends of the stretches for their times, the corner for the decay and the sustain, the middle of each slope for its shape"></svg>
@@ -3411,7 +3548,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         speakers are on the shaped side. Heard, a signal plus itself a moment later is a comb
         filter that tracks the pitch. In headphones it cuts deepest at half, and in a room at
         full. It starts at 20%, which is mostly width, and stops at 50% &mdash; the top of the
-        slider is the setting where, in headphones, the right ear loses some of a note's
+        knob is the setting where, in headphones, the right ear loses some of a note's
         harmonics entirely. That is allowed on purpose; it is where the effect is strongest.</span></li>
 
       <li><b>AC coupling, and where its corner sits</b>
@@ -3476,7 +3613,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         <span>In X&ndash;Y, the pointer turns to a hand near the figure. Take hold and pull, and
         the figure bends where you took hold: <i>Bend at</i> goes to that moment of the cycle and
         <i>Bend</i> to whatever brings the figure nearest your hand, so the sound changes as the
-        picture does. They are the same two sliders, moved as your hand would move them, and they
+        picture does. They are the same two knobs, turned as your hand would turn them, and they
         stay where you let go; a gold ring marks the moment you have hold of. Double-click the
         figure to put the bend off. The bend moves the wave in time, never in level, so the figure
         cannot be pulled past its own edges: a circle bulges on its diagonals and not at its four
@@ -3634,9 +3771,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 
       <li><b>Persistence is the phosphor</b>
         <span>How slowly the screen forgets. Off for a waveform; long or infinite for
-        X&ndash;Y, where the figure is built up a pass at a time. The same setting is a slider
+        X&ndash;Y, where the figure is built up a pass at a time. The same setting is a knob
         in seconds under <i>Scan</i>, on the Picture tab: how long a stroke takes to fade to
-        half. Set between the menu's five, the menu shows the slider's time.</span></li>
+        half. Set between the menu's five, the menu shows the knob's time.</span></li>
 
       <li><b>The picture plays the sound, always</b>
         <span>Whatever is drawn is read back and moves the sound, with nothing to route.
@@ -3809,6 +3946,18 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         carries <b>&ctdot;</b>, and behind it is that section's explanation and the
         handful of settings reached for rarely.
         <br><br>
+        The controls on the Bench are knobs. Drag up to turn one up and down to turn it down
+        &mdash; the whole range is a short drag, about two centimetres &mdash; and hold
+        <b>Shift</b> for a fine turn, a fifth as far. Tap it twice to put it back where the page
+        opened it. A press on a knob gives it the keyboard, so the arrow keys carry on from
+        there. On a phone, a finger on a knob turns it and the page stays put; anywhere else the
+        page scrolls as usual. The number above a knob is its setting; its name, below, lights
+        in the accent as far as the picture is moving it; and a control with something patched
+        on it wears a thin ring round the knob in the source's colour, from the setting to as
+        far as that source can take it, with a dot where it is right now. Kept as sliders: the
+        drawbars, read across nine at a glance as an organ's are; the setup morph, a crossfader
+        between its two ends; and the strip under the screen, which has width to spare.
+        <br><br>
         <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
         oscillators, controllers and the rest on any control by hand. The picture moves the
         sound without it. Open, it adds four tabs &mdash; <i>Sources</i>; <i>Inputs</i>, the
@@ -3862,9 +4011,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         release lets it back down slowly. The pedal and the notes' count, spread, melody and inner
         voices ease the same way; oscillators, the picture, the envelope and knobs are not eased,
         because they already move as they should. With
-        any of them on, loading a preset glides its sliders from where they were, so the
+        any of them on, loading a preset glides its knobs from where they were, so the
         picture morphs into the new one instead of jumping; its menus and switches still change
-        at once. A depth you drag answers your hand straight away, and a slider you touch during
+        at once. A depth you drag answers your hand straight away, and a knob you touch during
         a glide is left where you put it. The fade is kept in this browser and is not part of a
         setup code, so loading a preset does not turn it off.</span></li>
 
@@ -3876,9 +4025,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         what every control it is on shows, and a setup code keeps it.
         <br><br>
         <i>Morph</i>, under them, slides between two sounds. Press <i>A</i> to store every
-        slider, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
+        knob, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
         pitch by octaves, everything else in a straight line. Menus and switches are not
-        morphed: a shape or a mode stays as you left it. A slider you move by hand keeps its
+        morphed: a shape or a mode stays as you left it. A knob you turn by hand keeps its
         place until the fader moves again. The fader is a control like any other, so a macro
         or an oscillator on it moves the whole sound at once. Loading a preset clears it.</span></li>
 
@@ -4123,7 +4272,7 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
 
       <li><b>The envelope, and when it is in force</b>
         <span>Only while a keyboard is driving the <i>waveform</i>. With nothing plugged in
-        the amplitude is the slider and nothing else, exactly as it always was. The drawn
+        the amplitude is its knob and nothing else, exactly as it always was. The drawn
         modes are never gated &mdash; a harmonograph is a continuous drawing and a note
         there sets a ratio rather than starting something, so plugging a keyboard in does
         not blank the screen between phrases. Where the gate <em>is</em> open with no key
@@ -4169,9 +4318,9 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         to 4, crossfading the two either side - put an oscillator or the pedal on it and the
         timbre travels. It starts as a sine, an organ's three partials, a saw and a narrow
         pulse; the switch on the pane chooses which one you draw, and <i>Grab</i> fills the one
-        chosen, so four sounds you played can be four places on the slider.
+        chosen, so four sounds you played can be four places round the knob.
         <br><br>
-        <i>Morph</i> is one slider through sine, triangle, saw and square, crossfading
+        <i>Morph</i> is one knob through sine, triangle, saw and square, crossfading
         between each pair, so the shape is something a source can move: put an oscillator,
         the pedal or the photocell on it and the timbre changes as you play. On a whole
         station it is exactly that shape. Its saw is the menu's half a cycle later, so the
@@ -19848,6 +19997,7 @@ function buildSourceDetail() {
           + escapeText(dest.label) + (dead ? " \u2014 test tone only" : "") + "</option>";
       }).join("")
     + "</select></div></div>";
+  dressKnobs(el.srcDetail);
 
   wireDepthRows(el.srcDetail, buildSourceDetail);
   const add = document.getElementById("srcDetail-add");
@@ -24782,6 +24932,7 @@ function buildLaneRows() {
       + '<span class="reading" id="' + id + 'OffsetValue"></span>'
       + "</div></div>";
   }).join("");
+  dressKnobs(el.laneRows);
 
   for (let i = 0; i < n; i++) {
     const id = laneIdBase(i);
@@ -25995,6 +26146,157 @@ function openModEditor(destId, anchor, reading) {
    sank the split thumb. Which one: whichever chip is in focus if it is on this
    control, otherwise the first that is.                                      */
 
+/* --- knobs -----------------------------------------------------------------------
+   Every row on the Bench that is a label, one range input and its reading
+   becomes a knob. Ported from the owner's Headroom (src/lib/knob.js); what
+   that file says holds here: the input stays the value and the keyboard, the
+   face takes the pointer, and moving a knob is one custom property on one
+   element - nothing built per frame and nothing redrawn.
+
+   What stays a slider, and why: the drawbars, which are an organ's
+   registration read across nine of them at a glance, the way a row of
+   drawbars is read; the setup morph, which is a crossfader between the two
+   setups stored at either end of it; the macros, which name themselves in a
+   text field where a knob's name goes and are on their way out (P8d); and
+   everything off the Bench - the dock's level, timebase, zoom and Picture
+   amount, whose strip under the screen has width to spare and no height, the
+   on-screen keyboard's velocity, and the modulation editor's depths, a list
+   of amounts in an overlay that is rebuilt as routings come and go. */
+const KNOB_SWEEP = 270;        // degrees from one end to the other
+/* Pixels of drag for the whole range, and the share of it with shift held.
+   Headroom's measured numbers: 180 is a comfortable thumb's travel, two and
+   a half times the resolution the slider gave at a phone's width. */
+const KNOB_TRAVEL = 180;
+const KNOB_FINE = 0.22;
+// Two taps this close together put a knob back where the page opened it.
+const KNOB_DOUBLE_MS = 320;
+const RANGE_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+const knobFaces = new WeakMap();
+
+function knobFraction(input, value = Number(input.value)) {
+  const lo = Number(input.min), hi = Number(input.max);
+  if (!(hi > lo)) return 0;
+  return Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
+}
+
+/* Where the ring starts: nought, for a control that runs either side of it,
+   since "how far from centre" is what a bend or a rotation is; the bottom of
+   the range for everything else. */
+function knobZero(input) {
+  const lo = Number(input.min), hi = Number(input.max);
+  return lo < 0 && hi > 0 ? (0 - lo) / (hi - lo) : 0;
+}
+
+function paintKnob(input) {
+  const face = knobFaces.get(input);
+  if (!face) return;
+  const at = knobFraction(input) * KNOB_SWEEP;
+  const zero = knobZero(input) * KNOB_SWEEP;
+  face.style.setProperty("--angle", at + "deg");
+  face.style.setProperty("--lo", Math.min(at, zero) + "deg");
+  face.style.setProperty("--hi", Math.max(at, zero) + "deg");
+}
+
+// A Bench row a knob can stand for: a label, then one range input with its reading.
+function knobInput(row) {
+  if (!row.matches(".menu-row") || row.matches(".drawbar, .macro-row, [data-knob='no']")) return null;
+  if (!row.closest('[data-home="bench"]')) return null;
+  const label = row.querySelector(":scope > .menu-label");
+  const grow = row.querySelector(":scope > .grow");
+  if (!label || !grow) return null;
+  const ranges = grow.querySelectorAll(':scope > input[type="range"]');
+  return ranges.length === 1 ? ranges[0] : null;
+}
+
+/* Safe to call again over the same ground - a row already dressed is left
+   alone - so it runs over the page once and again over anything rebuilt:
+   a source's detail, the lanes' rows. */
+function dressKnobs(root) {
+  for (const row of root.querySelectorAll(".menu-row")) {
+    const input = knobInput(row);
+    if (input && !knobFaces.has(input)) dressKnob(row, input);
+  }
+}
+
+function dressKnob(row, input) {
+  const face = document.createElement("span");
+  face.className = "knob-face";
+  face.setAttribute("aria-hidden", "true");
+  face.innerHTML = '<span class="knob-ticks"></span><span class="knob-cap"></span>';
+  for (let i = 0; i <= 10; i++) {
+    const tick = document.createElement("i");
+    tick.style.setProperty("--t", (i * KNOB_SWEEP / 10) + "deg");
+    face.firstChild.appendChild(tick);
+  }
+  input.parentElement.insertBefore(face, input);
+  input.classList.add("knob-dial");
+  row.classList.add("knob-row");
+  knobFaces.set(input, face);
+
+  /* The face follows the value however it is set. Every preset, morph,
+     restore, host move and test writes `input.value` with no event, and
+     finding each of them was how a face would have been left pointing at
+     last week's value; the setter is the one place they all pass. */
+  Object.defineProperty(input, "value", {
+    configurable: true, enumerable: true,
+    get() { return RANGE_VALUE.get.call(this); },
+    set(v) { RANGE_VALUE.set.call(this, v); paintKnob(this); },
+  });
+  input.addEventListener("input", () => paintKnob(input));
+
+  let from = null, lastTap = 0;
+  face.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || input.disabled) return;
+    const min = Number(input.min), max = Number(input.max);
+    if (!(max > min)) return;
+    from = { y: event.clientY, value: Number(input.value), min, max, moved: false };
+    face.setPointerCapture(event.pointerId);
+    face.classList.add("is-held");
+    // Not scrolling the page, not selecting text.
+    event.preventDefault();
+    // Focus to the input, so the arrows carry on from where the hand left off.
+    input.focus({ preventScroll: true });
+  });
+  face.addEventListener("pointermove", (event) => {
+    if (!from) return;
+    const span = from.max - from.min;
+    // Up is more, as every knob on a screen has been dragged.
+    const moved = (from.y - event.clientY) / KNOB_TRAVEL * span * (event.shiftKey ? KNOB_FINE : 1);
+    if (moved !== 0) from.moved = true;
+    const next = Math.min(from.max, Math.max(from.min, from.value + moved));
+    const step = Number(input.step) || 1;
+    // Held to ten places, so a step of 0.01 writes "0.3" and not 0.30000000000000004.
+    const value = String(Number((Math.round((next - from.min) / step) * step + from.min).toFixed(10)));
+    if (value === input.value) return;
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const drop = (event) => {
+    if (!from) return;
+    const was = from;
+    from = null;
+    face.classList.remove("is-held");
+    try { face.releasePointerCapture(event.pointerId); } catch (error) { /* already gone */ }
+    if (was.moved) { input.dispatchEvent(new Event("change", { bubbles: true })); return; }
+    /* Two taps that did not turn it put it back where the page opened it -
+       the one gesture every plugin has. Counted here rather than from
+       dblclick, which a finger does not reliably send. */
+    const now = event.timeStamp;
+    if (now - lastTap < KNOB_DOUBLE_MS) {
+      lastTap = 0;
+      input.value = input.defaultValue;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      lastTap = now;
+    }
+  };
+  face.addEventListener("pointerup", drop);
+  face.addEventListener("pointercancel", (event) => { lastTap = 0; drop(event); });
+
+  paintKnob(input);
+}
+
 const lanes = [];
 const LANE_THUMB = 13;         // the width the stylesheet gives a slider's thumb
 
@@ -26037,11 +26339,13 @@ function ensureLane(input) {
 
   host.dataset.lane = "1";
   host.classList.add("mod-lane-host");
+  // On a knob, the lane is a ring round its face.
+  const on = knobFaces.get(input) || host;
   for (const part of ["lane-span", "lane-cap", "lane-now"]) {
     const span = document.createElement("span");
     span.className = "mod-lane " + part;
     span.hidden = true;
-    host.appendChild(span);
+    on.appendChild(span);
   }
   input.addEventListener("input", updateLanes);
   return host;
@@ -26057,6 +26361,24 @@ function updateLanes() {
   for (const rec of lanes) {
     const input = rec.input;
     if (!input.isConnected) continue;
+    /* A knob's lane is angles round its face: no layout to read, so it is
+       written here and the strip's measuring below is for sliders only. */
+    const face = knobFaces.get(input);
+    if (face) {
+      const dest = MOD_DESTS.get(rec.destId);
+      const whole = sweepOf(dest, routingsFor(rec.destId));
+      const own = sweepOf(dest, rec.shown ? [rec.shown] : []);
+      const lo = Number(input.min), hi = Number(input.max);
+      const want = destReach(dest, input, own.handle);
+      const deg = (v) => knobFraction(input, v) * KNOB_SWEEP;
+      const base = deg(Number(input.value)), cap = deg(want);
+      face.style.setProperty("--lane-a", Math.min(base, cap) + "deg");
+      face.style.setProperty("--lane-b", Math.max(base, cap) + "deg");
+      face.style.setProperty("--cap", cap + "deg");
+      face.style.setProperty("--now", deg(destReach(dest, input, whole.live)) + "deg");
+      rec.cap.classList.toggle("clipped", want > hi + 1e-9 || want < lo - 1e-9);
+      continue;
+    }
     const width = input.offsetWidth;
     if (width <= 0) continue;                 // in a fold, or a view not showing
 
@@ -26578,6 +26900,8 @@ if (scopeHost) toHost();
 let startView = "scope";
 try { startView = window.localStorage.getItem(VIEW_KEY) || "scope"; }
 catch (error) { startView = "scope"; }
+// Before the routings are painted, so their lanes are made on the faces.
+dressKnobs(document);
 setView(startView);
 paintRoutings();
 showHelpTab(0);

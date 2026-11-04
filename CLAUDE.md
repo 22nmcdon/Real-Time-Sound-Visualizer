@@ -186,8 +186,18 @@ Do not re-litigate these without a reason; each replaced something that failed.
   re-balances the whole flow when any section's height changes, which moved a
   control out from under the pointer mid-drag.
 - **A control's appearance must not depend on how many modulation sources are on
-  it.** Two designs failed here. `patchtest.py` measures the row's height and
-  box with nought, one, two and three sources and requires all four identical.
+  it.** Two designs failed here. `patchtest.py` measures the knob's cell - its
+  box, and where its face and reading sit - with nought, one, two and three
+  sources and requires all four identical; the editor's button sits at the
+  face's shoulder, out of the flow.
+- **The Bench's controls are knobs over their range inputs** (P8c, from the
+  owner's Headroom). The input stays the value, the keyboard and what every
+  test and host knob writes; the face follows it through a setter on the
+  input, so a value written from code turns the face with no event. Knobs
+  that come together are cells read down - setting, knob, name - and a knob
+  alone among menu rows is one line, since as a cell it stood taller than the
+  slider it replaced. The drawbars, the setup morph's crossfader, the strip
+  under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is four tabs along the loop - Play,
   Ink, Space & Memory, Picture, in the order the sound goes round it - and the
   drawer's Sources, Inputs, Measure and Perform, and one tab at a time must

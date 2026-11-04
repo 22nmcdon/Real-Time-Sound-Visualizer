@@ -107,24 +107,26 @@ with sync_playwright() as pw:
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
       focusSource = null; paintRoutings();
     }"""); p.wait_for_timeout(350)
+    # A knob since P8c: the lane is a ring round the face, so where it is
+    # drawn is an angle - 270 degrees for the whole range, from the bottom
+    # left - read off the face's own properties. It was pixels along the
+    # slider, with half a thumb's inset at each end.
     geo = p.evaluate("""() => {
-      const input = el.freq, host = input.parentElement;
-      const at = (c) => parseFloat(host.querySelector('.' + c).style.left) - input.offsetLeft;
-      const w = (c) => parseFloat(host.querySelector('.' + c).style.width);
-      return { span: at('lane-span'), spanW: w('lane-span'), cap: at('lane-cap'),
-               width: input.offsetWidth,
+      const input = el.freq, face = input.parentElement.querySelector('.knob-face');
+      const at = (name) => parseFloat(face.style.getPropertyValue(name));
+      return { span: at('--lane-a'), spanW: at('--lane-b') - at('--lane-a'), cap: at('--cap'),
                min: Number(input.min), max: Number(input.max) };
     }""")
     def x_for(value):
-        return 6.5 + (value - geo["min"]) / (geo["max"] - geo["min"]) * (geo["width"] - 13)
-    check("the cap sits on the octave, not at the end of the slider",
-          abs(geo["cap"] - x_for(440)) < 0.5,
-          "%.2f wanted %.2f (the slider ends at %.2f)"
+        return (value - geo["min"]) / (geo["max"] - geo["min"]) * 270
+    check("the cap sits on the octave, not at the end of the range",
+          abs(geo["cap"] - x_for(440)) < 1e-6,
+          "%.4f deg wanted %.4f (the range ends at %.1f)"
           % (geo["cap"], x_for(440), x_for(geo["max"])))
-    check("and the bar runs from the value to it",
-          abs(geo["span"] - x_for(220)) < 0.5
-          and abs(geo["spanW"] - (x_for(440) - x_for(220))) < 0.7,
-          "from %.2f for %.2f, wanted %.2f for %.2f"
+    check("and the ring runs from the value to it",
+          abs(geo["span"] - x_for(220)) < 1e-6
+          and abs(geo["spanW"] - (x_for(440) - x_for(220))) < 1e-6,
+          "from %.4f for %.4f, wanted %.4f for %.4f"
           % (geo["span"], geo["spanW"], x_for(220), x_for(440) - x_for(220)))
 
     print("\n--- the lane draws one source, whoever else is on the control ---")
@@ -135,7 +137,7 @@ with sync_playwright() as pw:
       const settle = () => new Promise((d) => requestAnimationFrame(
         () => requestAnimationFrame(d)));
       const capAt = () => parseFloat(el.freq.parentElement
-        .querySelector('.lane-cap').style.left) - el.freq.offsetLeft;
+        .querySelector('.knob-face').style.getPropertyValue('--cap'));
 
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'gen.freq', amount: 0.25 }];
       focusSource = null; paintRoutings(); await settle();
@@ -148,24 +150,22 @@ with sync_playwright() as pw:
       focusSource = null; armSource('lfo2'); await settle();
       const other = capAt();
       return { alone, withCompany, other,
-               width: el.freq.offsetWidth,
                min: Number(el.freq.min), max: Number(el.freq.max),
                pips: document.querySelectorAll('[data-mod-dest="gen.freq"] .mod-open .pip').length };
     }"""); p.wait_for_timeout(200)
 
     def freq_x(hz):
-        return (6.5 + (hz - both["min"]) / (both["max"] - both["min"])
-                * (both["width"] - 13))
+        return (hz - both["min"]) / (both["max"] - both["min"]) * 270
     # 220 Hz driven a quarter of an octave up, and nineteen twentieths of one.
     want_one, want_two = freq_x(220 * 2 ** 0.25), freq_x(220 * 2 ** 0.95)
     check("a second source does not move the first one's cap",
-          abs(both["alone"] - both["withCompany"]) < 0.5,
+          abs(both["alone"] - both["withCompany"]) < 1e-6,
           "%.2f -> %.2f" % (both["alone"], both["withCompany"]))
     check("and the cap is where the first one's own depth puts it",
-          abs(both["withCompany"] - want_one) < 0.5,
+          abs(both["withCompany"] - want_one) < 1e-6,
           "%.2f wanted %.2f" % (both["withCompany"], want_one))
     check("focusing the second shows the second, at its own depth",
-          abs(both["other"] - want_two) < 0.5,
+          abs(both["other"] - want_two) < 1e-6,
           "%.2f wanted %.2f" % (both["other"], want_two))
     check("and both are counted on the button", both["pips"] == 2, str(both["pips"]))
 
@@ -174,11 +174,10 @@ with sync_playwright() as pw:
         section(p, want_section)
         p.evaluate(routing_js); p.wait_for_timeout(320)
         return p.evaluate("""(elid) => {
-          const input = document.getElementById(elid), host = input.parentElement;
-          const num = (c, prop) => parseFloat(host.querySelector('.' + c).style[prop]);
-          return { left: num('lane-span', 'left') - input.offsetLeft,
-                   width: num('lane-span', 'width'),
-                   base: thumbX(input, input.offsetWidth, Number(input.value)) };
+          const input = document.getElementById(elid), face = input.parentElement.querySelector('.knob-face');
+          const at = (name) => parseFloat(face.style.getPropertyValue(name));
+          return { left: at('--lane-a'), width: at('--lane-b') - at('--lane-a'),
+                   base: knobFraction(input) * KNOB_SWEEP };
         }""", elid)
 
     osc = bar_for("""() => {
@@ -186,16 +185,16 @@ with sync_playwright() as pw:
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.6 }];
       focusSource = null; paintRoutings(); }""", "rotate", "Display")
     check("an oscillator's bar reaches one way from the value",
-          abs(osc["left"] - osc["base"]) < 0.6 or
-          abs(osc["left"] + osc["width"] - osc["base"]) < 0.6,
+          (abs(osc["left"] - osc["base"]) < 1e-6 or
+           abs(osc["left"] + osc["width"] - osc["base"]) < 1e-6) and osc["width"] > 1,
           "from %.2f for %.2f, value at %.2f" % (osc["left"], osc["width"], osc["base"]))
 
     env = bar_for("""() => {
       state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 0.6 }];
       focusSource = null; paintRoutings(); }""", "rotate", "Display")
     check("and an envelope's the same, since the bar is the depth you set",
-          abs(env["width"] - osc["width"]) < 1.0,
-          "%.1f px vs %.1f" % (env["width"], osc["width"]))
+          abs(env["width"] - osc["width"]) < 1e-6 and env["width"] > 1,
+          "%.4f deg vs %.4f" % (env["width"], osc["width"]))
 
     print("\n--- asking for more than the control has ---")
     section(p, "Display")
@@ -220,7 +219,8 @@ with sync_playwright() as pw:
       paintRoutings();
       await new Promise((d) => requestAnimationFrame(d));
       const host = el.rotate.parentElement;
-      const now = () => parseFloat(host.querySelector('.lane-now').style.left);
+      const face = host.querySelector('.knob-face');
+      const now = () => parseFloat(face.style.getPropertyValue('--now'));
       const seen = new Set();
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => requestAnimationFrame(r));

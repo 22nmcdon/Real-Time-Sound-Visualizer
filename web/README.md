@@ -4756,3 +4756,24 @@ over the body's `clientHeight`), which is how the owner's question "are we
 still tight on space?" was answered with numbers before anything moved -
 worst case, at 1400x900 with a split and the keys, the old five were 49, 54,
 77, 57 and 31 per cent full.
+
+**A knob's face has to follow a value nobody announced, and a knob is not
+smaller than a slider just because it is round.** P8c put a face over every
+Bench range input. Two things it learned. First, every preset, morph, restore,
+host move and test writes `input.value` with no event, so a face painted from
+`input` events alone points at the last value a hand set; rather than find
+every writer, each dressed input gets its own `value` property that calls the
+native setter and repaints, the one place they all pass - `knobtest.py`'s
+"a value written from code" check is the null for it, and fails with the
+setter taken out. Second, a knob cell (setting, face, name, read down) is 64
+pixels tall where a slider row was 38, so a section that alternates a knob with
+a menu got taller: the first cut made Space & Memory 62 per cent full against
+54 with sliders. A knob alone among menu rows is now one line (name, face,
+reading), and knobs only become cells where two or more come together. The
+modulation lane is angles round the face (`--lane-a`, `--lane-b`, `--cap`,
+`--now`, all in degrees out of 270), so `lanetest.py` reads angles where it
+read pixels; and `patchtest.py`'s "nought to three sources measure the same"
+now measures the cell and the face, since the hidden input is one pixel wide
+and out of the flow and would pass whatever the cell did. That check's null is
+an opener whose pips widen the cell; an opener merely put back into the flow
+does not fail it, because a cell is wider than three pips.

@@ -183,13 +183,23 @@ with sync_playwright() as pw:
     # passes whatever the design does.
     p.keyboard.press("Escape"); p.wait_for_timeout(250)
     shape = p.evaluate("""async () => {
+      /* A knob since P8c, so what must not move is the cell and the face in
+         it - its box, and where the face and the reading sit. It used to be
+         the slider's x and width, which a knob's hidden input (one pixel,
+         out of the flow) would pass whatever the cell did. The opener sits
+         at the face's shoulder out of the flow; put it back in the flow and
+         three pips widen the cell, which is the failure this is for. */
       const row = document.querySelector('[data-mod-dest="gen.freq"]');
-      const input = document.getElementById('freq');
+      const face = row.querySelector('.knob-face');
+      const reading = row.querySelector('.reading');
       const settle = () => new Promise((done) => requestAnimationFrame(
         () => requestAnimationFrame(done)));
-      const snap = () => ({ h: row.offsetHeight,
-                            x: Math.round(input.getBoundingClientRect().x),
-                            w: Math.round(input.getBoundingClientRect().width) });
+      const snap = () => {
+        const f = face.getBoundingClientRect(), r = reading.getBoundingClientRect();
+        return { h: row.offsetHeight, w: row.offsetWidth,
+                 x: Math.round(f.x), y: Math.round(f.y), fw: Math.round(f.width),
+                 rx: Math.round(r.x), knob: row.classList.contains('knob-row') };
+      };
 
       state.modRoutings = []; paintRoutings(); await settle();
       const none = snap();
@@ -199,7 +209,7 @@ with sync_playwright() as pw:
       return { none, one, two, three,
                pips: row.querySelectorAll('.mod-open .pip').length };
     }"""); p.wait_for_timeout(200)
-    same = (shape["none"] == shape["one"] == shape["two"] == shape["three"])
+    same = (shape["none"] == shape["one"] == shape["two"] == shape["three"]) and shape["none"]["knob"]
     check("nought, one, two and three sources measure the same", same,
           "%s / %s / %s / %s" % (shape["none"], shape["one"], shape["two"], shape["three"]))
     check("and the button counts them", shape["pips"] == 3, str(shape["pips"]))

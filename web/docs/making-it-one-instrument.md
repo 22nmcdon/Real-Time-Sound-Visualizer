@@ -941,6 +941,22 @@ the synth's features should be chosen knowing that.
     plays is the picture. A tab remembered from the old five lands where its sections
     went, Shape's on Ink and Effects's on Space & Memory. Picture is light; the loop on
     the screen and the phaser are the obvious residents for the room.
+  - *P8c, built: knobs.* Every control on the Bench is a knob, ported from the owner's
+    Headroom (its `src/lib/knob.js` and `.knob` styles): the range input stays where it
+    was and stays the value, and a CSS face beside it takes the pointer - drag up for
+    more, Shift for a fine turn, two taps back to where the page opened it, a finger
+    turning rather than scrolling. Knobs that come together are cells, the setting above,
+    the name below; one alone among menu rows is a line, as tall as the menus beside it.
+    A modulation's lane became a ring round the face. Kept as sliders: the drawbars, an
+    organ's registration read across nine at a glance; the setup morph, a crossfader; the
+    strip under the screen, which has width and no height; and the editor's depths.
+    What it did for room was less than hoped, and is worth saying: measured the same way
+    before and after (each column's height over the body's, 1400x900, a split and the
+    keys), Play went 53 to 51 per cent full, Ink 78 to 73, Picture 38 to 33 - and Space &
+    Memory 54 to 57, the drawer's tabs a few points up too. A knob saves room only where
+    knobs come several together; most sections here alternate a knob with a menu. The
+    first cut, every knob a cell, made Space & Memory 62 per cent, which is why a lone
+    knob is laid out in a line.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

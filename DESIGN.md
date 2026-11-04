@@ -216,7 +216,7 @@ ruling on it, and the traces are what is written. Two consequences follow, both 
 | `--unresolved` | Free run. The trace goes this grey when nothing crosses the level, because a signal with no edge in it is not a fault. |
 | `--rust` | Clipping, a level over, an input that would not open; and, as the house's armed, a scope stopped or muted. A tuner's sharp or flat, which is "outside", never "wrong". |
 | `--gold` | Ready (the status chip), the cursors, and the ring where the hand has hold of the figure. |
-| `--blush-deep` | The trigger line and its marker, the slider thumb, the selected tab: the accent doing work. |
+| `--blush-deep` | The trigger line and its marker, a knob's ring and a slider's thumb, the selected tab: the accent doing work. |
 
 ## 10. Colour that is the oscilloscope's
 
@@ -272,8 +272,19 @@ anywhere on the scale, are product.
 
 ## 12. Controls
 
-- **Sliders**: a 2px `--line` track and a 13px `--blush-deep` thumb that turns charcoal
-  under the pointer. Full width up to 250px.
+- **Knobs**: every control on the Bench, ported from the owner's Headroom. A cell read
+  down: the setting in 11px tabular charcoal, a 36px face, the name in 10px `--text-soft`.
+  The face is a 3px ring through 270 degrees from the bottom left - `--line` for the track,
+  `--blush-deep` for how far it is turned, charcoal under the pointer as the thumb went -
+  started from the top for a control either side of nought; eleven ticks, every fifth
+  longer; and a `--paper` cap with a charcoal pointer. The range input under it is still
+  the value, the keyboard and what a screen reader reads. A modulation is a 1.5px ring
+  outside the value's, in the source's ink, with the live sum as a `--blush-deep` dot on it,
+  and the editor's button sits at the face's shoulder out of the flow, so the cell measures
+  the same with any number of sources.
+- **Sliders**, where a knob would be wrong - the drawbars, the setup morph's crossfader,
+  the strip under the screen, the modulation editor's depths: a 2px `--line` track and a
+  13px `--blush-deep` thumb that turns charcoal under the pointer. Full width up to 250px.
 - **Readouts**: `font-variant-numeric: tabular-nums` everywhere a number changes, so a
   reading does not shuffle its neighbours while it moves.
 - **The switch**: a 30px segmented pill; the chosen segment filled charcoal.
