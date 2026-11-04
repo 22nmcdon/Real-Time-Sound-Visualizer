@@ -847,6 +847,65 @@ the synth's features should be chosen knowing that.
     in a split the note's layer's picture or, crossed, the other's. On the site the
     strike can only be seen through the per-layer readings the instrument hands back, so
     `striketest.py` reads it there, in a split.
+  - *P7c, the score's voice drawn again: what passing means, written before measuring.*
+    Five presets that use the score (*The rose writes its own tune*, *The tune you play
+    into*, *The star plays itself*, *The pendulums' score*, *A sine, sung*), each run for
+    twenty seconds, heard, on the page's own brain with the JavaScript generator so a
+    change to the block is what plays; the first quarter is the picture filling and is
+    not counted. Every number is set against the same run with the score undrawn, as it
+    has been since P4, measured the same day: the README's 140 cells for the rose alone
+    were counted under P4 and the rose undrawn lights a median of about 1,270 cells over
+    0.05 now. A design passes only if, on every one of the five presets:
+    1. *Coverage:* the median count of cells over 0.05 is at most 1.5 times the null's
+       (P4's failure was about ten times), and the meter says *running away* no more than
+       a tenth of the time more than the null does.
+    2. *Chords:* the share of steps that strike the full chord is at most the null's plus
+       0.15 (P4's failure was a full chord every step).
+    3. *Variety:* the distinct chords and distinct pitches played are each at least half
+       the null's, so the score has not collapsed onto the rows its own light crosses.
+    4. *The meter:* the share of the time it says *settled* is at most the null's plus 0.2.
+    5. *Bounded:* `looptest.py`'s run at the stage's top holds every bound with the score
+       drawn (measured only for a design that passes the first four).
+    Passing on some presets and not others, or on all but one criterion, is borderline,
+    and goes to the owner with the numbers rather than being shipped as a judgement.
+  - *P7c, measured: none passes, and the score's voice stays heard and not drawn.* Four
+    designs against the null, lit cells as a multiple of the null's (the criterion is 1.5),
+    for the rose writes its own tune / the tune you play into / the star / the pendulums /
+    a sine, sung:
+    - *Drawn unchanged* (the score in A's lanes, on both axes): 1.77 / 1.74 / 4.43 / 1.30 /
+      1.41, the pendulums *running away* the whole run where the null never was, and the
+      share of full chords up by 0.14 / 0.17 / 0.29 / 0.03 / 0. Fails coverage on four and
+      chords on two. Variety went up rather than down (the rose's distinct chords 27 to
+      52), so it is not P4's collapse onto one chord: the screen fills without it.
+    - *Drawn, struck at a quarter while the meter says running away* (the picture stage's
+      own hold, applied to the score): within a few per cent of drawn unchanged
+      everywhere, since the hold engaged only on the pendulums, where it changed nothing.
+    - *Drawn, struck in proportion to how much of the screen is dark* (velocity times
+      one less the lit share over a quarter): 1.00 / 1.01 / 1.76 / 1.01 / 0.96, which
+      reads as four passes and a fail - but the four pass by silence. The presets' own
+      pictures light a third of the screen or more, so the governor is at nought: the mean
+      velocity struck was 0 / 0 / 0.13 / 0 / 0.06 against the null's 0.95 to 1. The
+      criteria had not said the score must still be heard, because it did not occur to
+      anyone that a design would pass by not playing; it fails coverage on the star
+      either way.
+    - *Drawn but kept out of what the score reads* (the score reading a picture without
+      its own light, everything else reading the one with it): measured by replaying the
+      null's own strikes into the drawn page with the score's reading off, so what it
+      plays cannot depend on what it drew. The shown screen still lit 1.70 / 1.74 / 4.04 /
+      1.15 / 1.41 times the null's, the pendulums again running away throughout. It would
+      also only half meet the seventh idea, the score writing into the picture it reads,
+      and would cost a second picture drawn every frame in the page and the core.
+    What this shows that P4 did not: the feedback was not the whole of it. A note of the
+    score's voice is the same signal added to both lanes, so drawn it does not lay a line
+    beside the figure - it moves the whole figure along the diagonal by the score's
+    waveform, smearing every figure by up to six-tenths of full scale, and that alone
+    fails coverage with nothing fed back. Any design that adds the score to the lanes the
+    figure is in will smear it; a level low enough not to smear is a score too quiet to
+    hear beside the figure. What was not tried, for whoever comes back to it: the score
+    drawn as a figure of its own, in lanes of its own, as layer B is - which needs the
+    third figure's place on the screen and the per-layer machinery behind it, and is a
+    new design rather than a defence. The cheat sheet already says the score's notes are
+    never drawn, and still does; the score's comments in the page now point here.
 - **P8 — The Bench along the loop** (four tabs and a drawer), the synth's presets rebuilt
   by what the loop does, and the phaser.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input

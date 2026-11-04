@@ -11373,8 +11373,11 @@ function makeGeneratorCore(rate, slots, lfos) {
          played its full chord every step and the chord redrew the diagonal,
          until the screen was full whatever the picture under it did. Its
          level is bounded, its picture was not, and lowering the level did
-         not cure it. Drawing it waits for P7, beside Scan's loop defences,
-         which a score reading its own light needs as much as Scan does. */
+         not cure it. P7c tried again under Scan's defences and kept it out:
+         drawn, the voice is one signal added to both lanes, so it moves the
+         whole figure along the diagonal by its waveform, and that smear alone
+         lit 1.7 to 4 times the cells with nothing fed back. The designs and
+         their numbers are in making-it-one-instrument.md, under P7c. */
       let scored = 0;
       if (scoreStruck > 0) {
         let sum = 0, live = 0;
@@ -23765,8 +23768,9 @@ function syncMidiOut() {
    for a while, and the voice's diagonal lit every row the score reads in the
    middle of the screen: full chords every step, redrawing the diagonal,
    until the picture under it no longer mattered. It is the one note heard
-   and not drawn, until P7 gives the loop the defences a drawn score needs
-   (the block's comment, and making-it-one-instrument.md). */
+   and not drawn, and P7c, which tried four ways of drawing it under the
+   loop's defences, left it so (the block's comment, and
+   making-it-one-instrument.md under P7c). */
 const SCORE_STEPS = [["1/16", 0.25], ["1/8", 0.5], ["1/4", 1]];
 const SCORE_FLOOR = 0.15;               // brightness a note needs, of one
 const score = { on: false, step: "1/16", voices: 2, low: 48, octaves: 3,

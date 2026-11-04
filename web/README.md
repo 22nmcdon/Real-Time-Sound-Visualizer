@@ -4714,3 +4714,27 @@ baseline - which is their own load sensitivity and not the pool's. Peak memory
 was 6.6 of 15 GB with 37 Chromium processes. `-j1` gives the old order and
 streaming; a name that is not a suite is now an error, where it used to run
 nothing and say "everything passes".
+
+**Drawing a voice into the lanes a figure is in smears the figure, and a
+governor that passes by silence is not a pass.** P7c drew the score's voice
+again under the loop defences P4 lacked, against criteria written first (in
+`making-it-one-instrument.md`), and every design failed coverage. The reason
+was not the one P4 gave. P4 blamed the feedback - the score reading the
+diagonal its own note drew - but replaying the undrawn score's own strikes
+into the drawn page, with the score's reading off so nothing could feed back,
+still lit 1.7 to 4 times the cells: the score's voice is one signal added to
+both lanes, so it moves the whole figure along the diagonal by its waveform
+rather than laying a line beside it. Before attributing a picture's fill to a
+loop, open the loop and measure again. And the one design that looked like
+four passes - struck in proportion to how dark the screen is - passed by
+striking at velocity nought, because the presets' own pictures were already
+past its threshold; the criteria said nothing about the score still being
+heard, and should have. A check on what a defence lets through needs a check
+beside it that the thing it defends still happens. Two smaller ones from the
+same measurement: the rose alone lit about 140 cells under P4 and about 1,270
+now (counted over 0.05), so a number from an old entry is not a null, and the
+picture meter's *settled* is not P4's symptom any more - drawn, the star read
+settled less, not more. The harnesses are not in the repository; the numbers
+are in the plan, and the method (variant pages of the block, the page's own
+brain with the JavaScript generator, twenty seconds, the first quarter
+dropped) is quick to rebuild.
