@@ -381,7 +381,7 @@ experiment.
 | Crossings, thresholds, Pluck | Notes from the figure's geometry, not from the phosphor | **Cut.** They read the beam, not the phosphor; what is good in them folds into the score |
 | Waveforms | Fourteen shapes, drawbars, morph, wavetable, drawn cycle, noises | **Reframe as ink.** Fewer on show; morph as the one knob; drawbars stay for the Nord |
 | The voice | Second oscillator (FM, ring, sync, sub, unison), drive, fold, crush, voice filter, the budget | **Ink modifiers.** Sync and fold up front (the strongest change to the picture); the rest trimmed hard or in a fold-out. Unison is why the budget exists |
-| The plane | Nine X–Y operations, rotation, layer B's plane, delay and chorus on the pair | **Keep, as Space:** transforms of the picture change what the phosphor holds, so with Scan they change the sound twice. **One addition, after the cuts: a phaser.** It turns different harmonics by different amounts, so on X–Y the figure twists unevenly and lines open into loops, which nothing in the plane does; steered by the picture stage |
+| The plane | Nine X–Y operations, rotation, layer B's plane, delay and chorus on the pair | **Keep, as Space:** transforms of the picture change what the phosphor holds, so with Scan they change the sound twice. **One addition, after the cuts: a phaser.** It turns different harmonics by different amounts, so on X–Y the figure twists unevenly and lines open into loops, which nothing in the plane does; steered by the picture stage. *Built in P8e: see its bullet under P8* |
 | Figures | Harmonograph, thirteen figures, text, SVG, your drawing, solids, a second generator | **Keep what draws while you play.** Generators that ignore the keyboard are the image-generator product: cut or drawer. Your drawing becomes drawing onto the phosphor. *Done in P5: all of them to the drawer, nothing deleted, by the owner's choice - a drawing is picture first and plays one note; P7 decides whether Scan wants one as a picture source* |
 | Grab, drawn cycle | A cycle from the input's audio; a cycle drawn by hand | **Keep as ink tools.** (Grab reads audio, not the picture; it is not a scan) |
 | Playing | MIDI in, on-screen keys, poly, mono, the dyad, pedal, learned controllers | **Keep in the synth.** Scan starts mono or dyad: one phosphor, a read rate per voice. In the effect, notes only set Scan's pitch |
@@ -438,7 +438,7 @@ Each removal runs through five places, and the house rules apply to all of them.
    **none is removed until its replacement exists, and saved automation maps across.**
    They were Macro 1-4, the setup morph, Level, Cutoff (the voice filter's) and Echo
    (`kKnobs`); since P8a they are Picture, Scan, Persistence, Bend, Cutoff, Level and
-   Echo, then Morph, with the phaser's amount to come eighth. The voice filter and the
+   Echo, then the phaser's amount (eighth since P8e), then Morph. The voice filter and the
    morph still cannot be cut as plain removals.
 4. **Tests:** a removed feature's suite goes with it; a suite that tested two things is
    rewritten, not left asserting less.
@@ -973,6 +973,30 @@ the synth's features should be chosen knowing that.
     checks that they have gone and that an old code loses them - read by the site's
     compiled codec and by the page's own, since the first version of that check read
     only the compiled one and passed with the page's pass taken out.
+  - *P8e, built: the phaser.* Four first-order all-passes a channel, swept together about
+    700 Hz, up to two and a half octaves either way, fed back for a resonance held at
+    0.75, and mixed with the dry pair at most half and half, where its two notches are
+    deepest. Four because each turns the phase through half a turn, so four turn the top
+    harmonics nearly two whole turns and the bottom ones hardly at all: two notches, and
+    on X-Y each harmonic of a figure turned by its own amount. The two channels sweep in
+    quadrature, as the chorus does, and that is the decision that makes it act on the
+    picture at all: the same all-passes on both channels turn X and Y alike, and a
+    diagonal line - one signal in both - stays a line and only slides along itself.
+    Swept apart, a line opens into a loop that widens and closes as the sweep goes round;
+    `phasertest.py` holds both, the range at nought as the null. It sits in each layer's
+    time stage, before the chorus and the echo so their copies are of the phased pair, so
+    it is per layer with B's own effects, reaches a live input as the delay does, and is
+    heard as it is drawn. It acts on the default sound only when asked: the picture
+    stage's Memory pushes its amount (a fourth bundle, at 0.5), which is what "steered by
+    the picture stage" came to mean - Memory is for unsticking a still or cycling picture,
+    and the phaser gives a still line somewhere new to go - and a routing on it runs it at
+    nought, as one on the echo does. The resonance is not a destination, for the echo's
+    feedback's reason. Its amount is the host's eighth knob, before the morph, whose
+    automation stays bound to its id. The knobs are on Space & Memory in the delay's
+    section, renamed *Delay, chorus and phaser*: Phaser and Sweep in front, Range and
+    Resonance behind its &ctdot;. States below 1e-30 are flushed to nought on both sides,
+    so a silence ends in exact zeros rather than denormals, which a native core pays for.
+    No preset: the bank is being rebuilt from scratch next.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

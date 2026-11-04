@@ -297,7 +297,9 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
                       bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0,
                       bDelayMix=0, bDelayMs=375, bDelayFeedback=0.35, bDelayPingPong=0, bChorusMix=0,
-                      bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0, ev="")
+                      bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0,
+                      phaserMix=0, phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, ppush=0, phr=0,
+                      bPhaserMix=0, bPhaserRate=0.3, bPhaserDepth=0.7, bPhaserFeedback=0.3, bppush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -386,6 +388,32 @@ def plane_scenarios():
     out.append(dict(planeScaleX=1.1, bown=1, ecr=1, bDelayMs=7, bepush=0.8, betpush=-0.3))
     out.append(dict(planeShear=0.3, chorusMix=0.5, chorusRate=3.1, bChorusMix=0.5, bChorusRate=1.3, bDelayMix=0.4,
                     bDelayMs=6, ev="700:bown:1;1300:bown:0;1800:bown:1;2100:bDelayMs:9;2300:bChorusRate:4"))
+    # The phaser (P8e): alone, swept fast enough to go round inside the run;
+    # at its resonance's top with the full range, at another rate; before a
+    # chorus and an echo, at each oversampling; brought in from none by a
+    # routing on its amount, and pushed while on; B's own beside A's dry and
+    # beside A's own, each pushed by its layer's routing; and switched and
+    # moved under the pairs, its sweep carrying on where it was.
+    out.append(dict(phaserMix=1, phaserRate=7, phaserDepth=0.7, phaserFeedback=0.3))
+    out.append(dict(phaserMix=0.6, phaserRate=13, phaserDepth=1, phaserFeedback=0.75, rate=44100.0))
+    # Asked for more resonance than it has: held at 0.75 on both sides. The
+    # first mutation pass moved the core's ceiling to 0.9 and no run asked
+    # past 0.75, so none could tell.
+    out.append(dict(phaserMix=0.9, phaserRate=6, phaserDepth=0.9, phaserFeedback=3))
+    # A burst and then silence through it at its most resonant, long enough
+    # for the ring to fall past the flush (below).
+    out.append(dict(phaserMix=1, phaserRate=3, phaserDepth=0.8, phaserFeedback=0.75, inp=2, samples=24000))
+    for os_ in (1, 2, 4):
+        out.append(dict(planeOS=os_, planeTwist=0.6, phaserMix=0.8, phaserRate=5, phaserDepth=0.5,
+                        phaserFeedback=0.5, chorusMix=0.4, chorusRate=2, delayMix=0.3, delayMs=7))
+    out.append(dict(phaserMix=0, phr=1, ppush=0.9, phaserRate=9))
+    out.append(dict(phaserMix=0.4, phr=1, ppush=-0.6, phaserRate=4, phaserFeedback=0.6))
+    out.append(dict(planeScaleX=1.1, bown=1, bPhaserMix=0.9, bPhaserRate=6, bPhaserDepth=0.9, bPhaserFeedback=0.4,
+                    phr=1, bppush=0.5))
+    out.append(dict(phaserMix=0.5, phaserRate=3, bown=1, bPhaserMix=0.7, bPhaserRate=11, bPhaserFeedback=0.7,
+                    phr=1, ppush=0.3, bppush=-0.4))
+    out.append(dict(planeScaleX=1.05, phaserRate=8, ev="400:phaserMix:0.9;1000:phaserDepth:0.2;1500:phaserMix:0;"
+                    "1900:phaserMix:0.6;2200:phaserFeedback:0.75"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -593,19 +621,34 @@ check("and against layer B's bend left at nought",
       worst(js_one(lines[bentB].replace(" warp=-0.6 ", " warp=0 ")), row(cpp_rows[bentB])) > 1e-6)
 # The plane: every run changes layer A's pair somewhere, so no comparison is of
 # the input passed through.
-def plane_input(i, rate, held):
+def plane_input(i, rate, held, burst=False):
     if held: return -0.375, 0.625
+    if burst and i >= 200: return 0.0, 0.0
     x = 0.7 * math.sin(TWO_PI * 220 * i / rate) + 0.25 * math.sin(TWO_PI * 661 * i / rate)
     return x, 0.5 * math.sin(TWO_PI * 330 * i / rate + 0.4)
 still = []
 for l, a in zip(lines, js_rows):
     if not l.startswith("planeRun"): continue
-    rate, v, held = float(l.split("rate=")[1].split()[0]), row(a), " inp=1 " in l
+    rate, v, held, burst = float(l.split("rate=")[1].split()[0]), row(a), " inp=1 " in l, " inp=2 " in l
     # Four a sample, A's pair and B's: since P4 there is no heard pair of its own.
-    if max(max(abs(v[4 * i] - plane_input(i, rate, held)[0]), abs(v[4 * i + 1] - plane_input(i, rate, held)[1]))
+    if max(max(abs(v[4 * i] - plane_input(i, rate, held, burst)[0]), abs(v[4 * i + 1] - plane_input(i, rate, held, burst)[1]))
            for i in range(len(v) // 4)) < 0.01:
         still.append(l[:70])
 check("every plane run changes the pair it is given", not still, "; ".join(still[:2]))
+# The phaser's flush (P8e): after a burst, at its most resonant, the ring is
+# heard, and then the pair is exactly nought on both sides - the states
+# flushed below 1e-30 rather than decaying through the denormals, which a
+# native core pays for. Doubles here, not the page's float32 output, which
+# rounds a ring under 1e-45 to nought whether it was flushed or not: the web
+# suite's version of this check could not tell, and the mutation pass showed it.
+ring = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " inp=2 " in l)
+for side, rows_ in (("page", js_rows), ("core", cpp_rows)):
+    v = row(rows_[ring])
+    a = [v[4 * i] for i in range(len(v) // 4)]
+    nz = [i for i, s in enumerate(a) if s != 0]
+    check("the phaser's ring after a burst ends in exact zeros on the %s's side, long before the run does" % side,
+          max(abs(s) for s in a[200:400]) > 1e-3 and nz and 200 < nz[-1] < len(a) - 4000,
+          "rings %.3g; last non-zero sample %s of %d" % (max(abs(s) for s in a[200:400]), nz[-1] if nz else None, len(a)))
 kal = next(i for i, l in enumerate(lines) if "planeKaleido=5.5" in l)
 check("and against a kaleidoscope of 5.6 answered as one of 5.5",
       worst(js_one(lines[kal].replace("planeKaleido=5.5", "planeKaleido=5.6")), row(cpp_rows[kal])) > 1e-6)
@@ -1676,7 +1719,8 @@ def stage_holds(out):
     # glow at 0.4 pushes the fold by 0.4 x 0.6 x 0.8; a fade eases a routing
     # made by hand (the twist from nought) and leaves the stage's memory on
     # the same control whole, at its reach of 0.3; and the amount at nought
-    # leaves only what the setup holds.
+    # leaves only what the setup holds. Memory's on the phaser (P8e) is one
+    # more route wherever the stage is on: 4, 5 and 6 became 5, 6 and 7.
     lines = out.split("\n")
     frames_ = [l for l in lines if l.startswith("frame")]
     stages = [l for l in lines if l.startswith("stage")]
@@ -1685,7 +1729,7 @@ def stage_holds(out):
     eased = any(any(s == 18 and a == 0 for _, s, a in route_list(l)) and
                 any(s == 18 and a == 1 and abs(h - 0.15) < 1e-12 for h, s, a in route_list(l)) for l in frames_)
     heard = [int(l.split("heard ")[1].split()[0]) for l in stages]
-    return fold and eased and heard == [4, 5, 2, 6]
+    return fold and eased and heard == [5, 6, 2, 7]
 check("the stage's routes: heard at the amount, within reach, never faded, gone at nought", stage_holds(mout("stage")))
 check("and the check fails on a run with no stage in it", not stage_holds(mout("reach")))
 check("events fire on a new count only, never on the count found, and never at no depth",
@@ -3868,8 +3912,27 @@ BEND_MADE = [_json.dumps(d) for d in ({"oscBend": -45, "oscBendAt": 80, "bBend":
                                       {"oscBend": -250, "oscBendAt": 130, "bBend": -101, "bBendAt": -7},
                                       {"oscBend": 101, "bBend": "-60"}, {"bBend": -20, "bBendAt": 60},
                                       {"oscBend": -70, "oscBendAt": 12.5}, {"oscBend": "abc", "bBendAt": None})]
+# The phaser's (P8e), from a generator of its own, before B's echoes and
+# planes so their indexes from the end do not move: A's four fields in and
+# out of range and of every type, B's own with its plane, and B's falling
+# back to A's.
+phrng = random.Random(181)
+def phaser_setup():
+    st = {"bPlane": phrng.choice([True, True, False, None])}
+    pick = lambda: phrng.choice([phrng.randint(-20, 600), phrng.uniform(-10, 120), "40", "", None, True, [5], -0.0, 1e21])
+    for key in ("phaserMix", "phaserRate", "phaserDepth", "phaserFeedback",
+                "bPhaserMix", "bPhaserRate", "bPhaserDepth", "bPhaserFeedback"):
+        if phrng.random() < 0.6: st[key] = pick()
+    if phrng.random() < 0.5: st.update(layers=phrng.choice(["split", "layer"]), midiMode="poly")
+    return _json.dumps(st)
+PHASER_MADE = [_json.dumps(d) for d in ({"phaserMix": 70, "phaserRate": 45, "phaserDepth": 90, "phaserFeedback": 60},
+                                        {"phaserMix": 140, "phaserRate": 1, "phaserDepth": -5, "phaserFeedback": 90},
+                                        {"bPlane": True, "phaserMix": 30, "bPhaserMix": 80, "bPhaserRate": 200,
+                                         "layers": "layer", "midiMode": "poly"},
+                                        {"bPlane": True, "phaserMix": 55, "phaserFeedback": 20, "layers": "split",
+                                         "midiMode": "poly"})] + [phaser_setup() for _ in range(40)]
 rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BEND_MADE + BTIME + BPLANE
+           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BEND_MADE + PHASER_MADE + BTIME + BPLANE
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
@@ -3888,6 +3951,15 @@ check("and B's own echo and chorus, with fields of their own and fields falling 
       and any(r["planeB"]["own"] and r["echoB"]["sync"] and r["echoB"]["sync"] != r["echo"]["sync"] for r in btown)
       and any(r["planeB"]["own"] and r["b"]["delayMs"] != r["a"]["delayMs"] for r in btown)
       and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] for r in btown))
+phown = [_json.loads(l) for l in rpg[-len(BPLANE) - len(BTIME) - len(PHASER_MADE):-len(BPLANE) - len(BTIME)]]
+check("and the phaser's, A's clamped into range, B's own with fields of its own and fields falling back to A's",
+      phown[0]["echo"]["phaser"] == 0.7 and phown[0]["a"]["phaserFeedback"] == 0.6
+      and phown[1]["echo"]["phaser"] == 1 and phown[1]["echo"]["phRate"] == 0.05 and phown[1]["echo"]["phDepth"] == 0
+      and phown[1]["echo"]["phFeedback"] == 0.75
+      and phown[2]["planeB"]["own"] and phown[2]["echoB"]["phaser"] == 0.8 and phown[2]["b"]["phaserRate"] == 2
+      and phown[3]["planeB"]["own"] and phown[3]["echoB"]["phaser"] == phown[3]["echo"]["phaser"] == 0.55
+      and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] and r["echo"]["phaser"] > 0 for r in phown),
+      repr([(r["echo"]["phaser"], r["echoB"]["phaser"]) for r in phown[:4]]))
 check("the setups reach every kind, both layers, the old LFO enum, the morph, the controllers and the tempo",
       {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
       and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
@@ -4434,7 +4506,8 @@ check("and the comparison fails against the page's operations one out of step", 
 # the same switch as the Plane's, and its controls writing whichever layer's
 # echo is shown. Its own generator, so the runs above are the ones they were.
 trng2 = random.Random(133)
-TSLIDERS = ["delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback"]
+TSLIDERS = ["delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
+            "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"]
 def tvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     return trng2.choice([round(trng2.uniform(lo, hi)), round(trng2.uniform(lo, hi), 1), lo - 5, hi + 5, "abc", "7.5"])

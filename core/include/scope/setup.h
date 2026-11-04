@@ -63,7 +63,7 @@ inline const Json& setupDefaults() {
   "oscSubOct":1,"oscSubShape":"square","oscUnison":1,"oscSpread":12,"shpDrive":0,"shpFold":0,
   "shpBits":0,"shpRate":0,"shpOS":2,"vcfType":0,"vcfCut":667,"vcfRes":0,"vcfTrack":0,"vcfEnvAmt":0,
   "vcfAtk":5,"vcfDec":300,"vcfSus":30,"vcfRel":300,"chorusMix":0,"chorusRate":60,"chorusDepth":30,
-  "chorusTime":120,"chorusFeedback":0,"lagOn":false,"lagMs":5,"lagAuto":true,"rotate":0,"lagMix":20,
+  "chorusTime":120,"chorusFeedback":0,"phaserMix":0,"phaserRate":30,"phaserDepth":70,"phaserFeedback":30,"lagOn":false,"lagMs":5,"lagAuto":true,"rotate":0,"lagMix":20,
   "fOn":false,"fType":"lowpass","fCut":566,"fRes":0,"fSee":"post","fHear":"pre","mSee":"pre","xy0":0,
   "xy1":1,"pGoni":true,"pSpec":true,"pHarm":false,"pTune":false,"cursors":false,"beam":"moderate",
   "beamXY":true,"beamYT":false,"beamGoni":false

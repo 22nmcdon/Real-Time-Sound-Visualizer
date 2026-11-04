@@ -122,11 +122,15 @@ class ScopeProcessor final : public juce::AudioProcessor {
      controls - Scan's depth, the bend, the cutoff, the level - address the
      layer the panel shows, as the slider does for a hand (`readBack`). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 8> kKnobs { {
+  static constexpr std::array<HostKnob, 9> kKnobs { {
     { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
     { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Bend", "oscBend", 2, true },
     { "cutoff", "Cutoff", "vcfCut", 1, true }, { "level", "Level", "amp", 1, true },
-    { "echo", "Echo", "delayMix", 1, true }, { "morph", "Morph", "morphPos", 1, false },
+    { "echo", "Echo", "delayMix", 1, true },
+    // P8e: the eighth knob of the bank, which P8a kept for it. Morph moves from
+    // index 7 to 8, and its automation stays with it, being bound to its id.
+    { "phaser", "Phaser", "phaserMix", 2, true },
+    { "morph", "Morph", "morphPos", 1, false },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
   // By the parameter's id, which outlives its index: the shell test's way to a knob.

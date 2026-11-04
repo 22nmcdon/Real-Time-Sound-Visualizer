@@ -4792,3 +4792,21 @@ in the library, and writes out the setups of the two that went. And
 page's own `migrateSetup` through it never runs the page's pass:
 `setupmorphtest.py` reads old codes through `decodeSetupHere` as well, which
 its first version did not, and passed with the page's pass taken out.
+
+**A phaser alike on both channels does nothing to a line, and that decides
+how it is built.** P8e's phaser is four all-passes a channel, and the first
+thing to ask of it, by the fixtures rule, was what it leaves alone: the same
+all-passes on X and Y turn both channels by the same phase at every
+frequency, so a pair that was one signal in both - a diagonal line - comes
+out one signal in both, the line sliding along itself however the sweep
+moves. So the two channels sweep in quadrature, as the chorus does, and
+`phasertest.py` holds the line opening with the range above nought and
+staying a line, to the bit, at nought, where the two are alike again. Two
+smaller things from the same work. The phaser's parity harness lifts the
+generator's functions by name (`coreScope` in `js_core.mjs`), so a free
+variable they read - the first version kept whether a routing reaches the
+phaser in a closure `let` - is undefined there and throws; it is a
+parameter of `planeSetup` now, as the echo's is, and the core's `setup`
+takes it the same way. And its states are flushed to nought below 1e-30 on
+both sides: V8 does not slow down on denormals and a native core does, so
+the page does it only to stay equal to the core to the bit.

@@ -300,6 +300,7 @@ struct Brain {
     double feedback = 0.35;
     bool pingPong = false;
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
+    double phaser = 0, phRate = 0.3, phDepth = 0.7, phFeedback = 0.3;  // P8e
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
@@ -691,6 +692,10 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   b.panel.setRangeNumber("chorusDepth", jsMathRound(e.depthMs * 10));
   b.panel.setRangeNumber("chorusTime", jsMathRound(e.centreMs * 10));
   b.panel.setRangeNumber("chorusFeedback", jsMathRound(e.chorusFeedback * 100));
+  b.panel.setRangeNumber("phaserMix", jsMathRound(e.phaser * 100));
+  b.panel.setRangeNumber("phaserRate", jsMathRound(e.phRate * 100));
+  b.panel.setRangeNumber("phaserDepth", jsMathRound(e.phDepth * 100));
+  b.panel.setRangeNumber("phaserFeedback", jsMathRound(e.phFeedback * 100));
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
@@ -721,6 +726,8 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   gen.set("delayPingPong", e.pingPong ? 1 : 0, 1); gen.set("chorusMix", e.chorus, 1); gen.set("chorusRate", e.rate, 1);
   gen.set("chorusDepthMs", e.depthMs, 1); gen.set("chorusMs", e.centreMs, 1);
   gen.set("chorusFeedback", e.chorusFeedback, 1);
+  gen.set("phaserMix", e.phaser, 1); gen.set("phaserRate", e.phRate, 1); gen.set("phaserDepth", e.phDepth, 1);
+  gen.set("phaserFeedback", e.phFeedback, 1);
 }
 inline void syncEcho(Brain& b, Generator& gen) {
   syncEchoB(b, gen);
@@ -728,6 +735,8 @@ inline void syncEcho(Brain& b, Generator& gen) {
   gen.set("delayMix", e.mix); gen.set("delayMs", delayTimeMs(b)); gen.set("delayFeedback", e.feedback);
   gen.set("delayPingPong", e.pingPong ? 1 : 0); gen.set("chorusMix", e.chorus); gen.set("chorusRate", e.rate);
   gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
+  gen.set("phaserMix", e.phaser); gen.set("phaserRate", e.phRate); gen.set("phaserDepth", e.phDepth);
+  gen.set("phaserFeedback", e.phFeedback);
 }
 inline void syncQuantiser(const Brain& b, Generator& gen) {
   gen.set("qMask", b.quantise ? keyMask(b.keyRoot, b.keyScale) : 0);
@@ -1358,12 +1367,18 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.depthMs = within("chorusDepth", 0, 100, 30) / 10;
     e.centreMs = within("chorusTime", 10, 300, 120) / 10;
     e.chorusFeedback = within("chorusFeedback", 0, 90, 0) / 100;
+    e.phaser = within("phaserMix", 0, 100, 0) / 100;
+    e.phRate = within("phaserRate", 5, 500, 30) / 100;
+    e.phDepth = within("phaserDepth", 0, 100, 70) / 100;
+    e.phFeedback = within("phaserFeedback", 0, 75, 30) / 100;
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
     setA("delayPingPong", e.pingPong ? 1 : 0);
     setA("chorusMix", e.chorus); setA("chorusRate", e.rate); setA("chorusDepthMs", e.depthMs);
     setA("chorusMs", e.centreMs); setA("chorusFeedback", e.chorusFeedback);
+    setA("phaserMix", e.phaser); setA("phaserRate", e.phRate); setA("phaserDepth", e.phDepth);
+    setA("phaserFeedback", e.phFeedback);
     /* Layer B's own echo and chorus, with its plane (bPlane): a field the
        setup lacks is A's, as B's plane's are. */
     echoBFollow(brain);
@@ -1387,6 +1402,10 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       f.depthMs = slide("bChorusDepth", 0, 100, 10, e.depthMs);
       f.centreMs = slide("bChorusTime", 10, 300, 10, e.centreMs);
       f.chorusFeedback = slide("bChorusFeedback", 0, 90, 100, e.chorusFeedback);
+      f.phaser = slide("bPhaserMix", 0, 100, 100, e.phaser);
+      f.phRate = slide("bPhaserRate", 5, 500, 100, e.phRate);
+      f.phDepth = slide("bPhaserDepth", 0, 100, 100, e.phDepth);
+      f.phFeedback = slide("bPhaserFeedback", 0, 75, 100, e.phFeedback);
     }
     syncEchoB(brain, gen);
     syncEchoPanel(brain, keys);
@@ -1574,7 +1593,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   // B's alone, whichever layer is on the panel.
   else if (id == "planeTurn") { b.planeB.turn = v / 100; syncPlanePanel(b, keys); syncPlane(b, gen); }
   else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "chorusMix" || id == "chorusRate"
-           || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback") {
+           || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback" || id == "phaserMix"
+           || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback") {
     Brain::EchoState& e = echoTarget(b, keys);
     if (id == "delayMix") e.mix = v / 100;
     else if (id == "delayMs") e.ms = v;
@@ -1583,7 +1603,11 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     else if (id == "chorusRate") e.rate = v / 100;
     else if (id == "chorusDepth") e.depthMs = v / 10;
     else if (id == "chorusTime") e.centreMs = v / 10;
-    else e.chorusFeedback = v / 100;
+    else if (id == "chorusFeedback") e.chorusFeedback = v / 100;
+    else if (id == "phaserMix") e.phaser = v / 100;
+    else if (id == "phaserRate") e.phRate = v / 100;
+    else if (id == "phaserDepth") e.phDepth = v / 100;
+    else e.phFeedback = v / 100;
     syncEchoPanel(b, keys);
     syncEcho(b, gen);
   }

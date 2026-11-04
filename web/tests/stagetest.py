@@ -177,7 +177,7 @@ with sync_playwright() as pw:
     }""")
     b.close()
     check("a preset leaves the amount where the hand put it; a setup naming it sets it; a saved code carries it",
-          kept == {"afterPreset": "25", "named": "80", "saved": "30", "routes": 4}, str(kept))
+          kept == {"afterPreset": "25", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(); p.goto(PAGE + "?picture=0"); p.wait_for_timeout(1000)
     opened = p.evaluate("() => { applyPreset('b:Pure sine'); return { value: el.pictureAmount.value, routes: stageRoutings().length }; }")
@@ -198,7 +198,7 @@ with sync_playwright() as pw:
     }""")
     b.close()
     check("the expression pedal sets the Picture amount, on its step, and is still learned; another controller does not",
-          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": True, "routes": [0.8, 0.8, 0.6, 0.4]},
+          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": True, "routes": [0.8, 0.8, 0.6, 0.4, 0.5]},
           str(foot))
 
 print()

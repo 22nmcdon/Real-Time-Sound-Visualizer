@@ -59,7 +59,8 @@ constexpr int Drive = Sync + 1, Fold = Drive + 1, Vcf = Fold + 1, Echo = Vcf + 1
 constexpr int Swing = EchoTime + 1, Width = Swing + 1, Table = Width + 1, Spin = Table + 1;
 constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
 constexpr int Bend = Turn + 1, BendAt = Bend + 1;  // the voice's bend and where it centres
-constexpr int Used = BendAt + 1;  // the slots the loop reads
+constexpr int Phaser = BendAt + 1;  // the phaser's amount (P8e)
+constexpr int Used = Phaser + 1;  // the slots the loop reads
 }  // namespace slot
 
 enum class Mode { Wave, Harmonograph, Figure, Wireframe };
@@ -318,12 +319,13 @@ class Generator {
 
   void effect(const float* inL, const float* inR, float* outL, float* outR, int n) {
     const double dt = 1 / rate_;
-    bool twistRouted = false, echoRouted = false;
+    bool twistRouted = false, echoRouted = false, phaserRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
+      if (r.slot == slot::Phaser) phaserRouted = true;
     }
-    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted);
+    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, nullptr, 0, false, phaserRouted);
     for (int i = 0; i < n; i++) {
       lfoStep(lfos_[0], rate_, random_);
       lfoStep(lfos_[1], rate_, random_);
@@ -347,10 +349,11 @@ class Generator {
     const bool layered = b_.voices.has_value();
     const double roleGlide = poleFor(4, rate_);
     bool twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false, echoRouted = false;
-    bool turnRouted = false;
+    bool turnRouted = false, phaserRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
+      if (r.slot == slot::Phaser) phaserRouted = true;
       if (r.slot == slot::Turn) turnRouted = true;
       // The bend is phase modulation as FM is, and switches the oscillator on alike.
       if (r.slot == slot::Fm || r.slot == slot::Bend || r.slot == slot::BendAt) fmRouted = true;
@@ -358,7 +361,7 @@ class Generator {
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && b_.planeOwn ? &b_ : nullptr,
-                                      b_.planeTurn, turnRouted);
+                                      b_.planeTurn, turnRouted, phaserRouted);
     govern(fmRouted, syncRouted, shapeRouted, planeOn);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;
@@ -620,6 +623,10 @@ class Generator {
     else if (field == "chorusDepthMs") p.chorusDepthMs = v;
     else if (field == "chorusMs") p.chorusMs = v;
     else if (field == "chorusFeedback") p.chorusFeedback = v;
+    else if (field == "phaserMix") p.phaserMix = v;
+    else if (field == "phaserRate") p.phaserRate = v;
+    else if (field == "phaserDepth") p.phaserDepth = v;
+    else if (field == "phaserFeedback") p.phaserFeedback = v;
     else return false;
     return true;
   }
@@ -749,9 +756,10 @@ class Generator {
   }
 
   void planeTick(double dt) {
-    const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0 };
+    const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0,
+                          modOr0(slot::Phaser) };
     const PlanePushes b { modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Echo), modBOr0(slot::EchoTime),
-                          modBOr0(slot::Turn) };
+                          modBOr0(slot::Turn), modBOr0(slot::Phaser) };
     plane_.tick(a_, a, dt, &b_, b);
   }
 

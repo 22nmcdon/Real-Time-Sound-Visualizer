@@ -377,16 +377,16 @@ with sync_playwright() as pw:
     }""")
     tog, tb, tbm, ta, tplay, tboth = (tp[k] for k in ("together", "b", "bMoved", "a", "playB", "both"))
     check("with two layers Delay and chorus has a Layers row, on Together, and its controls write both layers' echo",
-          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay and chorus" and tog["genA"] == 0.3
+          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay, chorus and phaser" and tog["genA"] == 0.3
           and tog["genB"] == 0.3, str(tog))
     check("B there gives B its own effects - the Plane's row says so too - starting as A's, and shows B's",
           tb["own"] and tb["checked"] == ["B"] and tb["planeChecked"] == ["B"] and tb["bMix"] == 0.3
-          and tb["title"] == "Delay and chorus \u00b7 layer B" and tb["edit"] == 1, str(tb))
+          and tb["title"] == "Delay, chorus and phaser \u00b7 layer B" and tb["edit"] == 1, str(tb))
     check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
           tbm["bMs"] == 120 and tbm["genBMs"] == 120 and tbm["bChorus"] == 0.6 and tbm["genBChorus"] == 0.6
           and tbm["aMs"] == 375, str(tbm))
     check("A shows A's echo and writes A's alone",
-          ta["title"] == "Delay and chorus \u00b7 layer A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
+          ta["title"] == "Delay, chorus and phaser \u00b7 layer A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
           and ta["shownMs"] == "375", str(ta))
     check("the Play tab's B button shows B's echo here as well",
           tplay["checked"] == ["B"] and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))

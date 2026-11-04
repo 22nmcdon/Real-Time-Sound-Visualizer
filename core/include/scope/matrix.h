@@ -104,6 +104,7 @@ inline std::vector<ModDest> genDests() {
   add("gen.spinX", slot::Spin); add("gen.spinY", slot::Spin + 1); add("gen.spinZ", slot::Spin + 2);
   add("gen.turn", slot::Turn);
   add("gen.bend", slot::Bend); add("gen.bendAt", slot::BendAt);
+  add("gen.phaser", slot::Phaser);
   return out;
 }
 
@@ -154,6 +155,7 @@ inline constexpr StageBundle kStageBundles[] = {
   { "stage.motion", "gen.echo", 0.8 },
   { "stage.memory", "gen.twist", 0.6 },
   { "stage.memory", "gen.phase", 0.4 },
+  { "stage.memory", "gen.phaser", 0.5 },
 };
 inline bool isStageKey(const std::string& key) { return key.rfind("stage.", 0) == 0; }
 

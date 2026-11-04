@@ -272,7 +272,7 @@ with sync_playwright() as pw:
     }""")
     want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
             "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
-            "Display": "space", "Plane": "space", "Delay and chorus": "space",
+            "Display": "space", "Plane": "space", "Delay, chorus and phaser": "space",
             "Scan": "picture", "Score": "picture",
             "Input": "inputs", "Input into the generator": "inputs",
             "Lanes": "measure", "Vertical": "measure", "Filter": "measure", "Trigger": "measure",
@@ -280,7 +280,7 @@ with sync_playwright() as pw:
             "Key and tempo": "perform", "Arpeggiator": "perform"}
     before_p8 = dict(want, **{"Voice filter": "shape", "Oscillator": "shape", "Drawbars": "shape",
                               "Shaping": "shape", "Drawn cycle": "shape", "Display": "picture",
-                              "Plane": "effects", "Delay and chorus": "effects", "Input": "play",
+                              "Plane": "effects", "Delay, chorus and phaser": "effects", "Input": "play",
                               "Input into the generator": "effects", "Lanes": "picture",
                               "Vertical": "picture", "Filter": "picture", "Trigger": "picture",
                               "Key and tempo": "measure"})

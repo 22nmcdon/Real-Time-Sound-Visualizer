@@ -20,7 +20,8 @@ every chain. So what is checked:
   with Scan (P7a) at its top beside it all; then Scan at its top with every
   note striking the screen at full (P7b) during fast repeated notes, and a
   split with both layers at Scan's top, each reading the other's picture -
-  two feedback paths feeding each other. Run headless,
+  two feedback paths feeding each other; and the phaser (P8e) at its top
+  with its resonance at its most, a feedback inside the loop. Run headless,
   with every bound checked every tenth of a second - and checked to have
   MOVED, because a loop that did nothing would pass any bound there is.
 
@@ -329,6 +330,14 @@ with sync_playwright() as pw:
         setScreenKeys(true);
         hammer = setInterval(() => { const n = 60 + (k++ * 7) % 12; midiNoteOn(n, 127); setTimeout(() => midiNoteOff(n), 60); }, 90);
       }
+      /* P8e. The phaser at its top, its range and resonance at their most,
+         sweeping fast, beside the stage's own push on its amount from Memory:
+         a resonance fed back inside the loop the picture closes. */
+      if (mode === 'phaser') {
+        for (const [id, v] of [['phaserMix', 100], ['phaserDepth', 100], ['phaserFeedback', 75], ['phaserRate', 300]]) {
+          el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
+        }
+      }
       if (mode === 'cross') {
         setScreenKeys(true); setMidiMode('poly');
         el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -420,6 +429,7 @@ with sync_playwright() as pw:
         midi.layers.edit = 0; syncLayerPanel();
         el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       }
+      if (mode === 'phaser') { el.phaserMix.value = '0'; el.phaserMix.dispatchEvent(new Event('input')); }
       if (mode) { midiPanic(); setScreenKeys(false); }
       if (scanDepth) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
@@ -441,7 +451,8 @@ with sync_playwright() as pw:
     p2.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
     SEEDS = [("silence", None), ("full scale", None), ("full scale, with Scan at its top", None),
              ("full scale, Scan at its top, every note striking at full", "strike"),
-             ("full scale, a split at Scan's top, each layer reading the other's picture", "cross")]
+             ("full scale, a split at Scan's top, each layer reading the other's picture", "cross"),
+             ("full scale, the phaser at its top with its resonance at its most", "phaser")]
     for seed, mode in SEEDS:
         page = p2 if "Scan" in seed else p
         run = page.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS, 100 if "Scan" in seed else 0, mode])

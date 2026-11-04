@@ -49,6 +49,8 @@ struct PlaneTimeTone {
   double delayMix = 0, delayMs = 375, delayFeedback = 0.35;
   bool delayPingPong = false;
   double chorusMix = 0, chorusRate = 0.6, chorusDepthMs = 3, chorusMs = 12, chorusFeedback = 0;
+  // P8e, the phaser: amount, sweep in hertz, range (0 to 1 of its octaves), resonance.
+  double phaserMix = 0, phaserRate = 0.3, phaserDepth = 0.7, phaserFeedback = 0.3;
 };
 
 // What a layer has of the plane: layer B's own is this.
@@ -62,7 +64,7 @@ struct PlaneTone : PlaneLayerTone {
 
 // A sample's pushes from the routings onto a layer's plane, as the page's
 // accumulator holds them.
-struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0; };
+struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0, phaser = 0; };
 
 class Plane {
  public:
@@ -79,14 +81,15 @@ class Plane {
   // And its time stage: the page's `timeOf`.
   struct Time {
     const PlaneTimeTone* t = nullptr;
-    bool on = false, delayOn = false;
+    bool on = false, delayOn = false, phOn = false;
     double echo = 0, echoMs = 375, phase = 0, sin = 0, cos = 1;
+    double ph = 0, phPhase = 0, aL = 0, aR = 0;  // the phaser's amount, sweep, and each channel's coefficient
   };
 
   explicit Plane(double rate)
       : rate_(rate), delayMax_(static_cast<int>(std::ceil(2 * rate)) + 4),
         chorusMax_(static_cast<int>(std::ceil(0.05 * rate)) + 4),
-        delayGlide_(1 - std::exp(-1 / std::fmax(1.0, 50 * rate / 1000))),
+        delayGlide_(1 - std::exp(-1 / std::fmax(1.0, 50 * rate / 1000))), phaserTop_(0.45 * rate),
         taps2_(lowpassTaps(2)), taps4_(lowpassTaps(4)) {
     for (auto& fx : fx_) {
       fx.dl.assign(static_cast<std::size_t>(delayMax_), 0.0f);
@@ -100,7 +103,8 @@ class Plane {
   // B's own plane when it has one in force (the page's `withB` and
   // `planeOwn` both), and `turnB` its turn in radians.
   bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneLayerTone* b = nullptr,
-             double turnB = 0, bool turnRouted = false) {
+             double turnB = 0, bool turnRouted = false, bool phaserRouted = false) {
+    phaserRouted_ = phaserRouted;
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
     if (want != factor_) {
       factor_ = want;
@@ -177,10 +181,11 @@ class Plane {
 
  private:
   // A routing on the echo's level keeps the line running at nought.
-  static void timeSet(Time& T, const PlaneTimeTone& t, bool echoRouted) {
+  void timeSet(Time& T, const PlaneTimeTone& t, bool echoRouted) const {
     T.t = &t;
     T.delayOn = t.delayMix > 0 || echoRouted;
-    T.on = T.delayOn || t.chorusMix > 0;
+    T.phOn = t.phaserMix > 0 || phaserRouted_;
+    T.on = T.delayOn || t.chorusMix > 0 || T.phOn;
   }
   void timeTick(Time& T, const PlanePushes& p, double dt) {
     const PlaneTimeTone& t = *T.t;
@@ -193,6 +198,42 @@ class Plane {
       if (T.phase >= kTwoPi) T.phase -= kTwoPi;
       T.sin = std::sin(T.phase); T.cos = std::cos(T.phase);
     }
+    if (T.phOn) {
+      T.ph = std::fmax(0.0, std::fmin(1.0, t.phaserMix + p.phaser * 0.5));
+      T.phPhase += kTwoPi * t.phaserRate * dt;
+      if (T.phPhase >= kTwoPi) T.phPhase -= kTwoPi;
+      const double span = kPhaserOctaves * t.phaserDepth;
+      T.aL = allpassCoef(kPhaserCentre * std::pow(2.0, span * std::sin(T.phPhase)));
+      T.aR = allpassCoef(kPhaserCentre * std::pow(2.0, span * std::cos(T.phPhase)));
+    }
+  }
+
+  /* P8e, the phaser, as the page's: four first-order all-passes a channel,
+     swept together in quadrature, fed back for the resonance and mixed with
+     the dry pair at most half and half. The page's comment (makeTimeFx) has
+     the reasons: four for two notches, quadrature because a phaser alike on
+     both channels leaves a diagonal line a line. States below 1e-30 are
+     flushed to nought, on both sides, so a silence never decays into
+     denormals - which a native core pays for dearly and V8 does not, so the
+     page does it only to stay equal to this. Fixed arrays, so nothing is
+     allocated on the audio thread. */
+  static constexpr int kPhaserStages = 4;
+  static constexpr double kPhaserCentre = 700, kPhaserOctaves = 2.5, kPhaserFeedbackMax = 0.75;
+  double allpassCoef(double hz) const {
+    const double t = std::tan(kPi * std::fmin(hz, phaserTop_) / rate_);
+    return (t - 1) / (t + 1);
+  }
+  // A channel's four in series: `s` holds each one's last input at o + k and last output at o + 4 + k.
+  static double allpassChain(std::array<double, 4 * kPhaserStages>& s, int o, double a, double v) {
+    for (int k = 0; k < kPhaserStages; k++) {
+      const auto in = static_cast<std::size_t>(o + k), out = static_cast<std::size_t>(o + kPhaserStages + k);
+      double y = a * v + s[in] - a * s[out];
+      if (std::fabs(y) < 1e-30) y = 0;
+      s[in] = v;
+      s[out] = y;
+      v = y;
+    }
+    return v;
   }
 
   static void shapeSet(Shape& s, const PlaneShapeTone& t, bool twistRouted, double turn) {
@@ -283,6 +324,8 @@ class Plane {
     std::vector<float> dl, dr, cl, cr;
     int dw = 0, cw = 0;
     double dNow = -1;
+    std::array<double, 4 * kPhaserStages> ps {};  // the phaser's all-pass states, left then right
+    double pl = 0, pr = 0;                        // and what each channel's chain last gave, fed back
   };
 
   static double readLine(const std::vector<float>& buf, int w, double d, int size) {
@@ -296,6 +339,15 @@ class Plane {
 
   void timeStep(TimeFx& fx, const Time& T, double x, double y) {
     const PlaneTimeTone& t = *T.t;
+    // The phaser first, so the chorus and the echoes are of the phased pair.
+    if (T.phOn) {
+      const double fb = std::fmax(0.0, std::fmin(kPhaserFeedbackMax, t.phaserFeedback));
+      const double wl = allpassChain(fx.ps, 0, T.aL, x + fb * fx.pl);
+      const double wr = allpassChain(fx.ps, 2 * kPhaserStages, T.aR, y + fb * fx.pr);
+      fx.pl = wl; fx.pr = wr;
+      const double m = T.ph;
+      x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
+    }
     if (t.chorusMix > 0) {
       const double base = t.chorusMs * rate_ / 1000, depth = t.chorusDepthMs * rate_ / 1000;
       const double lim = chorusMax_ - 3;
@@ -325,7 +377,8 @@ class Plane {
 
   double rate_;
   int delayMax_, chorusMax_;
-  double delayGlide_;
+  double delayGlide_, phaserTop_;
+  bool phaserRouted_ = false;  // a routing on the phaser's amount runs it at nought, as the echo's does
   std::vector<double> taps2_, taps4_;
   int factor_ = 0;
   std::array<Oversampler, 2> os_;

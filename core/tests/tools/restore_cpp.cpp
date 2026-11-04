@@ -54,6 +54,8 @@ Json layerBJson(const scope::LayerBSettings& t) {
   o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
+  o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
+  o.set("phaserFeedback", num(t.phaserFeedback));
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
@@ -84,6 +86,8 @@ Json toneJson(const scope::Tone& t) {
   o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
+  o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
+  o.set("phaserFeedback", num(t.phaserFeedback));
   return o;
 }
 
@@ -397,6 +401,8 @@ int main(int argc, char** argv) {
       echo.set("mix", num(e.mix)); echo.set("ms", num(e.ms)); echo.set("sync", str(e.sync)); echo.set("feedback", num(e.feedback));
       echo.set("pingPong", flag(e.pingPong)); echo.set("chorus", num(e.chorus)); echo.set("rate", num(e.rate));
       echo.set("depthMs", num(e.depthMs)); echo.set("centreMs", num(e.centreMs)); echo.set("chorusFeedback", num(e.chorusFeedback));
+      echo.set("phaser", num(e.phaser)); echo.set("phRate", num(e.phRate)); echo.set("phDepth", num(e.phDepth));
+      echo.set("phFeedback", num(e.phFeedback));
       return echo;
     };
     out.set("echo", echoJson(brain.echo));

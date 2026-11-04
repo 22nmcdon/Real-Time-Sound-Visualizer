@@ -2,7 +2,7 @@
 // the brain, the generator and the keyboard as the plugin holds them, every
 // operator new counted. For each slider the morph walks, two ends a step of
 // its range apart and the walk taken across them; then every slider at once;
-// then the host's eight parameters, each moved as the plugin moves it. One
+// then the host's nine parameters, each moved as the plugin moves it. One
 // line each: the slider, the allocations in its walk, and how far the slider
 // moved - so a walk that never moved anything, and so could not allocate,
 // is told apart from one that moved and did not. The first line is what the
@@ -77,7 +77,7 @@ int main() {
   // its number, a hundred times each across its range. The plugin's kKnobs
   // names them (plugin/src/PluginProcessor.h, which this cannot include for
   // JUCE's sake); parity reads that list and requires this one to be it.
-  for (const char* id : { "pictureAmount", "oscScan", "scanMemory", "oscBend", "vcfCut", "amp", "delayMix", "morphPos" }) {
+  for (const char* id : { "pictureAmount", "oscScan", "scanMemory", "oscBend", "vcfCut", "amp", "delayMix", "phaserMix", "morphPos" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
     scope::moveSliderTo(id, r->min, brain, gen, keys, lfos);

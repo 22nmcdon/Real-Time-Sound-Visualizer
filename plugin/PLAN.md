@@ -2590,8 +2590,13 @@ redone natively or left out.
   (`delayMix`) in a group called Instrument, and Morph (`morphPos`) in one
   called Setups, which most hosts show as a folder or a section of its own:
   the owner wanted the morph automatable without the bank's placement. The
-  phaser's amount takes the eighth place in the bank when the phaser is
-  built; Strike is deliberately not a parameter. The macros are not
+  phaser's amount (`phaserMix`, version 2) took the eighth place in the bank
+  when the phaser was built (P8e), and the morph moved from index 7 to 8 with
+  its automation still bound to its id; Strike is deliberately not a
+  parameter. The phaser's all-pass states are fixed arrays in `Plane::TimeFx`,
+  so nothing is allocated on the audio thread, and parity's allocation walk
+  reads the bank from `kKnobs`, so it walked the phaser's knob from the
+  moment it was added. The macros are not
   parameters any more, and nothing was mapped across: the owner had no saved
   projects, which made this the cheapest moment there will be. Whether the
   page's Macros section survives is the tab rework's question, not this one.

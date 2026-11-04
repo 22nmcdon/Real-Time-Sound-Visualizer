@@ -255,6 +255,9 @@ int main(int argc, char** argv) {
         { "chorusMix", [&](double v) { t.chorusMix = v; } }, { "chorusRate", [&](double v) { t.chorusRate = v; } },
         { "chorusDepthMs", [&](double v) { t.chorusDepthMs = v; } }, { "chorusMs", [&](double v) { t.chorusMs = v; } },
         { "chorusFeedback", [&](double v) { t.chorusFeedback = v; } },
+        { "phaserMix", [&](double v) { t.phaserMix = v; } }, { "phaserRate", [&](double v) { t.phaserRate = v; } },
+        { "phaserDepth", [&](double v) { t.phaserDepth = v; } },
+        { "phaserFeedback", [&](double v) { t.phaserFeedback = v; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
       // Layer B's own shape, as the page's run holds it.
@@ -275,6 +278,9 @@ int main(int argc, char** argv) {
         { "bChorusMix", [&](double v) { b.chorusMix = v; } }, { "bChorusRate", [&](double v) { b.chorusRate = v; } },
         { "bChorusDepthMs", [&](double v) { b.chorusDepthMs = v; } }, { "bChorusMs", [&](double v) { b.chorusMs = v; } },
         { "bChorusFeedback", [&](double v) { b.chorusFeedback = v; } },
+        { "bPhaserMix", [&](double v) { b.phaserMix = v; } }, { "bPhaserRate", [&](double v) { b.phaserRate = v; } },
+        { "bPhaserDepth", [&](double v) { b.phaserDepth = v; } },
+        { "bPhaserFeedback", [&](double v) { b.phaserFeedback = v; } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;
@@ -294,7 +300,7 @@ int main(int argc, char** argv) {
             if (fields.count(field)) fields.at(field)(value); else bfields.at(field)(value);
           }
         }
-        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1);
+        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1);
         const double di = static_cast<double>(i);
         const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
         const double tp = static_cast<float>(d("tpush") * std::sin(di * 0.0047 + 1));
@@ -305,11 +311,14 @@ int main(int argc, char** argv) {
         const double bup = static_cast<float>(d("bturnpush") * std::sin(di * 0.0017 + 0.7));
         const double bep = static_cast<float>(d("bepush") * std::sin(di * 0.0019 + 2.5));
         const double betp = static_cast<float>(d("betpush") * std::sin(di * 0.0011 + 3.5));
+        const double pp = static_cast<float>(d("ppush") * std::sin(di * 0.0037 + 4));
+        const double bpp = static_cast<float>(d("bppush") * std::sin(di * 0.0033 + 4.5));
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
+        if (d("inp") == 2 && i >= 200) { x = 0; y = 0; }
         if (!on) { out.insert(out.end(), { x, y, y, x }); continue; }
-        plane.tick(t, { rp, tp, ep, etp, 0 }, 1 / rate, &b, { brp, btp, bep, betp, bup });
+        plane.tick(t, { rp, tp, ep, etp, 0, pp }, 1 / rate, &b, { brp, btp, bep, betp, bup, bpp });
         plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
         // Each layer's pair once: since P4 there is no heard pair of its own.
         plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });

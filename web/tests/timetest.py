@@ -355,7 +355,7 @@ with sync_playwright() as pw:
         return p.evaluate("""() => Array.from(el.benchResults.querySelectorAll('button'))
           .map((b) => [b.firstChild.textContent, b.querySelector('.crumb').textContent])""")
     found = search("flanger")
-    check("flanger finds the chorus", any(c == "Delay and chorus" for _, c in found), str(found[:3]))
+    check("flanger finds the chorus", any(c == "Delay, chorus and phaser" for _, c in found), str(found[:3]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

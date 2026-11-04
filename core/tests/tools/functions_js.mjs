@@ -211,13 +211,14 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const rate = n("rate");
     const FIELDS = ["planeMirror", "planeRadius", "planeOS", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                     "planeTwist", "planeKaleido", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
-                    "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback"];
+                    "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback",
+                    "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
     const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                       "planeTwist", "planeKaleido", "planeSnap"];
     const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
     const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "chorusMix", "chorusRate", "chorusDepthMs",
-                    "chorusMs", "chorusFeedback"];
+                    "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];
     const bName = (f) => "b" + f[0].toUpperCase() + f.slice(1);
     for (const f of B_TIME) toneB[f] = n(bName(f));
     toneB.planeOwn = n("bown") === 1;
@@ -225,7 +226,9 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "CHORUS_MAX",
                          "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
-                         "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep"],
+                         "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep",
+                         "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
+                         "allpassCoef", "allpassChain"],
                         rate, null, { tone, toneB, slots: 40 });
     const events = new Map();
     for (const e of (p.ev || "").split(";").filter(Boolean)) {
@@ -243,7 +246,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
         else if (field[0] === "b") toneB["plane" + field.slice(1)] = value;
         else tone[field] = value;
       }
-      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true, n("btr") === 1);
+      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true, n("btr") === 1, n("phr") === 1);
       g[c.__get("RADIUS_SLOT")] = n("rpush") * Math.sin(i * 0.0031);
       g[c.__get("TWIST_SLOT")] = n("tpush") * Math.sin(i * 0.0047 + 1);
       g[c.__get("ECHO_SLOT")] = n("epush") * Math.sin(i * 0.0023 + 2);
@@ -253,10 +256,14 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       gB[c.__get("TURN_SLOT")] = n("bturnpush") * Math.sin(i * 0.0017 + 0.7);
       gB[c.__get("ECHO_SLOT")] = n("bepush") * Math.sin(i * 0.0019 + 2.5);
       gB[c.__get("ECHO_TIME_SLOT")] = n("betpush") * Math.sin(i * 0.0011 + 3.5);
+      g[c.__get("PHASER_SLOT")] = n("ppush") * Math.sin(i * 0.0037 + 4);
+      gB[c.__get("PHASER_SLOT")] = n("bppush") * Math.sin(i * 0.0033 + 4.5);
       let x = 0.7 * Math.sin(f.TWO_PI * 220 * i / rate) + 0.25 * Math.sin(f.TWO_PI * 661 * i / rate);
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.
       if (n("inp") === 1) { x = -0.375; y = 0.625; }
+      // A burst, then silence: what rings on after it, and that it ends (the phaser's flush, P8e).
+      if (n("inp") === 2 && i >= 200) { x = 0; y = 0; }
       if (!on) { values.push(x, y, y, x); continue; }
       c.planeTick(1 / rate);
       c.planeStep(c.__get("osA"), c.fxA, x, y); values.push(c.__get("opX"), c.__get("opY"));

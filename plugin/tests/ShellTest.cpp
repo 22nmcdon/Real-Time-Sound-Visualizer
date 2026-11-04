@@ -575,7 +575,7 @@ int main() {
       for (const float c : p->picture().phosphor().grid()) out.lit += c;
       out.registered = p->matrix().source("photo.1") && p->matrix().source("picture.round") && p->matrix().source("picture.bored");
       out.staged = p->matrix().source("stage.glow") && p->matrix().source("stage.motion") && p->matrix().source("stage.memory")
-                && p->matrix().stage().size() == 4;
+                && p->matrix().stage().size() == 5;  // four bundles, and Memory's on the phaser since P8e
       out.display = p->view().screen.display;
       out.picture = p->pictureSnapshot();
       return out;
@@ -860,7 +860,8 @@ int main() {
        routes made, its reads moving in the second second, and the picture
        and sound apart from the unstaged run - which is itself the null, the
        same run twice at nought agreeing exactly, so the difference is the
-       stage's and not the run's. */
+       stage's and not the run's. Five routes since P8e put Memory on the
+       phaser's amount. */
     const char* tone = "Harmonic tone";
     const Run staged = run(tone, true, blocks, nullptr);
     const Run flat = run(tone, true, blocks, [](ScopeProcessor& p) { unstaged(p); });
@@ -878,7 +879,7 @@ int main() {
        from it - which the page does by touching its routings in the slider's
        handler, and the core by the amount marking them dirty, so only here
        is the core's own way of doing it seen. The routes counted before the
-       move are the null: four, one a control. */
+       move are the null: five since P8e's phaser, one a control. */
     std::size_t before = 0, after = 0;
     {
       setenv("SCOPE_PRESET", tone, 1);
@@ -896,7 +897,7 @@ int main() {
       after = p.matrix().routes(0).size();
     }
     check("and the slider moved to nought mid-run takes the stage's routes out of what the generator is given",
-          before == 4 && after == 0, std::to_string(before) + " routes before, " + std::to_string(after) + " after");
+          before == 5 && after == 0, std::to_string(before) + " routes before, " + std::to_string(after) + " after");
     /* The expression pedal from the host, CC 11, is the Picture amount: a
        quarter of the way down is the stage's routes at a quarter, all the
        way up at full, and the volume (CC 7) moved after it changes nothing -
@@ -1112,7 +1113,7 @@ int main() {
 
   std::printf("\n--- the host's parameters, and the state ---\n");
   {
-    /* P8a's bank: the loop's seven in a group, the morph in one of its own,
+    /* P8a's bank, with P8e's phaser as its eighth: the loop's eight in a group, the morph in one of its own,
        each a slider of the panel in its units, read back from the setup
        loaded: "Stretched echoes" has its echo at 45, the level and the cutoff
        at the page's defaults, the Picture amount where a hand would find it.
@@ -1135,16 +1136,18 @@ int main() {
       grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
-    check("the host's parameters are the loop's seven and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 8 && names == "Picture, Scan, Persistence, Bend, Cutoff, Level, Echo, Morph"
+    check("the host's parameters are the loop's eight and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Bend, Cutoff, Level, Echo, Phaser, Morph"
+          && p.knob("phaser")->get() == 0
           && p.knob("echo")->get() == 45 && p.knob("level")->get() == 55 && p.knob("cutoff")->get() == 667
           && p.knob("picture")->get() == 60 && p.knob("scan")->get() == 0 && p.knob("bend")->get() == 0,
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Persistence Bend Cutoff Level Echo; Setups: Morph"
-          && p.knob("morph") == p.getParameters()[7] && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 morph:1",
+          grouped == "Instrument: Picture Scan Persistence Bend Cutoff Level Echo Phaser; Setups: Morph"
+          && p.knob("phaser") == p.getParameters()[7] && p.knob("morph") == p.getParameters()[8]
+          && ids.find("macro") == std::string::npos
+          && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 phaser:2 morph:1",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the library. One that is
@@ -1161,7 +1164,7 @@ int main() {
       if (!scope::findPreset(name)) missing += std::string(missing.empty() ? "" : ", ") + name;
     check("every preset the shell test opens on by name is in the library", missing.empty(), missing);
   }
-  /* Each of the eight automated from block 20 over the dark saw fifth below
+  /* Each of the nine automated from block 20 over the dark saw fifth below
      (`opening`): heard from that block and not a sample before, and its slider
      where the host put it. The same unautomated is the null for both halves,
      and each target is somewhere the slider was not, so a parameter that
@@ -1214,7 +1217,8 @@ int main() {
     const std::vector<Case> cases {
       { "picture", "pictureAmount", 0, nullptr }, { "scan", "oscScan", 100, nullptr }, { "persistence", "scanMemory", 90, scanOn },
       { "bend", "oscBend", 100, nullptr }, { "cutoff", "vcfCut", 900, nullptr }, { "level", "amp", 20, nullptr },
-      { "echo", "delayMix", 100, nullptr }, { "morph", "morphPos", 100, morphEnds },
+      { "echo", "delayMix", 100, nullptr }, { "phaser", "phaserMix", 100, nullptr },
+      { "morph", "morphPos", 100, morphEnds },
     };
     for (const auto& c : cases) {
       const auto still = automated(nullptr, nullptr, 0, c.prep);
