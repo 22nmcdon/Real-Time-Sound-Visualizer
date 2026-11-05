@@ -113,16 +113,24 @@ inline bool innerRole(const std::string& role) {
 }
 
 constexpr int kPolyTails = 8;
+// The quarter turn (polyRound, P8g): a voice on both channels alike - alone,
+// or inner - heard on the right a quarter of its period late, from a ring of
+// its own output. The page's ROUND_RING says why a delay and what it costs.
+constexpr int kRoundRing = 4096;
+inline bool roundsRole(const std::string& role) { return role == "xy" || role == "u" || innerRole(role); }
 
 struct Voice {
   int note = 0;
   // `span` is the phase unwrapped, since the voice was born: what a note
   // joining a held chord scales to start in step with it (the page says why).
   double phase = 0, span = 0, freq = 0;
-  bool held = true, wanted = false, gone = false, inner = false;
+  bool held = true, wanted = false, gone = false, inner = false, rounds = false;
   int born = 0, fade = 0;
   Envelope env, fenv;
   std::array<double, 2> gains {}, targets {};
+  std::vector<double> ring;  // the quarter turn's, made the first time it turns
+  int at = 0;
+  double turn = 0;
   Quantiser q;
   std::optional<NoiseState> nz;
   Osc osc;
@@ -190,6 +198,7 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
     voice->freq = want.freq;
     voice->inner = innerRole(want.role);  // the budget cuts an inner voice first
     voice->targets = gains;
+    voice->rounds = roundsRole(want.role);
   }
   for (auto& v : voices) {
     if (v.held && !v.wanted) { v.held = false; v.env.gate(false, 0); v.fenv.gate(false, 0); }
@@ -204,7 +213,8 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
 // One sample of a layer: every voice summed into the picture's pair and the
 // heard pair, `c.mix`.
 inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveTables& bars, double amount,
-                  double bend, double duck, double dt, double roleGlide, const VoiceFx& vx, VoiceContext& c) {
+                  double bend, double duck, double dt, double roleGlide, const VoiceFx& vx, VoiceContext& c,
+                  bool round = false) {
   c.mix = { 0, 0 };
   for (auto& voice : voices) {
     if (voice.gone) continue;
@@ -242,7 +252,24 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     const auto& t = voice.targets;
     g[0] += (t[0] - g[0]) * roleGlide;
     g[1] += (t[1] - g[1]) * roleGlide;
-    c.mix[0] += a * g[0]; c.mix[1] += a * g[1];
+    const double turnTo = round && voice.rounds ? 1 : 0;
+    voice.turn += (turnTo - voice.turn) * roleGlide;
+    double right = a;
+    if (turnTo == 1 || voice.turn > 1e-9) {
+      if (voice.ring.empty()) { voice.ring.assign(kRoundRing, 0.0); voice.at = 0; }
+      voice.ring[static_cast<std::size_t>(voice.at)] = a;
+      const double back = std::fmin(kRoundRing - 2, f > 0 ? c.rate / (4 * std::fabs(f)) : 0);
+      const int whole = static_cast<int>(std::floor(back));
+      const double part = back - whole;
+      const int i0 = (voice.at - whole + kRoundRing) % kRoundRing, i1 = (i0 - 1 + kRoundRing) % kRoundRing;
+      const double late = voice.ring[static_cast<std::size_t>(i0)]
+                        + (voice.ring[static_cast<std::size_t>(i1)] - voice.ring[static_cast<std::size_t>(i0)]) * part;
+      voice.at = (voice.at + 1) % kRoundRing;
+      right = a + (late - a) * voice.turn;
+    } else if (voice.turn != 0) {
+      voice.turn = 0;
+    }
+    c.mix[0] += a * g[0]; c.mix[1] += right * g[1];
   }
 }
 

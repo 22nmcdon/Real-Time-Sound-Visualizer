@@ -168,9 +168,13 @@ with sync_playwright() as pw:
     kept = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (v) => { el.pictureAmount.value = String(v); el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true })); };
-      set(25); applyPreset('b:Slow pad'); await wait(300);
-      const afterPreset = el.pictureAmount.value;
-      set(25); applyPreset('b:Glass keys'); await wait(300);
+      // By what they set rather than by name, the bank being tuned by ear: the
+      // preset naming the most, and the first Settled one, which names nought.
+      const all = PRESETS.flatMap(([, e]) => e);
+      const most = all.reduce((a, b) => (b[1].pictureAmount > a[1].pictureAmount ? b : a));
+      set(25); applyPreset('b:' + most[0]); await wait(300);
+      const afterPreset = el.pictureAmount.value === String(most[1].pictureAmount) && most[1].pictureAmount > 25 ? 'named' : el.pictureAmount.value;
+      set(25); applyPreset('b:' + PRESETS[0][1][0][0]); await wait(300);
       const afterSettled = el.pictureAmount.value;
       restore({ pictureAmount: 80 });
       const named = el.pictureAmount.value;
@@ -180,7 +184,7 @@ with sync_playwright() as pw:
     }""")
     b.close()
     check("a preset sets the amount it names, over the hand's; a setup naming it sets it; a saved code carries it",
-          kept == {"afterPreset": "100", "afterSettled": "0", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
+          kept == {"afterPreset": "named", "afterSettled": "0", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
     # A preset at the default amount after one at nought, on the site: the
     # setup reaches the instrument as a code, and a code used to leave out a
     # value equal to its default, so the 60 never arrived and the instrument
@@ -198,7 +202,7 @@ with sync_playwright() as pw:
           let e = 0, d = 0; for (let i = 1; i < l.length; i++) { e += l[i] * l[i]; d += (l[i] - l[i - 1]) ** 2; }
           out.push(e > 1e-9 ? Math.sqrt(d / e) : 0); }
         return Math.max(...out) - Math.min(...out); };
-      applyPreset('b:Glass keys'); await wait(500);
+      applyPreset('b:' + PRESETS[0][1][0][0]); await wait(500);
       applyPreset('b:Harmonic tone'); await wait(800);
       const code = decodeSetup(encodeSetup(snapshot())).pictureAmount;
       midiBytes(new Uint8Array([0x90, 60, 100])); const moved = await bright(9);
@@ -212,12 +216,18 @@ with sync_playwright() as pw:
     check("a code says the amount at its default, and a preset at 60 after one at nought moves the site's sound; at nought it stands still",
           after["code"] == 60 and after["moved"] > 0.05 and after["still"] < 0.005, str(after))
     held = {}
-    for asked, preset in (("0", "Slow pad"), ("40", "Glass keys")):
+    # Held down past the preset naming the most, and up past the first Settled
+    # one, which names nought.
+    for asked, which in (("0", "most"), ("40", "settled")):
         b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
         p = b.new_page(); p.goto(PAGE + "?picture=" + asked); p.wait_for_timeout(1000)
-        held[asked] = p.evaluate("(name) => { applyPreset('b:' + name); return { value: el.pictureAmount.value, routes: stageRoutings().length }; }", preset)
+        held[asked] = p.evaluate("""(which) => {
+          const all = PRESETS.flatMap(([, e]) => e);
+          const pick = which === 'most' ? all.reduce((a, b) => (b[1].pictureAmount > a[1].pictureAmount ? b : a)) : PRESETS[0][1][0];
+          applyPreset('b:' + pick[0]);
+          return { value: el.pictureAmount.value, routes: stageRoutings().length }; }""", which)
         b.close()
-    # The null is the first check: the same presets, opened without it, set 100 and nought.
+    # The null is the first check: the same presets, opened without it, set their own.
     check("and ?picture=N opens it there and holds it through a preset that names another, up or down",
           held == {"0": {"value": "0", "routes": 0}, "40": {"value": "40", "routes": 5}}, str(held))
 

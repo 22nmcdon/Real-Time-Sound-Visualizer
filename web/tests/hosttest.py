@@ -214,12 +214,14 @@ with sync_playwright() as pw:
       const t = window.__hostTest;
       t.log.length = 0;
       // A preset of the new bank (P8g), since this is applyPreset's errand. It
-      // was Wah, read back by its cutoff and routing; Glass keys has a routing
-      // too, and an FM depth where Wah had the cutoff, neither the default.
-      applyPreset('b:Glass keys');
+      // was Wah, read back by its cutoff and routing; the bank's first preset
+      // with a routing and an FM depth stands in, found by those rather than
+      // by a name the bank's tuning may change.
+      const pick = PRESETS.flatMap(([, e]) => e).find(([, st]) => st.mod && st.oscFm);
+      applyPreset('b:' + pick[0]);
       const calls = t.log.slice();
       const sent = calls.length === 1 && calls[0][0] === 'scopeSetup' ? decodeSetup(calls[0][1]) : null;
-      const glass = findPreset('b:Glass keys');
+      const glass = pick[1];
       return { names: calls.map((c) => c[0]), fm: sent && sent.oscFm, wantFm: glass.oscFm, mod: sent && sent.mod, wantMod: glass.mod };
     }""")
     check("a preset loaded on the page is sent to the plugin whole, as a code that reads back as that preset",

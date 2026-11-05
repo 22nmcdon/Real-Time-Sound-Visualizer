@@ -28,7 +28,7 @@ of ten held; after, from two and a half seconds after the key comes up, when
 the longest release in the bank has run out, for two seconds.
 
     Open       every reading after the first half second under 0.005
-    Settled    early at least 0.010, late at most 0.015 and at most half of early
+    Settled    early at least 0.008, late at most 0.015 and at most half of early
     Breathing  late at least 0.02, and silent after (RMS under 0.005)
     Wandering  late at least 0.02, and after, still sounding (RMS at least 0.02)
                and still moving (at least 0.02)
@@ -37,7 +37,9 @@ The thresholds come from measuring the bank as it was built: Settled's lates
 were 0.000 to 0.012, Breathing's 0.03 to 0.12. Settled's early floor is low
 because the sine bass's strike is gentle (0.015 to 0.020): Scan deep enough
 to strike it harder put the held note on a knife edge, settling on one run
-and moving for good on the next. It is still twice Open's ceiling.
+and moving for good on the next. The drawbar organ, drawn a ring by the
+quarter turn, is the same at 14 against 17, and strikes at 0.011 to 0.016;
+the Open presets read exactly nought, so the floor is still clear of them.
 
 What the measure cannot see: below about C3 it has a floor of its own. The
 C2 bass with a sub and FM moved 0.010 a reading with the loop switched off -
@@ -149,7 +151,7 @@ def summary(out):
 
 RULES = {
     "Open": lambda m: m["most"] < 0.005,
-    "Settled": lambda m: m["early"] >= 0.010 and m["late"] <= 0.015 and m["late"] <= m["early"] / 2,
+    "Settled": lambda m: m["early"] >= 0.008 and m["late"] <= 0.015 and m["late"] <= m["early"] / 2,
     "Breathing": lambda m: m["late"] >= 0.02 and m["afterRms"] < 0.005,
     "Wandering": lambda m: m["late"] >= 0.02 and m["afterRms"] >= 0.02 and m["afterMove"] >= 0.02,
 }

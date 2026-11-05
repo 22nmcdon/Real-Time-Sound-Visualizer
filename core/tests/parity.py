@@ -5053,6 +5053,15 @@ iruns["sizes"] = [["make", 96000, 128, ocode["Pluck"]], NOTE_ON(50)] + [["block"
 # reads nothing. Half a second at 48 kHz, every ninth sample.
 iruns["scanned"] = [["make", 48000, 128, ocode["Scanned fifth"]], NOTE_ON(57)] + blocks(200, 128, 9) \
     + [["setup", ocode["Scanned interference"]]] + blocks(150, 128, 9)
+# The quarter turn (P8g): a lone note, then a chord over it, then the switch
+# turned off with the chord held - a saw through the filter, so the turned
+# right channel has the whole voice chain's state behind it - and its twin with
+# the switch off from the start, which is the null for the check below.
+ROUND = {"midiMode": "poly", "shape": "ramp", "vcfType": 1, "vcfCut": 600, "timebase": 3}
+for name, on in (("rounded", True), ("unrounded", False)):
+    iruns[name] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=on))], NOTE_ON(57)] + blocks(30) \
+        + [NOTE_ON(64), NOTE_ON(69)] + blocks(30) + [["control", "polyRound", False]] + blocks(20) \
+        + [NOTE_OFF(57), NOTE_OFF(64), NOTE_OFF(69)] + blocks(10)
 iruns["scanned off"] = [["make", 48000, 128, ocode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
     + blocks(200, 128, 9) + [["setup", ocode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
 # The picture stage (P3) is on in everything the instrument plays, and moves
@@ -5113,6 +5122,22 @@ check("and the runs had sound in them, states that changed, MIDI sent and refusa
       "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
           {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
           icount("refused", "no"), icount("presets", "state ")))
+# The quarter turn shows: the lone note's two heard channels, from the tenth
+# block to the thirtieth, against each other - a quarter-period apart, a saw's
+# correlation is far from one; laid on both alike, it is one.
+def ipair(name, first, last):
+    ls, rs = [], []
+    for line in [l for l in iout[name][1] if l.startswith("block ")][first:last]:
+        v = [float(x) for x in line.split()[1:]]
+        n = len(v) // 8
+        ls += v[:n]; rs += v[n:2 * n]
+    return ls, rs
+def icorr(a, b):
+    ab = sum(x * y for x, y in zip(a, b)); aa = sum(x * x for x in a); bb = sum(y * y for y in b)
+    return ab / math.sqrt(aa * bb) if aa > 0 and bb > 0 else float("nan")
+rc, uc = icorr(*ipair("rounded", 10, 30)), icorr(*ipair("unrounded", 10, 30))
+check("the quarter turn parts a lone note's two channels, and without it they are one (the null)",
+      rc < 0.6 and uc > 0.999999, "%.4f turned, %.7f not" % (rc, uc))
 # And what the input runs played, read off the samples, since two sides that
 # both ignored the input would agree perfectly: drawn with nothing on the
 # plane, the heard pair is the input exactly - the run's blocks seven to

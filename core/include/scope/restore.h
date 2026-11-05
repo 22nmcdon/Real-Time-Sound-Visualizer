@@ -1157,6 +1157,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
                                || (j->type == Json::Type::String && j->s.empty()));
     setA("just", truthy ? 1 : 0);
   }
+  {
+    // The quarter turn (P8g): only a true one, as the page reads `=== true`.
+    const Json* r = s("polyRound");
+    setA("polyRound", r && r->type == Json::Type::Bool && r->b ? 1 : 0);
+  }
 
   // The keyboard.
   Keyboard::Settings k = keys.settings();
@@ -1724,6 +1729,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
   else if (id == "midiLatch") keys.setLatch(checked);
+  else if (id == "polyRound") gen.set("polyRound", checked ? 1 : 0, 0);
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
   else if (id == "midiDrive") keys.setDrive(checked);

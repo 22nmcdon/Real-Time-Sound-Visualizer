@@ -66,7 +66,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
 Json toneJson(const scope::Tone& t) {
   Json o = layerJson(t);
   o.set("mode", str(t.modeName)); o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
-  o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase));
+  o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase)); o.set("polyRound", flag(t.polyRound));
   o.set("figure", str(t.figureName)); o.set("detail", num(t.detail)); o.set("figureRate", num(t.figureRate));
   o.set("swingRate", num(t.swingRate)); o.set("decay", num(t.decay)); o.set("swingDrive", num(t.swingDrive));
   o.set("inputMode", num(t.inputMode)); o.set("inputDepth", num(t.inputDepth)); o.set("inputFrom", str(t.inputFromName));

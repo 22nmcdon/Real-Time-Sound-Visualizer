@@ -177,23 +177,27 @@ with sync_playwright() as pw:
 
     # A preset: the code the page sends is the setup the instrument loaded.
     # Two of the new bank's (P8g), since this is applyPreset's own errand; it
-    # was Arpeggiated chords, known by its arpeggio, and Glass keys is known
-    # by the depth Scan reads at, which the boot sound does not set.
+    # was Arpeggiated chords, known by its arpeggio. The first Settled preset
+    # is known by the depth Scan reads at, which the boot sound does not set -
+    # chosen by its place rather than its name, since the bank is tuned by ear
+    # and its names change.
     sent = p.evaluate("""async () => {
       applyPreset('b:Harmonic tone');
       const other = encodeSetup(snapshot());
-      applyPreset('b:Glass keys');
+      const settled = PRESETS[0][1][0];
+      applyPreset('b:' + settled[0]);
       const code = encodeSetup(snapshot());
       await new Promise((r) => setTimeout(r, 600));
       const s = await scopeHost.call('scopeState');
       const strip = (x) => { const y = Object.assign({}, x); delete y.cc; delete y.pluginHands; return JSON.stringify(y); };
       return { same: strip(decodeSetup(s.code)) === strip(decodeSetup(code)), scan: decodeSetup(s.code).oscScan,
+               wantScan: settled[1].oscScan,
                // The null: the same comparison against the preset loaded just before it.
                other: strip(decodeSetup(s.code)) === strip(decodeSetup(other)),
                version: s.version, seen: hostSync.seen };
     }""")
     check("a preset loaded on the page is the setup the instrument loaded, and not counted as the host's",
-          sent["same"] and sent["scan"] == 50 and sent["version"] == sent["seen"], str(sent))
+          sent["same"] and sent["scan"] == sent["wantScan"] and sent["wantScan"] > 0 and sent["version"] == sent["seen"], str(sent))
     check("and the comparison fails against the preset loaded just before it", sent["other"] is False)
 
     # MIDI out: the instrument's arpeggio, out of the page's port on the page's channel; the page's own brain silent.

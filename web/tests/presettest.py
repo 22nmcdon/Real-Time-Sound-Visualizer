@@ -274,7 +274,7 @@ with sync_playwright() as pw:
       names: Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent) })""")
     print("    'split': %s" % found)
     check("search looks across every heading and heads what it finds by its heading, said once",
-          "Bass under glass keys" in found["names"] and "Bass under the pad" in found["names"]
+          "Bass under the tine piano" in found["names"] and "Bass under the pad" in found["names"]
           and {"Settled", "Breathing"} <= set(found["headings"]), str(found))
     # A word only a description has: "jazz" is in the organ's, nowhere else.
     p.fill("#presetFind", "jazz"); p.wait_for_timeout(150)
@@ -285,7 +285,7 @@ with sync_playwright() as pw:
     p.fill("#presetFind", "bass pad"); p.wait_for_timeout(150)
     both = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
     check("every word has to match, and nothing found says so",
-          "No preset matches" in none and "Bass under the pad" in both and "Bass under glass keys" not in both, str(both))
+          "No preset matches" in none and "Bass under the pad" in both and "Bass under the tine piano" not in both, str(both))
     p.fill("#presetFind", "")
     # The page's own keys stand aside: 2 would switch to X-Y, B to the Bench.
     keys = p.evaluate("""() => {

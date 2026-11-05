@@ -258,15 +258,17 @@ with sync_playwright() as pw:
 
     print("\n--- a preset's sliders glide ---")
     # A preset of the new bank (P8g), since the glide is applyPreset's own: it
-    # was Pianist's piano, and Glass keys stands in for it at the same 220 Hz
-    # and with a name of its own to show in the strip.
+    # was Pianist's piano, and the bank's first preset at the same 220 Hz
+    # stands in for it, with a name of its own to show in the strip - found by
+    # its frequency rather than named, since the bank is tuned by ear.
     first = p.evaluate("() => { setFade('off'); restore({ freq: 880 }); return el.freq.value; }")
+    at220 = p.evaluate("() => PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]")
     p.wait_for_timeout(100)
-    snap_off = p.evaluate("""() => { applyPreset("b:Glass keys"); return Number(el.freq.value); }""")
+    snap_off = p.evaluate("(name) => { applyPreset('b:' + name); return Number(el.freq.value); }", at220)
     glide = run(p, """
       restore({ freq: 880 }); await wait(100);
       setFade('both', 1);
-      applyPreset("b:Glass keys");
+      applyPreset("b:" + PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]);
       const path = [Number(el.freq.value)], names = [];
       for (let i = 0; i < 6; i++) { await wait(250); path.push(Number(el.freq.value)); names.push(el.presetCurrent.textContent); }
       return { path, names: [...new Set(names)], shown: el.presetCurrent.textContent, mode: fade.mode, inCode: 'fade' in snapshot() || 'fadeMode' in snapshot() };
@@ -279,12 +281,12 @@ with sync_playwright() as pw:
           path[0] == 880 and any(220 < v < 880 for v in path[1:4]) and path[-1] == 220
           and all(a >= b for a, b in zip(path, path[1:])), str(path))
     check("the strip names the preset throughout the glide and once it has landed, and loading it did not put the fade back to off",
-          glide["shown"] == "Glass keys" and glide["names"] == ["Glass keys"] and glide["mode"] == "both",
+          glide["shown"] == at220 and glide["names"] == [at220] and glide["mode"] == "both",
           str(glide))
     check("and the fade is not in the setup code", glide["inCode"] is False)
 
     p.evaluate("() => { restore({ freq: 880 }); }"); p.wait_for_timeout(100)
-    p.evaluate("""() => { applyPreset("b:Glass keys"); showControl('freq'); }""")
+    p.evaluate("(name) => { applyPreset('b:' + name); showControl('freq'); }", at220)
     p.wait_for_timeout(200)
     p.locator("#freq").focus(); p.keyboard.press("ArrowRight")
     held = p.evaluate("() => Number(el.freq.value)")
@@ -343,7 +345,7 @@ with sync_playwright() as pw:
       // A preset glides along the attack, so over its time and not the release's.
       restore({ freq: 880 }); await wait(100);
       setFadeEnvelope({ attack: 0.5, release: 5, attackMid: 0.5 });
-      applyPreset("b:Glass keys"); await wait(700); const glided = Number(el.freq.value);
+      applyPreset("b:" + PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]); await wait(700); const glided = Number(el.freq.value);
       return { inDone, outHalf, outDone, quick, slow, glided };
     """)
     print("    %s" % env)

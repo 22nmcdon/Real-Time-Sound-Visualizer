@@ -98,6 +98,7 @@ struct Tone : LayerSettings, PlaneTone {
   double octaves = 0;
   bool just = true;
   double phase = kPi / 2;
+  bool polyRound = false;  // poly's quarter turn (P8g): see the page's ROUND_RING
   Figure figure = Figure::Circle;
   double detail = 5, figureRate = 40, swingRate = 2.1, decay = 0.12, swingDrive = 0;
   double inputMode = 0, inputDepth = 0.5;
@@ -174,6 +175,7 @@ class Generator {
     else if (field == "interval") a.interval = static_cast<int>(value);
     else if (field == "octaves") a.octaves = value;
     else if (field == "just") a.just = value != 0;
+    else if (field == "polyRound") a.polyRound = value != 0;
     else if (field == "phase") a.phase = value;
     else if (field == "detail") a.detail = value;
     else if (field == "figureRate") a.figureRate = value;
@@ -516,7 +518,8 @@ class Generator {
         l = amp * gain * (std::sin(phaseL_) + std::sin(phaseL_ * k + phase)) / 2;
         r = amp * gain * (std::sin(phaseR_ + phase) + std::sin(phaseR_ * k)) / 2;
       } else if (poly) {
-        sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq)), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_);
+        sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq)), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
+              a_.polyRound);
         l = ctx_.mix[0]; r = ctx_.mix[1];
       } else {
         const double hz = (clockHz > 0 ? clockHz
@@ -579,7 +582,7 @@ class Generator {
                                              modBOr0(slot::Table) * 1.5);
         if (vxB_.shaping) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
         sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq)), 1 - modB(slot::Amp), dt, roleGlide,
-              vxB_, ctx_);
+              vxB_, ctx_, a_.polyRound);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
         if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
       } else if (fromGen2) {
