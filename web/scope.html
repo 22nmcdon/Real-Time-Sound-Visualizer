@@ -21609,7 +21609,7 @@ const PRESETS = [
        own envelope - a bark on the strike that mellows as the note rings -
        and lifted by how hard you play, through a gentle low pass. */
     ["Tine piano", { shape: "sine", freq: 220, timebase: 3, midiMode: "poly", oscRatio: 1, oscFm: 8,
-                     vcfType: 1, vcfCut: 700, atk: 1, dec: 1500, sus: 25, rel: 500,
+                     vcfType: 1, vcfCut: 700, atk: 1, dec: 1000, sus: 25, rel: 500,
                      mod: "env.note>gen.fm@0.400;midi.key>gen.fm@0.300",
                      display: "xy", persistence: "0.3", oscScan: 50, scanStrike: 100, pictureAmount: 0,
                      polyRound: true },
@@ -21624,7 +21624,7 @@ const PRESETS = [
     // drawing it a ring, the held bass never settled.
     ["Bass under the tine piano", { shape: "sine", freq: 110, timebase: 6, midiMode: "poly", layers: "split", splitAt: 55,
                                     layerPair: "each", atk: 2, dec: 500, sus: 70, rel: 150,
-                                    bShape: "sine", bRatio: 1, bFm: 8, bVcf: 1, bVcfCut: 700, bAtk: 1, bDec: 1500,
+                                    bShape: "sine", bRatio: 1, bFm: 8, bVcf: 1, bVcfCut: 700, bAtk: 1, bDec: 1000,
                                     bSus: 25, bRel: 500, mod: "env.note>gen.fm@0.400;midi.key>gen.fm@0.300",
                                     display: "xy", persistence: "0.3", oscScan: 20, bScan: 45, scanStrike: 100,
                                     pictureAmount: 0, polyRound: true },
