@@ -26,6 +26,7 @@ native one sample for sample; this holds what the page does with it:
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -70,6 +71,7 @@ def opened(b, query, settle=2500, close=True):
     # the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(PAGE + query + ("&" if "?" in query else "?") + "picture=0")
     p.wait_for_timeout(settle)
+    corpus.install(p)
     # Closing the help sheet is a press, so a check on an unpressed page leaves it open.
     if close and p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     return p, errors
@@ -84,7 +86,9 @@ with sync_playwright() as pw:
         got = p.evaluate("() => ({ kind: state.source.kind, host: !!scopeHost, brain: BRAIN_IN_CORE, mic: el.srcMic.disabled })")
         if query == "?brain=js":
             # The website's own picture of a note, for the instrument's to be held to below.
-            p.evaluate("() => { applyPreset('b:Harmonic tone'); midiNoteOn(57, 100); }")
+            # The old library's Harmonic tone, from before P8g: the sound this
+            # suite was written against, whatever the bank's boot preset becomes.
+            p.evaluate("() => { loadCorpus('Harmonic tone'); midiNoteOn(57, 100); }")
             p.wait_for_timeout(600)
             site_skew = p.evaluate(SKEW, 4096)
         check("with %s the page is on its own brain and its own generator, its other sources offered" % query,
@@ -144,8 +148,9 @@ with sync_playwright() as pw:
     check("with no keyboard and nothing played the instrument draws its generator, as the website opens",
           unkeyed["present"] is False and free > 0.1, "keyboard %s, peak %.3f" % (unkeyed["present"], free))
     # A note from the page's keys. Harmonic tone, the screen's keys open: gated, so
-    # silent until a note. They stay open, so the rest is played on a keyboard.
-    p.evaluate("() => { setScreenKeys(true); applyPreset('b:Harmonic tone'); }")
+    # silent until a note. The old library's Harmonic tone here and below, from
+    # before P8g, as at the top: a plain tone known to this suite. They stay open, so the rest is played on a keyboard.
+    p.evaluate("() => { setScreenKeys(true); loadCorpus('Harmonic tone'); }")
     p.wait_for_timeout(600)
     before = p.evaluate(PEAK, 4096)
     p.evaluate("() => midiNoteOn(57, 100)")
@@ -171,25 +176,33 @@ with sync_playwright() as pw:
     check("and the note let go is let go there too", after < 1e-4, "%g" % after)
 
     # A preset: the code the page sends is the setup the instrument loaded.
+    # Two of the new bank's (P8g), since this is applyPreset's own errand; it
+    # was Arpeggiated chords, known by its arpeggio, and Glass keys is known
+    # by the depth Scan reads at, which the boot sound does not set.
     sent = p.evaluate("""async () => {
       applyPreset('b:Harmonic tone');
       const other = encodeSetup(snapshot());
-      applyPreset('b:Arpeggiated chords');
+      applyPreset('b:Glass keys');
       const code = encodeSetup(snapshot());
       await new Promise((r) => setTimeout(r, 600));
       const s = await scopeHost.call('scopeState');
       const strip = (x) => { const y = Object.assign({}, x); delete y.cc; delete y.pluginHands; return JSON.stringify(y); };
-      return { same: strip(decodeSetup(s.code)) === strip(decodeSetup(code)), arp: decodeSetup(s.code).arpMode,
+      return { same: strip(decodeSetup(s.code)) === strip(decodeSetup(code)), scan: decodeSetup(s.code).oscScan,
                // The null: the same comparison against the preset loaded just before it.
                other: strip(decodeSetup(s.code)) === strip(decodeSetup(other)),
                version: s.version, seen: hostSync.seen };
     }""")
     check("a preset loaded on the page is the setup the instrument loaded, and not counted as the host's",
-          sent["same"] and sent["arp"] == "up" and sent["version"] == sent["seen"], str(sent))
+          sent["same"] and sent["scan"] == 50 and sent["version"] == sent["seen"], str(sent))
     check("and the comparison fails against the preset loaded just before it", sent["other"] is False)
 
     # MIDI out: the instrument's arpeggio, out of the page's port on the page's channel; the page's own brain silent.
+    # The old library's Arpeggiated chords, from before P8g, for an arpeggio
+    # to send: it was loaded by the preset check above until that moved to
+    # the new bank, which has none.
     out = p.evaluate("""async () => {
+      loadCorpus('Arpeggiated chords');
+      await new Promise((r) => setTimeout(r, 600));
       const log = [];
       midiOut.port = { send: (bytes) => log.push(Array.from(bytes)) };
       midiOut.channel = 3;
@@ -211,7 +224,7 @@ with sync_playwright() as pw:
 
     # The kind menu, through the page's own handler: the mirror, the panel, the view, and a hand sent.
     kind = p.evaluate("""async () => {
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       await new Promise((r) => setTimeout(r, 300));
       el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));
       await new Promise((r) => setTimeout(r, 600));
@@ -227,7 +240,7 @@ with sync_playwright() as pw:
     port = p.evaluate("""async () => {
       const passed = [], real = scopeHost.midi;
       scopeHost.midi = (bytes) => { passed.push(Array.from(bytes)); real(bytes); };
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       midiBytes(new Uint8Array([0x90, 62, 90]));
       await new Promise((r) => setTimeout(r, 700));
       const pitch = (""" + PITCH + """)(8192);
@@ -288,7 +301,7 @@ with sync_playwright() as pw:
       window.openLiveStream = async () => { window.__fakeIn.opened++; return dest.stream; };
       window.releaseLiveStream = () => { window.__fakeIn.released++; };
     }""")
-    p.evaluate("() => { applyPreset('b:Harmonic tone'); el.srcMic.click(); }")
+    p.evaluate("() => { loadCorpus('Harmonic tone'); el.srcMic.click(); }")
     p.wait_for_timeout(1200)
     drawn = p.evaluate("""async () => {
       const pitchOf = (lane) => {
@@ -572,7 +585,7 @@ with sync_playwright() as pw:
       midiBytes(Uint8Array.from([0xB0, 16, 127])); await wait(500); out.high = hz();
       state.modRoutings = []; touchRoutings();
       // The screen's keys open and nothing held: the waveform is gated, and the readout says why it is empty.
-      applyPreset('b:Harmonic tone'); setScreenKeys(true); await wait(600);
+      loadCorpus('Harmonic tone'); setScreenKeys(true); await wait(600);
       out.gated = el.readoutDetail.textContent;
       setScreenKeys(false); await wait(400);
       out.free = el.readoutDetail.textContent;
@@ -588,7 +601,7 @@ with sync_playwright() as pw:
     # generator were read here too, until P5 cut them.
     lines = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setScreenKeys(false); applyPreset('b:Harmonic tone'); await wait(300);
+      setScreenKeys(false); loadCorpus('Harmonic tone'); await wait(300);
       setView('scope');
       // The keyboard split, on the generator and then with the input drawn:
       // a stream of one oscillator handed over where the page asks for a live
@@ -632,7 +645,9 @@ with sync_playwright() as pw:
         }
         return { peaks, pos };
       };
-      applyPreset('b:Pure sine'); await wait(300);
+      // The old library's Pure sine, from before P8g: a free-running sine
+      // whose level the oscillator can be read off, where the new one is poly.
+      loadCorpus('Pure sine'); await wait(300);
       const setup = Object.assign(snapshot(), { l0s: 'sine', l0r: 100, l0a: 100, mod: 'lfo1>gen.amp@0.500;lfo1>trig.position@1.000' });
       hostQuietly(() => restore(setup)); hostSendSetup(); await wait(800);
       const alone = await watch();

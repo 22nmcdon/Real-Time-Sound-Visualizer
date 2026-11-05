@@ -158,32 +158,38 @@ with sync_playwright() as pw:
           "%s against %s" % (off[-1]["foldInk"], off[-1]["freqInk"]))
     check("no page errors", not runs[60]["bad"] and not runs[0]["bad"], "; ".join((runs[60]["bad"] + runs[0]["bad"])[:3]))
 
-    print("\n--- the amount is the player's ---")
-    # Like the pedal it is meant for: a preset, which does not name it, leaves
-    # it where the hand put it; a setup that names it sets it, and a saved
-    # code carries it; and ?picture=N opens the page with it there, which is
-    # how every suite that measures something else takes the stage out.
+    print("\n--- the amount: the preset's, then the player's ---")
+    # Every preset names it since P8g, as part of its sound - the Settled and
+    # Open ones at nought - so loading one sets it, whatever the hand had; a
+    # setup that names it sets it, and a saved code carries it. ?picture=N
+    # opens the page with it there and holds it through every preset, which
+    # is how every suite that measures something else takes the stage out.
     b, p, bad = open_page(pw)
     kept = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (v) => { el.pictureAmount.value = String(v); el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true })); };
-      set(25); applyPreset('b:Pure sine'); await wait(300);
+      set(25); applyPreset('b:Slow pad'); await wait(300);
       const afterPreset = el.pictureAmount.value;
+      set(25); applyPreset('b:Glass keys'); await wait(300);
+      const afterSettled = el.pictureAmount.value;
       restore({ pictureAmount: 80 });
       const named = el.pictureAmount.value;
       set(30); const code = encodeSetup(snapshot()); set(70);
       restore(decodeSetup(code)); const saved = el.pictureAmount.value;
-      return { afterPreset, named, saved, routes: stageRoutings().length };
+      return { afterPreset, afterSettled, named, saved, routes: stageRoutings().length };
     }""")
     b.close()
-    check("a preset leaves the amount where the hand put it; a setup naming it sets it; a saved code carries it",
-          kept == {"afterPreset": "25", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
-    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
-    p = b.new_page(); p.goto(PAGE + "?picture=0"); p.wait_for_timeout(1000)
-    opened = p.evaluate("() => { applyPreset('b:Pure sine'); return { value: el.pictureAmount.value, routes: stageRoutings().length }; }")
-    b.close()
-    check("and ?picture=0 opens it at nought, with no stage routes, and keeps it so through a preset",
-          opened == {"value": "0", "routes": 0}, str(opened))
+    check("a preset sets the amount it names, over the hand's; a setup naming it sets it; a saved code carries it",
+          kept == {"afterPreset": "100", "afterSettled": "0", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
+    held = {}
+    for asked, preset in (("0", "Slow pad"), ("40", "Glass keys")):
+        b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
+        p = b.new_page(); p.goto(PAGE + "?picture=" + asked); p.wait_for_timeout(1000)
+        held[asked] = p.evaluate("(name) => { applyPreset('b:' + name); return { value: el.pictureAmount.value, routes: stageRoutings().length }; }", preset)
+        b.close()
+    # The null is the first check: the same presets, opened without it, set 100 and nought.
+    check("and ?picture=N opens it there and holds it through a preset that names another, up or down",
+          held == {"0": {"value": "0", "routes": 0}, "40": {"value": "40", "routes": 5}}, str(held))
 
     print("\n--- under the foot ---")
     # The expression pedal (CC 11, the Nord's swell) is the Picture amount,

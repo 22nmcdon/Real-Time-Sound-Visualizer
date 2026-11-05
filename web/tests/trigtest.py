@@ -21,6 +21,7 @@ and the two can be separated.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -41,12 +42,15 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
     print("\n--- the same height on the screen, whatever full scale says ---")
+    # The old library's Harmonic tone here and below, from before P8g: a plain
+    # tone known to these checks, whatever the bank's boot preset comes to set.
     heights = p.evaluate("""() => {
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       state.level = 0.5;                          // half way up the graticule
       const out = [];
       for (const scale of [0, 3, 6]) {            // 0, -12 and -30 dBFS
@@ -156,7 +160,7 @@ with sync_playwright() as pw:
     rows = p.evaluate("""() => {
       const found = [];
       for (const scale of [0, 3, 6]) {
-        applyPreset('b:Harmonic tone');
+        loadCorpus('Harmonic tone');
         setDisplay('yt');
         state.level = 0.5;
         state.trigSource = 0;

@@ -27,6 +27,7 @@ held chords.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -72,6 +73,7 @@ with sync_playwright() as pw:
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html?brain=js&picture=0"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     run = lambda steps, shape='ramp': p.evaluate(RUN, [steps, shape])
 
@@ -164,7 +166,9 @@ with sync_playwright() as pw:
     loop = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = {};
-      applyPreset('b:Harmonic tone'); setDisplay('xy'); genSet('freq', 220);
+      // The old library's Harmonic tone, from before P8g: the plain tone this
+      // was measured on, whatever the bank's boot preset comes to set.
+      loadCorpus('Harmonic tone'); setDisplay('xy'); genSet('freq', 220);
       for (const [name, interval, just] of [['just fifth', 7, true], ['equal third', 4, false]]) {
         genSet('interval', interval); genSet('just', just);
         await wait(800); pictureMeter.reset();

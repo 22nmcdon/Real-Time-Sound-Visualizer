@@ -36,6 +36,7 @@ Every assertion has its null beside it.
 import math, os, statistics, sys
 import numpy as np
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -112,6 +113,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js&core=js"); p.wait_for_timeout(900)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -329,9 +331,12 @@ with sync_playwright() as pw:
 
     # ------------------------------------------------------------------
     print("\n--- the page ---")
+    # The fifths here and below are the old library's, from before P8g: an
+    # equal fifth with no Scan, and the same with Scan at full, which is what
+    # every check of this section was measured on. The bank has neither.
     ctl = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Perfect fifth, equal'); await wait(500);
+      loadCorpus('Perfect fifth, equal'); await wait(500);
       el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input'));
       el.scanSoft.value = '15'; el.scanSoft.dispatchEvent(new Event('input'));
       el.scanMemory.value = '70'; el.scanMemory.dispatchEvent(new Event('input'));
@@ -366,14 +371,14 @@ with sync_playwright() as pw:
 
     frz = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(1000);
+      loadCorpus('Scanned fifth'); await wait(1000);
       const posts = [], src = state.source, was = src.set;
       src.set = function (field, value, layer) { if (field === 'scanTable') posts.push(performance.now()); return was.call(this, field, value, layer); };
       await wait(300);
       const before = posts.length;
       posts.length = 0;
       const t0 = performance.now();
-      applyPreset('b:Scanned fifth');
+      loadCorpus('Scanned fifth');
       await wait(700);
       src.set = was;
       return { before, first: posts.length ? posts[0] - t0 : null, count: posts.length };
@@ -389,7 +394,7 @@ with sync_playwright() as pw:
     # run, where the first had hushed the voice).
     rebuilt = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(1200);
+      loadCorpus('Scanned fifth'); await wait(1200);
       const table = genSettings().scanTable;
       const naive = JSON.parse(JSON.stringify(table)).levels[0].length;
       // Depth at nought across the rebuild and back up after it, so the
@@ -434,7 +439,7 @@ with sync_playwright() as pw:
 
     hold = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(600);
+      loadCorpus('Scanned fifth'); await wait(600);
       const calm = [];
       for (let k = 0; k < 10; k++) { await wait(100); calm.push(genSettings().scanHold); }
       // The screen filled: what the meter calls running away.
@@ -451,7 +456,7 @@ with sync_playwright() as pw:
 
     lyr = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(300);
+      loadCorpus('Scanned fifth'); await wait(300);
       el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input'));
       midiPanic(); setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -483,7 +488,7 @@ with sync_playwright() as pw:
     FIRST = """async ([preset, scanOn, stopAt, seconds]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setRunning(true);
-      applyPreset('b:' + preset);
+      loadCorpus(preset);   // the old library's, as above
       // The picture stage at nought, so what moves the sound here is Scan.
       el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
       if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
@@ -530,7 +535,8 @@ with sync_playwright() as pw:
     # depth at nought by the slider as the null, sent the way a hand's is.
     SITE = """async ([scanOn, seconds]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(400);
+      // The old library's Scanned fifth, from before P8g, as on the page above.
+      loadCorpus('Scanned fifth'); await wait(400);
       el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
       if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input', { bubbles: true })); }
       await wait(600);
@@ -550,6 +556,7 @@ with sync_playwright() as pw:
         errs = []
         pp.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
         pp.goto(f"file://{ART}/scope.html" + query); pp.wait_for_timeout(1200)
+        corpus.install(pp)
         if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
         pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
         pp.wait_for_timeout(800)

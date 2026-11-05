@@ -34,6 +34,13 @@ them, the failures to guard against are:
   has to have many with two sources and a good number with three or more;
   and then four with five or more, two of them the picture's sources among
   at least three others.
+
+The two sections are the old library's, from before P8g, read from corpus.py:
+the bank that replaced it has neither, and these are still the loops this
+suite was written to hold. The counts of sources used together are over the
+old library and the bank both, the widest set of real setups there is. Where
+the section stood in the browser (second in Pictures and sounds) is no longer
+asked, since the browser no longer has that menu or the section.
 """
 # On ?brain=js (5m): this suite reads the page's own brain - restore() called
 # directly, which the page sends the instrument nothing of - which
@@ -42,6 +49,7 @@ them, the failures to guard against are:
 # hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -69,6 +77,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- what the sections are ---")
@@ -77,19 +86,18 @@ with sync_playwright() as pw:
       const uses = (setup) => setup.photoOn === true && decodeRoutings(setup.mod || '').some((r) => picture.test(r.sourceId));
       const out = { missing: [], unpictured: [], counts: {} };
       for (const name of names) {
-        const section = PRESETS.find(([s]) => s === name);
+        const section = CORPUS.find(([s]) => s === name);
         if (!section) { out.missing.push(name); continue; }
         out.counts[name] = section[1].length;
         for (const [preset, setup] of section[1]) if (!uses(setup)) out.unpictured.push(preset);
       }
       // The null: a figure preset, which neither turns the photocell on nor routes the picture.
-      out.circle = uses(PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Circle')[1]);
-      const menu = PRESET_MENUS.find(([id]) => id === 'sounds')[3];
-      out.place = menu.indexOf('The picture plays itself');
+      out.circle = uses(corpusSetup('Circle'));
       // Sources a preset uses, however many controls each is on.
       const distinct = (setup) => new Set(decodeRoutings(setup.mod || '').map((r) => r.sourceId)
         .concat(setup.l0d ? ['lfo1'] : [], setup.l1d ? ['lfo2'] : [])).size;
-      const all = PRESETS.flatMap(([, e]) => e);
+      const all = [...CORPUS, ...PRESETS].flatMap(([, e]) => e);
+      out.walked = all.length;
       out.two = all.filter(([, s]) => distinct(s) >= 2).length;
       out.three = all.filter(([, s]) => distinct(s) >= 3).length;
       out.most = Math.max(...all.map(([, s]) => distinct(s)));
@@ -109,8 +117,8 @@ with sync_playwright() as pw:
       return out;
     }""", [SECTIONS])
     print("    %s" % shape)
-    check("a section of the picture playing itself, second in Pictures and sounds, and one played with it",
-          shape["missing"] == [] and shape["place"] == 1 and shape["counts"]["The picture plays itself"] >= 12
+    check("a section of the picture playing itself, and one played with it",
+          shape["missing"] == [] and shape["counts"]["The picture plays itself"] >= 12
           and shape["counts"]["Played with the picture"] >= 4, str(shape))
     check("every preset in them turns the photocell on and routes something the picture says",
           shape["unpictured"] == [] and shape["circle"] is False, str(shape["unpictured"]))
@@ -120,7 +128,7 @@ with sync_playwright() as pw:
           "%d with five, %d mixed, at most %d" % (len(shape["five"]), len(shape["mixed"]), shape["most"]))
     check("the library uses sources together: thirty with two or more, twelve with three or more",
           shape["two"] >= 30 and shape["three"] >= 12 and shape["most"] >= 4 and shape["nullTwo"] == 0,
-          "%d with two, %d with three, at most %d" % (shape["two"], shape["three"], shape["most"]))
+          "%d with two, %d with three, at most %d, of %d walked" % (shape["two"], shape["three"], shape["most"], shape["walked"]))
 
     print("\n--- each one run: alive, and not running away ---")
     runs = p.evaluate("""async ([names, secs]) => {
@@ -128,13 +136,13 @@ with sync_playwright() as pw:
       const picture = """ + PICTURE + """;
       const out = [];
       for (const name of names) {
-        for (const [preset] of PRESETS.find(([s]) => s === name)[1]) {
+        for (const [preset] of CORPUS.find(([s]) => s === name)[1]) {
           /* The meter cleared first, every run: it keeps fifteen seconds of
              pictures and loading a preset does not clear it, so without this
              each run began with the one before it still in its history - and
              the organ, run without its loop straight after running with it,
              read as wandering on what the loop had drawn. */
-          applyPreset('b:' + preset); await wait(300); pictureMeter.reset();
+          loadCorpus(preset); await wait(300); pictureMeter.reset();
           const ids = [...new Set(state.modRoutings.map((r) => r.sourceId).filter((id) => picture.test(id)))];
           const lo = {}, hi = {}, verdicts = {};
           const reading = () => { const s = MOD_SOURCES.get('photo.1'); return s ? s.value() : 0; };
@@ -156,7 +164,7 @@ with sync_playwright() as pw:
                         swing: +(rhi - rlo).toFixed(3) };
           // The same preset without its picture routings, for the loop's own effect.
           if (name === names[0]) {
-            const setup = PRESETS.flatMap(([, e]) => e).find(([n]) => n === preset)[1];
+            const setup = corpusSetup(preset);
             const kept = decodeRoutings(setup.mod || '').filter((r) => !picture.test(r.sourceId));
             restore(Object.assign({}, setup, { mod: encodeRoutings(kept) })); await wait(300); pictureMeter.reset();
             const open = {};

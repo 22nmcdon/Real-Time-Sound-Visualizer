@@ -17,6 +17,12 @@ browser, and does nothing a player could hear change:
 
 `presettest.py` holds the library as a whole: that every field comes back at
 the value it names, that each preset is unique and described.
+
+The sections walked here - the keyboard's, Live effects, Listening - are the
+old library's, from before P8g, read from corpus.py: the bank that replaced it
+has none of them, and these setups are still the widest test there is of a
+routing a hand or an ear moves. Loaded as a preset was (loadCorpus restores
+the setup and sends it on), so what is measured is the setup, not the bank.
 """
 # On ?brain=js (5m): this suite reads the page's own brain - its voices and
 # routes, read directly - which core/tests/parity.py holds the instrument to,
@@ -24,6 +30,7 @@ the value it names, that each preset is unique and described.
 # braintest.py's and hosttest.py's.
 import os
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -60,6 +67,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- what the sections are ---")
@@ -68,7 +76,7 @@ with sync_playwright() as pw:
       const played = (setup) => decodeRoutings(setup.mod).some((r) => hands.test(r.sourceId));
       const out = { missing: [], unplayed: [], unlayered: [], counts: {} };
       for (const name of names) {
-        const section = PRESETS.find(([s]) => s === name);
+        const section = CORPUS.find(([s]) => s === name);
         if (!section) { out.missing.push(name); continue; }
         out.counts[name] = section[1].length;
         for (const [preset, setup] of section[1]) {
@@ -78,9 +86,9 @@ with sync_playwright() as pw:
         }
       }
       // The null: a preset from the Organ section, which no hand moves.
-      const organ = PRESETS.find(([s]) => s === 'Organ')[1][0];
+      const organ = CORPUS.find(([s]) => s === 'Organ')[1][0];
       out.organPlayed = played(organ[1]);
-      const live = PRESETS.find(([s]) => s === 'Live effects');
+      const live = CORPUS.find(([s]) => s === 'Live effects');
       out.live = live ? [live[1].length, live[2]] : null;
       return out;
     }""", KEYBOARD)
@@ -121,8 +129,8 @@ with sync_playwright() as pw:
     played = p.evaluate("""async (names) => {
       const out = [];
       for (const name of names) {
-        for (const [preset, setup] of PRESETS.find(([s]) => s === name)[1]) {
-          applyPreset('b:' + preset);
+        for (const [preset, setup] of CORPUS.find(([s]) => s === name)[1]) {
+          loadCorpus(preset);
           await __wait(150);
           out.push(Object.assign({ preset, section: name, split: setup.layers || null }, await __play()));
         }
@@ -143,14 +151,19 @@ with sync_playwright() as pw:
     for row in played:
         print("    %-24s %s" % (row["preset"], ", ".join("%s %s->%s" % (s, None if r is None else round(r, 2),
               None if m is None else round(m, 2)) for s, r, m in zip(row["routings"], row["rest"], row["moved"]))))
+    # And every one played has routings to judge: with the setups now loaded
+    # from the corpus rather than found by applyPreset, a load that did
+    # nothing left the default's empty list, and no routing is a dead one, so
+    # this passed with nothing loaded at all until it asked.
+    unrouted = [row["preset"] for row in played if not row["routings"]]
     check("every routing in them reaches the generator, is still at rest, and moves when played",
-          len(played) >= 15 and dead == [], str(dead[:4]))
+          len(played) >= 15 and dead == [] and unrouted == [], str(dead[:4] or unrouted[:4]))
 
     # The null, through the same measurement: a source spelt wrong is kept by
     # the matrix, never compiled and never moves, and this check exists to
     # catch exactly that.
     null = p.evaluate("""async () => {
-      applyPreset('b:Chords darken'); await __wait(150);
+      loadCorpus('Chords darken'); await __wait(150);
       state.modRoutings = decodeRoutings('notes.cont>gen.vcf@-0.600'); touchRoutings();
       return Object.assign({ preset: 'misspelt' }, await __play());
     }""")
@@ -176,8 +189,8 @@ with sync_playwright() as pw:
       const out = { kind: state.source.kind, presets: [] };
       const apart = () => { const w = state.source.getLatestWindow(4410); let m = 0;
         for (let i = 0; i < w[0].length; i++) m = Math.max(m, Math.abs(w[0][i] - (w[1] || w[0])[i])); return m; };
-      for (const [preset] of PRESETS.find(([s]) => s === 'Live effects')[1]) {
-        applyPreset('b:' + preset); await __wait(1200);
+      for (const [preset] of CORPUS.find(([s]) => s === 'Live effects')[1]) {
+        loadCorpus(preset); await __wait(1200);
         const w = state.source.getLatestWindow(4410);
         out.presets.push({ preset, active: state.source.fx.active, where: el.planeWhere.textContent,
                            low: Math.min(...w[0]), apart: apart() });
@@ -189,7 +202,7 @@ with sync_playwright() as pw:
          three full runs, never alone), and a window that is late is not the
          input being processed. An input still processed after three seconds
          fails as it did. */
-      applyPreset('b:Playing, waveform');
+      loadCorpus('Playing, waveform');
       let plainAt = 0;
       for (; plainAt < 3000 && !(state.source.fx.active === false && apart() < 1e-3); plainAt += 100) await __wait(100);
       out.plain = { active: state.source.fx.active, apart: apart(), ms: plainAt };
@@ -211,8 +224,8 @@ with sync_playwright() as pw:
     print("\n--- listening, on the same microphone ---")
     listen = p.evaluate("""async () => {
       const out = [];
-      for (const [preset] of PRESETS.find(([s]) => s === 'Listening')[1]) {
-        applyPreset('b:' + preset); await __wait(300);
+      for (const [preset] of CORPUS.find(([s]) => s === 'Listening')[1]) {
+        loadCorpus(preset); await __wait(300);
         if (modDirty) compileRoutes();
         for (const r of state.modRoutings) {
           const src = MOD_SOURCES.get(r.sourceId), dest = MOD_DESTS.get(r.destId);

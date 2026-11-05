@@ -23,6 +23,7 @@ What would go wrong, and what is checked for it:
 # hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -475,6 +476,7 @@ with sync_playwright() as pw:
     # read about 0.02 and moved nothing. The fixture has to show that dark spot
     # first, or a pass below would prove nothing about the landing.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(900)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     land = p.evaluate("""async () => {
       const frames = (n) => new Promise((done) => { let k = 0;
@@ -496,7 +498,9 @@ with sync_playwright() as pw:
       const snap = snapshot(); snap.photoOn = true; snap.photoU = 0.05; snap.photoV = 0.05;
       restore(snap); await frames(10);
       const dark = { u: photo.u, v: photo.v, on: photo.on, read: phosphorRead(0.05, 0.05) };
-      applyPreset('b:The knot leans into the light'); await frames(10);
+      // The old library's, from before P8g, loaded as a preset was: the bank
+      // has no setup that turns the photocell on.
+      loadCorpus('The knot leans into the light'); await frames(10);
       const preset = { u: photo.u, v: photo.v, on: photo.on };
       return { before, after, nudged, again, dark, preset };
     }""")

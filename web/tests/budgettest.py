@@ -36,6 +36,7 @@ ways that fails:
 # hosttest.py's.
 import math, os, sys
 import numpy as np
+import corpus
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -97,6 +98,7 @@ with sync_playwright() as pw:
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- the worst case, governed ---")
@@ -346,8 +348,14 @@ with sync_playwright() as pw:
     presets = p.evaluate("""async () => {""" + HELPERS + """
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = { seen: 0, shapes: new Set(), governed: [], dearest: [0, ''] };
-      for (const [, list] of PRESETS) for (const [name] of list) {
-        applyPreset('b:' + name); await wait(30);
+      /* The old library, from before P8g, and then the bank: the old one is
+         the widest set of real setups there is, 268 of them, and the bank is
+         what is played now. The old first, since none of it names the Picture
+         amount and the bank's would otherwise carry into it. */
+      const walk = [...CORPUS.flatMap(([, list]) => list.map(([name]) => [name, () => loadCorpus(name)])),
+                    ...PRESETS.flatMap(([, list]) => list.map(([name]) => ['b:' + name, () => applyPreset('b:' + name)]))];
+      for (const [name, load] of walk) {
+        load(); await wait(30);
         const layered = midi.layers.mode !== 'off';
         const core = make();
         for (const [k, v] of Object.entries(genSettings())) if (k !== 'voices') core.set(k, v);

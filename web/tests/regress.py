@@ -1,5 +1,6 @@
 from playwright.sync_api import sync_playwright
 import os, sys
+import corpus
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)                    # web/, which holds scope.html
 SHOTS = os.path.join(HERE, "shots")
@@ -14,6 +15,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: "+str(e)))
     p.on("console", lambda m: bad.append("console: "+m.text) if m.type=="error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(800)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(300)
 
@@ -34,11 +36,19 @@ with sync_playwright() as pw:
     check("triggers", p.evaluate("capture().triggered"))
 
     print("-- every preset applies --")
+    # The old library from before P8g, 268 real setups, and then the bank: a
+    # setup that throws on loading is as likely among the old as the new, and
+    # the bank alone is eleven. The count is held, so a walk that found
+    # nothing to load cannot pass as a clean one.
+    old = p.evaluate("CORPUS.flatMap(([, entries]) => entries.map(([name]) => name))")
+    for v in old:
+        p.evaluate(f"loadCorpus({v!r})")
     values = p.evaluate("PRESETS.flatMap(([, entries]) => entries.map(([name]) => 'b:' + name))")
     for v in values:
         p.evaluate(f"applyPreset({v!r})")
     p.wait_for_timeout(400)
-    check(f"{len(values)} presets, no errors", not bad, bad[:2])
+    check(f"{len(old)} old presets and {len(values)} of the bank, no errors",
+          not bad and len(old) > 250 and len(values) > 0, bad[:2])
 
     print("-- the three displays --")
     for mode in ("xy", "spect", "yt"):

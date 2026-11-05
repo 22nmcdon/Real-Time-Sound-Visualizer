@@ -10,6 +10,7 @@ those did exactly, so most of this is about equivalence rather than novelty.
 # 5m, is braintest.py's and hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -33,15 +34,21 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
     print("\n--- every preset's old enum becomes the right routing ---")
+    # The old library from before P8g and then the bank: the old one is where
+    # the enum's setups are, l0d and l1d with no routing list, and the bank
+    # is what is loaded now.
     migrated = p.evaluate("""() => {
       const wrong = [], seen = [];
-      for (const [, entries] of PRESETS) {
+      const walk = [...CORPUS.map(([s, e]) => [s, e, loadCorpus]),
+                    ...PRESETS.map(([s, e]) => [s, e, (name) => applyPreset('b:' + name)])];
+      for (const [, entries, load] of walk) {
         for (const [name, setup] of entries) {
-          applyPreset('b:' + name);
+          load(name);
           const want = [];
           // A routing list when the preset has one - as a setup code does -
           // and the old enum when it does not.
@@ -57,14 +64,17 @@ with sync_playwright() as pw:
           if (want.length) seen.push(name);
         }
       }
-      return { wrong, modulated: seen.length };
+      return { wrong, modulated: seen.length, walked: walk.reduce((n, [, e]) => n + e.length, 0) };
     }""")
     check("every preset migrates to the same destination", migrated["wrong"] == [],
           str(migrated["wrong"][:2]))
-    print("    %d presets carry modulation" % migrated["modulated"])
+    print("    %d presets of %d carry modulation" % (migrated["modulated"], migrated["walked"]))
 
     amounts = p.evaluate("""() => {
-      applyPreset('b:Tumbling');       // l0d phase @100, l1d ratio @20
+      // The old library's, from before P8g, as are Pure sine, Wobbling and
+      // Circle below: the sounds these were written against, a free sine at
+      // 440 among them, where the bank's Pure sine is poly.
+      loadCorpus('Tumbling');       // l0d phase @100, l1d ratio @20
       return state.modRoutings.map((r) => [r.sourceId, r.destId, r.amount]);
     }""")
     check("and the depth comes across with it",
@@ -72,7 +82,7 @@ with sync_playwright() as pw:
 
     print("\n--- a routing actually modulates ---")
     swept = p.evaluate("""async () => {
-      applyPreset('b:Pure sine');
+      loadCorpus('Pure sine');
       state.timebase = 6;                        // 100 ms: enough cycles to measure
       lfos[0].shape = 'sine'; lfos[0].rate = 0.5;
       setLfoDest(0, 'gen.freq');
@@ -93,7 +103,7 @@ with sync_playwright() as pw:
 
     print("\n--- two sources on one destination sum ---")
     summed = p.evaluate("""() => {
-      applyPreset('b:Pure sine');
+      loadCorpus('Pure sine');
       // Both LFOs held still at a known value, pointed at the same parameter.
       lfos[0].shape = 'square'; lfos[0].rate = 0.0001;
       lfos[1].shape = 'square'; lfos[1].rate = 0.0001;
@@ -133,7 +143,7 @@ with sync_playwright() as pw:
 
     print("\n--- the setup round trip ---")
     trip = p.evaluate("""() => {
-      applyPreset('b:Wobbling');            // two routings, wireframe destinations
+      loadCorpus('Wobbling');            // two routings, wireframe destinations
       const before = snapshot();
       const code = encodeSetup(before);
       const decoded = decodeSetup(code);
@@ -199,7 +209,7 @@ with sync_playwright() as pw:
     # the row's cross removes it.
     print("\n--- the Sources tab is a view of the list ---")
     ui = p.evaluate("""() => {
-      applyPreset('b:Pure sine');
+      loadCorpus('Pure sine');
       setView('bench'); setBenchTab('sources'); selectSource('lfo1');
       const add = document.getElementById('srcDetail-add');
       add.value = 'gen.ratio';
@@ -235,7 +245,7 @@ with sync_playwright() as pw:
     # the answer was 45 degrees whatever the samples were, and whatever
     # `capture` did.
     p.evaluate("""() => {
-      applyPreset('b:Circle');
+      loadCorpus('Circle');
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
       state.modRoutings = []; touchRoutings();
     }""")
@@ -293,7 +303,7 @@ with sync_playwright() as pw:
 
     print("\n--- the envelope follows what you play ---")
     env = p.evaluate("""async () => {
-      applyPreset('b:Pure sine');
+      loadCorpus('Pure sine');
       const source = MOD_SOURCES.get('env.live');
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
       await new Promise((r) => setTimeout(r, 600));

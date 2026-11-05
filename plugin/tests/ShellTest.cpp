@@ -32,6 +32,39 @@ std::string exact(double v) { char b[64]; std::snprintf(b, sizeof b, "%.12g", v)
    out any routing its reference does not make. The stage, which is on in
    everything the plugin plays, has its own checks under the picture. */
 void unstaged(ScopeProcessor& p) { p.pageSlider("pictureAmount", u"0"); }
+
+/* The preset library as it stood before P8g, 268 presets kept whole as a
+   corpus of real setups (core/tests/scenarios/library-p8f.json, which parity
+   and the page's suites read too). P8g cut the bank to eleven, and nearly
+   every preset this file opened on by name went with the rest; a name the
+   bank no longer has opens the plugin on its boot preset, silently, which is
+   how three checks once went on passing over the wrong sound (P8d). So each
+   check opens on the setup it was written against, from here, however the
+   bank changes after. A name not in the corpus stops the test, since going on
+   would be that silent fallback again. */
+const scope::Json* corpusFind(const char* name) {
+  static const scope::Json library = [] {
+    std::string text;
+    if (std::FILE* f = std::fopen(SCOPE_CORPUS, "rb")) {
+      char buf[65536];
+      for (std::size_t n; (n = std::fread(buf, 1, sizeof buf, f)) > 0;) text.append(buf, n);
+      std::fclose(f);
+    }
+    const auto parsed = scope::jsonParse(scope::utf8To16(text));
+    return parsed ? *parsed : scope::Json::array();
+  }();
+  for (const auto& section : library.a)
+    for (const auto& entry : section.a[1].a)
+      if (scope::utf16To8(entry.a[0].s) == name) return &entry.a[1];
+  return nullptr;
+}
+const scope::Json& corpusSetup(const char* name) {
+  if (const scope::Json* found = corpusFind(name)) return *found;
+  std::fprintf(stderr, "no preset called \"%s\" in the old library at %s\n", name, SCOPE_CORPUS);
+  std::exit(2);
+}
+// The same, written out for SCOPE_PRESET, which takes a setup as JSON.
+std::string corpusText(const char* name) { return scope::utf16To8(scope::jsonStringify(corpusSetup(name))); }
 }  // namespace
 
 int main() {
@@ -119,7 +152,7 @@ int main() {
   struct Played { std::vector<float> l, r; };
   const auto playDyad = [&](int second, bool routed = false, const char* preset = nullptr, bool morphed = false) {
     ScopeProcessor p;
-    if (preset) setenv("SCOPE_PRESET", preset, 1);
+    if (preset) setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
     unstaged(p);
@@ -158,7 +191,7 @@ int main() {
     scope::Brain brain;
     scope::BrainSources brainSources(matrix, brain);
     keys.setPresent(true);
-    if (preset) scope::restoreSetup(scope::findPreset(preset)->setup, brain, core, keys, matrix, lfos);
+    if (preset) scope::restoreSetup(corpusSetup(preset), brain, core, keys, matrix, lfos);
     if (noTables) { core.setCycle(nullptr); core.setWavetable(nullptr); }  // what the core played before the cycles
     if (routed) { matrix.add("lfo1", "gen.freq", 0.5); matrix.add("midi.key", "gen.amp", 0.6); }
     if (morphed) {
@@ -315,7 +348,7 @@ int main() {
     bool playing = true, there = true;
   };
   {
-    setenv("SCOPE_PRESET", "Wobble", 1);
+    setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
     ScopeProcessor hosted, alone;
     hosted.prepareToPlay(rate, block); alone.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -352,7 +385,7 @@ int main() {
      sample. Stamped at the block's top instead, the ticks in one block would
      land at one time and the tempo come out wrong. */
   {
-    setenv("SCOPE_PRESET", "Wobble", 1);
+    setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -379,7 +412,7 @@ int main() {
      key - 1,200 samples at 48 kHz. The page strikes it on a timer; the plugin
      strikes it at its own sample, where the next block's top would be 1,536. */
   {
-    setenv("SCOPE_PRESET", "Intervals in turn", 1);
+    setenv("SCOPE_PRESET", corpusText("Intervals in turn").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -415,7 +448,7 @@ int main() {
   struct Sent { int sample; std::uint8_t a, b, c; };
   const auto sendOut = [&](const char* preset, const std::vector<std::pair<int, juce::MidiMessage>>& played, int blocksToRun,
                            juce::AudioPlayHead* head = nullptr) {
-    setenv("SCOPE_PRESET", preset, 1);
+    setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -497,7 +530,7 @@ int main() {
     struct Sung { bool on = false, waited = true, followed = true; int counted = 0, ons = 0, col = 0; };
     const auto sing = [&](bool spectrogram) {
       head.ppq = -2;
-      setenv("SCOPE_PRESET", "A sine, sung", 1);
+      setenv("SCOPE_PRESET", corpusText("A sine, sung").c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -549,7 +582,7 @@ int main() {
       std::string display;
     };
     const auto run = [&](const char* preset, bool held, int blocks, const std::function<void(ScopeProcessor&)>& before) {
-      setenv("SCOPE_PRESET", preset, 1);
+      setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -620,7 +653,7 @@ int main() {
        The null is B's picture moving A's sound: B's sound then hears none. */
     struct Layered { bool live = true, own = true, apart = false; int lines = 0; };
     const auto layered = [&](const char* movesB) {
-      setenv("SCOPE_PRESET", "Harmonic tone", 1);
+      setenv("SCOPE_PRESET", corpusText("Harmonic tone").c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -667,7 +700,7 @@ int main() {
     });
     double zoomMod = 0, zoomNow = 0, zoomStep = 0;
     {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -683,7 +716,7 @@ int main() {
           "offset " + num(zoomMod) + ", zoom " + num(zoomNow) + ", lit " + num(zoomed.lit) + " against " + num(looped.lit));
     double kept = 0, cleared = 0;
     {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -709,7 +742,7 @@ int main() {
     double frameOff = -1, lastLength = 0, lastAsked = 0;
     int compared = 0;
     {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -761,7 +794,7 @@ int main() {
        can only do if the routes are compiled again once its sources are
        there. And the Clear button leaves the grid to fill again. */
     const auto midRun = [&](bool startOff) {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -784,7 +817,7 @@ int main() {
           && cameOn->matrix().source("photo.1") && cameApart > 0.01, "the picture apart from never on by " + num(cameApart));
     double refilled = 0, clearedNow = 0;
     {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -806,7 +839,7 @@ int main() {
     std::string held;
     bool loopFlags = false;
     {
-      setenv("SCOPE_PRESET", bent, 1);
+      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -882,7 +915,7 @@ int main() {
        move are the null: five since P8e's phaser, one a control. */
     std::size_t before = 0, after = 0;
     {
-      setenv("SCOPE_PRESET", tone, 1);
+      setenv("SCOPE_PRESET", corpusText(tone).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -932,7 +965,7 @@ int main() {
     if (preset[0] == '{') {
       const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(preset)));
       if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
-    } else setenv("SCOPE_PRESET", preset, 1);
+    } else setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
     if (unroutedFrom) p.matrix().remove(unroutedFrom, unroutedTo);
@@ -996,7 +1029,7 @@ int main() {
        was half of a check on the threshold, which watched this level and
        plucked when it rose through 0.40; the threshold went, and the level's
        half stays. */
-    setenv("SCOPE_PRESET", "Harmonograph", 1);
+    setenv("SCOPE_PRESET", corpusText("Harmonograph").c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -1036,7 +1069,7 @@ int main() {
        width - with the held key as its pitch: every value the same, exactly.
        And heard: the same with the routing taken away is the null. */
     const auto listen = [&](bool routed) {
-      setenv("SCOPE_PRESET", "Brightness swirls it", 1);
+      setenv("SCOPE_PRESET", corpusText("Brightness swirls it").c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");
@@ -1119,7 +1152,7 @@ int main() {
        at the page's defaults, the Picture amount where a hand would find it.
        The macros are no longer among them. Indexes are asked of the host's
        own list, so the morph's place is the host's, not this file's. */
-    setenv("SCOPE_PRESET", "Stretched echoes", 1);
+    setenv("SCOPE_PRESET", corpusText("Stretched echoes").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -1150,19 +1183,62 @@ int main() {
           && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 phaser:2 morph:1",
           grouped + " | " + ids);
   }
-  /* Every preset this file opens on by name is in the library. One that is
-     not opens on the boot preset instead, silently: "Brighten, grit, space,
-     swirl" went with the macros (P8d) and three checks went on passing or
-     failing over the wrong sound, one of them over a voice filter that was
-     off; and "Hits restart the pendulums", cut in P5, had left one passing
-     vacuously ever since. The literal names here are the ones the file passes to
-     SCOPE_PRESET; the lists it loops over are checked where they are made. */
+  /* Every preset this file opens on by name is in the old library it reads
+     them from (corpusFind, above). One that was not used to open on the boot
+     preset instead, silently: "Brighten, grit, space, swirl" went with the
+     macros (P8d) and three checks went on passing or failing over the wrong
+     sound, one of them over a voice filter that was off; and "Hits restart
+     the pendulums", cut in P5, had left one passing vacuously ever since.
+     corpusSetup now stops the test on a name it cannot find, so this is the
+     list said once, with the two that were lost as its null. */
   {
     std::string missing;
     for (const char* name : { "Wobble", "Intervals in turn", "A sine, sung", "Harmonic tone", "Harmonograph",
-                              "Brightness swirls it", "Stretched echoes", "Wah" })
-      if (!scope::findPreset(name)) missing += std::string(missing.empty() ? "" : ", ") + name;
-    check("every preset the shell test opens on by name is in the library", missing.empty(), missing);
+                              "Brightness swirls it", "Stretched echoes", "Wah", "Pendulums bent by the light",
+                              "A drawn cycle", "Wheel wah", "Envelope sync sweep", "Playing, lag X\u2013Y",
+                              "Playing, waveform" })
+      if (!corpusFind(name)) missing += std::string(missing.empty() ? "" : ", ") + name;
+    check("every preset the shell test opens on by name is in the old library it reads them from", missing.empty(), missing);
+    check("and the two that were lost before are not, so the look-up can miss",
+          !corpusFind("Brighten, grit, space, swirl") && !corpusFind("Hits restart the pendulums"));
+  }
+  /* The latch (P8g), through the host's bytes into the core's keyboard: a
+     note struck and let go goes on sounding with it on, and with it off has
+     gone by the end of its release, which is the null; struck again with no
+     key down, a new note replaces the latched one rather than joining it, so
+     the latched run with a second note is the second note alone, read against
+     that note played by itself. */
+  {
+    const auto note = [](int at, int n, bool on) {
+      return std::pair<int, juce::MidiMessage>(at, on ? juce::MidiMessage::noteOn(1, n, static_cast<juce::uint8>(100))
+                                                       : juce::MidiMessage::noteOff(1, n));
+    };
+    const auto tail = [](const std::vector<float>& l) {
+      double e = 0;
+      const std::size_t from = l.size() * 3 / 4;
+      for (std::size_t i = from; i < l.size(); ++i) e += static_cast<double>(l[i]) * l[i];
+      return std::sqrt(e / static_cast<double>(l.size() - from));
+    };
+    const char* on = "{\"midiMode\":\"poly\",\"midiLatch\":true,\"pictureAmount\":0}";
+    const char* off = "{\"midiMode\":\"poly\",\"midiLatch\":false,\"pictureAmount\":0}";
+    const auto latched = playLeft(on, { note(100, 60, true), note(4000, 60, false) }, 80);
+    const auto unlatched = playLeft(off, { note(100, 60, true), note(4000, 60, false) }, 80);
+    check("latched, a note let go goes on sounding; unlatched it has gone by the end of its release",
+          tail(latched) > 0.05 && tail(unlatched) < 1e-4, num(tail(latched)) + " against " + num(tail(unlatched)));
+    /* Judged by how loud the tail is rather than sample by sample: two runs
+       can start a voice at a different phase for reasons of their own, and a
+       second note sounding beside the first is louder whatever the phases -
+       by 1.12 here, measured, not the square root of two, since a chord is
+       levelled on its way out. The null is the same latch with the second
+       note struck while the first key is still down, which adds it. */
+    const auto replaced = playLeft(on, { note(100, 60, true), note(4000, 60, false), note(8000, 67, true),
+                                         note(12000, 67, false) }, 80);
+    const auto alone = playLeft(on, { note(8000, 67, true), note(12000, 67, false) }, 80);
+    const auto added = playLeft(on, { note(100, 60, true), note(8000, 67, true), note(12000, 60, false),
+                                      note(12000, 67, false) }, 80);
+    check("and the next note struck with no key down replaces it; struck with a key down it joins it",
+          std::fabs(tail(replaced) / tail(alone) - 1) < 0.05 && tail(added) / tail(alone) > 1.08,
+          num(tail(replaced) / tail(alone)) + " of the second alone, joined " + num(tail(added) / tail(alone)));
   }
   /* Each of the nine automated from block 20 over the dark saw fifth below
      (`opening`): heard from that block and not a sample before, and its slider
@@ -1404,14 +1480,14 @@ int main() {
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     const int was = p.pageState().version;
-    const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup);
+    const auto code = scope::encodeSetup(corpusSetup("Wah"));
     const bool refused = !p.pageSetup("not a code");
     const bool took = code && p.pageSetup(*code);
     const double before = p.slider("vcfCut");
     juce::AudioBuffer<float> buf(2, block);
     juce::MidiBuffer none;
     p.processBlock(buf, none);
-    setenv("SCOPE_PRESET", "Wah", 1);
+    setenv("SCOPE_PRESET", corpusText("Wah").c_str(), 1);
     ScopeProcessor wah;
     wah.prepareToPlay(rate, block);
     unsetenv("SCOPE_PRESET");
@@ -1506,7 +1582,7 @@ int main() {
           && q.keys().drive == p.keys().drive && q.tone().modeName == "wave" && !q.tone().just,
           std::to_string(count) + " kept; the solid driven " + (q.keys().drive[3] ? "yes" : "no") + ", the waveform " + (q.keys().drive[0] ? "yes" : "no"));
     // And a setup loaded starts the list again: what was done to the last one is not done to it.
-    const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup);
+    const auto code = scope::encodeSetup(corpusSetup("Wah"));
     if (code) p.pageSetup(*code);
     p.processBlock(buf, none);
     const auto after = scope::decodeSetup(p.pageState().code);
@@ -1578,7 +1654,7 @@ int main() {
     /* A state saved before the menus reached the plugin listed its sliders
        as "id=value;..." in `pluginSliders`. It still loads, and is saved
        again in the list that replaced it. */
-    scope::Json old = scope::findPreset("Harmonic tone")->setup;
+    scope::Json old = corpusSetup("Harmonic tone");
     old.set("pluginSliders", scope::Json::string(std::string_view("vcfCut=900;amp=30")));
     const auto code = scope::encodeSetup(old);
     ScopeProcessor p;
@@ -1941,7 +2017,7 @@ int main() {
             std::string(ownEar && ownEar->picture() ? "loop" : "not") + " on the generator, "
             + (splitEar && splitEar->picture() ? "loop" : "not") + " on the split, " + num(banded->lanes()) + " lanes");
       const auto loaded = split([](ScopeProcessor& p) {
-        if (const auto code = scope::encodeSetup(scope::findPreset("Wah")->setup)) p.pageSetup(*code);
+        if (const auto code = scope::encodeSetup(corpusSetup("Wah"))) p.pageSetup(*code);
         p.pageControl("xyY", scope::Json::string(std::u16string(u"3"))); }, 4);
       check("a setup loaded over the band split keeps its four lanes in the view, and the pair can take the fourth",
             loaded->view().lanes == 4 && loaded->view().capture.channels.size() == 4 && loaded->view().xy[1] == 3,
@@ -2101,7 +2177,7 @@ int main() {
        anyway; with it taken, a quarter period of 440 Hz exactly. The null is "Playing, waveform", whose lag is off,
        where the lock is never made. */
     const auto lagRun = [&](const char* preset, int note, bool truth) {
-      setenv("SCOPE_PRESET", preset, 1);
+      setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
       unsetenv("SCOPE_PRESET");

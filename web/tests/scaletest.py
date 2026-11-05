@@ -19,6 +19,7 @@ comparison a comparison with a moving target.
 # braintest.py's and hosttest.py's.
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -44,6 +45,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -135,8 +137,10 @@ with sync_playwright() as pw:
     check("named so a reader knows which lane", "lane 1" in dests["label"],
           dests["label"])
 
+    # The old library's Harmonic tone, from before P8g: a plain tone known to
+    # this check, whatever the bank's boot preset comes to set.
     routed = p.evaluate("""() => {
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       state.channels[0].fsDb = -12;
       state.channels[0].fsMod = 0;
       // A level of nought fires at nought whatever the gain, which would make

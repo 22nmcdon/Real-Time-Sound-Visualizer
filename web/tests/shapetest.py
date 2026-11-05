@@ -26,6 +26,7 @@ add none. Edge contact, the candidate it was chosen over, was cut in P5.
 # hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -110,6 +111,8 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    # survey.js reads the old library's setups, from before P8g, by corpusSetup.
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate(HELPERS)

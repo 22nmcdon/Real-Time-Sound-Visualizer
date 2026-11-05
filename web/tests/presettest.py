@@ -11,11 +11,19 @@ What would go wrong, and what is checked for it:
   unless its description says it waits for a key;
 - two presets that are the same preset, a preset or a section with nothing
   to say about itself;
-- the browser: it opens on the section in use, a card loads and leaves it
-  open, Enter and a double-click load and close, the arrows move between
-  cards by rows and columns, search looks across sections, saved setups
-  have a section, moving a control says Custom, the page's own keys stand
-  aside while it is open, and it says when a preset cannot be heard.
+- the bank's shape (P8g of web/docs/making-it-one-instrument.md): four
+  headings in the loop's order, a split under each of the three where the
+  loop moves the sound, the Wandering ones latched, Settled and Open with
+  the Picture amount at nought and Open with nothing read back - and every
+  preset naming the Picture amount, since one that did not would inherit
+  whatever the last one set. Whether each preset does what its heading says
+  is measured on the sound, in honestytest.py;
+- the browser: it opens on the heading in use, a menu of one section has no
+  rail, a card loads and leaves it open, Enter and a double-click load and
+  close, the arrows move between cards by rows and columns, search looks
+  across headings, saved setups have a menu, moving a control says Custom,
+  the page's own keys stand aside while it is open, and it says when a
+  preset cannot be heard.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -93,8 +101,56 @@ with sync_playwright() as pw:
           report["noBlurb"] == [] and report["about"] == []
           and all(k in ("generator", "display") for k in report["kinds"]),
           "%s, %s, %s" % (report["noBlurb"], report["about"], report["kinds"]))
-    check("a library with breadth: at least ninety presets in at least fifteen sections",
-          report["count"] >= 90 and len(report["kinds"]) >= 15, "%d, %d" % (report["count"], len(report["kinds"])))
+    # The bank's shape. Read from PRESETS as the page ships it, and each rule
+    # fed a library that breaks it, so none of them passes whatever the bank is.
+    shape_js = """(lib) => {
+      const sections = lib.map(([s]) => s);
+      const of = (t) => (lib.find(([s]) => s === t) || [, []])[1];
+      const split = (st) => st.layers === 'split';
+      const scanned = (st) => Number(st.oscScan || 0) > 0 || Number(st.bScan || 0) > 0;
+      return {
+        order: sections.join(','),
+        sizes: lib.map(([, e]) => e.length),
+        splits: ['Settled', 'Breathing', 'Wandering'].filter((t) => of(t).some(([, st]) => split(st))),
+        unlatched: of('Wandering').filter(([, st]) => st.midiLatch !== true).map(([n]) => n),
+        latchedElsewhere: lib.filter(([t]) => t !== 'Wandering').flatMap(([, e]) => e).filter(([, st]) => st.midiLatch === true).map(([n]) => n),
+        pushed: of('Settled').concat(of('Open')).filter(([, st]) => st.pictureAmount !== 0).map(([n]) => n),
+        readBack: of('Open').filter(([, st]) => scanned(st)).map(([n]) => n),
+        unnamed: lib.flatMap(([, e]) => e).filter(([, st]) => !('pictureAmount' in st)).map(([n]) => n),
+      };
+    }"""
+    def shape_ok(r):
+        return (r["order"] == "Settled,Breathing,Wandering,Open" and all(n >= 2 for n in r["sizes"])
+                and 8 <= sum(r["sizes"]) <= 24 and r["splits"] == ["Settled", "Breathing", "Wandering"]
+                and not r["unlatched"] and not r["latchedElsewhere"] and not r["pushed"] and not r["readBack"]
+                and not r["unnamed"])
+    shape = p.evaluate("(f) => (eval(f))(PRESETS)", shape_js)
+    print("    %s" % shape)
+    check("four headings in the loop's order, two to eight presets in each and eight to twenty-four in all",
+          shape["order"] == "Settled,Breathing,Wandering,Open" and all(n >= 2 for n in shape["sizes"])
+          and 8 <= sum(shape["sizes"]) <= 24, "%s %s" % (shape["order"], shape["sizes"]))
+    check("a split under each heading where the loop moves the sound, the owner's way of playing",
+          shape["splits"] == ["Settled", "Breathing", "Wandering"], str(shape["splits"]))
+    check("every Wandering preset latched, and no other; Settled and Open at nought; nothing read back in Open",
+          not shape["unlatched"] and not shape["latchedElsewhere"] and not shape["pushed"] and not shape["readBack"],
+          str(shape))
+    check("every preset names the Picture amount, so none inherits the last one's", not shape["unnamed"], str(shape["unnamed"]))
+    # The nulls: the bank with one thing wrong, each rule in turn.
+    broken = p.evaluate("""(f) => {
+      const shape = eval(f), lib = () => JSON.parse(JSON.stringify(PRESETS));
+      const edit = (fn) => { const l = lib(); fn(l); return shape(l); };
+      return [
+        edit((l) => l.reverse()),
+        edit((l) => { l[0][1] = l[0][1].filter(([, st]) => st.layers !== 'split'); }),
+        edit((l) => { l[2][1][0][1].midiLatch = false; }),
+        edit((l) => { l[0][1][0][1].midiLatch = true; }),
+        edit((l) => { l[3][1][0][1].pictureAmount = 30; }),
+        edit((l) => { l[3][1][0][1].oscScan = 20; }),
+        edit((l) => { delete l[1][1][0][1].pictureAmount; }),
+      ];
+    }""", shape_js)
+    check("and each of those rules fails a bank that breaks it", not any(shape_ok(r) for r in broken),
+          str([shape_ok(r) for r in broken]))
 
     # The null for the first check: a preset with a key spelt wrong, and one
     # with a value past its control's end, must both be caught by the same
@@ -109,157 +165,127 @@ with sync_playwright() as pw:
     check("and that comparison catches a misspelt field and an out-of-range value",
           null == [["vcfEnv"], ["vcfCut"]], str(null))
 
-    # The Picture amount is the player's: a setup that names it sets it, and
-    # a preset that does not leaves it where it was. So a preset that named it
-    # left it named for every preset after - the first "Scan remembers" put
-    # the stage at its top on everything loaded after it, the microphone's
-    # effect included. None may name it.
-    sticky = p.evaluate("""() => {
-      const named = [];
-      for (const [, entries] of PRESETS) for (const [name, setup] of entries) if ('pictureAmount' in setup) named.push(name);
-      // The null: the same scan finds it in a library that has it.
-      const probe = [['x', [['y', { pictureAmount: 100 }]]]];
-      let found = 0;
-      for (const [, entries] of probe) for (const [, setup] of entries) if ('pictureAmount' in setup) found++;
-      return { named, found };
-    }""")
-    check("no preset names the Picture amount, which would stay set for every preset after it", sticky["named"] == [],
-          str(sticky["named"]))
-    null_ok = sticky["found"] == 1
-    check("null: the same scan finds one that does", null_ok, str(sticky["found"]))
-
     print("\n--- the browser ---")
-    p.evaluate("() => applyPreset('b:Wah')")
+    p.evaluate("() => applyPreset('b:Slow pad')")
     p.click("#preset"); p.wait_for_timeout(250)
     opened = p.evaluate("""() => ({
       open: el.presetDialog.open,
       menu: el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu,
       menus: Array.from(el.presetMenus.querySelectorAll('.preset-menu')).map((m) => [m.dataset.menu, Number(m.querySelector('.count').textContent)]),
-      rail: Array.from(el.presetRail.querySelectorAll('.preset-section')).map((r) => r.firstChild.textContent),
-      sections: el.presetRail.querySelectorAll('.preset-section').length,
-      on: el.presetRail.querySelector('[aria-selected="true"]').firstChild.textContent,
+      rail: el.presetRail.hidden,
+      railShown: getComputedStyle(el.presetRail).display !== 'none',
       cards: el.presetGrid.querySelectorAll('.preset-card').length,
       pressed: Array.from(el.presetGrid.querySelectorAll('[aria-pressed="true"]')).map((c) => c.dataset.value),
       focused: document.activeElement.dataset.value,
-      about: el.presetAbout.textContent.length > 40,
-      counts: Array.from(el.presetRail.querySelectorAll('.count')).map((c) => Number(c.textContent)),
+      about: el.presetAbout.textContent,
     })""")
+    sizes = p.evaluate("() => PRESET_MENUS.map(([id, , , titles]) => [id, titles.reduce((a, t) => a + PRESETS.find(([n]) => n === t)[1].length, 0)])")
     menus = p.evaluate("""() => {
-      const size = (t) => { const s = PRESETS.find(([n]) => n === t); return s ? s[1].length : null; };
       const named = PRESET_MENUS.flatMap(([, , , titles]) => titles);
-      return {
-        orphans: PRESETS.map(([t]) => t).filter((t) => named.filter((n) => n === t).length !== 1),
-        ghosts: named.filter((t) => size(t) === null),
-        sums: PRESET_MENUS.map(([id, , , titles]) => [id, titles.reduce((a, t) => a + size(t), 0)]),
-        live: PRESET_MENUS.find(([id]) => id === 'live')[3].map((t) => [t, size(t)]),
-      };
+      return { orphans: PRESETS.map(([t]) => t).filter((t) => named.filter((n) => n === t).length !== 1),
+               ghosts: named.filter((t) => !PRESETS.some(([n]) => n === t)) };
     }""")
-    print("    %s" % {k: v for k, v in opened.items() if k != "counts"})
-    check("the button opens it on the menu and section of the preset in use, that card marked and focused",
-          opened["open"] and opened["menu"] == "live" and opened["on"] == "Keys and leads"
-          and opened["pressed"] == ["b:Wah"] and opened["focused"] == "b:Wah" and opened["about"], str(opened))
-    # A section in no menu would never be shown, and one in two would be
-    # shown twice; a menu naming a section that is not there shows nothing.
+    print("    %s" % opened)
+    check("the button opens it on the heading of the preset in use, that card marked and focused, with what the heading means",
+          opened["open"] and opened["menu"] == "breathing" and opened["pressed"] == ["b:Slow pad"]
+          and opened["focused"] == "b:Slow pad" and opened["about"].startswith("The sound keeps moving"), str(opened))
     check("every section is in exactly one menu, and every menu's sections exist",
           menus["orphans"] == [] and menus["ghosts"] == [], "%s, %s" % (menus["orphans"], menus["ghosts"]))
-    check("three menus by how much playing a preset asks for, then Saved, each counting its presets",
-          [m for m, _ in opened["menus"]] == ["sounds", "answer", "live", "saved"]
-          and [c for _, c in opened["menus"]][:3] == [n for _, n in menus["sums"]], str((opened["menus"], menus["sums"])))
-    check("and the rail is the open menu's sections only, in its order, each counting its presets",
-          opened["rail"] == [t for t, _ in menus["live"]] and opened["counts"] == [n for _, n in menus["live"]],
-          str((opened["rail"], opened["counts"])))
-    check("playing live has room to play in: a split and a layer section of eight or more each",
-          dict(menus["live"]).get("Split", 0) >= 8 and dict(menus["live"]).get("Layer", 0) >= 8, str(menus["live"]))
-    moved = p.evaluate("""() => {
-      const click = (sel) => el.presetDialog.querySelector(sel).click();
-      const on = () => [el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu,
-                        el.presetRail.querySelector('[aria-selected="true"]').firstChild.textContent];
-      click('.preset-menu[data-menu="sounds"]');
-      const first = on();
-      click('.preset-section[data-section="' + PRESETS.findIndex(([t]) => t === 'Solids') + '"]');
-      click('.preset-menu[data-menu="live"]');
-      const live = on();
-      click('.preset-menu[data-menu="sounds"]');
-      const back = on();
-      click('.preset-menu[data-menu="live"]');
-      return { first, live, back };
+    check("a menu for each heading in the loop's order, then Saved, each counting its presets",
+          [m for m, _ in opened["menus"]] == ["settled", "breathing", "wandering", "open", "saved"]
+          and [c for _, c in opened["menus"]][:4] == [n for _, n in sizes], str((opened["menus"], sizes)))
+    # A menu of one section is the section: no rail. The null is a menu of
+    # two, made for the purpose and taken away again, which must show it -
+    # so a rail hidden whatever the menu fails here.
+    rails = p.evaluate("""() => {
+      // A section of its own, since a menu is found by its sections and one
+      // already in another menu would be taken for that menu.
+      PRESETS.push(['Extra', [['Extra one', { freq: 300 }, 'A preset made for this check and taken away again.']], 'generator']);
+      PRESET_MENUS.push(['both', 'Both', 'Two sections', ['Extra', 'Open']]);
+      renderPresetBrowser();
+      el.presetMenus.querySelector('[data-menu="both"]').click();
+      const two = { hidden: el.presetRail.hidden, shown: getComputedStyle(el.presetRail).display !== 'none',
+                    sections: Array.from(el.presetRail.querySelectorAll('.preset-section')).map((r) => r.firstChild.textContent) };
+      PRESET_MENUS.pop(); PRESETS.pop();
+      el.presetMenus.querySelector('[data-menu="breathing"]').click();
+      return { two, one: { hidden: el.presetRail.hidden, shown: getComputedStyle(el.presetRail).display !== 'none' } };
     }""")
-    check("a menu opens on its first section, and going back to one returns to where it was left",
-          moved == {"first": ["sounds", "Start here"], "live": ["live", "Keys and leads"], "back": ["sounds", "Solids"]},
-          str(moved))
+    check("a menu of one section has no rail, and one of two shows both, so the rail is hidden only when there is nothing to choose",
+          opened["rail"] and not opened["railShown"] and rails["one"] == {"hidden": True, "shown": False}
+          and rails["two"] == {"hidden": False, "shown": True, "sections": ["Extra", "Open"]}, str(rails))
     preview = p.evaluate("""() => {
-      const card = Array.from(el.presetGrid.querySelectorAll('.preset-card')).find((c) => c.dataset.value === 'b:Sync lead');
+      const card = Array.from(el.presetGrid.querySelectorAll('.preset-card')).find((c) => c.dataset.value === 'b:Turning fifths');
       card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
       const blurb = card.querySelector('.preset-blurb');
-      const full = PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Sync lead')[2];
+      const full = PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Turning fifths')[2];
       return { text: el.presetPreview.querySelector('p').textContent === full,
                where: el.presetPreview.querySelector('.where').textContent,
                clamped: blurb.scrollHeight > blurb.clientHeight + 2 };
     }""")
-    check("the strip below shows the whole of what the card under the pointer says, and where it lives",
-          preview["text"] and preview["where"] == "Playing live \u00b7 Keys and leads", str(preview))
+    check("the strip below shows the whole of what the card under the pointer says, and its heading once",
+          preview["text"] and preview["where"] == "Breathing", str(preview))
     check("while the card itself shows two lines of it", preview["clamped"], str(preview))
 
-    p.click('.preset-section:has-text("Bells and metal")'); p.wait_for_timeout(150)
-    p.click('.preset-card:has-text("Ring modulator")'); p.wait_for_timeout(300)
+    p.click('.preset-menu[data-menu="settled"]'); p.wait_for_timeout(150)
+    p.click('.preset-card:has-text("Drawbar organ")'); p.wait_for_timeout(300)
     loaded = p.evaluate("""() => ({ value: el.preset.value, label: el.presetCurrent.textContent,
-      open: el.presetDialog.open, ring: genSettings().ringMix, ratio: genSettings().modRatio,
+      open: el.presetDialog.open, shape: genSettings().shape, bars: el.bars ? el.bars.value : null,
       pressed: Array.from(el.presetGrid.querySelectorAll('[aria-pressed="true"]')).map((c) => c.dataset.value) })""")
     check("a card loads its preset, marks itself, says so on the strip, and leaves the browser open",
-          loaded == {"value": "b:Ring modulator", "label": "Ring modulator", "open": True, "ring": 1,
-                     "ratio": 1.25, "pressed": ["b:Ring modulator"]}, str(loaded))
+          {k: loaded[k] for k in ("value", "label", "open", "shape", "pressed")}
+          == {"value": "b:Drawbar organ", "label": "Drawbar organ", "open": True, "shape": "drawbars",
+              "pressed": ["b:Drawbar organ"]}, str(loaded))
 
-    # The arrows: by one across, by a row of columns down.
+    # The arrows: by one across, by a row of columns down, held at the last card.
+    p.click('.preset-menu[data-menu="breathing"]'); p.wait_for_timeout(150)
     moves = p.evaluate("""() => {
       const cards = Array.from(el.presetGrid.querySelectorAll('.preset-card'));
       const columns = getComputedStyle(el.presetGrid).gridTemplateColumns.split(' ').length;
       cards[0].focus();
-      const key = (k) => el.presetDialog.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))
-        || document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
       document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
       const right = cards.indexOf(document.activeElement);
       document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
       const down = cards.indexOf(document.activeElement);
-      return { right, down, columns };
+      return { right, down, columns, count: cards.length };
     }""")
     check("the arrows move one card across and a row of columns down",
-          moves["right"] == 1 and moves["down"] == 1 + moves["columns"] and moves["columns"] >= 2, str(moves))
+          moves["right"] == 1 and moves["down"] == min(moves["count"] - 1, 1 + moves["columns"]) and moves["columns"] >= 2
+          and moves["down"] > moves["right"], str(moves))
     enter = p.evaluate("""() => {
       const card = el.presetGrid.querySelector('.preset-card');
       card.focus();
       card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       return { value: el.preset.value, open: el.presetDialog.open };
     }""")
-    check("Enter loads the focused card and closes", enter == {"value": "b:Bell", "open": False}, str(enter))
+    check("Enter loads the focused card and closes", enter == {"value": "b:Harmonic tone", "open": False}, str(enter))
 
     p.click("#preset"); p.wait_for_timeout(200)
-    p.dblclick('.preset-card:has-text("Gong")'); p.wait_for_timeout(250)
+    p.click('.preset-menu[data-menu="open"]'); p.wait_for_timeout(150)
+    p.dblclick('.preset-card:has-text("Saw wave")'); p.wait_for_timeout(250)
     dbl = p.evaluate("() => ({ value: el.preset.value, open: el.presetDialog.open })")
-    check("a double-click loads and closes", dbl == {"value": "b:Gong", "open": False}, str(dbl))
+    check("a double-click loads and closes", dbl == {"value": "b:Saw wave", "open": False}, str(dbl))
 
     print("\n--- search, the page's keys, and Custom ---")
     p.click("#preset"); p.wait_for_timeout(200)
-    # A word in more than one section. ("bell" was the first try, and found
-    # the whole of Bells and metal by its title and nothing else: right, and
-    # no test of looking across sections.)
-    p.fill("#presetFind", "fold"); p.wait_for_timeout(150)
+    # A word in more than one heading's presets.
+    p.fill("#presetFind", "split"); p.wait_for_timeout(150)
     found = p.evaluate("""() => ({
       headings: Array.from(el.presetGrid.querySelectorAll('.preset-heading')).map((h) => h.textContent),
       names: Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent) })""")
-    print("    'fold': %s" % found)
-    check("search looks across every menu and heads what it finds by menu and section",
-          "Wavefolder" in found["names"] and "Radial fold" in found["names"]
-          and {"Playing live \u00b7 Grit", "Pictures and sounds \u00b7 The plane"} <= set(found["headings"]), str(found))
-    # A word only a description has: "tine" is in the FM piano's, nowhere else.
-    p.fill("#presetFind", "tine"); p.wait_for_timeout(150)
-    tine = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
-    check("and reads what each preset says about itself, not only its name", tine == ["FM electric piano"], str(tine))
+    print("    'split': %s" % found)
+    check("search looks across every heading and heads what it finds by its heading, said once",
+          "Bass under glass keys" in found["names"] and "Bass under the pad" in found["names"]
+          and {"Settled", "Breathing"} <= set(found["headings"]), str(found))
+    # A word only a description has: "jazz" is in the organ's, nowhere else.
+    p.fill("#presetFind", "jazz"); p.wait_for_timeout(150)
+    jazz = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
+    check("and reads what each preset says about itself, not only its name", jazz == ["Drawbar organ"], str(jazz))
     p.fill("#presetFind", "two words neither"); p.wait_for_timeout(150)
     none = p.evaluate("() => el.presetGrid.textContent")
-    p.fill("#presetFind", "fold petals"); p.wait_for_timeout(150)
+    p.fill("#presetFind", "bass pad"); p.wait_for_timeout(150)
     both = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
     check("every word has to match, and nothing found says so",
-          "No preset matches" in none and "Folded petals" in both and "Radial fold" not in both, str(both))
+          "No preset matches" in none and "Bass under the pad" in both and "Bass under glass keys" not in both, str(both))
     p.fill("#presetFind", "")
     # The page's own keys stand aside: 2 would switch to X-Y, B to the Bench.
     keys = p.evaluate("""() => {
@@ -279,7 +305,7 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.presetName.value = 'My test setup'; el.presetSave.click(); await wait(50);
       openPresets();
-      const section = el.presetRail.querySelector('[aria-selected="true"]').firstChild.textContent;
+      const menu = el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu;
       const cards = Array.from(el.presetGrid.querySelectorAll('.preset-card')).map((c) => c.dataset.value);
       restore({}); applyPreset('b:Pure sine');
       // Guarded, so that a missing card fails the check below rather than
@@ -287,22 +313,13 @@ with sync_playwright() as pw:
       const mine = el.presetGrid.querySelector('[data-value="s:My test setup"]');
       if (mine) mine.click();
       const back = [el.preset.value, genSettings().freq];
-      el.preset.value; el.presetDialog.close();
+      el.presetDialog.close();
       el.presetDelete.click(); await wait(30);
-      return { section, cards, back };
+      return { menu, cards, back };
     }""")
     check("a saved setup has a card in Saved, where the browser opens while it is in use, and loads from there",
-          saved["section"] == "Saved" and saved["cards"] == ["s:My test setup"]
+          saved["menu"] == "saved" and saved["cards"] == ["s:My test setup"]
           and saved["back"] == ["s:My test setup", 300], str(saved))
-    live = p.evaluate("""() => {
-      openPresets();
-      el.presetMenus.querySelector('[data-menu="answer"]').click();
-      el.presetRail.querySelector('.preset-section[data-section="' + PRESETS.findIndex(([s]) => s === 'Live') + '"]').click();
-      const text = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
-      el.presetDialog.close();
-      return text;
-    }""")
-    check("the Live section says it changes the display only", "display only" in live, live)
     # A microphone - an oscillator behind getUserMedia - has no generator:
     # a generator section says so, and offers the tone.
     mic = p.evaluate("""async () => {
@@ -313,8 +330,7 @@ with sync_playwright() as pw:
       navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
       el.srcMic.click(); await wait(900);
       openPresets();
-      el.presetMenus.querySelector('[data-menu="sounds"]').click();
-      el.presetRail.querySelector('.preset-section[data-section="' + PRESETS.findIndex(([s]) => s === 'Start here') + '"]').click();
+      el.presetMenus.querySelector('[data-menu="open"]').click();
       const said = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
       // What is playing, not the source's kind: the instrument's is "host" whatever it draws (5m).
       const kind = playingKind();
@@ -336,4 +352,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("a library to browse, and every preset in it is what it says it is")
+print("a bank under four headings to browse, and every preset in it is what it says it is")

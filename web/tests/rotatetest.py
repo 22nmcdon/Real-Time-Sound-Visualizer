@@ -39,6 +39,7 @@ force reproduces the drawn pair.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -89,6 +90,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("(shape) => { window.__shape = eval(shape); }", SHAPE)
@@ -97,8 +99,10 @@ with sync_playwright() as pw:
     # A circle out of the generator, and then the tone stopped so that two
     # captures read the same samples: `tick` only runs while it is running, so
     # a halted generator is a still buffer to compare against itself.
+    # The old library's Harmonic tone here and below, from before P8g: a plain
+    # tone to start from, whatever the bank's boot preset comes to set.
     same = p.evaluate("""() => {
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.interval.value = '0'; el.interval.dispatchEvent(new Event('change'));
       el.phase.value = '90'; el.phase.dispatchEvent(new Event('input'));
@@ -159,12 +163,15 @@ with sync_playwright() as pw:
     # unless the two lanes are placed differently - different full scales, or
     # an offset. Every preset in the page sets them the same and turns by
     # nothing, so this change cannot reach any of them; that is checked here
-    # rather than asserted, preset by preset.
+    # rather than asserted, preset by preset: the old library's from before
+    # P8g, the widest set of real setups, and then the bank's.
     presets = p.evaluate("""() => {
       const odd = [];
-      for (const [, entries] of PRESETS) {
+      const walk = [...CORPUS.map(([, e]) => [e, loadCorpus]),
+                    ...PRESETS.map(([, e]) => [e, (name) => applyPreset('b:' + name)])];
+      for (const [entries, load] of walk) {
         for (const [name] of entries) {
-          applyPreset('b:' + name);
+          load(name);
           const a = state.channels[0], b = state.channels[1];
           if (state.rotate !== 0 || a.fsDb !== b.fsDb
               || a.offset !== 0 || b.offset !== 0) {
@@ -173,7 +180,7 @@ with sync_playwright() as pw:
           }
         }
       }
-      return { odd, count: PRESETS.reduce((n, [, e]) => n + e.length, 0) };
+      return { odd, count: walk.reduce((n, [e]) => n + e.length, 0) };
     }""")
     check("every preset places both lanes alike and turns by nothing",
           presets["odd"] == [], str(presets["odd"][:2]))
@@ -203,7 +210,7 @@ with sync_playwright() as pw:
     # turn: the same ellipse standing at 45 degrees. The drawn cloud says which
     # one happened, and it is not a subtle difference.
     p.evaluate("""() => {
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.phase.value = '90'; el.phase.dispatchEvent(new Event('input'));
       setDisplay('xy');

@@ -1236,6 +1236,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("ringMs", panel.range("ringTime"));
   }
   keys.setSettings(k);
+  keys.setLatch(isTrue("midiLatch"));
   keys.decodeCC(str("cc"));
   keys.panel() = { panel.range("freq"), static_cast<int>(panel.selectNumber("interval")), panel.range("figureRate"),
                    panel.range("detail") };
@@ -1722,6 +1723,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "scanReadsA") b.scanReads[0] = scanReadsOf(text, "A");
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
+  else if (id == "midiLatch") keys.setLatch(checked);
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
   else if (id == "midiDrive") keys.setDrive(checked);

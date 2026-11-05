@@ -239,16 +239,26 @@ Do not re-litigate these without a reason; each replaced something that failed.
   the same sections, which made neither a place for anything. To reach a
   control from code - a search result, a test - use `showControl(id)`; do not
   assume the Settings popover holds it.
-- **Presets are a library in a browser, not a list.** A dialog of three menus
-  by how much playing a preset asks for - *Pictures and sounds*, *Answering
-  your playing*, *Playing live* - each of sections, and Saved; described cards
-  two lines long, the whole description in the strip below. `presettest.py`
-  requires every field a preset names to come back out of the setup it makes,
-  so a new preset with a misspelt key or an out-of-range value fails there
-  rather than loading quietly as something else, and every section to be in
-  exactly one menu of `PRESET_MENUS`. Add a preset to the section it fits,
-  with a line that says what to listen for and what to look at; a new section
-  also goes in a menu and in `PRESET_ABOUT`.
+- **Presets are a small bank under four headings, by what the loop does with
+  a held chord** (P8g, `making-it-one-instrument.md`): *Settled* (a note moves
+  the sound as it strikes the screen, and it comes to rest while held),
+  *Breathing* (it moves while held and stops when let go), *Wandering* (it
+  goes on after you let go: latched, the loop changing your chord), *Open*
+  (the loop open; it never moves). One menu a heading in the browser, Saved
+  last, a section rail only when a heading has more than one section. It
+  replaced 268 presets in three menus by how much playing they asked for,
+  which the owner liked none of. `honestytest.py` measures every preset's
+  sound against its heading and requires it to fail the other three, so a
+  preset under the wrong heading fails there; `presettest.py` requires every
+  field a preset names to come back out of the setup it makes, the bank's
+  shape (a split under each moving heading, Wandering latched, Settled and
+  Open at Picture nought) and every preset to name the Picture amount. Add a
+  preset under the heading it measures as, with a line that says what to
+  listen for and what to look at, then write `presets.h` out with
+  `core/tests/tools/write_presets.py`. The old library is kept whole as a test
+  corpus (`core/tests/scenarios/library-p8f.json`, `web/tests/corpus.py`):
+  a suite that wants a known sound under a check opens it from there, never
+  from the bank, which is meant to change by ear.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.

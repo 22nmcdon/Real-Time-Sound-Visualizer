@@ -2,7 +2,7 @@
 
 Where the instrument stands, what is decided, what is open, and how to work on
 it without rediscovering the last month. Written at the end of P8f
-(`2f2165a`, 5 November 2026). The plan itself is
+(`2f2165a`, 5 November 2026), and brought up to date at the end of P8g. The plan itself is
 `web/docs/making-it-one-instrument.md`; this is the short version and the
 loose ends.
 
@@ -26,55 +26,53 @@ branch GitHub Pages serves, so a push publishes the site.
 | P8d | Macros removed (setup codes v6 migrate them) | Done |
 | P8e | Phaser: four all-passes a channel, channels in quadrature, steered by Memory | Done, page and core |
 | P8f | Loop overlay on a switch (ring, read-head, table thumbnail, state badge) | Done |
-| **P8g** | **Preset rework** | **Next: needs the owner (below)** |
+| P8g | Preset rework: eleven under Settled, Breathing, Wandering, Open, measured on the sound; the latch | Done; **now the owner's listening rounds (below)** |
 | P9 | The effect build | Not started |
 
 Also done along the way: sound now starts from a tap on phones (`5d4e85f`,
 confirmed by the owner on an iPhone), and `run.py` runs timing suites first
 and alone, the rest three at a time (`4a815e5`).
 
-## Next: the preset rework (P8g)
+## Next: the owner listens to the new bank (P8g)
 
-The owner wants a serious rework: there are 268 presets in 30 sections, far
-too many, and they liked none of them. They chose the plan's full rename. A
-first proposal was put to them and **not yet answered**:
+The owner agreed to every recommendation put to them (5 November): about ten
+presets to start, a split under each heading where the loop moves the sound,
+sine and saw kept under Open, every preset naming the Picture amount, and the
+latch built. What was built, and what the measuring changed, is P8g's bullet in
+`web/docs/making-it-one-instrument.md`. In short:
 
-- **Shape:** about 16 presets under four headings named for what the loop
-  does: **Settled** (short memory, light Scan, timbre follows the playing),
-  **Breathing** (moves between notes, settles while held), **Wandering** (long
-  memory, deep Scan, keeps moving on its own), **Open** (loop off, plain
-  sounds). Replaces the three menus *Pictures and sounds / Answering your
-  playing / Playing live*; CLAUDE.md's "Presets are a library" bullet changes
-  with it.
-- **An honesty test:** the meter already says settled / moving / running
-  away, so a test can require each preset to behave as its heading says.
-- **Draft list:** Settled - glass keys (strike-led), round bass with sub,
-  drawbar organ, a pluck. Breathing - slow pad opened by Memory's phaser,
-  turning fifths (harmony as geometry with a slight detune), a mono lead for
-  riding Bend, a bass + keys split. Wandering - crossed hands (split,
-  cross-scan), a pad that keeps going after release, a drone field, a
-  hammered screen. Open - sine, saw, square, a plain poly synth.
-- **What goes:** everything else, drawings, analysis demos, live-input effects
-  and Lissajous sets included. Saved presets stay. Tests that open presets by
-  name get their setups written out, as P8d did; `presets.h` is regenerated
-  from the page library and parity covers it.
-- **The limit:** Claude cannot hear. It can make every preset pass the numbers
-  (meter verdict, the picture moving the sound, no clipping, the first-minute
-  test); whether it sounds good is the owner's call, so expect rounds of
-  "play it, say what to change".
+- **The bank:** Settled - Glass keys, Drawbar organ, Bass under glass keys;
+  Breathing - Harmonic tone (still the boot sound), Slow pad, Turning fifths,
+  Bass under the pad; Wandering - Crossed hands, Pad that keeps going; Open -
+  Pure sine, Saw wave.
+- **The headings changed in one way from the draft.** Breathing was "moves
+  between notes, settles while held"; measured, that was Settled with a longer
+  tail. It is now "keeps moving while held, stops when let go", and Wandering
+  "goes on after you let go" (latched). Tell the owner; they agreed to the
+  draft, not to this.
+- **The honesty test** (`honestytest.py`) measures the sound, not the picture
+  meter (which said "settled" over a crossed pair whose sound kept moving).
+- **The latch** is on Play and in setups (`midiLatch`): a chord let go sounds
+  on until the next note struck with no key down replaces it. The screen
+  keys' old per-key latch is now "Tap to hold".
 
-Questions the owner still has to answer:
+What comes next is the owner's ears: play each, say what to change. To change
+or add a preset: edit `PRESETS` in the page, run `presettest.py` and
+`honestytest.py`, then `core/tests/tools/write_presets.py`, `core/wasm/build.py`
+and parity. Not yet built from the draft: a mono lead for riding Bend, a pluck,
+a bell (agreed in place of the drone field), a hammered screen; and more
+splits once there are more sounds to split.
 
-1. Which kinds of sound: does the draft's mix (keys, bass, organ, pad, lead,
-   pluck, drone, splits) match, or swap some?
-2. How many splits? They are the owner's favourite way to play.
-3. About 16, or start with 8–10 and grow?
-4. Keep sine, saw and square under Open?
-5. **The latch.** Wandering presets keep going after release. Today "Scan
-   breathes" and "Scan remembers" do it by making the keys hammer a drone that
-   plays its own pitch. The alternative is a latch on Play that keeps the
-   owner's own chord sounding while the loop moves it - a new control, not yet
-   built. Asked twice, unanswered.
+Known about the bank, for whoever tunes it:
+
+- Bright, beating sounds hide the loop; unison and chorus do too. None is used.
+- How deep Scan can go before a held sound keeps moving depends on the sound:
+  50 for the glass keys, about 20 for the drawbars, 15 for the C2 bass.
+- Six-note chords on the pad hit the limiter; its level is 28 to keep a
+  six-note chord under three decibels of limiting.
+- The old library (268) is a test corpus now: `core/tests/scenarios/
+  library-p8f.json`, `web/tests/corpus.py`, and the shell test's
+  `corpusSetup`. Tests open known sounds from there, never from the bank.
 
 ## Decisions to keep
 

@@ -392,7 +392,7 @@ experiment.
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
 | Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
 | Spectrogram, measurements | THD, harmonics, readouts | **Drawer.** They also verify Scan's band-limiting |
-| Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below) |
+| Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below). *Done in P8g: eleven under Settled, Breathing, Wandering and Open, measured on the sound* |
 | Root README | Still says "two implementations", "MIDI when that lands", band-limiting "not built" | **Rewritten** around the loop sentence |
 
 ## Using it
@@ -1019,6 +1019,46 @@ the synth's features should be chosen knowing that.
     the computer keyboard's notes. `overlaytest.py` holds it, with the sound's isolation
     proved on the phosphor's cells rather than by comparing two live renders, which differ
     for reasons of their own.
+  - *P8g, built: the presets rebuilt, and the latch.* The owner liked none of the 268, and
+    chose the full rebuild. The bank is eleven under four headings, each a menu in the
+    browser: **Settled** (Glass keys, Drawbar organ, Bass under glass keys), **Breathing**
+    (Harmonic tone, Slow pad, Turning fifths, Bass under the pad), **Wandering** (Crossed
+    hands, Pad that keeps going) and **Open** (Pure sine, Saw wave) - a split under each
+    heading where the loop moves the sound, since splits are how the owner plays, and the
+    boot sound kept as it was, under Breathing, where it measures. The headings were fixed
+    by measuring rather than before it: how far the sound's spectrum moves a quarter second
+    on one held note, a hand at a time in a split. *Settled*: Scan and Strike with the
+    Picture amount at nought - the strike's light flares the timbre and fades out of what
+    Scan reads, 0.05 a reading falling to nought within five seconds; the stage at any
+    amount above nought keeps a held sound stirring, its reads rescaled to their own
+    range. *Breathing*: the stage at work, or a figure turning (the narrow equal-tempered
+    fifth), 0.03 to 0.10 a reading for as long as it is held, and silent when let go. The
+    draft's Breathing, "moves between notes and settles while held", went: by number it
+    was Settled with a longer tail. *Wandering*: the same, and still sounding and moving
+    after the keys come up, which is what the latch is for. *Open*: nought. The picture
+    meter's verdict was not used: it said "settled" over the crossed pair while its sound
+    moved, and "cycling" over most of the rest. `honestytest.py` holds each preset to its
+    heading and to failing the other three, and the limiter to no more than six decibels
+    on a four-note chord. Every preset names the Picture amount, which presets used to
+    leave alone as the player's, because a bank where every preset says cannot leak one
+    preset's amount into the next and Settled and Open need it at nought; ?picture=N
+    still holds it through a preset. None uses unison or chorus: they move a sound on
+    their own, as a chord's beating does, and a pad built on them moved no more with the
+    loop than without it. The **latch** is on the Play tab and in a setup (`midiLatch`,
+    additive, no version bump), page and core alike, held by parity's keyboard runs: a key
+    let go leaves its note sounding, the next note struck with no key down lets the whole
+    held chord go and starts the new one, a note struck with a key down joins it, the
+    pedal keeps its own, and switched off it lets go (to the pedal, if the foot is down).
+    It answers the question asked twice in P7b's wake: the Wandering presets keep the
+    chord you played rather than making the keys hammer a drone of the preset's own. The
+    screen keys' old per-key Latch is called *Tap to hold* now, two switches called Latch
+    being one too many. The old library is kept whole as a test corpus
+    (`core/tests/scenarios/library-p8f.json`): parity restores it on both sides ahead of
+    the bank and plays a note through every one of its presets, the page's suites and the
+    shell test open the sounds their checks were written against from it, and
+    `core/tests/tools/write_presets.py` writes `presets.h` out from the page. What the
+    numbers cannot say is whether any of it sounds good; that is the owner's, preset by
+    preset, in rounds.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

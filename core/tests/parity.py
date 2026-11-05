@@ -1282,6 +1282,26 @@ kruns = [
                    "frame 100")),
     ("pedal-poly", krun("mode poly", "frame 16", "on 48 100", "on 52 100", "pedal 1", "off 48", "off 52", "on 55 100",
                         "frame 16", "on 48 40", "pedal 0", "frame 16", "off 48", "off 55")),
+    # The latch (P8g): a chord let go goes on sounding, and the next note
+    # struck with no key down replaces it; one struck with a key still down
+    # adds to it; a latched note struck again is a new chord of one; off lets
+    # go; the panic empties it and leaves it on.
+    ("latch", krun("mode poly", "frame 16", "latch 1", "on 60 100", "on 64 90", "on 67 80", "off 60", "off 64", "off 67",
+                   "frame 16", "on 62 100", "on 65 90", "off 62", "off 65", "frame 16", "on 65 70", "off 65", "latch 0",
+                   "frame 16", "latch 1", "on 48 100", "on 55 90", "off 48", "on 52 80", "off 55", "off 52", "frame 16",
+                   "panic", "frame 16", "on 50 60", "off 50", "frame 16")),
+    # Beside the pedal: what the foot holds is the foot's, a key let go under
+    # both is the latch's, and the latch switched off with the foot down hands
+    # its notes to the pedal.
+    # The null for the latch's checks below: the same hands with it off.
+    ("latch-null", krun("mode poly", "frame 16", "latch 0", "on 60 100", "on 64 90", "on 67 80", "off 60", "off 64", "off 67",
+                        "frame 16", "on 62 100", "on 65 90", "off 62", "off 65", "frame 16", "on 65 70")),
+    ("latch-pedal", krun("mode poly", "frame 16", "on 60 100", "pedal 1", "off 60", "latch 1", "on 64 90", "off 64",
+                         "on 67 80", "off 67", "latch 0", "frame 16", "pedal 0", "frame 16")),
+    ("latch-dyad", krun("frame 16", "latch 1", "on 57 100", "on 64 90", "off 57", "off 64", "frame 16", "on 60 100",
+                        "off 60", "mode mono", "on 67 90", "off 67", "frame 16", "latch 0", "frame 16")),
+    ("latch-split", krun("mode poly", "frame 16", "layers split", "latch 1", "on 40 100", "on 72 90", "off 40", "off 72",
+                         "frame 16", "on 76 80", "frame 16", "layers off", "frame 16")),
     ("controllers", krun("frame 16", "cc 16 64", "frame 10", "cc 42 127", "frame 40", "cc 16 0", "cc 7 100",
                          "frame 1000", "name 42 Lower_drawbars", "name 99 Ninety_nine", "name 16", "cc 99 3", "cc 123 5", "on 60 80", "cc 120 0", "cc 113 1", "frame -5", "frame 0", "frame 3")),
     ("bytes", krun("frame 16", "bytes 0x90,60,100,64,90", "bytes 0x80,60,0", "bytes 0x90,67", "bytes 100",
@@ -1340,6 +1360,25 @@ def kfuzz(n):
         else: out.append("frame %d" % krng.choice([16, 16, 33, 0, 250]))
     return krun(*out)
 kruns += [("random-%d" % i, kfuzz(80)) for i in range(40)]
+# And the latch among them, from a generator of its own so that every run
+# above is the run it was before the latch existed.
+klrng = random.Random(808)
+def klfuzz(n):
+    out, held = ["frame 16"], []
+    for _ in range(n):
+        r = klrng.random()
+        if r < 0.36:
+            note = klrng.choice([klrng.randint(36, 84), klrng.choice(held or [60])])
+            out.append("on %d %d" % (note, klrng.choice([klrng.randint(1, 127), 127]))); held.append(note)
+        elif r < 0.62 and held: out.append("off %d" % klrng.choice(held))
+        elif r < 0.72: out.append("latch %d" % klrng.randint(0, 1))
+        elif r < 0.78: out.append("pedal %d" % klrng.randint(0, 1))
+        elif r < 0.82: out.append("mode " + klrng.choice(["dyad", "mono", "poly", "poly"]))
+        elif r < 0.85: out.append("layers " + klrng.choice(["off", "split", "layer"]))
+        elif r < 0.87: out.append("panic")
+        else: out.append("frame 16")
+    return krun(*out)
+kruns += [("latch-random-%d" % i, klfuzz(80)) for i in range(20)]
 # The arpeggiator (K5), on the clock: a chord struck over a few milliseconds
 # and gathered, the steps every quaver from the first key, each pattern, the
 # dyad's pairs, the tempo changed under it, switched off and on with keys down,
@@ -1403,11 +1442,13 @@ def kslice(out, i):
     start = sum(klines[:i])
     return "\n".join(lines[start:start + klines[i]])
 for i, (name, _) in enumerate(kruns):
-    if name.startswith("random-"): continue
+    if name.startswith("random-") or name.startswith("latch-random-"): continue
     d = kdiff(kslice(kjs, i), kslice(kcpp, i))
     check("%s: %d commands, every call the same" % (name, klines[i]), d is None, d or "")
 rbad = [n for i, (n, _) in enumerate(kruns) if n.startswith("random-") and kdiff(kslice(kjs, i), kslice(kcpp, i))]
 check("40 random sequences of 80 commands, every call the same", not rbad, ", ".join(rbad))
+lbad = [n for i, (n, _) in enumerate(kruns) if n.startswith("latch-random-") and kdiff(kslice(kjs, i), kslice(kcpp, i))]
+check("and 20 more with the latch among them, every call the same", not lbad, ", ".join(lbad))
 
 # Each run has to show what it is for, or agreeing on it proves nothing.
 def kout(name): return kslice(kjs, next(i for i, (n, _) in enumerate(kruns) if n == name))
@@ -1416,6 +1457,26 @@ check("the dyad sets an interval wider than an octave, and clamps the pitch at b
 check("a chord leaves notes heard and not drawn, by every rule",
       all(r in kout("poly-rules") for r in ("/u+", "/x+", "/y")) and "/xy " in kout("poly-one"))
 check("past eight held notes the oldest stops sounding", "poly 8 2 11" in kout("poly-many"))
+# What the latch is for, read off the stack: the notes sounding after each
+# command, and what the latch holds.
+def kheld(name, i):
+    m = re.search(r" notes (\S+) sustained (\S+) latched (\S) (\S+)", kout(name).split("\n")[i])
+    return [int(t.split("/")[0]) for t in m.group(1).split("+")] if m.group(1) != "-" else [], m.group(2), m.group(3), m.group(4)
+def latched_right(name):
+    return (kheld(name, 9)[0] == [60, 64, 67] and kheld(name, 9)[3] == "60+64+67" and kheld(name, 10)[0] == [62]
+            and kheld(name, 15)[0] == [65])
+check("latched, a chord let go goes on sounding, the next note struck replaces it, and a held note struck again is a chord of one",
+      latched_right("latch"), str([kheld("latch", i) for i in (9, 10, 15)]))
+check("and the same hands without it hold nothing once the keys are up, which that check fails on",
+      kheld("latch-null", 9)[0] == [] and not latched_right("latch-null"), str(kheld("latch-null", 9)))
+check("switched off it lets go; a note struck with a key down adds to the chord; the panic empties it and leaves it on",
+      kheld("latch", 17)[0] == [] and kheld("latch", 23)[0] == [48, 55, 52]
+      and kheld("latch", 27)[0] == [] and kheld("latch", 27)[2] == "1" and kheld("latch", 27)[3] == "-"
+      and kheld("latch", 30)[3] == "50",
+      str([kheld("latch", i) for i in (17, 23, 27, 30)]))
+check("beside the pedal: what the foot holds stays through a new chord, and switched off the latch hands its notes to the foot",
+      kheld("latch-pedal", 8)[0] == [60, 67] and kheld("latch-pedal", 10)[1] == "60+67" and kheld("latch-pedal", 12)[0] == [],
+      str([kheld("latch-pedal", i) for i in (8, 10, 12)]))
 check("split, layer B plays its own notes and each layer counts its own strikes",
       re.search(r"set voices \S+ 1 ", kout("split")) and re.search(r"strikes (\d+) (?!\1)\d+ ", kout("split")))
 check("against, each layer's drawn notes go on one axis", "layout against" in kout("split")
@@ -3691,12 +3752,27 @@ check("the %d sliders the morph walks are the page's, in the page's order" % len
 check("and that order is not the layout's", pctl["morph"] != [k for k in pctl["ranges"] if k in pctl["morph"]])
 plib = rpage("--library").strip()
 clib = subprocess.run([rexe, "--library"], check=True, capture_output=True, text=True).stdout.strip()
-check("the preset library is the page's, preset for preset, character for character", plib == clib and len(plib) > 50000,
+# The bank is small since P8g - eleven presets under four headings - so the
+# floor is the bank's own: four sections, every one of them non-empty.
+plib_sections = _json.loads(plib) if plib.startswith("[[") else []
+check("the preset library is the page's, preset for preset, character for character", plib == clib
+      and len(plib_sections) == 4 and all(entries for _, entries, _ in plib_sections),
       "%d against %d characters" % (len(plib), len(clib)))
-presets = rpage("--presets").strip().split("\n")
+# The setups every restore below is drawn from: the library as it stood before
+# P8g, 268 presets kept whole as a corpus (core/tests/scenarios), and then the
+# bank the page ships. The corpus first, so that every index and every "the
+# first preset with a drawn cycle" below means what it meant before the bank
+# was cut to eleven, and the restore is tried on as wide a set of real setups
+# as it ever was.
+CORPUS = _json.load(open(os.path.join(HERE, "scenarios", "library-p8f.json"), encoding="utf-8"))
+corpus_setups = [_json.dumps(setup, ensure_ascii=False, separators=(",", ":"))
+                 for _, entries, _ in CORPUS for _, setup, *_ in entries]
+bank_setups = rpage("--presets").strip().split("\n")
+presets = corpus_setups + bank_setups
 ppage, pport = rboth(presets, "restore_presets.txt")
 pbad = rbad(ppage, pport)
-check("all %d of the page's presets load to the same instrument" % len(presets), len(presets) > 250 and not pbad,
+check("all %d of the old library's setups and the page's %d presets load to the same instrument"
+      % (len(corpus_setups), len(bank_setups)), len(corpus_setups) == 268 and len(bank_setups) >= 8 and not pbad,
       pbad[0] if pbad else "")
 
 rrng = random.Random(98)
@@ -3816,6 +3892,7 @@ def rdrawn():
     return rrng.choice([";", " ; ", ";;"]).join(strokes)
 PM_MENUS = {"pictureMovesA": ["A", "B", "both", "nonsense", 5, None], "pictureMovesB": ["B", "A", "both", "", "a"]}
 pmrng = random.Random(66)
+latchrng = random.Random(67)
 def rsetup():
     st = {}
     for key, make in (("cycle", rcycle), ("cycles", rcycles), ("figText", rtext), ("figPath", rsvg), ("figDrawn", rdrawn)):
@@ -3839,6 +3916,8 @@ def rsetup():
     # rounds to 0.04 and the core to 0.05 - before P6 as after.
     for key, values in PM_MENUS.items():
         if pmrng.random() < 0.3: st[key] = pmrng.choice(values)
+    # The latch (P8g), from a generator of its own for the same reason.
+    if latchrng.random() < 0.25: st["midiLatch"] = latchrng.choice([True, False, 1, "true", None])
     return _json.dumps(st)
 # The first two are the slider's own rules, made to be read: a half goes up,
 # and a value that is not a number takes the slider's middle (detail runs from
@@ -4839,6 +4918,14 @@ print("\n--- the instrument, compiled (5f) ---")
 iexe = build("instrument_cpp")
 inames = [n for n in subprocess.run([iexe, "--names"], check=True, capture_output=True, text=True).stdout.split("\n") if n]
 icode = dict(zip(inames, subprocess.run([iexe, "--code", *inames], check=True, capture_output=True, text=True).stdout.split("\n")))
+# The old library's setups (P8g), as codes of the version a code is written
+# at now, so no decode pass changes them: the runs below that were written
+# against a preset since cut open on its old setup, and every one of them is
+# played through in turn as the bank's are.
+def ocode_of(setup):
+    return base64.b64encode(_json.dumps(dict(setup, v=6)).encode()).decode().rstrip("=")
+onames = [n for _, entries, _ in CORPUS for n, *_ in entries]
+ocode = {n: ocode_of(st) for _, entries, _ in CORPUS for n, st, *_ in entries}
 def iscript(name, lines):
     path = os.path.join(BUILD, "instrument_%s.txt" % name)
     with open(path, "w") as f: f.write("\n".join(_json.dumps(l) for l in lines) + "\n")
@@ -4887,15 +4974,15 @@ iruns["refused"] = [["make", 48000, 128, "not a code at all"]] + blocks(4) + [["
 # Every preset in turn, a note held through each, so whatever a preset leaves
 # behind is what the next one is loaded over, as a player's evening goes.
 iruns["presets"] = [["make", 48000, 128, icode["Harmonic tone"]]]
-for n in inames:
-    iruns["presets"] += [["setup", icode[n]], NOTE_ON(57)] + blocks(10, 128, 7) + [NOTE_OFF(57)] + blocks(3, 128, 7)
+for code in [ocode[n] for n in onames] + [icode[n] for n in inames]:
+    iruns["presets"] += [["setup", code], NOTE_ON(57)] + blocks(10, 128, 7) + [NOTE_OFF(57)] + blocks(3, 128, 7)
 # The arpeggiator stepping on MIDI clock, and what it sends out of the port.
-iruns["clock"] = [["make", 48000, 128, icode["Arpeggiated chords"]], ["midi", 0xFA], NOTE_ON(60), NOTE_ON(64), NOTE_ON(67)]
+iruns["clock"] = [["make", 48000, 128, ocode["Arpeggiated chords"]], ["midi", 0xFA], NOTE_ON(60), NOTE_ON(64), NOTE_ON(67)]
 for k in range(400): iruns["clock"] += ([["midi", 0xF8]] if k % 2 == 0 else []) + [["block", 128, 5]]
 iruns["clock"] += [["midi", 0xFC], NOTE_OFF(60), NOTE_OFF(64), NOTE_OFF(67)] + blocks(40, 128, 5)
 # A loop through the picture: the photocell reads the grid the instrument
 # draws for itself, at sixty frames a second of audio time, and bends the sound.
-iruns["photocell"] = [["make", 48000, 256, icode["Pendulums bent by the light"]], NOTE_ON(57)] + blocks(500, 256, 9)
+iruns["photocell"] = [["make", 48000, 256, ocode["Pendulums bent by the light"]], NOTE_ON(57)] + blocks(500, 256, 9)
 # A clock byte alone, after a note: one byte and not three, since two more
 # would be data under the note's running status - a note-on for note nought
 # at velocity nought, which lets go of a note nought held.
@@ -4910,7 +4997,7 @@ def icode_of(setup):
     return base64.b64encode(_json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
 iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
     + [["click", "srcMic"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
-    + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", icode["Pluck"]]] + blocks(10) \
+    + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", ocode["Pluck"]]] + blocks(10) \
     + [["click", "srcTone"], ["control", "genMode", "figure"], ["control", "inputMode", "1"]] + blocks(20) \
     + [["control", "inputMode", "2"]] + blocks(20) + [["control", "inputMode", "3"]] + blocks(30) \
     + [["feed", 64], ["click", "srcMic"]] + blocks(10) + [["feed"]] + blocks(10)
@@ -4922,7 +5009,7 @@ iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": 
 # from fresh memory, and the generator. And a state that opens split.
 iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(2) \
     + [["control", "srcBands", "1"]] + blocks(16) + [["control", "laneMix", "0,1,0.5,0"]] + blocks(6) \
-    + [["setup", icode["Pluck"]]] + blocks(4) + [["control", "srcBands", "0"]] + blocks(4) \
+    + [["setup", ocode["Pluck"]]] + blocks(4) + [["control", "srcBands", "0"]] + blocks(4) \
     + [["control", "srcBands", "1"]] + blocks(4) + [["click", "srcTone"]] + blocks(4)
 # A keyboard there or not (5m): the site's page says none, and the generator
 # plays with no note; then one, and it is gated until a note; then none again.
@@ -4958,16 +5045,16 @@ FIG = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresen
 iruns["drawn figure"] = FIG + [["control", "drawn", _json.dumps({"figDrawn": "-0.5,0 0.5,0"})]] + blocks(30)
 iruns["drawn figure none"] = FIG + blocks(30)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
-iruns["sizes"] = [["make", 96000, 128, icode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
+iruns["sizes"] = [["make", 96000, 128, ocode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 # Scan (P7a): the instrument reading its own grid at its own picture frame,
 # the fifth that wanders because what it reads is what it draws - and the
 # same with the depth at nought, which is the null for the first meaning
 # anything, and a setup loaded in the middle, whose quarter of a second
 # reads nothing. Half a second at 48 kHz, every ninth sample.
-iruns["scanned"] = [["make", 48000, 128, icode["Scanned fifth"]], NOTE_ON(57)] + blocks(200, 128, 9) \
-    + [["setup", icode["Scanned interference"]]] + blocks(150, 128, 9)
-iruns["scanned off"] = [["make", 48000, 128, icode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
-    + blocks(200, 128, 9) + [["setup", icode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
+iruns["scanned"] = [["make", 48000, 128, ocode["Scanned fifth"]], NOTE_ON(57)] + blocks(200, 128, 9) \
+    + [["setup", ocode["Scanned interference"]]] + blocks(150, 128, 9)
+iruns["scanned off"] = [["make", 48000, 128, ocode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
+    + blocks(200, 128, 9) + [["setup", ocode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
 # The picture stage (P3) is on in everything the instrument plays, and moves
 # the fold, the echo, the twist and the phase from the picture - so the runs
 # above, which hold the instrument's plumbing and read its sound for an input
@@ -5022,7 +5109,7 @@ def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswit
 # figure with nothing drawn, which is the stroke's null.
 check("and the runs had sound in them, states that changed, MIDI sent and refusals said",
       all(ipeak(n) > 0.05 for n in iruns if n not in ("refused", "drawn figure none")) and icount("hands", "state ") >= 8
-      and icount("clock", "out ") >= 10 and icount("refused", "no") == 4 and icount("presets", "state ") >= len(inames),
+      and icount("clock", "out ") >= 10 and icount("refused", "no") == 4 and icount("presets", "state ") >= len(onames) + len(inames),
       "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
           {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
           icount("refused", "no"), icount("presets", "state ")))
@@ -5202,8 +5289,8 @@ check("and the reading fails against each picture moving its own", not ifold(lx,
 # and a fifth that is scanned has a path to read once the picture has a
 # figure on it. A load that forgot the freeze would leave the first; a reader
 # never run would leave no path.
-sc_lines = [["make", 48000, 128, icode["Scanned fifth"]], ["scan"], NOTE_ON(57)] + blocks(10) + [["scan"],
-            ["setup", icode["Scanned fifth"]], ["scan"]] + blocks(60) + [["scan"]]
+sc_lines = [["make", 48000, 128, ocode["Scanned fifth"]], ["scan"], NOTE_ON(57)] + blocks(10) + [["scan"],
+            ["setup", ocode["Scanned fifth"]], ["scan"]] + blocks(60) + [["scan"]]
 sc = [[float(x) for x in l.split()[1:6]] for l in icpp(iscript("scan", sc_lines)) if l.startswith("scan ")]
 check("the instrument reads nothing for a quarter of a second of audio after each setup lands, and then reads its own screen",
       len(sc) == 4 and sc[0][0] == 250 and sc[1][0] == 250 and abs(sc[2][0] - (250 + 1280 / 48)) < 1e-9

@@ -2720,8 +2720,11 @@ python3 web/tests/run.py host                # the page's side, against a fake b
 To see it: run the standalone (`plugin/build/ScopeInstrument_artefacts/
 Release/Standalone/Scope`). Two switches for the spike, read once at start:
 `SCOPE_HOLD_NOTE=57` holds A3 through the keyboard so there is something to
-draw without one (`57,64` holds a fifth), `SCOPE_PRESET=Wah` opens on a preset
-by name, and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
+draw without one (`57,64` holds a fifth), `SCOPE_PRESET="Slow pad"` opens on a
+preset by name - or on a setup written out as JSON, `SCOPE_PRESET='{"shape":"ramp"}'`,
+which is how the shell test opens on the presets P8g cut, from the old library it
+reads as a corpus (`core/tests/scenarios/library-p8f.json`, its path compiled in as
+`SCOPE_CORPUS`) - and `SCOPE_REPORT=1` prints the page's reports. With no sound card,
 an `~/.asoundrc` of `pcm.!default { type null }` gives the processor a device
 to run on.
 

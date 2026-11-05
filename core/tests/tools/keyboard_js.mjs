@@ -13,7 +13,7 @@
    A file is runs of `run key=value ...`, then one command a line, then `end`:
      on NOTE VEL   off NOTE   pedal V   panic   cc N RAW   name N [WORDS_WITH_UNDERSCORES]   bytes b,b,...
      mode dyad|mono|poly   draw LAYER COUNT WHICH   just 0|1
-     layers off|split|layer   learn   pair each|against   hold 0|1
+     layers off|split|layer   learn   pair each|against   hold 0|1   latch 0|1
      drive 0|1   play 0|1   gen FIELD VALUE   panel FIELD VALUE
      frame MS   undrive   present 0|1
      arp MODE RATE OCTAVES   bpm BPM   at MS   tick   out 0|1
@@ -43,7 +43,7 @@ function definition(name) {
 
 const LIFTED = [
   "POLY_VOICES", "MIDI_ROOT", "CC_SMOOTH", "CC_INKS", "NORD_CC", "INTERVALS", "midiHz", "midi", "screenKeys",
-  "intervalRatio", "keyboardPresent", "midiPitch", "midiNoteOn", "midiNoteOff", "midiSetPedal", "midiPanic",
+  "intervalRatio", "keyboardPresent", "midiPitch", "midiNoteOn", "midiNoteOff", "midiSetPedal", "midiSetLatch", "midiPanic",
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
   "midiUndrawn", "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
   "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiLearn", "midiSmooth",
@@ -116,7 +116,7 @@ const el = new Proxy(elements, { get: (t, k) => (k in t ? t[k] : (t[k] = element
 
 const source = STUBS + LIFTED.map(definition).join("\n") + `
 return { midi, screenKeys, settings, settingsB, sources, log, show, el, genInput, toneSource,
-         midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
+         midiNoteOn, midiNoteOff, midiSetPedal, midiSetLatch, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
          midiApplyNotes, midiUndrive, midiRegisterKey, midiLearn, setMidiMode, syncLayers, syncLayerPanel, syncPlay, genSettings,
          POLY_VOICES, layersOn, arp, arpSet, arpTick, timers, transport,
          setClock: (ms) => { clock = ms; }, setOut: (on) => { outOpen = on; },
@@ -155,6 +155,7 @@ function run(head, commands) {
     } else if (cmd === "learn") k.midi.layers.learning = !k.midi.layers.learning;
     else if (cmd === "pair") { k.midi.layers.pair = a[0]; k.syncLayers(); k.midiApplyNotes(); }
     else if (cmd === "hold") k.midi.hold = a[0] === "1";
+    else if (cmd === "latch") k.midiSetLatch(a[0] === "1");
     else if (cmd === "drive") {
       const tone = k.genSettings();
       k.midi.drive[tone.mode] = a[0] === "1";
@@ -206,7 +207,7 @@ function run(head, commands) {
       "interval", m.interval.index, m.interval.octaves, "panel", k.el.interval.value, k.el.freq.value,
       "layout", k.toneSource.layout, "gated", k.show(k.toneSource.gated), "layers", k.show(k.layersOn()),
       "notes", m.notes.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-",
-      "sustained", [...m.sustained].join("+") || "-", "cc", cc,
+      "sustained", [...m.sustained].join("+") || "-", "latched", k.show(m.latch), [...m.latched].join("+") || "-", "cc", cc,
       "arp", k.arp.mode, k.arp.index, k.arp.start === null ? "-" : k.show(k.arp.start), k.arp.steps,
       k.arp.current.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-", k.arp.sent.join("+") || "-"];
     lines.push([cmd, ...k.log.flatMap((l) => ["::", l]), ...state].join(" "));

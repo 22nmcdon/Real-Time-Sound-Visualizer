@@ -212,7 +212,7 @@ int main(int argc, char** argv) {
     layers.set("mode", str(k.layers == scope::LayerMode::Split ? "split" : k.layers == scope::LayerMode::Layer ? "layer" : "off"));
     layers.set("point", num(k.point)); layers.set("pair", str(k.against ? "against" : "each"));
     midi.set("layers", layers);
-    midi.set("polyJust", flag(k.polyJust)); midi.set("hold", flag(k.hold));
+    midi.set("polyJust", flag(k.polyJust)); midi.set("hold", flag(k.hold)); midi.set("latch", flag(keys.latch()));
     midi.set("truth", flag(k.truth)); midi.set("follow", flag(k.follow));
     Json drive = Json::object(), play = Json::object();
     const char* kinds[] = { "wave", "harmonograph", "figure", "wireframe" };

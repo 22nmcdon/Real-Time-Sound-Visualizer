@@ -125,15 +125,20 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   const auto most = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   inL_.assign(most, 0.0f); inR_.assign(most, 0.0f);
   /* The sound the page opens on: its boot preset, loaded as the page loads
-     it. SCOPE_PRESET names another, for looking at one in the standalone;
-     read once, here, and never on the audio thread. */
+     it. SCOPE_PRESET names another, for looking at one in the standalone, or
+     is a setup written out as JSON - which is how the shell test opens on the
+     presets P8g cut, from the old library it keeps as a corpus. Read once,
+     here, and never on the audio thread. */
   const char* wanted = std::getenv("SCOPE_PRESET");
-  const scope::Preset* preset = wanted ? scope::findPreset(wanted) : nullptr;
+  std::optional<scope::Json> written;
+  if (wanted && wanted[0] == '{') written = scope::jsonParse(scope::utf8To16(wanted));
+  const scope::Preset* preset = wanted && !written ? scope::findPreset(wanted) : nullptr;
   if (!preset) preset = scope::findPreset("Harmonic tone");
   {
     // A state the host handed over before there was a core to give it to wins.
     const juce::SpinLock::ScopedLockType lock(stateLock_);
-    instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : preset ? preset->setup : scope::Json::object());
+    instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : written ? *written
+                        : preset ? preset->setup : scope::Json::object());
     pending_.reset();
   }
   publish(true);  // for a page that asks before the first block

@@ -28,6 +28,7 @@ stand-ins of its own, `hand.1` and `hand.2`, sources with nothing behind them
 but a value the test sets, which is all a macro was to the matrix.
 """
 import os, sys
+import corpus
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -75,6 +76,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate("""() => { window.__hands = [0, 0];
       for (const i of [0, 1]) registerSource({ id: 'hand.' + (i + 1), label: 'Hand ' + (i + 1), ink: 'ch2',
@@ -255,13 +257,16 @@ with sync_playwright() as pw:
     check("and a knob is not eased: a hand's source on a control answers at once", note["knob"] == 0.5, str(note))
 
     print("\n--- a preset's sliders glide ---")
+    # A preset of the new bank (P8g), since the glide is applyPreset's own: it
+    # was Pianist's piano, and Glass keys stands in for it at the same 220 Hz
+    # and with a name of its own to show in the strip.
     first = p.evaluate("() => { setFade('off'); restore({ freq: 880 }); return el.freq.value; }")
     p.wait_for_timeout(100)
-    snap_off = p.evaluate("""() => { applyPreset("b:Pianist's piano"); return Number(el.freq.value); }""")
+    snap_off = p.evaluate("""() => { applyPreset("b:Glass keys"); return Number(el.freq.value); }""")
     glide = run(p, """
       restore({ freq: 880 }); await wait(100);
       setFade('both', 1);
-      applyPreset("b:Pianist's piano");
+      applyPreset("b:Glass keys");
       const path = [Number(el.freq.value)], names = [];
       for (let i = 0; i < 6; i++) { await wait(250); path.push(Number(el.freq.value)); names.push(el.presetCurrent.textContent); }
       return { path, names: [...new Set(names)], shown: el.presetCurrent.textContent, mode: fade.mode, inCode: 'fade' in snapshot() || 'fadeMode' in snapshot() };
@@ -274,12 +279,12 @@ with sync_playwright() as pw:
           path[0] == 880 and any(220 < v < 880 for v in path[1:4]) and path[-1] == 220
           and all(a >= b for a, b in zip(path, path[1:])), str(path))
     check("the strip names the preset throughout the glide and once it has landed, and loading it did not put the fade back to off",
-          glide["shown"] == "Pianist's piano" and glide["names"] == ["Pianist's piano"] and glide["mode"] == "both",
+          glide["shown"] == "Glass keys" and glide["names"] == ["Glass keys"] and glide["mode"] == "both",
           str(glide))
     check("and the fade is not in the setup code", glide["inCode"] is False)
 
     p.evaluate("() => { restore({ freq: 880 }); }"); p.wait_for_timeout(100)
-    p.evaluate("""() => { applyPreset("b:Pianist's piano"); showControl('freq'); }""")
+    p.evaluate("""() => { applyPreset("b:Glass keys"); showControl('freq'); }""")
     p.wait_for_timeout(200)
     p.locator("#freq").focus(); p.keyboard.press("ArrowRight")
     held = p.evaluate("() => Number(el.freq.value)")
@@ -292,10 +297,16 @@ with sync_playwright() as pw:
     # Chained, so each glides from the one before - a different start each time.
     # Found the echo's time: while locked to the tempo its slider is disabled
     # and shows the locked time, and gliding it wrote that back as the free one.
+    # The old library from before P8g as well as the bank: 268 real setups to
+    # land, where the bank alone is eleven. They go through applyPreset itself,
+    # put at the front of PRESETS for their turn (where the three names the
+    # two share find the old one) and taken out again, since the glide and
+    # the snapshot it lands on are applyPreset's and not the corpus's.
     landed = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setFade('both', 0.1); const bad = []; let glided = 0;
-      for (const [name] of PRESETS.flatMap(([, e]) => e)) {
+      setFade('both', 0.1); const bad = []; let glided = 0, total = 0;
+      const walk = async (names) => { for (const name of names) {
+        total++;
         applyPreset('b:' + name); if (glide.ids) glided++;
         /* Until the glide says it has landed, and a frame more: a fixed wait
            was a race with the frame rate, hidden while the curve was an S -
@@ -305,9 +316,13 @@ with sync_playwright() as pw:
         const now = snapshot(), d = {};
         for (const k of Object.keys(now)) if (now[k] !== loadedSetup.snap[k]) d[k] = [loadedSetup.snap[k], now[k]];
         if (Object.keys(d).length) bad.push([name, d]);
-      }
+      } };
+      const names = (lib) => lib.flatMap(([, e]) => e.map(([n]) => n));
+      PRESETS.unshift(...CORPUS);
+      try { await walk(names(CORPUS)); } finally { PRESETS.splice(0, CORPUS.length); }
+      await walk(names(PRESETS));
       setFade('off');
-      return { bad, glided, total: PRESETS.flatMap(([, e]) => e).length };
+      return { bad, glided, total };
     }""")
     check("every preset, glided into from the one before, ends as the preset and not something near it",
           landed["bad"] == [] and landed["glided"] > landed["total"] * 0.8,
@@ -328,7 +343,7 @@ with sync_playwright() as pw:
       // A preset glides along the attack, so over its time and not the release's.
       restore({ freq: 880 }); await wait(100);
       setFadeEnvelope({ attack: 0.5, release: 5, attackMid: 0.5 });
-      applyPreset("b:Pianist's piano"); await wait(700); const glided = Number(el.freq.value);
+      applyPreset("b:Glass keys"); await wait(700); const glided = Number(el.freq.value);
       return { inDone, outHalf, outDone, quick, slow, glided };
     """)
     print("    %s" % env)

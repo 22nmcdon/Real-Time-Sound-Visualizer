@@ -9,7 +9,10 @@
 async ([seconds]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const frame = () => new Promise((r) => requestAnimationFrame(r));
-  const preset = (name) => PRESETS.flatMap((g) => g[1]).find((p) => p[0] === name)[1];
+  /* The old library's setups, from before P8g, which the page no longer
+     carries: corpus.py's install defines corpusSetup, and shapetest.py calls
+     it before running this. These are the pictures the survey was made on. */
+  const preset = (name) => corpusSetup(name);
   const route = (list) => {
     state.modRoutings = [];
     for (const [s, d, a] of list) { addRouting(s, d); const r = state.modRoutings.find((x) => x.sourceId === s && x.destId === d); if (r) r.amount = a; }

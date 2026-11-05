@@ -28,10 +28,16 @@ Run on the page's own brain (`?brain=js&core=js`), which draws the screen
 the page shows, and then on the site's instrument, which lays the strike in
 the core on the grid it draws itself and is read through each layer's
 picture readings it hands back. Every assertion has its null beside it.
+
+The presets played here - Scanned fifth, Scan breathes, Scan remembers, Crossed
+hands - are the old library's, from before P8g, read from corpus.py: the sounds
+these checks were measured on, which the bank has either dropped or (Crossed
+hands, with the latch on) changed.
 """
 import math, os, statistics, sys
 import numpy as np
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -61,6 +67,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js&core=js"); p.wait_for_timeout(900)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -70,7 +77,7 @@ with sync_playwright() as pw:
     # draws, fades or reads between a note and what it laid.
     s = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(1500);
+      loadCorpus('Scanned fifth'); await wait(1500);
       setScreenKeys(true);
       setRunning(false); await wait(100);
       const g = pictureEngine.cells, base = Float32Array.from(g);
@@ -155,7 +162,7 @@ with sync_playwright() as pw:
     print("\n--- the strike's light fades as the screen's does ---")
     fade = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(800);
+      loadCorpus('Scanned fifth'); await wait(800);
       setScreenKeys(true);
       genSet('amp', 0);
       el.persistence.value = '0.04'; el.persistence.dispatchEvent(new Event('change'));
@@ -184,7 +191,7 @@ with sync_playwright() as pw:
     # the meter lights is what the strike laid, through the real frame.
     met = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(800);
+      loadCorpus('Scanned fifth'); await wait(800);
       setScreenKeys(true);
       genSet('amp', 0);
       el.persistence.value = '0.04'; el.persistence.dispatchEvent(new Event('change'));
@@ -215,7 +222,7 @@ with sync_playwright() as pw:
     print("\n--- a split: each layer's strikes, and cross-scan ---")
     SPLIT = """async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Scanned fifth'); await wait(300);
+      loadCorpus('Scanned fifth'); await wait(300);
       midiPanic(); setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       for (const n of [48, 55]) midiBytes(new Uint8Array([0x90, n, 100]));
@@ -322,7 +329,7 @@ with sync_playwright() as pw:
     print("\n--- the loop that keeps going ---")
     RUN = """async ([preset, stopAt, drive]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setRunning(true); applyPreset('b:' + preset); await wait(800);
+      setRunning(true); loadCorpus(preset); await wait(800);
       setScreenKeys(true);
       if (drive) midi.drive.wave = true;
       const freq0 = genSettings().freq;
@@ -368,7 +375,7 @@ with sync_playwright() as pw:
 
     crossed = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      applyPreset('b:Crossed hands'); await wait(500);
+      loadCorpus('Crossed hands'); await wait(500);
       setScreenKeys(true);
       for (const n of [43, 50]) midiNoteOn(n, 100);
       for (const n of [72, 79]) midiNoteOn(n, 100);
@@ -413,7 +420,7 @@ with sync_playwright() as pw:
     # not read: B's new notes redraw it whatever the strike does.
     SITE = """async ([strike, readsB]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const setup = Object.assign({}, findPreset('b:Crossed hands'),
+      const setup = Object.assign({}, corpusSetup('Crossed hands'),
                                   { pictureAmount: 0, scanStrike: strike, scanReadsA: 'A', scanReadsB: 'B' });
       hostQuietly(() => restore(setup)); hostSendSetup();
       await wait(300);
@@ -440,6 +447,7 @@ with sync_playwright() as pw:
         errs = []
         pp.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
         pp.goto(f"file://{ART}/scope.html"); pp.wait_for_timeout(1200)
+        corpus.install(pp)
         if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
         pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
         pp.wait_for_timeout(800)

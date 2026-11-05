@@ -172,6 +172,7 @@ class Keyboard {
   explicit Keyboard(NoteTarget& target, RealtimeIn* realtime = nullptr) : t_(target), realtime_(realtime) {
     notes_.reserve(128);
     sustained_.reserve(128);
+    latched_.reserve(128);
     cc_.reserve(128);
     for (auto& list : chord_) list.reserve(kPolyVoices);
     inner_.reserve(kPolyVoices);
@@ -186,6 +187,17 @@ class Keyboard {
     forget(sustained_, note);
     // The split point is learned from a key, and the key still plays.
     if (layers_.learning) { layers_.point = note; layers_.learning = false; }
+    // Under the latch, a note struck with no key down - everything held by the
+    // latch or the pedal - starts a new chord: what the latch held goes first,
+    // in the same apply as the new note. The pedal's stay the pedal's.
+    if (latch_ && !latched_.empty() &&
+        std::all_of(notes_.begin(), notes_.end(), [&](const Held& h) { return holds(latched_, h.note) || holds(sustained_, h.note); })) {
+      for (std::size_t i = notes_.size(); i-- > 0;) {
+        if (holds(latched_, notes_[i].note)) notes_.erase(notes_.begin() + static_cast<std::ptrdiff_t>(i));
+      }
+      latched_.clear();
+    }
+    forget(latched_, note);
     const auto at = find(note);
     if (at != notes_.end()) notes_.erase(at);
     notes_.push_back({ note, velocity / 127 });
@@ -204,6 +216,8 @@ class Keyboard {
   void noteOff(int note) {
     const auto at = find(note);
     if (at == notes_.end()) return;
+    // The latch before the pedal: a key let go under both is the latch's.
+    if (latch_) { remember(latched_, note); return; }
     if (sustain_) { remember(sustained_, note); return; }
     notes_.erase(at);
     applyNotes();
@@ -225,9 +239,26 @@ class Keyboard {
     }
   }
 
-  // midiPanic. What the pedal was holding goes; the pedal stays where it is.
+  // midiSetLatch (P8g). Off, it lets go of what it held - to the pedal, if
+  // the foot is down, as a key let go under it would be.
+  void setLatch(bool on) {
+    if (on == latch_) return;
+    latch_ = on;
+    if (on || latched_.empty()) return;
+    for (std::size_t i = notes_.size(); i-- > 0;) {
+      const int note = notes_[i].note;
+      if (!holds(latched_, note)) continue;
+      if (sustain_) remember(sustained_, note); else notes_.erase(notes_.begin() + static_cast<std::ptrdiff_t>(i));
+    }
+    latched_.clear();
+    applyNotes();
+  }
+
+  // midiPanic. What the pedal and the latch were holding goes; the pedal
+  // stays where it is, and the latch stays on.
   void panic() {
     sustained_.clear();
+    latched_.clear();
     if (notes_.empty()) return;
     notes_.clear();
     applyNotes();
@@ -491,6 +522,8 @@ class Keyboard {
 
   const std::vector<Held>& notes() const { return notes_; }
   const std::vector<int>& sustained() const { return sustained_; }
+  const std::vector<int>& latched() const { return latched_; }
+  bool latch() const { return latch_; }
   const std::vector<Controller>& controllers() const { return cc_; }
   bool sustain() const { return sustain_; }
   int splitPoint() const { return layers_.point; }
@@ -851,6 +884,7 @@ class Keyboard {
   RealtimeIn* realtime_;
   std::vector<Held> notes_;      // the held stack, most recent last
   std::vector<int> sustained_;   // keys up and still sounding, in the order they came up
+  std::vector<int> latched_;     // keys up and held by the latch (P8g)
   std::vector<Controller> cc_;
   std::array<std::vector<NoteWant>, 2> chord_;
   mutable std::vector<NoteWant> inner_;  // the Inner source's scratch
@@ -862,6 +896,7 @@ class Keyboard {
   bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
   double pedal_ = 0, pedalTarget_ = 0;
   bool sustain_ = false;
+  bool latch_ = false;
   // Per generator kind: wave, harmonograph, figure, wireframe.
   std::array<bool, 4> drive_ { true, true, true, false };
   std::array<bool, 4> play_ { false, false, false, false };

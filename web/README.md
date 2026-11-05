@@ -4831,3 +4831,55 @@ stamp and the overlay would never see the table move. And the generator's
 tail in parity grew by the two heads, so the sources' indices there moved
 from 20 to 22 - a check that indexes the tail from its start needs moving
 with it, which is how "the runs can show the sources" failed first time.
+
+**A chord's own beating hides the loop, so a preset is judged on one held
+note.** P8g rebuilt the bank under four headings by what the loop does with
+a held chord, and the first measure of "does the loop move this sound" was
+the spectrum's movement on a held triad. A saw triad with the loop switched
+off moved 0.15 a reading - its partials beat against each other - and the
+glass keys, the organ and the pad moved no more with the loop than without
+it. One note held has no beating: the same saw with the loop off moves
+exactly nought, so whatever moves is the loop. Unison and chorus move a
+sound on their own just as a chord does, and a pad built on them hid the
+loop entirely, which is why none of the bank uses them. Three more things
+the measuring found. Calling `restore()` from a probe changes the page's
+controls and never reaches the compiled instrument on the site; a preset is
+loaded as `hostQuietly(() => restore(setup)); hostSendSetup()`, and a probe
+that skips the second half measures the old sound under new labels. With
+nothing keyboard-like open the generator drones on after a note-off, so a
+measure of what happens after letting go needs `setScreenKeys(true)` first.
+And in a split the site hands back four lanes, a pair a layer: reading
+`getLatestWindow()[0]` reads only the left hand, and the right hand looked
+silent. `honestytest.py` judges each hand of a split on its own, since in
+a mix the quieter hand's movement is lost under the louder hand's energy.
+
+**The picture meter reads the picture, not the sound.** The handoff proposed
+an honesty test from the meter's verdict - settled, cycling, wandering - and
+the meter said "settled" over the crossed pair while its sound moved as much
+as anything in the bank, and "cycling" over nearly everything with the stage
+on. The headings are judged on the sound instead, and the draft's Breathing
+("moves between notes, settles while held") went: by number it was Settled
+with a longer tail. The picture stage at any amount above nought keeps a
+held sound stirring, because its reads are rescaled to their own recent
+range, so a Settled preset has the Picture amount at nought and its movement
+comes from Strike's light fading out of what Scan reads.
+
+**A bank that is tuned by ear cannot be a corpus.** Until P8g the 268 presets
+were also the widest set of real setups the tests had: parity restored all of
+them on both sides and played a note through each, and a dozen suites walked
+the library to ask the budget, the routings and the compiled site about every
+one. Cutting the bank to eleven would have cut all of that to eleven without
+a single check failing. The old library is kept whole in
+`core/tests/scenarios/library-p8f.json`, ahead of the bank in parity's list
+so every index into it means what it meant, and `web/tests/corpus.py` and the
+shell test's `corpusSetup` open it; a check that wants a known sound opens it
+there, and the bank is free to change between one listening round and the
+next.
+Two more from moving the suites onto that corpus. A check that every routing
+in a set of presets is alive passes when there are no routings at all, and
+performtest's did, with nothing loaded; it now also requires every preset it
+plays to have some. And a check about `applyPreset`'s own behaviour - the glide
+from the fade, the preset marking itself in use - cannot load from the corpus,
+since `loadCorpus` restores and sends the setup and does neither; fadetest puts
+the old library at the front of `PRESETS` for its turn and takes it out again
+in a `finally`.

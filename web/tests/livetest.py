@@ -11,6 +11,7 @@ tested by watching the calls rather than by listening to the result.
 # since 5m, is braintest.py's and hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -35,6 +36,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -338,15 +340,21 @@ with sync_playwright() as pw:
 
     # ---- the Live presets must not throw away what you are playing ---------
     print("\n--- the Live presets leave the source alone ---")
+    # The old library's Live section, from before P8g, which the bank has no
+    # counterpart to yet: setups that name the display and nothing of the
+    # generator, which is what could have thrown the input away. Loaded from
+    # the corpus, which marks no preset, so "loads" is read as the display each
+    # one names being the one shown; they alternate, so a load that did
+    # nothing would be seen.
     presets = p.evaluate("""() => {
-      const group = PRESETS.find(([name]) => name === 'Live');
+      const group = CORPUS.find(([name]) => name === 'Live');
       const before = { kind: state.source.kind, lanes: state.source.lanes.length };
       const rows = [];
-      for (const [name] of group[1]) {
-        applyPreset('b:' + name);
+      for (const [name, setup] of group[1]) {
+        loadCorpus(name);
         rows.push({ name, kind: state.source.kind,
                     lanes: state.source.lanes ? state.source.lanes.length : 0,
-                    display: state.display, picked: el.preset.value === 'b:' + name });
+                    display: state.display, picked: state.display === setup.display });
       }
       return { before, rows };
     }""")
@@ -357,7 +365,7 @@ with sync_playwright() as pw:
     check("and each one actually loads", all(r["picked"] for r in presets["rows"]),
           str([r["name"] for r in presets["rows"] if not r["picked"]]))
     pair = p.evaluate("""() => {
-      applyPreset('b:Bands, low against high');
+      loadCorpus('Bands, low against high');   // the old library's, as above
       return { pair: state.xyPair.slice(),
                names: state.xyPair.map(laneName),
                selects: [el.xyX.value, el.xyY.value] };

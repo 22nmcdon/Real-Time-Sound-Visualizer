@@ -9,6 +9,7 @@ so it is the first thing asserted.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -37,6 +38,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -159,10 +161,13 @@ with sync_playwright() as pw:
       el.benchDrawer.click();
       out.open = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
       el.benchDrawer.click();
-      applyPreset('b:Harmonograph');
+      // The old library's harmonograph and plain tone, from before P8g: the
+      // new bank has no drawing, and this asks what the drawer does with one
+      // loaded from a setup while it is shut, not what is in the bank.
+      loadCorpus('Harmonograph');
       out.loaded = { drawer: document.body.dataset.drawer, mode: genSettings().mode, menu: el.genMode.value,
                      kinds: offered(el.genMode), rows: !el.harmoRows.hidden };
-      applyPreset('b:Harmonic tone');
+      loadCorpus('Harmonic tone');
       out.after = offered(el.genMode);
       const search = (q) => { el.benchSearch.value = q; showSearch(); const first = searchShown[0];
                               chooseSearch(first); const opened = benchDrawer; if (benchDrawer) el.benchDrawer.click();

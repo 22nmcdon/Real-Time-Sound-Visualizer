@@ -32,6 +32,7 @@ Serial: the frame cost is a cost in milliseconds.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -78,6 +79,7 @@ def open_page(b, query="", viewport=(1400, 900), ctx=None):
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(2500)
+    corpus.install(p)
     p.evaluate("() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close(); }")
     return c, p, bad
 
@@ -248,7 +250,9 @@ with sync_playwright() as pw:
           for (const id of ['ch1Offset', 'ch2Offset']) { const s = document.getElementById(id); s.value = '0'; s.dispatchEvent(new Event('input', { bubbles: true })); }
           // The split preset, each hand reading its own picture to begin with,
           // a keyboard present (the layers need one) and a fifth in each half.
-          const setup = Object.assign({}, findPreset('b:Crossed hands'), { pictureAmount: 0, scanReadsA: 'A', scanReadsB: 'B' });
+          // The old library's Crossed hands, from before P8g: the bank's has the
+          // latch on, which would keep these notes sounding after they are let go.
+          const setup = Object.assign({}, corpusSetup('Crossed hands'), { pictureAmount: 0, scanReadsA: 'A', scanReadsB: 'B' });
           hostQuietly(() => restore(setup)); hostSendSetup();
           await wait(300);
           setScreenKeys(true);

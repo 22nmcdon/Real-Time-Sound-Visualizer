@@ -213,15 +213,18 @@ with sync_playwright() as pw:
     preset = p.evaluate("""() => {
       const t = window.__hostTest;
       t.log.length = 0;
-      applyPreset('b:Wah');
+      // A preset of the new bank (P8g), since this is applyPreset's errand. It
+      // was Wah, read back by its cutoff and routing; Glass keys has a routing
+      // too, and an FM depth where Wah had the cutoff, neither the default.
+      applyPreset('b:Glass keys');
       const calls = t.log.slice();
       const sent = calls.length === 1 && calls[0][0] === 'scopeSetup' ? decodeSetup(calls[0][1]) : null;
-      const wah = findPreset('b:Wah');
-      return { names: calls.map((c) => c[0]), cut: sent && sent.vcfCut, wantCut: wah.vcfCut, mod: sent && sent.mod, wantMod: wah.mod };
+      const glass = findPreset('b:Glass keys');
+      return { names: calls.map((c) => c[0]), fm: sent && sent.oscFm, wantFm: glass.oscFm, mod: sent && sent.mod, wantMod: glass.mod };
     }""")
     check("a preset loaded on the page is sent to the plugin whole, as a code that reads back as that preset",
-          preset["names"] == ["scopeSetup"] and preset["cut"] == preset["wantCut"] and preset["mod"] == preset["wantMod"]
-          and preset["cut"] is not None, str(preset))
+          preset["names"] == ["scopeSetup"] and preset["fm"] == preset["wantFm"] and preset["mod"] == preset["wantMod"]
+          and preset["fm"] is not None and preset["mod"], str(preset))
 
     sent = p.evaluate("""() => {
       const t = window.__hostTest, out = {};

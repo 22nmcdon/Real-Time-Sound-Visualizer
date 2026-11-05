@@ -26,9 +26,14 @@ are, and then again as live objects, as a message brings them - and run for
 a quarter of a second each: the samples and everything the worklet reads
 back, compared value for value. And every preset's effects, as the effects
 worklet would be given them, on a stereo input through both cores.
+
+Every preset is the old library's, from before P8g, and then the bank's: the
+old one is 268 real setups, kept in corpus.py for exactly this, where the bank
+alone is eleven, and the counts below are judged on both.
 """
 import os, shutil, subprocess, sys, tempfile
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -60,6 +65,15 @@ if toolchain():
 else:
     print("  SKIP  the module in the page is the core as it stands: no clang++ with the wasm32-wasi target here")
 
+
+# Every setup walked: the old library first, from before P8g (loaded as a
+# preset was, by corpus.py's loadCorpus), then the bank through applyPreset.
+# The old first, since none of it names the Picture amount and the bank's
+# would otherwise carry into it.
+WALK = """const WALK = [
+    ...CORPUS.flatMap(([, e, kind]) => e.map(([name, setup]) => [name, setup, kind, () => loadCorpus(name)])),
+    ...PRESETS.flatMap(([, e, kind]) => e.map(([name, setup]) => [name, setup, kind, () => applyPreset("b:" + name)]))];
+"""
 
 PRESET_RUN = """async () => {
   const mul = (seed) => {
@@ -152,33 +166,32 @@ PRESET_RUN = """async () => {
     }
   };
   const rows = [], effects = [];
-  for (const [, entries, kind] of PRESETS) {
-    for (const [name] of entries) {
-      applyPreset("b:" + name);
-      {
-        const tone = liveFxFields(), routes = workletRoutes();
-        const js = wet(false, tone, routes, 5);
-        effects.push({ name, worst: far(js, wet(true, tone, routes, 5)), changed: js.changed,
-                       wrong: effects.length < 4 ? far(js, wet(true, { ...tone, planeTwist: (tone.planeTwist || 0) + 0.01 }, routes, 5)) : null });
-      }
-      if (kind !== "generator") continue;
-      const tone = genSettings(), toneB = genSettings(1) || {};
-      if (!tone) { rows.push({ name, missing: true }); continue; }
-      const routes = workletRoutes();
-      const js = play(false, tone, toneB, routes, 11), wa = play(true, tone, toneB, routes, 11);
-      const peak = js.peak;
-      // The null: the same preset with its first route a hundredth stronger,
-      // or with its tone a cent sharp where it has no route.
-      let wrong = null;
-      if (rows.length < 6) {
-        const bent = routes.length ? routes.map((r, i) => i ? r : { ...r, amount: r.amount * 1.01, amountB: r.amountB * 1.01 }) : routes;
-        const sharp = routes.length ? tone : { ...tone, freq: tone.freq * Math.pow(2, 1 / 1200) };
-        wrong = far(js, play(true, sharp, toneB, bent, 11));
-      }
-      // And as the main thread asks: the picture alone.
-      const alone = far(play(false, tone, toneB, routes, 11, true), play(true, tone, toneB, routes, 11, true));
-      rows.push({ name, worst: Math.max(far(js, wa), alone), peak, routes: routes.length, length: js.length, wrong });
+  """ + WALK + """
+  for (const [name, , kind, load] of WALK) {
+    load();
+    {
+      const tone = liveFxFields(), routes = workletRoutes();
+      const js = wet(false, tone, routes, 5);
+      effects.push({ name, worst: far(js, wet(true, tone, routes, 5)), changed: js.changed,
+                     wrong: effects.length < 4 ? far(js, wet(true, { ...tone, planeTwist: (tone.planeTwist || 0) + 0.01 }, routes, 5)) : null });
     }
+    if (kind !== "generator") continue;
+    const tone = genSettings(), toneB = genSettings(1) || {};
+    if (!tone) { rows.push({ name, missing: true }); continue; }
+    const routes = workletRoutes();
+    const js = play(false, tone, toneB, routes, 11), wa = play(true, tone, toneB, routes, 11);
+    const peak = js.peak;
+    // The null: the same preset with its first route a hundredth stronger,
+    // or with its tone a cent sharp where it has no route.
+    let wrong = null;
+    if (rows.length < 6) {
+      const bent = routes.length ? routes.map((r, i) => i ? r : { ...r, amount: r.amount * 1.01, amountB: r.amountB * 1.01 }) : routes;
+      const sharp = routes.length ? tone : { ...tone, freq: tone.freq * Math.pow(2, 1 / 1200) };
+      wrong = far(js, play(true, sharp, toneB, bent, 11));
+    }
+    // And as the main thread asks: the picture alone.
+    const alone = far(play(false, tone, toneB, routes, 11, true), play(true, tone, toneB, routes, 11, true));
+    rows.push({ name, worst: Math.max(far(js, wa), alone), peak, routes: routes.length, length: js.length, wrong });
   }
   return { rows, effects };
 }"""
@@ -201,6 +214,7 @@ with sync_playwright() as pw:
         # The picture stage out, as in every suite that measures something else.
         query = (query + "&brain=js" if query else "?brain=js") + "&picture=0"
         p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(700)
+        corpus.install(p)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         p.wait_for_timeout(200)
         return p, bad
@@ -361,9 +375,8 @@ with sync_playwright() as pw:
       };
       const uses = (setup) => setup.photoOn === true;
       const scenarios = [];
-      for (const [, entries] of PRESETS) for (const [name, setup] of entries) {
-        if (uses(setup)) scenarios.push([name, () => applyPreset("b:" + name)]);
-      }
+      """ + WALK + """
+      for (const [name, setup, , load] of WALK) if (uses(setup)) scenarios.push([name, load]);
       let turnedOnScreen = 0;
       // And one long enough for the meter to give a verdict - it says nothing
       // until four seconds of history - on a preset that keeps finding new shapes.
@@ -371,7 +384,9 @@ with sync_playwright() as pw:
       // start the meter's history again, and since the picture stage (P3)
       // leaves it alone, the readings being the stage's and never stopping.
       scenarios.push(["Something new each time, then the photocell off and on", async () => {
-        applyPreset("b:Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
+        // The old library's, as are the word and the plain tone below, from
+        // before P8g: the bank has no photocell, figure or plain tone of these.
+        loadCorpus("Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
       }, 800]);
       // A word turned and zoomed until the screen's edge clips it, which the
       // two engines have to draw alike. It was also the one place the turn
@@ -380,7 +395,7 @@ with sync_playwright() as pw:
       // a mirror in it (a 3:2 Lissajous, a heart) clips the same turned either
       // way, which hid a turn applied backwards.
       scenarios.push(["a word turned and clipped", () => {
-        applyPreset("b:Written on the screen"); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
+        loadCorpus("Written on the screen"); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
       }]);
       // And the turn the picture applies itself, rather than the signal: with
       // the lag on, the pair is a signal against its own past, which no turn
@@ -388,10 +403,10 @@ with sync_playwright() as pw:
       // and the shape is taken from it turned - the only case in which the
       // pair's own turn is not nought.
       scenarios.push(["the lag's figure turned on the screen and clipped", () => {
-        applyPreset("b:Harmonic tone"); el.dispXY.click(); setPhoto(true);
+        loadCorpus("Harmonic tone"); el.dispXY.click(); setPhoto(true);
         el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event("change")); state.rotate = 0.1; setZoom(6);
       }]);
-      scenarios.push(["Y-T with the photocell", () => { applyPreset("b:Harmonic tone"); setPhoto(true); el.dispYT.click(); }]);
+      scenarios.push(["Y-T with the photocell", () => { loadCorpus("Harmonic tone"); setPhoto(true); el.dispYT.click(); }]);
       // Ink on the grid first, so the spectrogram's blank has something to clear.
       scenarios.push(["the spectrogram with the photocell", async () => { el.dispXY.click(); setPhoto(true); await wait(600); el.dispSpect.click(); }]);
       scenarios.push(["X-Y, persistence off", () => { el.dispXY.click(); setPhoto(true); state.persistence = 0; }]);
@@ -473,8 +488,9 @@ with sync_playwright() as pw:
       const wasm = setupCodec, js = { encode: encodeSetupHere, decode: decodeSetupHere };
       const tried = (f) => { try { const v = f(); return v === null ? "null" : JSON.stringify(v); } catch (error) { return "throws"; } };
       const rows = [];
-      for (const [, entries] of PRESETS) for (const [name] of entries) {
-        applyPreset("b:" + name);
+      """ + WALK + """
+      for (const [name, , , load] of WALK) {
+        load();
         const snap = snapshot();
         const cw = tried(() => wasm.encode(snap)), cj = tried(() => js.encode(snap));
         const code = cj === "throws" ? "" : JSON.parse(cj);
@@ -601,8 +617,9 @@ with sync_playwright() as pw:
         return (h2 >>> 0).toString(16) + (h1 >>> 0).toString(16);
       };
       const out = [];
-      for (const [, entries] of PRESETS) for (const [name] of entries) {
-        applyPreset("b:" + name);
+      """ + WALK + """
+      for (const [name, , , load] of WALK) {
+        load();
         const text = JSON.stringify([genSettings(), genSettings(1)]);
         out.push([name, hash(text) + ":" + text.length]);
       }

@@ -62,6 +62,10 @@ target_link_libraries(ScopeInstrument
 juce_add_console_app(ScopeShellTest PRODUCT_NAME "ScopeShellTest" NEEDS_WEB_BROWSER TRUE)
 target_sources(ScopeShellTest PRIVATE tests/ShellTest.cpp src/PluginProcessor.cpp src/PluginEditor.cpp)
 target_compile_definitions(ScopeShellTest PRIVATE JucePlugin_Name="Scope" JUCE_WEB_BROWSER=1 JUCE_USE_CURL=0)
+# The preset library before P8g, which the shell test opens the presets it was
+# written against from: the bank the plugin ships is eleven since then.
+target_compile_definitions(ScopeShellTest PRIVATE
+  SCOPE_CORPUS="${CMAKE_CURRENT_SOURCE_DIR}/../core/tests/scenarios/library-p8f.json")
 target_link_libraries(ScopeShellTest PRIVATE ScopePage scope_core juce::juce_audio_utils juce::juce_gui_extra
                       juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 enable_testing()

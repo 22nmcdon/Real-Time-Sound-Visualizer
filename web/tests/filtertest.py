@@ -11,6 +11,7 @@ bandpass, which is the exact mistake that sat in this page's band crossovers.
 # 5m, is braintest.py's and hosttest.py's.
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -68,6 +69,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -133,8 +135,10 @@ with sync_playwright() as pw:
     # The tone source is a ring buffer filled from the frame loop, so a capture
     # taken in the same tick as a preset is applied reads the PREVIOUS signal.
     # Measuring that mistake once was enough; every setup here now settles.
+    # The old library's Square wave and Pure sine, here and below, from before
+    # P8g: a free-running square and sine, which the new bank does not have.
     p.evaluate("""() => {
-      applyPreset('b:Square wave');
+      loadCorpus('Square wave');
       state.timebase = 6;
       state.filter.on = false;
     }""")
@@ -174,7 +178,7 @@ with sync_playwright() as pw:
     # An IIR started from silence rings while it settles, and this one starts
     # afresh every frame - so an unprimed filter draws a wobble sixty times a
     # second at the one place the eye is most likely to be.
-    p.evaluate("() => { applyPreset('b:Pure sine'); state.timebase = 6; }")
+    p.evaluate("() => { loadCorpus('Pure sine'); state.timebase = 6; }")
     p.wait_for_timeout(700)
     edge = p.evaluate("""() => {
       state.filter.on = true; state.filter.type = 'lowpass';
@@ -192,7 +196,7 @@ with sync_playwright() as pw:
     check("and nothing is NaN", edge["finite"])
 
     print("\n--- where it sits in the pipeline ---")
-    p.evaluate("() => applyPreset('b:Pure sine')")
+    p.evaluate("() => loadCorpus('Pure sine')")
     p.wait_for_timeout(700)
     order = p.evaluate("""() => {
       // Lag reads the same buffer the filter wrote, so a phase portrait is a
@@ -211,7 +215,7 @@ with sync_playwright() as pw:
           "%.4f against %.4f" % (order["signal"], order["delayed"]))
 
     print("\n--- what it costs ---")
-    p.evaluate("() => { applyPreset('b:Pure sine'); state.timebase = 8; }")
+    p.evaluate("() => { loadCorpus('Pure sine'); state.timebase = 8; }")
     p.wait_for_timeout(500)
     cost = p.evaluate("""() => {
       state.timebase = 8;                        // the longest window there is
