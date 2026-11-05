@@ -1070,7 +1070,7 @@ for family in sorted(gworst):
 # (swing, pendulum, three turns, facing), the voices on each layer, and then
 # the sources that read the generator, the page's registrations against the
 # core's: the note envelope and the drawings' six.
-TAIL = 27
+TAIL = 29   # the end values: twenty, each layer's read-head (P8f), then the seven sources
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -1084,6 +1084,20 @@ check("the governor, given everything, takes copies and voices away",
       "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[5], tail[6], tail[7], tail[8], tail[10], tail[9], tail[11]))
 body, _ = grow("layered")
 check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 0.05)
+# The loop overlay's read-head (P8f) is in every run's tail, so the page's
+# and the core's are compared with everything else; here, that it says
+# something. In "layered" both layers have notes, so both heads are places
+# round the circle, and A's is the lowest note's, not the plain tone's -
+# which the run's first sample of a fresh core, nought, would also give.
+_, ltail = grow("layered")
+_, ctail = (lambda v: (v[:-TAIL], v[-TAIL:]))(row(gcpp[next(k for k, (n, _) in enumerate(runs) if n == "layered")]))
+check("each layer's read-head is a place round the circle, the same in the page and the core",
+      0 <= ltail[20] < 1 and 0 <= ltail[21] < 1 and ltail[20] not in (0.0, 0.25, 0.5, 0.75)
+      and ltail[20] == ctail[20] and ltail[21] == ctail[21], "A %.6f, B %.6f" % (ltail[20], ltail[21]))
+plain = [n for n, r in runs if "voices" not in r and "fx 1" not in r]
+_, ptail = grow(plain[0])
+check("with no layer B, B's read-head is nobody's", ptail[21] == -1 and 0 <= ptail[20] < 1,
+      "%s: A %.6f, B %.6f" % (plain[0], ptail[20], ptail[21]))
 own, off = grow("plane-own")[0], grow("plane-own-off")[0]
 check("layer B's own plane bends B's picture and its share of the sound, and leaves A's picture as it was",
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
@@ -1143,10 +1157,11 @@ check("a solid turns, and a kick is still spinning it", abs(tail[14]) + abs(tail
 # hidden; the envelope as a source somewhere non-zero; and somewhere ungated,
 # where the generator reports one and the source has to read nought.
 tails = {n: grow(n)[1] for n, _ in runs}
-turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[23:26]}) == 3 and min(abs(x) for x in t[23:26]) > 1e-3]
-swung = [n for n, t in tails.items() if abs(t[21]) > 1e-3 and abs(t[22]) > 1e-3]
-enveloped = [n for n, t in tails.items() if t[20] > 1e-3]
-ungated = [n for n, t in tails.items() if t[0] == 1 and t[20] == 0]
+# The sources start at 22, after the twenty and each layer's read-head.
+turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[25:28]}) == 3 and min(abs(x) for x in t[25:28]) > 1e-3]
+swung = [n for n, t in tails.items() if abs(t[23]) > 1e-3 and abs(t[24]) > 1e-3]
+enveloped = [n for n, t in tails.items() if t[22] > 1e-3]
+ungated = [n for n, t in tails.items() if t[0] == 1 and t[22] == 0]
 check("the runs can show the sources: a solid's three turns apart, the pendulums swinging, an envelope, and an ungated one",
       turned and swung and enveloped and ungated, "%d, %d, %d, %d" % (len(turned), len(swung), len(enveloped), len(ungated)))
 _, tail = grow("swing-pitched")

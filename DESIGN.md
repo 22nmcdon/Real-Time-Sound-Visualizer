@@ -264,6 +264,13 @@ anywhere on the scale, are product.
 - **The trigger**: a dashed `--blush-deep` line in the trigger source's own band only,
   with its marker. Dashed because it is a line you set, not one the signal drew.
 - **Cursors**: dotted `--gold`.
+- **The loop overlay** (P8f, shown only on *Loop*): a dashed 1.25px ring in the reading
+  layer's figure ink (`--blush-deep` for A, B's X lane's `--ch` for B) over a 3px `--paper`
+  halo, so it reads over its own figure; the read-head a 3px dot of the same ink on a
+  `--paper` disc; the table a polyline in that ink on a `--paper` box ruled in `--line`, in
+  the screen's top right; the verdict an uppercase 9px label on `--paper` in `--text-soft`,
+  `--rust` when the loop runs away (rust as the house's over). On a canvas of its own over
+  the trace, never drawn into it: the screen is what Scan reads.
 - **The hand's mark**: a 10px ring of 1.5px `--gold`, over the trace rather than drawn into it
   (the photocell's reticle's reason), only while the figure is held.
 - **Goniometer and tuner**: sage for in phase and in tune.

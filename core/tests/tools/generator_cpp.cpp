@@ -163,7 +163,7 @@ void run(const std::vector<std::string>& head, const Events& events) {
                           static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor),
                           static_cast<double>(b.factor), static_cast<double>(b.silenced), d.swing, d.pendulum,
                           d.turn[0], d.turn[1], d.turn[2], d.facing, static_cast<double>(core.voices().size()),
-                          static_cast<double>(core.voicesB().size()) });
+                          static_cast<double>(core.voicesB().size()), core.scanHead(0), core.scanHead(1) });
   // The sources that read it, as the matrix would.
   out.push_back(scope::EnvelopeSource(core).value());
   using D = scope::DrawingSource::Kind;

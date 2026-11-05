@@ -4810,3 +4810,24 @@ parameter of `planeSetup` now, as the echo's is, and the core's `setup`
 takes it the same way. And its states are flushed to nought below 1e-30 on
 both sides: V8 does not slow down on denormals and a native core does, so
 the page does it only to stay equal to the core to the bit.
+
+**A read-head that turns at the voice's own rate cannot be drawn, so the
+overlay samples it where the tables change.** The loop overlay (P8f) wanted
+a moving read-head on Scan's ring, and the honest one - the voice's phase,
+a table's index being its reading's angle - goes round 220 times a second,
+which at sixty frames is a random dot. Read once a frame off the instrument's
+readings it is worse: the readings arrive a block or a chunk late, so the
+same dot jitters by most of a turn. So both generators record the phase at
+each Scan tick (`scanHeadOf`, held by parity), and the overlay is a
+stroboscope: still on a note at a multiple of 60 Hz, turning at the
+difference otherwise. `overlaytest.py` proves it the way a stroboscope is
+proved - 240 Hz stands, 250 Hz turns - which a head pinned to nought or to the
+frame clock fails one way or the other. Two things for whoever adds to the
+instrument's readings: `brain_readings` is read at a fixed length in
+`makeWasmBrain` (52 now), and a table's points travel only when a stamp says
+the table changed, because `readings()` is called once a chunk and 128 points
+a chunk is most of the message; a second caller of `readings()` would eat the
+stamp and the overlay would never see the table move. And the generator's
+tail in parity grew by the two heads, so the sources' indices there moved
+from 20 to 22 - a check that indexes the tail from its start needs moving
+with it, which is how "the runs can show the sources" failed first time.

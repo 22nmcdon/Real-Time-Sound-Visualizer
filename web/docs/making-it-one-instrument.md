@@ -413,7 +413,9 @@ What makes it possible to use is mostly what is on show, not what exists.
   band split if one survives) and Play holds only the notes that set Scan's pitch.
 - **The loop on the screen.** The ring with a moving read-head over the phosphor; the
   current table as a thumbnail beside the scope; the classifier's state as a small badge
-  on the ring.
+  on the ring. *Built in P8f as a toggle, off by default (the owner's call): the thumbnail
+  sits in the screen's corner rather than beside it, and the badge in the opposite corner
+  rather than on the ring, where a split's two rings would have had two.*
 - **Presets by what the loop does**, replacing *Pictures and sounds / Answering your
   playing / Playing live*:
   - **Settled:** short memory, low depth. Timbre follows the playing.
@@ -997,6 +999,26 @@ the synth's features should be chosen knowing that.
     Resonance behind its &ctdot;. States below 1e-30 are flushed to nought on both sides,
     so a silence ends in exact zeros rather than denormals, which a native core pays for.
     No preset: the bank is being rebuilt from scratch next.
+  - *P8f, built: the loop on the screen, as a toggle* (the owner: only there when needed,
+    for making a sound and seeing that it works). *Loop*, beside the screen's other
+    controls, draws over the trace on a canvas of its own: each reading layer's ring where
+    its reader's circle is, on the picture it reads, in its figure's ink (so crossed hands
+    put each ring on the other figure); a read-head; the playing table as a thumbnail in the
+    screen's corner; and the readout's verdict as a badge. Off by default, remembered per
+    viewer, never in a setup. It reads the reader: the site's instrument hands back each
+    picture's path, each layer's pictures read and read-head, and its newest table's points
+    when a stamp says it changed (`brain_readings`, `brain_scan_table`); the page's own
+    brain's are its scan state, its table the latest read, which the voice takes at the next
+    tick. The read-head is new state in both generators, held by parity: where the lowest
+    sounding note (or the plain tone) was in its cycle at each tick - a table's index is its
+    reading's angle - so drawn at sixty a second it is a stroboscope, still on a note at a
+    multiple of 60 Hz, turning at the difference otherwise. A faithful head at the voice's
+    own rate would be a blur at any frame rate; this one is the real phase, sampled where
+    the tables change. Ring and head only in X-Y, where the screen is what Scan reads; the
+    thumbnail and badge in Y-T too; nothing on the spectrogram. No shortcut: the letters are
+    the computer keyboard's notes. `overlaytest.py` holds it, with the sound's isolation
+    proved on the phosphor's cells rather than by comparing two live renders, which differ
+    for reasons of their own.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

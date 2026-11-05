@@ -174,11 +174,13 @@ function run(head, events) {
              b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing,
              core.pitch, core.spinKick, core.swingLevel, core.gated ? 1 : 0);
     for (const l of lfos) out.push(l.phase, l.held, l.value);
+    out.push(core.scanHead[0], core.scanHead[1]);
     return show(out);
   }
   out.push(core.envelope, core.pitch, core.spinKick, core.swingLevel,
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
-           d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length);
+           d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length,
+           core.scanHead[0], core.scanHead[1]);
   const sources = new Map();
   readSources({ source: { kind: "tone", gated, envelope: core.envelope, drawing: core.drawing } },
               (entry) => sources.set(entry.id, entry));

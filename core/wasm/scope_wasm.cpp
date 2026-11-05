@@ -402,6 +402,8 @@ EXPORT(scope_state) double* scopeState() {
                  static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0], d.turn[1],
                  d.turn[2], d.facing, core->pitch(), core->spinKick(), core->swingLevel() });
   for (const auto& l : lfos) state.insert(state.end(), { l.phase, l.held, l.value });
+  // Last, so the oscillators' places do not move: each layer's read-head (P8f).
+  state.insert(state.end(), { core->scanHead(0), core->scanHead(1) });
   return state.data();
 }
 
@@ -538,6 +540,9 @@ EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(
 // the page cannot see otherwise, the instrument's grids being its own - and
 // whose sound each picture moves, nought for A, one for B, two for both.
 std::vector<double> brainRead;
+std::array<const void*, 2> scanSeen {};
+std::array<double, 2> scanStamp {};
+std::array<double, 128> scanThumb {};
 EXPORT(brain_readings) double* brainReadings() {
   const auto& g = instrument->generator();
   const auto& b = g.budget();
@@ -556,7 +561,32 @@ EXPORT(brain_readings) double* brainReadings() {
     brainRead.insert(brainRead.end(), { raw.cover, raw.change, st.glow(), st.motion(), st.memory(), st.hold() });
   }
   for (const auto& m : layers.moves) brainRead.push_back(m == "A" ? 0 : m == "B" ? 1 : 2);
+  /* Last, the loop overlay's (P8f): each picture's Scan path - whether it
+     has one, its centre and radius in fractions of the grid - then each
+     layer's pictures read (A as 1, B as 2) and its read-head, then a stamp
+     for each layer's playing table that moves when the table does, so the
+     page asks for the table's points (brain_scan_table) only then. */
+  const auto& sc = instrument->scan();
+  for (const auto& p : sc.paths) {
+    if (p) brainRead.insert(brainRead.end(), { 1.0, p->cx, p->cy, p->r });
+    else brainRead.insert(brainRead.end(), { 0.0, 0.0, 0.0, 0.0 });
+  }
+  for (int l = 0; l < 2; l++) brainRead.insert(brainRead.end(), { static_cast<double>(sc.reads[static_cast<std::size_t>(l)]), g.scanHead(l) });
+  for (int l = 0; l < 2; l++) {
+    const void* now = g.scanNext(l);
+    if (now != scanSeen[static_cast<std::size_t>(l)]) { scanSeen[static_cast<std::size_t>(l)] = now; scanStamp[static_cast<std::size_t>(l)] += 1; }
+    brainRead.push_back(scanStamp[static_cast<std::size_t>(l)]);
+  }
   return brainRead.data();
+}
+/* The table layer `layer`'s voice is playing - the one it fades to at each
+   tick, the newest - as every fourth point of its richest level, 128 for the
+   overlay's thumbnail; all nought when it has none yet. */
+EXPORT(brain_scan_table) double* brainScanTable(int layer) {
+  const scope::CycleTables* t = instrument->generator().scanNext(layer == 1 ? 1 : 0);
+  for (std::size_t i = 0; i < scanThumb.size(); i++)
+    scanThumb[i] = t && !t->levels.empty() && t->levels[0].size() >= 4 * scanThumb.size() ? t->levels[0][4 * i] : 0;
+  return scanThumb.data();
 }
 // How many lanes the picture has now: two, or four.
 EXPORT(brain_picture_lanes) int brainPictureLanes() { return instrument->pictureLanes(); }

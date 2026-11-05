@@ -332,6 +332,10 @@ class ScanReader {
      layer its own, which no sound it makes could show apart. */
   struct Seen { double depth = 0, hold = 1; const void* grid = nullptr; };
   std::array<Seen, 2> seen {};
+  /* Which pictures each layer read at the last frame, A as 1 and B as 2,
+     nought for a layer not reading: for the loop overlay (P8f), which draws
+     a layer's ring on the picture it reads. The page's scanPicturesOf. */
+  std::array<int, 2> reads { { 0, 0 } };
 
   // scanFreeze: nothing read for a quarter of a second while a setup lands.
   void freeze(double nowMs) { frozenUntil = nowMs + kScanFreezeMs; }
@@ -350,6 +354,7 @@ class ScanReader {
   template <class Gen, typename Cell>
   void frame(Gen& core, bool spect, int count, const ScanInput<Cell>& in, double elapsedMs, double soft, double nowMs) {
     for (std::size_t k = 0; k < 2; k++) seen[k] = { in.depth[k], in.pictures[k].hold, in.pictures[k].grid };
+    reads = { { 0, 0 } };
     if (spect) return;
     const std::size_t layers = static_cast<std::size_t>(count < 0 ? 0 : count > 2 ? 2 : count);
     std::array<bool, 2> wants { { false, false } };
@@ -360,6 +365,8 @@ class ScanReader {
       if (in.live) reading[l] = scanPicturesOf(in.reads[l], from[l]);
       else from[l] = { { 0, 0 } };
     }
+    for (std::size_t l = 0; l < layers; l++)
+      if (wants[l]) for (std::size_t i = 0; i < reading[l]; i++) reads[l] |= 1 << from[l][i];
     const bool frozen = nowMs < frozenUntil;
     std::array<bool, 2> read_ { { false, false } };
     for (std::size_t p = 0; p < 2; p++) {

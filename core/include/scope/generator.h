@@ -302,8 +302,29 @@ class Generator {
   const std::vector<Voice>& voicesB() const { return voicesB_; }
   const Budget& budget() const { return budget_; }
   double spinKick() const { return kick_; }
+  // Where layer `l`'s voice was in its cycle at the last tick, 0 to 1, or -1 (scanHeadOf).
+  double scanHead(int l) const { return scanHead_[l == 1 ? 1 : 0]; }
   double swingLevel() const { return swingEnv_; }
   static bool cutting(const Voice& v) { return v.gone || v.fade > 0; }
+
+  /* The loop overlay's read-head (P8f): where a layer's voice was in its
+     cycle at the moment its table last changed, as a fraction of a turn - the
+     place round Scan's circle that sample was read from, since a table's
+     index i is the reading's angle 2 pi i / n. The lowest held note's, the
+     one the X lane leans onto, or the plain tone's own phase when no note
+     sounds (`fallback`, NaN for B, which has none); -1 for nothing. One per
+     tick, so drawn at sixty a second it is a stroboscope: it stands still
+     on a note at a multiple of 60 Hz and turns at the difference otherwise,
+     the voice's real phase sampled where the tables change. The page's
+     `scanHeadOf`. */
+  static double scanHeadOf(const std::vector<Voice>& pool, double fallback) {
+    const Voice* low = nullptr;
+    for (const auto& v : pool) if (!cutting(v) && v.freq > 0 && (!low || v.freq < low->freq)) low = &v;
+    const double phase = low ? low->phase : fallback;
+    if (std::isnan(phase)) return -1;
+    const double turns = phase / kTwoPi;
+    return turns - std::floor(turns);
+  }
 
   struct Drawing { double swing, pendulum; std::array<double, 3> turn; double facing; };
   Drawing drawing() const {
@@ -703,6 +724,8 @@ class Generator {
       scanClock_ -= scanPer_;
       vxA_.scanPrev = vxA_.scanNext; vxA_.scanNext = a_.scanTable;
       vxB_.scanPrev = vxB_.scanNext; vxB_.scanNext = b_.scanTable;
+      scanHead_[0] = scanHeadOf(voices_, phaseL_);
+      scanHead_[1] = scanHeadOf(voicesB_, NAN);
     }
     vxA_.scanX = vxB_.scanX = scanClock_ / scanPer_;
   }
@@ -904,6 +927,7 @@ class Generator {
   Wireframe wire_;
   VoiceFx vxA_, vxB_;
   double scanPer_ = rate_ / kScanRate, scanClock_ = 0;
+  std::array<double, 2> scanHead_ { { -1, -1 } };
   double askedCostA_ = -1, askedCostB_ = -1, askedFixed_ = -1;
   int govFactor_ = 4;
   Budget budget_;
