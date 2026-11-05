@@ -65,10 +65,18 @@ const scope::Json& corpusSetup(const char* name) {
 }
 // The same, written out for SCOPE_PRESET, which takes a setup as JSON.
 std::string corpusText(const char* name) { return scope::utf16To8(scope::jsonStringify(corpusSetup(name))); }
+/* What a check that asks for no preset opens on. The plugin opens on the base
+   since P8h, a plain still sine; every check here that names nothing was
+   written against it opening on Harmonic tone - the defaults and a timebase,
+   which the references built from a bare core also start from - so that is
+   what SCOPE_PRESET says between the checks that name something else. The
+   base itself has a check of its own, which clears it. */
+void oldBoot() { setenv("SCOPE_PRESET", corpusText("Harmonic tone").c_str(), 1); }
 }  // namespace
 
 int main() {
   juce::ScopedJuceInitialiser_GUI juce;
+  oldBoot();
   constexpr double rate = 48000;
   constexpr int block = 512;
   ScopeProcessor processor;
@@ -154,7 +162,7 @@ int main() {
     ScopeProcessor p;
     if (preset) setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     unstaged(p);
     if (routed) { p.matrix().add("lfo1", "gen.freq", 0.5); p.matrix().add("midi.key", "gen.amp", 0.6); }
     if (morphed) {
@@ -351,7 +359,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
     ScopeProcessor hosted, alone;
     hosted.prepareToPlay(rate, block); alone.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     Head head;
     hosted.setPlayHead(&head);
     juce::AudioBuffer<float> buf(2, block);
@@ -388,7 +396,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     juce::AudioBuffer<float> buf(2, block);
     const double tickSamples = rate * 60 / 150 / 24;
     double next = 300;
@@ -415,7 +423,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Intervals in turn").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     std::vector<float> got;
     juce::AudioBuffer<float> buf(2, block);
     for (int start = 0; start < static_cast<int>(rate); start += block) {
@@ -451,7 +459,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     if (head) p->setPlayHead(head);
     std::vector<Sent> sent;
     juce::AudioBuffer<float> buf(2, block);
@@ -533,7 +541,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText("A sine, sung").c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.setPlayHead(&head);
       if (spectrogram) p.pageClick("dispSpect");
       juce::AudioBuffer<float> buf(2, block);
@@ -585,7 +593,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       if (before) before(*p);
       Run out;
       juce::AudioBuffer<float> buf(2, block);
@@ -656,7 +664,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText("Harmonic tone").c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p->pageClick("dispXY");
       p->pageClick("midiPoly");
       p->pageClick("tuneEqual");
@@ -703,7 +711,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.pageRoutings("photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300;lfo1>view.zoom@1.000");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
@@ -719,7 +727,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
@@ -745,7 +753,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.pageSlider("timebase", u"7");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
@@ -797,7 +805,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       if (startOff) p->pageClick("photoButton");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
@@ -820,7 +828,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
       p.pageClick("clearButton");
       juce::AudioBuffer<float> buf(2, block);
@@ -842,7 +850,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       p.pageRoutings("photo.1>gen.ratio@0.900;picture.bored>gen.swing@-0.900");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
@@ -918,7 +926,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(tone).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       juce::AudioBuffer<float> buf(2, block);
       for (int k = 0; k < blocks; ++k) {
         juce::MidiBuffer m;
@@ -967,7 +975,7 @@ int main() {
       if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
     } else setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     if (unroutedFrom) p.matrix().remove(unroutedFrom, unroutedTo);
     std::vector<float> got;
     juce::AudioBuffer<float> buf(2, block);
@@ -1032,7 +1040,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Harmonograph").c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     scope::Level own, oldest;
     double levelOff = 0, oldestOff = 0, peak = 0;
     juce::AudioBuffer<float> buf(2, block);
@@ -1072,7 +1080,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText("Brightness swirls it").c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       if (!routed) p->matrix().remove("hear.bright", "gen.twist");
       scope::Matrix ownMatrix;
       scope::HearingSources own(ownMatrix);
@@ -1155,7 +1163,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Stretched echoes").c_str(), 1);
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     std::string names, ids;
     for (auto* parameter : p.getParameters()) {
       auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter);
@@ -1208,10 +1216,10 @@ int main() {
      read the base whatever was loaded would fail it. */
   {
     const auto opened = [&](const char* asked) {
-      if (asked) setenv("SCOPE_PRESET", asked, 1);
+      if (asked) setenv("SCOPE_PRESET", asked, 1); else unsetenv("SCOPE_PRESET");
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       p.processBlock(buf, m);
@@ -1477,7 +1485,7 @@ int main() {
     setenv("SCOPE_PRESET", corpusText("Wah").c_str(), 1);
     ScopeProcessor wah;
     wah.prepareToPlay(rate, block);
-    unsetenv("SCOPE_PRESET");
+    oldBoot();
     bool same = true;
     for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) same = same && p.knob(i)->get() == wah.knob(i)->get();
     check("a setup loaded on the page is loaded at the next block's top as a preset is, its parameters following; a bad code is refused",
@@ -2167,7 +2175,7 @@ int main() {
       setenv("SCOPE_PRESET", corpusText(preset).c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
       p->prepareToPlay(rate, block);
-      unsetenv("SCOPE_PRESET");
+      oldBoot();
       if (!truth) p->pageControl("midiTruth", scope::Json::boolean(false));
       juce::AudioBuffer<float> buf(2, block);
       for (int k = 0; k < 200; ++k) {
