@@ -392,7 +392,7 @@ experiment.
 | Modulation matrix | LFOs, seven families, fades, morphing between setups | **Advanced drawer.** Picture sources leave it for the stage. The setup morph's fader is a host parameter too, and goes only with a replacement |
 | Input sources | Mic or line in, file, rack, band split, input into the generator | **The effect's ink:** the host's input in the plugin; the microphone and a couple of bundled loops on the site. The synth takes no input as ink, but keeps a sidechain: *input into the generator* stays, its final form (drawing onto the phosphor rather than reaching the oscillator directly) decided after the Scan experiment. The rack goes; the band split goes unless it earns a place. Cuts here must leave the input path the effect will need. *In P5 the rack and file playback went, with no bundled loop; mic and line input, the host's input, input into the generator and the band split stay, the split deferred by the owner* |
 | Spectrogram, measurements | THD, harmonics, readouts | **Drawer.** They also verify Scan's band-limiting |
-| Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below). *Done in P8g: eleven under Settled, Breathing, Wandering and Open, measured on the sound* |
+| Presets | 31 sections in three menus | **Rebuilt** by what the loop does (below). *Done in P8g and P8h: two headings, Settled and Breathing, measured on the sound, over a still base the instrument opens on* |
 | Root README | Still says "two implementations", "MIDI when that lands", band-limiting "not built" | **Rewritten** around the loop sentence |
 
 ## Using it
@@ -1059,6 +1059,30 @@ the synth's features should be chosen knowing that.
     `core/tests/tools/write_presets.py` writes `presets.h` out from the page. What the
     numbers cannot say is whether any of it sounds good; that is the owner's, preset by
     preset, in rounds.
+  - *P8h, built: the first listening round.* The owner played the bank and found four
+    things. Every figure leaned along the diagonal, a split's bass a straight line: poly
+    laid a note alone or an inner voice on both channels alike, and the whole bank was
+    poly where the old library was mostly dyad, whose lone note draws a circle. The
+    *quarter turn* (`polyRound`, a switch on Play, on in the bank) gives such a voice's
+    right channel its own output a quarter of its period ago, the dyad's phase - a lone
+    note's channels correlated 1.0 and now nought, a triad's 0.86 and now 0.54. Harmonic
+    tone froze after a Settled preset: a setup code leaves out a value equal to its
+    default, so its 60 never reached the site's instrument, which reads a missing amount
+    as "leave it"; the encoder now always writes the Picture amount. The latch was
+    unplayable with a root held under changing chords, and the owner asked why it was
+    needed beside a sustain pedal - rightly: any rule for when a latched chord gives way
+    guesses which notes belong together, and an arpeggio defeats each guess. It went,
+    with a version-7 decode pass, and **Wandering** with it, a Breathing sound under the
+    pedal being the same thing; Crossed hands moved to Breathing. **Open** went to become
+    the *base*, a still plain sine in poly with the quarter turn, which the page and the
+    plugin open on and *New* returns to - the owner's call, at the cost of the
+    first-minute test's first reading: the instrument moves once a preset or the Picture
+    amount asks it to, not the moment it opens. Opening on it found the site's instrument
+    replacing the page's opening setup with a generator's defaults as it connected,
+    never seen while the defaults were the opening sound. Glass keys became the Tine
+    piano (after the Rhodes) and the pad split's bass a filtered saw. The quarter turn
+    moved the edge between settling and moving for good: the drawbars needed Scan at 14
+    drawn as a ring where 20 settled drawn as a line.
 - **P9 — The effect.** First, from P5: whether the hearing should listen to the open input
   while the generator plays, which brings back what *Drawn by your playing* did. The build flag, the page asking which build it is, the effect's ink
   panel and preset bank, a second JUCE target, Scan pitched by the effect's notes, and the

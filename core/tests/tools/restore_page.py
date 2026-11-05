@@ -103,7 +103,7 @@ DUMP = """(setups) => {
       a: tone(genSettings(), ["cycle", "wavetable", "voices", "figPath", "scanTable"]),
       b: tone(genSettings(1), ["cycle", "wavetable", "voices", "scanTable"]),
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
-              polyJust: midi.polyJust, hold: midi.hold, latch: midi.latch, truth: midi.truth, follow: midi.follow, drive: midi.drive,
+              polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
               play: midi.play, cc: encodeCC() },
       // The interval twice: the core's panel and its keyboard each keep one,
       // where the page's keyboard reads the menu as a number.
@@ -228,6 +228,8 @@ def main():
             # Every preset the page ships, as the setup it loads: one JSON line each.
             for line in page.evaluate("""() => PRESETS.flatMap(([, entries]) => entries.map(([, setup]) => JSON.stringify(setup)))"""):
                 print(line)
+        elif sys.argv[1] == "--base":
+            print(page.evaluate("() => JSON.stringify(BASE_SETUP)"))
         elif sys.argv[1] == "--library":
             print(page.evaluate("() => JSON.stringify(PRESETS)"))
         elif sys.argv[1] == "--sources":

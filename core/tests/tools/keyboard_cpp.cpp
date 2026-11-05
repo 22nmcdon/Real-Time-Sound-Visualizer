@@ -120,7 +120,6 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     else if (cmd == "learn") k.learnSplit();
     else if (cmd == "pair") k.setPair(arg(1) == "against");
     else if (cmd == "hold") k.setHold(arg(1) == "1");
-    else if (cmd == "latch") k.setLatch(arg(1) == "1");
     else if (cmd == "drive") k.setDrive(arg(1) == "1");
     else if (cmd == "play") k.setPlay(arg(1) == "1");
     else if (cmd == "gen") {
@@ -153,10 +152,9 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     const auto poly = k.polyCount();
     const auto strikes = k.strikes();
     const auto iv = k.interval();
-    std::string notes, sustained, latched, cc;
+    std::string notes, sustained, cc;
     for (const auto& h : k.notes()) notes += (notes.empty() ? "" : "+") + std::to_string(h.note) + "/" + show(h.velocity);
     for (const int n : k.sustained()) sustained += (sustained.empty() ? "" : "+") + std::to_string(n);
-    for (const int n : k.latched()) latched += (latched.empty() ? "" : "+") + std::to_string(n);
     for (const auto& c : k.controllers()) {
       std::string name = c.name;
       for (auto& ch : name) if (ch == ' ') ch = '_';
@@ -173,7 +171,6 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
           + " layout " + scope::layoutName(target.layout()) + " gated " + (target.gated() ? "1" : "0")
           + " layers " + (k.layersOn() ? "1" : "0")
           + " notes " + (notes.empty() ? "-" : notes) + " sustained " + (sustained.empty() ? "-" : sustained)
-          + " latched " + (k.latch() ? "1" : "0") + " " + (latched.empty() ? "-" : latched)
           + " cc " + (cc.empty() ? "-" : cc);
     const auto& arp = k.arp();
     std::string current, sent;

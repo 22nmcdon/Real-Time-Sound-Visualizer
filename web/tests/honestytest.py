@@ -1,14 +1,18 @@
-"""Every preset does what its heading says (P8g of web/docs/making-it-one-instrument.md).
+"""Every preset does what its heading says (P8g and P8h of web/docs/making-it-one-instrument.md).
 
-The bank is four headings named for what the loop does with a chord you hold,
+The bank is two headings named for what the loop does with a chord you hold,
 and a heading is a claim about the sound, so it is measured on the sound:
 
 - Settled: a note moves the sound as it strikes the screen, and the sound
   comes to rest while it is held;
-- Breathing: it keeps moving while held, and is silent once let go;
-- Wandering: it keeps moving while held and goes on sounding, and moving,
-  after it is let go - the latch keeping the chord, the loop changing it;
-- Open: it never moves at all.
+- Breathing: it keeps moving while held, and is silent once let go.
+
+And two more rules no preset may meet. Still - the sound never moves - is the
+base the instrument opens on (BASE_SETUP), measured here too and required to
+be it; the Open presets that were still went to become the base in P8h.
+Wandering, which went on sounding after the keys came up, went with the latch
+it rested on: a Breathing sound under the pedal is the same thing, told by
+the player rather than guessed.
 
 How far the sound moves is read as its spectrum: the left channel's last 4096
 samples, Hann-windowed, in forty-eight bands a fifth of an octave wide from
@@ -27,11 +31,9 @@ The windows: early, the first two seconds after the key; late, the last three
 of ten held; after, from two and a half seconds after the key comes up, when
 the longest release in the bank has run out, for two seconds.
 
-    Open       every reading after the first half second under 0.005
+    Still      every reading after the first half second under 0.005
     Settled    early at least 0.008, late at most 0.015 and at most half of early
     Breathing  late at least 0.02, and silent after (RMS under 0.005)
-    Wandering  late at least 0.02, and after, still sounding (RMS at least 0.02)
-               and still moving (at least 0.02)
 
 The thresholds come from measuring the bank as it was built: Settled's lates
 were 0.000 to 0.012, Breathing's 0.03 to 0.12. Settled's early floor is low
@@ -39,7 +41,7 @@ because the sine bass's strike is gentle (0.015 to 0.020): Scan deep enough
 to strike it harder put the held note on a knife edge, settling on one run
 and moving for good on the next. The drawbar organ, drawn a ring by the
 quarter turn, is the same at 14 against 17, and strikes at 0.011 to 0.016;
-the Open presets read exactly nought, so the floor is still clear of them.
+the still base reads exactly nought, so the floor is clear of it.
 
 What the measure cannot see: below about C3 it has a floor of its own. The
 C2 bass with a sub and FM moved 0.010 a reading with the loop switched off -
@@ -48,9 +50,9 @@ steadily - so a hand that low is judged by the plain sines the bank uses
 there, which read nought. Settled's ceiling and
 Breathing's floor are kept apart, so a preset between the two fails both and
 has to be made one or the other. The rules exclude each other by construction
-- a late at most 0.015 cannot be one at least 0.02, a silence after cannot be
-a sound - so each preset is required to pass its own heading and fail the
-other three, which is the null for every rule at once: a rule that passed
+- a late at most 0.015 cannot be one at least 0.02, an early of 0.008 cannot
+be still - so each preset is required to pass its own heading and fail the
+others, which is the null for every rule at once: a rule that passed
 everything would fail the second half on every preset of another heading.
 
 Not the picture meter's verdict. It reads the picture, and was found saying
@@ -78,10 +80,10 @@ HOLD, AFTER = 10.0, 4.5
 
 # Hold notes on a preset loaded as a player loads one, with the screen's keys
 # open so a note gates the sound as a keyboard's does, and read the sound.
-RUN = r"""async ([name, notes, hold, after]) => {
+RUN = r"""async ([value, notes, hold, after]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   setScreenKeys(true);
-  applyPreset('b:' + name);
+  applyPreset(value);
   await wait(900);
   function spectrum(x) {
     const n = x.length, re = new Float64Array(n), im = new Float64Array(n);
@@ -122,10 +124,10 @@ RUN = r"""async ([name, notes, hold, after]) => {
 }"""
 
 # A chord, and the most the limiter took off while it sounded.
-CHORD = r"""async ([name, notes]) => {
+CHORD = r"""async ([value, notes]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   setScreenKeys(true);
-  applyPreset('b:' + name);
+  applyPreset(value);
   await wait(900);
   for (const n of notes) midiBytes(new Uint8Array([0x90, n, 110]));
   let most = 0;
@@ -150,15 +152,15 @@ def summary(out):
     }
 
 RULES = {
-    "Open": lambda m: m["most"] < 0.005,
+    "Still": lambda m: m["most"] < 0.005,
     "Settled": lambda m: m["early"] >= 0.008 and m["late"] <= 0.015 and m["late"] <= m["early"] / 2,
     "Breathing": lambda m: m["late"] >= 0.02 and m["afterRms"] < 0.005,
-    "Wandering": lambda m: m["late"] >= 0.02 and m["afterRms"] >= 0.02 and m["afterMove"] >= 0.02,
 }
 
 # What each preset is probed with: one note, a hand at a time in a split, or
 # what its line asks for.
-def probes(name, setup):
+def probes(value, setup):
+    name = value[2:]
     if name == "Crossed hands": return [[48, 67]]      # each hand is the other's picture
     if name == "Turning fifths": return [[48, 55]]     # "Play fifths"
     if setup.get("layers") == "split": return [[36], [67]]
@@ -180,7 +182,9 @@ def open_page(pw):
 
 with sync_playwright() as pw:
     b, p, bad = open_page(pw)
-    bank = p.evaluate("() => PRESETS.map(([section, entries]) => [section, entries.map(([n, s]) => [n, s])])")
+    bank = p.evaluate("() => PRESETS.map(([section, entries]) => [section, entries.map(([n, s]) => ['b:' + n, s])])")
+    # The base, as New and the opening page load it, judged as Still.
+    bank.append(p.evaluate("() => ['Still', [['n:' + BASE_NAME, BASE_SETUP]]]"))
     b.close()
     print("\n--- each preset against its heading, by the sound ---")
     results, errors = [], []
@@ -199,7 +203,7 @@ with sync_playwright() as pw:
                       % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], m["afterMove"], limit,
                          ",".join(h for h, v in verdicts.items() if v) or "none"))
 
-    for heading in RULES:
+    for heading in [h for h, _ in bank]:
         mine = [r for r in results if r[0] == heading]
         check("every %s preset does what the heading says, on every probe" % heading,
               mine and all(r[4][heading] for r in mine),
@@ -210,10 +214,9 @@ with sync_playwright() as pw:
     # The rules themselves, against readings that sit where each heading's
     # neighbours do, so a rule loosened to pass everything shows here too.
     made = {
-        "Open": {"early": 0.001, "late": 0.001, "most": 0.003, "afterRms": 0, "afterMove": 0},
+        "Still": {"early": 0.001, "late": 0.001, "most": 0.003, "afterRms": 0, "afterMove": 0},
         "Settled": {"early": 0.05, "late": 0.004, "most": 0.08, "afterRms": 0, "afterMove": 0},
         "Breathing": {"early": 0.08, "late": 0.05, "most": 0.2, "afterRms": 0.001, "afterMove": 0},
-        "Wandering": {"early": 0.08, "late": 0.05, "most": 0.2, "afterRms": 0.1, "afterMove": 0.05},
     }
     grid = {h: [g for g, rule in RULES.items() if rule(m)] for h, m in made.items()}
     check("each rule passes a reading made to be its heading's and only that one", all(v == [h] for h, v in grid.items()),

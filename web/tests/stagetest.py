@@ -1,6 +1,12 @@
 """The picture stage (P3 of web/docs/making-it-one-instrument.md): the picture
 moving the sound always, and the plan's first-minute test.
 
+Since P8h the instrument opens on the base, a plain sine with the Picture
+amount at nought (the owner's call: the plain sound is where you begin, not a
+preset), so the first minute is now "turn Picture up and hold a chord" - which
+is what the runs below always did, setting the slider as a hand does - and
+the page opening still is checked on its own.
+
 The test the plan sets the whole instrument: open it, hold a chord, and
 within ten seconds hear and see the picture changing the sound. So this opens
 the site as a visitor gets it - the instrument in its worklet, the default
@@ -106,6 +112,11 @@ with sync_playwright() as pw:
     print("    reads, with it:    glow %s" % " ".join("%.2f" % s["glow"] for s in on[::4]))
     print("                       motion %s" % " ".join("%.2f" % s["motion"] for s in on[::4]))
     sounding = [s for s in on if s["rms"] > 0.02]
+    b, p, bad = open_page(pw)
+    opening = p.evaluate("() => ({ amount: el.pictureAmount.value, preset: el.preset.value, shape: genSettings().shape, routes: stageRoutings().length })")
+    b.close()
+    check("it opens on the base: a plain sine, the Picture amount at nought, no stage routes, named on the strip",
+          opening == {"amount": "0", "preset": "n:Plain sine", "shape": "sine", "routes": 0}, str(opening))
     check("the site opens as a visitor gets it: the photocell off, nothing routed, and the chord heard",
           runs[60]["brain"] and not runs[60]["photo"] and runs[60]["routings"] == 0 and len(sounding) > len(on) // 2,
           "%d of %d windows sounding" % (len(sounding), len(on)))

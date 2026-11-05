@@ -36,7 +36,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 6;  // SETUP_VERSION
+constexpr int kSetupVersion = 7;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 inline const Json& setupDefaults() {
@@ -53,7 +53,7 @@ inline const Json& setupDefaults() {
   "morphPos":0,"mod":"","display":"yt","persistence":"0","span":"5","zoom":0,"timebase":4,"level":0,
   "edge":"rising","trig":0,"position":10,"holdoff":0,"trigMode":"auto","c0on":true,"c0ac":false,"c0s":0,
   "c0o":0,"c1on":true,"c1ac":false,"c1s":0,"c1o":0,"midSide":false,"acHz":100,"octaves":0,
-  "midiMode":"dyad","midiHold":false,"midiLatch":false,"midiTruth":true,"midiFollow":false,"polyRound":false,"midiDrawCount":2,
+  "midiMode":"dyad","midiHold":false,"midiTruth":true,"midiFollow":false,"polyRound":false,"midiDrawCount":2,
   "midiDrawWhich":"outer","midiPolyJust":false,"midiDrawCountB":2,"midiDrawWhichB":"outer",
   "layers":"off","splitAt":60,"layerPair":"each","pictureMovesA":"A","pictureMovesB":"B","photoOn":false,"photoU":0.75,"photoV":0.5,"pictureAmount":60,
   "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
@@ -289,6 +289,9 @@ inline bool migrateSetup(Json& setup) {
       setup.set("mod", Json::string(kept));
     }
   }
+  // 6 -> 7: the latch cut (P8h), a day after it was built - the sustain
+  // pedal is told what an automatic latch had to guess. Its field goes.
+  if (!(v >= 7) && setup.type == Json::Type::Object) setup.erase("midiLatch");
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;
 }

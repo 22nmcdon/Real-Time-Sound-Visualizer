@@ -126,6 +126,10 @@ int main(int argc, char** argv) {
     return 0;
   }
   // The library as the core has it, in the page's PRESETS shape.
+  if (argc == 2 && std::string(argv[1]) == "--base") {
+    std::printf("%s\n", scope::utf16To8(scope::jsonStringify(scope::baseSetup())).c_str());
+    return 0;
+  }
   if (argc == 2 && std::string(argv[1]) == "--library") {
     Json out = Json::array();
     for (const auto& p : scope::presets()) {
@@ -212,7 +216,7 @@ int main(int argc, char** argv) {
     layers.set("mode", str(k.layers == scope::LayerMode::Split ? "split" : k.layers == scope::LayerMode::Layer ? "layer" : "off"));
     layers.set("point", num(k.point)); layers.set("pair", str(k.against ? "against" : "each"));
     midi.set("layers", layers);
-    midi.set("polyJust", flag(k.polyJust)); midi.set("hold", flag(k.hold)); midi.set("latch", flag(keys.latch()));
+    midi.set("polyJust", flag(k.polyJust)); midi.set("hold", flag(k.hold));
     midi.set("truth", flag(k.truth)); midi.set("follow", flag(k.follow));
     Json drive = Json::object(), play = Json::object();
     const char* kinds[] = { "wave", "harmonograph", "figure", "wireframe" };

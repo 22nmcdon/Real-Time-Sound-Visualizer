@@ -4883,3 +4883,28 @@ from the fade, the preset marking itself in use - cannot load from the corpus,
 since `loadCorpus` restores and sends the setup and does neither; fadetest puts
 the old library at the front of `PRESETS` for its turn and takes it out again
 in a `finally`.
+
+**A boot sound that equals the defaults hides every fault in how the site
+opens.** Until P8h the page opened on Harmonic tone, which is the generator's
+defaults with a timebase. P8h opened it on a plain sine instead, and on the
+site the sine lasted a tenth of a second: the compiled instrument's source
+takes over after the page has loaded its opening setup, and showing a new
+source writes its generator's defaults onto the panel - the harmonic tone
+again, with the strip saying Custom. Nobody had seen it because the default
+was also the opening sound. `toHost` now takes the page's setup before the
+source changes and gives it back to the instrument once connected, and
+stagetest.py checks the page is on the base a moment after it opens. The same
+round found the setup codes leaving out a value equal to its default, which
+the instrument read as "not said" for the Picture amount; anything that is
+both a default and "leave it where it is" is ambiguous in a code that drops
+defaults, and the encoder now always writes that one.
+
+**An automatic latch cannot tell an arpeggiated chord from a melody.** P8g
+built one - a chord let go sounds on until the next replaces it - and the
+owner found it unplayable with a root held under changing chords. A second
+rule (a struck key lets go of what the latch holds) fixes that case and
+breaks the arpeggio; a third (latch only when the last key comes up) breaks
+a chord released unevenly unless it guesses a time window. Every rule is a
+guess about which notes belong together, and the sustain pedal is told. It
+went a day after it was built, with a version-7 decode pass for codes saved
+in between; latchtest.py now holds its absence and the pedal doing its job.

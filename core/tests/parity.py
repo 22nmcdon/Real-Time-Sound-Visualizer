@@ -1282,26 +1282,6 @@ kruns = [
                    "frame 100")),
     ("pedal-poly", krun("mode poly", "frame 16", "on 48 100", "on 52 100", "pedal 1", "off 48", "off 52", "on 55 100",
                         "frame 16", "on 48 40", "pedal 0", "frame 16", "off 48", "off 55")),
-    # The latch (P8g): a chord let go goes on sounding, and the next note
-    # struck with no key down replaces it; one struck with a key still down
-    # adds to it; a latched note struck again is a new chord of one; off lets
-    # go; the panic empties it and leaves it on.
-    ("latch", krun("mode poly", "frame 16", "latch 1", "on 60 100", "on 64 90", "on 67 80", "off 60", "off 64", "off 67",
-                   "frame 16", "on 62 100", "on 65 90", "off 62", "off 65", "frame 16", "on 65 70", "off 65", "latch 0",
-                   "frame 16", "latch 1", "on 48 100", "on 55 90", "off 48", "on 52 80", "off 55", "off 52", "frame 16",
-                   "panic", "frame 16", "on 50 60", "off 50", "frame 16")),
-    # Beside the pedal: what the foot holds is the foot's, a key let go under
-    # both is the latch's, and the latch switched off with the foot down hands
-    # its notes to the pedal.
-    # The null for the latch's checks below: the same hands with it off.
-    ("latch-null", krun("mode poly", "frame 16", "latch 0", "on 60 100", "on 64 90", "on 67 80", "off 60", "off 64", "off 67",
-                        "frame 16", "on 62 100", "on 65 90", "off 62", "off 65", "frame 16", "on 65 70")),
-    ("latch-pedal", krun("mode poly", "frame 16", "on 60 100", "pedal 1", "off 60", "latch 1", "on 64 90", "off 64",
-                         "on 67 80", "off 67", "latch 0", "frame 16", "pedal 0", "frame 16")),
-    ("latch-dyad", krun("frame 16", "latch 1", "on 57 100", "on 64 90", "off 57", "off 64", "frame 16", "on 60 100",
-                        "off 60", "mode mono", "on 67 90", "off 67", "frame 16", "latch 0", "frame 16")),
-    ("latch-split", krun("mode poly", "frame 16", "layers split", "latch 1", "on 40 100", "on 72 90", "off 40", "off 72",
-                         "frame 16", "on 76 80", "frame 16", "layers off", "frame 16")),
     ("controllers", krun("frame 16", "cc 16 64", "frame 10", "cc 42 127", "frame 40", "cc 16 0", "cc 7 100",
                          "frame 1000", "name 42 Lower_drawbars", "name 99 Ninety_nine", "name 16", "cc 99 3", "cc 123 5", "on 60 80", "cc 120 0", "cc 113 1", "frame -5", "frame 0", "frame 3")),
     ("bytes", krun("frame 16", "bytes 0x90,60,100,64,90", "bytes 0x80,60,0", "bytes 0x90,67", "bytes 100",
@@ -1360,25 +1340,6 @@ def kfuzz(n):
         else: out.append("frame %d" % krng.choice([16, 16, 33, 0, 250]))
     return krun(*out)
 kruns += [("random-%d" % i, kfuzz(80)) for i in range(40)]
-# And the latch among them, from a generator of its own so that every run
-# above is the run it was before the latch existed.
-klrng = random.Random(808)
-def klfuzz(n):
-    out, held = ["frame 16"], []
-    for _ in range(n):
-        r = klrng.random()
-        if r < 0.36:
-            note = klrng.choice([klrng.randint(36, 84), klrng.choice(held or [60])])
-            out.append("on %d %d" % (note, klrng.choice([klrng.randint(1, 127), 127]))); held.append(note)
-        elif r < 0.62 and held: out.append("off %d" % klrng.choice(held))
-        elif r < 0.72: out.append("latch %d" % klrng.randint(0, 1))
-        elif r < 0.78: out.append("pedal %d" % klrng.randint(0, 1))
-        elif r < 0.82: out.append("mode " + klrng.choice(["dyad", "mono", "poly", "poly"]))
-        elif r < 0.85: out.append("layers " + klrng.choice(["off", "split", "layer"]))
-        elif r < 0.87: out.append("panic")
-        else: out.append("frame 16")
-    return krun(*out)
-kruns += [("latch-random-%d" % i, klfuzz(80)) for i in range(20)]
 # The arpeggiator (K5), on the clock: a chord struck over a few milliseconds
 # and gathered, the steps every quaver from the first key, each pattern, the
 # dyad's pairs, the tempo changed under it, switched off and on with keys down,
@@ -1442,13 +1403,11 @@ def kslice(out, i):
     start = sum(klines[:i])
     return "\n".join(lines[start:start + klines[i]])
 for i, (name, _) in enumerate(kruns):
-    if name.startswith("random-") or name.startswith("latch-random-"): continue
+    if name.startswith("random-"): continue
     d = kdiff(kslice(kjs, i), kslice(kcpp, i))
     check("%s: %d commands, every call the same" % (name, klines[i]), d is None, d or "")
 rbad = [n for i, (n, _) in enumerate(kruns) if n.startswith("random-") and kdiff(kslice(kjs, i), kslice(kcpp, i))]
 check("40 random sequences of 80 commands, every call the same", not rbad, ", ".join(rbad))
-lbad = [n for i, (n, _) in enumerate(kruns) if n.startswith("latch-random-") and kdiff(kslice(kjs, i), kslice(kcpp, i))]
-check("and 20 more with the latch among them, every call the same", not lbad, ", ".join(lbad))
 
 # Each run has to show what it is for, or agreeing on it proves nothing.
 def kout(name): return kslice(kjs, next(i for i, (n, _) in enumerate(kruns) if n == name))
@@ -1457,26 +1416,6 @@ check("the dyad sets an interval wider than an octave, and clamps the pitch at b
 check("a chord leaves notes heard and not drawn, by every rule",
       all(r in kout("poly-rules") for r in ("/u+", "/x+", "/y")) and "/xy " in kout("poly-one"))
 check("past eight held notes the oldest stops sounding", "poly 8 2 11" in kout("poly-many"))
-# What the latch is for, read off the stack: the notes sounding after each
-# command, and what the latch holds.
-def kheld(name, i):
-    m = re.search(r" notes (\S+) sustained (\S+) latched (\S) (\S+)", kout(name).split("\n")[i])
-    return [int(t.split("/")[0]) for t in m.group(1).split("+")] if m.group(1) != "-" else [], m.group(2), m.group(3), m.group(4)
-def latched_right(name):
-    return (kheld(name, 9)[0] == [60, 64, 67] and kheld(name, 9)[3] == "60+64+67" and kheld(name, 10)[0] == [62]
-            and kheld(name, 15)[0] == [65])
-check("latched, a chord let go goes on sounding, the next note struck replaces it, and a held note struck again is a chord of one",
-      latched_right("latch"), str([kheld("latch", i) for i in (9, 10, 15)]))
-check("and the same hands without it hold nothing once the keys are up, which that check fails on",
-      kheld("latch-null", 9)[0] == [] and not latched_right("latch-null"), str(kheld("latch-null", 9)))
-check("switched off it lets go; a note struck with a key down adds to the chord; the panic empties it and leaves it on",
-      kheld("latch", 17)[0] == [] and kheld("latch", 23)[0] == [48, 55, 52]
-      and kheld("latch", 27)[0] == [] and kheld("latch", 27)[2] == "1" and kheld("latch", 27)[3] == "-"
-      and kheld("latch", 30)[3] == "50",
-      str([kheld("latch", i) for i in (17, 23, 27, 30)]))
-check("beside the pedal: what the foot holds stays through a new chord, and switched off the latch hands its notes to the foot",
-      kheld("latch-pedal", 8)[0] == [60, 67] and kheld("latch-pedal", 10)[1] == "60+67" and kheld("latch-pedal", 12)[0] == [],
-      str([kheld("latch-pedal", i) for i in (8, 10, 12)]))
 check("split, layer B plays its own notes and each layer counts its own strikes",
       re.search(r"set voices \S+ 1 ", kout("split")) and re.search(r"strikes (\d+) (?!\1)\d+ ", kout("split")))
 check("against, each layer's drawn notes go on one axis", "layout against" in kout("split")
@@ -2017,6 +1956,9 @@ scmds += ["decode " + code_of(V4_CODE)]
 V5_CODE = '{"v":5,"mac1":40,"mac3":100,"macroNames":"Brighten|Grit|Space|Swirl","freq":330,' \
           '"mod":"macro.1>gen.vcf@0.700; lfo1>gen.amp@0.400;macro.2>gen.drive@0.800"}'
 scmds += ["decode " + code_of(V5_CODE)]
+# Version 7 (P8h): the latch cut; a code saved while it was on loses it.
+V6_CODE = '{"v":6,"midiLatch":true,"midiMode":"poly","freq":330}'
+scmds += ["decode " + code_of(V6_CODE)]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
@@ -2037,14 +1979,19 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":6' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":7' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
-check("a version-5 code comes up to 6 without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":6' in v5_read and '"freq":330' in v5_read
+check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
+      v5_read.startswith("read ") and '"v":7' in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
+# Version 7 likewise: a version-6 code saved with the latch on loses it.
+v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
+check("a version-6 code comes up to 7 without the latch, the rest as written",
+      v6_read.startswith("read ") and '"v":7' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+      and '"midiLatch"' not in v6_read, v6_read)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
@@ -2066,6 +2013,8 @@ snull("the version-4 code marked 5, which keeps what it says", "decode " + code_
       "decode " + code_of(V4_CODE.replace('"v":4', '"v":5')))
 snull("the version-5 code marked 6, which keeps its macros", "decode " + code_of(V5_CODE),
       "decode " + code_of(V5_CODE.replace('"v":5', '"v":6')))
+snull("the version-6 code marked 7, which keeps its latch", "decode " + code_of(V6_CODE),
+      "decode " + code_of(V6_CODE.replace('"v":6', '"v":7')))
 snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
 def pm_read(cmd):
     code = scpp[scmds.index(cmd)].split(" ", 1)[1]
@@ -3758,6 +3707,11 @@ plib_sections = _json.loads(plib) if plib.startswith("[[") else []
 check("the preset library is the page's, preset for preset, character for character", plib == clib
       and len(plib_sections) == 4 and all(entries for _, entries, _ in plib_sections),
       "%d against %d characters" % (len(plib), len(clib)))
+# The base (P8h): what the page opens on, and the plugin, and New starts from.
+pbase = rpage("--base").strip()
+cbase = subprocess.run([rexe, "--base"], check=True, capture_output=True, text=True).stdout.strip()
+check("the base the instrument opens on is the page's, character for character", pbase == cbase and '"shape":"sine"' in pbase,
+      "%s against %s" % (pbase, cbase))
 # The setups every restore below is drawn from: the library as it stood before
 # P8g, 268 presets kept whole as a corpus (core/tests/scenarios), and then the
 # bank the page ships. The corpus first, so that every index and every "the
@@ -3892,7 +3846,6 @@ def rdrawn():
     return rrng.choice([";", " ; ", ";;"]).join(strokes)
 PM_MENUS = {"pictureMovesA": ["A", "B", "both", "nonsense", 5, None], "pictureMovesB": ["B", "A", "both", "", "a"]}
 pmrng = random.Random(66)
-latchrng = random.Random(67)
 def rsetup():
     st = {}
     for key, make in (("cycle", rcycle), ("cycles", rcycles), ("figText", rtext), ("figPath", rsvg), ("figDrawn", rdrawn)):
@@ -3916,8 +3869,6 @@ def rsetup():
     # rounds to 0.04 and the core to 0.05 - before P6 as after.
     for key, values in PM_MENUS.items():
         if pmrng.random() < 0.3: st[key] = pmrng.choice(values)
-    # The latch (P8g), from a generator of its own for the same reason.
-    if latchrng.random() < 0.25: st["midiLatch"] = latchrng.choice([True, False, 1, "true", None])
     return _json.dumps(st)
 # The first two are the slider's own rules, made to be read: a half goes up,
 # and a value that is not a number takes the slider's middle (detail runs from
@@ -4923,7 +4874,7 @@ icode = dict(zip(inames, subprocess.run([iexe, "--code", *inames], check=True, c
 # against a preset since cut open on its old setup, and every one of them is
 # played through in turn as the bank's are.
 def ocode_of(setup):
-    return base64.b64encode(_json.dumps(dict(setup, v=6)).encode()).decode().rstrip("=")
+    return base64.b64encode(_json.dumps(dict(setup, v=7)).encode()).decode().rstrip("=")
 onames = [n for _, entries, _ in CORPUS for n, *_ in entries]
 ocode = {n: ocode_of(st) for _, entries, _ in CORPUS for n, st, *_ in entries}
 def iscript(name, lines):

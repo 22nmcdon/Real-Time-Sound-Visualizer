@@ -133,12 +133,12 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   std::optional<scope::Json> written;
   if (wanted && wanted[0] == '{') written = scope::jsonParse(scope::utf8To16(wanted));
   const scope::Preset* preset = wanted && !written ? scope::findPreset(wanted) : nullptr;
-  if (!preset) preset = scope::findPreset("Harmonic tone");
   {
-    // A state the host handed over before there was a core to give it to wins.
+    // A state the host handed over before there was a core to give it to wins;
+    // with nothing asked for, the base the page opens on too (P8h).
     const juce::SpinLock::ScopedLockType lock(stateLock_);
     instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : written ? *written
-                        : preset ? preset->setup : scope::Json::object());
+                        : preset ? preset->setup : scope::baseSetup());
     pending_.reset();
   }
   publish(true);  // for a page that asks before the first block

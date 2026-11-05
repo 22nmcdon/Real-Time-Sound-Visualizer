@@ -26,53 +26,43 @@ branch GitHub Pages serves, so a push publishes the site.
 | P8d | Macros removed (setup codes v6 migrate them) | Done |
 | P8e | Phaser: four all-passes a channel, channels in quadrature, steered by Memory | Done, page and core |
 | P8f | Loop overlay on a switch (ring, read-head, table thumbnail, state badge) | Done |
-| P8g | Preset rework: eleven under Settled, Breathing, Wandering, Open, measured on the sound; the latch | Done; **now the owner's listening rounds (below)** |
+| P8g | Preset rework: the bank rebuilt and measured on the sound | Done |
+| P8h | First listening round: quarter turn, Picture amount in every code, latch and Wandering cut, the base sound, Tine piano, saw bass | Done; **the owner's next round** |
 | P9 | The effect build | Not started |
 
 Also done along the way: sound now starts from a tap on phones (`5d4e85f`,
 confirmed by the owner on an iPhone), and `run.py` runs timing suites first
 and alone, the rest three at a time (`4a815e5`).
 
-## Next: the owner listens to the new bank (P8g)
+## Next: the owner's next listening round
 
-The owner agreed to every recommendation put to them (5 November): about ten
-presets to start, a split under each heading where the loop moves the sound,
-sine and saw kept under Open, every preset naming the Picture amount, and the
-latch built. What was built, and what the measuring changed, is P8g's bullet in
-`web/docs/making-it-one-instrument.md`. In short:
+After P8h (see its bullet in `web/docs/making-it-one-instrument.md`):
 
-- **The bank:** Settled - Glass keys, Drawbar organ, Bass under glass keys;
-  Breathing - Harmonic tone (still the boot sound), Slow pad, Turning fifths,
-  Bass under the pad; Wandering - Crossed hands, Pad that keeps going; Open -
-  Pure sine, Saw wave.
-- **The headings changed in one way from the draft.** Breathing was "moves
-  between notes, settles while held"; measured, that was Settled with a longer
-  tail. It is now "keeps moving while held, stops when let go", and Wandering
-  "goes on after you let go" (latched). Tell the owner; they agreed to the
-  draft, not to this.
-- **The honesty test** (`honestytest.py`) measures the sound, not the picture
-  meter (which said "settled" over a crossed pair whose sound kept moving).
-- **The latch** is on Play and in setups (`midiLatch`): a chord let go sounds
-  on until the next note struck with no key down replaces it. The screen
-  keys' old per-key latch is now "Tap to hold".
+- **The bank:** Settled - Tine piano, Drawbar organ, Bass under the tine piano;
+  Breathing - Harmonic tone, Slow pad, Turning fifths, Bass under the pad,
+  Crossed hands. The owner has heard only Settled closely; Breathing had
+  "glaring things" fixed (Harmonic tone, the pad split's bass) and is next.
+- **The base:** a still plain sine (`BASE_SETUP`), what the page and the
+  plugin open on and what *New* in the preset browser returns to.
+- **The quarter turn** is a switch on Play so the owner can hear the
+  difference; whether it stays a switch, or becomes how poly always draws, is
+  his call after listening.
+- **Not built from the draft:** a mono lead for Bend, a pluck, a bell, a
+  hammered screen, more splits.
 
-What comes next is the owner's ears: play each, say what to change. To change
-or add a preset: edit `PRESETS` in the page, run `presettest.py` and
-`honestytest.py`, then `core/tests/tools/write_presets.py`, `core/wasm/build.py`
-and parity. Not yet built from the draft: a mono lead for riding Bend, a pluck,
-a bell (agreed in place of the drone field), a hammered screen; and more
-splits once there are more sounds to split.
+To change or add a preset: edit `PRESETS` (or `BASE_SETUP`), run
+`presettest.py` and `honestytest.py`, then `core/tests/tools/write_presets.py`,
+`core/wasm/build.py` and parity. The suites that test the preset mechanism
+pick bank presets by what they need, never by name.
 
 Known about the bank, for whoever tunes it:
 
 - Bright, beating sounds hide the loop; unison and chorus do too. None is used.
-- How deep Scan can go before a held sound keeps moving depends on the sound:
-  50 for the glass keys, about 20 for the drawbars, 15 for the C2 bass.
-- Six-note chords on the pad hit the limiter; its level is 28 to keep a
-  six-note chord under three decibels of limiting.
-- The old library (268) is a test corpus now: `core/tests/scenarios/
-  library-p8f.json`, `web/tests/corpus.py`, and the shell test's
-  `corpusSetup`. Tests open known sounds from there, never from the bank.
+- Scan depth has a knife edge between settling and moving for good, and it
+  depends on the sound and on the quarter turn: 50 for the tine piano, 14 for
+  the drawbars (17 moves on some notes), 20 for the bass under the piano.
+- The old library (268) is a test corpus: `core/tests/scenarios/
+  library-p8f.json`, `web/tests/corpus.py`, the shell test's `corpusSetup`.
 
 ## Decisions to keep
 

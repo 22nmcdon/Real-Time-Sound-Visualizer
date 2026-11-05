@@ -11,15 +11,15 @@ What would go wrong, and what is checked for it:
   unless its description says it waits for a key;
 - two presets that are the same preset, a preset or a section with nothing
   to say about itself;
-- the bank's shape (P8g of web/docs/making-it-one-instrument.md): four
-  headings in the loop's order, a split under each of the three where the
-  loop moves the sound, the Wandering ones latched, Settled and Open with
-  the Picture amount at nought and Open with nothing read back - and every
-  preset naming the Picture amount, since one that did not would inherit
-  whatever the last one set. Whether each preset does what its heading says
-  is measured on the sound, in honestytest.py;
+- the bank's shape (P8g and P8h of web/docs/making-it-one-instrument.md):
+  two headings, Settled then Breathing, a split under each, Settled with the
+  Picture amount at nought and Breathing with the loop at work, no preset
+  naming the latch that was cut - and every preset naming the Picture
+  amount, since one that did not would inherit whatever the last one set.
+  Whether each preset does what its heading says is measured on the sound,
+  in honestytest.py;
 - the browser: it opens on the heading in use, a menu of one section has no
-  rail, a card loads and leaves it open, Enter and a double-click load and
+  rail, New goes back to the base the instrument opens on, a card loads and leaves it open, Enter and a double-click load and
   close, the arrows move between cards by rows and columns, search looks
   across headings, saved setups have a menu, moving a control says Custom,
   the page's own keys stand aside while it is open, and it says when a
@@ -111,29 +111,26 @@ with sync_playwright() as pw:
       return {
         order: sections.join(','),
         sizes: lib.map(([, e]) => e.length),
-        splits: ['Settled', 'Breathing', 'Wandering'].filter((t) => of(t).some(([, st]) => split(st))),
-        unlatched: of('Wandering').filter(([, st]) => st.midiLatch !== true).map(([n]) => n),
-        latchedElsewhere: lib.filter(([t]) => t !== 'Wandering').flatMap(([, e]) => e).filter(([, st]) => st.midiLatch === true).map(([n]) => n),
-        pushed: of('Settled').concat(of('Open')).filter(([, st]) => st.pictureAmount !== 0).map(([n]) => n),
-        readBack: of('Open').filter(([, st]) => scanned(st)).map(([n]) => n),
+        splits: ['Settled', 'Breathing'].filter((t) => of(t).some(([, st]) => split(st))),
+        latched: lib.flatMap(([, e]) => e).filter(([, st]) => 'midiLatch' in st).map(([n]) => n),
+        pushed: of('Settled').filter(([, st]) => st.pictureAmount !== 0).map(([n]) => n),
+        idle: of('Breathing').filter(([, st]) => !(st.pictureAmount > 0) && !scanned(st)).map(([n]) => n),
         unnamed: lib.flatMap(([, e]) => e).filter(([, st]) => !('pictureAmount' in st)).map(([n]) => n),
       };
     }"""
     def shape_ok(r):
-        return (r["order"] == "Settled,Breathing,Wandering,Open" and all(n >= 2 for n in r["sizes"])
-                and 8 <= sum(r["sizes"]) <= 24 and r["splits"] == ["Settled", "Breathing", "Wandering"]
-                and not r["unlatched"] and not r["latchedElsewhere"] and not r["pushed"] and not r["readBack"]
-                and not r["unnamed"])
+        return (r["order"] == "Settled,Breathing" and all(n >= 2 for n in r["sizes"])
+                and 4 <= sum(r["sizes"]) <= 24 and r["splits"] == ["Settled", "Breathing"]
+                and not r["latched"] and not r["pushed"] and not r["idle"] and not r["unnamed"])
     shape = p.evaluate("(f) => (eval(f))(PRESETS)", shape_js)
     print("    %s" % shape)
-    check("four headings in the loop's order, two to eight presets in each and eight to twenty-four in all",
-          shape["order"] == "Settled,Breathing,Wandering,Open" and all(n >= 2 for n in shape["sizes"])
-          and 8 <= sum(shape["sizes"]) <= 24, "%s %s" % (shape["order"], shape["sizes"]))
-    check("a split under each heading where the loop moves the sound, the owner's way of playing",
-          shape["splits"] == ["Settled", "Breathing", "Wandering"], str(shape["splits"]))
-    check("every Wandering preset latched, and no other; Settled and Open at nought; nothing read back in Open",
-          not shape["unlatched"] and not shape["latchedElsewhere"] and not shape["pushed"] and not shape["readBack"],
-          str(shape))
+    check("two headings, Settled then Breathing, two or more presets in each and four to twenty-four in all",
+          shape["order"] == "Settled,Breathing" and all(n >= 2 for n in shape["sizes"])
+          and 4 <= sum(shape["sizes"]) <= 24, "%s %s" % (shape["order"], shape["sizes"]))
+    check("a split under each heading, the owner's way of playing",
+          shape["splits"] == ["Settled", "Breathing"], str(shape["splits"]))
+    check("Settled at nought, Breathing with the loop at work, and no preset naming the latch that was cut",
+          not shape["latched"] and not shape["pushed"] and not shape["idle"], str(shape))
     check("every preset names the Picture amount, so none inherits the last one's", not shape["unnamed"], str(shape["unnamed"]))
     # The nulls: the bank with one thing wrong, each rule in turn.
     broken = p.evaluate("""(f) => {
@@ -142,10 +139,9 @@ with sync_playwright() as pw:
       return [
         edit((l) => l.reverse()),
         edit((l) => { l[0][1] = l[0][1].filter(([, st]) => st.layers !== 'split'); }),
-        edit((l) => { l[2][1][0][1].midiLatch = false; }),
         edit((l) => { l[0][1][0][1].midiLatch = true; }),
-        edit((l) => { l[3][1][0][1].pictureAmount = 30; }),
-        edit((l) => { l[3][1][0][1].oscScan = 20; }),
+        edit((l) => { l[0][1][0][1].pictureAmount = 30; }),
+        edit((l) => { const st = l[1][1][0][1]; st.pictureAmount = 0; st.oscScan = 0; st.bScan = 0; }),
         edit((l) => { delete l[1][1][0][1].pictureAmount; }),
       ];
     }""", shape_js)
@@ -192,8 +188,8 @@ with sync_playwright() as pw:
     check("every section is in exactly one menu, and every menu's sections exist",
           menus["orphans"] == [] and menus["ghosts"] == [], "%s, %s" % (menus["orphans"], menus["ghosts"]))
     check("a menu for each heading in the loop's order, then Saved, each counting its presets",
-          [m for m, _ in opened["menus"]] == ["settled", "breathing", "wandering", "open", "saved"]
-          and [c for _, c in opened["menus"]][:4] == [n for _, n in sizes], str((opened["menus"], sizes)))
+          [m for m, _ in opened["menus"]] == ["settled", "breathing", "saved"]
+          and [c for _, c in opened["menus"]][:2] == [n for _, n in sizes], str((opened["menus"], sizes)))
     # A menu of one section is the section: no rail. The null is a menu of
     # two, made for the purpose and taken away again, which must show it -
     # so a rail hidden whatever the menu fails here.
@@ -201,7 +197,7 @@ with sync_playwright() as pw:
       // A section of its own, since a menu is found by its sections and one
       // already in another menu would be taken for that menu.
       PRESETS.push(['Extra', [['Extra one', { freq: 300 }, 'A preset made for this check and taken away again.']], 'generator']);
-      PRESET_MENUS.push(['both', 'Both', 'Two sections', ['Extra', 'Open']]);
+      PRESET_MENUS.push(['both', 'Both', 'Two sections', ['Extra', 'Settled']]);
       renderPresetBrowser();
       el.presetMenus.querySelector('[data-menu="both"]').click();
       const two = { hidden: el.presetRail.hidden, shown: getComputedStyle(el.presetRail).display !== 'none',
@@ -212,7 +208,7 @@ with sync_playwright() as pw:
     }""")
     check("a menu of one section has no rail, and one of two shows both, so the rail is hidden only when there is nothing to choose",
           opened["rail"] and not opened["railShown"] and rails["one"] == {"hidden": True, "shown": False}
-          and rails["two"] == {"hidden": False, "shown": True, "sections": ["Extra", "Open"]}, str(rails))
+          and rails["two"] == {"hidden": False, "shown": True, "sections": ["Extra", "Settled"]}, str(rails))
     preview = p.evaluate("""() => {
       const card = Array.from(el.presetGrid.querySelectorAll('.preset-card')).find((c) => c.dataset.value === 'b:Turning fifths');
       card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -260,10 +256,20 @@ with sync_playwright() as pw:
     check("Enter loads the focused card and closes", enter == {"value": "b:Harmonic tone", "open": False}, str(enter))
 
     p.click("#preset"); p.wait_for_timeout(200)
-    p.click('.preset-menu[data-menu="open"]'); p.wait_for_timeout(150)
-    p.dblclick('.preset-card:has-text("Saw wave")'); p.wait_for_timeout(250)
+    p.click('.preset-menu[data-menu="breathing"]'); p.wait_for_timeout(150)
+    p.dblclick('.preset-card:has-text("Turning fifths")'); p.wait_for_timeout(250)
     dbl = p.evaluate("() => ({ value: el.preset.value, open: el.presetDialog.open })")
-    check("a double-click loads and closes", dbl == {"value": "b:Saw wave", "open": False}, str(dbl))
+    check("a double-click loads and closes", dbl == {"value": "b:Turning fifths", "open": False}, str(dbl))
+    # New (P8h): back to the base, from a preset that is not it, which is the
+    # null for each field read - Turning fifths has the loop on.
+    p.click("#preset"); p.wait_for_timeout(200)
+    p.click("#presetNew"); p.wait_for_timeout(300)
+    fresh = p.evaluate("""() => ({ value: el.preset.value, label: el.presetCurrent.textContent, open: el.presetDialog.open,
+      shape: genSettings().shape, amount: el.pictureAmount.value, round: el.polyRound.checked, mode: midi.mode,
+      scan: snapshot().oscScan, same: JSON.stringify(Object.keys(BASE_SETUP).map((k) => snapshot()[k])) === JSON.stringify(Object.values(BASE_SETUP)) })""")
+    check("New goes back to the base, a still plain sine, says so on the strip, and closes the browser",
+          fresh == {"value": "n:Plain sine", "label": "Plain sine", "open": False, "shape": "sine", "amount": "0",
+                    "round": True, "mode": "poly", "scan": 0, "same": True}, str(fresh))
 
     print("\n--- search, the page's keys, and Custom ---")
     p.click("#preset"); p.wait_for_timeout(200)
@@ -307,7 +313,7 @@ with sync_playwright() as pw:
       openPresets();
       const menu = el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu;
       const cards = Array.from(el.presetGrid.querySelectorAll('.preset-card')).map((c) => c.dataset.value);
-      restore({}); applyPreset('b:Pure sine');
+      restore({}); applyPreset('n:Plain sine');
       // Guarded, so that a missing card fails the check below rather than
       // stopping the test with an exception that names nothing.
       const mine = el.presetGrid.querySelector('[data-value="s:My test setup"]');
@@ -330,7 +336,7 @@ with sync_playwright() as pw:
       navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
       el.srcMic.click(); await wait(900);
       openPresets();
-      el.presetMenus.querySelector('[data-menu="open"]').click();
+      el.presetMenus.querySelector('[data-menu="settled"]').click();
       const said = el.presetWhere.hidden ? '' : el.presetWhere.textContent;
       // What is playing, not the source's kind: the instrument's is "host" whatever it draws (5m).
       const kind = playingKind();
@@ -352,4 +358,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("a bank under four headings to browse, and every preset in it is what it says it is")
+print("a bank under two headings to browse, and every preset in it is what it says it is")

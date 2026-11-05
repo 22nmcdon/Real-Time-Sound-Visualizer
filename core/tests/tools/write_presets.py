@@ -28,9 +28,16 @@ def main():
     start = header.index("    static const char* const pieces[] = {\n") + len("    static const char* const pieces[] = {\n")
     end = header.index("    };\n", start)
     pieces = "".join('      R"preset(%s)preset",\n' % text[i:i + PIECE] for i in range(0, len(text), PIECE))
+    header = header[:start] + pieces + header[end:]
+    # The base (P8h), beside the bank: one short literal.
+    base = subprocess.run([sys.executable, os.path.join(HERE, "restore_page.py"), "--base"],
+                          check=True, capture_output=True, text=True).stdout.strip()
+    if not base.startswith("{") or ")base\"" in base:
+        sys.exit("the page's base did not come back as JSON: %r" % base[:80])
+    header = re.sub(r'R"base\(.*?\)base"', lambda m: 'R"base(%s)base"' % base, header, flags=re.S)
     with open(HEADER, "w", encoding="utf-8") as f:
-        f.write(header[:start] + pieces + header[end:])
-    print("wrote %d characters in %d pieces to %s" % (len(text), -(-len(text) // PIECE), os.path.normpath(HEADER)))
+        f.write(header)
+    print("wrote %d characters in %d pieces to %s, and the base" % (len(text), -(-len(text) // PIECE), os.path.normpath(HEADER)))
 
 
 if __name__ == "__main__":

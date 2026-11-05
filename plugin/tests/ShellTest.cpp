@@ -1202,43 +1202,30 @@ int main() {
     check("and the two that were lost before are not, so the look-up can miss",
           !corpusFind("Brighten, grit, space, swirl") && !corpusFind("Hits restart the pendulums"));
   }
-  /* The latch (P8g), through the host's bytes into the core's keyboard: a
-     note struck and let go goes on sounding with it on, and with it off has
-     gone by the end of its release, which is the null; struck again with no
-     key down, a new note replaces the latched one rather than joining it, so
-     the latched run with a second note is the second note alone, read against
-     that note played by itself. */
+  /* The base (P8h): with nothing asked for, the plugin opens on the plain
+     sine the page opens on - its state's code reads the base's fields - and
+     asked for a setup, on that one instead, which is the null: a check that
+     read the base whatever was loaded would fail it. */
   {
-    const auto note = [](int at, int n, bool on) {
-      return std::pair<int, juce::MidiMessage>(at, on ? juce::MidiMessage::noteOn(1, n, static_cast<juce::uint8>(100))
-                                                       : juce::MidiMessage::noteOff(1, n));
+    const auto opened = [&](const char* asked) {
+      if (asked) setenv("SCOPE_PRESET", asked, 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      unsetenv("SCOPE_PRESET");
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      p.processBlock(buf, m);
+      const auto decoded = scope::decodeSetup(p.pageState().code);
+      if (decoded.kind != scope::DecodedSetup::Kind::Read) return std::string("unread");
+      const auto field = [&](const char* k) {
+        const scope::Json* v = decoded.setup.get(k);
+        return v ? scope::utf16To8(scope::jsonStringify(*v)) : std::string("-");
+      };
+      return field("shape") + " " + field("midiMode") + " " + field("polyRound") + " " + field("pictureAmount");
     };
-    const auto tail = [](const std::vector<float>& l) {
-      double e = 0;
-      const std::size_t from = l.size() * 3 / 4;
-      for (std::size_t i = from; i < l.size(); ++i) e += static_cast<double>(l[i]) * l[i];
-      return std::sqrt(e / static_cast<double>(l.size() - from));
-    };
-    const char* on = "{\"midiMode\":\"poly\",\"midiLatch\":true,\"pictureAmount\":0}";
-    const char* off = "{\"midiMode\":\"poly\",\"midiLatch\":false,\"pictureAmount\":0}";
-    const auto latched = playLeft(on, { note(100, 60, true), note(4000, 60, false) }, 80);
-    const auto unlatched = playLeft(off, { note(100, 60, true), note(4000, 60, false) }, 80);
-    check("latched, a note let go goes on sounding; unlatched it has gone by the end of its release",
-          tail(latched) > 0.05 && tail(unlatched) < 1e-4, num(tail(latched)) + " against " + num(tail(unlatched)));
-    /* Judged by how loud the tail is rather than sample by sample: two runs
-       can start a voice at a different phase for reasons of their own, and a
-       second note sounding beside the first is louder whatever the phases -
-       by 1.12 here, measured, not the square root of two, since a chord is
-       levelled on its way out. The null is the same latch with the second
-       note struck while the first key is still down, which adds it. */
-    const auto replaced = playLeft(on, { note(100, 60, true), note(4000, 60, false), note(8000, 67, true),
-                                         note(12000, 67, false) }, 80);
-    const auto alone = playLeft(on, { note(8000, 67, true), note(12000, 67, false) }, 80);
-    const auto added = playLeft(on, { note(100, 60, true), note(8000, 67, true), note(12000, 60, false),
-                                      note(12000, 67, false) }, 80);
-    check("and the next note struck with no key down replaces it; struck with a key down it joins it",
-          std::fabs(tail(replaced) / tail(alone) - 1) < 0.05 && tail(added) / tail(alone) > 1.08,
-          num(tail(replaced) / tail(alone)) + " of the second alone, joined " + num(tail(added) / tail(alone)));
+    const std::string base = opened(nullptr), other = opened(corpusText("Harmonic tone").c_str());
+    check("with nothing asked for, the plugin opens on the base, a plain still sine; asked for another, on that",
+          base == "\"sine\" \"poly\" true 0" && other != base, base + " | " + other);
   }
   /* Each of the nine automated from block 20 over the dark saw fifth below
      (`opening`): heard from that block and not a sample before, and its slider
