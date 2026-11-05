@@ -179,16 +179,19 @@ inline double jsMathRound(double x) {
 
 // --- the code -----------------------------------------------------------------------
 
-// encodeSetup: what differs from the defaults, stamped with the version, as
-// base64 without its padding. Nothing for a setup with a unit past 0xFF in
-// it, where the browser's `btoa` throws.
+// encodeSetup: what differs from the defaults - and the Picture amount
+// always, since a restore leaves an amount a setup does not name where it was,
+// and a code saved at the default would otherwise not say it (the page's
+// encodeSetupHere has why) - stamped with the version, as base64 without its
+// padding. Nothing for a setup with a unit past 0xFF in it, where the
+// browser's `btoa` throws.
 inline std::optional<std::string> encodeSetup(const Json& snap) {
   const Json& defaults = setupDefaults();
   Json diff = Json::object();
   diff.set("v", Json::number(kSetupVersion));
   for (const auto& [key, value] : snap.o) {
     const Json* d = defaults.get(key);
-    if (!d || !strictEquals(value, *d)) diff.set(key, value);
+    if (!d || !strictEquals(value, *d) || key == u"pictureAmount") diff.set(key, value);
   }
   auto code = btoa(jsonStringify(diff));
   if (!code) return std::nullopt;

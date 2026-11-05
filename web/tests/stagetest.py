@@ -181,6 +181,36 @@ with sync_playwright() as pw:
     b.close()
     check("a preset sets the amount it names, over the hand's; a setup naming it sets it; a saved code carries it",
           kept == {"afterPreset": "100", "afterSettled": "0", "named": "80", "saved": "30", "routes": 5}, str(kept))  # four bundles and Memory's on the phaser (P8e)
+    # A preset at the default amount after one at nought, on the site: the
+    # setup reaches the instrument as a code, and a code used to leave out a
+    # value equal to its default, so the 60 never arrived and the instrument
+    # kept its stage at nought - the sound stood still while the reads on
+    # screen moved (the owner: "Harmonic tone breaks"). The code is read
+    # directly, since that is where it went wrong, and the sound is heard,
+    # since that is what was wrong; the null is the same note with the amount
+    # at nought by hand, which stands still.
+    b, p, bad = open_page(pw)
+    after = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setScreenKeys(true);
+      const bright = async (seconds) => { const out = [];
+        for (let k = 0; k < seconds * 4; k++) { await wait(250); const [l] = state.source.getLatestWindow(4096);
+          let e = 0, d = 0; for (let i = 1; i < l.length; i++) { e += l[i] * l[i]; d += (l[i] - l[i - 1]) ** 2; }
+          out.push(e > 1e-9 ? Math.sqrt(d / e) : 0); }
+        return Math.max(...out) - Math.min(...out); };
+      applyPreset('b:Glass keys'); await wait(500);
+      applyPreset('b:Harmonic tone'); await wait(800);
+      const code = decodeSetup(encodeSetup(snapshot())).pictureAmount;
+      midiBytes(new Uint8Array([0x90, 60, 100])); const moved = await bright(9);
+      midiBytes(new Uint8Array([0x80, 60, 0])); await wait(500);
+      el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true })); await wait(300);
+      midiBytes(new Uint8Array([0x90, 60, 100])); const still = await bright(4);
+      midiBytes(new Uint8Array([0x80, 60, 0]));
+      return { code, moved, still };
+    }""")
+    b.close()
+    check("a code says the amount at its default, and a preset at 60 after one at nought moves the site's sound; at nought it stands still",
+          after["code"] == 60 and after["moved"] > 0.05 and after["still"] < 0.005, str(after))
     held = {}
     for asked, preset in (("0", "Slow pad"), ("40", "Glass keys")):
         b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
