@@ -3701,11 +3701,11 @@ check("the %d sliders the morph walks are the page's, in the page's order" % len
 check("and that order is not the layout's", pctl["morph"] != [k for k in pctl["ranges"] if k in pctl["morph"]])
 plib = rpage("--library").strip()
 clib = subprocess.run([rexe, "--library"], check=True, capture_output=True, text=True).stdout.strip()
-# The bank is small since P8g - eleven presets under four headings - so the
-# floor is the bank's own: four sections, every one of them non-empty.
+# The bank is small since P8g and two headings since P8h, so the floor is the
+# bank's own: Settled and Breathing, neither of them empty.
 plib_sections = _json.loads(plib) if plib.startswith("[[") else []
 check("the preset library is the page's, preset for preset, character for character", plib == clib
-      and len(plib_sections) == 4 and all(entries for _, entries, _ in plib_sections),
+      and [t for t, _, _ in plib_sections] == ["Settled", "Breathing"] and all(entries for _, entries, _ in plib_sections),
       "%d against %d characters" % (len(plib), len(clib)))
 # The base (P8h): what the page opens on, and the plugin, and New starts from.
 pbase = rpage("--base").strip()

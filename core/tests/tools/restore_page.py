@@ -218,6 +218,12 @@ def main():
         page.evaluate("() => { applyGeneratorSound = async () => {}; }")
         page.clock.pause_at(1000)
         page.clock.run_for(700)
+        # The page opens on the base (P8h), a plain still sine; the core this
+        # is held to starts from the defaults, as the page did while it opened
+        # on Harmonic tone, which was the defaults and a timebase. So the page
+        # is put on the defaults first, the Picture amount named, since a
+        # setup that does not name it leaves it where it is.
+        page.evaluate("() => restore(Object.assign({}, DEFAULTS))")
         # The LFOs ran in those frames, and the core's have not: from one
         # radian both, so a phase the sync menu sets to nought can be seen
         # to be set - from nought, setting it to nought could not be seen.
