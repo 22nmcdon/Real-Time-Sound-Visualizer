@@ -24,6 +24,7 @@ Against the way each would fail:
 # braintest.py's and hosttest.py's.
 import math, os
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -57,6 +58,7 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- reading a column ---")

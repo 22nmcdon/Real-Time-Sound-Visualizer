@@ -90,6 +90,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -223,7 +224,15 @@ with sync_playwright() as pw:
       state.rotate = 0.125;
       state.zoom = 1; state.zoomStep = 0; state.zoomMod = 0;
     }""")
-    p.wait_for_timeout(700)
+    p.wait_for_timeout(500)
+    # The polyline is read up to the first (0, 0), and the pass never clears
+    # what lies past its end, so a longer window drawn earlier leaves its tail
+    # there to be read as part of this one. It did (P8h): the lanes walk came
+    # to end on a 20 ms preset, and the 10 ms circle was read with half a
+    # stale figure after it, stretched 0.33 where it is 0.25. Cleared here, and
+    # before every read below, then left a frame to fill.
+    p.evaluate("() => { beamX.fill(0); beamY.fill(0); }")
+    p.wait_for_timeout(200)
     drawn = p.evaluate("""() => {
       // beamX/beamY hold the polyline the X-Y pass last built, in canvas
       // pixels: the mapping is isotropic with y flipped, so the shape of the
@@ -524,6 +533,7 @@ with sync_playwright() as pw:
       state.rotateMod = 0;
 
       const f = capture();
+      beamX.fill(0); beamY.fill(0);
       drawXY(f, fitCanvas(el.trace), 16);
       const n = Math.min(2000, beamX.length);
       const xs = [], ys = [];
@@ -646,12 +656,14 @@ with sync_playwright() as pw:
       state.rotate = 0; state.rotateMod = 0;
       const flat = capture();
       const untouched = flat.channels === flat.signal && flat.turned === false;
+      beamX.fill(0); beamY.fill(0);
       drawXY(flat, fitCanvas(el.trace), 16);
       const before = read();
 
       state.rotate = 0.25;
       const turned = capture();
       const stillUntouched = turned.channels === turned.signal && turned.turned === false;
+      beamX.fill(0); beamY.fill(0);
       drawXY(turned, fitCanvas(el.trace), 16);
       const after = read();
 

@@ -17,6 +17,10 @@ written against however the bank changes.
 
     corpus.LIBRARY            [[section, [[name, setup, line], ...], kind], ...], PRESETS' shape
     corpus.setup(name)        one preset's setup, as a dict
+    corpus.old_opening(page)  after the page has loaded: put it on what it opened on until
+                              P8h - the defaults and a timebase, the Picture amount at its
+                              default unless ?picture=N holds it - and send it to the site's
+                              instrument, for a suite written against that opening
     corpus.install(page)      after the page has loaded: window.CORPUS (PRESETS' shape),
                               corpusSetup(name), and loadCorpus(name), which loads it as a
                               preset is loaded - restored, and sent to the site's
@@ -55,3 +59,21 @@ INSTALL = """(library) => {
 
 def install(page):
     page.evaluate(INSTALL, LIBRARY)
+
+
+# Until P8h the page opened on Harmonic tone, which was the defaults and a
+# timebase; it opens on the base now, a plain still sine in poly and X-Y. A
+# suite whose checks were written against the old opening - dyad, the
+# harmonic tone, Y-T, the stage at 60 - puts the page back there, rather than
+# every such check learning a new starting point that is meant to change by
+# ear. ?picture=N still holds the amount, as it held it through the old one.
+OLD_OPENING = """() => {
+  const s = Object.assign({}, DEFAULTS, { timebase: 3 });
+  if (pictureHeldByLink !== null) s.pictureAmount = pictureHeldByLink;
+  hostQuietly(() => restore(s));
+  hostSendSetup();
+}"""
+
+
+def old_opening(page):
+    page.evaluate(OLD_OPENING)

@@ -67,6 +67,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js&core=js"); p.wait_for_timeout(900)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -447,6 +448,7 @@ with sync_playwright() as pw:
         errs = []
         pp.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
         pp.goto(f"file://{ART}/scope.html"); pp.wait_for_timeout(1200)
+        corpus.old_opening(pp)  # the opening it was written against (P8h)
         corpus.install(pp)
         if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
         pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for

@@ -33,6 +33,7 @@ the layers off.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -68,6 +69,7 @@ with sync_playwright() as pw:
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(1200)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- unsplit, nothing changes ---")
@@ -242,6 +244,7 @@ with sync_playwright() as pw:
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     # The hands go to the instrument as a hand's would - clicks on its buttons
     # and changes on its menus - and what it measures comes back with its

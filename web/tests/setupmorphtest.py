@@ -95,11 +95,11 @@ with sync_playwright() as pw:
           and "Macros" not in gone["sections"], str(gone["ids"] + gone["sources"]))
     check("the morph keeps a section of its own, on Measure in the drawer", gone["morphHome"] == "measure"
           and gone["title"] == "Morph", "%s %s" % (gone["morphHome"], gone["title"]))
-    migrated = lambda r: (r["v"] == 6 and r["freq"] == 330 and r["mod"] == "lfo1>gen.amp@0.400"
+    migrated = lambda r: (r["v"] == 7 and r["freq"] == 330 and r["mod"] == "lfo1>gen.amp@0.400"
                           and not any(k in r for k in ("mac1", "mac3", "macroNames")))
     check("a version-5 code loses the macros' values, names and routes, and keeps the rest as written - "
           "read by the site's compiled codec and by the page's own",
-          gone["version"] == 6 and gone["codec"] == "wasm" and migrated(gone["read"]) and migrated(gone["readHere"])
+          gone["version"] == 7 and gone["codec"] == "wasm" and migrated(gone["read"]) and migrated(gone["readHere"])
           and gone["kept"] == ["lfo1>gen.amp"], "%s / %s / %s" % (gone["read"], gone["readHere"], gone["kept"]))
     check("null: the same code marked version 6 keeps its macro routes in both, so the pass is what took them",
           all("macro.1>gen.vcf@0.700" in r["mod"] and r.get("mac1") == 40 for r in (gone["stamped"], gone["stampedHere"])),

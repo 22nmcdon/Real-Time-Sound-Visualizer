@@ -49,6 +49,7 @@ and layertest do.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -99,6 +100,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate(BIN)
     core = lambda setup, rounds=8: p.evaluate(CORE, [setup, rounds])
@@ -406,6 +408,7 @@ with sync_playwright() as pw:
     p = b.new_page(viewport={"width": 1400, "height": 900})
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(900)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     inst = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));

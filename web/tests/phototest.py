@@ -88,6 +88,7 @@ with sync_playwright() as pw:
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -476,6 +477,7 @@ with sync_playwright() as pw:
     # read about 0.02 and moved nothing. The fixture has to show that dark spot
     # first, or a pass below would prove nothing about the landing.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(900)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     land = p.evaluate("""async () => {

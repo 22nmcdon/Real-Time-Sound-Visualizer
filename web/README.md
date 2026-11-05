@@ -4908,3 +4908,16 @@ a chord released unevenly unless it guesses a time window. Every rule is a
 guess about which notes belong together, and the sustain pedal is told. It
 went a day after it was built, with a version-7 decode pass for codes saved
 in between; latchtest.py now holds its absence and the pedal doing its job.
+
+**What a check reads out of a buffer the page reuses has to end where the
+page's own count does.** rotatetest read the X-Y polyline out of `beamX` and
+`beamY` up to the first (0, 0), and the pass writes only as many points as
+this frame's window and leaves the rest. When P8h's opening change put a
+20 ms preset before its circle, the 10 ms circle was read with the tail of
+the 20 ms figure behind it, and its stretch came out 0.33 where it is 0.25 -
+which looked like the window not shrinking on a restore, and cost an
+afternoon proving it did. The suites that read it now clear both arrays
+first. looptest had the same shape of fault in time rather than space: each
+seed opened on the screen the one before left, and a seed that opened with
+the pitch total already at its bound could not be seen to move it; each seed
+now starts from a dark screen.

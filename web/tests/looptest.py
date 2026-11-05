@@ -34,6 +34,7 @@ suite is run while working and a minute per seed would double this file.
 # braintest.py's and hosttest.py's.
 import math, os, sys
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -55,6 +56,7 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
@@ -288,8 +290,14 @@ with sync_playwright() as pw:
       toTone(); setDisplay('xy');
       genSet('shape', 'harmonic'); genSet('interval', 7); genSet('just', false);
       genSet('freq', 220);
-      if (seed === 'silence') { genSet('amp', 0.0); el.clearButton.click(); }
-      else { genSet('amp', 1.0); }
+      genSet('amp', seed === 'silence' ? 0.0 : 1.0);
+      /* Every seed from a dark screen, not only silence. A seed run on the
+         same page as the one before it otherwise opened on that one's
+         picture, and the phaser's did once (P8h) with the screen still full
+         and the pitch total already at its bound, so it never moved and the
+         check below read a running loop as a dead one. From dark the totals
+         have to climb, which a dead loop cannot do. */
+      el.clearButton.click();
       state.persistence = 0.04; el.persistence.value = '0.04';
       // The filter on, resonant, in the speakers' path.
       state.filter.on = true; el.filterOn.checked = true; el.filterOn.dispatchEvent(new Event('change'));
@@ -446,6 +454,7 @@ with sync_playwright() as pw:
     p2 = b.new_page(viewport={"width": 1400, "height": 900})
     p2.on("pageerror", lambda e: bad.append("pageerror (Scan's page): " + str(e)))
     p2.goto(f"file://{ART}/scope.html?brain=js&core=js"); p2.wait_for_timeout(700)
+    corpus.old_opening(p2)  # the opening it was written against (P8h)
     if p2.locator("#helpClose").is_visible(): p2.locator("#helpClose").click()
     p2.wait_for_timeout(200)
     p2.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")

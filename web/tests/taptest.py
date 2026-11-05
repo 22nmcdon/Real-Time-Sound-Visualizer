@@ -435,6 +435,9 @@ with sync_playwright() as pw:
       const shapeOf = eval(shape);
       const drawnAngle = () => {
         const f = capture();
+        // Read up to the first (0, 0), so a longer earlier frame's tail is
+        // cleared first (rotatetest, P8h).
+        beamX.fill(0); beamY.fill(0);
         drawXY(f, fitCanvas(el.trace), 16);
         const n = Math.min(2000, beamX.length);
         const xs = [], ys = [];
