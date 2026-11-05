@@ -107,7 +107,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "makeOsc", "wrapJump", "oscStep", "makeVoiceFx", "voiceFxFor", "unisonAsked", "lowpassTaps",
                          "shapeTaps", "shDrive", "shapeFactor", "shapeSample", "setShaping", "makeShaper", "shaperOf",
                          "makeCrush", "crushStep", "KEY_REF", "makeVcf", "vcfHz", "vcfCoef", "CUT_SAMPLES", "fenvView",
-                         "fviewA", "POLY_TAILS", "POLY_LEAN", "POLY_INNER", "ROLES", "chordMoved", "reconcileVoices", "sound"],
+                         "fviewA", "POLY_TAILS", "POLY_LEAN", "POLY_INNER", "ROLES", "ROUND_RING", "roundsRole", "chordMoved", "reconcileVoices", "sound"],
                         rate, mulberry32(n("seed")), { tone, toneB });
     c.__set("qMaskNow", n("qmask")); c.__set("qGlide", n("qglide")); c.__set("shapeFactor", n("factor"));
     const x = c.makeVoiceFx();
