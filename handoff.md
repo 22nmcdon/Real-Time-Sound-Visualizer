@@ -110,14 +110,14 @@ is below, in order. The listening notes this plan refers to follow it.
    together, since smoothing is designed around the control rate. Parity run
    at 128, 512 and 2048 frame host blocks, which should fail today.
 4. **The removals:** Kaleidoscope, Snap below 5 bits (notes 2 and 3).
-5. **The face, as a design stage from mockups.** For the plugin window from
-   its minimum (960x600, where the Bench is about 125 px today) up; the site
-   on a phone falls back to something that stacks and scrolls, and does not
-   shape the design. Direction: the screen in the middle, the nine host knobs
-   as a strip always on show in place of the measurement readout, the scope's
-   tools in an overlay, envelopes and LFOs on show. The brief is the layout
-   rules in CLAUDE.md (tabs along the loop, no tab scrolls, the drawer).
-   First, check the audit's claim that automation makes the face reload its
+5. **The face, as a design stage from mockups.** *Designed with the owner,
+   6 Nov:* the brief is `web/docs/redesigning-the-face.md`, stages F1-F8,
+   with pictures of every region. For the plugin window from its minimum
+   (960x600) up; the site on a phone stacks and scrolls and does not shape
+   it. It supersedes the direction first written here: no strip of host
+   knobs (it would have copied controls), no drawer, three tabs and the
+   Picture along the bottom, and it says which CLAUDE.md layout rules it
+   retires. First, check the audit's claim that automation makes the face reload its
    whole setup four times a second (`hostVersion_` and `hostPull`); fixing it
    may change how the face feels more than a layout does.
 6. **The schema:** one table that generates the setup field lists (DEFAULTS,
