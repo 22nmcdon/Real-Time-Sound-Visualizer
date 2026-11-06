@@ -117,9 +117,13 @@ with sync_playwright() as pw:
     # cent of its screen reads a large relative change from the tail of the
     # notes it has just let go, so change alone is noise there; what moves is
     # how much lit screen changes. Twenty times, and five times the coverage.
+    # The floor under the moving screen's change is only that it changes at
+    # all: it read 0.016 to 0.13 over five runs, and a still dot's change
+    # read up to 0.134, so it is the two ratios that tell them apart. The
+    # floor was 0.02, and the moving screen failed it once at 0.016 (6 Nov).
     act = lambda x: x["cover"] * x["change"]
     def follows(r, moving, still):
-        return (r["live"] and r[moving]["change"] > 0.02 and act(r[moving]) > 20 * act(r[still])
+        return (r["live"] and r[moving]["change"] > 0.01 and act(r[moving]) > 20 * act(r[still])
                 and r[moving]["cover"] > 5 * r[still]["cover"])
     check("with B silent, A's screen moves and B's does not", follows(a_moves, "a", "b"), str(a_moves))
     check("and with A silent, B's moves and A's does not", follows(b_moves, "b", "a"), str(b_moves))

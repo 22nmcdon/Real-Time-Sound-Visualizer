@@ -9,7 +9,6 @@
 #include <atomic>
 #include <cmath>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -169,21 +168,22 @@ class CycleCache {
 
   void warm(const CyclePoints& points) {
     {
-      const std::lock_guard<std::mutex> lock(mutex_);
+      const Held held(busy_);
       if (find(points)) return;
     }
     auto built = std::make_shared<const CycleTables>(cycleTables(points));
-    const std::lock_guard<std::mutex> lock(mutex_);
+    const Held held(busy_);
     if (find(points)) return;
     entries_.push_back({ points, std::move(built) });
     if (entries_.size() > kMost) entries_.erase(entries_.begin());
   }
 
   std::shared_ptr<const CycleTables> take(const CyclePoints& points) {
-    const std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
-    if (!lock.owns_lock()) return nullptr;
+    if (busy_.exchange(true, std::memory_order_acquire)) return nullptr;
     const Entry* e = find(points);
-    return e ? e->tables : nullptr;
+    auto out = e ? e->tables : nullptr;
+    busy_.store(false, std::memory_order_release);
+    return out;
   }
 
  private:
@@ -193,7 +193,15 @@ class CycleCache {
     for (const auto& e : entries_) if (e.points == points) return &e;
     return nullptr;
   }
-  std::mutex mutex_;
+  /* A spin lock rather than std::mutex, which the page's WebAssembly build
+     has no threads for. Held only to look and to add; the audio thread only
+     ever tries it, once, and a thread that may wait spins. */
+  struct Held {
+    std::atomic<bool>& busy;
+    explicit Held(std::atomic<bool>& b) : busy(b) { while (busy.exchange(true, std::memory_order_acquire)) {} }
+    ~Held() { busy.store(false, std::memory_order_release); }
+  };
+  std::atomic<bool> busy_ { false };
   std::vector<Entry> entries_;
 };
 
