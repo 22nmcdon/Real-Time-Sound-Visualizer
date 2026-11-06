@@ -104,6 +104,7 @@ DUMP = """(setups) => {
       b: tone(genSettings(1), ["cycle", "wavetable", "voices", "scanTable"]),
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
               polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
+              bendRange: midi.bendRange, wheelTo: midi.wheelTo, pressureTo: midi.pressureTo,
               play: midi.play, cc: encodeCC() },
       // The interval twice: the core's panel and its keyboard each keep one,
       // where the page's keyboard reads the menu as a number.

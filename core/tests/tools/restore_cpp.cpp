@@ -67,6 +67,7 @@ Json toneJson(const scope::Tone& t) {
   Json o = layerJson(t);
   o.set("mode", str(t.modeName)); o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
   o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase)); o.set("polyRound", flag(t.polyRound));
+  o.set("pitchBend", num(t.pitchBend)); o.set("vibrato", num(t.vibrato));
   o.set("figure", str(t.figureName)); o.set("detail", num(t.detail)); o.set("figureRate", num(t.figureRate));
   o.set("swingRate", num(t.swingRate)); o.set("decay", num(t.decay)); o.set("swingDrive", num(t.swingDrive));
   o.set("inputMode", num(t.inputMode)); o.set("inputDepth", num(t.inputDepth)); o.set("inputFrom", str(t.inputFromName));
@@ -218,6 +219,9 @@ int main(int argc, char** argv) {
     midi.set("layers", layers);
     midi.set("polyJust", flag(k.polyJust)); midi.set("hold", flag(k.hold));
     midi.set("truth", flag(k.truth)); midi.set("follow", flag(k.follow));
+    midi.set("bendRange", num(keys.bendRange()));
+    midi.set("wheelTo", str(scope::utf16To8(scope::expressName(keys.wheelTo()))));
+    midi.set("pressureTo", str(scope::utf16To8(scope::expressName(keys.pressureTo()))));
     Json drive = Json::object(), play = Json::object();
     const char* kinds[] = { "wave", "harmonograph", "figure", "wireframe" };
     for (int i = 0; i < 4; i++) drive.set(kinds[i], flag(k.drive[static_cast<std::size_t>(i)]));
