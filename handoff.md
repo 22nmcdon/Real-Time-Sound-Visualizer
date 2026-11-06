@@ -64,6 +64,48 @@ Known about the bank, for whoever tunes it:
 - The old library (268) is a test corpus: `core/tests/scenarios/
   library-p8f.json`, `web/tests/corpus.py`, the shell test's `corpusSetup`.
 
+## The owner's notes from the second round (not started)
+
+Heard after P8h; written down before any work, with a first read of the code.
+
+1. **The quarter turn pops in the left ear going from two notes to one, and
+   some of the sound in an ear drops when a note is added.** Only with the
+   switch on. First read: a voice writes its quarter-period ring only while
+   its turn is above nought, so a note that was one of two and becomes the
+   lone note starts reading a ring last written whenever it was last alone,
+   and the turn comes up in 4 ms (`roleGlide`) - a step, i.e. a click. And
+   the turn is a straight crossfade between the wave and itself a quarter
+   later, two signals 90 degrees apart, which dips about 3 dB halfway (only
+   while it glides). A drop that lasts would be something else - measure each
+   ear one note to two, switch on and off. Likely fix: write the ring always
+   (it is cheap), and crossfade with a sine/cosine law, which holds a sine's
+   level exactly because the two are in quadrature. Page, then core, parity.
+2. **Kaleidoscope sounds terrible; remove it.** It folds every point's angle
+   into a wedge: a hard reflection at each wedge edge, so harsh, aliasing
+   harmonics on anything that turns. Removal is a cut like P5's: the menu,
+   page and core, a version-8 decode pass dropping `planeKaleido`, parity's
+   and the corpus's users (six old presets used it, the corpus keeps them as
+   they were).
+3. **Snap at 6 and 5 bits is good; below that silent or terrible.** Snap
+   rounds both channels to a step of full scale (`Math.round(x / step)`), a
+   mid-tread quantiser: anything under half a step rounds to nought, so a
+   signal below full scale goes silent at 1 and 2 bits, and 3 and 4 are a few
+   levels of a sine - square, harsh. Remove 4 and below as asked. Worth asking
+   whether the voice's Crush (8, 6, 4, 3, 2, 1 bits, the same quantiser) wants
+   the same; and later, maybe, a quantiser that never goes silent.
+4. **Radial at radius 0.2 has a good, quieter, distorted character.** Keep;
+   a candidate for a preset, and perhaps the radius's range or default should
+   make 0.2 easy to land on.
+5. **The delay's Sync, anything but Free, sounds distorted, flangery and
+   harsh. Broken.** First read: synced, the delay time is worked out from the
+   tempo every clock step and re-sent when it changes, and the delay read
+   head glides over 50 ms to each new time. A read head kept moving is a
+   flanger, which is the sound described; so something is changing the time
+   over and over - two writers disagreeing (the page's tempo against the
+   instrument's own), or a tempo that wobbles. Measure the delay time and
+   read position on the site's instrument with Sync on before guessing
+   further. Eight old presets used a synced delay.
+
 ## Decisions to keep
 
 - Score voice heard, never drawn (P4, re-measured in P7c). The one untried
