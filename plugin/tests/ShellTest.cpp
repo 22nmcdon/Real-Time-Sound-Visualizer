@@ -2323,9 +2323,16 @@ int main() {
     juce::MemoryBlock earlySaved;
     early.getStateInformation(earlySaved);
     const std::string earlyCode(static_cast<const char*>(earlySaved.getData()), earlySaved.getSize());
+    // Less the face's window, which a saved state carries beside the setup.
+    const auto unwindowed = [&](const std::string& code) {
+      auto d = scope::decodeSetup(code);
+      if (d.kind != scope::DecodedSetup::Kind::Read) return std::string("unread");
+      d.setup.erase(u"pluginWindow");
+      return scope::utf16To8(scope::jsonStringify(d.setup));
+    };
     check("saved before it has played a block, it saves the state it was handed",
-          ownCode && !earlyCode.empty() && setupOf(earlyCode) == setupOf(*ownCode),
-          earlyCode.empty() ? "saved nothing" : setupOf(earlyCode).substr(0, 120));
+          ownCode && !earlyCode.empty() && unwindowed(earlyCode) == unwindowed(*ownCode),
+          earlyCode.empty() ? "saved nothing" : unwindowed(earlyCode).substr(0, 120));
     check("null: that state is not what the opening saves", ownCode && setupOf(*ownCode) != setupOf(bare.pageState().code));
 
     /* Saved while it plays, as hosts do for autosave and undo, from another
@@ -2363,6 +2370,106 @@ int main() {
     check("saved again and again from another thread while a note plays, no block goes silent and the note-off is kept",
           saves.load() > 20 && silent == 0 && tail == 0,
           std::to_string(saves.load()) + " saves, " + std::to_string(silent) + " silent blocks while held, " + num(tail) + " at the end");
+
+    /* A drawn cycle's tables are half a million sines and cosines, 7 to 8 ms,
+       and a preset with one, or a cycle drawn by hand, had them built on the
+       audio thread as it landed. Counted rather than timed: built as each is
+       handed over, on the thread that hands it, and none while the blocks
+       that load them play. Each cycle one nobody has drawn in this run, so
+       neither can have been built already: an old preset's sound carrying a
+       sine cubed, then a sine to the fifth drawn by hand. */
+    ScopeProcessor drawing;
+    drawing.prepareToPlay(rate, block);
+    const auto playBlocks = [&](ScopeProcessor& p, int n) {
+      juce::AudioBuffer<float> b(2, block);
+      for (int k = 0; k < n; ++k) { b.clear(); juce::MidiBuffer m; p.processBlock(b, m); }
+    };
+    playBlocks(drawing, 2);
+    const auto unheard = [](int power) {
+      scope::CyclePoints c(scope::kCyclePoints);
+      for (std::size_t i = 0; i < c.size(); ++i)
+        c[i] = std::pow(std::sin(2 * 3.141592653589793 * static_cast<double>(i) / static_cast<double>(c.size())), power);
+      return c;
+    };
+    scope::Json drawnPreset = corpusSetup("A drawn cycle");
+    drawnPreset.set("cycle", scope::Json::string(std::string_view(scope::encodeCycle(unheard(3)))));
+    const auto drawnCode = scope::encodeSetup(drawnPreset);
+    const long atStart = scope::cycleTablesBuilt().load();
+    if (drawnCode) drawing.pageSetup(*drawnCode);
+    const long presetHanded = scope::cycleTablesBuilt().load();
+    playBlocks(drawing, 3);
+    const long presetPlayed = scope::cycleTablesBuilt().load();
+    const std::string drawnText = "{\"cycle\":\"" + scope::encodeCycle(unheard(5)) + "\"}";
+    drawing.pageControl("drawn", scope::Json::string(std::string_view(drawnText)));
+    const long handHanded = scope::cycleTablesBuilt().load();
+    playBlocks(drawing, 3);
+    const long handPlayed = scope::cycleTablesBuilt().load();
+    check("a preset with a drawn cycle, and a cycle drawn by hand, have their tables built as they are handed over and none as the audio thread loads them",
+          drawnCode && presetHanded > atStart && presetPlayed == presetHanded && handHanded > presetPlayed && handPlayed == handHanded
+          && drawing.tone().shape == scope::Shape::Drawn,
+          "built " + std::to_string(presetHanded - atStart) + " handing the preset over, " + std::to_string(presetPlayed - presetHanded)
+          + " playing it; " + std::to_string(handHanded - presetPlayed) + " handing the drawing over, " + std::to_string(handPlayed - handHanded) + " playing it");
+
+    /* The tail a host is told: the release, and the echo's repeats until
+       they are 60 dB down. Half a second whatever the echo did, before; a
+       host that stops a silent track's processing cut the echoes off. */
+    ScopeProcessor echoing;
+    echoing.prepareToPlay(rate, block);
+    playBlocks(echoing, 1);
+    const double dry = echoing.getTailLengthSeconds();
+    echoing.pageSlider("delayMix", u"50");
+    echoing.pageSlider("delayFeedback", u"60");
+    echoing.pageSlider("delayMs", u"375");
+    playBlocks(echoing, 2);
+    const double wet = echoing.getTailLengthSeconds();
+    const double repeats = std::log(0.001) / std::log(0.6);
+    const double wantWet = dry + 0.375 * (repeats + 1);
+    check("the tail the host is told is the release, and with the echo on, its repeats until 60 dB down",
+          dry > 0 && dry < 2.5 && std::fabs(wet - wantWet) < 0.01, "dry " + num(dry) + " s, with the echo " + num(wet) + " s, wanted " + num(wantWet));
+    check("null: the echo's tail is not the half second it used to be", std::fabs(wet - 0.5) > 1);
+
+    /* The bank as the host's programs, the plain sine first; choosing one
+       loads it; the one already chosen chosen again changes nothing, which
+       is what keeps a project whose host re-selects its program as it opens. */
+    ScopeProcessor programs;
+    programs.prepareToPlay(rate, block);
+    const int count = programs.getNumPrograms();
+    int organ = -1;
+    for (int k = 0; k < count; ++k) if (programs.getProgramName(k) == "Drawbar organ") organ = k;
+    programs.setCurrentProgram(organ);
+    playBlocks(programs, 1);
+    const std::string asOrgan = setupOf(programs.pageState().code);
+    if (ownCode) programs.setStateInformation(ownCode->data(), static_cast<int>(ownCode->size()));
+    playBlocks(programs, 1);
+    programs.setCurrentProgram(programs.getCurrentProgram());
+    playBlocks(programs, 1);
+    const std::string afterReselect = setupOf(programs.pageState().code);
+    check("the host sees the bank as programs, the plain sine first, and choosing one loads it",
+          count == 1 + static_cast<int>(scope::presets().size()) && programs.getProgramName(0) == "Plain sine" && organ > 0
+          && asOrgan.find("drawbars") != std::string::npos && programs.getCurrentProgram() == organ,
+          std::to_string(count) + " programs; the organ at " + std::to_string(organ));
+    check("and a project restored, then its program chosen again as some hosts do, is kept",
+          afterReselect.find("Drawbar 1") != std::string::npos && afterReselect.find("drawbars") == std::string::npos,
+          afterReselect.substr(0, 100));
+
+    /* The face's window: a size that fits a 1366x768 laptop with a host's
+       frame round it, and the size it was left at kept with the project. */
+    ScopeProcessor windowed;
+    windowed.prepareToPlay(rate, block);
+    const auto [w0, h0] = windowed.windowSize();
+    windowed.setWindowSize(1111, 777);
+    playBlocks(windowed, 1);
+    juce::MemoryBlock withWindow;
+    windowed.getStateInformation(withWindow);
+    ScopeProcessor rewindowed;
+    rewindowed.setStateInformation(withWindow.getData(), static_cast<int>(withWindow.getSize()));
+    rewindowed.prepareToPlay(rate, block);
+    playBlocks(rewindowed, 1);
+    const auto [w1, h1] = rewindowed.windowSize();
+    check("the face opens inside a 1366x768 laptop's screen, and a project reopens it at the size it was left",
+          w0 <= 1300 && h0 <= 700 && w0 >= 960 && h0 >= 600 && w1 == 1111 && h1 == 777
+          && setupOf(rewindowed.pageState().code).find("pluginWindow") == std::string::npos,
+          std::to_string(w0) + "x" + std::to_string(h0) + " at first, reopened " + std::to_string(w1) + "x" + std::to_string(h1));
   }
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");

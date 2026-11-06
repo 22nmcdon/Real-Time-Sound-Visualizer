@@ -42,13 +42,32 @@ class ScopeProcessor final : public juce::AudioProcessor {
   bool acceptsMidi() const override { return true; }
   bool producesMidi() const override { return true; }
   bool isMidiEffect() const override { return false; }
-  double getTailLengthSeconds() const override { return 0.5; }
+  /* How long it goes on after the last note: the longer release of the two
+     layers, and the echo's repeats until they are 60 dB down. It was half a
+     second whatever the echo did, so a host that stops processing a silent
+     track cut the echoes off. Worked out on the audio thread as the setup
+     changes (`tailFor`) and read from wherever the host asks. A known limit:
+     layer B's own echo, and a loop that keeps itself going under Scan, are
+     not counted; the second has no end to report. */
+  double getTailLengthSeconds() const override { return tail_.load(); }
+  static double tailFor(const scope::Tone& a, const scope::LayerSettings& b);
 
-  int getNumPrograms() override { return 1; }
-  int getCurrentProgram() override { return 0; }
-  void setCurrentProgram(int) override {}
-  const juce::String getProgramName(int) override { return {}; }
+  /* The bank as the host's programs (6 Nov): the plain sine the plugin opens
+     on, then the bank in the browser's order. A program chosen is a state
+     handed over, as a project's is. The one already chosen chosen again is
+     nothing: some hosts set the current program straight after restoring a
+     project, which would otherwise put the project back to the plain sine. */
+  int getNumPrograms() override { return 1 + static_cast<int>(scope::presets().size()); }
+  int getCurrentProgram() override { return program_.load(); }
+  void setCurrentProgram(int index) override;
+  const juce::String getProgramName(int index) override;
   void changeProgramName(int, const juce::String&) override {}
+
+  /* The face's window: the size it was last left at, kept with the project
+     ("pluginWindow" in the state, which the instrument never sees). */
+  static constexpr int kWindowW = 1200, kWindowH = 680;  // inside a 1366x768 laptop with a host's frame
+  void setWindowSize(int w, int h) { windowW_.store(w); windowH_.store(h); }
+  std::pair<int, int> windowSize() const { return { windowW_.load(), windowH_.load() }; }
 
   /* The plugin's state is a setup code, the thing the page shares: the
      setup it was loaded with, and over it what has moved since - every
@@ -190,6 +209,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   mutable juce::SpinLock publishLock_;
   PageState published_;
   std::atomic<double> rate_ { 48000.0 };
+  std::atomic<double> tail_ { 0.5 };
+  std::atomic<int> program_ { 0 };
+  std::atomic<int> windowW_ { kWindowW }, windowH_ { kWindowH };
   juce::String pictureReport_;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeProcessor)

@@ -2273,6 +2273,36 @@ bookkeeping, which needs either the state double-buffered or its encoding
 moved to the message thread with the instrument's state copied across. And
 the picture's capture and walk, each frame. Those are the next of these.
 
+6 November, after an outside review against standard synths, measured
+before anything moved: the state's encode at a changed block's end is 1 to 4
+microseconds (allocating, but no time to speak of), a host parameter's hand
+the same order; a preset load with a drawn cycle, or the first after one,
+was 7 to 8 ms - most of a 512-frame block - because the cycle's tables are
+half a million sines and cosines. So the tables moved and the bookkeeping
+stayed: `CycleCache` (cycles.h) keeps built tables by their points, the
+message thread builds them as a setup, a program or a drawing is handed over
+and `prepare` builds the defaults, and the audio thread only looks, never
+waiting for the cache's lock. The arithmetic is the page's as before, so
+parity is untouched. The shell test counts the builds: one at each
+hand-over, none while the blocks that load them play, and with the warming
+taken out the audio thread builds them again (the null). The bookkeeping's
+allocations go with stepping the core in fixed 128-sample pieces, which
+reshapes `block()` anyway (handoff.md, step 3). A new controller's first
+message allocates nothing in the keyboard - its list is reserved for 128 and
+every name it gives fits a string's own buffer; what follows it is the
+state's publishing, the same bookkeeping.
+
+The same day: a second prepare keeps the sound (it was built again on the
+opening one), a save before the first block saves the state handed over (it
+saved nothing), a save never takes the audio thread's lock (each block that
+found it held was silent with its MIDI dropped), and `prepare` empties the
+capture ring, which had outlived it at the old rate. The bank is the host's
+programs, with the plain sine first; the tail follows the release and the
+echo; MIDI out is declared; the window opens at 1200x680 and is kept with the
+project as "pluginWindow"; and a computer with no web view is told so rather
+than shown a blank window. Not seen in a host here: the MIDI out, and the
+no-web-view message, which needs a Windows without WebView2.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

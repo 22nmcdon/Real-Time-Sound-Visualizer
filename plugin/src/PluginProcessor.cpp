@@ -61,11 +61,23 @@ bool ScopeProcessor::queue(std::optional<scope::Instrument::Command> command) {
 }
 
 void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& text) { queue(scope::Instrument::slider(id, text)); }
-void ScopeProcessor::pageControl(const std::string& id, scope::Json value) { queue(scope::Instrument::control(id, std::move(value))); }
+/* A drawing made by hand arrives a few times a second while it is drawn, and
+   a drawn cycle's tables are milliseconds to build: built here, on the
+   message thread, so the audio thread finds them made (CycleCache). */
+void ScopeProcessor::pageControl(const std::string& id, scope::Json value) {
+  if (id == "drawn" && value.type == scope::Json::Type::String)
+    if (const auto part = scope::jsonParse(value.s)) scope::warmCycles(*part);
+  queue(scope::Instrument::control(id, std::move(value)));
+}
 void ScopeProcessor::pageClick(const std::string& id) { queue(scope::Instrument::click(id)); }
 void ScopeProcessor::pageFade(std::string_view json) { queue(scope::Instrument::fade(json)); }
 void ScopeProcessor::pageRoutings(std::string_view text) { queue(scope::Instrument::routings(text)); }
-bool ScopeProcessor::pageSetup(std::string_view code) { return queue(scope::Instrument::setup(code)); }
+// A preset from the page: its drawn cycles built here first, as a drawing's are.
+bool ScopeProcessor::pageSetup(std::string_view code) {
+  const auto decoded = scope::decodeSetup(code);
+  if (decoded.kind == scope::DecodedSetup::Kind::Read) scope::warmCycles(decoded.setup);
+  return queue(scope::Instrument::setup(code));
+}
 
 ScopeProcessor::PageState ScopeProcessor::pageState() const {
   const juce::SpinLock::ScopedLockType lock(publishLock_);
@@ -118,14 +130,62 @@ void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
   } else {
     code = pageState().code;
   }
+  // The face's window, which is the plugin's and not the setup's.
+  if (!code.empty()) {
+    auto decoded = scope::decodeSetup(code);
+    if (decoded.kind == scope::DecodedSetup::Kind::Read && decoded.setup.type == scope::Json::Type::Object) {
+      const auto [w, h] = windowSize();
+      decoded.setup.set("pluginWindow", scope::Json::string(std::string_view(std::to_string(w) + "x" + std::to_string(h))));
+      if (const auto encoded = scope::encodeSetup(decoded.setup)) code = *encoded;
+    }
+  }
   out.append(code.data(), code.size());
+}
+
+void ScopeProcessor::setCurrentProgram(int index) {
+  if (index < 0 || index >= getNumPrograms() || index == program_.load()) return;
+  program_.store(index);
+  const scope::Json& setup = index == 0 ? scope::baseSetup() : scope::presets()[static_cast<std::size_t>(index - 1)].setup;
+  scope::warmCycles(setup);
+  const juce::SpinLock::ScopedLockType lock(stateLock_);
+  pending_ = setup;
+}
+
+const juce::String ScopeProcessor::getProgramName(int index) {
+  // The base's name is the page's BASE_NAME; the core keeps the setup and not the name.
+  if (index == 0) return "Plain sine";
+  if (index < 0 || index >= getNumPrograms()) return {};
+  return juce::String(scope::presets()[static_cast<std::size_t>(index - 1)].name);
+}
+
+double ScopeProcessor::tailFor(const scope::Tone& a, const scope::LayerSettings& b) {
+  double tail = std::fmax(a.env.releaseMs, b.env.releaseMs) / 1000;
+  if (a.delayMix > 0) {
+    const double fb = std::fmax(0.0, std::fmin(0.9, a.delayFeedback));
+    const double repeats = fb > 0 ? std::log(0.001) / std::log(fb) : 1;
+    tail += a.delayMs / 1000 * (repeats + 1);
+  }
+  return std::fmin(60.0, tail);
 }
 
 void ScopeProcessor::setStateInformation(const void* data, int size) {
   const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(data), static_cast<std::size_t>(size)));
   if (decoded.kind != scope::DecodedSetup::Kind::Read) return;
+  scope::Json setup = decoded.setup;
+  if (setup.type == scope::Json::Type::Object) {
+    if (const scope::Json* window = setup.get("pluginWindow"); window && window->type == scope::Json::Type::String) {
+      const std::string text = scope::utf16To8(window->s);
+      const auto x = text.find('x');
+      if (x != std::string::npos) {
+        const int w = std::atoi(text.substr(0, x).c_str()), h = std::atoi(text.substr(x + 1).c_str());
+        if (w >= 960 && h >= 600 && w <= 2560 && h <= 1600) setWindowSize(w, h);
+      }
+    }
+    setup.erase("pluginWindow");
+  }
+  scope::warmCycles(setup);  // here rather than as the audio thread loads it
   const juce::SpinLock::ScopedLockType lock(stateLock_);
-  pending_ = decoded.setup;
+  pending_ = std::move(setup);
 }
 
 bool ScopeProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -168,6 +228,7 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
                         : preset ? preset->setup : scope::baseSetup());
     pending_.reset();
   }
+  tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
   publish(true);  // for a page that asks before the first block
   /* For looking at it without a keyboard: SCOPE_HOLD_NOTE=57 holds A3 from
      the start, and SCOPE_HOLD_NOTE=57,64 a fifth on it, so the standalone has
@@ -241,6 +302,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   // The host's notes are spent; what goes back is what the out sent.
   midi.swapWith(outgoing_);
   outgoing_.clear();
+  if (instrument_.changed()) tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
   publish(false);
 }
 

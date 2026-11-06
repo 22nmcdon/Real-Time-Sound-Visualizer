@@ -70,8 +70,10 @@ An outside review against standard synths (Serum, Vital, Pigments, Phase
 Plant) was checked in the code; what it found and the owner and Claude agreed
 is below, in order. The listening notes this plan refers to follow it.
 
-1. **The plugin's state, and the audio thread.** Before anyone uses it in a
-   project. Tests first, each seen to fail on today's code:
+1. **The plugin's state, and the audio thread.** *Done 6 Nov except the
+   bookkeeping's allocations, which moved to step 3 (plugin/PLAN.md, after
+   5v, has the measurements).* Before anyone uses it in a project. Tests
+   first, each seen to fail on today's code:
    - A second `prepareToPlay` (a host's sample-rate or device change, a
      reactivation) rebuilds on the base sine and loses the preset, routings
      and learned controllers. Re-prepare from the current state. The shell
@@ -92,7 +94,9 @@ is below, in order. The listening notes this plan refers to follow it.
      blank editor when the WebView fails.
 2. **The owner's broken sounds:** the delay's Sync and the quarter turn's pop
    (notes 5 and 1 below).
-3. **Playing basics:** pitch bend with a range, renaming the geometry's
+3. **Playing basics** (and, with the fixed steps, the state's bookkeeping
+   off the audio thread: the encode at a changed block's end, 1 to 4 us, and
+   a host parameter's hand - small, but allocating): pitch bend with a range, renaming the geometry's
    *Bend*, a default target for the mod wheel, channel pressure; then
    parameter smoothing **and** stepping the core in fixed 128-sample pieces,
    together, since smoothing is designed around the control rate. Parity run

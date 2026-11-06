@@ -31,7 +31,7 @@ juce_add_plugin(ScopeInstrument
   PLUGIN_CODE Scop
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
-  NEEDS_MIDI_OUTPUT FALSE
+  NEEDS_MIDI_OUTPUT TRUE
   IS_MIDI_EFFECT FALSE
   EDITOR_WANTS_KEYBOARD_FOCUS TRUE
   # The page is the UI: WebKitGTK on Linux, WebView2 linked statically on Windows.

@@ -93,14 +93,33 @@ ScopeEditor::ScopeEditor(ScopeProcessor& owner)
     : AudioProcessorEditor(owner),
       processor_(owner),
       browser_(browserOptions([this](const juce::String& path) { return scopeResource(path, processor_); }, owner)) {
-  addAndMakeVisible(browser_);
+  /* Without a web view there is no face: Windows without the WebView2
+     runtime, a Linux without WebKitGTK. It used to be a blank window; it says
+     so now, and that the sound and the host's parameters go on working. */
+  const bool supported = juce::WebBrowserComponent::areOptionsSupported(
+      browserOptions([](const juce::String&) { return std::optional<juce::WebBrowserComponent::Resource> {}; }, owner));
+  if (supported) {
+    addAndMakeVisible(browser_);
+  } else {
+    missing_.setText("The plugin's face is a web page, and this computer has no web view for it to open in"
+                     " (on Windows, Microsoft's WebView2 runtime). The instrument still plays, and the host's"
+                     " parameters and presets still work.", juce::dontSendNotification);
+    missing_.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(missing_);
+  }
   setResizable(true, true);
   setResizeLimits(960, 600, 2560, 1600);
-  setSize(1400, 900);
-  browser_.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+  // Where it was left, or a size inside a 1366x768 laptop's screen with a host's frame round it.
+  const auto [w, h] = owner.windowSize();
+  setSize(w, h);
+  if (supported) browser_.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 }
 
-void ScopeEditor::resized() { browser_.setBounds(getLocalBounds()); }
+void ScopeEditor::resized() {
+  browser_.setBounds(getLocalBounds());
+  missing_.setBounds(getLocalBounds().reduced(40));
+  processor_.setWindowSize(getWidth(), getHeight());
+}
 
 std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::String& path, const ScopeProcessor& processor) {
   if (path == "/" || path == "/index.html" || path == "/scope.html") {

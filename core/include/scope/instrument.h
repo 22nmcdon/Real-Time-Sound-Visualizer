@@ -131,6 +131,10 @@ class Instrument {
     lfos_[0].rate = 0.2; lfos_[0].depth = 0.5;
     lfos_[1].rate = 0.5; lfos_[1].depth = 0.3;
     scan_ = std::make_unique<ScanReader>();  // its tables made here, off the audio thread
+    // The default cycles' tables, and the setup's own, built here rather than
+    // by a load on the audio thread later (CycleCache).
+    for (int k = 0; k < static_cast<int>(kCycleSlots); k++) CycleCache::shared().warm(cycleDefault(k));
+    warmCycles(setup);
     core_ = std::make_unique<Generator>(sampleRate, slot::Used, lfos_);
     notes_ = std::make_unique<GeneratorNotes>(*core_);
     brain_ = std::make_unique<Brain>();

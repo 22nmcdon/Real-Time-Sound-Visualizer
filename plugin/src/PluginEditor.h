@@ -25,6 +25,7 @@ class ScopeEditor final : public juce::AudioProcessorEditor {
  private:
   ScopeProcessor& processor_;
   juce::WebBrowserComponent browser_;
+  juce::Label missing_;  // said instead of the face where there is no web view
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeEditor)
 };

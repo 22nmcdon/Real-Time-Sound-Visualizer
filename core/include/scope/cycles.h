@@ -6,8 +6,10 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -27,7 +29,12 @@ using CyclePoints = std::vector<double>;
 // cycleTables: band-limited by resynthesis. The drawing's harmonics measured
 // once, then every harmonic, half, a quarter and so on to the fundamental
 // alone, each table scaled by the richest's peak.
+// How many times a cycle's tables have been built, for the shell test to
+// see where the work happens.
+inline std::atomic<long>& cycleTablesBuilt() { static std::atomic<long> n { 0 }; return n; }
+
 inline CycleTables cycleTables(const CyclePoints& points) {
+  cycleTablesBuilt().fetch_add(1, std::memory_order_relaxed);
   const std::size_t n = points.size(), top = n / 2 - 1;  // the Nyquist term has no phase
   std::vector<double> a(top + 1, 0.0), b(top + 1, 0.0);
   for (std::size_t k = 1; k <= top; k++) {
@@ -143,6 +150,62 @@ inline void decodeCycleSlots(const Json* text, std::array<CyclePoints, kCycleSlo
     if (at < parts.size()) { const Json part = Json::string(parts[at]); got = decodeCycle(&part); }
     slots[static_cast<std::size_t>(k)] = got ? *got : cycleDefault(k);
   }
+}
+
+/* Tables already built, by the points they were built from. A drawn cycle's
+   tables are a transform and eight resyntheses, half a million sines and
+   cosines - 7 to 8 ms, most of a 512-frame block at 48 kHz - and a preset
+   with a drawn cycle, a drawing made by hand, and any preset after one that
+   puts the defaults back, all built them on the audio thread as the setup
+   landed (6 Nov). The arithmetic stays the page's, which parity holds to the
+   sample, so the work is moved rather than made faster: a thread that may
+   wait builds them here first (`warm`: the plugin's message thread, as a
+   setup or a drawing is handed over, and `prepare`), and the audio thread
+   only looks (`take`), without waiting - busy, or not built, and it builds
+   them itself as it always did. A few dozen kept, the oldest let go. */
+class CycleCache {
+ public:
+  static CycleCache& shared() { static CycleCache cache; return cache; }
+
+  void warm(const CyclePoints& points) {
+    {
+      const std::lock_guard<std::mutex> lock(mutex_);
+      if (find(points)) return;
+    }
+    auto built = std::make_shared<const CycleTables>(cycleTables(points));
+    const std::lock_guard<std::mutex> lock(mutex_);
+    if (find(points)) return;
+    entries_.push_back({ points, std::move(built) });
+    if (entries_.size() > kMost) entries_.erase(entries_.begin());
+  }
+
+  std::shared_ptr<const CycleTables> take(const CyclePoints& points) {
+    const std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return nullptr;
+    const Entry* e = find(points);
+    return e ? e->tables : nullptr;
+  }
+
+ private:
+  static constexpr std::size_t kMost = 32;
+  struct Entry { CyclePoints points; std::shared_ptr<const CycleTables> tables; };
+  const Entry* find(const CyclePoints& points) const {
+    for (const auto& e : entries_) if (e.points == points) return &e;
+    return nullptr;
+  }
+  std::mutex mutex_;
+  std::vector<Entry> entries_;
+};
+
+// Every slot a setup's cycles name, the defaults for the rest, built ahead.
+inline void warmCycles(const Json& setup) {
+  if (setup.type != Json::Type::Object) return;
+  CycleCache& cache = CycleCache::shared();
+  const auto one = decodeCycle(setup.get("cycle"));
+  cache.warm(one ? *one : cycleDefault(0));
+  std::array<CyclePoints, kCycleSlots> slots;
+  decodeCycleSlots(setup.get("cycles"), slots);
+  for (std::size_t k = 1; k < kCycleSlots; k++) cache.warm(slots[k]);
 }
 
 }  // namespace scope

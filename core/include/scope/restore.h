@@ -799,7 +799,10 @@ inline void cycleSend(Brain& b, Generator& gen) {
     auto bank = std::make_shared<std::vector<CycleTables>>();
     for (std::size_t k = 0; k < kCycleSlots; k++) {
       const bool same = b.cycleBank && b.cycleBuiltFrom[k] == b.cycles[k];
-      bank->push_back(same ? (*b.cycleBank)[k] : cycleTables(b.cycles[k]));
+      if (same) { bank->push_back((*b.cycleBank)[k]); continue; }
+      // Built ahead where it could be (CycleCache), and only then here.
+      const auto ahead = CycleCache::shared().take(b.cycles[k]);
+      bank->push_back(ahead ? *ahead : cycleTables(b.cycles[k]));
     }
     b.cycleBank = bank;
     b.cycleBuiltFrom = b.cycles;
