@@ -109,6 +109,18 @@ is below, in order. The listening notes this plan refers to follow it.
    parameter smoothing **and** stepping the core in fixed 128-sample pieces,
    together, since smoothing is designed around the control rate. Parity run
    at 128, 512 and 2048 frame host blocks, which should fail today.
+   *Done 6 Nov, but for the bookkeeping, which stays on the audio thread
+   (1 to 4 us; the snapshot design is in plugin/PLAN.md).* The core steps
+   every 128 frames whatever the host's block, the same samples at 128, 512,
+   2048 and sizes that change every block (the shell test, not parity: parity
+   compares the page with the core at 128, which never differed); a host's
+   parameter is walked across its block's steps. Bend is Warp on the face (ids
+   kept). Pitch bend with a range, the wheel's vibrato by default, pressure as
+   a source and off by default (the owner chose these over the face brief's
+   Picture amount and Scan depth), each a menu kept with the setup
+   (`bendRange`, `wheelTo`, `pressureTo`), for now under the Keyboard
+   section's ⋯ - the face's F3 gives Expression its own section on Play.
+   Velocity's menu is the face's, not built.
 4. **The removals:** Kaleidoscope, Snap below 5 bits (notes 2 and 3).
 5. **The face, as a design stage from mockups.** *Designed with the owner,
    6 Nov:* the brief is `web/docs/redesigning-the-face.md`, stages F1-F8,

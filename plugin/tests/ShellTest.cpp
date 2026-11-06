@@ -1203,7 +1203,7 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Persistence Bend Cutoff Level Echo Phaser; Setups: Morph"
+          grouped == "Instrument: Picture Scan Persistence Warp Cutoff Level Echo Phaser; Setups: Morph"
           && p.knob("phaser") == p.getParameters()[7] && p.knob("morph") == p.getParameters()[8]
           && ids.find("macro") == std::string::npos
           && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 phaser:2 morph:1",
@@ -2558,6 +2558,111 @@ int main() {
     double apart = 0;
     for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gr[static_cast<std::size_t>(i)] - orr[static_cast<std::size_t>(i)]));
     check("null: and it has turned - the right is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
+  }
+
+  std::printf("\n--- the hands: pitch bend, the wheel, pressure ---\n");
+  {
+    /* Pitch bend was parsed and thrown away, the wheel did nothing until it
+       was learned and routed, and channel pressure was dropped (the outside
+       review, 6 Nov). A held A3 on the plain sine, and what the hands send:
+       its pitch read from the periods of the left channel, once the 5 ms
+       glide has long settled. */
+    struct Heard { std::vector<double> periods; ScopeProcessor* p = nullptr; };
+    const auto play = [&](ScopeProcessor& p, const std::vector<std::vector<std::uint8_t>>& sent, int blocks) {
+      std::vector<float> l;
+      juce::AudioBuffer<float> b(2, block);
+      for (int k = 0; k < blocks; ++k) {
+        b.clear();
+        juce::MidiBuffer m;
+        if (k == 0) for (const auto& bytes : sent) m.addEvent(bytes.data(), static_cast<int>(bytes.size()), 0);
+        p.processBlock(b, m);
+        for (int i = 0; i < block; ++i) l.push_back(b.getSample(0, i));
+      }
+      // Periods from upward crossings, interpolated, over the second half.
+      std::vector<double> periods, ups;
+      for (std::size_t i = l.size() / 2 + 1; i < l.size(); ++i)
+        if (l[i - 1] < 0 && l[i] >= 0) ups.push_back(static_cast<double>(i - 1) + l[i - 1] / (l[i - 1] - l[i]));
+      for (std::size_t i = 1; i < ups.size(); ++i) periods.push_back(ups[i] - ups[i - 1]);
+      return periods;
+    };
+    const auto hz = [&](const std::vector<double>& periods) {
+      double sum = 0;
+      for (const double t : periods) sum += t;
+      return periods.empty() ? 0.0 : rate * static_cast<double>(periods.size()) / sum;
+    };
+    const auto fresh = [&](ScopeProcessor& p) {
+      p.prepareToPlay(rate, block);
+      scope::Json base = scope::baseSetup();
+      base.set("polyRound", scope::Json::boolean(false));
+      if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
+      unstaged(p);
+    };
+    const std::vector<std::uint8_t> a3 { 0x90, 57, 100 };
+    ScopeProcessor still; fresh(still);
+    const double plain = hz(play(still, { a3 }, 60));
+    ScopeProcessor up; fresh(up);
+    const double bentUp = hz(play(up, { a3, { 0xE0, 0x7F, 0x7F } }, 60));
+    ScopeProcessor down; fresh(down);
+    const double bentDown = hz(play(down, { a3, { 0xE0, 0x00, 0x00 } }, 60));
+    ScopeProcessor wide; fresh(wide);
+    wide.pageControl("midiBendRange", scope::Json::string(std::u16string(u"12")));
+    const double octaveUp = hz(play(wide, { a3, { 0xE0, 0x7F, 0x7F } }, 60));
+    const auto centsOf = [](double a, double b) { return 1200 * std::log2(a / b); };
+    check("pitch bend bends every note: two semitones up and down by default, an octave with the range at twelve",
+          std::fabs(centsOf(plain, 220)) < 1 && std::fabs(centsOf(bentUp, 220) - 200) < 2 && std::fabs(centsOf(bentDown, 220) + 200) < 2
+          && std::fabs(centsOf(octaveUp, 220) - 1200) < 2,
+          num(plain) + " Hz still, " + num(bentUp) + " up, " + num(bentDown) + " down, " + num(octaveUp) + " at a range of twelve");
+    check("null: the note unbent is A3", std::fabs(centsOf(bentUp, plain)) > 150);
+
+    // The wheel, vibrato by default: a third of a semitone either way at the top, five and a half times a second.
+    ScopeProcessor wheel; fresh(wheel);
+    const auto shaken = play(wheel, { a3, { 0xB0, 1, 127 } }, 400);  // four seconds, so the rate is counted over many cycles
+    double most = 0, least = 1e9;
+    for (const double t : shaken) { most = std::fmax(most, t); least = std::fmin(least, t); }
+    const double swing = centsOf(most, least);  // peak to peak, in cents
+    int turns = 0;
+    double mean = 0;
+    for (const double t : shaken) mean += t;
+    mean /= static_cast<double>(shaken.size());
+    for (std::size_t i = 1; i < shaken.size(); ++i) if (shaken[i - 1] < mean && shaken[i] >= mean) turns++;
+    const double seconds = static_cast<double>(shaken.size()) / 220;
+    double stillSwing = 0;
+    { double m = 0, n = 1e9; for (const double t : play(still, {}, 60)) { m = std::fmax(m, t); n = std::fmin(n, t); } stillSwing = centsOf(m, n); }
+    check("the mod wheel up gives vibrato: a third of a semitone either way, about five and a half times a second",
+          swing > 2 * 33.3 * 0.85 && swing < 2 * 33.3 * 1.15 && std::fabs(turns / seconds - 5.5) < 1,
+          num(swing) + " cents peak to peak, " + num(turns / seconds) + " a second");
+    check("null: with the wheel down the pitch stands", stillSwing < 2, num(stillSwing) + " cents");
+    // The wheel given to the Picture amount instead: half way, half the amount, and no vibrato.
+    ScopeProcessor toPicture; fresh(toPicture);
+    toPicture.pageControl("midiWheelTo", scope::Json::string(std::u16string(u"picture")));
+    const auto unshaken = play(toPicture, { a3, { 0xB0, 1, 64 } }, 60);
+    double m2 = 0, n2 = 1e9;
+    for (const double t : unshaken) { m2 = std::fmax(m2, t); n2 = std::fmin(n2, t); }
+    check("given to the Picture amount, the wheel half way sets it near half and shakes nothing",
+          std::fabs(toPicture.slider("pictureAmount") - 50) <= 1 && centsOf(m2, n2) < 2,
+          "amount " + num(toPicture.slider("pictureAmount")) + ", " + num(centsOf(m2, n2)) + " cents");
+
+    // Pressure: a source, and by default nothing else.
+    ScopeProcessor pressed; fresh(pressed);
+    const auto held = play(pressed, { a3, { 0xD0, 100 } }, 60);
+    const scope::ModSource* pressure = pressed.matrix().source("midi.pressure");
+    double m3 = 0, n3 = 1e9;
+    for (const double t : held) { m3 = std::fmax(m3, t); n3 = std::fmin(n3, t); }
+    check("channel pressure is a source, at how hard the key is pressed, and by default moves nothing",
+          pressure && std::fabs(pressure->value() - 100.0 / 127) < 0.01 && centsOf(m3, n3) < 2,
+          pressure ? "pressure " + num(pressure->value()) + ", " + num(centsOf(m3, n3)) + " cents" : "no source");
+    /* What the wheel is given to is part of the project: saved with it on the
+       Picture amount and reopened, the wheel moves the amount there. (A
+       setup names only what differs from the defaults, so the default
+       vibrato is not looked for in the code.) */
+    juce::MemoryBlock saved;
+    toPicture.getStateInformation(saved);
+    ScopeProcessor reopened;
+    reopened.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    reopened.prepareToPlay(rate, block);
+    play(reopened, { a3, { 0xB0, 1, 127 } }, 4);
+    check("and what the wheel is given to is kept with the project: reopened, it moves the Picture amount still",
+          std::fabs(reopened.slider("pictureAmount") - 100) <= 1, "amount " + num(reopened.slider("pictureAmount")));
   }
 
   std::printf("\n--- a host's automation, walked ---\n");

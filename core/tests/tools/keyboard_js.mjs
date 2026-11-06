@@ -47,7 +47,7 @@ const LIFTED = [
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
   "midiUndrawn", "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
   "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiLearn", "midiSmooth",
-  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiCoreHears", "midiToCore", "setMidiMode", "syncPlay", "genSettings", "genSet", "genReswing",
+  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "syncPlay", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
 ];

@@ -151,6 +151,14 @@ class Instrument {
     // host parameter is told - a kept hand and hostVersion - would have the
     // page restore its whole setup at a pedal's message rate, dozens a second.
     keyboard_->setSwell([this](double amount) { brain_->panel.setRangeNumber("pictureAmount", amount); });
+    /* The wheel or pressure given to the Picture amount, as the expression
+       pedal sets it, or to Scan's depth, as a hand on its slider (6 Nov);
+       the bend and the vibrato the keyboard sets on the generator itself.
+       None is a hand on the setup, being where the hands are. */
+    keyboard_->setExpress([this](Keyboard::Express to, double v) {
+      if (to == Keyboard::Express::Picture) brain_->panel.setRangeNumber("pictureAmount", v * 100);
+      else if (to == Keyboard::Express::Scan) scope::moveSliderTo("oscScan", v * 100, *brain_, *core_, *keyboard_, lfos_);
+    });
     matrix_ = std::make_unique<Matrix>();
     sources_ = std::make_unique<CoreSources>(*matrix_, *core_, lfos_, *keyboard_);
     /* What it hears is the picture, the generator's unless it is drawing its

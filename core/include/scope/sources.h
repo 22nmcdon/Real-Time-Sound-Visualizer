@@ -43,12 +43,13 @@ class LfoSource : public ModSource {
 
 class KeyboardSource : public ModSource {
  public:
-  enum class Kind { Key, Pedal, Count, Spread, Top, Inner };
+  enum class Kind { Key, Pedal, Pressure, Count, Spread, Top, Inner };
   KeyboardSource(Kind kind, const Keyboard& keys) : ModSource(idFor(kind)), kind_(kind), keys_(keys) { stepped = true; }
   double value() const override {
     switch (kind_) {
       case Kind::Key: return keys_.key();
       case Kind::Pedal: return keys_.pedal();
+      case Kind::Pressure: return keys_.pressureValue();
       case Kind::Count: return keys_.notesCount();
       case Kind::Spread: return keys_.notesSpread();
       case Kind::Top: return keys_.notesTop();
@@ -60,6 +61,7 @@ class KeyboardSource : public ModSource {
     switch (k) {
       case Kind::Key: return "midi.key";
       case Kind::Pedal: return "midi.pedal";
+      case Kind::Pressure: return "midi.pressure";
       case Kind::Count: return "notes.count";
       case Kind::Spread: return "notes.spread";
       case Kind::Top: return "notes.top";
@@ -152,7 +154,7 @@ class CoreSources {
   CoreSources(Matrix& matrix, Generator& gen, const std::vector<Lfo>& lfos, const Keyboard& keys) : envelope_(gen) {
     for (int i = 0; i < static_cast<int>(lfos.size()); i++) lfo_.emplace_back(i, lfos);
     using K = KeyboardSource::Kind;
-    for (const K k : { K::Key, K::Pedal, K::Count, K::Spread, K::Top, K::Inner }) keys_.emplace_back(k, keys);
+    for (const K k : { K::Key, K::Pedal, K::Pressure, K::Count, K::Spread, K::Top, K::Inner }) keys_.emplace_back(k, keys);
     using D = DrawingSource::Kind;
     for (const D k : { D::Swing, D::Pendulum, D::TurnX, D::TurnY, D::TurnZ, D::Facing }) drawing_.emplace_back(k, gen);
     for (auto& s : lfo_) matrix.registerSource(&s);

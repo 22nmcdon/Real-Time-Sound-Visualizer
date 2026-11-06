@@ -5038,6 +5038,15 @@ for name, on in (("rounded", True), ("unrounded", False)):
     iruns[name] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=on))], NOTE_ON(57)] + blocks(30) \
         + [NOTE_ON(64), NOTE_ON(69)] + blocks(30) + [["control", "polyRound", False]] + blocks(20) \
         + [NOTE_OFF(57), NOTE_OFF(64), NOTE_OFF(69)] + blocks(10)
+# The hands (6 Nov): pitch bend at the default range and at twelve, the wheel's
+# vibrato, the wheel given to the Picture amount, pressure given to vibrato -
+# the page's keyboard and the core's reading the same bytes, and Expression's
+# menus changed between them. A chord in poly, so every voice is bent.
+iruns["expression"] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=False))], NOTE_ON(57), NOTE_ON(64)] + blocks(10) \
+    + [["midi", 0xE0, 0x7F, 0x7F]] + blocks(10) + [["midi", 0xE0, 0x00, 0x30]] + blocks(10) \
+    + [["midi", 0xB0, 1, 127]] + blocks(40) + [["control", "midiBendRange", "12"]] + blocks(10) \
+    + [["control", "midiWheelTo", "picture"], ["midi", 0xB0, 1, 64]] + blocks(10) \
+    + [["control", "midiPressureTo", "vibrato"], ["midi", 0xD0, 120]] + blocks(30) + [["midi", 0xD0, 0]] + blocks(10)
 iruns["scanned off"] = [["make", 48000, 128, ocode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
     + blocks(200, 128, 9) + [["setup", ocode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
 # The picture stage (P3) is on in everything the instrument plays, and moves

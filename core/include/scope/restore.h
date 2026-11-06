@@ -1002,6 +1002,17 @@ inline void restoreDrawnFigure(const Json* strokes, Brain& brain) {
   brain.fig.drawn = compilePath(brain.fig.strokes);  // drawnCompile: decodeDrawn keeps no stroke of one point
 }
 
+// The Expression menus' value for each place, as the page's menus hold them.
+inline std::u16string expressName(Keyboard::Express e) {
+  switch (e) {
+    case Keyboard::Express::Vibrato: return u"vibrato";
+    case Keyboard::Express::Picture: return u"picture";
+    case Keyboard::Express::Scan: return u"scan";
+    case Keyboard::Express::Off: return u"off";
+  }
+  return u"off";
+}
+
 inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyboard& keys, Matrix& matrix,
                          std::vector<Lfo>& lfos) {
   const Json& defaults = setupDefaults();
@@ -1176,6 +1187,23 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     // The quarter turn (P8g): only a true one, as the page reads `=== true`.
     const Json* r = s("polyRound");
     setA("polyRound", r && r->type == Json::Type::Bool && r->b ? 1 : 0);
+  }
+  {
+    // Expression (6 Nov), as the page's restore reads it: a range on the menu's list, or two.
+    const Json* r = s("bendRange");
+    double range = 2;
+    if (r && r->type == Json::Type::Number)
+      for (const double ok : { 1.0, 2.0, 3.0, 5.0, 7.0, 12.0, 24.0 }) if (r->n == ok) range = ok;
+    const Json* w = s("wheelTo");
+    const Json* p = s("pressureTo");
+    const auto wheel = w && w->type == Json::Type::String ? Keyboard::expressNamed(w->s, Keyboard::Express::Vibrato) : Keyboard::Express::Vibrato;
+    const auto press = p && p->type == Json::Type::String ? Keyboard::expressNamed(p->s, Keyboard::Express::Off) : Keyboard::Express::Off;
+    keys.setExpression(range, wheel, press);
+    brain.panel.setSelect("midiBendRange", toU16(jsNumberToString(range)));
+    brain.panel.setSelect("midiWheelTo", expressName(wheel));
+    brain.panel.setSelect("midiPressureTo", expressName(press));
+    setA("pitchBend", keys.bend() * range);
+    if (wheel != Keyboard::Express::Vibrato && press != Keyboard::Express::Vibrato) setA("vibrato", 0);
   }
 
   // The keyboard.
@@ -1743,6 +1771,17 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
   else if (id == "polyRound") gen.set("polyRound", checked ? 1 : 0, 0);
+  // Expression's menus (6 Nov): a vibrato no longer given to stops, as the page's expressionLetGo has it.
+  else if (id == "midiBendRange" || id == "midiWheelTo" || id == "midiPressureTo") {
+    double range = keys.bendRange();
+    auto wheel = keys.wheelTo(), press = keys.pressureTo();
+    if (id == "midiBendRange") { const Json t = Json::string(std::string_view(text)); range = jsToNumber(&t); }
+    else if (id == "midiWheelTo") wheel = Keyboard::expressNamed(value, Keyboard::Express::Off);
+    else press = Keyboard::expressNamed(value, Keyboard::Express::Off);
+    keys.setExpression(range, wheel, press);
+    if (id == "midiBendRange") gen.set("pitchBend", keys.bend() * range, 0);
+    else if (wheel != Keyboard::Express::Vibrato && press != Keyboard::Express::Vibrato) gen.set("vibrato", 0, 0);
+  }
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
   else if (id == "midiDrive") keys.setDrive(checked);

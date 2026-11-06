@@ -243,7 +243,46 @@ class Keyboard {
     // 11, the expression pedal, is also the Picture amount (the page's
     // midiControl says why); whoever keeps the panel is told.
     if (number == 11 && onSwell_) onSwell_(raw / 127.0 * 100);
+    // 1, the mod wheel, is what Expression's Wheel menu gives it to (6 Nov).
+    if (number == 1) express(wheelTo_, raw / 127.0);
   }
+
+  /* Expression (6 Nov): the page's midiPitchBend, midiPressure and the
+     menus that say what the wheel and pressure are given to. */
+  enum class Express { Vibrato, Picture, Scan, Off };
+  static Express expressNamed(std::u16string_view name, Express fallback) {
+    if (name == u"vibrato") return Express::Vibrato;
+    if (name == u"picture") return Express::Picture;
+    if (name == u"scan") return Express::Scan;
+    if (name == u"off") return Express::Off;
+    return fallback;
+  }
+  void pitchBend(int lsb, int msb) {
+    const int v = ((msb << 7) | lsb) - 8192;
+    bend_ = v / (v < 0 ? 8192.0 : 8191.0);
+    t_.set("pitchBend", bend_ * bendRange_);
+  }
+  void pressure(int raw) {
+    pressureTarget_ = raw / 127.0;
+    express(pressureTo_, raw / 127.0);
+  }
+  /* midiExpress: vibrato is the generator's, set here as the page's genSet
+     sets it; the Picture amount and Scan's depth are the panel's sliders,
+     which whoever keeps the panel is told, as the expression pedal's is. */
+  static constexpr double kVibratoMost = 1.0 / 3;  // VIBRATO_MOST, in semitones at the top
+  void express(Express to, double value) {
+    if (to == Express::Vibrato) t_.set("vibrato", value * kVibratoMost);
+    else if ((to == Express::Picture || to == Express::Scan) && onExpress_) onExpress_(to, value);
+  }
+  void setExpression(double bendRange, Express wheel, Express pressure) {
+    bendRange_ = bendRange; wheelTo_ = wheel; pressureTo_ = pressure;
+  }
+  double bendRange() const { return bendRange_; }
+  double bend() const { return bend_; }
+  Express wheelTo() const { return wheelTo_; }
+  Express pressureTo() const { return pressureTo_; }
+  double pressureValue() const { return pressure_; }
+  void setExpress(std::function<void(Express, double)> f) { onExpress_ = std::move(f); }
 
   // midiLearn: merged into what is known, never replacing it.
   Controller& learn(int number, std::string_view name = {}) {
@@ -289,10 +328,12 @@ class Keyboard {
         if (i >= length) return;
         continue;
       }
+      if (kind == 0xd0) { pressure(got[0]); continue; }
       if (need == 1) continue;
       if (kind == 0x90) noteOn(got[0], got[1]);
       else if (kind == 0x80) noteOff(got[0]);
       else if (kind == 0xb0) control(got[0], got[1]);
+      else if (kind == 0xe0) pitchBend(got[0], got[1]);
     }
   }
 
@@ -308,6 +349,7 @@ class Keyboard {
   void smooth(double elapsedMs) {
     const double a = 1 - std::exp(-(std::fmax(0.0, elapsedMs) / 1000) / kCcSmooth);
     pedal_ += (pedalTarget_ - pedal_) * a;
+    pressure_ += (pressureTarget_ - pressure_) * a;
     for (auto& c : cc_) c.value += (c.target - c.value) * a;
   }
 
@@ -862,6 +904,8 @@ class Keyboard {
   bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
   double pedal_ = 0, pedalTarget_ = 0;
   bool sustain_ = false;
+  double bendRange_ = 2, bend_ = 0, pressure_ = 0, pressureTarget_ = 0;  // Expression (6 Nov)
+  Express wheelTo_ = Express::Vibrato, pressureTo_ = Express::Off;
   // Per generator kind: wave, harmonograph, figure, wireframe.
   std::array<bool, 4> drive_ { true, true, true, false };
   std::array<bool, 4> play_ { false, false, false, false };
@@ -876,6 +920,7 @@ class Keyboard {
   std::function<void()> onLayers_;  // the panel's syncLayerPanel
   std::function<void(int, double, int)> onStrike_;  // the instrument's scanStrike (P7b)
   std::function<void(double)> onSwell_;  // the Picture slider, from the expression pedal
+  std::function<void(Express, double)> onExpress_;  // the Picture amount or Scan's depth, from the wheel or pressure
   ArpState arp_;
   double now_ = 0, bpm_ = 120;
   NoteOut* out_ = nullptr;

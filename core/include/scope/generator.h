@@ -99,6 +99,7 @@ struct Tone : LayerSettings, PlaneTone {
   bool just = true;
   double phase = kPi / 2;
   bool polyRound = false;  // poly's quarter turn (P8g): see the page's ROUND_RING
+  double pitchBend = 0, vibrato = 0;  // the keyboard's, in semitones (6 Nov): see the page's tone
   Figure figure = Figure::Circle;
   double detail = 5, figureRate = 40, swingRate = 2.1, decay = 0.12, swingDrive = 0;
   double inputMode = 0, inputDepth = 0.5;
@@ -176,6 +177,8 @@ class Generator {
     else if (field == "octaves") a.octaves = value;
     else if (field == "just") a.just = value != 0;
     else if (field == "polyRound") a.polyRound = value != 0;
+    else if (field == "pitchBend") a.pitchBend = value;
+    else if (field == "vibrato") a.vibrato = value;
     else if (field == "phase") a.phase = value;
     else if (field == "detail") a.detail = value;
     else if (field == "figureRate") a.figureRate = value;
@@ -403,6 +406,7 @@ class Generator {
 
     const double octave = std::pow(2.0, a_.octaves);
     const double glide = a_.glideMs > 0 ? poleFor(a_.glideMs, rate_) : 1;
+    const double bendGlide = poleFor(kBendGlideMs, rate_);
     const double kickFriction = std::exp(-dt / kKickTau);
     if (!freqStarted_) { freqNow_ = a_.freq; freqStarted_ = true; }
     const bool fromGen2 = a_.fromGen2;
@@ -416,8 +420,14 @@ class Generator {
       sumRoutes();
 
       freqNow_ += (a_.freq - freqNow_) * glide;
+      // Pitch bend and the wheel's vibrato, in octaves, glided (the page says why).
+      bendNow_ += (a_.pitchBend - bendNow_) * bendGlide;
+      vibNow_ += (a_.vibrato - vibNow_) * bendGlide;
+      vibPhase_ += kTwoPi * kVibratoHz * dt;
+      if (vibPhase_ >= kTwoPi) vibPhase_ -= kTwoPi;
+      const double pitchOct = (bendNow_ + (vibNow_ != 0 ? vibNow_ * std::sin(vibPhase_) : 0)) / 12;
       const double level = gated_ ? env_.step() : 1;
-      const double freq = freqNow_ * std::pow(2.0, mod(slot::Freq));
+      const double freq = freqNow_ * std::pow(2.0, mod(slot::Freq) + pitchOct);
       const double amp = a_.amp * (1 - mod(slot::Amp)) * level;
       const double phase = a_.phase + mod(slot::Phase) * kPi;
       const double ratio = intervalRatio(a_.interval, a_.just) * octave + mod(slot::Ratio) * 0.5;
@@ -518,7 +528,7 @@ class Generator {
         l = amp * gain * (std::sin(phaseL_) + std::sin(phaseL_ * k + phase)) / 2;
         r = amp * gain * (std::sin(phaseR_ + phase) + std::sin(phaseR_ * k)) / 2;
       } else if (poly) {
-        sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq)), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
+        sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq) + pitchOct), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
               a_.polyRound);
         l = ctx_.mix[0]; r = ctx_.mix[1];
       } else {
@@ -581,7 +591,7 @@ class Generator {
         const double amountOfB = shapeAmount(b_, modBOr0(slot::Morph) * 1.5, modBOr0(slot::Width) * 0.45,
                                              modBOr0(slot::Table) * 1.5);
         if (vxB_.shaping) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
-        sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq)), 1 - modB(slot::Amp), dt, roleGlide,
+        sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq) + pitchOct), 1 - modB(slot::Amp), dt, roleGlide,
               vxB_, ctx_, a_.polyRound);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
         if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
@@ -622,6 +632,7 @@ class Generator {
 
  private:
   static constexpr double kKickSize = 6, kKickTau = 1.2, kKickMost = 20;
+  static constexpr double kBendGlideMs = 5, kVibratoHz = 5.5;  // BEND_GLIDE_MS, VIBRATO_HZ
   static constexpr double kSwingDriveRate = 3;
   static constexpr double kClockHyst = 0.01;
   static constexpr int kRoseTurns = 10080;
@@ -917,6 +928,7 @@ class Generator {
   Envelope env_, fenv_;
   bool freqStarted_ = false;
   double freqNow_ = 0;
+  double bendNow_ = 0, vibNow_ = 0, vibPhase_ = 0;  // the bend and the vibrato as they glide, and its cycle
   VcfState vcfL_, vcfR_;
   std::vector<Voice> voices_, voicesB_;
   Plane plane_;
