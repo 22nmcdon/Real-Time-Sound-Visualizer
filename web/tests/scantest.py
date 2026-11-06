@@ -508,18 +508,25 @@ with sync_playwright() as pw:
     }"""
     moving = p.evaluate(FIRST, ["Scanned fifth", True, None, 6])
     plain = p.evaluate(FIRST, ["Scanned fifth", False, None, 6])
-    held = p.evaluate(FIRST, ["Scanned fifth", True, 2, 6])
+    # Stopped at 2 s and judged from 6 s: Scan's path follows the figure over
+    # a second (SCAN_FOLLOW), so once the screen stops it goes on closing on
+    # the still figure, smoothly and one way, for a few seconds. Judged from
+    # 3 s, one second on, the spread was that glide's tail, 0.0003 to 0.0032
+    # by where the glide stood at the stop, and failed against a fifth of the
+    # moving run's one time in three (6 Nov, and before). Four seconds on, it
+    # is under 2 per cent of where it started.
+    held = p.evaluate(FIRST, ["Scanned fifth", True, 2, 8])
     sd = lambda series, frm=0: statistics.pstdev([v for t_, v in series if t_ >= frm])
     mean = lambda series, upto: statistics.mean([v for t_, v in series if t_ <= upto])
-    print("    brightness: Scan %.4f +- %.4f; without %.4f +- %.4f; held still from 2 s, after 3 s +- %.4f"
-          % (statistics.mean(v for _, v in moving), sd(moving), statistics.mean(v for _, v in plain), sd(plain), sd(held, 3)))
+    print("    brightness: Scan %.4f +- %.4f; without %.4f +- %.4f; held still from 2 s, after 6 s +- %.4f"
+          % (statistics.mean(v for _, v in moving), sd(moving), statistics.mean(v for _, v in plain), sd(plain), sd(held, 6)))
     check("a turning fifth read back moves its timbre: the brightness wanders", sd(moving) > 0.004, "%.4f" % sd(moving))
     null("the same fifth without Scan stands still", sd(plain) < 0.001, "%.4f" % sd(plain))
     check("and within three seconds it is plainly not the fifth without Scan",
           abs(mean(moving, 3) - mean(plain, 3)) > 5 * sd(plain, 0) + 0.005,
           "%.4f against %.4f" % (mean(moving, 3), mean(plain, 3)))
-    check("held still - the screen stopped - Scan is an ordinary tone: the brightness stands", sd(held, 3) < sd(moving) / 5,
-          "%.4f against %.4f running" % (sd(held, 3), sd(moving)))
+    check("held still - the screen stopped - Scan is an ordinary tone: the brightness stands", sd(held, 6) < sd(moving) / 5,
+          "%.4f against %.4f running" % (sd(held, 6), sd(moving)))
     null("the held run, before it stopped, was moving", sd([x for x in held if x[0] < 2]) > 0.001,
          "%.4f" % sd([x for x in held if x[0] < 2]))
 
