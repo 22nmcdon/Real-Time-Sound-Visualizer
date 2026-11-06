@@ -1196,7 +1196,7 @@ int main() {
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
     check("the host's parameters are the loop's eight and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Bend, Cutoff, Level, Echo, Phaser, Morph"
+          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Warp, Cutoff, Level, Echo, Phaser, Morph"
           && p.knob("phaser")->get() == 0
           && p.knob("echo")->get() == 45 && p.knob("level")->get() == 55 && p.knob("cutoff")->get() == 667
           && p.knob("picture")->get() == 60 && p.knob("scan")->get() == 0 && p.knob("bend")->get() == 0,

@@ -143,7 +143,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
   static constexpr std::array<HostKnob, 9> kKnobs { {
     { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
-    { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Bend", "oscBend", 2, true },
+    { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Warp", "oscBend", 2, true },
     { "cutoff", "Cutoff", "vcfCut", 1, true }, { "level", "Level", "amp", 1, true },
     { "echo", "Echo", "delayMix", 1, true },
     // P8e: the eighth knob of the bank, which P8a kept for it. Morph moves from

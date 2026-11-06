@@ -2443,14 +2443,14 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               </div>
             </div>
             <div class="menu-row" data-mod-dest="gen.bend" data-mod-control="oscBend">
-              <label class="menu-label" for="oscBend">Bend</label>
+              <label class="menu-label" for="oscBend">Warp</label>
               <div class="grow">
                 <input type="range" id="oscBend" min="-100" max="100" value="0">
                 <span class="reading" id="oscBendValue">off</span>
               </div>
             </div>
             <div class="menu-row" data-mod-dest="gen.bendAt" data-mod-control="oscBendAt">
-              <label class="menu-label" for="oscBendAt">Bend at</label>
+              <label class="menu-label" for="oscBendAt">Warp at</label>
               <div class="grow">
                 <input type="range" id="oscBendAt" min="0" max="100" value="25">
                 <span class="reading" id="oscBendAtValue">90&deg;</span>
@@ -2500,8 +2500,8 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
               &mdash; the same kind of number as the interval between X and Y, and it is not a
               coincidence: a 3:2 modulator gives a harmonic sound exactly when a 3:2 figure closes.
               <i>FM</i> is how far it swings the voice's phase, from pure at nought to bright and
-              then clangorous; above about ten on a sharp shape the top folds back. <i>Bend</i>
-              bends the wave at one point of its cycle, <i>Bend at</i>, in degrees of it: turned
+              then clangorous; above about ten on a sharp shape the top folds back. <i>Warp</i>
+              bends the wave at one point of its cycle, <i>Warp at</i>, in degrees of it: turned
               up it pinches the wave there and swells it opposite, turned down the other way
               round, so the figure bulges or sharpens where you put it and the sound brightens
               either way. It is FM at one to one, locked to the note, so it stays in tune and
@@ -3608,19 +3608,19 @@ body[data-drawer="shut"] .photo-field:has(#photoButton[aria-pressed="false"]) { 
         away. <i>Sync</i> runs a saw or square faster than the note and restarts it every note
         cycle, so the pitch holds while the tone tears; put an LFO or the envelope on it for
         the classic sweep. <i>Sub</i> adds a square or sine an octave or two down, and
-        <i>Unison</i> stacks detuned copies so the figure thickens and shimmers. <i>Bend</i>
-        bends the wave at the point of its cycle <i>Bend at</i> names: up pinches it there, down
+        <i>Unison</i> stacks detuned copies so the figure thickens and shimmers. <i>Warp</i>
+        bends the wave at the point of its cycle <i>Warp at</i> names: up pinches it there, down
         swells it, and either way the figure bulges where you put it and the tone brightens,
         still in tune. At nought it is off and the voice is exactly what it was. You can also
-        set both by taking hold of the figure itself: see <i>Bend the figure by hand</i>. FM, Sync,
-        Bend and Bend at can take sources. With a split, it is the layer being edited, so the
+        set both by taking hold of the figure itself: see <i>Warp the figure by hand</i>. FM, Sync,
+        Warp and Warp at can take sources. (It was called Bend until pitch bend came, 6 Nov.) With a split, it is the layer being edited, so the
         two halves of the keyboard can be two different voices. Nothing gets louder: copies and
         the sub are mixed, not piled up.</span></li>
 
-      <li><b>Bend the figure by hand</b>
+      <li><b>Warp the figure by hand</b>
         <span>In X&ndash;Y, the pointer turns to a hand near the figure. Take hold and pull, and
-        the figure bends where you took hold: <i>Bend at</i> goes to that moment of the cycle and
-        <i>Bend</i> to whatever brings the figure nearest your hand, so the sound changes as the
+        the figure bends where you took hold: <i>Warp at</i> goes to that moment of the cycle and
+        <i>Warp</i> to whatever brings the figure nearest your hand, so the sound changes as the
         picture does. They are the same two knobs, turned as your hand would turn them, and they
         stay where you let go; a gold ring marks the moment you have hold of. Double-click the
         figure to put the bend off. The bend moves the wave in time, never in level, so the figure
@@ -6078,12 +6078,12 @@ const GEN_DESTS = [
      figure's own measurements are put on destinations: the bend is the knob
      the plan means to drag on the screen, and whether the loop should also
      turn it is a question for P7 and P8, not one to answer by default. */
-  { id: "gen.bend", label: "Bend", slot: BEND_SLOT,
+  { id: "gen.bend", label: "Warp", slot: BEND_SLOT,
     reach: (v, s) => Math.max(-100, Math.min(100, v + s * 100)) },
   /* Where it centres, in hundredths of a cycle: half a cycle either way, so
      a source sweeps the bend once round the wave. A position on a circle,
      so it wraps rather than stopping. */
-  { id: "gen.bendAt", label: "Bend at", slot: BEND_AT_SLOT,
+  { id: "gen.bendAt", label: "Warp at", slot: BEND_AT_SLOT,
     reach: (v, s) => (((v + s * 50) % 100) + 100) % 100 },
   /* The phaser's amount, in hundredths, half the travel either way at full
      depth, as the echo's: and as the echo's, a routing on it runs the
