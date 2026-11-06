@@ -174,6 +174,14 @@ class Instrument {
     // The view's destinations before any setup, so a preset's routings onto them are heard.
     pictureRun_ = std::make_unique<PictureRun>(*matrix_, *brain_);
     pictureSource_.rate = sampleRate;
+    /* The capture ring and the bands' filter memory start empty, as a project
+       reopened starts. Prepared again - a host's rate or device changing - the
+       ring held the picture from before, at the rate from before, and the new
+       phosphor drew it: the sound parted from the same state reopened 22 ms in
+       (the shell test, 6 Nov). */
+    picture_.fill(0.0f);
+    pictureAt_.store(0);
+    bandMemory_ = {};
     bandFilters();
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;

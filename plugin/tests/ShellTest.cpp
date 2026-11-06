@@ -4,6 +4,8 @@
 // format and exits non-zero on a failure, like the web suite.
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <thread>
 #include <cmath>
 #include <functional>
 #include <cstdlib>
@@ -2245,6 +2247,122 @@ int main() {
     check("Normal holds the last triggered frame through a silence with no edge, Single too, where Auto draws the silence",
           normal > 0.01 && single == normal && autoPeak == 0 && normalNow && singleNow && !autoNow,
           "Normal " + num(normal) + ", Single " + num(single) + ", Auto " + num(autoPeak));
+  }
+
+  std::printf("\n--- the state in a host's hands ---\n");
+  {
+    /* What a project keeps, through what hosts do to a plugin as a matter of
+       course. A sound of its own first - an old preset with routings on both
+       LFOs, and a learned controller - so that losing it to the opening is
+       a difference these checks can see. */
+    scope::Json own = corpusSetup("Tumbling");
+    own.set("cc", scope::Json::string(std::string_view("16:Drawbar 1")));
+    const auto ownCode = scope::encodeSetup(own);
+    const auto setupOf = [](const std::string& code) {
+      const auto d = scope::decodeSetup(code);
+      return d.kind == scope::DecodedSetup::Kind::Read ? scope::utf16To8(scope::jsonStringify(d.setup)) : std::string("unread");
+    };
+    // A held A3 for a quarter of a second, the left channel, from a processor's next block on.
+    const auto heldNote = [&](ScopeProcessor& p, int frames) {
+      juce::AudioBuffer<float> buf(2, frames);
+      std::vector<float> l;
+      for (int k = 0; k < static_cast<int>(rate / 4) / frames; ++k) {
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+        p.processBlock(buf, m);
+        for (int i = 0; i < frames; ++i) l.push_back(buf.getSample(0, i));
+      }
+      return l;
+    };
+    const auto apart = [](const std::vector<float>& a, const std::vector<float>& b) {
+      double d = a.size() == b.size() ? 0 : 1;
+      for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) d = std::fmax(d, std::fabs(a[i] - b[i]));
+      return d;
+    };
+
+    /* Prepared again - a host's block size changing, its device restarting,
+       the plugin reactivated - it keeps its sound. Until 6 Nov it was built
+       again on the sound it opens on, and the preset, the routings and the
+       learned controllers went; the check that was here asserted only that
+       drawing an input survived, which a member outside the setup kept. The
+       sound after is held against a plugin reopened from the state saved
+       before, prepared at the same block, which is what a project reopened
+       plays; the null is the plugin opened on nothing. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    if (ownCode) p.pageSetup(*ownCode);
+    heldNote(p, block);
+    const std::string before = setupOf(p.pageState().code);
+    juce::MemoryBlock saved;
+    p.getStateInformation(saved);
+    p.prepareToPlay(rate, block / 2);
+    const std::string after = setupOf(p.pageState().code);
+    const auto replayed = heldNote(p, block / 2);
+    ScopeProcessor reopened;
+    reopened.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    reopened.prepareToPlay(rate, block / 2);
+    const auto fromSaved = heldNote(reopened, block / 2);
+    ScopeProcessor bare;
+    bare.prepareToPlay(rate, block / 2);
+    const auto opening = heldNote(bare, block / 2);
+    check("prepared again at another block size, it keeps its setup - the preset, its routings, the learned controller",
+          ownCode && before == after && before.find("Drawbar 1") != std::string::npos && before.find("\"l0d\":\"phase\"") != std::string::npos,
+          before == after ? "the same" : "before " + before.substr(0, 120) + " ... after " + after.substr(0, 120));
+    check("and plays what the project reopened from its state plays, sample for sample",
+          apart(replayed, fromSaved) == 0, "apart by " + num(apart(replayed, fromSaved)));
+    check("null: the plugin opened on nothing plays something else", apart(opening, fromSaved) > 0.01,
+          "apart by " + num(apart(opening, fromSaved)));
+
+    /* Saved before the first block: a frozen or inactive track, a closed
+       device, a host that saves a project it has just opened. The state it
+       was handed is what it holds, and what it saves; it used to save
+       nothing, which the next opening read as the opening sound. */
+    ScopeProcessor early;
+    if (ownCode) early.setStateInformation(ownCode->data(), static_cast<int>(ownCode->size()));
+    juce::MemoryBlock earlySaved;
+    early.getStateInformation(earlySaved);
+    const std::string earlyCode(static_cast<const char*>(earlySaved.getData()), earlySaved.getSize());
+    check("saved before it has played a block, it saves the state it was handed",
+          ownCode && !earlyCode.empty() && setupOf(earlyCode) == setupOf(*ownCode),
+          earlyCode.empty() ? "saved nothing" : setupOf(earlyCode).substr(0, 120));
+    check("null: that state is not what the opening saves", ownCode && setupOf(*ownCode) != setupOf(bare.pageState().code));
+
+    /* Saved while it plays, as hosts do for autosave and undo, from another
+       thread. A save held the lock the audio thread only tries for, for the
+       whole of an encode, and the block that found it held came out silent
+       and its MIDI was dropped: a note-off in it left the note sounding. A
+       note held across hundreds of blocks with a save always under way, and
+       let go in the middle of them, must sound in every block it is held
+       and be silent by the end. */
+    ScopeProcessor busy;
+    busy.prepareToPlay(rate, block);
+    unstaged(busy);
+    std::atomic<bool> stop { false };
+    std::atomic<int> saves { 0 };
+    std::thread saver([&] {
+      while (!stop.load()) { juce::MemoryBlock m; busy.getStateInformation(m); saves.fetch_add(1); }
+    });
+    juce::AudioBuffer<float> buf(2, block);
+    int silent = 0;
+    double tail = 0;
+    constexpr int blocks = 600, offAt = 300;
+    for (int k = 0; k < blocks; ++k) {
+      buf.clear();
+      juce::MidiBuffer m;
+      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+      if (k == offAt) m.addEvent(juce::MidiMessage::noteOff(1, 57), 0);
+      busy.processBlock(buf, m);
+      double peak = 0;
+      for (int i = 0; i < block; ++i) peak = std::fmax(peak, std::fabs(buf.getSample(0, i)));
+      if (k >= 2 && k < offAt && peak == 0) ++silent;
+      if (k >= blocks - 20) tail = std::fmax(tail, peak);
+    }
+    stop.store(true);
+    saver.join();
+    check("saved again and again from another thread while a note plays, no block goes silent and the note-off is kept",
+          saves.load() > 20 && silent == 0 && tail == 0,
+          std::to_string(saves.load()) + " saves, " + std::to_string(silent) + " silent blocks while held, " + num(tail) + " at the end");
   }
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");

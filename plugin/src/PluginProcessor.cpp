@@ -97,10 +97,27 @@ void ScopeProcessor::publish(bool wait) {
   instrument_.published();
 }
 
+/* Never the audio thread's work, and never its lock for longer than a copy.
+   A state handed over and not yet loaded is the state: saved before the first
+   block - a frozen or inactive track, a closed device - this used to write
+   nothing, and the project reopened on the opening sound. Otherwise the code
+   the audio thread last published, which is at most a block behind and is
+   what the page reads too. It used to encode the instrument here, holding the
+   lock processBlock only tries for, and every block that found it held came
+   out silent with its MIDI dropped; hosts save for autosave and undo, and a
+   lost note-off stuck the note (6 Nov). */
 void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
-  const juce::SpinLock::ScopedLockType lock(stateLock_);
-  if (!instrument_.prepared()) return;
-  const std::string code = instrument_.stateCode();
+  std::optional<scope::Json> waiting;
+  {
+    const juce::SpinLock::ScopedLockType lock(stateLock_);
+    waiting = pending_;
+  }
+  std::string code;
+  if (waiting) {
+    if (const auto encoded = scope::encodeSetup(*waiting)) code = *encoded;
+  } else {
+    code = pageState().code;
+  }
   out.append(code.data(), code.size());
 }
 
@@ -134,10 +151,20 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   if (wanted && wanted[0] == '{') written = scope::jsonParse(scope::utf8To16(wanted));
   const scope::Preset* preset = wanted && !written ? scope::findPreset(wanted) : nullptr;
   {
-    // A state the host handed over before there was a core to give it to wins;
-    // with nothing asked for, the base the page opens on too (P8h).
+    /* A state the host handed over and not yet loaded wins. Then, prepared
+       again - a host's rate or block size changing, its device restarting,
+       the plugin reactivated - the sound it has, read back from its own state
+       code as a project reopened reads it: preset, routings, the hands on
+       them since, learned controllers. It used to be built again on the
+       opening sound every time (6 Nov). With neither, the base the page opens
+       on too (P8h). */
     const juce::SpinLock::ScopedLockType lock(stateLock_);
-    instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : written ? *written
+    std::optional<scope::Json> current;
+    if (!pending_ && instrument_.prepared()) {
+      const auto decoded = scope::decodeSetup(instrument_.stateCode());
+      if (decoded.kind == scope::DecodedSetup::Kind::Read) current = decoded.setup;
+    }
+    instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : current ? *current : written ? *written
                         : preset ? preset->setup : scope::baseSetup());
     pending_.reset();
   }
@@ -153,12 +180,18 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
 
 void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
-  /* A state being loaded from the message thread: this block is silence
-     rather than a wait; one waiting for this thread is loaded here, which
-     allocates, as a preset's load does. */
-  const juce::SpinLock::ScopedTryLockType lock(stateLock_);
-  if (!lock.isLocked()) { buffer.clear(); midi.clear(); return; }
-  if (pending_) { instrument_.load(*pending_, true); pending_.reset(); }
+  /* A state waiting for this thread is taken here and loaded, which
+     allocates, as a preset's load does. The lock guards only the hand-over:
+     found held - a state being handed over, or a save copying one - the
+     state waits a block and this one plays. It used to guard the whole
+     instrument against a save, and a block that found it held was silence
+     with its MIDI dropped (6 Nov). */
+  std::optional<scope::Json> arrived;
+  {
+    const juce::SpinLock::ScopedTryLockType lock(stateLock_);
+    if (lock.isLocked() && pending_) { arrived = std::move(pending_); pending_.reset(); }
+  }
+  if (arrived) instrument_.load(*arrived, true);
   takePage();
   // The host's transport, where it gives one.
   std::optional<scope::Instrument::Transport> transport;

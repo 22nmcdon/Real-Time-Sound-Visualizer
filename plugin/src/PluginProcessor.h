@@ -183,7 +183,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
   std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block
   std::vector<float> inL_, inR_;                      // the host's input this block, copied out of the buffer
-  juce::SpinLock stateLock_;                   // a state loaded while the audio thread runs
+  juce::SpinLock stateLock_;                   // guards the hand-over of pending_ only, never the instrument
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
   juce::SpinLock queueLock_;
   std::vector<scope::Instrument::Command> queue_, taken_;
