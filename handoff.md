@@ -64,6 +64,60 @@ Known about the bank, for whoever tunes it:
 - The old library (268) is a test corpus: `core/tests/scenarios/
   library-p8f.json`, `web/tests/corpus.py`, the shell test's `corpusSetup`.
 
+## The plan after the second round and the outside review (agreed 6 Nov)
+
+An outside review against standard synths (Serum, Vital, Pigments, Phase
+Plant) was checked in the code; what it found and the owner and Claude agreed
+is below, in order. The listening notes this plan refers to follow it.
+
+1. **The plugin's state, and the audio thread.** Before anyone uses it in a
+   project. Tests first, each seen to fail on today's code:
+   - A second `prepareToPlay` (a host's sample-rate or device change, a
+     reactivation) rebuilds on the base sine and loses the preset, routings
+     and learned controllers. Re-prepare from the current state. The shell
+     test's re-prepare check only asserts `drawsInput` survives; it must
+     assert the setup does.
+   - `getStateInformation` before the first block writes nothing, ignoring a
+     state waiting in `pending_`: a frozen or inactive track saves empty.
+   - A save holds the lock `processBlock` try-locks, so that block is silent
+     and its MIDI dropped - a lost note-off sticks the note. Return the code
+     already published without the audio lock.
+   - Off the audio thread: `publish()`'s encode, a preset load (about 25 ms a
+     drawn-cycle table), host automation's strings and JSON per parameter,
+     and a new MIDI controller's first message allocating.
+   - One-liners: `NEEDS_MIDI_OUTPUT` (the arpeggiator's MIDI out), a tail that
+     follows the echo's feedback, the bank as host programs, the cheat
+     sheet's "Settled and Open" line (3814), a default window that fits a
+     1366x768 laptop and a remembered size, and something better than a
+     blank editor when the WebView fails.
+2. **The owner's broken sounds:** the delay's Sync and the quarter turn's pop
+   (notes 5 and 1 below).
+3. **Playing basics:** pitch bend with a range, renaming the geometry's
+   *Bend*, a default target for the mod wheel, channel pressure; then
+   parameter smoothing **and** stepping the core in fixed 128-sample pieces,
+   together, since smoothing is designed around the control rate. Parity run
+   at 128, 512 and 2048 frame host blocks, which should fail today.
+4. **The removals:** Kaleidoscope, Snap below 5 bits (notes 2 and 3).
+5. **The face, as a design stage from mockups.** For the plugin window from
+   its minimum (960x600, where the Bench is about 125 px today) up; the site
+   on a phone falls back to something that stacks and scrolls, and does not
+   shape the design. Direction: the screen in the middle, the nine host knobs
+   as a strip always on show in place of the measurement readout, the scope's
+   tools in an overlay, envelopes and LFOs on show. The brief is the layout
+   rules in CLAUDE.md (tabs along the loop, no tab scrolls, the drawer).
+   First, check the audit's claim that automation makes the face reload its
+   whole setup four times a second (`hostVersion_` and `hostPull`); fixing it
+   may change how the face feels more than a layout does.
+6. **The schema:** one table that generates the setup field lists (DEFAULTS,
+   snapshot, restore, the generator table, layer B's keys, the ranges,
+   `panel_controls.h`, `restore.h`); and the worklet stops loading the
+   JavaScript generator when the compiled one plays. The JavaScript engine
+   stays: it is parity's reference, the fallback, and forty suites run on it.
+
+Later: reverb in P9, made so the screen hears it; undo and A/B; CLAP; MPE.
+Unverified from the audit: the picture's copies to the face (64-128 KB twice
+a frame), the capture allocating each frame, zipper noise under automation.
+
 ## The owner's notes from the second round (not started)
 
 Heard after P8h; written down before any work, with a first read of the code.
