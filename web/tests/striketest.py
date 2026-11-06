@@ -215,8 +215,13 @@ with sync_playwright() as pw:
     }""")
     m0, m1 = met["0"], met["100"]
     print("    lit: struck %.5f -> %.5f (laid %.5f); at nought %.5f -> %.5f" % (m1["before"], m1["after"], m1["laid"], m0["before"], m0["after"]))
+    # The fixture has to have laid enough to see: a thousandth of the screen,
+    # which is ten times what the meter drifts at Strike nought. It was two
+    # thousandths, the middle of what four notes lay - 0.0012 to 0.0066, by
+    # how much lands on cells already lit, on the page from before P8g as on
+    # this one - and it failed on 0.0020 with the meter rising 0.0020 (P8h).
     check("the picture meter, which the stage and the running-away hold read, lights with what a strike laid",
-          m1["laid"] > 0.002 and m1["after"] - m1["before"] > 0.5 * m1["laid"], str(m1))
+          m1["laid"] > 0.001 and m1["after"] - m1["before"] > 0.5 * m1["laid"], str(m1))
     null("the same notes at Strike nought light nothing", abs(m0["after"] - m0["before"]) < 0.1 * m1["laid"], str(m0))
 
     # ------------------------------------------------------------------
@@ -456,25 +461,39 @@ with sync_playwright() as pw:
         got = pp.evaluate(SITE, [strike, reads_b])
         got["errors"] = errs
         bb.close()
-        # How far each layer's coverage rose: the most after against the most before.
-        got["rise"] = [max(a[l] for a in got["after"]) - max(b_[l] for b_ in got["before"]) for l in (0, 1)]
+        # How far each layer's coverage rose: the most after against where it
+        # stood as the burst went in, the mean of the last three reads before
+        # it. It used to be against the most before, which is the oldest read:
+        # A's coverage falls all through the third of a second before the
+        # burst, by 0.013 to 0.015 in every run, so the strike had first to
+        # make up the fall, and on a container slowed by the serial suites
+        # before it the crossed run rose 0.001 and 0.005 where the check asks
+        # 0.004 (P8h). Against the moment of the burst it rises about 0.025,
+        # and the nulls about nought.
+        got["rise"] = [max(a[l] for a in got["after"]) - sum(b_[l] for b_ in got["before"][-3:]) / 3 for l in (0, 1)]
         return got
     crossed_site, quiet_site, own_site = site(100, "A"), site(0, "A"), site(100, "B")
     for name, r in (("crossed", crossed_site), ("Strike at nought", quiet_site), ("B its own", own_site)):
         print("    %s: A's coverage rose %.4f, B's %.4f (live %s, on the instrument %s)"
               % (name, r["rise"][0], r["rise"][1], r["live"], r["host"]))
-    # A's coverage wanders by about a hundredth from one run to the next (the
-    # nulls fell by 0.009 to 0.019 over six runs, the crossed rose by 0.007 to
-    # 0.019), so the strike is judged against the nulls' own runs as well as
-    # against nought: crossed it must rise, and by a hundredth more than
-    # either null does.
+    # A's coverage wanders by about a hundredth from one run to the next, so
+    # the strike is judged against the nulls' own runs as well as against
+    # nought: crossed it must rise, and by a hundredth more than either null
+    # does. Read against the moment of the burst, the crossed rose 0.021 to
+    # 0.036 over a dozen runs and the nulls -0.003 to 0.005, so the line
+    # between them is a hundredth, half the least strike and twice the
+    # most a null wandered. (Against the most before, the nulls fell 0.009 to
+    # 0.019 and the crossed rose 0.001 to 0.025, and the line was 0.004.) Once
+    # in about twenty the null at Strike nought has risen 0.022, as much as a
+    # strike, with nothing striking A; read the old way that run would have
+    # failed as well, and what moves A's picture then is not yet known.
     check("on the site's instrument, B's notes strike A's picture when B reads A's",
-          crossed_site["host"] and crossed_site["live"] and crossed_site["rise"][0] > 0.004
+          crossed_site["host"] and crossed_site["live"] and crossed_site["rise"][0] > 0.01
           and crossed_site["rise"][0] - max(quiet_site["rise"][0], own_site["rise"][0]) > 0.01,
           "%.4f against %.4f and %.4f" % (crossed_site["rise"][0], quiet_site["rise"][0], own_site["rise"][0]))
-    null("at Strike nought A's picture does not rise", quiet_site["live"] and quiet_site["rise"][0] < 0.004,
+    null("at Strike nought A's picture does not rise", quiet_site["live"] and quiet_site["rise"][0] < 0.01,
          str(quiet_site["rise"]))
-    null("with B reading its own, A's picture does not rise", own_site["live"] and own_site["rise"][0] < 0.004,
+    null("with B reading its own, A's picture does not rise", own_site["live"] and own_site["rise"][0] < 0.01,
          str(own_site["rise"]))
     check("no page errors on the site", not (crossed_site["errors"] + quiet_site["errors"] + own_site["errors"]),
           "; ".join((crossed_site["errors"] + quiet_site["errors"] + own_site["errors"])[:3]))
