@@ -50,6 +50,8 @@ const planeB = { own: false };
 const gen = [{ delayMs: 375 }, { delayMs: 375 }];
 const DELAY_SYNC = ${definition("DELAY_SYNC").replace(/^const DELAY_SYNC = /, "").replace(/;\n$/, "")};
 ${definition("delayTimeMs")}
+${definition("DELAY_SYNC_SLACK")}
+${definition("delayFollows")}
 const genSet = (key, value, layer) => { log.push(key + (layer === 1 ? "B" : "") + " " + value); gen[layer === 1 ? 1 : 0][key] = value; };
 // The score as the clock touches it: its anchor resets the column, and Stop lets go.
 const score = { set last(v) { log.push("anchor"); }, get last() { return -1; }, steps: 0 };

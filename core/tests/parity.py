@@ -2054,6 +2054,15 @@ def cboth(text, name="clock_one.txt"):
                         capture_output=True, text=True).stdout
     return js, subprocess.run([cexe, path], check=True, capture_output=True, text=True).stdout
 def crun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
+def jittered_ticks(start, bpm, n, seed=7):
+    # A clock at `bpm` whose ticks land up to a millisecond either side of
+    # where they belong, each followed by a frame; the same jitter each run.
+    jr = random.Random(seed + int(bpm))
+    gap = 60000 / bpm / 24
+    out = []
+    for k in range(n):
+        out += ["at %r" % (start + k * gap + jr.uniform(-1, 1)), "tick", "step"]
+    return out
 def ticks(start, gap, n, every=False):
     out = []
     for k in range(n):
@@ -2103,6 +2112,9 @@ cruns = [
                     "echob 1 1/8 300", "step", "echo 1/8d 200", "tempo 90", "step", "echob 1 - 300", "tempo 60", "step")),
     # More than two dozen ticks: the oldest go.
     ("many-ticks", crun(*ticks(0, 20, 40), "step")),
+    # A synced delay under a clock that jitters a millisecond, then steps to
+    # 132 (6 Nov): sent once for the jitter, again for the step.
+    ("echo-jitter", crun("echo 1/8d 200", "step", *jittered_ticks(1000, 120, 72), *jittered_ticks(1000 + 72 * 500 / 24, 132, 72))),
 ]
 def cfuzz(n):
     out = []
@@ -2143,6 +2155,19 @@ check("a MIDI clock at 120 reads 120, and moves the bar a twenty-fourth a tick",
       "%s, %s" % (cfield(tl[-1], "bpm"), float(cfield(tl[-1], "base")) - float(cfield(tl[-2], "base"))))
 check("and between ticks the bar guesses ahead but never past the next tick",
       abs(float(cfield(L[-3], "beat")) - float(cfield(L[-3], "base")) - 1 / 24) < 1e-12, cfield(L[-3], "beat"))
+L = cout("echo-jitter")
+sends = [float(m) for l in L for m in re.findall(r":: delayMs (\S+)", l)]
+tick_bpms = [float(cfield(l, "bpm")) for l in L if l.startswith("tick")]
+# Jitter would send times either side of 375; the step's are one way, a few
+# 2 per cent steps over the beat the clock's mean takes to cross over.
+check("a synced delay under a clock jittered a millisecond is sent once for the jitter, and follows the tempo's step to 132 down to it",
+      len(sends) >= 2 and len(sends) <= 7 and abs(sends[0] - 375) < 1e-9 and all(b < a for a, b in zip(sends, sends[1:]))
+      and abs(sends[-1] - 375 * 120 / 132) < 375 * 0.02, str([round(x, 2) for x in sends]))
+# The fixture's own tempo, read tick by tick, is what the old rule sent on:
+# a different time at nearly every tick of the jitter.
+old_rule = len({round(0.75 * 60000 / b, 9) for b in tick_bpms[2:72]})
+check("null: the same clock's tempo moves at nearly every tick, so the old rule would have sent the time each time",
+      old_rule > 50, "%d different times in 70 ticks" % old_rule)
 L = cout("midi-stops")
 check("a clock gone quiet for half a second is let go, and the tempo goes back to the slider's",
       cfield(L[-5], "from") == "midi" and abs(float(cfield(L[-5], "bpm")) - 125) < 1e-9

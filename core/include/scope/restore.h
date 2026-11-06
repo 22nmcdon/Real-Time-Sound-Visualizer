@@ -765,6 +765,18 @@ class ClockIn : public RealtimeIn {
   Clock& clock_;
   double when_ = 0;
 };
+// delayFollows: under a MIDI clock, a synced delay's time sent again only once
+// the tempo has moved it more than kDelaySyncSlack from the time last sent -
+// the clock's estimate moves with every tick's jitter, and each new time
+// glided the read head, so the repeats were never still (the page says more).
+// And not before the clock has a beat of ticks to take its mean over.
+constexpr double kDelaySyncSlack = 0.02;      // DELAY_SYNC_SLACK
+constexpr std::size_t kDelaySyncTicks = 25;   // DELAY_SYNC_TICKS, a beat's 24 gaps
+inline bool delayFollows(const Clock& clock, double ms, const std::optional<double>& sent) {
+  if (!sent) return true;
+  if (clock.from != Clock::From::Midi) return ms != *sent;
+  return clock.ticks.size() >= kDelaySyncTicks && std::fabs(ms - *sent) > *sent * kDelaySyncSlack;
+}
 // clockStep, whole: the clock's own step, then a delay in note values sent
 // again when the tempo has moved it - and whether it was.
 inline bool clockFrame(Brain& b, Generator& gen, double now) {
@@ -772,12 +784,12 @@ inline bool clockFrame(Brain& b, Generator& gen, double now) {
   bool sent = false;
   if (!b.echo.sync.empty()) {
     const double ms = delayTimeMs(b);
-    if (!b.echo.sent || *b.echo.sent != ms) { b.echo.sent = ms; gen.set("delayMs", ms); sent = true; }
+    if (delayFollows(b.clock, ms, b.echo.sent)) { b.echo.sent = ms; gen.set("delayMs", ms); sent = true; }
   }
   // And layer B's own, while it has one.
   if (b.planeB.own && !b.echoB.sync.empty()) {
     const double ms = delayTimeMs(b, b.echoB);
-    if (!b.echoB.sent || *b.echoB.sent != ms) { b.echoB.sent = ms; gen.set("delayMs", ms, 1); sent = true; }
+    if (delayFollows(b.clock, ms, b.echoB.sent)) { b.echoB.sent = ms; gen.set("delayMs", ms, 1); sent = true; }
   }
   return sent;
 }
