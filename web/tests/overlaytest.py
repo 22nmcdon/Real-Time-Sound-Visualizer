@@ -206,8 +206,15 @@ with sync_playwright() as pw:
         check("with Scan alone closing the loop, the badge is the meter's verdict", v["badge"] is not None and v["badge"] == v["verdict"], str(v))
         other = [x for x in ["listening", "running away", "settled", "cycling", "wandering"] if x != v["badge"]][0]
         null("another verdict is not the meter's", other != v["verdict"], other)
+        # Read from the one frame: the badge is drawn every frame and the
+        # readout written every READOUT_MS, so a badge drawn now against the
+        # readout as last written disagreed once while the verdict moved,
+        # "wandering" against "loop cycling" (6 Nov). The frame that writes
+        # the readout draws the badge first, from the same meter.
         v = p.evaluate("""async () => { el.pictureAmount.value = '60'; el.pictureAmount.dispatchEvent(new Event('input'));
-          await new Promise((r) => setTimeout(r, 600)); drawLoopOverlay();
+          await new Promise((r) => setTimeout(r, 600));
+          const was = state.lastReadout;
+          for (let i = 0; i < 200 && state.lastReadout === was; i++) await new Promise((r) => requestAnimationFrame(() => r()));
           const out = { badge: loopOverlay.drawn.badge, readout: el.readoutDetail.textContent };
           el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input')); return out; }""")
         check("with the stage up, the badge is the readout's word", v["badge"] is not None and ("loop " + v["badge"]) in v["readout"],
