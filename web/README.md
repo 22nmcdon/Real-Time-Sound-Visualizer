@@ -4921,3 +4921,17 @@ first. looptest had the same shape of fault in time rather than space: each
 seed opened on the screen the one before left, and a seed that opened with
 the pitch total already at its bound could not be seen to move it; each seed
 now starts from a dark screen.
+
+**A value written straight into the page's state is the page's alone.** The
+site's instrument hears a setting from a setup, a slider's input event or a
+host knob, and modtest's sweep set `lfos[0].rate = 0.5` by assignment: the
+page's LFO went at 0.5 Hz and the one playing stayed at the setup's 0.2, so
+the reads timed for a two-second cycle covered half of a five-second one and
+found the trough or not by luck. The page's own read-back (`lfos[0].value`)
+comes from the instrument, so it showed the slow one, which is how it was
+found. A test that sets something by assignment and then listens has to send
+it (`hostSendSetup()`, or the control's event); the Rate slider itself does.
+The same check also read its first window across the seam of the load, a
+jump of nearly the whole amplitude between two samples, and took the
+estimator's subharmonic there for the trough; it waits for the load to leave
+the window now.

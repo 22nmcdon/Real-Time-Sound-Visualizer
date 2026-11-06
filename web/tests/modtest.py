@@ -84,9 +84,26 @@ with sync_playwright() as pw:
     swept = p.evaluate("""async () => {
       loadCorpus('Pure sine');
       state.timebase = 6;                        // 100 ms: enough cycles to measure
-      lfos[0].shape = 'sine'; lfos[0].rate = 0.5;
+      lfos[0].shape = 'sine'; lfos[0].rate = lfos[0].free = 0.5;
+      /* Written here, the rate is the page's alone: the site's instrument
+         hears a rate from a setup or from the Rate slider, and went on at the
+         setup's 0.2 Hz, a five-second cycle the reads below cover about half
+         of - so the trough was in them or not by where the LFO happened to
+         be, and the check failed one run in three (P8h). Sent, as a preset's
+         would be, so the two-second cycle the reads are timed for is the one
+         playing. */
+      hostSendSetup();
       setLfoDest(0, 'gen.freq');
       setLfoDepth(0, 1);                          // one octave each way
+      /* The window is 100 ms and the first read used to come 60 ms after the
+         load, so it held the seam where the sound was loaded - a jump of
+         nearly the whole amplitude between two samples, with 440 Hz before
+         it - and the estimate read across it came out at a half or two
+         thirds of the trough: 110 or 147 Hz, one run in five or six, on the
+         page from before P8g as on this one (P8h). The sweep is read once
+         the load has left the window; the reads still span more than the
+         LFO's two-second cycle, so both ends are in them. */
+      await new Promise((r) => setTimeout(r, 300));
       const seen = [];
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => setTimeout(r, 60));

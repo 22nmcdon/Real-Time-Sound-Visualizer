@@ -197,8 +197,16 @@ with sync_playwright() as pw:
     q = max(fig["pts"], key=lambda k: k[0])
     pull(p, q[0], q[1], 40, 0)
     v = p.evaluate(VALUES)
+    # Within the solver's last step of nought, not at it exactly: the grab is
+    # the drawn sample furthest right, which can sit half a sample's turn off
+    # the true extreme, where a bend of one per cent does come a hair nearer
+    # the pointer than the whisker of cost holds it to - and which sample is
+    # drawn there depends on where the window fell. It read 1 once in a full
+    # run (P8h). A bend that follows the hand is tens of per cent, as on the
+    # diagonal above, and the null holds the tolerance to that.
     check("pulled outward at the circle's right-hand extreme, where no bend can reach, Bend stays at nought",
-          v["bend"] == 0, str(v))
+          abs(v["bend"]) <= 2, str(v))
+    null("the same tolerance fails the bend the diagonal's pull chose", not (abs(chosen) <= 2), str(chosen))
 
     # One signal on both lanes draws a line, and the bend only slides it along
     # itself: every Bend reaches the pointer equally, and the one already set must stay.
