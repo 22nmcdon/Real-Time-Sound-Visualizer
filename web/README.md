@@ -4935,3 +4935,16 @@ The same check also read its first window across the seam of the load, a
 jump of nearly the whole amplitude between two samples, and took the
 estimator's subharmonic there for the trough; it waits for the load to leave
 the window now.
+
+**A value worked out from an estimate needs slack before it drives a glide.**
+Under a MIDI clock the tempo is the mean tick over the last beat, and it
+moves with every tick's jitter; a synced delay re-sent its time whenever the
+tempo moved at all, and each new time glided the read head, so the head
+never stopped and every repeat was pitch-bent - Sync sounded flangery and
+Free did not, and on the internal tempo, where the first look was, nothing
+was wrong. The delay now waits for the tempo to move it 2 per cent, and for a
+beat of ticks. The rest of what follows the clock (the locked LFOs, the bar)
+still takes the estimate as it comes; a steadier estimate is the real answer.
+The quarter turn had the other half of the same lesson: state kept only
+while it is in use (the voice's ring, written only while turned) is stale the
+next time it is needed, and the pop came exactly then.

@@ -93,7 +93,15 @@ is below, in order. The listening notes this plan refers to follow it.
      1366x768 laptop and a remembered size, and something better than a
      blank editor when the WebView fails.
 2. **The owner's broken sounds:** the delay's Sync and the quarter turn's pop
-   (notes 5 and 1 below).
+   (notes 5 and 1 below). *Done 6 Nov.* Sync: a MIDI clock's jittering
+   tempo re-sent the delay time every tick and the read head never stopped;
+   it now waits for a 2 per cent move and a beat of ticks. The quarter turn:
+   the ring is written whenever the switch is on (it was stale, hence the
+   pop, on the right in the core's channels - the owner heard it on the
+   left; worth asking how the outputs are wired), and the glide holds a
+   sine's level (it dipped 2.2 dB). No lasting level drop was measured when a
+   note is added; what changes is that two held notes lean one to each ear,
+   switch on or off, and a lone turned note is wide.
 3. **Playing basics** (and, with the fixed steps, the state's bookkeeping
    off the audio thread: the encode at a changed block's end, 1 to 4 us, and
    a host parameter's hand - small, but allocating): pitch bend with a range, renaming the geometry's

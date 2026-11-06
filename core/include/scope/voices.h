@@ -255,7 +255,8 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     const double turnTo = round && voice.rounds ? 1 : 0;
     voice.turn += (turnTo - voice.turn) * roleGlide;
     double right = a;
-    if (turnTo == 1 || voice.turn > 1e-9) {
+    // Written whenever the switch is on, and glided over the mix's length (the page says why).
+    if (round || voice.turn > 1e-9) {
       if (voice.ring.empty()) { voice.ring.assign(kRoundRing, 0.0); voice.at = 0; }
       voice.ring[static_cast<std::size_t>(voice.at)] = a;
       const double back = std::fmin(kRoundRing - 2, f > 0 ? c.rate / (4 * std::fabs(f)) : 0);
@@ -265,7 +266,8 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       const double late = voice.ring[static_cast<std::size_t>(i0)]
                         + (voice.ring[static_cast<std::size_t>(i1)] - voice.ring[static_cast<std::size_t>(i0)]) * part;
       voice.at = (voice.at + 1) % kRoundRing;
-      right = a + (late - a) * voice.turn;
+      const double t = voice.turn, u = 1 - t;
+      if (t > 0) right = (u * a + t * late) / std::sqrt(u * u + t * t);
     } else if (voice.turn != 0) {
       voice.turn = 0;
     }

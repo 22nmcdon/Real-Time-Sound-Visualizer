@@ -2472,6 +2472,78 @@ int main() {
           std::to_string(w0) + "x" + std::to_string(h0) + " at first, reopened " + std::to_string(w1) + "x" + std::to_string(h1));
   }
 
+  std::printf("\n--- the quarter turn's glides ---\n");
+  {
+    /* The owner heard a pop going from two notes to one with the quarter turn
+       on (6 Nov). A voice wrote its ring only while it was turned, so a note
+       that became the lone note again glided in samples written before the
+       second note came. Each ear's largest second difference in the 40 ms
+       after the second note is let go, against the steady note's: with the
+       stale ring the right's was forty times it. */
+    const auto played = [&](bool round, const std::vector<std::pair<int, juce::MidiMessage>>& notes, int switchAt) {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, 128);
+      /* On the plain sine, in poly, which the quarter turn is for: opened on
+         the old opening's dyad the switch did nothing, and the first version
+         of these checks passed on a sound that never turned - its null below
+         is what said so. */
+      scope::Json base = scope::baseSetup();
+      base.set("polyRound", scope::Json::boolean(round && switchAt < 0));
+      if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
+      unstaged(p);
+      std::vector<float> l, r;
+      juce::AudioBuffer<float> b(2, 128);
+      for (int at = 0; at < static_cast<int>(rate * 1.5); at += 128) {
+        b.clear();
+        juce::MidiBuffer m;
+        for (const auto& [when, msg] : notes) if (at <= when && when < at + 128) m.addEvent(msg, when - at);
+        if (switchAt >= 0 && at == switchAt) p.pageControl("polyRound", scope::Json::boolean(true));
+        p.processBlock(b, m);
+        for (int i = 0; i < 128; ++i) { l.push_back(b.getSample(0, i)); r.push_back(b.getSample(1, i)); }
+      }
+      return std::make_pair(l, r);
+    };
+    const auto bend = [](const std::vector<float>& x, int from, int to) {
+      double m = 0;
+      for (int i = from + 2; i < to; ++i) m = std::fmax(m, std::fabs(x[i] - 2 * x[i - 1] + x[i - 2]));
+      return m;
+    };
+    const int letGo = 48000;
+    const std::vector<std::pair<int, juce::MidiMessage>> twoThenOne {
+      { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) }, { 24000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)) },
+      { letGo, juce::MidiMessage::noteOff(1, 64) } };
+    const auto [tl, tr] = played(true, twoThenOne, -1);
+    const double steady = std::fmax(bend(tl, letGo + 6720, letGo + 11520), bend(tr, letGo + 6720, letGo + 11520));
+    const double change = std::fmax(bend(tl, letGo, letGo + 1920), bend(tr, letGo, letGo + 1920));
+    check("with the quarter turn on, letting go of one of two notes makes no pop: no ear bends more than three times the steady note does",
+          steady > 0 && change < 3 * steady, "after the change " + num(change) + ", steady " + num(steady));
+    // The measure can see a pop: the same right ear with a step of a hundredth put in after the change.
+    std::vector<float> stepped = tr;
+    for (int i = letGo + 500; i < static_cast<int>(stepped.size()); ++i) stepped[static_cast<std::size_t>(i)] += 0.01f;
+    check("null: a step of a hundredth in that ear reads as one", bend(stepped, letGo, letGo + 1920) > 3 * steady,
+          num(bend(stepped, letGo, letGo + 1920)));
+
+    /* And the glide holds a sine's level: switched on under a held note, the
+       right's peak over each period through the glide is the steady peak.
+       The straight mix of the wave and its quarter-late self came down to
+       0.78 halfway (-2.2 dB). */
+    const auto [gl, gr] = played(true, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, 24064);
+    const int period = static_cast<int>(rate / 220.0);
+    double peak = 0, least = 1e9;
+    for (int i = 20000; i < 20000 + period; ++i) peak = std::fmax(peak, std::fabs(gr[static_cast<std::size_t>(i)]));
+    for (int at = 24064; at < 24064 + 1920; at += period / 4) {
+      double m = 0;
+      for (int i = at; i < at + period; ++i) m = std::fmax(m, std::fabs(gr[static_cast<std::size_t>(i)]));
+      least = std::fmin(least, m);
+    }
+    check("switched on under a held sine, the quarter turn glides in at the sine's level, within a per cent",
+          peak > 0.1 && least > 0.99 * peak, "least " + num(least / peak) + " of the steady peak");
+    const auto [ol, orr] = played(false, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, -1);
+    double apart = 0;
+    for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gr[static_cast<std::size_t>(i)] - orr[static_cast<std::size_t>(i)]));
+    check("null: and it has turned - the right is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
+  }
+
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");
   return failures ? 1 : 0;
 }
