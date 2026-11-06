@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
@@ -161,6 +162,9 @@ class Instrument {
     hearing_->hears(!drawsInput_);
     nowMs_ = 0;
     lastBlockMs_ = 0;
+    stepPos_ = 0;
+    stepStartMs_ = 0;
+    ramps_ = {};
     linkClock(*brain_, lfos_);
     /* The page's MIDI out, a port chosen once and for good: the owner's MIDI
        out is always there, and whether anything listens to it is the owner's
@@ -268,13 +272,57 @@ class Instrument {
     }
   }
 
-  /* One block: the page's once-a-frame work once and before it, then the
-     generator up to each MIDI event, the event, and on. `right` may be null;
-     `transport` is null where the host gives none; `sliders` are the host's
-     parameters moved since the last block. */
+  /* One block, in steps of 128 frames whatever the host's block (6 Nov): the
+     page's once-a-frame work at the top of each step, then the generator up
+     to each MIDI event, the event, and on. The steps fall on every 128th
+     frame of the instrument's life and carry across the host's blocks, so a
+     block of 100 or 441 frames is as good as one of 2048: the same samples
+     come out. They used to be the host's blocks, so the matrix, the LFOs'
+     routes, the picture stage and the clock stepped once a host block, and
+     at 512 or 2048 the plugin was another instrument than the site, whose
+     worklet steps every 128, and an offline render changed with the
+     buffer. A host's parameter moved is walked from where it stood to where
+     it was put across the steps its block holds, rather than stepped at
+     the block's top, and kept as one hand at the end. `right` may be null;
+     `transport` is null where the host gives none, and is the block's first
+     frame's, carried on to each step's. */
+  static constexpr int kStepFrames = 128;  // the site's worklet's block
   void block(float* left, float* right, int frames, const Event* events, std::size_t eventCount, const Transport* transport,
              const HostSlider* sliders, std::size_t sliderCount, const Input* input = nullptr) {
-    input_ = input;
+    const int firstStep = stepPos_ == 0 ? 0 : kStepFrames - stepPos_;
+    const int steps = firstStep < frames ? (frames - firstStep + kStepFrames - 1) / kStepFrames : 0;
+    for (std::size_t i = 0; i < sliderCount; ++i) rampTo(sliders[i].id, sliders[i].value, std::max(1, steps));
+    int pos = 0;
+    std::size_t e = 0;
+    while (pos < frames) {
+      if (stepPos_ == 0) {
+        if (transport) {
+          Transport now = *transport;
+          // On to this step's first frame, while it plays; stopped, the host's position stands.
+          if (now.ppq && now.playing) *now.ppq += pos / rate_ * now.bpm / 60;
+          step(&now, pos);
+        } else {
+          step(nullptr, pos);
+        }
+      }
+      const int n = std::min(kStepFrames - stepPos_, frames - pos);
+      std::size_t upTo = e;
+      if (pos + n >= frames) upTo = eventCount;
+      else while (upTo < eventCount && events[upTo].sample < pos + n) ++upTo;
+      Input shifted { nullptr, nullptr };
+      if (input) shifted = Input { input->left + pos, input->right ? input->right + pos : nullptr };
+      input_ = input ? &shifted : nullptr;
+      play(left + pos, right ? right + pos : nullptr, n, events + e, upTo - e, pos);
+      input_ = nullptr;
+      e = upTo;
+      pos += n;
+      stepPos_ = (stepPos_ + n) % kStepFrames;
+    }
+  }
+
+ private:
+  // The once-a-frame work, at the top of a step `at` frames into the host's block.
+  void step(const Transport* transport, int at) {
     /* The page's once-a-frame work, once a block and before it: the
        keyboard's controllers walk and its gate and chord are worked out
        again, the matrix steps its fades, fires its events and compiles its
@@ -289,7 +337,7 @@ class Instrument {
        the number, as the text of it would set it, and its handler run, all
        without allocating (5v). Keeping the hand for the state still does, as
        the state's publishing at the block's end does (PLAN.md, 5v). */
-    for (std::size_t i = 0; i < sliderCount; ++i) moveToNumber(sliders[i].id, sliders[i].value);
+    stepRamps();
     /* The level over the last of the picture, the page's screen, as the frame
        before this one left it. The page's window is its fetch, which follows
        the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
@@ -311,11 +359,11 @@ class Instrument {
     keyboard_->setNow(nowMs_);
     keyboard_->setTempo(brain_->clock.bpm);
     keyboard_->frame(lastBlockMs_);
-    outAt_ = 0;  // what is sent before the block's events is sent at its top
+    outAt_ = at;  // what is sent before the step's events is sent at its top
     /* The score's step, the arpeggio's and the events, in the page's frame's
-       order: once a block, as the page does them once a frame, so a note-off
-       due inside a block goes at the next block's top - 11 ms late at most
-       at 512 samples, where the page's frames are 17 ms apart. The score
+       order: once a step, as the page does them once a frame, so a note-off
+       due inside a step goes at the next step's top - 2.7 ms late at most,
+       where the page's frames are 17 ms apart. The score
        reads the grid drawn here, as the last picture frame left it. */
     scoreTick(brain_->score, nowMs_, true, brain_->clock, pictureRun_->phosphor().grid().data(),
               keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
@@ -360,14 +408,20 @@ class Instrument {
     // And as the draw left it, for the routes: the page's routes read it after its frame's draw.
     matrix_->setLayerPictures(pictureRun_->layers().live());
     core_->setRoutes(matrix_->routes(nowMs_));
-    const double blockMs = nowMs_;
-    lastBlockMs_ = 1000.0 * frames / rate_;
+    stepStartMs_ = nowMs_;
+    lastBlockMs_ = 1000.0 * kStepFrames / rate_;
     nowMs_ += lastBlockMs_;
+  }
+
+  // A piece of a step, `frames` long, `offset` frames into the host's block,
+  // its events' samples counted from the block's top.
+  void play(float* left, float* right, int frames, const Event* events, std::size_t eventCount, int offset) {
     // Each event at its own sample, not at the top of the block: the
     // generator is run up to it, told, and run on. The arpeggiator's first
     // step, which the page strikes on a timer once the chord has gathered,
     // is struck the same way at the sample its time falls on.
     int done = 0;
+    const double blockMs = stepStartMs_ + 1000.0 * stepPos_ / rate_;  // this piece's first sample
     const double endMs = blockMs + 1000.0 * frames / rate_;
     const auto wakesUntil = [&](int until) {
       for (auto wake = keyboard_->arpWake(); wake && *wake < endMs; wake = keyboard_->arpWake()) {
@@ -375,18 +429,18 @@ class Instrument {
         if (at > until) break;
         render(left, right, done, at);
         done = at;
-        outAt_ = std::min(at, frames - 1);  // a wake in the block's last fraction of a sample rounds up past its end
+        outAt_ = offset + std::min(at, frames - 1);  // a wake in the piece's last fraction of a sample rounds up past its end
         keyboard_->setNow(*wake);
         keyboard_->wakeArp();
       }
     };
     for (std::size_t e = 0; e < eventCount; ++e) {
       const Event& event = events[e];
-      const int at = std::clamp(event.sample, done, frames);
+      const int at = std::clamp(event.sample - offset, done, frames);
       wakesUntil(at);
       render(left, right, done, at);
       done = at;
-      outAt_ = at;
+      outAt_ = offset + at;
       keyboard_->setNow(blockMs + 1000.0 * at / rate_);
       /* The bytes, not anyone's reading of them: the keyboard is the page's
          `midiBytes` ported, so a note-on at velocity nought, a controller,
@@ -400,6 +454,29 @@ class Instrument {
     wakesUntil(frames);
     render(left, right, done, frames);
   }
+
+  /* A host parameter's walk: from where its slider stands to the value put,
+     over the steps of the block it came in. Moved by number, which
+     allocates nothing (5v); kept as a hand once, at its end. A new value for
+     one still walking walks on from where it has got to. */
+  struct Ramp { const char* id = nullptr; double from = 0, to = 0; int steps = 0, done = 0; };
+  void rampTo(const char* id, double to, int steps) {
+    Ramp* r = nullptr;
+    for (auto& x : ramps_) if (x.id && std::strcmp(x.id, id) == 0) { r = &x; break; }
+    if (!r) for (auto& x : ramps_) if (!x.id) { r = &x; break; }
+    if (!r) { moveToNumber(id, to); return; }  // more at once than there is room for: stepped, as before
+    *r = Ramp { id, brain_->panel.range(id), to, steps, 0 };
+  }
+  void stepRamps() {
+    for (auto& r : ramps_) {
+      if (!r.id) continue;
+      r.done++;
+      if (r.done >= r.steps) { moveToNumber(r.id, r.to); r.id = nullptr; continue; }
+      scope::moveSliderTo(r.id, r.from + (r.to - r.from) * r.done / r.steps, *brain_, *core_, *keyboard_, lfos_);
+    }
+  }
+
+ public:
 
   /* Whether the state the page is shown has changed since it was last
      published - a hand, a load, a controller learned - and, once the owner
@@ -978,6 +1055,9 @@ class Instrument {
   std::unique_ptr<MidiOut> midiOut_;  // to the owner, through `hooks.midiOut`
   Strike strike_;  // the score's notes, struck in the generator's score voice
   int outAt_ = 0;  // the sample in the block that what the out sends now is sent at
+  int stepPos_ = 0;          // frames into the current 128-frame step
+  double stepStartMs_ = 0;   // where the current step began, in the matrix's time
+  std::array<Ramp, 16> ramps_ {};  // host parameters walking across a block's steps
   Json setup_;     // the setup loaded
   /* Every hand on the setup since it was loaded, in order: a slider, a menu,
      a switch, a button, the routings. Saved with it as `pluginHands`, each

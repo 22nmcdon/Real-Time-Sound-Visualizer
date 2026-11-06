@@ -81,6 +81,10 @@ int main() {
   oldBoot();
   constexpr double rate = 48000;
   constexpr int block = 512;
+  /* The instrument's own step, whatever the host's block (6 Nov): what a
+     reference writes out as the plugin's once-a-frame work happens every
+     `step` frames, not every `block`. */
+  constexpr int step = scope::Instrument::kStepFrames;
   ScopeProcessor processor;
   processor.prepareToPlay(rate, block);
   unstaged(processor);
@@ -213,10 +217,10 @@ int main() {
     keys.frame(0);
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
-    // Each block: the keyboard's frame, the matrix's, and the routes held
-    // across the block - as the plugin is meant to do it, written out.
+    // Each step: the keyboard's frame, the matrix's, and the routes held
+    // across the step - as the plugin is meant to do it, written out.
     const auto top = [&] {
-      const double ms = 1000.0 * block / rate;
+      const double ms = 1000.0 * step / rate;
       keys.frame(done == 0 ? 0 : ms);
       matrix.setLayered(keys.layersOn());
       matrix.setStrikes(keys.strikes());
@@ -224,13 +228,18 @@ int main() {
       scope::morphStep(brain, core, keys, lfos);
       core.setRoutes(matrix.routes(done * 1000.0 / rate));
     };
+    /* A step's work comes before anything at its first sample, as the
+       plugin does it: run up to a note that falls on a step's top and the
+       step is begun before the note is told. */
+    int topped = -1;
     const auto run = [&](int to) {
       while (done < to) {
-        if (done % block == 0) top();
-        const int end = std::min(to, (done / block + 1) * block);
+        if (done % step == 0 && topped != done) { top(); topped = done; }
+        const int end = std::min(to, (done / step + 1) * step);
         core.block(pl.data() + done, pr.data() + done, end - done, l.data() + done, r.data() + done);
         done = end;
       }
+      if (done % step == 0 && topped != done && done < total) { top(); topped = done; }
     };
     run(100); keys.noteOn(57, 100);
     run(second); keys.noteOn(64, 90);
@@ -374,7 +383,8 @@ int main() {
       }
     };
     blocks(hosted, 40, true); blocks(alone, 40, false);
-    const double lastPpq = head.ppq - block / rate * head.bpm / 60;
+    // The bar where the last step began: the block's top carried on to its last step's first frame.
+    const double lastPpq = head.ppq - block / rate * head.bpm / 60 + (block - step) / rate * head.bpm / 60;
     const auto& c = hosted.clock();
     check("under a host at 90 the clock is the host's: its tempo, its position for the bar, and a locked oscillator at its quaver",
           c.from == scope::Clock::From::Host && c.bpm == 90 && c.set == 120 && std::fabs(c.beat(c.now()) - lastPpq) < 1e-9
@@ -493,8 +503,9 @@ int main() {
   {
     /* The arpeggio sent as it is played: its first step at sample 1300, 25 ms
        after the first key, where the next block's top is 1536; then a quaver
-       at 120 apart, 12,000 samples, each at the first block's top on or after
-       its time, as the page steps it in its frame, with the last step's note
+       at 120 apart, 12,000 samples, each at the top of the first of the
+       instrument's 128-frame steps on or after its time, as the page steps it
+       in its frame (a host block's top, before 6 Nov), with the last step's note
        ended first. Four in the second; and the chord let go at sample 40,000,
        which ends the step sounding there and then, at the release's own
        sample. The host's own notes are not sent back. */
@@ -507,7 +518,7 @@ int main() {
     const auto on = ons(sent), off = offs(sent);
     bool stepped = on.size() == 4 && off.size() == 4 && off[3].sample == 40000 && off[3].b == on[3].b;
     for (std::size_t k = 1; stepped && k < on.size(); ++k) {
-      const int due = 1300 + static_cast<int>(k) * 12000, top = (due + block - 1) / block * block;
+      const int due = 1300 + static_cast<int>(k) * 12000, top = (due + step - 1) / step * step;
       stepped = on[k].sample == top && off[k - 1].sample == top && off[k - 1].b == on[k - 1].b;
     }
     const bool unechoed = std::none_of(sent.begin(), sent.end(), [](const Sent& e) {
@@ -554,7 +565,8 @@ int main() {
         m.clear();
         // A held A3, so there is a sine to draw.
         if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
-        const double at = head.ppq;
+        // Where the block's last step began, which is where the playhead last looked (6 Nov).
+        const double at = head.ppq + (block - step) / rate * 2;
         p.processBlock(buf, m);
         for (const auto e : m) out.ons += e.getMessage().isNoteOn() ? 1 : 0;
         if (at < 0) out.waited = out.waited && p.score().col == -1;
@@ -754,15 +766,19 @@ int main() {
     {
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
-      p.prepareToPlay(rate, block);
+      /* In blocks of the instrument's own step (6 Nov): a picture frame is
+         taken at whichever step it falls due in, and this compares it with
+         the ring as the test saw it last, which is only ever between blocks.
+         That 512 and 2048 make the same samples is checked on its own. */
+      p.prepareToPlay(rate, step);
       oldBoot();
       p.pageSlider("timebase", u"7");
-      juce::AudioBuffer<float> buf(2, block);
+      juce::AudioBuffer<float> buf(2, step);
       juce::MidiBuffer m;
       std::vector<float> before;
       scope::View viewBefore;
       int framesBefore = 0;
-      for (int k = 0; k < 60; ++k) {
+      for (int k = 0; k < 60 * block / step; ++k) {
         buf.clear();
         p.processBlock(buf, m);
         if (k > 1 && p.picture().phosphor().frames() != framesBefore) {
@@ -796,7 +812,7 @@ int main() {
         viewBefore = p.view().capture;
       }
     }
-    check("the frame the plugin draws is the page's capture of its ring as the block before left it, at 20 ms a division, sample for sample",
+    check("the frame the plugin draws is the page's capture of its ring as the step before left it, at 20 ms a division, sample for sample",
           frameOff == 0 && compared > 20, std::to_string(compared) + " frames, off by " + num(frameOff) + ", the window "
           + num(lastLength) + " long, asked " + num(lastAsked));
     /* The photocell switched from the page mid-run: off, its sources go and
@@ -1041,12 +1057,12 @@ int main() {
        half stays. */
     setenv("SCOPE_PRESET", corpusText("Harmonograph").c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
-    p->prepareToPlay(rate, block);
+    p->prepareToPlay(rate, step);  // a step a block, so the test reads the ring between the instrument's steps (6 Nov)
     oldBoot();
     scope::Level own, oldest;
     double levelOff = 0, oldestOff = 0, peak = 0;
-    juce::AudioBuffer<float> buf(2, block);
-    for (int k = 0; k < 94; ++k) {
+    juce::AudioBuffer<float> buf(2, step);
+    for (int k = 0; k < 94 * block / step; ++k) {
       const auto picture = scopeResource("/picture.bin", *p);
       std::vector<float> lane(2048), early(2048);
       const std::size_t frames = picture->data.size() / sizeof(float) / 2;
@@ -1054,8 +1070,8 @@ int main() {
         std::memcpy(&lane[i], picture->data.data() + ((frames - lane.size() + i) * 2) * sizeof(float), sizeof(float));
         std::memcpy(&early[i], picture->data.data() + (i * 2) * sizeof(float), sizeof(float));
       }
-      own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * block / rate);
-      oldest.update(early.data(), early.size(), k == 0 ? 0 : 1000.0 * block / rate);
+      own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * step / rate);
+      oldest.update(early.data(), early.size(), k == 0 ? 0 : 1000.0 * step / rate);
       buf.clear();
       juce::MidiBuffer m;
       p->processBlock(buf, m);
@@ -1063,7 +1079,7 @@ int main() {
       oldestOff = std::fmax(oldestOff, std::fabs(p->level() - oldest.value()));
       peak = std::fmax(peak, p->level());
     }
-    check("the level is read off the picture's newest frames, block for block, as the page reads it",
+    check("the level is read off the picture's newest frames, step for step, as the page reads it",
           levelOff == 0 && peak > 0.1 && oldestOff > 1e-3,
           "off by " + num(levelOff) + ", at most " + num(peak) + "; read off the oldest frames it is off by " + num(oldestOff));
   }
@@ -1081,7 +1097,7 @@ int main() {
     const auto listen = [&](bool routed) {
       setenv("SCOPE_PRESET", corpusText("Brightness swirls it").c_str(), 1);
       auto p = std::make_unique<ScopeProcessor>();
-      p->prepareToPlay(rate, block);
+      p->prepareToPlay(rate, step);  // a step a block, so the ring is read between the instrument's steps (6 Nov)
       oldBoot();
       if (!routed) p->matrix().remove("hear.bright", "gen.twist");
       scope::Matrix ownMatrix;
@@ -1089,8 +1105,8 @@ int main() {
       own.hears(true);
       double off = 0;
       std::vector<float> out;
-      juce::AudioBuffer<float> buf(2, block);
-      for (int k = 0; k < 94; ++k) {
+      juce::AudioBuffer<float> buf(2, step);
+      for (int k = 0; k < 94 * block / step; ++k) {
         const auto picture = scopeResource("/picture.bin", *p);
         const std::size_t frames = picture->data.size() / sizeof(float) / 2;
         std::vector<float> l(scope::kHearN), r(scope::kHearN);
@@ -1098,15 +1114,15 @@ int main() {
           std::memcpy(&l[i], picture->data.data() + ((frames - l.size() + i) * 2) * sizeof(float), sizeof(float));
           std::memcpy(&r[i], picture->data.data() + ((frames - l.size() + i) * 2 + 1) * sizeof(float), sizeof(float));
         }
-        const double now = 1000.0 * k * block / rate;
+        const double now = 1000.0 * k * step / rate;
         own.setNow(now);
-        own.step(ownMatrix, true, l.data(), l.data(), r.data(), l.size(), rate, k == 0 ? 0 : 1000.0 * block / rate,
-                 k * block > 100 ? std::optional<double>(scope::midiHz(57)) : std::nullopt, now);
+        own.step(ownMatrix, true, l.data(), l.data(), r.data(), l.size(), rate, k == 0 ? 0 : 1000.0 * step / rate,
+                 k * step > 100 ? std::optional<double>(scope::midiHz(57)) : std::nullopt, now);
         buf.clear();
         juce::MidiBuffer m;
         if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100);
         p->processBlock(buf, m);
-        for (int i = 0; i < block; ++i) out.push_back(buf.getSample(0, i));
+        for (int i = 0; i < step; ++i) out.push_back(buf.getSample(0, i));
         const auto& a = p->hearing();
         const auto& b = own.hearing();
         off = std::fmax(off, std::fabs(a.bright - b.bright) + std::fabs(a.pitch - b.pitch) + std::fabs(a.width - b.width)
@@ -1118,7 +1134,7 @@ int main() {
     const auto [off, routed, bright, pitch] = listen(true);
     const auto [offU, plain, brightU, pitchU] = listen(false);
     const double heard = apart(routed, plain, 0, routed.size());
-    check("the hearing reads the picture as the page would, block by block, the held A3 its pitch; and brightness on the twist is heard",
+    check("the hearing reads the picture as the page would, step by step, the held A3 its pitch; and brightness on the twist is heard",
           off == 0 && bright > 0.1 && std::fabs(pitch - std::log2(220 / scope::kPitchRef) / 2) < 1e-9 && heard > 0.05,
           "off by " + num(off) + ", brightness " + num(bright) + ", pitch " + num(pitch) + "; without the routing it differs by " + num(heard));
   }
@@ -2542,6 +2558,114 @@ int main() {
     double apart = 0;
     for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gr[static_cast<std::size_t>(i)] - orr[static_cast<std::size_t>(i)]));
     check("null: and it has turned - the right is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
+  }
+
+  std::printf("\n--- a host's automation, walked ---\n");
+  {
+    /* A host fading Level from 100 to 20 across forty blocks of 512, a value
+       a block, as hosts hand automation over. Stepped at each block's top it
+       was a staircase of forty, which zippers; it is walked across each
+       block's four steps now. The amplitude of a held sine over each step,
+       fitted at its own frequency, which is exact for a steady sine: the
+       largest move from one step to the next against the whole fade. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    scope::Json base = scope::baseSetup();
+    base.set("polyRound", scope::Json::boolean(false));
+    if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
+    unstaged(p);
+    auto* level = p.knob(std::string_view("level"));
+    juce::AudioBuffer<float> buf(2, block);
+    std::vector<float> l;
+    for (int k = 0; k < 80; ++k) {
+      // At 100 once the setup has landed, which reads the knobs back from the sliders.
+      if (k == 2) level->setValueNotifyingHost(level->convertTo0to1(100));
+      if (k >= 20 && k < 60) level->setValueNotifyingHost(level->convertTo0to1(100 - 80.0f * static_cast<float>(k - 19) / 40));
+      buf.clear();
+      juce::MidiBuffer m;
+      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+      p.processBlock(buf, m);
+      for (int i = 0; i < block; ++i) l.push_back(buf.getSample(0, i));
+    }
+    const double w = 2 * 3.141592653589793 * 220 / rate;
+    std::vector<double> amp;
+    for (std::size_t at = 0; at + step <= l.size(); at += step) {
+      double ss = 0, sc = 0, cc = 0, ys = 0, yc = 0;
+      for (int i = 0; i < step; ++i) {
+        const double t = static_cast<double>(at + i), s1 = std::sin(w * t), c1 = std::cos(w * t), y = l[at + i];
+        ss += s1 * s1; sc += s1 * c1; cc += c1 * c1; ys += y * s1; yc += y * c1;
+      }
+      const double det = ss * cc - sc * sc, a = (ys * cc - yc * sc) / det, b = (yc * ss - ys * sc) / det;
+      amp.push_back(std::hypot(a, b));
+    }
+    const std::size_t from = 20 * block / step, to = 62 * block / step;
+    double most = 0;
+    for (std::size_t k = from; k < to; ++k) most = std::fmax(most, std::fabs(amp[k + 1] - amp[k]));
+    const double whole = std::fabs(amp[from - 2] - amp[to + 4]);
+    /* The slider is in whole units, and the fade is two of them a block, so
+       a walk of half a unit a step rounds to a unit every other step: what
+       it is held to is a unit at most, where the block's top moved two. That
+       is the slider's own grain, which the page's hand has too. */
+    const double unit = whole / 80;
+    check("a host's fade of Level is walked across the steps: no step moves more than one unit of the slider, where a block's top moved two",
+          whole > 0.05 && most < unit * 1.1, "most " + num(most) + " a step, a unit " + num(unit) + ", a block's top " + num(2 * unit));
+  }
+
+  std::printf("\n--- whatever the host's block ---\n");
+  {
+    /* The instrument is the same instrument at any block size a host uses.
+       Its once-a-frame work - the matrix, the LFOs' routes, the picture
+       stage, the clock - ran once a host block, where the site's worklet
+       runs it every 128 frames, so at 512 or 2048 the plugin was another
+       instrument and an offline render changed with the buffer (the
+       outside review, 6 Nov). The same notes, on an old preset with both
+       LFOs routed and the picture stage at its default, at 128, 512 and
+       2048 frames a block: the same samples. */
+    // Blocks of these sizes in turn: one size, or a host that changes its mind every block.
+    const auto render = [&](std::vector<int> sizes) {
+      int most = 0;
+      for (const int n : sizes) most = std::max(most, n);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, most);
+      scope::Json setup = corpusSetup("Tumbling");
+      setup.set("pictureAmount", scope::Json::number(60));
+      if (const auto code = scope::encodeSetup(setup)) p.pageSetup(*code);
+      std::vector<float> l;
+      juce::AudioBuffer<float> b(2, most);
+      const int total = 2048 * 48;  // two seconds
+      const std::vector<std::pair<int, juce::MidiMessage>> notes {
+        { 300, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) }, { 30000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(90)) },
+        { 70000, juce::MidiMessage::noteOff(1, 64) } };
+      std::size_t turn = 0;
+      for (int at = 0; at < total;) {
+        const int frames = std::min(sizes[turn++ % sizes.size()], total - at);
+        juce::AudioBuffer<float> piece(b.getArrayOfWritePointers(), 2, frames);
+        piece.clear();
+        juce::MidiBuffer m;
+        for (const auto& [when, msg] : notes) if (at <= when && when < at + frames) m.addEvent(msg, when - at);
+        p.processBlock(piece, m);
+        for (int i = 0; i < frames; ++i) l.push_back(piece.getSample(0, i));
+        at += frames;
+      }
+      return l;
+    };
+    const auto small = render({ 128 }), mid = render({ 512 }), big = render({ 2048 }), odd = render({ 100, 441, 7, 2048, 128, 333 });
+    const auto apart = [](const std::vector<float>& a, const std::vector<float>& b) {
+      double d = a.size() == b.size() ? 0 : 1;
+      for (std::size_t i = 0; i < a.size() && i < b.size(); ++i) d = std::fmax(d, std::fabs(a[i] - b[i]));
+      return d;
+    };
+    double peak = 0;
+    for (const float v : small) peak = std::fmax(peak, std::fabs(v));
+    check("the same notes played at 128, 512 and 2048 frames a block are the same samples",
+          peak > 0.1 && apart(small, mid) == 0 && apart(small, big) == 0,
+          "512 apart by " + num(apart(small, mid)) + ", 2048 by " + num(apart(small, big)) + "; peak " + num(peak));
+    check("and so are blocks that change size every time - 100, 441, 7, 2048, 128, 333 - with the steps carried across them",
+          apart(small, odd) == 0, "apart by " + num(apart(small, odd)));
+    // The comparison can see a difference: the same render a sample late.
+    std::vector<float> late(small.size(), 0.0f);
+    for (std::size_t i = 1; i < small.size(); ++i) late[i] = small[i - 1];
+    check("null: the same render a sample late is not the same samples", apart(small, late) > 0.01, num(apart(small, late)));
   }
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");
