@@ -173,15 +173,15 @@ inline constexpr SelectSpec kSelects[] = {
 // LFO's rate) as well as the ones MORPH_SKIP names. The order is what a setup
 // code writes an end in, so it is held to the page like the rest.
 inline constexpr const char* kMorphIds[] = {
-  "freq", "amp", "morph", "width", "table", "phase", "detail", "spinX", "spinY", "spinZ", "spinRate", "depth",
-  "envAttack", "envDecay", "envSustain", "envRelease", "glide", "figureRate", "ringTime", "swingRate", "decay",
-  "detune", "swingDrive", "quantiseGlide", "tempo", "lag", "lagMix", "acCorner", "rotate", "bar0", "bar1",
-  "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
+  "freq", "morph", "width", "table", "phase", "detail", "spinX", "spinY", "spinZ", "spinRate", "depth", "envAttack",
+  "envDecay", "envSustain", "envRelease", "glide", "figureRate", "ringTime", "swingRate", "decay", "detune",
+  "swingDrive", "quantiseGlide", "tempo", "lag", "lagMix", "acCorner", "rotate", "bar0", "bar1", "bar2",
+  "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
   "vcfSus", "vcfRel", "planeTurn", "planeTwist", "planeRadius", "planeScaleX", "planeScaleY", "planeShear",
   "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
   "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "gen2Rate", "inputDepth", "filterCutoff", "filterRes",
-  "level", "position", "holdoff", "timebase", "zoom", "oscScan", "scanStrike", "scanSoft",
+  "level", "position", "holdoff", "timebase", "zoom", "oscScan", "scanStrike", "scanSoft", "amp",
 };
 
 }  // namespace scope

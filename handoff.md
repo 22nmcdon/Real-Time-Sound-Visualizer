@@ -157,6 +157,13 @@ is below, in order. The listening notes this plan refers to follow it.
    and the bar would have to follow layer B's editing as the panel does),
    the beam's ink, and the brief's own open questions, which are the
    owner's: the drawings (cut, or back in Kind) decide F3.
+   *The owner's answers, 7 Nov:* the drawings (harmonograph, figures,
+   solids, the second generator) are neither put on the face nor cut: made
+   unreachable for now - no menu offers them, the code and the decode stay -
+   so the owner can see whether they are missed. And Level goes to the
+   bottom only: the generator's amplitude leaves Play and becomes Level in
+   the Picture section, with the output meter, following layer B while B is
+   on the panel.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

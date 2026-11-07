@@ -191,15 +191,19 @@ with sync_playwright() as pw:
     print("    drawings: %s" % drawings)
     check("with the drawer shut the generator offers the waveform alone, and From your input alone",
           drawings["shut"] == {"kinds": ["wave"], "from": ["live"]}, str(drawings["shut"]))
-    check("and open it offers the harmonograph, the figures and the solids, and the second generator",
-          drawings["open"] == {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
+    # Out of reach since 7 Nov, the owner's call: neither on the face nor cut,
+    # to see whether they are missed. Until then the drawer offered them; the
+    # null is that, which the open drawer must no longer do.
+    check("and open it offers them no more: the drawings and the second generator are out of reach",
+          drawings["open"] == {"kinds": ["wave"], "from": ["live"]}
+          and drawings["open"] != {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
           str(drawings["open"]))
     check("a drawing loaded by a preset with the drawer shut stays chosen, offered and drawn, and goes when it is left",
           drawings["loaded"] == {"drawer": "shut", "mode": "harmonograph", "menu": "harmonograph",
                                  "kinds": ["wave", "harmonograph"], "rows": True} and drawings["after"] == ["wave"],
           str(drawings["loaded"]) + " " + str(drawings["after"]))
-    check("and a search for a drawing opens the drawer to choose it, where a search for the attack does not",
-          drawings["searchDrawing"]["opened"] is True and drawings["searchAttack"]["opened"] is False
+    check("and a search for a drawing no longer opens the drawer, which would offer nothing, nor does the attack",
+          drawings["searchDrawing"]["opened"] is False and drawings["searchAttack"]["opened"] is False
           and drawings["searchAttack"]["found"] is not None, str(drawings))
     check("and a search for the tempo, in the drawer since P8, opens it",
           drawings["searchTempo"]["opened"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
@@ -558,12 +562,12 @@ with sync_playwright() as pw:
       }
       return out;
     }"""
-    want_bar = {"bottom": True, "knobs": ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory"],
+    want_bar = {"bottom": True, "knobs": ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "amp"],
                 "persistence": [False, True], "panel": True}
     for w, h in ((1400, 900), (960, 600)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
         bar = p.evaluate(BAR)
-        check("at %dx%d the Picture is along the bottom in both views, its five knobs, one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
+        check("at %dx%d the Picture is along the bottom in both views, its six knobs (Level last), one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
               all(v == want_bar for v in bar.values()), str(bar))
     # Its null: the menu put back on the face is a second Persistence.
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
