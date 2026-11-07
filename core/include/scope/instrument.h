@@ -148,8 +148,10 @@ class Instrument {
     // The expression pedal is the Picture amount, held as the slider holds it.
     // A known limitation: the plugin's page is not told, so its slider stays
     // where the hand left it while the sound follows the foot. Telling it as a
-    // host parameter is told - a kept hand and hostVersion - would have the
-    // page restore its whole setup at a pedal's message rate, dozens a second.
+    // host parameter is told - a kept hand, hostVersion and hostMoved - would
+    // now move just that knob on the page, which restored its whole setup at
+    // every count until 7 Nov; what is left is a kept hand at a pedal's
+    // message rate, dozens a second, each allocating on the audio thread.
     keyboard_->setSwell([this](double amount) { brain_->panel.setRangeNumber("pictureAmount", amount); });
     /* The wheel or pressure given to the Picture amount, as the expression
        pedal sets it, or to Scan's depth, as a hand on its slider (6 Nov);
@@ -265,7 +267,9 @@ class Instrument {
     if (bands_) { brain_->view.capture.channels.resize(static_cast<std::size_t>(kBandCount)); fitView(*brain_); }
     if (hooks.loaded) hooks.loaded();
     changed_ = true;
-    if (fromHost) hostVersion_++;
+    // A load, from anywhere, is a fresh start for the knobs the host has moved.
+    hostMoved_.clear();
+    if (fromHost) { hostVersion_++; hostLoads_++; }
   }
 
   // One of the page's hands, done now: the owner calls it at the top of a block.
@@ -498,6 +502,16 @@ class Instrument {
   void published() { changed_ = false; }
   // How many changes came from the host rather than the page: a load, a parameter moved.
   int hostVersion() const { return hostVersion_; }
+  /* How many of them were loads, and which sliders the host has moved since
+     the last load, joined by commas: so the page, its count moved and no new
+     load, moves those knobs and restores nothing (hostPull on the page has
+     why). */
+  int hostLoads() const { return hostLoads_; }
+  std::string hostMoved() const {
+    std::string out;
+    for (const auto& id : hostMoved_) out += (out.empty() ? "" : ",") + id;
+    return out;
+  }
 
   /* The setup code of everything that can have changed: the setup loaded,
      the hands on it since, the controllers learned. */
@@ -635,7 +649,11 @@ class Instrument {
     hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->panel.range(id)))));
     remember("s:" + id, std::move(hand));
     changed_ = true;
-    if (fromHost) { hostVersion_++; return; }
+    if (fromHost) {
+      hostVersion_++;
+      if (std::find(hostMoved_.begin(), hostMoved_.end(), id) == hostMoved_.end()) hostMoved_.push_back(id);
+      return;
+    }
     // Moved on the page: a host parameter on that slider follows it.
     if (hooks.sliderMoved) hooks.sliderMoved(id, brain_->panel.range(id));
   }
@@ -1076,6 +1094,8 @@ class Instrument {
   std::vector<Hand> hands_;
   int presses_ = 0;  // the photocell's button, each press its own hand
   int hostVersion_ = 0;
+  int hostLoads_ = 0;
+  std::vector<std::string> hostMoved_;  // the sliders the host has moved since the last load
   bool changed_ = false;
   std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's

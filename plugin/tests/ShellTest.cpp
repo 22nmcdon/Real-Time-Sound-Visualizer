@@ -1477,13 +1477,28 @@ int main() {
     check("and the state the page is shown carries it, not counted as the host's; a parameter the host moves is counted",
           says && after.version == before.version && after.code != before.code && before.version >= 1,
           "version " + std::to_string(before.version) + " then " + std::to_string(after.version) + (says ? ", vcfCut at 900 in it" : ", not in it"));
-    const int was = p->pageState().version;
+    const int was = p->pageState().version, loadsWas = p->pageState().loads;
     p->knob("picture")->setValueNotifyingHost(p->knob("picture")->convertTo0to1(30));
     juce::AudioBuffer<float> buf(2, block);
     juce::MidiBuffer none;
     p->processBlock(buf, none);
     check("a parameter the host moves is counted as the host's, for the page to apply",
           p->pageState().version == was + 1, std::to_string(was) + " then " + std::to_string(p->pageState().version));
+    /* As a knob and not a load (F0, 7 Nov): under automation the page
+       restored its whole state at every count, four times a second. It
+       moves the knobs named here instead, and restores only on a load. */
+    const auto knobbed = p->pageState();
+    check("and as a knob, not a load: the count of loads stands, and the slider it moved is named for the page to move alone",
+          knobbed.loads == loadsWas && knobbed.moved == "pictureAmount",
+          "loads " + std::to_string(loadsWas) + " then " + std::to_string(knobbed.loads) + ", moved '" + knobbed.moved + "'");
+    juce::MemoryBlock saved;
+    p->getStateInformation(saved);
+    p->setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    p->processBlock(buf, none);
+    const auto reloaded = p->pageState();
+    check("a state the host loads is a load: counted, and the knobs moved before it forgotten",
+          reloaded.loads == loadsWas + 1 && reloaded.moved.empty() && reloaded.version > knobbed.version,
+          "loads " + std::to_string(reloaded.loads) + ", moved '" + reloaded.moved + "'");
   }
   {
     /* A setup loaded on the page - here "Wah"'s, as its code - is loaded in

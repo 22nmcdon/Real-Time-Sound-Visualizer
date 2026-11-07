@@ -141,8 +141,13 @@ is below, in order. The listening notes this plan refers to follow it.
    Picture along the bottom, and it says which CLAUDE.md layout rules it
    retires. First, check the audit's claim that automation makes the face reload its
    whole setup four times a second (`hostVersion_` and `hostPull`); fixing it
-   may change how the face feels more than a layout does.
-6. **The schema:** one table that generates the setup field lists (DEFAULTS,
+   may change how the face feels more than a layout does. *Checked and fixed
+   7 Nov:* it did, and it also put back any of the page's own hands the plugin
+   had not yet heard. The state now says how many of its changes were loads
+   and which knobs the host moved since; between loads the page moves those
+   knobs and restores nothing (`hosttest.py`, the shell test).
+6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
+   `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,
    `panel_controls.h`, `restore.h`); and the worklet stops loading the
    JavaScript generator when the compiled one plays. The JavaScript engine

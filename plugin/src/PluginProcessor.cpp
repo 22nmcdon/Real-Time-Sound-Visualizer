@@ -100,11 +100,11 @@ void ScopeProcessor::publish(bool wait) {
   std::string code = instrument_.stateCode();
   if (wait) {
     const juce::SpinLock::ScopedLockType lock(publishLock_);
-    published_ = { instrument_.hostVersion(), std::move(code) };
+    published_ = { instrument_.hostVersion(), instrument_.hostLoads(), instrument_.hostMoved(), std::move(code) };
   } else {
     const juce::SpinLock::ScopedTryLockType lock(publishLock_);
     if (!lock.isLocked()) return;  // the page is reading it; again next block
-    published_ = { instrument_.hostVersion(), std::move(code) };
+    published_ = { instrument_.hostVersion(), instrument_.hostLoads(), instrument_.hostMoved(), std::move(code) };
   }
   instrument_.published();
 }

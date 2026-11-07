@@ -4985,3 +4985,15 @@ default and no rule, and say so; giving them one means changing how an
 old code reads, in both engines, which is a decision per field rather than a
 tidy-up. One reading did change: layer B's own delay sync, named but not
 on the menu, is A's like every other field of B's, where it used to be Free.
+
+**A count that says "something changed" has to say what, once something
+changes often.** The plugin's page applied its state whenever the host's
+count moved, and the count moved for a load and for a knob alike: under
+automation every poll was a full `restore`, four times a second, clearing the
+spectrogram and rebuilding the panel - and putting back any hand of the
+page's own that the plugin had not yet heard, so automating the cutoff undid
+a drag on the amplitude (`hosttest.py` found both, 7 Nov). The state now
+carries how many of its changes were loads and which sliders the host has
+moved since the last (`hostLoads`, `hostMoved`): no new load, and the page
+moves those knobs and nothing else. A state without the two fields - the
+site's, which no host moves - is applied whole, as before.

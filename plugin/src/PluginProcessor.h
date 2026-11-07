@@ -180,7 +180,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
   void pageRoutings(std::string_view text);
   // And the fade, which the page keeps in its own storage, sent whole as JSON when it is saved.
   void pageFade(std::string_view json);
-  struct PageState { int version = 0; std::string code; };
+  // The state for the page: its host count, how many of those were loads, the
+  // sliders the host has moved since the last, and the code (hostPull on the page).
+  struct PageState { int version = 0; int loads = 0; std::string moved; std::string code; };
   PageState pageState() const;
   double slider(const char* id) const { return instrument_.slider(id); }
   int learned() const { return instrument_.learned(); }

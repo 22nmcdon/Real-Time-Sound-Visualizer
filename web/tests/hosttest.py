@@ -210,6 +210,43 @@ with sync_playwright() as pw:
     }""", [code({"vcfCut": 222}), code({"vcfCut": 111})])
     check("a newer state from the host is applied, one no newer is not, and applying it sends nothing back",
           applied == {"newer": "222", "same": "222", "log": []}, str(applied))
+    # Automation (F0 of web/docs/redesigning-the-face.md): every host knob's
+    # move counted as the host's, and the page applied the whole state on
+    # each - a full restore four times a second for as long as a lane played,
+    # clearing the spectrogram and rebuilding the panel under the hand. The
+    # plugin now says how many of its changes were loads, and which knobs the
+    # host has moved since the last: a load is restored, a knob is moved.
+    automated = p.evaluate("""async (codes) => {
+      const t = window.__hostTest, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      let restores = 0;
+      const real = window.restore, seenBefore = hostSync.seen;
+      window.restore = (x) => { restores++; return real(x); };
+      t.log.length = 0;
+      t.state = { version: 20, loads: 5, moved: "", code: codes[0] };
+      await wait(700);
+      const afterLoad = restores;
+      // The page's own hand on the amplitude, sent and in the plugin's
+      // hands as 42 a moment ago; the page has since moved it to 77.
+      el.amp.value = '77';
+      const cuts = [];
+      for (let i = 1; i < codes.length; i++) {
+        t.state = { version: 20 + i, loads: 5, moved: "vcfCut", code: codes[i] };
+        await wait(320);
+        cuts.push(el.vcfCut.value);
+      }
+      const during = restores - afterLoad;
+      window.restore = real;
+      // Back to the count the checks after this one number their states from.
+      hostSync.seen = seenBefore; hostSync.loads = null;
+      return { afterLoad, during, cuts, amp: el.amp.value, log: t.log.filter((c) => c[0] !== 'scopeSlider' || c[1] !== 'amp') };
+    }""", [code({"vcfCut": 222})] + [code({"vcfCut": 222, "pluginHands": [["s", "amp", "42"], ["s", "vcfCut", str(300 + 60 * i)]]})
+                                     for i in range(6)])
+    print("    automated: %s" % automated)
+    check("a load from the host is restored once, and automation after it moves the knob without restoring anything",
+          automated["afterLoad"] == 1 and automated["during"] == 0 and automated["cuts"][-1] == "600"
+          and len(set(automated["cuts"])) >= 4, str(automated))
+    check("and moves only what the host moved: the page's own hand on another knob stays where the hand left it, and nothing is sent back",
+          automated["amp"] == "77" and automated["log"] == [], str(automated))
     preset = p.evaluate("""() => {
       const t = window.__hostTest;
       t.log.length = 0;

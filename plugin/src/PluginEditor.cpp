@@ -63,6 +63,8 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         const auto state = owner.pageState();
         auto* out = new juce::DynamicObject();
         out->setProperty("version", state.version);
+        out->setProperty("loads", state.loads);
+        out->setProperty("moved", juce::String(state.moved));
         out->setProperty("code", juce::String(state.code));
         complete(juce::var(out));
       })
