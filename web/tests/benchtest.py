@@ -95,7 +95,7 @@ with sync_playwright() as pw:
     # beside the screen and the hollow rings with it - but nothing patched
     # stops playing, and a control with something on it keeps its dots.
     drawer = p.evaluate("""() => {
-      const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.textContent);
+      const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.querySelector('.tab-name').textContent);
       const shown = (node) => !!(node && node.offsetParent);
       const empties = () => [...document.querySelectorAll('.mod-open.empty')].filter(shown).length;
       const ring = (dest) => document.querySelector('.mod-open[data-dest="' + dest + '"]');
@@ -257,7 +257,7 @@ with sync_playwright() as pw:
     # section on show at once, and a rack could not fit that way. With the
     # drawer open, so its tab is walked too.
     tabs = p.evaluate("""() => {
-      const titles = Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.textContent);
+      const titles = Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.querySelector('.tab-name').textContent);
       const seen = {}, wrong = [];
       for (const button of el.benchRail.querySelectorAll('[role=tab]')) {
         button.click();
@@ -288,6 +288,38 @@ with sync_playwright() as pw:
     check("every Bench section is on exactly one tab", missing == [], str(missing) + " " + str(tabs["seen"]))
     check("Modulation is gone: the oscillators are sources, on the Sources tab",
           "Modulation" not in tabs["seen"] and tabs["seen"].get("Sources") == 1, str(tabs["seen"]))
+
+    print("\n--- the cards (F3) ---")
+    # Each tab a card with one line of what its stage is doing now. The values
+    # are written from code with no event, as the host's knobs and a loaded
+    # setup write them, so a line that only followed input events stays put
+    # and fails here.
+    cards = p.evaluate("""async () => {
+      const line = (id) => document.getElementById('benchLine-' + id).textContent;
+      const wait = () => new Promise((r) => setTimeout(r, 450));
+      setBenchTab('play');
+      const before = { space: line('space'), ink: line('ink'), play: line('play') };
+      el.delayMix.value = '40'; echo.mix = 0.4;
+      el.oscFm.value = '30';
+      el.freq.value = '330';
+      await wait();
+      const after = { space: line('space'), ink: line('ink'), play: line('play') };
+      el.delayMix.value = '0'; echo.mix = 0;
+      el.oscFm.value = '0';
+      el.freq.value = '220';
+      await wait();
+      return { before, after, back: line('space'),
+               name: document.querySelector('#benchTab-space .tab-name').textContent,
+               cards: [...el.benchRail.querySelectorAll('[role=tab]')].every((b) => b.querySelector('.tab-line')) };
+    }""")
+    print("    %s" % cards)
+    check("every card has its name and a line under it", cards["cards"] and cards["name"] == "Space & Memory", str(cards))
+    check("the lines follow values written with no event: the delay, FM and the pitch",
+          cards["after"]["space"] == "Delay" and "FM 3.0" in cards["after"]["ink"]
+          and "330 Hz" in cards["after"]["play"], str(cards))
+    check("null: before they were written the lines said otherwise, and Space & Memory says Dry again after",
+         cards["before"]["space"] != "Delay" and "FM off" in cards["before"]["ink"]
+         and "330 Hz" not in cards["before"]["play"] and cards["back"] == "Dry", str(cards))
 
     # Where each section went in P8, by its title, against the owner's layout:
     # what you play, what the beam draws with, what the screen does to it, the
@@ -415,9 +447,10 @@ with sync_playwright() as pw:
     check("the bench screen is square",
           abs(bench_home["w"] - bench_home["h"]) <= 1,
           "%.0f x %.0f" % (bench_home["w"], bench_home["h"]))
-    check("and smaller than the one it replaced",
-          bench_home["h"] < scope_home["height"] * 0.75,
-          "%.0f px in bench vs %.0f in scope" % (bench_home["h"], scope_home["height"]))
+    # "And smaller than the one it replaced" (under 3/4 of the Scope view's
+    # screen) went in F3, which asks the opposite - the screen as large as
+    # the window allows; it only still passed because the drawer's chips are
+    # under the screen here. The wide check below holds the size now.
     check("still has a trace drawn on it", strip["inked"] > 500,
           "%d inked pixels of %d" % (strip["inked"], strip["pixels"]))
     check("at a real frame rate", strip["fps"] > 20, "%.0f fps" % strip["fps"])
@@ -493,18 +526,27 @@ with sync_playwright() as pw:
                      el.benchBody.scrollHeight - el.benchBody.clientHeight];
       }
       setBenchTab('play');
-      const scope = el.benchScope.getBoundingClientRect(), side = el.benchSide.getBoundingClientRect();
+      const scope = el.benchScope.getBoundingClientRect(), sheet = el.traceSheet.getBoundingClientRect();
       return { width: Math.round(box.width), left: Math.round(box.left),
                right: Math.round(window.innerWidth - box.right), cols,
-               scope: Math.round(scope.width), column: Math.round(side.width) };
+               box: [Math.round(scope.width), Math.round(scope.height)],
+               sheet: [Math.round(sheet.width), Math.round(sheet.height)],
+               leftOfTabs: sheet.right <= el.benchBody.getBoundingClientRect().left };
     }""")
     print("    %s" % wide)
-    check("on a wide screen the Bench stops at 1420 px, centred",
-          wide["width"] == 1420 and abs(wide["left"] - wide["right"]) <= 1, str(wide))
+    # 1640 since F3 put the screen on the left at the size the window allows;
+    # it was 1420 while the screen was a 318 px column on the right.
+    check("on a wide screen the Bench stops at 1640 px, centred",
+          wide["width"] == 1640 and abs(wide["left"] - wide["right"]) <= 1, str(wide))
     check("and every tab is still three columns that fit",
           all(c == [3, 0] or (c[0] == 3 and c[1] <= 0) for c in wide["cols"].values()), str(wide["cols"]))
-    check("the screen beside them fills its column, now the oscillators are not under it",
-          wide["scope"] >= wide["column"] - 20 and wide["scope"] > 250, str(wide))
+    # The largest square its box holds, with the drawer's chips under it (the
+    # drawer is open here), left of the tabs - and large: the 318 px column it
+    # replaced would read about 300 here, and fail.
+    side = min(wide["box"])
+    check("the screen is on the left of the tabs, the largest square its column holds, and large",
+          wide["leftOfTabs"] and abs(wide["sheet"][0] - wide["sheet"][1]) <= 1
+          and abs(wide["sheet"][0] - side) <= 1 and side > 550, str(wide))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
 
     print("\n--- narrow ---")

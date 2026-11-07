@@ -806,26 +806,29 @@ body[data-view="bench"] .dock  { order: 3; }
 body[data-view="bench"] .picture-bar { order: 4; }
 /* Settings opens from both views: its sections live there and nowhere else. */
 
-/* Wider than the 1180px measure the rest of the app is set in, and no wider
-   than three columns of controls need. It took the whole window while every
-   section had to be on show at once; with tabs it only has to hold one task,
-   and on a wide screen the columns were stretched to half a metre of slider
-   with most of the Bench empty. 1420 is the rail, three columns at a
-   comfortable 250 and the side column: narrower drops to two columns, and
-   Play with a rack of six does not fit in two. Centred, so the empty margin
-   is either side rather than all on the right. */
+/* Wider than the 1180px measure the rest of the app is set in. Since F3
+   (web/docs/redesigning-the-face.md) the screen is on the left, as large as
+   the window allows, and the tabs to its right: the screen is a square as
+   tall as the wrap less its toolbar, and the tabs take what is left, which
+   at 1400 is three columns at 240. 1640 stops a wide screen stretching the
+   columns to half a metre of slider; centred, so the empty margin is either
+   side rather than all on the right. A size container, so the screen's
+   column can be sized from the wrap's height (cqh) without a script. */
 .bench-wrap {
   flex: 1 1 auto; display: flex; gap: 22px; min-height: 0; min-width: 0;
-  padding-block: 14px 16px; max-width: 1420px; margin-inline: auto; width: 100%;
-  box-sizing: border-box;
+  padding-block: 14px 16px; max-width: 1640px; margin-inline: auto; width: 100%;
+  box-sizing: border-box; container-type: size;
 }
-
-.bench-left {
-  flex: 0 0 160px; display: flex; flex-direction: column; gap: 10px; min-height: 0;
-  border-right: 1px solid var(--line); padding-right: 12px;
+.bench-main {
+  flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px;
+}
+/* The cards, then search and the drawer's switch at the right of them. */
+.bench-head { flex: 0 0 auto; display: flex; align-items: stretch; gap: 14px; min-width: 0; }
+.bench-tools {
+  flex: 0 0 170px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
 }
 .bench-rail {
-  display: flex; flex-direction: column; gap: 1px; min-height: 0; overflow-y: auto;
+  flex: 1 1 auto; display: flex; gap: 8px; min-width: 0;
 }
 .bench-search { position: relative; }
 .bench-search input {
@@ -851,20 +854,33 @@ body[data-view="bench"] .picture-bar { order: 4; }
 /* Where a search landed, for a moment. */
 .search-hit { outline: 2px solid var(--blush-deep); outline-offset: 3px; border-radius: 1px;
               transition: outline-color 0.6s; }
+/* Each tab a card: its name, and one line of what that stage is doing now
+   (`paintTabLines`), so the face can be read without opening a tab. The one
+   showing takes the house's inset rule at its top. No arrows between them
+   and no verbs: the order says it. */
 .bench-rail button {
-  background: none; border: none; border-left: 2px solid transparent;
-  text-align: left; padding: 7px 10px; color: var(--text-soft);
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500;
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 3px;
+  text-align: left; padding: 9px 12px 10px; cursor: pointer;
+  background: var(--cream-2); border: 1px solid var(--line); border-radius: 1px;
+  color: var(--text-soft);
 }
-.bench-rail button:hover { color: var(--blush-deep); }
+.bench-rail .tab-name {
+  font-family: var(--serif); font-size: 18px; line-height: 1.15; color: var(--charcoal);
+}
+.bench-rail .tab-line {
+  font-size: 11.5px; line-height: 1.3; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bench-rail button:hover .tab-name { color: var(--blush-deep); }
 .bench-rail button[aria-selected="true"] {
-  color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
+  background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep);
 }
-/* The drawer's tabs under a rule, and its switch beneath them, quieter than a
-   tab: it opens a place rather than being one. */
-.bench-rail button.drawer-first { margin-top: 8px; box-shadow: 0 -1px 0 var(--line); }
+/* The drawer's tab after a gap, narrower: it is not a stage of the loop. Its
+   switch, beside search, is quieter than a tab: it opens a place rather than
+   being one. */
+.bench-rail button.drawer-first { flex: 0.7 1 0; margin-left: 8px; border-style: dashed; }
 .bench-drawer {
-  align-self: flex-start; background: none; border: 0; cursor: pointer;
+  align-self: flex-end; background: none; border: 0; cursor: pointer;
   padding: 4px 10px; color: var(--text-soft); font-family: var(--sans);
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em;
 }
@@ -985,19 +1001,28 @@ body[data-drawer="shut"] .mod-open.empty { display: none; }
    popover this whole view exists to replace. So the modulation group does not
    go in the body with the rest; it lives here, next to the screen it is
    moving. */
+/* As wide as the wrap is tall less the toolbar above the screen, so the
+   screen is square; never so wide that the tabs lose their third column
+   (860 is three columns at 240, their gaps and the rule), nor narrower than
+   a screen worth looking at. */
 .bench-side {
-  flex: 0 0 318px; display: flex; flex-direction: column; gap: 10px;
-  border-left: 1px solid var(--line); padding-left: 16px;
-  min-height: 0; overflow-y: auto;
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px;
+  width: clamp(280px, min(100cqh - 38px, 100cqw - 860px), 820px);
+  border-right: 1px solid var(--line); padding-right: 22px;
+  min-height: 0; overflow: hidden;
 }
-/* The column's width. It was capped at 158px so the oscillators under it
-   could be on screen at the same time; they have the Sources tab now, and the
-   column under a small square was the emptiest part of the Bench. */
+/* The rest of the column's height, and the screen the largest square in
+   it: the drawer's source chips, when it is open, take their height from
+   the box and the square shrinks to suit, centred, rather than going
+   oblong. A size container, so the square is min(cqw, cqh) with no script. */
 .bench-scope {
-  flex: 0 0 auto; width: 100%; aspect-ratio: 1 / 1;
-  display: flex; margin-inline: auto;
+  flex: 1 1 auto; width: 100%; min-height: 0;
+  display: flex; align-items: flex-start; justify-content: center;
+  container-type: size;
 }
-.bench-scope > .sheet { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.bench-scope > .sheet {
+  flex: 0 0 auto; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh);
+}
 .bench-scope:empty { display: none; }
 
 /* Narrower labels than the body's, because 96px of label in a 318px column
@@ -1020,25 +1045,29 @@ body[data-drawer="shut"] .mod-open.empty { display: none; }
 @media (max-width: 760px) {
   /* The rail becomes a row of chips above the body, because 148px of section
      names down the side of a phone is most of the phone. */
-  .bench-wrap { flex-direction: column; gap: 10px; }
-  .bench-left { flex: 0 0 auto; border-right: 0; padding-right: 0; min-width: 0; }
+  /* No size container on a phone: the page scrolls here, so the wrap's
+     height is its content's and cannot size the screen. */
+  .bench-wrap { flex-direction: column; gap: 10px; container-type: normal; }
+  .bench-main { flex: 0 0 auto; }
+  .bench-head { flex-direction: column; }
+  .bench-tools { flex: 0 0 auto; }
   .bench-results { width: 100%; }
   .bench-rail {
-    flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: visible;
-    border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px;
-    /* Without this the rail is a flex item at its content width - nine chips,
-       and rather than scrolling it stretches the whole page sideways, taking
-       the screen and the dock with it. */
+    flex: 0 0 auto; overflow-x: auto; overflow-y: visible; padding: 0 0 6px;
+    /* Without this the rail is a flex item at its content width, and rather
+       than scrolling it stretches the whole page sideways, taking the screen
+       and the dock with it. */
     min-width: 0;
   }
-  .bench-rail button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
-  .bench-rail button[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--blush-deep); }
+  .bench-rail button { flex: 0 0 auto; }
+  .bench-rail .tab-line { display: none; }
 
   /* The column stops being a column and its parts join the stack, so the
      screen can sit at the top where it is worth looking at while the source
      chips go to the bottom. */
   .bench-side { display: contents; }
-  .bench-scope { order: -1; width: 100%; max-width: 340px; margin-inline: auto; }
+  .bench-side > .screen-tools { order: -2; }
+  .bench-scope { order: -1; width: 100%; max-width: 340px; aspect-ratio: 1 / 1; flex: 0 0 auto; margin-inline: auto; }
   .bench-sources { order: 3; border-top: 1px solid var(--line); padding-top: 10px; }
   .bench-side .menu-label { flex: 0 0 96px; }
 }
@@ -3616,29 +3645,36 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
      be dragged onto a control whichever tab the control is on. -->
 <section class="bench" id="bench">
   <div class="wrap bench-wrap">
-    <div class="bench-left">
-      <!-- Above the tabs, and reached with / from anywhere. -->
-      <div class="bench-search">
-        <input type="search" id="benchSearch" placeholder="Find a control  /"
-               aria-label="Find a control" aria-controls="benchResults" autocomplete="off">
-        <div class="bench-results" id="benchResults" role="listbox" hidden></div>
-      </div>
-      <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench"></nav>
-      <!-- The drawer (P3 of making-it-one-instrument.md): the tabs that are not
-           the loop - the routing matrix, for now - behind one switch, so the
-           Bench opens on what the instrument is. -->
-      <button type="button" class="bench-drawer" id="benchDrawer" aria-expanded="false"
-              title="The routing matrix: oscillators, controllers and every other source, patched by hand onto any control">Advanced</button>
-    </div>
-    <div class="bench-body" id="benchBody" role="tabpanel"></div>
-    <!-- The sections of the tabs not showing. Kept in the document rather than
-         detached, so every id still resolves and every listener is still bound:
-         a control on another tab is out of sight, not gone. -->
-    <div id="benchStore" hidden></div>
+    <!-- The screen on the left, as large as the window allows (F3 of
+         web/docs/redesigning-the-face.md), and the loop's tabs to its right,
+         so the picture stays in view while it is being changed. -->
     <aside class="bench-side" id="benchSide">
       <div class="bench-scope" id="benchScope"></div>
       <div class="bench-sources" id="benchSources"></div>
     </aside>
+    <div class="bench-main">
+      <div class="bench-head">
+        <nav class="bench-rail" id="benchRail" role="tablist" aria-label="Bench"></nav>
+        <div class="bench-tools">
+          <!-- Reached with / from anywhere. -->
+          <div class="bench-search">
+            <input type="search" id="benchSearch" placeholder="Find a control  /"
+                   aria-label="Find a control" aria-controls="benchResults" autocomplete="off">
+            <div class="bench-results" id="benchResults" role="listbox" hidden></div>
+          </div>
+          <!-- The drawer (P3 of making-it-one-instrument.md): the tabs that are not
+               the loop - the routing matrix, for now - behind one switch, so the
+               Bench opens on what the instrument is. -->
+          <button type="button" class="bench-drawer" id="benchDrawer" aria-expanded="false"
+                  title="The routing matrix: oscillators, controllers and every other source, patched by hand onto any control">Advanced</button>
+        </div>
+      </div>
+      <div class="bench-body" id="benchBody" role="tabpanel"></div>
+    </div>
+    <!-- The sections of the tabs not showing. Kept in the document rather than
+         detached, so every id still resolves and every listener is still bound:
+         a control on another tab is out of sight, not gone. -->
+    <div id="benchStore" hidden></div>
   </div>
 </section>
 
@@ -4153,15 +4189,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         and the readouts under the screen, which are off until you ask for them there. Two of
         its rows reach the speakers, and are marked so: lag X&ndash;Y's <i>Heard</i> and the
         filter's <i>Speakers get</i>.
-        The <i>Bench</i> is where everything is tuned: the controls take the middle of the
-        window and the screen sits beside them, still running, so you can watch a figure
-        answer with your hand on the control. On a wide window the Bench stops at the width
-        three columns need rather than spreading them apart. <i>Settings</i> opens from either
+        The <i>Bench</i> is where everything is tuned: the screen on the left, as large as
+        the window allows and still running, and the controls to its right, so you can watch
+        a figure answer with your hand on the control. On a wide window the Bench stops
+        rather than spreading the columns apart. <i>Settings</i> opens from either
         and holds what you set once and leave &mdash; <i>MIDI</i>, <i>Audio</i>,
         <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
         nowhere else.
         <br><br>
-        The Bench is three tabs, in the order the sound goes round the loop: <i>Play</i> (the
+        The Bench is three tabs, in the order the sound goes round the loop, each a card with
+        a line under its name of what that stage is doing now, so the face can be read without
+        opening one: <i>Play</i> (the
         keyboard, the generator, the voice filter), <i>Ink</i> (what the beam draws with: the
         voice's oscillator, the drawbars, shaping, the drawn cycle), <i>Space &amp; Memory</i>
         (what the screen does to the drawing: the display's rotation, the plane, the delay and
@@ -4404,7 +4442,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
     <ul class="help-list" id="panelSignal" hidden>
       <li class="help-lede">Two sources, and a generator with four minds of its own.
-        <i>Play &rarr; Input</i>, on the Bench.</li>
+        <i>Settings &rarr; Input</i>.</li>
 
       <li><b>Tone or Mic</b>
         <span>The tone is arithmetic, and runs the moment the page opens. <i>Mic</i> asks the
@@ -24941,7 +24979,10 @@ function buildBenchRail() {
     '<button type="button" role="tab" id="benchTab-' + id + '" data-tab="' + id + '"'
     + (BENCH_DRAWER.has(id) && !(i > 0 && BENCH_DRAWER.has(tabs[i - 1][0])) ? ' class="drawer-first"' : "")
     + ' aria-selected="' + (id === benchTab) + '" aria-controls="benchBody"'
-    + ' tabindex="' + (id === benchTab ? 0 : -1) + '">' + label + "</button>").join("");
+    + ' tabindex="' + (id === benchTab ? 0 : -1) + '"><span class="tab-name">' + label + "</span>"
+    + '<span class="tab-line" id="benchLine-' + id + '"></span></button>').join("");
+  tabLinesSaid = "";
+  paintTabLines();
 
   el.benchRail.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => setBenchTab(button.dataset.tab));
@@ -24960,6 +25001,61 @@ function buildBenchRail() {
       const focus = document.getElementById("benchTab-" + next);
       if (focus) focus.focus();
     });
+  });
+}
+
+/* Each card's line: what that stage is doing now, read off the controls -
+   which the host's knobs and a loaded setup write without an event, so it is
+   read a few times a second from the frame loop rather than on input. Words
+   rather than numbers where a word will do, and the tab's own vocabulary:
+   Play names how the keys play, the shape and the pitch; Ink the ratio, FM
+   and whatever shaping is on; Space & Memory the effects at work. */
+const optionText = (select) => (select.selectedOptions[0] ? select.selectedOptions[0].textContent.trim() : "");
+const TAB_LINES = {
+  play() {
+    const how = { dyad: "Dyad", mono: "Mono", poly: "Poly" }[midi.mode] || "";
+    const shape = el.genMode.value === "wave" ? optionText(el.shape).toLowerCase() : optionText(el.genMode);
+    // From the values, never the readings beside them: a reading is written
+    // on an input event, and the host's knobs and a setup write none.
+    return [how, shape, Math.round(Number(el.freq.value)) + " Hz"].filter(Boolean).join(" \u00b7 ");
+  },
+  ink() {
+    const fm = Number(el.oscFm.value) > 0 ? "FM " + (Number(el.oscFm.value) / 10).toFixed(1) : "FM off";
+    const shaping = [[el.shpDrive, "drive"], [el.shpFold, "fold"]]
+      .filter(([input]) => Number(input.value) > 0).map(([, word]) => word);
+    if (el.shpBits.value !== el.shpBits.options[0].value || el.shpRate.value !== el.shpRate.options[0].value) shaping.push("crush");
+    return ["Ratio " + optionText(el.oscRatio), fm].concat(shaping).join(" \u00b7 ");
+  },
+  space() {
+    const bent = plane.mirror !== 0 || plane.limit !== 0 || plane.twist !== 0 || plane.snap !== 0
+      || plane.scaleX !== 1 || plane.scaleY !== 1 || plane.shear !== 0 || (planeB.own && planeB.turn !== 0);
+    const on = [[bent, "Plane"], [echo.mix > 0, "delay"], [echo.chorus > 0, "chorus"], [echo.phaser > 0, "phaser"]]
+      .filter(([is]) => is).map(([, word]) => word);
+    if (!on.length) return "Dry";
+    on[0] = on[0][0].toUpperCase() + on[0].slice(1);
+    return on.join(" \u00b7 ");
+  },
+  sources() {
+    const n = (state.modRoutings || []).length;
+    return n === 0 ? "Nothing patched" : n + (n === 1 ? " routing" : " routings");
+  },
+};
+let tabLinesSaid = "", tabLinesAt = 0;
+function paintTabLines(now) {
+  if (now !== undefined) {
+    if (now - tabLinesAt < 250) return;
+    tabLinesAt = now;
+  }
+  if (document.body.dataset.view !== "bench") return;
+  const lines = railTabs().map(([id]) => {
+    try { return TAB_LINES[id] ? TAB_LINES[id]() : ""; } catch (error) { return ""; }
+  });
+  const said = lines.join("\n");
+  if (said === tabLinesSaid) return;
+  tabLinesSaid = said;
+  railTabs().forEach(([id], i) => {
+    const line = document.getElementById("benchLine-" + id);
+    if (line) { line.textContent = lines[i]; line.title = lines[i]; }
   });
 }
 
@@ -26697,6 +26793,7 @@ let pictureHeldByLink = null;
    its read goes, and dimmed with the amount, since an amount of nought moves
    nothing however much the picture is doing. */
 function paintStage() {
+  paintTabLines(performance.now());
   const amount = Number(el.pictureAmount.value) / 100;
   // Its reading, since F2 made it a knob: here, as anything can set it without an event.
   const said = Math.round(amount * 100) + "%";

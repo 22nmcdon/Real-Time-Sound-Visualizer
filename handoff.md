@@ -166,9 +166,12 @@ is below, in order. The listening notes this plan refers to follow it.
    on the panel.
    *F3a done 7 Nov:* the inputs in Settings, Perform a menu in the header
    (home `perform`), the amplitude and filter envelopes and the glide on show
-   on Play. The drawer holds only Sources until F4. *F3b* is the layout
-   itself: the screen on the left, the tabs as cards with summaries above
-   the controls on the right.
+   on Play. The drawer holds only Sources until F4. *F3b done 7 Nov:* the
+   screen on the left as the largest square that leaves the tabs three
+   columns, the tabs as cards with a line each of what that stage is doing,
+   search and *Advanced* beside the cards. Still F8's: at the plugin's
+   960x600 the tabs overflow (by less than before F3b), and the header is
+   unchanged until F7.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

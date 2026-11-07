@@ -5008,3 +5008,25 @@ amount to the bottom of the page - and each time parity's morph checks went
 red over nothing but layout. After moving a slider, take the page's order
 from `core/tests/tools/restore_page.py --controls` (its `morph` list) and
 write it into `kMorphIds`; parity says when it is needed.
+
+**Size a square from its box with container units, not with flex and
+`aspect-ratio`.** F3 wanted the Bench's screen as large as the window
+allows and square, with the drawer's chips sometimes taking height under it.
+An `aspect-ratio` item in a flex column is either stretched oblong or
+overflows when a sibling needs room, depending on which axis wins; the
+`benchtest.py` square check read 469 x 352. Making the box a size container
+(`container-type: size`) and the sheet `min(100cqw, 100cqh)` on both sides
+gives the largest square in whatever the box has, with no script and no
+resize handler. The cost: a size container has no content size, so on a
+phone, where the page scrolls and the wrap's height is its content's, the
+rule has to be switched off (`container-type: normal`) or the column has no
+height to measure. The same F3 change collapsed the right-hand column to
+nothing on a phone, because its `flex: 1 1 0` in a column stack meant a
+basis of nought; `knobtest.py`'s touch check found it, by landing a finger
+on the Picture's title instead of a knob.
+
+**A summary read off the page reads values, not readings.** The tab cards'
+lines first read the FM knob's printed reading, which only an input event
+writes, so FM set from code - the host's knob, a setup - showed "FM 0.0".
+The check in `benchtest.py` writes values with no event, which is how it
+caught it; a check that dispatched `input` would have passed.

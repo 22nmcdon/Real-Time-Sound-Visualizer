@@ -217,8 +217,13 @@ Do not re-litigate these without a reason; each replaced something that failed.
   in either view and on every tab; what Scan reads, the photocell and the
   score are behind its *Advanced*, with the loop overlay and the panes, which
   only change the look (home `picture`). The display and Clear are above the
-  screen.
-- **What is not the loop goes in the drawer.** *Advanced*, under the rail,
+  screen. Since F3 the screen is on the left, the largest square the window
+  allows less the three columns the tabs need, and the tabs are cards along
+  the top of the right column, each with one line of what its stage is doing
+  (`TAB_LINES`, read from the values a few times a second, never from the
+  readings beside them, which only an input event writes). The cards took
+  78 px of the tabs' height at 1400x900, so the fit has less slack than it had.
+- **What is not the loop goes in the drawer.** *Advanced*, beside the search,
   opens it; shut, it takes its tabs, the source chips beside the screen and a
   control's hollow ring with it, and leaves everything patched playing and
   shown. It is a view, remembered per viewer and never in a setup, and going
