@@ -1393,12 +1393,13 @@ int main() {
     const auto heardB = play(b, false), heardNone = play(none, false);
     bool same = true;
     for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) same = same && a.knob(i)->get() == b.knob(i)->get();
-    check("a state handed to a fresh plugin is the setup it loads: the same sound, the same parameters, the wheel learned",
+    // "the wheel learned" too, until F4b (7 Nov) cut learning controllers.
+    check("a state handed to a fresh plugin is the setup it loads: the same sound, the same parameters",
           apart(heardA, heardB, 0, heardA.size()) == 0 && apart(heardA, heardNone, 0, heardA.size()) > 0.02 && same
-          && b.knob("scan")->get() == 70 && b.knob("echo")->get() == 30 && b.learned() == 1 && none.learned() == 0 && state.getSize() > 20
+          && b.knob("scan")->get() == 70 && b.knob("echo")->get() == 30 && state.getSize() > 20
           && prepared == 70,
           std::to_string(state.getSize()) + " bytes; apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by "
-          + num(apart(heardA, heardNone, 0, heardA.size())) + "; learned " + std::to_string(b.learned()));
+          + num(apart(heardA, heardNone, 0, heardA.size())));
     /* A parameter applies when the host moves it, and not again: the slider
        moved since by something else - the morph, or a hand once the page is
        the plugin's face - stays where it was put. */
@@ -2659,15 +2660,15 @@ int main() {
           std::fabs(toPicture.slider("pictureAmount") - 50) <= 1 && centsOf(m2, n2) < 2,
           "amount " + num(toPicture.slider("pictureAmount")) + ", " + num(centsOf(m2, n2)) + " cents");
 
-    // Pressure: a source, and by default nothing else.
+    // Pressure: by default nothing. It was a source too until F4b (7 Nov) cut
+    // the keyboard's sources but Key; the null is that it is no longer one.
     ScopeProcessor pressed; fresh(pressed);
     const auto held = play(pressed, { a3, { 0xD0, 100 } }, 60);
     const scope::ModSource* pressure = pressed.matrix().source("midi.pressure");
     double m3 = 0, n3 = 1e9;
     for (const double t : held) { m3 = std::fmax(m3, t); n3 = std::fmin(n3, t); }
-    check("channel pressure is a source, at how hard the key is pressed, and by default moves nothing",
-          pressure && std::fabs(pressure->value() - 100.0 / 127) < 0.01 && centsOf(m3, n3) < 2,
-          pressure ? "pressure " + num(pressure->value()) + ", " + num(centsOf(m3, n3)) + " cents" : "no source");
+    check("channel pressure by default moves nothing, and is no longer a source",
+          !pressure && centsOf(m3, n3) < 2, num(centsOf(m3, n3)) + " cents" + (pressure ? ", still a source" : ""));
     /* What the wheel is given to is part of the project: saved with it on the
        Picture amount and reopened, the wheel moves the amount there. (A
        setup names only what differs from the defaults, so the default

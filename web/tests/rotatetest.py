@@ -502,10 +502,11 @@ with sync_playwright() as pw:
       /* Run to convergence rather than reaching inside the follower: a huge
          elapsed makes the one-pole settle on the block's RMS exactly, so the
          two runs are comparable. */
+      // The meter's reading (a source until F4b), as paintStage takes it.
       updateEnvelope(flat, 1e6);
-      const envFlat = MOD_SOURCES.get('env.live').value();
+      const envFlat = Math.min(1, envLive / ENV_FULL);
       updateEnvelope(turned, 1e6);
-      const envTurned = MOD_SOURCES.get('env.live').value();
+      const envTurned = Math.min(1, envLive / ENV_FULL);
       state.rotate = 0;
       state.running = true;
       return { envFlat, envTurned, turnedFlag: turned.turned };

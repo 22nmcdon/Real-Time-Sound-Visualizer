@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
     const char* kinds[] = { "wave", "harmonograph", "figure", "wireframe" };
     for (int i = 0; i < 4; i++) drive.set(kinds[i], flag(k.drive[static_cast<std::size_t>(i)]));
     for (int i = 1; i < 4; i++) play.set(kinds[i], flag(k.play[static_cast<std::size_t>(i)]));
-    midi.set("drive", drive); midi.set("play", play); midi.set("cc", str(keys.encodeCC()));
+    midi.set("drive", drive); midi.set("play", play);
     out.set("midi", midi);
     Json panel = Json::object();
     panel.set("freq", str(scope::jsNumberToString(keys.panel().freq)));

@@ -53,13 +53,14 @@ with sync_playwright() as pw:
     print("\n--- the modulation cards (F4) ---")
     # Three cards under the screen, whatever is plugged in or patched: they
     # replaced a tab of six families, which grew a chip for every controller
-    # learned and the photocell. So the check learns a controller, turns the
-    # photocell on and routes a hearing source first - each of which the old
-    # strip answered with another chip - and still wants exactly three.
+    # learned (until F4b cut learning) and the photocell. So the check moves a
+    # controller, turns the photocell on and routes a hearing source first -
+    # each of which the old strip answered with another chip - and still
+    # wants exactly three.
     cards = p.evaluate("""async () => {
       setView('bench'); setBenchTab('play');
       state.modRoutings = []; touchRoutings();
-      midiLearn(21); setPhoto(true);
+      midiControl(21, 64); setPhoto(true);
       addRouting('hear.bright', 'gen.freq');
       buildSourceChips();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -147,16 +148,10 @@ with sync_playwright() as pw:
       return ids;
     }""")
     check("a control's own editor offers the three cards' sources and no others", offer == ["lfo1", "lfo2", "env.note"], str(offer))
-    cc = p.evaluate("""() => {
-      selectSource('cc.21');
-      const name = document.getElementById('srcDetail-name');
-      const had = !!name && !!document.getElementById('srcDetail-forget');
-      document.getElementById('srcDetail-forget').click();
-      return { had, gone: !MOD_SOURCES.has('cc.21'), selected: selectedSource, focus: focusSource };
-    }""")
-    check("a controller can be forgotten from its own panel", cc["had"] and cc["gone"], str(cc))
-    check("and the panel falls back to an oscillator rather than a source that has gone",
-          cc["selected"] == "lfo1" and cc["focus"] is None, str(cc))
+    # A controller could be forgotten from its own panel, until F4b cut
+    # learning: the null now is that moving one registered nothing.
+    cc = p.evaluate("() => [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.'))")
+    check("a controller moved is not learned as a source", cc == [], str(cc))
 
     print("\n--- reaching any control ---")
     reach = p.evaluate("""() => {

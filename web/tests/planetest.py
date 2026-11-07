@@ -346,15 +346,24 @@ with sync_playwright() as pw:
       const w = state.source.getLatestWindow(4410);
       let lowX = Infinity, longest = 0;
       for (let i = 0; i < w[0].length; i++) { lowX = Math.min(lowX, w[0][i]); longest = Math.max(longest, Math.hypot(w[0][i], w[1][i])); }
-      // A controller on the radius, full depth, pushed all the way.
-      midiControl(23, 0);
-      addRouting('cc.23', 'gen.radius');
-      state.modRoutings.find((r) => r.sourceId === 'cc.23').amount = 1; touchRoutings();
-      midiControl(23, 127); await wait(1200);
+      // A held source (a learned controller until F4b cut learning): a key
+      // struck as hard as a key goes holds Key at one while it is down. A
+      // lone note under the full sustain and no quarter turn is the same
+      // diagonal of 0.55 the panel drew without it.
+      const held = () => { el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+        el.polyRound.checked = false; el.polyRound.dispatchEvent(new Event('change'));
+        midiRegisterKey(); midiNoteOn(57, 127); };
+      const letGo = () => { midiNoteOff(57); state.modRoutings = []; touchRoutings();
+        el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input')); };
+      // A source on the radius, full depth, pushed all the way.
+      held();
+      addRouting('midi.key', 'gen.radius');
+      state.modRoutings.find((r) => r.sourceId === 'midi.key').amount = 1; touchRoutings();
+      await wait(1200);
       const w2 = state.source.getLatestWindow(4410);
       let pushed = 0;
       for (let i = 0; i < w2[0].length; i++) pushed = Math.max(pushed, Math.hypot(w2[0][i], w2[1][i]));
-      midiControl(23, 0); state.modRoutings = []; touchRoutings();
+      letGo();
       el.planeMirror.value = '0'; el.planeMirror.dispatchEvent(new Event('change'));
       el.planeLimit.value = '0'; el.planeLimit.dispatchEvent(new Event('change'));
       el.planeOS2.click();
@@ -374,7 +383,7 @@ with sync_playwright() as pw:
     # Pushed to the top of its reach the radius is 0.75: the diagonal clips at
     # 0.75 tanh(1.037) = 0.5791, and the one mirrored half of it at that.
     pushed = 0.75 * math.tanh(0.55 * math.sqrt(2) / 0.75)
-    check("a controller on Clip radius opens it: at full depth the figure is held at 0.75, not 0.25",
+    check("a source on Clip radius opens it: at full depth the figure is held at 0.75, not 0.25",
           abs(panel["pushed"] - pushed) < 0.01 * pushed, "%.4f against %.4f" % (panel["pushed"], pushed))
 
     print("\n--- the rest of the panel, and a source on the twist ---")
@@ -399,15 +408,24 @@ with sync_playwright() as pw:
       };
       await wait(400);
       const still = spread();
-      // The slider at nought, and a controller on the twist: this must
-      // swirl the figure, which it did not while the stage switched itself
-      // on only for a slider away from nought.
-      midiControl(24, 0);
-      addRouting('cc.24', 'gen.twist');
-      state.modRoutings.find((r) => r.sourceId === 'cc.24').amount = 1; touchRoutings();
-      midiControl(24, 127); await wait(1200);
+      // A held source (a learned controller until F4b cut learning): a key
+      // struck as hard as a key goes holds Key at one while it is down. A
+      // lone note under the full sustain and no quarter turn is the same
+      // diagonal of 0.55 the panel drew without it.
+      const held = () => { el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+        el.polyRound.checked = false; el.polyRound.dispatchEvent(new Event('change'));
+        midiRegisterKey(); midiNoteOn(57, 127); };
+      const letGo = () => { midiNoteOff(57); state.modRoutings = []; touchRoutings();
+        el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input')); };
+      // The slider at nought, and a source on the twist: this must swirl the
+      // figure, which it did not while the stage switched itself on only for
+      // a slider away from nought.
+      held();
+      addRouting('midi.key', 'gen.twist');
+      state.modRoutings.find((r) => r.sourceId === 'midi.key').amount = 1; touchRoutings();
+      await wait(1200);
       const swirled = spread();
-      midiControl(24, 0); state.modRoutings = []; touchRoutings();
+      letGo();
       return { got, still, swirled };
     }""")
     print("    %s" % rest)
@@ -415,7 +433,7 @@ with sync_playwright() as pw:
     check("twist, snap, scale and shear reach the generator in its own units - a quarter-turn a unit reads 90 degrees",
           len(rest["got"]) == 6 and all(abs(a - b) < 1e-9 for a, b in zip(rest["got"][:5], want))
           and rest["got"][5] == "90\u00b0", str(rest["got"]))
-    check("a controller on Twist swirls a figure whose slider is at nought",
+    check("a source on Twist swirls a figure whose slider is at nought",
           rest["still"] < 1e-3 and rest["swirled"] > 0.3, "%.4f still, %.4f swirled" % (rest["still"], rest["swirled"]))
 
     print("\n--- setup codes ---")

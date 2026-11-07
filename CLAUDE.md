@@ -229,7 +229,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   columns, its destination list scrolling inside itself past a dozen, and
   `fittest.py` requires a dozen to fit. The control's own editor and the
   search offer those three and no others. The rest of the twenty-eight are
-  cut (learned controllers, F4b) or parked: the hearing family and the
+  cut or parked. Cut in F4b, with a version-9 decode pass on both sides
+  that drops their routings (`CUT_SOURCE`) and the `cc` field: the learned
+  controllers (the wheel, the swell, the pedal and the panics still act),
+  the keyboard's pedal, pressure and four readings of the notes, and the
+  level, which is the output meter now. Parked: the hearing family and the
   drawings' readings, like the drawings themselves (`syncDrawerMenus`), are
   offered nowhere but still play when a setup routes them, and keep their ink
   on the knob they are on, so the owner can find out whether they are missed.

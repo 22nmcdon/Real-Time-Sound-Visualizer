@@ -1285,7 +1285,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("ringMs", panel.range("ringTime"));
   }
   keys.setSettings(k);
-  keys.decodeCC(str("cc"));
   keys.panel() = { panel.range("freq"), static_cast<int>(panel.selectNumber("interval")), panel.range("figureRate"),
                    panel.range("detail") };
   keys.apply();

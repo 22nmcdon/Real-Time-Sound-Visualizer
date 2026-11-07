@@ -74,27 +74,19 @@ with sync_playwright() as pw:
     check("the switch point is 64 of 127: 63 does not hold and 64 does",
           edge == {"off": False, "on": True}, str(edge))
 
-    print("\n--- a source, not a controller ---")
-    src = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      midiControl(64, 0); await wait(600);
+    # The pedal was a source too, Sustain with the keyboard's, until F4b cut
+    # the keyboard's sources but Key (7 Nov). It is still a pedal, and still
+    # not a learned controller - learning went in F4b with the rest.
+    print("\n--- a pedal, not a source ---")
+    src = p.evaluate("""() => {
       midiControl(64, 127);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const soon = MOD_SOURCES.get('midi.pedal').value();
-      await wait(700);
-      const later = MOD_SOURCES.get('midi.pedal').value();
-      midiControl(64, 64); await wait(700);
-      const half = MOD_SOURCES.get('midi.pedal').value();
+      const out = { sustain: midi.sustain, source: MOD_SOURCES.has('midi.pedal'), chip: MOD_SOURCES.has('cc.64') };
       midiControl(64, 0);
-      return { soon, later, half, family: MOD_SOURCES.get('midi.pedal').family,
-               learned: midi.cc.has(64), chip: MOD_SOURCES.has('cc.64') };
+      return out;
     }""")
     print("    %s" % src)
-    check("Sustain is a source with the keyboard's, and CC 64 is not learned beside it",
-          src["family"] == "keyboard" and not src["learned"] and not src["chip"], str(src))
-    check("it walks to the pedal rather than stepping, which on the amplitude would click",
-          src["soon"] < 0.9 and src["later"] > 0.99, str(src))
-    check("and reads a half-pedal as a half", abs(src["half"] - 64 / 127) < 0.01, str(src))
+    check("the pedal holds, and is neither a source nor a learned controller",
+          src == {"sustain": True, "source": False, "chip": False}, str(src))
 
     print("\n--- the sound follows ---")
     sound = p.evaluate("""async () => {

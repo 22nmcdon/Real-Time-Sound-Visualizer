@@ -185,7 +185,6 @@ class ScopeProcessor final : public juce::AudioProcessor {
   struct PageState { int version = 0; int loads = 0; std::string moved; std::string code; };
   PageState pageState() const;
   double slider(const char* id) const { return instrument_.slider(id); }
-  int learned() const { return instrument_.learned(); }
 
  private:
   // A command from the page, waiting for the next block; or refused, and false.

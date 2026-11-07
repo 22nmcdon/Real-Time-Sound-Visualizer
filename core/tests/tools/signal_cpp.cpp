@@ -18,7 +18,6 @@ double num(const std::string& w) { return std::strtod(w.c_str(), nullptr); }
 
 void run(const std::vector<std::vector<std::string>>& commands) {
   scope::Level level;
-  scope::LevelSource live(level);
   std::vector<float> lane;
   for (const auto& words : commands) {
     const std::string& cmd = words[0];
@@ -38,7 +37,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       for (std::size_t i = 0; i < n; i++) lane[i] = static_cast<float>((next.next() * 2 - 1) * amp);
     } else if (cmd == "frame") level.update(lane.data(), lane.size(), num(arg(1)));
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
-    std::printf("%s | env %s level %s\n", cmd.c_str(), show(level.env()).c_str(), show(live.value()).c_str());
+    std::printf("%s | env %s level %s\n", cmd.c_str(), show(level.env()).c_str(), show(level.value()).c_str());
   }
 }
 }  // namespace

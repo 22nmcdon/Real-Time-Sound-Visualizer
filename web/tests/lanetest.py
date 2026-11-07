@@ -190,7 +190,7 @@ with sync_playwright() as pw:
           "from %.2f for %.2f, value at %.2f" % (osc["left"], osc["width"], osc["base"]))
 
     env = bar_for("""() => {
-      state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 0.6 }];
+      state.modRoutings = [{ sourceId: 'env.note', destId: 'view.rotate', amount: 0.6 }];
       focusSource = null; paintRoutings(); }""", "rotate", "Display")
     check("and an envelope's the same, since the bar is the depth you set",
           abs(env["width"] - osc["width"]) < 1e-6 and env["width"] > 1,
@@ -200,7 +200,7 @@ with sync_playwright() as pw:
     section(p, "Display")
     p.evaluate("""() => {
       el.rotate.value = '50'; el.rotate.dispatchEvent(new Event('input'));
-      state.modRoutings = [{ sourceId: 'env.live', destId: 'view.rotate', amount: 1 }];
+      state.modRoutings = [{ sourceId: 'env.note', destId: 'view.rotate', amount: 1 }];
       focusSource = null; paintRoutings();
     }"""); p.wait_for_timeout(350)
     marked = p.evaluate("""() => el.rotate.parentElement

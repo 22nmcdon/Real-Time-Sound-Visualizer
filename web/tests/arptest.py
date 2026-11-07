@@ -108,19 +108,20 @@ with sync_playwright() as pw:
       src.gate = (open, v) => { gates.push(open); gate(open, v); };
       for (const k of [60, 64, 67]) __send([0x90, k, 100]);
       arpTick(arp.start + 1);
-      const count = MOD_SOURCES.get('notes.count').value(), held = midi.notes.length;
+      const held = midi.notes.length;
       gates.length = 0;
       arpTick(arp.start + arpStepMs() + 1);
       const oneStep = gates.slice();
       for (const k of [60, 64, 67]) __send([0x80, k, 0]);
       src.gate = gate;
-      return { count, held, oneStep, voices: __voices() };
+      return { held, oneStep, voices: __voices() };
     }""")
     print("    %s" % struck)
     check("each step closes the gate and opens it again, so every note is struck",
           struck["oneStep"][-2:] == [False, True], str(struck["oneStep"]))
-    check("and the hands are still the whole chord: three held, and the Notes source reads three",
-          struck["held"] == 3 and abs(struck["count"] - 3 / 8) < 1e-9, str(struck))
+    # And the Notes source read three, until F4b cut it.
+    check("and the hands are still the whole chord: three held",
+          struck["held"] == 3, str(struck))
 
     print("\n--- the tempo ---")
     tempo = p.evaluate("""() => {

@@ -244,8 +244,8 @@ with sync_playwright() as pw:
 
     print("\n--- under the foot ---")
     # The expression pedal (CC 11, the Nord's swell) is the Picture amount,
-    # on the slider's step, and still learned as a controller; the volume
-    # (CC 7), moved the same way, is the null.
+    # on the slider's step; the volume (CC 7), moved the same way, is the
+    # null. It was learned as a controller too, until F4b cut learning.
     b, p, bad = open_page(pw)
     foot = p.evaluate("""() => {
       const after = (bytes) => { midiBytes(new Uint8Array(bytes)); return el.pictureAmount.value; };
@@ -254,8 +254,8 @@ with sync_playwright() as pw:
                routes: stageRoutings().map((r) => r.amount) };
     }""")
     b.close()
-    check("the expression pedal sets the Picture amount, on its step, and is still learned; another controller does not",
-          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": True, "routes": [0.8, 0.8, 0.6, 0.4, 0.5]},
+    check("the expression pedal sets the Picture amount, on its step, and is not learned; another controller does not",
+          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": False, "routes": [0.8, 0.8, 0.6, 0.4, 0.5]},
           str(foot))
 
 print()

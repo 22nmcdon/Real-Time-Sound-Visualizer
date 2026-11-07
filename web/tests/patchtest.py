@@ -205,7 +205,7 @@ with sync_playwright() as pw:
       const none = snap();
       addRouting('lfo1', 'gen.freq');     await settle();  const one = snap();
       addRouting('lfo2', 'gen.freq');     await settle();  const two = snap();
-      addRouting('env.live', 'gen.freq'); await settle();  const three = snap();
+      addRouting('env.note', 'gen.freq'); await settle();  const three = snap();
       return { none, one, two, three,
                pips: row.querySelectorAll('.mod-open .pip').length };
     }"""); p.wait_for_timeout(200)

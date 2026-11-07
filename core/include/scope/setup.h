@@ -38,7 +38,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 8;  // SETUP_VERSION
+constexpr int kSetupVersion = 9;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -343,6 +343,40 @@ inline bool migrateSetup(Json& setup) {
     for (const char* key : { "planeSnap", "bSnap" }) {
       const Json* s = setup.get(key);
       if (s && s->type == Json::Type::Number && s->n >= 1 && s->n <= 4) setup.set(key, Json::number(5));
+    }
+  }
+  // 8 -> 9: the matrix's sources cut to the modulation cards' and the parked
+  // ones (F4b, 7 Nov): learned controllers, with the names a code kept for
+  // them, and the keyboard's pedal, pressure and four readings of the notes,
+  // and the level. Their routings go (the page's CUT_SOURCE); Key stays.
+  if (!(v >= 9) && setup.type == Json::Type::Object) {
+    setup.erase("cc");
+    const Json* mod = field("mod");
+    if (mod && mod->type == Json::Type::String && !mod->s.empty()) {
+      const std::u16string& text = mod->s;
+      std::u16string kept;
+      bool first = true;
+      std::size_t at = 0;
+      const auto from = [](const std::u16string& p, const char16_t* id) {
+        const std::u16string head = std::u16string(id) + u">";
+        return p.compare(0, head.size(), head) == 0;
+      };
+      while (true) {
+        const std::size_t end = text.find(u';', at);
+        const std::u16string part = text.substr(at, end == std::u16string::npos ? std::u16string::npos : end - at);
+        const std::u16string p = jsTrim(part);
+        // cc. and one or more digits, then the arrow: /^cc\.\d+>/.
+        std::size_t d = 3;
+        while (d < p.size() && p[d] >= u'0' && p[d] <= u'9') d++;
+        const bool fromController = p.size() > 4 && p.compare(0, 3, u"cc.") == 0 && d > 3 && d < p.size() && p[d] == u'>';
+        const bool cutSource = fromController || from(p, u"midi.pedal") || from(p, u"midi.pressure")
+          || from(p, u"notes.count") || from(p, u"notes.spread") || from(p, u"notes.top") || from(p, u"notes.inner")
+          || from(p, u"env.live");
+        if (!cutSource) { if (!first) kept += u';'; kept += part; first = false; }
+        if (end == std::u16string::npos) break;
+        at = end + 1;
+      }
+      setup.set("mod", Json::string(kept));
     }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));

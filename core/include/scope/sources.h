@@ -43,29 +43,19 @@ class LfoSource : public ModSource {
 
 class KeyboardSource : public ModSource {
  public:
-  enum class Kind { Key, Pedal, Pressure, Count, Spread, Top, Inner };
+  // Key alone since F4b (7 Nov): the pedal, pressure as a source and the four
+  // readings of the notes held were cut with the matrix's other sources.
+  enum class Kind { Key };
   KeyboardSource(Kind kind, const Keyboard& keys) : ModSource(idFor(kind)), kind_(kind), keys_(keys) { stepped = true; }
   double value() const override {
     switch (kind_) {
       case Kind::Key: return keys_.key();
-      case Kind::Pedal: return keys_.pedal();
-      case Kind::Pressure: return keys_.pressureValue();
-      case Kind::Count: return keys_.notesCount();
-      case Kind::Spread: return keys_.notesSpread();
-      case Kind::Top: return keys_.notesTop();
-      case Kind::Inner: return keys_.notesInner();
     }
     return 0;
   }
   static const char* idFor(Kind k) {
     switch (k) {
       case Kind::Key: return "midi.key";
-      case Kind::Pedal: return "midi.pedal";
-      case Kind::Pressure: return "midi.pressure";
-      case Kind::Count: return "notes.count";
-      case Kind::Spread: return "notes.spread";
-      case Kind::Top: return "notes.top";
-      case Kind::Inner: return "notes.inner";
     }
     return "";
   }
@@ -73,32 +63,6 @@ class KeyboardSource : public ModSource {
  private:
   Kind kind_;
   const Keyboard& keys_;
-};
-
-// A learned controller, read by its number: the keyboard's list is the truth,
-// and a rename or a value reaches the matrix without either knowing.
-class ControllerSource : public ModSource {
- public:
-  ControllerSource(int number, const Keyboard& keys) : ModSource("cc." + std::to_string(number)), number_(number), keys_(keys) {}
-  double value() const override {
-    for (const auto& c : keys_.controllers()) if (c.number == number_) return c.value;
-    return 0;
-  }
-  int number() const { return number_; }
-
- private:
-  int number_;
-  const Keyboard& keys_;
-};
-
-// The level, how loud the signal on the screen is.
-class LevelSource : public ModSource {
- public:
-  explicit LevelSource(const Level& level) : ModSource("env.live"), level_(level) {}
-  double value() const override { return level_.value(); }
-
- private:
-  const Level& level_;
 };
 
 // The note envelope: where the generator's ADSR has got to, and nought while
@@ -154,16 +118,13 @@ class CoreSources {
   CoreSources(Matrix& matrix, Generator& gen, const std::vector<Lfo>& lfos, const Keyboard& keys) : envelope_(gen) {
     for (int i = 0; i < static_cast<int>(lfos.size()); i++) lfo_.emplace_back(i, lfos);
     using K = KeyboardSource::Kind;
-    for (const K k : { K::Key, K::Pedal, K::Pressure, K::Count, K::Spread, K::Top, K::Inner }) keys_.emplace_back(k, keys);
+    for (const K k : { K::Key }) keys_.emplace_back(k, keys);
     using D = DrawingSource::Kind;
     for (const D k : { D::Swing, D::Pendulum, D::TurnX, D::TurnY, D::TurnZ, D::Facing }) drawing_.emplace_back(k, gen);
     for (auto& s : lfo_) matrix.registerSource(&s);
     for (auto& s : keys_) matrix.registerSource(&s);
     for (auto& s : drawing_) matrix.registerSource(&s);
-    matrix.registerSource(&levelSource_);
     matrix.registerSource(&envelope_);
-    // Room for every controller there is, so the matrix's pointers stay put.
-    controllers_.reserve(128);
     const auto struck = [&](const char* id, std::function<void(double)> fire) {
       ModDest d;
       d.id = id; d.kind = DestKind::Event; d.fire = std::move(fire);
@@ -176,23 +137,6 @@ class CoreSources {
   CoreSources(const CoreSources&) = delete;
   CoreSources& operator=(const CoreSources&) = delete;
 
-  // midiLearn's registration, once a frame: a controller the keyboard has
-  // learned since the last becomes a source, and the routes are compiled
-  // again so a routing that was skipped without it is heard. The page did
-  // not compile them again until it was fixed for this port.
-  void learn(Matrix& matrix, const Keyboard& keys) {
-    bool added = false;
-    for (const auto& c : keys.controllers()) {
-      bool known = false;
-      for (const auto& s : controllers_) known = known || s.number() == c.number;
-      if (known || controllers_.size() == controllers_.capacity()) continue;
-      controllers_.emplace_back(c.number, keys);
-      matrix.registerSource(&controllers_.back());
-      added = true;
-    }
-    if (added) matrix.touch();
-  }
-
   // The level, which its owner feeds once a frame with the signal on the screen.
   Level& level() { return level_; }
   const Level& level() const { return level_; }
@@ -202,9 +146,7 @@ class CoreSources {
   std::vector<LfoSource> lfo_;
   std::vector<KeyboardSource> keys_;
   std::vector<DrawingSource> drawing_;
-  std::vector<ControllerSource> controllers_;
   Level level_;
-  LevelSource levelSource_ { level_ };
   EnvelopeSource envelope_;
 };
 

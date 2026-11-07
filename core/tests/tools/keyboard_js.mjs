@@ -42,11 +42,11 @@ function definition(name) {
 }
 
 const LIFTED = [
-  "POLY_VOICES", "MIDI_ROOT", "CC_SMOOTH", "CC_INKS", "NORD_CC", "INTERVALS", "midiHz", "midi", "screenKeys",
+  "POLY_VOICES", "MIDI_ROOT", "CC_SMOOTH", "INTERVALS", "midiHz", "midi", "screenKeys",
   "intervalRatio", "keyboardPresent", "midiPitch", "midiNoteOn", "midiNoteOff", "midiSetPedal", "midiPanic",
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
-  "midiUndrawn", "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
-  "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiLearn", "midiSmooth",
+  "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
+  "midiApplyNotes", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiSmooth",
   "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "syncPlay", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
@@ -117,7 +117,7 @@ const el = new Proxy(elements, { get: (t, k) => (k in t ? t[k] : (t[k] = element
 const source = STUBS + LIFTED.map(definition).join("\n") + `
 return { midi, screenKeys, settings, settingsB, sources, log, show, el, genInput, toneSource,
          midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
-         midiApplyNotes, midiUndrive, midiRegisterKey, midiLearn, setMidiMode, syncLayers, syncLayerPanel, syncPlay, genSettings,
+         midiApplyNotes, midiUndrive, midiRegisterKey, setMidiMode, syncLayers, syncLayerPanel, syncPlay, genSettings,
          POLY_VOICES, layersOn, arp, arpSet, arpTick, timers, transport,
          setClock: (ms) => { clock = ms; }, setOut: (on) => { outOpen = on; },
          setPresent: (on) => { midi.access = on ? {} : null; } };`;
@@ -137,8 +137,6 @@ function run(head, commands) {
     else if (cmd === "off") k.midiNoteOff(Number(a[0]));
     else if (cmd === "pedal") k.midiSetPedal(Number(a[0]));
     else if (cmd === "panic") k.midiPanic();
-    // A name from a setup code, as `decodeCC` hands one over; none is a bare learn.
-    else if (cmd === "name") k.midiLearn(Number(a[0]), a[1] === undefined ? undefined : a[1].replace(/_/g, " "));
     else if (cmd === "cc") k.midiControl(Number(a[0]), Number(a[1]));
     else if (cmd === "bytes") k.midiBytes(a[0].split(",").map(Number));
     else if (cmd === "mode") k.setMidiMode(a[0]);
@@ -199,14 +197,14 @@ function run(head, commands) {
     // And what the keyboard says of itself afterwards: its sources, its readout,
     // the panel it writes, and the stack.
     const m = k.midi, s = (id) => k.show(k.sources.get(id).value());
-    const cc = [...m.cc.values()].map((e) => e.number + "/" + e.name.replace(/ /g, "_") + "/" + e.raw + "/" + k.show(e.value) + "/" + k.show(k.sources.get("cc." + e.number).value())).join("+") || "-";
-    const state = ["|", "key", s("midi.key"), "pedal", s("midi.pedal"), "count", s("notes.count"), "spread", s("notes.spread"),
-      "top", s("notes.top"), "inner", s("notes.inner"), "poly", m.poly.sounding, m.poly.drawn, m.poly.held,
+    // Key alone of the keyboard's sources since F4b; the pedal, the notes'
+    // four readings and the learned controllers went.
+    const state = ["|", "key", s("midi.key"), "poly", m.poly.sounding, m.poly.drawn, m.poly.held,
       "split", m.layers.point, k.show(m.layers.learning), "sustain", k.show(m.sustain), "strikes", m.strikesBy[0], m.strikesBy[1],
       "interval", m.interval.index, m.interval.octaves, "panel", k.el.interval.value, k.el.freq.value,
       "layout", k.toneSource.layout, "gated", k.show(k.toneSource.gated), "layers", k.show(k.layersOn()),
       "notes", m.notes.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-",
-      "sustained", [...m.sustained].join("+") || "-", "cc", cc,
+      "sustained", [...m.sustained].join("+") || "-",
       "arp", k.arp.mode, k.arp.index, k.arp.start === null ? "-" : k.show(k.arp.start), k.arp.steps,
       k.arp.current.map((h) => h.note + "/" + k.show(h.velocity)).join("+") || "-", k.arp.sent.join("+") || "-"];
     lines.push([cmd, ...k.log.flatMap((l) => ["::", l]), ...state].join(" "));

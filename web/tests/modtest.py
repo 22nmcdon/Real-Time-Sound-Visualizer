@@ -53,7 +53,11 @@ with sync_playwright() as pw:
           // A routing list when the preset has one - as a setup code does -
           // and the old enum when it does not.
           if (setup.mod !== undefined) {
-            for (const r of decodeRoutings(setup.mod)) want.push(r.sourceId + '>' + r.destId);
+            // Less the sources version 9 cut (F4b), whose routings its decode
+            // pass drops: the corpus is the old library, from before.
+            for (const r of decodeRoutings(setup.mod)) {
+              if (!CUT_SOURCE.test(r.sourceId + '>')) want.push(r.sourceId + '>' + r.destId);
+            }
           } else for (const i of [0, 1]) {
             const legacy = setup['l' + i + 'd'];
             const destId = LEGACY_DESTS[legacy === undefined ? 'none' : legacy];
@@ -318,10 +322,12 @@ with sync_playwright() as pw:
           abs(offsets["pushed"] - offsets["max"]) < 1e-9,
           "%.2f against a limit of %.2f" % (offsets["pushed"], offsets["max"]))
 
-    print("\n--- the envelope follows what you play ---")
+    # The level, a source until F4b and the output meter since: its reading,
+    # as paintStage takes it.
+    print("\n--- the level follows what you play ---")
     env = p.evaluate("""async () => {
       loadCorpus('Pure sine');
-      const source = MOD_SOURCES.get('env.live');
+      const source = { value: () => Math.min(1, envLive / ENV_FULL) };
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
       await new Promise((r) => setTimeout(r, 600));
       const loud = source.value();

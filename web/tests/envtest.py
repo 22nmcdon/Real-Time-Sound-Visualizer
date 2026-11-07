@@ -384,8 +384,10 @@ with sync_playwright() as pw:
       return { listed, hasNote: !!note, ungated: note ? note.value() : null,
                label: note ? note.label : null };
     }""")
-    check("it is registered beside the level meter",
-          source["hasNote"] and "env.live" in source["listed"], str(source["listed"]))
+    # Beside the level, which was a source too until F4b and is the output
+    # meter now: the null is that it is no longer listed.
+    check("it is registered, and the level is not, since F4b made it the output meter",
+          source["hasNote"] and "env.live" not in source["listed"], str(source["listed"]))
     check("and reads nothing while nothing is gated",
           source["ungated"] == 0, str(source["ungated"]))
 

@@ -597,7 +597,8 @@ can unregister one without losing what it was patched to.
 **A setup carries the controllers' names, never the set of them.** `restore`
 merges: it renames what the code mentions and leaves everything else learned.
 Loading someone else's figure is no reason to forget the instrument in the
-room.
+room. (Learning went in F4b, and the chip rail below with it in F4; the
+principle stands for anything a setup names that belongs to the room.)
 
 **The chip rail is the one list on the bench allowed to scroll.** Every other
 section's height was decided here; the number of chips is however many
@@ -5052,4 +5053,15 @@ control's hollow ring is transparent at rest since F4, rather than gone, so
 it keeps its place. A test that clicks it passes whether or not anyone could
 see it, so `benchtest.py` reads its computed opacity at rest and again under
 a real hover, and requires the two to differ.
+
+**A source a test can hold has to be one the core has too.** Five suites
+moved a learned controller to hold a routing at full depth and listened to
+the result. When F4b cut learning, a source registered by the test on the
+page would have been no stand-in: the sound is the core's, in the worklet,
+and the core would never have heard of it. So they strike a key as hard as a
+key goes and route Key, velocity, which both sides have and which reads one
+while the key is held - and take the depth to nought, the key still down,
+for the controller let go. Where a held note changes the picture (the plane
+suite's diagonal), the sustain goes to full and the quarter turn off, so the
+note draws what the panel drew without it.
 

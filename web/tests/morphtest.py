@@ -207,18 +207,22 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
       el.morph.value = '0'; el.morph.dispatchEvent(new Event('input'));
-      midiControl(22, 0);
-      addRouting('cc.22', 'gen.morph');
-      const routing = state.modRoutings.find((r) => r.sourceId === 'cc.22');
-      routing.amount = 1; touchRoutings();
+      // A held source: a key struck as hard as a key goes holds Key, velocity,
+      // at one while it is down (a learned controller was this until F4b cut
+      // learning). A3 sounds the 220 Hz already set; the depth taken to nought,
+      // the key still down, is the controller let go.
+      midiRegisterKey(); midiNoteOn(57, 127);
+      addRouting('midi.key', 'gen.morph');
+      const routing = state.modRoutings.find((r) => r.sourceId === 'midi.key');
+      routing.amount = 0; touchRoutings();
       await wait(1200);
       const down = Array.from(state.source.getLatestWindow(44100)[0]);
-      midiControl(22, 127); await wait(1200);
+      routing.amount = 1; touchRoutings(); await wait(1200);
       const up = Array.from(state.source.getLatestWindow(44100)[0]);
       const dest = MOD_DESTS.get('gen.morph');
       const out = { down, up, at: genSettings().morph,
                     reach: [dest.reach(0, 1), dest.reach(150, 1), dest.reach(100, -1)] };
-      midiControl(22, 0);
+      midiNoteOff(57);
       state.modRoutings = []; touchRoutings();
       return out;
     }""")

@@ -103,11 +103,6 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     else if (cmd == "off") k.noteOff(static_cast<int>(num(arg(1))));
     else if (cmd == "pedal") k.setPedal(num(arg(1)));
     else if (cmd == "panic") k.panic();
-    else if (cmd == "name") {
-      std::string name = arg(2);
-      for (auto& ch : name) if (ch == '_') ch = ' ';
-      k.learn(static_cast<int>(num(arg(1))), name);
-    }
     else if (cmd == "cc") k.control(static_cast<int>(num(arg(1))), static_cast<int>(num(arg(2))));
     else if (cmd == "bytes") {
       std::vector<std::uint8_t> data;
@@ -152,16 +147,10 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     const auto poly = k.polyCount();
     const auto strikes = k.strikes();
     const auto iv = k.interval();
-    std::string notes, sustained, cc;
+    std::string notes, sustained;
     for (const auto& h : k.notes()) notes += (notes.empty() ? "" : "+") + std::to_string(h.note) + "/" + show(h.velocity);
     for (const int n : k.sustained()) sustained += (sustained.empty() ? "" : "+") + std::to_string(n);
-    for (const auto& c : k.controllers()) {
-      std::string name = c.name;
-      for (auto& ch : name) if (ch == ' ') ch = '_';
-      cc += (cc.empty() ? "" : "+") + std::to_string(c.number) + "/" + name + "/" + std::to_string(c.raw) + "/" + show(c.value) + "/" + show(c.value);
-    }
-    line += " | key " + show(k.key()) + " pedal " + show(k.pedal()) + " count " + show(k.notesCount())
-          + " spread " + show(k.notesSpread()) + " top " + show(k.notesTop()) + " inner " + show(k.notesInner())
+    line += " | key " + show(k.key())
           + " poly " + std::to_string(poly.sounding) + " " + std::to_string(poly.drawn) + " " + std::to_string(poly.held)
           + " split " + std::to_string(k.splitPoint()) + " " + (k.learning() ? "1" : "0")
           + " sustain " + (k.sustain() ? "1" : "0")
@@ -170,8 +159,7 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
           + " panel " + std::to_string(k.panel().interval) + " " + show(k.panel().freq)
           + " layout " + scope::layoutName(target.layout()) + " gated " + (target.gated() ? "1" : "0")
           + " layers " + (k.layersOn() ? "1" : "0")
-          + " notes " + (notes.empty() ? "-" : notes) + " sustained " + (sustained.empty() ? "-" : sustained)
-          + " cc " + (cc.empty() ? "-" : cc);
+          + " notes " + (notes.empty() ? "-" : notes) + " sustained " + (sustained.empty() ? "-" : sustained);
     const auto& arp = k.arp();
     std::string current, sent;
     for (const auto& h : arp.current) current += (current.empty() ? "" : "+") + std::to_string(h.note) + "/" + show(h.velocity);

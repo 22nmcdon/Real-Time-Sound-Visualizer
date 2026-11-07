@@ -59,21 +59,7 @@ inline double midiHz(double note) { return 440 * std::pow(2.0, (note - 69) / 12)
 
 constexpr int kPolyVoices = 8;     // POLY_VOICES: held notes sounding at once, per layer
 constexpr double kMidiRoot = 220;  // A3, the pitch a trace rate is measured against
-constexpr double kCcSmooth = 0.03; // seconds, one pole over a controller's steps
-
-// NORD_CC: a name for a controller the Electro 6D's panel has, and nothing more.
-inline const char* nordCc(int number) {
-  switch (number) {
-    case 7: return "Volume"; case 11: return "Swell pedal"; case 13: return "Organ level";
-    case 34: return "Piano level"; case 43: return "Sample level"; case 64: return "Sustain";
-    case 16: return "Drawbar 1"; case 17: return "Drawbar 2"; case 18: return "Drawbar 3";
-    case 19: return "Drawbar 4"; case 20: return "Drawbar 5"; case 21: return "Drawbar 6";
-    case 22: return "Drawbar 7"; case 23: return "Drawbar 8"; case 24: return "Drawbar 9";
-    case 86: return "Effect 1 rate"; case 90: return "Effect 2 rate"; case 93: return "Delay amount";
-    case 108: return "Rotary speed"; case 113: return "Reverb amount";
-    default: return nullptr;
-  }
-}
+constexpr double kCcSmooth = 0.03; // seconds, one pole over the pedal's and pressure's steps
 
 // One pair of figures, two, or layer A against layer B as one.
 enum class Layout { One, Each, Against };
@@ -146,14 +132,6 @@ struct Panel {
 
 struct Held { int note; double velocity; };
 
-// A learned controller: its value walks towards its target, as the page's does.
-struct Controller {
-  int number = 0;
-  std::string name;
-  int raw = 0;
-  double value = 0, target = 0;
-};
-
 enum class NoteMode { Dyad, Mono, Poly };
 enum class DrawWhich { Outer, Lowest, Highest, Recent };
 enum class LayerMode { Off, Split, Layer };
@@ -172,7 +150,6 @@ class Keyboard {
   explicit Keyboard(NoteTarget& target, RealtimeIn* realtime = nullptr) : t_(target), realtime_(realtime) {
     notes_.reserve(128);
     sustained_.reserve(128);
-    cc_.reserve(128);
     for (auto& list : chord_) list.reserve(kPolyVoices);
     inner_.reserve(kPolyVoices);
   }
@@ -233,13 +210,11 @@ class Keyboard {
     applyNotes();
   }
 
-  // midiControl: 120 and 123 are panics, 64 is the pedal, the rest are learned.
+  // midiControl: 120 and 123 are panics, 64 is the pedal, 11 the Picture
+  // amount and 1 the wheel; nothing is learned since F4b (the page's says why).
   void control(int number, int raw) {
     if (number == 120 || number == 123) { panic(); return; }
     if (number == 64) { setPedal(raw / 127.0); return; }
-    Controller& entry = learn(number);
-    entry.raw = raw;
-    entry.target = raw / 127.0;
     // 11, the expression pedal, is also the Picture amount (the page's
     // midiControl says why); whoever keeps the panel is told.
     if (number == 11 && onSwell_) onSwell_(raw / 127.0 * 100);
@@ -283,22 +258,6 @@ class Keyboard {
   Express pressureTo() const { return pressureTo_; }
   double pressureValue() const { return pressure_; }
   void setExpress(std::function<void(Express, double)> f) { onExpress_ = std::move(f); }
-
-  // midiLearn: merged into what is known, never replacing it.
-  Controller& learn(int number, std::string_view name = {}) {
-    for (auto& c : cc_) {
-      if (c.number == number) {
-        if (!name.empty()) c.name = std::string(name);
-        return c;
-      }
-    }
-    Controller c;
-    c.number = number;
-    const char* known = nordCc(number);
-    c.name = !name.empty() ? std::string(name) : known ? std::string(known) : "CC " + std::to_string(number);
-    cc_.push_back(c);
-    return cc_.back();
-  }
 
   // midiBytes, with running status, and a real-time byte taken as a message of
   // its own wherever it lands - between a note and its velocity included.
@@ -350,7 +309,6 @@ class Keyboard {
     const double a = 1 - std::exp(-(std::fmax(0.0, elapsedMs) / 1000) / kCcSmooth);
     pedal_ += (pedalTarget_ - pedal_) * a;
     pressure_ += (pressureTarget_ - pressure_) * a;
-    for (auto& c : cc_) c.value += (c.target - c.value) * a;
   }
 
   // --- the panel's handlers -------------------------------------------------
@@ -488,38 +446,6 @@ class Keyboard {
   // syncPlay alone, as the page's panel calls it when the kind changes.
   void syncPlayed() { syncPlay(); }
 
-  // encodeCC: the learned controllers' names, "16:Drawbar 1;...".
-  std::string encodeCC() const {
-    std::string out;
-    for (const auto& c : cc_) {
-      std::string name = c.name;
-      for (auto& ch : name) if (ch == ';' || ch == ':') ch = ' ';
-      out += (out.empty() ? "" : ";") + std::to_string(c.number) + ":" + name;
-    }
-    return out;
-  }
-  // decodeCC: merged into what is learned, never swapped for it.
-  void decodeCC(const std::u16string& text) {
-    std::size_t at = 0;
-    while (at <= text.size()) {
-      const std::size_t end = std::min(text.find(u';', at), text.size());
-      const std::u16string part = jsTrim(text.substr(at, end - at));
-      std::size_t colon = 0;
-      while (colon < part.size() && part[colon] >= u'0' && part[colon] <= u'9') colon++;
-      // The page's /^(\d+):(.*)$/, whose dot stops at a line terminator.
-      bool oneLine = true;
-      for (const char16_t c : part) if (c == u'\n' || c == u'\r' || c == 0x2028 || c == 0x2029) oneLine = false;
-      if (oneLine && colon > 0 && colon < part.size() && part[colon] == u':') {
-        double number = 0;
-        for (std::size_t i = 0; i < colon; i++) number = number * 10 + (part[i] - u'0');
-        // A number past what an int holds names no controller anyone has.
-        if (number < 2147483648.0) learn(static_cast<int>(number), utf16To8(jsTrim(part.substr(colon + 1))));
-      }
-      if (end >= text.size()) break;
-      at = end + 1;
-    }
-  }
-
   // midiUndrive: the controls handed back, read from the panel.
   void undrive() {
     t_.set("detail", panel_.detail);
@@ -533,7 +459,6 @@ class Keyboard {
 
   const std::vector<Held>& notes() const { return notes_; }
   const std::vector<int>& sustained() const { return sustained_; }
-  const std::vector<Controller>& controllers() const { return cc_; }
   bool sustain() const { return sustain_; }
   int splitPoint() const { return layers_.point; }
   bool learning() const { return layers_.learning; }
@@ -542,34 +467,9 @@ class Keyboard {
   struct PolyCount { int sounding = 0, drawn = 0, held = 0; };
   PolyCount polyCount() const { return poly_; }
 
-  // The keyboard's sources, as the page registers them.
+  // Key, the one keyboard source left since F4b (velocity, Expression's FM).
   double key() const { return key_; }
   double pedal() const { return pedal_; }
-  double notesCount() const { return std::fmin(1.0, static_cast<double>(notes_.size()) / kPolyVoices); }
-  double notesSpread() const {
-    if (notes_.size() < 2) return 0;
-    const auto [lo, hi] = range();
-    return std::fmin(1.0, (hi - lo) / 24.0);
-  }
-  double notesTop() const {
-    if (notes_.empty()) return 0;
-    return std::fmax(0.0, std::fmin(1.0, (range().second - 36) / 48.0));
-  }
-  // How hard the notes the picture is not drawing were played.
-  double notesInner() const {
-    double sum = 0;
-    int n = 0;
-    if (mode_ == NoteMode::Poly) {
-      for (int layer = 0; layer < 2; layer++) {
-        polyVoices(layer, inner_);
-        for (const auto& v : inner_) if (v.role == "u") { sum += v.velocity; n++; }
-      }
-    } else {
-      const std::size_t keep = mode_ == NoteMode::Mono ? 1 : 2;
-      for (std::size_t i = 0; i + keep < notes_.size(); i++) { sum += notes_[i].velocity; n++; }
-    }
-    return n == 0 ? 0 : sum / n;
-  }
 
   // layersOn: two layers, in poly on the waveform with the generator alone.
   bool layersOn() const { return layers_.mode != LayerMode::Off && layable_ && polyWanted(); }
@@ -893,7 +793,6 @@ class Keyboard {
   RealtimeIn* realtime_;
   std::vector<Held> notes_;      // the held stack, most recent last
   std::vector<int> sustained_;   // keys up and still sounding, in the order they came up
-  std::vector<Controller> cc_;
   std::array<std::vector<NoteWant>, 2> chord_;
   mutable std::vector<NoteWant> inner_;  // the Inner source's scratch
   std::array<int, 2> strikes_ { 0, 0 };

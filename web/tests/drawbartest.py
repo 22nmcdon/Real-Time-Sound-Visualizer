@@ -224,14 +224,19 @@ with sync_playwright() as pw:
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       el.bars.value = '008000000'; el.bar0.dispatchEvent(new Event('input'));
-      midiControl(21, 0);                      // the bar moves, and is learned
-      addRouting('cc.21', 'gen.bar3');
-      const routing = state.modRoutings.find((r) => r.sourceId === 'cc.21');
+      // A held source: a key struck as hard as a key goes holds Key, velocity,
+      // at one while it is down (a learned controller was this until F4b cut
+      // learning). A3 sounds the 220 Hz already set; the depth taken to nought,
+      // the key still down, is the controller let go.
+      midiRegisterKey(); midiNoteOn(57, 127);
+      addRouting('midi.key', 'gen.bar3');
+      const routing = state.modRoutings.find((r) => r.sourceId === 'midi.key');
       routing.amount = 1; touchRoutings();
-      midiControl(21, 127); await wait(1200);
+      await wait(1200);
       const out = Array.from(state.source.getLatestWindow(44100)[0]);
-      midiControl(21, 0); await wait(1200);
+      routing.amount = 0; touchRoutings(); await wait(1200);
       const back = Array.from(state.source.getLatestWindow(44100)[0]);
+      midiNoteOff(57); state.modRoutings = []; touchRoutings();
       const dest = MOD_DESTS.get('gen.bar3');
       return { out, back, label: dest.label, reach: [dest.reach(0, 1), dest.reach(8, 1), dest.reach(4, -1)],
                bars: state.source.settings.bars.slice() };

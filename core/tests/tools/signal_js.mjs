@@ -1,5 +1,6 @@
 /* The page's level - the envelope follower over the screen's signal lane
-   that is the source `env.live` - lifted out of web/scope.html by name and
+   that was the source `env.live` until F4b, and is the output meter beside
+   the Picture's Level knob - lifted out of web/scope.html by name and
    driven through the runs in a file, one result line per command, as
    signal_cpp prints them. K1's threshold, which watched it, was here too and
    went in P5.
@@ -29,12 +30,6 @@ function definition(name) {
   const close = line.endsWith("[") ? "\n];\n" : line.endsWith("{") ? "\n};\n" : ";\n";
   return page.slice(start + 1, page.indexOf(close, start) + close.length);
 }
-// A registration as the page makes it, from its first line to its close.
-function registration(first) {
-  const start = page.indexOf("\nregisterSource({\n" + first);
-  if (start < 0) throw new Error("no registration " + first);
-  return page.slice(start + 1, page.indexOf("\n});\n", start) + 5);
-}
 
 const STUBS = `
 let clock = 0;
@@ -45,9 +40,8 @@ const state = { trigSource: 0 };
 let testValue = 0;
 `;
 
-const source = STUBS + ["ENV_ATTACK", "ENV_FULL", "envLive", "updateEnvelope"].map(definition).join("\n")
-  + registration('  id: "env.live"') + `
-return { MOD_SOURCES, updateEnvelope, envLive: () => envLive, setClock: (ms) => { clock = ms; } };`;
+const source = STUBS + ["ENV_ATTACK", "ENV_FULL", "envLive", "updateEnvelope"].map(definition).join("\n") + `
+return { updateEnvelope, envLive: () => envLive, full: ENV_FULL, setClock: (ms) => { clock = ms; } };`;
 
 const show = (v) => Number(v).toPrecision(17);
 
@@ -68,8 +62,8 @@ function run(commands) {
       for (let i = 0; i < n; i++) lane[i] = (next() * 2 - 1) * amp;
     } else if (cmd === "frame") s.updateEnvelope({ signal: [lane] }, Number(a[0]));
     else throw new Error("unknown command " + cmd);
-    const live = s.MOD_SOURCES.get("env.live");
-    lines.push([cmd, "| env", show(s.envLive()), "level", show(live.value())].join(" "));
+    // The meter's reading, as paintStage takes it: the follower over full scale.
+    lines.push([cmd, "| env", show(s.envLive()), "level", show(Math.min(1, s.envLive() / s.full))].join(" "));
   }
   return lines.join("\n");
 }

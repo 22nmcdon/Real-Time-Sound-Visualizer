@@ -132,7 +132,11 @@ with sync_playwright() as pw:
         for (const [preset, setup] of CORPUS.find(([s]) => s === name)[1]) {
           loadCorpus(preset);
           await __wait(150);
-          out.push(Object.assign({ preset, section: name, split: setup.layers || null }, await __play()));
+          // Whether every routing it names was cut in F4b (version 9's decode
+          // pass drops them): such a preset loads with none, by design.
+          const parts = (setup.mod || '').split(';').map((p) => p.trim()).filter(Boolean);
+          const allCut = parts.length > 0 && parts.every((p) => CUT_SOURCE.test(p));
+          out.push(Object.assign({ preset, section: name, split: setup.layers || null, allCut }, await __play()));
         }
       }
       return out;
@@ -155,9 +159,14 @@ with sync_playwright() as pw:
     # from the corpus rather than found by applyPreset, a load that did
     # nothing left the default's empty list, and no routing is a dead one, so
     # this passed with nothing loaded at all until it asked.
-    unrouted = [row["preset"] for row in played if not row["routings"]]
+    # Less those whose every routing was from a source F4b cut (the notes'
+    # readings, the pedal), which load with none - and are held to that.
+    unrouted = [row["preset"] for row in played if not row["routings"] and not row["allCut"]]
+    emptied = [row["preset"] for row in played if row["allCut"]]
     check("every routing in them reaches the generator, is still at rest, and moves when played",
           len(played) >= 15 and dead == [] and unrouted == [], str(dead[:4] or unrouted[:4]))
+    check("and those whose every routing came from a cut source load with none",
+          all(not row["routings"] for row in played if row["allCut"]), str(emptied))
 
     # The null, through the same measurement: a source spelt wrong is kept by
     # the matrix, never compiled and never moves, and this check exists to
@@ -212,23 +221,26 @@ with sync_playwright() as pw:
         print("    %-28s active %s, low %.3f, apart %.3f" % (row["preset"], row["active"], row["low"], row["apart"]))
     print("    plain: %s" % live["plain"])
     # Your input, kaleidoscope had nothing but the kaleidoscope, cut on 7
-    # Nov: it loads as the plain input now, and is held to that - which is
-    # also this check seen to fail, since it is the one preset with no effect.
-    CUT = "Your input, kaleidoscope"
-    kept = [r for r in live["presets"] if r["preset"] != CUT]
-    emptied = [r for r in live["presets"] if r["preset"] == CUT]
+    # Nov, and Your level, swirling nothing but the level on the twist, a
+    # source cut in F4b the same day: they load as the plain input now, and
+    # are held to that - which is also this check seen to fail, since they
+    # are the presets with no effect.
+    CUT = ("Your input, kaleidoscope", "Your level, swirling")
+    kept = [r for r in live["presets"] if r["preset"] not in CUT]
+    emptied = [r for r in live["presets"] if r["preset"] in CUT]
     check("every live-effects preset puts the effects insert in a microphone's path, and says so",
           live["kind"] == "mic" and len(kept) >= 10
           and all(r["active"] and r["where"].startswith("On your input") for r in kept)
           and live["plain"]["active"] is False, str([(r["preset"], r["active"]) for r in live["presets"]]))
-    check("and the one whose only effect was the kaleidoscope leaves the input alone",
-          len(emptied) == 1 and emptied[0]["active"] is False, str(emptied))
+    check("and the two whose only effect was cut leave the input alone",
+          len(emptied) == 2 and all(r["active"] is False for r in emptied), str(emptied))
     by = {r["preset"]: r for r in live["presets"]}
-    octave, swirl = by.get("Octave up, on your input"), by.get("Your level, swirling")
-    check("the octave-up folds the input's troughs up, and your level on the twist turns a mono diagonal off itself",
-          octave is not None and octave["low"] > -0.02 and swirl is not None and swirl["apart"] > 0.1
-          and live["plain"]["apart"] < 1e-3,
-          "%s; %s; plain %s" % (octave, swirl, live["plain"]))
+    octave = by.get("Octave up, on your input")
+    # Your level on the twist turned a mono diagonal off itself here too,
+    # until F4b cut the level as a source.
+    check("the octave-up folds the input's troughs up",
+          octave is not None and octave["low"] > -0.02 and live["plain"]["apart"] < 1e-3,
+          "%s; plain %s" % (octave, live["plain"]))
 
     print("\n--- listening, on the same microphone ---")
     listen = p.evaluate("""async () => {

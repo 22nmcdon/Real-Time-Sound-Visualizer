@@ -342,25 +342,17 @@ with sync_playwright() as pw:
           capped["v"] == list(range(50, 58)) and capped["held"] == 10, str(capped["v"]))
     check("and the readout says so", "8 of 10 held sound" in said, said)
 
-    print("\n--- the note sources ---")
-    src = p.evaluate("""() => {
-      el.midiDrawCount.value = '2'; el.midiDrawCount.dispatchEvent(new Event('change'));
-      el.midiDrawWhich.value = 'outer'; el.midiDrawWhich.dispatchEvent(new Event('change'));
+    # The note sources - how many held, their spread, the melody and the inner
+    # voices - were cut in F4b (7 Nov) with the matrix's other sources. The
+    # null: a chord held registers none of them.
+    print("\n--- the note sources are gone ---")
+    gone = p.evaluate("""() => {
       midiNoteOn(48, 127); midiNoteOn(52, 64); midiNoteOn(55, 127);
-      const read = (id) => MOD_SOURCES.has(id) ? MOD_SOURCES.get(id).value() : null;
-      const out = { count: read('notes.count'), spread: read('notes.spread'),
-                    top: read('notes.top'), inner: read('notes.inner') };
+      const out = ['notes.count', 'notes.spread', 'notes.top', 'notes.inner'].filter((id) => MOD_SOURCES.has(id));
       for (const n of [48, 52, 55]) midiNoteOff(n);
-      out.after = read('notes.count');
       return out;
     }""")
-    print("    C3 E3 G3, E softer: %s" % src)
-    check("Notes is how many are held, of eight", abs(src["count"] - 3 / 8) < 1e-9, str(src["count"]))
-    check("Spread is bottom to top, of two octaves", abs(src["spread"] - 7 / 24) < 1e-9, str(src["spread"]))
-    check("Melody is the top note, C2 to C6", abs(src["top"] - (55 - 36) / 48) < 1e-9, str(src["top"]))
-    check("Inner is how hard the undrawn notes were played - E alone, not the chord",
-          abs(src["inner"] - 64 / 127) < 1e-9, str(src["inner"]))
-    check("and they fall back when the notes go", src["after"] == 0, str(src["after"]))
+    check("a chord held registers none of the cut note sources", gone == [], str(gone))
 
     rowed = p.evaluate("""() => {
       setMidiMode('poly');

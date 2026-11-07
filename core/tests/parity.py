@@ -1285,7 +1285,7 @@ kruns = [
     ("pedal-poly", krun("mode poly", "frame 16", "on 48 100", "on 52 100", "pedal 1", "off 48", "off 52", "on 55 100",
                         "frame 16", "on 48 40", "pedal 0", "frame 16", "off 48", "off 55")),
     ("controllers", krun("frame 16", "cc 16 64", "frame 10", "cc 42 127", "frame 40", "cc 16 0", "cc 7 100",
-                         "frame 1000", "name 42 Lower_drawbars", "name 99 Ninety_nine", "name 16", "cc 99 3", "cc 123 5", "on 60 80", "cc 120 0", "cc 113 1", "frame -5", "frame 0", "frame 3")),
+                         "frame 1000", "cc 99 3", "cc 1 90", "frame 16", "cc 123 5", "on 60 80", "cc 120 0", "cc 113 1", "frame -5", "frame 0", "frame 3")),
     ("bytes", krun("frame 16", "bytes 0x90,60,100,64,90", "bytes 0x80,60,0", "bytes 0x90,67", "bytes 100",
                    "bytes 0x90,72,0xF8,77,0xFA,0xFB,0xFC", "bytes 0xB0,16,90,17,30,0xC0,5,0x90,62,0",
                    "bytes 1,2,3", "bytes 0xF2,1,2,64,90", "bytes 0x90,74,0x80,74,0", "bytes 0xD0,9,0x90,76,99",
@@ -1429,8 +1429,13 @@ check("bytes: running status, a clock tick inside a note, and the realtime hande
 check("a played rose takes the dyad's ratio as its petals", "set detail 1.5" in kout("figure"))
 check("the pitched harmonograph is pitched, and a key strikes it", "set pitched 1" in kout("harmonograph")
       and ":: reswing" in kout("harmonograph"))
-check("a controller walks towards where it was moved", "16/Drawbar_1/64/0.0000" in kout("controllers")
-      and "16/Drawbar_1/64/0.1428" in kout("controllers"))
+# A controller walked towards where it was moved, once learned; since F4b
+# (7 Nov) none is learned. What a controller still does: the wheel sets the
+# vibrato through Expression, and a drawbar's controller sets nothing.
+check("the wheel sets the vibrato, and a controller the keyboard does not use sets nothing",
+      ":: set vibrato" in kout("controllers")
+      and not any(":: " in line for line in kout("controllers").split("\n") if line.startswith("cc 16 ") or line.startswith("cc 42 ")),
+      kout("controllers")[:300])
 rnd = "\n".join(kslice(kjs, i) for i, (n, _) in enumerate(kruns) if n.startswith("random-"))
 check("the random sequences reach chords, layers, the pedal and the drawings",
       all(w in rnd for w in ("set voices", " 1 | ", "layout each", "sustained 6", "set figureRate", "set pitched 1")))
@@ -1965,6 +1970,15 @@ scmds += ["decode " + code_of(V6_CODE)]
 # snap of three is five, a snap of six stays.
 V7_CODE = '{"v":7,"planeKaleido":6,"bKaleido":3,"planeSnap":3,"bSnap":6,"freq":330}'
 scmds += ["decode " + code_of(V7_CODE)]
+# Version 9 (F4b, 7 Nov): learned controllers and the keyboard's sources but
+# Key cut, and the level; their routes and the controllers' names go. The near
+# misses - a controller with no number, a reading with a letter more - stay,
+# and so do Key and a parked hearing source.
+V8_CODE = ('{"v":8,"cc":"16:Drawbar 1;42:Fx","freq":330,"mod":"cc.16>gen.freq@0.500; lfo1>gen.amp@0.400;'
+           'notes.count>gen.vcf@1;midi.pedal>gen.amp@0.2;env.live>view.rotate@0.3;midi.pressure>gen.fm@1;'
+           'notes.spread>gen.amp@1;notes.top>gen.amp@1;notes.inner>gen.amp@1;'
+           'midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"}')
+scmds += ["decode " + code_of(V8_CODE)]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
@@ -2002,23 +2016,28 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":8' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":9' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
 check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":8' in v5_read and '"freq":330' in v5_read
+      v5_read.startswith("read ") and '"v":9' in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
 # Version 7 likewise: a version-6 code saved with the latch on loses it.
 v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
 check("a version-6 code comes up to date without the latch, the rest as written",
-      v6_read.startswith("read ") and '"v":8' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+      v6_read.startswith("read ") and '"v":9' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
       and '"midiLatch"' not in v6_read, v6_read)
 v7_read = sjs[scmds.index("decode " + code_of(V7_CODE))]
 check("a version-7 code comes up to date without the kaleidoscope, its snap of three bits at five and of six as it was",
-      v7_read.startswith("read ") and '"v":8' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
+      v7_read.startswith("read ") and '"v":9' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
       and '"planeSnap":5' in v7_read and '"bSnap":6' in v7_read, v7_read)
+v8_read = sjs[scmds.index("decode " + code_of(V8_CODE))]
+check("a version-8 code comes up to date without the cut sources' routes or the controllers' names, the near misses, Key and hearing kept",
+      v8_read.startswith("read ") and '"v":9' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
+      and '"mod":" lfo1>gen.amp@0.400;midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"' in v8_read,
+      v8_read)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
@@ -2044,6 +2063,8 @@ snull("the version-6 code marked 7, which keeps its latch", "decode " + code_of(
       "decode " + code_of(V6_CODE.replace('"v":6', '"v":7')))
 snull("the version-7 code marked 8, which keeps its kaleidoscope and its three bits", "decode " + code_of(V7_CODE),
       "decode " + code_of(V7_CODE.replace('"v":7', '"v":8')))
+snull("the version-8 code marked 9, which keeps its controllers and their routes", "decode " + code_of(V8_CODE),
+      "decode " + code_of(V8_CODE.replace('"v":8', '"v":9')))
 snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
 def pm_read(cmd):
     code = scpp[scmds.index(cmd)].split(" ", 1)[1]
@@ -3810,7 +3831,7 @@ MENUS = {
     "midiMode": ["dyad", "mono", "poly", "bogus"], "midiDrawWhich": ["outer", "lowest", "highest", "recent", "x"],
     "midiDrawWhichB": ["outer", "lowest", "recent", None], "layers": ["off", "split", "layer", "both"],
     "layerPair": ["each", "against", "x"], "midiDrive": ["wave,harmonograph,figure", "wave", "", "figure,wireframe", "x", 5, "waveform,figures"],
-    "midiPlay": ["", "harmonograph", "figure,wireframe", "wave", "harmonographs"], "cc": ["", "16:Lower drawbars;42:Fx", " 7 : Vol ;x:y;99:a:b", "64:Sus\nx"],
+    "midiPlay": ["", "harmonograph", "figure,wireframe", "wave", "harmonographs"],
     "bars": ["887000000", "008740000", "12", 887000000, "8 8 7 0 0 0 0 0 9", None, "8870000001"], "bBars": ["800000008", "x", None],
     "bShape": ["sine", "square", 5, None], "bRatio": [2, "3", 9], "bSubShape": ["sine", 3], "bUnison": [3, "x"],
     "l0y": ["", "1/4", "1/8t", "4", "bogus"], "l1y": ["", "2", "1/16"], "l0d": ["none", "phase", "freq", "amp", "bogus"],
@@ -4059,11 +4080,11 @@ check("and the phaser's, A's clamped into range, B's own with fields of its own 
       and phown[3]["planeB"]["own"] and phown[3]["echoB"]["phaser"] == phown[3]["echo"]["phaser"] == 0.55
       and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] and r["echo"]["phaser"] > 0 for r in phown),
       repr([(r["echo"]["phaser"], r["echoB"]["phaser"]) for r in phown[:4]]))
-check("the setups reach every kind, both layers, the old LFO enum, the morph, the controllers and the tempo",
+check("the setups reach every kind, both layers, the old LFO enum, the morph and the tempo",
       {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
       and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
       and any("lfo1>gen.phase" in r["mod"] for r in allr) and any(r["morph"]["a"] for r in allr)
-      and any(r["midi"]["cc"] for r in allr) and any(r["lfos"][0]["rate"] != r["lfos"][0]["free"] for r in allr)
+      and any(r["lfos"][0]["rate"] != r["lfos"][0]["free"] for r in allr)
       and any(r["a"]["qMask"] not in (0, 4095) for r in allr) and any(r["echo"]["sync"] for r in allr))
 fm = [_json.loads(l) for l in rpg[4:4 + len(FIG_MADE)]]
 fu = [_json.loads(l) for l in rpg[4 + len(FIG_MADE):4 + len(FIG_MADE) + len(FIG_UPPER)]]

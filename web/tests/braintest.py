@@ -583,10 +583,16 @@ with sync_playwright() as pw:
       const out = {};
       setFade('off'); restore({}); setScreenKeys(false); await wait(200);
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
-      midiBytes(Uint8Array.from([0xB0, 16, 0])); await wait(100);
-      state.modRoutings = [{ sourceId: 'cc.16', destId: 'gen.freq', amount: 1 }]; touchRoutings();
+      // A held source through the bytes: A3, 220 Hz, struck as hard as a key
+      // goes, holds Key (velocity) at one while it is down - a learned
+      // controller was this until F4b cut learning. Its depth at nought, then
+      // at full.
+      midiRegisterKey(); midiBytes(Uint8Array.from([0x90, 57, 127])); await wait(100);
+      state.modRoutings = [{ sourceId: 'midi.key', destId: 'gen.freq', amount: 0 }]; touchRoutings();
       await wait(400); out.low = hz();
-      midiBytes(Uint8Array.from([0xB0, 16, 127])); await wait(500); out.high = hz();
+      state.modRoutings = [{ sourceId: 'midi.key', destId: 'gen.freq', amount: 1 }]; touchRoutings();
+      await wait(500); out.high = hz();
+      midiBytes(Uint8Array.from([0x80, 57, 0]));
       state.modRoutings = []; touchRoutings();
       // The screen's keys open and nothing held: the waveform is gated, and the readout says why it is empty.
       loadCorpus('Harmonic tone'); setScreenKeys(true); await wait(600);
@@ -595,7 +601,7 @@ with sync_playwright() as pw:
       out.free = el.readoutDetail.textContent;
       return out;
     }""")
-    check("a controller routed to the frequency moves the instrument's pitch: an octave at full", abs(more["low"] - 220) < 0.5
+    check("a source routed to the frequency moves the instrument's pitch: an octave at full", abs(more["low"] - 220) < 0.5
           and abs(more["high"] - 440) < 1, "%s then %s" % (more["low"], more["high"]))
     check("and the reading fails against the pitch it started at", not abs(more["low"] - 440) < 1)
     check("and the readout says why a gated screen is empty, and stops once nothing gates it",

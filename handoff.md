@@ -181,9 +181,11 @@ is below, in order. The listening notes this plan refers to follow it.
    column had height to spare and the tabs none), their editor over the
    tabs, the Sources tab and the drawer gone, the fade in Settings, Velocity
    in Expression as a view of its routing, and the empty ring transparent
-   until pointed at. Nothing stored changed. *F4b* is the cut: learned
-   controllers and the keyboard's remaining sources (pedal, notes, pressure
-   as a source, Level), with a v9 decode pass in the page and the core.
+   until pointed at. Nothing stored changed. *F4b done 7 Nov:* the cut -
+   learned controllers and the keyboard's sources but Key (pedal, pressure
+   as a source, the notes' count, spread, melody and inner voices) and the
+   Level source - with a version-9 decode pass in the page and the core.
+   Next is F5, the rack.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

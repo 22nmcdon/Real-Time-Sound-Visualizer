@@ -105,7 +105,7 @@ DUMP = """(setups) => {
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
               polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
               bendRange: midi.bendRange, wheelTo: midi.wheelTo, pressureTo: midi.pressureTo,
-              play: midi.play, cc: encodeCC() },
+              play: midi.play },
       // The interval twice: the core's panel and its keyboard each keep one,
       // where the page's keyboard reads the menu as a number.
       panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: Number(el.interval.value),

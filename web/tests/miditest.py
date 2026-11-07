@@ -363,115 +363,41 @@ with sync_playwright() as pw:
           close(kinds["back"], kinds["base"], 1e-9), str(kinds))
 
     print("\n--- controllers ---")
-    learned = p.evaluate("""() => {
+    # A controller became a source the first time it moved, named from the
+    # Nord's panel, walked to where it was moved and could be renamed, saved
+    # and forgotten. F4b (7 Nov) cut learning with the matrix's other sources:
+    # what is left is the wheel into Expression, the swell onto the Picture
+    # amount, the pedal and the panics. So: moving controllers registers
+    # nothing, and the wheel still sets the vibrato - the null, a controller
+    # that still does what it is for.
+    moved = p.evaluate("""async () => {
       midiBytes(Uint8Array.from([0xB0, 16, 64]));
       midiBytes(Uint8Array.from([0xB0, 42, 10]));
-      return {
-        drawbar: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label,
-        unknown: MOD_SOURCES.has('cc.42') && MOD_SOURCES.get('cc.42').label,
-        cards: (buildSourceChips(), Array.from(document.querySelectorAll('.mod-card'))
-                 .map((c) => c.dataset.source)),
-      };
-    }""")
-    check("a controller becomes a source the first time it moves",
-          learned["drawbar"] == "Drawbar 1", str(learned["drawbar"]))
-    check("one the map does not know still learns", learned["unknown"] == "CC 42",
-          str(learned["unknown"]))
-    # They were chips on the rail beside the screen; since F4 the cards there
-    # are the three offered sources, and a controller learned is not one.
-    check("and neither grows a modulation card: there are three, whatever is learned",
-          learned["cards"] == ["lfo1", "lfo2", "env.note"], str(learned["cards"]))
-
-    ramp = p.evaluate("""async () => {
-      midiBytes(Uint8Array.from([0xB0, 16, 0]));
-      await new Promise((r) => setTimeout(r, 250));
-      const from = MOD_SOURCES.get('cc.16').value();
-      midiBytes(Uint8Array.from([0xB0, 16, 127]));
-      const out = [];
-      for (let i = 0; i < 6; i++) {
-        await new Promise((r) => requestAnimationFrame(r));
-        out.push(MOD_SOURCES.get('cc.16').value());
-      }
-      await new Promise((r) => setTimeout(r, 250));
-      return { from, out, settled: MOD_SOURCES.get('cc.16').value() };
-    }""")
-    rising = all(b >= a - 1e-9 for a, b in zip(ramp["out"], ramp["out"][1:]))
-    check("a step from a controller arrives as a ramp",
-          ramp["from"] < 0.02 and ramp["out"][0] < 0.9 and rising
-          and len(set(round(v, 4) for v in ramp["out"])) >= 3,
-          str([round(v, 3) for v in ramp["out"]]))
-    check("and gets there", ramp["settled"] > 0.98, str(ramp["settled"]))
-
-    # The lesson this repository keeps relearning: assert the thing moved, not
-    # that a number was written. A controller on the frequency is an octave at
-    # full depth, so the pitch coming out of the generator has to double.
-    p.evaluate("""() => {
-      midiPanic();
-      midi.drive.wave = false;              // the note must not also move it
-      el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
-      state.modRoutings = [{ sourceId: 'cc.16', destId: 'gen.freq', amount: 1 }];
-      touchRoutings();
-      midiBytes(Uint8Array.from([0xB0, 16, 0]));
-    }""")
-    p.wait_for_timeout(450)
-    low = p.evaluate("""() => estimateFrequency(
-      state.source.getLatestWindow(8192)[0], state.source.sampleRate)""")
-    p.evaluate("() => midiBytes(Uint8Array.from([0xB0, 16, 127]))")
-    p.wait_for_timeout(450)
-    high = p.evaluate("""() => estimateFrequency(
-      state.source.getLatestWindow(8192)[0], state.source.sampleRate)""")
-    check("a controller reaches the generator, not only the picture",
-          close(low, 220, 3) and close(high, 440, 6), "%s then %s" % (low, high))
-
-    named = p.evaluate("""() => {
-      midi.cc.get(16).name = 'Bass drawbar';
+      el.midiWheelTo.value = 'vibrato'; el.midiWheelTo.dispatchEvent(new Event('change'));
+      midiBytes(Uint8Array.from([0xB0, 1, 127]));
+      const vibrato = genSettings().vibrato;
+      midiBytes(Uint8Array.from([0xB0, 1, 0]));
       buildSourceChips();
-      const code = encodeSetup(snapshot());
-      midi.cc.get(16).name = 'wiped';
-      midiBytes(Uint8Array.from([0xB0, 77, 5]));     // learned after the snapshot
+      return { learned: [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.')), vibrato,
+               cards: Array.from(document.querySelectorAll('.mod-card')).map((c) => c.dataset.source) };
+    }""")
+    check("controllers moved are learned as nothing, and the cards are still three",
+          moved["learned"] == [] and moved["cards"] == ["lfo1", "lfo2", "env.note"], str(moved))
+    check("null: the wheel still sets the vibrato", moved["vibrato"] > 0.3, str(moved["vibrato"]))
+
+    # A code from before: version 8, a controller on the frequency and its
+    # name kept, beside an oscillator's routing. Version 9's decode pass drops
+    # the controller's routing and its name and keeps the oscillator's.
+    old = p.evaluate("""() => {
+      const code = encodeSetup(Object.assign({}, BASE_SETUP, { v: 8, cc: '16:Bass drawbar',
+        mod: 'cc.16>gen.freq@1.000;lfo1>view.rotate@0.500' }));
       restore(decodeSetup(code));
-      return {
-        name: midi.cc.get(16).name,
-        label: MOD_SOURCES.get('cc.16').label,
-        kept: MOD_SOURCES.has('cc.77'),
-      };
+      const out = { routes: state.modRoutings.map((r) => r.sourceId + '>' + r.destId), cc: 'cc' in snapshot() };
+      state.modRoutings = []; touchRoutings();
+      return out;
     }""")
-    check("a rename survives snapshot, encode, decode and restore",
-          named["name"] == "Bass drawbar" and named["label"] == "Bass drawbar",
-          str(named))
-    check("and restoring a setup does not forget the instrument in the room",
-          named["kept"] is True, str(named))
-
-    forgotten = p.evaluate("""() => {
-      state.modRoutings = [{ sourceId: 'cc.42', destId: 'view.rotate', amount: 0.5 }];
-      touchRoutings();
-      midiForget(42);
-      const gone = !MOD_SOURCES.has('cc.42');
-      midiBytes(Uint8Array.from([0xB0, 42, 20]));
-      return { gone, back: MOD_SOURCES.has('cc.42'),
-               routings: state.modRoutings.length };
-    }""")
-    check("forgetting a controller unregisters it and keeps its patch",
-          forgotten["gone"] and forgotten["back"] and forgotten["routings"] == 1,
-          str(forgotten))
-
-    # A preset's "cc.1>gen.vcf" loaded before the wheel has moved: there is no
-    # source yet, so it is skipped, and the wheel's first move has to bring it
-    # in. It did not - the source was learned and the filter never moved - and
-    # the check above, on a picture destination summed every frame, could not
-    # see it: only the generator's routes are compiled.
-    p.evaluate("() => { midiForget(1); state.modRoutings = [{ sourceId: 'cc.1', destId: 'gen.vcf', amount: 0.7 }]; touchRoutings(); }")
-    unlearned = p.evaluate(ROUTES)
-    send(0xB0, 1, 100)
-    learned_ = p.evaluate(ROUTES)
-    p.evaluate("() => midiForget(1)")
-    forgot = p.evaluate(ROUTES)
-    send(0xB0, 1, 90)
-    again = p.evaluate(ROUTES)
-    check("a routing from a controller that has not moved yet is heard from its first move, and again after forgetting",
-          unlearned == [] and learned_ == [[vcf, 0.7]] and forgot == [] and again == [[vcf, 0.7]],
-          "%s, %s, %s, %s" % (unlearned, learned_, forgot, again))
-    p.evaluate("() => { midiForget(1); state.modRoutings = []; touchRoutings(); }")
+    check("an old code's controller routing and names are dropped, and an oscillator's kept",
+          old == {"routes": ["lfo1>view.rotate"], "cc": False}, str(old))
 
     print("\n--- the note as ground truth ---")
     truth = p.evaluate("""() => {
@@ -570,62 +496,6 @@ with sync_playwright() as pw:
                                     "figure": True, "wireframe": False},
           str(defaults))
 
-    print("\n--- the bench with a keyboard plugged in ---")
-    # The one list on the bench whose length the page does not decide: nine
-    # drawbars, a swell pedal and a rotary switch is an ordinary evening. The
-    # side column used to hold the oscillators under the chips and had about
-    # twenty pixels of slack, so the chip rail was made to scroll; the
-    # oscillators are on the Sources tab now and the chips have the room.
-    p.evaluate("""() => {
-      setView('bench');
-      for (let n = 16; n <= 24; n++) midiLearn(n);
-      midiLearn(11); midiLearn(108);
-      buildSourceChips();
-    }""")
-    p.wait_for_timeout(400)
-    room = p.evaluate("""() => {
-      const side = el.benchSide, body = el.benchBody;
-      return {
-        side: side.scrollHeight - side.clientHeight,
-        body: body.scrollHeight - body.clientHeight,
-        cards: el.modStrip.querySelectorAll('.mod-card').length,
-      };
-    }""")
-    check("eleven controllers do not make either bench panel scroll",
-          room["side"] <= 0 and room["body"] <= 0, str(room))
-    check("and the cards are still three", room["cards"] == 3, str(room))
-
-    # Renaming a drawbar is the whole reason those rows exist. They live in
-    # Settings, under MIDI, in plain view since the controllers stopped being
-    # rows behind the Keyboard section's dots - and the Sources tab renames
-    # the one selected.
-    p.evaluate("() => setMenuOpen(true)"); p.wait_for_timeout(200)
-    detail = p.evaluate("""() => {
-      const field = document.getElementById('ccName16');
-      const reachable = !!field && field.offsetWidth > 0;
-      if (field) { field.value = 'Bottom drawbar'; field.dispatchEvent(new Event('input')); }
-      const out = { title: groupTitle(field.closest('.menu-group')), reachable,
-                    named: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label };
-      setMenuOpen(false);
-      selectSource('cc.17');
-      const there = document.getElementById('srcDetail-name');
-      there.value = 'Second drawbar'; there.dispatchEvent(new Event('input'));
-      out.fromTab = MOD_SOURCES.get('cc.17').label;
-      out.listSays = document.getElementById('ccName17').value;
-      setBenchTab('play');
-      return out;
-    }""")
-    check("the controllers are in Settings, under MIDI, and renaming works there",
-          detail["reachable"] is True and detail["title"] == "MIDI"
-          and detail["named"] == "Bottom drawbar", str(detail))
-    check("and the source's own panel renames one too, and the list follows",
-          detail["fromTab"] == "Second drawbar" and detail["listSays"] == "Second drawbar", str(detail))
-    p.evaluate("""() => {
-      for (let n = 16; n <= 24; n++) midiForget(n);
-      midiForget(11); midiForget(108); midiForget(77);
-      setView('scope');
-    }""")
-    p.wait_for_timeout(300)
 
     print("\n--- velocity (F4) ---")
     # Expression's Velocity menu: a note's level and strike always follow

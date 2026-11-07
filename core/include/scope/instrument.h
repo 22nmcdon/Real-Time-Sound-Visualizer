@@ -219,7 +219,6 @@ class Instrument {
     keyboard_->setPresent(true);
     load(setup, true);
     keyboard_->frame(0);
-    learnedSeen_ = keyboard_->controllers().size();
     changed_ = true;
     levelLane_.assign(kLevelFrames, 0.0f);
     hearL_.assign(kHearN, 0.0f);
@@ -390,8 +389,6 @@ class Instrument {
       pictureRun_->before(*matrix_, pictureSource_, 0);
       scanFrame();
     }
-    // A controller the keyboard learned last block is a source now, and its routings are heard.
-    sources_->learn(*matrix_, *keyboard_);
     matrix_->setLayered(keyboard_->layersOn());
     matrix_->setStrikes(keyboard_->strikes());
     // Whether each layer's sound is moved by its own picture (P6): as the frame's step left it, for the frame's destinations.
@@ -496,7 +493,6 @@ class Instrument {
      that could not publish this time (the plugin, when the page is reading)
      is asked again next block. */
   bool changed() {
-    if (keyboard_->controllers().size() != learnedSeen_) { learnedSeen_ = keyboard_->controllers().size(); changed_ = true; }
     return changed_;
   }
   void published() { changed_ = false; }
@@ -524,7 +520,6 @@ class Instrument {
       for (const auto& h : hands_) list.a.push_back(h.hand);
       setup.set("pluginHands", list);
     }
-    setup.set("cc", Json::string(std::string_view(keyboard_->encodeCC())));
     setup.erase("pluginInput");
     setup.erase("pluginBands");
     if (drawsInput_) setup.set("pluginInput", Json::boolean(true));
@@ -620,7 +615,6 @@ class Instrument {
      parameters on those controls read back when it changes, since the same
      slider then shows the other layer's value. */
   int panelLayer() const { return brain_->panelLayer; }
-  int learned() const { return static_cast<int>(keyboard_->controllers().size()); }
   /* A hand on a slider that is not remembered, and an end of the morph
      stored: the plugin's shell test's way in. */
   void moveSlider(const std::string& id, double value) {
@@ -1097,7 +1091,6 @@ class Instrument {
   int hostLoads_ = 0;
   std::vector<std::string> hostMoved_;  // the sliders the host has moved since the last load
   bool changed_ = false;
-  std::size_t learnedSeen_ = 0;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_, mono_, heardL_, heardR_;  // a block's worth, made in prepare
   std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, or the second generator's, as the generator draws it
