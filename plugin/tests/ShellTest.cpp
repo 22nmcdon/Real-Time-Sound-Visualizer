@@ -2129,7 +2129,8 @@ int main() {
   for (int i = 0; i < BinaryData::scope_htmlSize; ++i) wideInBinary += static_cast<unsigned char>(BinaryData::scope_html[i]) > 127 ? 1 : 0;
   const std::string served(reinterpret_cast<const char*>(page->data.data()), page->data.size());
   check("the page is served as pure ASCII, the script's middle dot as \\u00B7 and nothing lost",
-        wide == 0 && wideInBinary > 0 && served.find("\"trigger.js \\u00B7 \"") != std::string::npos,
+        // The readout line's joining dot; the colophon's was the witness until F1 took it off the face.
+        wide == 0 && wideInBinary > 0 && served.find("bits.join(\" \\u00B7 \")") != std::string::npos,
         std::to_string(wideInBinary) + " bytes past ASCII in the binary, " + std::to_string(wide) + " served");
   const char* mixed = "<p>\xC2\xB7</p><script>'\xE2\x88\x92\xF0\x9F\x8E\xB5'</script>\xC3\x97";
   const std::string sample = asciiPage(mixed, std::strlen(mixed));

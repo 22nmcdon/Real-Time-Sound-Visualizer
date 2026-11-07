@@ -55,7 +55,8 @@ with sync_playwright() as pw:
     homes = p.evaluate("""() => {
       const where = () => settingsGroups().map((g) => ({
         title: groupTitle(g), home: g.dataset.home,
-        inPanel: g.parentElement === el.menuPanel, onBench: !!g.closest('#bench') }));
+        inPanel: g.parentElement === el.menuPanel, inMeasure: !!g.closest('#measurePanel'),
+        onBench: !!g.closest('#bench') && !g.closest('#measurePanel') }));
       const bench = where();
       setView('scope');
       const scope = where();
@@ -64,8 +65,14 @@ with sync_playwright() as pw:
                panelTitles: Array.from(el.menuPanel.querySelectorAll(':scope > .menu-group')).map(groupTitle) };
     }""")
     misplaced = [g["title"] + " in " + view for view in ("bench", "scope") for g in homes[view]
-                 if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]]
+                 if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]
+                 or (g["home"] == "measure") != g["inMeasure"]]
     check("every section is in its home in both views", misplaced == [], str(misplaced))
+    # F1 (redesigning-the-face.md): the scope's own tools are Scope & measure's,
+    # a panel over the screen in either view - the null is the P8 drawer's tab.
+    measured = sorted(g["title"] for g in homes["bench"] if g["inMeasure"])
+    check("Scope & measure holds the scope's tools: lanes, vertical, filter, trigger and measure",
+          measured == ["Filter", "Lanes", "Measure", "Trigger", "Vertical"], str(measured))
     check("Settings holds only the settings: MIDI, audio, presets and the beam",
           sorted(homes["panelTitles"]) == ["Audio", "Beam", "MIDI", "Presets"], str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
@@ -111,8 +118,8 @@ with sync_playwright() as pw:
           and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
     check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
           drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
-    check("opened, the drawer's four tabs come after the loop's, with the chips and a ring on every control",
-          drawer["open"]["rail"] == loop_tabs + ["Sources", "Inputs", "Measure", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
+    check("opened, the drawer's three tabs come after the loop's, with the chips and a ring on every control",
+          drawer["open"]["rail"] == loop_tabs + ["Sources", "Inputs", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
           and drawer["open"]["label"] == "true", str(drawer["open"]))
     check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
           str(drawer["back"]))
@@ -256,8 +263,8 @@ with sync_playwright() as pw:
     # plane and the delay to Effects; the five of the loop and the drawer's
     # one, last, since P3; seven since P5 put the arpeggiator on Perform; and
     # since P8 the loop's four in its own order, the drawer's four after.
-    check("four tabs along the loop and the drawer's four with it open, and a tab list",
-          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Picture", "Sources", "Inputs", "Measure", "Perform"]
+    check("four tabs along the loop and the drawer's three with it open, and a tab list",
+          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Picture", "Sources", "Inputs", "Perform"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
@@ -280,9 +287,9 @@ with sync_playwright() as pw:
             "Display": "space", "Plane": "space", "Delay, chorus and phaser": "space",
             "Scan": "picture", "Score": "picture",
             "Input": "inputs", "Input into the generator": "inputs",
-            "Lanes": "measure", "Vertical": "measure", "Filter": "measure", "Trigger": "measure",
-            "Measure": "measure", "Morph": "measure",
-            "Key and tempo": "perform", "Arpeggiator": "perform"}
+            # The Measure tab's sections went to Scope & measure in F1, and the
+            # morph to Perform, where the face's brief puts it.
+            "Morph": "perform", "Key and tempo": "perform", "Arpeggiator": "perform"}
     before_p8 = dict(want, **{"Voice filter": "shape", "Oscillator": "shape", "Drawbars": "shape",
                               "Shaping": "shape", "Drawn cycle": "shape", "Display": "picture",
                               "Plane": "effects", "Delay, chorus and phaser": "effects", "Input": "play",
@@ -291,7 +298,7 @@ with sync_playwright() as pw:
                               "Key and tempo": "measure"})
     agree = lambda m: all(homes.get(k) == v for k, v in m.items())
     stray = {k: (homes.get(k), v) for k, v in want.items() if homes.get(k) != v}
-    check("each section is on the tab the P8 layout gives it", agree(want), str(stray))
+    check("each section is on the tab the P8 layout and F1 give it", agree(want), str(stray))
     check("null: the layout before P8 is not what is there", not agree(before_p8), str(homes))
     keys = p.evaluate("""() => {
       setBenchTab('play');
@@ -329,8 +336,8 @@ with sync_playwright() as pw:
 
     print("\n--- the controls still work from the bench ---")
     live = p.evaluate("""() => {
-      // The Measure tab, in the drawer since P8, and a slider and a checkbox on it.
-      setBenchTab('measure');
+      // Scope & measure since F1, and a slider and a checkbox in it.
+      setMeasureOpen(true);
       el.holdoff.value = '30';
       el.holdoff.dispatchEvent(new Event('input'));
       const a = state.holdoffMs;
@@ -340,9 +347,10 @@ with sync_playwright() as pw:
 
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       el.holdoff.value = '0'; el.holdoff.dispatchEvent(new Event('input'));
+      setMeasureOpen(false);
       return { holdoff: a, lag: b };
     }""")
-    check("a slider in the bench drives its state", live["holdoff"] == 3.0, str(live["holdoff"]))
+    check("a slider in Scope & measure drives its state", live["holdoff"] == 3.0, str(live["holdoff"]))
     check("and a checkbox does too",
           live["lag"]["lag"] is True and live["lag"]["lanes"] == 2, str(live["lag"]))
 
@@ -494,6 +502,43 @@ with sync_playwright() as pw:
     check("the rail becomes a row", narrow["railRow"] == "row", narrow["railRow"])
     p.screenshot(path=f"{SHOTS}/bench-narrow.png", full_page=True)
 
+    p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
+
+    print("\n--- Scope & measure (F1) ---")
+    # The scope's own tools in a panel over the screen, shut by default; the
+    # readouts under the screen off unless asked for; the toolbar above the
+    # screen in either view; and the developer's labels gone from the face.
+    FIT = """() => {
+      const out = {};
+      for (const view of ['bench', 'scope']) {
+        setView(view); setMeasureOpen(true);
+        const box = el.measurePanel.getBoundingClientRect();
+        out[view] = { inside: box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth,
+                      scrolls: el.measurePanel.scrollHeight > el.measurePanel.clientHeight + 1,
+                      over: el.screenTools.nextElementSibling === (view === 'bench' ? el.benchScope : el.panes) };
+        setMeasureOpen(false);
+      }
+      return out;
+    }"""
+    shut = p.evaluate("""() => { setView('bench'); return { shut: el.measurePanel.hidden, readouts: getComputedStyle(el.measures).display,
+      box: el.readoutsOn.checked, labels: /trigger\.js|Test tone/.test(document.querySelector('header').innerText + document.querySelector('.dock').innerText),
+      mark: document.getElementById('sourceMark') === null && document.getElementById('colophon') === null }; }""")
+    check("Scope & measure is shut and the readouts off on a first load, and no developer's label is left on the face",
+          shut == {"shut": True, "readouts": "none", "box": False, "labels": False, "mark": True}, str(shut))
+    on = p.evaluate("""() => { el.readoutsOn.click(); const shown = getComputedStyle(el.measures).display;
+      const kept = localStorage.getItem('scope.readouts'); el.readoutsOn.click();
+      return { shown, kept, after: getComputedStyle(el.measures).display }; }""")
+    check("and its box shows them, kept for this viewer, and takes them away again",
+          on["shown"] != "none" and on["kept"] == "on" and on["after"] == "none", str(on))
+    for w, h in ((1400, 900), (960, 600)):
+        p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
+        fit = p.evaluate(FIT)
+        check("at %dx%d the panel is inside the window in both views, nothing in it scrolls, and its toolbar is on the screen" % (w, h),
+              all(v == {"inside": True, "scrolls": False, "over": True} for v in fit.values()), str(fit))
+    # The null: a window shorter than the panel, which no placing can fit.
+    p.set_viewport_size({"width": 960, "height": 480}); p.wait_for_timeout(300)
+    short = p.evaluate(FIT)
+    check("null: at 960x480 the same check says the panel does not fit", not short["bench"]["inside"], str(short))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
     p.evaluate("() => setView('scope')")
     check("no page errors across the run", not bad, "; ".join(bad[:4]))

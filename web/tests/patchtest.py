@@ -237,18 +237,21 @@ with sync_playwright() as pw:
     # is that ALL of a section's secondary content moves and none of it stays
     # behind - not that the filter has two paragraphs, which is a fact about
     # today's prose and changed the first time a paragraph was added.
-    p.evaluate("() => setBenchTab('measure')"); p.wait_for_timeout(200)
+    # The plane on Space & Memory: a section with prose and rows behind its
+    # dots. (The trace filter was this fixture until F1 took it to Scope &
+    # measure.)
+    p.evaluate("() => setBenchTab('space')"); p.wait_for_timeout(200)
     had = p.evaluate("""() => ({
-      notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
-      rows: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
+      notes: document.querySelectorAll('#planeGroup .menu-note').length,
+      rows: document.querySelectorAll('#planeGroup [data-more]').length,
     })""")
-    p.locator('.menu-group:has(#filterCutoff) .more-dots').click(); p.wait_for_timeout(300)
+    p.locator('#planeGroup .more-dots').click(); p.wait_for_timeout(300)
     detail = p.evaluate("""() => ({
       title: document.querySelector('.over-title').textContent,
       notes: document.querySelectorAll('.over-body .menu-note').length,
       rows: document.querySelectorAll('.over-body [data-more]').length,
       stayed: document.querySelectorAll(
-        '.menu-group:has(#filterCutoff) .menu-note, .menu-group:has(#filterCutoff) [data-more]'
+        '#planeGroup .menu-note, #planeGroup [data-more]'
       ).length,
       leftBehind: document.querySelectorAll('#benchBody .menu-note').length,
       dupes: (() => { const seen = new Set(), d = [];
@@ -256,7 +259,7 @@ with sync_playwright() as pw:
           if (seen.has(n.id)) d.push(n.id); else seen.add(n.id); }
         return d; })(),
     })""")
-    check("the dots open the section's own detail", detail["title"] == "Filter", str(detail))
+    check("the dots open the section's own detail", detail["title"] == "Plane", str(detail))
     check("with all of its prose and its secondary rows, and none left behind",
           detail["notes"] == had["notes"] and detail["rows"] == had["rows"]
           and detail["stayed"] == 0 and had["notes"] > 0,
@@ -267,8 +270,8 @@ with sync_playwright() as pw:
 
     p.keyboard.press("Escape"); p.wait_for_timeout(300)
     home = p.evaluate("""() => ({
-      notes: document.querySelectorAll('.menu-group:has(#filterCutoff) .menu-note').length,
-      more: document.querySelectorAll('.menu-group:has(#filterCutoff) [data-more]').length,
+      notes: document.querySelectorAll('#planeGroup .menu-note').length,
+      more: document.querySelectorAll('#planeGroup [data-more]').length,
       over: document.querySelectorAll('.over').length,
       switchWorks: (() => { el.seeDry.click(); const a = state.analyseAt;
                             el.seeWet.click(); return a === 'pre' && state.analyseAt === 'post'; })(),

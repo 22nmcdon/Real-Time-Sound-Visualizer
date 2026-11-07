@@ -60,6 +60,9 @@ SCANNING = """async (freq) => {
   for (const [id, v] of [['ch1Offset', '35'], ['ch2Offset', '25']]) {
     showControl(id); const s = document.getElementById(id); s.value = v; s.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  // They are Scope & measure's since F1, and showControl opened it: shut it
+  // again, as a hand would, so it is not over the screen and the Loop button.
+  setMeasureOpen(false);
   await wait(4000);
 }"""
 

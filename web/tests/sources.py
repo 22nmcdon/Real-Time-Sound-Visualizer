@@ -49,13 +49,14 @@ with sync_playwright() as pw:
         seen = p.locator("#genMode").is_visible()
         to_inputs()
         return seen
-    mark = lambda: p.locator("#sourceMark").inner_text()
+    # What the head says is playing: its credit, since F1 took the mark beside the name.
+    mark = lambda: p.locator("#credit").inner_text()
 
     # Tone over a tone: it keeps the tone, but puts the panel back, which is
     # what the one-way door above lacked.
     p.locator("#srcTone").click(); p.wait_for_timeout(300)
     check("Tone over a tone keeps the tone and shows its editor",
-          p.evaluate("playingKind()") == "tone" and tone_visible() and mark() == "TEST TONE", mark())
+          p.evaluate("playingKind()") == "tone" and tone_visible() and "220 Hz" in mark(), mark())
 
     print("-- Mic, denied, must not strand the panel --")
     # No microphone in this container, so the press is refused: the panel
@@ -68,7 +69,7 @@ with sync_playwright() as pw:
     credit = p.locator("#credit").inner_text().lower()
     check("the credit explains, and says the tone still works", "microphone" in credit and "test tone" in credit,
           credit)
-    check("and the head says the tone again", mark() == "TEST TONE", mark())
+    check("and the head says the tone again", "test tone" in mark().lower(), mark())
 
     print("-- the tone still works after all of that --")
     check("triggers", p.evaluate("capture().triggered"))

@@ -75,7 +75,9 @@ with sync_playwright() as pw:
     # Things that are on the screen. The first draft measured the lag's mix
     # slider, which lives in the closed Settings panel: its box is all noughts
     # open or shut, so the check could not fail.
-    BOXES = """() => [el.trace, el.timebase].map((e) => {
+    # The trace, and two controls on the face: the timebase was the second
+    # until F1 put it in Scope & measure, shut, where it measures nothing.
+    BOXES = """() => [el.trace, el.measureButton, el.persistence].map((e) => {
       const r = e.getBoundingClientRect();
       return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10); })"""
     where = p.evaluate(BOXES)

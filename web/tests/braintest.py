@@ -118,13 +118,13 @@ with sync_playwright() as pw:
 
     # With no switch at all: the site, which since 5m is the instrument.
     p, errors = opened(b, "")
-    first = p.evaluate("""async () => ({ kind: state.source.kind, mark: el.sourceMark.textContent, on: hostSync.on,
+    first = p.evaluate("""async () => ({ kind: state.source.kind, credit: el.credit.textContent, on: hostSync.on,
       seen: hostSync.seen, chunks: state.source.chunks, rate: state.source.sampleRate, ctxRate: deviceRate(),
       timebase: decodeSetup((await scopeHost.call('scopeState')).code).timebase })""")
     p.wait_for_timeout(500)
     later = p.evaluate("() => state.source.chunks")
     check("with no switch the page draws the instrument in the worklet, and the instrument is playing, its head saying what it plays",
-          first["kind"] == "host" and first["mark"] == "Test tone" and first["on"] and later > first["chunks"] > 0,
+          first["kind"] == "host" and "220 Hz" in first["credit"] and first["on"] and later > first["chunks"] > 0,
           "%s, %d chunks half a second later" % (first, later))
     check("and the page shows the instrument's state, put on it as the plugin's is", first["seen"] >= 1, str(first["seen"]))
     # The page opens on Harmonic tone, whose timebase is 3 where the default's is 4.

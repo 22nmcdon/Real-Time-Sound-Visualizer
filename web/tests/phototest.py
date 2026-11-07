@@ -123,9 +123,23 @@ with sync_playwright() as pw:
       // The darkest pixel in that cell is where the stroke is.
       const x0 = Math.round((plot.x + cx / N * plot.w) * dpr), y0 = Math.round((plot.y + cy / N * plot.h) * dpr);
       const cw = Math.max(1, Math.round(plot.w / N * dpr));
+      /* The cell with nothing drawn on it first, so the pixel chosen is one
+         whose background is paper. Once F1 moved the screen down by a
+         toolbar, the darkest pixel of the brightest cell landed on a
+         graticule line in two runs of four: the line is drawn over the
+         trace and never fades, so the canvas read 0.934 a frame there, and
+         the pixel was not measuring the trace at all. */
+      genSet('amp', 0);
+      await wait(1500);
+      const bare = ctx.getImageData(x0, y0, cw, cw).data;
+      genSet('amp', 0.55);
+      await wait(800);
       const cell = ctx.getImageData(x0, y0, cw, cw).data;
-      let px = 0;
-      for (let k = 0; k < cell.length; k += 4) if (cell[k + 1] < cell[px + 1]) px = k;
+      let px = -1;
+      for (let k = 0; k < cell.length; k += 4) {
+        if (252 - bare[k + 1] > 8) continue;      // a line, or anything else that does not fade
+        if (px < 0 || cell[k + 1] < cell[px + 1]) px = k;
+      }
       const pxX = x0 + (px / 4) % cw, pxY = y0 + Math.floor(px / 4 / cw);
       const paperG = 252;
       const inkOf = () => paperG - ctx.getImageData(pxX, pxY, 1, 1).data[1];

@@ -93,7 +93,7 @@ with sync_playwright() as pw:
     check("no macro knob, name, source, family or preset section is left on the page",
           gone["ids"] == [] and gone["sources"] == [] and "macros" not in gone["families"]
           and "Macros" not in gone["sections"], str(gone["ids"] + gone["sources"]))
-    check("the morph keeps a section of its own, on Measure in the drawer", gone["morphHome"] == "measure"
+    check("the morph keeps a section of its own, on Perform in the drawer since F1", gone["morphHome"] == "perform"
           and gone["title"] == "Morph", "%s %s" % (gone["morphHome"], gone["title"]))
     # Up to the current version, whatever that is now: the version-7 and -8
     # passes (the latch, the kaleidoscope) came after this was written and

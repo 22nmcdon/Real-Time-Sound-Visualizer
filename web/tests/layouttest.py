@@ -177,20 +177,29 @@ with sync_playwright() as pw:
     print("\n--- reaching any control ---")
     reach = p.evaluate("""() => {
       setView('scope'); setMenuOpen(false);
-      showControl('filterCutoff');
+      setDrawer(false);
+      showControl('arpMode');
       const bench = { view: document.body.dataset.view, tab: benchTab,
-                      seen: el.filterCutoff.offsetWidth > 0 };
+                      seen: el.arpMode.offsetWidth > 0 };
+      setView('scope');
+      showControl('filterCutoff');
+      const measure = { view: document.body.dataset.view, open: !el.measurePanel.hidden,
+                        seen: el.filterCutoff.offsetWidth > 0 };
+      setMeasureOpen(false);
       setView('scope');
       showControl('midiConnect');
       const settings = { view: document.body.dataset.view, open: !el.menuPanel.hidden,
                          seen: el.midiConnect.offsetWidth > 0 };
       setMenuOpen(false);
-      return { bench, settings };
+      return { bench, measure, settings };
     }""")
-    # The trace filter, on Measure in the drawer since P8: a control there
-    # opens the drawer too, which is the harder case of the two.
-    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "measure", "seen": True},
+    # The arpeggiator, on Perform in the drawer, with the drawer shut: a
+    # control there opens the drawer too, which is the harder case. (It was
+    # the trace filter until F1 took the Measure tab to Scope & measure.)
+    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "perform", "seen": True},
           str(reach["bench"]))
+    check("a scope's tool opens Scope & measure over the view you were in",
+          reach["measure"] == {"view": "scope", "open": True, "seen": True}, str(reach["measure"]))
     check("and a setting opens Settings over the view you were in",
           reach["settings"] == {"view": "scope", "open": True, "seen": True}, str(reach["settings"]))
 
@@ -206,11 +215,11 @@ with sync_playwright() as pw:
 
     cutoff = search("cutoff")
     check("the Sources panel's destination menu is not searched as rows: cutoff is the Filter's",
-          cutoff == [["Cutoff", "Filter"]], str(cutoff))
+          cutoff == [["Cutoff", "Scope & measure \u203a Filter"]], str(cutoff))
     notch = search("notch")
     # Two since the voice filter (H3): its Type offers a notch too.
     check("but a menu's own choices find it: notch is a type of the trace's filter and of the voice's",
-          sorted(notch) == [["Type", "Filter"], ["Type", "Voice filter"]], str(notch))
+          sorted(notch) == [["Type", "Scope & measure \u203a Filter"], ["Type", "Voice filter"]], str(notch))
     adsr = search("adsr")
     # The Envelope source comes after them, fairly: its description names them.
     check("synonyms: adsr is the four envelope times first, behind the Generator's dots",
@@ -221,7 +230,10 @@ with sync_playwright() as pw:
           all(" rate" in (" " + r[0].lower()) or r[1].startswith("Sources") for r in rate) and rate != [],
           str(rate))
     top = search("zoom")
-    check("the strip along the top is searched too", ["Zoom", "Along the top"] in top, str(top))
+    # The zoom left the strip for Scope & measure in F1, and is found there.
+    check("the strip along the top is searched too, and what left it for Scope & measure",
+          ["Zoom", "Scope & measure \u203a Time"] in top and ["Persistence", "Along the top"] in search("persistence"),
+          str(top) + " " + str(search("persistence")[:2]))
 
     stale = p.evaluate("""() => { setMidiMode('dyad'); return null; }""")
     dyad = search("draw")

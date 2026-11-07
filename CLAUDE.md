@@ -201,7 +201,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is four tabs along the loop - Play,
   Ink, Space & Memory, Picture, in the order the sound goes round it - and the
-  drawer's Sources, Inputs, Measure and Perform, and one tab at a time must
+  drawer's Sources, Inputs and Perform, and one tab at a time must
   fit. `patchtest.py` measures every tab across every generator mode;
   `fittest.py` does it in every combination of generator kind, tone or band
   split, keyboard and Photocell, and the Sources tab with each family on show.
@@ -225,7 +225,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   the scope's own instruments (lanes, vertical, trigger, trace filter,
   cursors) and the setup morph to Measure (the macros beside it were cut in
   P8d, the host's knobs having replaced them), the microphone and input into the
-  generator to Inputs, and the key and tempo to Perform beside the clock. Add
+  generator to Inputs, and the key and tempo to Perform beside the clock. F1 of
+  `web/docs/redesigning-the-face.md` (7 Nov) took Measure's sections to
+  *Scope & measure* (below) and the morph to Perform. Add
   a tab to it by naming it in `BENCH_DRAWER`. A tab remembered from before a
   rename lands where its sections went (`BENCH_TAB_RENAMED`). `benchtest.py`
   holds it.
@@ -235,7 +237,12 @@ Do not re-litigate these without a reason; each replaced something that failed.
   and read as a wall. The list has a fixed height and scrolls inside itself,
   so what is plugged in cannot put the tab over.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
-  MIDI, Audio, Presets, Beam) or `bench` (everything played or tuned), and a
+  MIDI, Audio, Presets, Beam), `bench` (everything played or tuned) or, since
+  F1, `measure` (the oscilloscope's own tools: *Scope & measure*, a panel over
+  the screen opened from the toolbar above it, which also holds run, mode,
+  Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
+  default, the readouts off by default, and nothing in it scrolls down to the
+  plugin's 960x600 - `benchtest.py`), and a
   section stays in its home in both views. Settings and the Bench used to hold
   the same sections, which made neither a place for anything. To reach a
   control from code - a search result, a test - use `showControl(id)`; do not

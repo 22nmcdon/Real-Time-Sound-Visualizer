@@ -142,7 +142,7 @@ with sync_playwright() as pw:
       names: state.source.lanes ? state.source.lanes.map((l) => l.name) : [],
       laneCount: laneCount(),
       capacity: state.source.capacity,
-      mark: el.sourceMark.textContent,
+      credit: el.credit.textContent,
       describe: state.source.describe(),
       toDestination: window.__connects.filter((c) => c.isDestination).length,
       stacked: stacked(),
@@ -154,7 +154,8 @@ with sync_playwright() as pw:
           str(got["names"]))
     check("NOTHING reaches the speakers", got["toDestination"] == 0,
           "%d connections to destination" % got["toDestination"])
-    check("the head says so", got["mark"].strip().lower() == "live bands", got["mark"])
+    # The head's credit, since F1 took the small mark beside the name.
+    check("the head says so", "band" in got["credit"].lower(), got["credit"])
     check("and says it is not monitored", "not monitored" in got["describe"], got["describe"])
 
     ui = p.evaluate("""() => ({

@@ -144,6 +144,8 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const freqText = () => { const t = document.body.innerText; const i = t.indexOf('freq');
                                return t.slice(i + 5, i + 14).trim(); };
+      // The readouts are under the screen only when asked for, since F1.
+      setReadouts(true);
       el.dispYT.click();
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
