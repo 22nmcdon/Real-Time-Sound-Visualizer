@@ -232,7 +232,7 @@ with sync_playwright() as pw:
     top = search("zoom")
     # The zoom left the strip for Scope & measure in F1, and is found there.
     check("the strip along the top is searched too, and what left it for Scope & measure",
-          ["Zoom", "Scope & measure \u203a Time"] in top and ["Persistence", "Along the top"] in search("persistence"),
+          ["Zoom", "Scope & measure \u203a Time"] in top and ["Persistence", "Picture"] in search("persistence"),
           str(top) + " " + str(search("persistence")[:2]))
 
     stale = p.evaluate("""() => { setMidiMode('dyad'); return null; }""")

@@ -77,7 +77,7 @@ with sync_playwright() as pw:
     # open or shut, so the check could not fail.
     # The trace, and two controls on the face: the timebase was the second
     # until F1 put it in Scope & measure, shut, where it measures nothing.
-    BOXES = """() => [el.trace, el.measureButton, el.persistence].map((e) => {
+    BOXES = """() => [el.trace, el.measureButton, el.pictureMore].map((e) => {
       const r = e.getBoundingClientRect();
       return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10); })"""
     where = p.evaluate(BOXES)

@@ -199,8 +199,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   alone among menu rows is one line, since as a cell it stood taller than the
   slider it replaced. The drawbars, the setup morph's crossfader, the strip
   under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
-- **No Bench tab may scroll.** The Bench is four tabs along the loop - Play,
-  Ink, Space & Memory, Picture, in the order the sound goes round it - and the
+- **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
+  Ink, Space & Memory, in the order the sound goes round it (the Picture tab
+  went in F2: its knobs are the Picture section along the bottom) - and the
   drawer's Sources, Inputs and Perform, and one tab at a time must
   fit. `patchtest.py` measures every tab across every generator mode;
   `fittest.py` does it in every combination of generator kind, tone or band
@@ -211,8 +212,12 @@ Do not re-litigate these without a reason; each replaced something that failed.
   because Shape overflowed into Effects; after P5's cuts and the drawer they
   were a third full in places, so P8 (`making-it-one-instrument.md`) put them
   back in the loop's order. A section that would crowd a tab still goes to
-  another one. The Picture amount, its reads, persistence and the display
-  stay in the bar under the screen, where they are on show on every tab.
+  another one. The Picture section along the bottom of the window (F2) holds
+  the Amount, Scan, Strike, Softness, the one Persistence and the three reads,
+  in either view and on every tab; what Scan reads, the photocell and the
+  score are behind its *Advanced*, with the loop overlay and the panes, which
+  only change the look (home `picture`). The display and Clear are above the
+  screen.
 - **What is not the loop goes in the drawer.** *Advanced*, under the rail,
   opens it; shut, it takes its tabs, the source chips beside the screen and a
   control's hollow ring with it, and leaves everything patched playing and
@@ -238,7 +243,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   so what is plugged in cannot put the tab over.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, Presets, Beam), `bench` (everything played or tuned) or, since
-  F1, `measure` (the oscilloscope's own tools: *Scope & measure*, a panel over
+  F1, `measure`, or since F2 `picture` (the Picture section's Advanced) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
   default, the readouts off by default, and nothing in it scrolls down to the

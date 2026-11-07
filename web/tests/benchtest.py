@@ -73,6 +73,9 @@ with sync_playwright() as pw:
     measured = sorted(g["title"] for g in homes["bench"] if g["inMeasure"])
     check("Scope & measure holds the scope's tools: lanes, vertical, filter, trigger and measure",
           measured == ["Filter", "Lanes", "Measure", "Trigger", "Vertical"], str(measured))
+    # F2: what Scan reads and the score behind the Picture's Advanced.
+    pictured = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#picturePanel')).map(groupTitle).sort()""")
+    check("the Picture's Advanced holds what Scan reads and the score", pictured == ["Score", "What Scan reads"], str(pictured))
     check("Settings holds only the settings: MIDI, audio, presets and the beam",
           sorted(homes["panelTitles"]) == ["Audio", "Beam", "MIDI", "Presets"], str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
@@ -112,8 +115,9 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    shut %s; open %s" % (drawer["first"], drawer["open"]))
-    loop_tabs = ["Play", "Ink", "Space & Memory", "Picture"]
-    check("a first visit opens with the drawer shut: the loop's four tabs, no chips, no hollow rings",
+    # Three since F2: the Picture's knobs are along the bottom, the rest behind its Advanced.
+    loop_tabs = ["Play", "Ink", "Space & Memory"]
+    check("a first visit opens with the drawer shut: the loop's three tabs, no chips, no hollow rings",
           drawer["first"]["drawer"] == "shut" and drawer["first"]["rail"] == loop_tabs and not drawer["first"]["chips"]
           and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
     check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
@@ -220,18 +224,21 @@ with sync_playwright() as pw:
       el.benchSearch.value = ''; el.benchSearch.dispatchEvent(new Event('input'));
       return { chips: chips.filter((id) => id.startsWith('stage.')), lfo: chips.includes('lfo1'), found };
     }""")
-    # The Photocell's switch goes with the drawer while it is off, and stays
-    # while it is on, by the rings' rule; open, it is always there.
+    # The Photocell's switch is in the Picture's Advanced since F2, for
+    # everyone, whatever the drawer: until then it went with the drawer while
+    # off. The null is the same switch with Advanced shut, out of sight.
     cell = p.evaluate("""() => {
       const shown = () => !!el.photoButton.offsetParent;
       const out = {};
+      setPictureOpen(true);
       setDrawer(false); setPhoto(false); out.shutOff = shown();
       setPhoto(true); out.shutOn = shown();
       setPhoto(false); setDrawer(true); out.openOff = shown();
+      setPictureOpen(false); out.closed = shown();
       return out;
     }""")
-    check("the Photocell's switch is hidden with the drawer shut and the photocell off, shown on, and shown with the drawer open",
-          cell == {"shutOff": False, "shutOn": True, "openOff": True}, str(cell))
+    check("the Photocell's switch is in the Picture's Advanced whatever the drawer and the photocell, and out of sight with it shut",
+          cell == {"shutOff": True, "shutOn": True, "openOff": True, "closed": False}, str(cell))
     check("the stage's reads are not offered by hand: no chip, and not found by a search",
           hidden["chips"] == [] and hidden["lfo"] and not any("Glow" in f for f in hidden["found"]), str(hidden))
 
@@ -263,8 +270,8 @@ with sync_playwright() as pw:
     # plane and the delay to Effects; the five of the loop and the drawer's
     # one, last, since P3; seven since P5 put the arpeggiator on Perform; and
     # since P8 the loop's four in its own order, the drawer's four after.
-    check("four tabs along the loop and the drawer's three with it open, and a tab list",
-          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Picture", "Sources", "Inputs", "Perform"]
+    check("three tabs along the loop and the drawer's three with it open, and a tab list",
+          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Sources", "Inputs", "Perform"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
@@ -285,7 +292,6 @@ with sync_playwright() as pw:
     want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
             "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
             "Display": "space", "Plane": "space", "Delay, chorus and phaser": "space",
-            "Scan": "picture", "Score": "picture",
             "Input": "inputs", "Input into the generator": "inputs",
             # The Measure tab's sections went to Scope & measure in F1, and the
             # morph to Perform, where the face's brief puts it.
@@ -459,7 +465,7 @@ with sync_playwright() as pw:
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         landed[stored] = p.evaluate("() => benchTab")
     check("a tab remembered from before P8 lands where its sections went: Shape on Ink, Effects on Space & Memory",
-          landed["shape"] == "ink" and landed["effects"] == "space" and landed["picture"] == "picture", str(landed))
+          landed["shape"] == "ink" and landed["effects"] == "space" and landed["picture"] == "play", str(landed))
     check("null: a stored name that was never a tab lands on Play", landed["nonsense"] == "play", str(landed))
     p.evaluate("() => setBenchTab('sources')")
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
@@ -535,6 +541,36 @@ with sync_playwright() as pw:
         fit = p.evaluate(FIT)
         check("at %dx%d the panel is inside the window in both views, nothing in it scrolls, and its toolbar is on the screen" % (w, h),
               all(v == {"inside": True, "scrolls": False, "over": True} for v in fit.values()), str(fit))
+    print("\n--- the Picture along the bottom (F2) ---")
+    BAR = """() => {
+      const out = {};
+      for (const view of ['bench', 'scope']) {
+        setView(view);
+        const bar = el.pictureBar.getBoundingClientRect();
+        const knobs = Array.from(el.pictureBar.querySelectorAll('.knob-row input[type=range]')).map((i) => i.id);
+        setPictureOpen(true);
+        const box = el.picturePanel.getBoundingClientRect();
+        out[view] = { bottom: Math.abs(bar.bottom - innerHeight) < 2, knobs,
+                      persistence: [!!el.persistence.offsetParent, !!el.scanMemory.offsetParent],
+                      panel: box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth
+                             && el.picturePanel.scrollHeight <= el.picturePanel.clientHeight + 1 };
+        setPictureOpen(false);
+      }
+      return out;
+    }"""
+    want_bar = {"bottom": True, "knobs": ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory"],
+                "persistence": [False, True], "panel": True}
+    for w, h in ((1400, 900), (960, 600)):
+        p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
+        bar = p.evaluate(BAR)
+        check("at %dx%d the Picture is along the bottom in both views, its five knobs, one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
+              all(v == want_bar for v in bar.values()), str(bar))
+    # Its null: the menu put back on the face is a second Persistence.
+    p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
+    two = p.evaluate("""() => { const f = el.persistence.closest('.field'); f.hidden = false;
+      const seen = [!!el.persistence.offsetParent, !!el.scanMemory.offsetParent]; f.hidden = true; return seen; }""")
+    check("null: with the menu back on the face there are two", two == [True, True], str(two))
+
     # The null: a window shorter than the panel, which no placing can fit.
     p.set_viewport_size({"width": 960, "height": 480}); p.wait_for_timeout(300)
     short = p.evaluate(FIT)

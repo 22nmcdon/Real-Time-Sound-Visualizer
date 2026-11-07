@@ -114,7 +114,8 @@ with sync_playwright() as pw:
         check("off by default: hidden, the button not pressed, nothing drawn",
               first["on"] is False and first["hidden"] is True and first["pressed"] == "false" and first["rings"] is None, str(first["on"]))
         code_off = p.evaluate("() => encodeSetup(snapshot())")
-        p.click("#loopButton"); p.wait_for_timeout(300)
+        # Behind the Picture's Advanced since F2, as a hand reaches it.
+        p.click("#pictureMore"); p.click("#loopButton"); p.click("#pictureClose"); p.wait_for_timeout(300)
         on = p.evaluate(DRAWN)
         check("the Loop button shows it", on["on"] is True and on["hidden"] is False and on["pressed"] == "true", str(on["pressed"]))
         code_on = p.evaluate("() => encodeSetup(snapshot())")
@@ -290,7 +291,7 @@ with sync_playwright() as pw:
         p.reload(); p.wait_for_timeout(2500)
         back = p.evaluate("() => ({ on: loopOverlay.on, hidden: el.loopOverlay.hidden })")
         check("reloaded, still on: a view this viewer chose", back["on"] is True and back["hidden"] is False, str(back))
-        p.click("#loopButton"); p.wait_for_timeout(200)
+        p.click("#pictureMore"); p.click("#loopButton"); p.click("#pictureClose"); p.wait_for_timeout(200)
         p.reload(); p.wait_for_timeout(2500)
         gone = p.evaluate("() => loopOverlay.on")
         check("and off once turned off", gone is False)
@@ -300,12 +301,18 @@ with sync_playwright() as pw:
     print("\n=== at a phone's width ===")
     c, p, bad = open_page(b, "", viewport=(390, 844))
     p.evaluate(SCANNING, 220)
-    fit = p.evaluate("""() => { const r = el.loopButton.getBoundingClientRect();
+    # The Loop button is behind the Picture's Advanced since F2: Advanced is
+    # on screen, and opened, so is the button.
+    ON_SCREEN = """(id) => { const e = document.getElementById(id), r = e.getBoundingClientRect();
       return { left: r.left, right: r.right, w: r.width, vw: window.innerWidth, scroll: document.documentElement.scrollWidth,
-               shown: !!el.loopButton.offsetParent }; }""")
-    check("the Loop button is on screen at 390 px", fit["shown"] and fit["left"] >= 0 and fit["right"] <= fit["vw"] and fit["w"] > 0, str(fit))
+               shown: !!e.offsetParent }; }"""
+    more = p.evaluate(ON_SCREEN, "pictureMore")
+    p.click("#pictureMore"); p.wait_for_timeout(200)
+    fit = p.evaluate(ON_SCREEN, "loopButton")
+    check("the Loop button is on screen at 390 px, behind the Picture's Advanced, which is too",
+          all(f["shown"] and f["left"] >= 0 and f["right"] <= f["vw"] and f["w"] > 0 for f in (more, fit)), str(more) + " " + str(fit))
     check("and nothing scrolls sideways", fit["scroll"] <= fit["vw"], "%d of %d" % (fit["scroll"], fit["vw"]))
-    p.click("#loopButton"); p.wait_for_timeout(500)
+    p.click("#loopButton"); p.click("#pictureClose"); p.wait_for_timeout(500)
     size = p.evaluate("() => ({ o: [el.loopOverlay.width, el.loopOverlay.height], t: [el.trace.width, el.trace.height] })")
     check("the overlay is the trace's size, pixel for pixel", size["o"] == size["t"], str(size))
     cost = p.evaluate("""() => { const t0 = performance.now(); for (let i = 0; i < 200; i++) drawLoopOverlay(); return (performance.now() - t0) / 200; }""")

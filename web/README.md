@@ -4997,3 +4997,14 @@ carries how many of its changes were loads and which sliders the host has
 moved since the last (`hostLoads`, `hostMoved`): no new load, and the page
 moves those knobs and nothing else. A state without the two fields - the
 site's, which no host moves - is applied whole, as before.
+
+**Moving a slider in the markup changes what a setup code means, a little.**
+The morph stores its ends in the order the page finds its sliders
+(`MORPH_IDS`), which is document order, and the core holds that order
+(`kMorphIds` in `core/include/scope/panel_controls.h`) so that a code's ends
+read the same on both sides. The face's stages move sliders - F1 put the
+trigger level ahead of the position, F2 took Scan's four and the Picture
+amount to the bottom of the page - and each time parity's morph checks went
+red over nothing but layout. After moving a slider, take the page's order
+from `core/tests/tools/restore_page.py --controls` (its `morph` list) and
+write it into `kMorphIds`; parity says when it is needed.

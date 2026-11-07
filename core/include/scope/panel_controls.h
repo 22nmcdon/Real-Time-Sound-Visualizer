@@ -180,8 +180,8 @@ inline constexpr const char* kMorphIds[] = {
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
   "vcfSus", "vcfRel", "planeTurn", "planeTwist", "planeRadius", "planeScaleX", "planeScaleY", "planeShear",
   "delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
-  "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "gen2Rate", "inputDepth", "oscScan", "scanStrike",
-  "scanSoft", "filterCutoff", "filterRes", "level", "position", "holdoff", "timebase", "zoom",
+  "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "gen2Rate", "inputDepth", "filterCutoff", "filterRes",
+  "level", "position", "holdoff", "timebase", "zoom", "oscScan", "scanStrike", "scanSoft",
 };
 
 }  // namespace scope

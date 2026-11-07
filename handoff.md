@@ -146,6 +146,17 @@ is below, in order. The listening notes this plan refers to follow it.
    had not yet heard. The state now says how many of its changes were loads
    and which knobs the host moved since; between loads the page moves those
    knobs and restores nothing (`hosttest.py`, the shell test).
+   *F1 done 7 Nov:* Scope & measure, a panel over the screen from a toolbar
+   above it, holds the scope's tools and the readouts' switch (home
+   `measure`); the Measure tab is gone, the morph is on Perform. *F2 done
+   7 Nov:* the Picture section along the bottom (Amount, Scan, Strike,
+   Softness, one Persistence, the three reads), its Advanced holding what
+   Scan reads, the photocell and the score beside the loop overlay and the
+   panes (home `picture`); the Picture tab is gone. Not yet: Level and the
+   output meter in that section (Level is a layer control, the amplitude,
+   and the bar would have to follow layer B's editing as the panel does),
+   the beam's ink, and the brief's own open questions, which are the
+   owner's: the drawings (cut, or back in Kind) decide F3.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,
