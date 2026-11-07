@@ -1484,6 +1484,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 .level-meter { display: block; width: 7px; height: 40px; border-radius: 1px; background: var(--line); }
 .level-meter i { display: block; width: 100%; height: 100%; border-radius: 1px;
   background: linear-gradient(var(--sage), var(--sage)) no-repeat bottom / 100% calc(var(--v, 0) * 100%); }
+.perform-panel { width: min(640px, calc(100vw - 32px)); max-height: none; overflow: visible; }
+.perform-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
+.perform-panel .menu-group .menu-note { display: none; }
 .picture-panel { position: fixed; width: min(700px, calc(100vw - 32px)); max-height: none; overflow: visible; }
 .picture-halves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .half-title { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep);
@@ -1510,6 +1513,24 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <button type="button" class="caps" id="viewScope" role="radio" aria-checked="true">Scope</button>
         <button type="button" class="caps" id="viewBench" role="radio" aria-checked="false">Bench</button>
       </div>
+      <!-- Perform (F3 of redesigning-the-face.md): what is set at the start of a
+           session and played over - the arpeggiator, the clock, the key and
+           tempo, and the morph - a menu in the header, as Settings is. -->
+      <div class="menu-wrap perform-wrap">
+        <button type="button" class="link-btn caps" id="performButton" aria-expanded="false"
+                aria-controls="performPanel">Perform</button>
+        <div class="menu-panel perform-panel" id="performPanel" hidden>
+          <div class="measure-head">
+            <span class="measure-name">Perform</span>
+            <span class="menu-note">Set at the start and played over.</span>
+            <button type="button" class="close-btn" id="performClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="perform-cols">
+            <div class="measure-col" id="performBody"></div>
+            <div class="measure-col" id="performSide"></div>
+          </div>
+        </div>
+      </div>
       <div class="menu-wrap">
         <button type="button" class="help-button" id="helpButton"
                 aria-label="How this works" title="How this works">?</button>
@@ -1522,7 +1543,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <button type="button" class="close-btn" id="menuClose" aria-label="Close">&times;</button>
           </div>
 
-          <div class="menu-group" data-home="bench" data-tab="inputs">
+          <div class="menu-group" data-home="settings">
             <span class="menu-title">Input</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -1725,7 +1746,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                patched does. Its own tab, Perform, which the plan's P8 means
                for the splits and the clock as well. Three menus that may
                shrink, as the Draw row's do. -->
-          <div class="menu-group" id="arpGroup" data-tab="perform" data-home="bench">
+          <div class="menu-group" id="arpGroup" data-home="perform">
             <span class="menu-title">Arpeggiator</span>
             <div class="menu-row">
               <label class="menu-label" for="arpMode">Arp</label>
@@ -1756,7 +1777,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                the echo's sync all play at the tempo, and setting it is not
                hands-free. The readings run with the drawer shut, as everything
                does. -->
-          <div class="menu-group" id="clockGroup" data-tab="perform" data-home="bench">
+          <div class="menu-group" id="clockGroup" data-home="perform">
             <span class="menu-title">Clock</span>
             <div class="menu-row">
               <span class="menu-label">From</span>
@@ -2066,35 +2087,35 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   one that needs no retracing at all.</p>
               </div>
 
-              <div class="menu-row" data-more="1" data-layer="b">
+              <div class="menu-row" data-layer="b">
                 <label class="menu-label" for="envAttack">Attack</label>
                 <div class="grow">
                   <input type="range" id="envAttack" min="0" max="200" value="8">
                   <span class="reading" id="envAttackValue">8 ms</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1" data-layer="b">
+              <div class="menu-row" data-layer="b">
                 <label class="menu-label" for="envDecay">Decay</label>
                 <div class="grow">
                   <input type="range" id="envDecay" min="1" max="1000" value="120">
                   <span class="reading" id="envDecayValue">120 ms</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1" data-layer="b">
+              <div class="menu-row" data-layer="b">
                 <label class="menu-label" for="envSustain">Sustain</label>
                 <div class="grow">
                   <input type="range" id="envSustain" min="0" max="100" value="70">
                   <span class="reading" id="envSustainValue">0.70</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1" data-layer="b">
+              <div class="menu-row" data-layer="b">
                 <label class="menu-label" for="envRelease">Release</label>
                 <div class="grow">
                   <input type="range" id="envRelease" min="1" max="2000" value="180">
                   <span class="reading" id="envReleaseValue">180 ms</span>
                 </div>
               </div>
-              <div class="menu-row" data-more="1">
+              <div class="menu-row">
                 <label class="menu-label" for="glide">Glide</label>
                 <div class="grow">
                   <input type="range" id="glide" min="0" max="500" value="0">
@@ -2174,7 +2195,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                four macro knobs until P8d, when the host's knobs (P8a) had
                replaced them; the morph stayed, since nothing else crossfades
                a whole sound. On Measure, in the drawer. -->
-          <div class="menu-group" id="morphGroup" data-tab="perform" data-home="bench">
+          <div class="menu-group" id="morphGroup" data-home="perform" data-place="performSide">
             <span class="menu-title">Morph</span>
             <!-- A slider, not a knob: a crossfader between the setups stored at its two ends. -->
             <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos" data-knob="no">
@@ -2243,7 +2264,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                three columns of 427 px in any order, and Measure had 100 px of
                three columns in use. What it costs: the tempo is a tab away from
                the oscillators it locks. -->
-          <div class="menu-group" id="keyGroup" data-home="bench" data-tab="perform">
+          <div class="menu-group" id="keyGroup" data-home="perform" data-place="performSide">
             <span class="menu-title">Key and tempo</span>
             <!-- Two rows, not one: side by side in a Bench column the scale's menu
                  was cut to "Chroma". -->
@@ -2284,7 +2305,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               An oscillator's <i>Sync</i>, on the Sources tab, locks its rate to the tempo in note
               values. <i>Tap</i> sets the tempo from your taps and starts the locked oscillators on
               the last one. Where the tempo comes from and where the bar is are in the
-              <i>Clock</i> section, behind <i>Advanced</i>.</p>
+              <i>Clock</i> section beside this one.</p>
           </div>
 
           <div class="menu-group" data-fold="1" data-home="settings">
@@ -2706,28 +2727,28 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="vcfEnvAmtValue">0.0 oct</span>
               </div>
             </div>
-            <div class="menu-row vcf-on" data-more="1">
+            <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfAtk">Attack</label>
               <div class="grow">
                 <input type="range" id="vcfAtk" min="0" max="1000" value="5">
                 <span class="reading" id="vcfAtkValue">5 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on" data-more="1">
+            <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfDec">Decay</label>
               <div class="grow">
                 <input type="range" id="vcfDec" min="1" max="2000" value="300">
                 <span class="reading" id="vcfDecValue">300 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on" data-more="1">
+            <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfSus">Sustain</label>
               <div class="grow">
                 <input type="range" id="vcfSus" min="0" max="100" value="30">
                 <span class="reading" id="vcfSusValue">0.30</span>
               </div>
             </div>
-            <div class="menu-row vcf-on" data-more="1">
+            <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfRel">Release</label>
               <div class="grow">
                 <input type="range" id="vcfRel" min="1" max="2000" value="300">
@@ -2979,8 +3000,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Echo</i> is how loud the repeats are, and nought is off. In X&ndash;Y they are
               ghost figures trailing the live one; with <i>Ping-pong</i> each repeat comes back on
               the other channel, so the ghosts alternate between the figure and its reflection
-              across the diagonal. <i>Sync</i> sets the time in note values from the tempo, on
-              the Perform tab, and follows it. <i>Feedback</i> stops short of one, and nothing
+              across the diagonal. <i>Sync</i> sets the time in note values from the tempo, in
+              the Perform menu, and follows it. <i>Feedback</i> stops short of one, and nothing
               can be patched onto it: feedback that a source could push towards one would be a
               loop inside the loop. The longest time is two seconds.
               <br><br>
@@ -2998,7 +3019,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
 
           <!-- J3: live audio into the generator, in the audio thread. -->
-          <div class="menu-group" id="inputGroup" data-home="bench" data-tab="inputs">
+          <div class="menu-group" id="inputGroup" data-home="settings">
             <span class="menu-title">Input into the generator</span>
             <p class="fx-where" id="inputWhere"></p>
             <div class="menu-row">
@@ -3919,7 +3940,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         tempo</i> silences it; see below.</span></li>
 
       <li><b>The arpeggiator</b>
-        <span><i>Arp</i>, on the <i>Perform</i> tab behind <i>Advanced</i>, plays a held chord a note
+        <span><i>Arp</i>, in the <i>Perform</i> menu in the header, plays a held chord a note
         at a time at the tempo:
         up, down, up and back, in the order you played it, or at random, from a crotchet to a
         semiquaver triplet, over one to three octaves. In the dyad each step pairs your lowest
@@ -4162,15 +4183,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <br><br>
         <i>Advanced</i>, under the tabs, opens the drawer: the routing matrix, for putting
         oscillators, controllers and the rest on any control by hand. The picture moves the
-        sound without it. Open, it adds three tabs &mdash; <i>Sources</i>; <i>Inputs</i>, the
-        microphone and input into the generator; and <i>Perform</i>, the arpeggiator, the
-        clock, the key and tempo and the morph &mdash; the source chips beside the
-        screen on every tab and a ring on every control. (The drawings &mdash; the
+        sound without it. Open, it adds the <i>Sources</i> tab, the source chips beside the
+        screen on every tab and a ring on every control. (The microphone and input into the
+        generator are in <i>Settings</i> since 7 November, and the arpeggiator, the clock,
+        the key and tempo and the morph in the <i>Perform</i> menu in the header.) (The drawings &mdash; the
         harmonograph, the figures, the solids and the second generator &mdash; were offered
         here too, and since 7 November are offered nowhere, to see whether they are missed: a
         setup that has one still plays it.) Shut, what is patched still plays, a running arpeggio
         keeps running, a drawing already chosen stays chosen and drawn, and a control with
-        something on it still shows its dots. A search for a drawing opens it.
+        something on it still shows its dots.
         <br><br>
         Press <b>/</b> to find any control by name &mdash; it knows a few other words for
         things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
@@ -4220,7 +4241,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         setup code, so loading a preset does not turn it off.</span></li>
 
       <li><b>Morph: one fader, two sounds</b>
-        <span><i>Morph</i>, on the Perform tab behind <i>Advanced</i>, slides between two sounds. Press <i>A</i> to store every
+        <span><i>Morph</i>, in the <i>Perform</i> menu in the header, slides between two sounds. Press <i>A</i> to store every
         knob, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
         pitch by octaves, everything else in a straight line. Menus and switches are not
         morphed: a shape or a mode stays as you left it. A knob you turn by hand keeps its
@@ -4254,7 +4275,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         can open a filter, or the pendulum can be an oscillator locked to the drawing.</span></li>
 
       <li><b>Key, tempo and the quantiser</b>
-        <span>The <i>Key and tempo</i> section, on <i>Perform</i> behind <i>Advanced</i>, is one key, one scale and one
+        <span>The <i>Key and tempo</i> section, in the <i>Perform</i> menu in the header, is one key, one scale and one
         tempo for the whole page, with <i>Tap</i> beside the tempo. Where the tempo comes from and
         the bar are in the <i>Clock</i> section beside it. <i>Quantise the generator's pitch</i> takes the pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
@@ -4952,7 +4973,8 @@ const FULL_SCALE_DB = [0, -3, -6, -12, -18, -24, -30, -40, -50];
 const el = {};
 for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
-                  "pictureAmountValue", "levelMeter", "credit", "status", "menuButton", "menuPanel", "menuClose",
+                  "pictureAmountValue", "levelMeter", "performButton", "performPanel", "performClose", "performBody",
+                  "performSide", "credit", "status", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "benchSearch", "benchResults",
                   "audioGroup", "midiSetGroup", "audioNote",
@@ -24773,14 +24795,15 @@ let benchGroups = null;      // in the order the popover had them
    where they are on show whatever the Bench is doing. */
 const BENCH_TABS = [
   ["play", "Play"], ["ink", "Ink"], ["space", "Space & Memory"],
-  ["sources", "Sources"], ["inputs", "Inputs"], ["perform", "Perform"],
+  ["sources", "Sources"],
 ];
 /* A tab remembered from the five before P8 lands where its sections went:
    Shape's on Ink, Effects's on Space & Memory. Measure and Picture kept their
    names, so they need nothing. */
 // Measure since F1: its sections are Scope & measure's, and the morph is Perform's.
 // Picture since F2: its knobs are along the bottom and the rest behind its Advanced.
-const BENCH_TAB_RENAMED = { shape: "ink", effects: "space", measure: "perform", picture: "play" };
+// Inputs and Perform since F3: Settings and the header's Perform menu have their sections.
+const BENCH_TAB_RENAMED = { shape: "ink", effects: "space", measure: "play", picture: "play", inputs: "play", perform: "play" };
 const TAB_KEY = "scope.benchTab";
 let benchTab = "play";
 try {
@@ -24804,7 +24827,8 @@ try {
    and a control with something on it still shows its inks. Going to one of
    its tabs opens it (a search result, showControl), and shutting it while on
    one goes back to the tab before. */
-const BENCH_DRAWER = new Set(["sources", "inputs", "perform"]);
+// Sources alone since F3, until F4's modulation cards take its place.
+const BENCH_DRAWER = new Set(["sources"]);
 const DRAWER_KEY = "scope.benchDrawer";
 let benchDrawer = false;
 let benchTabBefore = BENCH_DRAWER.has(benchTab) ? "play" : benchTab;
@@ -24894,7 +24918,10 @@ const inSide = (group) => SIDE_GROUPS.indexOf(group.id) >= 0;
    controls that led the top bar. `data-place` names the column. */
 /* And a fourth since F2: `picture`, the Picture section's Advanced panel along
    the bottom - what Scan reads and the score, beside the photocell. */
-const homeOf = (group) => (["settings", "measure", "picture"].includes(group.dataset.home) ? group.dataset.home : "bench");
+/* And a fifth since F3: `perform`, the header's Perform menu - the arpeggiator,
+   the clock, the key and tempo and the morph, which were the drawer's
+   Perform tab, and before that the drawer's. */
+const homeOf = (group) => (["settings", "measure", "picture", "perform"].includes(group.dataset.home) ? group.dataset.home : "bench");
 const benchGroupsAll = () => settingsGroups().filter((g) => homeOf(g) === "bench");
 
 const benchable = () =>
@@ -25146,6 +25173,7 @@ function setView(view) {
     if (homeOf(group) === "settings") el.menuPanel.appendChild(group);
     else if (homeOf(group) === "measure") el[group.dataset.place || "measureBody"].appendChild(group);
     else if (homeOf(group) === "picture") el[group.dataset.place || "pictureSound"].appendChild(group);
+    else if (homeOf(group) === "perform") el[group.dataset.place || "performBody"].appendChild(group);
     else if (inSide(group)) el.benchSide.appendChild(group);
     else if (!group.closest("#bench")) el.benchBody.appendChild(group);
   }
@@ -25198,6 +25226,8 @@ function showControl(node) {
     setMeasureOpen(true);     // over the screen, in either view
   } else if (homeOf(group) === "picture") {
     setPictureOpen(true);     // over the bar along the bottom, in either view
+  } else if (homeOf(group) === "perform") {
+    setPerformOpen(true);     // from the header, in either view
   } else {
     if (document.body.dataset.view !== "bench") setView("bench");
     if (typeof showBenchFor === "function") showBenchFor(group);
@@ -25290,7 +25320,8 @@ function searchEntries() {
       out.push({ kind: "row", row, group, label,
                  crumb: (homeOf(group) === "settings" ? "Settings \u203a "
                          : homeOf(group) === "measure" ? "Scope & measure \u203a "
-                         : homeOf(group) === "picture" ? "Picture \u203a Advanced \u203a " : "")
+                         : homeOf(group) === "picture" ? "Picture \u203a Advanced \u203a "
+                         : homeOf(group) === "perform" ? "Perform \u203a " : "")
                    + section + (behind ? " (behind \u22ef)" : ""),
                  hay: rowWords(row, label, section) });
     }
@@ -26226,7 +26257,7 @@ function paintRoutings() {
 function setMenuOpen(open) {
   el.menuPanel.hidden = !open;
   el.menuButton.setAttribute("aria-expanded", String(open));
-  if (open) { setPanesOpen(false); setMeasureOpen(false); setPictureOpen(false); }
+  if (open) { setPanesOpen(false); setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); }
 }
 
 function setPanesOpen(open) {
@@ -26240,7 +26271,7 @@ function setPanesOpen(open) {
 function setMeasureOpen(open) {
   el.measurePanel.hidden = !open;
   el.measureButton.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setPanesOpen(false); setPictureOpen(false); placeMeasure(); }
+  if (open) { setMenuOpen(false); setPanesOpen(false); setPictureOpen(false); setPerformOpen(false); placeMeasure(); }
 }
 // Under the toolbar, its right edge on the toolbar's and inside the window.
 function placeMeasure() {
@@ -26261,7 +26292,7 @@ el.measureButton.addEventListener("click", () => setMeasureOpen(el.measurePanel.
 function setPictureOpen(open) {
   el.picturePanel.hidden = !open;
   el.pictureMore.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setMeasureOpen(false); placePicture(); }
+  if (open) { setMenuOpen(false); setMeasureOpen(false); setPerformOpen(false); placePicture(); }
   else setPanesOpen(false);
 }
 function placePicture() {
@@ -26273,6 +26304,15 @@ function placePicture() {
 }
 window.addEventListener("resize", placePicture);
 el.pictureMore.addEventListener("click", () => setPictureOpen(el.picturePanel.hidden));
+
+// Perform (F3): a popover from the header, as Settings is.
+function setPerformOpen(open) {
+  el.performPanel.hidden = !open;
+  el.performButton.setAttribute("aria-expanded", String(open));
+  if (open) { setMenuOpen(false); setMeasureOpen(false); setPictureOpen(false); }
+}
+el.performButton.addEventListener("click", () => setPerformOpen(el.performPanel.hidden));
+el.performClose.addEventListener("click", () => { setPerformOpen(false); el.performButton.focus(); });
 el.pictureClose.addEventListener("click", () => { setPictureOpen(false); el.pictureMore.focus(); });
 el.measureClose.addEventListener("click", () => { setMeasureOpen(false); el.measureButton.focus(); });
 
@@ -26304,6 +26344,7 @@ document.addEventListener("click", (event) => {
   setPanesOpen(false);
   setMeasureOpen(false);
   setPictureOpen(false);
+  setPerformOpen(false);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -26312,6 +26353,7 @@ document.addEventListener("keydown", (event) => {
     if (!el.panesPanel.hidden) { setPanesOpen(false); el.panesButton.focus(); }
     if (!el.measurePanel.hidden) { setMeasureOpen(false); el.measureButton.focus(); }
     if (!el.picturePanel.hidden && el.panesPanel.hidden) { setPictureOpen(false); el.pictureMore.focus(); }
+    if (!el.performPanel.hidden) { setPerformOpen(false); el.performButton.focus(); }
   }
 
   // Space is the transport key everywhere a musician meets one. Left alone

@@ -76,8 +76,11 @@ with sync_playwright() as pw:
     # F2: what Scan reads and the score behind the Picture's Advanced.
     pictured = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#picturePanel')).map(groupTitle).sort()""")
     check("the Picture's Advanced holds what Scan reads and the score", pictured == ["Score", "What Scan reads"], str(pictured))
-    check("Settings holds only the settings: MIDI, audio, presets and the beam",
-          sorted(homes["panelTitles"]) == ["Audio", "Beam", "MIDI", "Presets"], str(homes["panelTitles"]))
+    performed = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#performPanel')).map(groupTitle).sort()""")
+    check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
+          performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
+    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), presets and the beam",
+          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Presets"], str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("and Settings opens from the Bench as well as from Scope",
           homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
@@ -122,8 +125,8 @@ with sync_playwright() as pw:
           and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
     check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
           drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
-    check("opened, the drawer's three tabs come after the loop's, with the chips and a ring on every control",
-          drawer["open"]["rail"] == loop_tabs + ["Sources", "Inputs", "Perform"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
+    check("opened, the drawer's one tab, Sources, comes after the loop's, with the chips and a ring on every control",
+          drawer["open"]["rail"] == loop_tabs + ["Sources"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
           and drawer["open"]["label"] == "true", str(drawer["open"]))
     check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
           str(drawer["back"]))
@@ -137,9 +140,10 @@ with sync_playwright() as pw:
       const shown = (node) => !!(node && node.offsetParent);
       const out = {};
       setBenchTab('play'); out.onPlay = shown(el.arpMode);
-      showControl('arpMode'); out.shown = { tab: benchTab, drawer: document.body.dataset.drawer, seen: shown(el.arpMode) };
+      setDrawer(false);
+      showControl('arpMode'); out.shown = { menu: !el.performPanel.hidden, drawer: document.body.dataset.drawer, seen: shown(el.arpMode) };
       el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
-      el.benchDrawer.click();
+      setPerformOpen(false);
       out.shut = document.body.dataset.drawer;
       for (const n of [48, 52, 55]) midiNoteOn(n, 100);
       out.running = arpActive();
@@ -151,9 +155,10 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    arpeggiator: %s" % arp)
-    check("the arpeggiator is on Perform, in the drawer, not on Play, and showing it opens the drawer there",
-          arp["onPlay"] is False and arp["shown"] == {"tab": "perform", "drawer": "open", "seen": True}, str(arp))
-    check("and with the drawer shut it still plays a held chord, where switched off it does not",
+    # In the header's Perform menu since F3, the drawer's tab before that.
+    check("the arpeggiator is in the header's Perform menu, not on Play, and showing it opens that menu, not the drawer",
+          arp["onPlay"] is False and arp["shown"] == {"menu": True, "drawer": "shut", "seen": True}, str(arp))
+    check("and with the menu shut it still plays a held chord, where switched off it does not",
           arp["shut"] == "shut" and arp["running"] is True and arp["offRunning"] is False, str(arp))
 
     # The drawings and the second generator, in the drawer since P5: shut, the
@@ -181,8 +186,9 @@ with sync_playwright() as pw:
       loadCorpus('Harmonic tone');
       out.after = offered(el.genMode);
       const search = (q) => { el.benchSearch.value = q; showSearch(); const first = searchShown[0];
-                              chooseSearch(first); const opened = benchDrawer; if (benchDrawer) el.benchDrawer.click();
-                              return { found: first ? first.label : null, opened }; };
+                              chooseSearch(first); const opened = benchDrawer, menu = !el.performPanel.hidden;
+                              if (benchDrawer) el.benchDrawer.click(); setPerformOpen(false);
+                              return { found: first ? first.label : null, opened, menu }; };
       out.searchDrawing = search('harmonograph');
       out.searchAttack = search('attack');
       out.searchTempo = search('tempo');
@@ -205,19 +211,19 @@ with sync_playwright() as pw:
     check("and a search for a drawing no longer opens the drawer, which would offer nothing, nor does the attack",
           drawings["searchDrawing"]["opened"] is False and drawings["searchAttack"]["opened"] is False
           and drawings["searchAttack"]["found"] is not None, str(drawings))
-    check("and a search for the tempo, in the drawer since P8, opens it",
-          drawings["searchTempo"]["opened"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
+    check("and a search for the tempo, in the header's Perform menu since F3, opens that",
+          drawings["searchTempo"]["menu"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
 
     # The clock and the bar, on Perform since P5; the tempo and Tap with them
     # since P8 took Key and tempo off the old Measure tab. The null is Tap
     # beside the tempo, which has always been so and would not be if the
     # section had been split on the way.
     clock = p.evaluate("""() => {
-      const tab = (id) => { const g = document.getElementById(id).closest('.menu-group'); return g ? g.dataset.tab : null; };
+      const tab = (id) => { const g = document.getElementById(id).closest('.menu-group'); return g ? homeOf(g) : null; };
       return { clockFrom: tab('clockFrom'), bar: tab('transportPlay'), at: tab('transportAt'), tempo: tab('tempo'),
                tapBesideTempo: el.tempoTap.closest('.menu-row') === el.tempo.closest('.menu-row') };
     }""")
-    check("the clock's source, the bar, and the tempo with Tap beside it are all on Perform, in the drawer",
+    check("the clock's source, the bar, and the tempo with Tap beside it are all in the Perform menu",
           clock == {"clockFrom": "perform", "bar": "perform", "at": "perform", "tempo": "perform", "tapBesideTempo": True},
           str(clock))
     hidden = p.evaluate("""() => {
@@ -274,8 +280,8 @@ with sync_playwright() as pw:
     # plane and the delay to Effects; the five of the loop and the drawer's
     # one, last, since P3; seven since P5 put the arpeggiator on Perform; and
     # since P8 the loop's four in its own order, the drawer's four after.
-    check("three tabs along the loop and the drawer's three with it open, and a tab list",
-          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Sources", "Inputs", "Perform"]
+    check("three tabs along the loop and the drawer's Sources with it open, and a tab list",
+          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Sources"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
@@ -296,10 +302,9 @@ with sync_playwright() as pw:
     want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
             "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
             "Display": "space", "Plane": "space", "Delay, chorus and phaser": "space",
-            "Input": "inputs", "Input into the generator": "inputs",
-            # The Measure tab's sections went to Scope & measure in F1, and the
-            # morph to Perform, where the face's brief puts it.
-            "Morph": "perform", "Key and tempo": "perform", "Arpeggiator": "perform"}
+            # The Measure tab's sections went to Scope & measure in F1; in F3
+            # Inputs to Settings and Perform to the header's menu.
+            }
     before_p8 = dict(want, **{"Voice filter": "shape", "Oscillator": "shape", "Drawbars": "shape",
                               "Shaping": "shape", "Drawn cycle": "shape", "Display": "picture",
                               "Plane": "effects", "Delay, chorus and phaser": "effects", "Input": "play",

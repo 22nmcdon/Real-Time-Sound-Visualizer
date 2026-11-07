@@ -202,8 +202,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
   went in F2: its knobs are the Picture section along the bottom) - and the
-  drawer's Sources, Inputs and Perform, and one tab at a time must
-  fit. `patchtest.py` measures every tab across every generator mode;
+  drawer's Sources (alone since F3, until F4's modulation cards), and one tab
+  at a time must fit. `patchtest.py` measures every tab across every generator mode;
   `fittest.py` does it in every combination of generator kind, tone or band
   split, keyboard and Photocell, and the Sources tab with each family on show.
   This replaced "every section on show at once, and neither panel scrolls",
@@ -232,7 +232,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   P8d, the host's knobs having replaced them), the microphone and input into the
   generator to Inputs, and the key and tempo to Perform beside the clock. F1 of
   `web/docs/redesigning-the-face.md` (7 Nov) took Measure's sections to
-  *Scope & measure* (below) and the morph to Perform. Add
+  *Scope & measure* (below) and the morph to Perform; F3 took the inputs to
+  Settings and Perform to a menu in the header (home `perform`), and put the
+  amplitude and filter envelopes and the glide on show on Play. Add
   a tab to it by naming it in `BENCH_DRAWER`. A tab remembered from before a
   rename lands where its sections went (`BENCH_TAB_RENAMED`). `benchtest.py`
   holds it.
@@ -242,8 +244,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   and read as a wall. The list has a fixed height and scrolls inside itself,
   so what is plugged in cannot put the tab over.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
-  MIDI, Audio, Presets, Beam), `bench` (everything played or tuned) or, since
-  F1, `measure`, or since F2 `picture` (the Picture section's Advanced) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
+  MIDI, Audio, the inputs, Presets, Beam), `bench` (everything played or tuned) or, since
+  F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
   default, the readouts off by default, and nothing in it scrolls down to the

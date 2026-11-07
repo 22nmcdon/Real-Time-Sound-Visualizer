@@ -67,7 +67,7 @@ with sync_playwright() as pw:
       const sources = Array.from(MOD_SOURCES.keys()).filter((id) => id.startsWith('macro.'));
       const families = SOURCE_FAMILIES.map(([id]) => id);
       const sections = PRESETS.map(([name]) => name);
-      const morphHome = el.morphGroup.dataset.tab, title = el.morphGroup.querySelector('.menu-title').textContent;
+      const morphHome = homeOf(el.morphGroup), title = el.morphGroup.querySelector('.menu-title').textContent;
       // A version-5 code with the macros set, named and routed, read the way
       // a pasted code is read, and loaded.
       const old = { v: 5, mac1: 40, mac3: 100, macroNames: 'Brighten|Grit|Space|Swirl', freq: 330,
@@ -93,7 +93,7 @@ with sync_playwright() as pw:
     check("no macro knob, name, source, family or preset section is left on the page",
           gone["ids"] == [] and gone["sources"] == [] and "macros" not in gone["families"]
           and "Macros" not in gone["sections"], str(gone["ids"] + gone["sources"]))
-    check("the morph keeps a section of its own, on Perform in the drawer since F1", gone["morphHome"] == "perform"
+    check("the morph keeps a section of its own, in the header's Perform menu since F3", gone["morphHome"] == "perform"
           and gone["title"] == "Morph", "%s %s" % (gone["morphHome"], gone["title"]))
     # Up to the current version, whatever that is now: the version-7 and -8
     # passes (the latch, the kaleidoscope) came after this was written and

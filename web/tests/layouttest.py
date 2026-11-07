@@ -177,10 +177,9 @@ with sync_playwright() as pw:
     print("\n--- reaching any control ---")
     reach = p.evaluate("""() => {
       setView('scope'); setMenuOpen(false);
-      setDrawer(false);
-      showControl('arpMode');
-      const bench = { view: document.body.dataset.view, tab: benchTab,
-                      seen: el.arpMode.offsetWidth > 0 };
+      setBenchTab('play');
+      showControl('planeMirror');
+      const bench = { view: document.body.dataset.view, tab: benchTab, seen: el.planeMirror.offsetWidth > 0 };
       setView('scope');
       showControl('filterCutoff');
       const measure = { view: document.body.dataset.view, open: !el.measurePanel.hidden,
@@ -193,10 +192,10 @@ with sync_playwright() as pw:
       setMenuOpen(false);
       return { bench, measure, settings };
     }""")
-    # The arpeggiator, on Perform in the drawer, with the drawer shut: a
-    # control there opens the drawer too, which is the harder case. (It was
-    # the trace filter until F1 took the Measure tab to Scope & measure.)
-    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "perform", "seen": True},
+    # The plane's mirror, on Space & Memory from Play: a control on another
+    # tab. (It was the arpeggiator in the drawer until F3 took Perform to the
+    # header, and the trace filter until F1 took the Measure tab away.)
+    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "space", "seen": True},
           str(reach["bench"]))
     check("a scope's tool opens Scope & measure over the view you were in",
           reach["measure"] == {"view": "scope", "open": True, "seen": True}, str(reach["measure"]))
@@ -222,9 +221,10 @@ with sync_playwright() as pw:
           sorted(notch) == [["Type", "Scope & measure \u203a Filter"], ["Type", "Voice filter"]], str(notch))
     adsr = search("adsr")
     # The Envelope source comes after them, fairly: its description names them.
-    check("synonyms: adsr is the four envelope times first, behind the Generator's dots",
+    # On show in the Generator since F3, no longer behind its dots.
+    check("synonyms: adsr is the four envelope times first, on show in the Generator",
           [r[0] for r in adsr[:4]] == ["Attack", "Decay", "Sustain", "Release"]
-          and all("behind" in r[1] for r in adsr[:4]), str(adsr))
+          and all(r[1] == "Generator" for r in adsr[:4]), str(adsr))
     rate = search("rate")
     check("a word is matched at its start: rate is not the middle of another word",
           all(" rate" in (" " + r[0].lower()) or r[1].startswith("Sources") for r in rate) and rate != [],
@@ -255,12 +255,14 @@ with sync_playwright() as pw:
 
     jump = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setBenchTab('picture');
+      // The plane's shear, behind its section's dots, from Play: the attack
+      // was the row until F3 put the envelope on show.
+      setBenchTab('play');
       el.benchSearch.focus();
-      el.benchSearch.value = 'attack'; el.benchSearch.dispatchEvent(new Event('input'));
+      el.benchSearch.value = 'shear'; el.benchSearch.dispatchEvent(new Event('input'));
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       await wait(200);
-      const attack = { tab: benchTab, overlay: !!document.querySelector('.over #envAttack'),
+      const attack = { tab: benchTab, overlay: !!document.querySelector('.over #planeShear'),
                        focus: document.activeElement.id, hit: !!document.querySelector('.search-hit') };
       closeOverlay();
       el.benchSearch.focus();
@@ -283,7 +285,7 @@ with sync_playwright() as pw:
     }""")
     print("    %s" % jump)
     check("a row behind the dots: its tab, its section's detail open, the control focused",
-          jump["attack"] == {"tab": "play", "overlay": True, "focus": "envAttack", "hit": True}, str(jump["attack"]))
+          jump["attack"] == {"tab": "space", "overlay": True, "focus": "planeShear", "hit": True}, str(jump["attack"]))
     check("a setting: Settings open, the row marked", jump["device"] == {"open": True, "row": True}, str(jump["device"]))
     check("arrow down then Enter chooses the second result: LFO 2, on the Sources tab",
           jump["lfo"] == {"tab": "sources", "selected": "lfo2"}, str(jump["lfo"]))

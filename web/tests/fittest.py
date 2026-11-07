@@ -131,7 +131,9 @@ with sync_playwright() as pw:
     for name, r in results.items():
         print("\n--- %s: %d tab-and-state cases ---" % (name, r["cases"]))
         check("on the %s, no tab scrolls in any of them" % ("band split" if name == "bands" else "tone"),
-              r["over"] == [] and r["cases"] >= 200 and r["lanes"] == (4 if name == "bands" else 2),
+              # Four tabs since F3 (Inputs went to Settings and Perform to the header),
+              # so the sweep is about 180 cases where it was over 200.
+              r["over"] == [] and r["cases"] >= 160 and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
         check("and every section is dealt at the height it was measured at",
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
