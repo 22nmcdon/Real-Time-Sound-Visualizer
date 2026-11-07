@@ -123,13 +123,28 @@ inline bool htmlValidFloat(std::string_view s) {
 // else the slider's middle; clamped to its range; snapped to its step from
 // its minimum, a tie going up. Every slider the page has steps in whole
 // numbers from a whole minimum, so what comes out is a whole number.
+/* The step a slider's value lands on. The browser steps in decimal, exactly,
+   and a value a hair under a half-step rounds down there: the morph put layer
+   B's Turn at 0.05 of the way from 0 to 30, which is 1.4999999999999998, and
+   the page's slider said 1. In doubles (v - min) / step was 51.5 against a
+   minimum of -50, and with the half added it rounded up to 2 (parity's slider
+   operations, 7 Nov, a draw no earlier run had made). So the half-step below
+   the step chosen is checked: exact wherever the minimum and the step are, as
+   on every whole-numbered slider, and a value under it is the step below. */
+inline double rangeStep(const RangeSpec& r, double v) {
+  double k = std::floor((v - r.min) / r.step + 0.5);
+  if (v < r.min + (k - 0.5) * r.step) k -= 1;
+  double snapped = r.min + k * r.step;
+  if (snapped > r.max) snapped -= r.step;
+  return snapped;
+}
+
 inline double rangeSanitise(const RangeSpec& r, std::string_view written) {
   double v = NAN;
   if (htmlValidFloat(written)) v = std::strtod(std::string(written).c_str(), nullptr);
   if (!std::isfinite(v)) v = r.max < r.min ? r.min : r.min + (r.max - r.min) / 2;
   v = std::fmax(r.min, std::fmin(r.max, v));
-  double snapped = r.min + std::floor((v - r.min) / r.step + 0.5) * r.step;
-  if (snapped > r.max) snapped -= r.step;
+  const double snapped = rangeStep(r, v);
   return snapped == 0 ? 0 : snapped;  // no minus nought: the browser writes "0"
 }
 
@@ -142,8 +157,7 @@ inline double rangeSanitise(const RangeSpec& r, std::string_view written) {
 inline double rangeSanitiseNumber(const RangeSpec& r, double v) {
   if (!std::isfinite(v)) v = r.max < r.min ? r.min : r.min + (r.max - r.min) / 2;
   v = std::fmax(r.min, std::fmin(r.max, v));
-  double snapped = r.min + std::floor((v - r.min) / r.step + 0.5) * r.step;
-  if (snapped > r.max) snapped -= r.step;
+  const double snapped = rangeStep(r, v);
   return snapped == 0 ? 0 : snapped;
 }
 

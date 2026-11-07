@@ -7,7 +7,7 @@ working - and the face only follows it. So what this holds is the face and
 the input staying one control, each direction:
 
 - which rows became knobs, and that the ones kept as sliders are exactly the
-  ones meant to be (the drawbars and the setup morph; the macros were too, until P8d cut them);
+  ones meant to be (the drawbars; the setup morph was too, until F3 took it to the Perform menu, and the macros, until P8d cut them);
 - the face points where the value says, at both ends, the middle, and from
   nought for a control either side of it - and follows a value written from
   code with no event, which is how a preset or a host move arrives;
@@ -71,10 +71,15 @@ with sync_playwright() as pw:
       return { knobs, sliders };
     }""")
     kept = sorted(rows["sliders"])
-    meant = sorted(["bar%d" % i for i in range(9)] + ["morphPos"])
+    # The setup morph's crossfader is a slider too, but since F3 it lives in
+    # the header's Perform menu (home perform), so it is not on this list.
+    meant = sorted(["bar%d" % i for i in range(9)])
     print("    %d knobs; kept as sliders: %s" % (len(rows["knobs"]), ", ".join(kept)))
-    check("every Bench slider is a knob but the drawbars and the setup morph",
-          kept == meant and len(rows["knobs"]) >= 60, "%d knobs, %s" % (len(rows["knobs"]), kept))
+    check("every Bench slider is a knob but the drawbars",
+          # The floor only proves the rows were found at all; it came down
+          # from 60 when F2 and F3 took the Picture's and Perform's knobs off
+          # the Bench.
+          kept == meant and len(rows["knobs"]) >= 50, "%d knobs, %s" % (len(rows["knobs"]), kept))
     # A row the dressing has not reached is counted as a slider, and dressing it makes it a knob.
     fresh = p.evaluate("""() => {
       const group = document.getElementById('oscGroup');
