@@ -1387,7 +1387,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       q.limit = menu("bLimit", { 0, 1, 2 }, p.limit);
       q.radius = slide("bRadius", 2, 100, p.radius);
       q.twist = slide("bTwist", -100, 100, p.twist);
-      q.snap = menu("bSnap", { 0, 1, 2, 3, 4, 5, 6 }, p.snap);
+      q.snap = menu("bSnap", { 0, 5, 6 }, p.snap);
       q.scaleX = slide("bScaleX", 0, 200, p.scaleX);
       q.scaleY = slide("bScaleY", 0, 200, p.scaleY);
       q.shear = slide("bShear", -100, 100, p.shear);

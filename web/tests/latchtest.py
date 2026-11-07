@@ -62,11 +62,13 @@ with sync_playwright() as pw:
     print("    %s" % gone)
     check("the latch's switch is gone and is in neither a snapshot nor the defaults; Tap to hold is still on the screen keys",
           not gone["box"] and gone["tap"] == "Tap to hold" and not gone["inSnap"] and not gone["inDefaults"], str(gone))
+    # Comes up to 7 at least: the version-8 pass (the kaleidoscope, 7 Nov)
+    # runs after it and leaves a code with neither field as it was.
     for who in ("here", "site"):
         got = gone[who]
         check("a version-6 code with the latch on comes up to 7 without it, the rest as written (%s)"
               % ("the page's own codec" if who == "here" else "the site's, " + gone["kind"]),
-              got is not None and got.get("v") == 7 and "midiLatch" not in got and got.get("freq") == 330
+              got is not None and got.get("v", 0) >= 7 and "midiLatch" not in got and got.get("freq") == 330
               and got.get("midiMode") == "poly", str(got))
         null = gone[who + "Null"]
         check("and the same code marked 7, which skips the pass, keeps it (%s)" % who,

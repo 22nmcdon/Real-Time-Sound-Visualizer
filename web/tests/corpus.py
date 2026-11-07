@@ -24,7 +24,9 @@ written against however the bank changes.
     corpus.install(page)      after the page has loaded: window.CORPUS (PRESETS' shape),
                               corpusSetup(name), and loadCorpus(name), which loads it as a
                               preset is loaded - restored, and sent to the site's
-                              instrument - without marking a preset in use
+                              instrument - without marking a preset in use; through
+                              the decode passes after version 7, so what was cut since
+                              loads as a saved code from then would
 """
 import json, os
 
@@ -48,8 +50,13 @@ INSTALL = """(library) => {
     for (const [, entries] of library) for (const [n, s] of entries) if (n === name) return s;
     throw new Error('no preset called ' + name + ' in the old library');
   };
+  /* Through the decode passes after the corpus's own format, as a code saved
+     at P8f would be: it was written at version 6 (the latch, 7, it never
+     had), and since version 8 its kaleidoscopes load without one and a snap
+     under five bits at five. Without this a preset's Snap of 3 restored as
+     Off, which restore's menu check is right to do with a current setup. */
   window.loadCorpus = (name) => {
-    const s = corpusSetup(name);
+    const s = migrateSetup(Object.assign({}, corpusSetup(name), { v: 7 }));
     hostQuietly(() => restore(s));
     hostSendSetup();
     return s;

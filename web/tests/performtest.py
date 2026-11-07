@@ -211,9 +211,18 @@ with sync_playwright() as pw:
     for row in live["presets"]:
         print("    %-28s active %s, low %.3f, apart %.3f" % (row["preset"], row["active"], row["low"], row["apart"]))
     print("    plain: %s" % live["plain"])
+    # Your input, kaleidoscope had nothing but the kaleidoscope, cut on 7
+    # Nov: it loads as the plain input now, and is held to that - which is
+    # also this check seen to fail, since it is the one preset with no effect.
+    CUT = "Your input, kaleidoscope"
+    kept = [r for r in live["presets"] if r["preset"] != CUT]
+    emptied = [r for r in live["presets"] if r["preset"] == CUT]
     check("every live-effects preset puts the effects insert in a microphone's path, and says so",
-          live["kind"] == "mic" and all(r["active"] and r["where"].startswith("On your input") for r in live["presets"])
+          live["kind"] == "mic" and len(kept) >= 10
+          and all(r["active"] and r["where"].startswith("On your input") for r in kept)
           and live["plain"]["active"] is False, str([(r["preset"], r["active"]) for r in live["presets"]]))
+    check("and the one whose only effect was the kaleidoscope leaves the input alone",
+          len(emptied) == 1 and emptied[0]["active"] is False, str(emptied))
     by = {r["preset"]: r for r in live["presets"]}
     octave, swirl = by.get("Octave up, on your input"), by.get("Your level, swirling")
     check("the octave-up folds the input's troughs up, and your level on the twist turns a mono diagonal off itself",
