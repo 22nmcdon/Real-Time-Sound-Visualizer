@@ -237,6 +237,12 @@ with sync_playwright() as pw:
       const during = restores - afterLoad;
       window.restore = real;
       // Back to the count the checks after this one number their states from.
+      // The state is withdrawn first and a poll let through: left at version
+      // 26, the next poll (every 250 ms) took it again after the count was put
+      // back, and every later state, numbered 3 to 5, read as stale - the
+      // checks after this one passed only when they beat that poll.
+      t.state = null;
+      await wait(400);
       hostSync.seen = seenBefore; hostSync.loads = null;
       return { afterLoad, during, cuts, amp: el.amp.value, log: t.log.filter((c) => c[0] !== 'scopeSlider' || c[1] !== 'amp') };
     }""", [code({"vcfCut": 222})] + [code({"vcfCut": 222, "pluginHands": [["s", "amp", "42"], ["s", "vcfCut", str(300 + 60 * i)]]})

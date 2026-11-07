@@ -367,7 +367,7 @@ with sync_playwright() as pw:
                      text: el.barsGo.textContent, idle: el.barsGroup.hasAttribute('data-idle'),
                      state: el.barsStateRow.hidden };
       el.barsGo.click();
-      const went = { tab: document.querySelector('[role=tab][aria-selected=true]').textContent.trim(),
+      const went = { tab: document.querySelector('[role=tab][aria-selected=true] .tab-name').textContent.trim(),
                      shown: el.bar2.offsetParent !== null };
       // Not on the drawbars when the kind changes, or the button is hidden
       // for having been used and a figure offering it would never show.
