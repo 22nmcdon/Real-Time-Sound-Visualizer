@@ -235,16 +235,18 @@ with sync_playwright() as pw:
 
     jump = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      // The plane's shear, behind its section's dots, from Play: the attack
-      // was the row until F3 put the envelope on show.
+      // The plane's shear, under its module's arrow in the rack, from Play:
+      // the attack was the row until F3 put the envelope on show, and until
+      // F5 the shear was behind its section's dots.
       setBenchTab('play');
       el.benchSearch.focus();
       el.benchSearch.value = 'shear'; el.benchSearch.dispatchEvent(new Event('input'));
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       await wait(200);
-      const attack = { tab: benchTab, overlay: !!document.querySelector('.over #planeShear'),
+      const module = el.planeShear.closest('.fx-module');
+      const attack = { tab: benchTab, open: module.dataset.open !== undefined && !el.planeShear.closest('.fx-rest').hidden,
                        focus: document.activeElement.id, hit: !!document.querySelector('.search-hit') };
-      closeOverlay();
+      openFx(null);
       el.benchSearch.focus();
       el.benchSearch.value = 'device'; el.benchSearch.dispatchEvent(new Event('input'));
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -265,8 +267,8 @@ with sync_playwright() as pw:
       return { attack, device, lfo, esc };
     }""")
     print("    %s" % jump)
-    check("a row behind the dots: its tab, its section's detail open, the control focused",
-          jump["attack"] == {"tab": "space", "overlay": True, "focus": "planeShear", "hit": True}, str(jump["attack"]))
+    check("a row under a module's arrow: its tab, its module open, the control focused",
+          jump["attack"] == {"tab": "space", "open": True, "focus": "planeShear", "hit": True}, str(jump["attack"]))
     check("a setting: Settings open, the row marked", jump["device"] == {"open": True, "row": True}, str(jump["device"]))
     check("arrow down then Enter chooses the second result: LFO 2, its card's editor open",
           jump["lfo"] == {"editor": True, "selected": "lfo2"}, str(jump["lfo"]))

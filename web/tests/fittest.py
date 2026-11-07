@@ -16,6 +16,8 @@ So, against the ways it fails:
   of the four kinds of generator. (Until F4 the Sources tab was swept with
   each family on show, and thirty controllers learned; the tab went with F4
   and the modulation cards, whose editor is held below instead.)
+- the rack (F5) over with every effect on and its tallest module open, on
+  top of the layered case's extra rows: each module is opened in turn;
 - the modulation editor over in the worst case it has: an oscillator on a
   dozen controls, each a row of Where it goes;
 - a dealer that measures a section at a width it will not have. It stacks
@@ -49,6 +51,7 @@ SWEEP = """async ([bands]) => {
   setView('bench');
   const over = [], cases = [], mismeasured = [];
   let planeRows = null;
+  const rackOpened = [];
   const measure = (label) => {
     const views = [];
     for (const [tab] of BENCH_TABS) views.push([tab, null]);
@@ -85,7 +88,7 @@ SWEEP = """async ([bands]) => {
   }
   /* Two layers, with layer B's own plane on the panel: the Plane section
      grows its Layers row and B's Turn, the clip at the radius shows the
-     radius's, and Delay and chorus grows its own Layers row. A drawn input
+     radius's, and the Delay module grows its own Layers row. A drawn input
      keeps a split without applying it, so only the tone. */
   if (!bands) {
     el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
@@ -95,6 +98,19 @@ SWEEP = """async ([bands]) => {
     el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
     planeRows = [el.planeLayerRow.hidden, el.planeTurnRow.hidden, el.planeRadiusRow.hidden, el.timeLayerRow.hidden];
     measure('tone+keys+photo+layers+planeB');
+    /* And the rack (F5) at its tallest: every effect on, so no module is
+       folded to its line, and each one opened in turn with its rest showing,
+       on top of the layered rows above. Which module was open is read back
+       from the page, so a sweep that never opened one cannot pass. */
+    for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 40);
+    for (const fx of ['plane', 'phaser', 'chorus', 'delay']) {
+      openFx(fx, true); await wait(80);
+      const rest = document.querySelector('.fx-module[data-fx="' + fx + '"] .fx-rest');
+      if (!rest.hidden) rackOpened.push(fx);
+      measure('tone+keys+photo+layers+planeB+effects+' + fx);
+    }
+    openFx(null);
+    for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 0);
     el.planeLayerBoth.click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
   }
@@ -110,7 +126,7 @@ SWEEP = """async ([bands]) => {
                    over: el.modEditor.scrollHeight - el.modEditor.clientHeight,
                    list: goes.scrollHeight - goes.clientHeight };
   closeModCard(); state.modRoutings = []; touchRoutings();
-  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes };
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened };
 }"""
 
 with sync_playwright() as pw:
@@ -140,8 +156,10 @@ with sync_playwright() as pw:
         check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll",
               r["editor"]["rows"] == 12 and r["editor"]["over"] <= 0 and r["editor"]["list"] <= 0, str(r["editor"]))
         if name == "tone":
-            check("the layered case had the Plane section's Layers, Turn and Radius rows and Delay and chorus's Layers row all showing",
+            check("the layered case had the Plane section's Layers, Turn and Radius rows and the Delay module's Layers row all showing",
                   r["planeRows"] == [False, False, False, False], str(r["planeRows"]))
+            check("and on top of it each of the rack's modules was measured open, every effect on",
+                  r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

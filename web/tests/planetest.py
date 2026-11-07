@@ -484,7 +484,8 @@ with sync_playwright() as pw:
         return p.evaluate("""() => Array.from(el.benchResults.querySelectorAll('button'))
           .map((b) => [b.firstChild.textContent, b.querySelector('.crumb').textContent])""")
     found = search("rectifier")
-    check("rectifier finds the mirror", ["Mirror", "Plane"] in found, str(found[:3]))
+    # In the rack's Plane module since F5, where it was the Plane section.
+    check("rectifier finds the mirror", ["Mirror", "Effects \u203a Plane"] in found, str(found[:3]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

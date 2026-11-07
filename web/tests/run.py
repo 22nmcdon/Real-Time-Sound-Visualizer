@@ -46,6 +46,7 @@ SUITES = [
     ("wasm", [sys.executable, "wasmtest.py"], "parallel", "the compiled core in both worklets: the page's copy current, each worklet running it and the JavaScript core with ?core=js, a refused module falling back, every preset's sound and effects the same through both"),
     ("env", [sys.executable, "envtest.py"], "serial - the gate held for measured milliseconds", "the gate, the envelope and the legato rule"),
     ("patch", [sys.executable, "patchtest.py"], "parallel", "patching by pointer, keyboard and touch"),
+    ("rack", [sys.executable, "racktest.py"], "parallel", "the rack: the modules in the sound's order, a switch that moves the sound and puts back what it had, the Plane's shaping and B's turn, lines that follow a restore, one open at a time, off folds to its line, showControl into a module, the Reverb slot, Delay not Echo"),
     ("knob", [sys.executable, "knobtest.py"], "parallel", "the knobs: which rows, the face at both ends and the middle and from nought, a value from code, drag, fine, two taps, the arrows, a finger does not scroll, the lit name, the lane ring"),
     ("lane", [sys.executable, "lanetest.py"], "parallel", "the modulation lane: does it draw the real law"),
     ("filter", [sys.executable, "filtertest.py"], "serial - the filter's cost per block in milliseconds", "the picture-path filter, against Web Audio's"),

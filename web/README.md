@@ -5065,3 +5065,28 @@ for the controller let go. Where a held note changes the picture (the plane
 suite's diagonal), the sustain goes to full and the quarter turn off, so the
 note draws what the panel drew without it.
 
+
+**An unclosed tag in the markup is a control search cannot find, and nothing
+says so.** Building the rack, the Plane's Oversampling row lost its closing
+`</div>`, so Scale X, Scale Y and Shear were parsed as rows inside it. The
+page drew them, a hair out of place; but search skips a row inside a row (so
+a menu's inner rows are not listed twice), and Shear quietly left the index.
+Only `layouttest.py`'s jump to Shear noticed. After moving markup, ask the
+page rather than the file: `document.querySelectorAll('.menu-row .menu-row')`
+should list only the rows meant to nest.
+
+**A title that claims an order needs a check against the engine's.** The
+rack's says its modules are in the order the sound goes through them, and the
+first build listed Delay, Chorus, Phaser - the old section's name - while the
+core runs the phaser first, so the chorus and the delay copy the phased pair.
+The cheat sheet said so, three screens down. `racktest.py` now reads the
+order off the page, holds it against the old one as a null, and checks the
+core's comment that says the phaser comes first, so moving the stage in
+`plane.h` without moving the module fails here.
+
+**A switch that is a view over values is only as honest as what it
+restores.** The rack's switches are not fields: off takes a module's Mix to
+nought and keeps what it had, on puts that back. A test that switches a
+module on from its default could not tell "put back what it had" from "put
+back the default", so `racktest.py` sets 45 where the default is 30, and
+reads what the engine reads (`echo.chorus`) as well as the knob.

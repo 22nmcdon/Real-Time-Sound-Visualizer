@@ -40,7 +40,7 @@ What would go wrong, and what is checked for it:
   its B and keep its A. Together, the same echo as A's halves B and moves A.
   A routing on the echo's level through B's fade does the same, and through
   A's fade alone does nothing to B;
-- the Delay and chorus section's Layers row, the same switch as the Plane's,
+- the Delay module's Layers row, the same switch as the Plane's,
   its controls writing B's echo while B's is shown, the tempo moving B's
   synced time, and B's echo in setup codes.
 
@@ -266,13 +266,13 @@ with sync_playwright() as pw:
           not lay["row"] and lay["checked"] == ["Both"] and lay["title"] == "Plane" and not lay["own"]
           and lay["bSnap"] == 5, str(lay))
     check("B gives B a plane of its own that starts as A's, shows it, and puts B on the panel",
-          pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["title"] == "Plane · layer B"
+          pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["title"] == "Plane · B"
           and pb["checked"] == ["B"] and not pb["turnRow"] and pb["edit"] == 1, str(pb))
     check("a menu and the Turn moved with B's shown are B's, and A's plane is untouched",
           moved["bMirror"] == 1 and moved["aMirror"] == 0 and moved["genB"] == 1 and moved["genA"] == 0
           and moved["turn"] == 0.25 and abs(moved["genTurn"] - math.pi / 2) < 1e-12, str(moved))
     check("A shows A's plane, without the Turn, and writes A's alone",
-          pa["title"] == "Plane · layer A" and pa["turnRow"] and pa["aTwist"] == 0.4 and pa["bTwist"] == 0
+          pa["title"] == "Plane · A" and pa["turnRow"] and pa["aTwist"] == 0.4 and pa["bTwist"] == 0
           and pa["shownMirror"] == "0" and pa["bMirror"] == 1, str(pa))
     check("the Play tab's B button shows B's plane here as well",
           playb["checked"] == ["B"] and playb["shownMirror"] == "1" and playb["shownTwist"] == "0", str(playb))
@@ -340,7 +340,7 @@ with sync_playwright() as pw:
           not codes["old"]["own"] and codes["old"]["snap"] == 5 and not codes["offHas"]
           and codes["onHas"] == ["bMirror", "bPlane", "bSnap", "bTurn"], str(codes["onHas"]))
 
-    print("\n--- Delay and chorus: B's own ---")
+    print("\n--- the Delay module: B's own effects ---")
     tp = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const read = () => ({ row: el.timeLayerRow.hidden, title: el.timeTitle.textContent, own: planeB.own,
@@ -378,17 +378,17 @@ with sync_playwright() as pw:
       return out;
     }""")
     tog, tb, tbm, ta, tplay, tboth = (tp[k] for k in ("together", "b", "bMoved", "a", "playB", "both"))
-    check("with two layers Delay and chorus has a Layers row, on Together, and its controls write both layers' echo",
-          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay, chorus and phaser" and tog["genA"] == 0.3
+    check("with two layers the Delay module has a Layers row, on Together, and its controls write both layers' echo",
+          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay" and tog["genA"] == 0.3
           and tog["genB"] == 0.3, str(tog))
     check("B there gives B its own effects - the Plane's row says so too - starting as A's, and shows B's",
           tb["own"] and tb["checked"] == ["B"] and tb["planeChecked"] == ["B"] and tb["bMix"] == 0.3
-          and tb["title"] == "Delay, chorus and phaser \u00b7 layer B" and tb["edit"] == 1, str(tb))
+          and tb["title"] == "Delay \u00b7 B" and tb["edit"] == 1, str(tb))
     check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
           tbm["bMs"] == 120 and tbm["genBMs"] == 120 and tbm["bChorus"] == 0.6 and tbm["genBChorus"] == 0.6
           and tbm["aMs"] == 375, str(tbm))
     check("A shows A's echo and writes A's alone",
-          ta["title"] == "Delay, chorus and phaser \u00b7 layer A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
+          ta["title"] == "Delay \u00b7 A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
           and ta["shownMs"] == "375", str(ta))
     check("the Play tab's B button shows B's echo here as well",
           tplay["checked"] == ["B"] and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))

@@ -311,7 +311,9 @@ with sync_playwright() as pw:
     }""")
     want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
             "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
-            "Display": "space", "Plane": "space", "Delay, chorus and phaser": "space",
+            # F5 put Display, Plane and the delay's section into one rack of
+            # modules, the effects in the order the sound goes through them.
+            "Effects": "space",
             # The Measure tab's sections went to Scope & measure in F1; in F3
             # Inputs to Settings and Perform to the header's menu.
             }
@@ -521,8 +523,14 @@ with sync_playwright() as pw:
     # it was 1420 while the screen was a 318 px column on the right.
     check("on a wide screen the Bench stops at 1640 px, centred",
           wide["width"] == 1640 and abs(wide["left"] - wide["right"]) <= 1, str(wide))
-    check("and every tab is still three columns that fit",
-          all(c == [3, 0] or (c[0] == 3 and c[1] <= 0) for c in wide["cols"].values()), str(wide["cols"]))
+    # Space & Memory is one wide column since F5: the rack reads top to bottom
+    # in the order the sound goes through it, which three columns would deal
+    # out of order. The null is all three tabs at three.
+    want_cols = {"play": 3, "ink": 3, "space": 1}
+    fits = lambda w: all(wide["cols"][t][0] == n and wide["cols"][t][1] <= 0 for t, n in w.items())
+    check("and every tab is the columns it is meant to have, and fits", fits(want_cols), str(wide["cols"]))
+    check("null: three columns everywhere is not what is there",
+          not fits({"play": 3, "ink": 3, "space": 3}), str(wide["cols"]))
     # The largest square its box holds, with the drawer's chips under it (the
     # drawer is open here), left of the tabs - and large: the 318 px column it
     # replaced would read about 300 here, and fail.

@@ -145,10 +145,12 @@ class ScopeProcessor final : public juce::AudioProcessor {
     { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
     { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Warp", "oscBend", 2, true },
     { "cutoff", "Cutoff", "vcfCut", 1, true }, { "level", "Level", "amp", 1, true },
-    { "echo", "Echo", "delayMix", 1, true },
+    // Shown as Delay mix since F5, the rack's name for the effect and its
+    // amount; the id stays echo, so automation already written follows it.
+    { "echo", "Delay mix", "delayMix", 1, true },
     // P8e: the eighth knob of the bank, which P8a kept for it. Morph moves from
     // index 7 to 8, and its automation stays with it, being bound to its id.
-    { "phaser", "Phaser", "phaserMix", 2, true },
+    { "phaser", "Phaser mix", "phaserMix", 2, true },
     { "morph", "Morph", "morphPos", 1, false },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }

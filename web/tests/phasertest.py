@@ -226,7 +226,10 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       setView('bench'); setBenchTab('space');
-      const shown = el.phaserMix.closest('.menu-group') === el.timeGroup && el.timeGroup.offsetHeight > 0;
+      // In the rack's Phaser module since F5, where it shared the delay's section.
+      const module = el.phaserMix.closest('.fx-module');
+      const shown = !!module && module.dataset.fx === 'phaser' && module.closest('.menu-group') === document.getElementById('rackGroup')
+        && module.offsetHeight > 0;
       set('phaserMix', 70); set('phaserRate', 120); set('phaserDepth', 40); set('phaserFeedback', 90);
       const after = { phaser: echo.phaser, rate: echo.phRate, depth: echo.phDepth, fb: echo.phFeedback,
                       reading: el.phaserMixValue.textContent, range: el.phaserDepthValue.textContent };
@@ -246,7 +249,7 @@ with sync_playwright() as pw:
                back, older, over };
     }""")
     print("    %s" % page)
-    check("the phaser's knobs are on Space & Memory, in the delay's section, and write the echo's state",
+    check("the phaser's knobs are on Space & Memory, in the rack's Phaser module, and write the echo's state",
           page["shown"] and page["after"] == {"phaser": 0.7, "rate": 1.2, "depth": 0.4, "fb": 0.75,
                                                "reading": "0.70", "range": "±1.0 oct"}, str(page["after"]))
     check("a setup code carries all four and gives them back; a code from before the phaser plays none",

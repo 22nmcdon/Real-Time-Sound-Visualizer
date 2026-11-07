@@ -248,6 +248,21 @@ Do not re-litigate these without a reason; each replaced something that failed.
   can take a patch. A tab remembered from before a rename lands where its
   sections went (`BENCH_TAB_RENAMED`). `layouttest.py`, `benchtest.py` and
   `patchtest.py` hold it.
+- **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
+  column top to bottom in the order the engine runs them - Plane (its Turn
+  is the screen's rotation), Phaser, Chorus, Delay, then a dashed Reverb
+  slot for P9 - each a line of icon, name, switch, what it is doing and its
+  main knobs, Mix first. Its arrow opens the rest under it, one module at a
+  time, and while one is open the others fold to their lines, a compromise
+  until F7 and F8 give the tab back the height the header and dock take.
+  The switch is a view over values, not a field: off takes the Mix (the
+  Plane's shaping and turn) to rest and keeps what it had, on puts it back
+  (`switchFx`, `fxKept`), so a setup, a host knob or a code that moves a
+  Mix switches the module with it, and a module saved off comes back off
+  with nothing to put back. Lines and switches are read off the values a
+  few times a second (`paintRack`). It replaced the Display, Plane and
+  "Delay, chorus and phaser" sections; the Numbers read switch went to
+  Scope & measure's Measure. `racktest.py` and `fittest.py` hold it.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, the inputs, the modulation fade, Presets, Beam), `bench` (everything played or tuned) or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over

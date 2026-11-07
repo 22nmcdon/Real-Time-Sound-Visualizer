@@ -185,7 +185,18 @@ is below, in order. The listening notes this plan refers to follow it.
    learned controllers and the keyboard's sources but Key (pedal, pressure
    as a source, the notes' count, spread, melody and inner voices) and the
    Level source - with a version-9 decode pass in the page and the core.
-   Next is F5, the rack.
+   *F5a done 7 Nov:* the rack on Space & Memory - Plane (with the screen's
+   rotation as its Turn), Phaser, Chorus, Delay (renamed from Echo, host
+   knob "Delay mix") and a Reverb slot, in the engine's order, each a line
+   with icon, switch, summary and its main knobs, Mix first; one open at a
+   time, an off module folds to its line, and while one is open the others
+   fold too (to fit at 1400x900; F7/F8 should give that height back). The
+   switch is a view over the values (`switchFx`), so nothing stored changed.
+   Numbers read went to Scope & measure's Measure, which moved to the
+   Vertical column to fit 960x600. `racktest.py` is new. Next is F5b:
+   effect order as a setup field, page and core with parity, with the
+   handles (`.fx-handle`, hidden) made to drag; the default is today's
+   order, which the core's `plane.h` step runs fixed.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

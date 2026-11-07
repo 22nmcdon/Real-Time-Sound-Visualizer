@@ -1196,14 +1196,14 @@ int main() {
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
     check("the host's parameters are the loop's eight and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Warp, Cutoff, Level, Echo, Phaser, Morph"
+          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Warp, Cutoff, Level, Delay mix, Phaser mix, Morph"
           && p.knob("phaser")->get() == 0
           && p.knob("echo")->get() == 45 && p.knob("level")->get() == 55 && p.knob("cutoff")->get() == 667
           && p.knob("picture")->get() == 60 && p.knob("scan")->get() == 0 && p.knob("bend")->get() == 0,
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Persistence Warp Cutoff Level Echo Phaser; Setups: Morph"
+          grouped == "Instrument: Picture Scan Persistence Warp Cutoff Level Delay mix Phaser mix; Setups: Morph"
           && p.knob("phaser") == p.getParameters()[7] && p.knob("morph") == p.getParameters()[8]
           && ids.find("macro") == std::string::npos
           && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 phaser:2 morph:1",
