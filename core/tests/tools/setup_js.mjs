@@ -4,6 +4,7 @@
    line per command, as setup_cpp prints them.
 
      defaults              the defaults, as JSON
+     fields                the table they come from, SETUP_FIELDS, as JSON
      encode JSON           the code for that snapshot, or `throws`
      decode CODE           the setup it reads as, `unreadable`, or `throws`
 
@@ -36,7 +37,7 @@ function definition(name) {
    compiled core's codec (5e), from the module the page carries, as the site
    now makes them; otherwise by the page's own JavaScript. */
 const MODE = process.env.CORE || "js";
-const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "DEFAULTS",
+const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "SETUP_FIELDS", "DEFAULTS",
                 "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", "migrateSetup", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
 const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
   : MODE === "wasm" ? (() => {
@@ -45,8 +46,8 @@ const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.
 })() : null;
 const s = new Function("WASM_BYTES", '"use strict";\n' + LIFTED.map(definition).join("\n")
                        + "\nif (WASM_BYTES) { const c = makeWasmSetupCodec(new WebAssembly.Module(WASM_BYTES));"
-                       + " return { DEFAULTS, encodeSetup: c.encode, decodeSetup: c.decode }; }"
-                       + "\nreturn { DEFAULTS, encodeSetup: encodeSetupHere, decodeSetup: decodeSetupHere };")(WASM_BYTES);
+                       + " return { SETUP_FIELDS, DEFAULTS, encodeSetup: c.encode, decodeSetup: c.decode }; }"
+                       + "\nreturn { SETUP_FIELDS, DEFAULTS, encodeSetup: encodeSetupHere, decodeSetup: decodeSetupHere };")(WASM_BYTES);
 const ascii = (text) => text.replace(/[^\x00-\x7f]/g, (c) => "{u+" + c.charCodeAt(0).toString(16).padStart(4, "0") + "}");
 
 const out = [];
@@ -55,6 +56,7 @@ for (const line of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
   const space = line.indexOf(" ");
   const cmd = space < 0 ? line : line.slice(0, space), rest = space < 0 ? "" : line.slice(space + 1);
   if (cmd === "defaults") out.push(ascii(JSON.stringify(s.DEFAULTS)));
+  else if (cmd === "fields") out.push(ascii(JSON.stringify(s.SETUP_FIELDS)));
   else if (cmd === "encode") {
     try { out.push("code " + s.encodeSetup(JSON.parse(rest))); } catch (error) { out.push("throws"); }
   } else if (cmd === "decode") {

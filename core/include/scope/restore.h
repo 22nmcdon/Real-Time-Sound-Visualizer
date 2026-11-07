@@ -1023,7 +1023,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   };
   const auto num = [&](std::string_view key) { return jsToNumber(s(key)); };
   const auto str = [&](std::string_view key) -> std::u16string { const Json* v = s(key); return v ? jsToString(*v) : u"undefined"; };
-  const auto isTrue = [&](std::string_view key) { const Json* v = s(key); return v && v->type == Json::Type::Bool && v->b; };
   const auto isString = [&](std::string_view key, std::u16string_view want) { const Json* v = s(key); return v && v->type == Json::Type::String && v->s == want; };
   // The controls say layer A while a setup is being written into them, held
   // there until it is done, and then whatever the keyboard says.
@@ -1033,19 +1032,18 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   } held { brain, gen, keys };
   brain.panelHeldOnA = true;
   showLayerOnPanel(brain, gen, 0);
-  // within(): a finite number held to a range, else the default.
-  const auto within = [&](std::string_view key, double lo, double hi, double dflt) {
-    const double v = num(key);
-    return std::isfinite(v) ? std::fmax(lo, std::fmin(hi, v)) : dflt;
-  };
-  // [..].includes(s.x): a number, and one of these.
-  const auto among = [&](std::string_view key, std::initializer_list<double> list, double dflt) {
-    const Json* v = s(key);
-    if (v && v->type == Json::Type::Number) for (const double x : list) if (v->n == x) return v->n;
-    return dflt;
-  };
+  // Menus and ranges are the table's (field, below), not written here: they
+  // were, beside the page's, until 7 Nov (schema.h has why).
   Controls& panel = brain.panel;
   const auto setA = [&](std::string_view field, double v) { gen.set(field, v, 0); };
+  // A field by its rule in the table (setupField), and as text for a control.
+  const auto field = [&](std::string_view key) { return setupField(s(key), key); };
+  const auto fieldNum = [&](std::string_view key) { return field(key).n; };
+  const auto fieldText = [&](std::string_view key) { return toU16(jsNumberToString(field(key).n)); };
+  const auto fieldStr = [&](std::string_view key) { return field(key).s; };
+  const auto fieldFlag = [&](std::string_view key) { return field(key).b; };
+  // Layer B's own (setupOwn): only what the setup itself says.
+  const auto own = [&](std::string_view key) { return setupOwn(given ? partial.get(key) : nullptr, key); };
 
   // The panel's own values first, each as its control takes it.
   panel.setSelect("shape", str("shape"));
@@ -1057,8 +1055,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     for (int k = 0; k < 9; k++) panel.setRange("bar" + std::to_string(k), toU16(jsNumberToString(set[static_cast<std::size_t>(k)])));
   }
   panel.setRange("morph", std::isfinite(num("morph")) ? str("morph") : u"150");
-  panel.setRange("width", std::isfinite(num("width")) ? toU16(jsNumberToString(std::fmax(5, std::fmin(95, num("width"))))) : u"25");
-  panel.setRange("table", std::isfinite(num("table")) ? toU16(jsNumberToString(std::fmax(0, std::fmin(300, num("table"))))) : u"150");
+  panel.setRange("width", fieldText("width"));
+  panel.setRange("table", fieldText("table"));
   panel.setRange("freq", str("freq"));
   panel.setRange("amp", str("amp"));
   panel.setSelect("interval", str("interval"));
@@ -1069,7 +1067,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("swingRate", str("swingRate"));
   panel.setRange("decay", str("decay"));
   panel.setRange("swingDrive", str("swingDrive"));
-  panel.setSelect("inputMode", toU16(jsNumberToString(among("inputMode", { 0, 1, 2, 3 }, 0))));
+  panel.setSelect("inputMode", fieldText("inputMode"));
   panel.setRange("inputDepth", str("inputDepth"));
   brain.inputFrom = isString("inputFrom", u"gen2") ? "gen2" : "live";
   {
@@ -1134,27 +1132,22 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
 
   // The voice's oscillator, shaping and filter: sliders held to their range,
   // menus to their options, then each through its law.
-  static const std::pair<const char*, std::pair<double, double>> oscRanges[] = {
-    { "oscFm", { 0, 100 } }, { "oscBend", { -100, 100 } }, { "oscBendAt", { 0, 100 } }, { "oscScan", { 0, 100 } }, { "oscRing", { 0, 100 } }, { "oscSync", { 100, 800 } }, { "oscSub", { 0, 100 } },
-    { "oscSpread", { 0, 50 } }, { "shpDrive", { 0, 100 } }, { "shpFold", { 0, 100 } }, { "vcfCut", { 0, 1000 } },
-    { "vcfRes", { 0, 100 } }, { "vcfTrack", { 0, 100 } }, { "vcfEnvAmt", { -40, 40 } }, { "vcfAtk", { 0, 1000 } },
-    { "vcfDec", { 1, 2000 } }, { "vcfSus", { 0, 100 } }, { "vcfRel", { 1, 2000 } },
-  };
-  for (const auto& [id, lohi] : oscRanges) {
-    const double v = num(id);
-    panel.setRange(id, std::isfinite(v) ? toU16(jsNumberToString(std::fmax(lohi.first, std::fmin(lohi.second, v))))
-                                        : jsToString(*defaults.get(id)));
+  // OSC_RANGES and OSC_MENUS: the voice's fields the table gives a range, or
+  // its control's own options.
+  for (const auto& [key, row] : setupFields().o) {
+    const std::string id = utf16To8(key);
+    if (id.rfind("osc", 0) != 0 && id.rfind("shp", 0) != 0 && id.rfind("vcf", 0) != 0) continue;
+    if (row.a.size() < 2) continue;
+    const std::u16string& kind = row.a[1].a[0].s;
+    if (kind == u"within") panel.setRange(id, fieldText(id));
+    else if (kind == u"options") {
+      const std::u16string want = str(id);
+      const SelectSpec* spec = selectSpec(id);
+      panel.setSelect(id, selectHas(*spec, utf16To8(want)) ? want : jsToString(*defaults.get(id)));
+    }
   }
-  {
-    const Json* os = s("shpOS");
-    panel.setSelect("shpOS", os && os->type == Json::Type::Number && os->n == 4 ? u"4" : u"2");
-    setA("shapeOS", panel.selectNumber("shpOS"));
-  }
-  for (const char* id : { "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType" }) {
-    const std::u16string want = str(id);
-    const SelectSpec* spec = selectSpec(id);
-    panel.setSelect(id, selectHas(*spec, utf16To8(want)) ? want : jsToString(*defaults.get(id)));
-  }
+  panel.setSelect("shpOS", fieldText("shpOS"));
+  setA("shapeOS", panel.selectNumber("shpOS"));
   applyVoiceLaws(gen, panel, 0);
 
   {
@@ -1184,19 +1177,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   }
   {
     // The quarter turn (P8g): only a true one, as the page reads `=== true`.
-    const Json* r = s("polyRound");
-    setA("polyRound", r && r->type == Json::Type::Bool && r->b ? 1 : 0);
+    setA("polyRound", fieldFlag("polyRound") ? 1 : 0);
   }
   {
     // Expression (6 Nov), as the page's restore reads it: a range on the menu's list, or two.
-    const Json* r = s("bendRange");
-    double range = 2;
-    if (r && r->type == Json::Type::Number)
-      for (const double ok : { 1.0, 2.0, 3.0, 5.0, 7.0, 12.0, 24.0 }) if (r->n == ok) range = ok;
-    const Json* w = s("wheelTo");
-    const Json* p = s("pressureTo");
-    const auto wheel = w && w->type == Json::Type::String ? Keyboard::expressNamed(w->s, Keyboard::Express::Vibrato) : Keyboard::Express::Vibrato;
-    const auto press = p && p->type == Json::Type::String ? Keyboard::expressNamed(p->s, Keyboard::Express::Off) : Keyboard::Express::Off;
+    const double range = fieldNum("bendRange");
+    const auto wheel = Keyboard::expressNamed(fieldStr("wheelTo"), Keyboard::Express::Vibrato);
+    const auto press = Keyboard::expressNamed(fieldStr("pressureTo"), Keyboard::Express::Off);
     keys.setExpression(range, wheel, press);
     brain.panel.setSelect("midiBendRange", toU16(jsNumberToString(range)));
     brain.panel.setSelect("midiWheelTo", expressName(wheel));
@@ -1207,14 +1194,15 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
 
   // The keyboard.
   Keyboard::Settings k = keys.settings();
-  k.mode = isString("midiMode", u"mono") ? NoteMode::Mono : isString("midiMode", u"poly") ? NoteMode::Poly : NoteMode::Dyad;
+  {
+    const std::u16string mode = fieldStr("midiMode");
+    k.mode = mode == u"mono" ? NoteMode::Mono : mode == u"poly" ? NoteMode::Poly : NoteMode::Dyad;
+  }
   const auto rule = [&](std::string_view key) {
-    const Json* v = s(key);
-    if (v && v->type == Json::Type::String) {
-      if (v->s == u"lowest") return DrawWhich::Lowest;
-      if (v->s == u"highest") return DrawWhich::Highest;
-      if (v->s == u"recent") return DrawWhich::Recent;
-    }
+    const std::u16string which = fieldStr(key);
+    if (which == u"lowest") return DrawWhich::Lowest;
+    if (which == u"highest") return DrawWhich::Highest;
+    if (which == u"recent") return DrawWhich::Recent;
     return DrawWhich::Outer;
   };
   const auto count = [&](std::string_view key) {
@@ -1223,13 +1211,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   };
   k.draws[0] = { count("midiDrawCount"), rule("midiDrawWhich") };
   k.draws[1] = { count("midiDrawCountB"), rule("midiDrawWhichB") };
-  k.layers = isString("layers", u"split") ? LayerMode::Split : isString("layers", u"layer") ? LayerMode::Layer : LayerMode::Off;
+  {
+    const std::u16string layers = fieldStr("layers");
+    k.layers = layers == u"split" ? LayerMode::Split : layers == u"layer" ? LayerMode::Layer : LayerMode::Off;
+  }
   {
     const Json* at = s("splitAt");
     k.point = at && at->type == Json::Type::Number && std::isfinite(at->n) && at->n == std::floor(at->n)
             ? static_cast<int>(std::fmax(0, std::fmin(127, at->n))) : 60;
   }
-  k.against = isString("layerPair", u"against");
+  k.against = fieldStr("layerPair") == u"against";
   // Whose sound each layer's picture moves: a value the menu has not got is the layer's own.
   for (int l = 0; l < 2; l++) {
     const Json* v = s(l == 0 ? "pictureMovesA" : "pictureMovesB");
@@ -1241,13 +1232,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   // Layer B: its own field where the setup gives one, else layer A's.
   applyLayerB(partial, s, gen, panel);
 
-  k.polyJust = isTrue("midiPolyJust");
+  k.polyJust = fieldFlag("midiPolyJust");
   // Math.min and Math.max carry a NaN through, where fmin and fmax drop it.
   brain.photo.u = jsMax(0, jsMin(1, num("photoU")));
   brain.photo.v = jsMax(0, jsMin(1, num("photoV")));
   if (!std::isfinite(brain.photo.u)) brain.photo.u = 0.75;
   if (!std::isfinite(brain.photo.v)) brain.photo.v = 0.5;
-  brain.photo.on = isTrue("photoOn");
+  brain.photo.on = fieldFlag("photoOn");
   // The picture stage's amount, only when the setup names it: it is the
   // player's, and a preset that does not say leaves it where the hand left
   // it (the page's restoreInto). Held as the slider holds it, and the
@@ -1256,12 +1247,9 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const double want = jsToNumber(named);
     panel.setRangeNumber("pictureAmount", std::isfinite(want) ? want : 60);
   }
-  k.hold = isTrue("midiHold");
-  {
-    const Json* t = s("midiTruth");
-    k.truth = !(t && t->type == Json::Type::Bool && !t->b);
-  }
-  k.follow = isTrue("midiFollow");
+  k.hold = fieldFlag("midiHold");
+  k.truth = fieldFlag("midiTruth");
+  k.follow = fieldFlag("midiFollow");
   const auto kinds = [&](std::string_view key) {
     const std::u16string list = str(key);
     std::array<bool, 4> out { false, false, false, false };
@@ -1306,10 +1294,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const Json* root = s("keyRoot");
     brain.keyRoot = root && root->type == Json::Type::Number && std::isfinite(root->n) && root->n == std::floor(root->n)
                   ? std::fmod(std::fmod(root->n, 12) + 12, 12) : 0;
-    const std::string scale = utf16To8(str("keyScale"));
-    brain.keyScale = "chromatic";
-    for (const auto& sc : scales()) if (scale == sc.id && s("keyScale")->type == Json::Type::String) brain.keyScale = sc.id;
-    brain.quantise = isTrue("quant");
+    brain.keyScale = utf16To8(fieldStr("keyScale"));
+    brain.quantise = fieldFlag("quant");
     const double glide = num("qGlide");
     brain.quantiseGlide = std::fmax(0, std::fmin(300, glide == 0 || std::isnan(glide) ? 0 : glide));
     const double bpm = num("bpm");
@@ -1322,22 +1308,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("quantiseGlide", toU16(jsNumberToString(brain.quantiseGlide)));  // syncKeyPanel
 
   // The score and the arpeggiator: kept for their pieces.
-  brain.score.on = isTrue("scoreOn");
-  brain.score.step = isString("scoreStep", u"1/8") ? "1/8" : isString("scoreStep", u"1/4") ? "1/4" : "1/16";
-  brain.score.voices = jsMathRound(within("scoreVoices", 1, 4, 2));
-  brain.score.low = among("scoreLow", { 36, 48, 60 }, 48);
-  brain.score.octaves = jsMathRound(within("scoreOctaves", 1, 4, 3));
+  brain.score.on = fieldFlag("scoreOn");
+  brain.score.step = utf16To8(fieldStr("scoreStep"));
+  brain.score.voices = jsMathRound(fieldNum("scoreVoices"));
+  brain.score.low = fieldNum("scoreLow");
+  brain.score.octaves = jsMathRound(fieldNum("scoreOctaves"));
   if (!brain.score.on) scoreStop(brain.score, brain.out);
   {
-    const Json* m = s("arpMode");
-    static const char16_t* modes[] = { u"off", u"up", u"down", u"updown", u"played", u"random" };
-    brain.arp.mode = "off";
-    if (m && m->type == Json::Type::String) for (const char16_t* x : modes) if (m->s == x) brain.arp.mode = utf16To8(m->s);
-    const Json* r = s("arpRate");
-    static const char16_t* rates[] = { u"1/4", u"1/8", u"1/16", u"1/8t", u"1/16t" };
-    brain.arp.rate = "1/8";
-    if (r && r->type == Json::Type::String) for (const char16_t* x : rates) if (r->s == x) brain.arp.rate = utf16To8(r->s);
-    brain.arp.octaves = jsNumberToString(jsMathRound(within("arpOctaves", 1, 3, 1)));
+    brain.arp.mode = utf16To8(fieldStr("arpMode"));
+    brain.arp.rate = utf16To8(fieldStr("arpRate"));
+    brain.arp.octaves = jsNumberToString(jsMathRound(fieldNum("arpOctaves")));
   }
   keys.setArp(brain.arp.mode, brain.arp.rate, jsStringToNumber(toU16(brain.arp.octaves)));  // arpSet
 
@@ -1349,7 +1329,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       return morphHome(id);
     };
     brain.morphB = decodeMorphEnd(s("morphB"), refB);
-    brain.morphPos = within("morphPos", 0, 100, 0) / 100;
+    brain.morphPos = fieldNum("morphPos") / 100;
     panel.setRange("morphPos", toU16(jsNumberToString(jsMathRound(brain.morphPos * 100))));
     brain.morphApplied.reset();
   }
@@ -1357,41 +1337,34 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   // The plane and the echo.
   {
     Brain::PlaneState& p = brain.plane;
-    p.mirror = among("planeMirror", { 0, 1, 2, 3 }, 0);
-    p.limit = among("planeLimit", { 0, 1, 2 }, 0);
-    p.radius = within("planeRadius", 2, 100, 40) / 100;
-    p.os = among("planeOS", { 1, 2, 4 }, 2);
-    p.twist = within("planeTwist", -100, 100, 0) / 100;
-    p.snap = among("planeSnap", { 0, 5, 6 }, 0);
-    p.scaleX = within("planeScaleX", 0, 200, 100) / 100;
-    p.scaleY = within("planeScaleY", 0, 200, 100) / 100;
-    p.shear = within("planeShear", -100, 100, 0) / 100;
+    p.mirror = fieldNum("planeMirror");
+    p.limit = fieldNum("planeLimit");
+    p.radius = fieldNum("planeRadius") / 100;
+    p.os = fieldNum("planeOS");
+    p.twist = fieldNum("planeTwist") / 100;
+    p.snap = fieldNum("planeSnap");
+    p.scaleX = fieldNum("planeScaleX") / 100;
+    p.scaleY = fieldNum("planeScaleY") / 100;
+    p.shear = fieldNum("planeShear") / 100;
     /* Layer B's own plane: not in the defaults, so a field the setup lacks
        is A's; with it off, B follows A. */
     Brain::PlaneBState& q = brain.planeB;
     planeBFollow(brain);
-    q.own = isTrue("bPlane");
+    q.own = fieldFlag("bPlane");
     q.turn = 0;
     if (q.own) {
-      const auto own = [&](std::string_view key) -> const Json* { return given ? partial.get(key) : nullptr; };
-      const auto menu = [&](std::string_view key, std::initializer_list<double> list, double a) {
-        const Json* v = own(key);
-        if (v && v->type == Json::Type::Number) for (const double x : list) if (v->n == x) return v->n;
-        return a;
-      };
-      const auto slide = [&](std::string_view key, double lo, double hi, double a) {
-        const double v = jsToNumber(own(key));
-        return std::isfinite(v) ? std::fmax(lo, std::fmin(hi, v)) / 100 : a;
-      };
-      q.mirror = menu("bMirror", { 0, 1, 2, 3 }, p.mirror);
-      q.limit = menu("bLimit", { 0, 1, 2 }, p.limit);
-      q.radius = slide("bRadius", 2, 100, p.radius);
-      q.twist = slide("bTwist", -100, 100, p.twist);
-      q.snap = menu("bSnap", { 0, 5, 6 }, p.snap);
-      q.scaleX = slide("bScaleX", 0, 200, p.scaleX);
-      q.scaleY = slide("bScaleY", 0, 200, p.scaleY);
-      q.shear = slide("bShear", -100, 100, p.shear);
-      q.turn = slide("bTurn", -50, 50, 0);
+      // B's own where it has a usable one, by A's rule, else A's as it stands.
+      const auto menu = [&](std::string_view key, double a) { const auto v = own(key); return v ? v->n : a; };
+      const auto slide = [&](std::string_view key, double a) { const auto v = own(key); return v ? v->n / 100 : a; };
+      q.mirror = menu("bMirror", p.mirror);
+      q.limit = menu("bLimit", p.limit);
+      q.radius = slide("bRadius", p.radius);
+      q.twist = slide("bTwist", p.twist);
+      q.snap = menu("bSnap", p.snap);
+      q.scaleX = slide("bScaleX", p.scaleX);
+      q.scaleY = slide("bScaleY", p.scaleY);
+      q.shear = slide("bShear", p.shear);
+      q.turn = slide("bTurn", 0);
     }
     setA("planeMirror", p.mirror); setA("planeLimit", p.limit); setA("planeRadius", p.radius); setA("planeOS", p.os);
     setA("planeTwist", p.twist * kTwoPi); setA("planeSnap", p.snap);
@@ -1401,21 +1374,20 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   }
   {
     Brain::EchoState& e = brain.echo;
-    e.mix = within("delayMix", 0, 100, 0) / 100;
-    e.ms = jsMathRound(within("delayMs", 10, 2000, 375));
-    const Json* sync = s("delaySync");
-    e.sync = sync && sync->type == Json::Type::String && delaySyncKnown(sync->s) ? utf16To8(sync->s) : "";
-    e.feedback = within("delayFeedback", 0, 90, 35) / 100;
-    e.pingPong = isTrue("delayPingPong");
-    e.chorus = within("chorusMix", 0, 100, 0) / 100;
-    e.rate = within("chorusRate", 5, 500, 60) / 100;
-    e.depthMs = within("chorusDepth", 0, 100, 30) / 10;
-    e.centreMs = within("chorusTime", 10, 300, 120) / 10;
-    e.chorusFeedback = within("chorusFeedback", 0, 90, 0) / 100;
-    e.phaser = within("phaserMix", 0, 100, 0) / 100;
-    e.phRate = within("phaserRate", 5, 500, 30) / 100;
-    e.phDepth = within("phaserDepth", 0, 100, 70) / 100;
-    e.phFeedback = within("phaserFeedback", 0, 75, 30) / 100;
+    e.mix = fieldNum("delayMix") / 100;
+    e.ms = jsMathRound(fieldNum("delayMs"));
+    e.sync = utf16To8(fieldStr("delaySync"));
+    e.feedback = fieldNum("delayFeedback") / 100;
+    e.pingPong = fieldFlag("delayPingPong");
+    e.chorus = fieldNum("chorusMix") / 100;
+    e.rate = fieldNum("chorusRate") / 100;
+    e.depthMs = fieldNum("chorusDepth") / 10;
+    e.centreMs = fieldNum("chorusTime") / 10;
+    e.chorusFeedback = fieldNum("chorusFeedback") / 100;
+    e.phaser = fieldNum("phaserMix") / 100;
+    e.phRate = fieldNum("phaserRate") / 100;
+    e.phDepth = fieldNum("phaserDepth") / 100;
+    e.phFeedback = fieldNum("phaserFeedback") / 100;
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
@@ -1429,28 +1401,26 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     echoBFollow(brain);
     if (brain.planeB.own) {
       Brain::EchoState& f = brain.echoB;
-      const auto own = [&](std::string_view key) -> const Json* { return given ? partial.get(key) : nullptr; };
-      const auto slide = [&](std::string_view key, double lo, double hi, double scale, double a) {
-        const double v = jsToNumber(own(key));
-        return std::isfinite(v) ? std::fmax(lo, std::fmin(hi, v)) / scale : a;
-      };
-      f.mix = slide("bDelayMix", 0, 100, 100, e.mix);
-      const double ms = jsToNumber(own("bDelayMs"));
-      f.ms = std::isfinite(ms) ? jsMathRound(std::fmax(10.0, std::fmin(2000.0, ms))) : e.ms;
-      const Json* sync = own("bDelaySync");
-      f.sync = sync && sync->type == Json::Type::String ? (delaySyncKnown(sync->s) ? utf16To8(sync->s) : "") : e.sync;
-      f.feedback = slide("bDelayFeedback", 0, 90, 100, e.feedback);
-      const Json* ping = own("bDelayPingPong");
-      f.pingPong = ping && ping->type == Json::Type::Bool ? ping->b : e.pingPong;
-      f.chorus = slide("bChorusMix", 0, 100, 100, e.chorus);
-      f.rate = slide("bChorusRate", 5, 500, 100, e.rate);
-      f.depthMs = slide("bChorusDepth", 0, 100, 10, e.depthMs);
-      f.centreMs = slide("bChorusTime", 10, 300, 10, e.centreMs);
-      f.chorusFeedback = slide("bChorusFeedback", 0, 90, 100, e.chorusFeedback);
-      f.phaser = slide("bPhaserMix", 0, 100, 100, e.phaser);
-      f.phRate = slide("bPhaserRate", 5, 500, 100, e.phRate);
-      f.phDepth = slide("bPhaserDepth", 0, 100, 100, e.phDepth);
-      f.phFeedback = slide("bPhaserFeedback", 0, 75, 100, e.phFeedback);
+      // By A's rules, the twins in the table; a sync the menu has not got is
+      // A's, as every other field of B's is (it was Free until 7 Nov).
+      const auto slide = [&](std::string_view key, double scale, double a) { const auto v = own(key); return v ? v->n / scale : a; };
+      f.mix = slide("bDelayMix", 100, e.mix);
+      const auto ms = own("bDelayMs");
+      f.ms = ms ? jsMathRound(ms->n) : e.ms;
+      const auto sync = own("bDelaySync");
+      f.sync = sync ? utf16To8(sync->s) : e.sync;
+      f.feedback = slide("bDelayFeedback", 100, e.feedback);
+      const auto ping = own("bDelayPingPong");
+      f.pingPong = ping ? ping->b : e.pingPong;
+      f.chorus = slide("bChorusMix", 100, e.chorus);
+      f.rate = slide("bChorusRate", 100, e.rate);
+      f.depthMs = slide("bChorusDepth", 10, e.depthMs);
+      f.centreMs = slide("bChorusTime", 10, e.centreMs);
+      f.chorusFeedback = slide("bChorusFeedback", 100, e.chorusFeedback);
+      f.phaser = slide("bPhaserMix", 100, e.phaser);
+      f.phRate = slide("bPhaserRate", 100, e.phRate);
+      f.phDepth = slide("bPhaserDepth", 100, e.phDepth);
+      f.phFeedback = slide("bPhaserFeedback", 100, e.phFeedback);
     }
     syncEchoB(brain, gen);
     syncEchoPanel(brain, keys);
@@ -1550,12 +1520,10 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setPersistence(brain, num("persistence"));
     // Scan's softness, in tenths of a cell, held to its slider.
     {
-      const double soft = num("scanSoft");
-      panel.setRange("scanSoft", toU16(jsNumberToString(std::isfinite(soft) ? jsMax(0, jsMin(60, soft)) : 30)));
+      panel.setRange("scanSoft", fieldText("scanSoft"));
       brain.scanSoft = panel.range("scanSoft") / 10;
       // The strike, held to its slider, and what each layer's Scan reads (P7b).
-      const double strike = num("scanStrike");
-      panel.setRange("scanStrike", toU16(jsNumberToString(std::isfinite(strike) ? jsMax(0, jsMin(100, strike)) : 50)));
+      panel.setRange("scanStrike", fieldText("scanStrike"));
       brain.scanStrike = panel.range("scanStrike") / 100;
       for (int l = 0; l < 2; l++) {
         const std::string own = l == 0 ? "A" : "B";

@@ -30,6 +30,7 @@ python3 web/tests/run.py lane patch                         # just those
 python3 web/tests/run.py -j1                                # one at a time, ~43 min
 python3 core/tests/parity.py                                # the C++ core against the page
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
+python3 core/tests/tools/write_schema.py                    # after any change to SETUP_FIELDS: the core reads setups by it
 ```
 
 Every suite in `run.py` says whether it is `parallel` or `serial - why`. The

@@ -1969,6 +1969,23 @@ scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + cod
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
 check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 170)
+# The table they come from (SETUP_FIELDS, schema.h since 7 Nov): every menu
+# and range restore reads a setup by, which the core held in restore.h by
+# hand until then. Written out by write_schema.py; this is what says it was.
+fjs, fcpp = sboth(["fields"], "setup_fields.txt")
+check("the table of fields and rules the core reads a setup by is the page's, character for character",
+      fjs[0] == fcpp[0] and '"planeSnap":[0,["menu",[0,5,6]]]' in fjs[0] and '"bSnap":[null,["twin","planeSnap"]]' in fjs[0],
+      "%d against %d characters" % (len(fjs[0]), len(fcpp[0])))
+# Its null: the page with Snap's menu back to every bit, read beside the
+# same core, does not compare.
+snapped_page = os.path.join(BUILD, "scope_snap_null.html")
+with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: snap_text = f.read()
+assert snap_text.count('planeSnap: [0, ["menu", [0, 5, 6]]]') == 1
+with open(snapped_page, "w", encoding="utf-8") as f: f.write(snap_text.replace('planeSnap: [0, ["menu", [0, 5, 6]]]', 'planeSnap: [0, ["menu", [0, 1, 2, 3, 4, 5, 6]]]'))
+with open(os.path.join(BUILD, "setup_fields.txt"), "w", encoding="utf-8") as f: f.write("fields\n")
+fnull = subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), os.path.join(BUILD, "setup_fields.txt")], check=True,
+                       capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=snapped_page)).stdout.split("\n")[0]
+check("null: a page whose Snap offers every bit again is not the core's table", fnull != fcpp[0] and fnull.startswith("{"))
 enc = [i for i, c in enumerate(scmds) if c.startswith("encode")]
 dec = [i for i, c in enumerate(scmds) if c.startswith("decode")]
 check("%d snapshots encode to the page's code, character for character" % len(enc),

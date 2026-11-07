@@ -28,46 +28,37 @@
 #pragma once
 
 #include <cmath>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
 
 #include "scope/json.h"
+#include "scope/schema.h"
 
 namespace scope {
 
 constexpr int kSetupVersion = 8;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
+// The table (schema.h, SETUP_FIELDS on the page), parsed once.
+inline const Json& setupFields() {
+  static const Json fields = [] {
+    std::string text;
+    for (const char* piece : kSetupFieldsPieces) text += piece;
+    return *jsonParse(utf8To16(text));
+  }();
+  return fields;
+}
+
+// DEFAULTS: every field the table gives a default, in its order.
 inline const Json& setupDefaults() {
-  static const Json defaults = *jsonParse(utf8To16(R"json({
-  "gen":"wave","shape":"harmonic","bars":"008740000","morph":150,"width":25,"table":150,"freq":220,
-  "amp":55,"interval":0,"just":true,"phase":90,"figure":"Circle","detail":5,"figureRate":40,
-  "figText":"HELLO","figPath":"","figDrawn":"","swingRate":21,"decay":12,"detune":40,"swingDrive":0,
-  "inputMode":0,"inputDepth":50,"inputFrom":"live","gen2Figure":"Circle","gen2Rate":110,"cycle":"",
-  "atk":8,"dec":120,"sus":70,"rel":180,"glide":0,"model":"Cube","spinX":11,"spinY":17,"spinZ":0,
-  "spinRate":100,"depth":45,"l0d":"none","l0s":"sine","l0r":20,"l0a":50,"l1d":"none","l1s":"sine",
-  "l1r":50,"l1a":30,"l0y":"","l1y":"","keyRoot":0,"keyScale":"chromatic","quant":false,"qGlide":0,
-  "bpm":120,"scoreOn":false,"scoreStep":"1/16","scoreVoices":2,"scoreLow":48,"scoreOctaves":3,
-  "arpMode":"off","arpRate":"1/8","arpOctaves":1,"morphA":"","morphB":"",
-  "morphPos":0,"mod":"","display":"yt","persistence":"0","span":"5","zoom":0,"timebase":4,"level":0,
-  "edge":"rising","trig":0,"position":10,"holdoff":0,"trigMode":"auto","c0on":true,"c0ac":false,"c0s":0,
-  "c0o":0,"c1on":true,"c1ac":false,"c1s":0,"c1o":0,"midSide":false,"acHz":100,"octaves":0,
-  "midiMode":"dyad","midiHold":false,"midiTruth":true,"midiFollow":false,"polyRound":false,"bendRange":2,"wheelTo":"vibrato","pressureTo":"off","midiDrawCount":2,
-  "midiDrawWhich":"outer","midiPolyJust":false,"midiDrawCountB":2,"midiDrawWhichB":"outer",
-  "layers":"off","splitAt":60,"layerPair":"each","pictureMovesA":"A","pictureMovesB":"B","photoOn":false,"photoU":0.75,"photoV":0.5,"pictureAmount":60,
-  "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
-  "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeSnap":0,
-  "planeScaleX":100,"planeScaleY":100,"planeShear":0,"bPlane":false,"delayMix":0,"delayMs":375,"delaySync":"",
-  "delayFeedback":35,"delayPingPong":false,"oscScan":0,"scanSoft":30,"scanStrike":50,"scanReadsA":"A","scanReadsB":"B","oscRatio":1,"oscFm":0,"oscBend":0,"oscBendAt":25,"oscRing":0,"oscSync":100,"oscSub":0,
-  "oscSubOct":1,"oscSubShape":"square","oscUnison":1,"oscSpread":12,"shpDrive":0,"shpFold":0,
-  "shpBits":0,"shpRate":0,"shpOS":2,"vcfType":0,"vcfCut":667,"vcfRes":0,"vcfTrack":0,"vcfEnvAmt":0,
-  "vcfAtk":5,"vcfDec":300,"vcfSus":30,"vcfRel":300,"chorusMix":0,"chorusRate":60,"chorusDepth":30,
-  "chorusTime":120,"chorusFeedback":0,"phaserMix":0,"phaserRate":30,"phaserDepth":70,"phaserFeedback":30,"lagOn":false,"lagMs":5,"lagAuto":true,"rotate":0,"lagMix":20,
-  "fOn":false,"fType":"lowpass","fCut":566,"fRes":0,"fSee":"post","fHear":"pre","mSee":"pre","xy0":0,
-  "xy1":1,"pGoni":true,"pSpec":true,"pHarm":false,"pTune":false,"cursors":false,"beam":"moderate",
-  "beamXY":true,"beamYT":false,"beamGoni":false
-})json"));
+  static const Json defaults = [] {
+    Json d = Json::object();
+    for (const auto& [key, row] : setupFields().o)
+      if (row.a[0].type != Json::Type::Null) d.set(key, row.a[0]);
+    return d;
+  }();
   return defaults;
 }
 
@@ -171,6 +162,58 @@ inline std::optional<double> fullScaleAt(const Json* key) {
 
 inline double jsMax(double a, double b) { return std::isnan(a) || std::isnan(b) ? NAN : (a > b ? a : b); }
 inline double jsMin(double a, double b) { return std::isnan(a) || std::isnan(b) ? NAN : (a < b ? a : b); }
+// --- reading a field by its rule (the page's setupField and setupOwn) ------------
+
+// The rule a field is read by; a twin's is its A field's.
+inline const Json& setupRule(std::string_view key) {
+  const Json& rule = setupFields().get(key)->a[1];
+  if (rule.a[0].s == u"twin") return setupFields().get(rule.a[1].s)->a[1];
+  return rule;
+}
+
+// Whether a rule takes a value: Array.includes for a menu (a number or a
+// string, the same and equal), Number.isFinite(Number(v)) for a range, a
+// boolean for a switch. A rule with no reading here is the caller's own.
+inline bool setupTakes(const Json& rule, const Json* v) {
+  const std::u16string& kind = rule.a[0].s;
+  if (kind == u"menu") {
+    if (!v) return false;
+    for (const Json& x : rule.a[1].a)
+      if (x.type == v->type && ((x.type == Json::Type::Number && x.n == v->n) || (x.type == Json::Type::String && x.s == v->s)))
+        return true;
+    return false;
+  }
+  if (kind == u"within") return std::isfinite(jsToNumber(v));
+  if (kind == u"flag") return v && v->type == Json::Type::Bool;
+  std::abort();
+}
+
+inline Json setupHeld(const Json& rule, const Json* v) {
+  if (rule.a[0].s == u"within") return Json::number(std::fmax(rule.a[1].n, std::fmin(rule.a[2].n, jsToNumber(v))));
+  return *v;
+}
+
+// The merged setup's value v for key, by its rule, or the default where the
+// rule will not take it. A switch is on only for true, or off only for false
+// where its default is on.
+inline Json setupField(const Json* v, std::string_view key) {
+  const Json& dflt = setupFields().get(key)->a[0];
+  const Json& rule = setupRule(key);
+  if (rule.a[0].s == u"flag") {
+    const bool given = v && v->type == Json::Type::Bool;
+    return Json::boolean(dflt.b ? !(given && !v->b) : (given && v->b));
+  }
+  return setupTakes(rule, v) ? setupHeld(rule, v) : dflt;
+}
+
+// Layer B's own, or nothing where it is missing or unusable: the caller then
+// has A's value as it stands.
+inline std::optional<Json> setupOwn(const Json* v, std::string_view key) {
+  const Json& rule = setupRule(key);
+  if (!setupTakes(rule, v)) return std::nullopt;
+  return setupHeld(rule, v);
+}
+
 inline double jsMathRound(double x) {
   if (!std::isfinite(x)) return x;
   const double r = std::floor(x);

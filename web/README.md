@@ -80,6 +80,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
+| `schematest.py` | the setup's table of fields (`SETUP_FIELDS`): snapshot and the table key for key, every menu and range its control's, every default its own rule's, the readers and restore through them, each with its null |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
 | `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
@@ -4959,3 +4960,28 @@ checks now use the mirror on both axes, which folds half of every cycle. A
 removal is a good moment to look at what each user of the removed thing was
 using it *for*: here it was "something large and plainly non-linear", which
 the snap never was.
+
+**A setup's field is one row of `SETUP_FIELDS`, and the core reads it from
+there.** Until 7 November every menu and range a setup is read by was
+written twice, once in the page's restore and once in the core's, and held
+together only by parity's random setups: when the kaleidoscope went, layer
+B's snap still offered 1 to 4 bits in the core, and setup 754 of 829 was the
+one that happened to ask. Now the table holds each field's default and its
+rule - a menu, a range, a switch, layer B's twin of an A field (read by A's
+rule, and A's value where it has none) - `DEFAULTS` is derived from it, both
+restores read through `setupField` and `setupOwn`, and
+`core/include/scope/schema.h` is the table written out by
+`core/tests/tools/write_schema.py`, which parity holds to the page
+character for character. `schematest.py` holds every menu and range to the
+control that shows it, so a menu changed on the page and not in the table
+fails on the first run rather than by luck - it caught the table's own first
+draft, whose scale menu stopped at eight of thirteen.
+
+What it does not do: most of restore is still written per field, because
+most fields are read by their setter or have a reading of their own (the
+split point must be a whole number, the photocell's position carries a NaN
+to its default, a ring time of nought is the default). Those rows have a
+default and no rule, and say so; giving them one means changing how an
+old code reads, in both engines, which is a decision per field rather than a
+tidy-up. One reading did change: layer B's own delay sync, named but not
+on the menu, is A's like every other field of B's, where it used to be Free.

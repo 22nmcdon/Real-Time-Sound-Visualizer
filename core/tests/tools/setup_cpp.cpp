@@ -27,6 +27,7 @@ int main(int argc, char** argv) {
     const auto space = line.find(' ');
     const std::string cmd = line.substr(0, space), rest = space == std::string::npos ? "" : line.substr(space + 1);
     if (cmd == "defaults") std::printf("%s\n", ascii(scope::jsonStringify(scope::setupDefaults())).c_str());
+    else if (cmd == "fields") std::printf("%s\n", ascii(scope::jsonStringify(scope::setupFields())).c_str());
     else if (cmd == "encode") {
       const auto snap = scope::jsonParse(scope::utf8To16(rest));
       const auto code = snap ? scope::encodeSetup(*snap) : std::nullopt;
