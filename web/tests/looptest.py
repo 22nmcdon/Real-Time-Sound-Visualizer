@@ -109,24 +109,42 @@ with sync_playwright() as pw:
       await wait(600);
       compileRoutes();
       const routes = genRoutes.filter((r) => r.slot === GEN_DESTS.findIndex((d) => d.id === 'gen.freq'));
-      const w = state.source.getLatestWindow(16384)[0];
       const bounded = 220 * Math.pow(2, 0.5), unbounded = 220 * Math.pow(2, 1.5);
-      const out = { routes: routes.length, total: routes.map((r) => r.loopTotal === true),
-                    held: routes.map((r) => r.source.value()),
-                    atBounded: bin(w, bounded), atUnbounded: bin(w, unbounded), atBase: bin(w, 220) };
+      /* Read until a window says so, every 200 ms for three seconds, rather
+         than once at 600 ms. At the opening's Picture of 60 the picture
+         stage reads the screen back into the sound, and the screen still
+         holds the 220 Hz figure from before the route for a while: a window
+         at 600 ms had 0.0003 to 0.0018 of 220 in it, against a bound of
+         about 0.0013, on the page as it is and as it was before P8h alike
+         (measured 7 Nov), so this check passed or failed by when it looked.
+         At Picture 0 every read is the bounded pitch alone. No window can
+         say so for a route that never took or for three sources' worth, so
+         reading more of them cannot pass either; `swapped` is that shown -
+         the same test with the two pitches exchanged, never met. */
+      const says = (r, at, off) => r[at] > 0.05 && r[off] < r[at] * 0.01 && r.atBase < r[at] * 0.01;
+      let read = null, swapped = false, reads = 0;
+      for (let t = 600; t <= 3600 && !read; t += 200, reads++) {
+        const w = state.source.getLatestWindow(16384)[0];
+        const r = { atBounded: bin(w, bounded), atUnbounded: bin(w, unbounded), atBase: bin(w, 220) };
+        if (says(r, 'atUnbounded', 'atBounded')) swapped = true;
+        if (says(r, 'atBounded', 'atUnbounded')) read = r;
+        else { if (t + 200 > 3600) read = r; else await wait(200); }
+      }
+      const out = Object.assign({ routes: routes.length, total: routes.map((r) => r.loopTotal === true),
+                                  held: routes.map((r) => r.source.value()), reads, swapped }, read);
       loop.forEach((id, i) => { MOD_SOURCES.get(id).value = saved[i]; });
       state.modRoutings = []; touchRoutings();
       return out;
     }""")
     print("    three at full on pitch: %d route(s) into the slot %s, held at %s; energy at "
-          "220 x 2^0.5 %.4f, at 220 x 2^1.5 %.4f, at 220 %.4f"
+          "220 x 2^0.5 %.4f, at 220 x 2^1.5 %.4f, at 220 %.4f, after %d read(s)"
           % (audio["routes"], audio["total"], audio["held"], audio["atBounded"],
-             audio["atUnbounded"], audio["atBase"]))
+             audio["atUnbounded"], audio["atBase"], audio["reads"]))
     check("the loop's routes into a generator parameter cross into the audio loop as one",
           audio["routes"] == 1 and audio["total"] == [True], str(audio))
     check("carrying the bounded total", audio["held"] == [0.5], str(audio["held"]))
     check("and the generator plays the bounded pitch, not three sources' worth",
-          audio["atBounded"] > 0.05 and audio["atUnbounded"] < audio["atBounded"] * 0.01
+          not audio["swapped"] and audio["atBounded"] > 0.05 and audio["atUnbounded"] < audio["atBounded"] * 0.01
           and audio["atBase"] < audio["atBounded"] * 0.01, str(audio))
 
     # Amplitude only ever ducks (see GEN_DESTS), and the combined route is
