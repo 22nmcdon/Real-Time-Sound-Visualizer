@@ -50,7 +50,7 @@ with sync_playwright() as pw:
 
     print("\n--- an oscillator locked to the tempo ---")
     lock = p.evaluate("""() => {
-      setView('bench'); setBenchTab('sources'); selectSource('lfo1');
+      setView('bench'); openModCard('lfo1');
       const sync = document.getElementById('lfoSync0'), rate = document.getElementById('lfoRate0');
       rate.value = '37'; rate.dispatchEvent(new Event('input'));       // 0.37 Hz, free
       setTempo(120);

@@ -369,17 +369,18 @@ with sync_playwright() as pw:
       return {
         drawbar: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label,
         unknown: MOD_SOURCES.has('cc.42') && MOD_SOURCES.get('cc.42').label,
-        chips: Array.from(document.querySelectorAll('.mod-chip'))
-                 .map((c) => c.dataset.source),
+        cards: (buildSourceChips(), Array.from(document.querySelectorAll('.mod-card'))
+                 .map((c) => c.dataset.source)),
       };
     }""")
     check("a controller becomes a source the first time it moves",
           learned["drawbar"] == "Drawbar 1", str(learned["drawbar"]))
     check("one the map does not know still learns", learned["unknown"] == "CC 42",
           str(learned["unknown"]))
-    check("and both are on the chip rail",
-          "cc.16" in learned["chips"] and "cc.42" in learned["chips"],
-          str(learned["chips"]))
+    # They were chips on the rail beside the screen; since F4 the cards there
+    # are the three offered sources, and a controller learned is not one.
+    check("and neither grows a modulation card: there are three, whatever is learned",
+          learned["cards"] == ["lfo1", "lfo2", "env.note"], str(learned["cards"]))
 
     ramp = p.evaluate("""async () => {
       midiBytes(Uint8Array.from([0xB0, 16, 0]));
@@ -584,17 +585,15 @@ with sync_playwright() as pw:
     p.wait_for_timeout(400)
     room = p.evaluate("""() => {
       const side = el.benchSide, body = el.benchBody;
-      const rail = document.querySelector('.chip-rail');
       return {
         side: side.scrollHeight - side.clientHeight,
         body: body.scrollHeight - body.clientHeight,
-        chips: rail.querySelectorAll('.mod-chip').length,
-        rail: rail.scrollHeight > rail.clientHeight,
+        cards: el.modStrip.querySelectorAll('.mod-card').length,
       };
     }""")
     check("eleven controllers do not make either bench panel scroll",
           room["side"] <= 0 and room["body"] <= 0, str(room))
-    check("and the chip rail holds them all", room["chips"] >= 14, str(room))
+    check("and the cards are still three", room["cards"] == 3, str(room))
 
     # Renaming a drawbar is the whole reason those rows exist. They live in
     # Settings, under MIDI, in plain view since the controllers stopped being
@@ -608,7 +607,7 @@ with sync_playwright() as pw:
       const out = { title: groupTitle(field.closest('.menu-group')), reachable,
                     named: MOD_SOURCES.has('cc.16') && MOD_SOURCES.get('cc.16').label };
       setMenuOpen(false);
-      setBenchTab('sources'); selectSource('cc.17');
+      selectSource('cc.17');
       const there = document.getElementById('srcDetail-name');
       there.value = 'Second drawbar'; there.dispatchEvent(new Event('input'));
       out.fromTab = MOD_SOURCES.get('cc.17').label;
@@ -619,7 +618,7 @@ with sync_playwright() as pw:
     check("the controllers are in Settings, under MIDI, and renaming works there",
           detail["reachable"] is True and detail["title"] == "MIDI"
           and detail["named"] == "Bottom drawbar", str(detail))
-    check("and the Sources tab renames one too, and the list follows",
+    check("and the source's own panel renames one too, and the list follows",
           detail["fromTab"] == "Second drawbar" and detail["listSays"] == "Second drawbar", str(detail))
     p.evaluate("""() => {
       for (let n = 16; n <= 24; n++) midiForget(n);
@@ -627,6 +626,36 @@ with sync_playwright() as pw:
       setView('scope');
     }""")
     p.wait_for_timeout(300)
+
+    print("\n--- velocity (F4) ---")
+    # Expression's Velocity menu: a note's level and strike always follow
+    # velocity, and FM adds the Key source's routing onto the FM depth. The
+    # menu is a view of that routing rather than a field, so it is read off a
+    # preset that carries the routing - found by the routing, not by name -
+    # and written by choosing, with another routing beside it left alone.
+    vel = p.evaluate("""async () => {
+      const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const routes = () => state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + Number(r.amount).toFixed(2)).sort();
+      const out = {};
+      restore(Object.assign({}, BASE_SETUP)); await wait();
+      out.base = el.midiVelocityTo.value;
+      const pick = PRESETS.flatMap(([, e]) => e).find(([, st]) => (st.mod || '').includes('midi.key>gen.fm'));
+      applyPreset('b:' + pick[0]); await wait();
+      out.preset = el.midiVelocityTo.value;
+      restore(Object.assign({}, BASE_SETUP)); await wait();
+      addRouting('lfo1', 'gen.freq');
+      el.midiVelocityTo.value = 'fm'; el.midiVelocityTo.dispatchEvent(new Event('change')); await wait();
+      out.fm = routes();
+      el.midiVelocityTo.value = 'strike'; el.midiVelocityTo.dispatchEvent(new Event('change')); await wait();
+      out.strike = routes();
+      state.modRoutings = []; touchRoutings();
+      return out;
+    }""")
+    print("    %s" % vel)
+    check("Velocity reads Level and strike on the base, and FM on a preset that routes velocity to FM",
+          vel["base"] == "strike" and vel["preset"] == "fm", str(vel))
+    check("choosing FM adds velocity's routing onto the FM depth beside what is there, and Level and strike takes it off alone",
+          vel["fm"] == ["lfo1>gen.freq@0.35", "midi.key>gen.fm@0.30"] and vel["strike"] == ["lfo1>gen.freq@0.35"], str(vel))
 
     print("\n--- and nothing else broke ---")
     p.evaluate("""() => {

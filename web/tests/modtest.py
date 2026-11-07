@@ -221,13 +221,13 @@ with sync_playwright() as pw:
           "threshold>gen.freq" in cut["five"]["routes"] and "lfo2>gen.pluck" in cut["five"]["routes"]
           and cut["five"]["stale"] == ["crossOn", "threshWatch", "pluckNote"], str(cut["five"]))
 
-    # The Sources tab is the view of the list now, where the one-destination
-    # dropdown was: Add makes a routing, its row's slider is its depth, and
-    # the row's cross removes it.
-    print("\n--- the Sources tab is a view of the list ---")
+    # The card's editor is the view of the list now (the Sources tab until F4),
+    # where the one-destination dropdown was: Add makes a routing, its row's
+    # slider is its depth, and the row's cross removes it.
+    print("\n--- the card's editor is a view of the list ---")
     ui = p.evaluate("""() => {
       loadCorpus('Pure sine');
-      setView('bench'); setBenchTab('sources'); selectSource('lfo1');
+      setView('bench'); openModCard('lfo1');
       const add = document.getElementById('srcDetail-add');
       add.value = 'gen.ratio';
       add.dispatchEvent(new Event('change'));

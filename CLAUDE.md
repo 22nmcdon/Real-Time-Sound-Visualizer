@@ -201,11 +201,10 @@ Do not re-litigate these without a reason; each replaced something that failed.
   under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
-  went in F2: its knobs are the Picture section along the bottom) - and the
-  drawer's Sources (alone since F3, until F4's modulation cards), and one tab
-  at a time must fit. `patchtest.py` measures every tab across every generator mode;
+  went in F2: its knobs are the Picture section along the bottom; the
+  drawer's Sources went in F4) - and one tab at a time must fit. `patchtest.py` measures every tab across every generator mode;
   `fittest.py` does it in every combination of generator kind, tone or band
-  split, keyboard and Photocell, and the Sources tab with each family on show.
+  split, keyboard and Photocell, and the modulation editor with a source on a dozen controls.
   This replaced "every section on show at once, and neither panel scrolls",
   which held for the tone and never for a rack of six (cut in P5), and then
   five tabs by task (Play, Picture, Shape, Effects, Measure), which existed
@@ -223,33 +222,30 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (`TAB_LINES`, read from the values a few times a second, never from the
   readings beside them, which only an input event writes). The cards took
   78 px of the tabs' height at 1400x900, so the fit has less slack than it had.
-- **What is not the loop goes in the drawer.** *Advanced*, beside the search,
-  opens it; shut, it takes its tabs, the source chips beside the screen and a
-  control's hollow ring with it, and leaves everything patched playing and
-  shown. It is a view, remembered per viewer and never in a setup, and going
-  to one of its tabs opens it, so `showControl` and the search need nothing
-  new. The routing matrix went first (P3); in P5 the arpeggiator and the
-  clock went to Perform, and the drawings - the harmonograph, the figures, the
-  solids and the second generator - behind it in their menus, offered only
-  while it is open unless one is already chosen (`syncDrawerMenus`); in P8
-  the scope's own instruments (lanes, vertical, trigger, trace filter,
-  cursors) and the setup morph to Measure (the macros beside it were cut in
-  P8d, the host's knobs having replaced them), the microphone and input into the
-  generator to Inputs, and the key and tempo to Perform beside the clock. F1 of
-  `web/docs/redesigning-the-face.md` (7 Nov) took Measure's sections to
-  *Scope & measure* (below) and the morph to Perform; F3 took the inputs to
-  Settings and Perform to a menu in the header (home `perform`), and put the
-  amplitude and filter envelopes and the glide on show on Play. Add
-  a tab to it by naming it in `BENCH_DRAWER`. A tab remembered from before a
-  rename lands where its sections went (`BENCH_TAB_RENAMED`). `benchtest.py`
-  holds it.
-- **The Sources tab shows one family at a time.** Families, the chosen
-  family's sources as rows with meters, the chosen source - in that order, one
-  column each. A grid of every source at once was forty chips of one weight
-  and read as a wall. The list has a fixed height and scrolls inside itself,
-  so what is plugged in cannot put the tab over.
+- **Three modulation sources, a card each, and no drawer** (F4 of
+  `web/docs/redesigning-the-face.md`, 7 Nov). LFO 1, LFO 2 and the Envelope
+  are cards under the screen (`MOD_CARDS`, `offered`): drag one onto a knob,
+  press one to open its editor over the tabs - beside the screen, two
+  columns, its destination list scrolling inside itself past a dozen, and
+  `fittest.py` requires a dozen to fit. The control's own editor and the
+  search offer those three and no others. The rest of the twenty-eight are
+  cut (learned controllers, F4b) or parked: the hearing family and the
+  drawings' readings, like the drawings themselves (`syncDrawerMenus`), are
+  offered nowhere but still play when a setup routes them, and keep their ink
+  on the knob they are on, so the owner can find out whether they are missed.
+  Velocity's FM is Expression's menu on Play, reading and writing the one
+  routing it stands for rather than a field. This replaced the drawer
+  (*Advanced*, P3 to F3, which hid the routing matrix and every tab that was
+  not the loop) and the Sources tab, which showed six families one at a time
+  because forty chips at once read as a wall; F1 to F3 found each of the
+  drawer's other tabs a place of its own. An unpatched control's hollow ring
+  stays in its place, transparent until the control is pointed at (faint on
+  a touch screen), so the face is quiet at rest and a control still says it
+  can take a patch. A tab remembered from before a rename lands where its
+  sections went (`BENCH_TAB_RENAMED`). `layouttest.py`, `benchtest.py` and
+  `patchtest.py` hold it.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
-  MIDI, Audio, the inputs, Presets, Beam), `bench` (everything played or tuned) or, since
+  MIDI, Audio, the inputs, the modulation fade, Presets, Beam), `bench` (everything played or tuned) or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by

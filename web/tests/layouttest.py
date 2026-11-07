@@ -1,10 +1,13 @@
-"""The layout revamp: the Sources tab, reaching any control, and search.
+"""The modulation cards and their editor, reaching any control, and search.
 
 What would go wrong, and what is checked for it:
 
-- a family with nothing in it vanishing instead of saying how to get
-  something, or a source appearing under the wrong family;
-- the detail panel describing one source and editing another, or its meter
+- a fourth card, for a controller learned, the photocell or a hearing
+  source patched - each of which grew the strip before F4 - or a parked
+  source's ink lost from the knob it is on;
+- a card press that does not open its editor, or an editor left over a tab
+  that has been chosen;
+- the editor describing one source and editing another, or its meter
   reading something other than the source's own value. The meter is read
   against a source whose value is set here, at a positive and a negative
   number, so a meter that ignored the sign or the bipolar centre would show;
@@ -47,90 +50,54 @@ with sync_playwright() as pw:
         p.evaluate("(q) => { el.benchSearch.value = q; el.benchSearch.dispatchEvent(new Event('input')); }", q)
         return p.evaluate(RESULTS)
 
-    print("\n--- the Sources tab: families ---")
-    fam = p.evaluate("""() => {
-      setView('bench'); setBenchTab('sources');
-      state.modRoutings = []; touchRoutings(); sourceFamily = null; buildSourceGrid();
-      const list = () => ({ family: el.srcList.dataset.family, title: el.srcListTitle.textContent,
-        rows: Array.from(el.srcList.querySelectorAll('[data-select]')).map((c) => c.dataset.select),
-        hint: (el.srcList.querySelector('.src-empty') || { textContent: '' }).textContent });
-      const families = () => Array.from(el.srcFamilies.querySelectorAll('[data-family]')).map((f) => ({
-        id: f.dataset.family, empty: f.dataset.empty === '1', count: Number(f.querySelector('.count').textContent) }));
-      const show = (id) => { chooseSourceFamily(id); return list(); };
-      const out = { opened: el.srcList.dataset.family, order: families() };
-      out.before = {};
-      for (const id of ['oscillators', 'signal', 'controllers', 'picture', 'inuse']) out.before[id] = show(id);
-      out.chosen = { family: 'signal', selected: (show('signal'), selectedSource), title: el.srcDetailTitle.textContent };
-      midiLearn(21);
-      setPhoto(true);
-      out.after = { controllers: show('controllers'), picture: show('picture') };
-      addRouting('lfo2', 'view.rotate'); touchRoutings();
-      out.inuse = show('inuse');
-      sourceFamily = null; buildSourceGrid();
-      out.reopened = el.srcList.dataset.family;
-      selectSource('hear.bright');
-      out.brought = { family: sourceFamily, pressed: (el.srcList.querySelector('[aria-pressed=true]') || {}).dataset };
-      out.brought.pressed = out.brought.pressed ? out.brought.pressed.select : null;
+    print("\n--- the modulation cards (F4) ---")
+    # Three cards under the screen, whatever is plugged in or patched: they
+    # replaced a tab of six families, which grew a chip for every controller
+    # learned and the photocell. So the check learns a controller, turns the
+    # photocell on and routes a hearing source first - each of which the old
+    # strip answered with another chip - and still wants exactly three.
+    cards = p.evaluate("""async () => {
+      setView('bench'); setBenchTab('play');
       state.modRoutings = []; touchRoutings();
-      return out;
+      midiLearn(21); setPhoto(true);
+      addRouting('hear.bright', 'gen.freq');
+      buildSourceChips();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const ids = Array.from(el.modStrip.querySelectorAll('.mod-card')).map((c) => c.dataset.source);
+      // A parked source keeps its ink on its knob, to be seen and taken off there.
+      const ring = document.querySelector('.mod-open[data-dest="gen.freq"]');
+      const parked = { pips: ring ? ring.querySelectorAll('.pip').length : -1, empty: ring ? ring.classList.contains('empty') : null };
+      state.modRoutings = []; touchRoutings();
+      return { ids, parked };
     }""")
-    print("    opened on %s; order %s" % (fam["opened"], [(f["id"], f["count"]) for f in fam["order"]]))
-    print("    before: %s" % {k: (v["rows"] or v["hint"][:40]) for k, v in fam["before"].items()})
-    check("the families come in their order, In use first and the picture last, one list",
-          [f["id"] for f in fam["order"]] == ["inuse", "oscillators", "signal", "hearing", "keyboard",
-                                             "controllers", "picture"],
-          str([f["id"] for f in fam["order"]]))
-    check("with nothing patched it opens on the chosen source's family, the oscillators",
-          fam["opened"] == "oscillators", fam["opened"])
-    bf = fam["before"]
-    check("each family's sources are its own, one family on show at a time",
-          bf["oscillators"]["rows"] == ["lfo1", "lfo2"] and bf["signal"]["rows"] == ["env.live", "env.note"]
-          and bf["signal"]["title"] == "Signal", str(bf))
-    # The picture's family used to be the second empty one, until the
-    # photocell was on; since the picture stage (P3) its sources are always
-    # there, and only the photocell joins them.
-    check("an empty family is listed, quieter, and says how to get something when chosen",
-          bf["controllers"]["rows"] == [] and "keyboard" in bf["controllers"]["hint"]
-          and {f["id"]: f["empty"] for f in fam["order"]}["controllers"] is True
-          and {f["id"]: f["empty"] for f in fam["order"]}["oscillators"] is False, str(bf))
-    check("the picture's family holds its six sources with the photocell off, and the photocell joins them when it is on",
-          len(bf["picture"]["rows"]) == 6 and "photo.1" not in bf["picture"]["rows"]
-          and fam["after"]["picture"]["rows"][:1] == ["photo.1"] and len(fam["after"]["picture"]["rows"]) == 7,
-          str((bf["picture"]["rows"], fam["after"]["picture"]["rows"])))
-    check("choosing a family shows its first source beside it, not whatever was chosen before",
-          fam["chosen"]["selected"] == "env.live" and fam["chosen"]["title"] == "Level", str(fam["chosen"]))
-    a = fam["after"]
-    check("and a family fills when there is something: a controller learned, the photocell on",
-          a["controllers"]["rows"] == ["cc.21"] and "photo.1" in a["picture"]["rows"]
-          and "picture.bored" in a["picture"]["rows"] and a["controllers"]["hint"] == "", str(a))
-    check("In use is empty and says so until something is patched, and then lists only that",
-          bf["inuse"]["rows"] == [] and "patched" in bf["inuse"]["hint"] and fam["inuse"]["rows"] == ["lfo2"],
-          str((bf["inuse"], fam["inuse"])))
-    check("with something patched the tab opens on In use", fam["reopened"] == "inuse", fam["reopened"])
-    check("a source chosen from elsewhere brings its family with it, and is the one pressed",
-          fam["brought"] == {"family": "hearing", "pressed": "hear.bright"}, str(fam["brought"]))
+    print("    %s" % cards)
+    check("three cards, LFO 1, LFO 2 and the Envelope, with a controller learned, the photocell on and a hearing source patched",
+          cards["ids"] == ["lfo1", "lfo2", "env.note"], str(cards["ids"]))
+    check("and a parked source on a knob still shows its ink there", cards["parked"] == {"pips": 1, "empty": False},
+          str(cards["parked"]))
 
-    meters = p.evaluate("""() => {
-      registerSource({ id: 'test.row', label: 'Test row', ink: 'ch4', family: 'signal',
-                       description: 'Only for the test.', bipolar: false, value: () => window.__r });
-      window.__r = 0.8; chooseSourceFamily('signal'); updateSourceMeter();
-      const fill = () => parseFloat(el.srcList.querySelector('[data-select="test.row"] .src-meter-fill').style.width);
-      const high = fill();
-      window.__r = 0.2; updateSourceMeter();
-      const low = fill();
-      MOD_SOURCES.delete('test.row'); buildSourceGrid();
-      return { high, low };
-    }""")
-    check("each row's meter reads its own source, every frame: 0.8 is 80 per cent, then 0.2 is 20",
-          abs(meters["high"] - 80) < 0.01 and abs(meters["low"] - 20) < 0.01, str(meters))
+    # Pressed - a real press, so the drag's tap is what opens it - a card opens
+    # its editor over the tab, on that source; a tab put away by going to one.
+    p.locator('.mod-card[data-source="lfo2"]').click(); p.wait_for_timeout(200)
+    opened = p.evaluate("""() => ({ shown: !el.modEditor.hidden, title: el.srcDetailTitle.textContent, selected: selectedSource,
+      pressed: Array.from(el.modStrip.querySelectorAll('.mod-card[aria-pressed=true]')).map((c) => c.dataset.source),
+      overScreen: el.modEditor.getBoundingClientRect().left < el.traceSheet.getBoundingClientRect().right,
+      rate: !!document.getElementById('lfoRate1') })""")
+    p.locator('#benchTab-ink').click(); p.wait_for_timeout(200)
+    shut = p.evaluate("() => ({ shown: !el.modEditor.hidden, tab: benchTab, pressed: el.modStrip.querySelectorAll('.mod-card[aria-pressed=true]').length })")
+    print("    %s; then %s" % (opened, shut))
+    check("pressing a card opens its editor on that source, with its rate, the card marked, beside the screen rather than over it",
+          opened == {"shown": True, "title": "LFO 2", "selected": "lfo2", "pressed": ["lfo2"], "overScreen": False, "rate": True},
+          str(opened))
+    check("null: and going to a tab puts it away", shut == {"shown": False, "tab": "ink", "pressed": 0}, str(shut))
 
-    print("\n--- the Sources tab: the one selected ---")
+    print("\n--- the editor ---")
     detail = p.evaluate("""async () => {
       registerSource({ id: 'test.meter', label: 'Test meter', ink: 'ch4', family: 'signal',
                        description: 'Only for the test.', bipolar: true, value: () => window.__v });
       window.__v = 0.3;
-      chooseSourceFamily('signal');
-      document.querySelector('#srcList [data-select="test.meter"]').click();
+      openModCard('lfo1');
+      selectSource('test.meter');
       const read = () => { updateSourceMeter();
         const f = document.getElementById('srcMeter');
         return [parseFloat(f.style.left), parseFloat(f.style.width), document.getElementById('srcMeterValue').textContent]; };
@@ -138,22 +105,25 @@ with sync_playwright() as pw:
       window.__v = -0.5;
       const down = read();
       const out = { title: el.srcDetailTitle.textContent, desc: el.srcDetail.querySelector('.src-desc').textContent,
-                    focus: focusSource, up, down,
-                    pressed: document.querySelector('#srcList [aria-pressed=true]').dataset.select };
+                    focus: focusSource, up, down };
       addRouting('test.meter', 'view.rotate');
       // The panel follows on the next frame, the way every routing change
       // repaints, rather than inside the call.
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       out.offered = Array.from(document.getElementById('srcDetail-add').options).map((o) => o.value);
       out.rows = Array.from(el.srcDetail.querySelectorAll('.mod-edit')).map((r) => r.dataset.dest);
+      out.columns = Array.from(el.srcDetail.children).map((c) => c.className);
       state.modRoutings = []; touchRoutings();
       MOD_SOURCES.delete('test.meter');
+      closeModCard();
       return out;
     }""")
     print("    %s" % detail)
-    check("choosing a chip shows that source, and focuses it for every control",
+    check("the editor shows the source chosen, and focuses it for every control",
           detail["title"] == "Test meter" and detail["desc"] == "Only for the test."
-          and detail["focus"] == "test.meter" and detail["pressed"] == "test.meter", str(detail))
+          and detail["focus"] == "test.meter", str(detail))
+    check("in two columns: its own controls, and where it goes", detail["columns"] == ["src-own", "src-goes"],
+          str(detail["columns"]))
     check("the meter reads the source: a bipolar +0.3 grows right from the middle",
           abs(detail["up"][0] - 50) < 0.01 and abs(detail["up"][1] - 15) < 0.01 and detail["up"][2] == "+0.30",
           str(detail["up"]))
@@ -163,6 +133,20 @@ with sync_playwright() as pw:
     check("a destination it is on is a row, and is not offered again",
           detail["rows"] == ["view.rotate"] and "view.rotate" not in detail["offered"]
           and "gen.freq" in detail["offered"], str(detail))
+
+    # The control's own editor, opened from its ring, offers the three and
+    # nothing else: before F4 it listed every source a hand could route.
+    offer = p.evaluate("""async () => {
+      setBenchTab('play'); state.modRoutings = []; touchRoutings();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const ring = document.querySelector('.mod-open[data-dest="gen.freq"]');
+      ring.click();
+      await new Promise((r) => setTimeout(r, 100));
+      const ids = Array.from(document.querySelectorAll('.mod-add-one')).map((b) => b.dataset.add);
+      closeOverlay();
+      return ids;
+    }""")
+    check("a control's own editor offers the three cards' sources and no others", offer == ["lfo1", "lfo2", "env.note"], str(offer))
     cc = p.evaluate("""() => {
       selectSource('cc.21');
       const name = document.getElementById('srcDetail-name');
@@ -227,7 +211,7 @@ with sync_playwright() as pw:
           and all(r[1] == "Generator" for r in adsr[:4]), str(adsr))
     rate = search("rate")
     check("a word is matched at its start: rate is not the middle of another word",
-          all(" rate" in (" " + r[0].lower()) or r[1].startswith("Sources") for r in rate) and rate != [],
+          all(" rate" in (" " + r[0].lower()) or r[1] == "Modulation" for r in rate) and rate != [],
           str(rate))
     top = search("zoom")
     # The zoom left the strip for Scope & measure in F1, and is found there.
@@ -242,16 +226,17 @@ with sync_playwright() as pw:
     p.evaluate("() => { setMidiMode('dyad'); setScreenKeys(false); }")
     check("the index is read when the search runs: poly's Draw row is found once it exists",
           not any(r[0] == "Draw" for r in dyad) and any(r[0] == "Draw" for r in poly), str((dyad, poly)))
-    # The photocell's source, which comes and goes with its switch. (Boredom
-    # was the source here until the picture's sources stopped going with the
-    # photocell.)
-    p.evaluate("() => setPhoto(false)")
-    gone = search("photocell")
+    # The photocell's source, which came and went with its switch and was
+    # found while it was there ("a source is found only while it exists").
+    # Since F4 only the three cards' sources are searched: the photocell's is
+    # parked, so it is found neither way, and the cards' are found always.
     p.evaluate("() => setPhoto(true)")
     back = search("photocell")
-    cell = ["Photocell", "Sources › Picture"]
-    check("and a source is found only while it exists",
-          cell not in gone and cell in back and len(back) == len(gone) + 1, str((gone, back)))
+    p.evaluate("() => setPhoto(false)")
+    lfo = search("lfo")
+    check("only the cards' sources are searched: the photocell's is not, with it on, and both oscillators are",
+          not any(r[1] == "Modulation" for r in back) and [r for r in lfo if r[1] == "Modulation"] == [["LFO 1", "Modulation"], ["LFO 2", "Modulation"]],
+          str((back, lfo)))
 
     jump = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -276,7 +261,8 @@ with sync_playwright() as pw:
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       await wait(200);
-      const lfo = { tab: benchTab, selected: selectedSource };
+      const lfo = { editor: !el.modEditor.hidden, selected: selectedSource };
+      closeModCard();
       el.benchSearch.focus();
       el.benchSearch.value = 'zoom'; el.benchSearch.dispatchEvent(new Event('input'));
       el.benchSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -287,8 +273,8 @@ with sync_playwright() as pw:
     check("a row behind the dots: its tab, its section's detail open, the control focused",
           jump["attack"] == {"tab": "space", "overlay": True, "focus": "planeShear", "hit": True}, str(jump["attack"]))
     check("a setting: Settings open, the row marked", jump["device"] == {"open": True, "row": True}, str(jump["device"]))
-    check("arrow down then Enter chooses the second result: LFO 2, on the Sources tab",
-          jump["lfo"] == {"tab": "sources", "selected": "lfo2"}, str(jump["lfo"]))
+    check("arrow down then Enter chooses the second result: LFO 2, its card's editor open",
+          jump["lfo"] == {"editor": True, "selected": "lfo2"}, str(jump["lfo"]))
     check("Escape clears the box and puts the list away",
           jump["esc"] == {"value": "", "hidden": True}, str(jump["esc"]))
 

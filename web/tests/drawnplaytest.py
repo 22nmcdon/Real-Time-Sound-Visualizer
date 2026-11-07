@@ -21,8 +21,8 @@ What would go wrong, and what is checked for it:
   them nought while their drawing is not the one playing;
 - a source that reads the page's copy while the worklet draws: heard, the
   readings come from the worklet;
-- chips offered for a drawing that is not playing, or a Sources tab pushed
-  over by them.
+- a card offered for a drawing's sources: parked with the drawings since
+  F4, they are offered in no kind (until then, chips for one not playing).
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -226,25 +226,23 @@ with sync_playwright() as pw:
     check("a harmonograph played at the keyboard's pitch has its Frequency back, since then it has one",
           pitched == [False, True], str(pitched))
 
+    # A drawing's own sources were offered on the Sources tab while it played;
+    # since F4 they are parked with the drawings: still read, still routable
+    # by a setup, and offered by no card in any kind.
     grid = p.evaluate("""async () => {
-      // On the tab, under Picture, and in the strip beside the screen, which
-      // listed Swing and the turns under a waveform until the tab's rule was
-      // given to it too.
-      const chips = () => { chooseSourceFamily('picture');
-        const tab = [...el.srcList.querySelectorAll('[data-select]')].map((c) => c.dataset.select).filter((id) => id.startsWith('draw.'));
-        const strip = [...el.benchSources.querySelectorAll('[data-source]')].map((c) => c.dataset.source).filter((id) => id.startsWith('draw.'));
-        return tab.join() === strip.join() ? tab : { tab, strip }; };
+      const cards = () => [...el.modStrip.querySelectorAll('.mod-card')].map((c) => c.dataset.source);
       const out = {};
       for (const mode of ['wave', 'harmonograph', 'wireframe']) {
         el.genMode.value = mode; el.genMode.dispatchEvent(new Event('change'));
-        out[mode] = chips();
+        buildSourceChips();
+        out[mode] = cards();
       }
       return out;
     }""")
     print("    %s" % grid)
-    check("the Sources tab offers a drawing's sources, under Picture, only while it plays",
-          grid == {"wave": [], "harmonograph": ["draw.swing", "draw.pendulum"],
-                   "wireframe": ["draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"]}, str(grid))
+    three = ["lfo1", "lfo2", "env.note"]
+    check("the cards are the same three in every kind: a drawing's sources are parked, not offered",
+          grid == {"wave": three, "harmonograph": three, "wireframe": three}, str(grid))
 
     fit = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -252,8 +250,7 @@ with sync_playwright() as pw:
       // the rack, was built here first.
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
       await wait(300);
-      setView('bench'); setBenchTab('sources');
-      const over = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+      setView('bench');
       // And Play, in each of the drawn kinds, with the rows each shows.
       const play = {};
       for (const mode of ['wave', 'harmonograph', 'figure', 'wireframe']) {
@@ -264,11 +261,10 @@ with sync_playwright() as pw:
       el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change')); await wait(150);
       const lane = [MOD_SOURCES.get('draw.turnX').value(), MOD_SOURCES.get('draw.facing').value()];
       setView('scope');
-      return { over, lane, play };
+      return { lane, play };
     }""")
     print("    %s" % fit)
-    check("with a solid, the Sources tab does not scroll, and the solid is read",
-          fit["over"] <= 0 and fit["lane"] != [0, 0], str(fit))
+    check("with a solid, the solid is read", fit["lane"] != [0, 0], str(fit))
 
     # Frequency and Phase where they move something: a waveform both, a
     # harmonograph swinging on its own its phase, a figure and a solid

@@ -172,6 +172,18 @@ is below, in order. The listening notes this plan refers to follow it.
    search and *Advanced* beside the cards. Still F8's: at the plugin's
    960x600 the tabs overflow (by less than before F3b), and the header is
    unchanged until F7.
+   *The owner's answers on F4, 7 Nov:* Velocity offers Level and strike, or
+   FM (so the Tine piano keeps its bark); MIDI learn is cut; the hearing
+   family is parked like the drawings - not offered, still played by a setup
+   that routes it.
+   *F4a done 7 Nov:* LFO 1, LFO 2 and the Envelope as cards under the screen
+   (under the screen rather than under the tabs as drawn, since the screen's
+   column had height to spare and the tabs none), their editor over the
+   tabs, the Sources tab and the drawer gone, the fade in Settings, Velocity
+   in Expression as a view of its routing, and the empty ring transparent
+   until pointed at. Nothing stored changed. *F4b* is the cut: learned
+   controllers and the keyboard's remaining sources (pedal, notes, pressure
+   as a source, Level), with a v9 decode pass in the page and the core.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

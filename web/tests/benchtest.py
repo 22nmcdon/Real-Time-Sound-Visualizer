@@ -79,8 +79,8 @@ with sync_playwright() as pw:
     performed = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#performPanel')).map(groupTitle).sort()""")
     check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
           performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
-    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), presets and the beam",
-          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Presets"], str(homes["panelTitles"]))
+    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), the modulation fade (F4), presets and the beam",
+          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Modulation fade", "Presets"], str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("and Settings opens from the Bench as well as from Scope",
           homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
@@ -89,49 +89,37 @@ with sync_playwright() as pw:
     check("the device picker is there over the tone, greyed with the reason",
           dev["shown"] and dev["disabled"] and "Mic" in dev["why"], str(dev))
 
-    print("\n--- the drawer ---")
-    # The routing matrix behind one switch (P3 of making-it-one-instrument.md):
-    # shut on a first visit, and shut it takes the Sources tab, the chips
-    # beside the screen and the hollow rings with it - but nothing patched
-    # stops playing, and a control with something on it keeps its dots.
+    print("\n--- no drawer (F4) ---")
+    # The routing matrix was behind one switch from P3, Advanced, which took
+    # the Sources tab, the chips beside the screen and the hollow rings with it
+    # while shut. F4 put each of its tabs somewhere of its own and the matrix
+    # in the modulation cards, so the switch went. What it guarded still holds:
+    # what is patched plays and keeps its inks; and a control with nothing on
+    # it keeps its ring in place, unseen until the control is pointed at.
     drawer = p.evaluate("""() => {
       const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.querySelector('.tab-name').textContent);
       const shown = (node) => !!(node && node.offsetParent);
-      const empties = () => [...document.querySelectorAll('.mod-open.empty')].filter(shown).length;
       const ring = (dest) => document.querySelector('.mod-open[data-dest="' + dest + '"]');
       setBenchTab('play');
       state.modRoutings = []; addRouting('lfo1', 'gen.freq'); touchRoutings(); paintRoutings();
-      const look = () => ({ drawer: document.body.dataset.drawer, rail: rail(), chips: shown(el.benchSources),
-                            empty: empties(), attached: shown(ring('gen.freq')),
-                            heard: routingsHeard().filter((r) => r.sourceId === 'lfo1').map((r) => r.destId),
-                            label: el.benchDrawer.getAttribute('aria-expanded') });
-      const out = { first: look() };
-      el.benchDrawer.click(); paintRoutings();
-      out.open = look();
-      setBenchTab('sources');
-      el.benchDrawer.click();
-      out.back = { tab: benchTab, rail: rail() };
-      showControl('fadeMode');
-      out.shown = { tab: benchTab, drawer: document.body.dataset.drawer };
-      el.benchDrawer.click();
-      state.modRoutings = []; touchRoutings();
-      return out;
+      return { rail: rail(), switch: document.getElementById('benchDrawer'), attr: document.body.dataset.drawer || null,
+               attached: shown(ring('gen.freq')) && getComputedStyle(ring('gen.freq')).opacity === '1',
+               heard: routingsHeard().filter((r) => r.sourceId === 'lfo1').map((r) => r.destId) };
     }""")
-    print("    shut %s; open %s" % (drawer["first"], drawer["open"]))
-    # Three since F2: the Picture's knobs are along the bottom, the rest behind its Advanced.
+    p.wait_for_timeout(200)
+    # The empty ring at rest, then with the pointer on its control: a real hover.
+    rest = p.evaluate("() => getComputedStyle(document.querySelector('[data-mod-dest=\"gen.amp\"] .mod-open')).opacity")
+    p.locator('[data-mod-dest="gen.amp"]').first.hover(); p.wait_for_timeout(300)
+    pointed = p.evaluate("() => getComputedStyle(document.querySelector('[data-mod-dest=\"gen.amp\"] .mod-open')).opacity")
+    p.mouse.move(5, 5); p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
+    print("    %s; empty ring at rest %s, pointed at %s" % (drawer, rest, pointed))
     loop_tabs = ["Play", "Ink", "Space & Memory"]
-    check("a first visit opens with the drawer shut: the loop's three tabs, no chips, no hollow rings",
-          drawer["first"]["drawer"] == "shut" and drawer["first"]["rail"] == loop_tabs and not drawer["first"]["chips"]
-          and drawer["first"]["empty"] == 0 and drawer["first"]["label"] == "false", str(drawer["first"]))
-    check("and what is patched still plays and still shows: the oscillator on the frequency heard, its dots on the slider",
-          drawer["first"]["attached"] and drawer["first"]["heard"] == drawer["open"]["heard"] == ["gen.freq"], str(drawer["first"]))
-    check("opened, the drawer's one tab, Sources, comes after the loop's, with the chips and a ring on every control",
-          drawer["open"]["rail"] == loop_tabs + ["Sources"] and drawer["open"]["chips"] and drawer["open"]["empty"] > 0
-          and drawer["open"]["label"] == "true", str(drawer["open"]))
-    check("shut while on Sources, it goes back to the tab before", drawer["back"] == {"tab": "play", "rail": loop_tabs},
-          str(drawer["back"]))
-    check("and a control in it, shown from anywhere, opens it", drawer["shown"] == {"tab": "sources", "drawer": "open"},
-          str(drawer["shown"]))
+    check("no drawer: the loop's three tabs, and no Advanced switch", drawer["rail"] == loop_tabs
+          and drawer["switch"] is None and drawer["attr"] is None, str(drawer))
+    check("a patched control keeps its inks, and what is patched is heard",
+          drawer["attached"] and drawer["heard"] == ["gen.freq"], str(drawer))
+    check("an empty control's ring is unseen at rest and seen when the control is pointed at",
+          rest == "0" and pointed == "1", "%s / %s" % (rest, pointed))
     # The arpeggiator, moved to the drawer in P5: on Perform and not on Play,
     # reached from anywhere by showControl, which opens the drawer, and still
     # playing a held chord with the drawer shut, as everything patched does.
@@ -140,11 +128,9 @@ with sync_playwright() as pw:
       const shown = (node) => !!(node && node.offsetParent);
       const out = {};
       setBenchTab('play'); out.onPlay = shown(el.arpMode);
-      setDrawer(false);
-      showControl('arpMode'); out.shown = { menu: !el.performPanel.hidden, drawer: document.body.dataset.drawer, seen: shown(el.arpMode) };
+      showControl('arpMode'); out.shown = { menu: !el.performPanel.hidden, seen: shown(el.arpMode) };
       el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
       setPerformOpen(false);
-      out.shut = document.body.dataset.drawer;
       for (const n of [48, 52, 55]) midiNoteOn(n, 100);
       out.running = arpActive();
       for (const n of [48, 52, 55]) midiNoteOff(n);
@@ -156,10 +142,10 @@ with sync_playwright() as pw:
     }""")
     print("    arpeggiator: %s" % arp)
     # In the header's Perform menu since F3, the drawer's tab before that.
-    check("the arpeggiator is in the header's Perform menu, not on Play, and showing it opens that menu, not the drawer",
-          arp["onPlay"] is False and arp["shown"] == {"menu": True, "drawer": "shut", "seen": True}, str(arp))
+    check("the arpeggiator is in the header's Perform menu, not on Play, and showing it opens that menu",
+          arp["onPlay"] is False and arp["shown"] == {"menu": True, "seen": True}, str(arp))
     check("and with the menu shut it still plays a held chord, where switched off it does not",
-          arp["shut"] == "shut" and arp["running"] is True and arp["offRunning"] is False, str(arp))
+          arp["running"] is True and arp["offRunning"] is False, str(arp))
 
     # The drawings and the second generator, in the drawer since P5: shut, the
     # Kind menu offers the waveform alone and From your input alone; open, all
@@ -172,45 +158,37 @@ with sync_playwright() as pw:
     drawings = p.evaluate("""() => {
       const offered = (sel) => Array.from(sel.options).filter((o) => !o.hidden && !o.disabled).map((o) => o.value);
       const out = {};
-      if (benchDrawer) el.benchDrawer.click();
       out.shut = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
-      el.benchDrawer.click();
-      out.open = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
-      el.benchDrawer.click();
       // The old library's harmonograph and plain tone, from before P8g: the
       // new bank has no drawing, and this asks what the drawer does with one
       // loaded from a setup while it is shut, not what is in the bank.
       loadCorpus('Harmonograph');
-      out.loaded = { drawer: document.body.dataset.drawer, mode: genSettings().mode, menu: el.genMode.value,
+      out.loaded = { mode: genSettings().mode, menu: el.genMode.value,
                      kinds: offered(el.genMode), rows: !el.harmoRows.hidden };
       loadCorpus('Harmonic tone');
       out.after = offered(el.genMode);
       const search = (q) => { el.benchSearch.value = q; showSearch(); const first = searchShown[0];
-                              chooseSearch(first); const opened = benchDrawer, menu = !el.performPanel.hidden;
-                              if (benchDrawer) el.benchDrawer.click(); setPerformOpen(false);
-                              return { found: first ? first.label : null, opened, menu }; };
+                              chooseSearch(first); const menu = !el.performPanel.hidden;
+                              setPerformOpen(false); closeModCard();
+                              return { found: first ? first.label : null, menu }; };
       out.searchDrawing = search('harmonograph');
       out.searchAttack = search('attack');
       out.searchTempo = search('tempo');
       return out;
     }""")
     print("    drawings: %s" % drawings)
-    check("with the drawer shut the generator offers the waveform alone, and From your input alone",
-          drawings["shut"] == {"kinds": ["wave"], "from": ["live"]}, str(drawings["shut"]))
     # Out of reach since 7 Nov, the owner's call: neither on the face nor cut,
-    # to see whether they are missed. Until then the drawer offered them; the
-    # null is that, which the open drawer must no longer do.
-    check("and open it offers them no more: the drawings and the second generator are out of reach",
-          drawings["open"] == {"kinds": ["wave"], "from": ["live"]}
-          and drawings["open"] != {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
-          str(drawings["open"]))
-    check("a drawing loaded by a preset with the drawer shut stays chosen, offered and drawn, and goes when it is left",
-          drawings["loaded"] == {"drawer": "shut", "mode": "harmonograph", "menu": "harmonograph",
+    # to see whether they are missed. Until then the open drawer offered them;
+    # the null is that.
+    check("the generator offers the waveform alone, and From your input alone: the drawings and the second generator are out of reach",
+          drawings["shut"] == {"kinds": ["wave"], "from": ["live"]}
+          and drawings["shut"] != {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
+          str(drawings["shut"]))
+    check("a drawing loaded by a preset stays chosen, offered and drawn, and goes when it is left",
+          drawings["loaded"] == {"mode": "harmonograph", "menu": "harmonograph",
                                  "kinds": ["wave", "harmonograph"], "rows": True} and drawings["after"] == ["wave"],
           str(drawings["loaded"]) + " " + str(drawings["after"]))
-    check("and a search for a drawing no longer opens the drawer, which would offer nothing, nor does the attack",
-          drawings["searchDrawing"]["opened"] is False and drawings["searchAttack"]["opened"] is False
-          and drawings["searchAttack"]["found"] is not None, str(drawings))
+    check("and a search finds the attack", drawings["searchAttack"]["found"] is not None, str(drawings))
     check("and a search for the tempo, in the header's Perform menu since F3, opens that",
           drawings["searchTempo"]["menu"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
 
@@ -227,8 +205,7 @@ with sync_playwright() as pw:
           clock == {"clockFrom": "perform", "bar": "perform", "at": "perform", "tempo": "perform", "tapBesideTempo": True},
           str(clock))
     hidden = p.evaluate("""() => {
-      el.benchDrawer.click(); setBenchTab('sources');
-      const chips = [...el.benchSources.querySelectorAll('.mod-chip')].map((c) => c.dataset.source);
+      const chips = [...el.modStrip.querySelectorAll('.mod-card')].map((c) => c.dataset.source);
       el.benchSearch.value = 'glow'; el.benchSearch.dispatchEvent(new Event('input'));
       const found = [...el.benchResults.querySelectorAll('button')].map((b) => b.textContent);
       el.benchSearch.value = ''; el.benchSearch.dispatchEvent(new Event('input'));
@@ -241,15 +218,15 @@ with sync_playwright() as pw:
       const shown = () => !!el.photoButton.offsetParent;
       const out = {};
       setPictureOpen(true);
-      setDrawer(false); setPhoto(false); out.shutOff = shown();
+      setPhoto(false); out.shutOff = shown();
       setPhoto(true); out.shutOn = shown();
-      setPhoto(false); setDrawer(true); out.openOff = shown();
+      setPhoto(false); out.openOff = shown();
       setPictureOpen(false); out.closed = shown();
       return out;
     }""")
-    check("the Photocell's switch is in the Picture's Advanced whatever the drawer and the photocell, and out of sight with it shut",
+    check("the Photocell's switch is in the Picture's Advanced whatever the photocell, and out of sight with it shut",
           cell == {"shutOff": True, "shutOn": True, "openOff": True, "closed": False}, str(cell))
-    check("the stage's reads are not offered by hand: no chip, and not found by a search",
+    check("the stage's reads are not offered by hand: no card, and not found by a search",
           hidden["chips"] == [] and hidden["lfo"] and not any("Glow" in f for f in hidden["found"]), str(hidden))
 
     print("\n--- the tabs ---")
@@ -280,14 +257,15 @@ with sync_playwright() as pw:
     # plane and the delay to Effects; the five of the loop and the drawer's
     # one, last, since P3; seven since P5 put the arpeggiator on Perform; and
     # since P8 the loop's four in its own order, the drawer's four after.
-    check("three tabs along the loop and the drawer's Sources with it open, and a tab list",
-          tabs["titles"] == ["Play", "Ink", "Space & Memory", "Sources"]
+    # And three since F4 took the drawer's Sources.
+    check("three tabs along the loop, and a tab list",
+          tabs["titles"] == ["Play", "Ink", "Space & Memory"]
           and tabs["role"] == "tablist", str(tabs["titles"]))
     check("each tab shows its own sections and fits", tabs["wrong"] == [], str(tabs["wrong"]))
     missing = [t for t in tabs["benchTitles"] if tabs["seen"].get(t) != 1]
     check("every Bench section is on exactly one tab", missing == [], str(missing) + " " + str(tabs["seen"]))
-    check("Modulation is gone: the oscillators are sources, on the Sources tab",
-          "Modulation" not in tabs["seen"] and tabs["seen"].get("Sources") == 1, str(tabs["seen"]))
+    check("no tab holds modulation: the oscillators are cards under the screen, and the Sources tab is gone",
+          "Modulation" not in tabs["seen"] and "Sources" not in tabs["seen"], str(tabs["seen"]))
 
     print("\n--- the cards (F3) ---")
     # Each tab a card with one line of what its stage is doing now. The values
@@ -461,15 +439,16 @@ with sync_playwright() as pw:
     # parameter. It is wrong now: an LFO on the filter cutoff or the rotation
     # is the same patch whatever the signal came from. What withdraws on a
     # live source is the generator half of the DESTINATION list, per entry.
-    # Read from the Sources tab's Add menu now, which is where a destination
-    # is chosen since the one-destination dropdown went.
+    # Read from the card's editor's Add menu now, which is where a
+    # destination is chosen since the one-destination dropdown went.
     mod = p.evaluate("""() => {
-      setBenchTab('sources'); selectSource('lfo1');
+      openModCard('lfo1');
       const options = () => Array.from(document.getElementById('srcDetail-add').options).slice(1);
       showSource('mic');                       // just the panel, no stream
+      const card = el.modStrip.querySelector('[data-source="lfo1"]');
       const live = {
-        off: el.srcGroup.dataset.off,
-        hidden: el.srcGroup.hidden,
+        off: card ? card.dataset.off : 'gone',
+        hidden: card ? card.hidden || !card.offsetParent : true,
         rate: !!document.getElementById('lfoRate0'),
         genDead: options().filter((o) => o.value.startsWith('gen.')).every((o) => o.disabled),
         viewAlive: options().filter((o) => o.value.startsWith('view.')).every((o) => !o.disabled),
@@ -479,6 +458,7 @@ with sync_playwright() as pw:
       const tone = {
         genAlive: options().filter((o) => o.value.startsWith('gen.')).every((o) => !o.disabled),
       };
+      closeModCard();
       return { live, tone };
     }""")
     check("the oscillators stay on a live source",
@@ -491,25 +471,28 @@ with sync_playwright() as pw:
           str(mod["tone"]))
 
     print("\n--- the view is remembered ---")
+    # Ink rather than Play, which is where a forgotten tab lands.
+    p.evaluate("() => setBenchTab('ink')")
     p.reload(); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab, drawer: document.body.dataset.drawer })")
-    check("the bench, its tab and the drawer open survive a reload",
-          kept == {"view": "bench", "tab": "sources", "drawer": "open"}, str(kept))
+    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab })")
+    check("the bench and its tab survive a reload",
+          kept == {"view": "bench", "tab": "ink"}, str(kept))
     check("no errors after reload", not bad, "; ".join(bad[:3]))
     # A tab remembered from before P8 lands where its sections went, and a
     # name that never was a tab lands on Play - the null, which shows the
     # reading is the page's choice and not whatever was stored.
     landed = {}
-    for stored in ("shape", "effects", "picture", "nonsense"):
+    for stored in ("shape", "effects", "picture", "sources", "nonsense"):
         p.evaluate("(t) => window.localStorage.setItem('scope.benchTab', t)", stored)
         p.reload(); p.wait_for_timeout(700)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         landed[stored] = p.evaluate("() => benchTab")
     check("a tab remembered from before P8 lands where its sections went: Shape on Ink, Effects on Space & Memory",
-          landed["shape"] == "ink" and landed["effects"] == "space" and landed["picture"] == "play", str(landed))
+          landed["shape"] == "ink" and landed["effects"] == "space" and landed["picture"] == "play"
+          and landed["sources"] == "play", str(landed))
     check("null: a stored name that was never a tab lands on Play", landed["nonsense"] == "play", str(landed))
-    p.evaluate("() => setBenchTab('sources')")
+    p.evaluate("() => setBenchTab('space')")
     p.screenshot(path=f"{SHOTS}/bench-wide.png")
 
     print("\n--- wide ---")

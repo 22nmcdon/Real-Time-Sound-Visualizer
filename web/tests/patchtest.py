@@ -31,11 +31,8 @@ ROUTES = "() => state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' +
 def open_bench(page):
     page.goto(f"file://{ART}/scope.html"); page.wait_for_timeout(700)
     if page.locator("#helpClose").is_visible(): page.locator("#helpClose").click()
-    # The routing matrix is in the drawer since P3, shut on a first visit and
-    # with it the hollow rings this suite presses; benchtest.py holds the
-    # drawer itself.
-    page.evaluate("() => setDrawer(true)")
-    page.wait_for_timeout(150)
+    # The drawer that hid the hollow rings went in F4; the rings are there,
+    # seen when the control is pointed at, and a press points at it first.
     page.evaluate("""() => {
       setView('bench'); state.modRoutings = []; focusSource = null; paintRoutings();
     }""")
@@ -93,9 +90,12 @@ with sync_playwright() as pw:
     # below would otherwise call a missing row.
     # Every source a hand can patch: the picture stage's three reads are
     # registered and routed by the stage alone (byHand), so never offered.
-    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true && byHand(s)).length")
-    check("nothing on it yet, so every source is offered",
-          len(opened["add"]) == every, "%d offered of %d registered"
+    # And only the modulation cards' since F4: the oscillators and the
+    # Envelope, where it was every source a hand could patch, twenty-odd.
+    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true && byHand(s) && offered(s)).length")
+    check("nothing on it yet, so every card's source is offered, and only those three",
+          every == 3 and
+          len(opened["add"]) == every, "%d offered of %d"
           % (len(opened["add"]), every))
 
     p.locator('.mod-add-one[data-add="lfo1"]').click(); p.wait_for_timeout(300)
@@ -133,7 +133,7 @@ with sync_playwright() as pw:
 
     print("\n--- several sources, same panel ---")
     p.locator('.mod-add-one[data-add="lfo2"]').click(); p.wait_for_timeout(250)
-    p.locator('.mod-add-one[data-add="env.live"]').click(); p.wait_for_timeout(250)
+    p.locator('.mod-add-one[data-add="env.note"]').click(); p.wait_for_timeout(250)
     # Whatever else is registered, so "nothing left to offer" stays a
     # statement about the panel rather than about how many sources exist.
     # Added in the page rather than by pointer, so that an overlay grown off the
@@ -214,13 +214,13 @@ with sync_playwright() as pw:
           "%s / %s / %s / %s" % (shape["none"], shape["one"], shape["two"], shape["three"]))
     check("and the button counts them", shape["pips"] == 3, str(shape["pips"]))
 
-    print("\n--- dragging a chip is the quick way ---")
-    # From the chips beside the screen onto a control on another tab than
-    # the one the patch began on: the chips stay in the side column on every
-    # tab so that this works wherever the control is.
+    print("\n--- dragging a card is the quick way ---")
+    # From the modulation cards under the screen onto a control on another tab
+    # than the one the patch began on: the cards stay in the side column on
+    # every tab so that this works wherever the control is.
     p.evaluate("() => { state.modRoutings = []; setBenchTab('space'); paintRoutings(); }")
     p.wait_for_timeout(350)
-    chip = p.locator('.mod-chip[data-source="lfo1"]')
+    chip = p.locator('.mod-card[data-source="lfo1"]')
     target = p.locator('[data-mod-dest="view.rotate"]')
     cb, tb = chip.bounding_box(), target.bounding_box()
     p.mouse.move(cb["x"] + cb["width"] / 2, cb["y"] + cb["height"] / 2)
@@ -228,7 +228,7 @@ with sync_playwright() as pw:
     p.mouse.move(tb["x"] + 40, tb["y"] + tb["height"] / 2, steps=12)
     highlighted = p.evaluate("() => document.querySelectorAll('.mod-target').length")
     p.mouse.up(); p.wait_for_timeout(300)
-    check("the control lights up under the chip", highlighted == 1, str(highlighted))
+    check("the control lights up under the card", highlighted == 1, str(highlighted))
     check("and the drop makes a routing", p.evaluate(ROUTES) == ["lfo1>view.rotate@0.35"],
           str(p.evaluate(ROUTES)))
 

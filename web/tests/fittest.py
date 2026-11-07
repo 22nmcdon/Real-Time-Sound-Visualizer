@@ -13,10 +13,11 @@ So, against the ways it fails:
 
 - a tab over in some combination: every tab, on the tone and on the band
   split, with and without the keyboard's sources and the Photocell's, for each
-  of the four kinds of generator - the Sources tab with each family on show,
-  since the family decides its height - and the worst of them again with
-  thirty controllers learned, where the family's list has to scroll inside
-  itself rather than put the tab over;
+  of the four kinds of generator. (Until F4 the Sources tab was swept with
+  each family on show, and thirty controllers learned; the tab went with F4
+  and the modulation cards, whose editor is held below instead.)
+- the modulation editor over in the worst case it has: an oscillator on a
+  dozen controls, each a row of Where it goes;
 - a dealer that measures a section at a width it will not have. It stacks
   every section in the first column to measure them, and with the empty
   columns hidden that column was the whole Bench wide, so everything that
@@ -50,10 +51,7 @@ SWEEP = """async ([bands]) => {
   let planeRows = null;
   const measure = (label) => {
     const views = [];
-    for (const [tab] of BENCH_TABS) {
-      if (tab !== 'sources') { views.push([tab, null]); continue; }
-      for (const [family] of sourceFamilies()) views.push([tab, family]);
-    }
+    for (const [tab] of BENCH_TABS) views.push([tab, null]);
     let last = null;
     for (const [tab, family] of views) {
       setBenchTab(tab);
@@ -69,7 +67,6 @@ SWEEP = """async ([bands]) => {
         }
       }
       last = tab;
-      if (family) chooseSourceFamily(family);
       const by = el.benchBody.scrollHeight - el.benchBody.clientHeight;
       const name = family ? tab + ':' + family : tab;
       cases.push(label + '/' + name);
@@ -101,16 +98,19 @@ SWEEP = """async ([bands]) => {
     el.planeLayerBoth.click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
   }
-  // The worst of them with thirty controllers learned - three Nord Electros'
-  // worth of drawbars and swells - which grow the Controllers family by a row
-  // each. Past a dozen rows the list scrolls inside itself; the tab must not.
-  for (let n = 16; n < 46; n++) midiControl(n, 64);
-  buildSourceGrid();
-  measure((bands ? 'bands' : 'tone') + '+keys+photo+wireframe+30cc');
-  setBenchTab('sources'); chooseSourceFamily('controllers');
-  const list = { rows: el.srcList.querySelectorAll('.src-row').length,
-                 scrolls: el.srcList.scrollHeight > el.srcList.clientHeight + 1 };
-  return { over, cases: cases.length, mismeasured, list, planeRows, lanes };
+  /* The modulation editor (F4), which must not scroll either: LFO 1 on a
+     dozen controls, a row each under Where it goes - the column that grows. */
+  const dests = Array.from(MOD_DESTS.values()).filter((d) => routingAllowed(MOD_SOURCES.get('lfo1'), d)).slice(0, 12);
+  for (const d of dests) addRouting('lfo1', d.id);
+  openModCard('lfo1'); await wait(150);
+  // The panel cannot be over since the list scrolls inside itself past a
+  // dozen; so the list is held too, which a dozen must fit without scrolling.
+  const goes = el.srcDetail.querySelector('.src-goes');
+  const editor = { rows: el.srcDetail.querySelectorAll('.mod-edit').length,
+                   over: el.modEditor.scrollHeight - el.modEditor.clientHeight,
+                   list: goes.scrollHeight - goes.clientHeight };
+  closeModCard(); state.modRoutings = []; touchRoutings();
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes };
 }"""
 
 with sync_playwright() as pw:
@@ -131,14 +131,14 @@ with sync_playwright() as pw:
     for name, r in results.items():
         print("\n--- %s: %d tab-and-state cases ---" % (name, r["cases"]))
         check("on the %s, no tab scrolls in any of them" % ("band split" if name == "bands" else "tone"),
-              # Four tabs since F3 (Inputs went to Settings and Perform to the header),
-              # so the sweep is about 180 cases where it was over 200.
-              r["over"] == [] and r["cases"] >= 160 and r["lanes"] == (4 if name == "bands" else 2),
+              # Three tabs since F4 took the Sources tab and its seven families,
+              # so the sweep is about fifty cases where it was 180.
+              r["over"] == [] and r["cases"] >= 48 and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
         check("and every section is dealt at the height it was measured at",
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
-        check("thirty controllers are thirty rows, and the list scrolls inside itself rather than the tab",
-              r["list"] == {"rows": 30, "scrolls": True}, str(r["list"]))
+        check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll",
+              r["editor"]["rows"] == 12 and r["editor"]["over"] <= 0 and r["editor"]["list"] <= 0, str(r["editor"]))
         if name == "tone":
             check("the layered case had the Plane section's Layers, Turn and Radius rows and Delay and chorus's Layers row all showing",
                   r["planeRows"] == [False, False, False, False], str(r["planeRows"]))

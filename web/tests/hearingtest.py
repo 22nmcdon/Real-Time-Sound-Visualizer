@@ -94,12 +94,14 @@ with sync_playwright() as pw:
     print("\n--- registered ---")
     reg = p.evaluate("""() => {
       const ids = [...MOD_SOURCES.values()].filter((s) => s.family === 'hearing').map((s) => s.id);
-      setView('bench'); setBenchTab('sources'); chooseSourceFamily('hearing');
-      return { ids, chips: el.srcList.dataset.family === 'hearing' ? el.srcList.querySelectorAll('.src-row').length : 0 };
+      setView('bench'); buildSourceChips();
+      return { ids, cards: [...el.modStrip.querySelectorAll('.mod-card')].map((c) => c.dataset.source).filter((id) => id.startsWith('hear.')) };
     }""")
-    # Eight values and one event, the onset, which drawingtest.py holds.
-    check("nine sources that hear, eight values and the onset, in a family of their own on the Sources tab",
-          len(reg["ids"]) == 9 and reg["chips"] == 9 and reg["ids"][-1] == "hear.onset", str(reg))
+    # Eight values and one event, the onset, which drawingtest.py holds. They
+    # had a family of their own on the Sources tab; since F4 they are parked -
+    # registered and heard when a setup routes them, but no card offers them.
+    check("nine sources that hear, eight values and the onset, registered and parked: no card offers one",
+          len(reg["ids"]) == 9 and reg["cards"] == [] and reg["ids"][-1] == "hear.onset", str(reg))
 
     p.evaluate("() => __mic()")
     print("\n--- pitch ---")

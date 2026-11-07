@@ -5030,3 +5030,26 @@ lines first read the FM knob's printed reading, which only an input event
 writes, so FM set from code - the host's knob, a setup - showed "FM 0.0".
 The check in `benchtest.py` writes values with no event, which is how it
 caught it; a check that dispatched `input` would have passed.
+
+**A tab that is not there is a silent no-op, so taking one away hides its
+callers.** `setBenchTab` returns without a word for a name it does not know.
+When F4 took the Sources tab away, three suites (`lanetest`, `modtest`,
+`clocktest`) went on calling `setBenchTab('sources')` and passing, because
+the source's panel is built whether or not it is on show and they read it
+there. Nothing they asserted was wrong, but none of them was any longer
+doing what a hand does. After removing a tab, a menu or a view, grep the
+tests for its name as well as the page.
+
+**A list that scrolls inside itself makes "the panel does not scroll"
+unfalsifiable.** The modulation editor's destination list scrolls past about
+a dozen, which means the panel around it can never be over, so `fittest.py`'s
+check on the panel would pass whatever the rows did. It holds the list too:
+a dozen destinations must fit in it without scrolling. A mutation that let
+the names wrap again failed only that half.
+
+**Playwright counts an element at opacity nought as visible.** An unpatched
+control's hollow ring is transparent at rest since F4, rather than gone, so
+it keeps its place. A test that clicks it passes whether or not anyone could
+see it, so `benchtest.py` reads its computed opacity at rest and again under
+a real hover, and requires the two to differ.
+

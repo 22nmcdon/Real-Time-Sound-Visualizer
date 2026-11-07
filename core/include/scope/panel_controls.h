@@ -134,6 +134,9 @@ inline constexpr SelectSpec kSelects[] = {
   { "midiBendRange", "1" "\x1f" "2" "\x1f" "3" "\x1f" "5" "\x1f" "7" "\x1f" "12" "\x1f" "24", "2" },
   { "midiWheelTo", "vibrato" "\x1f" "picture" "\x1f" "scan" "\x1f" "off", "vibrato" },
   { "midiPressureTo", "vibrato" "\x1f" "picture" "\x1f" "scan" "\x1f" "off", "off" },
+  // Expression's Velocity (F4): a view of the Key source's routing onto FM,
+  // which reaches the core as that routing; listed because the page has it.
+  { "midiVelocityTo", "strike" "\x1f" "fm", "strike" },
   { "genMode", "wave" "\x1f" "harmonograph" "\x1f" "figure" "\x1f" "wireframe", "wave" },
   { "shape", "harmonic" "\x1f" "sine" "\x1f" "square" "\x1f" "pulse" "\x1f" "triangle" "\x1f" "ramp" "\x1f" "drawbars" "\x1f" "morph" "\x1f" "drawn" "\x1f" "wavetable" "\x1f" "noise" "\x1f" "pink" "\x1f" "brown" "\x1f" "stepped", "harmonic" },
   { "interval", "0" "\x1f" "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8" "\x1f" "9" "\x1f" "10" "\x1f" "11" "\x1f" "12", "0" },

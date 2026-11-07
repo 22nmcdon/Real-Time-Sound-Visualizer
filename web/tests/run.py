@@ -57,7 +57,7 @@ SUITES = [
     ("layer", [sys.executable, "layertest.py"], "parallel", "a split or a layer: two sets of voices from one keyboard"),
     ("harmony", [sys.executable, "harmonytest.py"], "parallel", "harmony as geometry: a chord built a note at a time draws the struck chord's figure, and the readout names the outline and how fast it turns"),
     ("layerpicture", [sys.executable, "layerpicturetest.py"], "serial - per-layer motion over real frames; flaked under load (P7b core)", "each layer's picture, and whose sound it moves: own, the other's or both, averaged, a crossed pair held"),
-    ("layout", [sys.executable, "layouttest.py"], "parallel", "the Sources tab, reaching any control, and search"),
+    ("layout", [sys.executable, "layouttest.py"], "parallel", "the modulation cards and their editor, reaching any control, and search"),
     ("pedal", [sys.executable, "pedaltest.py"], "parallel", "the sustain pedal: holding notes, and a source"),
     ("drawbar", [sys.executable, "drawbartest.py"], "parallel", "the saw on the menu, and the drawbars: footages, Nyquist, the level law, layers"),
     ("morph", [sys.executable, "morphtest.py"], "parallel", "the morph: its stations, its crossfade, the fundamental it keeps, layers, setups"),

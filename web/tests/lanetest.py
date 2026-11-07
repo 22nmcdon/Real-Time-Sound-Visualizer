@@ -323,12 +323,13 @@ with sync_playwright() as pw:
     p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
     section(p, "Display")
 
-    # The Sources tab, where the oscillator's one-destination menu was. That
-    # menu had to stand down, disabled, once a source went to two places;
-    # a list of destinations has no such case - two are two rows.
-    print("\n--- and the Sources tab agrees with the controls ---")
+    # The oscillator's card's editor (the Sources tab until F4), where its
+    # one-destination menu was. That menu had to stand down, disabled, once a
+    # source went to two places; a list of destinations has no such case -
+    # two are two rows.
+    print("\n--- and the card's editor agrees with the controls ---")
     p.evaluate("""() => {
-      setBenchTab('sources'); selectSource('lfo1');
+      openModCard('lfo1');
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.42 }];
       touchRoutings();
     }"""); p.wait_for_timeout(350)
