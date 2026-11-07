@@ -675,7 +675,6 @@ class Generator {
     else if (field == "planeScaleY") p.planeScaleY = v;
     else if (field == "planeShear") p.planeShear = v;
     else if (field == "planeTwist") p.planeTwist = v;
-    else if (field == "planeKaleido") p.planeKaleido = v;
     else if (field == "planeSnap") p.planeSnap = v;
     else return false;
     return true;

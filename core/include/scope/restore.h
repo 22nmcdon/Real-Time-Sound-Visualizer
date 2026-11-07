@@ -287,7 +287,7 @@ struct Brain {
   } view;
   // The plane's shape in the panel's terms, which layer B can have its own of.
   struct PlaneShape {
-    double mirror = 0, limit = 0, radius = 0.4, twist = 0, kaleido = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
+    double mirror = 0, limit = 0, radius = 0.4, twist = 0, snap = 0, scaleX = 1, scaleY = 1, shear = 0;
   };
   struct PlaneState : PlaneShape { double os = 2; } plane;
   // Layer B's own (the page's `planeB`): kept a copy of A's while it has none,
@@ -658,7 +658,6 @@ inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
   b.panel.setSelect("planeLimit", n(p.limit));
   b.panel.setRangeNumber("planeRadius", pct(p.radius));
   b.panel.setRangeNumber("planeTwist", pct(p.twist));
-  b.panel.setSelect("planeKaleido", n(p.kaleido));
   b.panel.setSelect("planeSnap", n(p.snap));
   b.panel.setRangeNumber("planeScaleX", pct(p.scaleX));
   b.panel.setRangeNumber("planeScaleY", pct(p.scaleY));
@@ -706,7 +705,7 @@ inline void syncPlaneB(Brain& b, Generator& gen) {
   const Brain::PlaneBState& p = b.planeB;
   gen.set("planeOwn", p.own ? 1 : 0, 1);
   gen.set("planeMirror", p.mirror, 1); gen.set("planeLimit", p.limit, 1); gen.set("planeRadius", p.radius, 1);
-  gen.set("planeTwist", p.twist * kTwoPi, 1); gen.set("planeKaleido", p.kaleido, 1); gen.set("planeSnap", p.snap, 1);
+  gen.set("planeTwist", p.twist * kTwoPi, 1); gen.set("planeSnap", p.snap, 1);
   gen.set("planeScaleX", p.scaleX, 1); gen.set("planeScaleY", p.scaleY, 1); gen.set("planeShear", p.shear, 1);
   gen.set("planeTurn", p.turn * kTwoPi, 1);
 }
@@ -714,7 +713,7 @@ inline void syncPlane(Brain& b, Generator& gen) {
   syncPlaneB(b, gen);
   const Brain::PlaneState& p = b.plane;
   gen.set("planeMirror", p.mirror); gen.set("planeLimit", p.limit); gen.set("planeRadius", p.radius);
-  gen.set("planeOS", p.os); gen.set("planeTwist", p.twist * kTwoPi); gen.set("planeKaleido", p.kaleido);
+  gen.set("planeOS", p.os); gen.set("planeTwist", p.twist * kTwoPi);
   gen.set("planeSnap", p.snap); gen.set("planeScaleX", p.scaleX); gen.set("planeScaleY", p.scaleY);
   gen.set("planeShear", p.shear);
 }
@@ -1363,8 +1362,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     p.radius = within("planeRadius", 2, 100, 40) / 100;
     p.os = among("planeOS", { 1, 2, 4 }, 2);
     p.twist = within("planeTwist", -100, 100, 0) / 100;
-    p.kaleido = among("planeKaleido", { 0, 2, 3, 4, 5, 6, 8 }, 0);
-    p.snap = among("planeSnap", { 0, 1, 2, 3, 4, 5, 6 }, 0);
+    p.snap = among("planeSnap", { 0, 5, 6 }, 0);
     p.scaleX = within("planeScaleX", 0, 200, 100) / 100;
     p.scaleY = within("planeScaleY", 0, 200, 100) / 100;
     p.shear = within("planeShear", -100, 100, 0) / 100;
@@ -1389,7 +1387,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       q.limit = menu("bLimit", { 0, 1, 2 }, p.limit);
       q.radius = slide("bRadius", 2, 100, p.radius);
       q.twist = slide("bTwist", -100, 100, p.twist);
-      q.kaleido = menu("bKaleido", { 0, 2, 3, 4, 5, 6, 8 }, p.kaleido);
       q.snap = menu("bSnap", { 0, 1, 2, 3, 4, 5, 6 }, p.snap);
       q.scaleX = slide("bScaleX", 0, 200, p.scaleX);
       q.scaleY = slide("bScaleY", 0, 200, p.scaleY);
@@ -1397,7 +1394,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       q.turn = slide("bTurn", -50, 50, 0);
     }
     setA("planeMirror", p.mirror); setA("planeLimit", p.limit); setA("planeRadius", p.radius); setA("planeOS", p.os);
-    setA("planeTwist", p.twist * kTwoPi); setA("planeKaleido", p.kaleido); setA("planeSnap", p.snap);
+    setA("planeTwist", p.twist * kTwoPi); setA("planeSnap", p.snap);
     setA("planeScaleX", p.scaleX); setA("planeScaleY", p.scaleY); setA("planeShear", p.shear);
     syncPlaneB(brain, gen);
     syncPlanePanel(brain, keys);
@@ -1748,9 +1745,9 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     }
   }
   // The plane and the echo.
-  else if (id == "planeMirror" || id == "planeLimit" || id == "planeKaleido" || id == "planeSnap") {
+  else if (id == "planeMirror" || id == "planeLimit" || id == "planeSnap") {
     Brain::PlaneShape& p = planeTarget(b, keys);
-    (id == "planeMirror" ? p.mirror : id == "planeLimit" ? p.limit : id == "planeKaleido" ? p.kaleido : p.snap) = number;
+    (id == "planeMirror" ? p.mirror : id == "planeLimit" ? p.limit : p.snap) = number;
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
   else if (id == "delaySync") { echoTarget(b, keys).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }

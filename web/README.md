@@ -80,7 +80,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
 | `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
-| `planetest.py` | the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
+| `planetest.py` | the plane as an effect: the matrix, mirror, twist, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
 | `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
 | `scantest.py` | Scan (P7a): a reading's tables, their band-limit and their level, darkness held, the off-centre path against P2's centred one on a rose, softness, the path following; the tick to the sample at 44.1, 48 and 22.05 kHz and the crossfade across it; nought to the bit, the note's pitch, the fifth of the shape kept, the hold, the bend reaching what is read, layer B; the controls, setup codes and Persistence in seconds, the freeze, the running-away hold, each layer's own picture; and the first minute, a turning fifth moving and the same held still |
@@ -4948,3 +4948,14 @@ still takes the estimate as it comes; a steadier estimate is the real answer.
 The quarter turn had the other half of the same lesson: state kept only
 while it is in use (the voice's ring, written only while turned) is stale the
 next time it is needed, and the pop came exactly then.
+
+**A fixture for "the effect changed it" has to be an effect that changes it
+a lot.** When the kaleidoscope was cut (7 November), its place in the checks
+that only ask whether the plane touched a signal - the instrument's input
+drawn through the plane, the shell test's reopened state - went first to the
+snap at 6 bits, the nearest effect left, and parity went red: 6 bits moves a
+signal by at most half of 1/32, about 0.016, under the check's 0.1. Those
+checks now use the mirror on both axes, which folds half of every cycle. A
+removal is a good moment to look at what each user of the removed thing was
+using it *for*: here it was "something large and plainly non-linear", which
+the snap never was.

@@ -1,4 +1,4 @@
-"""The X-Y plane as an effect: its nine operations, and the oversampling (S2).
+"""The X-Y plane as an effect: its eight operations, and the oversampling (S2).
 
 What would go wrong, and what is checked for it:
 
@@ -7,8 +7,10 @@ What would go wrong, and what is checked for it:
   r tanh(|v| / r) for its length and exactly its old direction. The fixture
   is a 3:2 figure - never a circle, whose length and direction statistics a
   broken clip could leave alone. The same figure, point by point, for the
-  matrix, the twist (a fixed angle misses by 0.4), the kaleidoscope, the fold
-  and the snap, and all five non-linear ones together in their stated order;
+  matrix, the twist (a fixed angle misses by 0.4), the fold and the snap,
+  and all four non-linear ones together in their stated order (the
+  kaleidoscope was cut on 7 November: the owner found it only ever made a
+  terrible sound);
 - the sound: a mirrored sine is an octave up with no odd harmonics;
 - aliasing: what the operations put above Nyquist folded back. Measured at
   1x, 2x and 4x and pinned, against the floor the page already lives with,
@@ -159,25 +161,6 @@ with sync_playwright() as pw:
           err < 1e-5 and miss > 0.2, "%.2e, fixed-angle miss %.2f" % (err, miss))
     check("and keeps every length", np.abs(np.hypot(xt, yt) - m0).max() < 1e-5, "")
 
-    for n in (3, 6):
-        kal = run(dict(fig, planeKaleido=n))
-        xk, yk = np.asarray(kal["L"]), np.asarray(kal["R"])
-        wedge = 2 * np.pi / n
-        ang = np.mod(np.arctan2(y0, x0), wedge)
-        ang = np.where(ang > wedge / 2, wedge - ang, ang)
-        # The figure reaches 1.08, and turned onto the X axis that is past
-        # full scale. Before P4 the output was clamped at 1 and this
-        # expected it; now nothing is clamped, the screen clips where it
-        # draws, and the length is kept everywhere - including past 1, which
-        # the last condition requires so the check cannot pass on a clamp.
-        ex, ey = m0 * np.cos(ang), m0 * np.sin(ang)
-        err = max(np.abs(xk - ex).max(), np.abs(yk - ey).max())
-        got = np.arctan2(yk, xk)[moving]
-        check("a kaleidoscope of %d folds every angle into 0 to pi/%d, length kept, to float precision" % (n, n),
-              err < 1e-5 and got.min() > -1e-5 and got.max() < np.pi / n + 1e-5
-              and np.abs(np.hypot(xk, yk) - m0).max() < 1e-5 and np.abs(xk).max() > 1,
-              "worst %.2e, angles %.3f to %.3f" % (err, got.min(), got.max()))
-
     folded = run(dict(fig, planeLimit=2, planeRadius=r))
     xf, yf = np.asarray(folded["L"]), np.asarray(folded["R"])
     mf = np.hypot(xf, yf)
@@ -193,30 +176,31 @@ with sync_playwright() as pw:
     check("never outside the radius, and every point keeps its direction",
           mf.max() <= r + 1e-6 and turnf.max() < 1e-5, "%.4f, %.2e rad" % (mf.max(), turnf.max()))
 
-    snapped = run(dict(fig, planeSnap=4))
-    g = 2 / 16
+    # Five bits, the coarsest the menu offers since the four below it were
+    # cut: either silent or harsh, by ear.
+    snapped = run(dict(fig, planeSnap=5))
+    g = 2 / 32
     xs, ys = np.asarray(snapped["L"]), np.asarray(snapped["R"])
     err = max(np.abs(xs - np.round(x0 / g) * g).max(), np.abs(ys - np.round(y0 / g) * g).max())
-    check("snap at 4 bits puts both channels on a grid of 1/8 - the nearest point of it",
+    check("snap at 5 bits puts both channels on a grid of 1/16 - the nearest point of it",
           err < 1e-6 and len(np.unique(np.round(xs / g))) > 10, "worst %.2e" % err)
 
-    # Mirror, twist, kaleidoscope, limit, snap: in that order, and the snap
-    # last - the grid is what comes out whatever came before it.
-    allop = run(dict(fig, planeMirror=1, planeTwist=0.9, planeKaleido=5, planeLimit=2, planeRadius=0.5, planeSnap=3))
+    # Mirror, twist, limit, snap: in that order, and the snap last - the
+    # grid is what comes out whatever came before it.
+    allop = run(dict(fig, planeMirror=1, planeTwist=0.9, planeLimit=2, planeRadius=0.5, planeSnap=5))
     xa, ya = np.abs(x0), y0
     aa = 0.9 * np.hypot(xa, ya)
     xa, ya = xa * np.cos(aa) - ya * np.sin(aa), xa * np.sin(aa) + ya * np.cos(aa)
     ma = np.hypot(xa, ya)
-    wd = 2 * np.pi / 5
-    an = np.mod(np.arctan2(ya, xa), wd); an = np.where(an > wd / 2, wd - an, an)
+    an = np.arctan2(ya, xa)
     ta = np.mod(ma, 1.0); ma2 = np.where(ta <= 0.5, ta, 1.0 - ta)
     xa, ya = ma2 * np.cos(an), ma2 * np.sin(an)
-    g = 0.25
+    g = 2 / 32
     xa, ya = np.round(xa / g) * g, np.round(ya / g) * g
     # A point that lands within float error of a half-step can round either
     # way: count those rather than fail on them.
     off = (np.abs(np.asarray(allop["L"]) - xa) > 1e-6) | (np.abs(np.asarray(allop["R"]) - ya) > 1e-6)
-    check("all five together are applied in the stated order", off.sum() <= 3, "%d points of %d off" % (off.sum(), len(xa)))
+    check("all four together are applied in the stated order", off.sum() <= 3, "%d points of %d off" % (off.sum(), len(xa)))
 
     print("\n--- a mirrored sine is an octave up ---")
     octave = run({"freq": 220, "interval": 0, "phase": 0, "planeMirror": 3}, n=48510, skip=4410)
@@ -244,14 +228,13 @@ with sync_playwright() as pw:
             # factor alike, which read as the oversampling doing nothing.
             # P4 took the clamp out; 0.6 stays so the pins keep their meaning.
             floors[("twist", f, os_)] = alias_floor(run(dict(base, amp=0.6, planeTwist=2), n=48510, skip=4410)["L"], f)
-            floors[("kaleido", f, os_)] = alias_floor(run(dict(base, amp=0.6, planeKaleido=5), n=48510, skip=4410)["L"], f)
             floors[("snap", f, os_)] = alias_floor(run(dict(base, planeSnap=5), n=48510, skip=4410)["L"], f)
     for k in sorted(floors): print("    %-6s %d Hz at %dx: %.1f dB" % (k[0], k[1], k[2], floors[k]))
-    smooth = ("mirror", "clip", "twist", "kaleido")
-    check("at 2x, the default, mirror, clip, twist and kaleidoscope clear the square's floor: under -58.5 at 2 kHz and -46.2 at 4",
+    smooth = ("mirror", "clip", "twist")
+    check("at 2x, the default, mirror, clip and twist clear the square's floor: under -58.5 at 2 kHz and -46.2 at 4",
           all(floors[(op, 2000, 2)] < -58.5 and floors[(op, 4000, 2)] < -46.2 for op in smooth),
           str({k: round(v, 1) for k, v in floors.items() if k[2] == 2}))
-    check("and for those four each doubling is worth at least 10 dB, at both",
+    check("and for those three each doubling is worth at least 10 dB, at both",
           all(floors[(op, f, 1)] - floors[(op, f, 2)] > 10 and floors[(op, f, 2)] - floors[(op, f, 4)] > 10
               for op in smooth for f in (2000, 4000)),
           str({k: round(v, 1) for k, v in floors.items() if k[0] in smooth}))
@@ -399,12 +382,12 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
       setView('bench'); setBenchTab('space');
-      set('planeTwist', 25, 'input'); set('planeKaleido', 6, 'change'); set('planeSnap', 3, 'change');
+      set('planeTwist', 25, 'input'); set('planeSnap', 5, 'change');
       set('planeScaleX', 150, 'input'); set('planeScaleY', 50, 'input'); set('planeShear', -40, 'input');
       const g = genSettings();
-      const got = [g.planeTwist, g.planeKaleido, g.planeSnap, g.planeScaleX, g.planeScaleY, g.planeShear,
+      const got = [g.planeTwist, g.planeSnap, g.planeScaleX, g.planeScaleY, g.planeShear,
                    el.planeTwistValue.textContent];
-      set('planeTwist', 0, 'input'); set('planeKaleido', 0, 'change'); set('planeSnap', 0, 'change');
+      set('planeTwist', 0, 'input'); set('planeSnap', 0, 'change');
       set('planeScaleX', 100, 'input'); set('planeScaleY', 100, 'input'); set('planeShear', 0, 'input');
       // The diagonal of 0.55 from the panel test above: both channels one
       // signal, so any turn at all takes it off the line x = y.
@@ -428,9 +411,10 @@ with sync_playwright() as pw:
       return { got, still, swirled };
     }""")
     print("    %s" % rest)
-    want = [0.25 * 2 * math.pi, 6, 3, 1.5, 0.5, -0.4]
-    check("twist, kaleidoscope, snap, scale and shear reach the generator in its own units - a quarter-turn a unit reads 90 degrees",
-          all(abs(a - b) < 1e-9 for a, b in zip(rest["got"][:6], want)) and rest["got"][6] == "90\u00b0", str(rest["got"]))
+    want = [0.25 * 2 * math.pi, 5, 1.5, 0.5, -0.4]
+    check("twist, snap, scale and shear reach the generator in its own units - a quarter-turn a unit reads 90 degrees",
+          len(rest["got"]) == 6 and all(abs(a - b) < 1e-9 for a, b in zip(rest["got"][:5], want))
+          and rest["got"][5] == "90\u00b0", str(rest["got"]))
     check("a controller on Twist swirls a figure whose slider is at nought",
           rest["still"] < 1e-3 and rest["swirled"] > 0.3, "%.4f still, %.4f swirled" % (rest["still"], rest["swirled"]))
 
@@ -448,14 +432,14 @@ with sync_playwright() as pw:
       restore(migrateSetup({ v: 3, planeClip: true, planeRadius: 30 })); await wait(30);
       const boxed = read();
       const unboxed = migrateSetup({ v: 3, planeClip: false });
-      restore({ planeTwist: -30, planeKaleido: 5, planeSnap: 4, planeScaleX: 150, planeScaleY: 60, planeShear: 25 });
+      restore({ planeTwist: -30, planeSnap: 5, planeScaleX: 150, planeScaleY: 60, planeShear: 25 });
       await wait(30);
       const g = genSettings(), c2 = snapshot();
-      const rest = [g.planeTwist, g.planeKaleido, g.planeSnap, g.planeScaleX, g.planeScaleY, g.planeShear,
-                    c2.planeTwist, c2.planeKaleido, c2.planeSnap, c2.planeScaleX, c2.planeScaleY, c2.planeShear];
+      const rest = [g.planeTwist, g.planeSnap, g.planeScaleX, g.planeScaleY, g.planeShear,
+                    c2.planeTwist, c2.planeSnap, c2.planeScaleX, c2.planeScaleY, c2.planeShear];
       restore({}); await wait(30);
       const g0 = genSettings();
-      const restOld = [g0.planeTwist, g0.planeKaleido, g0.planeSnap, g0.planeScaleX, g0.planeScaleY, g0.planeShear];
+      const restOld = [g0.planeTwist, g0.planeSnap, g0.planeScaleX, g0.planeScaleY, g0.planeShear];
       return { rest, restOld, one, old, boxed, unboxed: [unboxed.planeLimit, 'planeClip' in unboxed],
                code: [code.planeMirror, code.planeLimit, code.planeRadius, code.planeOS, 'planeClip' in code] };
     }""")
@@ -467,10 +451,11 @@ with sync_playwright() as pw:
           codes["old"] == {"mirror": 0, "limit": 0, "radius": 0.4, "os": 2, "menu": "0"}, str(codes["old"]))
     # Version 3 had a checkbox for the clip and a radius; version 4 has one
     # menu of three. Without the decode pass a ticked box would load as off.
-    check("a code carries the twist, kaleidoscope, snap and matrix both ways",
-          all(abs(a - b) < 1e-9 for a, b in zip(codes["rest"], [-0.3 * 2 * math.pi, 5, 4, 1.5, 0.6, 0.25,
-                                                                 -30, 5, 4, 150, 60, 25])), str(codes["rest"]))
-    check("and a code from before has them all at rest", codes["restOld"] == [0, 0, 0, 1, 1, 0], str(codes["restOld"]))
+    check("a code carries the twist, snap and matrix both ways",
+          len(codes["rest"]) == 10
+          and all(abs(a - b) < 1e-9 for a, b in zip(codes["rest"], [-0.3 * 2 * math.pi, 5, 1.5, 0.6, 0.25,
+                                                                     -30, 5, 150, 60, 25])), str(codes["rest"]))
+    check("and a code from before has them all at rest", codes["restOld"] == [0, 0, 1, 1, 0], str(codes["restOld"]))
     check("a version-3 code with the clip ticked loads as Clip, at its radius",
           codes["boxed"] == {"mirror": 0, "limit": 1, "radius": 0.3, "os": 2, "menu": "1"}, str(codes["boxed"]))
     check("and one without it as off, the box's field gone",

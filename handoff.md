@@ -122,6 +122,16 @@ is below, in order. The listening notes this plan refers to follow it.
    section's ⋯ - the face's F3 gives Expression its own section on Play.
    Velocity's menu is the face's, not built.
 4. **The removals:** Kaleidoscope, Snap below 5 bits (notes 2 and 3).
+   *Done 7 Nov.* The kaleidoscope is gone from the page, the core, the
+   plugin's controls and the host's menus; Snap offers Off, 6 bits and 5.
+   A version-8 decode pass (`SETUP_VERSION` 8, page and core alike) drops
+   `planeKaleido` and `bKaleido` and lifts a stored snap of 1 to 4 bits to
+   5, the nearest one left, rather than to off: a code that asked for a
+   crushed plane still gets one. Six old presets in the corpus used the
+   kaleidoscope and two a snap under 5 bits; the corpus keeps them as
+   written and they load without the one and at 5 bits for the other.
+   The voice's Crush (the same quantiser, down to 1 bit) is untouched - the
+   owner was not asked about it, and it is the next question.
 5. **The face, as a design stage from mockups.** *Designed with the owner,
    6 Nov:* the brief is `web/docs/redesigning-the-face.md`, stages F1-F8,
    with pictures of every region. For the plugin window from its minimum
@@ -142,7 +152,7 @@ Later: reverb in P9, made so the screen hears it; undo and A/B; CLAP; MPE.
 Unverified from the audit: the picture's copies to the face (64-128 KB twice
 a frame), the capture allocating each frame, zipper noise under automation.
 
-## The owner's notes from the second round (not started)
+## The owner's notes from the second round (1, 2, 3 and 5 done; 4 not started)
 
 Heard after P8h; written down before any work, with a first read of the code.
 

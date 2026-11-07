@@ -1,5 +1,5 @@
 // The plane, ported from inside `makeGeneratorCore` in web/scope.html:
-// `planeOp` (mirror, twist, kaleidoscope, the clip or fold at a radius, the
+// `planeOp` (mirror, twist, the clip or fold at a radius, the
 // snap), the echo and chorus (`makeTimeFx`, `readLine`, `timeStep`), the
 // non-linear stage's oversampler (`makeOversampler`), and the three calls the
 // block makes of it - `planeSetup`, `planeTick` and `planeStep`. One plane for
@@ -41,7 +41,7 @@ struct PlaneShapeTone {
   double planeRadius = 0.4;
   int planeLimit = 0;  // 0 nothing, 1 the clip, 2 the fold
   double planeScaleX = 1, planeScaleY = 1, planeShear = 0;
-  double planeTwist = 0, planeKaleido = 0, planeSnap = 0;
+  double planeTwist = 0, planeSnap = 0;
 };
 
 // And its echo and chorus, which layer B has its own of too.
@@ -76,7 +76,7 @@ class Plane {
   struct Shape {
     bool linear = false, nonlinear = false;
     int mirror = 0, limit = 0;
-    double kaleido = 0, snap = 0, radius = 0, twist = 0, sx = 1, sy = 1, shear = 0, turn = 0, tc = 1, ts = 0;
+    double snap = 0, radius = 0, twist = 0, sx = 1, sy = 1, shear = 0, turn = 0, tc = 1, ts = 0;
   };
   // And its time stage: the page's `timeOf`.
   struct Time {
@@ -238,11 +238,10 @@ class Plane {
 
   static void shapeSet(Shape& s, const PlaneShapeTone& t, bool twistRouted, double turn) {
     s.linear = t.planeScaleX != 1 || t.planeScaleY != 1 || t.planeShear != 0;
-    s.nonlinear = t.planeMirror != 0 || t.planeLimit != 0 || t.planeTwist != 0 || twistRouted || t.planeKaleido > 1 ||
+    s.nonlinear = t.planeMirror != 0 || t.planeLimit != 0 || t.planeTwist != 0 || twistRouted ||
                   t.planeSnap > 0;
     s.mirror = t.planeMirror;
     s.limit = t.planeLimit;
-    s.kaleido = t.planeKaleido;
     s.snap = t.planeSnap > 0 ? 2 / std::pow(2.0, t.planeSnap) : 0;
     s.sx = t.planeScaleX; s.sy = t.planeScaleY; s.shear = t.planeShear;
     s.turn = turn; s.tc = std::cos(turn); s.ts = std::sin(turn);
@@ -252,7 +251,7 @@ class Plane {
   // `cur_`, the shape `step` was given.
   void op(double x, double y) {
     const int mirror_ = cur_->mirror, limit_ = cur_->limit;
-    const double kaleido_ = cur_->kaleido, snap_ = cur_->snap, radius_ = cur_->radius, twist_ = cur_->twist;
+    const double snap_ = cur_->snap, radius_ = cur_->radius, twist_ = cur_->twist;
     if (mirror_ & 1) x = std::fabs(x);
     if (mirror_ & 2) y = std::fabs(y);
     if (twist_ != 0) {
@@ -260,16 +259,7 @@ class Plane {
       const double tx = x * c - y * s;
       y = x * s + y * c; x = tx;
     }
-    if (kaleido_ > 1) {
-      const double m = std::sqrt(x * x + y * y);
-      if (m > 0) {
-        const double wedge = kTwoPi / kaleido_;
-        double a = std::fmod(std::atan2(y, x), wedge);
-        if (a < 0) a += wedge;
-        if (a > wedge / 2) a = wedge - a;
-        x = m * std::cos(a); y = m * std::sin(a);
-      }
-    }
+    // The kaleidoscope was here, cut on 7 Nov (the page's planeOp says why).
     if (limit_ != 0) {
       const double m = std::sqrt(x * x + y * y);
       if (m > 0) {

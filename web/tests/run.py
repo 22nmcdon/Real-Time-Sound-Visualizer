@@ -65,7 +65,7 @@ SUITES = [
     ("clock", [sys.executable, "clocktest.py"], "serial - the tempo and the bar against the wall clock", "the clock: locked oscillators, tap tempo, MIDI clock, Start and Continue; the bar, Stop and Start, the score on it, a MIDI clock counted in ticks"),
     ("pitch", [sys.executable, "pitchtest.py"], "serial - the tuner's cost in milliseconds", "the pitch estimator: rich registrations, the range, two periods or nothing, noise, the readout and Autoset"),
     ("play", [sys.executable, "playtest.py"], "parallel", "the drawings played: the pitched harmonograph, its strike, Play the figure"),
-    ("plane", [sys.executable, "planetest.py"], "serial - under half of real time", "the plane as an effect: the matrix, mirror, twist, kaleidoscope, clip, fold and snap, their arithmetic, aliasing at 1x, 2x and 4x, every pair once"),
+    ("plane", [sys.executable, "planetest.py"], "serial - under half of real time", "the plane as an effect: the matrix, mirror, twist, clip, fold and snap, their arithmetic, aliasing at 1x, 2x and 4x, every pair once"),
     ("layerplane", [sys.executable, "layerplanetest.py"], "parallel", "layer B's own plane and turn: its picture and its share of the sound, the panel, the screen's rotation, setup codes, the instrument"),
     ("drive", [sys.executable, "drivetest.py"], "serial - under half of real time", "shaping inside the voice: the drive's curve, the fold's Bessel harmonics, each voice on its own, before the envelope, crush, layers, the cost"),
     ("vcf", [sys.executable, "vcftest.py"], "parallel", "the voice filter: Web Audio's biquad to 0.01 dB, swept at audio rate, key tracking, its envelope per note"),

@@ -260,9 +260,11 @@ try {
   /* The rest of the plane and the time effects, each on a diagonal - one
      signal in both channels - and each read for what it alone would do:
      the fold holds the pair inside its radius, the snap puts it on a grid,
-     the twist, the kaleidoscope and the chorus take it off the diagonal,
-     the matrix halves X, and the delay goes on after the tone stops. */
-  const PLANE_OFF = { planeTwist: 0, planeKaleido: 0, planeLimit: 0, planeSnap: 0, planeScaleX: 1,
+     the twist, the Y mirror and the chorus take it off the diagonal (the
+     mirror stands where the kaleidoscope did until it was cut on 7 Nov:
+     its fold onto the top half was the part of it this read), the matrix
+     halves X, and the delay goes on after the tone stops. */
+  const PLANE_OFF = { planeTwist: 0, planeMirror: 0, planeLimit: 0, planeSnap: 0, planeScaleX: 1,
                       chorusMix: 0, delayMix: 0, planeOS: 2, amp: 0.5 };
   const runFor = (tone, rounds) => {
     node.port.onmessage({ data: { tone: Object.assign({ mode: "wave", shape: "sine", freq: 220, interval: 0,
@@ -291,7 +293,7 @@ try {
     fold: runFor({ planeLimit: 2, planeRadius: 0.2 }, 40),
     snap: runFor({ planeSnap: 2, planeOS: 1 }, 40),
     twist: runFor({ planeTwist: 3 }, 40),
-    kaleido: runFor({ planeKaleido: 3 }, 40),
+    mirrorY: runFor({ planeMirror: 2 }, 40),
     matrix: runFor({ planeScaleX: 0.5 }, 40),
     chorus: runFor({ chorusMix: 1, chorusDepthMs: 3, chorusMs: 12, chorusRate: 2, chorusFeedback: 0 }, 80),
   };

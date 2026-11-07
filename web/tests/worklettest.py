@@ -152,7 +152,7 @@ with sync_playwright() as pw:
               all(v.get("finite", True) for v in pr.values()) and pr["plain"]["apart"] < 1e-6
               and pr["fold"]["peak"] <= 0.2 + 1e-6 and pr["fold"]["peak"] > 0.1
               and pr["snap"]["offGrid"] < 1e-6 and pr["snap"]["peak"] > 0.3
-              and pr["twist"]["apart"] > 0.1 and pr["kaleido"]["apart"] > 0.1 and pr["kaleido"]["lowY"] > -0.02
+              and pr["twist"]["apart"] > 0.1 and pr["mirrorY"]["apart"] > 0.1 and pr["mirrorY"]["lowY"] > -1e-6
               and pr["chorus"]["apart"] > 0.1
               and abs(pr["matrix"]["ratio"] - 0.5) < 1e-3
               and pr["delay"]["echoed"] > 0.3 and pr["delay"]["after"] < 1e-6,

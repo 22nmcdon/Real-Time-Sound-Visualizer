@@ -8,8 +8,9 @@ What would go wrong, and what is checked for it:
 - an effect that reaches the picture and not the speakers, or the other way
   round: the monitor chain is tapped, and what the speakers are handed is
   mirrored exactly as what is drawn is;
-- the wrong arithmetic: it is the generator's own code, so a kaleidoscope on
-  a microphone folds every angle into its wedge as the generator's does, and
+- the wrong arithmetic: it is the generator's own code, so the mirror on a
+  microphone folds every angle into the first quadrant as the generator's does
+  (the kaleidoscope's wedge, until it was cut on 7 Nov), and
   a delay on a live input puts each repeat at the delay time to within a few
   samples - measured from the input's own burst, not from a guess at when it
   started (a file's, until P5 cut file playback);
@@ -142,7 +143,7 @@ with sync_playwright() as pw:
 
     print("\n--- the generator's arithmetic ---")
     kal = p.evaluate("""async () => {
-      __set('planeMirror', 0, 'change'); __set('planeKaleido', 6, 'change'); await __wait(1500);
+      __set('planeMirror', 3, 'change'); await __wait(1500);
       const w = __win();
       let lowest = Infinity, highest = -Infinity, points = 0;
       for (let i = 0; i < w[0].length; i++) {
@@ -150,17 +151,17 @@ with sync_playwright() as pw:
         const a = Math.atan2(w[1][i], w[0][i]);
         lowest = Math.min(lowest, a); highest = Math.max(highest, a); points++;
       }
-      __set('planeKaleido', 0, 'change'); await __wait(300);
+      __set('planeMirror', 0, 'change'); await __wait(300);
       return { lowest, highest, points };
     }""")
-    print("    kaleidoscope of six on the microphone: angles %.4f to %.4f over %d points" % (kal["lowest"], kal["highest"], kal["points"]))
-    # The oversampling's filter lets a corner overshoot a hair past the wedge.
-    check("a kaleidoscope of six folds every angle of the input into 0 to pi/6, as the generator's does",
-          kal["lowest"] > -0.05 and kal["highest"] < math.pi / 6 + 0.05 and kal["points"] > 2000, str(kal))
-    # And over the whole wedge, not one ray of it: a stereo input collapsed to
-    # its left channel is a diagonal, which folds to one angle inside the
-    # wedge and would pass the bounds above.
-    check("and the two channels arrive as two: the folded input fills the wedge rather than one ray of it",
+    print("    both halves mirrored on the microphone: angles %.4f to %.4f over %d points" % (kal["lowest"], kal["highest"], kal["points"]))
+    # The oversampling's filter lets a corner overshoot a hair past the quadrant.
+    check("the mirror on both folds every angle of the input into 0 to pi/2, as the generator's does",
+          kal["lowest"] > -0.05 and kal["highest"] < math.pi / 2 + 0.05 and kal["points"] > 2000, str(kal))
+    # And over the whole quadrant, not one ray of it: a stereo input collapsed
+    # to its left channel is a diagonal, which folds to one angle inside the
+    # quadrant and would pass the bounds above.
+    check("and the two channels arrive as two: the folded input fills the quadrant rather than one ray of it",
           kal["highest"] - kal["lowest"] > 0.4, str(kal))
 
     off = p.evaluate("""async () => {

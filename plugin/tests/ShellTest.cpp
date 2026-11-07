@@ -1571,8 +1571,9 @@ int main() {
        Kept as the latest alone, the solid's would have been lost. */
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
-    p.pageControl("planeKaleido", scope::Json::string(std::string_view("6")));
-    p.pageControl("planeKaleido", scope::Json::string(std::string_view("3")));
+    // A menu moved twice: the radial menu, to the fold and then the clip (the kaleidoscope's, until it was cut).
+    p.pageControl("planeLimit", scope::Json::string(std::string_view("2")));
+    p.pageControl("planeLimit", scope::Json::string(std::string_view("1")));
     p.pageControl("genMode", scope::Json::string(std::string_view("wireframe")));
     p.pageControl("midiDrive", scope::Json::boolean(true));
     p.pageControl("genMode", scope::Json::string(std::string_view("wave")));
@@ -1591,7 +1592,7 @@ int main() {
     const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
     const std::size_t count = hands && hands->type == scope::Json::Type::Array ? hands->a.size() : 0;
     check("a control moved twice is kept once, a button once for its set, and the drive kept in its place between the kinds: all come back",
-          p.tone().planeKaleido == 3 && q.tone().planeKaleido == 3 && count == 6 && p.keys().drive[3] && !p.keys().drive[0]
+          p.tone().planeLimit == 1 && q.tone().planeLimit == 1 && count == 6 && p.keys().drive[3] && !p.keys().drive[0]
           && q.keys().drive == p.keys().drive && q.tone().modeName == "wave" && !q.tone().just,
           std::to_string(count) + " kept; the solid driven " + (q.keys().drive[3] ? "yes" : "no") + ", the waveform " + (q.keys().drive[0] ? "yes" : "no"));
     // And a setup loaded starts the list again: what was done to the last one is not done to it.
@@ -1600,7 +1601,7 @@ int main() {
     p.processBlock(buf, none);
     const auto after = scope::decodeSetup(p.pageState().code);
     check("a setup loaded starts the list of hands again",
-          after.kind == scope::DecodedSetup::Kind::Read && !after.setup.get("pluginHands") && p.tone().planeKaleido == 0,
+          after.kind == scope::DecodedSetup::Kind::Read && !after.setup.get("pluginHands") && p.tone().planeLimit == 0,
           after.kind == scope::DecodedSetup::Kind::Read && after.setup.get("pluginHands") ? "still listed" : "");
   }
   {
@@ -1931,12 +1932,12 @@ int main() {
           "output apart by " + num(drawn.apart) + ", picture by " + num(pictured));
     check("and what it hears is no longer a loop through its own sound: the hearing's sources are counted as loops only before",
           loopBefore && !loopAfter, std::string(loopBefore ? "loop" : "not") + " before, " + (loopAfter ? "loop" : "not") + " after");
-    // Through the plane: the kaleidoscope on, the input no longer comes out as it went in.
-    fx.pageControl("planeKaleido", scope::Json::string(std::u16string(u"6")));
+    // Through the plane: both halves mirrored, the input no longer comes out as it went in (the kaleidoscope, until it was cut).
+    fx.pageControl("planeMirror", scope::Json::string(std::u16string(u"3")));
     feed(fx, at, 1, nullptr);
     const long long from = at;
     const Fed folded = feed(fx, at, 8, nullptr);
-    check("and through the plane: the kaleidoscope on, the input comes out folded", folded.apart > 0.1 && folded.peak > 0.1,
+    check("and through the plane: mirrored, the input comes out folded", folded.apart > 0.1 && folded.peak > 0.1,
           "apart by " + num(folded.apart));
     /* Prepared again while it draws its input - a host changing its rate - it
        still draws it, and still counts what it hears as no loop. */

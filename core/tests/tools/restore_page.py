@@ -122,7 +122,7 @@ DUMP = """(setups) => {
       // The layer the panel shows, and its menus: a layer's other controls are sliders, in ranges.
       fade: { mode: fade.mode, envs: fade.envs },
       panelLayer, menus: Object.fromEntries(["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
-                                             "planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
+                                             "planeMirror", "planeLimit", "planeSnap"]
         .map((id) => [id, el[id].value])),
       morph: { a: encodeMorphEnd(morph.a, morphHome), b: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
                pos: state.morphPos },
@@ -153,9 +153,9 @@ DUMP = """(setups) => {
                 drawn: encodeDrawn(figDrawing.strokes), textPath: pathOf(figDrawing.text), path: pathOf(figDrawing.path),
                 drawnPath: pathOf(figDrawing.drawn), sent: pathOf(genSettings().figPath) },
       plane: { mirror: plane.mirror, limit: plane.limit, radius: plane.radius, os: plane.os, twist: plane.twist,
-               kaleido: plane.kaleido, snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
+               snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
       planeB: { own: planeB.own, mirror: planeB.mirror, limit: planeB.limit, radius: planeB.radius, twist: planeB.twist,
-                kaleido: planeB.kaleido, snap: planeB.snap, scaleX: planeB.scaleX, scaleY: planeB.scaleY, shear: planeB.shear,
+                snap: planeB.snap, scaleX: planeB.scaleX, scaleY: planeB.scaleY, shear: planeB.shear,
                 turn: planeB.turn },
       echo: { mix: echo.mix, ms: echo.ms, sync: echo.sync, feedback: echo.feedback, pingPong: echo.pingPong,
               chorus: echo.chorus, rate: echo.rate, depthMs: echo.depthMs, centreMs: echo.centreMs,

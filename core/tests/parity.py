@@ -291,11 +291,11 @@ def drawing_calls():
     return out
 
 PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4, planeOS=2, planeLimit=0,
-                      planeScaleX=1, planeScaleY=1, planeShear=0, planeTwist=0, planeKaleido=0, planeSnap=0,
+                      planeScaleX=1, planeScaleY=1, planeShear=0, planeTwist=0, planeSnap=0,
                       delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
                       chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
                       etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
-                      bTwist=0, bKaleido=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0,
+                      bTwist=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0,
                       bDelayMix=0, bDelayMs=375, bDelayFeedback=0.35, bDelayPingPong=0, bChorusMix=0,
                       bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0,
                       phaserMix=0, phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, ppush=0, phr=0,
@@ -331,7 +331,7 @@ def plane_scenarios():
     (see CLAUDE.md on fixtures), and loud enough to reach the radius."""
     out = []
     stages = [dict(planeMirror=1), dict(planeMirror=2), dict(planeMirror=3), dict(planeTwist=1.5, tpush=0.6),
-              dict(planeKaleido=3), dict(planeKaleido=5.5), dict(planeLimit=1, planeRadius=0.3, rpush=0.5),
+              dict(planeSnap=5), dict(planeSnap=6), dict(planeLimit=1, planeRadius=0.3, rpush=0.5),
               dict(planeLimit=2, planeRadius=0.25, rpush=0.3), dict(planeSnap=3), dict(planeSnap=6.5)]
     for os_ in (1, 2, 4):
         for s in stages:
@@ -349,14 +349,14 @@ def plane_scenarios():
     out.append(dict(delayMix=0, ecr=1, epush=0.9, delayMs=9))
     out.append(dict(chorusMix=0.7, chorusRate=3, chorusDepthMs=3, chorusMs=12, chorusFeedback=0.5))
     out.append(dict(chorusMix=1, chorusRate=40, chorusDepthMs=20, chorusMs=40, rate=44100.0))
-    out.append(dict(planeMirror=1, planeTwist=0.8, planeKaleido=4, planeLimit=1, planeRadius=0.35, planeSnap=5,
+    out.append(dict(planeMirror=1, planeTwist=0.8, planeLimit=1, planeRadius=0.35, planeSnap=5,
                     planeScaleX=1.2, planeShear=-0.3, delayMix=0.4, delayMs=8, chorusMix=0.5, chorusRate=2,
                     tpush=0.4, rpush=0.4, epush=0.3, etpush=0.3, planeOS=4))
     # Changed under the pairs: the oversampling (its histories emptied each
     # time), the chorus brought in and the echo let go and brought back.
     out.append(dict(planeTwist=1.2, ev="300:planeOS:4;900:planeOS:1;1400:planeOS:2;1700:planeOS:4"))
     out.append(dict(planeLimit=2, planeRadius=0.3, delayMix=0.3, delayMs=6,
-                    ev="500:chorusMix:0.6;1000:delayMix:0;1200:delayMix:0.5;1900:planeKaleido:3"))
+                    ev="500:chorusMix:0.6;1000:delayMix:0;1200:delayMix:0.5;1900:planeSnap:5"))
     # Layer B with a shape of its own: bent where A is not and the other way
     # round, turned, pushed by its own routings, and its share of the heard
     # pair joining A's before an echo and a chorus. A always does something,
@@ -369,12 +369,12 @@ def plane_scenarios():
     out.append(dict(planeScaleX=1.1, bown=1, btr=1, bturnpush=0.8))
     out.append(dict(planeMirror=2, bown=1, bTurn=0.6, btr=1, bturnpush=-0.5, delayMix=0.3, delayMs=8))
     out.append(dict(planeScaleX=1.1, bown=0, btr=1, bturnpush=0.8))
-    out.append(dict(planeMirror=1, bown=1, bKaleido=5, bLimit=1, bRadius=0.3, brpush=0.6, btpush=0.5, bTwist=0.4,
+    out.append(dict(planeMirror=1, bown=1, bSnap=6, bLimit=1, bRadius=0.3, brpush=0.6, btpush=0.5, bTwist=0.4,
                     bScaleX=0.7, bShear=0.4, delayMix=0.4, delayMs=9, delayFeedback=0.5, chorusMix=0.5, chorusRate=2))
-    out.append(dict(planeKaleido=3, bown=1, bLimit=2, bRadius=0.25, bSnap=4, delayMix=0.3, delayMs=7, delayPingPong=1))
+    out.append(dict(planeSnap=6, bown=1, bLimit=2, bRadius=0.25, bSnap=4, delayMix=0.3, delayMs=7, delayPingPong=1))
     # B's own switched on and off under the pairs, and moved while it is on.
     out.append(dict(planeTwist=0.9, bMirror=1, bTurn=0.5,
-                    ev="600:bown:1;1100:bKaleido:5;1500:bown:0;2000:bown:1;2200:bTurn:-0.3"))
+                    ev="600:bown:1;1100:bSnap:6;1500:bown:0;2000:bown:1;2200:bTurn:-0.3"))
     # B's own echo and chorus (5r): B's alone with A's dry, at each
     # oversampling, pushed by B's own routings; both layers with different
     # ones; B's line kept running at nought by a routing; and B's own
@@ -649,9 +649,11 @@ for side, rows_ in (("page", js_rows), ("core", cpp_rows)):
     check("the phaser's ring after a burst ends in exact zeros on the %s's side, long before the run does" % side,
           max(abs(s) for s in a[200:400]) > 1e-3 and nz and 200 < nz[-1] < len(a) - 4000,
           "rings %.3g; last non-zero sample %s of %d" % (max(abs(s) for s in a[200:400]), nz[-1] if nz else None, len(a)))
-kal = next(i for i, l in enumerate(lines) if "planeKaleido=5.5" in l)
-check("and against a kaleidoscope of 5.6 answered as one of 5.5",
-      worst(js_one(lines[kal].replace("planeKaleido=5.5", "planeKaleido=5.6")), row(cpp_rows[kal])) > 1e-6)
+# A depth between the menu's is still a grid, its own: the kaleidoscope's
+# count of 5.5 stood here until it was cut (7 Nov).
+kal = next(i for i, l in enumerate(lines) if "planeSnap=6.5" in l)
+check("and against a snap of 6.6 answered as one of 6.5",
+      worst(js_one(lines[kal].replace("planeSnap=6.5", "planeSnap=6.6")), row(cpp_rows[kal])) > 1e-6)
 # Layer B's own shape: a page that put B's pair through A's shape, or turned
 # it the other way, must both be told apart.
 bown = next(i for i, l in enumerate(lines) if "brpush=0.6" in l)
@@ -846,7 +848,7 @@ def gen_runs():
     add("governed", [(0, "set unison 7"), (0, "set unisonCents 25"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"),
                      (0, "set drive 0.5"), (0, "set shapeOS 4"), (0, "set vcfType 2"), (0, "set crushBits 8"),
                      (0, "voices 0 " + chord), (0, "voices 1 " + chord), (0, "set unison 7 1"), (0, "set fmIndex 2 1"),
-                     (0, "set planeKaleido 3"), (0, "set planeOS 4"),
+                     (0, "set planeSnap 6"), (0, "set planeOS 4"),
                      (1024, "voices 0 " + notes((60, "x"), (64, "y"))), (2048, "set unison 3"), (3072, "voices 1 none")],
         samples=4096)
     # And held there to the end, so the report the run ends with is the
@@ -878,7 +880,7 @@ def gen_runs():
     tails = [(0, "set unison 7"), (0, "set fmIndex 2"), (0, "set syncRatio 1.5"), (0, "set drive 0.5"),
              (0, "set vcfType 1"), (0, "set crushBits 6"), (0, "set subLevel 0.4"), (0, "set ringMix 0.3"),
              # The plane, costed per pass and a chord is two passes, so cutting voices is needed even at one copy.
-             (0, "set planeKaleido 3"), (0, "set planeOS 4"), (0, "set delayMix 0.3"),
+             (0, "set planeSnap 6"), (0, "set planeOS 4"), (0, "set delayMix 0.3"),
              (0, "set releaseMs 4"), (0, "voices 0 " + chord), (512, "voices 0 " + notes((60, "x"), (64, "y")))]
     add("governed-tails", tails, samples=2048)
     # And the block right after the let-go, while the tails cut are still fading.
@@ -927,7 +929,7 @@ def gen_runs():
                        (0, "set chorusMix 0.5"), (0, "set chorusRate 3"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
                        (0, "routes " + "+".join([route(RADIUS, 0.4, index=0), route(ECHOT, 0.3, index=1)]))])
     add("plane-poly", [(0, "voices 0 " + notes((60, "x"), (67, "y"), (64, "u"))), (0, "voices 1 " + notes((76, "xy"))),
-                       (0, "set planeMirror 1"), (0, "set planeKaleido 4"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
+                       (0, "set planeMirror 1"), (0, "set planeSnap 5"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
                        (0, "routes " + "+".join([route(TWIST, 0.6, index=0), route(ECHO, 0.5, index=1)]))])
     # Layer B with a plane of its own: bent and turned apart from A, its twist
     # pushed through its own fade; and the same with it off, so the two can be
@@ -937,7 +939,7 @@ def gen_runs():
         add("plane-own" + ("" if own == "true" else "-off"),
             [(0, "voices 0 " + notes((60, "x"), (67, "y"), (64, "u"))), (0, "voices 1 " + notes((76, "xy"), (81, "u"))),
              (0, "set planeTwist 0.6"), (0, "set planeOwn %s 1" % own), (0, "set planeMirror 3 1"),
-             (0, "set planeKaleido 5 1"), (0, "set planeTurn 0.8 1"), (0, "set planeLimit 1 1"),
+             (0, "set planeSnap 6 1"), (0, "set planeTurn 0.8 1"), (0, "set planeLimit 1 1"),
              (0, "set planeRadius 0.35 1"), (0, "set delayMix 0.3"), (0, "set delayMs 7"),
              (0, "routes " + "+".join([route(TWIST, 0.6, index=0, amountB=0.2), route(RADIUS, 0.3, index=1, amountB=-0.4)]))])
     # B's turn under a routing through B's fade (5q), with as many slots as the page's table has.
@@ -995,14 +997,14 @@ def gen_runs():
                    (0, "routes " + route(TWIST, 0.5, index=0)), (2048, "set planeSnap 4")])
     # More of the effect, now that the compiled core plays it too: the echo
     # with feedback and ping-pong under a routing on its level and time, the
-    # kaleidoscope and the mirror oversampled four times with the radius
+    # snap and the mirror oversampled four times with the radius
     # routed, and nothing on at all - the input handed through untouched.
     add("effect-echo", [(0, "fx 1"), (0, "input 220 0.6"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
                         (0, "set delayFeedback 0.6"), (0, "set delayPingPong true"),
                         (0, "routes " + "+".join([route(ECHO, 0.5, index=1), route(ECHOT, 0.3, index=0)])),
                         (1536, "restart 0"), (2048, "input 0 0")])
-    add("effect-kaleido", [(0, "fx 1"), (0, "input 330 0.8 0.1"), (0, "set planeKaleido 5"), (0, "set planeMirror 1"),
-                           (0, "set planeOS 4"), (0, "routes " + route(RADIUS, 0.4, index=0)), (2048, "set planeKaleido 3")])
+    add("effect-snap", [(0, "fx 1"), (0, "input 330 0.8 0.1"), (0, "set planeSnap 6"), (0, "set planeMirror 1"),
+                        (0, "set planeOS 4"), (0, "routes " + route(RADIUS, 0.4, index=0)), (2048, "set planeSnap 5")])
     add("effect-off", [(0, "fx 1"), (0, "input 180 0.7"), (2048, "input 90 0.3 -0.2")])
     add("at-44100", [(0, "set shape square"), (0, "set unison 3"), (0, "routes " + vib)], rate=44100.0)
     # Scan (P7a): the screen's readings as tables a layer is handed between
@@ -1959,6 +1961,10 @@ scmds += ["decode " + code_of(V5_CODE)]
 # Version 7 (P8h): the latch cut; a code saved while it was on loses it.
 V6_CODE = '{"v":6,"midiLatch":true,"midiMode":"poly","freq":330}'
 scmds += ["decode " + code_of(V6_CODE)]
+# Version 8 (7 Nov): the kaleidoscope cut, and Snap below five bits - a
+# snap of three is five, a snap of six stays.
+V7_CODE = '{"v":7,"planeKaleido":6,"bKaleido":3,"planeSnap":3,"bSnap":6,"freq":330}'
+scmds += ["decode " + code_of(V7_CODE)]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
@@ -1979,19 +1985,23 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":7' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":8' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
 check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":7' in v5_read and '"freq":330' in v5_read
+      v5_read.startswith("read ") and '"v":8' in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
 # Version 7 likewise: a version-6 code saved with the latch on loses it.
 v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
-check("a version-6 code comes up to 7 without the latch, the rest as written",
-      v6_read.startswith("read ") and '"v":7' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+check("a version-6 code comes up to date without the latch, the rest as written",
+      v6_read.startswith("read ") and '"v":8' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
       and '"midiLatch"' not in v6_read, v6_read)
+v7_read = sjs[scmds.index("decode " + code_of(V7_CODE))]
+check("a version-7 code comes up to date without the kaleidoscope, its snap of three bits at five and of six as it was",
+      v7_read.startswith("read ") and '"v":8' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
+      and '"planeSnap":5' in v7_read and '"bSnap":6' in v7_read, v7_read)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
@@ -2015,6 +2025,8 @@ snull("the version-5 code marked 6, which keeps its macros", "decode " + code_of
       "decode " + code_of(V5_CODE.replace('"v":5', '"v":6')))
 snull("the version-6 code marked 7, which keeps its latch", "decode " + code_of(V6_CODE),
       "decode " + code_of(V6_CODE.replace('"v":6', '"v":7')))
+snull("the version-7 code marked 8, which keeps its kaleidoscope and its three bits", "decode " + code_of(V7_CODE),
+      "decode " + code_of(V7_CODE.replace('"v":7', '"v":8')))
 snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
 def pm_read(cmd):
     code = scpp[scmds.index(cmd)].split(" ", 1)[1]
@@ -3789,7 +3801,7 @@ MENUS = {
     "keyRoot": [-3, 14, 2.5, "2", 7, -0.0, 11],
     "scoreStep": ["1/16", "1/8", "1/4", "1/2"], "scoreLow": [36, 48, 60, 50, "48"], "arpMode": ["off", "up", "random", "x"],
     "arpRate": ["1/4", "1/16t", "1/2"], "delaySync": ["", "1/4", "1/8d", "x"],
-    "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3], "planeKaleido": [0, 2, 8, 7],
+    "planeMirror": [0, 1, 3, 4, "1"], "planeLimit": [0, 1, 2, 3], "planeOS": [1, 2, 4, 3],
     "planeSnap": [0, 6, 7],
     "morphA": ["", "=freq:330,amp:40", "=bogus:1,freq:x,amp:20:9", "=", "freq:1", 5, "=morphPos:50,freq:330",
                "=macro1:20,keysVelocity:9,pictureAmount:3,freq:300"], "morphB": ["", "=freq:440", "=detail:9"],
@@ -3942,12 +3954,12 @@ brng = random.Random(131)
 def bplane_setup():
     st = {"bPlane": brng.choice([True, True, True, False, 1, "true", None])}
     pick = lambda: brng.choice([brng.randint(-120, 260), brng.uniform(-60, 60), "40", "", None, True, [5], -0.0, 1e21])
-    for key, menu in (("bMirror", [0, 1, 2, 3, 4, "1"]), ("bLimit", [0, 1, 2, 3]), ("bKaleido", [0, 2, 5, 8, 7, "3"]),
+    for key, menu in (("bMirror", [0, 1, 2, 3, 4, "1"]), ("bLimit", [0, 1, 2, 3]),
                       ("bSnap", [0, 3, 6, 9])):
         if brng.random() < 0.6: st[key] = brng.choice(menu)
     for key in ("bRadius", "bTwist", "bScaleX", "bScaleY", "bShear", "bTurn"):
         if brng.random() < 0.6: st[key] = pick()
-    for key, menu in (("planeMirror", [0, 1, 2]), ("planeKaleido", [0, 3, 6]), ("planeLimit", [0, 2])):
+    for key, menu in (("planeMirror", [0, 1, 2]), ("planeSnap", [0, 5, 6]), ("planeLimit", [0, 2])):
         if brng.random() < 0.5: st[key] = brng.choice(menu)
     for key in ("planeRadius", "planeTwist", "planeShear"):
         if brng.random() < 0.5: st[key] = brng.randint(-100, 100)
@@ -4011,8 +4023,8 @@ bown = [_json.loads(l) for l in rpg[-len(BPLANE):]]
 check("the setups reach layer B's own plane, with fields of its own and fields falling back to A's, and B's turned",
       any(r["planeB"]["own"] and r["b"]["planeOwn"] for r in bown)
       and any(not r["planeB"]["own"] for r in bown)
-      and any(r["planeB"]["own"] and r["planeB"]["kaleido"] != r["plane"]["kaleido"] for r in bown)
-      and any(r["planeB"]["own"] and r["planeB"]["kaleido"] == r["plane"]["kaleido"] != 0 for r in bown)
+      and any(r["planeB"]["own"] and r["planeB"]["snap"] != r["plane"]["snap"] for r in bown)
+      and any(r["planeB"]["own"] and r["planeB"]["snap"] == r["plane"]["snap"] != 0 for r in bown)
       and any(r["planeB"]["turn"] != 0 for r in bown))
 btown = [_json.loads(l) for l in rpg[-len(BPLANE) - len(BTIME):-len(BPLANE)]]
 check("and B's own echo and chorus, with fields of their own and fields falling back to A's, a synced time and a free one",
@@ -4281,7 +4293,7 @@ print("\n--- menus, switches and buttons ---")
 # them, and with values a menu has not got.
 CMENUS = ["genMode", "interval", "figure", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS", "oscRatio",
           "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType", "planeMirror", "planeLimit",
-          "planeKaleido", "planeSnap", "delaySync", "keyRoot", "keyScale", "midiDrawCount",
+          "planeSnap", "delaySync", "keyRoot", "keyScale", "midiDrawCount",
           "midiDrawWhich", "midiLayers", "midiLayerPair", "arpMode", "arpRate", "arpOctaves", "scoreStep",
           "scoreVoices", "scoreLow", "scoreOctaves", "lfoShape0", "lfoSync0"]
 CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"]}
@@ -4335,7 +4347,7 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "figPathD", "value": "M0 0 L20 5 L5 20 Z"},                              # 4
          {"op": "change", "id": "genMode", "value": "wave"}, {"op": "change", "id": "shape", "value": "square"},
          {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "change", "id": "vcfType", "value": "2"},  # 7, 8
-         {"op": "change", "id": "shpOS", "value": "4"}, {"op": "change", "id": "planeKaleido", "value": "6"},  # 9, 10
+         {"op": "change", "id": "shpOS", "value": "4"}, {"op": "change", "id": "planeSnap", "value": "6"},  # 9, 10
          {"op": "click", "id": "planeOS4"}, {"op": "change", "id": "delaySync", "value": "1/4"},             # 11, 12
          {"op": "change", "id": "delayPingPong", "value": True}, {"op": "change", "id": "midiHold", "value": True},
          {"op": "change", "id": "keyRoot", "value": "0"}, {"op": "change", "id": "keyScale", "value": "major"},
@@ -4366,8 +4378,8 @@ check("the kind menu changes the kind, and a path drawn under the Path figure is
       and cp[4]["figure"]["sent"] != cp[3]["figure"]["sent"], "%r %r" % (cp[1]["a"]["mode"], cp[3]["a"]["figure"]))
 check("the shape, the unison, the filter's type and the oversampling reach the tone",
       cp[6]["a"]["shape"] == "square" and cp[7]["a"]["unison"] == 3 and cp[8]["a"]["vcfType"] == 2 and cp[9]["a"]["shapeOS"] == 4)
-check("the kaleidoscope's menu and the plane's 4x button reach the tone",
-      cp[10]["a"]["planeKaleido"] == 6 and cp[11]["plane"]["os"] == 4 and cp[11]["a"]["planeOS"] == 4)
+check("the snap's menu and the plane's 4x button reach the tone",
+      cp[10]["a"]["planeSnap"] == 6 and cp[11]["plane"]["os"] == 4 and cp[11]["a"]["planeOS"] == 4)
 check("the echo synced to a quarter at 120 is 500 ms, and ping-pong switched on",
       cp[12]["a"]["delayMs"] == 500 and cp[13]["a"]["delayPingPong"] is True, repr(cp[12]["a"]["delayMs"]))
 check("the keyboard's hold switched on, and C major quantised is the mask 2741",
@@ -4502,7 +4514,7 @@ print("\n--- layer B's own plane on the panel ---")
 # B's sliders, as it walks B's voice.
 prng = random.Random(77)
 PSLIDERS = ["planeTwist", "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "planeTurn"]
-PMENUS = ["planeMirror", "planeLimit", "planeKaleido", "planeSnap"]
+PMENUS = ["planeMirror", "planeLimit", "planeSnap"]
 def pvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     return prng.choice([round(prng.uniform(lo, hi)), round(prng.uniform(lo, hi), 1), lo - 5, hi + 5, "abc", "7.5"])
@@ -4524,13 +4536,13 @@ def prun():
              {"op": "change", "id": "midiLayers", "value": prng.choice(["split", "layer"])},
              {"op": "click", "id": prng.choice(["planeLayerA", "planeLayerB"])}]
     return start + [pop() for _ in range(prng.randint(6, 16))]
-# Made to be read: a kaleidoscope of three on both; B given its own, which
+# Made to be read: a snap of five bits on both; B given its own, which
 # starts as a copy; B's mirror, B's turn; A's own twist; B shown again from
 # the Play tab's button; back to Together; a setup of B's own loaded and the
 # panel's A and B buttons after it.
 PMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                      # 0-2
          {"op": "change", "id": "midiLayers", "value": "layer"},                                   # 3
-         {"op": "change", "id": "planeKaleido", "value": "3"}, {"op": "click", "id": "planeLayerB"},  # 4, 5
+         {"op": "change", "id": "planeSnap", "value": "5"}, {"op": "click", "id": "planeLayerB"},  # 4, 5
          {"op": "change", "id": "planeMirror", "value": "1"}, {"op": "slider", "id": "planeTurn", "value": 25},  # 6, 7
          {"op": "click", "id": "planeLayerA"}, {"op": "slider", "id": "planeTwist", "value": 40},  # 8, 9
          {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "planeLayerBoth"},             # 10, 11
@@ -4543,8 +4555,8 @@ check("%d hands on the Plane section with the layers on, Together, A and B in tu
       not pb and len(plines) > 700, pb[0] if pb else "")
 pp = [_json.loads(l) for l in ppg]
 check("leaving Together gives B a plane of its own that starts as A's, and shows it",
-      not pp[4]["planeB"]["own"] and pp[5]["planeB"]["own"] and pp[5]["b"]["planeOwn"] and pp[5]["planeB"]["kaleido"] == 3
-      and pp[5]["menus"]["planeKaleido"] == "3" and pp[5]["panelLayer"] == 1, repr(pp[5]["planeB"]))
+      not pp[4]["planeB"]["own"] and pp[5]["planeB"]["own"] and pp[5]["b"]["planeOwn"] and pp[5]["planeB"]["snap"] == 5
+      and pp[5]["menus"]["planeSnap"] == "5" and pp[5]["panelLayer"] == 1, repr(pp[5]["planeB"]))
 check("a menu and the turn moved with B's shown are B's, and A's plane is untouched",
       pp[6]["planeB"]["mirror"] == 1 and pp[6]["plane"]["mirror"] == 0 and pp[6]["b"]["planeMirror"] == 1
       and pp[6]["a"]["planeMirror"] == 0 and pp[7]["planeB"]["turn"] == 0.25
@@ -4558,7 +4570,7 @@ check("Together lets B's own go, and B follows A again",
       not pp[11]["planeB"]["own"] and not pp[11]["b"]["planeOwn"] and pp[11]["planeB"]["mirror"] == 0
       and pp[11]["planeB"]["twist"] == 0.4, repr(pp[11]["planeB"]))
 check("a setup with B's own loads it, a field it lacks being A's, and B's shown after it",
-      pp[12]["planeB"] == {"own": True, "mirror": 2, "limit": 0, "radius": 0.4, "twist": 0, "kaleido": 0, "snap": 0,
+      pp[12]["planeB"] == {"own": True, "mirror": 2, "limit": 0, "radius": 0.4, "twist": 0, "snap": 0,
                            "scaleX": 1, "scaleY": 1, "shear": 0, "turn": -0.1}
       and pp[13]["menus"]["planeMirror"] == "2", repr(pp[12]["planeB"]))
 pwrote = sum(1 for i in range(1, len(pp)) if pp[i]["planeB"] != pp[i - 1]["planeB"] and pp[i]["planeB"]["own"])
@@ -4939,7 +4951,7 @@ iruns["notes"] = [["make", 48000, 128, icode["Harmonic tone"]]] + blocks(3) + [N
 FADE = _json.dumps({"mode": "both", "envs": [{"delay": 0, "attack": 0.3, "attackMid": 0.5, "decay": 0.5, "decayMid": 0.5,
                     "sustain": 1, "release": 0.4, "releaseMid": 0.5, "restart": True, "loop": False}] * 2})
 iruns["hands"] = [["make", 44100, 128, icode["Harmonic tone"]], NOTE_ON(57)] + blocks(10) \
-    + [["slider", "amp", "30"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
+    + [["slider", "amp", "30"]] + blocks(10) + [["control", "planeMirror", "3"]] + blocks(10) \
     + [["control", "delayPingPong", True], ["click", "planeOS4"]] + blocks(10) \
     + [["routings", "lfo1>gen.vcf@0.55;lfo1>gen.freq@0.35"]] + blocks(20) + [["fade", FADE]] + blocks(10) \
     + [["control", "genMode", "harmonograph"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
@@ -4966,13 +4978,13 @@ iruns["realtime"] = [["make", 48000, 128, icode["Harmonic tone"]], NOTE_ON(0), N
     + [["midi", 0xF8], ["midi", 0xFA]] + blocks(20) + [["midi", 0xF8]] + blocks(10)
 # The input (5g): a saw of a hundred samples on the left and a triangle of
 # seventy-three on the right, made by arithmetic on both sides. Drawn, it
-# goes through the plane - the kaleidoscope, then the twist under a routing -
+# goes through the plane - mirrored, then the twist under a routing -
 # and a preset loaded meanwhile leaves it drawn; given to the generator, it
 # moves a figure by each of its three modes; mono, and then none at all.
 def icode_of(setup):
     return base64.b64encode(_json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
 iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
-    + [["click", "srcMic"]] + blocks(10) + [["control", "planeKaleido", "6"]] + blocks(10) \
+    + [["click", "srcMic"]] + blocks(10) + [["control", "planeMirror", "3"]] + blocks(10) \
     + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", ocode["Pluck"]]] + blocks(10) \
     + [["click", "srcTone"], ["control", "genMode", "figure"], ["control", "inputMode", "1"]] + blocks(20) \
     + [["control", "inputMode", "2"]] + blocks(20) + [["control", "inputMode", "3"]] + blocks(30) \
@@ -5126,7 +5138,7 @@ check("the quarter turn parts a lone note's two channels, and without it they ar
 # And what the input runs played, read off the samples, since two sides that
 # both ignored the input would agree perfectly: drawn with nothing on the
 # plane, the heard pair is the input exactly - the run's blocks seven to
-# sixteen, and the reopened run's first ten - and folded by the kaleidoscope
+# sixteen, and the reopened run's first ten - and mirrored
 # it is not; drawing the generator, it is not the input either.
 def ifed(k, pl, pr):
     t, u = (k % pl) / pl, (k % pr) / pr

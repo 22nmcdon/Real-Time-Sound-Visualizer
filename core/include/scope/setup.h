@@ -36,7 +36,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 7;  // SETUP_VERSION
+constexpr int kSetupVersion = 8;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 inline const Json& setupDefaults() {
@@ -57,7 +57,7 @@ inline const Json& setupDefaults() {
   "midiDrawWhich":"outer","midiPolyJust":false,"midiDrawCountB":2,"midiDrawWhichB":"outer",
   "layers":"off","splitAt":60,"layerPair":"each","pictureMovesA":"A","pictureMovesB":"B","photoOn":false,"photoU":0.75,"photoV":0.5,"pictureAmount":60,
   "midiDrive":"wave,harmonograph,figure","cc":"","midiPlay":"","ring":600,"planeMirror":0,
-  "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeKaleido":0,"planeSnap":0,
+  "planeLimit":0,"planeRadius":40,"planeOS":2,"planeTwist":0,"planeSnap":0,
   "planeScaleX":100,"planeScaleY":100,"planeShear":0,"bPlane":false,"delayMix":0,"delayMs":375,"delaySync":"",
   "delayFeedback":35,"delayPingPong":false,"oscScan":0,"scanSoft":30,"scanStrike":50,"scanReadsA":"A","scanReadsB":"B","oscRatio":1,"oscFm":0,"oscBend":0,"oscBendAt":25,"oscRing":0,"oscSync":100,"oscSub":0,
   "oscSubOct":1,"oscSubShape":"square","oscUnison":1,"oscSpread":12,"shpDrive":0,"shpFold":0,
@@ -292,6 +292,16 @@ inline bool migrateSetup(Json& setup) {
   // 6 -> 7: the latch cut (P8h), a day after it was built - the sustain
   // pedal is told what an automatic latch had to guess. Its field goes.
   if (!(v >= 7) && setup.type == Json::Type::Object) setup.erase("midiLatch");
+  // 7 -> 8: the kaleidoscope cut, and Snap below five bits (7 Nov): its
+  // fields go, and a snap of one to four bits is five, the coarsest kept.
+  if (!(v >= 8) && setup.type == Json::Type::Object) {
+    setup.erase("planeKaleido");
+    setup.erase("bKaleido");
+    for (const char* key : { "planeSnap", "bSnap" }) {
+      const Json* s = setup.get(key);
+      if (s && s->type == Json::Type::Number && s->n >= 1 && s->n <= 4) setup.set(key, Json::number(5));
+    }
+  }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;
 }

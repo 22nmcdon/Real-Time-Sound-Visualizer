@@ -210,12 +210,12 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const n = (k) => Number(p[k]);
     const rate = n("rate");
     const FIELDS = ["planeMirror", "planeRadius", "planeOS", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
-                    "planeTwist", "planeKaleido", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
+                    "planeTwist", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
                     "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback",
                     "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
     const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
-                      "planeTwist", "planeKaleido", "planeSnap"];
+                      "planeTwist", "planeSnap"];
     const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
     const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "chorusMix", "chorusRate", "chorusDepthMs",
                     "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];

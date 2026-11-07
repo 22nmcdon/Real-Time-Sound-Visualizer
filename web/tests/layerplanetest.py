@@ -1,4 +1,4 @@
-"""Layer B's own plane: a mirror, a kaleidoscope, a twist and a turn of its own.
+"""Layer B's own plane: a mirror, a snap, a twist and a turn of its own.
 
 What would go wrong, and what is checked for it:
 
@@ -109,7 +109,7 @@ with sync_playwright() as pw:
     same = lambda a, b: all(x == y for x, y in zip(a, b))
 
     print("\n--- the core: off is the old arithmetic, on is B's own ---")
-    junk = [["planeMirror", 3, 1], ["planeKaleido", 5, 1], ["planeTurn", 1.1, 1], ["planeTwist", 2, 1],
+    junk = [["planeMirror", 3, 1], ["planeTurn", 1.1, 1], ["planeTwist", 2, 1],
             ["planeLimit", 2, 1], ["planeRadius", 0.2, 1], ["planeSnap", 3, 1]]
     a_plane = [["planeTwist", 0.7, 0], ["delayMix", 0.3, 0], ["delayMs", 9, 0]]
     rest = core({"sets": a_plane})
@@ -236,7 +236,7 @@ with sync_playwright() as pw:
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const read = () => ({ row: el.planeLayerRow.hidden, title: el.planeTitle.textContent, turnRow: el.planeTurnRow.hidden,
-        own: planeB.own, edit: midi.layers.edit, bMirror: planeB.mirror, aMirror: plane.mirror, bKaleido: planeB.kaleido,
+        own: planeB.own, edit: midi.layers.edit, bMirror: planeB.mirror, aMirror: plane.mirror, bSnap: planeB.snap,
         aTwist: plane.twist, bTwist: planeB.twist, turn: planeB.turn, shownMirror: el.planeMirror.value,
         shownTwist: el.planeTwist.value, genA: genSettings(0).planeMirror, genB: genSettings(1).planeMirror,
         genOwn: genSettings(1).planeOwn, genTurn: genSettings(1).planeTurn,
@@ -246,7 +246,7 @@ with sync_playwright() as pw:
       setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       midi.layers.point = 60; await wait(80);
-      el.planeKaleido.value = '3'; el.planeKaleido.dispatchEvent(new Event('change'));
+      el.planeSnap.value = '5'; el.planeSnap.dispatchEvent(new Event('change'));
       out.layered = read();
       el.planeLayerB.click(); await wait(30); out.b = read();
       el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change'));
@@ -264,9 +264,9 @@ with sync_playwright() as pw:
           one["row"] and one["title"] == "Plane" and one["turnRow"], str(one))
     check("with two it shows, on Together, and a menu moved writes both layers' plane",
           not lay["row"] and lay["checked"] == ["Both"] and lay["title"] == "Plane" and not lay["own"]
-          and lay["bKaleido"] == 3, str(lay))
+          and lay["bSnap"] == 5, str(lay))
     check("B gives B a plane of its own that starts as A's, shows it, and puts B on the panel",
-          pb["own"] and pb["genOwn"] is True and pb["bKaleido"] == 3 and pb["title"] == "Plane · layer B"
+          pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["title"] == "Plane · layer B"
           and pb["checked"] == ["B"] and not pb["turnRow"] and pb["edit"] == 1, str(pb))
     check("a menu and the Turn moved with B's shown are B's, and A's plane is untouched",
           moved["bMirror"] == 1 and moved["aMirror"] == 0 and moved["genB"] == 1 and moved["genA"] == 0
@@ -316,28 +316,28 @@ with sync_playwright() as pw:
     codes = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.planeLayerB.click(); await wait(20);
-      el.planeSnap.value = '4'; el.planeSnap.dispatchEvent(new Event('change'));
+      el.planeSnap.value = '6'; el.planeSnap.dispatchEvent(new Event('change'));
       el.planeTurn.value = '-12'; el.planeTurn.dispatchEvent(new Event('input'));
       const saved = { ...planeB }, code = encodeSetup(snapshot());
       el.planeLayerBoth.click(); await wait(20);
       const offCode = encodeSetup(snapshot());
       restore(decodeSetup(code)); await wait(20);
       const back = { ...planeB };
-      restore({ bPlane: true, bMirror: 2, planeKaleido: 5 });
+      restore({ bPlane: true, bMirror: 2, planeSnap: 5 });
       const partial = { ...planeB };
-      restore({ planeKaleido: 4 });
+      restore({ planeSnap: 5 });
       const old = { ...planeB };
       return { saved, back, partial, old, offHas: JSON.stringify(decodeSetup(offCode)).includes('bPlane'),
                onHas: Object.keys(decodeSetup(code)).filter((k) => /^b(Plane|Mirror|Turn|Snap)$/.test(k)).sort() };
     }""")
     check("B's own plane is written into a code and read back as it was",
-          codes["back"] == codes["saved"] and codes["saved"]["own"] and codes["saved"]["snap"] == 4
+          codes["back"] == codes["saved"] and codes["saved"]["own"] and codes["saved"]["snap"] == 6
           and codes["saved"]["turn"] == -0.12, "%r / %r" % (codes["saved"], codes["back"]))
     check("a code of B's own with a field missing takes A's for it",
-          codes["partial"]["own"] and codes["partial"]["mirror"] == 2 and codes["partial"]["kaleido"] == 5
+          codes["partial"]["own"] and codes["partial"]["mirror"] == 2 and codes["partial"]["snap"] == 5
           and codes["partial"]["turn"] == 0, str(codes["partial"]))
     check("a code from before it has B following A, and with it off nothing of it is written",
-          not codes["old"]["own"] and codes["old"]["kaleido"] == 4 and not codes["offHas"]
+          not codes["old"]["own"] and codes["old"]["snap"] == 5 and not codes["offHas"]
           and codes["onHas"] == ["bMirror", "bPlane", "bSnap", "bTurn"], str(codes["onHas"]))
 
     print("\n--- Delay and chorus: B's own ---")

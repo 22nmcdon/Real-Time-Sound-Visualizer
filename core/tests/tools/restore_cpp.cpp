@@ -59,7 +59,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
-  o.set("planeTwist", num(t.planeTwist)); o.set("planeKaleido", num(t.planeKaleido)); o.set("planeSnap", num(t.planeSnap));
+  o.set("planeTwist", num(t.planeTwist)); o.set("planeSnap", num(t.planeSnap));
   return o;
 }
 
@@ -82,7 +82,7 @@ Json toneJson(const scope::Tone& t) {
   o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
   o.set("planeLimit", num(t.planeLimit)); o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY));
-  o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist)); o.set("planeKaleido", num(t.planeKaleido));
+  o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist));
   o.set("planeSnap", num(t.planeSnap)); o.set("delayMix", num(t.delayMix)); o.set("delayMs", num(t.delayMs));
   o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
     out.set("panelLayer", num(brain.panelLayer));
     Json menus = Json::object();
     for (const char* id : { "shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType",
-                            "planeMirror", "planeLimit", "planeKaleido", "planeSnap" })
+                            "planeMirror", "planeLimit", "planeSnap" })
       menus.set(std::string_view(id), str(brain.panel.select(id)));
     out.set("menus", menus);
     Json morph = Json::object();
@@ -394,13 +394,13 @@ int main(int argc, char** argv) {
     const auto& p = brain.plane;
     Json plane = Json::object();
     plane.set("mirror", num(p.mirror)); plane.set("limit", num(p.limit)); plane.set("radius", num(p.radius)); plane.set("os", num(p.os));
-    plane.set("twist", num(p.twist)); plane.set("kaleido", num(p.kaleido)); plane.set("snap", num(p.snap));
+    plane.set("twist", num(p.twist)); plane.set("snap", num(p.snap));
     plane.set("scaleX", num(p.scaleX)); plane.set("scaleY", num(p.scaleY)); plane.set("shear", num(p.shear));
     out.set("plane", plane);
     const auto& q = brain.planeB;
     Json planeB = Json::object();
     planeB.set("own", flag(q.own)); planeB.set("mirror", num(q.mirror)); planeB.set("limit", num(q.limit));
-    planeB.set("radius", num(q.radius)); planeB.set("twist", num(q.twist)); planeB.set("kaleido", num(q.kaleido));
+    planeB.set("radius", num(q.radius)); planeB.set("twist", num(q.twist));
     planeB.set("snap", num(q.snap)); planeB.set("scaleX", num(q.scaleX)); planeB.set("scaleY", num(q.scaleY));
     planeB.set("shear", num(q.shear)); planeB.set("turn", num(q.turn));
     out.set("planeB", planeB);
