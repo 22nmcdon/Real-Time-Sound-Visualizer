@@ -610,8 +610,11 @@ with sync_playwright() as pw:
               all(v == want_bar for v in bar.values()), str(bar))
     # Its null: the menu put back on the face is a second Persistence.
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
-    two = p.evaluate("""() => { const f = el.persistence.closest('.field'); f.hidden = false;
-      const seen = [!!el.persistence.offsetParent, !!el.scanMemory.offsetParent]; f.hidden = true; return seen; }""")
+    # Its row is hidden too since F7 took the preset into the header and left
+    # the transport with nothing on show, so both are put back.
+    two = p.evaluate("""() => { const f = el.persistence.closest('.field'), t = f.closest('.transport');
+      f.hidden = false; t.hidden = false;
+      const seen = [!!el.persistence.offsetParent, !!el.scanMemory.offsetParent]; f.hidden = true; t.hidden = true; return seen; }""")
     check("null: with the menu back on the face there are two", two == [True, True], str(two))
 
     # The null: a window shorter than the panel, which no placing can fit.

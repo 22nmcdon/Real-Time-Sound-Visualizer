@@ -130,7 +130,32 @@ button { font-family: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--line); padding-block: 10px;
   position: relative; z-index: 20;
 }
-.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+/* F7: the title over the line of what is playing, so the line keeps its say
+   ("press anything to hear it") without taking the header's width. */
+.title-block { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 0 1 auto; max-width: 260px; }
+.title-block .sheet-credit { flex: 0 0 auto; font-size: 13px; line-height: 1.2; }
+/* The preset and what acts on the whole sound: step, browse, save, compare, undo. */
+.preset-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; flex: 0 1 auto; min-width: 0;
+  padding-left: 14px; border-left: 1px solid var(--line);
+}
+.step-btn {
+  flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+  background: none; color: var(--charcoal); cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.step-btn svg { width: 13px; height: 13px; }
+.step-btn:hover:not(:disabled) { border-color: var(--blush); }
+.step-btn:disabled { color: var(--unresolved); cursor: default; }
+.preset-bar .preset-button {
+  flex-direction: column; align-items: flex-start; gap: 0; min-width: 120px; max-width: 200px;
+  background: none; border: 0; padding: 0 2px;
+}
+.preset-bar .preset-button .eyebrow { font-size: 9.5px; letter-spacing: 0.24em; }
+.preset-bar #presetCurrent { font-family: var(--serif); font-size: 17px; line-height: 1.2; max-width: 100%; }
+.ab-switch button { min-width: 30px; padding-inline: 9px; }
+.head-gap { flex: 1 1 0; min-width: 0; }
 .style-mark { color: var(--text-soft); }
 .sheet-title {
   font-family: var(--serif); font-weight: 600;
@@ -152,6 +177,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* --- transport ----------------------------------------------------------- */
 .transport { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 26px; margin-top: 10px; }
+.transport[hidden] { display: none; }
 /* Wrapping, not nowrap. A row of controls that cannot shrink any further does
    not overflow tidily - it draws the timebase reading on top of the display
    switch. Wrapping costs a line at worst. */
@@ -1662,8 +1688,29 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 <header class="top-bar">
   <div class="wrap">
     <div class="head">
-      <h1 class="sheet-title">Oscilloscope</h1>
-      <span class="sheet-credit" id="credit">220 Hz, synthesised in the page</span>
+      <div class="title-block">
+        <h1 class="sheet-title">Oscilloscope</h1>
+        <span class="sheet-credit" id="credit">220 Hz, synthesised in the page</span>
+      </div>
+      <!-- The preset and what acts on the whole sound (F7 of redesigning-the-face.md):
+           the arrows step through the bank without opening anything; Save opens the
+           browser at its save field; A and B are two versions to compare, for this
+           session; undo and redo walk back through the setup's changes. -->
+      <div class="preset-bar">
+        <button type="button" class="step-btn" id="presetPrev" aria-label="The previous preset" title="The previous preset"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg></button>
+        <button type="button" class="preset-button" id="preset" value="" aria-haspopup="dialog"
+                aria-labelledby="presetLabel presetCurrent"><span class="eyebrow" id="presetLabel">Preset</span><span id="presetCurrent">Custom</span></button>
+        <button type="button" class="step-btn" id="presetNext" aria-label="The next preset" title="The next preset"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.5 8 6 4.5 9.5"/></svg></button>
+        <button type="button" class="link-btn caps" id="presetBrowse" aria-haspopup="dialog">Browse</button>
+        <button type="button" class="link-btn caps" id="presetSaveHead" aria-haspopup="dialog">Save</button>
+        <div class="switch ab-switch" role="radiogroup" aria-label="Compare two versions of the sound">
+          <button type="button" class="caps" id="abA" role="radio" aria-checked="true" title="Version A">A</button>
+          <button type="button" class="caps" id="abB" role="radio" aria-checked="false" title="Version B: starts as a copy of A">B</button>
+        </div>
+        <button type="button" class="step-btn" id="undoButton" aria-label="Undo" title="Undo" disabled><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2 1.8 4.2 4 6.4"/><path d="M2 4.2h5a3 3 0 0 1 0 6H5"/></svg></button>
+        <button type="button" class="step-btn" id="redoButton" aria-label="Redo" title="Redo" disabled><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l2.2 2.2L8 6.4"/><path d="M10 4.2H5a3 3 0 0 0 0 6h2"/></svg></button>
+      </div>
+      <span class="head-gap"></span>
       <span class="status caps" id="status" data-state="ready">running</span>
       <div class="switch" role="radiogroup" aria-label="View" style="flex:0 0 auto">
         <button type="button" class="caps" id="viewScope" role="radio" aria-checked="true">Scope</button>
@@ -3491,16 +3538,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
     </div>
 
-    <div class="transport">
-      <div class="group tight">
-        <div class="field fixed">
-          <span class="eyebrow" id="presetLabel">Preset</span>
-          <button type="button" class="preset-button" id="preset" value="" aria-haspopup="dialog"
-                  aria-labelledby="presetLabel presetCurrent"><span id="presetCurrent">Custom</span><span
-                  class="caret" aria-hidden="true">&#9662;</span></button>
-        </div>
-      </div>
-
+    <!-- Nothing on show since F7 took the preset into the header: it carries
+         the persistence menu, which the core's panel names (see within). -->
+    <div class="transport" hidden>
       <div class="group anchored">
         <!-- Off the face since F2 (redesigning-the-face.md): Persistence is one
              control, the knob in the Picture section along the bottom. This
@@ -5046,6 +5086,21 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         figure is drawn at once. Anything a preset does not mention goes back to its default,
         so they cannot leave each other's settings behind.</span></li>
 
+      <li><b>Along the top</b>
+        <span>The preset's name, with its heading above it, between two arrows that step
+        through the bank in the browser's order without opening anything; from a sound that
+        is not one of the bank's, the next is the first. <i>Browse</i> opens the browser, and
+        <i>Save</i> opens it at its save field.</span></li>
+
+      <li><b>Undo, and A and B</b>
+        <span>The curved arrows undo and redo changes to the sound and the picture, a hundred
+        back: a knob turned, a menu, a preset loaded. A change is one step once it has held
+        still for a moment, so a whole turn of a knob is one, and only a change you made is
+        one &mdash; a host's automation moving a knob is not. <i>A</i> and <i>B</i> are two
+        versions to compare: B starts as a copy of A the first time you choose it, each keeps
+        its own changes and its own undo, and switching is never a step. They last for this
+        session; save one you want to keep.</span></li>
+
       <li><b>Custom means you have moved off one</b>
         <span>Nothing is lost; the picker is just telling you the truth.</span></li>
 
@@ -5061,7 +5116,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span><b>Space</b> run and stop &middot; <b>S</b> single &middot; <b>A</b> autoset
         &middot; <b>B</b> bench &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
-        <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet.
+        <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet &middot;
+        <b>Ctrl Z</b> undo and <b>Ctrl Shift Z</b> or <b>Ctrl Y</b> redo (<b>&#8984;</b> on a Mac).
         With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
         <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave, and <b>Space</b> held is the
         sustain pedal.</span></li>
@@ -5202,7 +5258,8 @@ const el = {};
 for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
                   "pictureAmountValue", "levelMeter", "performButton", "performPanel", "performClose", "performBody",
-                  "performSide", "credit", "status", "menuButton", "menuPanel", "menuClose",
+                  "performSide", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
+                  "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "benchSearch", "benchResults",
                   "audioGroup", "midiSetGroup", "audioNote",
@@ -22393,6 +22450,9 @@ function figureSvg(figure) {
 function setPresetValue(value) {
   el.preset.value = value;
   el.presetCurrent.textContent = value ? value.slice(2) : "Custom";
+  // Its heading above it (F7): where it lives in the bank, Saved, or what it is.
+  document.getElementById("presetLabel").textContent = value.startsWith("n:") ? "New"
+    : (value && presetWhereIs(value)) || "Preset";
   el.preset.title = value ? value.slice(2) : "Custom: moved off a preset, or none loaded";
   for (const card of el.presetGrid.querySelectorAll(".preset-card")) {
     card.setAttribute("aria-pressed", String(card.dataset.value === value));
@@ -22750,6 +22810,132 @@ el.presetPaste.addEventListener("click", () => {
     sayPreset("Paste a code into the field, then press Paste.", "warn");
   }
 });
+
+/* --- the header: stepping, browsing, saving (F7) --------------------------------
+   The arrows step through the bank in the browser's order, headings and
+   sections as they stand, loading each as a card's Load would, with nothing
+   opened. From a sound that is not one of the bank's - Custom, the base, a
+   saved one - the next is the first and the previous the last. Saved sounds
+   are not stepped through: they are yours to choose, not a bank to audition. */
+function bankOrder() {
+  return PRESET_MENUS.flatMap(([, , , titles]) => titles)
+    .flatMap((t) => (PRESETS.find(([s]) => s === t) || [t, []])[1].map(([name]) => "b:" + name));
+}
+function stepPreset(by) {
+  const bank = bankOrder();
+  if (!bank.length) return;
+  const at = bank.indexOf(el.preset.value);
+  const next = at < 0 ? (by > 0 ? 0 : bank.length - 1) : (at + by + bank.length) % bank.length;
+  applyPreset(bank[next]);
+}
+el.presetPrev.addEventListener("click", () => stepPreset(-1));
+el.presetNext.addEventListener("click", () => stepPreset(1));
+el.presetBrowse.addEventListener("click", openPresets);
+el.presetSaveHead.addEventListener("click", () => { openPresets(); showSaving(true); });
+
+/* --- A/B and undo (F7) ------------------------------------------------------------
+   Undo walks back through the setup's changes, and A and B are two versions
+   of it to compare. Both work on the setup as a code holds it (snapshot), and
+   put a version back the way a preset is loaded, so the plugin is sent the
+   whole of it.
+
+   What counts as a change: the setup differing from the last one kept, and
+   staying so for UNDO_SETTLE - so a knob turned is one step, not one per
+   pixel, and a preset gliding into place is one step, not one per frame - and
+   only after a hand of yours: a trusted pointer, key or input event since the
+   last step. Without that, a host's automation or the plugin's own state
+   coming back would fill the history with steps nobody took; those move the
+   base instead, silently. What it costs: a change made by code and nothing
+   else is never a step.
+
+   Each of A and B has its own history, and switching is never a step: undo
+   after a switch walks back through the version you are on. Both are this
+   session's only - not in a code, not saved with a project - which is what a
+   compare is for. B starts as a copy of A the first time it is chosen. */
+const UNDO_SETTLE = 400, UNDO_MOST = 100;
+const versions = { on: "a", a: { undo: [], redo: [], kept: null }, b: { undo: [], redo: [], kept: null } };
+let undoBase = null, undoPending = null, undoHanded = false, undoPointer = false;
+const undoNow = () => ({ snap: snapshot(), loaded: loadedSetup, value: el.preset.value });
+const undoText = (entry) => JSON.stringify(entry.snap);
+for (const kind of ["pointerdown", "keydown", "input", "change"]) {
+  document.addEventListener(kind, (event) => {
+    if (!event.isTrusted) return;
+    undoHanded = true;
+    if (kind === "pointerdown") undoPointer = true;
+  }, true);
+}
+for (const kind of ["pointerup", "pointercancel"]) document.addEventListener(kind, () => { undoPointer = false; }, true);
+
+function undoRebase() {
+  undoBase = undoNow();
+  undoBase.text = undoText(undoBase);
+  undoPending = null;
+}
+function paintUndo() {
+  const v = versions[versions.on];
+  el.undoButton.disabled = v.undo.length === 0;
+  el.redoButton.disabled = v.redo.length === 0;
+  el.undoButton.title = v.undo.length ? "Undo (" + v.undo.length + ")" : "Nothing to undo";
+  el.redoButton.title = v.redo.length ? "Redo (" + v.redo.length + ")" : "Nothing to redo";
+  el.abA.setAttribute("aria-checked", String(versions.on === "a"));
+  el.abB.setAttribute("aria-checked", String(versions.on === "b"));
+}
+// A few times a second: a change that has settled, after a hand, is a step.
+function watchUndo(now) {
+  if (undoBase === null) { undoRebase(); return; }
+  if (glide.ids || undoPointer) return;
+  const text = JSON.stringify(snapshot());
+  if (text === undoBase.text) { undoPending = null; return; }
+  if (!undoHanded) { undoRebase(); return; }
+  if (!undoPending || undoPending.text !== text) { undoPending = { text, at: now }; return; }
+  if (now - undoPending.at < UNDO_SETTLE) return;
+  const v = versions[versions.on];
+  v.undo.push(undoBase);
+  if (v.undo.length > UNDO_MOST) v.undo.shift();
+  v.redo = [];
+  undoHanded = false;
+  undoRebase();
+  paintUndo();
+}
+// A version put back as a preset is: quietly, then the whole of it to a host.
+function putBack(entry) {
+  hostQuietly(() => restore(entry.snap));
+  loadedSetup = entry.loaded;
+  setPresetValue(entry.value);
+  hostSendSetup();
+  if (el.presetDialog.open) el.presetCode.value = encodeSetup(snapshot());
+  undoHanded = false;
+  undoRebase();
+}
+function undoStep(back) {
+  watchUndo(Infinity);  // a change still settling is a step of its own first
+  const v = versions[versions.on];
+  const from = back ? v.undo : v.redo, to = back ? v.redo : v.undo;
+  if (!from.length) return;
+  to.push(undoNow());
+  putBack(from.pop());
+  paintUndo();
+}
+function chooseVersion(which) {
+  if (which === versions.on) return;
+  watchUndo(Infinity);
+  versions[versions.on].kept = undoNow();
+  versions.on = which;
+  if (versions[which].kept) putBack(versions[which].kept); else undoRebase();
+  paintUndo();
+}
+el.undoButton.addEventListener("click", () => undoStep(true));
+el.redoButton.addEventListener("click", () => undoStep(false));
+el.abA.addEventListener("click", () => chooseVersion("a"));
+el.abB.addEventListener("click", () => chooseVersion("b"));
+// Ctrl or Cmd with Z, with Shift to redo, or Y: not while typing, where the field has its own.
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || typingInto(event.target)) return;
+  const key = event.key.toLowerCase();
+  if (key === "z") { event.preventDefault(); undoStep(!event.shiftKey); }
+  else if (key === "y") { event.preventDefault(); undoStep(false); }
+});
+window.setInterval(() => watchUndo(performance.now()), 120);
 
 /* --- source and device ------------------------------------------------------- */
 

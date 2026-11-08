@@ -206,7 +206,12 @@ is below, in order. The listening notes this plan refers to follow it.
    `core/tests/tools/write_figures.py` and hash-checked by `presettest.py`.
    Not built, and the owner's: short *listen for / watch for* lines (the
    cards show each description's first sentence) and hearing a preset by
-   holding a key. Next is F7, the header and Settings.
+   holding a key. Next is F7, the header and Settings. *F7a done 8 Nov:*
+   the header - the preset between arrows that step the bank, its heading
+   above it, Browse, Save, A/B and undo/redo (`headertest.py`). Next, F7b:
+   Settings as drawn (MIDI, Input, This window with the first-time help;
+   Size is F8), and F7c: the host parameters strike, softness and twist,
+   and the gold dots marking host parameters on the face.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

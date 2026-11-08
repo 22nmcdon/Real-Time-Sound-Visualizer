@@ -5120,3 +5120,19 @@ itself, as the screen's does.
 **A screenshot script writes where it is run from.** A probe saving
 `br1400.png` by a bare name, run from the repository's root, left two images
 in the working tree; give such scripts absolute paths into the scratchpad.
+
+**A test of "only what a hand did" has to use a hand, and the right one.**
+Undo (F7) counts a change only after a trusted event, so `headertest.py`
+turns knobs with Playwright's keyboard and mouse; a value written and an
+event dispatched is, rightly, no step, and is that rule's null. And which
+hand matters: a knob's face writes its input by code, so its input events
+are untrusted, while a native range slider's are the browser's own. A
+mutation that let a paused drag become a step survived every knob test,
+because the knob's second half was absorbed as code; it took a drawbar,
+dragged and held still half way, to show the drag split in two.
+
+**Spacing in a timing test decides what it can tell apart.** Five presses
+90 ms apart could not separate "a step once a change has held still for 400
+ms" from "a step once a change is seen twice": both made one step. At 250 ms
+apart, between two looks at the history but inside the settle time, only the
+first does.

@@ -316,6 +316,19 @@ Do not re-litigate these without a reason; each replaced something that failed.
   `web/tests/corpus.py`): a suite that wants a known sound under a check
   opens it from there, and one testing the preset mechanism picks a bank
   preset by what it needs, never by name - the bank is meant to change by ear.
+- **The header is the preset and what acts on the whole sound** (F7a, 8
+  Nov): the title over the line of what is playing; the preset between
+  arrows that step the bank in the browser's order, its heading above its
+  name; Browse; Save; A and B; undo and redo; then the run status, the views,
+  Perform, help and Settings. Undo records the setup (`snapshot`) once a
+  change has held still for 400 ms with no pointer down, and only after a
+  trusted event - a host's automation and the plugin's own state moving the
+  base, not making steps - a hundred deep, and puts a step back as a preset
+  is loaded (`putBack`). A and B are two versions for the session, each with
+  its own history; B starts as a copy of A, and switching is never a step.
+  The transport row under the header is hidden: it only carries the
+  persistence menu the core's panel names. `headertest.py` holds it, with
+  real mouse and keys, since a dispatched event is rightly no step.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.
