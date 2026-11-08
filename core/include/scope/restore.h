@@ -313,6 +313,7 @@ struct Brain {
     std::string sync;
     double feedback = 0.35;
     bool pingPong = false;
+    double tone = 1, lowCut = 0, width = 1, wow = 0;  // F5c
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
     double phaser = 0, phRate = 0.3, phDepth = 0.7, phFeedback = 0.3;  // P8e
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
@@ -702,6 +703,10 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   b.panel.setRangeNumber("delayMix", jsMathRound(e.mix * 100));
   b.panel.setRangeNumber("delayMs", !e.sync.empty() ? jsMathRound(delayTimeMs(b, e)) : e.ms);
   b.panel.setRangeNumber("delayFeedback", jsMathRound(e.feedback * 100));
+  b.panel.setRangeNumber("delayTone", jsMathRound(e.tone * 100));
+  b.panel.setRangeNumber("delayLowCut", jsMathRound(e.lowCut * 100));
+  b.panel.setRangeNumber("delayWidth", jsMathRound(e.width * 100));
+  b.panel.setRangeNumber("delayWow", jsMathRound(e.wow * 100));
   b.panel.setRangeNumber("chorusMix", jsMathRound(e.chorus * 100));
   b.panel.setRangeNumber("chorusRate", jsMathRound(e.rate * 100));
   b.panel.setRangeNumber("chorusDepth", jsMathRound(e.depthMs * 10));
@@ -744,6 +749,7 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   const Brain::EchoState& e = b.echoB;
   gen.set("delayMix", e.mix, 1); gen.set("delayMs", delayTimeMs(b, e), 1); gen.set("delayFeedback", e.feedback, 1);
   gen.set("delayPingPong", e.pingPong ? 1 : 0, 1); gen.set("chorusMix", e.chorus, 1); gen.set("chorusRate", e.rate, 1);
+  gen.set("delayTone", e.tone, 1); gen.set("delayLowCut", e.lowCut, 1); gen.set("delayWidth", e.width, 1); gen.set("delayWow", e.wow, 1);
   gen.set("chorusDepthMs", e.depthMs, 1); gen.set("chorusMs", e.centreMs, 1);
   gen.set("chorusFeedback", e.chorusFeedback, 1);
   gen.set("phaserMix", e.phaser, 1); gen.set("phaserRate", e.phRate, 1); gen.set("phaserDepth", e.phDepth, 1);
@@ -755,6 +761,7 @@ inline void syncEcho(Brain& b, Generator& gen) {
   const Brain::EchoState& e = b.echo;
   gen.set("delayMix", e.mix); gen.set("delayMs", delayTimeMs(b)); gen.set("delayFeedback", e.feedback);
   gen.set("delayPingPong", e.pingPong ? 1 : 0); gen.set("chorusMix", e.chorus); gen.set("chorusRate", e.rate);
+  gen.set("delayTone", e.tone); gen.set("delayLowCut", e.lowCut); gen.set("delayWidth", e.width); gen.set("delayWow", e.wow);
   gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
   gen.set("phaserMix", e.phaser); gen.set("phaserRate", e.phRate); gen.set("phaserDepth", e.phDepth);
   gen.set("phaserFeedback", e.phFeedback);
@@ -1401,6 +1408,10 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.sync = utf16To8(fieldStr("delaySync"));
     e.feedback = fieldNum("delayFeedback") / 100;
     e.pingPong = fieldFlag("delayPingPong");
+    e.tone = fieldNum("delayTone") / 100;
+    e.lowCut = fieldNum("delayLowCut") / 100;
+    e.width = fieldNum("delayWidth") / 100;
+    e.wow = fieldNum("delayWow") / 100;
     e.chorus = fieldNum("chorusMix") / 100;
     e.rate = fieldNum("chorusRate") / 100;
     e.depthMs = fieldNum("chorusDepth") / 10;
@@ -1414,6 +1425,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
     setA("delayPingPong", e.pingPong ? 1 : 0);
+    setA("delayTone", e.tone); setA("delayLowCut", e.lowCut); setA("delayWidth", e.width); setA("delayWow", e.wow);
     setA("chorusMix", e.chorus); setA("chorusRate", e.rate); setA("chorusDepthMs", e.depthMs);
     setA("chorusMs", e.centreMs); setA("chorusFeedback", e.chorusFeedback);
     setA("phaserMix", e.phaser); setA("phaserRate", e.phRate); setA("phaserDepth", e.phDepth);
@@ -1434,6 +1446,10 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       f.feedback = slide("bDelayFeedback", 100, e.feedback);
       const auto ping = own("bDelayPingPong");
       f.pingPong = ping ? ping->b : e.pingPong;
+      f.tone = slide("bDelayTone", 100, e.tone);
+      f.lowCut = slide("bDelayLowCut", 100, e.lowCut);
+      f.width = slide("bDelayWidth", 100, e.width);
+      f.wow = slide("bDelayWow", 100, e.wow);
       f.chorus = slide("bChorusMix", 100, e.chorus);
       f.rate = slide("bChorusRate", 100, e.rate);
       f.depthMs = slide("bChorusDepth", 10, e.depthMs);
@@ -1632,13 +1648,18 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   }
   // B's alone, whichever layer is on the panel.
   else if (id == "planeTurn") { b.planeB.turn = v / 100; syncPlanePanel(b, keys); syncPlane(b, gen); }
-  else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "chorusMix" || id == "chorusRate"
+  else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "delayTone" || id == "delayLowCut"
+           || id == "delayWidth" || id == "delayWow" || id == "chorusMix" || id == "chorusRate"
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback" || id == "phaserMix"
            || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback") {
     Brain::EchoState& e = echoTarget(b, keys);
     if (id == "delayMix") e.mix = v / 100;
     else if (id == "delayMs") e.ms = v;
     else if (id == "delayFeedback") e.feedback = v / 100;
+    else if (id == "delayTone") e.tone = v / 100;
+    else if (id == "delayLowCut") e.lowCut = v / 100;
+    else if (id == "delayWidth") e.width = v / 100;
+    else if (id == "delayWow") e.wow = v / 100;
     else if (id == "chorusMix") e.chorus = v / 100;
     else if (id == "chorusRate") e.rate = v / 100;
     else if (id == "chorusDepth") e.depthMs = v / 10;

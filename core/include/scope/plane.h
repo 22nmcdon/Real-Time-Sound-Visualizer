@@ -48,6 +48,8 @@ struct PlaneShapeTone {
 struct PlaneTimeTone {
   double delayMix = 0, delayMs = 375, delayFeedback = 0.35;
   bool delayPingPong = false;
+  // F5c: the repeats' tone (1 open), low cut (0 off), width (1 as it was) and wow (0 still).
+  double delayTone = 1, delayLowCut = 0, delayWidth = 1, delayWow = 0;
   double chorusMix = 0, chorusRate = 0.6, chorusDepthMs = 3, chorusMs = 12, chorusFeedback = 0;
   // P8e, the phaser: amount, sweep in hertz, range (0 to 1 of its octaves), resonance.
   double phaserMix = 0, phaserRate = 0.3, phaserDepth = 0.7, phaserFeedback = 0.3;
@@ -95,6 +97,7 @@ class Plane {
     bool on = false, delayOn = false, phOn = false;
     double echo = 0, echoMs = 375, phase = 0, sin = 0, cos = 1;
     double ph = 0, phPhase = 0, aL = 0, aR = 0;  // the phaser's amount, sweep, and each channel's coefficient
+    double toneA = 0, cutA = 0;                     // F5c: the repeats' one-poles, nought skipped
   };
 
   explicit Plane(double rate)
@@ -195,6 +198,9 @@ class Plane {
   void timeSet(Time& T, const PlaneTimeTone& t, bool echoRouted) const {
     T.t = &t;
     T.delayOn = t.delayMix > 0 || echoRouted;
+    // F5c: the page's laws - 500 Hz to 20 kHz for the tone, 20 Hz to 1 kHz for the cut.
+    T.toneA = t.delayTone < 1 ? 1 - std::exp(-kTwoPi * 500 * std::pow(40.0, std::fmax(0.0, t.delayTone)) / rate_) : 0;
+    T.cutA = t.delayLowCut > 0 ? 1 - std::exp(-kTwoPi * 20 * std::pow(50.0, std::fmin(1.0, t.delayLowCut)) / rate_) : 0;
     T.phOn = t.phaserMix > 0 || phaserRouted_;
     T.on = T.delayOn || t.chorusMix > 0 || T.phOn;
   }
@@ -327,6 +333,7 @@ class Plane {
     double dNow = -1;
     std::array<double, 4 * kPhaserStages> ps {};  // the phaser's all-pass states, left then right
     double pl = 0, pr = 0;                        // and what each channel's chain last gave, fed back
+    double tl = 0, tr = 0, hl = 0, hr = 0, wph = 0;  // F5c: the tone's and cut's memories, the wow's phase
   };
 
   static double readLine(const std::vector<float>& buf, int w, double d, int size) {
@@ -372,13 +379,30 @@ class Plane {
         if (T.delayOn) {
           const double want = std::fmax(1.0, std::fmin(static_cast<double>(delayMax_ - 3), T.echoMs * rate_ / 1000));
           fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide_;
-          const double echoL = readLine(fx.dl, fx.dw, fx.dNow, delayMax_);
-          const double echoR = readLine(fx.dr, fx.dw, fx.dNow, delayMax_);
+          // Wow: half a hertz, two milliseconds either side at the most, as the page's.
+          double at = fx.dNow;
+          if (t.delayWow > 0) {
+            fx.wph += kTwoPi * 0.5 / rate_;
+            if (fx.wph >= kTwoPi) fx.wph -= kTwoPi;
+            at = std::fmax(1.0, std::fmin(static_cast<double>(delayMax_ - 3),
+                                          at + std::fmin(1.0, t.delayWow) * (0.002 * rate_) * std::sin(fx.wph)));
+          }
+          double echoL = readLine(fx.dl, fx.dw, at, delayMax_);
+          double echoR = readLine(fx.dr, fx.dw, at, delayMax_);
+          // Tone and low cut in the loop, skipped open and off, as the page's.
+          if (T.toneA > 0) { fx.tl += T.toneA * (echoL - fx.tl); fx.tr += T.toneA * (echoR - fx.tr); echoL = fx.tl; echoR = fx.tr; }
+          if (T.cutA > 0) { fx.hl += T.cutA * (echoL - fx.hl); fx.hr += T.cutA * (echoR - fx.hr); echoL -= fx.hl; echoR -= fx.hr; }
           const double fb = std::fmax(0.0, std::fmin(0.9, t.delayFeedback));
           const auto w = static_cast<std::size_t>(fx.dw);
           if (t.delayPingPong) { fx.dl[w] = static_cast<float>(x + fb * echoR); fx.dr[w] = static_cast<float>(y + fb * echoL); }
           else { fx.dl[w] = static_cast<float>(x + fb * echoL); fx.dr[w] = static_cast<float>(y + fb * echoR); }
           fx.dw = fx.dw + 1 == delayMax_ ? 0 : fx.dw + 1;
+          // Width on what is heard and drawn only; one skipped, as the page's.
+          const double wide = std::fmax(0.0, std::fmin(2.0, t.delayWidth));
+          if (wide != 1) {
+            const double mid = (echoL + echoR) / 2, side = (echoL - echoR) / 2 * wide;
+            echoL = mid + side; echoR = mid - side;
+          }
           x += T.echo * echoL; y += T.echo * echoR;
         }
       }

@@ -336,7 +336,7 @@ Not layout, and each one page, core and parity work where it touches the sound:
   swatches, B's as a menu defaulting to its lane's; terracotta left out as the reticle's.
 - Undo and redo, and A/B compare.
 - The window's *Size*, the editor's size remembered, and its default and minimum.
-- Optional: Delay's Tone, Low cut, Width and Wow; a modulation envelope of its own;
+- Optional: Delay's Tone, Low cut, Width and Wow (*built 8 Nov*); a modulation envelope of its own;
   auditioning a preset by holding a key.
 
 ## Stages

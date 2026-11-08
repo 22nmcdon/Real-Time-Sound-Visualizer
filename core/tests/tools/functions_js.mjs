@@ -211,19 +211,21 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const rate = n("rate");
     const FIELDS = ["planeMirror", "planeRadius", "planeOS", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                     "planeTwist", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
+                    "delayTone", "delayLowCut", "delayWidth", "delayWow",
                     "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback",
                     "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
     const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                       "planeTwist", "planeSnap"];
     const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
-    const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "chorusMix", "chorusRate", "chorusDepthMs",
+    const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "delayTone", "delayLowCut", "delayWidth",
+                    "delayWow", "chorusMix", "chorusRate", "chorusDepthMs",
                     "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
     const bName = (f) => "b" + f[0].toUpperCase() + f.slice(1);
     for (const f of B_TIME) toneB[f] = n(bName(f));
     toneB.planeOwn = n("bown") === 1;
     toneB.planeTurn = n("bTurn");
-    const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "CHORUS_MAX",
+    const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "DELAY_TONE_LOW", "WOW_STEP", "CHORUS_MAX",
                          "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
                          "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep",

@@ -653,6 +653,10 @@ class Generator {
     else if (field == "delayMs") p.delayMs = v;
     else if (field == "delayFeedback") p.delayFeedback = v;
     else if (field == "delayPingPong") p.delayPingPong = v != 0;
+    else if (field == "delayTone") p.delayTone = v;
+    else if (field == "delayLowCut") p.delayLowCut = v;
+    else if (field == "delayWidth") p.delayWidth = v;
+    else if (field == "delayWow") p.delayWow = v;
     else if (field == "chorusMix") p.chorusMix = v;
     else if (field == "chorusRate") p.chorusRate = v;
     else if (field == "chorusDepthMs") p.chorusDepthMs = v;

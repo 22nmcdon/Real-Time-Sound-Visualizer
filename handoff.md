@@ -235,6 +235,14 @@ is below, in order. The listening notes this plan refers to follow it.
    no version bump, held to their menus, and not sent to the plugin's core,
    which draws no colour. `inktest.py` reads the inks off the screen's pixels
    and shows one frame in two inks laying the same light in Scan's grid.
+   *The Delay's Tone, Low cut, Width and Wow, 8 Nov:* in the Delay's rest,
+   page, core and parity. Tone and Low cut are one-poles in the loop (500 Hz
+   to 20 kHz, open at the top; 20 Hz to 1 kHz, off at nought), so each repeat
+   is darker and thinner than the last; Width scales the repeats' side on
+   what is heard, not in the loop; Wow swings the read point half a hertz,
+   2 ms either side. At their defaults each is skipped, and the delay is the
+   old one to the bit (checked against the old build). Layer B has twins.
+   Not destinations: nothing patches onto them yet. `delaytest.py` is new.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

@@ -372,6 +372,7 @@ with sync_playwright() as pw:
       out.back = { ...echoB }; delete out.back.sent; delete saved.sent; out.saved = saved;
       restore({ bPlane: true, bDelayMix: 45, delayMix: 20, delayFeedback: 60 });
       out.partial = { ...echoB };
+      // Nine of the delay's - five, and F5c's tone, low cut, width and wow - and five of the chorus's.
       out.onHas = Object.keys(decodeSetup(code)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
       out.offHas = Object.keys(decodeSetup(offCode)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
       el.planeLayerBoth.click(); await wait(20);
@@ -398,7 +399,7 @@ with sync_playwright() as pw:
           not tboth["own"] and tboth["bMix"] == 0.7 and tboth["bMs"] == 375 and tboth["genB"] == 0.7
           and tboth["checked"] == ["Both"] and tboth["planeChecked"] == ["Both"], str(tboth))
     check("B's own echo is written into a code and read back as it was",
-          tp["back"] == tp["saved"] and tp["saved"]["sync"] == "1/4" and tp["saved"]["chorus"] == 0.6 and tp["onHas"] == 10,
+          tp["back"] == tp["saved"] and tp["saved"]["sync"] == "1/4" and tp["saved"]["chorus"] == 0.6 and tp["onHas"] == 14,
           "%r / %r" % (tp["saved"], tp["back"]))
     check("a code of B's own with a field missing takes A's for it, and with it off none of it is written",
           tp["partial"]["mix"] == 0.45 and tp["partial"]["feedback"] == 0.6 and tp["offHas"] == 0, str(tp["partial"]))

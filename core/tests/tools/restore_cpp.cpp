@@ -52,6 +52,8 @@ Json layerBJson(const scope::LayerBSettings& t) {
   Json o = layerJson(t);
   o.set("delayMix", num(t.delayMix)); o.set("delayMs", num(t.delayMs));
   o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
+  o.set("delayTone", num(t.delayTone)); o.set("delayLowCut", num(t.delayLowCut));
+  o.set("delayWidth", num(t.delayWidth)); o.set("delayWow", num(t.delayWow));
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
@@ -85,6 +87,8 @@ Json toneJson(const scope::Tone& t) {
   o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist));
   o.set("planeSnap", num(t.planeSnap)); o.set("delayMix", num(t.delayMix)); o.set("delayMs", num(t.delayMs));
   o.set("delayFeedback", num(t.delayFeedback)); o.set("delayPingPong", flag(t.delayPingPong));
+  o.set("delayTone", num(t.delayTone)); o.set("delayLowCut", num(t.delayLowCut));
+  o.set("delayWidth", num(t.delayWidth)); o.set("delayWow", num(t.delayWow));
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
@@ -408,6 +412,7 @@ int main(int argc, char** argv) {
       Json echo = Json::object();
       echo.set("mix", num(e.mix)); echo.set("ms", num(e.ms)); echo.set("sync", str(e.sync)); echo.set("feedback", num(e.feedback));
       echo.set("pingPong", flag(e.pingPong)); echo.set("chorus", num(e.chorus)); echo.set("rate", num(e.rate));
+      echo.set("tone", num(e.tone)); echo.set("lowCut", num(e.lowCut)); echo.set("width", num(e.width)); echo.set("wow", num(e.wow));
       echo.set("depthMs", num(e.depthMs)); echo.set("centreMs", num(e.centreMs)); echo.set("chorusFeedback", num(e.chorusFeedback));
       echo.set("phaser", num(e.phaser)); echo.set("phRate", num(e.phRate)); echo.set("phDepth", num(e.phDepth));
       echo.set("phFeedback", num(e.phFeedback));

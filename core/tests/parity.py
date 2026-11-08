@@ -293,6 +293,8 @@ def drawing_calls():
 PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4, planeOS=2, planeLimit=0,
                       planeScaleX=1, planeScaleY=1, planeShear=0, planeTwist=0, planeSnap=0,
                       delayMix=0, delayMs=375, delayFeedback=0.35, delayPingPong=0, chorusMix=0, chorusRate=0.6,
+                      delayTone=1, delayLowCut=0, delayWidth=1, delayWow=0,
+                      bDelayTone=1, bDelayLowCut=0, bDelayWidth=1, bDelayWow=0,
                       chorusDepthMs=3, chorusMs=12, chorusFeedback=0, twr=0, ecr=0, rpush=0, tpush=0, epush=0,
                       etpush=0, inp=0, bown=0, bMirror=0, bRadius=0.4, bLimit=0, bScaleX=1, bScaleY=1, bShear=0,
                       bTwist=0, bSnap=0, bTurn=0, brpush=0, btpush=0, btr=0, bturnpush=0,
@@ -428,6 +430,24 @@ def plane_scenarios():
                     bPhaserMix=0.7, bChorusMix=0.5, bDelayMix=0.4, bDelayMs=5, bDelayFeedback=0.5))
     out.append(dict(phaserMix=0.8, phaserRate=4, chorusMix=0.5, chorusRate=3, delayMix=0.5, delayMs=7, delayFeedback=0.5,
                     ev="700:fxOrder:5;1500:fxOrder:2;2100:fxOrder:9"))
+    # The delay's tone, low cut, width and wow (F5c): each alone with the line
+    # short and fed back, so the repeats it changes come round several times
+    # within the run; all four at once and at their far ends; width past its
+    # range on both sides, held to it; B's own beside A's; and each moved under
+    # the pairs, off and back to its rest, the wow's phase carrying on.
+    D = dict(delayMix=0.6, delayMs=6, delayFeedback=0.7)
+    out.append(dict(D, delayTone=0.3))
+    out.append(dict(D, delayLowCut=0.6, rate=44100.0))
+    out.append(dict(D, delayWidth=0))
+    out.append(dict(D, delayWidth=1.7, delayPingPong=1))
+    out.append(dict(D, delayWow=1, samples=12000))
+    out.append(dict(D, delayTone=0, delayLowCut=1, delayWidth=2, delayWow=0.4, samples=8000))
+    out.append(dict(D, delayWidth=5))
+    out.append(dict(D, delayWidth=-1, delayTone=-3, delayLowCut=4, delayWow=7))
+    out.append(dict(D, planeShear=0.1, bown=1, bDelayMix=0.5, bDelayMs=4, bDelayFeedback=0.6, bDelayTone=0.2,
+                    bDelayLowCut=0.5, bDelayWidth=0.3, bDelayWow=0.8, delayTone=0.7))
+    out.append(dict(D, ev="500:delayTone:0.2;900:delayLowCut:0.5;1300:delayWidth:0.4;1700:delayWow:1;"
+                    "2100:delayTone:1;2300:delayLowCut:0;2400:delayWidth:1;2500:delayWow:0"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -730,6 +750,21 @@ check("and against B's own effects run in A's order",
 mv = next(i for i, l in enumerate(lines) if "1500:fxOrder:2" in l)
 check("and against an order moved under the pairs with one move left out",
       worst(js_one(lines[mv].replace(";1500:fxOrder:2", "")), row(cpp_rows[mv])) > 1e-6)
+# The delay's tone, low cut, width and wow (F5c): each run against the page's
+# with that control at rest, which must not pass - otherwise a field both sides
+# ignored would match every run above - and the moves under the pairs with the
+# wow's move left out.
+for key, rest in (("delayTone=0.3", "delayTone=1"), ("delayLowCut=0.6", "delayLowCut=0"),
+                  ("delayWidth=0 ", "delayWidth=1 "), ("delayWow=1 ", "delayWow=0 ")):
+    at = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " " + key in l + " ")
+    check("and against the page's run with the delay's %s at rest" % key.split("=")[0][5:].lower(),
+          worst(js_one(lines[at].replace(" " + key, " " + rest)), row(cpp_rows[at])) > 1e-6)
+dmv = next(i for i, l in enumerate(lines) if "1700:delayWow:1" in l)
+check("and against the delay's moves under the pairs with the wow's left out",
+      worst(js_one(lines[dmv].replace("1700:delayWow:1;", "")), row(cpp_rows[dmv])) > 1e-6)
+dbo = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bDelayWow=0.8 " in l)
+check("and against B's own repeats given A's tone",
+      worst(js_one(lines[dbo].replace(" bDelayTone=0.2 ", " bDelayTone=0.7 ")), row(cpp_rows[dbo])) > 1e-6)
 # The drawings: a solid that was never reset mid-lap, and a random LFO drawing
 # from another seed, must both be told apart.
 walk = next(i for i, l in enumerate(lines) if "1900:reset" in l)

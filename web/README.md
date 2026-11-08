@@ -5198,3 +5198,10 @@ off the screen needs the two figures to differ - a fifth in one hand, one note
 in the other. And Scan depth is a layer's own (`bScan`), so a test wanting
 both layers' rings sets it with each layer on the panel; set once, only A
 reads and only A's ring is drawn.
+
+**A swing slower than the window cannot be read as max less min.** The delay's
+wow is half a hertz, a two-second period, and a repeat can be read alone for
+less than two seconds since the line is two seconds long. The first check took
+max less min of the pitch over 0.9 s and found 5.4 Hz of a 6.3 Hz swing. A
+sinusoid at the known rate, fitted to the pitch by least squares, gives the
+amplitude from any part of a cycle: 6.28 Hz, the law to the hundredth.
