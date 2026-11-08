@@ -241,6 +241,7 @@ EXPORT(scope_routes) void scopeRoutes(int count) {
 }
 
 EXPORT(scope_gate) void scopeGate(int open, double velocity) { core->gate(open != 0, velocity); }
+EXPORT(scope_noteDown) void scopeNoteDown() { core->noteDown(); }
 EXPORT(scope_gated) void scopeGated(int on) { core->setGated(on != 0); }
 EXPORT(scope_kick) void scopeKick(double amount) { core->kick(amount); }
 EXPORT(scope_strike) void scopeStrike(double hz, double velocity) { core->strike(hz, velocity); }

@@ -105,6 +105,7 @@ inline std::vector<ModDest> genDests() {
   add("gen.turn", slot::Turn);
   add("gen.bend", slot::Bend); add("gen.bendAt", slot::BendAt);
   add("gen.phaser", slot::Phaser);
+  add("gen.delayTone", slot::DelayTone);
   return out;
 }
 

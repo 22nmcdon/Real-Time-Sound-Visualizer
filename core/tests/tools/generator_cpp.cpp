@@ -106,6 +106,7 @@ void run(const std::vector<std::string>& head, const Events& events) {
           }
           core.setRoutes(list);
         } else if (cmd == "gate") core.gate(arg(1) == "1", num(arg(2)));
+        else if (cmd == "noteDown") core.noteDown();
         else if (cmd == "gated") core.setGated(arg(1) == "1");
         else if (cmd == "kick") core.kick(num(arg(1)));
         else if (cmd == "strike") core.strike(num(arg(1)), num(arg(2)));

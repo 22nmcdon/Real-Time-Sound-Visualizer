@@ -5213,3 +5213,24 @@ passing: what they hear is the C++. The JavaScript generator is held by
 parity, which runs it beside the core, and its mutants are judged there - run
 by run through `generator_js.mjs` against the compiled harness, seconds a
 mutant, rather than a browser suite that could never fail.
+
+**The gate cannot say a key went down.** It is sent on every note event, and
+lifting one of two held keys sends it still open, so "every note" could not be
+read from it: a restrike on every open gate would have restarted the envelope
+when a key came up. A key gone down is a note held now that was not held when
+the generator was last given notes (`midiNotesBefore`, the core's
+`notesBefore_`), reckoned where the notes are applied, so the arpeggiator's
+steps count too; the generator is told `noteDown`. Both keyboard harnesses log
+it, so parity holds where it is sent, not only what it does.
+
+**A browser suite plays the core's keyboard, not the page's.** On the site's
+default brain the notes go to the compiled core, whose own keyboard restrikes
+the envelope, so a page whose `midiApplyNotesTo` counted a lifted key as struck,
+or whose source never posted `noteDown` to the worklet, passed every check in
+`menvtest.py`, and the first version of its Every note check read the page's
+main-thread copy of the core, which no message has to reach. Both paths are
+measured now, sounding, on the default brain and on `?brain=js` (with the
+screen's keys on, since the page's keyboard gates only with a keyboard to
+play it), and parity's keyboard comparison counts the `noteDown`s. A change
+to the page's keyboard is judged there and on `?brain=js`, never by a suite
+on the default brain alone.

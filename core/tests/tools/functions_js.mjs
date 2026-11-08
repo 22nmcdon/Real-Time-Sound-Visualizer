@@ -260,6 +260,8 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       gB[c.__get("ECHO_TIME_SLOT")] = n("betpush") * Math.sin(i * 0.0011 + 3.5);
       g[c.__get("PHASER_SLOT")] = n("ppush") * Math.sin(i * 0.0037 + 4);
       gB[c.__get("PHASER_SLOT")] = n("bppush") * Math.sin(i * 0.0033 + 4.5);
+      g[c.__get("DELAY_TONE_SLOT")] = n("dtpush") * Math.sin(i * 0.0027 + 5);
+      gB[c.__get("DELAY_TONE_SLOT")] = n("bdtpush") * Math.sin(i * 0.0021 + 5.5);
       let x = 0.7 * Math.sin(f.TWO_PI * 220 * i / rate) + 0.25 * Math.sin(f.TWO_PI * 661 * i / rate);
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.

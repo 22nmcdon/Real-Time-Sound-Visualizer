@@ -241,7 +241,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   on the knob they are on, so the owner can find out whether they are missed.
   Velocity's FM is Expression's menu on Play, reading and writing the one
   routing it stands for rather than a field. The Envelope follows Play's amp
-  envelope unless its editor's switch gives it its own four times (8 Nov):
+  envelope unless its editor's switch gives it its own four times (8 Nov),
+  once a phrase or again on every note (`noteDown`, page and core):
   those controls are written once in the page, outside the editor, and moved
   into it while it is open, so their ids resolve from the start for the
   plugin's panel and the morph. This replaced the drawer

@@ -77,7 +77,7 @@ struct PlaneTone : PlaneLayerTone {
 
 // A sample's pushes from the routings onto a layer's plane, as the page's
 // accumulator holds them.
-struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0, phaser = 0; };
+struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0, phaser = 0, delayTone = 0; };
 
 class Plane {
  public:
@@ -98,6 +98,7 @@ class Plane {
     double echo = 0, echoMs = 375, phase = 0, sin = 0, cos = 1;
     double ph = 0, phPhase = 0, aL = 0, aR = 0;  // the phaser's amount, sweep, and each channel's coefficient
     double toneA = 0, cutA = 0;                     // F5c: the repeats' one-poles, nought skipped
+    double toneAt = NAN;                            // the tone the coefficient was last worked out for
   };
 
   explicit Plane(double rate)
@@ -199,7 +200,6 @@ class Plane {
     T.t = &t;
     T.delayOn = t.delayMix > 0 || echoRouted;
     // F5c: the page's laws - 500 Hz to 20 kHz for the tone, 20 Hz to 1 kHz for the cut.
-    T.toneA = t.delayTone < 1 ? 1 - std::exp(-kTwoPi * 500 * std::pow(40.0, std::fmax(0.0, t.delayTone)) / rate_) : 0;
     T.cutA = t.delayLowCut > 0 ? 1 - std::exp(-kTwoPi * 20 * std::pow(50.0, std::fmin(1.0, t.delayLowCut)) / rate_) : 0;
     T.phOn = t.phaserMix > 0 || phaserRouted_;
     T.on = T.delayOn || t.chorusMix > 0 || T.phOn;
@@ -209,6 +209,12 @@ class Plane {
     if (T.delayOn) {
       T.echo = std::fmax(0.0, std::fmin(1.0, t.delayMix + p.echo * 0.5));
       T.echoMs = p.echoTime == 0 ? t.delayMs : t.delayMs * std::pow(2.0, p.echoTime);
+      // The tone from its knob and its push, worked out again only when it moves, as the page's.
+      const double tone = std::fmax(0.0, std::fmin(1.0, t.delayTone + p.delayTone * 0.5));
+      if (!(tone == T.toneAt)) {
+        T.toneAt = tone;
+        T.toneA = tone < 1 ? 1 - std::exp(-kTwoPi * 500 * std::pow(40.0, tone) / rate_) : 0;
+      }
     }
     if (t.chorusMix > 0) {
       T.phase += kTwoPi * t.chorusRate * dt;

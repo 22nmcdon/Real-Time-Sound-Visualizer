@@ -130,6 +130,7 @@ function run(head, events) {
           return { index: index < 0 ? undefined : index, held, heldB, slot, amount, amountB, unipolar: unipolar === 1 };
         }));
       } else if (cmd === "gate") core.gate(a[0] === "1", Number(a[1]));
+      else if (cmd === "noteDown") core.noteDown();
       else if (cmd === "gated") { core.setGated(a[0] === "1"); gated = a[0] === "1"; }
       else if (cmd === "kick") core.kick(Number(a[0]));
       else if (cmd === "strike") core.strike(Number(a[0]), Number(a[1]));

@@ -171,6 +171,75 @@ with sync_playwright() as pw:
     p.evaluate("""() => { for (const n of [43, 50, 72]) midiNoteOff(n); midiPanic();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); }""")
 
+    print("\n--- the graticule and the thickness ---")
+    # The ruling's own ink, counted over the screen; and the figure's pixels at
+    # each thickness. One frame drawn three ways, synchronously, as above.
+    look = p.evaluate("""() => {
+      const line = hexToRgb(ink.line), paper = hexToRgb(ink.paper);
+      const n = 2048, l = new Float32Array(n), r = new Float32Array(n);
+      for (let i = 0; i < n; i++) { l[i] = 0.6 * Math.sin(i * 0.031); r[i] = 0.5 * Math.sin(i * 0.047 + 1); }
+      const draw = () => {
+        pictureEngine.fade(0, true); clearPaper();
+        drawXY({ channels: [l, r], turned: false }, fitCanvas(el.trace), 0);
+        const c = el.trace, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        let ruled = 0, inked = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const near = (q) => Math.abs(d[i] - q[0]) + Math.abs(d[i + 1] - q[1]) + Math.abs(d[i + 2] - q[2]) < 12;
+          if (near(line)) ruled++;
+          else if (!near(paper) && d[i] + d[i + 1] + d[i + 2] < 500) inked++;
+        }
+        return { ruled, inked, grid: Array.from(phosphor.grid) };
+      };
+      const was = [state.trace, state.graticule, state.beam];
+      state.beam = 'off';
+      state.graticule = true; state.trace = 'normal'; const on = draw();
+      state.graticule = false; const off = draw();
+      state.graticule = true; state.trace = 'thin'; const thin = draw();
+      state.trace = 'thick'; const thick = draw();
+      [state.trace, state.graticule, state.beam] = was;
+      const same = (x, y) => x.every((v, i) => v === y[i]);
+      return { on: on.ruled, off: off.ruled, thin: thin.inked, normal: on.inked, thick: thick.inked,
+               light: same(on.grid, thick.grid) && same(on.grid, thin.grid) && same(on.grid, off.grid) };
+    }""")
+    check("the graticule ruled, and with it off none of its ink on the screen", look["on"] > 1000 and look["off"] < look["on"] / 20, str(look))
+    check("null: on, the ruling is there to count", look["on"] > 1000)
+    # And in Y-T, which rules its own grid in its own branch: drawn by the
+    # page's own frames, the display put to Y-T and back, each way twice so a
+    # frame drawn before the switch landed is not the one counted.
+    yt = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const line = hexToRgb(ink.line), was = snapshot();
+      const count = () => { const c = el.trace, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        let n = 0; for (let i = 0; i < d.length; i += 4)
+          if (Math.abs(d[i] - line[0]) + Math.abs(d[i + 1] - line[1]) + Math.abs(d[i + 2] - line[2]) < 12) n++;
+        return n; };
+      const out = {};
+      for (const g of [true, false, true]) {
+        restore(Object.assign(snapshot(), { display: 'yt', graticule: g })); await wait(350);
+        out[g ? (out.on === undefined ? 'on' : 'again') : 'off'] = count();
+      }
+      restore(was); await wait(100);
+      return Object.assign(out, { display: state.display });
+    }""")
+    check("in Y-T too, ruled with it on and none of its ink with it off", yt["on"] > 1000 and yt["again"] > 1000
+          and yt["off"] < yt["on"] / 20, str(yt))
+    check("thick draws the figure in more pixels than normal, and thin in fewer", look["thick"] > 1.4 * look["normal"] > 1.4 * look["thin"] * 1.0
+          and look["thin"] < look["normal"], str(look))
+    check("and none of it changes the light Scan reads", look["light"], str(look))
+    p.evaluate("() => showControl('traceWidth')"); p.wait_for_timeout(250)
+    p.locator("#traceWidth").select_option("thick"); p.locator("#graticuleOn").uncheck(); p.wait_for_timeout(100)
+    hand = p.evaluate("() => [state.trace, state.graticule, snapshot().trace, snapshot().graticule]")
+    check("by hand, the menu and the switch reach the screen's state and the code", hand == ["thick", False, "thick", False], str(hand))
+    back = p.evaluate("""() => { const c = snapshot(); restore(Object.assign(snapshot(), { trace: 'normal', graticule: true }));
+      restore(c); const a = [state.trace, state.graticule, el.traceWidth.value, el.graticuleOn.checked];
+      const old = snapshot(); delete old.trace; delete old.graticule; restore(old);
+      return { a, old: [state.trace, state.graticule], odd: (restore(Object.assign(snapshot(), { trace: 'huge' })), state.trace) }; }""")
+    check("a code carries both back onto the controls; an old one is normal and ruled; a thickness it has not got is normal",
+          back == {"a": ["thick", False, "thick", False], "old": ["normal", True], "odd": "normal"}, str(back))
+    p.evaluate("() => { el.traceWidth.value = 'normal'; el.traceWidth.dispatchEvent(new Event('change')); el.graticuleOn.checked = true; el.graticuleOn.dispatchEvent(new Event('change')); }")
+    note = p.evaluate("() => document.querySelector('.ink-where') && document.querySelector('.ink-where').textContent")
+    check("beside the swatches it says they colour the X-Y figure", bool(note) and "X" in note and "Y" in note, str(note))
+
     print("\n--- codes ---")
     codes = p.evaluate("""() => {
       const read = () => ({ a: state.beamInk, b: state.bInk, marked: el.beamInk.querySelector('[aria-checked="true"]').dataset.ink,

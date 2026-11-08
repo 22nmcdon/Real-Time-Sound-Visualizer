@@ -251,6 +251,25 @@ is below, in order. The listening notes this plan refers to follow it.
    a chord over a held one is the same swell, which is the cost. Its
    controls are written once in the page and moved into the editor, so the
    plugin's panel and the morph count them. `menvtest.py` is new.
+   *The owner's answers on the open items, 8 Nov, and what was built:*
+   the Envelope's own has a switch, Phrase (the default, the legato rule)
+   or Every note (each key gone down starts its attack again from where it
+   is; told by `noteDown`, the notes held now against those held last time,
+   page and core, since the gate is also sent on a lifted key) - Settled
+   wants the one and Breathing the other, so it is per sound. The Delay's
+   Tone is a modulation destination (`gen.delayTone`, half its travel either
+   way); Width, Wow, Low cut and the Envelope's times are not, by decision.
+   Two look settings and no more: Thickness and the Graticule, in the Beam;
+   the swatches say they colour the X-Y figure, Y-T keeping its lanes' inks.
+   **The drawings are to be cut on 22 November** (harmonograph, figures,
+   solids, the second generator) unless the owner has reached for one by
+   then: a cleanup stage with a decode pass, the old library keeping them as
+   a test corpus. Still to come from the same answers: the presets' short
+   listen for / watch for lines (hearing a preset by holding a key is not
+   wanted: Load, listen, undo already does it), radius 0.2 easy to land on
+   (a preset only if `honestytest.py` places it cleanly), and the bent
+   sine's offset moved up, since Warp is a host parameter and automating it
+   thumps; then P9's reverb.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

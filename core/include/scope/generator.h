@@ -60,7 +60,8 @@ constexpr int Swing = EchoTime + 1, Width = Swing + 1, Table = Width + 1, Spin =
 constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
 constexpr int Bend = Turn + 1, BendAt = Bend + 1;  // the voice's bend and where it centres
 constexpr int Phaser = BendAt + 1;  // the phaser's amount (P8e)
-constexpr int Used = Phaser + 1;  // the slots the loop reads
+constexpr int DelayTone = Phaser + 1;  // the delay's tone (8 Nov)
+constexpr int Used = DelayTone + 1;  // the slots the loop reads
 }  // namespace slot
 
 enum class Mode { Wave, Harmonograph, Figure, Wireframe };
@@ -102,6 +103,7 @@ struct Tone : LayerSettings, PlaneTone {
   double pitchBend = 0, vibrato = 0;  // the keyboard's, in semitones (6 Nov): see the page's tone
   // The Envelope card's own (8 Nov), whether env.note reads it, and its four times.
   bool menvOwn = false;
+  bool menvEvery = false;  // once a phrase, or again on every note, as the page's
   EnvelopeTone menv { 10, 300, 0.5, 400 };
   Figure figure = Figure::Circle;
   double detail = 5, figureRate = 40, swingRate = 2.1, decay = 0.12, swingDrive = 0;
@@ -203,6 +205,7 @@ class Generator {
     else if (field == "qMask") a.qMask = static_cast<int>(value);
     else if (field == "qGlideMs") a.qGlideMs = value;
     else if (field == "menvOwn") a.menvOwn = value != 0;
+    else if (field == "menvEvery") a.menvEvery = value != 0;
     else if (field == "menvAttackMs") a.menv.attackMs = value;
     else if (field == "menvDecayMs") a.menv.decayMs = value;
     else if (field == "menvSustain") a.menv.sustain = value;
@@ -296,6 +299,12 @@ class Generator {
   }
 
   void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open); }
+  // A key gone down: the Envelope's own, on Every note, starts its attack again from where it is.
+  void noteDown() {
+    if (!a_.menvEvery || !menvHeld_) return;
+    menv_.reset(menv_.level());
+    menv_.gate(true, 1);
+  }
 
   void setGated(bool on) {
     if (on == gated_) return;
@@ -815,9 +824,9 @@ class Generator {
 
   void planeTick(double dt) {
     const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0,
-                          modOr0(slot::Phaser) };
+                          modOr0(slot::Phaser), modOr0(slot::DelayTone) };
     const PlanePushes b { modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Echo), modBOr0(slot::EchoTime),
-                          modBOr0(slot::Turn), modBOr0(slot::Phaser) };
+                          modBOr0(slot::Turn), modBOr0(slot::Phaser), modBOr0(slot::DelayTone) };
     plane_.tick(a_, a, dt, &b_, b);
   }
 

@@ -55,6 +55,7 @@ CONTROL = {
     "planeOS": ["planeOS1", "planeOS2", "planeOS4"],
     # The beam's ink, a swatch an ink.
     "beamInk": ["inkAccent", "inkCh1", "inkCh2", "inkCh3", "inkCh4", "inkCh5"],
+    "trace": "traceWidth",
 }
 # Ruled fields with no control of their own, and why.
 NO_CONTROL = {

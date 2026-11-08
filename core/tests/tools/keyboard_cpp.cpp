@@ -46,6 +46,7 @@ class Logged : public scope::GeneratorNotes {
     log_.push_back(std::string("gate ") + (open ? "1" : "0") + " " + show(velocity));
     GeneratorNotes::gate(open, velocity);
   }
+  void noteDown() override { log_.push_back("noteDown"); GeneratorNotes::noteDown(); }
   void setGated(bool on) override { log_.push_back(std::string("setGated ") + (on ? "1" : "0")); GeneratorNotes::setGated(on); }
   void setLayout(scope::Layout next) override {
     log_.push_back(std::string("layout ") + scope::layoutName(next));

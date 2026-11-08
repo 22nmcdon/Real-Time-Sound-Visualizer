@@ -1339,6 +1339,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   // The Envelope's own (8 Nov): its switch and its four sliders, and A's tone
   // given what the sliders hold, as the page's restore and syncMenv do.
   setA("menvOwn", fieldFlag("menvOwn") ? 1 : 0);
+  setA("menvEvery", fieldFlag("menvEvery") ? 1 : 0);
   for (const auto& [id, field, scale] : { std::tuple<const char*, const char*, double>{ "menvAtk", "menvAttackMs", 1 },
                                           { "menvDec", "menvDecayMs", 1 }, { "menvSus", "menvSustain", 100 },
                                           { "menvRel", "menvReleaseMs", 1 } }) {
@@ -1901,6 +1902,7 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
   else if (id == "midiMono") keys.setMode(NoteMode::Mono);
   else if (id == "midiPoly") keys.setMode(NoteMode::Poly);
   else if (id == "midiEditA" || id == "midiEditB") keys.setEdit(id == "midiEditB" ? 1 : 0);
+  else if (id == "menvPhrase" || id == "menvEvery") gen.set("menvEvery", id == "menvEvery" ? 1 : 0);
   else if (id == "planeOS1" || id == "planeOS2" || id == "planeOS4") {
     b.plane.os = id.back() - '0';
     syncPlanePanel(b, keys); syncPlane(b, gen);

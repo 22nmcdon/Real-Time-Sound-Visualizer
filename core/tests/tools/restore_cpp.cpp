@@ -93,7 +93,7 @@ Json toneJson(const scope::Tone& t) {
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
   o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
-  o.set("menvOwn", flag(t.menvOwn)); o.set("menvAttackMs", num(t.menv.attackMs)); o.set("menvDecayMs", num(t.menv.decayMs));
+  o.set("menvOwn", flag(t.menvOwn)); o.set("menvEvery", flag(t.menvEvery)); o.set("menvAttackMs", num(t.menv.attackMs)); o.set("menvDecayMs", num(t.menv.decayMs));
   o.set("menvSustain", num(t.menv.sustain)); o.set("menvReleaseMs", num(t.menv.releaseMs));
   return o;
 }

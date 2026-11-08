@@ -260,7 +260,9 @@ anywhere on the scale, are product.
 
 - **Graticule**: 10 divisions by 8 (`DIVS_X`, `DIVS_Y`), ruled in `--line` at 1px. The
   ruling on the sheet, so it is the quietest thing on it.
-- **Traces**: 1.5px, in the lane's ink. A free-running trace goes `--unresolved`.
+- **Traces**: 1.5px, in the lane's ink. A free-running trace goes `--unresolved`. The Beam's
+  *Thickness* draws them at 0.6 or 2 times that (8 Nov), and the *Graticule* switch leaves the
+  divisions unruled; both are only the look, and the X-Y square's edge stays.
 - **The trigger**: a dashed `--blush-deep` line in the trigger source's own band only,
   with its marker. Dashed because it is a line you set, not one the signal drew.
 - **Cursors**: dotted `--gold`.

@@ -319,12 +319,14 @@ int main(int argc, char** argv) {
         const double betp = static_cast<float>(d("betpush") * std::sin(di * 0.0011 + 3.5));
         const double pp = static_cast<float>(d("ppush") * std::sin(di * 0.0037 + 4));
         const double bpp = static_cast<float>(d("bppush") * std::sin(di * 0.0033 + 4.5));
+        const double dtp = static_cast<float>(d("dtpush") * std::sin(di * 0.0027 + 5));
+        const double bdtp = static_cast<float>(d("bdtpush") * std::sin(di * 0.0021 + 5.5));
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
         if (d("inp") == 2 && i >= 200) { x = 0; y = 0; }
         if (!on) { out.insert(out.end(), { x, y, y, x }); continue; }
-        plane.tick(t, { rp, tp, ep, etp, 0, pp }, 1 / rate, &b, { brp, btp, bep, betp, bup, bpp });
+        plane.tick(t, { rp, tp, ep, etp, 0, pp, dtp }, 1 / rate, &b, { brp, btp, bep, betp, bup, bpp, bdtp });
         plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
         // Each layer's pair once: since P4 there is no heard pair of its own.
         plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });

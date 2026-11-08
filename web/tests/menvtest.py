@@ -94,10 +94,84 @@ with sync_playwright() as pw:
     check("null: following Play, the same note has stopped moving by 150 ms, where its own was still rising",
           abs(play["later"] - play["early"]) < 0.02 and play["early"] > 0.3, str(play))
 
+    print("\n--- once a phrase, or on every note ---")
+    # Its own, a slow attack and a low sustain: one key held until it settles,
+    # then a second key over it. On Every note the second starts the attack
+    # again; on Phrase it is the same swell. Lifting one of two held keys is
+    # the case the gate alone cannot tell apart, and must start nothing.
+    STRIKE = """async ([every]) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event('change'));
+      (every ? el.menvEvery : el.menvPhrase).click();
+      for (const [id, v] of [['menvAtk', 200], ['menvDec', 150], ['menvSus', 15], ['menvRel', 300]]) setControl(id, v);
+      const env = () => MOD_SOURCES.get('env.note').value();
+      midiNoteOn(60, 100); await wait(700);
+      const settled = env();
+      midiNoteOn(64, 100); await wait(120);
+      const second = env();
+      await wait(600);
+      const resettled = env();
+      midiNoteOff(64); await wait(150);
+      const lifted = env();
+      midiNoteOff(60); midiPanic(); await wait(400);
+      return { settled, second, resettled, lifted, field: genSettings().menvEvery };
+    }"""
+    p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(200)
+    ev = p.evaluate(STRIKE, [True])
+    ph = p.evaluate(STRIKE, [False])
+    check("on Every note, a second key starts its attack again: up from its sustain within 120 ms",
+          ev["field"] is True and abs(ev["settled"] - 0.15) < 0.03 and ev["second"] > ev["settled"] + 0.2, str(ev))
+    check("null: on Phrase the same second key leaves it at its sustain", ph["field"] is False
+          and abs(ph["second"] - ph["settled"]) < 0.02, str(ph))
+    check("and on Every note, lifting one of two held keys starts nothing", abs(ev["lifted"] - ev["resettled"]) < 0.03,
+          "%.3f then %.3f" % (ev["resettled"], ev["lifted"]))
+    # The same, sounding: with the worklet playing, the envelope read is the
+    # audio thread's, which hears of a key gone down only by its own message.
+    # Unsounded, the page's copy of the core answers, and a restrike that
+    # never left the main thread passed every check above.
+    SOUNDED = """async ([every]) => {
+      await applyGeneratorSound();
+      await new Promise((r) => setTimeout(r, 300));
+      const audible = state.source.audible();
+      const out = await (""" + STRIKE + """)([every]);
+      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
+      return Object.assign(out, { audible });
+    }"""
+    evs = p.evaluate(SOUNDED, [True])
+    phs = p.evaluate(SOUNDED, [False])
+    check("sounding, the audio thread's envelope restarts on Every note and not on Phrase",
+          evs["audible"] and phs["audible"] and evs["second"] > evs["settled"] + 0.2
+          and abs(phs["second"] - phs["settled"]) < 0.02, "%s / %s" % (evs, phs))
+    check("and sounding, lifting one of two keys starts nothing there either",
+          abs(evs["lifted"] - evs["resettled"]) < 0.03, "%.3f then %.3f" % (evs["resettled"], evs["lifted"]))
+    # On the page's own brain the keyboard is the page's, and a key gone down
+    # reaches the audio thread only as the source's own message; on the
+    # instrument's, above, the core's keyboard sends itself the restrike.
+    # Both, because a message left out on one path passes the other.
+    j = b.new_page(viewport={"width": 1400, "height": 900})
+    j.on("pageerror", lambda e: bad.append("pageerror (brain=js): " + str(e)))
+    j.goto(f"file://{ART}/scope.html?brain=js"); j.wait_for_timeout(700)
+    if j.locator("#helpClose").is_visible(): j.locator("#helpClose").click()
+    j.locator("#trace").click(position={"x": 5, "y": 5}); j.wait_for_timeout(500)
+    j.evaluate("() => setView('bench')"); j.wait_for_timeout(200)
+    j.locator('.mod-card[data-source="env.note"]').click(); j.wait_for_timeout(200)
+    # The page's own keyboard gates the generator only with a keyboard to
+    # play it: the screen's keys, here, as polytest.py has them.
+    j.evaluate("() => setScreenKeys(true)"); j.wait_for_timeout(200)
+    evj = j.evaluate(SOUNDED, [True])
+    phj = j.evaluate(SOUNDED, [False])
+    j.close()
+    check("and on the page's own brain, sounding, the same: restarted on Every note, not on Phrase, not on a lift",
+          evj["audible"] and evj["second"] > evj["settled"] + 0.2 and abs(phj["second"] - phj["settled"]) < 0.02
+          and abs(evj["lifted"] - evj["resettled"]) < 0.03, "%s / %s" % (evj, phj))
+
     print("\n--- what it moves ---")
     moved = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event('change'));
+      // Its own times, set here: the section before leaves a quick attack and a low sustain.
+      el.menvPhrase.click();
+      for (const [id, v] of [['menvAtk', 700], ['menvDec', 900], ['menvSus', 25], ['menvRel', 1200]]) setControl(id, v);
       state.modRoutings = []; touchRoutings();
       // The screen's rotation, a destination the page's own matrix sums each frame.
       addRouting('env.note', 'view.rotate');
@@ -116,17 +190,20 @@ with sync_playwright() as pw:
     print("\n--- codes ---")
     codes = p.evaluate("""() => {
       const read = () => { const t = genSettings(); return [t.menvOwn, t.menvAttackMs, t.menvDecayMs, t.menvSustain, t.menvReleaseMs]; };
-      restore(Object.assign(snapshot(), { menvOwn: true, menvAtk: 40, menvDec: 1500, menvSus: 80, menvRel: 2500 }));
-      const set = read(), code = snapshot();
+      restore(Object.assign(snapshot(), { menvOwn: true, menvEvery: true, menvAtk: 40, menvDec: 1500, menvSus: 80, menvRel: 2500 }));
+      const set = read(), code = snapshot(), every = [genSettings().menvEvery, code.menvEvery, el.menvEvery.getAttribute('aria-checked')];
       restore(Object.assign(snapshot(), { menvAtk: 99999, menvRel: -5 }));
       const held = read();
-      const old = snapshot(); for (const k of ['menvOwn', 'menvAtk', 'menvDec', 'menvSus', 'menvRel']) delete old[k];
+      const old = snapshot(); for (const k of ['menvOwn', 'menvEvery', 'menvAtk', 'menvDec', 'menvSus', 'menvRel']) delete old[k];
       restore(old);
-      return { set, code: [code.menvOwn, code.menvAtk, code.menvDec, code.menvSus, code.menvRel], held, old: read(),
+      return { set, every, oldEvery: genSettings().menvEvery, code: [code.menvOwn, code.menvAtk, code.menvDec, code.menvSus, code.menvRel], held, old: read(),
                reading: cardReading(MOD_SOURCES.get('env.note')) };
     }""")
     check("a code's own envelope comes back into the generator", codes["set"] == [True, 40, 1500, 0.8, 2500], str(codes["set"]))
     check("and goes out again", codes["code"] == [True, 40, 1500, 80, 2500], str(codes["code"]))
+    check("Every note comes back from a code, into the generator and onto its button, and goes out again",
+          codes["every"] == [True, True, "true"], str(codes["every"]))
+    check("and an old code is once a phrase", codes["oldEvery"] is False, str(codes["oldEvery"]))
     check("times past their range are held to it", codes["held"][1] == 2000 and codes["held"][4] == 1, str(codes["held"]))
     check("an old code without them follows Play, as it did", codes["old"][0] is False and codes["reading"] == "follows Play",
           "%s %s" % (codes["old"], codes["reading"]))

@@ -76,6 +76,8 @@ class NoteTarget {
   virtual void setVoices(const std::vector<NoteWant>* list, int layer) = 0;
   virtual void reswing() = 0;
   virtual void gate(bool open, double velocity) = 0;
+  // A key gone down (8 Nov): the page's midiApplyNotesTo tells the generator.
+  virtual void noteDown() = 0;
   virtual void setGated(bool on) = 0;
   virtual bool gated() const = 0;
   virtual Layout layout() const = 0;
@@ -95,6 +97,7 @@ class GeneratorNotes : public NoteTarget {
   void setVoices(const std::vector<NoteWant>* list, int layer) override { g_.setVoices(list, layer); }
   void reswing() override { g_.reswing(); }
   void gate(bool open, double velocity) override { g_.gate(open, velocity); }
+  void noteDown() override { g_.noteDown(); }
   void setGated(bool on) override { g_.setGated(on); }
   bool gated() const override { return g_.gated(); }
   Layout layout() const override { return layout_; }
@@ -729,6 +732,12 @@ class Keyboard {
     key_ = notes_.empty() ? 0 : notes_.back().velocity;
     applyGate();
     gateNotes();
+    // A note held now that was not last time is a key gone down, as the page reckons it.
+    bool struck = false;
+    for (const auto& n : notes_) struck = struck || !holds(notesBefore_, n.note);
+    notesBefore_.clear();
+    for (const auto& n : notes_) notesBefore_.push_back(n.note);
+    if (struck && t_.gated()) t_.noteDown();
     if (!drives()) return;
     if (polyWanted()) { applyPoly(); return; }
     if (notes_.empty()) return;
@@ -796,6 +805,7 @@ class Keyboard {
   std::array<std::vector<NoteWant>, 2> chord_;
   mutable std::vector<NoteWant> inner_;  // the Inner source's scratch
   std::array<int, 2> strikes_ { 0, 0 };
+  std::vector<int> notesBefore_;  // the notes the generator was last given (midiNotesBefore)
   NoteMode mode_ = NoteMode::Dyad;
   std::array<DrawRule, 2> draws_ {};
   Layers layers_;

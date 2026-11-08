@@ -160,10 +160,12 @@ with sync_playwright() as pw:
     # S4 keeps feedback off the matrix: a coefficient a source could hold near
     # one is a loop inside the loop. This check used to refuse every time
     # parameter, which went further than the decision; the echo's level and
-    # time were made destinations when asked for, and they are the only ones.
+    # time were made destinations when asked for, and on 8 Nov the repeats'
+    # tone, a one-pole in the loop that only ever takes away; those three
+    # are the only ones.
     timeish = sorted(d for d in dests if any(w in d.lower() for w in ("delay", "feedback", "chorus", "echo")))
-    check("no feedback or chorus setting is a modulation destination (S4): the echo's level and time only",
-          timeish == ["gen.echo", "gen.echoTime"] and len(dests) > 10, str(timeish))
+    check("no feedback or chorus setting is a modulation destination (S4): the echo's level, time and tone only",
+          timeish == ["gen.delayTone", "gen.echo", "gen.echoTime"] and len(dests) > 10, str(timeish))
 
     print("\n--- the echo's level and time, patched ---")
     # The same burst as above, into a 100 ms delay with no feedback. A held

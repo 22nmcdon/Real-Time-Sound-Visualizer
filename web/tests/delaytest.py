@@ -48,6 +48,7 @@ CORE = """(setup) => {
   const out = { L: [], R: [] };
   for (const step of setup.steps) {
     for (const k in step.tone || {}) core.set(k, step.tone[k]);
+    if (step.routes) core.setRoutes(step.routes);
     const n = step.n, L = new Float32Array(n), R = new Float32Array(n);
     const HL = new Float32Array(n), HR = new Float32Array(n), BL = new Float32Array(n), BR = new Float32Array(n);
     core.block(L, R, n, HL, HR, BL, BR);
@@ -85,9 +86,11 @@ with sync_playwright() as pw:
     # round four times, each read in the middle of its 100 ms, away from the
     # edges where a filter's own rise and fall would be counted.
     MS = 150
-    def repeats(freq, fb, extra):
+    def repeats(freq, fb, extra, routes=None):
         base = dict(freq=freq, interval=0, phase=90, delayMix=1, delayMs=MS, delayFeedback=fb)
-        out = run({"tone": dict(base, **extra), "n": int(0.1 * RATE)}, {"tone": {"amp": 0}, "n": int(0.6 * RATE)})
+        first = {"tone": dict(base, **extra), "n": int(0.1 * RATE)}
+        if routes: first["routes"] = routes
+        out = run(first, {"tone": {"amp": 0}, "n": int(0.6 * RATE)})
         L = out["L"]
         level = []
         for k in range(1, 4):
@@ -113,6 +116,36 @@ with sync_playwright() as pw:
     check("and a 220 Hz burst through the same tone keeps almost all of itself, as the gain says",
           abs((low_dark[1] / low_dark[0]) - FB * onepole_low(220, fc_tone)) < 0.01 and low_dark[0] > 0.9 * low_open[0],
           "%.4f against %.4f" % (low_dark[1] / low_dark[0], FB * onepole_low(220, fc_tone)))
+
+    print("\n--- Tone as a destination ---")
+    # A source held at -0.8 on the tone, the knob open: half its travel either
+    # way, so the tone is 0.6 and each pass loses that one-pole's gain.
+    dts = p.evaluate("() => DELAY_TONE_SLOT")
+    _, pushed = repeats(5000, FB, {}, [{"held": -0.8, "slot": dts, "amount": 1, "unipolar": False}])
+    fc_push = 500 * 40 ** 0.6
+    want = FB * onepole_low(5000, fc_push)
+    check("pushed down by a routing, the open tone darkens each pass by the gain at 0.6 (%.0f Hz)" % fc_push,
+          abs(pushed[2] / pushed[1] - want) / want < 0.03, "%.4f against %.4f" % (pushed[2] / pushed[1], want))
+    check("null: the same run unrouted loses only the feedback", abs(open_[2] / open_[1] - FB) / FB < 0.02)
+    # The push arriving after the tone has been worked out once: the burst
+    # with nothing routed, the routing from the silence on, so every repeat
+    # goes round after it. A tone reckoned once and kept (the cache never
+    # asked again) still loses only the feedback here.
+    late = run({"tone": dict(freq=5000, interval=0, phase=90, delayMix=1, delayMs=MS, delayFeedback=FB), "n": int(0.1 * RATE)},
+               {"tone": {"amp": 0}, "n": int(0.6 * RATE),
+                "routes": [{"held": -0.8, "slot": dts, "amount": 1, "unipolar": False}]})["L"]
+    late_lv = [rms(late[int(k * MS / 1000 * RATE) + 1000: int(k * MS / 1000 * RATE) + int(0.1 * RATE) - 1000]) for k in (1, 2)]
+    check("and a push that arrives after the first pass darkens the passes after it alike",
+          abs(late_lv[1] / late_lv[0] - want) / want < 0.03, "%.4f against %.4f" % (late_lv[1] / late_lv[0], want))
+    offered = p.evaluate("""() => ({ dest: !!MOD_DESTS.get('gen.delayTone'), slot: MOD_DESTS.get('gen.delayTone').slot === DELAY_TONE_SLOT,
+      lfo: routingAllowed(MOD_SOURCES.get('lfo1'), MOD_DESTS.get('gen.delayTone')),
+      env: routingAllowed(MOD_SOURCES.get('env.note'), MOD_DESTS.get('gen.delayTone')),
+      row: !!document.querySelector('[data-mod-dest="gen.delayTone"] #delayTone'),
+      reach: [MOD_DESTS.get('gen.delayTone').reach(100, -1), MOD_DESTS.get('gen.delayTone').reach(30, 0.5)] })""")
+    check("the Tone knob takes the LFOs and the Envelope, its lane drawn by its law", offered == {
+        "dest": True, "slot": True, "lfo": True, "env": True, "row": True, "reach": [50, 55]}, str(offered))
+    none = p.evaluate("() => ['delayWidth', 'delayWow', 'delayLowCut', 'menvAtk'].filter((id) => document.querySelector('[data-mod-control=\"' + id + '\"]'))")
+    check("and Width, Wow, Low cut and the Envelope's own times are left off the matrix", none == [], str(none))
 
     print("\n--- Low cut, in the loop ---")
     cut_v = 0.6

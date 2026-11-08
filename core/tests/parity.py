@@ -302,7 +302,7 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0,
                       phaserMix=0, phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, ppush=0, phr=0,
                       bPhaserMix=0, bPhaserRate=0.3, bPhaserDepth=0.7, bPhaserFeedback=0.3, bppush=0,
-                      fxOrder=0, bFxOrder=0, ev="")
+                      fxOrder=0, bFxOrder=0, dtpush=0, bdtpush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -446,6 +446,10 @@ def plane_scenarios():
     out.append(dict(D, delayWidth=-1, delayTone=-3, delayLowCut=4, delayWow=7))
     out.append(dict(D, planeShear=0.1, bown=1, bDelayMix=0.5, bDelayMs=4, bDelayFeedback=0.6, bDelayTone=0.2,
                     bDelayLowCut=0.5, bDelayWidth=0.3, bDelayWow=0.8, delayTone=0.7))
+    # The tone pushed by a routing (8 Nov): from open, so only the push's
+    # downward half darkens it; and B's own pushed apart from A's.
+    out.append(dict(D, dtpush=0.9))
+    out.append(dict(D, delayTone=0.5, dtpush=0.6, bown=1, bDelayMix=0.5, bDelayMs=4, bDelayTone=0.8, bdtpush=-0.7))
     out.append(dict(D, ev="500:delayTone:0.2;900:delayLowCut:0.5;1300:delayWidth:0.4;1700:delayWow:1;"
                     "2100:delayTone:1;2300:delayLowCut:0;2400:delayWidth:1;2500:delayWow:0"))
     return out
@@ -759,6 +763,12 @@ for key, rest in (("delayTone=0.3", "delayTone=1"), ("delayLowCut=0.6", "delayLo
     at = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " " + key in l + " ")
     check("and against the page's run with the delay's %s at rest" % key.split("=")[0][5:].lower(),
           worst(js_one(lines[at].replace(" " + key, " " + rest)), row(cpp_rows[at])) > 1e-6)
+dtr = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " dtpush=0.9 " in l)
+check("and against the page's run with the delay's tone unpushed",
+      worst(js_one(lines[dtr].replace(" dtpush=0.9 ", " dtpush=0 ")), row(cpp_rows[dtr])) > 1e-6)
+dbt = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bdtpush=-0.7 " in l)
+check("and against B's tone pushed as A's",
+      worst(js_one(lines[dbt].replace(" bdtpush=-0.7 ", " bdtpush=0.6 ")), row(cpp_rows[dbt])) > 1e-6)
 dmv = next(i for i, l in enumerate(lines) if "1700:delayWow:1" in l)
 check("and against the delay's moves under the pairs with the wow's left out",
       worst(js_one(lines[dmv].replace("1700:delayWow:1;", "")), row(cpp_rows[dmv])) > 1e-6)
@@ -824,9 +834,22 @@ def gen_runs():
     add("menv-poly-legato", OWN + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x"))),
                                    (3840, "voices 0 " + notes((60, "x"), (67, "y")))], samples=4096)
     add("menv-poly-one", OWN + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x")))], samples=4096)
+    # Every note (8 Nov): a key gone down mid-decay starts its attack again
+    # from where it is; the same events on Phrase leave it decaying; and a
+    # key gone down while it is shut is the gate's business, not this one's.
+    add("menv-every", OWN + [(0, "set menvEvery 1"), (0, "gated 1"), (256, "gate 1 0.6"), (256, "noteDown"),
+                             (3072, "noteDown")], samples=3584)
+    add("menv-phrase", OWN + [(0, "gated 1"), (256, "gate 1 0.6"), (256, "noteDown"), (3072, "noteDown")], samples=3584)
+    # A key gone down while it is shut, and then a note: the same as the note
+    # alone. The two are kept apart in the list, with runs that differ between
+    # them, because they end the same by design, and side by side they would
+    # pass the check that the comparison fails a line out of step.
+    add("menv-every-shut", OWN + [(0, "set menvEvery 1"), (0, "gated 1"), (512, "noteDown"), (768, "gate 1 0.6")],
+        samples=1024)
     PLAY = [e for e in OWN if e[1] != "set menvOwn 1"]
     add("menv-poly-legato-play", PLAY + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x"))),
                                          (3840, "voices 0 " + notes((60, "x"), (67, "y")))], samples=4096)
+    add("menv-every-gate", OWN + [(0, "set menvEvery 1"), (0, "gated 1"), (768, "gate 1 0.6")], samples=1024)
     add("menv-poly-one-play", PLAY + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x")))], samples=4096)
     # The dyad, every shape, gliding to a new pitch with a vibrato on it.
     for shape in ("harmonic", "sine", "triangle", "square", "ramp", "pulse", "morph", "noise", "pink", "brown", "stepped"):
@@ -1281,6 +1304,17 @@ _, one0 = grow("menv-poly-one-play")
 check("its own envelope is one swell for overlapping notes: a second note held leaves it where one note does",
       leg[22] == one[22] and leg[22] > 0, "%.6f, %.6f" % (leg[22], one[22]))
 check("null: following Play, the second note's own envelope shows", leg0[22] != one0[22], "%.6f, %.6f" % (leg0[22], one0[22]))
+# Every note: struck again at 3072, 512 samples on it is back up its attack,
+# where Phrase is still decaying, and below where Phrase was at the strike.
+_, ev = grow("menv-every")
+_, ph = grow("menv-phrase")
+_, sh = grow("menv-every-shut")
+_, sg = grow("menv-every-gate")
+check("every note: a key gone down mid-decay starts its own envelope's attack again, from where it was",
+      ev[22] > ph[22] + 0.05 and ev[22] < 1, "every %.4f, phrase %.4f" % (ev[22], ph[22]))
+check("and a key gone down while it is shut opens nothing: the note after it starts where the note alone does",
+      sh[22] == sg[22] and sh[22] > 0, "%.4f, %.4f" % (sh[22], sg[22]))
+gnull("menv-every", "set menvEvery 1", "set menvEvery 0", "the Envelope on Phrase")
 _, mt = grow("menv-sustain")
 _, md = grow("menv-decay")
 check("its own envelope as the source: at its sustain, 0.3, not the velocity's share of it nor Play's 0.9",
