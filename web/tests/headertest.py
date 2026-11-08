@@ -22,7 +22,7 @@ Every change here is made with the real mouse and keyboard, since undo counts
 only what follows a trusted event: a knob turned by dispatchEvent is, rightly,
 no step at all, and is the null for that rule.
 """
-import os, sys
+import os, re, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -199,6 +199,86 @@ with sync_playwright() as pw:
           undo_b == 1 and after["on"] == "a" and (undo_a == 0 or after["freq"] != b_freq), str((undo_b, undo_a, after)))
     p.click("#abB"); settle()
     check("and B still holds its own change", state()["freq"] == b_freq, str(state()))
+
+    print("\n--- Settings (F7b) ---")
+    SET = """() => { setMenuOpen(true);
+      const r = el.menuPanel.getBoundingClientRect();
+      const col = (id) => Array.from(document.getElementById(id).children).map((g) => groupTitle(g));
+      return { inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
+               scrolls: el.menuPanel.scrollHeight > el.menuPanel.clientHeight + 1,
+               left: col('settingsLeft'), right: col('settingsRight') }; }"""
+    fits = {}
+    for w, h in ((1400, 900), (960, 600), (960, 480)):
+        p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(250)
+        fits[(w, h)] = p.evaluate(SET)
+        p.evaluate("() => setMenuOpen(false)")
+    p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(250)
+    print("    %s" % fits)
+    for size in ((1400, 900), (960, 600)):
+        check("at %dx%d Settings is inside the window and nothing in it scrolls" % size,
+              fits[size]["inside"] and not fits[size]["scrolls"], str(fits[size]))
+    # The null: a window too short for it must be seen not to fit. At 960
+    # wide the header's two rows were what put the old panel off the window.
+    check("null: at 960x480 the same check says it does not fit", not (fits[(960, 480)]["inside"] and not fits[(960, 480)]["scrolls"]),
+          str(fits[(960, 480)]))
+    check("two columns as drawn: MIDI, the fade and this window; the inputs and the audio",
+          fits[(1400, 900)]["left"] == ["MIDI", "Modulation fade", "This window"]
+          and fits[(1400, 900)]["right"] == ["Input", "Audio", "Input into the generator"], str(fits[(1400, 900)]))
+    notes = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setMenuOpen(true);
+      const g = document.getElementById('midiSetGroup');
+      const note = Array.from(g.querySelectorAll('.menu-note')).find((n) => n.textContent.includes('Nord'));
+      const hidden = note && getComputedStyle(note).display === 'none';
+      const dots = g.querySelector(':scope > .menu-title .more-dots');
+      if (dots) dots.click();
+      await wait(100);
+      const shown = !!note && !!note.closest('.over') && getComputedStyle(note).display !== 'none';
+      closeOverlay(); setMenuOpen(false);
+      const beam = el.beamLevel.closest('.menu-group');
+      return { hidden, dots: !!dots, shown, beam: [homeOf(beam), beam.parentElement.id] };
+    }""")
+    check("a section's notes are behind its dots: hidden in the panel, and shown when the dots are pressed",
+          notes["hidden"] and notes["dots"] and notes["shown"], str(notes))
+    check("Beam is in Picture > Advanced as only the look, not in Settings", notes["beam"] == ["picture", "pictureLook"], str(notes["beam"]))
+    # The help sheet the first time: on a fresh page, with the sheet unseen,
+    # ticked opens it and unticked does not. The null is ticked.
+    def first_visit(pref):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(300)
+        q.evaluate("(pref) => { localStorage.removeItem('scope.sheetSeen'); if (pref) localStorage.setItem('scope.sheetFirst', pref); else localStorage.removeItem('scope.sheetFirst'); }", pref)
+        q.reload(); q.wait_for_timeout(800)
+        got = q.evaluate("() => ({ open: el.helpDialog.open, ticked: el.helpFirst.checked })")
+        q.close()
+        return got
+    fresh, off = first_visit(None), first_visit("no")
+    # Unticking writes the preference the next load reads.
+    p.evaluate("() => { setMenuOpen(true); }")
+    p.locator("#helpFirst").uncheck(); written = p.evaluate("() => localStorage.getItem('scope.sheetFirst')")
+    p.locator("#helpFirst").check()
+    p.evaluate("() => setMenuOpen(false)")
+    check("on a first visit the help sheet opens, ticked; unticked, it does not, and unticking is remembered",
+          fresh == {"open": True, "ticked": True} and off == {"open": False, "ticked": False} and written == "no",
+          str((fresh, off, written)))
+
+    print("\n--- the host's parameters (F7c) ---")
+    # The plugin's own table, read as parity reads it, so a parameter added
+    # there and not marked here fails.
+    src = open(os.path.join(os.path.dirname(ART), "plugin", "src", "PluginProcessor.h")).read()
+    src = src[src.index("kKnobs {"):]
+    plugin = re.findall(r'\{ "[a-z]+", "[A-Za-z ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', src[:src.index("} };")])
+    marks = p.evaluate("""() => ({
+      list: HOST_PARAMS,
+      marked: Array.from(document.querySelectorAll('.host-param')).map((r) => r.querySelector('input[type=range]').id),
+      dot: getComputedStyle(el.vcfCut.closest('.menu-row').querySelector('.menu-label'), '::before').backgroundColor,
+      none: getComputedStyle(el.freq.closest('.menu-row').querySelector('.menu-label'), '::before').content,
+    })""")
+    print("    %s" % marks)
+    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 12,
+          str((marks["list"], plugin)))
+    check("every one, and only those, is marked on the face", sorted(marks["marked"]) == sorted(plugin), str(marks["marked"]))
+    check("with a gold dot, and a control that is not one has none",
+          marks["dot"] == "rgb(176, 141, 87)" and marks["none"] in ("none", "normal"), str((marks["dot"], marks["none"])))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

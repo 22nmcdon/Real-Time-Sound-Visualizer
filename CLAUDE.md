@@ -272,8 +272,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   the markup stays in the default order. `racktest.py` and `fittest.py`
   hold it, and parity the six orders.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
-  MIDI, Audio, the inputs, the modulation fade, Beam), `bench` (everything played or tuned) or, since
-  F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
+  MIDI, Audio, the inputs, the modulation fade, This window; two columns by
+  `data-place` since F7b, notes behind each section's dots, the panel under
+  the header on the window's right), `bench` (everything played or tuned) or, since
+  F1, `measure`, since F2 `picture` (the Picture section's Advanced, with the
+  Beam since F7b) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
   default, the readouts off by default, and nothing in it scrolls down to the
@@ -327,8 +330,12 @@ Do not re-litigate these without a reason; each replaced something that failed.
   is loaded (`putBack`). A and B are two versions for the session, each with
   its own history; B starts as a copy of A, and switching is never a step.
   The transport row under the header is hidden: it only carries the
-  persistence menu the core's panel names. `headertest.py` holds it, with
-  real mouse and keys, since a dispatched event is rightly no step.
+  persistence menu the core's panel names. The host's parameters (F7c) are
+  marked where they are, a gold dot before the name (`HOST_PARAMS`, in the
+  order of the plugin's `kKnobs`, which `headertest.py` reads): the Picture
+  section's six, cutoff, warp, twist, the delay's and phaser's mix, and the
+  morph. `headertest.py` holds it, with real mouse and keys, since a
+  dispatched event is rightly no step.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.

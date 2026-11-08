@@ -253,7 +253,12 @@ with sync_playwright() as pw:
       await new Promise((r) => setTimeout(r, 900));
       const start = performance.now(), trace = [];
       movePhoto((x + 0.5) / N, 32.5 / N);
-      while (performance.now() - start < 500) {
+      // 800 ms, of which the last sixteen frames are the settled stretch: at
+      // 500 ms and eight frames the slewed value was sometimes caught still
+      // chasing the ring's flicker in its last frames, 0.054 short once in
+      // ten runs (8 Nov), against a bound of 0.05 meant to catch it stuck
+      // short of the light - halfway would be 0.35.
+      while (performance.now() - start < 800) {
         await new Promise((r) => requestAnimationFrame(r));
         trace.push([performance.now() - start, photo.value, photo.raw]);
       }
@@ -266,7 +271,7 @@ with sync_playwright() as pw:
       const half = trace.find(([, v]) => v >= 0.35);
       // The ring's brightness flickers from frame to frame as the strokes land
       // a little differently, so the settled comparison is between averages.
-      const last = trace.slice(-8);
+      const last = trace.slice(-16);
       const mean = (k) => last.reduce((a, row) => a + row[k], 0) / last.length;
       return { over, half: half ? half[0] : null, end: mean(1), raw: mean(2) };
     }""")

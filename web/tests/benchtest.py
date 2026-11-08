@@ -55,14 +55,15 @@ with sync_playwright() as pw:
     homes = p.evaluate("""() => {
       const where = () => settingsGroups().map((g) => ({
         title: groupTitle(g), home: g.dataset.home,
-        inPanel: g.parentElement === el.menuPanel, inMeasure: !!g.closest('#measurePanel'),
+        // In Settings' panel, in one of its two columns since F7b.
+        inPanel: !!g.closest('#menuPanel'), inMeasure: !!g.closest('#measurePanel'),
         onBench: !!g.closest('#bench') && !g.closest('#measurePanel') }));
       const bench = where();
       setView('scope');
       const scope = where();
       return { bench, scope,
                menuInScope: getComputedStyle(el.menuButton).display !== 'none',
-               panelTitles: Array.from(el.menuPanel.querySelectorAll(':scope > .menu-group')).map(groupTitle) };
+               panelTitles: Array.from(el.menuPanel.querySelectorAll('.settings-col > .menu-group')).map(groupTitle) };
     }""")
     misplaced = [g["title"] + " in " + view for view in ("bench", "scope") for g in homes[view]
                  if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]
@@ -75,13 +76,16 @@ with sync_playwright() as pw:
           measured == ["Filter", "Lanes", "Measure", "Trigger", "Vertical"], str(measured))
     # F2: what Scan reads and the score behind the Picture's Advanced.
     pictured = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#picturePanel')).map(groupTitle).sort()""")
-    check("the Picture's Advanced holds what Scan reads and the score", pictured == ["Score", "What Scan reads"], str(pictured))
+    # And the beam's ink since F7b, as only the look.
+    check("the Picture's Advanced holds what Scan reads, the score and the beam", pictured == ["Beam", "Score", "What Scan reads"], str(pictured))
     performed = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#performPanel')).map(groupTitle).sort()""")
     check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
           performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
-    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), the modulation fade (F4), presets and the beam",
-          # Presets left in F6, for the preset browser's footer.
-          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Modulation fade"], str(homes["panelTitles"]))
+    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), the modulation fade (F4) and this window (F7b)",
+          # Presets left in F6, for the preset browser's footer; the beam in
+          # F7b, for the Picture's Advanced.
+          sorted(homes["panelTitles"]) == ["Audio", "Input", "Input into the generator", "MIDI", "Modulation fade", "This window"],
+          str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("and Settings opens from the Bench as well as from Scope",
           homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))

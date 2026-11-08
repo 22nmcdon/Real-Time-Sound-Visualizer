@@ -208,10 +208,13 @@ is below, in order. The listening notes this plan refers to follow it.
    cards show each description's first sentence) and hearing a preset by
    holding a key. Next is F7, the header and Settings. *F7a done 8 Nov:*
    the header - the preset between arrows that step the bank, its heading
-   above it, Browse, Save, A/B and undo/redo (`headertest.py`). Next, F7b:
-   Settings as drawn (MIDI, Input, This window with the first-time help;
-   Size is F8), and F7c: the host parameters strike, softness and twist,
-   and the gold dots marking host parameters on the face.
+   above it, Browse, Save, A/B and undo/redo (`headertest.py`). *F7b and
+   F7c done 8 Nov:* Settings as drawn - two columns, notes behind dots, This
+   window with the first-time help, placed against the window (which fixed
+   F7a's Settings opening off the left at 960 wide); the Beam to the
+   Picture's Advanced; the host's parameters strike, softness and twist
+   (twelve now, in the doc's order) and a gold dot on every host parameter.
+   Size is F8's. Next is F8, the window.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

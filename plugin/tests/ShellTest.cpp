@@ -1172,7 +1172,7 @@ int main() {
 
   std::printf("\n--- the host's parameters, and the state ---\n");
   {
-    /* P8a's bank, with P8e's phaser as its eighth: the loop's eight in a group, the morph in one of its own,
+    /* P8a's bank, with P8e's phaser and F7c's strike, softness and twist: the eleven in a group, the morph in one of its own,
        each a slider of the panel in its units, read back from the setup
        loaded: "Stretched echoes" has its echo at 45, the level and the cutoff
        at the page's defaults, the Picture amount where a hand would find it.
@@ -1195,18 +1195,22 @@ int main() {
       grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
-    check("the host's parameters are the loop's eight and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 9 && names == "Picture, Scan, Persistence, Warp, Cutoff, Level, Delay mix, Phaser mix, Morph"
+    check("the host's parameters are the loop's eleven and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 12 && names == "Picture, Scan, Strike, Softness, Persistence, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Morph"
           && p.knob("phaser")->get() == 0
+          // F7c's three, each its own slider: strike and softness differ at
+          // the page's defaults (50 and 30), so one wired to the other's fails.
+          && p.knob("strike")->get() == p.slider("scanStrike") && p.knob("softness")->get() == p.slider("scanSoft")
+          && p.knob("twist")->get() == p.slider("planeTwist") && p.knob("strike")->get() != p.slider("scanSoft")
           && p.knob("echo")->get() == 45 && p.knob("level")->get() == 55 && p.knob("cutoff")->get() == 667
           && p.knob("picture")->get() == 60 && p.knob("scan")->get() == 0 && p.knob("bend")->get() == 0,
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Persistence Warp Cutoff Level Delay mix Phaser mix; Setups: Morph"
-          && p.knob("phaser") == p.getParameters()[7] && p.knob("morph") == p.getParameters()[8]
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Level Cutoff Warp Twist Delay mix Phaser mix; Setups: Morph"
+          && p.knob("phaser") == p.getParameters()[10] && p.knob("morph") == p.getParameters()[11]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 persistence:2 bend:2 cutoff:1 level:1 echo:1 phaser:2 morph:1",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 morph:1",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads

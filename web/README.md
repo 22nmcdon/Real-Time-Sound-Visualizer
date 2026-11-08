@@ -5136,3 +5136,17 @@ dragged and held still half way, to show the drag split in two.
 ms" from "a step once a change is seen twice": both made one step. At 250 ms
 apart, between two looks at the history but inside the settle time, only the
 first does.
+
+**A panel hung from a button follows the button, wherever a wrap puts it.**
+Settings hung from its button's right edge, which was the window's right
+until F7a's header wrapped at 960 wide and put the button at the left of the
+second row; the panel then opened 79 px off the left of the window, and no
+test looked at Settings at that width. Since F7b it is placed against the
+window under the header (`placeSettings`), and `headertest.py` holds it
+inside the window at 1400x900 and 960x600, with 960x480 as the null.
+
+**Something inside a hidden panel has no extras, as far as `groupExtras`
+knows.** It skips any note inside a `[hidden]` ancestor, which is right for
+a block a mode has switched off and wrong for a panel that is merely shut:
+decorating Settings' sections at load gave none of them dots, since the
+panel was hidden. They are decorated as it opens.

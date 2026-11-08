@@ -121,8 +121,9 @@ class ScopeProcessor final : public juce::AudioProcessor {
      sliders by id and in its units, so a host moving one is a hand on that
      slider, and a hand on the slider moves the parameter.
 
-     The main bank is the picture's amount, Scan's depth, the screen's
-     persistence, the bend, the voice filter's cutoff, the level and the echo.
+     The main bank is the Picture section along the bottom of the face -
+     the amount, Scan, strike, softness, persistence, the level - then the
+     cutoff, the warp, the twist, the delay's and the phaser's mix (F7c).
      The phaser's amount takes the eighth place when the phaser is built,
      inserted before the morph. The macros were four of the first eight and
      are not parameters any more: nobody had saved a project, so nothing was
@@ -141,15 +142,20 @@ class ScopeProcessor final : public juce::AudioProcessor {
      controls - Scan's depth, the bend, the cutoff, the level - address the
      layer the panel shows, as the slider does for a hand (`readBack`). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 9> kKnobs { {
+  static constexpr std::array<HostKnob, 12> kKnobs { {
+    // F7c of web/docs/redesigning-the-face.md: the Picture section along the
+    // bottom of the face, then the sound controls people automate. Strike,
+    // softness and twist arrived in version 3; the rest kept their ids, so
+    // automation already written follows them to their new places.
     { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
-    { "persistence", "Persistence", "scanMemory", 2, true }, { "bend", "Warp", "oscBend", 2, true },
-    { "cutoff", "Cutoff", "vcfCut", 1, true }, { "level", "Level", "amp", 1, true },
+    { "strike", "Strike", "scanStrike", 3, true }, { "softness", "Softness", "scanSoft", 3, true },
+    { "persistence", "Persistence", "scanMemory", 2, true }, { "level", "Level", "amp", 1, true },
+    { "cutoff", "Cutoff", "vcfCut", 1, true }, { "bend", "Warp", "oscBend", 2, true },
+    { "twist", "Twist", "planeTwist", 3, true },
     // Shown as Delay mix since F5, the rack's name for the effect and its
     // amount; the id stays echo, so automation already written follows it.
     { "echo", "Delay mix", "delayMix", 1, true },
-    // P8e: the eighth knob of the bank, which P8a kept for it. Morph moves from
-    // index 7 to 8, and its automation stays with it, being bound to its id.
+    // P8e: the phaser's amount, and the morph last in a group of its own.
     { "phaser", "Phaser mix", "phaserMix", 2, true },
     { "morph", "Morph", "morphPos", 1, false },
   } };

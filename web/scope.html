@@ -155,6 +155,13 @@ button { font-family: inherit; cursor: pointer; }
 .preset-bar .preset-button .eyebrow { font-size: 9.5px; letter-spacing: 0.24em; }
 .preset-bar #presetCurrent { font-family: var(--serif); font-size: 17px; line-height: 1.2; max-width: 100%; }
 .ab-switch button { min-width: 30px; padding-inline: 9px; }
+/* The host's parameters, marked where they are (F7c): a gold dot before the
+   name, the house's marker, rather than a strip of copies of them. Inline and
+   before the name, so a knob's cell is the same size with it or without. */
+.host-param > .menu-label::before {
+  content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--gold); margin-right: 5px; vertical-align: 0.12em;
+}
 .head-gap { flex: 1 1 0; min-width: 0; }
 .style-mark { color: var(--text-soft); }
 .sheet-title {
@@ -481,6 +488,20 @@ select, input[type="number"] {
   max-height: min(78dvh, 720px); overflow-y: auto;
 }
 .menu-head { display: none; align-items: center; }
+/* Settings as drawn (F7b): wide, from the window's right edge under the
+   header rather than hung from its button - the header wraps at 960 wide and
+   put the button on the left, and a panel hung from it opened off the window -
+   in two columns, each section's notes one press away behind its dots, as
+   Scope & measure and Perform have them. */
+#menuPanel.settings-panel { position: fixed; width: min(780px, calc(100vw - 32px)); padding: 14px 22px 14px; }
+.settings-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+.settings-head .settings-name { font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
+.settings-head .menu-note { margin: 0; flex: 1 1 auto; display: block; }
+.settings-head #menuClose { margin-left: auto; }
+.settings-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 30px; align-items: start; }
+.settings-col > .menu-group + .menu-group { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+#menuPanel .menu-group .menu-note { display: none; }
+@media (max-width: 700px) { .settings-cols { grid-template-columns: 1fr; } }
 .menu-group + .menu-group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 #morphPos { min-width: 60px; }
 /* The drawn cycle's pane: the paper, a line through the middle, the cycle. */
@@ -1740,13 +1761,19 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <button type="button" class="link-btn caps" id="menuButton"
                 aria-expanded="false" aria-controls="menuPanel">Settings</button>
 
-        <div class="menu-panel" id="menuPanel" hidden>
-          <div class="menu-head">
-            <span class="eyebrow">Settings</span>
-            <button type="button" class="close-btn" id="menuClose" aria-label="Close">&times;</button>
+        <div class="menu-panel settings-panel" id="menuPanel" hidden>
+          <div class="settings-head">
+            <span class="settings-name">Settings</span>
+            <span class="menu-note" id="settingsSub">Set once and left. The audio device is the site's; in the plugin, the host's.</span>
+            <button type="button" class="link-btn caps" id="menuClose">Close</button>
+          </div>
+          <!-- Two columns, each section to its own by data-place (setView). -->
+          <div class="settings-cols">
+            <div class="settings-col" id="settingsLeft"></div>
+            <div class="settings-col" id="settingsRight"></div>
           </div>
 
-          <div class="menu-group" data-home="settings">
+          <div class="menu-group" data-home="settings" data-place="settingsRight">
             <span class="menu-title">Input</span>
             <div class="menu-row">
               <span class="menu-label">Source</span>
@@ -2017,7 +2044,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                you are in, so its home is Settings. Visible whatever is loaded -
                a setting that vanishes when the source changes cannot be found -
                and greyed, with the reason, where it does not apply. -->
-          <div class="menu-group" id="audioGroup" data-home="settings">
+          <div class="menu-group" id="audioGroup" data-home="settings" data-place="settingsRight">
             <span class="menu-title">Audio</span>
             <div class="menu-row" id="deviceRow">
               <label class="menu-label" for="device">Device</label>
@@ -2052,7 +2079,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           <!-- The half of the keyboard that is set once and left: the port and the
                controllers it has learned. Its home is Settings, in both views;
                the half you play is the Keyboard section on the Bench. -->
-          <div class="menu-group" id="midiSetGroup" data-home="settings">
+          <div class="menu-group" id="midiSetGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">MIDI</span>
             <div class="menu-row">
               <span class="menu-label">MIDI in</span>
@@ -2424,7 +2451,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           <!-- The fade, in Settings since F4 retired the Sources tab it sat on:
                it is about every routing at once rather than one source, and it
                is set once and left. See `fade` in the script. -->
-          <div class="menu-group" id="fadeGroup" data-home="settings">
+          <div class="menu-group" id="fadeGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">Modulation fade</span>
             <div class="menu-row" id="fadeRow">
               <label class="menu-label" for="fadeMode">Fade</label>
@@ -3241,7 +3268,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
 
           <!-- J3: live audio into the generator, in the audio thread. -->
-          <div class="menu-group" id="inputGroup" data-home="settings">
+          <div class="menu-group" id="inputGroup" data-home="settings" data-place="settingsRight">
             <span class="menu-title">Input into the generator</span>
             <p class="fx-where" id="inputWhere"></p>
             <div class="menu-row">
@@ -3482,7 +3509,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               settles a waveform crossing the level more than once a cycle.</p>
           </div>
 
-          <div class="menu-group" data-fold="1" data-home="settings">
+          <!-- This window (F7b): what the page does when it opens. Size is F8's. -->
+          <div class="menu-group" id="windowGroup" data-home="settings" data-place="settingsLeft">
+            <span class="menu-title">This window</span>
+            <label class="check"><input type="checkbox" id="helpFirst" checked> Show the help sheet the first time</label>
+            <p class="menu-note">The first time the page opens in a browser, or the plugin's
+              window in a host, the help sheet opens over it. Untick this and it never does on
+              its own; the <b>?</b> in the header opens it whenever you like.</p>
+          </div>
+
+          <!-- In Picture > Advanced since F7b, as only the look: the screen's ink. -->
+          <div class="menu-group" data-fold="1" data-home="picture" data-place="pictureLook">
             <span class="menu-title">Beam</span>
             <div class="menu-row">
               <label class="menu-label" for="beamLevel">Intensity</label>
@@ -4381,7 +4418,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         circle traced at a steady rate really does have constant speed.</span></li>
 
       <li><b>Where it applies</b>
-        <span><i>Settings &rarr; Beam</i>. On for X&ndash;Y, and off for the waveform by
+        <span><i>Picture &rarr; Advanced &rarr; Beam</i>, with what only changes the look. On for X&ndash;Y, and off for the waveform by
         default: dimming the steep edge of a square wave fights the measuring that
         Y&ndash;T is for. <i>Off / subtle / moderate / high</i> widens both the range of
         tone and how much speed it takes to cross it. On a very long timebase the waveform
@@ -4411,9 +4448,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         the window allows and still running, and the controls to its right, so you can watch
         a figure answer with your hand on the control. On a wide window the Bench stops
         rather than spreading the columns apart. <i>Settings</i> opens from either
-        and holds what you set once and leave &mdash; <i>MIDI</i>, <i>Audio</i>,
-        <i>Presets</i> and <i>Beam</i>. Every section lives in one of the two places and
-        nowhere else.
+        and holds what you set once and leave, in two columns &mdash; <i>MIDI</i>, the
+        <i>Modulation fade</i> and <i>This window</i> (whether the help sheet opens the first
+        time); the <i>Input</i>, the <i>Audio</i> device (the site's: in the plugin it is the
+        host's) and <i>Input into the generator</i>. Each section's notes are behind the
+        &ctdot; on its title. Saving and sharing sounds is the preset browser's, and the
+        beam's ink is <i>Picture &rarr; Advanced</i>. Every section lives in one place and
+        nowhere else. A control with a small gold dot before its name is one the plugin's
+        host can automate: the Picture section's six, the cutoff, the warp, the twist, the
+        delay's and the phaser's mix, and the morph.
         <br><br>
         The Bench is three tabs, in the order the sound goes round the loop, each a card with
         a line under its name of what that stage is doing now, so the face can be read without
@@ -5258,7 +5301,7 @@ const el = {};
 for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
                   "pictureAmountValue", "levelMeter", "performButton", "performPanel", "performClose", "performBody",
-                  "performSide", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
+                  "performSide", "pictureLook", "settingsLeft", "settingsRight", "settingsSub", "helpFirst", "windowGroup", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
                   "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "benchSearch", "benchResults",
@@ -22811,6 +22854,23 @@ el.presetPaste.addEventListener("click", () => {
   }
 });
 
+/* --- the host's parameters (F7c) ------------------------------------------------
+   The controls a plugin's host can automate, each one of the panel's sliders
+   by id, in the order of the plugin's kKnobs (plugin/src/PluginProcessor.h),
+   which headertest.py reads to hold the two together: a parameter added there
+   and not here would be automatable and unmarked. Marked with a gold dot
+   before the name, on the site as in the plugin, since a setup made on one is
+   played on the other. */
+const HOST_PARAMS = ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "amp", "vcfCut",
+                     "oscBend", "planeTwist", "delayMix", "phaserMix", "morphPos"];
+for (const id of HOST_PARAMS) {
+  const row = el[id] ? el[id].closest(".menu-row") : document.getElementById(id) && document.getElementById(id).closest(".menu-row");
+  if (!row) continue;
+  row.classList.add("host-param");
+  const label = row.querySelector(".menu-label");
+  if (label) label.title = "A host parameter: the plugin's host can automate it";
+}
+
 /* --- the header: stepping, browsing, saving (F7) --------------------------------
    The arrows step through the bank in the browser's order, headings and
    sections as they stand, loading each as a card's Load would, with nothing
@@ -25721,7 +25781,7 @@ function setView(view) {
      watching and playing, and Settings holds only settings. */
   const groups = settingsGroups();
   for (const group of groups) {
-    if (homeOf(group) === "settings") el.menuPanel.appendChild(group);
+    if (homeOf(group) === "settings") el[group.dataset.place || "settingsRight"].appendChild(group);
     else if (homeOf(group) === "measure") el[group.dataset.place || "measureBody"].appendChild(group);
     else if (homeOf(group) === "picture") el[group.dataset.place || "pictureSound"].appendChild(group);
     else if (homeOf(group) === "perform") el[group.dataset.place || "performBody"].appendChild(group);
@@ -26778,8 +26838,24 @@ function paintRoutings() {
 function setMenuOpen(open) {
   el.menuPanel.hidden = !open;
   el.menuButton.setAttribute("aria-expanded", String(open));
-  if (open) { setPanesOpen(false); setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); }
+  if (open) {
+    setPanesOpen(false); setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); placeSettings();
+    /* Each section's notes behind its dots (F7b), in either view. Done as it
+       opens, since groupExtras skips what is inside something hidden and the
+       panel is hidden until now - done at load, every section looked empty. */
+    for (const group of settingsGroups()) if (homeOf(group) === "settings") decorateGroup(group);
+  }
 }
+// Under the header, on the window's right, as tall as the window leaves (F7b).
+function placeSettings() {
+  if (el.menuPanel.hidden) return;
+  const top = Math.round(document.querySelector(".top-bar").getBoundingClientRect().bottom) + 6;
+  el.menuPanel.style.top = top + "px";
+  const wrap = document.querySelector(".top-bar .wrap").getBoundingClientRect();
+  el.menuPanel.style.right = Math.max(16, Math.round(window.innerWidth - wrap.right)) + "px";
+  el.menuPanel.style.maxHeight = (window.innerHeight - top - 16) + "px";
+}
+window.addEventListener("resize", placeSettings);
 
 function setPanesOpen(open) {
   el.panesPanel.hidden = !open;
@@ -27389,7 +27465,15 @@ showHelpTab(0);
    the one thing a first visitor needs. */
 let seenSheet = false;
 try { seenSheet = window.localStorage.getItem(SEEN_KEY) === "yes"; } catch (error) { seenSheet = false; }
-if (!seenSheet) openHelp();
+// This window (F7b): ticked, the sheet opens on a first visit; unticked, never on its own.
+const HELP_FIRST_KEY = "scope.sheetFirst";
+let helpFirst = true;
+try { helpFirst = window.localStorage.getItem(HELP_FIRST_KEY) !== "no"; } catch (error) { helpFirst = true; }
+el.helpFirst.checked = helpFirst;
+el.helpFirst.addEventListener("change", () => {
+  try { window.localStorage.setItem(HELP_FIRST_KEY, el.helpFirst.checked ? "yes" : "no"); } catch (error) { /* private window */ }
+});
+if (!seenSheet && helpFirst) openHelp();
 
 requestAnimationFrame(frameLoop);
 </script>
