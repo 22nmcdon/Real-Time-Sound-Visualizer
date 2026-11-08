@@ -214,7 +214,21 @@ is below, in order. The listening notes this plan refers to follow it.
    F7a's Settings opening off the left at 960 wide); the Beam to the
    Picture's Advanced; the host's parameters strike, softness and twist
    (twelve now, in the doc's order) and a gold dot on every host parameter.
-   Size is F8's. Next is F8, the window.
+   Size is F8's. Next is F8, the window. *F8 done 8 Nov, and with it the
+   redesign:* the owner chose Auto over a larger minimum - a Size in This
+   window (Auto, 90, 100, 125 per cent), Auto being 90 under 1100 by 680 and
+   100 otherwise, so the plugin's 960x600 fits every case and its 1200x680
+   default stays at 100; below 1100 by 860 in the page's pixels the face is
+   compact as the mockup draws the minimum (one-row header, no tab lines,
+   chips, narrower columns, smaller knobs and keys); the verdict is a line
+   under the screen on the Bench; and the rack's other modules fold only
+   when the tab would scroll, so at 1400x900 they keep their knobs as drawn,
+   which gave back F5's compromise. The plugin's default, minimum and
+   remembered size were already done (`kWindowW`, `pluginWindow`). Not done:
+   the drawings, parked, scroll on the compact face (`fittest.py` lets them
+   off there and says so), and the envelope knobs keep their names at the
+   minimum rather than the mockup's A, D, S and R, since they fit.
+   `windowtest.py` is new.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,
@@ -222,7 +236,7 @@ is below, in order. The listening notes this plan refers to follow it.
    JavaScript generator when the compiled one plays. The JavaScript engine
    stays: it is parity's reference, the fallback, and forty suites run on it.
 
-Later: reverb in P9, made so the screen hears it; undo and A/B; CLAP; MPE.
+Later: reverb in P9, made so the screen hears it; CLAP; MPE.
 Unverified from the audit: the picture's copies to the face (64-128 KB twice
 a frame), the capture allocating each frame, zipper noise under automation.
 

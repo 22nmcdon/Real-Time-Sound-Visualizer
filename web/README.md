@@ -5150,3 +5150,43 @@ knows.** It skips any note inside a `[hidden]` ancestor, which is right for
 a block a mode has switched off and wrong for a panel that is merely shut:
 decorating Settings' sections at load gave none of them dots, since the
 panel was hidden. They are decorated as it opens.
+
+**An overlay shrinks nothing under it.** The first try at fitting 960x600
+shortened the on-screen keys, and `fittest.py` did not move: the keys are a
+fixed overlay along the foot of the window, not a row in the tabs' flow, so
+they took no height from the tab. The room that mattered was the dock's band
+across the window (73 px), which went under the screen on the Bench, and the
+tab lines and header's second row, which the compact face drops. Measure what
+a change gives the thing that overflows before making it. The shorter keys
+were kept for what they do do - at full height, at 960x600, they covered the
+modulation cards - and since the fit cannot see that, the mutation pass found
+the rule unheld until `windowtest.py` measured what the keys cover.
+
+**A threshold for a compact face is set by its worst case, not its default.**
+Compact below 1100 by 760 fitted every tone case at 1100x760, and the full
+face's rack - two layers, every effect on, the Plane open - scrolled at
+1100x800. The threshold went to 860 tall, and the rack's fold became a
+measurement of room (`fitRack`) rather than a rule for every window, so the
+sizes between are right without being listed.
+
+**A null for "it does not fit" has to take the help away.** `benchtest.py`'s
+null - a 960x480 window must scroll somewhere - passed silently once Auto
+existed, because Auto zoomed that window to 90 and it fitted. The null now
+sets Size to 100 first. Any check that a size fails has to say which Size it
+was at, or a later rescue makes it pass for the wrong reason.
+
+**`layersOn()` needs a running source and a keyboard.** A test that sets
+`midiLayers` to split before the sound has been started, or with no keyboard
+present, gets the one-layer face and passes as if it were two. `windowtest.py`
+reads the Layers rows back before believing a layered case; it caught exactly
+this the first time it ran.
+
+**Wait on the samples, not the clock, and give a null something to change.**
+F8's full run failed two suites that pass alone, neither touching the
+window. `playtest.py` read a struck note's pitch 60 ms of wall clock after
+the key; under load the audio arrived late, the window held less of the note
+and the estimate left the strings' spread. It now waits until the note is
+60 ms old in the samples. `wasmtest.py`'s "every deposit a step brighter"
+null bent the first recorded log with any deposit, and under load that log's
+deposits were all at the top, where a step brighter is no change: the null
+read nought. It now takes the first log holding a deposit the bend can move.

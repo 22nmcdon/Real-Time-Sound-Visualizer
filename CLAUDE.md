@@ -204,7 +204,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   went in F2: its knobs are the Picture section along the bottom; the
   drawer's Sources went in F4) - and one tab at a time must fit. `patchtest.py` measures every tab across every generator mode;
   `fittest.py` does it in every combination of generator kind, tone or band
-  split, keyboard and Photocell, and the modulation editor with a source on a dozen controls.
+  split, keyboard and Photocell, and the modulation editor with a source on a dozen controls,
+  at five windows: 1400x900, 1100x860, 1200x680, 1100x680 and the plugin's
+  960x600 at Auto's 90 per cent (see the minimum window, below).
   This replaced "every section on show at once, and neither panel scrolls",
   which held for the tone and never for a rack of six (cut in P5), and then
   five tabs by task (Play, Picture, Shape, Effects, Measure), which existed
@@ -253,8 +255,10 @@ Do not re-litigate these without a reason; each replaced something that failed.
   is the screen's rotation), Phaser, Chorus, Delay, then a dashed Reverb
   slot for P9 - each a line of icon, name, switch, what it is doing and its
   main knobs, Mix first. Its arrow opens the rest under it, one module at a
-  time, and while one is open the others fold to their lines, a compromise
-  until F7 and F8 give the tab back the height the header and dock take.
+  time, and while one is open the others fold to their lines only if the
+  tab would scroll with their knobs showing (`fitRack`, F8): at 1400x900 they
+  keep them, as drawn, and on the compact face they fold. Decided by room,
+  not by window size, so it is right at sizes nobody measured.
   The switch is a view over values, not a field: off takes the Mix (the
   Plane's shaping and turn) to rest and keeps what it had, on puts it back
   (`switchFx`, `fxKept`), so a setup, a host knob or a code that moves a
@@ -336,6 +340,22 @@ Do not re-litigate these without a reason; each replaced something that failed.
   section's six, cutoff, warp, twist, the delay's and phaser's mix, and the
   morph. `headertest.py` holds it, with real mouse and keys, since a
   dispatched event is rightly no step.
+- **The minimum window** (F8, 8 Nov). The plugin opens at 1200x680, will not
+  go under 960x600, and remembers its size (`pluginWindow`, which the
+  instrument never sees). The page has a *Size* in Settings' This window -
+  Auto, 90, 100 or 125 per cent, a CSS zoom on the page, remembered by the
+  browser (`scope.size`). Auto, the default and the owner's choice over a
+  larger minimum, is 90 under 1100 wide or 680 tall and 100 otherwise, so
+  960x600 fits every case unasked and 1200x680 stays at 100. Below 1100 by
+  860 in the page's own pixels (so the zoom counts) the face is compact
+  (`setCompact`, `body[data-compact]`): the header one row without the line
+  of what is playing or Browse, the tabs without their lines, the cards as
+  chips, narrower columns (`BENCH_COL_COMPACT`) with labels beside their
+  menus, smaller knobs and the keys shorter. The parked drawings scroll on
+  the compact face and are let off there, the stated cost. On the Bench the
+  verdict and readouts are a line in the screen's column, between the screen
+  and the cards, and back across the foot on Scope. `windowtest.py` and
+  `fittest.py` hold it.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.

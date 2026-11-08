@@ -1125,11 +1125,14 @@ span.fx-handle { visibility: hidden; }
 /* Off: folded to its line, the icon and the name quieter. */
 .fx-module[data-on="0"]:not([data-open]) .fx-main, .fx-module[data-on="0"]:not([data-open]) .fx-open { display: none; }
 /* And while one module is open, the others fold to their line too, switch and
-   summary still there: with all four on and Plane open the tab was 181 px
-   over at 1400x900. The design keeps their knobs showing, which fits once
-   the header and the dock are as short as it draws them (F7, F8); until then
-   this is what keeps the tab from scrolling (fittest.py). */
-.fx-rack[data-open] .fx-module:not([data-open]) .fx-main { display: none; }
+   summary still there - only when the tab has no room for their knobs (F8,
+   fitRack). F5 folded them always: with all four on and Plane open the tab
+   was 181 px over at 1400x900. F7's header and F8's verdict under the screen
+   gave that back, so at 1400x900 their knobs show as the design draws them;
+   at 1100x760 and on the compact face it is still what keeps the tab from
+   scrolling (fittest.py), and decided by room rather than by size it is
+   right at windows nobody has measured too. */
+.fx-rack[data-tight] .fx-module:not([data-open]) .fx-main { display: none; }
 .fx-rack > .menu-title { display: flex; align-items: baseline; gap: 0; margin-bottom: 4px; }
 .fx-rack > .menu-title .fx-where { margin: 0 8px 0 auto; text-transform: none; letter-spacing: 0; font-size: 11.5px; }
 .bench-body .fx-rest {
@@ -1505,7 +1508,67 @@ span.fx-handle { visibility: hidden; }
 [data-mod-dest] .mod-lane-host { padding-bottom: 8px; }
 @media (pointer: coarse) { [data-mod-dest] .mod-lane-host { padding-bottom: 14px; } }
 
+/* --- the minimum window (F8) -------------------------------------------------
+   Below 1100 wide or 860 tall - the plugin's minimum, 960x600, and its default,
+   1200x680, are both in here - the face is compact, as the redesign draws it
+   at the minimum: the header one row, without the line of what is playing or
+   Browse (the preset's name opens the browser); the tabs without their lines;
+   the modulation cards folded to chips; menus and readings a size smaller.
+   What it costs is what it hides: the line under the title is the one that
+   says "press anything to hear it", which on a compact face the Running
+   status says instead. Set by setCompact, from the window, not the device. */
+[data-compact] .top-bar { padding-block: 6px; }
+[data-compact] .head { gap: 4px 10px; flex-wrap: nowrap; }
+[data-compact] .title-block .sheet-credit, [data-compact] #presetBrowse { display: none; }
+[data-compact] .sheet-title { font-size: 16px; }
+[data-compact] .preset-bar { gap: 6px; padding-left: 10px; flex-wrap: nowrap; }
+[data-compact] .preset-bar .preset-button { min-width: 0; max-width: 150px; }
+[data-compact] .preset-bar #presetCurrent { font-size: 15px; }
+[data-compact] .step-btn { flex-basis: 26px; width: 26px; height: 26px; }
+[data-compact] .status { border: 0; padding: 0 2px; }
+[data-compact] .head .switch button { padding: 4px 9px; }
+[data-compact] .bench-rail button { padding: 6px 10px 7px; }
+[data-compact] .bench-rail .tab-name { font-size: 16px; }
+[data-compact] .bench-rail .tab-line { display: none; }
+[data-compact] .mod-card canvas, [data-compact] .mod-strip-head .bench-hint { display: none; }
+[data-compact] .mod-card { padding-block: 4px; }
+[data-compact] .menu-row select, [data-compact] .menu-row .reading { font-size: 11.5px; }
+[data-compact] .picture-bar { padding-block: 6px; }
+[data-compact] .bench-body { gap: 18px; }   /* BENCH_GAP_COMPACT */
+/* A label beside its control in a 176 px column, not above it: at 96 px and a
+   control of at least 110, every menu row wrapped to two lines. */
+[data-compact] .bench-body .menu-row { gap: 4px 6px; margin-top: 6px; }
+[data-compact] .bench-body .menu-label { flex-basis: 60px; font-size: 11.5px; }
+[data-compact] .bench-body .menu-row .grow { flex-basis: 90px; }
+[data-compact] .bench-body select { padding-block: 3px; }
+[data-compact] .bench-body label.check { font-size: 12px; }
+[data-compact] .bench-body .menu-group { margin-bottom: 12px; }
+/* Knobs a size smaller, and a knob alone among menus labelled as they are. */
+[data-compact] .bench-body .knob-face { width: 30px; height: 30px; }
+[data-compact] .bench-body .menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) { grid-template-columns: 60px auto auto minmax(0, 1fr); }
+[data-compact] .bench-body .menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) > .menu-label { font-size: 11.5px; }
+/* The modulation editor's dozen destinations, and the rack's lines, tighter. */
+[data-compact] .mod-editor { padding: 8px 14px; }
+[data-compact] .mod-edit { margin-top: 2px; }
+[data-compact] .fx-head { min-height: 36px; padding-block: 3px; }
+[data-compact] .bench-body .fx-rest { padding-left: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 14px; }
+/* The on-screen keys shorter, and without the line of which letters play.
+   They are an overlay along the foot of the window, so they take no height
+   from the tab and its fit never sees them; what they cover does. At full
+   height, at 960x600, they reached over the modulation cards and the foot of
+   the tab (windowtest.py); at 80 px they stop under the cards. */
+[data-compact] .keys-bed { height: 80px; }
+[data-compact] .keys-hint { display: none; }
+[data-compact] .screen-keys { padding-block: 4px 6px; }
+[data-compact] .keys-bar { margin-bottom: 4px; }
+[data-compact] .bench-side > .dock .looking { display: none; }
+
 /* --- dock ---------------------------------------------------------------- */
+/* On the Bench it is a line under the screen (F8): no band, no gutter. */
+.bench-side > .dock { background: none; border-top: 0; padding: 0; flex: 0 0 auto; }
+.bench-side > .dock > .wrap { padding: 0; max-width: none; margin: 0; }
+.bench-side > .dock .readout { min-height: 0; gap: 2px 12px; }
+.bench-side > .dock .foot { display: none; }
 .dock {
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
   padding-block: 12px 14px;
@@ -3509,13 +3572,26 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               settles a waveform crossing the level more than once a cycle.</p>
           </div>
 
-          <!-- This window (F7b): what the page does when it opens. Size is F8's. -->
+          <!-- This window (F7b): what the page does when it opens, and its Size (F8). -->
           <div class="menu-group" id="windowGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">This window</span>
             <label class="check"><input type="checkbox" id="helpFirst" checked> Show the help sheet the first time</label>
+            <div class="menu-row">
+              <span class="menu-label">Size</span>
+              <div class="switch" role="radiogroup" aria-label="The size of everything on the face">
+                <button type="button" class="caps" id="sizeAuto" role="radio" aria-checked="true"
+                        title="90% in a window under 1100 wide or 680 tall, 100% otherwise">Auto</button>
+                <button type="button" class="caps" id="size90" role="radio" aria-checked="false">90%</button>
+                <button type="button" class="caps" id="size100" role="radio" aria-checked="false">100%</button>
+                <button type="button" class="caps" id="size125" role="radio" aria-checked="false">125%</button>
+              </div>
+            </div>
             <p class="menu-note">The first time the page opens in a browser, or the plugin's
               window in a host, the help sheet opens over it. Untick this and it never does on
               its own; the <b>?</b> in the header opens it whenever you like.</p>
+            <p class="menu-note"><b>Size</b> zooms everything on the face. <b>Auto</b> is 90%
+              in a window under 1100 wide or 680 tall, so the plugin's smallest window fits
+              without scrolling, and 100% otherwise; a size you choose is remembered.</p>
           </div>
 
           <!-- In Picture > Advanced since F7b, as only the look: the screen's ink. -->
@@ -3709,7 +3785,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
   </div>
 </main>
 
-<footer class="dock">
+<footer class="dock" id="dock">
   <div class="wrap">
     <div class="readout">
       <span class="verdict" id="verdict" data-state="locked"
@@ -4446,11 +4522,16 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         filter's <i>Speakers get</i>.
         The <i>Bench</i> is where everything is tuned: the screen on the left, as large as
         the window allows and still running, and the controls to its right, so you can watch
-        a figure answer with your hand on the control. On a wide window the Bench stops
-        rather than spreading the columns apart. <i>Settings</i> opens from either
+        a figure answer with your hand on the control, and the verdict and readouts a line
+        under the screen. On a wide window the Bench stops
+        rather than spreading the columns apart. In a small one the face is compact: the
+        header on one line (the preset's name opens the browser), the tabs without their
+        lines, the modulation cards as chips, and everything a size smaller. <i>Settings</i> opens from either
         and holds what you set once and leave, in two columns &mdash; <i>MIDI</i>, the
         <i>Modulation fade</i> and <i>This window</i> (whether the help sheet opens the first
-        time); the <i>Input</i>, the <i>Audio</i> device (the site's: in the plugin it is the
+        time, and the <i>Size</i> of everything on the face: <i>Auto</i> is 90&nbsp;per cent in
+        a window under 1100 by 680 and 100 otherwise, or choose 90, 100 or 125, which this
+        browser remembers); the <i>Input</i>, the <i>Audio</i> device (the site's: in the plugin it is the
         host's) and <i>Input into the generator</i>. Each section's notes are behind the
         &ctdot; on its title. Saving and sharing sounds is the preset browser's, and the
         beam's ink is <i>Picture &rarr; Advanced</i>. Every section lives in one place and
@@ -4472,7 +4553,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         and its main knobs; its arrow opens the rest of it, one module at a time. The switch
         turns an effect off by taking its <i>Mix</i> to nought (the Plane's shaping and turn
         to rest) and back on to what it had, so a setup, a host's knob or a saved code that
-        moves a Mix switches the module with it. A module that is off folds to its line.
+        moves a Mix switches the module with it. A module that is off folds to its line,
+        and in a window without room for every module's knobs, opening one folds the
+        others to their lines while it is open.
         <br><br>
         The phaser, the chorus and the delay can go in any order: drag one by the handle
         at its left, or give the handle the keyboard and use the up and down arrows, and
@@ -5301,7 +5384,7 @@ const el = {};
 for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
                   "pictureAmountValue", "levelMeter", "performButton", "performPanel", "performClose", "performBody",
-                  "performSide", "pictureLook", "settingsLeft", "settingsRight", "settingsSub", "helpFirst", "windowGroup", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
+                  "performSide", "dock", "pictureLook", "settingsLeft", "settingsRight", "settingsSub", "helpFirst", "windowGroup", "sizeAuto", "size90", "size100", "size125", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
                   "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "benchSearch", "benchResults",
@@ -25418,8 +25501,25 @@ function openFx(fx, only) {
     if (rest.hidden) delete module.dataset.open; else module.dataset.open = "1";
     if (button) button.setAttribute("aria-expanded", String(!rest.hidden));
   }
+  if (fitRack() && document.body.dataset.view === "bench") layoutBenchBody();
+}
+/* Whether the other modules fold while one is open: only if the tab would
+   scroll with their knobs showing. Measured with them showing, and folded in
+   the same frame, so nothing is painted in between. */
+function fitRack() {
+  const rack = document.getElementById("rackGroup");
+  if (!rack) return;
+  const was = rack.dataset.tight !== undefined;
+  delete rack.dataset.tight;
+  const tight = !!rack.dataset.open && !!rack.closest(".bench-body")
+    && el.benchBody.scrollHeight > el.benchBody.clientHeight + 1;
+  if (tight) rack.dataset.tight = "";
+  return was !== tight;
 }
 function paintRack() {
+  // A module switched on or off by a value changes the rack's height.
+  // A rack that folds or unfolds is dealt again, so it is held at the height it is.
+  if (fxOpen && fitRack()) layoutBenchBody();
   for (const fx of ["plane", "phaser", "chorus", "delay"]) {
     const module = document.querySelector('.fx-module[data-fx="' + fx + '"]');
     if (!module) continue;
@@ -25614,6 +25714,8 @@ let benchMeasured = new Map();
    gives them and three can hold twice over. */
 const BENCH_COL = 240;
 const BENCH_GAP = 34;
+// Compact (F8): three narrower columns, as the redesign draws the minimum.
+const BENCH_COL_COMPACT = 176, BENCH_GAP_COMPACT = 18;
 
 function benchColumns() {
   // The body's own width, not the window's: the rail and the side column take
@@ -25621,8 +25723,9 @@ function benchColumns() {
   // columns' worth of room into one by two pixels.
   const width = el.benchBody.clientWidth || 0;
   if (width <= 0) return 1;
-  return Math.max(1, Math.min(3,
-    Math.floor((width + BENCH_GAP) / (BENCH_COL + BENCH_GAP))));
+  const compact = document.body.dataset.compact !== undefined;
+  const col = compact ? BENCH_COL_COMPACT : BENCH_COL, gap = compact ? BENCH_GAP_COMPACT : BENCH_GAP;
+  return Math.max(1, Math.min(3, Math.floor((width + gap) / (col + gap))));
 }
 
 /* A tab whose section is wide - the rack, since F5 - is one column the
@@ -25768,7 +25871,75 @@ function applyFolds(bench) {
   }
 }
 
+/* The minimum window (F8): compact below 1100 wide or 860 tall, from the
+   window's size in CSS pixels, so the Size setting's zoom counts too. */
+// 860 tall, not the 760 first tried: the full face's rack, two layers and
+// every effect on with the Plane open, scrolled at 1100x800 and fits at 860.
+const COMPACT_W = 1100, COMPACT_H = 860;
+/* Size (F8), in This window: everything on the face at 90, 100 or 125 per
+   cent, as a zoom on the page, remembered by this browser (in the plugin,
+   its window's). At 90 a window has a ninth more room in the page's own
+   pixels, which is what the minimum needs; 125 is for a large screen far
+   away. The compact face is chosen from the window in the page's pixels, so
+   at 90 a 960x600 window is 1067x667 to it. */
+/* Auto, the default (the owner's choice, 8 Nov): 90 in a window under 1100
+   wide or 680 tall, 100 otherwise, so the plugin's minimum, 960x600, fits
+   every case without anyone choosing, and its default, 1200x680, stays at
+   100. What it costs: the smallest windows get smaller type unasked. */
+const SIZE_KEY = "scope.size", SIZES = [0.9, 1, 1.25], AUTO_W = 1100, AUTO_H = 680;
+let sizeChoice = "auto", pageZoom = 1;
+try {
+  const v = window.localStorage.getItem(SIZE_KEY);
+  if (v !== null && SIZES.includes(Number(v))) sizeChoice = Number(v);
+} catch (error) { sizeChoice = "auto"; }
+const wantZoom = () => (sizeChoice !== "auto" ? sizeChoice
+  : window.innerWidth < AUTO_W || window.innerHeight < AUTO_H ? 0.9 : 1);
+// The zoom the choice and the window ask for; true when it changed.
+function applyZoom() {
+  const z = wantZoom();
+  if (z === pageZoom) return false;
+  pageZoom = z;
+  document.documentElement.style.zoom = z === 1 ? "" : String(z);
+  return true;
+}
+applyZoom();
+function setCompact() {
+  const compact = window.innerWidth / pageZoom < COMPACT_W || window.innerHeight / pageZoom < COMPACT_H;
+  if (compact !== (document.body.dataset.compact !== undefined)) {
+    if (compact) document.body.dataset.compact = ""; else delete document.body.dataset.compact;
+  }
+}
+setCompact();
+/* A window resized: the zoom first, then whether the face is compact. A
+   change of zoom is a change of the page's size to everything laid out from
+   it, so it is announced as a resize of its own; it can change only once
+   for a given window, so this does not go round. */
+window.addEventListener("resize", () => {
+  const changed = applyZoom();
+  setCompact();
+  if (changed) window.dispatchEvent(new Event("resize"));
+});
+function paintSize() {
+  for (const [z, id] of [["auto", "sizeAuto"], [0.9, "size90"], [1, "size100"], [1.25, "size125"]]) {
+    if (el[id]) el[id].setAttribute("aria-checked", String(z === sizeChoice));
+  }
+}
+function setSize(choice) {
+  if (choice !== "auto" && !SIZES.includes(choice)) return;
+  sizeChoice = choice;
+  try {
+    if (choice === "auto") window.localStorage.removeItem(SIZE_KEY);
+    else window.localStorage.setItem(SIZE_KEY, String(choice));
+  } catch (error) { /* private window */ }
+  paintSize();
+  // Everything laid out from the window's size lays itself out again.
+  applyZoom();
+  window.dispatchEvent(new Event("resize"));
+}
+// Where the dock lives on Scope: put back there from the Bench's column.
+let dockHome = null;
 function setView(view) {
+  if (dockHome === null) dockHome = { parent: el.dock.parentNode, next: el.dock.nextSibling };
   const bench = view === "bench";
   // Anything moved into an overlay has to go home before the groups move.
   closeOverlay();
@@ -25799,6 +25970,12 @@ function setView(view) {
   // Its toolbar, with Scope & measure, above it in either.
   if (bench) el.benchSide.insertBefore(el.screenTools, el.benchScope);
   else el.panes.parentElement.insertBefore(el.screenTools, el.panes);
+  /* And the verdict and the readouts under it (F8): on the Bench, in the
+     screen's column between it and the modulation cards, as the redesign
+     draws it, rather than a band across the window that took 73 px of
+     every tab's height; on Scope, across the foot as before. */
+  if (bench) el.benchSide.insertBefore(el.dock, el.modStrip);
+  else dockHome.parent.insertBefore(el.dock, dockHome.next);
 
   // Nothing is hidden in either view now; the bench folds rather than hides.
   for (const group of groups) group.hidden = false;
@@ -27470,6 +27647,11 @@ const HELP_FIRST_KEY = "scope.sheetFirst";
 let helpFirst = true;
 try { helpFirst = window.localStorage.getItem(HELP_FIRST_KEY) !== "no"; } catch (error) { helpFirst = true; }
 el.helpFirst.checked = helpFirst;
+el.sizeAuto.addEventListener("click", () => setSize("auto"));
+el.size90.addEventListener("click", () => setSize(0.9));
+el.size100.addEventListener("click", () => setSize(1));
+el.size125.addEventListener("click", () => setSize(1.25));
+paintSize();
 el.helpFirst.addEventListener("change", () => {
   try { window.localStorage.setItem(HELP_FIRST_KEY, el.helpFirst.checked ? "yes" : "no"); } catch (error) { /* private window */ }
 });

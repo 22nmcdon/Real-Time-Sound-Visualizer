@@ -417,7 +417,13 @@ with sync_playwright() as pw:
       for (const [name, setUp, ms] of scenarios) {
         const log = await record(setUp, ms || 1500);
         if (name.startsWith("the lag's")) turnedOnScreen = Math.max(0, ...log.filter(([op, a]) => op === "pictureStep" && a[2]).map(([, a]) => Math.abs(a[2].spin)));
-        if (!first && log.some(([op]) => op === "deposit")) first = log;
+        /* The nulls bend this log, so it must hold something each bend can
+           change: a fade, and a deposit with a beam value under the top, which
+           "a step brighter" moves. A log whose deposits were all at the top,
+           or carried none, made that null read nought under load in a full
+           run - whatever the engines did. */
+        if (!first && log.some(([op, a]) => op === "deposit" && a[4] && a[4].some((v) => v < BEAM_K - 1))
+            && log.some(([op, a]) => op === "fade" && a[0] > 0)) first = log;
         if (name.includes("off and on")) longest = log;
         rows.push(Object.assign({ name }, replay(log)));
       }

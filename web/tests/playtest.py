@@ -164,7 +164,19 @@ with sync_playwright() as pw:
       el.ringTime.value = '200'; el.ringTime.dispatchEvent(new Event('input'));
       await wait(1500);                                     // let the load's swing die
       const quiet = Math.max(...state.source.getLatestWindow(2205)[0].map(Math.abs));
-      midiNoteOn(57, 110); await wait(60);
+      midiNoteOn(57, 110);
+      /* 60 ms of the note in the samples, not 60 ms of the wall clock: under
+         load the audio arrives late, and a read on the clock found less of the
+         note in the window - 221.85 Hz in a full run, past the two strings'
+         spread. The note's age is counted from its first sound in the window,
+         and the wait is capped, so a strike that never sounds still fails on
+         its peak and pitch below. */
+      for (let t = 0; t < 2000; t += 10) {
+        const w = state.source.getLatestWindow(8820)[0];
+        const onset = w.findIndex((v) => Math.abs(v) > 0.01);
+        if (onset >= 0 && w.length - onset >= 2646) break;
+        await wait(10);
+      }
       const struck = { freq: genSettings().freq, pitch: estimateFrequency(state.source.getLatestWindow(8820)[0], 44100),
                        peak: Math.max(...state.source.getLatestWindow(2205)[0].map(Math.abs)),
                        credit: el.credit.textContent };

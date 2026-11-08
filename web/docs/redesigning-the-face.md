@@ -244,6 +244,9 @@ summary lines, the envelope knobs are labelled A, D, S and R, menus shrink to ab
 and it is the tightest the face gets. Two ways to buy room, either or both: the *Size*
 setting, and raising the editor's minimum to about 1100×700. The editor's default,
 1400×900, is also larger than a 1366×768 laptop and is not remembered; F8 fixes both.
+*(Fixed before F8 was built: the plugin opens at 1200×680 and remembers its size. F8 made
+the face compact below 1100×860 and added the Size, whose Auto is 90 per cent in the
+smallest windows.)*
 
 ## Where every control goes
 
@@ -370,4 +373,6 @@ Each stage leaves the suite green and the instrument usable, and each is pushed 
   call.
 - **Short preset lines** (*listen for / watch for*), and whether auditioning by holding
   a key is built.
-- **The minimum window:** the *Size* setting alone, or a larger minimum as well.
+- ~~**The minimum window:** the *Size* setting alone, or a larger minimum as well.~~
+  *Decided 8 Nov:* the setting alone, with an Auto that is 90 per cent under 1100×680,
+  so the minimum stays 960×600 and fits without anyone choosing. Built in F8.

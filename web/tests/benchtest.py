@@ -621,9 +621,12 @@ with sync_playwright() as pw:
       const seen = [!!el.persistence.offsetParent, !!el.scanMemory.offsetParent]; f.hidden = true; t.hidden = true; return seen; }""")
     check("null: with the menu back on the face there are two", two == [True, True], str(two))
 
-    # The null: a window shorter than the panel, which no placing can fit.
+    # The null: a window shorter than the panel, which no placing can fit -
+    # at Size 100, since Auto's 90 (F8) fits it even at 960x480.
     p.set_viewport_size({"width": 960, "height": 480}); p.wait_for_timeout(300)
+    p.evaluate("() => setSize(1)"); p.wait_for_timeout(200)
     short = p.evaluate(FIT)
+    p.evaluate("() => setSize('auto')")
     check("null: at 960x480 the same check says the panel does not fit", not short["bench"]["inside"], str(short))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
     p.evaluate("() => setView('scope')")
