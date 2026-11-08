@@ -272,7 +272,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   the markup stays in the default order. `racktest.py` and `fittest.py`
   hold it, and parity the six orders.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
-  MIDI, Audio, the inputs, the modulation fade, Presets, Beam), `bench` (everything played or tuned) or, since
+  MIDI, Audio, the inputs, the modulation fade, Beam), `bench` (everything played or tuned) or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
@@ -286,8 +286,17 @@ Do not re-litigate these without a reason; each replaced something that failed.
   a held chord** (P8g and P8h, `making-it-one-instrument.md`): *Settled* (a
   note moves the sound as it strikes the screen, and it comes to rest while
   held) and *Breathing* (it moves while held and stops when let go, or goes
-  on under the sustain pedal). One menu a heading in the browser, Saved last,
-  a section rail only when a heading has more than one section. The plain
+  on under the sustain pedal). The browser (F6) is three columns: the
+  headings down the left, each with what it means in a line, Saved last;
+  the heading's sounds, each with a thumbnail of its figure; and the chosen
+  one, larger, with its whole description and *Load*, which loads it and
+  leaves the browser open (choosing a card loads nothing). A section rail
+  only when a heading has more than one section. No search. Its footer took
+  Settings' Presets section: save (with the figure of what is sounding),
+  delete, and the setup code with Copy and Paste. The thumbnails are the
+  instrument's own figures, drawn into the page by
+  `core/tests/tools/write_figures.py` with a hash of each preset, which
+  `presettest.py` holds them to. The plain
   sound is not a preset: the page and the plugin open on the base
   (`BASE_SETUP`, a still sine) and *New* goes back to it. It replaced 268
   presets in three menus, which the owner liked none of, and then four
@@ -301,7 +310,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   and every preset to name the Picture amount. Add a preset under the
   heading it measures as, with a line that says what to listen for and what
   to look at, then write `presets.h` (and the base) out with
-  `core/tests/tools/write_presets.py`. The old library is kept whole as a
+  `core/tests/tools/write_presets.py` and its thumbnail with
+  `core/tests/tools/write_figures.py`. The old library is kept whole as a
   test corpus (`core/tests/scenarios/library-p8f.json`,
   `web/tests/corpus.py`): a suite that wants a known sound under a check
   opens it from there, and one testing the preset mechanism picks a bank

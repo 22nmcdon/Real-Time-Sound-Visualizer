@@ -5103,3 +5103,20 @@ for this reason; a synthetic event on the handle would have passed.
 
 **A handle pressed with the pointer is not given the focus, so its own
 keydown never hears Escape.** The drag's Escape listens on the document.
+
+**A thumbnail of a sound should be the instrument's drawing of it.** The
+preset browser's figures (F6) could have been drawn from a second reading of
+each setup - shape, ratio, interval - in a few lines of JavaScript, and would
+have been a picture of what the page thinks a preset sounds like, drifting
+from the sound the first time a preset was tuned by ear. They are drawn by
+`core/tests/tools/write_figures.py`, which plays each preset with the note
+`honestytest.py` probes it with and keeps the pair it drew, and each carries
+a hash of its setup that `presettest.py` checks, so a preset changed without
+its figure fails. The first window kept 2048 samples, which on a moving
+sound is many periods laid over each other, and every thumbnail was a
+scribble; two periods of the lowest note held is a figure that closes on
+itself, as the screen's does.
+
+**A screenshot script writes where it is run from.** A probe saving
+`br1400.png` by a bare name, run from the repository's root, left two images
+in the working tree; give such scripts absolute paths into the scratchpad.

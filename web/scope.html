@@ -561,8 +561,9 @@ dialog {
 }
 dialog::backdrop { background: rgba(36, 31, 29, 0.42); }
 
-/* The preset browser: a rail of sections, and a grid of cards that say what
-   each one is for. Replaced a single long select with every preset in it,
+/* The preset button along the top. (The browser's own styles are F6's,
+   below.) The browser began as a rail of sections and a grid of cards that
+   said what each one is for. Replaced a single long select with every preset in it,
    which could hold names and nothing else, and stopped being usable once
    there were ninety of them. */
 .preset-button {
@@ -574,97 +575,112 @@ dialog::backdrop { background: rgba(36, 31, 29, 0.42); }
 .preset-button:hover { border-color: var(--blush); }
 .preset-button .caret { color: var(--text-soft); font-size: 10px; flex: 0 0 auto; }
 #presetCurrent { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-#presetDialog { width: min(1060px, calc(100vw - 32px)); height: min(88dvh, 780px); }
-.preset-find {
-  margin-left: auto; align-self: center; width: min(260px, 38vw); background: var(--paper);
-  border: 1px solid var(--line); border-radius: 1px; padding: 5px 8px; font-family: var(--sans);
-  font-size: 13px; color: var(--charcoal); min-width: 0;
-}
-.preset-where { margin: 12px 24px 0; font-size: 13px; color: var(--text-soft); }
-/* The search sits beside the close button rather than half-way across: the
-   button's own left margin is automatic too, and two of them split the room. */
-#presetDialog .close-btn { margin-left: 12px; }
-.preset-foot .link-btn { white-space: nowrap; flex: 0 0 auto; }
-.preset-where[hidden] { display: none; }
-/* A menu of one section is the section, so its rail is hidden (P8g). */
-.preset-rail[hidden] { display: none !important; }
-.preset-where .link-btn { margin-left: 8px; }
-/* The menus across the top: how much your playing has to do with a preset. */
-.preset-menus { display: flex; gap: 2px; margin: 14px 24px 0; flex-wrap: wrap; }
+/* F6: the browser as three columns - the headings, each with what it means in
+   a line; the heading's sounds, each with a thumbnail of its figure; and the
+   chosen sound, larger, with its whole description and Load - and a footer
+   with what Settings used to hold for presets: save, delete, and the setup
+   code. Choosing a card shows it and loads nothing; Load loads and leaves the
+   browser open, so sounds can still be compared without reopening it. It
+   replaced menus across the top over a grid of text cards with a search,
+   which eight presets did not need. */
+#presetDialog { width: min(1000px, calc(100vw - 32px)); height: min(88dvh, 700px); padding: 0; }
+.preset-head { display: flex; align-items: baseline; gap: 18px; padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
+.preset-head .dialog-title { font-family: var(--serif); font-size: 24px; }
+.preset-sub { font-size: 13px; color: var(--text-soft); }
+.preset-head #presetNew { margin-left: auto; }
+.preset-body { display: flex; flex: 1 1 auto; min-height: 0; }
+.preset-menus { flex: 0 0 200px; overflow-y: auto; border-right: 1px solid var(--line); padding: 4px 0; }
 .preset-menu {
-  display: flex; align-items: baseline; gap: 8px; background: none; border: 0;
-  border-bottom: 2px solid transparent; padding: 8px 14px 7px; font-family: var(--sans); font-size: 13px;
-  color: var(--text-soft); cursor: pointer;
+  display: grid; grid-template-columns: 1fr auto; row-gap: 3px; width: 100%; text-align: left;
+  background: none; border: 0; border-left: 2px solid transparent; padding: 12px 14px 12px 16px;
+  font-family: var(--sans); color: var(--charcoal); cursor: pointer;
 }
-.preset-menu:hover { color: var(--charcoal); }
-.preset-menu[aria-selected="true"] { color: var(--charcoal); border-bottom-color: var(--blush-deep); font-weight: 600; }
-.preset-menu .count { font-family: var(--mono); font-size: 10.5px; opacity: 0.7; font-weight: 400; }
-.preset-body {
-  display: flex; flex: 1 1 auto; min-height: 0; margin-top: 0; border-top: 1px solid var(--line);
-}
-.preset-rail {
-  flex: 0 0 196px; overflow-y: auto; padding: 10px 0; border-right: 1px solid var(--line);
-}
+.preset-menu:hover { background: var(--wash); }
+.preset-menu[aria-selected="true"] { border-left-color: var(--blush-deep); background: var(--paper); }
+.preset-menu .menu-name { font-family: var(--serif); font-size: 17px; }
+.preset-menu .count { font-family: var(--mono); font-size: 10.5px; color: var(--text-soft); align-self: center; }
+.preset-menu .menu-line { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.45; color: var(--text-soft); }
+.preset-main { flex: 1 1 auto; overflow-y: auto; padding: 14px 16px 18px; min-width: 0; border-right: 1px solid var(--line); }
+.preset-where { margin: 0 0 12px; font-size: 13px; color: var(--text-soft); }
+.preset-where[hidden] { display: none; }
+.preset-where .link-btn { margin-left: 8px; }
+/* A menu of one section is the section, so its rail is hidden (P8g). */
+.preset-rail { display: flex; gap: 2px; flex-wrap: wrap; margin: 0 0 10px; }
+.preset-rail[hidden] { display: none !important; }
 .preset-section {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
-  background: none; border: 0; border-left: 2px solid transparent; padding: 7px 14px 7px 22px;
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-soft);
-  text-align: left; cursor: pointer;
+  display: flex; align-items: baseline; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 5px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-soft); cursor: pointer;
 }
-.preset-section:hover { color: var(--charcoal); }
-.preset-section[aria-selected="true"] {
-  color: var(--charcoal); border-left-color: var(--blush-deep); background: var(--paper);
-}
+.preset-section[aria-selected="true"] { color: var(--charcoal); border-bottom-color: var(--blush-deep); }
 .preset-section .count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; opacity: 0.7; }
-.preset-main { flex: 1 1 auto; overflow-y: auto; padding: 16px 24px 24px; min-width: 0; }
-.preset-about { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--text-soft); max-width: 72ch; }
-.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.preset-heading {
-  grid-column: 1 / -1; margin: 10px 0 0; font-size: 10.5px; text-transform: uppercase;
-  letter-spacing: 0.18em; color: var(--blush-deep);
-}
-.preset-heading:first-child { margin-top: 0; }
+.preset-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .preset-card {
-  display: flex; flex-direction: column; gap: 5px; text-align: left; background: var(--paper);
-  border: 1px solid var(--line); border-radius: 1px; padding: 10px 12px 11px; cursor: pointer;
-  font-family: var(--sans); color: var(--charcoal);
+  display: flex; align-items: center; gap: 14px; text-align: left; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 1px; padding: 8px 12px 8px 8px; cursor: pointer;
+  font-family: var(--sans); color: var(--charcoal); min-width: 0;
 }
 .preset-card:hover { border-color: var(--blush); }
 .preset-card:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 1px; }
-.preset-card[aria-pressed="true"] { border-color: var(--blush-deep); box-shadow: inset 3px 0 0 var(--blush-deep); }
-.preset-name { font-size: 14px; font-weight: 600; }
-.preset-blurb { font-size: 12.5px; line-height: 1.45; color: var(--text-soft); }
-/* Two lines on the card, and the whole of it in the strip below the grid for
-   the one under the pointer or the focus: cards of every length at full
-   height made a wall of text, and cards that grew on hover moved the grid. */
-.preset-card .preset-blurb {
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+.preset-card[data-chosen] { border-color: var(--blush-deep); box-shadow: inset 3px 0 0 var(--blush-deep); }
+.preset-thumb { flex: 0 0 54px; height: 54px; border: 1px solid var(--line); background: var(--cream); display: block; }
+.preset-thumb svg, .preset-figure svg { width: 100%; height: 100%; display: block; }
+.preset-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.preset-name { font-family: var(--serif); font-size: 17px; }
+/* The one loaded, said quietly beside its name: chosen and loaded can differ. */
+.preset-card[aria-pressed="true"] .preset-name::after {
+  content: "in use"; margin-left: 10px; font-family: var(--sans); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--blush-deep);
 }
-.preset-preview {
-  flex: 0 0 auto; min-height: 76px; padding: 10px 24px 12px; border-top: 1px solid var(--line);
-  background: var(--paper); font-size: 13px; line-height: 1.5; color: var(--charcoal);
+.preset-blurb { font-size: 12.5px; line-height: 1.4; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preset-empty { font-size: 13.5px; color: var(--text-soft); margin: 4px 0; }
+.fig-a, .fig-b { fill: none; stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.fig-a { stroke: var(--blush-deep); }
+.fig-b { stroke: var(--ch3); }
+.fig-none { stroke: var(--line); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+/* The figure and Load hold their places and the words scroll between them,
+   so Load is never under the fold at the plugin's 960x600. */
+.preset-preview { flex: 0 0 300px; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 18px; min-height: 0; }
+.preset-figure {
+  flex: 0 0 auto; aspect-ratio: 1 / 1; width: min(100%, 34dvh); border: 1px solid var(--line); background: var(--cream);
 }
-.preset-preview .where { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--blush-deep); }
-.preset-preview .name { font-weight: 600; margin-right: 10px; }
-.preset-preview p { margin: 3px 0 0; color: var(--text-soft); max-width: 90ch; }
-.preset-empty { grid-column: 1 / -1; font-size: 13.5px; color: var(--text-soft); margin: 0; }
+.preset-chosen { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.preset-preview .where { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--blush-deep); }
+.preset-preview .name { font-family: var(--serif); font-size: 24px; color: var(--charcoal); }
+.preset-preview p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-soft); }
+.preset-load {
+  flex: 0 0 auto; align-self: flex-start; background: var(--charcoal); color: var(--paper); border: 0; border-radius: 1px;
+  padding: 9px 18px; font-size: 11px; letter-spacing: 0.16em; cursor: pointer;
+}
+.preset-load:disabled { opacity: 0.4; cursor: default; }
 .preset-foot {
-  display: flex; gap: 16px; align-items: center; justify-content: space-between; flex: 0 0 auto;
-  padding: 10px 24px 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-soft);
+  display: flex; gap: 14px; align-items: center; flex: 0 0 auto; padding: 12px 22px 14px;
+  border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-soft);
 }
-/* On a phone the rail turns into a row of tabs above the cards. */
-@media (max-width: 700px) {
-  .preset-body { flex-direction: column; }
-  .preset-rail { flex: 0 0 auto; display: flex; overflow-x: auto; overflow-y: hidden; padding: 0;
-                 border-right: 0; border-bottom: 1px solid var(--line); }
-  .preset-section { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent;
-                    padding: 10px 12px; }
-  .preset-section[aria-selected="true"] { border-bottom-color: var(--blush-deep); }
-  .preset-main { padding: 14px 16px 20px; }
-  .preset-foot > span { display: none; }
-  .dialog-head { flex-wrap: wrap; }
-  .preset-find { order: 3; width: 100%; margin-left: 0; }
-  #presetDialog .close-btn { margin-left: auto; }
+.preset-foot .link-btn { white-space: nowrap; flex: 0 0 auto; }
+.preset-saving { display: inline-flex; gap: 8px; align-items: center; }
+.preset-saving[hidden] { display: none; }
+.preset-foot input[type="text"] {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 1px; padding: 5px 8px;
+  font-family: var(--sans); font-size: 13px; color: var(--charcoal); min-width: 0;
+}
+#presetName { width: 150px; }
+.preset-note { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-note.good { color: var(--sage); }
+.preset-note.warn { color: var(--rust); }
+.preset-code-label { flex: 0 0 auto; }
+#presetCode { width: 230px; font-family: var(--mono); font-size: 11.5px; }
+/* On a phone the three columns stack: headings as a row, the list, then the chosen. */
+@media (max-width: 760px) {
+  .preset-body { flex-direction: column; overflow-y: auto; }
+  .preset-menus { flex: 0 0 auto; display: flex; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .preset-menu { width: auto; border-left: 0; border-bottom: 2px solid transparent; }
+  .preset-menu[aria-selected="true"] { border-bottom-color: var(--blush-deep); }
+  .preset-menu .menu-line { display: none; }
+  .preset-main { overflow: visible; border-right: 0; }
+  .preset-preview { flex: 0 0 auto; }
+  .preset-figure { width: 160px; }
+  .preset-foot { flex-wrap: wrap; }
+  .preset-sub { display: none; }
 }
 dialog[open] { display: flex; flex-direction: column; }
 
@@ -2435,46 +2451,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Clock</i> section beside this one.</p>
           </div>
 
-          <div class="menu-group" data-fold="1" data-home="settings">
-            <span class="menu-title">Presets</span>
-            <div class="menu-row">
-              <label class="menu-label" for="presetName">Save as</label>
-              <div class="grow">
-                <input type="text" id="presetName" placeholder="my setup"
-                       style="flex:1 1 auto; background:var(--paper); border:1px solid var(--line);
-                              border-radius:1px; padding:4px 7px; font-family:var(--sans);
-                              font-size:13px; color:var(--charcoal); min-width:0">
-                <button type="button" class="link-btn caps" id="presetSave">Save</button>
-              </div>
-            </div>
-            <div class="menu-row">
-              <span class="menu-label"></span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="presetDelete">Delete saved</button>
-              </div>
-            </div>
-            <div class="menu-row">
-              <label class="menu-label" for="presetCode">Setup code</label>
-              <div class="grow">
-                <input type="text" id="presetCode" spellcheck="false"
-                       placeholder="paste a code and press Load"
-                       style="flex:1 1 auto; background:var(--paper); border:1px solid var(--line);
-                              border-radius:1px; padding:4px 7px; font-family:var(--mono);
-                              font-size:11.5px; color:var(--charcoal); min-width:0">
-              </div>
-            </div>
-            <div class="menu-row">
-              <span class="menu-label"></span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="presetCopy">Copy this setup</button>
-                <button type="button" class="link-btn caps" id="presetLoad">Load</button>
-              </div>
-            </div>
-            <p class="menu-note" id="presetNote">Saved setups live in this browser and
-              nowhere else. A <i>setup code</i> is the whole configuration as text &mdash;
-              copy it, send it, paste it back.</p>
-          </div>
-
           <div class="menu-group" data-home="measure" data-place="measureSide">
             <span class="menu-title">Vertical</span>
             <div id="laneRows" data-more="1"></div>
@@ -3887,29 +3863,42 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 </section>
 
 <dialog id="presetDialog" aria-labelledby="presetTitle">
-  <div class="dialog-head">
-    <div>
-      <div class="bar-label">Oscilloscope</div>
-      <div class="dialog-title" id="presetTitle">Presets</div>
-    </div>
-    <input type="search" id="presetFind" class="preset-find" placeholder="Find a preset"
-           aria-label="Find a preset" autocomplete="off" spellcheck="false">
-    <button type="button" class="link-btn caps" id="presetNew" title="Back to the plain sine the instrument opens on, to start a setup of your own from">New</button>
-    <button type="button" class="close-btn" id="presetClose" aria-label="Close">&times;</button>
+  <div class="preset-head">
+    <div class="dialog-title" id="presetTitle">Presets</div>
+    <span class="preset-sub">Sorted by what the loop does with a held chord</span>
+    <button type="button" class="link-btn caps" id="presetNew" title="Back to the plain sine the instrument opens on, to start a setup of your own from">New &middot; a still sine</button>
+    <button type="button" class="link-btn caps" id="presetClose">Close</button>
   </div>
-  <div class="preset-menus" id="presetMenus" role="tablist" aria-label="Menus"></div>
-  <p class="preset-where" id="presetWhere" hidden></p>
   <div class="preset-body">
-    <div class="preset-rail" id="presetRail" role="tablist" aria-label="Sections"></div>
+    <div class="preset-menus" id="presetMenus" role="tablist" aria-label="Headings" aria-orientation="vertical"></div>
     <div class="preset-main" id="presetMain">
-      <p class="preset-about" id="presetAbout"></p>
+      <p class="preset-where" id="presetWhere" hidden></p>
+      <div class="preset-rail" id="presetRail" role="tablist" aria-label="Sections" hidden></div>
       <div class="preset-grid" id="presetGrid"></div>
     </div>
+    <div class="preset-preview" id="presetPreview">
+      <div class="preset-figure" id="presetFigure"></div>
+      <div class="preset-chosen">
+        <span class="where" id="presetChosenWhere"></span>
+        <span class="name" id="presetChosenName"></span>
+        <p id="presetChosenText"></p>
+      </div>
+      <button type="button" class="preset-load caps" id="presetLoad">Load</button>
+    </div>
   </div>
-  <div class="preset-preview" id="presetPreview"></div>
   <div class="preset-foot">
-    <span>Choosing one loads it and leaves this open; double-click, or Enter, to load it and close.</span>
-    <button type="button" class="link-btn caps" id="presetManage">Save or share this setup</button>
+    <button type="button" class="link-btn caps" id="presetSaveOpen" aria-expanded="false">Save this sound&hellip;</button>
+    <span class="preset-saving" id="presetSaving" hidden>
+      <input type="text" id="presetName" placeholder="a name" aria-label="Save this sound as" spellcheck="false">
+      <button type="button" class="link-btn caps" id="presetSave">Save</button>
+    </span>
+    <button type="button" class="link-btn caps" id="presetDelete">Delete saved</button>
+    <span class="preset-note" id="presetNote" role="status"></span>
+    <label class="preset-code-label" for="presetCode">Setup code</label>
+    <input type="text" id="presetCode" spellcheck="false" autocomplete="off"
+           title="The whole setup as text: copy it to send it, paste one here and press Paste to load it">
+    <button type="button" class="link-btn caps" id="presetCopy">Copy</button>
+    <button type="button" class="link-btn caps" id="presetPaste">Paste</button>
   </div>
 </dialog>
 
@@ -5037,13 +5026,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         own from.</li>
 
       <li><b>Browsing</b>
-        <span>The headings are along the top; one that grows sections lists them down the
-        left, and remembers the one you left it on. A card shows two lines; the strip under the cards
-        shows the whole of what the one under the pointer says, and where it lives. Choosing
-        one loads it and leaves the browser open, so you can listen through a section;
-        double-click one, or press <b>Enter</b>, to load it and close. The arrows move between
-        the cards, and <i>Find a preset</i> looks through every menu at once. Your saved setups
-        are the last menu.</span></li>
+        <span>The headings are down the left, each with what it means in a line, and your
+        saved sounds are the last. The middle is the heading's sounds, each with a thumbnail
+        of its figure as the instrument draws it with a note held &mdash; a split draws its
+        second hand in layer B's olive &mdash; and the first line of what it says. Choosing one
+        shows it on the right, larger, with the whole of what it says, and loads nothing;
+        <i>Load</i> loads it and leaves the browser open, so you can listen through a heading.
+        Double-click one, or press <b>Enter</b>, to load it and close. The arrows move up and
+        down the list. A heading that grows sections lists them above its sounds, and
+        remembers the one you left it on.</span></li>
 
       <li><b>What they play on</b>
         <span>Every one sets the generator, and lands on it wherever it is &mdash; the test
@@ -5059,8 +5050,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span>Nothing is lost; the picker is just telling you the truth.</span></li>
 
       <li><b>Saving and sharing</b>
-        <span><i>Settings &rarr; Presets</i>. Saved setups live in this browser and nowhere
-        else; a <i>setup code</i> is the whole configuration as text, to copy and paste.</span></li>
+        <span>Along the foot of the browser. <i>Save this sound&hellip;</i> asks for a name and
+        keeps the sound you have, with a thumbnail of what it is drawing at that moment (none
+        if nothing is sounding); <i>Delete saved</i> takes away the saved one chosen. Saved
+        sounds live in this browser and nowhere else. The <i>setup code</i> is the whole
+        configuration as text: <i>Copy</i> it to send it, and <i>Paste</i> loads one, from the
+        clipboard or from the field if you paste it there yourself.</span></li>
 
       <li><b>Keys</b>
         <span><b>Space</b> run and stop &middot; <b>S</b> single &middot; <b>A</b> autoset
@@ -5293,10 +5288,11 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "helpButton", "helpDialog", "helpClose",
                   "tabScreen", "tabTrigger", "tabMeasure", "tabSignal", "tabKeys",
                   "panelScreen", "panelTrigger", "panelMeasure", "panelSignal", "panelKeys",
-                  "preset", "presetCurrent", "presetDialog", "presetFind", "presetClose", "presetNew", "presetWhere",
-                  "presetMenus", "presetPreview", "presetRail", "presetMain", "presetAbout", "presetGrid", "presetManage",
-                  "presetName", "presetSave", "presetDelete",
-                  "presetCode", "presetCopy", "presetLoad", "presetNote",
+                  "preset", "presetCurrent", "presetDialog", "presetClose", "presetNew", "presetWhere",
+                  "presetMenus", "presetPreview", "presetRail", "presetMain", "presetGrid",
+                  "presetFigure", "presetChosenWhere", "presetChosenName", "presetChosenText", "presetLoad",
+                  "presetSaveOpen", "presetSaving", "presetName", "presetSave", "presetDelete",
+                  "presetCode", "presetCopy", "presetPaste", "presetNote",
                   "harmonicsOn", "tunerOn", "harmonicsPane", "tunerPane", "harmonics", "tuner",
                   /* No per-lane or trigger-source ids here: those rows are
                      built by `buildLaneRows` and `buildTrigSources`, which
@@ -22302,22 +22298,22 @@ const PRESET_ABOUT = {
     + "Scan reads a little of each wave back off its figure, and every key lights the figure where it reads.",
   "Breathing": "The sound keeps moving while you hold a chord, and stops when you let go: the picture is "
     + "pushing it, or the figure is turning and the wave read off it turns too.",
-  "Saved": "Your own, saved in this browser. Save the current setup, or share it as a code, from "
-    + "Settings → Presets.",
+  "Saved": "Your own, saved in this browser. Save the sound you have with Save this sound, below, or share "
+    + "it as a setup code.",
 };
-/* The library's top level: a menu for each heading, by what the loop does with
-   a chord you hold, and Saved as the last. Two headings since P8h: Wandering
-   went with the latch, a Breathing sound with the pedal down doing the same,
-   and Open went to be the sound the instrument opens on, the base a new setup
-   starts from rather than a preset. Each holds one section today, and
-   the rail of sections is hidden while a menu has only one; a heading that
-   grows (keys, pads, splits) gets sections without anything here changing.
-   It replaced three menus by how much playing a preset asked for, which held
-   thirty sections and read as a wall. `presettest.py` requires every section
-   to be in exactly one menu, since one left out would never be seen. */
+/* The library's top level: a heading for each by what the loop does with a
+   chord you hold, and Saved as the last, each with what it means in a line
+   (F6). Two headings since P8h: Wandering went with the latch, a Breathing
+   sound with the pedal down doing the same, and Open went to be the sound the
+   instrument opens on, the base a new setup starts from rather than a
+   preset. Each holds one section today, and the rail of sections is hidden
+   while a heading has only one; a heading that grows (keys, pads, splits)
+   gets sections without anything here changing. `presettest.py` requires
+   every section to be in exactly one heading, since one left out would never
+   be seen. */
 const PRESET_MENUS = [
-  ["settled", "Settled", PRESET_ABOUT.Settled, ["Settled"]],
-  ["breathing", "Breathing", PRESET_ABOUT.Breathing, ["Breathing"]],
+  ["settled", "Settled", PRESET_ABOUT.Settled, ["Settled"], "Moves as a note strikes, then rests"],
+  ["breathing", "Breathing", PRESET_ABOUT.Breathing, ["Breathing"], "Moves while held, stops when let go"],
 ];
 const SECTION_KEY = "scope.presetSection";
 let presetSection = 0;
@@ -22325,6 +22321,73 @@ try {
   const saved = Number(window.localStorage.getItem(SECTION_KEY));
   if (Number.isInteger(saved) && saved >= 0 && saved <= PRESETS.length) presetSection = saved;
 } catch (error) { /* private window */ }
+
+/* --- the figures on the cards (F6) ----------------------------------------------
+   Each preset's thumbnail is its figure as the instrument drew it: written
+   into the page by core/tests/tools/write_figures.py, which loads each preset,
+   holds the note honestytest.py probes it with, and keeps the pair it drew
+   (a split's two, B in layer B's ink). Drawn from a second reading of the
+   setup instead, it would be a picture of what the page thinks a preset
+   sounds like, and would drift from the sound. Each carries a hash of the
+   setup it was drawn from, and presettest.py fails a figure whose preset
+   has changed since, so a preset tuned by ear has to have its figure drawn
+   again. A saved sound's figure is caught when it is saved, from whatever
+   is sounding then, and is none if nothing is. */
+const PRESET_FIGURES = {"b:Tine piano":{"a":"109 22 93 22 75 21 57 21 40 21 25 21 13 21 8 22 10 22 18 22 32 22 51 24 73 26 96 28 119 32 139 36 156 41 168 47 176 55 180 65 180 77 177 90 171 106 165 124 158 142 150 159 141 174 132 186 123 192 114 191 107 183 100 169 93 151 87 129 81 105 77 83 74 62 72 45 71 33 72 25 74 21 77 20 81 23 86 28 92 35 98 42 103 50 109 58 115 67 122 76 129 85 135 93 141 100 147 106 152 113 156 118 160 123 164 126 167 128 170 129 172 128 175 126 176 123 178 119 178 114 179 108 179 103 179 97 179 92 178 86 178 79 178 72 178 66 178 59 177 53 175 48 172 44 169 40 165 36 160 33 154 30 147 28 137 26 126 24 113 22 97 22 80 22 62 21 44 21 29 21 16 22 9 22 9 22 15 22 27 22 45 23 67 25 90 28 113 31 134 35 152 40 165 45 174 53 179 62 180 73 178 86 173 102 167 119 160 137 152 154 144 170 135 183 126 191 117 191 109 186 102 174 95 156 89 135 83 112 78 89 74 68 72 50 71 36 72 26 73 21 76 20 80 22 85 27 91 33 96 40 102 47 107 56 113 64 120 74 127 83 133 91 139 98 145 105 151 111 155 117 159 122 163 125 166 128 169 129 172 128 174 127 176 124 177 121 178 116 179 110 179 104 179 99 179 93 179 88 178 81 178 74 178 67 178 61 177 55 175 50 173 45 170 41 166 37 162 34 156 31 149 29 140 26 129 24 117 23","hash":"bd6a0d90"},"b:Drawbar organ":{"a":"106 131 108 132 110 132 111 132 112 131 113 131 113 130 113 128 112 126 111 124 110 122 108 120 106 117 103 114 100 112 97 109 93 106 89 103 84 101 79 98 74 96 68 94 62 92 57 90 51 89 45 88 40 87 35 87 30 87 25 88 21 89 18 90 14 92 12 94 10 96 9 100 8 103 8 107 9 111 11 116 13 121 16 126 19 132 24 137 29 143 34 149 40 154 47 160 54 165 61 170 69 174 77 178 85 182 93 185 101 188 109 190 117 191 125 192 133 192 140 191 147 190 153 187 159 184 165 181 169 176 174 172 177 166 180 160 183 154 185 147 186 139 186 131 186 124 185 116 184 107 182 99 180 91 177 83 174 75 170 68 166 61 162 54 158 47 153 41 148 36 144 31 139 27 135 23 130 20 126 17 122 15 119 14 116 14 113 14 111 15 109 16 107 18 106 20 105 23 105 26 104 30 105 34 105 38 106 42 106 47 107 51 108 56 109 60 111 65 112 69 113 73 115 77 116 81 117 84 119 87 120 89 121 91 121 93 122 94 122 95 122 95 122 96 122 95 121 95 121 95 119 94 118 93 117 92 115 91 113 89 110 88 108 87 105 85 103 84 100 83 97 81 94 80 91 79 88 79 85 78 83 78 80 78 77 78 75 78 73 79 72 79 70 80 69 82 68 83 68 85 68 87 68 89 69 92 70 95 71 97 73 100 75 103 77 106 79 109 82 112 84 115 87 117 90 120 93 122 95 125 98 127 101 128 103 130 105 131","hash":"cf5068f6"},"b:Bass under the tine piano":{"a":"141 170 130 177 119 182 109 185 98 187 89 186 80 182 72 176 65 168 58 157 53 144 48 129 44 113 40 96 37 79 35 62 33 46 31 32 30 21 29 14 29 9 29 8 29 10 29 14 30 21 31 29 33 38 34 48 36 58 39 69 41 80 44 90 48 101 52 110 56 119 60 127 65 135 71 141 76 147 82 152 88 156 94 160 100 163 106 165 112 167 118 169 123 170 129 171 134 171 139 171 143 171 147 171 151 170 154 169 157 168 159 166 162 164 163 162 165 159 165 156 166 153 166 149 166 144 165 140 164 135 163 130 161 124 158 119 155 113 152 107 147 101 142 95 137 89 130 83 123 77 115 72 107 67 97 62 88 57 78 53 68 50 58 46 48 43 40 41 32 39 25 37 19 36 15 35 13 34 14 34 17 34 22 35 30 36 40 37 52 39 66 41 82 44 99 48 116 52 133 57 150 63 164 69 176 76 184 84 190 93 192 102 191 111 187 121 182 131 174 141 165 151 155 160 145 168 134 175 123 180 113 184 102 187 92 186 83 184 75 179 67 171 60 161 55 149 49 135 45 119 41 102 38 85 35 68 33 52 32 37 30 25 29 16 29 10 29 8 29 9 29 12 30 18 31 25 32 34 33 44 35 54 37 65 40 76 43 86 46 97 50 107 54 116 59 125 63 132 69 139 74 145 80 150 85 155 91 158 98 162 104 164 110 166 116 168 121 170 127 170 132 171 137 171 142 171 146 171 150 170 153 170 156 168 159 167 161 165 163 163 164 160 165 157 166 154 166 150 166 146 166 142 165 137 164 132 162 127 160 121 157 115 153 109 149 103 144 97 139 91 133 85 126 79 118 74 110 68 101 63 91 59 81 55 71 51 61 47 52 44 43 41 34 39 27 37 21 36 16 35 14 34 13 34 15 34 20 34 26 35 36 36 48 38 61 40 77 43 93 47 110 51 127 55 144 61 159 67 172 74 182 81 188 89 192 98 192 108 189 118 184 128 177 138 169 147 159 157 149 165","b":"116 88 104 103 91 117 84 105 84 86 86 86 93 101 103 112 113 116 118 116 116 113 115 104 115 93 117 85 113 82 98 84 83 85 93 84 113 83 115 91 100 108 88 117 84 100 84 84 87 89 95 104 106 114 115 116 118 115 116 111 115 101 116 91 117 84 110 83 93 85 83 85 99 83 116 84 112 94 97 112 86 114 84 94 84 83 89 93 98 107 109 115 116 116 117 115 115 109 115 99 116 88 116 83 107 83 89 85 85 85 104 83 117 85 108 99 93 115 85 110 84 89 85 84 90 97 101 110 111 116 117 116 117 114 115 107 115 96 117 86 115 82 102 84 85 85 88 84 109 83 116 88 104 103 91 117 84 105 84 86 86 86 93 101 103 112 113 116 118 116 116 113 115 104 115 93 117 85 113 82 98 84 83 85 93 84 113 83 115 91 100 108 88 117 84 100 84 84 87 89 95 104 106 114 115 116 118 115 116 111 115 102 116 91 117 84 110 83 93 85 83 85 99 83 116 84 112 94 97 112 86 114 84 94 84 83 89 93 98 107 109 115 116 116 117 115 115 109 115 99 116 88 116 83 107 83 89 85 85 85 104 83 117 85 108 99 93 115 85 110 84 89 85 84 90 97 101 110 111 116 117 116 117 114 115 107 115 96 117 86 115 82 102 84 85 85 88 84 109 83 116 88 104 103 91 117 84 105 84 86 86 86 92 101 103 112 113 116 118 116 116 113 115 104 115 93 117 85 113 82 98 84 83 85 93 84 113 83 115 91 100 108 88 117 84 100 84 84 87 89 95 104 106 114 115 116 118 116 116 111 115 102 116 91 117 84 110 83 93 85 83 85 99 83 116 84 112 94 97 112 86 114 84 94 84 83 89 93 98 107 109 115 116 116 117 115 115 109 115 99 116 88 116 83 107 83 89 85 85 85 104 83 117 85 108 99 93 115 85 110 84 89 85 84 90 97 101 110 111 116 117 116 117 114 115 107 115 96 117 86 115 82 102 84 85 85 88 84 109 83","hash":"c1812111"},"b:Harmonic tone":{"a":"173 102 173 119 174 134 176 147 178 157 181 164 184 169 186 173 189 175 190 176 191 176 192 177 192 176 191 176 190 175 188 173 184 172 179 170 171 169 160 168 147 168 131 169 113 170 95 172 79 175 64 178 52 181 43 184 36 186 32 188 29 189 27 190 25 190 24 189 24 188 24 185 24 181 24 174 25 164 26 151 26 136 27 119 27 101 27 84 26 68 24 55 22 44 19 37 17 31 14 28 12 26 10 24 9 24 8 23 8 24 8 24 10 25 12 27 15 28 20 30 28 31 38 32 51 32 67 31 84 30 102 28 119 25 134 22 146 19 156 16 163 14 168 12 171 11 173 10 175 10 176 11 176 12 176 14 176 19 176 25 175 34 175 47 174 62 173 79 173 96 173 114 174 130 175 143 178 154 180 162 183 168 186 172 188 174 190 176 191 176 192 177 192 176 192 176 191 175 189 173 186 172 181 170 174 169 164 168 151 168 135 169 118 170 100 172 83 174 68 177 55 180 45 183 38 186 33 188 29 189 27 190 26 190 25 190 24 188 24 186 24 182 24 176 25 167 25 155 26 141 27 124 27 106 27 88 26 72 25 58 23 47 20 39 17 33 15 29 12 26 10 25 9 24 8 23 8 24 8 24 9 25 11 26 14 28 18 29 25 31 35 32 47 32 62 31 79 30 97 29 114 26 130 23 143 20 153 17 161 14 167 12 170 11 173 10 174 10 175 10 176 11 176 14 176 17 176 23 175 31 175 43 174 57 173 74 173 91","hash":"e302b1a0"},"b:Slow pad":{"a":"82 39 68 39 54 40 41 42 30 44 21 46 15 49 11 52 8 55 8 58 10 61 13 65 17 67 21 70 27 73 33 76 39 78 45 80 51 84 57 91 63 102 69 116 75 130 80 144 86 156 91 167 95 176 99 183 102 187 104 189 105 190 105 189 105 186 104 182 103 178 102 173 100 167 99 161 98 155 97 149 97 143 97 137 99 132 100 126 103 121 106 116 109 112 113 108 117 105 121 102 125 100 129 99 133 98 136 98 140 98 143 99 146 100 150 101 152 102 155 103 157 103 159 103 160 102 161 100 162 98 161 96 161 93 159 90 157 86 155 82 152 78 149 74 146 70 143 67 139 63 136 59 132 56 129 53 126 50 123 47 121 45 117 42 110 41 100 40 86 39 72 39 58 40 45 41 33 43 24 45 16 48 11 51 9 54 8 57 9 60 11 63 15 66 20 69 25 72 31 74 37 77 43 79 49 82 55 88 61 99 67 112 73 126 79 140 84 153 89 164 93 174 97 181 100 186 103 189 104 190 105 189 105 187 104 184 103 179 102 174 100 169 99 163 98 157 97 151 97 145 97 139 98 134 100 128 102 123 105 118 108 113 112 109 116 106 120 103 124 101 128 99 131 99 135 98 139 99 142 99 146 100 149 101 152 102 154 103 157 103 159 103 160 102 161 101 162 99 162 97 161 94 160 91 158 87 156 83 153 79 151 75 147 71 144 68 141 64 137 60 134 57 131 54 128 51 125 48 122 45 119 43 113 41 103 40 91 39","hash":"be806349"},"b:Turning fifths":{"a":"115 112 120 108 124 104 129 100 134 95 139 91 143 86 148 81 153 76 157 71 161 66 166 61 169 56 171 51 174 46 177 41 180 36 181 31 182 26 182 22 183 17 182 13 181 10 179 9 176 8 172 9 168 10 164 12 158 17 152 23 146 29 140 36 132 46 125 55 117 65 109 75 102 84 95 93 89 101 83 110 78 117 74 123 70 128 67 133 65 136 63 139 62 141 61 142 61 142 60 143 59 144 60 143 60 143 60 143 60 143 60 142 60 143 60 144 60 144 59 144 58 146 57 147 56 148 56 149 56 150 54 151 53 152 52 153 52 152 51 152 51 152 51 151 51 149 51 148 52 147 52 145 53 142 55 140 56 137 57 135 59 132 61 128 63 125 65 121 68 118 70 114 73 109 77 104 80 100 83 95 87 89 91 84 95 78 99 72 103 65 108 59 112 53 116 47 120 42 123 38 126 35 128 33 130 32 132 32 133 34 134 36 135 39 134 45 134 50 134 56 133 62 133 68 132 74 133 79 133 84 133 88 135 91 136 94 138 96 140 96 142 97 145 97 147 96 149 95 151 95 152 95 153 94 154 93 154 93 154 93 153 93 151 95 148 96 146 98 143 100 138 104 133 107 128 111 123 114 118 117 112 120 107 123 102 126 97 128 93 130 89 132 85 133 81 134 78 134 76 134 74 134 72 133 71 132 70 131 70 129 69 127 69 125 70 122 71 119 72 116 74 113 75 109 77 105 79 101 81 96 84 91 87 86 89 82 92 76 94 71 97 65 100 60 101 56 103 52 104 49 105 47 105 46 104 46 102 49 100 52 98 56 95 61 91 68 88 75 84 82 79 90 75 98 71 106 68 112 65 119 62 125 60 130 58 135 57 138 57 140 57 142 57 143 57 143 58 143 59 142 61 142 62 141 64 139 65 139 67 138 69 136 70 136 71 135 73 135 75 134 76 135 77 135 78 135 80 135 82 134 84 134 86 133 88 132 91 130 93 129 96 127 100 124 104 121 107 118 111 115","hash":"190173f7"},"b:Bass under the pad":{"a":"92 187 93 176 95 162 96 148 97 139 97 133 97 132 96 134 96 139 95 144 95 148 94 150 94 151 93 149 93 146 93 141 93 136 93 132 93 128 93 125 94 122 94 120 95 119 95 117 96 116 97 114 98 112 99 110 100 108 101 107 103 105 104 104 105 103 106 103 107 103 109 104 110 104 111 105 112 105 113 106 114 106 115 107 116 107 116 107 117 107 118 107 120 107 121 107 122 106 124 106 125 105 127 105 128 104 130 103 132 102 133 104 135 104 138 104 140 103 142 102 144 100 145 98 147 96 148 95 149 93 150 92 150 91 151 90 151 89 151 88 151 88 151 87 151 86 151 84 150 83 150 82 149 80 142 78 120 77 88 75 56 73 30 71 14 69 8 67 11 65 21 63 34 61 47 58 58 57 65 55 67 53 66 52 62 51 58 50 54 50 51 49 51 49 52 49 55 49 59 49 64 49 69 49 73 50 77 50 79 51 82 56 83 78 85 109 87 141 88 168 90 185 92 192 94 189 96 180 97 167 99 154 99 143 100 136 100 133 100 134 99 138 99 142 98 146 98 149 97 149 97 148 97 145 97 141 97 136 97 132 97 127 97 124 97 121 97 119 98 117 98 115 99 114 98 112 97 110 96 108 96 106 96 104 96 103 97 102 99 101 101 100 103 100 104 100 106 101 107 101 108 102 109 102 110 103 111 103 111 103 112 103 113 103 115 103 116 103 117 103 119 103 121 103 122 102 124 102 126 101 128 102 130 102 132 103 134 104 136 104 139 104 141 103 143 101 145 99 146 98 148 96 149 94 150 93 151 92 151 91 152 90 152 89 152 89 152 89 151 87 151 86 151 85 150 83 149 82 147 80 130 78 101 76 68 75 39 73 19 70 9 68 9 66 17 64 29 62 42 60 54 58 62 56 66 54 66 52 63 51 59 50 55 49 51 49 50 48 51 48 53 48 57 48 62 48 67 49 71 49 75 50 78 51 80 52 82 68 84 97 86 129 87 158 89 180 91 190 93 191","b":"26 47 40 67 49 126 49 169 49 180 61 170 90 156 128 150 159 152 170 149 160 132 141 99 130 61 138 35 152 31 135 46 77 64 32 70 20 57 30 46 43 82 50 140 48 175 50 179 68 166 100 154 137 150 164 152 169 146 155 124 136 88 130 53 142 32 154 34 123 51 64 68 26 68 21 53 33 49 46 96 50 151 48 178 54 176 75 162 110 152 146 151 167 152 167 141 150 115 133 78 132 45 146 30 152 37 107 56 51 70 17 59 19 44 34 53 47 113 50 166 49 185 57 177 82 161 118 151 151 151 168 150 165 137 150 107 138 70 143 41 156 31 149 39 90 55 35 62 14 53 22 42 38 67 48 130 49 176 50 186 63 173 91 158 128 151 158 151 169 148 162 130 146 98 137 62 146 37 158 31 136 43 73 58 26 61 14 50 26 42 41 83 49 145 49 181 52 184 69 169 100 155 136 151 163 151 169 145 158 123 142 88 138 54 150 33 159 33 122 47 59 61 19 59 15 46 29 46 44 98 49 158 49 185 55 181 76 166 109 153 144 151 166 151 167 140 154 115 140 79 140 47 153 31 156 36 105 51 44 62 15 56 18 44 34 55 46 116 50 169 49 187 59 178 83 162 119 152 152 151 168 149 165 135 150 106 138 70 143 41 156 31 148 39 89 55 34 62 14 53 21 42 37 67 48 131 50 176 51 186 64 174 92 158 128 151 158 151 169 147 162 129 146 97 138 61 146 37 158 32 136 43 72 58 25 61 14 49 25 42 41 83 49 146 49 182 53 184 70 170 101 155 137 150 163 151 169 144 158 122 142 88 138 54 150 33 160 33 122 47 57 60 17 58 13 45 28 45 44 99 50 159 51 187 57 183 77 166 109 153 142 150 164 148 168 138 158 114 146 80 147 49 156 33 155 34 101 46 39 55 12 51 17 42 33 57 46 120 50 173 51 189 61 179 85 162 118 152 149 150 167 147 166 133 154 106 145 72 149 44 158 32 146 37 84 50 29 55 11 48","hash":"e6c50c8d"},"b:Crossed hands":{"a":"103 173 94 176 88 179 79 182 69 186 62 188 58 189 55 188 56 185 59 179 61 169 68 157 77 143 90 128 109 113 129 100 149 87 167 76 175 69 176 64 167 61 150 62 125 63 97 66 70 71 56 77 46 82 38 91 33 102 35 111 39 117 44 126 54 136 70 143 92 146 122 148 151 147 174 142 186 138 185 131 173 122 154 110 131 92 108 72 90 52 73 34 63 25 60 24 57 32 60 48 65 72 68 101 75 129 88 144 99 154 103 162 109 168 113 167 113 162 103 157 93 148 81 133 66 112 49 82 33 54 23 32 18 19 21 18 27 28 39 46 48 67 55 91 62 108 64 124 63 136 63 139 59 143 54 142 51 137 47 135 41 129 36 116 32 105 30 101 27 95 23 90 21 90 20 99 17 109 15 121 14 136 15 152 18 168 22 177 30 181 40 179 52 173 65 162 79 152 92 146 104 138 115 136 122 136 128 136 133 140 134 144 134 148 134 152 129 158 124 163 119 167 112 169 102 172 93 176 86 179 78 181 68 185 60 187 56 189 53 189 52 188 54 183 56 176 60 165 69 152 80 138 97 123 117 109 138 97 158 85 172 76 177 70 173 66 159 65 138 67 111 68 81 73 61 79 50 85 42 92 34 103 33 112 37 119 42 127 48 137 62 145 81 149 109 151 139 151 165 147 182 143 187 139 179 130 163 120 142 104 117 84 98 64 81 43 66 29 61 24 58 27 58 39 64 60 68 87 73 117 85 138 98 149 106 159 111 166 118 168 121 164 115 160 105 154 95 141 82 123 64 95 46 66 32 40 22 23 19 17 22 23 29 38 40 57 47 81 54 101 59 117 59 132 60 138 58 141 54 142 51 138 47 134 42 131 37 119 34 106 31 98 29 93 25 86 23 83 21 87 19 97 16 107 14 120 14 137 15 154 18 169 24 178 32 181 43 178 55 171 68 161 82 154 94 146 105 141 115 141 121 140 126 141 129 146 129 148 130 152 127 157 121 162 116 165 110 168 100 170","b":"47 90 48 101 61 129 95 166 142 185 176 179 186 163 185 153 186 152 188 150 190 150 189 142 178 119 145 76 91 39 54 19 40 19 50 18 94 14 162 9 157 10 55 19 12 44 55 90 97 130 112 156 113 155 114 125 113 60 102 24 79 103 44 185 18 166 16 119 30 96 42 90 46 87 50 86 52 90 60 109 84 145 127 177 165 184 186 172 186 159 186 150 187 149 189 144 189 140 185 124 164 90 115 50 70 24 41 18 41 19 69 15 131 11 176 8 107 13 17 30 31 66 81 116 108 149 116 157 118 144 117 94 111 29 96 54 64 157 30 184 14 139 21 102 35 89 47 87 50 84 57 84 62 94 79 122 113 160 155 183 180 180 187 166 185 153 187 149 188 141 189 137 188 126 177 100 141 60 85 32 50 19 39 19 50 17 98 13 165 9 153 10 50 19 12 46 59 95 102 134 117 157 118 154 119 122 118 56 108 25 85 109 50 186 20 162 15 114 27 92 41 85 48 82 58 80 65 84 78 102 104 138 144 173 173 184 187 174 186 161 186 149 188 143 188 133 189 125 185 105 162 72 110 38 65 21 39 19 41 18 71 15 136 11 175 8 101 13 15 31 34 69 86 121 113 152 121 158 123 142 122 90 117 26 102 58 71 161 35 182 14 134 18 97 32 84 47 81 55 78 68 78 78 88 98 115 131 154 167 180 184 181 187 168 185 154 187 146 188 132 188 123 187 107 173 80 131 46 72 26 40 18 32 20 44 17 93 13 164 9 151 10 44 21 15 52 70 107 114 146 130 164 132 160 133 128 131 57 121 25 99 114 61 186 25 153 13 103 24 80 40 73 52 69 68 67 81 70 98 88 124 125 159 164 180 182 188 177 186 163 186 147 188 135 187 119 188 106 184 84 159 54 103 29 56 19 32 19 35 19 64 15 132 12 175 9 98 13 13 31 39 73 95 129 124 158 133 163 135 149 134 95 128 27 115 59 83 164 43 179 16 126 16 87 31 73 51 70 66 66","hash":"6020fdf"}};
+/* The longest window a figure is read from, and about how many points it is
+   drawn with. The tool reads two periods of the lowest note it holds, so a
+   figure closes on itself as the screen's does; a window of many periods of a
+   sound that is moving drew a scribble of all of them. Save, not knowing the
+   notes, reads 1024 samples, about four periods of middle C. */
+const FIGURE_N = 2048, FIGURE_POINTS = 240;
+// FNV-1a over the setup's JSON: only whether a figure is for this setup.
+function presetHash(setup) {
+  const text = JSON.stringify(setup);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16);
+}
+/* A figure from a window of lanes, A's pair and, in a split drawn each to
+   itself, B's: both on one scale, so a quiet hand looks quiet, in a box 200
+   across. None for a silence. The tool and Save both use this, so a saved
+   sound's thumbnail is drawn as the bank's are. */
+function figureFromLanes(w) {
+  if (!w || w.length < 2) return null;
+  const pairs = w.length >= 4 ? [[w[0], w[1]], [w[2], w[3]]] : [[w[0], w[1]]];
+  let peak = 0;
+  for (const [l, r] of pairs) for (let i = 0; i < l.length; i++) peak = Math.max(peak, Math.abs(l[i]), Math.abs(r[i]));
+  if (!(peak > 0.01)) return null;
+  const draw = ([l, r]) => {
+    let most = 0;
+    for (let i = 0; i < l.length; i++) most = Math.max(most, Math.abs(l[i]), Math.abs(r[i]));
+    if (most < peak * 0.02) return "";
+    const out = [], step = Math.max(1, Math.ceil(l.length / FIGURE_POINTS));
+    for (let i = 0; i < l.length; i += step) {
+      out.push(Math.round(100 + 92 * l[i] / peak), Math.round(100 - 92 * r[i] / peak));
+    }
+    return out.join(" ");
+  };
+  const [a, b] = pairs.map(draw);
+  return b ? { a, b } : { a };
+}
+const SAVED_FIGURES_KEY = "scope.presetFigures";
+function readSavedFigures() {
+  try { return JSON.parse(window.localStorage.getItem(SAVED_FIGURES_KEY) || "{}"); } catch (error) { return {}; }
+}
+function writeSavedFigures(all) {
+  try { window.localStorage.setItem(SAVED_FIGURES_KEY, JSON.stringify(all)); } catch (error) { /* private window */ }
+}
+function figureOf(value) {
+  if (value.startsWith("s:")) return readSavedFigures()[value.slice(2)] || null;
+  return PRESET_FIGURES[value] || null;
+}
+function figureSvg(figure) {
+  if (!figure || !figure.a) {
+    return '<svg viewBox="0 0 200 200" aria-hidden="true"><line class="fig-none" x1="76" y1="100" x2="124" y2="100"/></svg>';
+  }
+  return '<svg viewBox="0 0 200 200" aria-hidden="true"><path class="fig-a" d="M' + figure.a + '"/>'
+    + (figure.b ? '<path class="fig-b" d="M' + figure.b + '"/>' : "") + "</svg>";
+}
 
 // The name the strip shows: the preset's, or Custom once you have moved off one.
 function setPresetValue(value) {
@@ -22336,12 +22399,17 @@ function setPresetValue(value) {
   }
 }
 
+// A card's line: the first sentence of what the preset says about itself.
+const firstSentence = (text) => (String(text).match(/^.*?[.!?](?=\s|$)/) || [String(text)])[0];
+
 // Every card for one list of entries: [value, name, blurb].
 function presetCards(entries) {
   return entries.map(([value, name, blurb]) =>
     '<button type="button" class="preset-card" data-value="' + escapeText(value) + '" aria-pressed="'
-    + String(value === el.preset.value) + '"><span class="preset-name">' + escapeText(name)
-    + '</span><span class="preset-blurb">' + escapeText(blurb) + "</span></button>").join("");
+    + String(value === el.preset.value) + '"' + (value === presetChosen ? " data-chosen" : "")
+    + '><span class="preset-thumb">' + figureSvg(figureOf(value)) + '</span><span class="preset-text">'
+    + '<span class="preset-name">' + escapeText(name) + '</span><span class="preset-blurb">'
+    + escapeText(firstSentence(blurb)) + "</span></span></button>").join("");
 }
 
 function sectionEntries(i) {
@@ -22351,90 +22419,75 @@ function sectionEntries(i) {
   return PRESETS[i][1].map(([name, , blurb]) => ["b:" + name, name, blurb || ""]);
 }
 
-// The menus as the browser shows them, Saved last: [id, title, about].
-const presetMenuList = () => PRESET_MENUS.map(([id, title, about]) => [id, title, about])
-  .concat([["saved", "Saved", PRESET_ABOUT.Saved]]);
-// A section's menu, by its index; the index one past PRESETS is Saved.
+// The headings as the browser shows them, Saved last: [id, title, about, line].
+const presetMenuList = () => PRESET_MENUS.map(([id, title, about, , line]) => [id, title, about, line])
+  .concat([["saved", "Saved", PRESET_ABOUT.Saved, "Your own sounds"]]);
+// A section's heading, by its index; the index one past PRESETS is Saved.
 function menuOfSection(i) {
   if (i === PRESETS.length) return "saved";
   const menu = PRESET_MENUS.find(([, , , titles]) => titles.includes(PRESETS[i][0]));
   return menu ? menu[0] : PRESET_MENUS[0][0];
 }
-// A menu's sections, as indices into PRESETS, in the menu's own order.
+// A heading's sections, as indices into PRESETS, in its own order.
 function sectionsOfMenu(id) {
   if (id === "saved") return [PRESETS.length];
   const menu = PRESET_MENUS.find(([m]) => m === id);
   return menu ? menu[3].map((t) => PRESETS.findIndex(([s]) => s === t)).filter((i) => i >= 0) : [];
 }
-// Where each menu was left, so going back to it goes back there.
+// Where each heading was left, so going back to it goes back there.
 const menuSection = {};
+// The card shown on the right: chosen, which is not loaded until Load.
+let presetChosen = "";
 
 function renderPresetBrowser() {
   const menu = menuOfSection(presetSection);
   menuSection[menu] = presetSection;
   const title = (i) => (i === PRESETS.length ? "Saved" : PRESETS[i][0]);
-  el.presetMenus.innerHTML = presetMenuList().map(([id, name, about]) => {
+  el.presetMenus.innerHTML = presetMenuList().map(([id, name, about, line]) => {
     const n = sectionsOfMenu(id).reduce((sum, i) => sum + sectionEntries(i).length, 0);
     return '<button type="button" class="preset-menu" role="tab" data-menu="' + id + '" aria-selected="'
-      + String(id === menu) + '" title="' + escapeText(about) + '"><span>' + escapeText(name)
-      + '</span><span class="count">' + n + "</span></button>";
+      + String(id === menu) + '" title="' + escapeText(about) + '"><span class="menu-name">' + escapeText(name)
+      + '</span><span class="count">' + n + '</span><span class="menu-line">' + escapeText(line) + "</span></button>";
   }).join("");
-  // One section in a menu is the menu: no rail to choose from.
+  // One section in a heading is the heading: no rail to choose from.
   el.presetRail.hidden = sectionsOfMenu(menu).length < 2;
   el.presetRail.innerHTML = sectionsOfMenu(menu).map((i) =>
     '<button type="button" class="preset-section" role="tab" data-section="' + i + '" aria-selected="'
     + String(i === presetSection) + '"><span>' + escapeText(title(i)) + '</span><span class="count">'
     + sectionEntries(i).length + "</span></button>").join("");
-
-  // A search looks across every menu, headed by menu and section; otherwise
-  // the chosen section alone.
-  const words = el.presetFind.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length) {
-    let html = "";
-    for (const [id, name] of presetMenuList()) {
-      for (const i of sectionsOfMenu(id)) {
-        const hits = sectionEntries(i).filter(([, preset, blurb]) => {
-          const text = (preset + " " + blurb + " " + title(i)).toLowerCase();
-          return words.every((w) => text.includes(w));
-        });
-        if (hits.length) {
-          html += '<p class="preset-heading">' + escapeText(name === title(i) ? name : name + " \u00b7 " + title(i)) + "</p>"
-            + presetCards(hits);
-        }
-      }
-    }
-    el.presetAbout.textContent = "";
-    el.presetGrid.innerHTML = html || '<p class="preset-empty">No preset matches that.</p>';
-  } else {
-    const entries = sectionEntries(presetSection);
-    el.presetAbout.textContent = PRESET_ABOUT[title(presetSection)] || "";
-    el.presetGrid.innerHTML = entries.length ? presetCards(entries)
-      : '<p class="preset-empty">Nothing saved yet.</p>';
-  }
-  previewPreset(null);
+  const entries = sectionEntries(presetSection);
+  // The chosen card stays chosen while its section is on show; else the one in use, else the first.
+  const values = entries.map(([v]) => v);
+  if (!values.includes(presetChosen)) presetChosen = values.includes(el.preset.value) ? el.preset.value : values[0] || "";
+  el.presetGrid.innerHTML = entries.length ? presetCards(entries)
+    : '<p class="preset-empty">Nothing saved yet. Save this sound, below, keeps the one you have.</p>';
+  showChosen();
   sayPresetWhere();
 }
 
-/* The strip below the grid: the whole of what a preset says, for the card
-   under the pointer, or else the one with the focus, or else the one in use.
-   Where it lives too, since a search result's heading may be off the top. */
-function previewPreset(card) {
-  const pick = card || el.presetGrid.querySelector(".preset-card:focus")
-    || el.presetGrid.querySelector('.preset-card[aria-pressed="true"]');
-  if (!pick) {
-    el.presetPreview.innerHTML = '<p>Point at a preset to read the whole of it here.</p>';
-    return;
+// Where a preset lives, by heading and section, for the eyebrow on the right.
+function presetWhereIs(value) {
+  if (!value.startsWith("b:")) return value.startsWith("s:") ? "Saved" : "";
+  const i = PRESETS.findIndex(([, entries]) => entries.some(([n]) => n === value.slice(2)));
+  if (i < 0) return "";
+  const menu = presetMenuList().find(([id]) => id === menuOfSection(i));
+  return menu && menu[1] !== PRESETS[i][0] ? menu[1] + " · " + PRESETS[i][0] : PRESETS[i][0];
+}
+// The chosen sound on the right: its figure large, where it lives, its name and the whole of what it says.
+function showChosen() {
+  for (const card of el.presetGrid.querySelectorAll(".preset-card")) {
+    if (card.dataset.value === presetChosen) card.dataset.chosen = ""; else delete card.dataset.chosen;
   }
-  const value = pick.dataset.value;
-  let where = "Saved";
-  if (value.startsWith("b:")) {
-    const i = PRESETS.findIndex(([, entries]) => entries.some(([n]) => n === value.slice(2)));
-    const menu = presetMenuList().find(([id]) => id === menuOfSection(i));
-    where = menu && menu[1] !== PRESETS[i][0] ? menu[1] + " \u00b7 " + PRESETS[i][0] : PRESETS[i][0];
-  }
-  el.presetPreview.innerHTML = '<span class="name">' + escapeText(pick.querySelector(".preset-name").textContent)
-    + '</span><span class="where">' + escapeText(where) + "</span><p>"
-    + escapeText(pick.querySelector(".preset-blurb").textContent) + "</p>";
+  const entry = sectionEntries(presetSection).find(([v]) => v === presetChosen);
+  el.presetFigure.innerHTML = figureSvg(entry ? figureOf(presetChosen) : null);
+  el.presetChosenWhere.textContent = entry ? presetWhereIs(presetChosen) : "";
+  el.presetChosenName.textContent = entry ? entry[1] : "";
+  el.presetChosenText.textContent = entry ? entry[2] : "";
+  el.presetLoad.disabled = !entry;
+}
+function choosePreset(value) {
+  presetChosen = value;
+  showChosen();
 }
 
 /* A preset never switches the source, so a generator preset chosen while
@@ -22443,12 +22496,11 @@ function previewPreset(card) {
    your back. */
 function sayPresetWhere() {
   const kind = presetSection < PRESETS.length ? PRESETS[presetSection][2] : "";
-  const searching = el.presetFind.value.trim() !== "";
   /* Whether a generator is what is playing rather than whether there is one:
      the instrument always has one, drawing a microphone or not, and a preset
      that sets it is not seen. */
   const generatorPlaying = !!genSettings() && playingKind() === "tone";
-  if (!searching && kind === "generator" && !generatorPlaying) {
+  if (kind === "generator" && !generatorPlaying) {
     el.presetWhere.innerHTML = "These set the generator, and nothing playing now has one."
       + '<button type="button" class="link-btn caps" id="presetToTone">Play the test tone</button>';
     el.presetWhere.hidden = false;
@@ -22456,7 +22508,7 @@ function sayPresetWhere() {
       toTone();
       renderPresetBrowser();
     });
-  } else if (!searching && kind === "display") {
+  } else if (kind === "display") {
     el.presetWhere.textContent = "These change the display only, and land on whatever is playing.";
     el.presetWhere.hidden = false;
   } else {
@@ -22466,7 +22518,7 @@ function sayPresetWhere() {
 
 function openPresets() {
   setMenuOpen(false);
-  // Open on the section of the preset in use, if there is one.
+  // Open on the section of the preset in use, if there is one, with it chosen.
   const value = el.preset.value;
   if (value.startsWith("b:")) {
     const at = PRESETS.findIndex(([, entries]) => entries.some(([name]) => name === value.slice(2)));
@@ -22474,10 +22526,13 @@ function openPresets() {
   } else if (value.startsWith("s:")) {
     presetSection = PRESETS.length;
   }
-  el.presetFind.value = "";
+  presetChosen = value;
+  showSaving(false);
+  el.presetCode.value = encodeSetup(snapshot());
+  el.presetNote.textContent = "";
   renderPresetBrowser();
   if (!el.presetDialog.open) el.presetDialog.showModal();
-  const current = el.presetGrid.querySelector('[aria-pressed="true"]') || el.presetGrid.querySelector(".preset-card");
+  const current = el.presetGrid.querySelector("[data-chosen]") || el.presetGrid.querySelector(".preset-card");
   if (current) current.focus();
 }
 
@@ -22518,6 +22573,7 @@ function applyPreset(value) {
   setPresetValue(value);
   hostSendSetup();
   if (before) glideFrom(before);
+  if (el.presetDialog.open) el.presetCode.value = encodeSetup(snapshot());
 }
 
 /* Checked from the readout, at its slower rate. Cheaper than hooking forty
@@ -22537,16 +22593,17 @@ el.preset.addEventListener("click", openPresets);
 el.presetClose.addEventListener("click", () => el.presetDialog.close());
 // New: the base, and the browser closed, since there is nothing to listen through.
 el.presetNew.addEventListener("click", () => { applyPreset("n:" + BASE_NAME); el.presetDialog.close(); });
+// Load: the chosen sound, with the browser left open to choose another and compare.
+el.presetLoad.addEventListener("click", () => { if (presetChosen) applyPreset(presetChosen); });
 el.presetDialog.addEventListener("click", (event) => {
   // A click on the backdrop lands on the dialog element itself.
   if (event.target === el.presetDialog) { el.presetDialog.close(); return; }
-  // A menu: back to the section it was left on, or its first.
+  // A heading: back to the section it was left on, or its first.
   const menu = event.target.closest(".preset-menu");
   if (menu) {
     const id = menu.dataset.menu;
     const first = sectionsOfMenu(id)[0];
     presetSection = menuSection[id] !== undefined ? menuSection[id] : first;
-    el.presetFind.value = "";
     renderPresetBrowser();
     el.presetMain.scrollTop = 0;
     return;
@@ -22555,36 +22612,25 @@ el.presetDialog.addEventListener("click", (event) => {
   if (section) {
     presetSection = Number(section.dataset.section);
     try { window.localStorage.setItem(SECTION_KEY, String(presetSection)); } catch (error) { /* private */ }
-    el.presetFind.value = "";
     renderPresetBrowser();
     el.presetMain.scrollTop = 0;
     return;
   }
   const card = event.target.closest(".preset-card");
-  if (card) applyPreset(card.dataset.value);
+  if (card) choosePreset(card.dataset.value);
 });
-el.presetGrid.addEventListener("mouseover", (event) => {
-  const card = event.target.closest(".preset-card");
-  if (card) previewPreset(card);
-});
-el.presetGrid.addEventListener("mouseleave", () => previewPreset(null));
 el.presetGrid.addEventListener("focusin", (event) => {
   const card = event.target.closest(".preset-card");
-  if (card) previewPreset(card);
+  if (card) choosePreset(card.dataset.value);
 });
 el.presetGrid.addEventListener("dblclick", (event) => {
-  if (event.target.closest(".preset-card")) el.presetDialog.close();
+  const card = event.target.closest(".preset-card");
+  if (card) { applyPreset(card.dataset.value); el.presetDialog.close(); }
 });
-el.presetFind.addEventListener("input", renderPresetBrowser);
-/* Arrows between the cards, by rows and columns as the grid lays them out;
-   Enter loads the one with the focus and closes. */
+/* Up and down the list (any arrow, a column at a time as the grid lays them
+   out); Enter loads the one with the focus and closes. */
 el.presetDialog.addEventListener("keydown", (event) => {
   const card = event.target.closest && event.target.closest(".preset-card");
-  if (event.key === "ArrowDown" && event.target === el.presetFind) {
-    const first = el.presetGrid.querySelector(".preset-card");
-    if (first) { event.preventDefault(); first.focus(); }
-    return;
-  }
   if (!card) return;
   if (event.key === "Enter") {
     event.preventDefault();
@@ -22601,26 +22647,27 @@ el.presetDialog.addEventListener("keydown", (event) => {
   const next = cards[Math.max(0, Math.min(cards.length - 1, at + step))];
   if (next) next.focus();
 });
-el.presetManage.addEventListener("click", () => {
-  el.presetDialog.close();
-  showControl("presetName");
-});
 
-const PRESET_HELP = "Saved setups live in this browser and nowhere else. A <i>setup code</i> "
-  + "is the whole configuration as text — copy it, send it, paste it back.";
-
-function sayPreset(message) {
+/* --- the footer: saving, deleting and the setup code (F6, from Settings) ---- */
+function sayPreset(message, how) {
   el.presetNote.textContent = message;
-  el.presetNote.className = "menu-note good";
-  window.setTimeout(() => {
-    el.presetNote.className = "menu-note";
-    el.presetNote.innerHTML = PRESET_HELP;
-  }, 4000);
+  el.presetNote.className = "preset-note " + (how || "good");
+  window.clearTimeout(sayPreset.timer);
+  sayPreset.timer = window.setTimeout(() => { el.presetNote.textContent = ""; el.presetNote.className = "preset-note"; }, 4000);
 }
+function showSaving(on) {
+  el.presetSaving.hidden = !on;
+  el.presetSaveOpen.setAttribute("aria-expanded", String(on));
+  if (on) el.presetName.focus();
+}
+el.presetSaveOpen.addEventListener("click", () => showSaving(el.presetSaving.hidden));
+el.presetName.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); el.presetSave.click(); }
+});
 
 el.presetSave.addEventListener("click", () => {
   const name = el.presetName.value.trim();
-  if (!name) { sayPreset("Give it a name first."); return; }
+  if (!name) { sayPreset("Give it a name first.", "warn"); el.presetName.focus(); return; }
 
   const all = readSaved();
   all[name] = snapshot();
@@ -22628,30 +22675,40 @@ el.presetSave.addEventListener("click", () => {
   if (!writeSaved(all)) {
     // A private window, or storage turned off. Say so, and point at the one
     // route that does not need it.
-    el.presetNote.textContent = "This browser will not let the page store anything. "
-      + "Copy the setup code instead.";
-    el.presetNote.className = "menu-note warn";
+    sayPreset("This browser will not let the page store anything. Copy the setup code instead.", "warn");
     return;
   }
+  // Its figure, from what is sounding now: none if nothing is.
+  const figures = readSavedFigures();
+  const figure = state.source && state.source.getLatestWindow ? figureFromLanes(state.source.getLatestWindow(1024)) : null;
+  if (figure) figures[name] = figure; else delete figures[name];
+  writeSavedFigures(figures);
 
-  fillPresets();
   loadedSetup = { value: "s:" + name, snap: snapshot() };
   setPresetValue(loadedSetup.value);
   el.presetName.value = "";
-  sayPreset("Saved as " + name + ".");
+  showSaving(false);
+  presetSection = PRESETS.length;
+  presetChosen = "s:" + name;
+  fillPresets();
+  sayPreset("Saved as " + name + (figure ? "." : ", with no figure: nothing was sounding."));
 });
 
+// The chosen card if it is a saved one, or else the saved one in use.
 el.presetDelete.addEventListener("click", () => {
-  const value = el.preset.value;
-  if (!value.startsWith("s:")) { sayPreset("Pick one of your saved setups first."); return; }
+  const value = presetChosen.startsWith("s:") ? presetChosen : el.preset.value;
+  if (!value.startsWith("s:")) { sayPreset("Choose one of your saved sounds first.", "warn"); return; }
 
   const all = readSaved();
   delete all[value.slice(2)];
   writeSaved(all);
+  const figures = readSavedFigures();
+  delete figures[value.slice(2)];
+  writeSavedFigures(figures);
+  if (el.preset.value === value) { loadedSetup = null; setPresetValue(""); }
+  presetChosen = "";
   fillPresets();
-  loadedSetup = null;
-  setPresetValue("");
-  sayPreset("Deleted.");
+  sayPreset("Deleted " + value.slice(2) + ".");
 });
 
 el.presetCopy.addEventListener("click", () => {
@@ -22662,22 +22719,36 @@ el.presetCopy.addEventListener("click", () => {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(code).then(
       () => sayPreset("Copied."),
-      () => sayPreset("Select the code above and copy it."));
+      () => sayPreset("Select the code and copy it.", "warn"));
   } else {
-    sayPreset("Select the code above and copy it.");
+    sayPreset("Select the code and copy it.", "warn");
   }
 });
 
-el.presetLoad.addEventListener("click", () => {
-  const setup = decodeSetup(el.presetCode.value);
-  if (setup === null) { sayPreset("That code could not be read."); return; }
-
+/* Paste: the clipboard's code if the browser will hand it over, or else what
+   is in the field - a plugin's window and a page without permission both
+   refuse, and a code pasted into the field by hand is the way there. */
+function loadCode(text) {
+  const setup = decodeSetup(String(text || "").trim());
+  if (setup === null) { sayPreset("That code could not be read.", "warn"); return; }
+  el.presetCode.value = String(text).trim();
   hostQuietly(() => restore(setup));
   loadedSetup = null;
   setPresetValue("");
   hostSendSetup();
   sayPreset("Loaded.");
-  setMenuOpen(false);
+}
+el.presetPaste.addEventListener("click", () => {
+  const typed = el.presetCode.value;
+  const current = encodeSetup(snapshot());
+  // A code typed or pasted into the field, not the one put there for copying, wins.
+  if (typed.trim() && typed.trim() !== current) { loadCode(typed); return; }
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText().then(loadCode,
+      () => sayPreset("Paste a code into the field, then press Paste.", "warn"));
+  } else {
+    sayPreset("Paste a code into the field, then press Paste.", "warn");
+  }
 });
 
 /* --- source and device ------------------------------------------------------- */

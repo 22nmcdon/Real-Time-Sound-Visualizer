@@ -80,7 +80,8 @@ with sync_playwright() as pw:
     check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
           performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
     check("Settings holds only the settings: MIDI, audio, the inputs (since F3), the modulation fade (F4), presets and the beam",
-          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Modulation fade", "Presets"], str(homes["panelTitles"]))
+          # Presets left in F6, for the preset browser's footer.
+          sorted(homes["panelTitles"]) == ["Audio", "Beam", "Input", "Input into the generator", "MIDI", "Modulation fade"], str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("and Settings opens from the Bench as well as from Scope",
           homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))

@@ -18,12 +18,21 @@ What would go wrong, and what is checked for it:
   amount, since one that did not would inherit whatever the last one set.
   Whether each preset does what its heading says is measured on the sound,
   in honestytest.py;
-- the browser: it opens on the heading in use, a menu of one section has no
-  rail, New goes back to the base the instrument opens on, a card loads and leaves it open, Enter and a double-click load and
-  close, the arrows move between cards by rows and columns, search looks
-  across headings, saved setups have a menu, moving a control says Custom,
-  the page's own keys stand aside while it is open, and it says when a
-  preset cannot be heard.
+- the browser (F6): it opens on the heading in use with that card chosen
+  and shown on the right; the headings say what they mean; a heading of one
+  section has no rail; a card chosen loads nothing and Load loads it and
+  leaves the browser open; Enter and a double-click load and close; the
+  arrows walk the list; New goes back to the base the instrument opens on;
+  moving a control says Custom; the page's own keys stand aside while it is
+  open; and it says when a preset cannot be heard;
+- the thumbnails: every bank preset's figure drawn by the instrument and
+  still for its setup (a preset changed since is caught, write_figures.py
+  draws it again), B drawn only on a split, the cards drawing what is
+  stored;
+- the footer, which F6 took from Settings: saving asks for a name, keeps the
+  figure of what is sounding (none in silence), and lands in Saved; Delete
+  takes the chosen saved one and its figure; Copy and Paste the code, and a
+  code that cannot be read changes nothing.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -167,13 +176,18 @@ with sync_playwright() as pw:
     opened = p.evaluate("""() => ({
       open: el.presetDialog.open,
       menu: el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu,
-      menus: Array.from(el.presetMenus.querySelectorAll('.preset-menu')).map((m) => [m.dataset.menu, Number(m.querySelector('.count').textContent)]),
+      menus: Array.from(el.presetMenus.querySelectorAll('.preset-menu')).map((m) => [m.dataset.menu,
+        Number(m.querySelector('.count').textContent), m.querySelector('.menu-line').textContent]),
+      about: el.presetMenus.querySelector('[data-menu="breathing"]').title,
       rail: el.presetRail.hidden,
       railShown: getComputedStyle(el.presetRail).display !== 'none',
       cards: el.presetGrid.querySelectorAll('.preset-card').length,
       pressed: Array.from(el.presetGrid.querySelectorAll('[aria-pressed="true"]')).map((c) => c.dataset.value),
+      chosen: Array.from(el.presetGrid.querySelectorAll('[data-chosen]')).map((c) => c.dataset.value),
       focused: document.activeElement.dataset.value,
-      about: el.presetAbout.textContent,
+      right: [el.presetChosenWhere.textContent, el.presetChosenName.textContent],
+      code: el.presetCode.value === encodeSetup(snapshot()),
+      settings: Array.from(document.querySelectorAll('[data-home="settings"] .menu-title')).map((t) => t.textContent.trim()),
     })""")
     sizes = p.evaluate("() => PRESET_MENUS.map(([id, , , titles]) => [id, titles.reduce((a, t) => a + PRESETS.find(([n]) => n === t)[1].length, 0)])")
     menus = p.evaluate("""() => {
@@ -182,14 +196,21 @@ with sync_playwright() as pw:
                ghosts: named.filter((t) => !PRESETS.some(([n]) => n === t)) };
     }""")
     print("    %s" % opened)
-    check("the button opens it on the heading of the preset in use, that card marked and focused, with what the heading means",
+    check("the button opens it on the heading of the preset in use, that card in use, chosen, focused and shown on the right",
           opened["open"] and opened["menu"] == "breathing" and opened["pressed"] == ["b:Slow pad"]
-          and opened["focused"] == "b:Slow pad" and opened["about"].startswith("The sound keeps moving"), str(opened))
-    check("every section is in exactly one menu, and every menu's sections exist",
+          and opened["chosen"] == ["b:Slow pad"] and opened["focused"] == "b:Slow pad"
+          and opened["right"] == ["Breathing", "Slow pad"] and opened["about"].startswith("The sound keeps moving"), str(opened))
+    check("every section is in exactly one heading, and every heading's sections exist",
           menus["orphans"] == [] and menus["ghosts"] == [], "%s, %s" % (menus["orphans"], menus["ghosts"]))
-    check("a menu for each heading in the loop's order, then Saved, each counting its presets",
-          [m for m, _ in opened["menus"]] == ["settled", "breathing", "saved"]
-          and [c for _, c in opened["menus"]][:2] == [n for _, n in sizes], str((opened["menus"], sizes)))
+    check("the headings down the left in the loop's order, then Saved, each counting its presets and saying what it means in a line",
+          [m for m, _, _ in opened["menus"]] == ["settled", "breathing", "saved"]
+          and [c for _, c, _ in opened["menus"]][:2] == [n for _, n in sizes] and all(l for _, _, l in opened["menus"]),
+          str((opened["menus"], sizes)))
+    # F6 moved saving and the code out of Settings into the browser's foot:
+    # one place for them, not two. The null is Settings' sections before F6.
+    check("Settings has no Presets section any more: it is the browser's footer",
+          "Presets" not in opened["settings"] and len(opened["settings"]) >= 3, str(opened["settings"]))
+    check("and the code field opens holding the code of what is playing", opened["code"], "")
     # A menu of one section is the section: no rail. The null is a menu of
     # two, made for the purpose and taken away again, which must show it -
     # so a rail hidden whatever the menu fails here.
@@ -197,7 +218,7 @@ with sync_playwright() as pw:
       // A section of its own, since a menu is found by its sections and one
       // already in another menu would be taken for that menu.
       PRESETS.push(['Extra', [['Extra one', { freq: 300 }, 'A preset made for this check and taken away again.']], 'generator']);
-      PRESET_MENUS.push(['both', 'Both', 'Two sections', ['Extra', 'Settled']]);
+      PRESET_MENUS.push(['both', 'Both', 'Two sections', ['Extra', 'Settled'], 'Two sections']);
       renderPresetBrowser();
       el.presetMenus.querySelector('[data-menu="both"]').click();
       const two = { hidden: el.presetRail.hidden, shown: getComputedStyle(el.presetRail).display !== 'none',
@@ -206,47 +227,74 @@ with sync_playwright() as pw:
       el.presetMenus.querySelector('[data-menu="breathing"]').click();
       return { two, one: { hidden: el.presetRail.hidden, shown: getComputedStyle(el.presetRail).display !== 'none' } };
     }""")
-    check("a menu of one section has no rail, and one of two shows both, so the rail is hidden only when there is nothing to choose",
+    check("a heading of one section has no rail, and one of two shows both, so the rail is hidden only when there is nothing to choose",
           opened["rail"] and not opened["railShown"] and rails["one"] == {"hidden": True, "shown": False}
           and rails["two"] == {"hidden": False, "shown": True, "sections": ["Extra", "Settled"]}, str(rails))
-    preview = p.evaluate("""() => {
-      const card = Array.from(el.presetGrid.querySelectorAll('.preset-card')).find((c) => c.dataset.value === 'b:Turning fifths');
-      card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-      const blurb = card.querySelector('.preset-blurb');
-      const full = PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Turning fifths')[2];
-      return { text: el.presetPreview.querySelector('p').textContent === full,
-               where: el.presetPreview.querySelector('.where').textContent,
-               clamped: blurb.scrollHeight > blurb.clientHeight + 2 };
+
+    # The thumbnails (F6): every bank preset's figure drawn by the instrument
+    # (write_figures.py) and still for the setup it was drawn from - the null
+    # a preset changed by one hertz, whose figure must then read as stale. A
+    # split draws B; one hand does not; and the cards draw what is stored.
+    thumbs = p.evaluate("""() => {
+      const bank = PRESETS.flatMap(([, entries]) => entries.map(([n, s]) => ['b:' + n, s]));
+      const stale = bank.filter(([v, s]) => !PRESET_FIGURES[v] || PRESET_FIGURES[v].hash !== presetHash(s)).map(([v]) => v);
+      const [v0, s0] = bank[0];
+      const nudged = PRESET_FIGURES[v0].hash !== presetHash(Object.assign({}, s0, { freq: (s0.freq || 220) + 1 }));
+      const wrongB = bank.filter(([v, s]) => !!PRESET_FIGURES[v].b !== (s.layers === 'split')).map(([v]) => v);
+      const points = bank.map(([v]) => PRESET_FIGURES[v].a.split(' ').length / 2);
+      el.presetMenus.querySelector('[data-menu="settled"]').click();
+      const drawn = Array.from(el.presetGrid.querySelectorAll('.preset-card')).map((c) =>
+        [c.dataset.value, c.querySelector('.fig-a') && c.querySelector('.fig-a').getAttribute('d') === 'M' + PRESET_FIGURES[c.dataset.value].a,
+         !!c.querySelector('.fig-b')]);
+      const big = el.presetFigure.querySelector('.fig-a');
+      return { stale, nudged, wrongB, points: [Math.min(...points), Math.max(...points)], drawn,
+               big: !!big && big.getAttribute('d') === 'M' + PRESET_FIGURES[presetChosen].a };
     }""")
-    check("the strip below shows the whole of what the card under the pointer says, and its heading once",
-          preview["text"] and preview["where"] == "Breathing", str(preview))
-    check("while the card itself shows two lines of it", preview["clamped"], str(preview))
+    print("    %s" % {k: thumbs[k] for k in ("stale", "wrongB", "points", "big")})
+    check("every bank preset has its figure, drawn from the setup it has now (write_figures.py)",
+          thumbs["stale"] == [], "draw these again: %s" % thumbs["stale"])
+    check("null: a preset changed by one hertz reads as stale", thumbs["nudged"], "")
+    check("a split's figure draws layer B, and one hand's does not", thumbs["wrongB"] == [], str(thumbs["wrongB"]))
+    check("each figure is at most FIGURE_POINTS, and enough to draw it: a hundred or more", 100 <= thumbs["points"][0] and thumbs["points"][1] <= 240, str(thumbs["points"]))
+    check("each card draws its own figure, with B's only on a split, and the chosen one is drawn large on the right",
+          all(ok for _, ok, _ in thumbs["drawn"]) and [b for _, _, b in thumbs["drawn"]] == [
+              p.evaluate("(v) => findPreset(v).layers === 'split'", v) for v, _, _ in thumbs["drawn"]]
+          and thumbs["big"], str(thumbs["drawn"]))
 
-    p.click('.preset-menu[data-menu="settled"]'); p.wait_for_timeout(150)
-    p.click('.preset-card:has-text("Drawbar organ")'); p.wait_for_timeout(300)
+    # Choosing shows and loads nothing; Load loads and leaves it open.
+    p.click('.preset-card:has-text("Drawbar organ")'); p.wait_for_timeout(200)
+    chosen = p.evaluate("""() => ({ value: el.preset.value, open: el.presetDialog.open, shape: genSettings().shape,
+      right: [el.presetChosenWhere.textContent, el.presetChosenName.textContent],
+      text: el.presetChosenText.textContent === findPresetEntry('Drawbar organ'),
+      chosen: Array.from(el.presetGrid.querySelectorAll('[data-chosen]')).map((c) => c.dataset.value) })""".replace(
+        "findPresetEntry('Drawbar organ')", "PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Drawbar organ')[2]"))
+    check("a card chosen is shown on the right, whole, and nothing is loaded: Slow pad still plays",
+          chosen == {"value": "b:Slow pad", "open": True, "shape": chosen["shape"], "right": ["Settled", "Drawbar organ"],
+                     "text": True, "chosen": ["b:Drawbar organ"]} and chosen["shape"] != "drawbars", str(chosen))
+    p.click("#presetLoad"); p.wait_for_timeout(300)
     loaded = p.evaluate("""() => ({ value: el.preset.value, label: el.presetCurrent.textContent,
-      open: el.presetDialog.open, shape: genSettings().shape, bars: el.bars ? el.bars.value : null,
-      pressed: Array.from(el.presetGrid.querySelectorAll('[aria-pressed="true"]')).map((c) => c.dataset.value) })""")
-    check("a card loads its preset, marks itself, says so on the strip, and leaves the browser open",
-          {k: loaded[k] for k in ("value", "label", "open", "shape", "pressed")}
-          == {"value": "b:Drawbar organ", "label": "Drawbar organ", "open": True, "shape": "drawbars",
-              "pressed": ["b:Drawbar organ"]}, str(loaded))
+      open: el.presetDialog.open, shape: genSettings().shape,
+      pressed: Array.from(el.presetGrid.querySelectorAll('[aria-pressed="true"]')).map((c) => c.dataset.value),
+      code: el.presetCode.value === encodeSetup(snapshot()) })""")
+    check("Load loads the chosen one, marks it in use, says so on the strip, leaves the browser open and the code follows",
+          loaded == {"value": "b:Drawbar organ", "label": "Drawbar organ", "open": True, "shape": "drawbars",
+                     "pressed": ["b:Drawbar organ"], "code": True}, str(loaded))
 
-    # The arrows: by one across, by a row of columns down, held at the last card.
+    # The arrows: down the list a card at a time, held at the last.
     p.click('.preset-menu[data-menu="breathing"]'); p.wait_for_timeout(150)
     moves = p.evaluate("""() => {
       const cards = Array.from(el.presetGrid.querySelectorAll('.preset-card'));
-      const columns = getComputedStyle(el.presetGrid).gridTemplateColumns.split(' ').length;
       cards[0].focus();
-      document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-      const right = cards.indexOf(document.activeElement);
-      document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-      const down = cards.indexOf(document.activeElement);
-      return { right, down, columns, count: cards.length };
+      const step = (key) => { document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+                              return cards.indexOf(document.activeElement); };
+      const down = step('ArrowDown'), again = step('ArrowDown'), up = step('ArrowUp');
+      for (let i = 0; i < cards.length + 2; i++) step('ArrowDown');
+      return { down, again, up, last: cards.indexOf(document.activeElement), count: cards.length,
+               chosen: presetChosen === cards[cards.length - 1].dataset.value };
     }""")
-    check("the arrows move one card across and a row of columns down",
-          moves["right"] == 1 and moves["down"] == min(moves["count"] - 1, 1 + moves["columns"]) and moves["columns"] >= 2
-          and moves["down"] > moves["right"], str(moves))
+    check("the arrows move down and up the list a card at a time, held at the last, and the focus chooses",
+          moves == {"down": 1, "again": 2, "up": 1, "last": moves["count"] - 1, "count": moves["count"], "chosen": True}
+          and moves["count"] >= 3, str(moves))
     enter = p.evaluate("""() => {
       const card = el.presetGrid.querySelector('.preset-card');
       card.focus();
@@ -271,28 +319,8 @@ with sync_playwright() as pw:
           fresh == {"value": "n:Plain sine", "label": "Plain sine", "open": False, "shape": "sine", "amount": "0",
                     "round": True, "mode": "poly", "scan": 0, "same": True}, str(fresh))
 
-    print("\n--- search, the page's keys, and Custom ---")
+    print("\n--- the page's keys, and Custom ---")
     p.click("#preset"); p.wait_for_timeout(200)
-    # A word in more than one heading's presets.
-    p.fill("#presetFind", "split"); p.wait_for_timeout(150)
-    found = p.evaluate("""() => ({
-      headings: Array.from(el.presetGrid.querySelectorAll('.preset-heading')).map((h) => h.textContent),
-      names: Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent) })""")
-    print("    'split': %s" % found)
-    check("search looks across every heading and heads what it finds by its heading, said once",
-          "Bass under the tine piano" in found["names"] and "Bass under the pad" in found["names"]
-          and {"Settled", "Breathing"} <= set(found["headings"]), str(found))
-    # A word only a description has: "jazz" is in the organ's, nowhere else.
-    p.fill("#presetFind", "jazz"); p.wait_for_timeout(150)
-    jazz = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
-    check("and reads what each preset says about itself, not only its name", jazz == ["Drawbar organ"], str(jazz))
-    p.fill("#presetFind", "two words neither"); p.wait_for_timeout(150)
-    none = p.evaluate("() => el.presetGrid.textContent")
-    p.fill("#presetFind", "bass pad"); p.wait_for_timeout(150)
-    both = p.evaluate("() => Array.from(el.presetGrid.querySelectorAll('.preset-name')).map((n) => n.textContent)")
-    check("every word has to match, and nothing found says so",
-          "No preset matches" in none and "Bass under the pad" in both and "Bass under the tine piano" not in both, str(both))
-    p.fill("#presetFind", "")
     # The page's own keys stand aside: 2 would switch to X-Y, B to the Bench.
     keys = p.evaluate("""() => {
       const was = [state.display, document.body.dataset.view];
@@ -306,26 +334,78 @@ with sync_playwright() as pw:
     custom = p.evaluate("() => [el.preset.value, el.presetCurrent.textContent]")
     check("moving a control off a preset says Custom", custom == ["", "Custom"], str(custom))
 
-    print("\n--- saved setups, and where a preset lands ---")
+    print("\n--- the footer: saving, deleting, the setup code ---")
+    # Saved with a note held, so it has a figure; then one saved in silence,
+    # which must have none rather than a flat line passed off as a figure.
     saved = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      el.presetName.value = 'My test setup'; el.presetSave.click(); await wait(50);
       openPresets();
+      el.presetSaveOpen.click();
+      const asking = !el.presetSaving.hidden && document.activeElement === el.presetName;
+      el.presetName.value = '';
+      el.presetSave.click();
+      const unnamed = [el.presetNote.textContent, Object.keys(readSaved()).length];
+      setScreenKeys(true); midiBytes(new Uint8Array([0x90, 60, 100])); await wait(700);
+      el.presetName.value = 'My test setup';
+      el.presetName.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      midiBytes(new Uint8Array([0x80, 60, 0])); midiPanic(); await wait(600);
       const menu = el.presetMenus.querySelector('[aria-selected="true"]').dataset.menu;
       const cards = Array.from(el.presetGrid.querySelectorAll('.preset-card')).map((c) => c.dataset.value);
+      const figure = readSavedFigures()['My test setup'];
+      const drawn = !!el.presetGrid.querySelector('[data-value="s:My test setup"] .fig-a');
+      el.presetSaveOpen.click(); el.presetName.value = 'Silent one'; el.presetSave.click(); await wait(50);
+      const silent = [readSavedFigures()['Silent one'] === undefined,
+                      !!el.presetGrid.querySelector('[data-value="s:Silent one"] .fig-none')];
       restore({}); applyPreset('n:Plain sine');
-      // Guarded, so that a missing card fails the check below rather than
-      // stopping the test with an exception that names nothing.
       const mine = el.presetGrid.querySelector('[data-value="s:My test setup"]');
-      if (mine) mine.click();
+      if (mine) { mine.click(); el.presetLoad.click(); }
       const back = [el.preset.value, genSettings().freq];
-      el.presetDialog.close();
+      // Delete the chosen saved one, then the other, and their figures with them.
       el.presetDelete.click(); await wait(30);
-      return { menu, cards, back };
+      const afterOne = [Object.keys(readSaved()), Object.keys(readSavedFigures())];
+      const other = el.presetGrid.querySelector('[data-value="s:Silent one"]');
+      if (other) other.click();
+      el.presetDelete.click(); await wait(30);
+      const afterBoth = [Object.keys(readSaved()), el.presetGrid.querySelectorAll('.preset-card').length];
+      el.presetDialog.close();
+      return { asking, unnamed, menu, cards, figure: !!figure && figure.a.split(' ').length > 100, drawn, silent, back,
+               afterOne, afterBoth };
     }""")
-    check("a saved setup has a card in Saved, where the browser opens while it is in use, and loads from there",
-          saved["menu"] == "saved" and saved["cards"] == ["s:My test setup"]
+    print("    %s" % saved)
+    check("Save this sound asks for a name, and saves nothing without one",
+          saved["asking"] and saved["unnamed"][1] == 0 and "name" in saved["unnamed"][0], str(saved["unnamed"]))
+    check("a sound saved while a note sounds has a card in Saved, with its figure, where the browser now is, and Load loads it",
+          saved["menu"] == "saved" and saved["cards"] == ["s:My test setup"] and saved["figure"] and saved["drawn"]
           and saved["back"] == ["s:My test setup", 300], str(saved))
+    check("null: one saved in silence has no figure, and its card says so with an empty mark",
+          saved["silent"] == [True, True], str(saved["silent"]))
+    check("Delete saved takes the chosen saved one and its figure, then the other",
+          saved["afterOne"] == [["Silent one"], []] and saved["afterBoth"] == [[], 0], str((saved["afterOne"], saved["afterBoth"])))
+
+    code = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      applyPreset('b:Slow pad'); openPresets();
+      el.presetCopy.click(); await wait(100);
+      const copied = el.presetCode.value === encodeSetup(snapshot());
+      // A code pasted into the field by hand, then Paste: the drawbar organ's.
+      const organ = encodeSetup(findPreset('b:Drawbar organ'));
+      el.presetCode.value = organ;
+      el.presetPaste.click(); await wait(200);
+      const pasted = { shape: genSettings().shape, value: el.preset.value, note: el.presetNote.textContent };
+      el.presetCode.value = 'not a code';
+      el.presetPaste.click(); await wait(100);
+      const bad = [el.presetNote.textContent, genSettings().shape];
+      el.presetDialog.close();
+      return { copied, pasted, bad };
+    }""")
+    print("    %s" % code)
+    check("Copy puts the code of what is playing in the field", code["copied"], "")
+    check("Paste loads a code put in the field: the organ's drawbars, and Custom, since a code is not a preset",
+          code["pasted"] == {"shape": "drawbars", "value": "", "note": "Loaded."}, str(code["pasted"]))
+    check("and a code that cannot be read says so and changes nothing",
+          code["bad"] == ["That code could not be read.", "drawbars"], str(code["bad"]))
+
+    print("\n--- where a preset lands ---")
     # A microphone - an oscillator behind getUserMedia - has no generator:
     # a generator section says so, and offers the tone.
     mic = p.evaluate("""async () => {

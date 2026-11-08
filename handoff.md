@@ -198,7 +198,15 @@ is below, in order. The listening notes this plan refers to follow it.
    default the old one, so no code changed meaning and no version bump),
    page, core and parity; a handle drags a module, the arrow keys move it,
    Escape puts a drag back. One order for both layers, the Plane fixed
-   first. Next is F6, the presets browser.
+   first. *F6 done 8 Nov:* the preset browser as the mockup draws it -
+   headings with a line each, cards with thumbnails, the chosen sound on the
+   right with Load (choosing loads nothing; Load leaves it open), and a
+   footer with save, delete and the setup code, which left Settings. The
+   thumbnails are the instrument's own figures, written by
+   `core/tests/tools/write_figures.py` and hash-checked by `presettest.py`.
+   Not built, and the owner's: short *listen for / watch for* lines (the
+   cards show each description's first sentence) and hearing a preset by
+   holding a key. Next is F7, the header and Settings.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,
