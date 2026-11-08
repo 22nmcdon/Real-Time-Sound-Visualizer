@@ -240,7 +240,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   offered nowhere but still play when a setup routes them, and keep their ink
   on the knob they are on, so the owner can find out whether they are missed.
   Velocity's FM is Expression's menu on Play, reading and writing the one
-  routing it stands for rather than a field. This replaced the drawer
+  routing it stands for rather than a field. The Envelope follows Play's amp
+  envelope unless its editor's switch gives it its own four times (8 Nov):
+  those controls are written once in the page, outside the editor, and moved
+  into it while it is open, so their ids resolve from the start for the
+  plugin's panel and the morph. This replaced the drawer
   (*Advanced*, P3 to F3, which hid the routing matrix and every tab that was
   not the loop) and the Sources tab, which showed six families one at a time
   because forty chips at once read as a wall; F1 to F3 found each of the

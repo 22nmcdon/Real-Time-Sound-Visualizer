@@ -243,6 +243,14 @@ is below, in order. The listening notes this plan refers to follow it.
    2 ms either side. At their defaults each is skipped, and the delay is the
    old one to the bit (checked against the old build). Layer B has twins.
    Not destinations: nothing patches onto them yet. `delaytest.py` is new.
+   *The Envelope's own, 8 Nov:* ticked in the Envelope's editor, env.note
+   reads an envelope of its own (attack, decay, sustain, release; fields
+   `menvOwn`, `menvAtk` to `menvRel`) in the generator, page and core: one
+   for the generator, opened by the gate in dyad and mono and by any held
+   voice of either layer in poly, at velocity one, with the legato rule -
+   a chord over a held one is the same swell, which is the cost. Its
+   controls are written once in the page and moved into the editor, so the
+   plugin's panel and the morph count them. `menvtest.py` is new.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

@@ -157,7 +157,8 @@ each destination with its depth and a ✕. The Envelope's says what it is, becau
 not an envelope of its own: today's *Envelope* source follows the amp envelope on Play.
 A separate modulation envelope, with its own attack, decay, sustain and release, would
 be new; it earns its place if the filter and the picture should move on different
-timings.
+timings. *(Built 8 Nov: ticked in the Envelope's editor, the card has an envelope of its
+own, one for all the notes held, with the legato rule; unticked it follows Play.)*
 
 **Three sources replace twenty-eight.** The hearing family, the drawings' readings and
 the six picture readings go. Glow, Motion and Memory stay as they are now, always on
@@ -336,7 +337,8 @@ Not layout, and each one page, core and parity work where it touches the sound:
   swatches, B's as a menu defaulting to its lane's; terracotta left out as the reticle's.
 - Undo and redo, and A/B compare.
 - The window's *Size*, the editor's size remembered, and its default and minimum.
-- Optional: Delay's Tone, Low cut, Width and Wow (*built 8 Nov*); a modulation envelope of its own;
+- Optional: Delay's Tone, Low cut, Width and Wow (*built 8 Nov*); a modulation envelope of its own
+  (*built 8 Nov*: a switch and four knobs in the Envelope's editor);
   auditioning a preset by holding a key.
 
 ## Stages

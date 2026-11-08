@@ -5205,3 +5205,11 @@ less than two seconds since the line is two seconds long. The first check took
 max less min of the pitch over 0.9 s and found 5.4 Hz of a 6.3 Hz swing. A
 sinusoid at the known rate, fitted to the pitch by least squares, gives the
 amplitude from any part of a cycle: 6.28 Hz, the law to the hundredth.
+
+**A page test cannot see the page's own generator change.** The site plays
+through the compiled core in its worklet, so a mutation to the JavaScript
+generator (the Envelope's own, never stepped) leaves every browser suite
+passing: what they hear is the C++. The JavaScript generator is held by
+parity, which runs it beside the core, and its mutants are judged there - run
+by run through `generator_js.mjs` against the compiled harness, seconds a
+mutant, rather than a browser suite that could never fail.

@@ -89,6 +89,11 @@ inline constexpr RangeSpec kRanges[] = {
   { "delayMix", 0, 100, 1, 0 },
   { "delayMs", 10, 2000, 1, 375 },
   { "delayFeedback", 0, 90, 1, 35 },
+  // The Envelope's own (8 Nov).
+  { "menvAtk", 0, 2000, 1, 10 },
+  { "menvDec", 1, 4000, 1, 300 },
+  { "menvSus", 0, 100, 1, 50 },
+  { "menvRel", 1, 4000, 1, 400 },
   // F5c: the repeats' tone, low cut, width and wow.
   { "delayTone", 0, 100, 1, 100 },
   { "delayLowCut", 0, 100, 1, 0 },
@@ -194,7 +199,7 @@ inline constexpr const char* kMorphIds[] = {
   "bar8", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold",
   "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "gen2Rate",
   "inputDepth", "filterCutoff", "filterRes", "level", "position", "holdoff", "timebase", "zoom", "oscScan",
-  "scanStrike", "scanSoft", "amp",
+  "scanStrike", "scanSoft", "amp", "menvAtk", "menvDec", "menvSus", "menvRel",
 };
 
 }  // namespace scope

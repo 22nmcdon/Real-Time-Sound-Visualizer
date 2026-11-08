@@ -1336,6 +1336,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("qGlideMs", brain.quantiseGlide);
   panel.setRange("quantiseGlide", toU16(jsNumberToString(brain.quantiseGlide)));  // syncKeyPanel
 
+  // The Envelope's own (8 Nov): its switch and its four sliders, and A's tone
+  // given what the sliders hold, as the page's restore and syncMenv do.
+  setA("menvOwn", fieldFlag("menvOwn") ? 1 : 0);
+  for (const auto& [id, field, scale] : { std::tuple<const char*, const char*, double>{ "menvAtk", "menvAttackMs", 1 },
+                                          { "menvDec", "menvDecayMs", 1 }, { "menvSus", "menvSustain", 100 },
+                                          { "menvRel", "menvReleaseMs", 1 } }) {
+    panel.setRangeNumber(id, fieldNum(id));
+    setA(field, panel.range(id) / scale);
+  }
+
   // The score and the arpeggiator: kept for their pieces.
   brain.score.on = fieldFlag("scoreOn");
   brain.score.step = utf16To8(fieldStr("scoreStep"));
@@ -1625,6 +1635,11 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     if (b.lfo[i].sync.empty()) lfos[i].rate = b.lfo[i].free;
   }
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
+  // The Envelope's own times, as syncMenv sends them.
+  else if (id == "menvAtk") gen.set("menvAttackMs", v);
+  else if (id == "menvDec") gen.set("menvDecayMs", v);
+  else if (id == "menvSus") gen.set("menvSustain", v / 100);
+  else if (id == "menvRel") gen.set("menvReleaseMs", v);
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
   else if (id == "scanStrike") b.scanStrike = v / 100;
@@ -1816,6 +1831,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "arpRate") { b.arp.rate = text; keys.setArpRate(text); }
   else if (id == "arpOctaves") { b.arp.octaves = text; keys.setArpOctaves(number); }
   else if (id == "scoreOn") { b.score.on = checked; if (!b.score.on) scoreStop(b.score, b.out); }
+  else if (id == "menvOwn") gen.set("menvOwn", checked ? 1 : 0);
   else if (id == "scoreStep") b.score.step = text;
   else if (id == "scoreVoices") b.score.voices = orElse(number, 1);
   else if (id == "scoreLow") b.score.low = orElse(number, 48);

@@ -809,6 +809,25 @@ def gen_runs():
     vib = route(FREQ, 0.05, index=0)
     # A key held at the end, gated, so the envelope as a source reads where the ADSR has got to rather than nought.
     add("env-held", [(0, "gated 1"), (256, "gate 1 0.8")])
+    # The Envelope's own (8 Nov), read where each run ends: in its attack,
+    # its decay, its sustain and its release, in dyad by the gate and in poly
+    # by the voices held - a second note added while it is open being the
+    # same swell, the legato rule. Times unlike the amplifier's, so following
+    # Play is told apart; a velocity under one, which it must not take.
+    OWN = [(0, "set menvOwn 1"), (0, "set menvAttackMs 50"), (0, "set menvDecayMs 100"), (0, "set menvSustain 0.3"),
+           (0, "set menvReleaseMs 200"), (0, "set attackMs 5"), (0, "set decayMs 20"), (0, "set sustain 0.9")]
+    add("menv-attack", OWN + [(0, "gated 1"), (256, "gate 1 0.6")], samples=1024)
+    add("menv-decay", OWN + [(0, "gated 1"), (256, "gate 1 0.6")], samples=4096)
+    add("menv-sustain", OWN + [(0, "gated 1"), (256, "gate 1 0.6")], samples=16384)
+    add("menv-release", OWN + [(0, "gated 1"), (256, "gate 1 0.6"), (8192, "gate 0 0")], samples=12288)
+    add("menv-poly", OWN + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x"))), (6144, "voices 0 none")], samples=8192)
+    add("menv-poly-legato", OWN + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x"))),
+                                   (3840, "voices 0 " + notes((60, "x"), (67, "y")))], samples=4096)
+    add("menv-poly-one", OWN + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x")))], samples=4096)
+    PLAY = [e for e in OWN if e[1] != "set menvOwn 1"]
+    add("menv-poly-legato-play", PLAY + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x"))),
+                                         (3840, "voices 0 " + notes((60, "x"), (67, "y")))], samples=4096)
+    add("menv-poly-one-play", PLAY + [(0, "gated 1"), (0, "voices 0 " + notes((60, "x")))], samples=4096)
     # The dyad, every shape, gliding to a new pitch with a vibrato on it.
     for shape in ("harmonic", "sine", "triangle", "square", "ramp", "pulse", "morph", "noise", "pink", "brown", "stepped"):
         add("dyad-" + shape, [(0, "set shape " + shape), (0, "set glideMs 30"), (0, "routes " + vib),
@@ -1250,6 +1269,22 @@ gnull("input-3", "input 97 0.6", "input 98 0.6", "a clock a hertz faster")
 gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never had four times to give up")
 gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
 gnull("plane-own-time", "set delayMs 4 1", "set delayMs 7 1", "layer B's own echo as long as layer A's")
+gnull("menv-decay", "set menvOwn 1", "set menvOwn 0", "the Envelope following Play's")
+gnull("menv-sustain", "set menvSustain 0.3", "set menvSustain 0.31", "its own sustain a hundredth higher")
+# Legato: a second note while it is open leaves it exactly where one note
+# does. Following Play, the same two runs differ - the second voice is a new
+# envelope - which is what shows the comparison can see a second note at all.
+_, leg = grow("menv-poly-legato")
+_, one = grow("menv-poly-one")
+_, leg0 = grow("menv-poly-legato-play")
+_, one0 = grow("menv-poly-one-play")
+check("its own envelope is one swell for overlapping notes: a second note held leaves it where one note does",
+      leg[22] == one[22] and leg[22] > 0, "%.6f, %.6f" % (leg[22], one[22]))
+check("null: following Play, the second note's own envelope shows", leg0[22] != one0[22], "%.6f, %.6f" % (leg0[22], one0[22]))
+_, mt = grow("menv-sustain")
+_, md = grow("menv-decay")
+check("its own envelope as the source: at its sustain, 0.3, not the velocity's share of it nor Play's 0.9",
+      abs(mt[22] - 0.3) < 1e-6 and 0.3 < md[22] < 1, "%.6f, decaying %.4f" % (mt[22], md[22]))
 gnull("plane-own-time-switch", "set chorusRate 4 1", "set chorusRate 1.5 1", "layer B's own chorus at layer A's rate")
 # Scan (P7a): each run able to show it - the tables heard, and nothing
 # before the first, nothing on noise - and the port told apart from a page

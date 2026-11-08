@@ -100,6 +100,9 @@ struct Tone : LayerSettings, PlaneTone {
   double phase = kPi / 2;
   bool polyRound = false;  // poly's quarter turn (P8g): see the page's ROUND_RING
   double pitchBend = 0, vibrato = 0;  // the keyboard's, in semitones (6 Nov): see the page's tone
+  // The Envelope card's own (8 Nov), whether env.note reads it, and its four times.
+  bool menvOwn = false;
+  EnvelopeTone menv { 10, 300, 0.5, 400 };
   Figure figure = Figure::Circle;
   double detail = 5, figureRate = 40, swingRate = 2.1, decay = 0.12, swingDrive = 0;
   double inputMode = 0, inputDepth = 0.5;
@@ -143,12 +146,13 @@ class Generator {
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
         genMod_(static_cast<std::size_t>(std::max(slots, slot::Used)), 0.0f), genModB_(genMod_),
         reletSamples_(std::max(1, static_cast<int>(jsRound(10 * rate / 1000)))),
-        env_(rate, a_.env), fenv_(rate, a_.fenv), plane_(rate), ctx_(rate),
+        env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), ctx_(rate),
         scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
         noiseL_(random_), noiseR_(random_) {
     ctx_.random = &random_;
     fenv_.reset(0);
+    menv_.reset(0);
     barsA_.at.fill(-1); barsB_.at.fill(-1);
   }
   Generator(const Generator&) = delete;
@@ -198,6 +202,11 @@ class Generator {
     else if (field == "glideMs") a.glideMs = value;
     else if (field == "qMask") a.qMask = static_cast<int>(value);
     else if (field == "qGlideMs") a.qGlideMs = value;
+    else if (field == "menvOwn") a.menvOwn = value != 0;
+    else if (field == "menvAttackMs") a.menv.attackMs = value;
+    else if (field == "menvDecayMs") a.menv.decayMs = value;
+    else if (field == "menvSustain") a.menv.sustain = value;
+    else if (field == "menvReleaseMs") a.menv.releaseMs = value;
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "planeOS") a.planeOS = value;
@@ -252,6 +261,10 @@ class Generator {
     LayerSettings& t = layer == 1 ? static_cast<LayerSettings&>(b_) : a_;
     if (list == nullptr) t.voices.reset(); else t.voices = *list;
     reconcileVoices(layer == 1 ? voicesB_ : voices_, t.voices ? &*t.voices : nullptr, t, ctx_);
+    bool held = false;
+    for (const auto& v : voices_) held = held || v.held;
+    for (const auto& v : voicesB_) held = held || v.held;
+    menvGate(held);
   }
 
   void setRoutes(const std::vector<Route>& list) { routes_ = list; }
@@ -282,17 +295,20 @@ class Generator {
     oscL_.n = 0; oscR_.n = 0;
   }
 
-  void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); }
+  void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open); }
 
   void setGated(bool on) {
     if (on == gated_) return;
     gated_ = on;
     env_.reset(on ? 0 : 1);
     fenv_.reset(0);
+    menv_.reset(0);
+    menvHeld_ = false;
   }
 
   // In poly the loudest voice; otherwise the envelope, or one ungated.
   double envelope() const {
+    if (a_.menvOwn) return gated_ ? menv_.level() : 0;  // the Envelope card's own, as the page's
     if (a_.voices) {
       double most = 0;
       for (const auto& v : voices_) most = std::fmax(most, v.env.level());
@@ -418,6 +434,7 @@ class Generator {
       lfoStep(lfos_[1], rate_, random_);
       scanAdvance();
       sumRoutes();
+      if (gated_) menv_.step();  // the Envelope card's own, as the page's
 
       freqNow_ += (a_.freq - freqNow_) * glide;
       // Pitch bend and the wheel's vibrato, in octaves, glided (the page says why).
@@ -930,6 +947,13 @@ class Generator {
   double strikeFrom_ = 0, lastGain_ = 0;
   bool gated_ = false;
   Envelope env_, fenv_;
+  Envelope menv_;          // the Envelope card's own, one for the generator
+  bool menvHeld_ = false;  // and whether it is open, so a gate is sent only on a change
+  void menvGate(bool open) {
+    if (open == menvHeld_) return;
+    menvHeld_ = open;
+    menv_.gate(open, 1);
+  }
   bool freqStarted_ = false;
   double freqNow_ = 0;
   double bendNow_ = 0, vibNow_ = 0, vibPhase_ = 0;  // the bend and the vibrato as they glide, and its cycle
