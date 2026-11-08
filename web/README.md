@@ -5234,3 +5234,16 @@ screen's keys on, since the page's keyboard gates only with a keyboard to
 play it), and parity's keyboard comparison counts the `noteDown`s. A change
 to the page's keyboard is judged there and on `?brain=js`, never by a suite
 on the default brain alone.
+
+**A just interval's figure stands still, so whether it lights a stored cell is
+chance.** `picturepresettest.py` failed once in a full run on The fifth detunes
+itself: its photocell read 3e-9 for the whole listen, and passed alone. Loaded
+once on a fresh page it stayed dark for 45 seconds; loaded after other presets
+it was sometimes lit, sometimes not. A just fifth's figure does not drift, so
+whether its line crosses the preset's stored cell depends on the phase the two
+notes inherit from whatever played before, and a preset's placement is never
+moved on a restore (rightly: it is the preset's). The suite now presses the
+reticle onto the figure, as a player would, for a cell under a thousandth after
+a second and a half, and fails if more than two presets need it. Pressing by
+`landPhoto`'s own rule (a quarter of the brightest) moved fourteen of the
+twenty-one cells, which is why the threshold is darkness and not dimness.

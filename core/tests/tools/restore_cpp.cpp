@@ -148,6 +148,11 @@ int main(int argc, char** argv) {
       }
       Json entry = Json::array();
       entry.a.push_back(str(p.name)); entry.a.push_back(p.setup); entry.a.push_back(Json::string(p.blurb));
+      if (!p.listen.empty() || !p.watch.empty()) {
+        Json lines = Json::array();
+        lines.a.push_back(Json::string(p.listen)); lines.a.push_back(Json::string(p.watch));
+        entry.a.push_back(lines);
+      }
       out.a.back().a[1].a.push_back(entry);
     }
     std::printf("%s\n", scope::utf16To8(scope::jsonStringify(out)).c_str());

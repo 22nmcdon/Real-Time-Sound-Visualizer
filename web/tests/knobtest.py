@@ -192,6 +192,25 @@ with sync_playwright() as pw:
     check("a press on the face gives the keyboard to the input, and the arrows move it and the face",
           keys["v"] == "42" and abs(deg(keys["angle"]) - 42 * 2.7) < 1e-9, str(keys))
 
+    # The Radius is marked at 0.2 and two taps land there; it still opens at
+    # 0.4. The Radial menu on first, since a radius with nothing at it is
+    # hidden. Two taps on the Cutoff, unmarked, beside it as the null.
+    p.evaluate("() => { el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); showControl('planeRadius'); }")
+    p.wait_for_timeout(300)
+    setv(p, "planeRadius", 70)
+    rb = p.locator("#planeRadiusRow .knob-face").bounding_box()
+    rx, ry = rb["x"] + rb["width"] / 2, rb["y"] + rb["height"] / 2
+    p.mouse.click(rx, ry); p.wait_for_timeout(120); p.mouse.click(rx, ry); p.wait_for_timeout(100)
+    marked = p.evaluate("""() => { const m = document.querySelector('#planeRadiusRow .knob-mark');
+      return { v: el.planeRadius.value, rest: el.planeRadius.defaultValue, radius: genSettings().planeRadius,
+               t: m ? parseFloat(m.style.getPropertyValue('--t')) : null,
+               others: document.querySelectorAll('.knob-mark').length }; }""")
+    check("the Radius is marked at 0.2, its one mark on the face, and two taps land there, though it opens at 0.4",
+          marked["v"] == "20" and marked["rest"] == "40" and abs(marked["radius"] - 0.2) < 1e-9
+          and abs(marked["t"] - (20 - 2) / 98 * 270) < 1e-9 and marked["others"] == 1, str(marked))
+    null("the mark is not at the default's angle", abs(marked["t"] - (40 - 2) / 98 * 270) > 10, str(marked["t"]))
+    p.evaluate("() => { el.planeLimit.value = '0'; el.planeLimit.dispatchEvent(new Event('change')); }")
+
     print("\n--- the picture lights the name, and a modulation is a ring on the face ---")
     lit = p.evaluate("""() => { const row = el.oscFm.closest('[data-mod-dest]'), label = row.querySelector(':scope > .menu-label');
       row.style.setProperty('--picture', '1'); const on = getComputedStyle(label).color;

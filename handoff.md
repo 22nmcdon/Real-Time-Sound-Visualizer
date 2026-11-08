@@ -204,9 +204,8 @@ is below, in order. The listening notes this plan refers to follow it.
    footer with save, delete and the setup code, which left Settings. The
    thumbnails are the instrument's own figures, written by
    `core/tests/tools/write_figures.py` and hash-checked by `presettest.py`.
-   Not built, and the owner's: short *listen for / watch for* lines (the
-   cards show each description's first sentence) and hearing a preset by
-   holding a key. Next is F7, the header and Settings. *F7a done 8 Nov:*
+   The short *listen for / watch for* lines were built after (8 Nov);
+   hearing a preset by holding a key was declined. Next is F7, the header and Settings. *F7a done 8 Nov:*
    the header - the preset between arrows that step the bank, its heading
    above it, Browse, Save, A/B and undo/redo (`headertest.py`). *F7b and
    F7c done 8 Nov:* Settings as drawn - two columns, notes behind dots, This
@@ -264,9 +263,10 @@ is below, in order. The listening notes this plan refers to follow it.
    **The drawings are to be cut on 22 November** (harmonograph, figures,
    solids, the second generator) unless the owner has reached for one by
    then: a cleanup stage with a decode pass, the old library keeping them as
-   a test corpus. Still to come from the same answers: the presets' short
-   listen for / watch for lines (hearing a preset by holding a key is not
-   wanted: Load, listen, undo already does it), radius 0.2 easy to land on
+   a test corpus. The presets have their short lines, what to listen for
+   and what to watch for, the first on each card (hearing a preset by
+   holding a key is not wanted: Load, listen, undo already does it). Still
+   to come from the same answers: radius 0.2 easy to land on
    (a preset only if `honestytest.py` places it cleanly), and the bent
    sine's offset moved up, since Warp is a host parameter and automating it
    thumps; then P9's reverb.

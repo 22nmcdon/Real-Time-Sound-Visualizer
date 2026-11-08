@@ -271,6 +271,30 @@ with sync_playwright() as pw:
     check("a card chosen is shown on the right, whole, and nothing is loaded: Slow pad still plays",
           chosen == {"value": "b:Slow pad", "open": True, "shape": chosen["shape"], "right": ["Settled", "Drawbar organ"],
                      "text": True, "chosen": ["b:Drawbar organ"]} and chosen["shape"] != "drawbars", str(chosen))
+    # The two short lines (8 Nov): on the card, the listen line in place of
+    # the description's first sentence; on the right, both, over the whole.
+    # Read off the screen, and each held to the bank, so a pane showing the
+    # other preset's lines, or the first sentence, fails.
+    lines = p.evaluate("""() => {
+      const entry = PRESETS.flatMap(([, e]) => e).find(([n]) => n === 'Drawbar organ');
+      const card = el.presetGrid.querySelector('.preset-card[data-value="b:Drawbar organ"] .preset-blurb');
+      return { shown: !el.presetChosenLines.hidden && el.presetChosenLines.getBoundingClientRect().height > 20,
+               listen: el.presetChosenListen.textContent === entry[3][0], watch: el.presetChosenWatch.textContent === entry[3][1],
+               card: card.textContent === entry[3][0], first: card.textContent === firstSentence(entry[2]) };
+    }""")
+    check("chosen, its card says what to listen for, and the right both that and what to watch for",
+          lines == {"shown": True, "listen": True, "watch": True, "card": True, "first": False}, str(lines))
+    LINES_RULE = """(lib) => lib.flatMap(([, e]) => e).filter(([, , blurb, l]) => !Array.isArray(l) || l.length !== 2
+      || l.some((x) => typeof x !== 'string' || x.length < 12 || x.length > 60 || /[.]$/.test(x))
+      || l[0] === l[1] || blurb.startsWith(l[0])).map(([n]) => n)"""
+    short = p.evaluate("(f) => (eval(f))(PRESETS)", LINES_RULE)
+    check("every preset in the bank has both lines, each short - twelve to sixty characters - and its own", short == [], str(short))
+    short_null = p.evaluate("""(f) => { const rule = eval(f), lib = () => JSON.parse(JSON.stringify(PRESETS));
+      const a = lib(); a[0][1][0].pop();
+      const b = lib(); b[1][1][0][3][1] = 'x'.repeat(80);
+      const c = lib(); c[1][1][1][3] = [c[1][1][1][3][0], c[1][1][1][3][0]];
+      return [rule(a).length, rule(b).length, rule(c).length]; }""", LINES_RULE)
+    check("null: a bank with a preset's lines missing, one too long, or the same line twice fails it", short_null == [1, 1, 1], str(short_null))
     p.click("#presetLoad"); p.wait_for_timeout(300)
     loaded = p.evaluate("""() => ({ value: el.preset.value, label: el.presetCurrent.textContent,
       open: el.presetDialog.open, shape: genSettings().shape,
@@ -360,6 +384,8 @@ with sync_playwright() as pw:
       const mine = el.presetGrid.querySelector('[data-value="s:My test setup"]');
       if (mine) { mine.click(); el.presetLoad.click(); }
       const back = [el.preset.value, genSettings().freq];
+      // A saved sound has no short lines: the pane shows none, not the last preset's.
+      const noLines = [el.presetChosenLines.hidden, el.presetChosenListen.textContent];
       // Delete the chosen saved one, then the other, and their figures with them.
       el.presetDelete.click(); await wait(30);
       const afterOne = [Object.keys(readSaved()), Object.keys(readSavedFigures())];
@@ -369,7 +395,7 @@ with sync_playwright() as pw:
       const afterBoth = [Object.keys(readSaved()), el.presetGrid.querySelectorAll('.preset-card').length];
       el.presetDialog.close();
       return { asking, unnamed, menu, cards, figure: !!figure && figure.a.split(' ').length > 100, drawn, silent, back,
-               afterOne, afterBoth };
+               afterOne, afterBoth, noLines };
     }""")
     print("    %s" % saved)
     check("Save this sound asks for a name, and saves nothing without one",
@@ -379,6 +405,7 @@ with sync_playwright() as pw:
           and saved["back"] == ["s:My test setup", 300], str(saved))
     check("null: one saved in silence has no figure, and its card says so with an empty mark",
           saved["silent"] == [True, True], str(saved["silent"]))
+    check("a saved sound chosen shows no listen or watch lines", saved["noLines"] == [True, ""], str(saved["noLines"]))
     check("Delete saved takes the chosen saved one and its figure, then the other",
           saved["afterOne"] == [["Silent one"], []] and saved["afterBoth"] == [[], 0], str((saved["afterOne"], saved["afterBoth"])))
 

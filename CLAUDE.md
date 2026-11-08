@@ -301,7 +301,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   on under the sustain pedal). The browser (F6) is three columns: the
   headings down the left, each with what it means in a line, Saved last;
   the heading's sounds, each with a thumbnail of its figure; and the chosen
-  one, larger, with its whole description and *Load*, which loads it and
+  one, larger, with what to listen for and what to watch for (two short
+  lines, the first also its card's), its whole description and *Load*, which loads it and
   leaves the browser open (choosing a card loads nothing). A section rail
   only when a heading has more than one section. No search. Its footer took
   Settings' Presets section: save (with the figure of what is sounding),
@@ -320,8 +321,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   to come back out of the setup it makes, the bank's shape (a split under
   each heading, Settled at Picture nought, Breathing with the loop at work)
   and every preset to name the Picture amount. Add a preset under the
-  heading it measures as, with a line that says what to listen for and what
-  to look at, then write `presets.h` (and the base) out with
+  heading it measures as, with its description and its two short lines,
+  what to listen for and what to watch for (twelve to sixty characters each,
+  which `presettest.py` holds), then write `presets.h` (and the base) out with
   `core/tests/tools/write_presets.py` and its thumbnail with
   `core/tests/tools/write_figures.py`. The old library is kept whole as a
   test corpus (`core/tests/scenarios/library-p8f.json`,

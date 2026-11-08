@@ -142,7 +142,30 @@ with sync_playwright() as pw:
              each run began with the one before it still in its history - and
              the organ, run without its loop straight after running with it,
              read as wandering on what the loop had drawn. */
-          loadCorpus(preset); await wait(300); pictureMeter.reset();
+          loadCorpus(preset); await wait(300);
+          /* A cell in the dark pressed onto the figure, as a player presses
+             the reticle (landPhoto). Only one in the dark - under a
+             thousandth after a second and a half - since landPhoto's own
+             rule, a quarter of the brightest, moved fourteen of the
+             twenty-one stored cells and measured something else. A preset's placement is its own
+             and restoring it never moves the cell, which is right for the
+             instrument and left one preset here a knife edge: The fifth
+             detunes itself is a just fifth, whose figure stands still, so
+             whether its stored cell is lit depends on the phase the two notes
+             inherit from what played before - a faint glow, moving nothing,
+             for 45 s on one load, lit on another (9 Nov). Pressed after a
+             second and a half, since a figure just loaded (the first
+             preset's pendulums) has not drawn yet. Which presets moved is
+             reported, and more than two fails, so the stored placements are
+             still what is read. */
+          let landed = null;
+          if (photo.on) await wait(1500);
+          if (photo.on && photo.raw < 1e-3) {
+            const was = [photo.u, photo.v];
+            landPhoto(); await wait(300);
+            if (photo.u !== was[0] || photo.v !== was[1]) landed = [photo.u, photo.v];
+          }
+          pictureMeter.reset();
           const ids = [...new Set(state.modRoutings.map((r) => r.sourceId).filter((id) => picture.test(id)))];
           const lo = {}, hi = {}, verdicts = {};
           const reading = () => { const s = MOD_SOURCES.get('photo.1'); return s ? s.value() : 0; };
@@ -161,12 +184,15 @@ with sync_playwright() as pw:
           const compiled = ids.every((id) => MOD_SOURCES.has(id));
           const moved = Math.max(0, ...ids.map((id) => (hi[id] ?? 0) - (lo[id] ?? 0)));
           const row = { preset, section: name, compiled, moved: +moved.toFixed(3), verdict: pictureMeter.verdict(), verdicts,
-                        swing: +(rhi - rlo).toFixed(3) };
+                        swing: +(rhi - rlo).toFixed(3), landed: landed !== null };
           // The same preset without its picture routings, for the loop's own effect.
           if (name === names[0]) {
             const setup = corpusSetup(preset);
             const kept = decodeRoutings(setup.mod || '').filter((r) => !picture.test(r.sourceId));
-            restore(Object.assign({}, setup, { mod: encodeRoutings(kept) })); await wait(300); pictureMeter.reset();
+            restore(Object.assign({}, setup, { mod: encodeRoutings(kept) }));
+            // Without the loop from where the loop was measured: the landed cell, if it was.
+            if (landed) movePhoto(landed[0], landed[1]);
+            await wait(300); pictureMeter.reset();
             const open = {};
             let olo = Infinity, ohi = -Infinity;
             const t1 = performance.now();
@@ -193,6 +219,10 @@ with sync_playwright() as pw:
         extra = ("  unlooped %s, apart %.2f, reading %.2f against %.2f"
                  % (r["open"], apart(r["verdicts"], r["open"]), r["swing"], r["openSwing"])) if "open" in r else ""
         print("    %-32s moved %.2f  ends %-12s %s%s" % (r["preset"], r["moved"], r["verdict"], r["verdicts"], extra))
+    landed = [r["preset"] for r in runs if r["landed"]]
+    print("    pressed onto their figures, their stored cells dark: %s" % (landed or "none"))
+    check("at most two presets needed the reticle pressed onto their figure, so the stored placements are read",
+          len(landed) <= 2 and len(runs) >= 16, "%d of %d: %s" % (len(landed), len(runs), landed))
     dead = [(r["preset"], r["moved"]) for r in runs if not (r["compiled"] and r["moved"] >= 0.05)]
     check("in every one, the picture's sources are there, move, and are routed onto what they alter",
           dead == [], str(dead))

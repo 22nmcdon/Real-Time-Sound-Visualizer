@@ -222,6 +222,9 @@ and *Paste*. There is no search, with eight presets.
 The one-line descriptions in the mockup are paraphrases; every preset already carries a
 long one in `PRESETS`, and whether each gains a short *listen for / watch for* line is
 the owner's call. *Hold a key to hear it before loading* is drawn and would be new.
+*Decided 8 Nov:* the lines, yes - each preset has two, under sixty characters, the
+listen line on its card and both over the description on the right; the audition by
+a held key, no, since Load, listen and undo already do it.
 
 ### Settings
 
@@ -374,8 +377,8 @@ Each stage leaves the suite green and the instrument usable, and each is pushed 
   lands first.
 - **Look-only settings beyond ink.** Which, if any, are worth building is the owner's
   call.
-- **Short preset lines** (*listen for / watch for*), and whether auditioning by holding
-  a key is built.
+- ~~**Short preset lines** (*listen for / watch for*), and whether auditioning by holding
+  a key is built.~~ *Decided 8 Nov:* the lines and not the audition. Built.
 - ~~**The minimum window:** the *Size* setting alone, or a larger minimum as well.~~
   *Decided 8 Nov:* the setting alone, with an Auto that is 90 per cent under 1100×680,
   so the minimum stays 960×600 and fits without anyone choosing. Built in F8.
