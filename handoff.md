@@ -193,10 +193,12 @@ is below, in order. The listening notes this plan refers to follow it.
    fold too (to fit at 1400x900; F7/F8 should give that height back). The
    switch is a view over the values (`switchFx`), so nothing stored changed.
    Numbers read went to Scope & measure's Measure, which moved to the
-   Vertical column to fit 960x600. `racktest.py` is new. Next is F5b:
-   effect order as a setup field, page and core with parity, with the
-   handles (`.fx-handle`, hidden) made to drag; the default is today's
-   order, which the core's `plane.h` step runs fixed.
+   Vertical column to fit 960x600. `racktest.py` is new. *F5b done 8 Nov:*
+   the phaser, chorus and delay run in the setup's `fxOrder` (six orders,
+   default the old one, so no code changed meaning and no version bump),
+   page, core and parity; a handle drags a module, the arrow keys move it,
+   Escape puts a drag back. One order for both layers, the Plane fixed
+   first. Next is F6, the presets browser.
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,

@@ -27,6 +27,11 @@ What would go wrong, and what is checked for it:
 - the Reverb slot being a module: it has no switch, no controls, and is last;
 - the tab's line and the rack disagreeing: a plane only turned is "Plane" on
   both, where the rule before F5 called it Dry;
+- the order (F5b): the arrow keys on a handle and a drag with the mouse
+  writing the menu, the setup field, the modules and both layers' engines;
+  the sound moving on release and not under every pixel of a drag; Escape
+  putting a drag back; codes with, without and with a wrong order; and the
+  order heard, through the generator, as two sounds for two orders;
 - the old name: no "Echo" on the rack, and the plugin's host knob is
   "Delay mix".
 """
@@ -64,8 +69,10 @@ with sync_playwright() as pw:
           order == engine, str(order))
     check("null: the first build's order is not what is there", order != ["plane", "delay", "chorus", "phaser", "reverb"])
     src = open(os.path.join(ROOT, "core", "include", "scope", "plane.h")).read()
-    check("and the core still says the phaser comes first",
-          "The phaser first, so the chorus and the echoes are of the phased pair" in src)
+    # Since F5b the order is the setup's: the default, the first of the core's
+    # table, is still the phaser first.
+    check("and the core's first order is still the phaser first",
+          'kFxOrders[] = { "pcd",' in src and "fxOrder" in src)
     slot = p.evaluate("""() => { const s = document.querySelector('.fx-module[data-fx="reverb"]');
       return { slot: s.classList.contains('fx-slot'), inputs: s.querySelectorAll('input, select, button').length,
                text: s.textContent.replace(/\\s+/g, ' ').trim() }; }""")
@@ -222,6 +229,123 @@ with sync_playwright() as pw:
     check("showControl on a control in a module's rest: its tab, that module open, the control on screen",
           reach["shown"] == {"tab": "space", "open": "chorus", "visible": True}, str(reach["shown"]))
     check("and on a main knob it opens nothing", reach["main"] == {"tab": "space", "open": None}, str(reach["main"]))
+
+    print("\n--- the order (F5b) ---")
+    # The arrow keys on a handle: the phaser down twice is chorus, delay,
+    # phaser - the menu, the setup's field, the modules and both layers'
+    # engines all saying so, and the focus still on the handle it moved.
+    keys = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      restore({}); setBenchTab('space'); await wait(100);
+      const shown = () => Array.from(document.querySelectorAll('#rackGroup > .fx-module')).map((m) => m.dataset.fx).join(',');
+      const before = { order: fxOrder, shown: shown() };
+      const handle = document.querySelector('.fx-handle[data-fx-move="phaser"]');
+      handle.focus();
+      for (let i = 0; i < 2; i++) handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await wait(50);
+      const after = { order: fxOrder, menu: el.fxOrder.value, field: snapshot().fxOrder, shown: shown(),
+                      engines: [genSettings(0).fxOrder, genSettings(1).fxOrder], focus: document.activeElement === handle };
+      // Past the bottom it stays at the bottom; up once is chorus, phaser, delay.
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      const held = fxOrder;
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      return { before, after, held, up: fxOrder };
+    }""")
+    print("    %s" % keys)
+    check("at rest the order is the phaser, the chorus, the delay",
+          keys["before"] == {"order": "pcd", "shown": "plane,phaser,chorus,delay,reverb"}, str(keys["before"]))
+    check("the phaser down twice: the menu, the setup, the modules and both layers' engines say chorus, delay, phaser",
+          keys["after"] == {"order": "cdp", "menu": "cdp", "field": "cdp", "shown": "plane,chorus,delay,phaser,reverb",
+                            "engines": [3, 3], "focus": True}, str(keys["after"]))
+    check("null: that is not the order it started in", keys["after"]["order"] != keys["before"]["order"])
+    check("past the bottom it stays there, and up once is one place", keys["held"] == "cdp" and keys["up"] == "cpd",
+          str((keys["held"], keys["up"])))
+
+    # A drag with the mouse: the delay's handle to above the phaser. The
+    # modules follow the pointer, the sound only the release; Escape on a
+    # second drag puts the modules back where the order says.
+    p.evaluate("() => { restore({}); setBenchTab('space'); openFx(null); }"); p.wait_for_timeout(150)
+    def centre(sel):
+        bx = p.locator(sel).bounding_box()
+        return bx["x"] + bx["width"] / 2, bx["y"] + bx["height"] / 2
+    shown = "() => Array.from(document.querySelectorAll('#rackGroup > .fx-module')).map((m) => m.dataset.fx).join(',')"
+    hx, hy = centre('.fx-handle[data-fx-move="delay"]')
+    top = p.locator('#phaserModule').bounding_box()["y"]
+    p.mouse.move(hx, hy); p.mouse.down(); p.mouse.move(hx, top + 4, steps=8); p.wait_for_timeout(50)
+    mid = p.evaluate("() => ({ order: fxOrder, engine: genSettings(0).fxOrder })")
+    mid_shown = p.evaluate(shown)
+    p.mouse.up(); p.wait_for_timeout(80)
+    dropped = p.evaluate("() => ({ order: fxOrder, engine: genSettings(0).fxOrder })")
+    # The phaser, now in the middle, down past the chorus: a move there is to
+    # put back. (The chorus, last already, would have had nothing to undo.)
+    hx, hy = centre('.fx-handle[data-fx-move="phaser"]')
+    p.mouse.move(hx, hy); p.mouse.down(); p.mouse.move(hx, hy + 300, steps=8); p.wait_for_timeout(50)
+    escaping = p.evaluate(shown)
+    p.keyboard.press("Escape"); p.mouse.up(); p.wait_for_timeout(80)
+    escaped = {"order": p.evaluate("() => fxOrder"), "shown": p.evaluate(shown)}
+    print("    mid-drag %s %s, dropped %s, escaping %s, escaped %s" % (mid, mid_shown, dropped, escaping, escaped))
+    check("mid-drag the modules follow the pointer and the sound has not moved",
+          mid_shown == "plane,delay,phaser,chorus,reverb" and mid == {"order": "pcd", "engine": 0}, str((mid, mid_shown)))
+    check("let go, the order is the delay, the phaser, the chorus, in the engine too",
+          dropped == {"order": "dpc", "engine": 4}, str(dropped))
+    check("and Escape mid-drag puts the modules back and leaves the order",
+          escaping == "plane,delay,chorus,phaser,reverb" and escaped == {"order": "dpc", "shown": "plane,delay,phaser,chorus,reverb"},
+          str((escaping, escaped)))
+
+    # Setups: the order goes into a code and comes back; a code that does not
+    # name one is the first order, as every code before F5b; a code naming
+    # an order there is not is the first order too. And the order is heard:
+    # what the page tells the engine, rendered through the generator in two
+    # orders, is two different sounds, and the same order twice is one.
+    codes = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      restore({ fxOrder: 'dcp', delayMix: 40 }); await wait(50);
+      const code = encodeSetup(snapshot());
+      restore({}); await wait(50);
+      const plain = { order: fxOrder, named: 'fxOrder' in decodeSetup(encodeSetup(snapshot())) };
+      restore(decodeSetup(code)); await wait(50);
+      const back = { order: fxOrder, menu: el.fxOrder.value };
+      restore({ fxOrder: 'ppp' }); await wait(50);
+      let bad = fxOrder;
+      // And the menu written a value it has not got, as a host could: the
+      // browser reads "", which is the first order, not an order of nothing.
+      restore({ fxOrder: 'dcp' }); await wait(50);
+      el.fxOrder.value = 'zzz'; el.fxOrder.dispatchEvent(new Event('change'));
+      bad = [bad, fxOrder, genSettings(0).fxOrder];
+      // The tab's line names them in the rack's order, the null the first order.
+      const line = async (order) => { restore({ fxOrder: order, delayMix: 40, chorusMix: 30 }); await wait(600);
+                                      return document.getElementById('benchLine-space').textContent; };
+      const lines = [await line('dcp'), await line('pcd')];
+      const render = (order) => {
+        restore({ fxOrder: order, phaserMix: 80, phaserRate: 500, chorusMix: 60, chorusRate: 220, chorusFeedback: 40,
+                  delayMix: 50, delayMs: 10, delayFeedback: 60 });
+        const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
+        const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
+        core.set('mode', 'wave'); core.set('shape', 'sine'); core.set('amp', 0.5);
+        const t = genSettings(0);
+        for (const k of ['delayMix', 'delayMs', 'delayFeedback', 'chorusMix', 'chorusRate', 'chorusDepthMs', 'chorusMs',
+                         'chorusFeedback', 'phaserMix', 'phaserRate', 'phaserDepth', 'phaserFeedback', 'fxOrder']) core.set(k, t[k]);
+        const n = 8000, L = new Float32Array(n), R = new Float32Array(n);
+        core.block(L, R, n, new Float32Array(n), new Float32Array(n), new Float32Array(n), new Float32Array(n));
+        return L;
+      };
+      const a = render('pcd'), a2 = render('pcd'), d = render('dpc');
+      let apart = 0, same = 0;
+      for (let i = 0; i < a.length; i++) { apart = Math.max(apart, Math.abs(a[i] - d[i])); same = Math.max(same, Math.abs(a[i] - a2[i])); }
+      restore({}); await wait(50);
+      return { coded: decodeSetup(code).fxOrder, plain, back, bad, apart, same, lines };
+    }""")
+    print("    %s" % codes)
+    check("a code carries the order and gives it back", codes["coded"] == "dcp" and codes["back"] == {"order": "dcp", "menu": "dcp"},
+          str((codes["coded"], codes["back"])))
+    check("a code that names no order, as every one before F5b, is the first order, and the first is not written out",
+          codes["plain"] == {"order": "pcd", "named": False}, str(codes["plain"]))
+    check("and one naming an order there is not is the first, from a code or written to the menu",
+          codes["bad"] == ["pcd", "pcd", 0], str(codes["bad"]))
+    check("the tab's line names the effects in the rack's order, and in the first order the other way round",
+          codes["lines"] == ["Delay \u00b7 chorus", "Chorus \u00b7 delay"], str(codes["lines"]))
+    check("the order is heard: the delay first and the phaser first are two sounds, the same order twice is one",
+          codes["apart"] > 0.01 and codes["same"] == 0, "%.4f, %.4g" % (codes["apart"], codes["same"]))
 
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)

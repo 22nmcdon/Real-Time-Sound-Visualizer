@@ -662,6 +662,7 @@ class Generator {
     else if (field == "phaserRate") p.phaserRate = v;
     else if (field == "phaserDepth") p.phaserDepth = v;
     else if (field == "phaserFeedback") p.phaserFeedback = v;
+    else if (field == "fxOrder") p.fxOrder = static_cast<int>(v);
     else return false;
     return true;
   }

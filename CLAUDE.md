@@ -262,7 +262,15 @@ Do not re-litigate these without a reason; each replaced something that failed.
   with nothing to put back. Lines and switches are read off the values a
   few times a second (`paintRack`). It replaced the Display, Plane and
   "Delay, chorus and phaser" sections; the Numbers read switch went to
-  Scope & measure's Measure. `racktest.py` and `fittest.py` hold it.
+  Scope & measure's Measure. Since F5b the order of the phaser, chorus and
+  delay is the setup's `fxOrder` (one of six, by letters; the engines get an
+  index into one table, `FX_ORDER_STAGES` and `kFxOrders`, never stored),
+  one order for both layers, the Plane always first. A handle drags a module
+  or the arrow keys move it, through the hidden `#fxOrder` menu, so the
+  plugin's core hears it as any menu; the modules themselves move, which the
+  morph survives only because `MORPH_IDS` is read once from the markup, so
+  the markup stays in the default order. `racktest.py` and `fittest.py`
+  hold it, and parity the six orders.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, the inputs, the modulation fade, Presets, Beam), `bench` (everything played or tuned) or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over

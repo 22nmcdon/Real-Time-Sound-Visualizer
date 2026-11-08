@@ -212,13 +212,13 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const FIELDS = ["planeMirror", "planeRadius", "planeOS", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                     "planeTwist", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
                     "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback",
-                    "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];
+                    "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
     const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                       "planeTwist", "planeSnap"];
     const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
     const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "chorusMix", "chorusRate", "chorusDepthMs",
-                    "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"];
+                    "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
     const bName = (f) => "b" + f[0].toUpperCase() + f.slice(1);
     for (const f of B_TIME) toneB[f] = n(bName(f));
     toneB.planeOwn = n("bown") === 1;
@@ -228,7 +228,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
                          "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep",
                          "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
-                         "allpassCoef", "allpassChain"],
+                         "allpassCoef", "allpassChain", "FX_ORDER_STAGES"],
                         rate, null, { tone, toneB, slots: 40 });
     const events = new Map();
     for (const e of (p.ev || "").split(";").filter(Boolean)) {

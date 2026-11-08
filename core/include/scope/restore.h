@@ -320,6 +320,8 @@ struct Brain {
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
   // switch: kept a copy of A's while B has none, as its plane is.
   EchoState echoB;
+  // F5b: the order the phaser, chorus and delay run in (kFxOrders), one for both layers.
+  std::string fxOrder = "pcd";
   std::string echoShown;  // which layer's echo the section last showed
   // drawnCycle: the four slots' points, and the tables built from them.
   std::array<CyclePoints, kCycleSlots> cycles;
@@ -731,6 +733,11 @@ inline void syncPlane(Brain& b, Generator& gen) {
   gen.set("planeSnap", p.snap); gen.set("planeScaleX", p.scaleX); gen.set("planeScaleY", p.scaleY);
   gen.set("planeShear", p.shear);
 }
+// The order's index in the engine's table, as the page's fxOrderIndex; one it has not got is the first.
+inline int fxOrderIndex(const Brain& b) {
+  for (int k = 0; k < kFxOrderCount; k++) if (b.fxOrder == kFxOrders[k]) return k;
+  return 0;
+}
 // Layer B's, into layer B, following A's while it has none of its own.
 inline void syncEchoB(Brain& b, Generator& gen) {
   if (!b.planeB.own) echoBFollow(b);
@@ -741,6 +748,7 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   gen.set("chorusFeedback", e.chorusFeedback, 1);
   gen.set("phaserMix", e.phaser, 1); gen.set("phaserRate", e.phRate, 1); gen.set("phaserDepth", e.phDepth, 1);
   gen.set("phaserFeedback", e.phFeedback, 1);
+  gen.set("fxOrder", fxOrderIndex(b), 1);
 }
 inline void syncEcho(Brain& b, Generator& gen) {
   syncEchoB(b, gen);
@@ -750,6 +758,7 @@ inline void syncEcho(Brain& b, Generator& gen) {
   gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
   gen.set("phaserMix", e.phaser); gen.set("phaserRate", e.phRate); gen.set("phaserDepth", e.phDepth);
   gen.set("phaserFeedback", e.phFeedback);
+  gen.set("fxOrder", fxOrderIndex(b));
 }
 inline void syncQuantiser(const Brain& b, Generator& gen) {
   gen.set("qMask", b.quantise ? keyMask(b.keyRoot, b.keyScale) : 0);
@@ -1437,6 +1446,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     }
     syncEchoB(brain, gen);
     syncEchoPanel(brain, keys);
+    // F5b: the order, after the echoes so both layers are told.
+    brain.fxOrder = utf16To8(fieldStr("fxOrder"));
+    panel.setSelect("fxOrder", utf8To16(brain.fxOrder));
+    setA("fxOrder", fxOrderIndex(brain));
+    gen.set("fxOrder", fxOrderIndex(brain), 1);
   }
 
   // The routings: the setup's list, or the old enum when it has none.
@@ -1732,6 +1746,13 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
   else if (id == "delaySync") { echoTarget(b, keys).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }
+  // F5b: the rack's order, one for both layers whichever is on the panel; a menu
+  // value it has not got reads "" and is the first order, as on the page.
+  else if (id == "fxOrder") {
+    b.fxOrder = text.empty() ? kFxOrders[0] : text;
+    panel.setSelect("fxOrder", utf8To16(b.fxOrder));
+    syncEcho(b, gen);
+  }
   else if (id == "delayPingPong") { echoTarget(b, keys).pingPong = checked; syncEcho(b, gen); }
   // The key and the quantiser.
   else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }

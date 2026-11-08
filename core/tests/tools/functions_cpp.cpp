@@ -258,6 +258,7 @@ int main(int argc, char** argv) {
         { "phaserMix", [&](double v) { t.phaserMix = v; } }, { "phaserRate", [&](double v) { t.phaserRate = v; } },
         { "phaserDepth", [&](double v) { t.phaserDepth = v; } },
         { "phaserFeedback", [&](double v) { t.phaserFeedback = v; } },
+        { "fxOrder", [&](double v) { t.fxOrder = static_cast<int>(v); } },
       };
       for (const auto& [k, set] : fields) set(d(k));
       // Layer B's own shape, as the page's run holds it.
@@ -281,6 +282,7 @@ int main(int argc, char** argv) {
         { "bPhaserMix", [&](double v) { b.phaserMix = v; } }, { "bPhaserRate", [&](double v) { b.phaserRate = v; } },
         { "bPhaserDepth", [&](double v) { b.phaserDepth = v; } },
         { "bPhaserFeedback", [&](double v) { b.phaserFeedback = v; } },
+        { "bFxOrder", [&](double v) { b.fxOrder = static_cast<int>(v); } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;

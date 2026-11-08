@@ -55,7 +55,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
-  o.set("phaserFeedback", num(t.phaserFeedback));
+  o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
@@ -88,7 +88,7 @@ Json toneJson(const scope::Tone& t) {
   o.set("chorusMix", num(t.chorusMix)); o.set("chorusRate", num(t.chorusRate)); o.set("chorusDepthMs", num(t.chorusDepthMs));
   o.set("chorusMs", num(t.chorusMs)); o.set("chorusFeedback", num(t.chorusFeedback));
   o.set("phaserMix", num(t.phaserMix)); o.set("phaserRate", num(t.phaserRate)); o.set("phaserDepth", num(t.phaserDepth));
-  o.set("phaserFeedback", num(t.phaserFeedback));
+  o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
   return o;
 }
 

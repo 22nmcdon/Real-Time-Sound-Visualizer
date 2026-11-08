@@ -160,6 +160,7 @@ inline constexpr SelectSpec kSelects[] = {
   { "planeLimit", "0" "\x1f" "1" "\x1f" "2", "0" },
   { "planeSnap", "0" "\x1f" "6" "\x1f" "5", "0" },
   { "delaySync", "" "\x1f" "1/2" "\x1f" "1/4" "\x1f" "1/8d" "\x1f" "1/8" "\x1f" "1/4t" "\x1f" "1/8t" "\x1f" "1/16", "" },
+  { "fxOrder", "pcd" "\x1f" "pdc" "\x1f" "cpd" "\x1f" "cdp" "\x1f" "dpc" "\x1f" "dcp", "pcd" },
   { "inputFrom", "live" "\x1f" "gen2", "live" },
   { "gen2Figure", "Circle" "\x1f" "Square" "\x1f" "Polygon" "\x1f" "Star" "\x1f" "Rose" "\x1f" "Heart" "\x1f" "Infinity" "\x1f" "Spiral" "\x1f" "Spirograph" "\x1f" "Butterfly", "Circle" },
   { "inputMode", "0" "\x1f" "1" "\x1f" "2" "\x1f" "3", "0" },

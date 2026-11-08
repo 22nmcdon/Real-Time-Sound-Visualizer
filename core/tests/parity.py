@@ -299,7 +299,8 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       bDelayMix=0, bDelayMs=375, bDelayFeedback=0.35, bDelayPingPong=0, bChorusMix=0,
                       bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0,
                       phaserMix=0, phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, ppush=0, phr=0,
-                      bPhaserMix=0, bPhaserRate=0.3, bPhaserDepth=0.7, bPhaserFeedback=0.3, bppush=0, ev="")
+                      bPhaserMix=0, bPhaserRate=0.3, bPhaserDepth=0.7, bPhaserFeedback=0.3, bppush=0,
+                      fxOrder=0, bFxOrder=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -414,6 +415,19 @@ def plane_scenarios():
                     phr=1, ppush=0.3, bppush=-0.4))
     out.append(dict(planeScaleX=1.05, phaserRate=8, ev="400:phaserMix:0.9;1000:phaserDepth:0.2;1500:phaserMix:0;"
                     "1900:phaserMix:0.6;2200:phaserFeedback:0.75"))
+    # The order (F5b): each of the six with all three on, the delay short
+    # enough to come back and fed back, so a stage after it copies its
+    # repeats and one before it does not; B's own in another order than A's
+    # (the page sends both layers one order, but the engine holds one each,
+    # so they are run apart here); and the order moved under the pairs, the
+    # last move to an index the table has not got, which is the first order.
+    for k in range(6):
+        out.append(dict(fxOrder=k, phaserMix=0.8, phaserRate=5, phaserDepth=0.6, phaserFeedback=0.5,
+                        chorusMix=0.6, chorusRate=2.2, chorusFeedback=0.4, delayMix=0.5, delayMs=6, delayFeedback=0.6))
+    out.append(dict(fxOrder=1, planeShear=0.2, phaserMix=0.7, chorusMix=0.5, delayMix=0.4, delayMs=8, bown=1, bFxOrder=4,
+                    bPhaserMix=0.7, bChorusMix=0.5, bDelayMix=0.4, bDelayMs=5, bDelayFeedback=0.5))
+    out.append(dict(phaserMix=0.8, phaserRate=4, chorusMix=0.5, chorusRate=3, delayMix=0.5, delayMs=7, delayFeedback=0.5,
+                    ev="700:fxOrder:5;1500:fxOrder:2;2100:fxOrder:9"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -699,6 +713,23 @@ check("and against layer B turned the other way",
 flips = next(i for i, l in enumerate(lines) if "900:planeOS:1" in l)
 check("and against an oversampler that kept its history through a change of factor",
       worst(js_one(lines[flips].replace(";1700:planeOS:4", ";1700:planeOS:2")), row(cpp_rows[flips])) > 1e-6)
+# The order (F5b): the six orders must each be their own - every pair of the
+# core's runs apart - and the page's run in the first order, or in B's
+# order read as A's, or with a move left out, must not pass for the core's.
+# Without these a table both sides ignored would pass every run above.
+ordered = [next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " fxOrder=%d " % k in l
+                and " chorusFeedback=0.4 " in l) for k in range(6)]
+apart = min(worst(row(cpp_rows[a]), row(cpp_rows[b])) for a in ordered for b in ordered if a < b)
+check("the six orders of the phaser, chorus and delay are six different sounds", apart > 1e-3, "%.3g" % apart)
+last = ordered[5]
+check("and against the page's run in the first order",
+      worst(js_one(lines[last].replace(" fxOrder=5 ", " fxOrder=0 ")), row(cpp_rows[last])) > 1e-6)
+bo = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bFxOrder=4 " in l)
+check("and against B's own effects run in A's order",
+      worst(js_one(lines[bo].replace(" bFxOrder=4 ", " bFxOrder=1 ")), row(cpp_rows[bo])) > 1e-6)
+mv = next(i for i, l in enumerate(lines) if "1500:fxOrder:2" in l)
+check("and against an order moved under the pairs with one move left out",
+      worst(js_one(lines[mv].replace(";1500:fxOrder:2", "")), row(cpp_rows[mv])) > 1e-6)
 # The drawings: a solid that was never reset mid-lap, and a random LFO drawing
 # from another seed, must both be told apart.
 walk = next(i for i, l in enumerate(lines) if "1900:reset" in l)

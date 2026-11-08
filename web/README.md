@@ -5090,3 +5090,16 @@ nought and keeps what it had, on puts that back. A test that switches a
 module on from its default could not tell "put back what it had" from "put
 back the default", so `racktest.py` sets 45 where the default is 30, and
 reads what the engine reads (`echo.chorus`) as well as the knob.
+
+**Moving an element takes it out of the page for a moment, and a pointer it
+captured goes with it.** The rack's first drag ended on its first pixel: the
+module was re-inserted where it already was, its handle lost the pointer it
+had captured, and every later move and the release went to whatever was
+underneath, so the order never changed and nothing said so. The drag now
+follows the pointer from the document while it lasts, which is what holds
+it, and moves only the other modules around the one held, which keeps the
+capture (and the cursor) as well. `racktest.py` drags with the real mouse
+for this reason; a synthetic event on the handle would have passed.
+
+**A handle pressed with the pointer is not given the focus, so its own
+keydown never hears Escape.** The drag's Escape listens on the document.

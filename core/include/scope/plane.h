@@ -51,7 +51,18 @@ struct PlaneTimeTone {
   double chorusMix = 0, chorusRate = 0.6, chorusDepthMs = 3, chorusMs = 12, chorusFeedback = 0;
   // P8e, the phaser: amount, sweep in hertz, range (0 to 1 of its octaves), resonance.
   double phaserMix = 0, phaserRate = 0.3, phaserDepth = 0.7, phaserFeedback = 0.3;
+  // F5b: which order the three run in after the plane, an index into kFxOrders.
+  int fxOrder = 0;
 };
+
+/* The orders the phaser (p), the chorus (c) and the delay (d) can run in, as
+   the page's FX_ORDER_STAGES: the first is the order they always had. A setup
+   names its order by these letters (fxOrder) and the engine is given the
+   index, which is never stored, so this table can grow without a saved code
+   changing what it means. The plane is always first: its turn is the screen's
+   rotation, which the trigger and the lanes see before anything copies it. */
+inline constexpr const char* kFxOrders[] = { "pcd", "pdc", "cpd", "cdp", "dpc", "dcp" };
+inline constexpr int kFxOrderCount = 6;
 
 // What a layer has of the plane: layer B's own is this.
 struct PlaneLayerTone : PlaneShapeTone, PlaneTimeTone {};
@@ -329,38 +340,48 @@ class Plane {
 
   void timeStep(TimeFx& fx, const Time& T, double x, double y) {
     const PlaneTimeTone& t = *T.t;
-    // The phaser first, so the chorus and the echoes are of the phased pair.
-    if (T.phOn) {
-      const double fb = std::fmax(0.0, std::fmin(kPhaserFeedbackMax, t.phaserFeedback));
-      const double wl = allpassChain(fx.ps, 0, T.aL, x + fb * fx.pl);
-      const double wr = allpassChain(fx.ps, 2 * kPhaserStages, T.aR, y + fb * fx.pr);
-      fx.pl = wl; fx.pr = wr;
-      const double m = T.ph;
-      x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
-    }
-    if (t.chorusMix > 0) {
-      const double base = t.chorusMs * rate_ / 1000, depth = t.chorusDepthMs * rate_ / 1000;
-      const double lim = chorusMax_ - 3;
-      const double wl = readLine(fx.cl, fx.cw, std::fmax(1.0, std::fmin(lim, base + depth * T.sin)), chorusMax_);
-      const double wr = readLine(fx.cr, fx.cw, std::fmax(1.0, std::fmin(lim, base + depth * T.cos)), chorusMax_);
-      const double fb = std::fmax(0.0, std::fmin(0.9, t.chorusFeedback));
-      fx.cl[static_cast<std::size_t>(fx.cw)] = static_cast<float>(x + fb * wl);
-      fx.cr[static_cast<std::size_t>(fx.cw)] = static_cast<float>(y + fb * wr);
-      fx.cw = fx.cw + 1 == chorusMax_ ? 0 : fx.cw + 1;
-      const double m = t.chorusMix;
-      x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
-    }
-    if (T.delayOn) {
-      const double want = std::fmax(1.0, std::fmin(static_cast<double>(delayMax_ - 3), T.echoMs * rate_ / 1000));
-      fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide_;
-      const double echoL = readLine(fx.dl, fx.dw, fx.dNow, delayMax_);
-      const double echoR = readLine(fx.dr, fx.dw, fx.dNow, delayMax_);
-      const double fb = std::fmax(0.0, std::fmin(0.9, t.delayFeedback));
-      const auto w = static_cast<std::size_t>(fx.dw);
-      if (t.delayPingPong) { fx.dl[w] = static_cast<float>(x + fb * echoR); fx.dr[w] = static_cast<float>(y + fb * echoL); }
-      else { fx.dl[w] = static_cast<float>(x + fb * echoL); fx.dr[w] = static_cast<float>(y + fb * echoR); }
-      fx.dw = fx.dw + 1 == delayMax_ ? 0 : fx.dw + 1;
-      x += T.echo * echoL; y += T.echo * echoR;
+    /* In the setup's order (F5b): by default the phaser first, so the chorus and
+       the echoes are of the phased pair. Each stage's arithmetic is as it was,
+       so the default order is the old sum to the bit. */
+    const char* order = kFxOrders[t.fxOrder >= 0 && t.fxOrder < kFxOrderCount ? t.fxOrder : 0];
+    for (int k = 0; k < 3; k++) {
+      const char stage = order[k];
+      if (stage == 'p') {
+        if (T.phOn) {
+          const double fb = std::fmax(0.0, std::fmin(kPhaserFeedbackMax, t.phaserFeedback));
+          const double wl = allpassChain(fx.ps, 0, T.aL, x + fb * fx.pl);
+          const double wr = allpassChain(fx.ps, 2 * kPhaserStages, T.aR, y + fb * fx.pr);
+          fx.pl = wl; fx.pr = wr;
+          const double m = T.ph;
+          x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
+        }
+      } else if (stage == 'c') {
+        if (t.chorusMix > 0) {
+          const double base = t.chorusMs * rate_ / 1000, depth = t.chorusDepthMs * rate_ / 1000;
+          const double lim = chorusMax_ - 3;
+          const double wl = readLine(fx.cl, fx.cw, std::fmax(1.0, std::fmin(lim, base + depth * T.sin)), chorusMax_);
+          const double wr = readLine(fx.cr, fx.cw, std::fmax(1.0, std::fmin(lim, base + depth * T.cos)), chorusMax_);
+          const double fb = std::fmax(0.0, std::fmin(0.9, t.chorusFeedback));
+          fx.cl[static_cast<std::size_t>(fx.cw)] = static_cast<float>(x + fb * wl);
+          fx.cr[static_cast<std::size_t>(fx.cw)] = static_cast<float>(y + fb * wr);
+          fx.cw = fx.cw + 1 == chorusMax_ ? 0 : fx.cw + 1;
+          const double m = t.chorusMix;
+          x = x * (1 - m / 2) + wl * m / 2; y = y * (1 - m / 2) + wr * m / 2;
+        }
+      } else {
+        if (T.delayOn) {
+          const double want = std::fmax(1.0, std::fmin(static_cast<double>(delayMax_ - 3), T.echoMs * rate_ / 1000));
+          fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide_;
+          const double echoL = readLine(fx.dl, fx.dw, fx.dNow, delayMax_);
+          const double echoR = readLine(fx.dr, fx.dw, fx.dNow, delayMax_);
+          const double fb = std::fmax(0.0, std::fmin(0.9, t.delayFeedback));
+          const auto w = static_cast<std::size_t>(fx.dw);
+          if (t.delayPingPong) { fx.dl[w] = static_cast<float>(x + fb * echoR); fx.dr[w] = static_cast<float>(y + fb * echoL); }
+          else { fx.dl[w] = static_cast<float>(x + fb * echoL); fx.dr[w] = static_cast<float>(y + fb * echoR); }
+          fx.dw = fx.dw + 1 == delayMax_ ? 0 : fx.dw + 1;
+          x += T.echo * echoL; y += T.echo * echoR;
+        }
+      }
     }
     this->x = x; this->y = y;
   }
