@@ -35,7 +35,7 @@ function definition(name) {
 }
 
 const STUBS = `
-const state = { timebase: 4, position: 0.1, positionMod: 0, holdoffMs: 0, level: 0, edge: "rising", trigSource: 0,
+const state = { beamInk: "accent", bInk: "lane", timebase: 4, position: 0.1, positionMod: 0, holdoffMs: 0, level: 0, edge: "rising", trigSource: 0,
                 acHz: 5, channels: [], filter: { on: false, type: "lowpass", cutoff: 1000, res: 0 }, cutoffMod: 0, resMod: 0,
                 lagOn: false, lagMs: 0, lagMod: 0, lagAuto: false, midSide: false, rotate: 0, rotateMod: 0,
                 analyseAt: "post", measureAt: "pre", source: null, lagActual: 0, starved: 0,
@@ -71,7 +71,7 @@ const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS"
   "filterInPlace", "filterNow", "AC_CORNER_MIN", "dcBlockerCoefficients", "turnOf", "rotateTurns", "rotatesSignal",
   "MID_SIDE_TURNS", "MID_SIDE_GAIN", "MID_SIDE_FLIP", "lagSeconds", "lagActive", "SHAPE_STRIDE", "strayBetween",
   "capture", "findTriggerIndex",
-  "PAD", "plot", "wipeScreen", "clearOrFade", "stacked", "sourceFigures", "drawMain", "drawXY", "playingKind",
+  "PAD", "plot", "wipeScreen", "clearOrFade", "stacked", "sourceFigures", "drawMain", "figureInk", "drawXY", "playingKind",
   "PHOSPHOR_N", "phosphor", "makeMoments", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
   "phosphorDeposit", "phosphorReadGrid", "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "METER_DRIFT",
   "makePictureMeter", "PICTURE_KEYS", "makePictureEngine", "const pictureEngine = makePictureEngine();",

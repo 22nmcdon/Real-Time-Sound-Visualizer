@@ -5190,3 +5190,11 @@ and the estimate left the strings' spread. It now waits until the note is
 null bent the first recorded log with any deposit, and under load that log's
 deposits were all at the top, where a step brighter is no change: the null
 read nought. It now takes the first log holding a deposit the bend can move.
+
+**Two layers' figures can be one figure.** The first ink test held a note in
+each hand of a split, and A's ink never showed: a lone note is the same circle
+in either layer, so B drew over A exactly. A test that reads a figure's ink
+off the screen needs the two figures to differ - a fifth in one hand, one note
+in the other. And Scan depth is a layer's own (`bScan`), so a test wanting
+both layers' rings sets it with each layer on the panel; set once, only A
+reads and only A's ring is drawn.

@@ -332,7 +332,8 @@ Not layout, and each one page, core and parity work where it touches the sound:
   mappings (Expression). Queued already, with the rename of Bend to Warp.
 - Cutting the modulation sources to three, with its decode pass.
 - Effect order, which makes the rack's order a field of the setup code.
-- The beam's ink and Layer B's ink.
+- The beam's ink and Layer B's ink. *Built 8 Nov:* the accent and five lane inks as
+  swatches, B's as a menu defaulting to its lane's; terracotta left out as the reticle's.
 - Undo and redo, and A/B compare.
 - The window's *Size*, the editor's size remembered, and its default and minimum.
 - Optional: Delay's Tone, Low cut, Width and Wow; a modulation envelope of its own;

@@ -116,6 +116,9 @@ inline constexpr SelectSpec kSelects[] = {
   { "midiOut", "", "" },
   { "midiOutCh", nullptr, "" },
   { "beamLevel", "off" "\x1f" "subtle" "\x1f" "moderate" "\x1f" "high", "moderate" },
+  // Layer B's ink: only the look, which the core never draws, but every
+  // menu on the page is the panel's, so a host's view of it is the page's.
+  { "bInk", "lane" "\x1f" "accent" "\x1f" "ch1" "\x1f" "ch2" "\x1f" "ch3" "\x1f" "ch4" "\x1f" "ch5", "lane" },
   { "persistence", "0" "\x1f" "0.3" "\x1f" "0.12" "\x1f" "0.04" "\x1f" "-1" "\x1f" "", "0" },
   { "spectroSpan", "2" "\x1f" "5" "\x1f" "10" "\x1f" "30", "5" },
   { "xyX", "0" "\x1f" "1", "0" },

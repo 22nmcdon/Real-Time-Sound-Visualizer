@@ -53,6 +53,8 @@ CONTROL = {
     # have no other button, so one added without its value fails.
     "midiMode": ["midiDyad", "midiMono", "midiPoly"],
     "planeOS": ["planeOS1", "planeOS2", "planeOS4"],
+    # The beam's ink, a swatch an ink.
+    "beamInk": ["inkAccent", "inkCh1", "inkCh2", "inkCh3", "inkCh4", "inkCh5"],
 }
 # Ruled fields with no control of their own, and why.
 NO_CONTROL = {
