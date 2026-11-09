@@ -481,6 +481,39 @@ with sync_playwright() as pw:
     check("and a code from before poly existed comes back as the defaults",
           trip["old"] == {"count": 2, "which": "outer", "just": False}, str(trip["old"]))
 
+    print("\n--- Glide in Poly ---")
+    # Until 9 Nov Glide moved only the one pitch Dyad and Mono share, and a
+    # chord's notes stepped whatever it said. Now a new note starts where the
+    # last had got to and slides to its own. C4 held, let go, then G4 alone:
+    # in its first 40 ms G4 is still on its way up from C4 with Glide at
+    # 300 ms, and there three seconds later. The null: the same with Glide off is
+    # at G4 from the start, so the early reading can tell a glide from none.
+    GLIDE = """(glideMs) => {
+      const rate = 44100, quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
+      const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+      core.set('shape', 'sine'); core.set('glideMs', glideMs); core.set('releaseMs', 2);
+      const run = (sec) => { const n = Math.round(rate * sec), a = [0, 1, 2, 3].map(() => new Float32Array(n));
+                             core.block(a[0], a[1], n, a[2], a[3]); return a[2]; };
+      // C4, let go and quiet before G4, so the early reading is G4's alone:
+      // under C4's tail the two read as the octave below C4.
+      core.set('voices', [{ note: 60, freq: 261.63, velocity: 1, role: 'xy' }]); run(0.4);
+      core.set('voices', []); run(0.05);
+      core.set('voices', [{ note: 67, freq: 392.0, velocity: 1, role: 'xy' }]);
+      // Late after ten of the glide's 300 ms, since it nears its note as an exponential does.
+      const early = run(0.04), late = (run(3), run(0.1));
+      return { early: estimateFrequency(early, rate), late: estimateFrequency(late, rate) };
+    }"""
+    slid = p.evaluate(GLIDE, 300)
+    still = p.evaluate(GLIDE, 0)
+    print("    Glide 300 ms: G4's first 40 ms read %s Hz, three seconds on %s; Glide off: %s, %s" % (
+        slid["early"] and round(slid["early"], 1), slid["late"] and round(slid["late"], 1),
+        still["early"] and round(still["early"], 1), still["late"] and round(still["late"], 1)))
+    check("with Glide, a new note in Poly starts on its way from the last note's pitch and arrives",
+          slid["early"] is not None and 262 < slid["early"] < 380 and slid["late"] is not None and abs(slid["late"] - 392) < 1,
+          str(slid))
+    check("null: with Glide off it is at its own pitch from the start",
+         still["early"] is not None and abs(still["early"] - 392) < 1, str(still))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

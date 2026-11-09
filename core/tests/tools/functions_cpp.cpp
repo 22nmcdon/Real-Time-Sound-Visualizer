@@ -149,10 +149,11 @@ int main(int argc, char** argv) {
       }
       std::vector<scope::Voice> voices;
       std::vector<double> out;
+      double glideFrom = 0;  // the layer's last note, as the generator keeps it
       const long samples = static_cast<long>(d("samples"));
       for (long i = 0; i < samples; i++) {
         for (const auto& what : events[i]) {
-          if (what == "null") scope::reconcileVoices(voices, nullptr, t, c);
+          if (what == "null") scope::reconcileVoices(voices, nullptr, t, glideFrom, c);
           else if (what.rfind("cut:", 0) == 0) {
             const auto k = static_cast<std::size_t>(num(what.substr(4)));
             if (k < voices.size()) voices[k].fade = c.cutSamples;
@@ -178,11 +179,11 @@ int main(int argc, char** argv) {
                 list.push_back({ static_cast<int>(num(f[0])), num(f[1]), num(f[2]), f[3] });
               }
             }
-            scope::reconcileVoices(voices, &list, t, c);
+            scope::reconcileVoices(voices, &list, t, glideFrom, c);
           }
         }
         const double bend = d("bend") + (d("bend2") - d("bend")) * static_cast<double>(i) / static_cast<double>(samples);
-        scope::sound(voices, t, bars, d("amount"), bend, d("duck"), 1 / rate, d("glide"), x, c);
+        scope::sound(voices, t, bars, d("amount"), bend, d("duck"), 1 / rate, d("glide"), x, c, false, d("pglide"));
         out.insert(out.end(), c.mix.begin(), c.mix.end());
       }
       show(out);

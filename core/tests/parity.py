@@ -484,7 +484,7 @@ VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine
                       cbits=0, chz=0, n=1, cents=0, fm=0, mod=1, ring=0, sync=1, sub=0, suboct=1, subsine=0,
                       width=0.25, table=1.5, morph=0, qmask=0, qglide=1, factor=2, fmr=0, syncr=0, shr=0, vpush=0,
                       dp=0, fp=0, bars="-", amount=0, bend=1, bend2=1, duck=0.9, warp=0, wat=0.25,
-                      glide=1 - math.exp(-1 / 240), ev="0:none")
+                      glide=1 - math.exp(-1 / 240), pglide=1, ev="0:none")
 
 def voices_call(over):
     p = dict(VOICE_DEFAULTS); p.update(over)
@@ -521,6 +521,13 @@ def voice_scenarios():
     # the new pitch.
     out.append(dict(ev="0:60/261.63/1.0/x+67/392.0/1.0/y;500:60/270.0/1.0/x+67/392.0/1.0/y;1500:none"))
     out.append(dict(ev="0:" + chord((C, "x"), (E, "y"), (G, "xy")) + ";300:cut:1;400:none;500:cut:0;2000:cut:2"))
+    # Glide in Poly (`pglide` the pitch's pole, `glide` the roles'): a note
+    # sliding from the last one's pitch, a chord struck while one is held, a
+    # note out of silence after every voice has gone, and a key retuned
+    # under a sliding voice.
+    out.append(dict(pglide=0.002, r=60, samples=6000,
+                    ev="0:" + chord((C, "xy")) + ";900:" + chord((C, "x"), (G, "y")) + ";1800:" + chord((E, "x"), (B, "y"))
+                       + ";2600:none;4200:" + chord((G, "xy")) + ";5000:67/400.0/1.0/xy"))
     out.append(dict(ev="0:" + chord((C, "x"), (C, "y", 0.3)) + ";0:" + chord((C, "xy"), (E, "x", 0)) + ";900:none"))
     # The quantiser, on C major with a glide, under a bend of two semitones:
     # off-key notes land on the key, then step as the bend carries them.

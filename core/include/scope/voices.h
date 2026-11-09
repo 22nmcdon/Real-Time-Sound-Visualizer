@@ -123,7 +123,8 @@ struct Voice {
   int note = 0;
   // `span` is the phase unwrapped, since the voice was born: what a note
   // joining a held chord scales to start in step with it (the page says why).
-  double phase = 0, span = 0, freq = 0;
+  // `hz` is where its glide has got to on the way to `freq` (Glide in Poly).
+  double phase = 0, span = 0, freq = 0, hz = 0;
   bool held = true, wanted = false, gone = false, inner = false, rounds = false;
   int born = 0, fade = 0;
   Envelope env, fenv;
@@ -166,6 +167,7 @@ struct VoiceContext {
 // their tails, and the oldest tails cut past `kPolyTails`. No list at all is
 // the layer switched off, and empties it.
 inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWant>* list, const LayerTone& tone,
+                            double& glideFrom,
                             VoiceContext& c) {
   c.chordMoved = true;
   if (list == nullptr) { voices.clear(); return; }
@@ -182,6 +184,16 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
     Voice* voice = nullptr;
     for (auto& v : voices) if (v.held && v.note == want.note) { voice = &v; break; }
     if (voice == nullptr) {
+      // Glide in Poly: the newest voice, held or in its tail, is where the
+      // last note had got to, and a new one slides from there (the page says
+      // why). Read before the birth, which may move the vector.
+      double from = 0;
+      int newest = -1;
+      for (const auto& v : voices) if (v.born > newest) { newest = v.born; from = v.hz; }
+      // With none left - each is dropped once its release is over - the
+      // layer's last note's pitch, as Dyad's and Mono's glide remembers it.
+      if (newest < 0) from = glideFrom;
+      glideFrom = want.freq;
       voices.emplace_back(c.rate, tone);
       voice = &voices.back();
       voice->note = want.note;
@@ -189,6 +201,7 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
       voice->phase = voice->span - kPhaseWrap * std::floor(voice->span / kPhaseWrap);
       voice->gains = gains; voice->targets = gains;
       voice->born = ++c.births;
+      voice->hz = from > 0 ? from : want.freq;
       voice->env.reset(0);
       voice->env.gate(true, want.velocity);
       voice->fenv.reset(0);
@@ -214,11 +227,13 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
 // heard pair, `c.mix`.
 inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveTables& bars, double amount,
                   double bend, double duck, double dt, double roleGlide, const VoiceFx& vx, VoiceContext& c,
-                  bool round = false) {
+                  bool round = false, double glide = 1) {
   c.mix = { 0, 0 };
   for (auto& voice : voices) {
     if (voice.gone) continue;
-    const double f = c.qMask ? quantise(voice.q, voice.freq * bend, c.qMask, c.qHold, c.qGlide) : voice.freq * bend;
+    if (glide >= 1) voice.hz = voice.freq;
+    else voice.hz += (voice.freq - voice.hz) * glide;
+    const double f = c.qMask ? quantise(voice.q, voice.hz * bend, c.qMask, c.qHold, c.qGlide) : voice.hz * bend;
     voice.phase += kTwoPi * f * dt;
     voice.span += kTwoPi * f * dt;
     if (voice.phase >= kPhaseWrap) voice.phase -= kPhaseWrap;

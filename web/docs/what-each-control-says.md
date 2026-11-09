@@ -15,12 +15,10 @@ Each line was checked against the control's code, its section's notes and the he
 Seven are about the instrument rather than the words - the drafting found them by reading
 what each control actually does:
 
-1. **Glide does nothing in Poly** - the default and every preset's mode - in the page and
-   in the core: it slides the one base pitch Dyad and Mono use, and a chord's notes each
-   have their own. G3 has just put Glide beside Shape. Give Poly a glide of its own (each
-   voice sliding from the last note it played), or keep it and say so? **Interval**,
-   **Phase** and **Tuning** are idle in Poly too (chords play at their keys, tuned by
-   *Tune a chord*); say so in the line, or grey them in Poly?
+1. ~~**Glide does nothing in Poly**~~ - settled 9 Nov: fixed. Each new note slides from the
+   last note's pitch, a chord's notes together, out of silence too; page and core, with
+   parity. Still open: **Interval**, **Phase** and **Tuning** are idle in Poly (chords play
+   at their keys, tuned by *Tune a chord*); say so in the line, or grey them in Poly?
 2. **The Plane's Turn is not heard by default.** The speakers turn with the figure only
    while *Speakers get* (Scope & measure › Filter) is on *Shaped*, and it starts on
    *Input*; the help sheet says the Turn turns the sound with the figure. The same holds
@@ -113,7 +111,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | table | Position | Where the wavetable sits among its four drawn cycles, crossfading the two either side. Put a source on it and the timbre travels. | 129 | - |
 | cycleGo | Cycle | Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw. | 117 | - |
 | barsGo | Drawbars | The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab. | 122 | - |
-| glide | Glide | How long each note slides from the last one's pitch rather than stepping; off at nought. Dyad and Mono only: Poly's notes step. | 127 | yes: it glides the base pitch, so in Poly, the default, it does nothing; with no keyboard it glides a turn of Frequency |
+| glide | Glide | How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there. | 142 | yes: one Glide for both hands; a note out of silence slides from the last note however long ago; a sliding note does not land in step with the chord, so its figure turns a little before it settles; with no keyboard it glides a turn of Frequency |
 | interval | Interval | The second channel against the first, in Mono or with no keyboard. Small whole-number ratios close the figure: a fifth is a still 2:3. | 134 | yes: in Dyad the notes you play set it, and the menu shows what they set; Poly's chords ignore it; at a unison Phase decides between line and circle |
 | tuneJust | Just | Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick. | 135 | yes: how fast tempered intervals turn - a fifth about three quarters of a turn a second, a major third nearly nine, a blur under persistence |
 | tuneEqual | Equal | Takes the keys as an equal-tempered piano has them, a little off the ratios, so the figure turns at the rate the interval beats. | 128 | - |
