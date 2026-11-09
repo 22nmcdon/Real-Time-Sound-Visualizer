@@ -2766,3 +2766,12 @@ check the page's copy and run it.
 On Linux the web view needs WebKitGTK 4.1 and GTK 3, and the standalone ALSA:
 `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`, with the X11 and
 freetype headers JUCE asks for.
+
+**An editor's size is read before its limits are set.** `setResizeLimits` in
+JUCE ends with `setBoundsConstrained(getBounds())`, so called on an editor
+still 0x0 it resizes it to the minimum, and `resized()` - which keeps the
+window's size for the project - stored 960x600 over the size the processor
+remembered. The face opened at 960x600 every time while the shell test, which
+only read the processor's number, passed. The editor now reads and sets its
+size first; the shell test builds the editor, fresh and after 1111x777, and on
+the old ordering reads 960x600 for both.
