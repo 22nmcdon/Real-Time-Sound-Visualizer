@@ -115,6 +115,40 @@ routing, by source or by destination, each with its depth and ✕, and a switch 
 that silences its routings without losing them. The **fade** moves here from Settings with
 its Restart and Loop, as the one setting that acts on every routing.
 
+### Modulation on a knob
+
+Agreed 9 Nov. Today a modulated knob is hard to read and harder to change: the source's
+reach is a 1.5-pixel ring against the value's arc (LFO 1's charcoal reads as a smudge on
+it), only one source is drawn, the dot for where the control is now is five pixels, and
+the only way to a depth is three seven-pixel dots at the shoulder. Its editor is headed
+*Amplitude* over a knob named *Level*, and its plain sliders make +35% and −20% look alike.
+
+![Modulation on a knob: six states, and the editor beside today's](the-face-second-pass/10-modulation-on-a-knob.png)
+
+**On the knob.** One ring, three pixels, a little outside the value's arc, in the
+*selected* source's ink, from the hand's value to where that source takes it - backwards
+for a negative depth. Every other source on it is a tick in its ink at its reach. The dot
+on the ring is where the control is this instant, the sum of them all. The pointer is
+always the hand's value, so the knob never swings while it is being turned. The selected
+source is the card last pressed (or the editor row), if it is on this knob, and otherwise
+the knob's first; pressing a card shows its ring on every knob it is on. The shoulder's
+dots stay, with a pressable area of about 20 px. The cell still measures the same with
+nought to three sources (`patchtest.py`).
+
+**Changing a depth where it is.** Alt-drag the knob (Option on a Mac), the standard
+Serum set: it moves the selected source's depth, not the value. Shift stays fine
+adjustment, as on every knob, and Alt with Shift is fine depth. Or grab the ring: pointed
+at, its end shows a handle to drag round. While either moves, the reading above the knob
+says whose depth and how much (*LFO 2 −30%*), and the info line says it too.
+
+**The editor** opens just above the knob, headed with the knob's own name and value. A
+bar of the control's whole range carries the hand's mark, each source's sweep as a band in
+its ink, and the dot where it is now. A row per source: its ink, its name (which opens its
+card), a small live picture of it, a depth that fills out from a centre line, a number to
+type into, and ✕; pressing a row selects that source. Then the sources not on it, as
+today, and one line saying Alt-drag. The source's own editor lists its knobs with the
+same row, one law for a depth as now.
+
 ### The Picture section
 
 Amount, Scan, Strike and the three meters in a group with the hand's link, titled
@@ -244,6 +278,39 @@ to run only when something routes it.
 | Perform: Morph's A / B | Renamed *From / To* |
 | Perform: everything else | Stays |
 
+## Saying what a control does
+
+Agreed 9 Nov, over tooltips, a help mode on its own, and today's notes behind each
+section's dots. Tooltips cover the neighbours on a face this dense and flicker across a
+row of knobs; a mode is something to remember to enter; the notes are about a section,
+not the knob under the hand, and nothing says they are there.
+
+![The info line, with Strike pointed at](the-face-second-pass/08-info-line.png)
+
+**The info line** runs along the foot of the window (in the verdict's place under the
+screen on the compact face): the control's name, its value, the gold dot if a host can
+automate it, the hand it applies to, one plain sentence, and **More**. A control takes the
+line once the pointer has *rested* on it for about a third of a second, so crossing the
+face on the way to More does not change it; touching a control - a knob turned, a menu
+chosen - takes it at once. A switch in Settings turns it off.
+
+![More opens the control's card](the-face-second-pass/09-info-card.png)
+
+**The card** opens from More, from a right-click (a long press on a touch screen) on the
+control itself, or from ? while the window has the keyboard - which a host often keeps,
+so ? is not shown on the face. It sits beside the control and is not a mode: nothing dims
+and the instrument plays on. The sentence again, a paragraph where one sentence is not
+enough, and facts the page fills in itself - the range and what a double-click puts it
+back to, the other hand's value, what is modulating it. Arrows step through the section;
+Esc or a click away closes it. It replaces the notes behind each section's dots, so
+there is one place to read about a control rather than two.
+
+One table of words keyed by control id: a sentence for every control, a paragraph for
+the forty or so that need one. A test fails if a control has no sentence, which makes
+every later stage write its own; another sweeps the pointer across a row of knobs and
+requires the line unchanged, rests on one and requires it changed, and right-clicks one
+and requires its card, each with its null.
+
 ## At the plugin's window
 
 ![The same face at 1200×680](the-face-second-pass/07-at-1200x680.png)
@@ -262,10 +329,14 @@ Each leaves the suite green and is pushed alone.
 - **G3 Play as drawn,** and the strays moved (Frequency and Phase to Ink, the scope's
   options to Scope & measure, the pictures' row to Advanced), Expression on show above the
   compact face, the filter greyed, the cut-off menus, the face growing at large windows.
+- **G3b Saying what a control does.** The info line, the card, the table of words
+  for everything on the face after G3 (read by the owner before it ships), the notes
+  behind the dots retired, and the test that every control has its sentence.
 - **G4 The header and Enlarge.** Versions A/B and the views out; Enlarge with Picture
   only, which hands and the trail.
 - **G5 The modulation row.** Full width, the Photocell card, the drawn editors, Routings
-  with the fade; CLAUDE.md's rule rewritten.
+  with the fade; CLAUDE.md's rule rewritten. And modulation on a knob: the ring, the
+  ticks and the dot, Alt-drag and the ring's handle, the new editor.
 - **G6 The hands.** The selector, a link per section, the new twins, routings that follow
   the link, Edit A/B and the modules' layer switches retired.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.
