@@ -27,6 +27,10 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, red, detail=""):
+    """A check's null: the same comparison fed a value it must reject."""
+    check("null: " + name, red, detail)
+
 
 READ = """([tone, n, rate]) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
@@ -107,9 +111,17 @@ with sync_playwright() as pw:
     swing = read({"mode": "harmonograph", "swingRate": 2.1}, 88200)["hz"]
     check("a harmonograph at 2.1 Hz on a two-second window reads 2.1, through the second pass",
           near(swing, 2.1, 0.02), str(swing))
+    # Unseeded, so about one noise in four hundred has its deepest dip at the
+    # range's edge, and the estimator finds nothing at all rather than an
+    # aperiodic something. That is also not a note, and it crashed this check
+    # comparing None with a half, failing a full run once in 9 Nov's.
     noise = read({"shape": "noise"}, 8820)
-    check("noise is not a note: no frequency, and aperiodicity over a half",
-          noise["hz"] is None and noise["aperiodicity"] > 0.5, str(noise))
+    def not_a_note(found):
+        return found["hz"] is None and (found["aperiodicity"] is None or found["aperiodicity"] > 0.5)
+    check("noise is not a note: no frequency, and nothing found or aperiodicity over a half",
+          not_a_note(noise), str(noise))
+    null("a sine is a note to the same check", not not_a_note(read({"shape": "sine", "freq": 220}, 8820)))
+    null("an aperiodicity of a fifth is too periodic for it", not not_a_note({"hz": None, "aperiodicity": 0.2}))
     # A tone under noise at half its level: noisy enough that no dip reaches
     # YIN's threshold, clean enough to trust. Seeded, so it is the same
     # noise every run. Summed rather than averaged over each lag, and taken
