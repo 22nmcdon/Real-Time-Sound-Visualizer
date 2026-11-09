@@ -142,7 +142,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
      controls - Scan's depth, the bend, the cutoff, the level - address the
      layer the panel shows, as the slider does for a hand (`readBack`). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 12> kKnobs { {
+  static constexpr std::array<HostKnob, 13> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the
     // bottom of the face, then the sound controls people automate. Strike,
     // softness and twist arrived in version 3; the rest kept their ids, so
@@ -157,6 +157,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
     { "echo", "Delay mix", "delayMix", 1, true },
     // P8e: the phaser's amount, and the morph last in a group of its own.
     { "phaser", "Phaser mix", "phaserMix", 2, true },
+    // P9, the reverb's amount (9 Nov), new in version 4; the morph still last.
+    { "reverb", "Reverb mix", "reverbMix", 4, true },
     { "morph", "Morph", "morphPos", 1, false },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }

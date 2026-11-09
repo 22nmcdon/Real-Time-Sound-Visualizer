@@ -24,7 +24,8 @@ What would go wrong, and what is checked for it:
 - search and `showControl` not reaching a control under a module's arrow;
 - the modules out of the order the engine runs them in, which the rack's
   title claims they are in;
-- the Reverb slot being a module: it has no switch, no controls, and is last;
+- the Reverb not being a module like the others (9 Nov; a dashed slot until
+  then): its switch, its five knobs, and last;
 - the tab's line and the rack disagreeing: a plane only turned is "Plane" on
   both, where the rule before F5 called it Dry;
 - the order (F5b): the arrow keys on a handle and a drag with the mouse
@@ -65,7 +66,7 @@ with sync_playwright() as pw:
     # build of the rack put them Delay, Chorus, Phaser under a title saying it
     # was the sound's order; the null is that order.
     engine = ["plane", "phaser", "chorus", "delay", "reverb"]
-    check("Plane, Phaser, Chorus, Delay, then the Reverb slot, top to bottom, as the engine runs them",
+    check("Plane, Phaser, Chorus, Delay, then the Reverb, top to bottom, as the engine runs them",
           order == engine, str(order))
     check("null: the first build's order is not what is there", order != ["plane", "delay", "chorus", "phaser", "reverb"])
     src = open(os.path.join(ROOT, "core", "include", "scope", "plane.h")).read()
@@ -76,7 +77,12 @@ with sync_playwright() as pw:
     slot = p.evaluate("""() => { const s = document.querySelector('.fx-module[data-fx="reverb"]');
       return { slot: s.classList.contains('fx-slot'), inputs: s.querySelectorAll('input, select, button').length,
                text: s.textContent.replace(/\\s+/g, ' ').trim() }; }""")
-    check("the Reverb is a slot with nothing to play", slot["slot"] and slot["inputs"] == 0 and "P9" in slot["text"], str(slot))
+    # Built in P9: a module like the rest, no longer the dashed slot, with a
+    # switch, its five knobs and the arrow. Its null is the slot it was, which
+    # had nothing to press.
+    check("the Reverb is a module now, not the slot: a switch, Mix, Size, Tone, Pre-delay and Spread",
+          not slot["slot"] and slot["inputs"] >= 7 and "Pre-delay" in slot["text"] and "Spread" in slot["text"], str(slot)[:200])
+    check("null: the slot it was had nothing to play", not (slot["slot"] or slot["inputs"] == 0))
     names = p.evaluate("() => document.getElementById('rackGroup').innerText")
     check("the rack says Delay and never Echo", "Delay" in names and not re.search(r"\becho\b", names, re.I),
           names[:120].replace("\n", " | "))

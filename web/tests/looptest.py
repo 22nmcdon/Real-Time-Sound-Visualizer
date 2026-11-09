@@ -364,6 +364,16 @@ with sync_playwright() as pw:
           el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
         }
       }
+      /* P9, at the owner's asking: the reverb at full Mix and full Spread,
+         and its Size at the top as well, the longest tail the loop can be
+         handed - a stage that smears every sound over seconds, so whatever
+         the picture does to the sound comes back into it for that long. The
+         bounds below are the same ones, unloosened. */
+      if (mode === 'reverb') {
+        for (const [id, v] of [['reverbMix', 100], ['reverbSpread', 100], ['reverbSize', 100]]) {
+          el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
+        }
+      }
       if (mode === 'cross') {
         setScreenKeys(true); setMidiMode('poly');
         el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -447,6 +457,7 @@ with sync_playwright() as pw:
           lastTable = table;
         }
       }
+      const reverbHeld = { mix: genSettings().reverbMix, spread: genSettings().reverbSpread, size: genSettings().reverbSize };
       if (hammer) { clearInterval(hammer); el.scanStrike.value = '50'; el.scanStrike.dispatchEvent(new Event('input')); }
       if (mode === 'cross') {
         el.scanReadsA.value = 'A'; el.scanReadsA.dispatchEvent(new Event('change'));
@@ -456,6 +467,11 @@ with sync_playwright() as pw:
         el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       }
       if (mode === 'phaser') { el.phaserMix.value = '0'; el.phaserMix.dispatchEvent(new Event('input')); }
+      if (mode === 'reverb') {
+        for (const [id, v] of [['reverbMix', 0], ['reverbSpread', 0], ['reverbSize', 40]]) {
+          el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
+        }
+      }
       if (mode) { midiPanic(); setScreenKeys(false); }
       if (scanDepth) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
       state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
@@ -463,7 +479,7 @@ with sync_playwright() as pw:
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
       genSet('amp', 0.55);
-      return { worst, moved, verdicts, leastHold, bright, motion, motionB, leastScanHold, leastLayerHold, liveReads };
+      return { worst, moved, verdicts, leastHold, bright, motion, motionB, leastScanHold, leastLayerHold, liveReads, reverbHeld };
     }"""
     # Scan's run is on the page's own brain and JavaScript generator, on a
     # page of its own: the run reads the tables that brain sends, which the
@@ -479,7 +495,8 @@ with sync_playwright() as pw:
     SEEDS = [("silence", None), ("full scale", None), ("full scale, with Scan at its top", None),
              ("full scale, Scan at its top, every note striking at full", "strike"),
              ("full scale, a split at Scan's top, each layer reading the other's picture", "cross"),
-             ("full scale, the phaser at its top with its resonance at its most", "phaser")]
+             ("full scale, the phaser at its top with its resonance at its most", "phaser"),
+             ("full scale, the reverb at full Mix, Spread and Size", "reverb")]
     for seed, mode in SEEDS:
         page = p2 if "Scan" in seed else p
         run = page.evaluate(RUN, ["silence" if seed == "silence" else "full", SECONDS, 100 if "Scan" in seed else 0, mode])
@@ -531,6 +548,13 @@ with sync_playwright() as pw:
               and ((mv["fold"][1] - mv["fold"][0]) > 0.05 or pinned(mv["fold"]) or (saturated and mv["fold"][1] < 0.05)),
               "resonance range %.2f, pitch total %r to %r, fold total %r to %r"
               % (mv["res"][1] - mv["res"][0], mv["freq"][0], mv["freq"][1], mv["fold"][0], mv["fold"][1]))
+        if mode == "reverb":
+            # The run above is only a run of the reverb if the generator held
+            # it there to the end; without this a knob that never reached the
+            # sound would pass as the plain full-scale run again.
+            rv = run["reverbHeld"]
+            check("and the reverb really was in the loop: the generator held Mix, Spread and Size at full to the end",
+                  rv["mix"] == 1 and rv["spread"] == 1 and rv["size"] == 1, str(rv))
         if "Scan" in seed:
             mo = sorted(run["motion"])
             median = mo[len(mo) // 2] if mo else 0

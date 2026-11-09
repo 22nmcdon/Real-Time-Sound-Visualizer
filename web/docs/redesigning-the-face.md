@@ -131,7 +131,10 @@ rather than hidden, so the columns never jump.
 - **Echo is now Delay**, and the knob that sets how much is heard is *Mix* in every
   module, rather than the effect's own name.
 - **Reverb** is a dashed slot, for the effect build (P9). The plan's first rule puts
-  it there: it is welcome once the screen hears it.
+  it there: it is welcome once the screen hears it. *Built 9 Nov* as the last
+  module, always last: two identical networks, one per channel, so at Spread
+  nought the figure survives its own tail, and Spread opens it into an
+  ordinary stereo tail from other taps of the same network.
 
 Delay's open state shows four controls marked *new*: Tone (a high cut on the repeats),
 Low cut, Width and Wow. They are the standard delay controls the current one lacks;

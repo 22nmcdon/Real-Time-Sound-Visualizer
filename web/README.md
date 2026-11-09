@@ -5260,3 +5260,54 @@ phase at the note - 0.65 degrees at 440 Hz - which is why `bendtest.py`'s
 difference rather than comparing the two raw. And the oscillator is held on
 for a second after a bend goes, or the voice would step back to the plain
 path with the offset still taken off.
+
+**The reverb's taps are read after the damping, and Spread rotates between
+two sets of them.** The first build read each line's output before its tone
+one-pole, as a textbook network does, and Tone barely darkened the tail -
+0.115 of brightness at a dark setting against 0.171 open, since the taps
+heard each line's first pass undamped and only the recirculation was
+dark. Read after the one-pole, dark is 0.036. Spread is not a width that mixes
+the two channels: it would make Y a blend of X, which a Lissajous reads as a
+squashed figure, not as space. The second channel is the same network, fed
+the same way, read through a second set of signs (`REVERB_ROW_B`), turned
+towards it by Spread's quarter circle; so at nought it is the first set and
+the channels agree to the bit, and at full the two sets are orthogonal. That
+gives a tail correlation of about 0.5 rather than nought: the eight lines are
+the same eight in both, so the tails share their modes, and a fuller
+decorrelation would need different networks, which is what nought would then
+cost. `reverbtest.py` feeds one asymmetric burst into both channels - a ramp,
+not a sine, since a symmetric fixture hides which channel is which - and
+requires identical outputs at nought and different ones at full.
+
+**A loud reverb keeps a Settled sound moving, and that is accepted, as it is
+for the Delay.** With the reverb at full Mix, Spread and Size, four of the
+five Settled probes went on moving while held (late 0.03 to 0.06 against
+Settled's 0.015; only the Drawbar organ settled), and the Delay at full Mix,
+already shipped, does the same to two of five (Tine piano 0.030, the split's
+right hand 0.017); the chorus and the phaser at full move everything, by
+design. It is the loop: with Scan at nought the same full reverb settled four
+of five. It is the Mix that decides it, not the length - Mix 0.15 settled all
+five even at full Size, a nine-second tail, while Mix 0.4 with a short one
+moved one - so the switch gives 0.15 (at the quarter it was built with, the
+Tine piano read 0.013 to 0.019, on the edge) and the module's line says *keeps
+a held chord moving* past a Mix of a fifth. The owner's reasoning for not
+defending against it: a defence that turned Scan down under a tail would make
+Scan's knob lie, the loop's defences are for safety and this is not a
+runaway (`looptest.py` holds every bound at the reverb's fullest), and the
+Delay ships without one. `honestytest.py` requires the switch to leave every
+preset under its heading and bounds the full setting's lates under 0.10.
+Watch two things measuring it. The one probe still moving with Scan at nought
+is the split's right hand, and it is not the screen - Picture is at nought, so
+Glow and Motion move nothing - but the tine's own tail: the strike rings on in
+the network's modes and beats against the held note inside the measure's
+bands, 0.040 late with Tone open and 0.006 with it dark. And `oscScan` set
+from code is the edited layer's Scan only: the first "Scan at nought" run left
+the split's layer B at its own 45 and blamed the reverb's loop for it.
+
+**A fixture of `Math.random` noise is a test that fails one run in three
+hundred.** `pitchtest.py` read the aperiodicity of a fresh buffer of noise
+every run, and about one buffer in three hundred has its deepest dip at the
+range's edge, where `estimatePeriod` rightly answers null rather than a
+reading; the test threw on a full run that changed nothing near it. Noise in a
+test is seeded now, so it is the same buffer every time and its reading is
+known (0.995 for seed 1).

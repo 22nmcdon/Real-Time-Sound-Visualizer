@@ -261,6 +261,9 @@ int main(int argc, char** argv) {
         { "phaserDepth", [&](double v) { t.phaserDepth = v; } },
         { "phaserFeedback", [&](double v) { t.phaserFeedback = v; } },
         { "fxOrder", [&](double v) { t.fxOrder = static_cast<int>(v); } },
+        { "reverbMix", [&](double v) { t.reverbMix = v; } }, { "reverbSize", [&](double v) { t.reverbSize = v; } },
+        { "reverbTone", [&](double v) { t.reverbTone = v; } }, { "reverbPreMs", [&](double v) { t.reverbPreMs = v; } },
+        { "reverbSpread", [&](double v) { t.reverbSpread = v; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
       // Layer B's own shape, as the page's run holds it.
@@ -287,6 +290,9 @@ int main(int argc, char** argv) {
         { "bPhaserDepth", [&](double v) { b.phaserDepth = v; } },
         { "bPhaserFeedback", [&](double v) { b.phaserFeedback = v; } },
         { "bFxOrder", [&](double v) { b.fxOrder = static_cast<int>(v); } },
+        { "bReverbMix", [&](double v) { b.reverbMix = v; } }, { "bReverbSize", [&](double v) { b.reverbSize = v; } },
+        { "bReverbTone", [&](double v) { b.reverbTone = v; } }, { "bReverbPreMs", [&](double v) { b.reverbPreMs = v; } },
+        { "bReverbSpread", [&](double v) { b.reverbSpread = v; } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;
@@ -306,7 +312,10 @@ int main(int argc, char** argv) {
             if (fields.count(field)) fields.at(field)(value); else bfields.at(field)(value);
           }
         }
-        if (i % 128 == 0 || ev != events.end()) on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1);
+        if (i % 128 == 0 || ev != events.end()) {
+          on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1,
+                           d("rvr") == 1);
+        }
         const double di = static_cast<double>(i);
         const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
         const double tp = static_cast<float>(d("tpush") * std::sin(di * 0.0047 + 1));
@@ -321,12 +330,24 @@ int main(int argc, char** argv) {
         const double bpp = static_cast<float>(d("bppush") * std::sin(di * 0.0033 + 4.5));
         const double dtp = static_cast<float>(d("dtpush") * std::sin(di * 0.0027 + 5));
         const double bdtp = static_cast<float>(d("bdtpush") * std::sin(di * 0.0021 + 5.5));
+        const double rvp = static_cast<float>(d("rvpush") * std::sin(di * 0.0026 + 6));
+        const double rvsp = static_cast<float>(d("rvspush") * std::sin(di * 0.0018 + 6.5));
+        const double rvtp = static_cast<float>(d("rvtpush") * std::sin(di * 0.0022 + 7));
+        const double brvp = static_cast<float>(d("brvpush") * std::sin(di * 0.0024 + 7.5));
+        const double brvsp = static_cast<float>(d("brvspush") * std::sin(di * 0.0016 + 8));
+        const double brvtp = static_cast<float>(d("brvtpush") * std::sin(di * 0.002 + 8.5));
         double x = 0.7 * std::sin(tw * 220 * di / rate) + 0.25 * std::sin(tw * 661 * di / rate);
         double y = 0.5 * std::sin(tw * 330 * di / rate + 0.4);
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
         if (d("inp") == 2 && i >= 200) { x = 0; y = 0; }
+        // The same asymmetric burst on both channels, as the page's run (P9).
+        if (d("inp") == 3) {
+          const double ph = std::fmod(di * 220 / rate, 1.0);
+          x = y = i < 2400 ? 0.6 * (2 * ph - 1) + 0.2 * std::sin(2 * tw * 220 * di / rate + 0.3) : 0;
+        }
         if (!on) { out.insert(out.end(), { x, y, y, x }); continue; }
-        plane.tick(t, { rp, tp, ep, etp, 0, pp, dtp }, 1 / rate, &b, { brp, btp, bep, betp, bup, bpp, bdtp });
+        plane.tick(t, { rp, tp, ep, etp, 0, pp, dtp, rvp, rvsp, rvtp }, 1 / rate, &b,
+                   { brp, btp, bep, betp, bup, bpp, bdtp, brvp, brvsp, brvtp });
         plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
         // Each layer's pair once: since P4 there is no heard pair of its own.
         plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });

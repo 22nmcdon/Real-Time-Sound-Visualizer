@@ -213,14 +213,16 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                     "planeTwist", "planeSnap", "delayMix", "delayMs", "delayFeedback", "delayPingPong",
                     "delayTone", "delayLowCut", "delayWidth", "delayWow",
                     "chorusMix", "chorusRate", "chorusDepthMs", "chorusMs", "chorusFeedback",
-                    "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
+                    "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder",
+                    "reverbMix", "reverbSize", "reverbTone", "reverbPreMs", "reverbSpread"];
     const tone = Object.fromEntries(FIELDS.map((f) => [f, n(f)]));
     const B_FIELDS = ["planeMirror", "planeRadius", "planeLimit", "planeScaleX", "planeScaleY", "planeShear",
                       "planeTwist", "planeSnap"];
     const toneB = Object.fromEntries(B_FIELDS.map((f) => [f, n("b" + f.slice(5))]));
     const B_TIME = ["delayMix", "delayMs", "delayFeedback", "delayPingPong", "delayTone", "delayLowCut", "delayWidth",
                     "delayWow", "chorusMix", "chorusRate", "chorusDepthMs",
-                    "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder"];
+                    "chorusMs", "chorusFeedback", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "fxOrder",
+                    "reverbMix", "reverbSize", "reverbTone", "reverbPreMs", "reverbSpread"];
     const bName = (f) => "b" + f[0].toUpperCase() + f.slice(1);
     for (const f of B_TIME) toneB[f] = n(bName(f));
     toneB.planeOwn = n("bown") === 1;
@@ -230,7 +232,11 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
                          "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep",
                          "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
-                         "allpassCoef", "allpassChain", "FX_ORDER_STAGES"],
+                         "allpassCoef", "allpassChain", "FX_ORDER_STAGES",
+                         "REVERB_LINES", "REVERB_LINE_MS", "REVERB_DIFFUSE_MS", "REVERB_DIFFUSE_G", "REVERB_PRE_MAX",
+                         "REVERB_ROW_A", "REVERB_ROW_B", "REVERB_T60_LOW", "REVERB_T60_SPAN", "REVERB_TONE_LOW",
+                         "REVERB_TONE_SPAN", "reverbLen", "reverbDiffuseLen", "makeReverbChannel", "reverbChannel",
+                         "reverbStep", "revX", "revY"],
                         rate, null, { tone, toneB, slots: 40 });
     const events = new Map();
     for (const e of (p.ev || "").split(";").filter(Boolean)) {
@@ -248,7 +254,9 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
         else if (field[0] === "b") toneB["plane" + field.slice(1)] = value;
         else tone[field] = value;
       }
-      if (i % 128 === 0 || events.has(i)) on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true, n("btr") === 1, n("phr") === 1);
+      if (i % 128 === 0 || events.has(i)) {
+        on = c.planeSetup(n("twr") === 1, n("ecr") === 1, true, n("btr") === 1, n("phr") === 1, n("rvr") === 1);
+      }
       g[c.__get("RADIUS_SLOT")] = n("rpush") * Math.sin(i * 0.0031);
       g[c.__get("TWIST_SLOT")] = n("tpush") * Math.sin(i * 0.0047 + 1);
       g[c.__get("ECHO_SLOT")] = n("epush") * Math.sin(i * 0.0023 + 2);
@@ -262,12 +270,26 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
       gB[c.__get("PHASER_SLOT")] = n("bppush") * Math.sin(i * 0.0033 + 4.5);
       g[c.__get("DELAY_TONE_SLOT")] = n("dtpush") * Math.sin(i * 0.0027 + 5);
       gB[c.__get("DELAY_TONE_SLOT")] = n("bdtpush") * Math.sin(i * 0.0021 + 5.5);
+      g[c.__get("REVERB_SLOT")] = n("rvpush") * Math.sin(i * 0.0026 + 6);
+      g[c.__get("REVERB_SIZE_SLOT")] = n("rvspush") * Math.sin(i * 0.0018 + 6.5);
+      g[c.__get("REVERB_TONE_SLOT")] = n("rvtpush") * Math.sin(i * 0.0022 + 7);
+      gB[c.__get("REVERB_SLOT")] = n("brvpush") * Math.sin(i * 0.0024 + 7.5);
+      gB[c.__get("REVERB_SIZE_SLOT")] = n("brvspush") * Math.sin(i * 0.0016 + 8);
+      gB[c.__get("REVERB_TONE_SLOT")] = n("brvtpush") * Math.sin(i * 0.002 + 8.5);
       let x = 0.7 * Math.sin(f.TWO_PI * 220 * i / rate) + 0.25 * Math.sin(f.TWO_PI * 661 * i / rate);
       let y = 0.5 * Math.sin(f.TWO_PI * 330 * i / rate + 0.4);
       // A pair held still, on exact halves of the snap's grid: see parity.py.
       if (n("inp") === 1) { x = -0.375; y = 0.625; }
       // A burst, then silence: what rings on after it, and that it ends (the phaser's flush, P8e).
       if (n("inp") === 2 && i >= 200) { x = 0; y = 0; }
+      /* The same asymmetric burst on both channels (P9): a saw-like ramp with
+         a third of its second harmonic, so no transform that leaves a
+         symmetric signal alone can hide; then silence. At a reverb's spread
+         of nought the two must come out the same to the bit. */
+      if (n("inp") === 3) {
+        const ph = (i * 220 / rate) % 1;
+        x = y = i < 2400 ? 0.6 * (2 * ph - 1) + 0.2 * Math.sin(2 * f.TWO_PI * 220 * i / rate + 0.3) : 0;
+      }
       if (!on) { values.push(x, y, y, x); continue; }
       c.planeTick(1 / rate);
       c.planeStep(c.__get("osA"), c.fxA, x, y); values.push(c.__get("opX"), c.__get("opY"));

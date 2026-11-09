@@ -316,6 +316,7 @@ struct Brain {
     double tone = 1, lowCut = 0, width = 1, wow = 0;  // F5c
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
     double phaser = 0, phRate = 0.3, phDepth = 0.7, phFeedback = 0.3;  // P8e
+    double rvMix = 0, rvSize = 0.4, rvTone = 0.6, rvPre = 10, rvSpread = 0;  // P9
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
@@ -716,6 +717,11 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   b.panel.setRangeNumber("phaserRate", jsMathRound(e.phRate * 100));
   b.panel.setRangeNumber("phaserDepth", jsMathRound(e.phDepth * 100));
   b.panel.setRangeNumber("phaserFeedback", jsMathRound(e.phFeedback * 100));
+  b.panel.setRangeNumber("reverbMix", jsMathRound(e.rvMix * 100));
+  b.panel.setRangeNumber("reverbSize", jsMathRound(e.rvSize * 100));
+  b.panel.setRangeNumber("reverbTone", jsMathRound(e.rvTone * 100));
+  b.panel.setRangeNumber("reverbPre", jsMathRound(e.rvPre));
+  b.panel.setRangeNumber("reverbSpread", jsMathRound(e.rvSpread * 100));
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
@@ -754,6 +760,8 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   gen.set("chorusFeedback", e.chorusFeedback, 1);
   gen.set("phaserMix", e.phaser, 1); gen.set("phaserRate", e.phRate, 1); gen.set("phaserDepth", e.phDepth, 1);
   gen.set("phaserFeedback", e.phFeedback, 1);
+  gen.set("reverbMix", e.rvMix, 1); gen.set("reverbSize", e.rvSize, 1); gen.set("reverbTone", e.rvTone, 1);
+  gen.set("reverbPreMs", e.rvPre, 1); gen.set("reverbSpread", e.rvSpread, 1);
   gen.set("fxOrder", fxOrderIndex(b), 1);
 }
 inline void syncEcho(Brain& b, Generator& gen) {
@@ -765,6 +773,8 @@ inline void syncEcho(Brain& b, Generator& gen) {
   gen.set("chorusDepthMs", e.depthMs); gen.set("chorusMs", e.centreMs); gen.set("chorusFeedback", e.chorusFeedback);
   gen.set("phaserMix", e.phaser); gen.set("phaserRate", e.phRate); gen.set("phaserDepth", e.phDepth);
   gen.set("phaserFeedback", e.phFeedback);
+  gen.set("reverbMix", e.rvMix); gen.set("reverbSize", e.rvSize); gen.set("reverbTone", e.rvTone);
+  gen.set("reverbPreMs", e.rvPre); gen.set("reverbSpread", e.rvSpread);
   gen.set("fxOrder", fxOrderIndex(b));
 }
 inline void syncQuantiser(const Brain& b, Generator& gen) {
@@ -1432,6 +1442,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.phRate = fieldNum("phaserRate") / 100;
     e.phDepth = fieldNum("phaserDepth") / 100;
     e.phFeedback = fieldNum("phaserFeedback") / 100;
+    e.rvMix = fieldNum("reverbMix") / 100;
+    e.rvSize = fieldNum("reverbSize") / 100;
+    e.rvTone = fieldNum("reverbTone") / 100;
+    e.rvPre = fieldNum("reverbPre");
+    e.rvSpread = fieldNum("reverbSpread") / 100;
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
@@ -1441,6 +1456,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("chorusMs", e.centreMs); setA("chorusFeedback", e.chorusFeedback);
     setA("phaserMix", e.phaser); setA("phaserRate", e.phRate); setA("phaserDepth", e.phDepth);
     setA("phaserFeedback", e.phFeedback);
+    setA("reverbMix", e.rvMix); setA("reverbSize", e.rvSize); setA("reverbTone", e.rvTone);
+    setA("reverbPreMs", e.rvPre); setA("reverbSpread", e.rvSpread);
     /* Layer B's own echo and chorus, with its plane (bPlane): a field the
        setup lacks is A's, as B's plane's are. */
     echoBFollow(brain);
@@ -1470,6 +1487,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       f.phRate = slide("bPhaserRate", 100, e.phRate);
       f.phDepth = slide("bPhaserDepth", 100, e.phDepth);
       f.phFeedback = slide("bPhaserFeedback", 100, e.phFeedback);
+      f.rvMix = slide("bReverbMix", 100, e.rvMix);
+      f.rvSize = slide("bReverbSize", 100, e.rvSize);
+      f.rvTone = slide("bReverbTone", 100, e.rvTone);
+      f.rvPre = slide("bReverbPre", 1, e.rvPre);
+      f.rvSpread = slide("bReverbSpread", 100, e.rvSpread);
     }
     syncEchoB(brain, gen);
     syncEchoPanel(brain, keys);
@@ -1667,7 +1689,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "delayMix" || id == "delayMs" || id == "delayFeedback" || id == "delayTone" || id == "delayLowCut"
            || id == "delayWidth" || id == "delayWow" || id == "chorusMix" || id == "chorusRate"
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback" || id == "phaserMix"
-           || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback") {
+           || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback" || id == "reverbMix"
+           || id == "reverbSize" || id == "reverbTone" || id == "reverbPre" || id == "reverbSpread") {
     Brain::EchoState& e = echoTarget(b, keys);
     if (id == "delayMix") e.mix = v / 100;
     else if (id == "delayMs") e.ms = v;
@@ -1684,7 +1707,12 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     else if (id == "phaserMix") e.phaser = v / 100;
     else if (id == "phaserRate") e.phRate = v / 100;
     else if (id == "phaserDepth") e.phDepth = v / 100;
-    else e.phFeedback = v / 100;
+    else if (id == "phaserFeedback") e.phFeedback = v / 100;
+    else if (id == "reverbMix") e.rvMix = v / 100;
+    else if (id == "reverbSize") e.rvSize = v / 100;
+    else if (id == "reverbTone") e.rvTone = v / 100;
+    else if (id == "reverbPre") e.rvPre = v;
+    else e.rvSpread = v / 100;
     syncEchoPanel(b, keys);
     syncEcho(b, gen);
   }

@@ -172,8 +172,15 @@ with sync_playwright() as pw:
 
     lag = p.evaluate("""async () => {
       const rate = 44100, n = Math.round(LAG_PROBE_SECONDS * rate);
+      /* Seeded noise, not Math.random: about one buffer of noise in three
+         hundred has its deepest dip at the range's edge, where the estimator
+         rightly answers null rather than a reading, and this read
+         .aperiodicity off it and threw (a full run on 9 Nov). The seed reads
+         0.995, the unseeded runs 0.97 at their lowest. */
+      let seed = 1;
+      const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
       const tone = new Float32Array(n), hiss = new Float32Array(n);
-      for (let i = 0; i < n; i++) { tone[i] = Math.sin(2 * Math.PI * 147 * i / rate); hiss[i] = Math.random() * 2 - 1; }
+      for (let i = 0; i < n; i++) { tone[i] = Math.sin(2 * Math.PI * 147 * i / rate); hiss[i] = rnd() * 2 - 1; }
       const t = estimatePeriod(tone, rate), h = estimatePeriod(hiss, rate);
       return { max: LAG_APERIODIC_MAX, tone: t.aperiodicity, hiss: h.aperiodicity };
     }""")

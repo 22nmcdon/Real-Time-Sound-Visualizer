@@ -499,7 +499,9 @@ Two classic effects are worth adding because they have honest pictures:
 
 Reverb is left out on purpose. On the screen it is a cloud that hides the
 figure, and the monitor chain can take a convolver later, speakers-only, if it
-is wanted.
+is wanted. *(Superseded 9 Nov: the rack's Reverb answers the cloud by being
+coherent - the same network on both channels, so at Spread nought the tail is
+the figure, fading - and is in the loop, not speakers-only.)*
 
 ### I2 · the taps
 

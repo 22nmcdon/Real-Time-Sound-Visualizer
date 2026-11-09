@@ -61,7 +61,8 @@ constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
 constexpr int Bend = Turn + 1, BendAt = Bend + 1;  // the voice's bend and where it centres
 constexpr int Phaser = BendAt + 1;  // the phaser's amount (P8e)
 constexpr int DelayTone = Phaser + 1;  // the delay's tone (8 Nov)
-constexpr int Used = DelayTone + 1;  // the slots the loop reads
+constexpr int Reverb = DelayTone + 1, ReverbSize = Reverb + 1, ReverbTone = ReverbSize + 1;  // P9
+constexpr int Used = ReverbTone + 1;  // the slots the loop reads
 }  // namespace slot
 
 enum class Mode { Wave, Harmonograph, Figure, Wireframe };
@@ -370,13 +371,14 @@ class Generator {
 
   void effect(const float* inL, const float* inR, float* outL, float* outR, int n) {
     const double dt = 1 / rate_;
-    bool twistRouted = false, echoRouted = false, phaserRouted = false;
+    bool twistRouted = false, echoRouted = false, phaserRouted = false, reverbRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
       if (r.slot == slot::Phaser) phaserRouted = true;
+      if (r.slot == slot::Reverb) reverbRouted = true;
     }
-    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, nullptr, 0, false, phaserRouted);
+    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, nullptr, 0, false, phaserRouted, reverbRouted);
     for (int i = 0; i < n; i++) {
       lfoStep(lfos_[0], rate_, random_);
       lfoStep(lfos_[1], rate_, random_);
@@ -400,8 +402,9 @@ class Generator {
     const bool layered = b_.voices.has_value();
     const double roleGlide = poleFor(4, rate_);
     bool twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false, echoRouted = false;
-    bool turnRouted = false, phaserRouted = false, bendRouted = false;
+    bool turnRouted = false, phaserRouted = false, bendRouted = false, reverbRouted = false;
     for (const auto& r : routes_) {
+      if (r.slot == slot::Reverb) reverbRouted = true;
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
       if (r.slot == slot::Phaser) phaserRouted = true;
@@ -413,7 +416,7 @@ class Generator {
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && b_.planeOwn ? &b_ : nullptr,
-                                      b_.planeTurn, turnRouted, phaserRouted);
+                                      b_.planeTurn, turnRouted, phaserRouted, reverbRouted);
     govern(fmRouted, syncRouted, shapeRouted, planeOn);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;
@@ -702,6 +705,11 @@ class Generator {
     else if (field == "phaserDepth") p.phaserDepth = v;
     else if (field == "phaserFeedback") p.phaserFeedback = v;
     else if (field == "fxOrder") p.fxOrder = static_cast<int>(v);
+    else if (field == "reverbMix") p.reverbMix = v;
+    else if (field == "reverbSize") p.reverbSize = v;
+    else if (field == "reverbTone") p.reverbTone = v;
+    else if (field == "reverbPreMs") p.reverbPreMs = v;
+    else if (field == "reverbSpread") p.reverbSpread = v;
     else return false;
     return true;
   }
@@ -833,9 +841,11 @@ class Generator {
 
   void planeTick(double dt) {
     const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0,
-                          modOr0(slot::Phaser), modOr0(slot::DelayTone) };
+                          modOr0(slot::Phaser), modOr0(slot::DelayTone), modOr0(slot::Reverb),
+                          modOr0(slot::ReverbSize), modOr0(slot::ReverbTone) };
     const PlanePushes b { modBOr0(slot::Radius), modBOr0(slot::Twist), modBOr0(slot::Echo), modBOr0(slot::EchoTime),
-                          modBOr0(slot::Turn), modBOr0(slot::Phaser), modBOr0(slot::DelayTone) };
+                          modBOr0(slot::Turn), modBOr0(slot::Phaser), modBOr0(slot::DelayTone), modBOr0(slot::Reverb),
+                          modBOr0(slot::ReverbSize), modBOr0(slot::ReverbTone) };
     plane_.tick(a_, a, dt, &b_, b);
   }
 

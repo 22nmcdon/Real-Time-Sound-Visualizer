@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <vector>
@@ -55,6 +56,9 @@ struct PlaneTimeTone {
   double phaserMix = 0, phaserRate = 0.3, phaserDepth = 0.7, phaserFeedback = 0.3;
   // F5b: which order the three run in after the plane, an index into kFxOrders.
   int fxOrder = 0;
+  // P9, the reverb: its mix, size (0 to 1 of a log law of decay times), tone
+  // (one open), pre-delay in milliseconds and spread (nought keeps the figure).
+  double reverbMix = 0, reverbSize = 0.4, reverbTone = 0.6, reverbPreMs = 10, reverbSpread = 0;
 };
 
 /* The orders the phaser (p), the chorus (c) and the delay (d) can run in, as
@@ -77,7 +81,10 @@ struct PlaneTone : PlaneLayerTone {
 
 // A sample's pushes from the routings onto a layer's plane, as the page's
 // accumulator holds them.
-struct PlanePushes { double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0, phaser = 0, delayTone = 0; };
+struct PlanePushes {
+  double radius = 0, twist = 0, echo = 0, echoTime = 0, turn = 0, phaser = 0, delayTone = 0;
+  double reverb = 0, reverbSize = 0, reverbTone = 0;  // P9
+};
 
 class Plane {
  public:
@@ -99,10 +106,19 @@ class Plane {
     double ph = 0, phPhase = 0, aL = 0, aR = 0;  // the phaser's amount, sweep, and each channel's coefficient
     double toneA = 0, cutA = 0;                     // F5c: the repeats' one-poles, nought skipped
     double toneAt = NAN;                            // the tone the coefficient was last worked out for
+    // P9, the reverb: on, its mix this sample, the size and tone last worked
+    // out, each line's gain, the input's scale, the tone's one-pole, the
+    // pre-delay in samples and Y's taps turned by the spread.
+    bool revOn = false;
+    double rev = 0, revSizeAt = NAN, revToneAt = NAN;
+    std::array<double, 8> revG {};
+    double revIn = 0, revDampA = 0, revC = 1, revS = 0;
+    int revPre = 0;
   };
 
   explicit Plane(double rate)
-      : rate_(rate), delayMax_(static_cast<int>(std::ceil(2 * rate)) + 4),
+      : rate_(rate), reverbPreMax_(static_cast<int>(std::ceil(0.1 * rate)) + 4),
+        delayMax_(static_cast<int>(std::ceil(2 * rate)) + 4),
         chorusMax_(static_cast<int>(std::ceil(0.05 * rate)) + 4),
         delayGlide_(1 - std::exp(-1 / std::fmax(1.0, 50 * rate / 1000))), phaserTop_(0.45 * rate),
         taps2_(lowpassTaps(2)), taps4_(lowpassTaps(4)) {
@@ -112,14 +128,26 @@ class Plane {
       fx.cl.assign(static_cast<std::size_t>(chorusMax_), 0.0f);
       fx.cr.assign(static_cast<std::size_t>(chorusMax_), 0.0f);
     }
+    // The reverb's lines, each layer's two channels, made here and not on the audio thread.
+    for (int i = 0; i < kReverbLines; i++) reverbLen_[i] = std::max(1, static_cast<int>(jsRound(kReverbLineMs[i] * rate / 1000)));
+    for (int k = 0; k < kReverbDiffusers; k++)
+      reverbDiffuseLen_[k] = std::max(1, static_cast<int>(jsRound(kReverbDiffuseMs[k] * rate / 1000)));
+    for (auto& fx : fx_) {
+      for (auto* c : { &fx.rvx, &fx.rvy }) {
+        c->pre.assign(static_cast<std::size_t>(reverbPreMax_), 0.0);
+        for (int k = 0; k < kReverbDiffusers; k++) c->ap[k].assign(static_cast<std::size_t>(reverbDiffuseLen_[k]), 0.0);
+        for (int i = 0; i < kReverbLines; i++) c->lines[i].assign(static_cast<std::size_t>(reverbLen_[i]), 0.0);
+      }
+    }
   }
 
   // What the plane does this block; true if it does anything. `b` is layer
   // B's own plane when it has one in force (the page's `withB` and
   // `planeOwn` both), and `turnB` its turn in radians.
   bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneLayerTone* b = nullptr,
-             double turnB = 0, bool turnRouted = false, bool phaserRouted = false) {
+             double turnB = 0, bool turnRouted = false, bool phaserRouted = false, bool reverbRouted = false) {
     phaserRouted_ = phaserRouted;
+    reverbRouted_ = reverbRouted;
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
     if (want != factor_) {
       factor_ = want;
@@ -202,7 +230,13 @@ class Plane {
     // F5c: the page's laws - 500 Hz to 20 kHz for the tone, 20 Hz to 1 kHz for the cut.
     T.cutA = t.delayLowCut > 0 ? 1 - std::exp(-kTwoPi * 20 * std::pow(50.0, std::fmin(1.0, t.delayLowCut)) / rate_) : 0;
     T.phOn = t.phaserMix > 0 || phaserRouted_;
-    T.on = T.delayOn || t.chorusMix > 0 || T.phOn;
+    // The reverb, on its mix or a routing on it, as the echo is.
+    T.revOn = t.reverbMix > 0 || reverbRouted_;
+    T.revPre = static_cast<int>(std::fmax(0.0, std::fmin(static_cast<double>(reverbPreMax_ - 1),
+                                                         jsRound(std::fmax(0.0, t.reverbPreMs) * rate_ / 1000))));
+    const double spread = std::fmax(0.0, std::fmin(1.0, t.reverbSpread)) * kPi / 2;
+    T.revC = std::cos(spread); T.revS = std::sin(spread);
+    T.on = T.delayOn || t.chorusMix > 0 || T.phOn || T.revOn;
   }
   void timeTick(Time& T, const PlanePushes& p, double dt) {
     const PlaneTimeTone& t = *T.t;
@@ -228,6 +262,26 @@ class Plane {
       const double span = kPhaserOctaves * t.phaserDepth;
       T.aL = allpassCoef(kPhaserCentre * std::pow(2.0, span * std::sin(T.phPhase)));
       T.aR = allpassCoef(kPhaserCentre * std::pow(2.0, span * std::cos(T.phPhase)));
+    }
+    if (T.revOn) {
+      T.rev = std::fmax(0.0, std::fmin(1.0, t.reverbMix + p.reverb * 0.5));
+      // The gains and the tone worked out again only when they move, as the page's.
+      const double size = std::fmax(0.0, std::fmin(1.0, t.reverbSize + p.reverbSize * 0.5));
+      if (!(size == T.revSizeAt)) {
+        T.revSizeAt = size;
+        const double t60 = kReverbT60Low * std::pow(kReverbT60Span, size);
+        double sq = 0;
+        for (int i = 0; i < kReverbLines; i++) {
+          T.revG[static_cast<std::size_t>(i)] = std::pow(10.0, -3 * reverbLen_[i] / (t60 * rate_));
+          sq += T.revG[static_cast<std::size_t>(i)] * T.revG[static_cast<std::size_t>(i)];
+        }
+        T.revIn = std::sqrt(1 - sq / kReverbLines);
+      }
+      const double rtone = std::fmax(0.0, std::fmin(1.0, t.reverbTone + p.reverbTone * 0.5));
+      if (!(rtone == T.revToneAt)) {
+        T.revToneAt = rtone;
+        T.revDampA = rtone < 1 ? 1 - std::exp(-kTwoPi * kReverbToneLow * std::pow(kReverbToneSpan, rtone) / rate_) : 0;
+      }
     }
   }
 
@@ -333,7 +387,28 @@ class Plane {
     }
   };
 
+  /* P9, the reverb, as the page's (reverbStep says why): a channel each, no
+     cross-feed, a pre-delay, four all-passes, eight lines through a
+     Householder matrix with a one-pole each, Y's taps turned by the spread. */
+  static constexpr int kReverbLines = 8, kReverbDiffusers = 4;
+  static constexpr double kReverbLineMs[kReverbLines] = { 31.3, 37.9, 41.7, 47.3, 53.1, 59.9, 67.1, 73.7 };
+  static constexpr double kReverbDiffuseMs[kReverbDiffusers] = { 4.7, 3.6, 12.7, 9.3 };
+  static constexpr double kReverbDiffuseG = 0.6, kReverbT60Low = 0.3, kReverbT60Span = 30;
+  static constexpr double kReverbToneLow = 500, kReverbToneSpan = 40;
+  static constexpr int kReverbRowA[kReverbLines] = { 1, -1, 1, -1, 1, -1, 1, -1 };
+  static constexpr int kReverbRowB[kReverbLines] = { 1, 1, -1, -1, 1, 1, -1, -1 };
+  struct ReverbChannel {
+    std::vector<double> pre;
+    int pw = 0;
+    std::array<std::vector<double>, kReverbDiffusers> ap;
+    std::array<int, kReverbDiffusers> apw {};
+    std::array<std::vector<double>, kReverbLines> lines;
+    std::array<int, kReverbLines> lw {};
+    std::array<double, kReverbLines> damp {}, outs {}, back {};
+  };
+
   struct TimeFx {
+    ReverbChannel rvx, rvy;
     std::vector<float> dl, dr, cl, cr;
     int dw = 0, cw = 0;
     double dNow = -1;
@@ -349,6 +424,46 @@ class Plane {
     const int k = static_cast<int>(i), j = k + 1 == size ? 0 : k + 1;
     const double a = buf[static_cast<std::size_t>(k)], b = buf[static_cast<std::size_t>(j)];
     return a + (b - a) * f;
+  }
+
+  // One channel a sample, as the page's reverbChannel.
+  void reverbChannel(ReverbChannel& c, const Time& T, double v) const {
+    c.pre[static_cast<std::size_t>(c.pw)] = v;
+    int read = c.pw - T.revPre;
+    if (read < 0) read += reverbPreMax_;
+    double u = c.pre[static_cast<std::size_t>(read)];
+    c.pw = c.pw + 1 == reverbPreMax_ ? 0 : c.pw + 1;
+    for (int k = 0; k < kReverbDiffusers; k++) {
+      auto& buf = c.ap[static_cast<std::size_t>(k)];
+      const int w = c.apw[static_cast<std::size_t>(k)];
+      const double d = buf[static_cast<std::size_t>(w)];
+      double y = -kReverbDiffuseG * u + d;
+      if (std::fabs(y) < 1e-30) y = 0;
+      buf[static_cast<std::size_t>(w)] = u + kReverbDiffuseG * y;
+      c.apw[static_cast<std::size_t>(k)] = w + 1 == static_cast<int>(buf.size()) ? 0 : w + 1;
+      u = y;
+    }
+    double sum = 0;
+    for (std::size_t i = 0; i < kReverbLines; i++) {
+      double o = c.lines[i][static_cast<std::size_t>(c.lw[i])];
+      if (T.revDampA > 0) {
+        double d = c.damp[i] + T.revDampA * (o - c.damp[i]);
+        if (std::fabs(d) < 1e-30) d = 0;
+        c.damp[i] = d; o = d;
+      }
+      c.outs[i] = o;  // after the tone, as the page's
+      o *= T.revG[i];
+      c.back[i] = o;
+      sum += o;
+    }
+    const double s = sum * 2 / kReverbLines, inj = u * T.revIn;
+    for (std::size_t i = 0; i < kReverbLines; i++) {
+      const int w = c.lw[i];
+      double next = c.back[i] - s + inj;
+      if (std::fabs(next) < 1e-30) next = 0;
+      c.lines[i][static_cast<std::size_t>(w)] = next;
+      c.lw[i] = w + 1 == static_cast<int>(c.lines[i].size()) ? 0 : w + 1;
+    }
   }
 
   void timeStep(TimeFx& fx, const Time& T, double x, double y) {
@@ -413,10 +528,26 @@ class Plane {
         }
       }
     }
+    // The reverb last, after the three in their order, as the page's.
+    if (T.revOn) {
+      reverbChannel(fx.rvx, T, x);
+      reverbChannel(fx.rvy, T, y);
+      double wx = 0, wy = 0;
+      for (std::size_t i = 0; i < kReverbLines; i++) {
+        wx += kReverbRowA[i] * fx.rvx.outs[i];
+        wy += (T.revC * kReverbRowA[i] + T.revS * kReverbRowB[i]) * fx.rvy.outs[i];
+      }
+      const double out = T.rev / std::sqrt(static_cast<double>(kReverbLines));
+      x = x + out * wx; y = y + out * wy;
+    }
     this->x = x; this->y = y;
   }
 
   double rate_;
+  int reverbPreMax_;
+  std::array<int, kReverbLines> reverbLen_ {};
+  std::array<int, kReverbDiffusers> reverbDiffuseLen_ {};
+  bool reverbRouted_ = false;
   int delayMax_, chorusMax_;
   double delayGlide_, phaserTop_;
   bool phaserRouted_ = false;  // a routing on the phaser's amount runs it at nought, as the echo's does

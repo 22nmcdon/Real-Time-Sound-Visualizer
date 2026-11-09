@@ -77,9 +77,9 @@ int main() {
   // its number, a hundred times each across its range. The plugin's kKnobs
   // names them (plugin/src/PluginProcessor.h, which this cannot include for
   // JUCE's sake); parity reads that list and requires this one to be it.
-  // In the plugin's kKnobs order, which parity.py reads and holds this to (F7c added three).
+  // In the plugin's kKnobs order, which parity.py reads and holds this to (F7c added three, the reverb one).
   for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "amp", "vcfCut", "oscBend",
-                          "planeTwist", "delayMix", "phaserMix", "morphPos" }) {
+                          "planeTwist", "delayMix", "phaserMix", "reverbMix", "morphPos" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
     scope::moveSliderTo(id, r->min, brain, gen, keys, lfos);

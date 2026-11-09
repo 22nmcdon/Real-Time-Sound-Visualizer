@@ -302,7 +302,10 @@ PLANE_DEFAULTS = dict(rate=48000.0, samples=2600, planeMirror=0, planeRadius=0.4
                       bChorusRate=0.6, bChorusDepthMs=3, bChorusMs=12, bChorusFeedback=0, bepush=0, betpush=0,
                       phaserMix=0, phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, ppush=0, phr=0,
                       bPhaserMix=0, bPhaserRate=0.3, bPhaserDepth=0.7, bPhaserFeedback=0.3, bppush=0,
-                      fxOrder=0, bFxOrder=0, dtpush=0, bdtpush=0, ev="")
+                      fxOrder=0, bFxOrder=0, dtpush=0, bdtpush=0,
+                      reverbMix=0, reverbSize=0.4, reverbTone=0.6, reverbPreMs=10, reverbSpread=0,
+                      bReverbMix=0, bReverbSize=0.4, bReverbTone=0.6, bReverbPreMs=10, bReverbSpread=0,
+                      rvr=0, rvpush=0, rvspush=0, rvtpush=0, brvpush=0, brvspush=0, brvtpush=0, ev="")
 
 def plane_call(over):
     p = dict(PLANE_DEFAULTS); p.update(over)
@@ -452,6 +455,28 @@ def plane_scenarios():
     out.append(dict(D, delayTone=0.5, dtpush=0.6, bown=1, bDelayMix=0.5, bDelayMs=4, bDelayTone=0.8, bdtpush=-0.7))
     out.append(dict(D, ev="500:delayTone:0.2;900:delayLowCut:0.5;1300:delayWidth:0.4;1700:delayWow:1;"
                     "2100:delayTone:1;2300:delayLowCut:0;2400:delayWidth:1;2500:delayWow:0"))
+    # P9, the reverb (9 Nov): one asymmetric burst on both channels and then
+    # silence, at a spread of nought and of one, a second of it; the decay
+    # at three sizes, which the law below is read from; its pre-delay and its
+    # tone, dark and open; pushed on all three of its destinations; brought
+    # in from nought by a routing on its mix; after all three of the others
+    # in a moved order; B's own beside A's, pushed by B's routings; and moved
+    # under the pairs, switched off at the end so its tail stops at once.
+    out.append(dict(reverbMix=1, inp=3, samples=48000))
+    out.append(dict(reverbMix=1, reverbSpread=1, inp=3, samples=48000))
+    for size in (0.1, 0.4, 0.6):
+        out.append(dict(reverbMix=1, reverbSize=size, reverbTone=1, reverbPreMs=0, inp=3, samples=48000))
+    out.append(dict(reverbMix=1, reverbPreMs=50, inp=3, samples=8000))
+    out.append(dict(reverbMix=0, reverbPreMs=50, rvr=1, inp=3, samples=8000))
+    out.append(dict(reverbMix=1, reverbTone=0.1, inp=3, samples=24000))
+    out.append(dict(reverbMix=1, reverbTone=1, inp=3, samples=24000))
+    out.append(dict(reverbMix=0.4, rvpush=0.8, rvspush=-0.6, rvtpush=0.7, samples=12000))
+    out.append(dict(reverbMix=0, rvr=1, rvpush=0.9, reverbSize=0.7, samples=12000))
+    out.append(dict(reverbMix=0.6, delayMix=0.5, delayMs=7, phaserMix=0.5, chorusMix=0.4, fxOrder=3, samples=12000))
+    out.append(dict(planeScaleX=1.1, reverbMix=0.3, bown=1, bReverbMix=0.8, bReverbSize=0.9, bReverbTone=0.3,
+                    bReverbSpread=0.6, bReverbPreMs=20, brvpush=0.4, brvspush=-0.5, brvtpush=0.6, samples=12000))
+    out.append(dict(reverbMix=0.8, reverbSpread=0.5, samples=12000,
+                    ev="3000:reverbSize:0.9;5000:reverbSpread:1;7000:reverbTone:0.2;9000:reverbMix:0"))
     return out
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
@@ -775,6 +800,69 @@ check("and against the delay's moves under the pairs with the wow's left out",
 dbo = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bDelayWow=0.8 " in l)
 check("and against B's own repeats given A's tone",
       worst(js_one(lines[dbo].replace(" bDelayTone=0.2 ", " bDelayTone=0.7 ")), row(cpp_rows[dbo])) > 1e-6)
+# P9, the reverb. First what it does, read off the core's runs; then each run
+# against the page's with one thing moved, which must not pass.
+def plane_row(over):
+    key = plane_call(over)
+    return row(cpp_rows[next(i for i, l in enumerate(lines) if l == key)])
+def lanes(v, k): return v[k::4]
+def rms_of(a): return math.sqrt(sum(x * x for x in a) / len(a)) if a else 0.0
+s0 = plane_row(dict(reverbMix=1, inp=3, samples=48000))
+s1 = plane_row(dict(reverbMix=1, reverbSpread=1, inp=3, samples=48000))
+x0, y0, x1, y1 = lanes(s0, 0), lanes(s0, 1), lanes(s1, 0), lanes(s1, 1)
+check("the reverb at a spread of nought: one asymmetric burst on both channels comes out the same on both, to the bit",
+      x0 == y0 and rms_of(x0[2400:24000]) > 0.01, "tail %.4f" % rms_of(x0[2400:24000]))
+apart_s1 = max(abs(a - b) for a, b in zip(x1, y1))
+check("null: at a spread of one the same burst comes out apart, an ordinary stereo tail", apart_s1 > 0.05 and x1 == x0,
+      "%.3f apart, X unmoved" % apart_s1)
+# The decay: the tail's level every 50 ms from 0.1 to 0.6 s, a straight line in
+# decibels whose slope is 60 dB over the size's T60, 0.3 x 30^size seconds.
+def t60_of(v):
+    x = lanes(v, 0)
+    db = [20 * math.log10(max(rms_of(x[i:i + 2400]), 1e-12)) for i in range(4800, 28800, 2400)]
+    n = len(db); t = [0.05 * k for k in range(n)]
+    tm, dm = sum(t) / n, sum(db) / n
+    slope = sum((a - tm) * (b - dm) for a, b in zip(t, db)) / sum((a - tm) ** 2 for a in t)
+    return -60 / slope
+law = {size: 0.3 * 30 ** size for size in (0.1, 0.4, 0.6)}
+got = {size: t60_of(plane_row(dict(reverbMix=1, reverbSize=size, reverbTone=1, reverbPreMs=0, inp=3, samples=48000)))
+       for size in law}
+check("its tail falls 60 dB in the size's decay time, 0.3 x 30^size seconds, to a fifth, at three sizes",
+      all(abs(got[k] / law[k] - 1) < 0.2 for k in law), ", ".join("%.2f: %.2f s for %.2f" % (k, got[k], law[k]) for k in law))
+check("null: read against the next size's law, the same tails fail it",
+      not all(abs(got[k] / law[k2] - 1) < 0.2 for k, k2 in ((0.1, 0.4), (0.4, 0.6), (0.6, 0.1))))
+# The pre-delay: the tail's first sound is the pre-delay and the shortest line
+# after the burst begins, to the sample - the run with the mix at nought (its
+# line kept by a routing) taken from it, which leaves the tail alone.
+wet = [a - b for a, b in zip(lanes(plane_row(dict(reverbMix=1, reverbPreMs=50, inp=3, samples=8000)), 0),
+                             lanes(plane_row(dict(reverbMix=0, reverbPreMs=50, rvr=1, inp=3, samples=8000)), 0))]
+first = next((i for i, v in enumerate(wet) if v != 0), None)
+want_first = round(50 * 48000 / 1000) + round(31.3 * 48000 / 1000)
+check("its first sound comes the pre-delay and the shortest line after what made it: %d samples" % want_first,
+      first == want_first, str(first))
+check("null: a pre-delay a millisecond longer is 48 samples later than that", first != want_first + 48)
+# The tone: a dark tail has less of its energy in its sample-to-sample change than an open one.
+def edge(v):
+    x = lanes(v, 0)[4800:24000]
+    return rms_of([b - a for a, b in zip(x, x[1:])]) / max(rms_of(x), 1e-12)
+dark = edge(plane_row(dict(reverbMix=1, reverbTone=0.1, inp=3, samples=24000)))
+opened = edge(plane_row(dict(reverbMix=1, reverbTone=1, inp=3, samples=24000)))
+check("a dark tone darkens the tail: under half the brightness of the open one", dark < opened / 2,
+      "%.4f against %.4f" % (dark, opened))
+check("null: the open tail is not under half its own brightness", not (opened < opened / 2))
+for over, moved, what in ((dict(reverbMix=1, reverbSpread=1, inp=3, samples=48000), " reverbSpread=1 ", " reverbSpread=0.9 "),
+                          (dict(reverbMix=0.4, rvpush=0.8, rvspush=-0.6, rvtpush=0.7, samples=12000), " rvspush=-0.6 ", " rvspush=0 "),
+                          (dict(reverbMix=0.4, rvpush=0.8, rvspush=-0.6, rvtpush=0.7, samples=12000), " rvtpush=0.7 ", " rvtpush=0 "),
+                          (dict(reverbMix=0, rvr=1, rvpush=0.9, reverbSize=0.7, samples=12000), " rvr=1 ", " rvr=0 ")):
+    at = next(i for i, l in enumerate(lines) if l == plane_call(over))
+    check("and against the page's reverb run with%s as%s" % (moved.rstrip(), what.rstrip()),
+          worst(js_one(lines[at].replace(moved, what)), row(cpp_rows[at])) > 1e-6)
+rb = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bReverbSpread=0.6 " in l)
+check("and against B's own reverb given A's pushes",
+      worst(js_one(lines[rb].replace(" brvspush=-0.5 ", " brvspush=-0.6 ")), row(cpp_rows[rb])) > 1e-6)
+rm = next(i for i, l in enumerate(lines) if "5000:reverbSpread:1" in l)
+check("and against the reverb's moves under the pairs with the spread's left out",
+      worst(js_one(lines[rm].replace("5000:reverbSpread:1;", "")), row(cpp_rows[rm])) > 1e-6)
 # The drawings: a solid that was never reset mid-lap, and a random LFO drawing
 # from another seed, must both be told apart.
 walk = next(i for i, l in enumerate(lines) if "1900:reset" in l)
@@ -794,6 +882,8 @@ FREQ, AMP, PHASE, RATIO, DETAIL, TUMBLE, DEPTH, BAR = 0, 1, 2, 3, 4, 5, 6, 7
 MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT, SWING, WIDTH, TABLE, SPIN = range(16, 30)
 TURN = SPIN + 3
 BEND, BEND_AT = TURN + 1, TURN + 2
+PHASER_S, DTONE = BEND_AT + 1, BEND_AT + 2
+REVERB, RSIZE, RTONE = DTONE + 1, DTONE + 2, DTONE + 3
 
 def route(slot, amount, index=-1, held=0, heldB=None, amountB=None, unipolar=0):
     return "%d/%r/%r/%d/%r/%r/%d" % (index, held, held if heldB is None else heldB, slot, amount,
@@ -1078,6 +1168,24 @@ def gen_runs():
     add("plane-own-routed-bare", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                                   (0, "set planeOwn true 1"), (0, "routes " + route(TURN, 0.9, index=0, amountB=0.6))],
         slots=40, lfo0="sine,40")
+    # P9, the reverb through the generator as the instrument drives it: its
+    # five fields set by name on both layers, B's own, and a routing onto
+    # each of its three slots with a different amount on B. The plane runs
+    # above take the reverb's arithmetic; these take the names and the slots
+    # the generator hands it, which a mutation pass found nothing compared
+    # (a lost reverbSpread field, B's tone read from B's size slot).
+    add("reverb-fields", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                          (0, "set reverbMix 0.6"), (0, "set reverbSize 0.7"), (0, "set reverbTone 0.3"),
+                          (0, "set reverbPreMs 20"), (0, "set reverbSpread 0.7"),
+                          (0, "set planeOwn true 1"), (0, "set reverbMix 0.5 1"), (0, "set reverbSize 0.5 1"),
+                          (0, "set reverbTone 0.8 1"), (0, "set reverbPreMs 5 1"), (0, "set reverbSpread 0.2 1"),
+                          (4096, "set reverbSpread 1"), (6144, "set reverbTone 0.1 1")], samples=8192, slots=40)
+    add("reverb-routed", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                          (0, "set reverbMix 0.3"), (0, "set planeOwn true 1"), (0, "set reverbMix 0.4 1"),
+                          (0, "routes " + "+".join([route(REVERB, 0.4, index=0, amountB=-0.3),
+                                                    route(RSIZE, 0.6, index=1, amountB=0.5),
+                                                    route(RTONE, -0.5, index=0, amountB=0.7)]))],
+        samples=8192, slots=40, lfo0="sine,9")
     add("plane-own-turn", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                            (0, "set planeOwn true 1"), (0, "set planeTurn -1.2 1"), (1024, "set planeScaleX 1.3 1"),
                            (2048, "set planeOwn false 1"), (3072, "set planeOwn true 1")])
@@ -1316,6 +1424,11 @@ gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never 
 gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
 gnull("plane-own-time", "set delayMs 4 1", "set delayMs 7 1", "layer B's own echo as long as layer A's")
 gnull("menv-decay", "set menvOwn 1", "set menvOwn 0", "the Envelope following Play's")
+gnull("reverb-fields", "set reverbSpread 0.7\n", "set reverbSpread 0.6\n", "A's reverb spread a tenth narrower")
+gnull("reverb-fields", "set reverbSpread 0.2 1", "set reverbSpread 0.3 1", "B's reverb spread a tenth wider")
+gnull("reverb-fields", "set reverbPreMs 5 1", "set reverbPreMs 6 1", "B's pre-delay a millisecond longer")
+gnull("reverb-routed", "/%d/-0.5/0.7/" % RTONE, "/%d/-0.5/0.6/" % RTONE, "B's reverb tone pushed a tenth less")
+gnull("reverb-routed", "/%d/0.6/0.5/" % RSIZE, "/%d/0.6/0.4/" % RSIZE, "B's reverb size pushed a tenth less")
 gnull("menv-sustain", "set menvSustain 0.3", "set menvSustain 0.31", "its own sustain a hundredth higher")
 # Legato: a second note while it is open leaves it exactly where one note
 # does. Following Play, the same two runs differ - the second voice is a new

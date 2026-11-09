@@ -61,6 +61,12 @@ is the claim. And the limiter: no preset may hold it past six decibels on a
 four-note chord, two notes a hand in a split, which is where the meter's own
 "running away" begins (STRAINED).
 
+The reverb (P9) is judged twice. Switched on, at the 0.15 its switch gives,
+every preset keeps its heading and fails the others. At its fullest - Mix,
+Spread and Size at the top - a Settled preset may breathe, as one at the
+Delay's full Mix may, but no more than 0.10 late; and that run is the null of
+the first, since the same test of a heading kept goes red there.
+
 Serial: everything here is measured over real seconds.
 """
 import os, sys
@@ -76,14 +82,23 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
+
 HOLD, AFTER = 10.0, 4.5
 
 # Hold notes on a preset loaded as a player loads one, with the screen's keys
 # open so a note gates the sound as a keyboard's does, and read the sound.
-RUN = r"""async ([value, notes, hold, after]) => {
+RUN = r"""async ([value, notes, hold, after, wet]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   setScreenKeys(true);
   applyPreset(value);
+  // The reverb over the preset as a player would: its switch pressed, or
+  // its knobs turned, one by one.
+  for (const [id, v] of Object.entries(wet || {})) {
+    if (id === 'switch') { document.querySelector('[data-fx-on="reverb"]').click(); continue; }
+    el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
+  }
   await wait(900);
   function spectrum(x) {
     const n = x.length, re = new Float64Array(n), im = new Float64Array(n);
@@ -120,7 +135,8 @@ RUN = r"""async ([value, notes, hold, after]) => {
   const t1 = performance.now();
   while (performance.now() - t1 < after * 1000) { await wait(250); read(hold + (performance.now() - t1) / 1000, 'after'); }
   midiPanic();
-  return { out, latch: midi.latch, amount: Number(el.pictureAmount.value) };
+  return { out, latch: midi.latch, amount: Number(el.pictureAmount.value),
+           reverb: { mix: genSettings().reverbMix, spread: genSettings().reverbSpread, size: genSettings().reverbSize } };
 }"""
 
 # A chord, and the most the limiter took off while it sounded.
@@ -192,7 +208,7 @@ with sync_playwright() as pw:
         for name, setup in entries:
             for notes in probes(name, setup):
                 b, p, bad = open_page(pw)
-                run = p.evaluate(RUN, [name, notes, HOLD, AFTER])
+                run = p.evaluate(RUN, [name, notes, HOLD, AFTER, None])
                 limit = p.evaluate(CHORD, [name, chord(setup)])
                 b.close()
                 errors += bad
@@ -221,6 +237,72 @@ with sync_playwright() as pw:
     grid = {h: [g for g, rule in RULES.items() if rule(m)] for h, m in made.items()}
     check("each rule passes a reading made to be its heading's and only that one", all(v == [h] for h, v in grid.items()),
           str(grid))
+    # P9, the reverb, as the owner decided it (9 Nov). Settled promises that
+    # a preset as shipped comes to rest, not that it does whatever is added
+    # to it: a loud reverb in the loop keeps a held chord moving, as the
+    # Delay at full Mix already did to two of the five Settled probes. So two
+    # passes. Switched on, as most players will only ever do, it must leave
+    # every preset under its heading - the base too - and out of the others;
+    # at a quarter, the Mix it was built with, the Tine piano read 0.013 to
+    # 0.019 against Settled's 0.015, which is why the switch gives 0.15.
+    def wet_pass(label, wet, headings):
+        print("\n--- %s ---" % label)
+        out = []
+        for heading, entries in bank:
+            if heading not in headings: continue
+            for name, setup in entries:
+                for notes in probes(name, setup):
+                    b, p, bad = open_page(pw)
+                    run = p.evaluate(RUN, [name, notes, HOLD, AFTER, wet])
+                    b.close()
+                    errors.extend(bad)
+                    m = summary(run["out"])
+                    verdicts = {h: rule(m) for h, rule in RULES.items()}
+                    out.append((heading, name, notes, m, verdicts, run["reverb"]))
+                    print("    %-10s %-28s %-9s early %.3f late %.3f most %.3f | after rms %.3f | reverb %s | %s"
+                          % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], run["reverb"],
+                             ",".join(h for h, v in verdicts.items() if v) or "none"))
+        return out
+    kept = lambda r: r[4][r[0]] and not any(v for h, v in r[4].items() if h != r[0])
+    on = wet_pass("every preset with the reverb's switch pressed", {"switch": True}, [h for h, _ in bank])
+    presets_on = [r for r in on if r[0] != "Still"]
+    check("switched on, the reverb leaves every preset under its heading and out of the others",
+          presets_on and all(kept(r) for r in presets_on),
+          "; ".join("%s %s" % (r[1], r[2]) for r in presets_on if not kept(r)) or "%d probes" % len(presets_on))
+    # The base is not a preset, and Still is a stricter promise than either
+    # heading: nothing moves after the first half second. A reverb cannot
+    # keep that - the key's own onset is still ringing in a 1.2-second tail
+    # at half a second, and read 0.006 at its most against Still's 0.005 -
+    # without the loop being in it at all, since the base has neither Scan
+    # nor Picture. What the base must not become is a moving sound.
+    base_on = [r for r in on if r[0] == "Still"]
+    check("and the base, switched on, is neither Settled nor Breathing: only its own onset's tail moves",
+          base_on and all(not r[4]["Settled"] and not r[4]["Breathing"] and r[3]["late"] < 0.005 for r in base_on),
+          "; ".join("most %.3f late %.3f" % (r[3]["most"], r[3]["late"]) for r in base_on))
+    check("and the switch really put it on, at 0.15 with the rest at their defaults",
+          on and all(r[5] == {"mix": 0.15, "spread": 0, "size": 0.4} for r in on), str([r[5] for r in on][:2]))
+    # The other pass is the cost, kept from growing: every Settled preset at
+    # the reverb's fullest. looptest.py holds the safety at that setting (no
+    # runaway, every bound); this holds how far a held note goes on moving,
+    # measured at 0.001 to 0.060 late over four runs when it was built (the
+    # Tine piano alone wandering 0.038 to 0.060 from run to run), to under
+    # 0.10, inside Breathing's range - it may breathe, it may not churn as a
+    # chorus does (0.4 to 0.6). Of five probes, four moved and the Drawbar
+    # organ settled.
+    full = wet_pass("the Settled presets with the reverb at its fullest", {"reverbMix": 100, "reverbSpread": 100, "reverbSize": 100},
+                    ["Settled"])
+    LATE_BOUND = 0.10
+    within = lambda late: late < LATE_BOUND
+    check("at full Mix, Spread and Size a held Settled note may go on moving, but no more than %.2f late" % LATE_BOUND,
+          full and all(within(r[3]["late"]) for r in full), ", ".join("%s %.3f" % (r[1][2:], r[3]["late"]) for r in full))
+    null("the bound fails what a chorus at full does to the same notes (0.4 to 0.6 late)", not within(0.4))
+    # And the null of the switch's check: the same test of a heading kept,
+    # on the same presets, fails at the fullest setting - so it can see a
+    # reverb that moved a sound, and the switch's pass is not passing blind.
+    null("the heading check goes red at the fullest setting, on at least one Settled preset",
+         full and any(not kept(r) for r in full), "%d of %d moved" % (sum(not kept(r) for r in full), len(full)))
+    check("and each of those runs really had it at full", full and all(r[5] == {"mix": 1, "spread": 1, "size": 1} for r in full),
+          str([r[5] for r in full][:2]))
     strained = [(r[1], round(r[5], 1)) for r in results if r[5] < -6]
     check("no preset holds the limiter past six decibels on a four-note chord", not strained, str(strained))
     check("no page errors", not errors, "; ".join(errors[:3]))

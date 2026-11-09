@@ -257,8 +257,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   `patchtest.py` hold it.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
-  is the screen's rotation), Phaser, Chorus, Delay, then a dashed Reverb
-  slot for P9 - each a line of icon, name, switch, what it is doing and its
+  is the screen's rotation), Phaser, Chorus, Delay, then the Reverb (9
+  Nov; a dashed slot until then) - each a line of icon, name, switch, what it is doing and its
   main knobs, Mix first. Its arrow opens the rest under it, one module at a
   time, and while one is open the others fold to their lines only if the
   tab would scroll with their knobs showing (`fitRack`, F8): at 1400x900 they
@@ -274,7 +274,18 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Scope & measure's Measure. Since F5b the order of the phaser, chorus and
   delay is the setup's `fxOrder` (one of six, by letters; the engines get an
   index into one table, `FX_ORDER_STAGES` and `kFxOrders`, never stored),
-  one order for both layers, the Plane always first. A handle drags a module
+  one order for both layers, the Plane always first and the Reverb always
+  last: a tail smeared over seconds is the end of the chain, and a delay or
+  chorus after it would repeat the cloud rather than the figure. The Reverb
+  is two identical networks, one per channel with nothing crossing, so at
+  Spread nought the channels are the same to the bit and the figure survives
+  its own tail; Spread reads the second channel from other taps of the same
+  network (the owner's call over a Width that mixes the channels). A loud reverb keeps a
+  Settled sound moving, as the Delay at full does, and that is accepted
+  rather than defended (9 Nov, the owner's call: a defence would make Scan's
+  knob lie): its switch gives a Mix of 0.15, which `honestytest.py` requires
+  to leave every preset under its heading, its line says *keeps a held chord
+  moving* past a fifth, and the full setting is bounded, not forbidden. A handle drags a module
   or the arrow keys move it, through the hidden `#fxOrder` menu, so the
   plugin's core hears it as any menu; the modules themselves move, which the
   morph survives only because `MORPH_IDS` is read once from the markup, so
@@ -344,7 +355,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   persistence menu the core's panel names. The host's parameters (F7c) are
   marked where they are, a gold dot before the name (`HOST_PARAMS`, in the
   order of the plugin's `kKnobs`, which `headertest.py` reads): the Picture
-  section's six, cutoff, warp, twist, the delay's and phaser's mix, and the
+  section's six, cutoff, warp, twist, the delay's, phaser's and reverb's mix, and the
   morph. `headertest.py` holds it, with real mouse and keys, since a
   dispatched event is rightly no step.
 - **The minimum window** (F8, 8 Nov). The plugin opens at 1200x680, will not

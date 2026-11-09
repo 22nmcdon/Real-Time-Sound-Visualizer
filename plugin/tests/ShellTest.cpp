@@ -1195,9 +1195,11 @@ int main() {
       grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
-    check("the host's parameters are the loop's eleven and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 12 && names == "Picture, Scan, Strike, Softness, Persistence, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Morph"
-          && p.knob("phaser")->get() == 0
+    // P9 added the reverb's mix, version 4, before the morph.
+    check("the host's parameters are the loop's twelve and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 13
+          && names == "Picture, Scan, Strike, Softness, Persistence, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
+          && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
           // F7c's three, each its own slider: strike and softness differ at
           // the page's defaults (50 and 30), so one wired to the other's fails.
           && p.knob("strike")->get() == p.slider("scanStrike") && p.knob("softness")->get() == p.slider("scanSoft")
@@ -1207,10 +1209,11 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Strike Softness Persistence Level Cutoff Warp Twist Delay mix Phaser mix; Setups: Morph"
-          && p.knob("phaser") == p.getParameters()[10] && p.knob("morph") == p.getParameters()[11]
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
+          && p.knob("phaser") == p.getParameters()[10] && p.knob("reverb") == p.getParameters()[11]
+          && p.knob("morph") == p.getParameters()[12]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 morph:1",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads
@@ -1311,6 +1314,7 @@ int main() {
       { "picture", "pictureAmount", 0, nullptr }, { "scan", "oscScan", 100, nullptr }, { "persistence", "scanMemory", 90, scanOn },
       { "bend", "oscBend", 100, nullptr }, { "cutoff", "vcfCut", 900, nullptr }, { "level", "amp", 20, nullptr },
       { "echo", "delayMix", 100, nullptr }, { "phaser", "phaserMix", 100, nullptr },
+      { "reverb", "reverbMix", 100, nullptr },
       { "morph", "morphPos", 100, morphEnds },
     };
     for (const auto& c : cases) {

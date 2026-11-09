@@ -273,7 +273,25 @@ is below, in order. The listening notes this plan refers to follow it.
    to come from the same answers: radius 0.2 easy to land on
    (a preset only if `honestytest.py` places it cleanly), and the bent
    sine's offset moved up, since Warp is a host parameter and automating it
-   thumps; then P9's reverb.
+   thumps; then P9's reverb. *The reverb done 9 Nov:* the last module in
+   the rack (after the phaser, chorus and delay in whatever order, never
+   moved), two identical feedback delay networks of eight lines, one per
+   channel, with nothing crossing between them, so at Spread nought the two
+   channels are the same to the last bit and a figure stays a figure through
+   its tail; Spread takes the second channel's output from other taps of the
+   same network (`REVERB_ROW_B`), rotating from the first's set to the
+   other's, so at full it is an ordinary stereo tail (a tail correlation of
+   about 0.5, not nought: moderately decorrelated). Mix and Size on its line,
+   Tone, Pre-delay and Spread under the arrow; Mix, Size and Tone are
+   destinations, Mix is host knob 12 (`reverb`, "Reverb mix", before Morph).
+   Page and core, parity's `reverb-*` cases, `reverbtest.py`, and a run of
+   `looptest.py` with it at full Mix, Spread and Size. At its fullest it
+   keeps four of five Settled probes moving (the loop, not the tail: Scan at
+   nought settles them), which the owner accepted as the Delay's full Mix is
+   accepted, with the switch lowered to 0.15 so On never moves a preset out
+   of its heading, the module's line warning past a Mix of a fifth, and the
+   full setting's lates bounded under 0.10 (`honestytest.py`; web/README.md
+   has the numbers).
 6. **The schema:** *the table done 7 Nov* (`SETUP_FIELDS`, `schema.h`,
    `schematest.py`; web/README.md has what it does not cover). One table that generates the setup field lists (DEFAULTS,
    snapshot, restore, the generator table, layer B's keys, the ranges,
@@ -281,7 +299,7 @@ is below, in order. The listening notes this plan refers to follow it.
    JavaScript generator when the compiled one plays. The JavaScript engine
    stays: it is parity's reference, the fallback, and forty suites run on it.
 
-Later: reverb in P9, made so the screen hears it; CLAP; MPE.
+Later: CLAP; MPE.
 Unverified from the audit: the picture's copies to the face (64-128 KB twice
 a frame), the capture allocating each frame, zipper noise under automation.
 
