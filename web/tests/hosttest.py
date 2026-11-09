@@ -399,9 +399,13 @@ with sync_playwright() as pw:
     # own handlers, and restores it from the plugin's state like the rest.
     gen = p.evaluate("""async (code) => {
       const t = window.__hostTest, out = {};
-      setView('bench');
+      // Kind on Play and Frequency on Ink, each on its own tab since G3.
+      setView('bench'); setBenchTab('play');
       await new Promise((r) => setTimeout(r, 200));
-      out.shown = el.genMode.offsetParent !== null && el.freq.offsetParent !== null;
+      const kindShown = el.genMode.offsetParent !== null;
+      setBenchTab('ink'); await new Promise((r) => setTimeout(r, 100));
+      out.shown = kindShown && el.freq.offsetParent !== null;
+      setBenchTab('play');
       out.sound = !!genVoice();
       t.log.length = 0;
       el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));

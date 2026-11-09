@@ -130,11 +130,14 @@ with sync_playwright() as pw:
     # The page opens on Harmonic tone, whose timebase is 3 where the default's is 4.
     check("and the instrument was made on the setup the page opened on, not on the defaults",
           first["timebase"] == 3, str(first["timebase"]))
-    p.evaluate("() => setView('bench')")
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); }")
     p.wait_for_timeout(300)
-    panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null, freq: el.freq ? el.freq.offsetParent !== null : null,
+    # Frequency on Ink since G3: looked for on its own tab, then back to Play's Kind.
+    freq_shown = p.evaluate("() => { setBenchTab('ink'); const s = !!el.freq && el.freq.offsetParent !== null; setBenchTab('play'); return s; }")
+    panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null,
       sound: !!genVoice(), mode: genSettings() && genSettings().mode,
       others: ![el.srcTone, el.srcMic].some((b) => b.disabled) })""")
+    panel["freq"] = freq_shown
     check("and keeps the generator's panel, kind and frequency, and its voice",
           panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
     check("and offers Tone and Mic as what the instrument draws", panel["others"], str(panel))
