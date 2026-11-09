@@ -260,10 +260,14 @@ is below, in order. The listening notes this plan refers to follow it.
    way); Width, Wow, Low cut and the Envelope's times are not, by decision.
    Two look settings and no more: Thickness and the Graticule, in the Beam;
    the swatches say they colour the X-Y figure, Y-T keeping its lanes' inks.
-   **The drawings are to be cut on 22 November** (harmonograph, figures,
-   solids, the second generator) unless the owner has reached for one by
-   then: a cleanup stage with a decode pass, the old library keeping them as
-   a test corpus. The presets have their short lines, what to listen for
+   **The drawings are cut** (harmonograph, figures, solids, the second
+   generator): the owner decided on 9 Nov, ahead of the 22 November date,
+   that he does not miss them - a cleanup stage with a version-10 decode
+   pass, the old library keeping them as a test corpus. It is G2 of the
+   face's second pass (`web/docs/the-face-second-pass.md`), which follows the
+   reverb, beside the second review (`web/docs/second-review.md`) whose bugs
+   - the plugin's window size, the delay's line while off, the rack's
+   memory, the screen's wash - can go first. The presets have their short lines, what to listen for
    and what to watch for, the first on each card (hearing a preset by
    holding a key is not wanted: Load, listen, undo already does it). Still
    to come from the same answers: radius 0.2 easy to land on
