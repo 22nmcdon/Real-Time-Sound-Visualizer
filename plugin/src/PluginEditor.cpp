@@ -109,11 +109,17 @@ ScopeEditor::ScopeEditor(ScopeProcessor& owner)
     missing_.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(missing_);
   }
-  setResizable(true, true);
-  setResizeLimits(960, 600, 2560, 1600);
-  // Where it was left, or a size inside a 1366x768 laptop's screen with a host's frame round it.
+  /* Where it was left, or a size inside a 1366x768 laptop's screen with a
+     host's frame round it - read before anything can resize the editor.
+     It used to be read after setResizeLimits, which in JUCE ends with
+     setBoundsConstrained(getBounds()): the editor, still 0x0, was clamped up
+     to the 960x600 minimum, resized() stored that over the remembered size,
+     and the face opened at 960x600 every time, whatever it had been left at
+     and whatever the default said. */
   const auto [w, h] = owner.windowSize();
   setSize(w, h);
+  setResizable(true, true);
+  setResizeLimits(960, 600, 2560, 1600);
   if (supported) browser_.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 }
 

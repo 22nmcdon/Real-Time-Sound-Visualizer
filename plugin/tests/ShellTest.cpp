@@ -2512,6 +2512,31 @@ int main() {
           w0 <= 1300 && h0 <= 700 && w0 >= 960 && h0 >= 600 && w1 == 1111 && h1 == 777
           && setupOf(rewindowed.pageState().code).find("pluginWindow") == std::string::npos,
           std::to_string(w0) + "x" + std::to_string(h0) + " at first, reopened " + std::to_string(w1) + "x" + std::to_string(h1));
+
+    /* And the face itself opens at that size. The check above only read the
+       number the processor keeps, and the editor overwrote it with 960x600 as
+       it was built (setResizeLimits before the size was read), so every face
+       opened at the minimum while that check passed. Built here, as a host
+       builds it; without a web view it is the editor's message instead of
+       the page, at the same size. The null: the minimum is not either size. */
+    ScopeProcessor faced;
+    faced.prepareToPlay(rate, block);
+    const auto [d0, e0] = faced.windowSize();
+    std::unique_ptr<juce::AudioProcessorEditor> fresh(faced.createEditor());
+    const int freshW = fresh->getWidth(), freshH = fresh->getHeight();
+    fresh.reset();
+    faced.setWindowSize(1111, 777);
+    std::unique_ptr<juce::AudioProcessorEditor> left(faced.createEditor());
+    const int leftW = left->getWidth(), leftH = left->getHeight();
+    left.reset();
+    const auto [kw, kh] = faced.windowSize();
+    check("the face opens at the default size, and at the size it was left, and keeps it",
+          freshW == d0 && freshH == e0 && leftW == 1111 && leftH == 777 && kw == 1111 && kh == 777,
+          "fresh " + std::to_string(freshW) + "x" + std::to_string(freshH) + " (default " + std::to_string(d0) + "x"
+          + std::to_string(e0) + "), left " + std::to_string(leftW) + "x" + std::to_string(leftH) + ", kept "
+          + std::to_string(kw) + "x" + std::to_string(kh));
+    check("null: the default is not the minimum, so a face clamped to it would fail", !(d0 == 960 && e0 == 600),
+          std::to_string(d0) + "x" + std::to_string(e0));
   }
 
   std::printf("\n--- the quarter turn's glides ---\n");
