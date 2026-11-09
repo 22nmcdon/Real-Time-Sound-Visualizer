@@ -38,13 +38,28 @@ with sync_playwright() as pw:
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     p.evaluate("() => toMic()"); p.wait_for_timeout(2000)
+    # And until the buffer has been written all the way back: a ring not yet
+    # full reads as exact zeros at its oldest end, which is the flatline the
+    # check below looks for in capture. Two seconds was always enough alone;
+    # beside two other suites the microphone's graph once started late and the
+    # 0.74 s window at 50 ms/div began with 40 unwritten samples (9 Nov).
+    filled = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (let k = 0; k < 80; k++) {
+        const w = state.source.getLatestWindow(state.source.capacity)[0];
+        if (w && w.length && w.subarray(0, 8).some((v) => v !== 0)) return k * 100;
+        await wait(100);
+      }
+      return -1;
+    }""")
 
     info = p.evaluate("""() => ({ kind: state.source.kind, rate: state.source.sampleRate,
                                   cap: state.source.capacity })""")
     print("\n--- the source under test ---")
     print("  %s at %d Hz, buffer holds %d samples (%.0f ms)"
           % (info["kind"], info["rate"], info["cap"], info["cap"] / info["rate"] * 1000))
-    check("a real graph source is loaded", info["kind"] == "mic" and info["cap"] == 32768)
+    check("a real graph source is loaded, and its buffer written all the way back", info["kind"] == "mic"
+          and info["cap"] == 32768 and filled >= 0, "filled after %d ms more" % filled)
 
     print("\n--- what capture asks for, at every timebase and trigger position ---")
     rows = p.evaluate("""() => {

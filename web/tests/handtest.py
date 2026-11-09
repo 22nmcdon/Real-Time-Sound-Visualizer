@@ -22,10 +22,13 @@ Against the way it would fail:
   counted the other way round fails the same tolerance. On every plain
   shape, the lane read at the phase the page found for it is the shape
   itself (correlation over 0.99); null, half a cycle out is not;
-- a pull with the wrong sign, or none: pulled outward on the north-east
-  diagonal the circle can only bulge with Bend negative, and Bend goes
-  there; the figure ends at least twice as near the pointer as it began;
-  null, the same Bend the other way leaves it further than the chosen one;
+- a pull not followed, or followed where it cannot be: the circle stays on
+  its centre since its offset is taken off (9 Nov), so pulled inward on the
+  north-east diagonal Bend moves and the figure ends at least twice as near
+  the pointer as it began (null, at nought it does not); pulled outward
+  there no bend reaches, Bend stays and the hand's mark says it has no
+  hold; at the right-hand extreme the centred figure reaches out, so
+  outward is followed there, Bend positive;
 - a press anywhere being a grab: a press at the circle's middle, and one 24
   pixels off the line, change nothing; one 10 pixels off takes hold; a
   click without a pull changes nothing (null, the same press pulled does);
@@ -97,6 +100,17 @@ def pull(p, x0, y0, dx, dy, steps=12):
     p.wait_for_timeout(80)
     p.mouse.up()
 
+def pull_hold(p, x0, y0, dx, dy, steps=12):
+    """A pull, and whether the hand's mark had hold at its end, read before
+    letting go (the mark hides on release)."""
+    p.mouse.move(x0, y0); p.mouse.down()
+    for k in range(1, steps + 1):
+        p.mouse.move(x0 + dx * k / steps, y0 + dy * k / steps); p.wait_for_timeout(16)
+    p.wait_for_timeout(80)
+    hold = p.evaluate("() => document.getElementById('bendMark').dataset.hold || null")
+    p.mouse.up()
+    return hold
+
 def nearest(pts, x, y):
     return min(math.hypot(a[0] - x, a[1] - y) for a in pts)
 
@@ -164,20 +178,26 @@ with sync_playwright() as pw:
     p.evaluate(SETUP, "sine")
 
     print("\n--- the figure follows the hand ---")
+    # Since 9 Nov the bend's offset is taken off, so the circle stays on its
+    # centre, and bent at a diagonal's own moment it pinches inward there
+    # whichever way (to 0.91 of its radius at 0.6, 0.98 at 0.3). Until then
+    # this pulled outward and wanted Bend negative: that bulge was the offset
+    # sliding the whole figure towards the hand, the same offset that thumped
+    # under automation. So the pull that is followed is inward - by either
+    # sign nearly as well (-70 and +70 reach within two pixels of each
+    # other), so the sign is not held - and the one outward has nothing to
+    # follow and must say so.
     reset(p)
     fig = p.evaluate(FIGURE, 0)
     q = diagonal(fig, 1, -1)
     ux, uy = (q[0] - fig["cx"]), (q[1] - fig["cy"])
     L = math.hypot(ux, uy); ux, uy = ux / L, uy / L
-    tx, ty = q[0] + ux * 30, q[1] + uy * 30
+    tx, ty = q[0] - ux * 30, q[1] - uy * 30
     before = nearest(fig["pts"], tx, ty)
-    pull(p, q[0], q[1], ux * 30, uy * 30)
+    hold_in = pull_hold(p, q[0], q[1], -ux * 30, -uy * 30)
     v = p.evaluate(VALUES)
-    # On a circle, X = sin, Y = cos, bent at the north-east diagonal's own
-    # moment: the radius there goes as 1 - sin(A) cos(A), so outward is A < 0.
-    check("pulled outward on the north-east diagonal, Bend goes negative, as the circle can only bulge there",
-          v["bend"] <= -20, str(v))
-    null("the same check against the opposite sign", not (-v["bend"] <= -20), str(-v["bend"]))
+    check("pulled inward on the north-east diagonal, Bend moves a long way and the hand's mark has hold",
+          abs(v["bend"]) >= 20 and hold_in == "true", "%s, hold %s" % (v, hold_in))
     p.wait_for_timeout(500)
     after = nearest(p.evaluate(FIGURE, 0)["pts"], tx, ty)
     check("and the figure ends at least twice as near the pointer as it began",
@@ -185,28 +205,37 @@ with sync_playwright() as pw:
     chosen = v["bend"]
     shown = p.evaluate("() => [el.oscBendValue.textContent, el.oscBendAtValue.textContent]")
     check("the sliders' readings say what the hand set",
-          shown == ["\u2212" + str(abs(chosen)) + "%", str(round(v["at"] * 3.6)) + "\u00b0"], str(shown))
-    reset(p, -chosen, v["at"])
-    opposite = nearest(p.evaluate(FIGURE, 0)["pts"], tx, ty)
-    null("Bend the other way leaves the figure further from the pointer than the chosen one",
-         opposite > after + 5, "%.1f px against %.1f px" % (opposite, after))
+          shown == [("+" if chosen > 0 else "\u2212") + str(abs(chosen)) + "%", str(round(v["at"] * 3.6)) + "\u00b0"],
+          str(shown))
+    reset(p, 0, v["at"])
+    undone = nearest(p.evaluate(FIGURE, 0)["pts"], tx, ty)
+    null("with Bend put back to nought the figure fails the same measure", not (undone <= before / 2), "%.1f px" % undone)
 
-    # At an extreme the bend has nothing to give outward: a pull there must do nothing.
+    reset(p)
+    fig = p.evaluate(FIGURE, 0)
+    q = diagonal(fig, 1, -1)
+    hold_out = pull_hold(p, q[0], q[1], ux * 30, uy * 30)
+    v = p.evaluate(VALUES)
+    check("pulled outward on the same diagonal, where no bend reaches, Bend stays at nought and the mark has no hold",
+          abs(v["bend"]) <= 2 and hold_out == "false", "%s, hold %s" % (v, hold_out))
+    null("the inward pull's mark, which had hold, fails the same check", not (hold_in == "false"), str(hold_in))
+
+    # At the circle's right-hand extreme the centred figure reaches 1 + J1(a)
+    # on one side - the offset taken off moves its peak - so outward there IS
+    # followed, Bend positive at that moment. Until 9 Nov the figure could not
+    # reach past its edge anywhere and this pull had to do nothing.
     reset(p)
     fig = p.evaluate(FIGURE, 0)
     q = max(fig["pts"], key=lambda k: k[0])
-    pull(p, q[0], q[1], 40, 0)
+    before = nearest(fig["pts"], q[0] + 40, q[1])
+    hold_e = pull_hold(p, q[0], q[1], 40, 0)
     v = p.evaluate(VALUES)
-    # Within the solver's last step of nought, not at it exactly: the grab is
-    # the drawn sample furthest right, which can sit half a sample's turn off
-    # the true extreme, where a bend of one per cent does come a hair nearer
-    # the pointer than the whisker of cost holds it to - and which sample is
-    # drawn there depends on where the window fell. It read 1 once in a full
-    # run (P8h). A bend that follows the hand is tens of per cent, as on the
-    # diagonal above, and the null holds the tolerance to that.
-    check("pulled outward at the circle's right-hand extreme, where no bend can reach, Bend stays at nought",
-          abs(v["bend"]) <= 2, str(v))
-    null("the same tolerance fails the bend the diagonal's pull chose", not (abs(chosen) <= 2), str(chosen))
+    p.wait_for_timeout(500)
+    after = nearest(p.evaluate(FIGURE, 0)["pts"], q[0] + 40, q[1])
+    check("pulled outward at the circle's right-hand extreme, Bend goes positive, the figure reaches out and the mark holds",
+          v["bend"] >= 20 and after <= before / 2 and hold_e == "true",
+          "%s, %.1f px to %.1f px, hold %s" % (v, before, after, hold_e))
+    null("the same check against the opposite sign", not (-v["bend"] >= 20), str(-v["bend"]))
 
     # One signal on both lanes draws a line, and the bend only slides it along
     # itself: every Bend reaches the pointer equally, and the one already set must stay.
@@ -441,16 +470,16 @@ with sync_playwright() as pw:
     q = diagonal(fig, 1, -1)
     ux, uy = (q[0] - fig["cx"]), (q[1] - fig["cy"])
     L = math.hypot(ux, uy); ux, uy = ux / L, uy / L
-    tx, ty = q[0] + ux * 30, q[1] + uy * 30
+    tx, ty = q[0] - ux * 30, q[1] - uy * 30
     before = nearest(fig["pts"], tx, ty)
     want = moment_of(q)
-    pull(p, q[0], q[1], ux * 30, uy * 30)
+    pull(p, q[0], q[1], -ux * 30, -uy * 30)
     v = p.evaluate(VALUES)
     p.wait_for_timeout(700)
     after = nearest(p.evaluate(FIGURE, 0)["pts"], tx, ty)
     check("the default page's generator is the compiled instrument", kind == "host", kind)
-    check("pulled there, Bend at is the grabbed moment and Bend negative", cyc(v["at"] / 100, want) <= 0.02 and v["bend"] <= -20,
-          "%s, moment %.3f" % (v, want))
+    check("pulled inward there, Bend at is the grabbed moment and Bend moves a long way",
+          cyc(v["at"] / 100, want) <= 0.02 and abs(v["bend"]) >= 20, "%s, moment %.3f" % (v, want))
     check("and the instrument's figure ends at least twice as near the pointer", after <= before / 2,
           "%.1f px to %.1f px" % (before, after))
     reset(p, 0, v["at"])

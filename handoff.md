@@ -346,10 +346,18 @@ Heard after P8h; written down before any work, with a first read of the code.
 
 ## Open, deferred
 
-- **The bent sine's DC.** Bending a sine leaves an offset (up to about 0.41 of
-  the amplitude at full Bend). Owner: leave it for now. Candidate fix: subtract
-  it exactly per voice for the sine, a gentle DC blocker for other shapes,
-  measured in the app first.
+- ~~**The bent sine's DC.**~~ *Done 8 Nov, moved up by the owner since Warp
+  is a host parameter and automating it thumped:* the sine's offset, J1(a) sin c,
+  is put back on each copy exactly, and every other shape's is taken off by a
+  5 Hz one-pole on the bend's own difference, the oscillator held on a second
+  after a bend so it winds down (page and core, `bend-*-dc` in parity,
+  `bendtest.py`). Left: with sync neither acts, and on the sine FM, ring and
+  Scan cross with the bend and leave a residue. It changed the drag (9 Nov,
+  the owner's call): the outward bulge on a circle's diagonal had been the
+  offset sliding the figure, so outward there is no longer followed and the
+  hand's gold ring goes faint and dashed while a pull has no hold, filled while
+  it has (`handtest.py`). An outward gesture of its own is for the owner to
+  find by hand later.
 - **The band split:** deferred by the owner ("we'll see on the band splits
   later").
 - **Strike from the arpeggiator and the score:** they reach the generator

@@ -286,7 +286,9 @@ with sync_playwright() as pw:
         null("depth %.1f, hold %.2f: against the whole voice taken, nothing kept" % (depth, hold), abs(got - 0) > 0.1)
 
     # The bend reaches what Scan reads: the same table read at the bent phase,
-    # by hand, over the shape bent the same way.
+    # by hand, over the shape bent the same way. Since 9 Nov the sine under it
+    # carries the bend's offset taken off, J1(a) sin c put back on the ink
+    # before Scan mixes in, so the hand puts it there too.
     tab = [[1, 1], [3, 0.6, 0.5]]
     a, c, fb = 0.6, 0.3, 220.0
     bent = run(tone={"shape": "sine", "freq": fb, "scan": 1, "warp": a, "warpAt": c}, blocks=[[8820, tab]])
@@ -294,10 +296,13 @@ with sync_playwright() as pw:
       const pts = new Float64Array(SCAN_POINTS);
       for (let i = 0; i < SCAN_POINTS; i++) for (const [k, amp, ph] of tab) pts[i] += amp * Math.cos(2 * Math.PI * k * i / SCAN_POINTS + (ph || 0));
       const T = scanTables(pts), out = [], flat = [];
+      let j1 = 0, term = a / 2;
+      for (let k = 0; k < 12; k++) { j1 += term; term *= -(a / 2) * (a / 2) / ((k + 1) * (k + 2)); }
+      const dc = j1 * Math.sin(TWO_PI * c);
       for (let i = 2205; i < 8820; i++) {
         const p = TWO_PI * f * (i + 1) / 44100, d = p - TWO_PI * c;
         const q = p + a * Math.sin(d), step = Math.abs(f * (1 + a * Math.cos(d))) / 44100;
-        const ink = waveAt('sine', q, step);
+        const ink = waveAt('sine', q, step) + dc;
         out.push(0.5 * (ink + (cycleRead(T, q, step) - ink) * SCAN_MOST));
         flat.push(0.5 * (ink + (cycleRead(T, p, f / 44100) - ink) * SCAN_MOST));
       }

@@ -5247,3 +5247,16 @@ reticle onto the figure, as a player would, for a cell under a thousandth after
 a second and a half, and fails if more than two presets need it. Pressing by
 `landPhoto`'s own rule (a quarter of the brightest) moved fourteen of the
 twenty-one cells, which is why the threshold is darkness and not dimness.
+
+**A blocker on the bend's difference, not on the voice.** The obvious DC
+blocker, a high-pass on each voice while it is bent, also takes off whatever
+offset the shape has of its own, so switching the bend on from nought would
+have slid that offset away over 32 ms - a thump made by the cure. The one-pole
+runs on the bent wave less the same wave unbent (a second `waveAt` per copy,
+only while bent and only off the sine), so a wave never bent is the same to
+the bit and only the bend's share goes. It still costs a 5 Hz one-pole's
+phase at the note - 0.65 degrees at 440 Hz - which is why `bendtest.py`'s
+"the bend is FM at one to one" now runs the blocker by hand on FM's
+difference rather than comparing the two raw. And the oscillator is held on
+for a second after a bend goes, or the voice would step back to the plain
+path with the offset still taken off.

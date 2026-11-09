@@ -78,6 +78,9 @@ struct VoiceFx {
   double vcfK = 1, vcfPush = 0;
   int n = 1;
   double fmI = 0, syncR = 1, crushQ = 0, warpA = 0, warpC = 0;
+  // The bend's offset (the page's oscStep says why): the sine's exact share,
+  // the blocker's pole, and how long the oscillator is held on after a bend.
+  double warpDc = 0, dcK = 0, dcHold = 0;
   int cap = kUnisonMax;
   std::array<double, kUnisonMax> det {};
   /* Scan: how much of the voice it is this block, the tables it is fading
@@ -118,8 +121,17 @@ inline void voiceFxFor(const VoiceTone& t, VoiceFx& x, bool fmRouted, bool syncR
 struct Osc {
   int n = 0;
   std::array<double, kUnisonMax> p {}, s {}, m {}, cyc {}, r {};
-  double sub = 0, held = 0;
+  double sub = 0, held = 0, dc = 0;
 };
+
+// J1 by its series, the page's besselJ1: ten terms are the double's last bit at 0.9.
+inline double besselJ1(double a) {
+  const double h = a / 2, h2 = h * h;
+  double term = h, sum = h;
+  for (int k = 1; k < 10; k++) { term *= -h2 / (k * (k + 1)); sum += term; }
+  return sum;
+}
+constexpr double kBendDcHz = 5;  // BEND_DC_HZ
 
 inline double oscStep(Osc& o, double base, double offset, double hz, const VoiceTone& t, const WaveTables& bars,
                       double amount, const VoiceFx& x, double rate) {
@@ -138,7 +150,9 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
   }
   const double fmI = x.fmI, syncR = x.syncR, ring = t.ringMix;
   const double wrapHalf = x.syncing ? wrapJump(t.shape, amount) / 2 : 0;
-  double sum = 0, owe = 0;
+  // The bend's offset: the sine's exact, every other shape's by the blocker.
+  const bool blocking = x.warpA != 0 && t.shape != Shape::Sine && !x.syncing;
+  double sum = 0, owe = 0, bentOff = 0;
   for (std::size_t k = 0; k < static_cast<std::size_t>(n); k++) {
     const double f = hz * x.det[k];
     double master;
@@ -154,6 +168,7 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
     if (o.m[k] < 0) o.m[k] += kTwoPi;
     double pm = fmI > 0 ? fmI * std::sin(o.m[k]) : 0;
     double inst = fmI > 0 ? f * (1 + fmI * t.modRatio * std::cos(o.m[k])) : f;
+    const double pm0 = pm, inst0 = inst;
     // The bend: phase modulation at one-to-one, locked to this copy's own
     // phase and turned to `warpC` of the cycle; its rate joins FM's in
     // `inst`, so the band-limiting is asked where the bend has taken it.
@@ -195,16 +210,27 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
       }
     } else {
       v = waveAt(t.shape, master + pm, std::fabs(inst) / rate, bars, amount);
+      if (x.warpA != 0 && !blocking) v += x.warpDc;
       if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, master + pm, std::fabs(inst) / rate, x.scanX, x.scanW);
+    }
+    double plain = 0;
+    if (blocking) {
+      plain = waveAt(t.shape, master + pm0, std::fabs(inst0) / rate, bars, amount);
+      if (x.scanW > 0)
+        plain = scanMix(plain, x.scanPrev, x.scanNext, master + pm0, std::fabs(inst0) / rate, x.scanX, x.scanW);
     }
     if (ring > 0) {
       const double g = 1 - ring + ring * std::sin(o.m[k]);
-      v *= g; o.r[k] *= g;
+      v *= g; o.r[k] *= g; plain *= g;
     }
+    if (blocking) bentOff += v - plain;
     sum += v;
   }
   double total = sum / n;
   owe /= n;
+  if (blocking) o.dc += x.dcK * (bentOff / n - o.dc);
+  else if (o.dc != 0) { o.dc -= x.dcK * o.dc; if (std::fabs(o.dc) < 1e-12) o.dc = 0; }
+  total -= o.dc;
   if (t.subLevel > 0) {
     const double div = t.subOctave == 2 ? 4 : 2;
     o.sub += kTwoPi * hz / div * dtOf;

@@ -156,12 +156,25 @@ with sync_playwright() as pw:
     # At a centre of nought the bend's term is FM's at ratio one, term for
     # term, and the band-limiting is asked the same frequency: the sound is
     # the same to rounding, on a sine and on a saw.
+    # Since 8 Nov the ramp's bend has its offset taken off by a 5 Hz one-pole
+    # on the bend's own difference - the bent wave less the plain - which FM
+    # has not got, so the blocker is run here by hand on FM's difference from
+    # the plain ramp and FM is compared with that taken off. The sine's term
+    # is nought at a centre of nought, so it is FM's as it was.
+    def blocked(fm, plain):
+        k = 1 - math.exp(-1 / ((1000 / (2 * math.pi * 5)) * RATE / 1000))
+        out, dc = np.empty(len(fm)), 0.0
+        for i in range(len(fm)):
+            dc += k * ((fm[i] - plain[i]) - dc)
+            out[i] = fm[i] - dc
+        return out
     fmlike = {}
     for shape in ("sine", "ramp"):
-        bent = run({"shape": shape, "freq": 440, "warp": 0.7, "warpAt": 0})["L"]
-        fm = run({"shape": shape, "freq": 440, "fmIndex": 0.7, "modRatio": 1})["L"]
-        turned = run({"shape": shape, "freq": 440, "warp": 0.7, "warpAt": 0.1})["L"]
-        fmlike[shape] = (diff(bent, fm), diff(turned, fm))
+        bent = run({"shape": shape, "freq": 440, "warp": 0.7, "warpAt": 0}, skip=0)["L"]
+        fm = run({"shape": shape, "freq": 440, "fmIndex": 0.7, "modRatio": 1}, skip=0)["L"]
+        if shape == "ramp": fm = blocked(fm, run({"shape": shape, "freq": 440}, skip=0)["L"])
+        turned = run({"shape": shape, "freq": 440, "warp": 0.7, "warpAt": 0.1}, skip=0)["L"]
+        fmlike[shape] = (diff(bent[4410:], fm[4410:]), diff(turned[4410:], fm[4410:]))
     print("    from FM at 1:1 with an index of 0.7: %s" % {k: "%.1e, turned %.2f" % v for k, v in fmlike.items()})
     check("bent 0.7 at nought is FM at ratio one with an index of 0.7, sine and saw, to float precision",
           all(v[0] < 1e-6 for v in fmlike.values()), str(fmlike))
@@ -180,13 +193,10 @@ with sync_playwright() as pw:
     check("and bent at three quarters, the other way round", pinched_top((wb[1], wb[0])), "%s" % (wb,))
     null("the peak test does not pass the unbent sine", not pinched_top(w0))
     null("nor the sine bent at the other point", not pinched_top(wb))
-    # What it costs, stated where the cheat sheet states it: sin(p + a sin(p
-    # - c)) has a mean of -J1(a) sin(c), the sideband that lands on nought.
-    full = run({"shape": "sine", "freq": 441, "warp": 0.9, "warpAt": 0.25}, n=44100 + 4410)["L"]
-    dc, want = float(np.mean(full)), -0.5 * bessel_j1(0.9)
-    check("a sine bent the whole way at a quarter cycle sits %.3f off the middle, -J1(0.9) of its 0.5" % dc,
-          abs(dc - want) < 1e-3, "%.4f against %.4f" % (dc, want))
-    null("and the unbent sine does not", abs(float(np.mean(plain)) - want) > 0.1, "%.4f" % float(np.mean(plain)))
+    # Until 9 Nov this held what the bend cost: sin(p + a sin(p - c)) has a
+    # mean of -J1(a) sin(c), and the bent sine sat that far off the middle.
+    # It is taken off now, and "it sits on the middle" below holds that, with
+    # the same warp by hand, uncorrected, as its null.
     neg = run({"shape": "sine", "freq": 441, "warp": -0.6, "warpAt": 0.75})["L"]
     check("a negative bend is the positive one half a cycle on", diff(neg, at_top) < 1e-6, "%.1e" % diff(neg, at_top))
     null("and not the positive one where it was", diff(neg, at_bottom) > 0.05, "%.3f" % diff(neg, at_bottom))
@@ -204,6 +214,28 @@ with sync_playwright() as pw:
     check("bent, the dyad's circle is no longer a circle: its radius varies by a tenth or more",
           rb > 0.1 and rc < 1e-3, "%.4f against %.4f" % (rb, rc))
     null("the plain circle does not pass", not (rc > 0.1), "%.4f" % rc)
+
+    print("\n--- it sits on the middle ---")
+    # The offset a bend gives (8 Nov). A sine bent its most at a quarter cycle
+    # sat J1(0.9), 0.41 of its amplitude, below the middle; the same warp by
+    # hand, with no term, is the null. Read over whole cycles: 441 Hz is a
+    # hundred samples a cycle.
+    sdc = run({"shape": "sine", "freq": 441, "warp": 0.9, "warpAt": 0.25})["L"]
+    hand = np.asarray(p.evaluate(HAND, {"shape": "sine", "f": 441, "a": 0.9, "c": 0.25, "n": 44100, "skip": 4410,
+                                        "step": "none", "amount": 0}))
+    m_core, m_hand = float(np.mean(sdc[:44100])), float(np.mean(hand))
+    print("    a sine bent 0.9 at 90 deg: mean %.2e here, %.4f by hand with nothing taken off (J1 says %.4f)"
+          % (m_core, m_hand, -0.5 * bessel_j1(0.9)))
+    check("a sine bent its most at a quarter cycle sits on the middle", abs(m_core) < 1e-4, "%.2e" % m_core)
+    null("by hand it sits J1(0.9) of its amplitude off, which the check would see",
+         abs(m_hand + 0.5 * bessel_j1(0.9)) < 1e-3 and abs(m_hand) > 0.1, "%.4f" % m_hand)
+    # A ramp, by the blocker: a second of it, its offset gone by the end, and
+    # still there in the first cycle - the blocker's 32 ms, so automating the
+    # bend on a saw is softened rather than undone.
+    rdc = run({"shape": "ramp", "freq": 441, "warp": 0.9, "warpAt": 0.3}, n=44100, skip=0)["L"]
+    first, last = float(np.mean(rdc[:100])), float(np.mean(rdc[-4410:]))
+    check("a ramp bent its most has its offset in its first cycle and none a second on",
+          abs(first) > 0.03 and abs(last) < 1e-3, "first cycle %.4f, the last tenth of a second %.2e" % (first, last))
 
     print("\n--- it brightens ---")
     cents = [centroid(run({"shape": "sine", "freq": 441, "warp": a})["L"]) for a in (0, 0.3, 0.6, 0.9)]

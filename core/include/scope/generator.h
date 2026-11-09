@@ -400,7 +400,7 @@ class Generator {
     const bool layered = b_.voices.has_value();
     const double roleGlide = poleFor(4, rate_);
     bool twistRouted = false, fmRouted = false, syncRouted = false, shapeRouted = false, echoRouted = false;
-    bool turnRouted = false, phaserRouted = false;
+    bool turnRouted = false, phaserRouted = false, bendRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
       if (r.slot == slot::Echo) echoRouted = true;
@@ -408,6 +408,7 @@ class Generator {
       if (r.slot == slot::Turn) turnRouted = true;
       // The bend is phase modulation as FM is, and switches the oscillator on alike.
       if (r.slot == slot::Fm || r.slot == slot::Bend || r.slot == slot::BendAt) fmRouted = true;
+      if (r.slot == slot::Bend) bendRouted = true;
       if (r.slot == slot::Sync) syncRouted = true;
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
@@ -422,6 +423,12 @@ class Generator {
       shapeR_ = Shaper(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
     }
     voiceFxFor(b_, vxB_, fmRouted, syncRouted, shapeRouted);
+    // The bend's offset blocker, and the oscillator held on a second after a bend (the page says why).
+    vxA_.dcK = vxB_.dcK = poleFor(1000 / (kTwoPi * kBendDcHz), rate_);
+    vxA_.dcHold = a_.warp != 0 || bendRouted ? rate_ : std::fmax(0.0, vxA_.dcHold - n);
+    vxB_.dcHold = b_.warp != 0 || bendRouted ? rate_ : std::fmax(0.0, vxB_.dcHold - n);
+    if (vxA_.dcHold > 0) vxA_.on = true;
+    if (vxB_.dcHold > 0) vxB_.on = true;
     // How much of each layer's voice is Scan this block: the depth, under the running-away hold.
     vxA_.scanW = scanWeight(a_);
     vxB_.scanW = scanWeight(b_);
@@ -476,6 +483,8 @@ class Generator {
       const double bendAtB = b_.warpAt + modBOr0(slot::BendAt) * 0.5;
       vxA_.warpC = bendAtA - std::floor(bendAtA);
       vxB_.warpC = bendAtB - std::floor(bendAtB);
+      vxA_.warpDc = vxA_.warpA != 0 ? besselJ1(vxA_.warpA) * std::sin(kTwoPi * vxA_.warpC) : 0;
+      vxB_.warpDc = vxB_.warpA != 0 ? besselJ1(vxB_.warpA) * std::sin(kTwoPi * vxB_.warpC) : 0;
       const double drivePush = modOr0(slot::Drive) * 0.5, foldPush = modOr0(slot::Fold) * 0.5;
       vxA_.vcfPush = modOr0(slot::Vcf) * 3;
       vxB_.vcfPush = modBOr0(slot::Vcf) * 3;

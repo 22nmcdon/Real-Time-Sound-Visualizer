@@ -711,7 +711,7 @@ the synth's features should be chosen knowing that.
     one. Held under 0.9 radians, where the phase never runs backwards. What it costs: a
     bent sine carries DC, since a pinched peak and a swollen trough no longer balance
     (at full bend and a quarter cycle, 0.41 of the amplitude; the limiter and the
-    picture take it as an offset). *The owner left the DC as it is after P6c, to come back to: subtracting it exactly per voice for the sine, with a gentle DC blocker for the other shapes, is the candidate, measured in the app first.* *gen.bend* and *gen.bendAt* are destinations, not in
+    picture take it as an offset). *The owner left the DC as it is after P6c, to come back to; on 8 Nov it was taken off: exactly per copy for the sine, J1(a) sin c, and by a 5 Hz one-pole on the bend's own difference for every other shape, so automating Warp no longer thumps. A centred bent sine reaches 1.41 of its amplitude on one side.* *gen.bend* and *gen.bendAt* are destinations, not in
     the picture stage's bundles: whether the loop turns the bend as well as the hand is
     P7's and P8's question. `bendtest.py` holds it, and parity the core's.
   - *Touching the picture, step 2, built: the drag.* In X-Y, a press within 16 pixels of
@@ -730,14 +730,20 @@ the synth's features should be chosen knowing that.
     figure around the grab passes nearest the pointer wins, so the figure follows the
     hand on any shape and a pull it cannot follow does nothing. What that costs is
     honesty about the bend itself: it moves the wave in time and never in level, so the
-    figure cannot be pulled past its own extremes - a circle bulges on its diagonals and
-    not at its four ends - and a diagonal line bends only along itself. On a chord the
+    figure cannot be pulled past its own extremes - a circle bulged on its diagonals and
+    not at its four ends until the bend's offset was taken off (9 Nov), when it turned
+    out the bulge had been the offset sliding the figure: centred, the diagonals pinch
+    inward either way and an end reaches 1 + J1(a) on one side, so an outward pull on a
+    diagonal is not followed and the gold ring goes faint and dashed to say so, filled
+    while a pull has hold - and a diagonal line bends only along itself. On a chord the
     figure follows approximately, since each voice is bent in its own cycle and the
     solution reads the lanes as one. In a split the nearest figure's layer is bent and the
     panel goes to it; otherwise A. Drawing on the screen, the cursors (now only in Y-T,
     where they are drawn) and the photocell's reticle keep their presses; a double-click
     on the figure puts Bend to nought; a finger on the figure grabs rather than scrolls,
     and scrolls everywhere else. A gold ring marks the grabbed moment while held.
+    Whether outward should do something of its own (move Bend at, or find the nearest
+    bulge) is left for the owner to find by hand.
     `handtest.py` holds it, with real presses, on the page's brain and the compiled one.
 - **P7 — Scan** (P2 said go, on motion): in the core, with parity, the ring as its path,
   softness, a table a frame as round one made them, Memory in seconds, under the loop's

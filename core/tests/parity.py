@@ -899,11 +899,29 @@ def gen_runs():
                       (1024, "routes " + "+".join([route(BEND_AT, 0.6, index=0), route(BEND, 0.9, held=1)])),
                       (2048, "set warp -0.4"), (3072, "set warp 0")], slots=35)
     add("dyad-bend-routed", [(0, "set shape square"), (0, "routes " + route(BEND, 0.7, index=0))], slots=35)
+    # The bend's offset (8 Nov): a sine bent its most at a quarter cycle,
+    # whose offset is J1(0.9), 0.41 of it, before the term; the same sine
+    # with the bend arriving half way, so the term has to follow it; a ramp
+    # and a narrow pulse, by the blocker, with the pulse unbent beside it.
+    add("bend-sine-dc", [(0, "set shape sine"), (0, "set freq 200"), (0, "set warp 0.9"), (0, "set warpAt 0.25")], samples=4800)
+    add("bend-sine-step", [(0, "set shape sine"), (0, "set freq 200"), (0, "set warpAt 0.25"), (0, "set warp 0.1"),
+                           (2400, "set warp 0.9")], samples=4800)
+    add("bend-ramp-dc", [(0, "set shape ramp"), (0, "set freq 200"), (0, "set warp 0.9"), (0, "set warpAt 0.3")], samples=19200)
+    add("bend-pulse-dc", [(0, "set shape pulse"), (0, "set width 0.25"), (0, "set freq 200"), (0, "set warp 0.6"),
+                          (0, "set warpAt 0.3")], samples=19200)
+    add("bend-pulse-plain", [(0, "set shape pulse"), (0, "set width 0.25"), (0, "set freq 200")], samples=19200)
+    # The bend glided away over 32 ms, as a host's smoothed automation comes,
+    # and the oscillator held on after it so the blocker winds down.
+    add("bend-ramp-glide", [(0, "set shape ramp"), (0, "set freq 200"), (0, "set warpAt 0.3"), (0, "set warp 0.9")]
+        + [(9600 + 128 * k, "set warp %.4f" % (0.9 * (1 - k / 12))) for k in range(1, 13)], samples=19200)
     add("layered-bend", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"), (76, "u"))),
                          (0, "set shape morph"), (0, "set warp 0.5"), (0, "set warpAt 0.1"), (0, "set shape pulse 1"),
                          (0, "set warp -0.7 1"), (0, "set warpAt 0.6 1"),
                          (0, "routes " + route(BEND, 0.3, amountB=-0.5, index=1)),
                          (1536, "set warp 0 1")], slots=35)
+    # And a sine bent on B alone: its offset is B's own term.
+    add("layered-bend-sine", [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"), (76, "u"))),
+                              (0, "set shape sine 1"), (0, "set warp 0.8 1"), (0, "set warpAt 0.25 1")], slots=35)
     add("dyad-shaped", [(0, "set shape square"), (0, "set drive 0.6"), (0, "set fold 0.3"), (0, "set shapeOS 4"),
                         (0, "set crushBits 6"), (0, "set crushHz 9000"), (1024, "routes " + route(DRIVE, 0.4, index=0)),
                         (2048, "set shapeOS 2"), (3072, "set fold 0")])
@@ -1133,6 +1151,11 @@ def gen_runs():
     # The same with no table yet, as a layer turned up before its first tick: the shape alone.
     add("scan-before", [(0, "set shape ramp"), (0, "set interval 7"), (0, "set scan 1"), (3072, "scan 0 " + sa)], samples=8192)
     add("scan-unset", [(0, "set shape ramp"), (0, "set interval 7")] + feed, samples=8192)
+    # A bent ramp half read off the screen (9 Nov): the blocker's plain wave
+    # has to go through the same Scan as the bent one, or the table's own
+    # difference is taken for the bend's.
+    add("scan-bent", [(0, "set shape ramp"), (0, "set interval 7"), (0, "set scan 0.5"), (0, "set warp 0.8"),
+                      (0, "set warpAt 0.3")] + feed, samples=8192)
     # Noise's pair, apart from it in the list, since two runs alike side by side would pass the out-of-step null.
     add("scan-noise-off", [(0, "set shape pink")] + feed, samples=4096)
     add("scan-poly-noise-off", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "set shape brown")] + feed, samples=4096)
@@ -1315,6 +1338,49 @@ check("every note: a key gone down mid-decay starts its own envelope's attack ag
 check("and a key gone down while it is shut opens nothing: the note after it starts where the note alone does",
       sh[22] == sg[22] and sh[22] > 0, "%.4f, %.4f" % (sh[22], sg[22]))
 gnull("menv-every", "set menvEvery 1", "set menvEvery 0", "the Envelope on Phrase")
+# The bend's offset, read as the mean of whole cycles (240 samples at 200 Hz)
+# against the wave's own size: before the term a sine bent 0.9 at a quarter
+# cycle sat 0.406 of its amplitude off the middle.
+def gmean(name, a, b):
+    x = col(grow(name)[0], 0)[a:b]
+    return sum(x) / len(x), max(abs(v) for v in x)
+J1 = sum((-1) ** k * 0.45 ** (2 * k + 1) / (math.factorial(k) * math.factorial(k + 1)) for k in range(12))
+m, pk = gmean("bend-sine-dc", 0, 4800)
+check("a sine bent its most at a quarter cycle sits on the middle: its offset, J1(0.9) = %.4f of it, taken off" % J1,
+      abs(m) < 1e-3 * pk and abs(J1 - 0.4059) < 1e-4, "mean %.3g of a peak %.3f" % (m, pk))
+check("null: with the offset put back the same mean is that far off", abs(m - J1 * pk) > 0.3 * pk, "%.3f" % (m - J1 * pk))
+m1, pk1 = gmean("bend-sine-step", 0, 2400)
+m2, pk2 = gmean("bend-sine-step", 2400, 4800)
+check("and a bend that arrives half way is on the middle before and after it: no step for automation to thump",
+      abs(m1) < 1e-3 * pk1 and abs(m2) < 1e-3 * pk2, "%.3g, %.3g" % (m1, m2))
+early, rpk = gmean("bend-ramp-dc", 0, 240)
+late, _ = gmean("bend-ramp-dc", 19200 - 2400, 19200)
+check("a bent ramp, by the blocker, has its offset in the first cycle and none 0.35 s on",
+      abs(early) > 0.05 * rpk and abs(late) < 2e-3 * rpk, "first cycle %.3f, at the end %.2g, of a peak %.3f" % (early, late, rpk))
+pl, ppk = gmean("bend-pulse-dc", 19200 - 2400, 19200)
+pp, _ = gmean("bend-pulse-plain", 19200 - 2400, 19200)
+pe, _ = gmean("bend-pulse-dc", 0, 240)
+check("and a narrow pulse bent comes to where the pulse unbent is, its first cycle off the middle",
+      abs(pl - pp) < 2e-3 * ppk and abs(pe) > 0.05 * ppk, "bent %.4f (first cycle %.4f), unbent %.4f, of a peak %.3f"
+      % (pl, pe, pp, ppk))
+# A glide down on a saw leaves the blocker's lag, a dip that winds down: no
+# cycle's mean a step from the last (0.016 as built; 0.038 with the
+# oscillator let go the moment the bend went, which dropped the lag at once),
+# and gone by the end (0.0006; 0.095 with nothing winding it down).
+gl = col(grow("bend-ramp-glide")[0], 0)
+gmeans = [sum(gl[i:i + 240]) / 240 for i in range(9600, 19200 - 240, 240)]
+gstep = max(abs(gmeans[i + 1] - gmeans[i]) for i in range(len(gmeans) - 1))
+check("a bend glided away on a saw winds its offset down: no cycle a step from the last, and none left 0.2 s on",
+      gstep < 0.025 and abs(gmeans[-1]) < 0.005 and min(gmeans) < -0.03, "worst step %.4f, deepest %.3f, last %.5f"
+      % (gstep, min(gmeans), gmeans[-1]))
+# Layer B's sine, bent 0.8 at a quarter cycle on a chord: its own term,
+# J1(0.8) = 0.37 of it, taken off, read over 4096 samples, many cycles of both notes.
+bl = col(grow("layered-bend-sine")[0], 4)
+bmean, bpk = sum(bl) / len(bl), max(abs(v) for v in bl)
+check("layer B's sine bent on its own sits on the middle too, its term B's own", abs(bmean) < 0.02 * bpk and bpk > 0.05,
+      "mean %.4f of a peak %.3f" % (bmean, bpk))
+gnull("bend-sine-dc", "set warpAt 0.25", "set warpAt 0.26", "the sine's bend centred a hundredth of a cycle on")
+gnull("bend-ramp-dc", "set warp 0.9", "set warp 0.89", "the ramp's bend a hundredth less")
 _, mt = grow("menv-sustain")
 _, md = grow("menv-decay")
 check("its own envelope as the source: at its sustain, 0.3, not the velocity's share of it nor Play's 0.9",
