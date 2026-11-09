@@ -132,8 +132,8 @@ on the ring is where the control is this instant, the sum of them all. The point
 always the hand's value, so the knob never swings while it is being turned. The selected
 source is the card last pressed (or the editor row), if it is on this knob, and otherwise
 the knob's first; pressing a card shows its ring on every knob it is on. The shoulder's
-dots stay, with a pressable area of about 20 px. The cell still measures the same with
-nought to three sources (`patchtest.py`).
+dots go (below): the ring and the ticks say what is on a knob. The cell still measures the
+same with nought to three sources (`patchtest.py`).
 
 **Changing a depth where it is.** Alt-drag the knob (Option on a Mac), the standard
 Serum set: it moves the selected source's depth, not the value. Shift stays fine
@@ -141,13 +141,38 @@ adjustment, as on every knob, and Alt with Shift is fine depth. Or grab the ring
 at, its end shows a handle to drag round. While either moves, the reading above the knob
 says whose depth and how much (*LFO 2 −30%*), and the info line says it too.
 
-**The editor** opens just above the knob, headed with the knob's own name and value. A
+**The editor** opens just above the knob, from its right-click menu, headed with the knob's own name and value. A
 bar of the control's whole range carries the hand's mark, each source's sweep as a band in
 its ink, and the dot where it is now. A row per source: its ink, its name (which opens its
 card), a small live picture of it, a depth that fills out from a centre line, a number to
 type into, and ✕; pressing a row selects that source. Then the sources not on it, as
 today, and one line saying Alt-drag. The source's own editor lists its knobs with the
 same row, one law for a depth as now.
+
+![Right-click a control: pointed at, with sources on it, with nothing on it, and a routing chosen](the-face-second-pass/11-right-click-menu.png)
+
+**The right-click menu**, agreed 9 Nov, replaces the dots at the knob's shoulder, which
+were the only way to a depth and seven pixels each. Right-click a control - or Ctrl-click
+on a Mac, a long press on a touch screen, the menu key or Shift+F10 with it focused - and
+a menu opens beside it, headed with its name and value:
+
+- **Its modulation, first.** With sources on it, each is a line with its ink and depth;
+  choosing one opens the editor in the menu's place with that source selected, so the
+  ring and Alt-drag follow it. Then the sources not on it, a press each to add, and
+  *Clear modulation*. With nothing on it the list is *Modulate with* and the four
+  sources, a press each - the same as dragging a card on, for someone who never drags.
+- **Its value:** *Type a value…*, *Reset* with the starting value named, and on a split
+  *Copy to the Lower hand* (or Upper).
+- ***What is this?***, the help card.
+
+Menus and switches (Type, Shape) get the same menu without the modulation part. Not
+offered: MIDI learn, which the instrument does not do since F4b, and the host's own
+automation, which a page cannot reach. The arrows and Enter work in it; Esc or a click
+away closes it, and nothing in it changes the sound until it is chosen. The browser's own
+menu (Reload, Inspect) is never shown, in the page or in the plugin's web view, and the
+plugin's shell test right-clicks a knob and requires ours. A card dragged onto a knob
+still patches it, and the info line names the right-click for every control that has a
+menu, which is how anyone who has never right-clicked a plugin finds it.
 
 ### The Picture section
 
@@ -296,8 +321,8 @@ chosen - takes it at once. A switch in Settings turns it off.
 
 ![More opens the control's card](the-face-second-pass/09-info-card.png)
 
-**The card** opens from More, from a right-click (a long press on a touch screen) on the
-control itself, or from ? while the window has the keyboard - which a host often keeps,
+**The card** opens from More, from *What is this?* in the control's right-click menu, or
+from ? while the window has the keyboard - which a host often keeps,
 so ? is not shown on the face. It sits beside the control and is not a mode: nothing dims
 and the instrument plays on. The sentence again, a paragraph where one sentence is not
 enough, and facts the page fills in itself - the range and what a double-click puts it
@@ -308,8 +333,8 @@ there is one place to read about a control rather than two.
 One table of words keyed by control id: a sentence for every control, a paragraph for
 the forty or so that need one. A test fails if a control has no sentence, which makes
 every later stage write its own; another sweeps the pointer across a row of knobs and
-requires the line unchanged, rests on one and requires it changed, and right-clicks one
-and requires its card, each with its null.
+requires the line unchanged, rests on one and requires it changed, and chooses *What is
+this?* from one's menu and requires its card, each with its null.
 
 ## At the plugin's window
 
@@ -336,7 +361,8 @@ Each leaves the suite green and is pushed alone.
   only, which hands and the trail.
 - **G5 The modulation row.** Full width, the Photocell card, the drawn editors, Routings
   with the fade; CLAUDE.md's rule rewritten. And modulation on a knob: the ring, the
-  ticks and the dot, Alt-drag and the ring's handle, the new editor.
+  ticks and the dot, Alt-drag and the ring's handle, the new editor, and the right-click
+  menu in place of the shoulder's dots (with the plugin's shell test for it).
 - **G6 The hands.** The selector, a link per section, the new twins, routings that follow
   the link, Edit A/B and the modules' layer switches retired.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.
