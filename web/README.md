@@ -5352,3 +5352,32 @@ the card (`lfoShape1` is LFO 2's), so a key ending in a number falls back to
 the one ending in nought. The line is in the Picture section's free middle
 rather than along the foot where it was drawn: the foot cost 26 px, and that
 made a Space & Memory tab scroll at 1100x860.
+
+**Moving a slider in the markup is a change to the core.** The morph walks
+its sliders in the order the page's script finds them (`MORPH_IDS`), and a
+setup code writes each end in that order; the core holds the same list as
+`kMorphIds` in `core/include/scope/panel_controls.h`, and parity compares
+the two. G3 moved Frequency, Phase, the amplifier's envelope and Glide to
+other sections, which changed the order and nothing else, and parity failed
+three ways on setups that differed only in it. Run parity after moving any
+range input, and copy the page's order into the core when it moves.
+
+**Parity's harnesses read functions out of the page by name.** The beam
+harness lifts `clearOrFade` and its neighbours, and when the wash fix gave
+`clearOrFade` a variable and a helper of its own (`fadeNudge`,
+`wipeOutside`) the harness threw on the first frame. The web suite passed
+throughout, because it runs the page whole. A new top-level name used by a
+lifted function goes into the harness's list too (`LIFTED` in
+`core/tests/tools/beam_js.mjs`, the `coreScope` lists in
+`functions_js.mjs`).
+
+**Glide in Poly comes from the last note, out of silence too.** A poly voice
+is made for each note and dropped when its release is over, so there is no
+"this voice's previous note" to slide from, as there is in a synth with a
+fixed set of voices. A new note starts at the pitch the newest voice had got
+to, or, with none left, the layer's last note (`glideFrom`), which is what
+Dyad's and Mono's single pitch has always done. It is assigned, not stepped,
+while Glide is off, so a setup without it is the same to the bit. The cost:
+a note joining a chord normally starts in step with it, so the chord's
+figure holds still; a sliding note cannot, and its figure turns a little
+before it settles.

@@ -193,17 +193,17 @@ inline constexpr SelectSpec kSelects[] = {
 // LFO's rate) as well as the ones MORPH_SKIP names. The order is what a setup
 // code writes an end in, so it is held to the page like the rest.
 inline constexpr const char* kMorphIds[] = {
-  "freq", "morph", "width", "table", "phase", "detail", "spinX", "spinY", "spinZ", "spinRate", "depth",
-  "envAttack", "envDecay", "envSustain", "envRelease", "glide", "figureRate", "ringTime", "swingRate",
-  "decay", "detune", "swingDrive", "quantiseGlide", "tempo", "lag", "lagMix", "acCorner", "planeTwist",
-  "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "phaserMix", "phaserRate",
-  "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
-  "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth", "delayWow",
-  "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7",
-  "bar8", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold",
-  "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "gen2Rate",
-  "inputDepth", "filterCutoff", "filterRes", "level", "position", "holdoff", "timebase", "zoom", "oscScan",
-  "scanStrike", "scanSoft", "amp", "menvAtk", "menvDec", "menvSus", "menvRel",
+  "morph", "width", "table", "glide", "detail", "spinX", "spinY", "spinZ", "spinRate", "depth", "figureRate",
+  "ringTime", "swingRate", "decay", "detune", "swingDrive", "envAttack", "envDecay", "envSustain", "envRelease",
+  "quantiseGlide", "tempo", "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius",
+  "planeScaleX", "planeScaleY", "planeShear", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback",
+  "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback",
+  "delayTone", "delayLowCut", "delayWidth", "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre",
+  "reverbSpread", "bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm",
+  "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes",
+  "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "gen2Rate", "inputDepth", "filterCutoff",
+  "filterRes", "level", "position", "holdoff", "timebase", "zoom", "oscScan", "scanStrike", "scanSoft", "amp",
+  "menvAtk", "menvDec", "menvSus", "menvRel",
 };
 
 }  // namespace scope
