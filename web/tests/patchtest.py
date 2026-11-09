@@ -34,7 +34,8 @@ def open_bench(page):
     # The drawer that hid the hollow rings went in F4; the rings are there,
     # seen when the control is pointed at, and a press points at it first.
     page.evaluate("""() => {
-      setView('bench'); state.modRoutings = []; focusSource = null; paintRoutings();
+      // Ink: Frequency, the destination this suite patches, has been there since G3.
+      setView('bench'); setBenchTab('ink'); state.modRoutings = []; focusSource = null; paintRoutings();
     }""")
     page.wait_for_timeout(350)
 

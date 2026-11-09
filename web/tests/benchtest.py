@@ -105,7 +105,8 @@ with sync_playwright() as pw:
       const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.querySelector('.tab-name').textContent);
       const shown = (node) => !!(node && node.offsetParent);
       const ring = (dest) => document.querySelector('.mod-open[data-dest="' + dest + '"]');
-      setBenchTab('play');
+      // Ink: Frequency's tab since G3.
+      setBenchTab('ink');
       state.modRoutings = []; addRouting('lfo1', 'gen.freq'); touchRoutings(); paintRoutings();
       return { rail: rail(), switch: document.getElementById('benchDrawer'), attr: document.body.dataset.drawer || null,
                attached: shown(ring('gen.freq')) && getComputedStyle(ring('gen.freq')).opacity === '1',

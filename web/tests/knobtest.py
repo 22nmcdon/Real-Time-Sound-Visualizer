@@ -101,12 +101,13 @@ with sync_playwright() as pw:
           access["labels"] == 1 and access["display"] != "none" and access["tab"] >= 0, str(access))
 
     # A knob alone among menu rows is one line, as tall as they are; knobs
-    # that come together are cells, read down. Frequency is alone in the
-    # Generator, between Kind and Shape (Twist was, in the Plane, until F5
-    # made it one of the rack's module's main knobs); FM is one of the
+    # that come together are cells, read down. Glide is alone in the
+    # Generator, between Shape and Interval (Frequency was, between Kind and
+    # Shape, until G3 took it to Ink; Twist was, in the Plane, until F5 made
+    # it one of the rack's module's main knobs); FM is one of the
     # oscillator's run.
     p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
-    lone = p.evaluate("() => { const r = el.freq.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
+    lone = p.evaluate("() => { const r = el.glide.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
     p.evaluate("() => setBenchTab('ink')"); p.wait_for_timeout(200)
     cell = p.evaluate("() => { const r = el.oscFm.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
     print("    alone %s, in a run %s" % (lone, cell))

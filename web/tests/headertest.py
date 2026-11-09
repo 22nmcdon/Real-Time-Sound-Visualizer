@@ -183,7 +183,8 @@ with sync_playwright() as pw:
     p.click("#abB"); settle(); onb = state()
     check("B starts as a copy of A, with a history of its own",
           onb["on"] == "b" and onb["freq"] == a_freq and onb["value"] == "b:Slow pad" and onb["undo"] == 0, str(onb))
-    p.evaluate("() => { el.freq.focus(); }")
+    # Its own tab first: since G3 Frequency is on Ink, and the tab here is Play.
+    p.evaluate("() => { showControl('freq'); el.freq.focus(); }")
     for _ in range(3): p.keyboard.press("ArrowUp")
     settle(); b_freq = state()["freq"]
     p.click("#abA"); settle(); ona = state()

@@ -192,18 +192,21 @@ with sync_playwright() as pw:
           p.evaluate("el.benchSearch.value") == "a/b", p.evaluate("el.benchSearch.value"))
 
     cutoff = search("cutoff")
-    check("the Sources panel's destination menu is not searched as rows: cutoff is the Filter's",
-          cutoff == [["Cutoff", "Scope & measure \u203a Filter"]], str(cutoff))
+    # Two since G3: the voice filter's Cutoff is on show, greyed, while the
+    # filter is off, and search finds it, as it finds anything on show.
+    check("the Sources panel's destination menu is not searched as rows: cutoff is the two filters'",
+          sorted(cutoff) == [["Cutoff", "Scope & measure \u203a Filter"], ["Cutoff", "Voice filter"]], str(cutoff))
     notch = search("notch")
     # Two since the voice filter (H3): its Type offers a notch too.
     check("but a menu's own choices find it: notch is a type of the trace's filter and of the voice's",
           sorted(notch) == [["Type", "Scope & measure \u203a Filter"], ["Type", "Voice filter"]], str(notch))
     adsr = search("adsr")
     # The Envelope source comes after them, fairly: its description names them.
-    # On show in the Generator since F3, no longer behind its dots.
-    check("synonyms: adsr is the four envelope times first, on show in the Generator",
+    # On show in the Generator since F3, no longer behind its dots, and in a
+    # section of their own, the Amp envelope, since G3.
+    check("synonyms: adsr is the four envelope times first, on show in the Amp envelope",
           [r[0] for r in adsr[:4]] == ["Attack", "Decay", "Sustain", "Release"]
-          and all(r[1] == "Generator" for r in adsr[:4]), str(adsr))
+          and all(r[1] == "Amp envelope" for r in adsr[:4]), str(adsr))
     rate = search("rate")
     check("a word is matched at its start: rate is not the middle of another word",
           all(" rate" in (" " + r[0].lower()) or r[1] == "Modulation" for r in rate) and rate != [],

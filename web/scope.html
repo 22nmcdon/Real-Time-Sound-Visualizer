@@ -1066,8 +1066,22 @@ body[data-view="bench"] .picture-bar { order: 4; }
 #toneRows[data-layer-edit="b"] > :not([data-layer]),
 #toneRows[data-layer-edit="b"] #figureRows,
 #toneRows[data-layer-edit="b"] #wireRows,
-#toneRows[data-layer-edit="b"] #harmoRows { display: none !important; }
+#toneRows[data-layer-edit="b"] #harmoRows,
+body[data-layer-edit="b"] #freqRow,
+body[data-layer-edit="b"] #phaseRow { display: none !important; }
 #toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
+/* The amplifier's envelope, drawn over its knobs (G3). */
+.env-curve { display: block; width: 100%; height: 40px; margin: 2px 0 6px; }
+.env-curve .env-floor { fill: none; stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.env-curve .env-line { fill: none; stroke: var(--blush-deep); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* The voice filter while it is off: on show, greyed, its menu still live. */
+#vcfGroup.is-off .vcf-on { opacity: 0.45; }
+/* A heading inside a section, for a second set of controls under the first. */
+.menu-sub { display: block; margin: 12px 0 2px; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); }
+/* A row whose menus need the column's whole width: the label over them. Draw's
+   two menus read "2 n" and "bass and" beside it in a 240 px column. */
+.menu-row.stack > .grow { flex: 1 1 100%; }
+#vcfGroup.is-off .vcf-on .mod-open { visibility: hidden; }
 
 /* A drawbar's colour, as on the organ: brown under the note, white for the
    octaves, black for the fifths and the third. A mark beside the label
@@ -1932,7 +1946,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
           </div>
 
-          <div class="menu-group" id="midiGroup" data-tab="play" data-home="bench">
+          <div class="menu-group" id="midiGroup" data-tab="play" data-home="bench" data-col="1">
             <span class="menu-title">Keyboard</span>
             <div class="menu-row">
               <span class="menu-label">On screen</span>
@@ -1983,28 +1997,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <option value="against">A against B</option>
               </select>
             </div>
-            <!-- P6: each layer's picture, and whose sound it moves. One row, two
-                 menus, where the arpeggiator's row was before it went to the
-                 drawer, so a split does not make Play taller than it was. Shown
-                 only while the layers draw a figure each: A against B is one
-                 figure, with one picture to read. -->
-            <div class="menu-row" id="pictureMovesRow" hidden>
-              <span class="menu-label">Pictures</span>
-              <div class="grow">
-                <select id="pictureMovesA" aria-label="Whose sound layer A's picture moves"
-                        title="Whose sound layer A's picture moves" style="flex:1 1 0; min-width:0">
-                  <option value="A" selected>A &rarr; A</option><option value="B">A &rarr; B</option>
-                  <option value="both">A &rarr; both</option>
-                </select>
-                <select id="pictureMovesB" aria-label="Whose sound layer B's picture moves"
-                        title="Whose sound layer B's picture moves" style="flex:1 1 0; min-width:0">
-                  <option value="B" selected>B &rarr; B</option><option value="A">B &rarr; A</option>
-                  <option value="both">B &rarr; both</option>
-                </select>
-              </div>
-            </div>
             <p class="menu-note" id="midiLayersNote" hidden></p>
-            <div class="menu-row" id="midiDrawRow" hidden>
+            <div class="menu-row stack" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
               <div class="grow">
                 <!-- Allowed to shrink. At their natural width the two menus ran
@@ -2032,11 +2026,28 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <!-- P8g: a switch to hear and see the difference while it is tried. -->
             <label class="check" title="In poly, a note alone or an inner voice is heard on the right a quarter of its period late, as a dyad's lone note is, so it draws a ring instead of a diagonal line">
               <input type="checkbox" id="polyRound"> Quarter turn: a lone note draws a ring</label>
-            <!-- Expression (6 Nov): what the pitch bend, the mod wheel and
-                 channel pressure do. In the section's detail for now, so the
-                 tab does not grow; the face's rebuild (redesigning-the-face.md)
-                 gives it a section of its own on Play. -->
-            <div class="menu-row" data-more="1">
+            <!-- What a note does to a drawing, when it plays one: its rate
+                 becomes the note's pitch. The words are the kind's own. -->
+            <label class="check" id="midiPlayRow" hidden><input type="checkbox" id="midiPlay">
+              <span id="midiPlayLabel">Play the figure at the note's pitch</span></label>
+            <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
+            <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
+              under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
+              a third walks. <i>Dyad</i> reads the two most recent notes and puts the lower on
+              X; <i>mono</i> takes the newest note as the pitch and leaves the interval to the
+              menu. A note is also the one pitch on this page that is not estimated, which is
+              why the lag, the tuner and the timebase can be told to take it as read
+              (under <i>Vertical</i>, in <i>Scope &amp; measure</i>). The port and the learned controllers are under <i>Settings &rarr; MIDI</i>.</p>
+          </div>
+
+          <!-- Expression: what the pitch bend, the mod wheel, channel
+               pressure and velocity do. On show under the Keyboard since G3
+               (the-face-second-pass.md); from 6 Nov to then it was behind the
+               Keyboard's dots, so a player looking for the bend range had to
+               know it was there. -->
+          <div class="menu-group" id="expressionGroup" data-tab="play" data-home="bench" data-col="1">
+            <span class="menu-title">Expression</span>
+            <div class="menu-row">
               <label class="menu-label" for="midiBendRange">Pitch bend</label>
               <div class="grow"><select id="midiBendRange" style="flex:1 1 auto">
                 <option value="1">&plusmn;1 semitone</option><option value="2" selected>&plusmn;2 semitones</option>
@@ -2044,11 +2055,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <option value="7">&plusmn;7 semitones</option><option value="12">&plusmn;12 semitones</option>
                 <option value="24">&plusmn;24 semitones</option></select></div>
             </div>
-            <div class="menu-row" data-more="1">
+            <div class="menu-row">
               <label class="menu-label" for="midiWheelTo">Mod wheel</label>
               <div class="grow"><select id="midiWheelTo" style="flex:1 1 auto"><option value="vibrato" selected>Vibrato</option><option value="picture">Picture amount</option><option value="scan">Scan depth</option><option value="off">Nothing</option></select></div>
             </div>
-            <div class="menu-row" data-more="1">
+            <div class="menu-row">
               <label class="menu-label" for="midiPressureTo">Pressure</label>
               <div class="grow"><select id="midiPressureTo" style="flex:1 1 auto"><option value="vibrato">Vibrato</option><option value="picture">Picture amount</option><option value="scan">Scan depth</option><option value="off" selected>Nothing</option></select></div>
             </div>
@@ -2056,24 +2067,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  strikes the screen; FM adds the routing a struck note's
                  brightness rides, which the menu reads and writes rather than
                  a field of its own. -->
-            <div class="menu-row" data-more="1">
+            <div class="menu-row">
               <label class="menu-label" for="midiVelocityTo">Velocity</label>
               <div class="grow"><select id="midiVelocityTo" style="flex:1 1 auto"><option value="strike" selected>Level and strike</option><option value="fm">Level, strike and FM</option></select></div>
             </div>
-            <!-- What a note does to a drawing, when it plays one: its rate
-                 becomes the note's pitch. The words are the kind's own. -->
-            <label class="check" id="midiPlayRow" hidden><input type="checkbox" id="midiPlay">
-              <span id="midiPlayLabel">Play the figure at the note's pitch</span></label>
-            <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
-            <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note</label>
-            <label class="check"><input type="checkbox" id="midiFollow"> &hellip; and the timebase</label>
-            <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
-              under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
-              a third walks. <i>Dyad</i> reads the two most recent notes and puts the lower on
-              X; <i>mono</i> takes the newest note as the pitch and leaves the interval to the
-              menu. A note is also the one pitch on this page that is not estimated, which is
-              why the lag, the tuner and the timebase can be told to take it as read.
-              The port and the learned controllers are under <i>Settings &rarr; MIDI</i>.</p>
           </div>
 
           <!-- K5: the arpeggiator, in the drawer since P5 of
@@ -2085,7 +2082,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                shrink, as the Draw row's do. -->
           <div class="menu-group" id="arpGroup" data-home="perform">
             <span class="menu-title">Arpeggiator</span>
-            <div class="menu-row">
+            <div class="menu-row stack">
               <label class="menu-label" for="arpMode">Arp</label>
               <div class="grow">
                 <select id="arpMode" style="flex:2 1 0; min-width:0">
@@ -2210,7 +2207,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
 
 
-          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench">
+          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench" data-col="2">
             <span class="menu-title" id="genTitle" data-layer="b">Generator</span>
               <p class="menu-note" id="layerBNote" data-layer="b">Layer B has its own shape,
                 level and envelope, and its own drawbars and morph, and nothing else: its pitches are the keys it is
@@ -2228,13 +2225,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                     <option value="figure" data-drawer="1">Figure</option>
                     <option value="wireframe" data-drawer="1">Wireframe</option>
                   </select>
-                </div>
-              </div>
-              <div class="menu-row" id="freqRow" data-mod-dest="gen.freq" data-mod-control="freq">
-                <label class="menu-label" for="freq">Frequency</label>
-                <div class="grow">
-                  <input type="range" id="freq" min="30" max="4000" step="1" value="220">
-                  <span class="reading" id="freqValue">220 Hz</span>
                 </div>
               </div>
               <div class="menu-row" data-layer="b">
@@ -2307,6 +2297,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                           title="The drawbars, on the Ink tab"></button>
                 </div>
               </div>
+              <!-- Glide beside Shape since G3: how a phrase moves from note to
+                   note is the generator's, not the envelope's. -->
+              <div class="menu-row">
+                <label class="menu-label" for="glide">Glide</label>
+                <div class="grow">
+                  <input type="range" id="glide" min="0" max="500" value="0">
+                  <span class="reading" id="glideValue">off</span>
+                </div>
+              </div>
               <div class="menu-row" data-mod-dest="gen.ratio" data-mod-control="interval">
                 <label class="menu-label" for="interval">Interval</label>
                 <div class="grow"><select id="interval" style="flex:1 1 auto"></select></div>
@@ -2316,13 +2315,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <div class="switch" role="radiogroup" aria-label="Tuning">
                   <button type="button" class="caps" id="tuneJust" role="radio" aria-checked="true">Just</button>
                   <button type="button" class="caps" id="tuneEqual" role="radio" aria-checked="false">Equal</button>
-                </div>
-              </div>
-              <div class="menu-row" id="phaseRow" data-mod-dest="gen.phase" data-mod-control="phase">
-                <label class="menu-label" for="phase">Phase</label>
-                <div class="grow">
-                  <input type="range" id="phase" min="0" max="360" value="90">
-                  <span class="reading" id="phaseValue">90&deg;</span>
                 </div>
               </div>
               <p class="menu-note">A Lissajous figure closes when the two frequencies are
@@ -2423,50 +2415,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   one that needs no retracing at all.</p>
               </div>
 
-              <div class="menu-row" data-layer="b">
-                <label class="menu-label" for="envAttack">Attack</label>
-                <div class="grow">
-                  <input type="range" id="envAttack" min="0" max="200" value="8">
-                  <span class="reading" id="envAttackValue">8 ms</span>
-                </div>
-              </div>
-              <div class="menu-row" data-layer="b">
-                <label class="menu-label" for="envDecay">Decay</label>
-                <div class="grow">
-                  <input type="range" id="envDecay" min="1" max="1000" value="120">
-                  <span class="reading" id="envDecayValue">120 ms</span>
-                </div>
-              </div>
-              <div class="menu-row" data-layer="b">
-                <label class="menu-label" for="envSustain">Sustain</label>
-                <div class="grow">
-                  <input type="range" id="envSustain" min="0" max="100" value="70">
-                  <span class="reading" id="envSustainValue">0.70</span>
-                </div>
-              </div>
-              <div class="menu-row" data-layer="b">
-                <label class="menu-label" for="envRelease">Release</label>
-                <div class="grow">
-                  <input type="range" id="envRelease" min="1" max="2000" value="180">
-                  <span class="reading" id="envReleaseValue">180 ms</span>
-                </div>
-              </div>
-              <div class="menu-row">
-                <label class="menu-label" for="glide">Glide</label>
-                <div class="grow">
-                  <input type="range" id="glide" min="0" max="500" value="0">
-                  <span class="reading" id="glideValue">off</span>
-                </div>
-              </div>
-              <p class="menu-note" data-more="1">The envelope only does anything while the
-                keyboard is driving the generator &mdash; with nothing plugged in the
-                amplitude is the slider and nothing else, exactly as it was. A second note
-                while one is still held changes the pitch without starting the envelope
-                again, which is what makes a run of notes a phrase rather than a row of
-                attacks; <i>glide</i> slides between them instead of stepping. The envelope
-                is also a source: send <i>Envelope</i> to the rotation or the ratio and the
-                figure opens as the note does - or give the Envelope card its own envelope,
-                and the figure opens on its own timing.</p>
 
               <div class="menu-row" id="traceRateRow" hidden>
                 <label class="menu-label" for="figureRate">Trace rate</label>
@@ -2522,6 +2470,55 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   spirograph.</p>
               </div>
           </div>
+
+          <!-- The amplifier's envelope (G3): a section with its curve, under the
+               Generator. Until then it was four knobs at the Generator's foot
+               with Glide wrapped under them, so the first column read "Attack
+               off". Every row is a layer's own (data-layer), so while layer B
+               is edited the whole section stays and says so. -->
+          <div class="menu-group" id="ampEnvGroup" data-tab="play" data-home="bench" data-col="2">
+            <span class="menu-title" id="ampEnvTitle">Amp envelope</span>
+            <svg class="env-curve" id="ampEnvCurve" viewBox="0 0 200 44" preserveAspectRatio="none"
+                 aria-hidden="true"><path class="env-floor" d="M0 43 H200"></path><path class="env-line" d="M0 43"></path></svg>
+            <div class="menu-row" data-layer="b">
+              <label class="menu-label" for="envAttack">Attack</label>
+              <div class="grow">
+                <input type="range" id="envAttack" min="0" max="200" value="8">
+                <span class="reading" id="envAttackValue">8 ms</span>
+              </div>
+            </div>
+            <div class="menu-row" data-layer="b">
+              <label class="menu-label" for="envDecay">Decay</label>
+              <div class="grow">
+                <input type="range" id="envDecay" min="1" max="1000" value="120">
+                <span class="reading" id="envDecayValue">120 ms</span>
+              </div>
+            </div>
+            <div class="menu-row" data-layer="b">
+              <label class="menu-label" for="envSustain">Sustain</label>
+              <div class="grow">
+                <input type="range" id="envSustain" min="0" max="100" value="70">
+                <span class="reading" id="envSustainValue">0.70</span>
+              </div>
+            </div>
+            <div class="menu-row" data-layer="b">
+              <label class="menu-label" for="envRelease">Release</label>
+              <div class="grow">
+                <input type="range" id="envRelease" min="1" max="2000" value="180">
+                <span class="reading" id="envReleaseValue">180 ms</span>
+              </div>
+            </div>
+            <p class="menu-note">The envelope only does anything while the
+              keyboard is driving the generator &mdash; with nothing plugged in the
+              amplitude is the slider and nothing else, exactly as it was. A second note
+              while one is still held changes the pitch without starting the envelope
+              again, which is what makes a run of notes a phrase rather than a row of
+              attacks; <i>glide</i> slides between them instead of stepping. The envelope
+              is also a source: send <i>Envelope</i> to the rotation or the ratio and the
+              figure opens as the note does - or give the Envelope card its own envelope,
+              and the figure opens on its own timing.</p>
+          </div>
+
 
           <!-- The Sources tab: the families, one family's sources, and the one
                selected. It replaced the Modulation section, which gave the two
@@ -2652,6 +2649,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="lagMixValue">20%</span>
               </div>
             </div>
+            <!-- From the Keyboard (G3): the note is the one pitch on the page
+                 that is not estimated, and these say what of the scope may
+                 take it as read - so they are the scope's, not the keyboard's. -->
+            <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note played</label>
+            <label class="check"><input type="checkbox" id="midiFollow"> &hellip; and the timebase</label>
             <div class="menu-row" data-more="1">
               <label class="menu-label" for="acCorner">AC corner</label>
               <div class="grow">
@@ -3247,6 +3249,24 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
           <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="oscTitle">Oscillator</span>
+            <!-- The pitch with no keyboard, and the second channel's start:
+                 the ink's, with the ratio and FM under them, since G3. On
+                 Play they read as the instrument's main controls, which they
+                 are not once a note is played. -->
+            <div class="menu-row" id="freqRow" data-mod-dest="gen.freq" data-mod-control="freq">
+              <label class="menu-label" for="freq">Frequency</label>
+              <div class="grow">
+                <input type="range" id="freq" min="30" max="4000" step="1" value="220">
+                <span class="reading" id="freqValue">220 Hz</span>
+              </div>
+            </div>
+            <div class="menu-row" id="phaseRow" data-mod-dest="gen.phase" data-mod-control="phase">
+              <label class="menu-label" for="phase">Phase</label>
+              <div class="grow">
+                <input type="range" id="phase" min="0" max="360" value="90">
+                <span class="reading" id="phaseValue">90&deg;</span>
+              </div>
+            </div>
             <div class="menu-row">
               <label class="menu-label" for="oscRatio">Ratio</label>
               <div class="grow"><select id="oscRatio" style="flex:1 1 auto"></select></div>
@@ -3389,7 +3409,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
           </div>
 
-          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="play">
+          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="play" data-col="3">
             <span class="menu-title">Voice filter</span>
             <div class="menu-row">
               <label class="menu-label" for="vcfType">Type</label>
@@ -3425,28 +3445,31 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="vcfEnvAmtValue">0.0 oct</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+            <!-- Its envelope named (G3), now that its four sit on show beside the
+                 amplifier's four, which have the same names. -->
+            <span class="menu-sub vcf-on vcf-env">Its envelope</span>
+            <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfAtk">Attack</label>
               <div class="grow">
                 <input type="range" id="vcfAtk" min="0" max="1000" value="5">
                 <span class="reading" id="vcfAtkValue">5 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+            <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfDec">Decay</label>
               <div class="grow">
                 <input type="range" id="vcfDec" min="1" max="2000" value="300">
                 <span class="reading" id="vcfDecValue">300 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+            <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfSus">Sustain</label>
               <div class="grow">
                 <input type="range" id="vcfSus" min="0" max="100" value="30">
                 <span class="reading" id="vcfSusValue">0.30</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+            <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfRel">Release</label>
               <div class="grow">
                 <input type="range" id="vcfRel" min="1" max="2000" value="300">
@@ -3532,6 +3555,26 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                         title="Whose picture layer B's Scan reads" style="flex:1 1 0; min-width:0">
                   <option value="B" selected>B reads B</option><option value="A">B reads A</option>
                   <option value="both">B reads both</option>
+                </select>
+              </div>
+            </div>
+            <!-- P6: each layer's picture, and whose sound it moves. One row, two
+                 menus, shown only while the layers draw a figure each: A
+                 against B is one figure, with one picture to read. On the
+                 Keyboard until G3, which put it here beside what each layer's
+                 Scan reads, the other half of the same crossing. -->
+            <div class="menu-row" id="pictureMovesRow" hidden>
+              <span class="menu-label">Pictures</span>
+              <div class="grow">
+                <select id="pictureMovesA" aria-label="Whose sound layer A's picture moves"
+                        title="Whose sound layer A's picture moves" style="flex:1 1 0; min-width:0">
+                  <option value="A" selected>A &rarr; A</option><option value="B">A &rarr; B</option>
+                  <option value="both">A &rarr; both</option>
+                </select>
+                <select id="pictureMovesB" aria-label="Whose sound layer B's picture moves"
+                        title="Whose sound layer B's picture moves" style="flex:1 1 0; min-width:0">
+                  <option value="B" selected>B &rarr; B</option><option value="A">B &rarr; A</option>
+                  <option value="both">B &rarr; both</option>
                 </select>
               </div>
             </div>
@@ -4609,7 +4652,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         with the photocell and with anything you route from the picture yourself.
         <br><br>
         Split into two sounds, each layer's figure is also a picture of its own, read on its
-        own, and <i>Pictures</i>, in the Keyboard section, says whose sound each moves:
+        own, and <i>Pictures</i>, in the Picture section's <i>Advanced</i> under <i>What Scan reads</i>, says whose sound each moves:
         <i>A &rarr; A</i> and <i>B &rarr; B</i> to start, each picture its own sound's;
         <i>A &rarr; B</i> to send A's picture to the other sound; <i>both</i> to send it to
         both. A sound that hears two pictures takes their average, so it is never pushed
@@ -4869,8 +4912,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         destination</i> to put it on another. <i>Close</i>, <b>Esc</b> or a tab puts it away.
         Pressing a card also makes every control it is on draw its sweep.
         <br><br>
-        The keyboard reaches the instrument through <i>Expression</i>, behind the Keyboard
-        section's dots on <i>Play</i>: the pitch bend's range, and what the mod wheel, pressure
+        The keyboard reaches the instrument through <i>Expression</i>, under the Keyboard
+        on <i>Play</i>: the pitch bend's range, and what the mod wheel, pressure
         and velocity do. Velocity always sets a note's level and how hard it strikes the screen;
         <i>Level, strike and FM</i> also brightens a note the harder it is struck. What the
         microphone hears (its pitch, brightness and bands) and what a drawing reads off itself
@@ -5223,7 +5266,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         twice the note's, and the readout's frequency is the sound's rather than the key's:
         an octave under. At 1 ms/div the screen holds less than two of those cycles, and the
         readout says nothing rather than guess. The tuner can read the key instead: with a
-        keyboard, tick <i>take the lag and the tuner from the note</i>.</span></li>
+        keyboard, tick <i>take the lag and the tuner from the note played</i>, under <i>Vertical</i> in
+        <i>Scope &amp; measure</i>.</span></li>
 
       <li><b>Intervals draw consonance</b>
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
@@ -5653,6 +5697,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "performSide", "dock", "pictureLook", "settingsLeft", "settingsRight", "settingsSub", "helpFirst", "windowGroup", "sizeAuto", "size90", "size100", "size125", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
                   "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
+                  "expressionGroup", "ampEnvGroup", "ampEnvTitle", "ampEnvCurve",
                   "benchSearch", "benchResults",
                   "audioGroup", "midiSetGroup", "audioNote",
                   "lagMixRow", "lagMix", "lagMixValue",
@@ -20590,11 +20635,22 @@ const LAYER_CONTROLS = [
 // in ratio between.
 const resonanceQ = (v) => Math.SQRT1_2 * Math.pow(20 / Math.SQRT1_2, v / 100);
 const hzReading = (hz) => (hz >= 1000 ? (hz / 1000).toFixed(1) + " kHz" : Math.round(hz) + " Hz");
-// The filter's rows other than its menu are shown only while it is on: a
-// cutoff with nothing to cut is a slider moving nothing.
+/* The filter's four main controls are greyed while it is off, as the
+   drawbars are when nothing listens to them: a cutoff with nothing to cut is
+   a control moving nothing. Hidden until G3, which left a third of Play
+   empty with the filter off and gave no sign there was a filter to turn on.
+   Disabled, so a knob will not turn and the keyboard skips it; a value
+   written from code - a preset, the host, the morph - still lands, and is
+   there when the filter comes on. Its envelope's four stay hidden while it
+   is off: greyed as well, the filter was 230 px, and at 1100x860, where Play
+   has two columns, that was what made the tab scroll. */
 function syncVcfRows() {
   const on = el.vcfType.value !== "0";
-  for (const row of el.vcfGroup.querySelectorAll(".vcf-on")) row.hidden = !on;
+  el.vcfGroup.classList.toggle("is-off", !on);
+  for (const row of el.vcfGroup.querySelectorAll(".vcf-on")) {
+    row.hidden = !on && row.classList.contains("vcf-env");
+    for (const input of row.querySelectorAll("input, select, button")) input.disabled = !on;
+  }
 }
 /* The drive as the gain it gives a quiet signal, which is the number that
    says how hard it is being pushed: tanh(g x) / tanh(g) near nought is
@@ -20666,7 +20722,11 @@ function showLayerOnPanel(layer) {
   }
   panelLayer = layer;
   el.toneRows.dataset.layerEdit = layer === 1 ? "b" : "a";
+  // Frequency and Phase went to Ink in G3 and are still layer A's alone.
+  document.body.dataset.layerEdit = layer === 1 ? "b" : "a";
   el.genTitle.textContent = layer === 1 ? "Generator \u00b7 layer B" : "Generator";
+  el.ampEnvTitle.textContent = layer === 1 ? "Amp envelope \u00b7 layer B" : "Amp envelope";
+  paintAmpEnv();
   syncBars();
   syncVcfRows();
 }
@@ -26633,6 +26693,37 @@ document.addEventListener("keydown", (event) => {
   fxDragEnd(false);
 }, true);
 
+/* The amplifier's envelope as a curve over its four knobs: up in the attack,
+   down to the sustain, held, and away in the release. Each stretch's width
+   goes as the square root of its time over the knob's range, so an 8 ms
+   attack is still a visible slope beside a two-second release, and the hold
+   is a fixed quarter, since a held note has no length of its own. Read off
+   the inputs, which a preset, the host and the layer switch all write, and
+   painted again with the tab's lines a few times a second - only when a
+   number has moved. */
+let ampEnvSaid = "";
+function paintAmpEnv() {
+  if (!el.ampEnvCurve) return;
+  const a = Number(el.envAttack.value), d = Number(el.envDecay.value);
+  const sus = Number(el.envSustain.value) / 100, r = Number(el.envRelease.value);
+  const key = a + "," + d + "," + sus + "," + r;
+  if (key === ampEnvSaid) return;
+  ampEnvSaid = key;
+  const W = 200, H = 44, top = 3, floor = 43, hold = 0.25 * W;
+  const share = (v, max) => Math.sqrt(Math.max(0, v) / max);
+  const wa = share(a, 200), wd = share(d, 1000), wr = share(r, 2000);
+  const scale = (W - hold) / Math.max(1e-6, wa + wd + wr);
+  const x1 = wa * scale, x2 = x1 + wd * scale, x3 = x2 + hold, x4 = x3 + wr * scale;
+  const y = (v) => (floor - (floor - top) * v).toFixed(1);
+  const f = (v) => v.toFixed(1);
+  el.ampEnvCurve.querySelector(".env-line").setAttribute("d",
+    "M0 " + floor + " L" + f(x1) + " " + top + " L" + f(x2) + " " + y(sus)
+    + " L" + f(x3) + " " + y(sus) + " L" + f(x4) + " " + floor);
+}
+for (const id of ["envAttack", "envDecay", "envSustain", "envRelease"]) {
+  el[id].addEventListener("input", paintAmpEnv);
+}
+
 let tabLinesSaid = "", tabLinesAt = 0;
 function paintTabLines(now) {
   if (now !== undefined) {
@@ -26642,6 +26733,7 @@ function paintTabLines(now) {
   if (document.body.dataset.view !== "bench") return;
   paintCards();
   paintRack();
+  paintAmpEnv();
   const lines = railTabs().map(([id]) => {
     try { return TAB_LINES[id] ? TAB_LINES[id]() : ""; } catch (error) { return ""; }
   });
@@ -26751,6 +26843,41 @@ function layoutBenchBody() {
   benchMeasured = new Map(groups.map((g, i) => [g, heights[i]]));
   for (const group of groups) benchWatch.observe(group);
 
+  /* A tab whose every section names its column (`data-col`, Play's since
+     G3) is laid out as drawn, when there are as many columns as it names:
+     the keyboard and how it is played on the left, the generator and its
+     envelope in the middle, the filter on the right, whatever their heights.
+     Dealt by height they moved as the filter came on or a mode brought rows,
+     so Expression ended up under the Generator and the filter beside the
+     Keyboard. With fewer columns - a narrow window - they are dealt. */
+  const named = groups.length > 0 && groups.every((g) => Number(g.dataset.col) >= 1);
+  const most = named ? Math.max(...groups.map((g) => Number(g.dataset.col))) : 0;
+  if (named && most <= cols.length) {
+    for (const group of groups) cols[Number(group.dataset.col) - 1].appendChild(group);
+    return;
+  }
+  /* Fewer columns than it names - Play at 1100x860 has two - and every
+     sharing of its sections between them is tried, each column keeping
+     them in the page's order, for the one whose tallest column is least.
+     First-fit by height put the Keyboard and the amp envelope in one and
+     the other three in the other, 652 px in a 561 px body, where a sharing
+     that fits existed. Five sections in two columns is 32 tries. */
+  if (named && cols.length > 1 && Math.pow(cols.length, groups.length) <= 6561) {
+    let best = null, bestTall = Infinity;
+    const pick = new Array(groups.length).fill(0);
+    for (let n = 0; n < Math.pow(cols.length, groups.length); n++) {
+      let k = n;
+      for (let i = 0; i < groups.length; i++) { pick[i] = k % cols.length; k = Math.floor(k / cols.length); }
+      // Each sharing has its mirror; the one that starts with the tab's first section on the left.
+      if (pick[0] !== 0) continue;
+      const tall = cols.map(() => 0);
+      groups.forEach((g, i) => { tall[pick[i]] += heights[i] + (tall[pick[i]] > 0 ? 18 : 0); });
+      const worst = Math.max(...tall);
+      if (worst < bestTall - 0.5) { bestTall = worst; best = pick.slice(); }
+    }
+    groups.forEach((g, i) => cols[best[i]].appendChild(g));
+    return;
+  }
   const filled = cols.map(() => 0);
   groups.forEach((group, i) => {
     let pick = 0;

@@ -267,9 +267,12 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
       setView('bench'); setBenchTab('play');
-      const hidden = el.vcfCut.closest('.menu-row').hidden;
+      // Off, since G3: the four main controls on show and greyed (disabled),
+      // and the envelope's four hidden. On: all of them, live.
+      const envRow = () => el.vcfAtk.closest('.menu-row');
+      const hidden = el.vcfCut.disabled && !el.vcfCut.closest('.menu-row').hidden && envRow().hidden;
       set('vcfType', 3, 'change');
-      const shownOn = el.vcfCut.closest('.menu-row').hidden === false && el.vcfGroup.offsetHeight > 0;
+      const shownOn = !el.vcfCut.disabled && !envRow().hidden && el.vcfGroup.offsetHeight > 0;
       set('vcfCut', 500, 'input'); set('vcfRes', 100, 'input'); set('vcfTrack', 50, 'input');
       set('vcfEnvAmt', -25, 'input'); set('vcfAtk', 20, 'input'); set('vcfDec', 400, 'input');
       set('vcfSus', 60, 'input'); set('vcfRel', 900, 'input');
@@ -281,52 +284,55 @@ with sync_playwright() as pw:
       const code = snapshot();
       restore({}); await wait(30);
       const g0 = genSettings();
-      const old = [g0.vcfType, el.vcfCut.closest('.menu-row').hidden];
+      const old = [g0.vcfType, el.vcfCut.disabled];
       restore(code); await wait(30);
       const g1 = genSettings();
       const back = [g1.vcfType, Math.round(g1.vcfCutoff * 100) / 100, Math.round(g1.vcfQ * 1000) / 1000, g1.vcfTrack,
-                    g1.vcfEnv, g1.fAttackMs, g1.fDecayMs, g1.fSustain, g1.fReleaseMs, el.vcfCut.closest('.menu-row').hidden];
+                    g1.vcfEnv, g1.fAttackMs, g1.fDecayMs, g1.fSustain, g1.fReleaseMs, el.vcfCut.disabled];
       restore({ vcfType: 1, bVcf: 2, bVcfCut: 800 }); await wait(30);
       const split = [genSettings().vcfType, genSettings(1).vcfType, Math.round(genSettings(1).vcfCutoff)];
       // A's filter off and B's on, so the rows are right only if the switch
       // looks again: with both on they would show whether it did or not.
       restore({ vcfType: 0, bVcf: 2 }); await wait(30);
       showLayerOnPanel(1);
-      const bRows = el.vcfCut.closest('.menu-row').hidden;
+      const bRows = el.vcfCut.disabled;
       showLayerOnPanel(0);
-      const aRows = el.vcfCut.closest('.menu-row').hidden;
+      const aRows = el.vcfCut.disabled;
       restore({ vcfType: 4 }); await wait(30);
       const fallback = genSettings(1).vcfType;
       restore({}); await wait(30);
       return { hidden, shownOn, a, words, old, back, split, bRows, aRows, fallback };
     }""")
     print("    %s" % page)
-    check("the filter's rows are hidden while it is off and shown when it is on",
+    check("the filter's controls are greyed while it is off, its envelope's hidden, and all live when it is on",
           page["hidden"] and page["shownOn"], "%s, %s" % (page["hidden"], page["shownOn"]))
     check("its controls reach the generator in its own units: hertz on the trace filter's law, Q 0.71 to 20",
           page["a"] == [3, 632.46, 20.0, 0.5, -2.5, 20, 400, 0.6, 900], str(page["a"]))
     check("and say so", page["words"] == ["632 Hz", "Q 20.00", "50%", "-2.5 oct"], str(page["words"]))
     check("a setup code carries it back, rows and all", page["back"] == page["a"] + [False], str(page["back"]))
-    check("a code from before has it off, rows hidden", page["old"] == [0, True], str(page["old"]))
+    check("a code from before has it off, its controls greyed", page["old"] == [0, True], str(page["old"]))
     check("layer B filters from its own fields, and from A's where a code has none of B's",
           page["split"] == [1, 2, round(20 * 1000 ** 0.8)] and page["fallback"] == 4, "%s, %s" % (page["split"], page["fallback"]))
     # A was set off-and-on above; B is on. Switching the panel to B has to
     # show B's rows, or B's cutoff cannot be reached from the panel.
-    check("switching the panel to B, filter on, shows its rows, and back to A, filter off, hides them",
+    check("switching the panel to B, filter on, makes its controls live, and back to A, filter off, greys them",
           page["bRows"] is False and page["aRows"] is True, "%s, %s" % (page["bRows"], page["aRows"]))
 
     def search(q):
         p.evaluate("(q) => { el.benchSearch.value = q; el.benchSearch.dispatchEvent(new Event('input')); }", q)
         return p.evaluate("""() => Array.from(el.benchResults.querySelectorAll('button'))
           .map((b) => [b.firstChild.textContent, b.querySelector('.crumb').textContent])""")
-    # With the filter on: while it is off its rows are hidden, and a search
-    # that offered a hidden row would land on nothing.
+    # On and off: since G3 its main controls are on show while it is off,
+    # greyed, and search finds them as it finds anything on show - which is
+    # how a player who searches for key tracking finds there is a filter.
     off = search("keytrack")
+    off_greyed = p.evaluate("() => el.vcfTrack.disabled")
     p.evaluate("() => { el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change')); }")
     found = search("keytrack")
     p.evaluate("() => { el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change')); }")
-    check("keytrack finds the voice filter while it is on, and offers nothing hidden while it is off",
-          ["Key track", "Voice filter"] in found and not any(c == "Voice filter" for _, c in off), "%s / %s" % (found[:2], off[:2]))
+    check("keytrack finds the voice filter while it is on, and while it is off finds it greyed",
+          ["Key track", "Voice filter"] in found and ["Key track", "Voice filter"] in off and off_greyed,
+          "%s / %s / greyed %s" % (found[:2], off[:2], off_greyed))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
