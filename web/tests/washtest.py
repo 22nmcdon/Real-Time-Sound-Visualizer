@@ -104,7 +104,9 @@ with sync_playwright() as pw:
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(2500)
     p.evaluate("() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close(); }")
 
-    for label, persistence, fade_ms in [("Crossed hands' 0.0255", "0.0255", 9000), ("Short, 0.12", "0.12", 4000)]:
+    # Long enough for the fade to stall and the nudge to finish: at 0.0255 the
+    # last twenty levels go at 0.06 of a level a frame, five or six seconds.
+    for label, persistence, fade_ms in [("Crossed hands' 0.0255", "0.0255", 15000), ("Short, 0.12", "0.12", 4000)]:
         print("\n--- the fade at %s ---" % label)
         p.evaluate(DRAW, persistence)
         at = p.evaluate(INKED)

@@ -5323,9 +5323,16 @@ owner's "wash" over the whole screen, and the axis names, written into the same
 canvas, stained the same way, Left staying under Mid. Scan never saw it — the
 phosphor grid fades in floating point — so the screen showed a picture Scan was
 not reading. `clearOrFade` now adds a level of light now and then and lays the
-paper back under `darken`, at a rate that grows with the persistence (under
-five per cent of a full-ink stroke's step at any setting), and `wipeOutside`
+paper back under `darken`, at twice the persistence in levels a frame (never
+under 0.06), and `wipeOutside`
 clears everything outside the plot each frame, since only words live there.
 `washtest.py` reads the canvas's own pixels against a cleared screen — not the
 bare paper, which the ruling, redrawn every frame, would fail — and its first
-version did exactly that, counting the graticule's lines as a stain.
+version did exactly that, counting the graticule's lines as a stain. The
+nudge's first rate, six times the persistence, cleared the stain in two seconds
+and failed `phototest.py`'s check that the screen fades at the grid's rate: a
+constant step is small beside a full-ink stroke's but large in the last stretch
+of a fade, where that check measures (95 levels down to 8 at Short), and the
+canvas fell to 0.848 a frame against the grid's 0.880. At twice the persistence
+it is 0.870, inside the check's 0.02, and the cost moved to the long end: at
+0.0255 the last faint twenty levels take five or six seconds to go.
