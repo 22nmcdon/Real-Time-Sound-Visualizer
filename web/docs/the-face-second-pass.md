@@ -312,9 +312,14 @@ not the knob under the hand, and nothing says they are there.
 
 ![The info line, with Strike pointed at](the-face-second-pass/08-info-line.png)
 
-**The info line** runs along the foot of the window (in the verdict's place under the
-screen on the compact face): the control's name, its value, the gold dot if a host can
-automate it, the hand it applies to, one plain sentence, and **More**. A control takes the
+**The info line** sits in the Picture section's free middle, between Level's meter and
+the three reads, at every size: the control's name, its value, the gold dot if a host can
+automate it, the hand it applies to, one plain sentence, and **More**, in two lines at
+most. (Drawn first along the foot of the window, and under the screen on the compact
+face. Built, the foot took 26 px from the tabs, and at 1100x860 the Space & Memory tab
+with the keys, the photocell and a split scrolled by 9; under the screen on the compact
+face the column cut every sentence after twenty characters. The Picture section's middle
+was empty, is in view in either view, and costs no height.) A control takes the
 line once the pointer has *rested* on it for about a third of a second, so crossing the
 face on the way to More does not change it; touching a control - a knob turned, a menu
 chosen - takes it at once. A switch in Settings turns it off.

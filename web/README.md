@@ -95,6 +95,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, every kind, ten learned controllers |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
+| `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
@@ -5336,3 +5337,18 @@ of a fade, where that check measures (95 levels down to 8 at Short), and the
 canvas fell to 0.848 a frame against the grid's 0.880. At twice the persistence
 it is 0.870, inside the check's 0.02, and the cost moved to the long end: at
 0.0255 the last faint twenty levels take five or six seconds to go.
+
+**A control's words are a doc's, written in.** What each control says on the
+info line is `web/docs/what-each-control-says.md`, one row a control, and the
+page carries it as `CONTROL_WORDS`, which `web/tools/write_words.py` writes
+and nothing else should: the owner changes wording while testing, and a table
+kept in the page by hand would drift from the one the owner reads. `wordstest.py`
+compares the two, and also requires a row for every control on the face, so
+a control added without words fails the suite rather than showing nothing.
+It found one the first time it ran: the line's own switch in Settings. A
+control with no id is keyed by `SAY_KEYS` (the rack's switches, arrows and
+handles, the cards, the tabs), and a card's editor numbers its controls by
+the card (`lfoShape1` is LFO 2's), so a key ending in a number falls back to
+the one ending in nought. The line is in the Picture section's free middle
+rather than along the foot where it was drawn: the foot cost 26 px, and that
+made a Space & Memory tab scroll at 1100x860.

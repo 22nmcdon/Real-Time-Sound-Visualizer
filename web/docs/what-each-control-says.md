@@ -58,17 +58,17 @@ And about the words:
 ## Controls with no id
 
 The pointer rests on these as often as on anything, and the table of words needs a key for
-them (G3b gives each a `data-say`):
+them; G3b gives each a `data-say` with the key in the first column:
 
-| what | line | chars |
-|---|---|---|
-| A rack module's switch | Takes the module's Mix to nought and keeps what it had; on puts it back. The Plane's switch rests its shaping and its Turn. | 123 |
-| A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
-| A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
-| A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs. | 98 |
-| The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
-| The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
-| The Space & Memory tab | What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order. | 117 |
+| key | what | line | chars |
+|---|---|---|---|
+| fx-switch | A rack module's switch | Takes the module's Mix to nought and keeps what it had; on puts it back. The Plane's switch rests its shaping and its Turn. | 123 |
+| fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
+| fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
+| mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs. | 98 |
+| tab-play | The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
+| tab-ink | The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
+| tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order. | 117 |
 
 ## Play
 
@@ -87,11 +87,11 @@ them (G3b gives each a `data-say`):
 | midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right. | 121 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B puts A in the left ear only and B in the right |
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the layer being edited. The rest are drawn along the diagonal, heard in both ears. | 133 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
-| midiPolyJust | Tune a chord to its lowest note | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
+| midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
 | midiDrive | Notes play this generator | removed (G2) | - | - |
-| polyRound | Quarter turn: a lone note draws a ring | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
+| polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
 | midiPlay | Play the figure at the note's pitch | removed (G2) | - | - |
-| midiHold | Hold the interval under one note | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
+| midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
 
 ### Expression
 
@@ -198,7 +198,7 @@ them (G3b gives each a `data-say`):
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| fxOrder | The order the phaser, the chorus and the delay run in | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane stays first, the Reverb last. | 138 | yes — what the order changes (phaser before the delay keeps each repeat’s sweep; after, the repeats are swept with what you play now); one order for both hands; the sound changes on letting go |
+| fxOrder | Rack order | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane stays first, the Reverb last. | 138 | yes — what the order changes (phaser before the delay keeps each repeat’s sweep; after, the repeats are swept with what you play now); one order for both hands; the sound changes on letting go |
 
 ### Plane
 
@@ -413,8 +413,8 @@ them (G3b gives each a `data-say`):
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | arpMode | Arp | Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it. | 117 | yes — in the dyad each step pairs your lowest note with the next; switching off with keys down gives the generator the chord; its notes go out through MIDI out |
-| arpRate | Arp | How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t). | 107 | - |
-| arpOctaves | Arp | How many octaves the arpeggio spreads the chord over, from one to three. | 72 | - |
+| arpRate | Arp step | How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t). | 107 | - |
+| arpOctaves | Arp octaves | How many octaves the arpeggio spreads the chord over, from one to three. | 72 | - |
 
 ### Perform › Clock
 
@@ -426,9 +426,9 @@ them (G3b gives each a `data-say`):
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| morphStoreA | Morph | Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide. | 126 | - |
+| morphStoreA | Morph · store A | Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide. | 126 | - |
 | morphPos | Morph | Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus and switches stay. | 131 | yes — a knob turned by hand keeps its place until the fader moves; an LFO on it moves the whole sound; the ends are part of the setup code |
-| morphStoreB | Morph | Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear. | 104 | - |
+| morphStoreB | Morph · store B | Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear. | 104 | - |
 
 ### Perform › Key and tempo
 
@@ -436,10 +436,10 @@ them (G3b gives each a `data-say`):
 |---|---|---|---|---|
 | keyRoot | Key | The page’s one key, which the quantiser and the score play in. | 62 | - |
 | keyScale | Scale | Which notes of the key count: Chromatic (every semitone), major, minor or one of the modes. The quantiser and the score use it. | 127 | - |
-| quantise | Quantise the generator's pitch | Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody. | 134 | yes — a key played outside the scale moves too; it waits a tenth of a semitone past half-way and steps at most forty times a second, so a resting pitch does not flicker |
+| quantise | Quantise | Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody. | 134 | yes — a key played outside the scale moves too; it waits a tenth of a semitone past half-way and steps at most forty times a second, so a resting pitch does not flicker |
 | quantiseGlide | Glide | How long the quantised pitch takes to slide to each new note, up to 300 ms; off, it steps. Only while Quantise is on. | 117 | - |
 | tempo | Tempo | The page’s one tempo, 30 to 300 BPM: the arpeggiator, the score and every synced LFO or delay play at it. | 105 | yes — a device sending MIDI clock sets it while the clock runs and hands it back half a second after it stops |
-| tempoTap | Tempo | Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped. | 98 | - |
+| tempoTap | Tap tempo | Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped. | 98 | - |
 
 ### Settings
 
@@ -453,15 +453,15 @@ them (G3b gives each a `data-say`):
 |---|---|---|---|---|
 | midiConnect | MIDI in | Asks the browser for MIDI, then listens to every keyboard connected. Needs a secure page; Safari has no Web MIDI. | 113 | yes — a page in an iframe needs the embedding page to allow MIDI, so the published artifact cannot, and the GitHub Pages copy can; setting up a Nord Electro |
 | midiOut | MIDI out | A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it. | 107 | yes — at most forty notes a second; every note is ended when the scope stops, the page is hidden or the port changes; the readout says sending |
-| midiOutCh | MIDI out | The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent. | 97 | - |
+| midiOutCh | MIDI out channel | The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent. | 97 | - |
 
 ### Settings › Modulation fade
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | fadeMode | Fade | Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go. | 122 | yes — the envelope drawn under it and how to drag it; LFOs, the picture and knobs are not eased; with it on, a preset glides its knobs into place; kept in this browser, not in a setup code |
-| fadeEditA | Draw and shape layer A's envelope | Shows layer A’s fade envelope to draw, with B’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
-| fadeEditB | Draw and shape layer B's envelope | Shows layer B’s fade envelope to draw, with A’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
+| fadeEditA | Fade · A | Shows layer A’s fade envelope to draw, with B’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
+| fadeEditB | Fade · B | Shows layer B’s fade envelope to draw, with A’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
 | fadeRestart | Restart | Runs the fade’s envelope again, from where it is, on every note you strike. | 75 | - |
 | fadeLoop | Loop | Sends the fade’s attack and decay round again and again for as long as a note is held. | 86 | - |
 
@@ -469,7 +469,8 @@ them (G3b gives each a `data-say`):
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| helpFirst | Show the help sheet the first time | Opens the help sheet over the instrument the first time it opens, in a browser or a host. The ? in the header opens it any time. | 128 | - |
+| helpFirst | Help sheet at first | Opens the help sheet over the instrument the first time it opens, in a browser or a host. The ? in the header opens it any time. | 128 | - |
+| infoLineOn | Info line | Shows a line like this one along the foot, saying what the control you rest on does. Off hides it; this browser remembers. | 122 | - |
 | sizeAuto | Size | 90% in a window under 1100 wide or 680 tall, 100% otherwise, so the plugin’s smallest window fits. Only the look changes. | 121 | - |
 | size90 | Size | Everything on the face at 90%, whatever the window. This browser remembers it. | 78 | - |
 | size100 | Size | Everything on the face at its own size, whatever the window. This browser remembers it. | 87 | - |
@@ -489,8 +490,8 @@ them (G3b gives each a `data-say`):
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | device | Device | Which input Mic draws. The site’s choice only: in the plugin, the host’s input is used. | 87 | - |
-| kindMic | What is it | Says a microphone is plugged in, so it is never sent to the speakers: it would hear them and feed back. | 103 | - |
-| kindLine | What is it | Says a line input is plugged in, a keyboard or an interface, which has no ear, so it may be heard through the page. | 115 | yes — a claim you make that the browser cannot check; get it wrong with a microphone and the feedback loop is real |
+| kindMic | Input is | Says a microphone is plugged in, so it is never sent to the speakers: it would hear them and feed back. | 103 | - |
+| kindLine | Input is | Says a line input is plugged in, a keyboard or an interface, which has no ear, so it may be heard through the page. | 115 | yes — a claim you make that the browser cannot check; get it wrong with a microphone and the feedback loop is real |
 | monitorLive | Hear it through the page | Plays a line input through the page, tens of milliseconds late. Only for a line; wear headphones the first time. | 112 | yes — the latency shown is the browser’s output side only, a floor; hearing the instrument directly and letting the page only look has none |
 
 ### Scope & measure
@@ -548,8 +549,8 @@ them (G3b gives each a `data-say`):
 | filterRes | Resonance | A peak at the cutoff: nought is gentle, a hundred rings. High, it can push the trace past full scale and the readout says Clipping. | 131 | yes — nothing turns it down, since a compressor on the screen would lie about the level; lower Full scale or the amplitude |
 | seeDry | Screen reads | The screen draws the signal as it came in, before the filter, the AC coupling and the turn. The readout says so. | 112 | - |
 | seeWet | Screen reads | The screen draws the signal after the filter, the AC coupling and the turn. | 75 | - |
-| hearDry | Speakers get speakers | The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture. | 108 | yes — the four combinations of the two switches and what each is for; anything reaching the speakers passes a limiter first |
-| hearWet | Speakers get speakers | The speakers get the signal after the filter, the AC coupling and the turn, so you hear what the screen shows shaped. | 117 | - |
+| hearDry | Speakers get | The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture. | 108 | yes — the four combinations of the two switches and what each is for; anything reaching the speakers passes a limiter first |
+| hearWet | Speakers get | The speakers get the signal after the filter, the AC coupling and the turn, so you hear what the screen shows shaped. | 117 | - |
 
 ### Scope & measure › Vertical
 
@@ -563,13 +564,13 @@ them (G3b gives each a `data-say`):
 | ch2Ac | AC | Blocks what is not moving, so a DC offset cannot push this lane off the screen. The speakers get it too on Shaped. | 114 | yes — as ch1Ac |
 | ch2Scale | Full scale | The level that reaches the top of the screen, 0 to −50 dBFS. Lower it to open up a quiet signal; the numbers stay the same. | 123 | - |
 | ch2Offset | Offset | Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis. | 84 | - |
-| midSide | Mid / side instead of left / right | Draws the sum and the difference of a stereo pair in place of left and right: the figure turned 45°. Turns Lag X–Y off. | 119 | - |
-| lagOn | Lag X–Y: the signal against itself, delayed | Plots the signal against itself a moment later, so one input draws a loop shaped by its harmonics rather than a diagonal line. | 126 | yes — a phase portrait, not a Lissajous figure; Auto locks slowly so vibrato turns the loop; not offered on a band split |
+| midSide | Mid / side | Draws the sum and the difference of a stereo pair in place of left and right: the figure turned 45°. Turns Lag X–Y off. | 119 | - |
+| lagOn | Lag X–Y | Plots the signal against itself a moment later, so one input draws a loop shaped by its harmonics rather than a diagonal line. | 126 | yes — a phase portrait, not a Lissajous figure; Auto locks slowly so vibrato turns the loop; not offered on a band split |
 | lagAuto | Delay | Sets the delay to a quarter of the note’s period, locked slowly, so a pure tone draws a circle and vibrato turns the loop. | 122 | - |
 | lagManual | Delay | Holds the delay where its knob puts it, whatever the note. | 58 | - |
 | lag | Delay | How far behind the delayed copy is, 0.1 to 40 ms. Only on Set; on Auto it shows what the lock found. | 100 | - |
-| lagMix | Heard speakers | How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%. | 126 | yes — 20% is mostly width; in headphones the top of the knob takes some harmonics out of the right ear entirely, on purpose |
-| midiTruth | Take the lag and the tuner from the note played | Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound. | 112 | - |
+| lagMix | Heard | How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%. | 126 | yes — 20% is mostly width; in headphones the top of the knob takes some harmonics out of the right ear entirely, on purpose |
+| midiTruth | Lag and tuner from the note | Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound. | 112 | - |
 | midiFollow | … and the timebase | Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play. | 121 | - |
 | acCorner | AC corner | Where AC coupling starts taking things away, 0.5 to 20 Hz. Ten removes a drift; twenty thins the bottom of a bass note too. | 123 | yes — at one hertz an asymmetric signal can read a third higher, which is AC coupling, not a fault; the corner reaches the speakers on Shaped |
 

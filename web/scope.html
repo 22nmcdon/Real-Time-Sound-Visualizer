@@ -887,6 +887,38 @@ body[data-view="bench"] .bench { order: 2; }
 body[data-view="bench"] .dock  { order: 3; }
 /* The Picture along the bottom of the window, under the dock, in either view (F2). */
 body[data-view="bench"] .picture-bar { order: 4; }
+/* The info line (G3b), in the Picture section's free middle: two lines of
+   it at most, then More. */
+.picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: center; }
+.info-line[hidden] { display: none !important; }
+.info-wrap {
+  font-size: 12px; line-height: 1.4; white-space: normal;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.info-wrap > * { display: inline; margin-right: 7px; }
+.info-name { font-family: var(--serif); font-size: 13.5px; color: var(--charcoal); }
+.info-value { color: var(--charcoal); font-variant-numeric: tabular-nums; }
+.info-value:empty { display: none; }
+.info-host { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); vertical-align: 0.15em; }
+.info-hand {
+  display: inline-block; vertical-align: 0.1em; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
+  color: var(--ch2); border: 1px solid var(--ch2); border-radius: 20px; padding: 2px 6px 1px;
+}
+.info-text { color: var(--text); }
+.info-text::before { content: "\2014"; color: var(--text-soft); margin-right: 7px; }
+.info-line[data-empty] .info-text { color: var(--text-soft); }
+.info-line[data-empty] .info-text::before { content: none; }
+.info-more { font-size: 9.5px; }
+.info-wrap > [hidden] { display: none; }
+[data-compact] .info-wrap { font-size: 11.5px; }
+/* Its card: the line again, with what the page knows about the control. */
+.info-card { max-width: 380px; }
+.info-card .info-card-line { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--charcoal); }
+.info-card dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0 0; padding-top: 8px;
+                border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; }
+.info-card dt { color: var(--text-soft); }
+.info-card dd { margin: 0; color: var(--text); }
+.info-card .info-card-steps { display: flex; gap: 16px; margin-top: 12px; }
 /* Settings opens from both views: its sections live there and nowhere else. */
 
 /* Wider than the 1180px measure the rest of the app is set in. Since F3
@@ -3755,6 +3787,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           <div class="menu-group" id="windowGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">This window</span>
             <label class="check"><input type="checkbox" id="helpFirst" checked> Show the help sheet the first time</label>
+            <label class="check"><input type="checkbox" id="infoLineOn" checked> Say what a control does, along the foot</label>
             <div class="menu-row">
               <span class="menu-label">Size</span>
               <div class="switch" role="radiogroup" aria-label="The size of everything on the face">
@@ -4166,6 +4199,24 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
     </div>
     <span class="level-meter" id="levelMeter" role="img" aria-label="How loud the signal on the screen is"><i></i></span>
+    <!-- The info line (G3b of web/docs/the-face-second-pass.md): what the control
+         the pointer has rested on does, with More for its card. In the Picture
+         section's free middle, between Level's meter and the three reads, at every
+         size and in either view. The design drew it along the foot of the window;
+         there it took 26 px from the tabs, and at 1100x860 the Space & Memory tab
+         with the keys, the photocell and a split scrolled by 9. Here it costs no
+         height and wraps to a second line where it must. Its words
+         are CONTROL_WORDS, written from web/docs/what-each-control-says.md. -->
+    <div class="info-line" id="infoLine" data-empty="1">
+      <div class="wrap info-wrap">
+        <span class="info-name" id="infoName"></span>
+        <span class="info-value" id="infoValue"></span>
+        <span class="info-host" id="infoHost" title="A host can automate it" hidden></span>
+        <span class="info-hand" id="infoHand" hidden></span>
+        <span class="info-text" id="infoText">Rest the pointer on a control to read what it does.</span>
+        <button type="button" class="link-btn caps info-more" id="infoMore" hidden>More</button>
+      </div>
+    </div>
     <div class="picture-meters">
       <span class="picture-reads" id="pictureReads" role="img" aria-label="The picture's three reads">
               <i data-read="glow" title="Glow: how much of the screen is lit, against lately"></i><i
@@ -4353,6 +4404,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
   <div class="tab-body">
     <ul class="help-list" id="panelScreen">
+      <li class="help-lede">Rest the pointer on any control and the line in the Picture
+        section, along the bottom, says what it does; <i>More</i>, or <b>?</b>, opens a card
+        with what is moving it and the controls either side. <i>Settings &rarr; This window</i>
+        turns the line off.</li>
       <li class="help-lede">An oscilloscope draws what a signal is doing. Three ways of
         drawing it, and the switch marked <i>Display</i> chooses.</li>
 
@@ -5698,6 +5753,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "expressionGroup", "ampEnvGroup", "ampEnvTitle", "ampEnvCurve",
+                  "infoLine", "infoName", "infoValue", "infoHost", "infoHand", "infoText", "infoMore", "infoLineOn",
                   "benchSearch", "benchResults",
                   "audioGroup", "midiSetGroup", "audioNote",
                   "lagMixRow", "lagMix", "lagMixValue",
@@ -27631,6 +27687,510 @@ function openGroupDetail(group, anchor) {
     };
   });
 }
+
+/* --- the info line (G3b) ------------------------------------------------------
+   One sentence about the control the pointer has rested on, along the foot of
+   the window, with More for its card. Agreed with the owner over tooltips,
+   which on a face this dense cover the next knob and flicker across a row of
+   them, and over a help mode, which is a thing to remember to enter.
+
+   RESTED ON, not passed over: a control takes the line once the pointer has
+   stayed on it for a third of a second, so crossing the face on the way to
+   More does not change it - the owner's objection to the first design, which
+   would have changed the line under the pointer all the way down. TOUCHED -
+   a knob turned, a menu chosen, a focus from the keyboard - takes it at once.
+   The line holds the last control until another is rested on.
+
+   In the Picture section's free middle (see the markup for why there).
+   The words are the doc's (web/docs/what-each-control-says.md), written here
+   by web/tools/write_words.py; a control with no words has no line, rather
+   than a guess. A control with no id says which words are its by `SAY_KEYS`. */
+const CONTROL_WORDS = {
+  /* Written by web/tools/write_words.py from web/docs/what-each-control-says.md:
+     edit the doc and run it, not this. */
+  "fx-switch": ["A rack module's switch", "Takes the module's Mix to nought and keeps what it had; on puts it back. The Plane's switch rests its shaping and its Turn."],
+  "fx-arrow": ["A rack module's arrow", "Opens the rest of this module under it, one module at a time."],
+  "fx-handle": ["A rack module's handle", "Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last."],
+  "mod-card": ["A modulation card", "Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs."],
+  "tab-play": ["The Play tab", "What you play: the keyboard and its expression, the generator and its envelope, the voice filter."],
+  "tab-ink": ["The Ink tab", "What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle."],
+  "tab-space": ["The Space & Memory tab", "What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order."],
+  "keysOpen": ["On screen", "Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. While they are open, the generator waits for a note."],
+  "midiDyad": ["Dyad", "Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks."],
+  "midiMono": ["Mono", "The newest note sets the pitch and the Interval menu puts the second channel above it, so one finger plays the whole figure."],
+  "midiPoly": ["Poly", "Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline."],
+  "midiLayers": ["Layers", "Whether a second sound plays: one, a split at a key with low notes one sound and high another, or layered, every note both."],
+  "midiSplitLearn": ["Split point", "The key the upper layer starts from. Press it, then play that key on your keyboard or the screen's."],
+  "midiLayerPair": ["How the two layers are drawn", "A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right."],
+  "midiDrawCount": ["Draw", "How many held notes make the figure's outline, for the layer being edited. The rest are drawn along the diagonal, heard in both ears."],
+  "midiDrawWhich": ["Draw", "Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y."],
+  "midiPolyJust": ["Tune a chord", "Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there."],
+  "polyRound": ["Quarter turn", "In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line."],
+  "midiHold": ["Hold the interval", "In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison."],
+  "midiBendRange": ["Pitch bend", "How far the bend wheel takes every note, either way, in semitones. All the notes bend together, so the figure keeps its shape."],
+  "midiWheelTo": ["Mod wheel", "What the mod wheel moves: a vibrato of up to a third of a semitone, the Picture amount, Scan's depth, or nothing."],
+  "midiPressureTo": ["Pressure", "What pressing harder on a held key moves, if your keyboard sends it: a vibrato, the Picture amount, Scan's depth, or nothing."],
+  "midiVelocityTo": ["Velocity", "How hard you play always sets a note's level and how brightly it strikes the screen. With FM, a harder note is also brighter in tone."],
+  "genMode": ["Kind", "What the generator plays: the waveform, a shape at each note's pitch. (One choice once G2 takes the drawings; see the questions.)"],
+  "shape": ["Shape", "The wave each note is made of. A sine is pure and draws smooth curves; sharper shapes are brighter and put corners in the figure."],
+  "morph": ["Morph", "One knob through sine, triangle, saw and square, crossfading each pair. Put a source on it and the tone and the figure change as you play."],
+  "width": ["Width", "How much of each cycle the pulse is up, 5 to 95 per cent. At 50 it is the square; narrower is thinner and more nasal."],
+  "table": ["Position", "Where the wavetable sits among its four drawn cycles, crossfading the two either side. Put a source on it and the timbre travels."],
+  "cycleGo": ["Cycle", "Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw."],
+  "barsGo": ["Drawbars", "The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab."],
+  "glide": ["Glide", "How long each note slides from the last one's pitch rather than stepping; off at nought. Dyad and Mono only: Poly's notes step."],
+  "interval": ["Interval", "The second channel against the first, in Mono or with no keyboard. Small whole-number ratios close the figure: a fifth is a still 2:3."],
+  "tuneJust": ["Just", "Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick."],
+  "tuneEqual": ["Equal", "Takes the keys as an equal-tempered piano has them, a little off the ratios, so the figure turns at the rate the interval beats."],
+  "envAttack": ["Attack", "How long a note takes to reach full level once its key goes down, and the figure grows with it. Only while a keyboard is playing."],
+  "envDecay": ["Decay", "How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck."],
+  "envSustain": ["Sustain", "The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own."],
+  "envRelease": ["Release", "How long a note takes to fade once you let go of its key. The figure shrinks with it."],
+  "vcfType": ["Type", "Which filter is in every note: low pass darkens, high pass thins, band pass keeps a middle, notch takes one out. Off, the knobs below are idle."],
+  "vcfCut": ["Cutoff", "Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first."],
+  "vcfRes": ["Resonance", "How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure."],
+  "vcfTrack": ["Key track", "How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller."],
+  "vcfEnvAmt": ["Envelope", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. Only while a keyboard is playing."],
+  "vcfAtk": ["Attack", "How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought."],
+  "vcfDec": ["Decay", "How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah."],
+  "vcfSus": ["Sustain", "Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again."],
+  "vcfRel": ["Release", "How long the cutoff takes to come back once you let go of the key."],
+  "cycleSine": ["Sine", "Starts the drawing again from a sine. With the wavetable, only the slot chosen beside it."],
+  "cycleSmooth": ["Smooth", "Rounds the corners of what you drew, a little each press: the top harmonics soften, and the figure's sharp turns with them."],
+  "cycleGrab": ["Grab", "Takes one cycle of what is playing as the drawn wave. Hold the same note on the keyboard and the period is exact; without one it is measured."],
+  "barsUse": ["Use drawbars", "Puts the Shape on Drawbars, so the bars below are heard. Until then they are greyed and move nothing."],
+  "bar0": ["16′", "An octave under the note, the organ's deepest bar. Out at all, the wave repeats only every other cycle of the note, and so does the figure."],
+  "bar1": ["5⅓′", "A fifth above the note. Out at all, as with the 16′, the wave repeats only every other cycle of the note."],
+  "bar2": ["8′", "The note you play, as a sine. This bar alone at eight is a full-scale sine; adding others changes the colour, not the level."],
+  "bar3": ["4′", "An octave above the note, the second harmonic. Each bar draws out from nought to eight, about three decibels a step."],
+  "bar4": ["2⅔′", "An octave and a fifth above the note, the third harmonic. Upper bars brighten the tone and put finer turns in the figure's line."],
+  "bar5": ["2′", "Two octaves above the note, the fourth harmonic."],
+  "bar6": ["1⅗′", "Two octaves and a major third above the note, the fifth harmonic, which gives the organ its reedy edge."],
+  "bar7": ["1⅓′", "Two octaves and a fifth above the note, the sixth harmonic."],
+  "bar8": ["1′", "Three octaves above the note, the eighth harmonic. On the highest notes it is left out rather than folded back."],
+  "freq": ["Frequency", "The pitch while no keyboard is playing; a note in Dyad or Mono moves it. On Y–T, higher puts more cycles on the screen."],
+  "phase": ["Phase", "Where the second channel starts in its cycle against the first. At a unison, 0° draws a diagonal line and 90° a circle. Not for Poly's chords."],
+  "oscRatio": ["Ratio", "The voice's second oscillator, as a ratio to the note, heard only through FM and Ring. A 3:2 sounds harmonic for the reason a 3:2 figure closes."],
+  "oscFm": ["FM", "How far the second oscillator swings the voice's phase: pure at nought, then brighter, then bells and clangour. The figure gets busier with it."],
+  "oscBend": ["Warp", "Bends the wave at one point of its cycle: up pinches it there, down swells it. The figure bulges or sharpens there and the tone brightens, in tune."],
+  "oscBendAt": ["Warp at", "Where in the cycle Warp bends the wave, in degrees. Moves nothing while Warp is off; in X–Y, pulling the figure sets it."],
+  "oscRing": ["Ring", "Multiplies the voice by the second oscillator instead: at full the note itself goes, leaving the sum and difference tones."],
+  "oscSync": ["Sync", "Runs the shape faster than the note and restarts it every note cycle, so the pitch stays and the tone tears. For the saw and square; off at 1×."],
+  "oscSub": ["Sub", "How much of a square or sine an octave or two under the note is mixed in. It deepens the sound without making it louder."],
+  "oscUnison": ["Unison", "Stacks detuned copies of each note, so the sound thickens and the figure shimmers in place."],
+  "oscSpread": ["Spread", "How far apart Unison's copies are tuned, in cents either way. Wider beats faster and smears the figure further. Idle while Unison is off."],
+  "oscSubOct": ["Sub octave", "Whether the sub sits one octave or two under the note. Idle while Sub is off."],
+  "oscSubShape": ["Sub shape", "The sub's wave: a square fills out the bottom with a buzz, a sine is a plain deep tone. Idle while Sub is off."],
+  "shpDrive": ["Drive", "Pushes the wave into a soft ceiling: a sine rounds towards a square, and so does its figure. The reading is how much quiet parts are lifted."],
+  "shpFold": ["Fold", "Bends the wave back each time it would pass full scale: on Y–T the peaks fold inward, and in X–Y the figure grows petals."],
+  "shpBits": ["Crush", "Fewer levels for each sample, the stepped grit of a bitcrusher: the trace turns to a staircase. Off keeps every level."],
+  "shpRate": ["Rate", "Holds each sample longer, as a lower sample rate would, for the folded-back whine of a lo-fi sampler. Off is the full rate."],
+  "shpOS": ["Oversampling", "How finely Drive and Fold are worked. Four times is cleaner for a hard drive on a high note and costs twice as much for every voice."],
+  "fxOrder": ["Rack order", "Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane stays first, the Reverb last."],
+  "planeTwist": ["Twist", "Turns each point by more the further it is from the middle, so loud parts swirl and the quiet centre stays still: a stereo turn that follows level."],
+  "rotate": ["Turn", "Turns the figure on the screen. The sound turns with it only while Speakers get, in Scope & measure, is on Shaped."],
+  "planeMirror": ["Mirror", "Folds the figure onto one half of itself; to the ear, the octave-up pedal, every harmonic even. The folded wave sits above zero."],
+  "planeLimit": ["Radial", "What happens where the figure meets a circle of the Radius. Clip rounds loud parts off without bending the stereo image; Fold reflects them back in."],
+  "planeRadius": ["Radius", "Where the clip or fold acts, as a part of full scale. Smaller, and more of the figure meets the circle: quieter and more distorted."],
+  "planeSnap": ["Snap", "Puts both channels on a grid: a bitcrusher to the ear and pixels on the screen. Five bits is the coarser."],
+  "planeOS1": ["Oversampling (1×)", "The bending ones at the sample rate: cheapest, and what they add above half of it folds back as stray notes out of the key."],
+  "planeOS2": ["Oversampling (2×)", "The bending ones at twice the sample rate, the default, so most of the stray tones they add are filtered off rather than folded back."],
+  "planeOS4": ["Oversampling (4×)", "Four times the sample rate: cleaner still on a hard clip or a high note, at twice the cost of 2×. Fold and Snap stay rough at any rate."],
+  "planeScaleX": ["Scale X", "The left channel’s level, and the figure’s width. At nought the figure is an upright line and the left is silent; at two, double."],
+  "planeScaleY": ["Scale Y", "The right channel’s level, and the figure’s height. At nought the figure lies flat and the right is silent; at two, double."],
+  "planeShear": ["Shear", "Leans the figure by feeding some of the right channel into the left; below nought it leans the other way. Exact, and adds no delay."],
+  "phaserMix": ["Mix", "How much phaser you hear; nought is off. It opens a line into a loop that widens and closes, and twists a figure unevenly."],
+  "phaserRate": ["Sweep", "How fast the notches sweep, one channel on a sine and the other on its cosine: the pace at which the loop widens and closes."],
+  "phaserDepth": ["Range", "How far the sweep reaches, up to two and a half octaves either side of 700 Hz. At nought the notches stand still."],
+  "phaserFeedback": ["Resonance", "Feeds the phaser back on itself to sharpen its two notches. Stops at 0.75 so it never rings on, and takes no source."],
+  "chorusMix": ["Mix", "How much chorus you hear; nought is off. A late copy of the pair whose lateness swings, so the figure breathes and turns."],
+  "chorusRate": ["Rate", "How fast the copy’s lateness swings, one channel on a sine and the other on its cosine: the pace the figure breathes and turns at."],
+  "chorusDepth": ["Depth", "How far the copy’s lateness swings either side of Centre. More is a wider wobble in pitch and a figure that breathes further."],
+  "chorusTime": ["Centre", "How late the copy sits, from 1 to 30 ms. Short, with Feedback up, it rings as a flanger; longer is a looser doubling."],
+  "chorusFeedback": ["Feedback", "Feeds the copy back into itself, which makes the chorus a flanger: with a short Centre it rings at a pitch of its own."],
+  "delayMix": ["Mix", "How loud the repeats are; nought is off. In X–Y they are ghost figures trailing the live one."],
+  "delayMs": ["Time", "How long before each repeat, up to two seconds. Greyed while Sync follows the tempo; a source on it bends the repeats’ pitch, like tape."],
+  "delayFeedback": ["Feedback", "How many times each repeat comes back. Stops at 0.9, so it always dies away, and no source can be patched onto it."],
+  "delayTone": ["Tone", "Darkens each repeat on its way round, so each comes back duller than the last. At the top it is open and changes nothing."],
+  "delayLowCut": ["Low cut", "Thins each repeat on its way round, up to 1 kHz, so each comes back thinner than the last. At nought it is off."],
+  "delayWidth": ["Width", "How far apart the repeats are heard. At nought they collapse to a line on the diagonal; at 100% as played; at 200% twice as wide."],
+  "delayWow": ["Wow", "Drifts the delay time slowly, as a tape’s speed drifts, so each repeat is a little off pitch and its ghost figure turns."],
+  "delaySync": ["Sync", "Free, or the time as a note value of the tempo in Perform, following it when it moves. While it is synced, Time is greyed."],
+  "delayPingPong": ["Ping-pong", "Sends each repeat to the other side, so the ghost figures alternate between the figure and its reflection across the diagonal."],
+  "reverbMix": ["Mix", "How loud the tail is; nought is off. Past 0.2 it keeps a held chord moving: the screen goes on drawing the tail and Scan reading it."],
+  "reverbSize": ["Size", "How long the tail takes to fall away, from 0.3 to 9 seconds. Longer leaves a longer trail of where the figure has been."],
+  "reverbTone": ["Tone", "How dark the tail is: lower takes more of the top off it, down to 500 Hz. At the top it is open."],
+  "reverbPre": ["Pre-delay", "How long before the tail starts, up to 100 ms, so a note’s attack is heard clear of it."],
+  "reverbSpread": ["Spread", "At nought both channels get the same tail and the figure survives it. Up, each gets its own, an ordinary stereo reverb, and the figure clouds over."],
+  "dispYT": ["Y–T", "Each channel drawn against time, as a waveform. Scan reads the waveform as it is drawn, so the timebase moves the tone too."],
+  "dispXY": ["X–Y", "The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off."],
+  "dispSpect": ["Spect", "Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave."],
+  "clearButton": ["Clear", "Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set."],
+  "pictureMore": ["Advanced", "Opens what Scan reads, the score and the photocell, and the screen’s look: the beam, its inks, the panes and the loop overlay."],
+  "pictureAmount": ["Amount", "How far the picture moves the sound by itself: its glow folds it, its motion echoes it, its memory turns it. At nought, a plain synthesiser."],
+  "oscScan": ["Scan", "How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone."],
+  "scanStrike": ["Strike", "How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades."],
+  "scanSoft": ["Softness", "How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on."],
+  "scanMemory": ["Persistence", "How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more."],
+  "amp": ["Level", "How loud the generator plays, and so how large it draws its figure. With a split, the layer being edited."],
+  "pictureClose": ["Close", "Closes Advanced. Everything set in it stays set, the loop overlay and the panes included."],
+  "photoButton": ["Photocell", "Puts a light sensor on the screen, landing on the figure; drag its reticle to aim it. Only a setup that routes it can use its reading yet."],
+  "scanReadsA": ["Reads (A)", "Whose picture layer A’s Scan reads: its own, layer B’s, or both averaged. Crossed, each hand’s tone comes from the other’s figure."],
+  "scanReadsB": ["Reads (B)", "Whose picture layer B’s Scan reads: its own, layer A’s, or both averaged. Shown only while each hand draws a figure of its own."],
+  "pictureMovesA": ["Pictures (A)", "Whose sound layer A’s picture moves through the Amount: its own, layer B’s, or both. A sound that hears two takes their average."],
+  "pictureMovesB": ["Pictures (B)", "Whose sound layer B’s picture moves through the Amount: its own, layer A’s, or both. Shown only while each hand draws a figure."],
+  "scoreOn": ["Play the picture", "Plays the screen as a score: a playhead crosses it at the tempo, low on the screen low in pitch, and the brightest points are the notes."],
+  "scoreStep": ["Step", "How long the playhead stays on each column of the screen, as a note value at the tempo. Shorter, and the melody runs faster."],
+  "scoreVoices": ["Notes a step", "The most notes a step plays: the brightest points in the column, loudest first. One note is a melody; more are chords."],
+  "scoreLow": ["From", "The note at the bottom of the screen. The rows go up from it in the page’s key."],
+  "scoreOctaves": ["Octaves", "How many octaves the screen’s height covers, up from the bottom note. More octaves, wider leaps from the same picture."],
+  "loopButton": ["Loop", "Draws over the screen where Scan reads, the wave it is playing and the picture’s verdict. Only the look; nothing shows until Scan is on."],
+  "panesButton": ["Panes", "Opens the panes to put beside the screen: goniometer, spectrum, harmonics and tuner, and the spectrogram’s span. Only the look."],
+  "panesClose": ["Close", "Closes the list of panes; the ones ticked stay beside the screen."],
+  "beamLevel": ["Intensity", "How much the trace dims where it moves fast, as a real beam does: bright at the turns, faint in the sweeps. Scan reads the dimming too."],
+  "inkAccent": ["Ink: Rose", "Draws the X–Y figure in rose, the accent. Only the look: Scan reads the light, not its colour, and Y–T lanes keep their own inks."],
+  "inkCh1": ["Ink: Charcoal", "Draws the X–Y figure in charcoal. Only the look: Scan reads the light, not its colour."],
+  "inkCh2": ["Ink: Slate", "Draws the X–Y figure in slate. Only the look: Scan reads the light, not its colour."],
+  "inkCh3": ["Ink: Olive", "Draws the X–Y figure in olive. Only the look: Scan reads the light, not its colour."],
+  "inkCh4": ["Ink: Sage", "Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour."],
+  "inkCh5": ["Ink: Plum", "Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour."],
+  "bInk": ["Layer B's ink", "The colour of layer B’s figure while each hand draws one: its lane’s ink to start, or one you choose. Only the look."],
+  "traceWidth": ["Thickness", "How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn."],
+  "graticuleOn": ["Graticule", "Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid."],
+  "beamXY": ["X–Y", "Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way."],
+  "beamYT": ["Y–T waveform", "Lets Intensity dim the waveform where it moves fast. Off to start, since dimming a square wave’s steep edge hides what Y–T shows."],
+  "beamGoni": ["Goniometer", "Lets Intensity dim the goniometer’s trace where it moves fast, as on the main screen. Only the look."],
+  "modEditorClose": ["Close", "Closes the editor and brings the tab back. The source keeps moving everything it is on."],
+  "lfoShape0": ["Shape", "The wave the LFO sweeps with. Ramp rises and drops back; Random jumps to a new level each cycle and holds it."],
+  "lfoSync0": ["Sync", "Free runs at Rate; a note value locks the LFO to the tempo, and it starts again on the beat."],
+  "lfoRate0": ["Rate", "How fast the LFO sweeps, from 0.01 to 8 cycles a second. Greyed while Sync locks it to the tempo."],
+  "srcDetail-add": ["Add a destination", "Puts this source on another control, from every one it can reach. Dragging its card onto a knob does the same."],
+  "menvOwn": ["Its own envelope, not Play's", "Gives the Envelope four times of its own, one swell for the notes held. Unticked, it follows Play’s amp envelope."],
+  "menvPhrase": ["Starts: Phrase", "Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope ticked."],
+  "menvEvery": ["Starts: Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope."],
+  "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play."],
+  "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play."],
+  "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Greyed while it follows Play."],
+  "menvRel": ["Release", "How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows Play."],
+  "keysDown": ["Down an octave", "Moves the on-screen keys down an octave; Z does the same from the computer keyboard."],
+  "keysUp": ["Up an octave", "Moves the on-screen keys up an octave; X does the same from the computer keyboard."],
+  "keysLatch": ["Tap to hold", "Each tap holds its note until you tap it again, so a mouse can hold a chord. Unticking lets go of every note it held."],
+  "keysPedal": ["Pedal", "The sustain pedal: press to hold every note after you let go, press again to lift. Holding the space bar does the same."],
+  "keysVelocity": ["Velocity", "How hard the on-screen keys and the typed letters play: louder, and a brighter strike on the screen where Scan reads."],
+  "keysClose": ["Hide the keyboard", "Hides the keys and lets go of every note they hold. The letters and the space bar go back to their usual jobs."],
+  "presetPrev": ["The previous preset", "Loads the previous sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through."],
+  "preset": ["Plain sine", "The sound loaded now, with its heading above it; Custom once you change it. Press to open the preset browser."],
+  "presetNext": ["The next preset", "Loads the next sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through."],
+  "presetBrowse": ["Browse", "Opens the preset browser: the bank under Settled and Breathing, and your saved sounds. Choosing a card there loads nothing."],
+  "presetSaveHead": ["Save", "Opens the preset browser at its save field, to keep the sound as it is now under a name of your own, in this browser."],
+  "undoButton": ["Undo", "Takes back your last change, up to a hundred. A knob turned counts once, after it has rested; Ctrl or ⌘ Z does the same."],
+  "redoButton": ["Redo", "Puts back a change Undo took away. Any new change clears what was left to redo; Ctrl or ⌘ Shift Z does the same."],
+  "performButton": ["Perform", "Opens what is set at the start and played over: the arpeggiator, the clock, the key and tempo, and the morph."],
+  "helpButton": ["How this works", "Opens the help sheet: what each part of the instrument does to the sound and the picture, and where to find it."],
+  "menuButton": ["Settings", "Opens what is set once and left: MIDI, the modulation fade, this window’s size, the input and the audio device."],
+  "persistence": ["(hidden menu)", "Never shown, so never pointed at: the plugin's panel names it. The Persistence knob in the Picture section is the one people turn."],
+  "performClose": ["Close", "Closes Perform; the arpeggiator and the clock keep running."],
+  "arpMode": ["Arp", "Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it."],
+  "arpRate": ["Arp step", "How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t)."],
+  "arpOctaves": ["Arp octaves", "How many octaves the arpeggio spreads the chord over, from one to three."],
+  "transportPlay": ["Bar", "Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it."],
+  "morphStoreA": ["Morph · store A", "Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide."],
+  "morphPos": ["Morph", "Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus and switches stay."],
+  "morphStoreB": ["Morph · store B", "Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear."],
+  "keyRoot": ["Key", "The page’s one key, which the quantiser and the score play in."],
+  "keyScale": ["Scale", "Which notes of the key count: Chromatic (every semitone), major, minor or one of the modes. The quantiser and the score use it."],
+  "quantise": ["Quantise", "Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody."],
+  "quantiseGlide": ["Glide", "How long the quantised pitch takes to slide to each new note, up to 300 ms; off, it steps. Only while Quantise is on."],
+  "tempo": ["Tempo", "The page’s one tempo, 30 to 300 BPM: the arpeggiator, the score and every synced LFO or delay play at it."],
+  "tempoTap": ["Tap tempo", "Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped."],
+  "menuClose": ["Close", "Closes Settings. What is set here stays set when you load another sound."],
+  "midiConnect": ["MIDI in", "Asks the browser for MIDI, then listens to every keyboard connected. Needs a secure page; Safari has no Web MIDI."],
+  "midiOut": ["MIDI out", "A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it."],
+  "midiOutCh": ["MIDI out channel", "The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent."],
+  "fadeMode": ["Fade", "Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go."],
+  "fadeEditA": ["Fade · A", "Shows layer A’s fade envelope to draw, with B’s faint behind. Each layer’s sound follows its own; only with a split or layers."],
+  "fadeEditB": ["Fade · B", "Shows layer B’s fade envelope to draw, with A’s faint behind. Each layer’s sound follows its own; only with a split or layers."],
+  "fadeRestart": ["Restart", "Runs the fade’s envelope again, from where it is, on every note you strike."],
+  "fadeLoop": ["Loop", "Sends the fade’s attack and decay round again and again for as long as a note is held."],
+  "helpFirst": ["Help sheet at first", "Opens the help sheet over the instrument the first time it opens, in a browser or a host. The ? in the header opens it any time."],
+  "infoLineOn": ["Info line", "Shows a line like this one along the foot, saying what the control you rest on does. Off hides it; this browser remembers."],
+  "sizeAuto": ["Size", "90% in a window under 1100 wide or 680 tall, 100% otherwise, so the plugin’s smallest window fits. Only the look changes."],
+  "size90": ["Size", "Everything on the face at 90%, whatever the window. This browser remembers it."],
+  "size100": ["Size", "Everything on the face at its own size, whatever the window. This browser remembers it."],
+  "size125": ["Size", "Everything on the face at 125%, whatever the window. This browser remembers it."],
+  "srcTone": ["Source", "Draws and plays the instrument’s own generator, the one your keys play. Where the instrument starts."],
+  "srcMic": ["Source", "Draws what comes in at the audio input instead of the generator, a microphone or a line. Choose the device under Audio."],
+  "micWhole": ["Split", "Draws the input as it arrives: one pair, left against right."],
+  "micBands": ["Split", "Splits the input into four bands by pitch, so one instrument down one input draws four lanes and a figure that moves as you play."],
+  "device": ["Device", "Which input Mic draws. The site’s choice only: in the plugin, the host’s input is used."],
+  "kindMic": ["Input is", "Says a microphone is plugged in, so it is never sent to the speakers: it would hear them and feed back."],
+  "kindLine": ["Input is", "Says a line input is plugged in, a keyboard or an interface, which has no ear, so it may be heard through the page."],
+  "monitorLive": ["Hear it through the page", "Plays a line input through the page, tens of milliseconds late. Only for a line; wear headphones the first time."],
+  "measureButton": ["Scope & measure", "Opens the oscilloscope’s own tools over the screen: run, trigger, timebase, scale, the trace filter and the readouts."],
+  "measureClose": ["Close", "Closes Scope & measure. Its settings stay as you left them, and the readouts stay if you switched them on."],
+  "run": ["Stop", "Holds the trace where it is; press again to run. Stopping also silences the score and ends every note sent out over MIDI."],
+  "modeAuto": ["Auto", "Draws whatever arrives, triggered or not, so the trace never stops. A grey trace is free-running, not a fault."],
+  "modeNormal": ["Normal", "Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one."],
+  "modeSingle": ["Single", "Waits for one edge, draws it and stops: how to catch a transient. Run arms it again."],
+  "autoset": ["Autoset", "Reads the signal and picks a timebase, a full scale for each lane and a trigger level to fit it, then runs in Auto."],
+  "edgeRising": ["Rising", "Starts the trace where the signal crosses the level going up."],
+  "edgeFalling": ["Falling", "Starts the trace where the signal crosses the level going down."],
+  "level": ["Trigger level", "How high the signal must cross to start the trace, as a share of full scale: the dashed rose line on the screen."],
+  "trigSource0": ["Source", "Takes the trigger from the first lane. Every lane is cut at that lane’s edge, so they stay in step."],
+  "trigSource1": ["Source", "Takes the trigger from the second lane. Every lane is cut at that lane’s edge, so they stay in step."],
+  "position": ["Position", "How much of the screen shows what came before the trigger. At 10%, a tenth; the marker at the top is the moment itself."],
+  "holdoff": ["Holdoff", "Ignores an edge with another close behind it, up to 5 ms, which settles a wave that crosses the level twice a cycle."],
+  "timebase": ["Timebase", "How much time the screen holds, from a millisecond to half a second across. In Y–T, longer shows more cycles of the wave."],
+  "zoom": ["Zoom", "Magnifies: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. The numbers still read it all."],
+  "layStack": ["Layout", "In Y–T, each lane in its own strip with its name: what each part is doing."],
+  "layOver": ["Layout", "In Y–T, every lane on one graticule: how the lanes line up against each other."],
+  "xyX": ["X–Y pair", "Which lane is drawn across, the figure’s X. The goniometer follows the same pair."],
+  "xyY": ["X–Y pair", "Which lane is drawn upward, the figure’s Y. One lane against itself draws a diagonal line."],
+  "filterOn": ["Filter the trace", "Filters the trace, and so what Scan reads from it: a low pass rounds a square towards a sine. Heard directly only on Shaped."],
+  "filterType": ["Type", "Which part the trace filter keeps: low pass the bottom, high pass the top, band pass a band; a notch carves one out."],
+  "filterCutoff": ["Cutoff", "Where the trace filter acts, 20 Hz to 20 kHz. Lower on a low pass rounds the trace’s corners; a source on it sweeps."],
+  "filterRes": ["Resonance", "A peak at the cutoff: nought is gentle, a hundred rings. High, it can push the trace past full scale and the readout says Clipping."],
+  "seeDry": ["Screen reads", "The screen draws the signal as it came in, before the filter, the AC coupling and the turn. The readout says so."],
+  "seeWet": ["Screen reads", "The screen draws the signal after the filter, the AC coupling and the turn."],
+  "hearDry": ["Speakers get", "The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture."],
+  "hearWet": ["Speakers get", "The speakers get the signal after the filter, the AC coupling and the turn, so you hear what the screen shows shaped."],
+  "ch1On": ["Show", "Draws this lane in Y–T and gives it a row in the readouts."],
+  "ch1Ac": ["AC", "Blocks what is not moving, so a DC offset cannot push this lane off the screen. The speakers get it too on Shaped."],
+  "ch1Scale": ["Full scale", "The level that reaches the top of the screen, 0 to −50 dBFS. Lower it to open up a quiet signal; the numbers stay the same."],
+  "ch1Offset": ["Offset", "Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis."],
+  "ch2On": ["Show", "Draws this lane in Y–T and gives it a row in the readouts."],
+  "ch2Ac": ["AC", "Blocks what is not moving, so a DC offset cannot push this lane off the screen. The speakers get it too on Shaped."],
+  "ch2Scale": ["Full scale", "The level that reaches the top of the screen, 0 to −50 dBFS. Lower it to open up a quiet signal; the numbers stay the same."],
+  "ch2Offset": ["Offset", "Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis."],
+  "midSide": ["Mid / side", "Draws the sum and the difference of a stereo pair in place of left and right: the figure turned 45°. Turns Lag X–Y off."],
+  "lagOn": ["Lag X–Y", "Plots the signal against itself a moment later, so one input draws a loop shaped by its harmonics rather than a diagonal line."],
+  "lagAuto": ["Delay", "Sets the delay to a quarter of the note’s period, locked slowly, so a pure tone draws a circle and vibrato turns the loop."],
+  "lagManual": ["Delay", "Holds the delay where its knob puts it, whatever the note."],
+  "lag": ["Delay", "How far behind the delayed copy is, 0.1 to 40 ms. Only on Set; on Auto it shows what the lock found."],
+  "lagMix": ["Heard", "How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%."],
+  "midiTruth": ["Lag and tuner from the note", "Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound."],
+  "midiFollow": ["… and the timebase", "Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play."],
+  "acCorner": ["AC corner", "Where AC coupling starts taking things away, 0.5 to 20 Hz. Ten removes a drift; twenty thins the bottom of a bass note too."],
+  "readoutsOn": ["Readouts under the screen", "Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start."],
+  "cursorsOn": ["Cursors", "Two time and two level cursors to drag on the Y–T screen; the readout gives each pair’s difference, and Δt as a frequency."],
+  "measurePre": ["Numbers read", "The numbers read the signal as it arrived, before the Plane’s Turn."],
+  "measurePost": ["Numbers read", "The numbers read the signal after the Plane’s Turn, as the screen shows it. The level meter and Clipping stay on the signal."],
+  "saveReference": ["Save reference", "Freezes the trace on screen and keeps it dashed behind the live one in Y–T, so you can see what a change did."],
+  "clearReference": ["Clear", "Takes the saved reference trace off the screen."],
+  "goniOn": ["Goniometer & correlation", "A pane beside the screen: left against right turned 45°. Upright is mono, a circle is wide, flat means the channels fight."],
+  "spectrumOn": ["Spectrum", "A pane beside the screen showing how much of the sound is at each frequency."],
+  "harmonicsOn": ["Harmonics & THD", "A pane of the fundamental and its partials as bars, with the distortion they add up to. Needs a tone; noise gets no number."],
+  "tunerOn": ["Tuner", "A pane naming the nearest note, with a needle for how many cents off; against the key you play, if there is one."],
+  "spectroSpan": ["Span", "How many seconds the spectrogram shows across the screen, two to thirty. Only in the Spect display."],
+  "benchSearch": ["Find a control", "Finds any control by name, and by a few other words (adsr, lfo). Choosing a result opens whatever it is behind. Press / from anywhere."],
+  "presetNew": ["New · a still sine", "Loads the still sine the instrument opens on, with the picture at nought, and closes the browser: a start for a sound of your own."],
+  "presetClose": ["Close", "Closes the browser and keeps what is loaded. Choosing a card loads nothing; Load or a double-click does."],
+  "presetLoad": ["Load", "Loads the chosen sound and leaves the browser open, to compare it with another. Enter or a double-click loads and closes."],
+  "presetSaveOpen": ["Save this sound…", "Opens a field to name the sound as it is now and keep it under Saved, in this browser, with its figure as the thumbnail."],
+  "presetName": ["Save this sound as", "The name to keep the sound under; Enter saves. A name already saved is replaced without asking."],
+  "presetSave": ["Save", "Keeps the sound under Saved in this browser, with what is sounding now as its figure. The setup code takes it elsewhere."],
+  "presetDelete": ["Delete saved", "Deletes the saved sound chosen, or the saved one loaded, from this browser, without asking. The bank’s own cannot be deleted."],
+  "presetCode": ["Setup code", "The whole setup as text: copy it to send a sound to someone, or paste one in and press Paste to load it."],
+  "presetCopy": ["Copy", "Copies the setup code of the sound as it is now, for a message, another browser or the plugin."],
+  "presetPaste": ["Paste", "Loads the code pasted into the field, or else the one on the clipboard if the browser hands it over."]
+};
+const INFO_REST_MS = 330;
+const INFO_KEY = "scope.infoLine";
+// Controls with no id of their own, and the bench's tabs, whose ids are made.
+const SAY_KEYS = [
+  ["[data-fx-on]", "fx-switch"], ["[data-fx-open]", "fx-arrow"], ["[data-fx-move]", "fx-handle"],
+  [".mod-card", "mod-card"], ["#benchTab-play", "tab-play"], ["#benchTab-ink", "tab-ink"],
+  ["#benchTab-space", "tab-space"],
+];
+let infoAt = null, infoPending = null, infoTimer = 0;
+
+function wordsKey(node) {
+  if (!node || node.nodeType !== 1) return null;
+  for (const [sel, key] of SAY_KEYS) if (node.matches(sel) && CONTROL_WORDS[key]) return key;
+  const id = node.id;
+  if (!id) return null;
+  if (CONTROL_WORDS[id]) return id;
+  // A card's editor numbers its controls by the card (lfoShape1 is LFO 2's); the words are one.
+  const any = id.replace(/\d+$/, "0");
+  return any !== id && CONTROL_WORDS[any] ? any : null;
+}
+
+/* What under the pointer the line is about: the control itself, or the
+   control a label, a knob's face or a one-control row stands for. Walking
+   up stops at a section, so the space between controls holds the line. */
+function infoTarget(start) {
+  for (let n = start; n && n !== document.body; n = n.parentElement) {
+    if (n.id === "infoLine" || n.classList.contains("over")) return null;
+    if (wordsKey(n)) return n;
+    if (n.tagName === "LABEL") {
+      const c = n.control || (n.htmlFor && document.getElementById(n.htmlFor));
+      if (c && wordsKey(c)) return c;
+    }
+    if (n.classList.contains("knob-face")) {
+      const input = n.parentElement && n.parentElement.querySelector("input.knob-dial");
+      if (input && wordsKey(input)) return input;
+    }
+    if (n.classList.contains("menu-row")) {
+      const all = Array.from(n.querySelectorAll("input, select, button")).filter((c) => wordsKey(c));
+      return all.length === 1 ? all[0] : null;
+    }
+    if (n.matches(".menu-group, .menu-panel, .bench-body, .picture-wrap, header, .screen-tools")) return null;
+  }
+  return null;
+}
+
+function infoValueOf(node) {
+  if (node.matches('input[type="range"]')) {
+    const row = node.closest(".menu-row");
+    const reading = row && row.querySelector(".reading");
+    return reading ? reading.textContent.trim() : node.value;
+  }
+  if (node.tagName === "SELECT") return node.selectedIndex >= 0 ? node.options[node.selectedIndex].text : "";
+  if (node.matches('input[type="checkbox"]')) return node.checked ? "on" : "off";
+  if (node.getAttribute("role") === "radio") return node.getAttribute("aria-checked") === "true" ? "chosen" : "";
+  if (node.hasAttribute("aria-pressed")) return node.getAttribute("aria-pressed") === "true" ? "on" : "off";
+  return "";
+}
+
+// The hand it is for, while there are two and the control is a hand's own.
+function infoHandOf(node) {
+  if (!layersOn()) return "";
+  const own = node.closest("[data-layer]") || LAYER_CONTROLS.some(([id]) => id === node.id);
+  return own ? (panelLayer === 1 ? "B" : "A") : "";
+}
+
+function sayInfo(node) {
+  const key = wordsKey(node);
+  if (!key) return;
+  infoAt = node;
+  const [name, line] = CONTROL_WORDS[key];
+  el.infoName.textContent = name;
+  el.infoValue.textContent = infoValueOf(node);
+  el.infoHost.hidden = !HOST_PARAMS.includes(node.id);
+  const hand = infoHandOf(node);
+  el.infoHand.hidden = !hand;
+  el.infoHand.textContent = hand;
+  el.infoText.textContent = line;
+  el.infoMore.hidden = false;
+  delete el.infoLine.dataset.empty;
+}
+
+function clearInfo() {
+  infoAt = null;
+  el.infoLine.dataset.empty = "1";
+  el.infoName.textContent = el.infoValue.textContent = el.infoHand.textContent = "";
+  el.infoHost.hidden = el.infoHand.hidden = el.infoMore.hidden = true;
+  el.infoText.textContent = "Rest the pointer on a control to read what it does.";
+}
+
+function restOn(target) {
+  if (target === infoPending) return;
+  clearTimeout(infoTimer);
+  infoPending = target;
+  if (!target || target === infoAt) return;
+  infoTimer = setTimeout(() => { infoPending = null; sayInfo(target); }, INFO_REST_MS);
+}
+
+document.addEventListener("pointermove", (event) => {
+  if (event.pointerType === "touch") return;
+  restOn(infoTarget(event.target));
+}, { passive: true });
+// Touched: at once, and the value kept up while it moves.
+for (const type of ["input", "change", "focusin"]) {
+  document.addEventListener(type, (event) => {
+    const target = infoTarget(event.target);
+    if (!target) return;
+    clearTimeout(infoTimer); infoPending = null;
+    if (target === infoAt) el.infoValue.textContent = infoValueOf(target);
+    else sayInfo(target);
+  }, true);
+}
+// A press on a radio or a switch changes its value without an input event.
+document.addEventListener("click", (event) => {
+  const target = infoTarget(event.target);
+  if (target) requestAnimationFrame(() => sayInfo(target));
+}, true);
+
+/* The card: the line again and what the page knows about the control - its
+   modulation, whether a host can automate it, the other hand's value, what a
+   double-click puts it back to - with the section's controls a step either
+   side. The paragraphs the doc marks for some controls come later, into the
+   same doc. Not a mode: the instrument plays on, and Esc closes it. */
+function infoSteps(node) {
+  const group = node.closest(".menu-group, .fx-module, .picture-wrap, .over");
+  if (!group) return [];
+  const seen = new Set();
+  return Array.from(group.querySelectorAll("input, select, button"))
+    .filter((c) => wordsKey(c) && c.offsetParent !== null && !seen.has(wordsKey(c)) && seen.add(wordsKey(c)));
+}
+
+function openInfoCard(node) {
+  node = node || infoAt;
+  if (!node || !wordsKey(node)) return;
+  const [name, line] = CONTROL_WORDS[wordsKey(node)];
+  const anchor = node.closest(".menu-row") || node.closest(".knob-row") || node;
+  openOverlay(anchor.offsetParent ? anchor : el.infoMore, name, infoValueOf(node), (body) => {
+    body.classList.add("info-card");
+    const facts = [];
+    const row = node.closest("[data-mod-dest]");
+    if (row) {
+      const on = routingsFor(row.dataset.modDest).map((r) => {
+        const source = MOD_SOURCES.get(r.sourceId);
+        const pct = Math.round(routingAmount(source, r.amount) * 100);
+        return (source ? source.label : r.sourceId) + " " + (pct > 0 ? "+" : "") + pct + "%";
+      });
+      facts.push(["Modulated by", on.length ? on.join(", ") : "nothing yet: drag a card onto it"]);
+    }
+    if (HOST_PARAMS.includes(node.id)) facts.push(["In a host", "can be automated"]);
+    const layer = LAYER_CONTROLS.find(([id]) => id === node.id);
+    if (layer && layersOn() && layer[4]) {
+      const other = genSettings(panelLayer === 1 ? 0 : 1);
+      if (other && other[layer[1]] !== undefined) {
+        facts.push([panelLayer === 1 ? "Layer A" : "Layer B", layer[4](Number(layer[3](other[layer[1]])))]);
+      }
+    }
+    if (knobFaces.has(node)) {
+      const home = node.dataset.knobMark !== undefined ? node.dataset.knobMark : node.defaultValue;
+      if (Number(home) !== Number(node.value)) facts.push(["Two taps", "put it back where it starts"]);
+    }
+    body.innerHTML = '<p class="info-card-line"></p>'
+      + (facts.length ? "<dl>" + facts.map(() => "<dt></dt><dd></dd>").join("") + "</dl>" : "")
+      + '<div class="info-card-steps"></div>';
+    body.querySelector(".info-card-line").textContent = line;
+    body.querySelectorAll("dt").forEach((dt, i) => { dt.textContent = facts[i][0]; });
+    body.querySelectorAll("dd").forEach((dd, i) => { dd.textContent = facts[i][1]; });
+    const steps = infoSteps(node), at = steps.indexOf(node);
+    const stepTo = (c, label) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "link-btn caps";
+      b.textContent = label;
+      b.addEventListener("click", () => { sayInfo(c); openInfoCard(c); });
+      body.querySelector(".info-card-steps").appendChild(b);
+    };
+    if (at > 0) stepTo(steps[at - 1], "‹ " + CONTROL_WORDS[wordsKey(steps[at - 1])][0]);
+    if (at >= 0 && at < steps.length - 1) stepTo(steps[at + 1], CONTROL_WORDS[wordsKey(steps[at + 1])][0] + " ›");
+    return null;
+  });
+}
+el.infoMore.addEventListener("click", () => openInfoCard());
+// ? opens the card for the control described, while the window has the keyboard.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;
+  const t = event.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA)$/.test(t.tagName) && !/^(range|checkbox|radio|button)$/.test(t.type))) return;
+  if (!infoAt) return;
+  event.preventDefault();
+  openInfoCard();
+});
+
+
+function setInfoLineOn(on, remember) {
+  el.infoLineOn.checked = on;
+  el.infoLine.hidden = !on;
+  if (remember) { try { window.localStorage.setItem(INFO_KEY, on ? "1" : "0"); } catch (error) { /* private window */ } }
+}
+el.infoLineOn.addEventListener("change", () => setInfoLineOn(el.infoLineOn.checked, true));
+try { setInfoLineOn(window.localStorage.getItem(INFO_KEY) !== "0", false); } catch (error) { setInfoLineOn(true, false); }
 
 /* --- the modulation editor -----------------------------------------------------
    The third design of this, and the first one that does not ask for a steady
