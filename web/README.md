@@ -95,6 +95,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, every kind, ten learned controllers |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
+| `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
 
@@ -5311,3 +5312,20 @@ range's edge, where `estimatePeriod` rightly answers null rather than a
 reading; the test threw on a full run that changed nothing near it. Noise in a
 test is seeded now, so it is the same buffer every time and its reading is
 known (0.995 for seed 1).
+
+**An 8-bit fade toward the paper stops short of it.** The screen forgets by
+laying the paper over itself at the persistence's alpha, and a pixel within
+`0.5 / persistence` levels of the paper is moved by less than half a level a
+frame, which rounds to nothing: on a bare canvas, rose, slate and grey strokes
+all stopped at grey 220 at 0.0255 (Crossed hands) and never moved again, and
+at 0.12 left 248, 248, 240 against the paper's 255, 252, 247. It was the
+owner's "wash" over the whole screen, and the axis names, written into the same
+canvas, stained the same way, Left staying under Mid. Scan never saw it — the
+phosphor grid fades in floating point — so the screen showed a picture Scan was
+not reading. `clearOrFade` now adds a level of light now and then and lays the
+paper back under `darken`, at a rate that grows with the persistence (under
+five per cent of a full-ink stroke's step at any setting), and `wipeOutside`
+clears everything outside the plot each frame, since only words live there.
+`washtest.py` reads the canvas's own pixels against a cleared screen — not the
+bare paper, which the ruling, redrawn every frame, would fail — and its first
+version did exactly that, counting the graticule's lines as a stain.

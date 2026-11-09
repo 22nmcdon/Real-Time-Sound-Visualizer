@@ -18153,6 +18153,50 @@ function clearOrFade(ctx, w, h, resized) {
   ctx.globalAlpha = state.persistence;
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
+  /* The last few levels, which the fade above cannot finish on its own. The
+     canvas is 8-bit, and a pixel within half a level divided by the
+     persistence of the paper - twenty levels at 0.0255, four at 0.12 - is
+     moved by less than half a level a frame, which rounds to nothing, so it
+     stopped there for good: every pixel the beam had touched at Crossed
+     hands' persistence stayed at grey 220, a wash over the whole screen that
+     Scan, reading the phosphor grid in floating point, never saw. So a level
+     of light is added now and then and the paper laid back over it under
+     `darken`, which leaves every ink alone (all are darker than the paper)
+     and carries a stalled pixel the rest of the way at a level at a time.
+     Its rate grows with the persistence, from a tenth of a level a frame to
+     one, so it is under five per cent of the fade's own step for a full-ink
+     stroke at any setting and only takes over where the fade has stalled;
+     the cost is that the display's faint end of a long trail is a little
+     shorter than the grid's. `washtest.py` holds it to two levels. */
+  fadeNudge += Math.min(1, Math.max(0.1, 6 * state.persistence));
+  if (fadeNudge >= 1) {
+    fadeNudge -= 1;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = "rgb(1, 1, 1)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "darken";
+    ctx.fillStyle = ink.paper;
+    ctx.fillRect(0, 0, w, h);
+  }
+  ctx.restore();
+}
+let fadeNudge = 0;
+
+/* What lies outside the plot is written fresh every frame - the axes' names,
+   the amplitudes, the lanes' names - and the traces are clipped to the plot,
+   so nothing out there should persist. Faded with the rest it did: a name
+   from before stayed under the new one, Left under Mid, the right channel's
+   name under a split's. Wiped to the paper instead, so only the current
+   words are ever there. */
+function wipeOutside(ctx, w, h, x, y, pw, ph) {
+  if (state.persistence === 0) return;
+  ctx.save();
+  ctx.fillStyle = ink.paper;
+  ctx.fillRect(0, 0, w, y);
+  ctx.fillRect(0, y + ph, w, h - y - ph);
+  ctx.fillRect(0, y, x, ph);
+  ctx.fillRect(x + pw, y, w - x - pw, ph);
   ctx.restore();
 }
 
@@ -18188,6 +18232,7 @@ function drawMain(frame, elapsed) {
   };
 
   clearOrFade(ctx, w, h, fit.resized);
+  wipeOutside(ctx, w, h, plot.x, plot.y, plot.w, plot.h);
 
   /* Stacked, the screen is divided into one band per lane and each lane is
      drawn to the middle of its own. Overlaid, every lane gets the whole
@@ -18465,6 +18510,7 @@ function drawXY(frame, fit, elapsed) {
   const size = Math.max(40, Math.min(w - 2 * PAD.right, h - 2 * PAD.top));
   const cx = w / 2, cy = h / 2, radius = size / 2;
   plot = { x: cx - radius, y: cy - radius, w: size, h: size };
+  wipeOutside(ctx, w, h, plot.x, plot.y, size, size);
 
   /* The ruling goes down under `darken` whenever anything is accumulating.
 
