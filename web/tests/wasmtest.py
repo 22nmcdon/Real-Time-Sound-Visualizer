@@ -245,6 +245,13 @@ with sync_playwright() as pw:
           a.connect(merge, 0, 0); c.connect(merge, 0, 1); merge.connect(dest); a.start(); c.start();
           navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
           el.srcMic.click(); await wait(1200);
+          /* The picture at nought, so nothing but the mirror is folding the
+             input: above it the picture's reads push the twist and the phaser
+             on the same path, which turn the folded figure back below nought.
+             It held by luck until G2, when the scenario before this one loaded
+             a drawn word whose preset had the picture at nought; the waveform
+             that replaced it loads the defaults, where it is 60. */
+          el.pictureAmount.value = "0"; el.pictureAmount.dispatchEvent(new Event("input", { bubbles: true }));
           el.planeMirror.value = "3"; el.planeMirror.dispatchEvent(new Event("change")); await wait(1200);
           const w = state.source.getLatestWindow(4410);
           const fx = state.source.fx || {};

@@ -52,6 +52,15 @@ const listing = (() => {
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
 const bound = [...listing.matchAll(/bind\("(\w+)"/g)].map((m) => m[1]);
+/* The worklet binds each slot's value, but this lifts each slot's
+   definition, and since G2 two of them are written from slots the worklet
+   no longer binds - WIDTH_SLOT from SWING_SLOT, TURN_SLOT from SPIN_SLOT,
+   the drawings' slots kept as names so nothing after them moves. Lifted
+   just before the first slot that needs them. */
+for (const [needed, before] of [["SWING_SLOT", "WIDTH_SLOT"], ["SPIN_SLOT", "TURN_SLOT"]]) {
+  const at = bound.indexOf(before);
+  if (at >= 0 && !bound.includes(needed) && page.includes("\nconst " + needed + " = ")) bound.splice(at, 0, needed);
+}
 const source = bound.map(definition).join("\n") + "\nreturn { makeGeneratorCore, makeWasmCore };";
 // The page's source that reads the generator - the note envelope, the one
 // left since G2 took the drawings' six - registered as the page registers

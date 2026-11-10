@@ -332,52 +332,14 @@ with sync_playwright() as pw:
     check("unsplit, the Reads row is hidden: there is one picture", hidden is True, str(hidden))
 
     # ------------------------------------------------------------------
-    print("\n--- the loop that keeps going ---")
-    RUN = """async ([preset, stopAt, drive]) => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setRunning(true); loadCorpus(preset); await wait(800);
-      setScreenKeys(true);
-      if (drive) midi.drive.wave = true;
-      const freq0 = genSettings().freq;
-      for (const n of [60, 64, 67]) midiNoteOn(n, 120);
-      await wait(1000);
-      const freqHeld = genSettings().freq;
-      for (const n of [60, 64, 67]) midiNoteOff(n);
-      if (stopAt !== null) setTimeout(() => setRunning(false), stopAt * 1000);
-      const out = []; let last = null; const t0 = performance.now();
-      while (performance.now() - t0 < 12000) {
-        await wait(250);
-        if (!state.running) state.source.tick(performance.now() / 1000);
-        const t = genSettings().scanTable, [l] = state.source.getLatestWindow(2048);
-        let e = 0; for (const v of l) e += v * v;
-        let m = null;
-        if (t && last) { m = 0; for (let k = 0; k < t.levels[0].length; k++) m += Math.abs(t.levels[0][k] - last.levels[0][k]); m /= t.levels[0].length; }
-        last = t;
-        out.push([(performance.now() - t0) / 1000, m, Math.sqrt(e / l.length)]);
-      }
-      setRunning(true); midiPanic(); setScreenKeys(false); midi.drive.wave = true;
-      return { out, freq0, freqHeld };
-    }"""
-    def summary(run, after=5):
-        late = [x for x in run["out"] if x[0] > after]
-        ms = [x[1] for x in late if x[1] is not None]
-        return (statistics.median(ms) if ms else 0), statistics.mean(x[2] for x in late)
-    breathe = p.evaluate(RUN, ["Scan breathes", None, False])
-    remember = p.evaluate(RUN, ["Scan remembers", None, False])
-    stopped = p.evaluate(RUN, ["Scan breathes", 3, False])
-    driven = p.evaluate(RUN, ["Scan breathes", None, True])
-    (mb, rb), (mr, rr), (ms_, rs), (md, rd) = summary(breathe), summary(remember), summary(stopped), summary(driven)
-    print("    after letting go: breathes moves %.4f a quarter second (level %.3f), remembers %.4f (%.3f), "
-          "stopped %.4f, with notes driving the waveform level %.4f" % (mb, rb, mr, rr, ms_, rd))
-    check("Scan breathes: five seconds after the keys are let go, the wave is still moving and still sounding",
-          mb > 0.02 and rb > 0.05, "%.4f, level %.3f" % (mb, rb))
-    check("Scan remembers: so is this one", mr > 0.02 and rr > 0.05, "%.4f, level %.3f" % (mr, rr))
-    null("Stop holds the screen, and the wave stands", ms_ < 0.005, "%.4f" % ms_)
-    null("the same preset with notes driving the waveform falls silent when they are let go", rd < 0.01, "level %.4f" % rd)
-    check("and in it the keys strike rather than play: the note does not move", breathe["freq0"] == breathe["freqHeld"],
-          "%s then %s" % (breathe["freq0"], breathe["freqHeld"]))
-    null("driving the waveform, the same keys move it", driven["freq0"] != driven["freqHeld"],
-         "%s then %s" % (driven["freq0"], driven["freqHeld"]))
+    # "The loop that keeps going" checked two old presets (Scan breathes, Scan
+    # remembers) whose keys struck the screen without playing the waveform -
+    # Notes play this generator unticked - so the loop went on sounding after
+    # the keys were let go, and a null drove the waveform to show the
+    # difference. That switch went with the drawings in G2: notes always
+    # play the waveform now, so the two runs would be the same run and the
+    # checks could not fail. No preset in the bank used it; honestytest.py
+    # measures the bank's.
 
     crossed = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
