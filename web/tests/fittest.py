@@ -93,16 +93,21 @@ SWEEP = """async ([bands]) => {
       measure([bands ? 'bands' : 'tone', keys ? 'keys' : '', photoOn ? 'photo' : '', 'wave'].filter(Boolean).join('+'));
     }
   }
-  /* Two layers, with layer B's own plane on the panel: the Plane section
-     grows its Layers row and B's Turn, the clip at the radius shows the
-     radius's, and the Delay module grows its own Layers row. A drawn input
-     keeps a split without applying it, so only the tone. */
+  /* Two hands, the upper edited and every section its own (G6): the
+     header's Editing and a link on every section's title, the Plane's Turn
+     the upper's own in the screen's rotation's place, and the clip at the
+     radius showing the radius's. (Until G6 B's own plane grew a Layers row
+     and a row for B's Turn, and the Delay module a Layers row.) A drawn
+     input keeps a split without applying it, so only the tone. */
   if (!bands) {
     setMidiMode('poly');
     el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
-    el.planeLayerB.click();
+    document.getElementById('editHandB').click();
+    document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
     el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
-    planeRows = [el.planeLayerRow.hidden, el.planeTurnRow.hidden, el.planeRadiusRow.hidden, el.timeLayerRow.hidden];
+    planeRows = [el.planeTurnRow.hidden, !el.rotateRow.hidden, el.planeRadiusRow.hidden,
+                 document.getElementById('handsPick').hidden,
+                 [...document.querySelectorAll('.hand-link')].filter((link) => link.hidden || link.getAttribute('aria-pressed') !== 'false').length];
     measure('tone+keys+photo+layers+planeB');
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
@@ -117,7 +122,8 @@ SWEEP = """async ([bands]) => {
     }
     openFx(null);
     for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 0);
-    el.planeLayerBoth.click(); setMidiMode('dyad');
+    document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+    document.getElementById('editHandA').click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
   }
   /* The modulation editor (F4), which must not scroll either: LFO 1 on a
@@ -206,8 +212,9 @@ with sync_playwright() as pw:
         check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll (%dx%d)" % (w, h),
               r["editor"]["rows"] == 12 and r["editor"]["over"] <= 0 and r["editor"]["list"] <= 0, str(r["editor"]))
         if name == "tone":
-            check("the layered case had the Plane section's Layers, Turn and Radius rows and the Delay module's Layers row all showing (%dx%d)" % (w, h),
-                  r["planeRows"] == [False, False, False, False], str(r["planeRows"]))
+            check("the layered case had the upper's own Turn in the screen's rotation's place, the Radius row, the header's "
+                  "Editing and every section's link showing, each the hand's own (%dx%d)" % (w, h),
+                  r["planeRows"] == [False, False, False, False, 0], str(r["planeRows"]))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

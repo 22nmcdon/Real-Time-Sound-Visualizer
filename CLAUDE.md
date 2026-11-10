@@ -257,7 +257,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   hand's value to its reach, every other a tick at its reach, and a dot the
   control now; Alt-drag (Shift with it finer) or the ring's handle moves the
   selected depth, all through `setDepth`. *Routings* lists every routing by
-  source or by destination, with a switch per source that silences its
+  source or by destination, and since G6 which hand each moves (*Both*,
+  *Lower*, *Upper*: a second depth per routing, `amountB`, stored as `modB`
+  in `mod`'s grammar), with a switch per source that silences its
   routings and keeps them, stored as `modSilent` beside `mod` (additive,
   read by the page and the core; the instrument is told `kept|ids`), so a
   silence survives a preset, a code and a plugin project; and it holds the
@@ -300,8 +302,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (G5b, 10 Nov): right-click, Ctrl-click on a Mac, a long press, or Shift+F10
   with it focused. Its modulation first (each source on it opening the
   control's editor over the knob, the others to add, Clear), then Type a
-  value, Reset (naming where it starts) and on a split Copy to the other
-  hand, then What is this?, the info line's card. Menus and switches have
+  value, Reset (naming where it starts) and, on a section that is a hand's
+  own, Copy to the other hand, then What is this?, the info line's card. Menus and switches have
   it without the modulation. The browser's own menu is never shown but over
   a text box, so Paste still works there. `ringtest.py` holds it, and the
   plugin's shell test right-clicks a knob in the real face under
@@ -398,7 +400,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **The header is the preset and what acts on the whole sound** (F7a, 8
   Nov): the title over the line of what is playing; the preset between
   arrows that step the bank in the browser's order, its heading above its
-  name; Browse; Save; undo and redo; then the run status, Perform, help and
+  name; Browse; Save; with two hands, *Editing: Lower · Upper* (A · B
+  layered, G6), each in its figure's ink; undo and redo; then the run status, Perform, help and
   Settings, one row above a phone's width with the line under the title or
   without it (G4). Undo records the setup (`snapshot`) once a
   change has held still for 400 ms with no pointer down, and only after a
@@ -436,13 +439,28 @@ Do not re-litigate these without a reason; each replaced something that failed.
   fills the window with the screen (`setEnlarged`, `#screenFrame`); Esc or the
   button again comes back, Esc closing a panel first. Picture only, on there
   by default, hides everything over the trace, the graticule included; Which
-  hands (Both · A · B, while each hand draws a figure) and the Trail (As heard
+  hands (Both · Lower · Upper, or A · B layered, while each hand draws a figure) and the Trail (As heard
   · Half · Short, the owner's choice over a knob) are only the look. None of
   it is in a setup, a step in undo or remembered, and none reaches what Scan
   reads: the grid fades by the Persistence and is kept across Enlarge's
   resize, and a hidden hand is drawn at alpha nought. The panes show only
   here, with Picture only off (the owner's call over beside the screen on the
   face, which has no height to spare). `enlargetest.py` holds it.
+- **The hands** (G6, 10 Nov). With two hands, a link on the Generator, Amp
+  envelope, Voice filter, Oscillator, Shaping, each rack module and the
+  Picture's Amount, Scan and Strike: *Same in both* or the hand's own (*Both*
+  or the hand's name in the rack and the Picture). Linked writes both hands
+  (`handSet`); unlinking copies the edited hand into the other; linking copies
+  it back and drops the other hand's own routing depths there. A link is never
+  stored: a section is the hand's own while a setup has any of its B fields
+  (so every code from before G6, which wrote them all, loads as the hands'
+  own), and links survive the layers going off. The Picture amount and Strike
+  are per hand (`bPictureAmount`, `bScanStrike`); the rack's Together · A · B
+  rows and B's Turn row went, each module's own state is a bit in `timeOwn`,
+  and a module the hands share beside one that is B's own plays A's state, as
+  Together did. Frequency, Phase, Glide, Interval and Tuning stay shared.
+  Additive throughout, no version bump. `handstest.py` holds it, parity the
+  core.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back, and the screen, its toolbar and
   the dock into Enlarge's frame and back. Two elements with one id is how the

@@ -1112,11 +1112,11 @@ def gen_runs():
     add("reverb-fields", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                           (0, "set reverbMix 0.6"), (0, "set reverbSize 0.7"), (0, "set reverbTone 0.3"),
                           (0, "set reverbPreMs 20"), (0, "set reverbSpread 0.7"),
-                          (0, "set planeOwn true 1"), (0, "set reverbMix 0.5 1"), (0, "set reverbSize 0.5 1"),
+                          (0, "set planeOwn true 1"), (0, "set timeOwn 15 1"), (0, "set reverbMix 0.5 1"), (0, "set reverbSize 0.5 1"),
                           (0, "set reverbTone 0.8 1"), (0, "set reverbPreMs 5 1"), (0, "set reverbSpread 0.2 1"),
                           (4096, "set reverbSpread 1"), (6144, "set reverbTone 0.1 1")], samples=8192, slots=40)
     add("reverb-routed", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
-                          (0, "set reverbMix 0.3"), (0, "set planeOwn true 1"), (0, "set reverbMix 0.4 1"),
+                          (0, "set reverbMix 0.3"), (0, "set planeOwn true 1"), (0, "set timeOwn 15 1"), (0, "set reverbMix 0.4 1"),
                           (0, "routes " + "+".join([route(REVERB, 0.4, index=0, amountB=-0.3),
                                                     route(RSIZE, 0.6, index=1, amountB=0.5),
                                                     route(RTONE, -0.5, index=0, amountB=0.7)]))],
@@ -1130,7 +1130,8 @@ def gen_runs():
     for own in ("true", "false"):
         add("plane-own-time" + ("" if own == "true" else "-off"),
             [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((76, "xy"), (81, "u"))),
-             (0, "set planeScaleX 1.1"), (0, "set planeOwn %s 1" % own), (0, "set delayMix 0.3"),
+             (0, "set planeScaleX 1.1"), (0, "set planeOwn %s 1" % own), (0, "set timeOwn %d 1" % (15 if own == "true" else 0)),
+             (0, "set delayMix 0.3"),
              (0, "set delayMs 7"), (0, "set delayMix 0.5 1"), (0, "set delayMs 4 1"), (0, "set delayFeedback 0.6 1"),
              (0, "set delayPingPong true 1"), (0, "set chorusMix 0.6 1"), (0, "set chorusRate 2.5 1"),
              (0, "set chorusMs 8 1"), (0, "set chorusDepthMs 2 1"),
@@ -1138,12 +1139,33 @@ def gen_runs():
     # And bare: B's echo with nothing of A's, so B's time is all that turns
     # the plane on.
     add("plane-own-time-bare", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
-                                (0, "set planeOwn true 1"), (0, "set delayMix 0.5 1"), (0, "set delayMs 4 1")])
+                                (0, "set planeOwn true 1"), (0, "set timeOwn 4 1"), (0, "set delayMix 0.5 1"), (0, "set delayMs 4 1")])
     add("plane-own-time-switch", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
                                   (0, "set chorusMix 0.4"), (0, "set chorusRate 1.5"), (0, "set chorusMix 0.5 1"),
                                   (0, "set chorusRate 4 1"), (0, "set delayMix 0.4 1"), (0, "set delayMs 6 1"),
-                                  (1024, "set planeOwn true 1"), (2048, "set planeOwn false 1"),
-                                  (2560, "set planeOwn true 1"), (3072, "set delayMs 9 1")])
+                                  (1024, "set timeOwn 15 1"), (2048, "set timeOwn 0 1"),
+                                  (2560, "set timeOwn 6 1"), (3072, "set delayMs 9 1")])
+    # G6, a link on each module: B's own delay while the chorus is the same in
+    # both. Played Together for 1024 samples, then the delay B's own with
+    # A's settings - which with the chorus shared, its sweep A's to the
+    # sample, is what Together plays, so the first two runs are one sound
+    # (time-shared, time-together) - and then, as the null, the chorus B's
+    # own as well, whose sweep starts again from where B's own stage last
+    # left it (time-own-chorus).
+    # Apart in the list, since two runs alike side by side would pass the out-of-step null.
+    for name, own in (("time-shared", 4), ("time-own-chorus", 6), ("time-together", 0)):
+        add(name, [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                   (0, "set chorusMix 0.5"), (0, "set chorusRate 1.5"), (0, "set delayMix 0.4"), (0, "set delayMs 6"),
+                   (0, "set phaserMix 0.4"), (0, "set reverbMix 0.3"),
+                   (0, "set chorusMix 0.5 1"), (0, "set chorusRate 1.5 1"), (0, "set delayMix 0.4 1"), (0, "set delayMs 6 1"),
+                   (0, "set phaserMix 0.4 1"), (0, "set reverbMix 0.3 1"),
+                   (1024, "set timeOwn %d 1" % own)], samples=4096)
+    # And a delay of B's own that is B's own: longer, with the rest shared.
+    for name, own in (("time-own-delay", 4), ("time-own-delay-off", 0)):
+        add(name, [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                   (0, "set chorusMix 0.5"), (0, "set chorusRate 1.5"), (0, "set chorusMix 0.5 1"),
+                   (0, "set chorusRate 1.5 1"), (0, "set delayMix 0.4"), (0, "set delayMs 6"),
+                   (0, "set delayMix 0.6 1"), (0, "set delayMs 3 1"), (0, "set timeOwn %d 1" % own)], samples=4096)
     # The score's voice, and the input three ways. Five strikes on the dyad,
     # the fifth taking the voice furthest into its decay. (On a traced
     # figure, and the input from the second generator too, until G2. The
@@ -1351,6 +1373,18 @@ gnull("reverb-fields", "set reverbPreMs 5 1", "set reverbPreMs 6 1", "B's pre-de
 gnull("reverb-routed", "/%d/-0.5/0.7/" % RTONE, "/%d/-0.5/0.6/" % RTONE, "B's reverb tone pushed a tenth less")
 gnull("reverb-routed", "/%d/0.6/0.5/" % RSIZE, "/%d/0.6/0.4/" % RSIZE, "B's reverb size pushed a tenth less")
 gnull("menv-sustain", "set menvSustain 0.3", "set menvSustain 0.31", "its own sustain a hundredth higher")
+# G6: a module the same in both hands beside one of B's own is Together's to
+# the sample (Plane::timeShare), so a setup sharing every module plays what
+# it played before the links; and B's own chorus, as the null, is not.
+def grun(name): return row(gjs[next(k for k, (n, _) in enumerate(runs) if n == name)])
+check("a module shared while B has its own delay plays what Together plays, to the sample",
+      worst(grun("time-shared"), grun("time-together")) == 0, "worst %.3g" % worst(grun("time-shared"), grun("time-together")))
+check("null: the chorus B's own as well sweeps from where B's own stage left it, and is heard",
+      worst(grun("time-own-chorus"), grun("time-together")) > 1e-3)
+check("and B's own delay, longer, is heard on B's figure alone",
+      max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 4), col(grow("time-own-delay-off")[0], 4))) > 1e-3
+      and max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 0), col(grow("time-own-delay-off")[0], 0))) == 0)
+gnull("time-own-delay", "set timeOwn 4 1", "set timeOwn 0 1", "B's delay shared, played at A's settings")
 # Legato: a second note while it is open leaves it exactly where one note
 # does. Following Play, the same two runs differ - the second voice is a new
 # envelope - which is what shows the comparison can see a second note at all.
@@ -1923,6 +1957,33 @@ def mlfuzz(n):
             out += ["at %d" % t, "frame"]
     return mrun(*MLAYER, *out)
 mruns += [("random-layer-%d" % i, mlfuzz(100)) for i in range(20)]
+# G6, the hands: a routing with its own depth on the upper hand (an LFO's
+# route and the photocell's loop part), the stage at each hand's own Picture
+# amount, a setup's modB, and the stage back to one amount for both.
+mruns += [
+    ("hands", mrun("at 0", "route lfo1 gen.fm 0.5", "amountb lfo1 gen.fm -0.3", "route level gen.amp 0.4", "frame",
+                   "stage 60 20", "at 16", "frame", "route photo gen.fold 0.3", "amountb photo gen.fold 0", "at 24", "frame",
+                   "encodeb", "stage 0 50", "at 40", "frame", "stage 40", "at 56", "frame",
+                   "loadb lfo1>gen.fm@0.500;level>gen.amp@0.400 lfo1>gen.fm@-0.300;nope>gen.amp@0.100", "at 72", "frame",
+                   "encodeb", "layers 1", "fade both 1", "at 88", "frame", "at 3000", "frame")),
+]
+def mhfuzz(n):
+    out, t = ["at 0"], 0
+    srcs, dsts = ["lstage", "lhand", "photo", "level", "lfo1"], ["gen.fold", "gen.fm", "gen.twist", "gen.amp"]
+    for _ in range(n):
+        r = mrng.random()
+        if r < 0.2: out.append("route %s %s %r" % (mrng.choice(srcs), mrng.choice(dsts), round(mrng.uniform(-1.2, 1.2), 3)))
+        elif r < 0.35: out.append("amountb %s %s %r" % (mrng.choice(srcs), mrng.choice(dsts), round(mrng.uniform(-1.2, 1.2), 3)))
+        elif r < 0.42: out.append("stage %d %d" % (mrng.choice([0, 35, 60, 100]), mrng.choice([0, 35, 60, 100])))
+        elif r < 0.5: out.append("pictured %d" % mrng.randint(0, 1))
+        elif r < 0.56: out.append("layers %d" % mrng.randint(0, 1))
+        elif r < 0.6: out.append("fade %s %s" % (mrng.choice(["off", "in", "out", "both"]), mrng.choice(["", "0.3", "1"])))
+        elif r < 0.66: out.append("value %s %r" % (mrng.choice(srcs), round(mrng.uniform(-1, 1), 3)))
+        else:
+            t += mrng.choice([16, 33, 100, 400])
+            out += ["at %d" % t, "frame"]
+    return mrun(*MLAYER, *out)
+mruns += [("random-hands-%d" % i, mhfuzz(100)) for i in range(10)]
 
 mtext = "".join(t for _, t in mruns)
 mjs, mcpp = mboth(mtext, "matrix.txt")
@@ -2002,7 +2063,7 @@ check("an edit keeps the routings it kept: an event on one fires on the next cou
       ed.count(":: fire gen.kick") == 3 and ":: fire gen.kick 0.69999999999999996" in ed
       and ":: fire gen.kick 0.20000000000000001" in ed, "%d fired" % ed.count(":: fire gen.kick"))
 check("an edit's depth arrives whole, and one past its reach is held to it",
-      "amounts 0.69999999999999996+0.12345678901234500+" in ed and "photo>gen.freq@0.500" in ed)
+      "amounts 0.69999999999999996/u+0.12345678901234500/u+" in ed and "photo>gen.freq@0.500" in ed)
 check("codes: the page's own rounding, and the malformed parts skipped",
       "level>gen.freq@-0.063" in mout("codes") and "g>h>i@0.188" in mout("codes") and "m>n@-0.250" in mout("codes")
       and "bad" not in mout("codes") and "c>d" not in mout("codes") and "j@k>l@1.000" in mout("codes")
@@ -2035,6 +2096,29 @@ def mheld(line, slot):
         if f[3] == str(slot): return float(f[1]), float(f[2])
     return None
 def mclose(pair, want): return pair is not None and all(abs(x - y) < 1e-12 for x, y in zip(pair, want))
+# The hands (G6), read off the page's lines: each route's two depths, and
+# the loop's held value on each hand. FM is slot 19, the level 1, the fold 22.
+def mamt(line, slot):
+    for r in (re.search(r"routes (\S+)", line).group(1).split("+")):
+        f = r.split("/")
+        if f[3] == str(slot): return float(f[4]), float(f[5])
+    return None
+hf = frame_lines("hands")
+hcodes = [l for l in mout("hands").split("\n") if l.startswith("encodeb")]
+check("a routing with its own depth on the upper hand plays each hand at its own, and one without at one for both",
+      mclose(mamt(hf[0], 19), (0.5, -0.3)) and mclose(mamt(hf[0], 1), (0.4, 0.4)), "%r %r" % (mamt(hf[0], 19), mamt(hf[0], 1)))
+check("the stage at each hand's own Picture amount: glow 0.4 into the fold at 60 and 20 per cent of 0.8, "
+      "then the photocell's part on the lower hand alone; at nought and a half, and at 40 for both",
+      mclose(mheld(hf[1], 22), (0.192, 0.064)) and mclose(mheld(hf[2], 22), (0.192 + 0.21, 0.064))
+      and mclose(mheld(hf[3], 22), (0.21, 0.16)) and mclose(mheld(hf[4], 22), (0.128 + 0.21, 0.128)),
+      "%r %r %r %r" % (mheld(hf[1], 22), mheld(hf[2], 22), mheld(hf[3], 22), mheld(hf[4], 22)))
+check("and with the layers' own fade on, each hand's depth through its own fade, whole once it has come in",
+      mclose(mamt(hf[7], 19), (0.5, -0.3)), "%r" % (mamt(hf[7], 19),))
+check("modB written for the routings with a depth of their own, read back onto the first of the pair, and one with no pair ignored",
+      "codeb lfo1>gen.fm@-0.300;photo>gen.fold@0.000" in hcodes[0] and "codeb lfo1>gen.fm@-0.300 " in hcodes[1]
+      and "0.40000000000000002/u" in hcodes[1], "%r" % hcodes)
+mnull("hands", "amountb lfo1 gen.fm -0.3", "amountb lfo1 gen.fm 0.5", "the upper hand's depth as the lower's")
+mnull("hands", "stage 60 20", "stage 60 60", "the stage at one Picture amount for both")
 lp = frame_lines("layer pictures")
 def lp_pictured(line): return mclose(mheld(line, 22), (0.24, 0.44)) and mclose(mheld(line, 19), (-0.5, 0.9))
 def lp_shared(line): return mclose(mheld(line, 22), (0.34, 0.34)) and mclose(mheld(line, 19), (0.3, 0.3))
@@ -3496,9 +3580,11 @@ def sframe(now, gs="e0", hs=1, d0=1, d1=0, count=1, spect=0, elapsed=16.67, live
         elapsed, now, spect, count, d0, d1, hs, gs, tail)
 # A note's strike (P7b), on the pictures a frame with the same words would
 # read: the note, its velocity as a fraction, Strike, the keyboard's split.
-def sstrike(note, vel, amount=0.5, split=0, point=60, plot="40,20,600,400", **frame):
+def sstrike(note, vel, amount=0.5, split=0, point=60, plot="40,20,600,400", amountB=None, **frame):
     words = sframe(0, **frame).split(" ", 3)[3]   # the frame's words but its elapsed and now
-    return "strike note=%d vel=%r amount=%r split=%d point=%d plot=%s %s" % (note, vel, amount, split, point, plot, words)
+    # Each hand's Strike (G6): B's its own where given.
+    own = "" if amountB is None else " amountB=%r" % amountB
+    return "strike note=%d vel=%r amount=%r%s split=%d point=%d plot=%s %s" % (note, vel, amount, own, split, point, plot, words)
 SRUNS = []
 # The figure moving under a reading at three cells: the hold nudged below the
 # page's 0.005 and past it - by 0.006, which a threshold of 0.01 would not
@@ -3556,7 +3642,12 @@ r5 = ["run soft=2",
       sstrike(70, 0.7, spect=1, live=(("e6", "rose1"), (1, 1)), **L2),
       sstrike(40, 0.7, split=1, live=(("e6", "rose1"), (1, 1)), count=2, d1=0.5, d0=0),
       "end"]
-SRUNS = [r1, r2, r3, r4, r5]
+# G6, the Picture section per hand: a layered note at each hand's own Strike
+# - B's at nought, A's at nought, and the two at half and a quarter.
+LIVE6 = dict(live=(("rose0", "e5"), (1, 1)), reads=("A", "B"), **L2)
+r6 = ["run soft=2", sstrike(64, 0.8, amountB=0.0, **LIVE6), sstrike(64, 0.8, amount=0.0, amountB=0.6, **LIVE6),
+      sstrike(64, 0.8, amount=0.5, amountB=0.25, **LIVE6), "end"]
+SRUNS = [r1, r2, r3, r4, r5, r6]
 def stext(runs):
     head = "\n".join("grid %s %s" % (n, ",".join(repr(v) for v in g)) for n, g in sgrids.items())
     return head + "\n" + "\n".join("\n".join(r) for r in runs) + "\n"
@@ -3636,6 +3727,16 @@ snull("a reading a tenth of a cell softer", "run soft=3", "run soft=3.1")
 snull("the crossed pair read as each its own", "g1=rose0 r0=B r1=A", "g1=rose0 r0=A r1=B")
 snull("a strike a semitone higher", "strike note=61 ", "strike note=62 ")
 snull("a strike at another Strike", "strike note=67 vel=1.0 amount=0.5 ", "strike note=67 vel=1.0 amount=0.55 ")
+# Each hand at its own Strike (G6): the hand at nought lays nothing in its
+# picture, and at a half and a quarter each picture is lit at its own.
+r6rows = sjsr[-3:]
+r6laid = [slaid(r) for r in r6rows]
+r6levels = sorted(set((int(r6rows[2][k + 1]), round(r6rows[2][k + 6], 9)) for k in range(0, len(r6rows[2]), 7)))
+check("each hand strikes at its own Strike: B's at nought lays only A's picture, A's at nought only B's, "
+      "and at a half and a quarter each picture at its own (the shown screen at each)",
+      r6laid == [([-1, 0], 16), ([-1, 1], 16), ([-1, 0, 1], 32)]
+      and r6levels == [(-1, 0.2), (-1, 0.4), (0, 0.4), (1, 0.2)], "%r %r" % (r6laid, r6levels))
+snull("B's Strike as A's", "amount=0.5 amountB=0.25 ", "amount=0.5 amountB=0.5 ")
 snull("a hold moved by 0.006 rather than 0.003", "hs=0.997 ", "hs=0.994 ")
 snull("no setup landing", "freeze now=100", "freeze now=-1000")
 check("and against the page's frames one out of step", max(worst(a, b) for a, b in zip(sjsr[1:] + sjsr[:1], scpp)) > 1e-3)
@@ -4349,20 +4450,22 @@ check("the setups reach layer B's own plane, with fields of its own and fields f
       and any(r["planeB"]["own"] and r["planeB"]["snap"] == r["plane"]["snap"] != 0 for r in bown)
       and any(r["planeB"]["turn"] != 0 for r in bown))
 btown = [_json.loads(l) for l in rpg[-len(BPLANE) - len(BTIME):-len(BPLANE)]]
+# B's own module by its link since G6 (hands.own), where planeB.own was B's own plane and effects at once.
+bown_delay = lambda r: "delay" in r["hands"]["own"]
 check("and B's own echo and chorus, with fields of their own and fields falling back to A's, a synced time and a free one",
-      any(r["planeB"]["own"] and r["echoB"]["mix"] != r["echo"]["mix"] for r in btown)
-      and any(r["planeB"]["own"] and r["echoB"]["rate"] == r["echo"]["rate"] for r in btown)
-      and any(r["planeB"]["own"] and r["echoB"]["sync"] and r["echoB"]["sync"] != r["echo"]["sync"] for r in btown)
-      and any(r["planeB"]["own"] and r["b"]["delayMs"] != r["a"]["delayMs"] for r in btown)
-      and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] for r in btown))
+      any(bown_delay(r) and r["echoB"]["mix"] != r["echo"]["mix"] for r in btown)
+      and any("chorus" in r["hands"]["own"] and r["echoB"]["rate"] == r["echo"]["rate"] for r in btown)
+      and any(bown_delay(r) and r["echoB"]["sync"] and r["echoB"]["sync"] != r["echo"]["sync"] for r in btown)
+      and any(bown_delay(r) and r["b"]["delayMs"] != r["a"]["delayMs"] for r in btown)
+      and any(not r["hands"]["own"] and r["echoB"] == r["echo"] for r in btown))
 phown = [_json.loads(l) for l in rpg[-len(BPLANE) - len(BTIME) - len(PHASER_MADE):-len(BPLANE) - len(BTIME)]]
 check("and the phaser's, A's clamped into range, B's own with fields of its own and fields falling back to A's",
       phown[0]["echo"]["phaser"] == 0.7 and phown[0]["a"]["phaserFeedback"] == 0.6
       and phown[1]["echo"]["phaser"] == 1 and phown[1]["echo"]["phRate"] == 0.05 and phown[1]["echo"]["phDepth"] == 0
       and phown[1]["echo"]["phFeedback"] == 0.75
-      and phown[2]["planeB"]["own"] and phown[2]["echoB"]["phaser"] == 0.8 and phown[2]["b"]["phaserRate"] == 2
-      and phown[3]["planeB"]["own"] and phown[3]["echoB"]["phaser"] == phown[3]["echo"]["phaser"] == 0.55
-      and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] and r["echo"]["phaser"] > 0 for r in phown),
+      and "phaser" in phown[2]["hands"]["own"] and phown[2]["echoB"]["phaser"] == 0.8 and phown[2]["b"]["phaserRate"] == 2
+      and phown[3]["echoB"]["phaser"] == phown[3]["echo"]["phaser"] == 0.55
+      and any(not r["hands"]["own"] and r["echoB"] == r["echo"] and r["echo"]["phaser"] > 0 for r in phown),
       repr([(r["echo"]["phaser"], r["echoB"]["phaser"]) for r in phown[:4]]))
 # Every kind was in it too until G2: there is one, and the setups that name the others are passed by.
 check("the setups reach both layers, the old LFO enum, the morph and the tempo",
@@ -4386,6 +4489,71 @@ r0, r1 = _json.loads(rpg[0]), _json.loads(rpg[1])
 check("a slider snaps what it is given: a half goes up, and what is not a number takes its middle",
       r0["a"]["freq"] == 2015 and r0["a"]["amp"] == 0.7 and r1["a"]["freq"] == 2015 and r1["a"]["amp"] == 0.7,
       "%r %r, %r %r" % (r0["a"]["freq"], r0["a"]["amp"], r1["a"]["freq"], r1["a"]["amp"]))
+# The hands (G6): a section linked while a setup has none of its B fields,
+# the upper hand's own while it has any (a rack module's only with bPlane on,
+# as they always were) or a routing with its own depth there (modB); the
+# Picture section's Amount and Strike each hand's, held as the sliders hold
+# them. Made to be read, then random ones from their own generator.
+HSPLIT = {"layers": "split", "midiMode": "poly"}
+HANDS_MADE = [_json.dumps(d) for d in (
+    {}, dict(HSPLIT, bAmp=40), dict(HSPLIT, amp=30),                                                      # 0-2
+    dict(HSPLIT, bPictureAmount=20, pictureAmount=70, bScanStrike=90), dict(HSPLIT, pictureAmount=70),    # 3, 4
+    dict(HSPLIT, mod="lfo1>gen.fm@0.400", modB="lfo1>gen.fm@-0.200"), {"mod": "lfo1>gen.fm@0.400"},      # 5, 6
+    {"bPlane": True, "bDelayMix": 50, "delayMix": 20}, {"bPlane": False, "bDelayMix": 50},             # 7, 8
+    {"bPictureAmount": "abc"}, {"pictureAmount": 33.6, "bPictureAmount": 101, "bScanStrike": -4})]      # 9, 10
+hrng = random.Random(606)
+HFIELDS = ["bAmp", "bShape", "bAtk", "bRel", "bVcf", "bVcfCut", "bFm", "bRatio", "bDrive", "bScan", "bPictureAmount",
+           "bScanStrike", "bMirror", "bTwist", "bTurn", "bPhaserMix", "bChorusRate", "bDelayMix", "bDelaySync", "bReverbMix"]
+def hands_setup():
+    st = dict(HSPLIT) if hrng.random() < 0.7 else {}
+    pick = lambda: hrng.choice([hrng.randint(-20, 300), round(hrng.uniform(0, 100), 1), "40", "", None, "sine", True])
+    # The filter's type a whole one or nonsense: a fraction of a type is the page's raw number and the core's
+    # whole one, a difference in what nothing plays (no type matches either), and not the hands' to settle.
+    for key in hrng.sample(HFIELDS, hrng.randint(0, 5)): st[key] = hrng.choice([0, 1, 3, "2", None, True]) if key == "bVcf" else pick()
+    if hrng.random() < 0.6: st["bPlane"] = hrng.choice([True, True, False, "true", None])
+    if hrng.random() < 0.5: st["pictureAmount"] = hrng.choice([0, 35, 60.4, 100, 140, "x"])
+    if hrng.random() < 0.5: st["scanStrike"] = hrng.choice([0, 20, 75])
+    if hrng.random() < 0.5:
+        st["mod"] = hrng.choice(["lfo1>gen.fm@0.400;lfo2>gen.echo@0.300", "lfo1>gen.amp@0.200", ""])
+        if hrng.random() < 0.7: st["modB"] = hrng.choice(["lfo1>gen.fm@-0.200", "lfo2>gen.echo@0.100;lfo1>gen.amp@0", "x>y@1", ""])
+    return _json.dumps(st)
+hlines = HANDS_MADE + [hands_setup() for _ in range(150)]
+hpg, hpt = rboth(hlines, "restore_hands.txt")
+hb = rbad(hpg, hpt)
+check("%d setups with B's fields, B's routing depths and each hand's Picture load to the same instrument, links and all"
+      % len(hlines), not hb, hb[0] if hb else "")
+hp = [_json.loads(l) for l in hpg]
+check("a setup with none of a section's B fields loads it linked, B as A; with one, the upper hand's own",
+      hp[0]["hands"]["own"] == [] and hp[1]["hands"]["own"] == ["gen"] and hp[1]["b"]["amp"] == 0.4 and hp[1]["a"]["amp"] == 0.55
+      and hp[2]["hands"]["own"] == [] and hp[2]["a"]["amp"] == hp[2]["b"]["amp"] == 0.3,
+      "%r %r %r" % (hp[0]["hands"], hp[1]["hands"], hp[2]["hands"]))
+check("the Picture's Amount and Strike each hand's while the section is the hand's own, the lower's otherwise",
+      hp[3]["hands"]["own"] == ["picture"] and hp[3]["hands"]["picture"] == [[70, 50], [20, 90]]
+      and hp[3]["scan"]["strikeB"] == 0.9 and hp[4]["hands"]["own"] == [] and hp[4]["hands"]["picture"] == [[70, 50], [70, 50]],
+      "%r %r" % (hp[3]["hands"], hp[4]["hands"]))
+check("a routing's own depth on the upper hand loads it (modB), and the section it is on the hand's own",
+      hp[5]["hands"]["own"] == ["osc"] and hp[5]["keptB"] == "lfo1>gen.fm@-0.200" and hp[6]["hands"]["own"] == []
+      and hp[6]["keptB"] == "", "%r %r" % (hp[5]["hands"], hp[5]["keptB"]))
+check("a rack module's B fields are the hand's own only with bPlane on, as they always were",
+      hp[7]["hands"]["own"] == ["delay"] and hp[7]["b"]["timeOwn"] == 4 and hp[7]["echoB"]["mix"] == 0.5
+      and hp[8]["hands"]["own"] == [] and hp[8]["echoB"]["mix"] == hp[8]["echo"]["mix"], "%r %r" % (hp[7]["hands"], hp[8]["hands"]))
+check("an upper Amount that is not a number is the lower's, and one out of range is held as the slider holds it",
+      hp[9]["hands"]["own"] == ["picture"] and hp[9]["hands"]["picture"][1][0] == hp[9]["hands"]["picture"][0][0]
+      and hp[10]["hands"]["picture"] == [[34, 50], [100, 0]], "%r %r" % (hp[9]["hands"], hp[10]["hands"]))
+check("the random ones reach every section linked and its own",
+      all(any(sec in r["hands"]["own"] for r in hp) for sec in ("gen", "ampEnv", "vcf", "osc", "shp", "picture", "plane",
+                                                                  "phaser", "chorus", "delay", "reverb"))
+      and sum(1 for r in hp if not r["hands"]["own"]) > 10)
+def hnull(what, index, change):
+    lines = list(hlines[:index + 1])
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "restore_hands_null.txt")
+    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(hpt[index])) != [])
+hnull("the upper hand's level left out", 1, lambda st: {k: v for k, v in st.items() if k != "bAmp"})
+hnull("the upper hand's Picture amount a step higher", 3, lambda st: st | {"bPictureAmount": 21})
+hnull("modB left out", 5, lambda st: {k: v for k, v in st.items() if k != "modB"})
+hnull("bPlane off", 7, lambda st: st | {"bPlane": False})
+
 # Nulls: the page told something different, and the port must disagree.
 def rnull(what, index, change):
     setups = list(presets[:index + 1])
@@ -4772,21 +4940,26 @@ cnull("the just button where equal was pressed again", 30, lambda o: o | {"id": 
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
 
-print("\n--- layer B on the panel ---")
-# With the layers on, the A and B buttons choose which layer the panel's
-# voice controls show and write: B shown keeps what A's controls said and
-# writes B's tone into them, each through its law back. The page's own
-# handlers against scope::showLayerOnPanel and the keyboard's editLayer,
-# with a keyboard there - the layers are only on with one.
+print("\n--- the hands on the panel (G6) ---")
+# With the layers on, the header's Editing chooses which hand the panel's
+# voice controls show (scope::showLayerOnPanel and the keyboard's editLayer),
+# and each section's link whether they write both hands or that one: linked,
+# a hand moved moves both; unlinked, the hand on the panel alone, the other
+# keeping its own. Unlinking copies the hand on the face into the other, and
+# linking copies it back over. The page's own handlers against scope's,
+# with a keyboard there - the layers are only on with one. (Edit A / B was
+# the choice until G6, and every section was the hand's own.)
 LSLIDERS = ["amp", "envAttack", "envDecay", "envSustain", "envRelease", "morph", "width", "table", "oscFm", "oscBend",
             "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt",
-            "vcfAtk", "vcfDec", "vcfSus", "vcfRel"] + ["bar%d" % k for k in range(9)]
+            "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "oscScan", "pictureAmount", "scanStrike"] + ["bar%d" % k for k in range(9)]
 LMENUS = ["shape", "oscRatio", "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType"]
+LLINKS = ["linkGen", "linkAmpEnv", "linkVcf", "linkOsc", "linkShp", "linkPicture"]
 def lop():
     c = rrng.random()
     if c < 0.45: return mslider(LSLIDERS)
-    if c < 0.65: id = rrng.choice(LMENUS); return {"op": "change", "id": id, "value": rrng.choice(pctl["selects"][id]["options"])}
-    if c < 0.8: return {"op": "click", "id": rrng.choice(["midiEditA", "midiEditB", "midiEditB"])}
+    if c < 0.62: id = rrng.choice(LMENUS); return {"op": "change", "id": id, "value": rrng.choice(pctl["selects"][id]["options"])}
+    if c < 0.74: return {"op": "click", "id": rrng.choice(["editHandA", "editHandB", "editHandB"])}
+    if c < 0.82: return {"op": "click", "id": rrng.choice(LLINKS)}
     if c < 0.86: return {"op": "change", "id": "midiLayers", "value": rrng.choice(["off", "split", "layer", "layer"])}
     if c < 0.9: return {"op": "click", "id": rrng.choice(["midiPoly", "midiPoly", "midiMono", "midiDyad"])}
     if c < 0.92: return {"op": "keys", "value": rrng.random() < 0.7}
@@ -4801,67 +4974,76 @@ def lop():
 def lrun():
     start = [_json.loads(rrng.choice(presets)) if rrng.random() < 0.6 else {}, {"op": "keys", "value": True},
              {"op": "step"}, {"op": "click", "id": "midiPoly"},
-             {"op": "change", "id": "midiLayers", "value": rrng.choice(["split", "layer"])}, {"op": "click", "id": "midiEditB"}]
+             {"op": "change", "id": "midiLayers", "value": rrng.choice(["split", "layer"])}, {"op": "click", "id": "editHandB"},
+             {"op": "click", "id": rrng.choice(LLINKS)}]
     return start + [lop() for _ in range(rrng.randint(6, 16))]
-# Made to be read: A's level set to 30, B chosen and its level set to 80,
-# its shape, a drawbar and its unison; A chosen again; B chosen and the
-# layers turned off under it; a preset loaded with B chosen; the keyboard gone.
+# Made to be read: the level set to 30 on both, linked; the upper hand chosen
+# and the level set to 80, still both; the Generator unlinked, and the
+# upper's level, shape and a drawbar its own; the unison, on the Oscillator,
+# still both; the lower chosen again; the layers turned off under the upper
+# and on; a preset with no B fields, everything linked; the keyboard gone.
 LMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                    # 0-2
          {"op": "change", "id": "midiLayers", "value": "layer"}, {"op": "slider", "id": "amp", "value": 30},  # 3, 4
-         {"op": "click", "id": "midiEditB"}, {"op": "slider", "id": "amp", "value": 80},            # 5, 6
-         {"op": "change", "id": "shape", "value": "square"}, {"op": "slider", "id": "bar3", "value": 8},  # 7, 8
-         {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "click", "id": "midiEditA"},     # 9, 10
-         {"op": "click", "id": "midiEditB"}, {"op": "change", "id": "midiLayers", "value": "off"},  # 11, 12
-         {"op": "change", "id": "midiLayers", "value": "layer"}, _json.loads(presets[4]),           # 13, 14
-         {"op": "keys", "value": False}]                                                           # 15
+         {"op": "click", "id": "editHandB"}, {"op": "slider", "id": "amp", "value": 80},            # 5, 6
+         {"op": "click", "id": "linkGen"}, {"op": "slider", "id": "amp", "value": 40},              # 7, 8
+         {"op": "change", "id": "shape", "value": "square"}, {"op": "slider", "id": "bar3", "value": 8},  # 9, 10
+         {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "click", "id": "editHandA"},     # 11, 12
+         {"op": "click", "id": "editHandB"}, {"op": "change", "id": "midiLayers", "value": "off"},  # 13, 14
+         {"op": "change", "id": "midiLayers", "value": "layer"}, _json.loads(presets[4]),           # 15, 16
+         {"op": "keys", "value": False}]                                                           # 17
 llines = [_json.dumps(o) for o in LMADE] + [_json.dumps(o) for _ in range(80) for o in lrun()]
 lpg, lpt = rboth(llines, "layerb_ops.txt")
 lb = rbad(lpg, lpt)
-check("%d hands with the layers on, layer A and layer B on the panel in turn, leave the same instrument" % len(llines),
+check("%d hands with the layers on, each hand on the panel in turn and the links pressed, leave the same instrument" % len(llines),
       not lb and len(llines) > 900, lb[0] if lb else "")
 lp = [_json.loads(l) for l in lpg]
-check("with the layers on, B chosen shows B on the panel and A's level stays A's",
-      lp[4]["ranges"]["amp"] == 30 and lp[4]["panelLayer"] == 0 and lp[5]["panelLayer"] == 1
-      and lp[5]["ranges"]["amp"] == round(lp[5]["b"]["amp"] * 100) and lp[5]["ranges"]["amp"] != 30,
-      "%r %r" % (lp[5]["panelLayer"], lp[5]["ranges"]["amp"]))
-check("a slider, a menu and a drawbar moved with B shown are B's, and A's are untouched",
-      lp[6]["b"]["amp"] == 0.8 and lp[6]["a"]["amp"] == 0.3 and lp[7]["b"]["shape"] == "square"
-      and lp[7]["a"]["shape"] != "square" and lp[8]["b"]["bars"][3] == 8 and lp[8]["a"]["bars"] != lp[8]["b"]["bars"]
-      and lp[9]["b"]["unison"] == 3 and lp[9]["a"]["unison"] != 3,
-      "%r %r" % (lp[7]["a"]["shape"], lp[9]["a"]["unison"]))
-check("A chosen again puts A's controls back as they were, its menus among them",
-      lp[10]["panelLayer"] == 0 and lp[10]["ranges"]["amp"] == 30 and lp[10]["menus"]["shape"] == lp[4]["menus"]["shape"]
-      and lp[10]["menus"]["oscUnison"] == lp[4]["menus"]["oscUnison"], repr(lp[10]["menus"]))
-check("the layers turned off under B put A back on the panel, and on again show B",
-      lp[11]["panelLayer"] == 1 and lp[12]["panelLayer"] == 0 and lp[12]["ranges"]["amp"] == 30 and lp[13]["panelLayer"] == 1)
+check("linked, the level moved on the lower hand moves both, and the upper chosen shows it",
+      lp[4]["a"]["amp"] == lp[4]["b"]["amp"] == 0.3 and lp[4]["panelLayer"] == 0 and lp[5]["panelLayer"] == 1
+      and lp[5]["ranges"]["amp"] == 30, "%r %r" % (lp[4]["b"]["amp"], lp[5]["ranges"]["amp"]))
+check("and moved on the upper hand, still linked, moves both", lp[6]["a"]["amp"] == lp[6]["b"]["amp"] == 0.8,
+      "%r %r" % (lp[6]["a"]["amp"], lp[6]["b"]["amp"]))
+check("unlinked, the hand on the face is copied into the other, and a slider, a menu and a drawbar are the upper's alone",
+      lp[7]["hands"]["own"] == ["gen"] and lp[7]["a"]["amp"] == lp[7]["b"]["amp"] == 0.8
+      and lp[8]["b"]["amp"] == 0.4 and lp[8]["a"]["amp"] == 0.8 and lp[9]["b"]["shape"] == "square"
+      and lp[9]["a"]["shape"] != "square" and lp[10]["b"]["bars"][3] == 8 and lp[10]["a"]["bars"] != lp[10]["b"]["bars"],
+      "%r %r %r" % (lp[7]["hands"], lp[8]["a"]["amp"], lp[9]["a"]["shape"]))
+check("while a section still linked writes both", lp[11]["b"]["unison"] == 3 == lp[11]["a"]["unison"], repr(lp[11]["a"]["unison"]))
+check("the lower chosen again puts its controls back as they were",
+      lp[12]["panelLayer"] == 0 and lp[12]["ranges"]["amp"] == 80 and lp[12]["menus"]["shape"] == lp[4]["menus"]["shape"],
+      repr(lp[12]["menus"]))
+check("the layers turned off under the upper put the lower back on the panel, and on again show the upper, its own kept",
+      lp[13]["panelLayer"] == 1 and lp[14]["panelLayer"] == 0 and lp[14]["ranges"]["amp"] == 80 and lp[15]["panelLayer"] == 1
+      and lp[15]["ranges"]["amp"] == 40 and lp[15]["hands"]["own"] == ["gen"])
 p4 = _json.loads(presets[4])
-check("a preset loaded with B chosen is the preset's in A, and in B where it gives B nothing of its own",
-      lp[14]["a"]["shape"] == p4["shape"] == lp[14]["b"]["shape"] and lp[14]["a"]["amp"] == 0.55 == lp[14]["b"]["amp"]
-      and lp[14]["a"]["bars"] == [0, 0, 8, 7, 4, 0, 0, 0, 0] == lp[14]["b"]["bars"],
-      "A %r %r %r, B %r %r %r" % (lp[14]["a"]["shape"], lp[14]["a"]["amp"], lp[14]["a"]["bars"], lp[14]["b"]["shape"],
-                                  lp[14]["b"]["amp"], lp[14]["b"]["bars"]))
-check("and the keyboard gone shows A", lp[15]["panelLayer"] == 0, repr(lp[15]["panelLayer"]))
+check("a preset with no B fields is linked throughout, B as A",
+      lp[16]["hands"]["own"] == [] and lp[16]["a"]["shape"] == p4["shape"] == lp[16]["b"]["shape"]
+      and lp[16]["a"]["amp"] == 0.55 == lp[16]["b"]["amp"] and lp[16]["a"]["bars"] == [0, 0, 8, 7, 4, 0, 0, 0, 0] == lp[16]["b"]["bars"],
+      "A %r %r %r, B %r %r %r" % (lp[16]["a"]["shape"], lp[16]["a"]["amp"], lp[16]["a"]["bars"], lp[16]["b"]["shape"],
+                                  lp[16]["b"]["amp"], lp[16]["b"]["bars"]))
+check("and the keyboard gone shows the lower", lp[17]["panelLayer"] == 0, repr(lp[17]["panelLayer"]))
 lmoved = sum(1 for i in range(1, len(lp)) if lp[i]["panelLayer"] != lp[i - 1]["panelLayer"])
-check("the runs move the panel between the layers %d times, and write B %d times" % (lmoved,
-      sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i - 1]["panelLayer"] == 1)),
-      lmoved > 100 and sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i - 1]["panelLayer"] == 1) > 150)
-def lnull(what, index, change):
-    lines = list(llines[:index + 1])
+lsplit = sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i]["a"] == lp[i - 1]["a"])
+check("the runs move the panel between the hands %d times, and write the upper alone %d times" % (lmoved, lsplit),
+      lmoved > 100 and lsplit > 50)
+def lnull(what, index, change, at=None):
+    lines = list(llines[:max(index, at or index) + 1])
     lines[index] = _json.dumps(change(_json.loads(lines[index])))
     page, _ = rboth(lines, "layerb_null.txt")
-    check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(lpt[index])) != [])
-lnull("A chosen where B was", 5, lambda o: o | {"id": "midiEditA"})
-lnull("B's level a step lower", 6, lambda o: o | {"value": 79})
-lnull("the layers split where they were layered", 13, lambda o: o | {"value": "split"})
+    i = index if at is None else at
+    check("and against " + what, rdiff(_json.loads(page[i]), _json.loads(lpt[i])) != [])
+lnull("the lower chosen where the upper was", 5, lambda o: o | {"id": "editHandA"})
+lnull("the upper's level a step lower", 8, lambda o: o | {"value": 39})
+lnull("the Generator left linked, the Amp envelope unlinked in its place", 7, lambda o: o | {"id": "linkAmpEnv"}, at=8)
+lnull("the layers split where they were layered", 15, lambda o: o | {"value": "split"})
 check("and the comparison fails against the page's operations one out of step", rbad(lpg[1:], lpt[:-1]) != [])
 
-print("\n--- layer B's own plane on the panel ---")
-# Together, A or B: B given a plane of its own, a copy of A's, and the Plane
-# section's controls writing whichever layer's it shows - the same choice as
-# the Play tab's A and B buttons. The page's setPlaneLayer and planeTarget
-# against scope's, with their own generator of hands so the runs above are
-# the runs they were. The morph walks B's turn and, with B's plane shown,
-# B's sliders, as it walks B's voice.
+print("\n--- the rack's links on the panel (G6) ---")
+# Each module's link (G6), in place of Together, A and B, which gave B its
+# plane and every effect at once: the Plane's, B given a plane of its own, a
+# copy of the hand on the face, and its controls writing whichever hand's it
+# shows. The page's setLink and planeTarget against scope's, with their own
+# generator of hands so the runs above are the runs they were. The morph
+# walks B's turn and, with B's plane shown, B's sliders, as it walks B's voice.
 prng = random.Random(77)
 PSLIDERS = ["planeTwist", "planeRadius", "planeScaleX", "planeScaleY", "planeShear", "planeTurn"]
 PMENUS = ["planeMirror", "planeLimit", "planeSnap"]
@@ -4872,8 +5054,8 @@ def pop():
     c = prng.random()
     if c < 0.35: id = prng.choice(PSLIDERS); return {"op": "slider", "id": id, "value": pvalue(id)}
     if c < 0.55: id = prng.choice(PMENUS); return {"op": "change", "id": id, "value": prng.choice(pctl["selects"][id]["options"])}
-    if c < 0.72: return {"op": "click", "id": prng.choice(["planeLayerBoth", "planeLayerA", "planeLayerB", "planeLayerB"])}
-    if c < 0.8: return {"op": "click", "id": prng.choice(["midiEditA", "midiEditB"])}
+    if c < 0.68: return {"op": "click", "id": "linkPlane"}
+    if c < 0.8: return {"op": "click", "id": prng.choice(["editHandA", "editHandB"])}
     if c < 0.84: return {"op": "change", "id": "midiLayers", "value": prng.choice(["off", "split", "layer", "layer"])}
     if c < 0.87: return {"op": "change", "id": "midiLayerPair", "value": prng.choice(["each", "against"])}
     if c < 0.9: return {"op": "keys", "value": prng.random() < 0.8}
@@ -4884,45 +5066,50 @@ def prun():
     start = [_json.loads(prng.choice(presets)) if prng.random() < 0.5 else {}, {"op": "keys", "value": True},
              {"op": "step"}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": prng.choice(["split", "layer"])},
-             {"op": "click", "id": prng.choice(["planeLayerA", "planeLayerB"])}]
+             {"op": "click", "id": prng.choice(["editHandA", "editHandB"])}, {"op": "click", "id": "linkPlane"}]
     return start + [pop() for _ in range(prng.randint(6, 16))]
-# Made to be read: a snap of five bits on both; B given its own, which
-# starts as a copy; B's mirror, B's turn; A's own twist; B shown again from
-# the Play tab's button; back to Together; a setup of B's own loaded and the
-# panel's A and B buttons after it.
+# Made to be read: a snap of five bits on both; the upper chosen and the
+# Plane unlinked, B's a copy; B's mirror, B's turn; the lower chosen and A's
+# twist; the upper again; the Plane linked again from the upper, so B's
+# plane is copied over A's and B's turn goes; a setup of B's own loaded and
+# the upper chosen after it.
 PMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                      # 0-2
          {"op": "change", "id": "midiLayers", "value": "layer"},                                   # 3
-         {"op": "change", "id": "planeSnap", "value": "5"}, {"op": "click", "id": "planeLayerB"},  # 4, 5
-         {"op": "change", "id": "planeMirror", "value": "1"}, {"op": "slider", "id": "planeTurn", "value": 25},  # 6, 7
-         {"op": "click", "id": "planeLayerA"}, {"op": "slider", "id": "planeTwist", "value": 40},  # 8, 9
-         {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "planeLayerBoth"},             # 10, 11
-         {"bPlane": True, "bMirror": 2, "bTurn": -10, "planeMirror": 1, "layers": "layer", "midiMode": "poly"},  # 12
-         {"op": "click", "id": "midiEditB"}]                                                       # 13
+         {"op": "change", "id": "planeSnap", "value": "5"}, {"op": "click", "id": "editHandB"},    # 4, 5
+         {"op": "click", "id": "linkPlane"},                                                       # 6
+         {"op": "change", "id": "planeMirror", "value": "1"}, {"op": "slider", "id": "planeTurn", "value": 25},  # 7, 8
+         {"op": "click", "id": "editHandA"}, {"op": "slider", "id": "planeTwist", "value": 40},    # 9, 10
+         {"op": "click", "id": "editHandB"}, {"op": "click", "id": "linkPlane"},                   # 11, 12
+         {"bPlane": True, "bMirror": 2, "bTurn": -10, "planeMirror": 1, "layers": "layer", "midiMode": "poly"},  # 13
+         {"op": "click", "id": "editHandB"}]                                                       # 14
 plines = [_json.dumps(o) for o in PMADE] + [_json.dumps(o) for _ in range(60) for o in prun()]
 ppg, ppt = rboth(plines, "planeb_ops.txt")
 pb = rbad(ppg, ppt)
-check("%d hands on the Plane section with the layers on, Together, A and B in turn, leave the same instrument" % len(plines),
+check("%d hands on the Plane with the layers on, its link pressed and each hand edited, leave the same instrument" % len(plines),
       not pb and len(plines) > 700, pb[0] if pb else "")
 pp = [_json.loads(l) for l in ppg]
-check("leaving Together gives B a plane of its own that starts as A's, and shows it",
-      not pp[4]["planeB"]["own"] and pp[5]["planeB"]["own"] and pp[5]["b"]["planeOwn"] and pp[5]["planeB"]["snap"] == 5
-      and pp[5]["menus"]["planeSnap"] == "5" and pp[5]["panelLayer"] == 1, repr(pp[5]["planeB"]))
+check("linked, the snap is both hands'; unlinked, B has a plane of its own that starts as the hand on the face, and shows it",
+      not pp[4]["planeB"]["own"] and pp[4]["planeB"]["snap"] == 5 and not pp[5]["planeB"]["own"]
+      and pp[6]["planeB"]["own"] and pp[6]["b"]["planeOwn"] and pp[6]["planeB"]["snap"] == 5
+      and pp[6]["menus"]["planeSnap"] == "5" and pp[6]["panelLayer"] == 1 and pp[6]["hands"]["own"] == ["plane"],
+      repr(pp[6]["planeB"]))
 check("a menu and the turn moved with B's shown are B's, and A's plane is untouched",
-      pp[6]["planeB"]["mirror"] == 1 and pp[6]["plane"]["mirror"] == 0 and pp[6]["b"]["planeMirror"] == 1
-      and pp[6]["a"]["planeMirror"] == 0 and pp[7]["planeB"]["turn"] == 0.25
-      and abs(pp[7]["b"]["planeTurn"] - 0.25 * TWO_PI) < 1e-12, repr(pp[7]["planeB"]))
-check("A shows A's plane and writes it, and B's own stays B's",
-      pp[8]["menus"]["planeMirror"] == "0" and pp[8]["panelLayer"] == 0 and pp[9]["plane"]["twist"] == 0.4
-      and pp[9]["planeB"]["twist"] == 0 and pp[9]["planeB"]["mirror"] == 1, repr(pp[9]["planeB"]))
-check("B chosen on the Play tab shows B's plane here too",
-      pp[10]["menus"]["planeMirror"] == "1" and pp[10]["ranges"]["planeTwist"] == 0, repr(pp[10]["menus"]))
-check("Together lets B's own go, and B follows A again",
-      not pp[11]["planeB"]["own"] and not pp[11]["b"]["planeOwn"] and pp[11]["planeB"]["mirror"] == 0
-      and pp[11]["planeB"]["twist"] == 0.4, repr(pp[11]["planeB"]))
+      pp[7]["planeB"]["mirror"] == 1 and pp[7]["plane"]["mirror"] == 0 and pp[7]["b"]["planeMirror"] == 1
+      and pp[7]["a"]["planeMirror"] == 0 and pp[8]["planeB"]["turn"] == 0.25
+      and abs(pp[8]["b"]["planeTurn"] - 0.25 * TWO_PI) < 1e-12, repr(pp[8]["planeB"]))
+check("the lower shows A's plane and writes it, and B's own stays B's",
+      pp[9]["menus"]["planeMirror"] == "0" and pp[9]["panelLayer"] == 0 and pp[10]["plane"]["twist"] == 0.4
+      and pp[10]["planeB"]["twist"] == 0 and pp[10]["planeB"]["mirror"] == 1, repr(pp[10]["planeB"]))
+check("the upper chosen again shows B's plane",
+      pp[11]["menus"]["planeMirror"] == "1" and pp[11]["ranges"]["planeTwist"] == 0, repr(pp[11]["menus"]))
+check("linked again from the upper, B's plane is copied over A's and its turn goes; B follows A again",
+      not pp[12]["planeB"]["own"] and not pp[12]["b"]["planeOwn"] and pp[12]["plane"]["mirror"] == 1
+      and pp[12]["plane"]["twist"] == 0 and pp[12]["planeB"]["turn"] == 0 and pp[12]["hands"]["own"] == [],
+      repr(pp[12]["plane"]))
 check("a setup with B's own loads it, a field it lacks being A's, and B's shown after it",
-      pp[12]["planeB"] == {"own": True, "mirror": 2, "limit": 0, "radius": 0.4, "twist": 0, "snap": 0,
+      pp[13]["planeB"] == {"own": True, "mirror": 2, "limit": 0, "radius": 0.4, "twist": 0, "snap": 0,
                            "scaleX": 1, "scaleY": 1, "shear": 0, "turn": -0.1}
-      and pp[13]["menus"]["planeMirror"] == "2", repr(pp[12]["planeB"]))
+      and pp[14]["menus"]["planeMirror"] == "2", repr(pp[13]["planeB"]))
 pwrote = sum(1 for i in range(1, len(pp)) if pp[i]["planeB"] != pp[i - 1]["planeB"] and pp[i]["planeB"]["own"])
 check("the runs write B's own plane %d times" % pwrote, pwrote > 100)
 def pnull(what, index, change):
@@ -4930,16 +5117,17 @@ def pnull(what, index, change):
     lines[index] = _json.dumps(change(_json.loads(lines[index])))
     page, _ = rboth(lines, "planeb_null.txt")
     check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(ppt[index])) != [])
-pnull("A's own chosen where B's was", 5, lambda o: o | {"id": "planeLayerA"})
-pnull("Together chosen where B's was", 5, lambda o: o | {"id": "planeLayerBoth"})
+pnull("the Phaser unlinked where the Plane was", 6, lambda o: o | {"id": "linkPhaser"})
+pnull("the lower chosen where the upper was", 5, lambda o: o | {"id": "editHandA"})
 check("and the comparison fails against the page's operations one out of step", rbad(ppg[1:], ppt[:-1]) != [])
 
-# The Delay and chorus section with the layers on (5r): its own Layers row,
-# the same switch as the Plane's, and its controls writing whichever layer's
-# echo is shown. Its own generator, so the runs above are the ones they were.
+# The time modules' links (G6): the Delay unlinked while the Chorus stays
+# the same in both, each module's controls writing whichever hand's it shows.
+# Its own generator, so the runs above are the ones they were.
 trng2 = random.Random(133)
 TSLIDERS = ["delayMix", "delayMs", "delayFeedback", "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback",
-            "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback"]
+            "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "reverbMix", "reverbSize", "reverbSpread"]
+TLINKS = ["linkDelay", "linkChorus", "linkPhaser", "linkReverb", "linkPlane"]
 def tvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     return trng2.choice([round(trng2.uniform(lo, hi)), round(trng2.uniform(lo, hi), 1), lo - 5, hi + 5, "abc", "7.5"])
@@ -4948,9 +5136,8 @@ def top():
     if c < 0.4: id = trng2.choice(TSLIDERS); return {"op": "slider", "id": id, "value": tvalue(id)}
     if c < 0.5: return {"op": "change", "id": "delaySync", "value": trng2.choice(pctl["selects"]["delaySync"]["options"])}
     if c < 0.56: return {"op": "change", "id": "delayPingPong", "value": trng2.random() < 0.5}
-    if c < 0.75: return {"op": "click", "id": trng2.choice(["timeLayerBoth", "timeLayerA", "timeLayerB", "timeLayerB",
-                                                            "planeLayerBoth", "planeLayerB"])}
-    if c < 0.83: return {"op": "click", "id": trng2.choice(["midiEditA", "midiEditB"])}
+    if c < 0.75: return {"op": "click", "id": trng2.choice(TLINKS)}
+    if c < 0.83: return {"op": "click", "id": trng2.choice(["editHandA", "editHandB"])}
     if c < 0.87: return {"op": "change", "id": "midiLayers", "value": trng2.choice(["off", "split", "layer", "layer"])}
     if c < 0.9: return {"op": "keys", "value": trng2.random() < 0.8}
     if c < 0.93: return {"op": "slider", "id": "tempo", "value": trng2.randint(40, 240)}
@@ -4959,54 +5146,56 @@ def trun():
     start = [_json.loads(trng2.choice(presets)) if trng2.random() < 0.5 else {}, {"op": "keys", "value": True},
              {"op": "step"}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": trng2.choice(["split", "layer"])},
-             {"op": "click", "id": trng2.choice(["timeLayerA", "timeLayerB"])}]
+             {"op": "click", "id": trng2.choice(["editHandA", "editHandB"])}, {"op": "click", "id": trng2.choice(TLINKS)}]
     return start + [top() for _ in range(trng2.randint(6, 16))]
-# Made to be read: an echo on both; B given its own, which starts as a copy;
-# B's echo time and chorus moved; A's echo level; B shown from the Play tab;
-# back to Together; a setup of B's own loaded.
+# Made to be read: an echo on both; the upper chosen and the Delay unlinked,
+# B's a copy; B's echo time moved, and the chorus, still linked, on both;
+# the lower and A's echo level; the upper again; the Delay linked again from
+# the upper, B's copied over A's; a setup of B's own delay loaded.
 TMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                        # 0-2
          {"op": "change", "id": "midiLayers", "value": "layer"},                                     # 3
-         {"op": "slider", "id": "delayMix", "value": 30}, {"op": "click", "id": "timeLayerB"},       # 4, 5
-         {"op": "slider", "id": "delayMs", "value": 120}, {"op": "slider", "id": "chorusMix", "value": 60},  # 6, 7
-         {"op": "click", "id": "timeLayerA"}, {"op": "slider", "id": "delayMix", "value": 70},       # 8, 9
-         {"op": "click", "id": "midiEditB"}, {"op": "click", "id": "timeLayerBoth"},                 # 10, 11
-         {"bPlane": True, "bDelayMix": 45, "bDelaySync": "1/8", "delayMix": 20, "layers": "layer", "midiMode": "poly"},  # 12
-         {"op": "click", "id": "midiEditB"}]                                                         # 13
-# Eighty-five runs: sixty reached B's own echo 90 times once P8d took the six
-# Macros presets out of the library they draw from, under the hundred below,
-# and seventy 98.
+         {"op": "slider", "id": "delayMix", "value": 30}, {"op": "click", "id": "editHandB"},        # 4, 5
+         {"op": "click", "id": "linkDelay"},                                                         # 6
+         {"op": "slider", "id": "delayMs", "value": 120}, {"op": "slider", "id": "chorusMix", "value": 60},  # 7, 8
+         {"op": "click", "id": "editHandA"}, {"op": "slider", "id": "delayMix", "value": 70},        # 9, 10
+         {"op": "click", "id": "editHandB"}, {"op": "click", "id": "linkDelay"},                     # 11, 12
+         {"bPlane": True, "bDelayMix": 45, "bDelaySync": "1/8", "delayMix": 20, "layers": "layer", "midiMode": "poly"},  # 13
+         {"op": "click", "id": "editHandB"}]                                                         # 14
 tlines = [_json.dumps(o) for o in TMADE] + [_json.dumps(o) for _ in range(85) for o in trun()]
 tpg, tpt = rboth(tlines, "timeb_ops.txt")
 tb = rbad(tpg, tpt)
-check("%d hands on the Delay and chorus section with the layers on, Together, A and B in turn, leave the same instrument"
+check("%d hands on the time modules with the layers on, their links pressed and each hand edited, leave the same instrument"
       % len(tlines), not tb and len(tlines) > 700, tb[0] if tb else "")
 tp = [_json.loads(l) for l in tpg]
-check("leaving Together there gives B an echo of its own that starts as A's, and its plane with it",
-      not tp[4]["planeB"]["own"] and tp[5]["planeB"]["own"] and tp[5]["echoB"]["mix"] == 0.3 and tp[5]["b"]["delayMix"] == 0.3
-      and tp[5]["ranges"]["delayMix"] == 30 and tp[5]["panelLayer"] == 1, repr(tp[5]["echoB"]))
-check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
-      tp[7]["echoB"]["ms"] == 120 and tp[7]["echoB"]["chorus"] == 0.6 and tp[7]["b"]["delayMs"] == 120
-      and tp[7]["echo"]["ms"] == 375 and tp[7]["a"]["delayMs"] == 375 and tp[7]["a"]["chorusMix"] == 0, repr(tp[7]["echo"]))
-check("A shows A's echo and writes it, and B's own stays B's",
-      tp[8]["ranges"]["delayMs"] == 375 and tp[9]["echo"]["mix"] == 0.7 and tp[9]["echoB"]["mix"] == 0.3
-      and tp[9]["b"]["delayMix"] == 0.3, repr(tp[9]["echoB"]))
-check("B chosen on the Play tab shows B's echo here too",
-      tp[10]["ranges"]["delayMs"] == 120 and tp[10]["ranges"]["delayMix"] == 30, repr(tp[10]["ranges"]["delayMs"]))
-check("Together lets B's own go, and B's echo follows A's again",
-      not tp[11]["planeB"]["own"] and tp[11]["echoB"]["mix"] == 0.7 and tp[11]["echoB"]["ms"] == 375
-      and tp[11]["b"]["delayMix"] == 0.7, repr(tp[11]["echoB"]))
-check("a setup with B's own echo loads it, a field it lacks being A's, and B's shown after it",
-      tp[12]["echoB"]["mix"] == 0.45 and tp[12]["echoB"]["sync"] == "1/8" and tp[12]["echoB"]["feedback"] == tp[12]["echo"]["feedback"]
-      and tp[12]["echo"]["mix"] == 0.2 and tp[13]["ranges"]["delayMix"] == 45, repr(tp[12]["echoB"]))
-twrote = sum(1 for i in range(1, len(tp)) if tp[i]["echoB"] != tp[i - 1]["echoB"] and tp[i]["planeB"]["own"])
-check("the runs write B's own echo %d times" % twrote, twrote > 100)
+check("the Delay unlinked gives B an echo of its own that starts as the hand on the face, and nothing else of its own",
+      tp[6]["hands"]["own"] == ["delay"] and tp[6]["echoB"]["mix"] == 0.3 and tp[6]["b"]["delayMix"] == 0.3
+      and tp[6]["b"]["timeOwn"] == 4 and not tp[6]["planeB"]["own"] and tp[6]["ranges"]["delayMix"] == 30
+      and tp[6]["panelLayer"] == 1, repr(tp[6]["echoB"]))
+check("the echo's time moved with B's shown is B's, and the chorus, linked, moves both",
+      tp[7]["echoB"]["ms"] == 120 and tp[7]["b"]["delayMs"] == 120 and tp[7]["echo"]["ms"] == 375 and tp[7]["a"]["delayMs"] == 375
+      and tp[8]["echo"]["chorus"] == tp[8]["echoB"]["chorus"] == 0.6 and tp[8]["a"]["chorusMix"] == tp[8]["b"]["chorusMix"] == 0.6,
+      repr(tp[8]["echo"]))
+check("the lower shows A's echo and writes it, and B's own stays B's",
+      tp[9]["ranges"]["delayMs"] == 375 and tp[10]["echo"]["mix"] == 0.7 and tp[10]["echoB"]["mix"] == 0.3
+      and tp[10]["b"]["delayMix"] == 0.3, repr(tp[10]["echoB"]))
+check("the upper chosen again shows B's echo",
+      tp[11]["ranges"]["delayMs"] == 120 and tp[11]["ranges"]["delayMix"] == 30, repr(tp[11]["ranges"]["delayMs"]))
+check("linked again from the upper, B's echo is copied over A's, and B has nothing of its own",
+      tp[12]["echo"]["mix"] == 0.3 and tp[12]["echo"]["ms"] == 120 and tp[12]["echoB"]["mix"] == 0.3
+      and tp[12]["b"]["timeOwn"] == 0 and tp[12]["a"]["delayMix"] == 0.3, repr(tp[12]["echo"]))
+check("a setup with B's own delay loads it, a field it lacks being A's, the chorus linked, and B's shown after it",
+      tp[13]["echoB"]["mix"] == 0.45 and tp[13]["echoB"]["sync"] == "1/8" and tp[13]["echoB"]["feedback"] == tp[13]["echo"]["feedback"]
+      and tp[13]["echo"]["mix"] == 0.2 and tp[13]["hands"]["own"] == ["delay"] and tp[14]["ranges"]["delayMix"] == 45,
+      repr(tp[13]["echoB"]))
+twrote = sum(1 for i in range(1, len(tp)) if tp[i]["echoB"] != tp[i - 1]["echoB"] and tp[i]["b"]["timeOwn"])
+check("the runs write B's own modules %d times" % twrote, twrote > 100)
 def tnull(what, index, change):
     lines = list(tlines[:index + 1])
     lines[index] = _json.dumps(change(_json.loads(lines[index])))
     page, _ = rboth(lines, "timeb_null.txt")
     check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(tpt[index])) != [])
-tnull("A's own chosen where B's was", 5, lambda o: o | {"id": "timeLayerA"})
-tnull("Together chosen where B's was", 5, lambda o: o | {"id": "timeLayerBoth"})
+tnull("the Chorus unlinked where the Delay was", 6, lambda o: o | {"id": "linkChorus"})
+tnull("the Reverb linked again where the Delay was", 12, lambda o: o | {"id": "linkReverb"})
 check("and the comparison fails against the page's operations one out of step", rbad(tpg[1:], tpt[:-1]) != [])
 
 print("\n--- the fade from the plugin ---")
@@ -5374,8 +5563,8 @@ iruns["layer pictures"] = LAYERED + [["click", "dispXY"], ["click", "tuneEqual"]
 # And while the input is drawn, when the page shows layer A whatever was chosen:
 # B chosen, the level put at nought there is A's, so back on the generator A's
 # note is the silent one and B's is heard.
-iruns["layered input"] = LAYERED + [["feed", 100, 73], ["click", "srcMic"], ["click", "midiEditB"], ["slider", "amp", "0"],
-                                    ["click", "midiEditA"], ["click", "srcTone"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
+iruns["layered input"] = LAYERED + [["feed", 100, 73], ["click", "srcMic"], ["click", "editHandB"], ["click", "linkGen"],
+                                    ["slider", "amp", "0"], ["click", "editHandA"], ["click", "srcTone"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 # A drawing (5m): a square-ish cycle and a sketched figure, sent as the setup's
 # own fields, as the page sends what it draws; the generator playing its drawn
 # cycle, and no keyboard, so it plays with no note. The sketch is a figure's,
@@ -5668,8 +5857,9 @@ def igrid(*hands, note=True):
              ["control", "midiLayers", "split"], *hands] + ([NOTE_ON(72)] if note else []) + blocks(60, 128, 64) + [["grid"]]
     return tuple(float(v) for v in [l for l in icpp(iscript("grid", lines)) if l.startswith("grid ")][-1].split()[1:])
 g_quiet = igrid(note=False)
-g_b, g_own_turned = igrid(), igrid(["click", "planeLayerB"], ["slider", "rotate", "12"])
-g_own_still, g_together_turned = igrid(["click", "planeLayerB"]), igrid(["slider", "rotate", "12"])
+# The Plane the upper hand's own (G6; B's own plane chosen with A / B until then).
+g_b, g_own_turned = igrid(), igrid(["click", "editHandB"], ["click", "linkPlane"], ["slider", "rotate", "12"])
+g_own_still, g_together_turned = igrid(["click", "editHandB"], ["click", "linkPlane"]), igrid(["slider", "rotate", "12"])
 check("the instrument's own grid draws layer B's figure when B alone is playing",
       g_b != g_quiet and g_b[1] > 2 * g_quiet[1], "%r against %r" % (g_b, g_quiet))
 check("and with B's own plane the screen's rotation leaves B's figure alone, where Together turns it",
@@ -5767,10 +5957,13 @@ check("the instrument's note strikes its own screen where Scan is on, a softer n
       g_none[0] < g_soft[0] < g_hard[0] and g_off == g_off0 and g_none[1] > 5, "none %.6g soft %.6g hard %.6g; off %r against %r"
       % (g_none[0], g_soft[0], g_hard[0], g_off, g_off0))
 HELD = (48, 55, 79)
-l_none = istrike(SPLIT, 72, late=NOSTRIKE, read="lgrid", held=HELD)
+# The split's Picture is each hand's own (bScan), so the upper hand's Strike is
+# the one taken to nought, with the upper hand chosen (G6).
+NOSTRIKE_B = [["click", "editHandB"]] + NOSTRIKE
+l_none = istrike(SPLIT, 72, late=NOSTRIKE_B, read="lgrid", held=HELD)
 l_own = istrike(SPLIT, 72, read="lgrid", held=HELD)
 l_crossed = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], read="lgrid", held=HELD)
-l_crossed0 = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], late=NOSTRIKE, read="lgrid", held=HELD)
+l_crossed0 = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], late=NOSTRIKE_B, read="lgrid", held=HELD)
 check("in a split, the upper note lands in B's picture and leaves A's alone; with B reading A's, in A's and not B's",
       l_own[2] > l_none[2] and l_own[0:2] == l_none[0:2] and l_crossed[0] > l_crossed0[0]
       and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))

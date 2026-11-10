@@ -1,6 +1,6 @@
 # The face, second pass
 
-A design, built through G5 (see *Stages*). It is the brief for the stage after the reverb: the face's second
+A design, built through G6 (see *Stages*). It is the brief for the stage after the reverb: the face's second
 pass, agreed with the owner from mockups on 9 November 2026, after the second review
 (`second-review.md`, beside this). The first pass is `redesigning-the-face.md`; this one
 keeps its rules and changes four things about the face, fixes one bug that is in the
@@ -412,6 +412,37 @@ Each leaves the suite green and is pushed alone.
   `ringtest.py` and the shell test hold it.
 - **G6 The hands.** The selector, a link per section, the new twins, routings that follow
   the link, Edit A/B and the modules' layer switches retired.
+  **Built 10 Nov**, page, core and plugin: *Editing: Lower · Upper* (*A · B* layered) in
+  the header after Save, each hand in its figure's ink, shown only with two hands; a link
+  on the Generator, Amp envelope and Voice filter, the Oscillator and Shaping, each rack
+  module (short, *Both* or the hand's name, before the arrow) and the Picture section,
+  whose title says *· Upper* while it is the hand's own; the tab cards' *Upper differs in
+  2*. What is stored: a section is linked while a setup has none of its B fields and the
+  hand's own while it has any, as the design has it, so the link is read off the fields
+  and never stored; B's voice fields are written only while their section is the hand's
+  own; the rack's B fields count only with `bPlane` on, as before, and `bPlane` is written
+  while any module is the hand's own. New twins `bPictureAmount` and `bScanStrike`, played
+  per hand (the stage's routes at each hand's Amount, a note's light at its hand's
+  Strike). A routing has a second depth, the upper hand's (`amountB`), stored beside `mod`
+  as `modB` in `mod`'s grammar: additive, so no version bump - a code without it has every
+  routing at one depth on both hands, which is what it meant. A routing's rows in the
+  source's editor and in Routings say *Both*, *Lower* or *Upper*, one row a hand with a
+  depth there. B's time modules each have their own bit in the generator's `timeOwn`, and
+  a shared module beside an own one is A's to the sample (`timeShare`). Decided where the
+  design was open: links are kept while the layers are off, so a split switched off and
+  on keeps each hand as it was (a setup that never parted them is linked, which is how a
+  new split starts); a code from before G6, which wrote every B field, loads each section
+  with B values as the hand's own even where they equal A's; relinking copies the hand on
+  the face over the other, and drops the other hand's own routing depths on the section;
+  Frequency, Phase, Glide, Interval and Tuning stay shared, and still hide while the upper
+  hand is edited; the Plane's Turn shows the upper hand's own turn in its place while the
+  Plane is the upper's own and edited (B's turn on a row of its own went); *Copy to the
+  other hand* is offered only on a section that is the hand's own; the expression pedal,
+  the wheel or pressure on Picture and a host's Amount or Strike move the hands a hand on
+  the knob would (both while linked, the one edited otherwise); and in the plugin a press
+  of a link or the selector is kept as a hand that no later hand makes redundant, so a
+  project reopens each hand's edits on the hand they were made on. `handstest.py` holds
+  it, parity the core's.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.
 - **G8 The second review's bugs** not covered above (`second-review.md`). They do not
   wait for G7: the plugin's window size, the delay's line while it is off and the rack's

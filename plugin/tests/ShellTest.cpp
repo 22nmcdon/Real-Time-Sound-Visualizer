@@ -1333,11 +1333,14 @@ int main() {
     juce::MidiBuffer none;
     p.pageClick("midiPoly");
     p.pageControl("midiLayers", scope::Json::string(std::string_view("layer")));
-    p.pageClick("midiEditB");
+    /* The header's Editing, and the Generator the upper hand's own (G6):
+       linked, as every section starts, the level would be both hands'. */
+    p.pageClick("editHandB");
+    p.pageClick("linkGen");
     p.pageSlider("amp", u"80");
     p.processBlock(buf, none);
     const float onB = p.knob("level")->get();
-    p.pageClick("midiEditA");
+    p.pageClick("editHandA");
     p.processBlock(buf, none);
     const float onA = p.knob("level")->get();
     p.knob("level")->setValueNotifyingHost(p.knob("level")->convertTo0to1(30));
@@ -1349,7 +1352,7 @@ int main() {
        layer turned to: the read-back leaves a parameter the host has just
        moved alone. Reading every parameter back would put B's 80 over it and
        lose the move - the mutant this was added for. */
-    p.pageClick("midiEditB");
+    p.pageClick("editHandB");
     p.knob("level")->setValueNotifyingHost(p.knob("level")->convertTo0to1(40));
     p.processBlock(buf, none);
     check("a host move in the block the panel turns is kept, and is the turned-to layer's",
@@ -1703,7 +1706,7 @@ int main() {
           "cutoff " + num(p.slider("vcfCut")) + ", amp " + num(p.slider("amp")) + "; " + kept);
   }
   {
-    /* With the layers on, the B button on the page puts layer B on the
+    /* With the layers on, the upper hand chosen on the page puts layer B on the
        plugin's panel as on the page's, so a slider and a menu moved there are
        B's; A's stay where they were. And it is kept: a fresh plugin given the
        state has B as it was left, and A. Without the button, the same hands
@@ -1713,7 +1716,9 @@ int main() {
       p->prepareToPlay(rate, block);
       p->pageClick("midiPoly");
       p->pageControl("midiLayers", scope::Json::string(std::string_view("layer")));
-      if (chooseB) p->pageClick("midiEditB");
+      // The header's Editing and the Generator the hand's own (G6), so the hands below are the one chosen's.
+      if (chooseB) p->pageClick("editHandB");
+      p->pageClick("linkGen");
       p->pageSlider("amp", u"80");
       p->pageControl("shape", scope::Json::string(std::string_view("square")));
       juce::AudioBuffer<float> buf(2, block);

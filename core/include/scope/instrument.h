@@ -152,13 +152,14 @@ class Instrument {
     // now move just that knob on the page, which restored its whole setup at
     // every count until 7 Nov; what is left is a kept hand at a pedal's
     // message rate, dozens a second, each allocating on the audio thread.
-    keyboard_->setSwell([this](double amount) { brain_->panel.setRangeNumber("pictureAmount", amount); });
+    // On the hand or hands the Picture section's Amount is on (G6), as the page's slider moved by it.
+    keyboard_->setSwell([this](double amount) { pictureAmountTo(*brain_, *keyboard_, amount); });
     /* The wheel or pressure given to the Picture amount, as the expression
        pedal sets it, or to Scan's depth, as a hand on its slider (6 Nov);
        the bend and the vibrato the keyboard sets on the generator itself.
        None is a hand on the setup, being where the hands are. */
     keyboard_->setExpress([this](Keyboard::Express to, double v) {
-      if (to == Keyboard::Express::Picture) brain_->panel.setRangeNumber("pictureAmount", v * 100);
+      if (to == Keyboard::Express::Picture) pictureAmountTo(*brain_, *keyboard_, v * 100);
       else if (to == Keyboard::Express::Scan) scope::moveSliderTo("oscScan", v * 100, *brain_, *core_, *keyboard_, lfos_);
     });
     matrix_ = std::make_unique<Matrix>();
@@ -234,6 +235,14 @@ class Instrument {
     setup_ = setup;
     hands_.clear();
     restoreSetup(setup_, *brain_, *core_, *keyboard_, *matrix_, lfos_);
+    /* The hand the face is editing is not the setup's (G6), and a load leaves
+       it where it is: kept as the first hand, so the hands after it that
+       move a hand's own control go back to that hand when a project opens. */
+    if (keyboard_->edit() == 1) {
+      Json hand = Json::array();
+      hand.a.push_back(Json::string(std::string_view("k"))); hand.a.push_back(Json::string(std::string_view("editHandB")));
+      remember("k:hand#" + std::to_string(++presses_), std::move(hand));
+    }
     // Nothing read for a quarter of a second while it lands, as the page's restoreInto opens with scanFreeze.
     scan_->freeze(nowMs_);
     /* The sliders moved since this setup was first loaded, as a state saved
@@ -693,7 +702,7 @@ class Instrument {
 
   void press(const std::string& id) {
     if (id == "srcTone" || id == "srcMic") { if (bands_) { bands_ = false; drawLanes(0); } drawFrom(id == "srcMic"); return; }
-    if (!controlClick(id, *brain_, *core_, *keyboard_)) return;
+    if (!controlClick(id, *brain_, *core_, *keyboard_, matrix_.get())) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
     Json hand = Json::array();
@@ -709,6 +718,10 @@ class Instrument {
     };
     std::string set = "photoButton#" + std::to_string(++presses_);
     for (const auto& [prefix, name] : sets) if (id.rfind(prefix, 0) == 0) { set = name; break; }
+    /* The hands (G6): which hand the face edits, and each section's link.
+       Every press is kept, and none is made redundant by a later one, since
+       a hand on a control after it went to the hand it chose (remember). */
+    if (id.rfind("editHand", 0) == 0 || id.rfind("link", 0) == 0) set = "hand#" + std::to_string(presses_);
     remember("k:" + set, std::move(hand));
     changed_ = true;
   }
@@ -719,9 +732,14 @@ class Instrument {
      project saved while a source is silent has its routings back when it
      opens. A text with no bar is one from before, every routing heard. */
   void route(const std::string& text) {
+    // Since G6, after a second bar, the upper hand's own depths, as `modB` has them.
     const std::size_t bar = text.find('|');
-    matrix_->keep(Matrix::decode(std::string_view(text).substr(0, bar)),
-                  bar == std::string::npos ? std::vector<std::string>() : Matrix::silentIds(std::string_view(text).substr(bar + 1)),
+    const std::size_t bar2 = bar == std::string::npos ? bar : text.find('|', bar + 1);
+    std::vector<Routing> list = Matrix::decode(std::string_view(text).substr(0, bar));
+    if (bar2 != std::string::npos) Matrix::applyB(list, std::string_view(text).substr(bar2 + 1));
+    matrix_->keep(list,
+                  bar == std::string::npos ? std::vector<std::string>()
+                                           : Matrix::silentIds(std::string_view(text).substr(bar + 1, bar2 == std::string::npos ? std::string::npos : bar2 - bar - 1)),
                   false);
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("r"))); hand.a.push_back(Json::string(std::string_view("")));
@@ -900,6 +918,10 @@ class Instrument {
     };
     for (std::size_t i = hands_.size(); i-- > 0;) {
       if (related(hands_[i].key, key)) break;
+      /* Nor across a press that chose a hand or a link (G6): a slider moved
+         before it was another hand's, or both hands', and the one after it
+         does not say what that one did. */
+      if (hands_[i].key.rfind("k:hand#", 0) == 0) break;
       if (hands_[i].key == key) { hands_.erase(hands_.begin() + static_cast<std::ptrdiff_t>(i)); break; }
     }
     hands_.push_back({ std::move(key), std::move(hand) });
@@ -942,11 +964,12 @@ class Instrument {
     if (!pictureRun_ || !scan_) return;
     PictureRun& run = *pictureRun_;
     const Plot plot = run.plot();
+    // Each hand at its own Strike (G6).
     scan_->strike(note, velocity, layers, brain_->scanStrike, brain_->view.screen.display == "spect", scanIn(), plot,
                   [&](int picture, double x0, double y0, double x1, double y1, double level) {
                     Phosphor* grid = picture < 0 ? &run.phosphor() : run.layers().grid(static_cast<std::size_t>(picture));
                     if (grid) grid->segment(plot, x0, y0, x1, y1, level);
-                  });
+                  }, brain_->scanStrikeB);
   }
 
   /* Render [from, to) of the block into the output and the picture ring.

@@ -43,7 +43,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     }
     else if (cmd == "sync") brain.lfo[static_cast<std::size_t>(num(1))].sync = arg(2) == "-" ? "" : arg(2);
     else if (cmd == "echo") { brain.echo.sync = arg(1) == "-" ? "" : arg(1); brain.echo.ms = num(2); }
-    else if (cmd == "echob") { brain.planeB.own = arg(1) == "1"; brain.echoB.sync = arg(2) == "-" ? "" : arg(2); brain.echoB.ms = num(3); }
+    // Whether B's echo is its own: the Delay's link since G6, where it was B's own plane and effects at once.
+    else if (cmd == "echob") { brain.handOwn[scope::kHandDelay] = arg(1) == "1"; brain.echoB.sync = arg(2) == "-" ? "" : arg(2); brain.echoB.ms = num(3); }
     else if (cmd == "phase") lfos[static_cast<std::size_t>(num(1))].phase = num(2);
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 

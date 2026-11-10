@@ -443,6 +443,8 @@ class Keyboard {
      again, as the page's syncLayers shows the layer on the panel first. */
   int editLayer() const { return layersOn() && layers_.edit == 1 ? 1 : 0; }
   void setEdit(int layer) { layers_.edit = layer == 1 ? 1 : 0; if (onLayers_) onLayers_(); }
+  // The hand chosen, whether or not there are two to choose between (G6: a project keeps it).
+  int edit() const { return layers_.edit; }
   void setLayerPanel(std::function<void()> f) { onLayers_ = std::move(f); }
   /* Who lays a note's strike on the screen (P7b): the page's midiNoteOn calls
      scanStrike, which is the picture's, so the keyboard only says the note,

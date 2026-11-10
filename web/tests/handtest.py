@@ -392,7 +392,9 @@ with sync_playwright() as pw:
             cols += [np.sin(w * n), np.cos(w * n)]
         coef = np.linalg.lstsq(np.stack(cols, 1), x, rcond=None)[0]
         return [(math.atan2(coef[2 * k + 1], coef[2 * k]) / (2 * math.pi)) % 1 for k in (0, len(hz) - 1)]
-    p.evaluate("() => { for (const layer of [0, 1]) { genSet('warp', 0, layer); genSet('warpAt', 0.25, layer); } }")
+    # The Oscillator, whose Bend this is, each hand's own (G6): linked, as a
+    # split starts, a grab on either figure would bend both hands'.
+    p.evaluate("() => { setLink('osc', false); for (const layer of [0, 1]) { genSet('warp', 0, layer); genSet('warpAt', 0.25, layer); } }")
     p.wait_for_timeout(500)
     # Held still: an equal fifth turns (B's at 1.8 a second), and the samples
     # fitted here have to be the ones under the press.

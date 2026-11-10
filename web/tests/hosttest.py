@@ -355,8 +355,10 @@ with sync_playwright() as pw:
     more = p.evaluate("""() => {
       const t = window.__hostTest, out = {};
       const send = (name, act) => { t.log.length = 0; act(); out[name] = t.log.slice(); };
-      send('layerB', () => el.midiEditB.click());
-      send('layerA', () => el.midiEditA.click());
+      // The header's Editing and a section's link (G6; the Keyboard's Edit A / B until then).
+      send('layerB', () => document.getElementById('editHandB').click());
+      send('layerA', () => document.getElementById('editHandA').click());
+      send('link', () => document.getElementById('linkDelay').click());
       send('fade', () => { el.fadeMode.value = 'both'; el.fadeMode.dispatchEvent(new Event('change', { bubbles: true })); });
       send('fadeAgain', () => saveFade());
       send('restart', () => { el.fadeRestart.checked = true; el.fadeRestart.dispatchEvent(new Event('change', { bubbles: true })); });
@@ -368,8 +370,9 @@ with sync_playwright() as pw:
       return out;
     }""")
     fade = json.loads(more["fade"][0][1]) if more["fade"] and len(more["fade"][0]) > 1 else {}
-    check("the A and B buttons are sent; the fade is sent whole when it is saved, and not again unchanged",
-          more["layerB"] == [["scopeClick", "midiEditB"]] and more["layerA"] == [["scopeClick", "midiEditA"]]
+    check("the hands' buttons and a link are sent; the fade is sent whole when it is saved, and not again unchanged",
+          more["layerB"] == [["scopeClick", "editHandB"]] and more["layerA"] == [["scopeClick", "editHandA"]]
+          and ["scopeClick", "linkDelay"] in more["link"]
           and len(more["fade"]) == 1 and more["fade"][0][0] == "scopeFade" and fade.get("mode") == "both" and len(fade.get("envs", [])) == 2
           and more["fadeAgain"] == [] and len(more["restart"]) == 1 and json.loads(more["restart"][0][1])["envs"][0]["restart"] is True,
           str(more))

@@ -86,11 +86,15 @@ struct LayerSettings : LayerTone {
   }
 };
 
-// Layer B's: the voice, and a plane, echo and chorus of its own that are in
-// force only while `planeOwn` is on. `planeTurn` is radians, B's alone.
+// Layer B's: the voice, and a plane of its own in force only while
+// `planeOwn` is on, `planeTurn` its turn in radians, B's alone; and a phaser,
+// chorus, delay and reverb of its own, each in force while its bit is set in
+// `timeOwn` (G6, the page's TIME_OWN: 1, 2, 4, 8) - one switch with the
+// plane's until each module had its own link.
 struct LayerBSettings : LayerSettings, PlaneLayerTone {
   bool planeOwn = false;
   double planeTurn = 0;
+  int timeOwn = 0;
 };
 
 // Layer A's tone, which is also the page's: everything but the voice.
@@ -164,6 +168,8 @@ class Generator {
       if (setPlaneShape(b_, field, value) || setPlaneTime(b_, field, value)) return;
       if (field == "planeOwn") b_.planeOwn = value != 0;
       else if (field == "planeTurn") b_.planeTurn = value;
+      // The page's `timeOwn | 0`: a mask, and anything that is not a number is none.
+      else if (field == "timeOwn") b_.timeOwn = std::isfinite(value) ? static_cast<int>(value) : 0;
       return;
     }
     Tone& a = a_;
@@ -365,8 +371,9 @@ class Generator {
       if (r.slot == slot::Sync) syncRouted = true;
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
-    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && b_.planeOwn ? &b_ : nullptr,
-                                      b_.planeTurn, turnRouted, phaserRouted, reverbRouted);
+    const int timeOwn = b_.timeOwn & 15;
+    const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && (b_.planeOwn || timeOwn != 0) ? &b_ : nullptr,
+                                      b_.planeTurn, turnRouted, phaserRouted, reverbRouted, b_.planeOwn, timeOwn);
     govern(fmRouted, syncRouted, shapeRouted, planeOn);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;

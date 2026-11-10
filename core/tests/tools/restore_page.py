@@ -113,6 +113,10 @@ DUMP = """(setups) => {
       mod: encodeRoutings(state.modRoutings),
       // What is kept with the silenced sources' routings held aside, and which (G5b).
       kept: encodeRoutings(routingsKept()), silent: [...held.keys()],
+      // The upper hand's own depths (G6), and the hands: the sections the upper hand has its own of, the Picture's two on each.
+      keptB: encodeRoutingsB(routingsKept()),
+      hands: { own: HAND_SECTION_IDS.filter((sec) => !linked(sec)), picture: pictureHands.map((h) => [h.amount, h.strike]),
+               edit: midi.layers.edit },
       key: { root: state.keyRoot, scale: state.keyScale, quantise: state.quantise, glide: state.quantiseGlide, bpm: transport.set },
       score: { on: score.on, step: score.step, voices: score.voices, low: score.low, octaves: score.octaves },
       arp: { mode: el.arpMode.value, rate: el.arpRate.value, octaves: el.arpOctaves.value },
@@ -126,7 +130,7 @@ DUMP = """(setups) => {
                pos: state.morphPos },
       photo: { on: photo.on, u: photo.u, v: photo.v },
       // Scan's softness as the brain holds it, and the persistence menu's value, its sixth option included (P7a).
-      scan: { soft: scan.soft, persistence: el.persistence.value, strike: scan.strike, reads: scan.reads.slice() },
+      scan: { soft: scan.soft, persistence: el.persistence.value, strike: scan.strike, strikeB: scan.strikeB, reads: scan.reads.slice() },
       // Whose sound each layer's picture moves (P6), and what its menu shows.
       pictureMoves: [...layerPictures.moves, el.pictureMovesA.value, el.pictureMovesB.value],
       // The view: what the screen draws by. Switches by their truth, which is

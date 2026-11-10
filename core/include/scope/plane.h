@@ -142,10 +142,14 @@ class Plane {
   }
 
   // What the plane does this block; true if it does anything. `b` is layer
-  // B's own plane when it has one in force (the page's `withB` and
-  // `planeOwn` both), and `turnB` its turn in radians.
+  // B's tone when it has anything of its own in force (the page's `withB`),
+  // `shapeOwn` whether that is its plane (`planeOwn`), with `turnB` its turn
+  // in radians, and `timeOwn` which of its time modules (G6: 1 the phaser, 2
+  // the chorus, 4 the delay, 8 the reverb). A `b` alone is all of them, as it
+  // was while B's own effects were one switch.
   bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneLayerTone* b = nullptr,
-             double turnB = 0, bool turnRouted = false, bool phaserRouted = false, bool reverbRouted = false) {
+             double turnB = 0, bool turnRouted = false, bool phaserRouted = false, bool reverbRouted = false,
+             bool shapeOwn = true, int timeOwn = 15) {
     phaserRouted_ = phaserRouted;
     reverbRouted_ = reverbRouted;
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
@@ -154,15 +158,17 @@ class Plane {
       for (auto& os : os_) os.reset(want, want == 4 ? taps4_ : taps2_);
     }
     shapeSet(shapeA_, t, twistRouted, 0);
-    ownB_ = b != nullptr;
-    if (ownB_) shapeSet(shapeB_, *b, twistRouted, turnB);
+    shapeOwnB_ = b != nullptr && shapeOwn;
+    timeOwnB_ = b != nullptr ? timeOwn & 15 : 0;
+    ownB_ = shapeOwnB_ || timeOwnB_ != 0;
+    if (shapeOwnB_) shapeSet(shapeB_, *b, twistRouted, turnB);
     turnRoutedB_ = turnRouted;  // read only where B has its own
     turnB_ = turnB;
-    linearOn_ = shapeA_.linear || (ownB_ && (shapeB_.linear || shapeB_.turn != 0 || turnRoutedB_));
-    nonlinearOn_ = shapeA_.nonlinear || (ownB_ && shapeB_.nonlinear);
+    linearOn_ = shapeA_.linear || (shapeOwnB_ && (shapeB_.linear || shapeB_.turn != 0 || turnRoutedB_));
+    nonlinearOn_ = shapeA_.nonlinear || (shapeOwnB_ && shapeB_.nonlinear);
     timeSet(timeA_, t, echoRouted);
-    if (ownB_) timeSet(timeB_, *b, echoRouted);
-    timeOn_ = timeA_.on || (ownB_ && timeB_.on);
+    if (timeOwnB_ != 0) timeSet(timeB_, *b, echoRouted);
+    timeOn_ = timeA_.on || (timeOwnB_ != 0 && timeB_.on);
     return linearOn_ || nonlinearOn_ || timeOn_;
   }
 
@@ -172,7 +178,7 @@ class Plane {
             const PlanePushes& pb = {}) {
     shapeA_.radius = std::fmax(0.02, std::fmin(1.0, t.planeRadius + a.radius * 0.5));
     shapeA_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, t.planeTwist + a.twist * kPi));
-    if (ownB_ && b) {
+    if (shapeOwnB_ && b) {
       shapeB_.radius = std::fmax(0.02, std::fmin(1.0, b->planeRadius + pb.radius * 0.5));
       shapeB_.twist = std::fmax(-kTwoPi, std::fmin(kTwoPi, b->planeTwist + pb.twist * kPi));
       // B's turn under a routing, a sample at a time.
@@ -182,7 +188,7 @@ class Plane {
       }
     }
     timeTick(timeA_, a, dt);
-    if (ownB_ && b) timeTick(timeB_, pb, dt);
+    if (timeOwnB_ != 0 && b) { timeTick(timeB_, pb, dt); timeShare(timeB_, timeA_, timeOwnB_); }
   }
 
   // A pair through the whole of it: the matrix, the non-linear stage inside
@@ -190,9 +196,8 @@ class Plane {
   // layer B's own when `layerB` and B has its own, A's otherwise. The
   // answer is `x`, `y`.
   void step(Pair pair, double x, double y, bool layerB = false) {
-    const bool own = layerB && ownB_;
-    const Shape& s = own ? shapeB_ : shapeA_;
-    const Time& T = own ? timeB_ : timeA_;
+    const Shape& s = layerB && shapeOwnB_ ? shapeB_ : shapeA_;
+    const Time& T = layerB && timeOwnB_ != 0 ? timeB_ : timeA_;
     if (s.linear) {
       const double sheared = x + s.shear * y;
       x = s.sx * sheared; y = s.sy * y;
@@ -237,6 +242,19 @@ class Plane {
     const double spread = std::fmax(0.0, std::fmin(1.0, t.reverbSpread)) * kPi / 2;
     T.revC = std::cos(spread); T.revS = std::sin(spread);
     T.on = T.delayOn || t.chorusMix > 0 || T.phOn || T.revOn;
+  }
+  /* A module the hands share while another is B's own (G6) is layer A's to
+     the sample, as the page's timeShare: its sweep, its level under A's
+     routings and every coefficient worked out from them, so a shared chorus
+     moves as one chorus, as it did while B had no effects of its own. */
+  static void timeShare(Time& T, const Time& A, int own) {
+    if (!(own & 1)) { T.ph = A.ph; T.phPhase = A.phPhase; T.aL = A.aL; T.aR = A.aR; }
+    if (!(own & 2)) { T.phase = A.phase; T.sin = A.sin; T.cos = A.cos; }
+    if (!(own & 4)) { T.echo = A.echo; T.echoMs = A.echoMs; T.toneA = A.toneA; T.toneAt = A.toneAt; }
+    if (!(own & 8)) {
+      T.rev = A.rev; T.revIn = A.revIn; T.revDampA = A.revDampA; T.revSizeAt = A.revSizeAt; T.revToneAt = A.revToneAt;
+      T.revG = A.revG;
+    }
   }
   void timeTick(Time& T, const PlanePushes& p, double dt) {
     const PlaneTimeTone& t = *T.t;
@@ -556,6 +574,8 @@ class Plane {
   std::array<Oversampler, 2> os_;
   std::array<TimeFx, 2> fx_;
   bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, ownB_ = false, turnRoutedB_ = false;
+  bool shapeOwnB_ = false;  // B's own plane in force (planeOwn)
+  int timeOwnB_ = 0;        // B's own time modules in force (timeOwn's bits)
   double turnB_ = 0;
   Shape shapeA_, shapeB_;
   const Shape* cur_ = &shapeA_;

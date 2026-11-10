@@ -139,8 +139,11 @@ class ScopeProcessor final : public juce::AudioProcessor {
      `version` is the plugin version a parameter arrived in, which AU hosts
      use to order and JUCE asks for: the level, cutoff, echo and morph were
      the first plugin's, the four loop controls this one's. A layer's
-     controls - Scan's depth, the bend, the cutoff, the level - address the
-     layer the panel shows, as the slider does for a hand (`readBack`). */
+     controls - Scan's depth, the bend, the cutoff, the level, and since G6
+     the Picture amount and Strike, which each hand has its own of - address
+     what the slider does for a hand: both hands while the section is linked,
+     the hand the panel shows while it is that hand's own (`readBack` when
+     the panel turns to the other hand). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
   static constexpr std::array<HostKnob, 13> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the

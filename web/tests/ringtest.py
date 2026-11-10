@@ -363,16 +363,18 @@ with sync_playwright() as pw:
     # Layers want a keyboard: the screen's.
     p.evaluate("() => { setScreenKeys(true); el.midiPoly.click(); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); }")
     p.wait_for_timeout(250)
-    # The amp envelope's Attack, a hand's own and on Play, which the screen's keys leave in view.
-    p.evaluate("() => { el.envAttack.value = '150'; el.envAttack.dispatchEvent(new Event('input', { bubbles: true })); }")
+    # The amp envelope's Attack, on Play, which the screen's keys leave in view: its section made
+    # the hands' own first (G6: a linked section's two hands are one value, with nothing to copy),
+    # then set on the lower hand alone.
+    p.evaluate("() => { document.getElementById('linkAmpEnv').click(); el.envAttack.value = '150'; el.envAttack.dispatchEvent(new Event('input', { bubbles: true })); }")
     sx, sy = centre(p.locator("#envAttack ~ .knob-face, .menu-row:has(#envAttack) .knob-face").first.bounding_box())
     p.mouse.click(sx, sy, button="right"); p.wait_for_timeout(250)
     split = p.evaluate(MENU)
     copied_before = p.evaluate("() => genSettings(1).attackMs")
     p.locator('.ctx-item[data-item="copy"]').click(); p.wait_for_timeout(250)
     copied = p.evaluate("() => ({ a: genSettings(0).attackMs, b: genSettings(1).attackMs, edit: panelLayer })")
-    check("on a split, Copy to layer B copies the Attack to the other hand and leaves the panel on A",
-          split and any(i[2] == "Copy to layer B" for i in split["items"]) and copied["b"] == 150
+    check("on a split, Copy to the Upper hand copies the Attack to the other hand and leaves the panel on the lower",
+          split and any(i[2] == "Copy to the Upper hand" for i in split["items"]) and copied["b"] == 150
           and copied["a"] == 150 and copied["edit"] == 0, "%s %s" % (copied, split and split["items"]))
     null("layer B was not at 150 ms before", copied_before != 150, str(copied_before))
     p.evaluate("() => { el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); el.midiDyad.click(); setScreenKeys(false); }")

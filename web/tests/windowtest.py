@@ -205,9 +205,14 @@ with sync_playwright() as pw:
       setView('bench'); setBenchTab('space'); await wait(150);
       // A split needs a keyboard present: the screen's, as fittest has it.
       if (layers) { setScreenKeys(true); await wait(100); setMidiMode('poly'); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-                    await wait(120); el.planeLayerB.click(); await wait(120); }
-      // Read back, so a case that never split (no source yet, say) cannot pass as one.
-      const layered = !el.planeLayerRow.hidden && !el.timeLayerRow.hidden;
+                    await wait(120); document.getElementById('editHandB').click();
+                    document.querySelectorAll('.fx-head .hand-link[aria-pressed="true"]').forEach((link) => link.click());
+                    await wait(120); }
+      /* Read back, so a case that never split (no source yet, say) cannot pass
+         as one: the modules' links shown and each the upper hand's own (G6;
+         the Plane's and the Delay's Layers rows until then). */
+      const links = [...document.querySelectorAll('.fx-head .hand-link')];
+      const layered = links.length === 5 && links.every((link) => !link.hidden && link.getAttribute('aria-pressed') === 'false');
       for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 40);
       await wait(600);
       openFx('plane', true); await wait(200);
@@ -241,13 +246,14 @@ with sync_playwright() as pw:
         p.locator("#trace").click(position={"x": 5, "y": 5}); p.wait_for_timeout(600)
         r = p.evaluate(RACK, [layers])
         tag = "%dx%d%s" % (w, h, ", two layers" if layers else "")
-        check("at %s the Plane's and the Delay's Layers rows are %s" % (tag, "on show" if layers else "hidden"),
+        check("at %s the rack's links are %s, each the upper hand's own" % (tag, "on show" if layers else "hidden"),
               r["layered"] == layers)
-        # Two layers at 1400x900 fold since G5a: the modulation row across the
-        # window took 87 px from the tabs, and the layered rack with its
-        # Layers rows (which G6 retires) was 41 over unfolded. One layer
-        # still keeps its knobs there, as drawn.
-        if w == 1400 and not layers:
+        # Two layers at 1400x900 folded from G5a to G6: the modulation row
+        # across the window took 87 px from the tabs, and the layered rack
+        # with its Layers rows was 41 over unfolded. G6 took those rows for
+        # each module's link on its line, and two layers keep their knobs
+        # there again, as one layer does, as drawn.
+        if w == 1400:
             check("at %s, every effect on and the Plane open, the others keep their knobs" % tag,
                   not r["open"]["tight"] and all(r["open"]["knobs"]) and r["open"]["over"] <= 0, str(r["open"]))
         else:

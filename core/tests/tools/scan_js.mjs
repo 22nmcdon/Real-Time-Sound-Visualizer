@@ -86,6 +86,8 @@ for (const raw of lines) {
     p.midi.layers.mode = o.split === "1" ? "split" : "layer";
     p.midi.layers.point = Number(o.point);
     p.scan.strike = Number(o.amount);
+    // Each hand's Strike (G6): B's its own where the line gives one.
+    p.scan.strikeB = Number(o.amountB === undefined ? o.amount : o.amountB);
     p.scanStrike(Number(o.note), Number(o.vel));
     const laid = p.__taken();
     const row = [];

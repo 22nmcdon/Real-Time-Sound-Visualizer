@@ -468,6 +468,8 @@ with sync_playwright() as pw:
       for (const n of [48, 55]) midiBytes(new Uint8Array([0x90, n, 100]));
       for (const n of [79, 84]) midiBytes(new Uint8Array([0x90, n, 100]));
       midi.layers.edit = 1; syncLayerPanel();
+      // The Picture section the upper hand's own (G6): linked, Depth would be both hands'.
+      setLink('picture', false);
       el.oscScan.value = '100'; el.oscScan.dispatchEvent(new Event('input'));
       await wait(1500);
       const a = genSettings(0).scan, bScan = genSettings(1).scan;

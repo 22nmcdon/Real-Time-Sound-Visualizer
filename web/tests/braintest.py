@@ -531,16 +531,18 @@ with sync_playwright() as pw:
     seen = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = { credit: el.credit.textContent };
-      // Two layers, played and edited: the A and B buttons, B's drawbars written to B, a figure each.
+      // Two layers, played and edited: the header's Editing and the Generator's link
+      // (G6; Edit A / B until then, every section each hand's own), B's drawbars
+      // written to B, a figure each. Unlinked, or the drawbars would be both hands'.
       setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(50);
-      el.midiEditB.click(); await wait(50);
+      document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(50);
       out.titleB = el.barsTitle.textContent;
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       el.bars.value = '800000000'; el.bar0.dispatchEvent(new Event('input'));
       out.bars = [genSettings(0).bars.join(''), genSettings(1).bars.join('')];
-      el.midiEditA.click(); await wait(50);
+      document.getElementById('editHandA').click(); await wait(50);
       midiNoteOn(48, 100); midiNoteOn(72, 100); await wait(700);
       const w = state.source.getLatestWindow(8192);
       out.figures = sourceFigures();
@@ -566,7 +568,7 @@ with sync_playwright() as pw:
     check("the line under the title names what the generator plays, as the page's own does", seen["credit"] == "220 Hz, unison just",
           seen["credit"])
     check("with the layers on, the panel edits B and writes B's drawbars, leaving A's",
-          seen["titleB"] == "Drawbars \u00b7 layer B" and seen["bars"][1] == "800000000" and seen["bars"][0] != "800000000",
+          seen["titleB"] == "Drawbars \u00b7 Upper" and seen["bars"][1] == "800000000" and seen["bars"][0] != "800000000",
           "%s, %s" % (seen["titleB"], seen["bars"]))
     def layered(hz, a, b):
         return all(h is not None and abs(h - want) < 1 for h, want in zip(hz, (a, a, b, b)))

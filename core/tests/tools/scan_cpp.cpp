@@ -161,10 +161,11 @@ int main(int argc, char** argv) {
       const auto box = splitOn(o["plot"], ',');
       const scope::Plot plot { num(box[0]), num(box[1]), num(box[2]), num(box[3]) };
       std::vector<double> row;
+      // Each hand's Strike (G6): B's its own where the line gives one.
       reader->strike(note, num(o["vel"]), layers, num(o["amount"]), o["spect"] == "1", input, plot,
                      [&](int p, double x0, double y0, double x1, double y1, double level) {
                        row.insert(row.end(), { 5.0, static_cast<double>(p), x0, y0, x1, y1, level });
-                     });
+                     }, num(o.count("amountB") ? o["amountB"] : o["amount"]));
       if (row.empty()) row.push_back(6);
       for (std::size_t i = 0; i < row.size(); i++) std::printf(i ? " %.17g" : "%.17g", row[i]);
       std::printf("\n");

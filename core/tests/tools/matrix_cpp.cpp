@@ -94,7 +94,14 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "forget") { m.unregisterSource(arg(1)); m.touch(); }
     // The Picture slider, in per cent: PictureRun hands the amount over each
     // frame, and the page's handler touches the routings.
-    else if (cmd == "stage") { m.setStageAmount(num(arg(1)) / 100); m.touch(); }
+    // Each hand's (G6): one amount is both.
+    else if (cmd == "stage") { m.setStageAmount(num(arg(1)) / 100, num(arg(2).empty() ? arg(1) : arg(2)) / 100); m.touch(); }
+    else if (cmd == "amountb") m.setAmountB(arg(1), arg(2), num(arg(3)));
+    else if (cmd == "loadb") {
+      auto list = scope::Matrix::decode(arg(1));
+      scope::Matrix::applyB(list, arg(2));
+      m.load(list);
+    }
     else if (cmd == "fade") {
       const std::string mode = arg(1);
       const scope::FadeMode f = mode == "in" ? scope::FadeMode::In : mode == "out" ? scope::FadeMode::Out
@@ -131,6 +138,9 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     } else if (cmd == "encode") {
       const std::string code = scope::Matrix::encode(m.routings());
       said = "code " + (code.empty() ? std::string("-") : code) + " ";
+    } else if (cmd == "encodeb") {
+      const std::string code = scope::Matrix::encodeB(m.routings());
+      said = "codeb " + (code.empty() ? std::string("-") : code) + " ";
     } else if (cmd == "dests") {
       std::string list;
       for (const auto& d : m.dests()) {
@@ -143,7 +153,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     std::string line = cmd;
     for (const auto& l : log) line += " :: " + l;
     std::string amounts;
-    for (const auto& r : m.routings()) amounts += (amounts.empty() ? "" : "+") + show(r.amount);
+    for (const auto& r : m.routings())
+      amounts += (amounts.empty() ? "" : "+") + show(r.amount) + "/" + (r.amountB ? show(*r.amountB) : std::string("u"));
     line += " | " + said + "amounts " + (amounts.empty() ? "-" : amounts) + " heard " + std::to_string(m.heard().size())
           + " gains " + std::to_string(m.fading()) + " dirty " + (m.dirty() ? "1" : "0");
     std::printf("%s\n", line.c_str());

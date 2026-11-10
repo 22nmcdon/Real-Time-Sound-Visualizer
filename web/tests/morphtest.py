@@ -249,12 +249,13 @@ with sync_playwright() as pw:
       setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(30);
-      el.midiEditB.click(); await wait(30);
+      // The upper hand, its Generator its own (G6: linked, the position would be both hands').
+      document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(30);
       el.shape.value = 'morph'; el.shape.dispatchEvent(new Event('change'));
       el.morph.value = '0'; el.morph.dispatchEvent(new Event('input'));
       const whileB = { a: genSettings(0).morph, b: genSettings(1).morph, reading: el.morphValue.textContent,
                        row: el.morphRow.hidden };
-      el.midiEditA.click(); await wait(30);
+      document.getElementById('editHandA').click(); await wait(30);
       const code = snapshot();
       const backA = { slider: el.morph.value, reading: el.morphValue.textContent,
                       morph: code.morph, bMorph: code.bMorph };

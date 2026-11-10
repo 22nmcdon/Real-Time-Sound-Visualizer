@@ -396,8 +396,13 @@ with sync_playwright() as pw:
       const input = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       input('amp', 50); input('envRelease', 300);
       const a0 = { amp: genSettings().amp, rel: genSettings().releaseMs };
-      el.midiEditB.click(); await wait(30);
-      const showsB = { title: el.genTitle.textContent,
+      /* The upper hand, and the Generator and the Amp envelope its own (G6):
+         linked, as every section is until a link is pressed, the controls
+         would write both hands - handstest.py holds that. Until G6 every
+         section was each hand's own and Edit B chose the hand. */
+      document.getElementById('editHandB').click(); await wait(30);
+      document.getElementById('linkGen').click(); document.getElementById('linkAmpEnv').click();
+      const showsB = { title: el.genTitle.firstChild.textContent + " / " + document.getElementById('linkGen').textContent,
                        freqShown: getComputedStyle(el.freq.closest('.menu-row')).display !== 'none',
                        ampShown: getComputedStyle(el.amp.closest('.menu-row')).display !== 'none' };
       input('amp', 90); input('envRelease', 1200);
@@ -408,22 +413,22 @@ with sync_playwright() as pw:
       // A code written while B is on screen is layer A's controls and B's
       // sound, each in its own place.
       out.code = snapshot();
-      el.midiEditA.click(); await wait(30);
+      document.getElementById('editHandA').click(); await wait(30);
       out.backToA = { amp: el.amp.value, rel: el.envRelease.value, shape: el.shape.value,
-                      title: el.genTitle.textContent };
+                      title: el.genTitle.firstChild.textContent + " / " + document.getElementById('linkGen').textContent };
       return out;
     }""")
     print("    %s" % panel)
-    check("with B shown, the panel says so and shows only what B has",
-          panel["showsB"]["title"].endswith("layer B") and not panel["showsB"]["freqShown"]
+    check("with B shown and the Generator its own, its link says so and the panel shows only what B has",
+          panel["showsB"]["title"] == "Generator / Upper\u2019s own" and not panel["showsB"]["freqShown"]
           and panel["showsB"]["ampShown"], str(panel["showsB"]))
     check("and its controls write layer B, leaving A alone",
           abs(panel["b"]["amp"] - 0.9) < 1e-9 and panel["b"]["rel"] == 1200 and panel["b"]["shape"] == "triangle"
           and abs(panel["a"]["amp"] - 0.5) < 1e-9 and panel["a"]["rel"] == 300 and panel["a"]["shape"] != "triangle",
           str(panel))
-    check("Edit A puts A's values back on the controls",
+    check("the lower hand chosen puts A's values back on the controls, and the link names it",
           panel["backToA"]["amp"] == "50" and panel["backToA"]["rel"] == "300"
-          and panel["backToA"]["shape"] != "triangle" and panel["backToA"]["title"] == "Generator",
+          and panel["backToA"]["shape"] != "triangle" and panel["backToA"]["title"] == "Generator / Lower\u2019s own",
           str(panel["backToA"]))
     code = panel["code"]
     check("a code taken with B on screen keeps A's controls as A's",
@@ -467,7 +472,7 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setMidiMode('poly'); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       midi.layers.pair = 'each';
-      el.midiEditB.click();
+      document.getElementById('editHandB').click();
       for (const n of [48, 72]) midiNoteOn(n, 100);
       await wait(60);
       const before = { on: layersOn(), channels: state.source.channels, edit: el.toneRows.dataset.layerEdit };

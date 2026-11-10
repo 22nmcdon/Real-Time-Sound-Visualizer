@@ -108,11 +108,18 @@ JUDGE = """(args) => {
 }"""
 
 COVER = """(fields) => {
-  // Layer B's own plane and echo on, so that snapshot writes their fields.
-  const was = planeB.own;
+  /* Every section the upper hand's own (G6), so that snapshot writes every B
+     field - linked, a section writes none; until G6 B's voice was written
+     always and its plane and echo while planeB.own was on. */
+  const was = Object.assign({}, handLinks);
+  for (const sec of HAND_SECTION_IDS) handLinks[sec] = false;
   planeB.own = true;
+  const route = { sourceId: "lfo1", destId: "gen.fm", amount: 0.4, amountB: -0.2 };
+  state.modRoutings.push(route);
   const snap = snapshot();
-  planeB.own = was;
+  state.modRoutings.splice(state.modRoutings.indexOf(route), 1);
+  Object.assign(handLinks, was);
+  planeB.own = !linked("plane");
   const table = new Set(Object.keys(fields)), wrote = new Set(Object.keys(snap));
   return {
     notInTable: [...wrote].filter((k) => !table.has(k)),

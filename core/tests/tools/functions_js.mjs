@@ -217,11 +217,13 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const bName = (f) => "b" + f[0].toUpperCase() + f.slice(1);
     for (const f of B_TIME) toneB[f] = n(bName(f));
     toneB.planeOwn = n("bown") === 1;
+    // And every time module B's own with it, as Plane::setup takes a `b` alone (G6 gave each its own link).
+    toneB.timeOwn = n("bown") === 1 ? 15 : 0;
     toneB.planeTurn = n("bTurn");
     const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "DELAY_TONE_LOW", "WOW_STEP", "CHORUS_MAX",
                          "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
-                         "turnRoutedB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeTick", "planeStep",
+                         "turnRoutedB", "timeOwnB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeShare", "timeTick", "planeStep",
                          "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
                          "allpassCoef", "allpassChain", "FX_ORDER_STAGES",
                          "REVERB_LINES", "REVERB_LINE_MS", "REVERB_DIFFUSE_MS", "REVERB_DIFFUSE_G", "REVERB_PRE_MAX",
@@ -239,7 +241,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     let on = false;
     for (let i = 0; i < n("samples"); i++) {
       for (const [field, value] of events.get(i) || []) {
-        if (field === "bown") toneB.planeOwn = value === 1;
+        if (field === "bown") { toneB.planeOwn = value === 1; toneB.timeOwn = value === 1 ? 15 : 0; }
         else if (field === "bTurn") toneB.planeTurn = value;
         else if (B_TIME.some((t) => bName(t) === field)) toneB[B_TIME.find((t) => bName(t) === field)] = value;
         else if (field[0] === "b") toneB["plane" + field.slice(1)] = value;

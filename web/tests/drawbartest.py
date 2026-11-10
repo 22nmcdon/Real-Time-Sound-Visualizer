@@ -261,23 +261,24 @@ with sync_playwright() as pw:
       el.bars.value = '008740000'; el.bar0.dispatchEvent(new Event('input'));
       setScreenKeys(true); setMidiMode('poly'); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(30);
-      el.midiEditB.click(); await wait(30);
+      // The upper hand, and the Generator its own (G6: linked, the drawbars would be both hands').
+      document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(30);
       const title = el.barsTitle.textContent;
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       el.bars.value = '800000000'; el.bar0.dispatchEvent(new Event('input'));
       const whileB = { a: genSettings(0).bars.slice(), b: genSettings(1).bars.slice(), panel: el.bars.value };
-      el.midiEditA.click(); await wait(30);
+      document.getElementById('editHandA').click(); await wait(30);
       const backA = { panel: el.bars.value, title: el.barsTitle.textContent, code: snapshot() };
       return { title, whileB, backA: { panel: backA.panel, title: backA.title,
                bars: backA.code.bars, bBars: backA.code.bBars } };
     }""")
     print("    %s" % layers)
     check("editing B, the section says so and writes B's bars, leaving A's",
-          layers["title"] == "Drawbars · layer B"
+          layers["title"] == "Drawbars \u00b7 Upper"
           and layers["whileB"]["b"] == [8, 0, 0, 0, 0, 0, 0, 0, 0]
           and layers["whileB"]["a"] == [0, 0, 8, 7, 4, 0, 0, 0, 0], str(layers["whileB"]))
     check("back on A the sliders are A's again, and the code carries both",
-          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Drawbars"
+          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Drawbars \u00b7 Lower"
           and layers["backA"]["bars"] == "008740000" and layers["backA"]["bBars"] == "800000000",
           str(layers["backA"]))
     # The sound: layer B's picture made of B's registration, not A's. A has

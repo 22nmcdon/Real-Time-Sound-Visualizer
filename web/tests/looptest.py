@@ -193,7 +193,8 @@ with sync_playwright() as pw:
       state.persistence = 0.12; el.persistence.value = '0.12';
       // The picture stage out: a stuck picture is what this needs, and the
       // stage exists to unstick one - its Memory is this boredom, on the twist.
-      el.pictureAmount.value = '0'; touchRoutings();
+      // By the slider's own handler, which since G6 writes each hand's amount the stage reads.
+      el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input'));
       el.clearButton.click();
       const rise = [];
       const start = performance.now();
@@ -210,7 +211,7 @@ with sync_playwright() as pw:
       const again = performance.now();
       while (performance.now() - again < 6000) { await wait(250); fall.push([(performance.now() - again) / 1000, picture.bored]); }
       genSet('interval', 0); genSet('just', true);
-      el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
+      el.pictureAmount.value = String(STAGE_DEFAULT); el.pictureAmount.dispatchEvent(new Event('input'));
       return { rise, applied, fall };
     }""")
     at = lambda series, t: min(series, key=lambda row: abs(row[0] - t))[1]
@@ -341,7 +342,7 @@ with sync_playwright() as pw:
       // and the phase, which nothing above routes: its totals are read with
       // the rest below, so a stage route outside the loop's bound fails here.
       el.pictureAmount.value = '100';
-      touchRoutings();
+      el.pictureAmount.dispatchEvent(new Event('input'));
       // Scan (P7a) at its top as well, when asked: the voice's wave read
       // from the screen the rest of this loop is moving.
       if (scanDepth) { el.oscScan.value = String(scanDepth); el.oscScan.dispatchEvent(new Event('input')); }
@@ -474,7 +475,7 @@ with sync_playwright() as pw:
       }
       if (mode) { midiPanic(); setScreenKeys(false); }
       if (scanDepth) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
-      state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); touchRoutings();
+      state.modRoutings = []; el.pictureAmount.value = String(STAGE_DEFAULT); el.pictureAmount.dispatchEvent(new Event('input'));
       { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       state.filter.on = false; el.filterOn.checked = false; el.filterOn.dispatchEvent(new Event('change'));
       el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));

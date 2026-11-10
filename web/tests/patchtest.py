@@ -342,7 +342,7 @@ with sync_playwright() as pw:
       el.midiPoly.click();
       await settle();
       out['poly+filter+lag'] = fits();
-      // Two more rows with a split on - the Layers menu and the Edit switch -
+      // Two more rows with a split on - the Layers menu and the pairing (Edit A / B went to the header in G6) -
       // and a keyboard present, which the layers need and which takes the
       // bottom of the page. Then with layer B on the panel, whose note is the
       // one row B adds to the generator section.
@@ -350,14 +350,16 @@ with sync_playwright() as pw:
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split+keys'] = fits();
-      el.midiEditB.click();
+      // The upper hand, every section its own, so each title's link shows (G6).
+      document.getElementById('editHandB').click();
+      document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
       await settle();
       out['poly+split, editing B'] = fits();
       // The drawbars add the registration row under the menu, on both layers.
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split, editing B, drawbars'] = fits();
-      el.midiEditA.click();
+      document.getElementById('editHandA').click();
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split+keys, drawbars'] = fits();
@@ -378,7 +380,8 @@ with sync_playwright() as pw:
       out['poly+split+keys, morph, the voice filter on'] = fits();
       el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change'));
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
-      el.midiEditA.click();
+      document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+      document.getElementById('editHandA').click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       setScreenKeys(false);
       el.midiDyad.click();

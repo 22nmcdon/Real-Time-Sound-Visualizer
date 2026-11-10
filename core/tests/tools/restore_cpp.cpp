@@ -60,7 +60,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
   o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
   o.set("reverbMix", num(t.reverbMix)); o.set("reverbSize", num(t.reverbSize)); o.set("reverbTone", num(t.reverbTone));
   o.set("reverbPreMs", num(t.reverbPreMs)); o.set("reverbSpread", num(t.reverbSpread));
-  o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn));
+  o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn)); o.set("timeOwn", num(t.timeOwn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
   o.set("planeTwist", num(t.planeTwist)); o.set("planeSnap", num(t.planeSnap));
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
       else if (what == "change") {
         const bool checked = value && value->type == Json::Type::Bool && value->b;
         scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, lfos);
-      } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys);
+      } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys, &matrix);
       else if (what == "fade") scope::fadeFromPage(matrix, value ? *value : Json::null());
       else if (what == "keys") { keys.setPresent(value && value->type == Json::Type::Bool && value->b); keys.frame(0); }
     } else {
@@ -250,6 +250,17 @@ int main(int argc, char** argv) {
     out.set("lfos", lfoList);
     out.set("mod", str(scope::Matrix::encode(matrix.routings())));
     out.set("kept", str(scope::Matrix::encode(matrix.kept())));
+    // The upper hand's own depths (G6), as modB writes them.
+    out.set("keptB", str(scope::Matrix::encodeB(matrix.kept())));
+    {
+      // The hands (G6): the sections the upper hand has its own of, and the Picture section's two on each.
+      Json hands = Json::object(), own = Json::array(), picture = Json::array();
+      for (int k = 0; k < scope::kHandSections; k++)
+        if (brain.handOwn[static_cast<std::size_t>(k)]) own.a.push_back(str(scope::handSections()[static_cast<std::size_t>(k)].name));
+      for (const auto& h : brain.pictureHands) { Json p = Json::array(); p.a.push_back(num(h.amount)); p.a.push_back(num(h.strike)); picture.a.push_back(p); }
+      hands.set("own", own); hands.set("picture", picture); hands.set("edit", num(keys.edit()));
+      out.set("hands", hands);
+    }
     {
       Json silent = Json::array();
       for (const auto& id : matrix.silent()) silent.a.push_back(str(id));
@@ -307,7 +318,7 @@ int main(int argc, char** argv) {
     Json scan = Json::object();
     scan.set("soft", num(brain.scanSoft)); scan.set("persistence", str(brain.panel.select("persistence")));
     // P7b's: the strike as a fraction and what each layer's Scan reads, the brain's own and not the panel's.
-    scan.set("strike", num(brain.scanStrike));
+    scan.set("strike", num(brain.scanStrike)); scan.set("strikeB", num(brain.scanStrikeB));
     Json reads = Json::array();
     for (const auto& r : brain.scanReads) reads.a.push_back(str(r));
     scan.set("reads", reads);

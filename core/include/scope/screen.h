@@ -247,7 +247,8 @@ class PictureRun {
       const bool hasA = two && shapeOf((*figures)[0], a), hasB = two && shapeOf((*figures)[1], b);
       layers_.step(two, hasA ? &a : nullptr, hasB ? &b : nullptr, elapsed_, spect, limiting);
     }
-    matrix.setStageAmount(brain_.panel.range("pictureAmount") / 100);
+    // Each hand's Picture amount (G6), which the sliders show one of.
+    matrix.setStageAmount(brain_.pictureHands[0].amount / 100, brain_.pictureHands[1].amount / 100);
   }
 
   // The zoom made again from its step and what is pointed at it, after the

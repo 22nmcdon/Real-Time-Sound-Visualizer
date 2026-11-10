@@ -208,10 +208,11 @@ with sync_playwright() as pw:
     print("\n--- layer B's own ---")
     v = [{"note": 57, "freq": 220, "velocity": 0.5, "role": "x"}, {"note": 64, "freq": 329.63, "velocity": 0.5, "role": "y"}]
     vb = {"shape": "sine", "amp": 0.4, "voices": [{"note": 69, "freq": 440, "velocity": 0.5, "role": "xy"}]}
-    own = run({"tone": {"voices": v}, "toneB": dict(vb, planeOwn=True, phaserMix=0.9, phaserRate=4, phaserDepth=0.8),
+    # B's own phaser is its bit of timeOwn since G6 (1), where planeOwn gave B its plane and every effect at once.
+    own = run({"tone": {"voices": v}, "toneB": dict(vb, timeOwn=1, phaserMix=0.9, phaserRate=4, phaserDepth=0.8),
                "n": 8820})
-    dryb = run({"tone": {"voices": v}, "toneB": dict(vb, planeOwn=True), "n": 8820})
-    shared = run({"tone": {"voices": v}, "toneB": dict(vb, planeOwn=False, phaserMix=0.9, phaserRate=4, phaserDepth=0.8),
+    dryb = run({"tone": {"voices": v}, "toneB": dict(vb, timeOwn=1), "n": 8820})
+    shared = run({"tone": {"voices": v}, "toneB": dict(vb, timeOwn=0, phaserMix=0.9, phaserRate=4, phaserDepth=0.8),
                   "n": 8820})
     check("with B's own effects B's phaser bends B's pair, and A's is untouched to the bit",
           np.abs(own["BL"] - dryb["BL"]).max() > 0.05 and np.array_equal(own["L"], dryb["L"]),

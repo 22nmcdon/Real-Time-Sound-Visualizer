@@ -113,11 +113,17 @@ inline std::vector<ModDest> genDests() {
 
 // A routing: a source, a destination and a depth. The serial is the page's
 // object identity - new for a new routing or a preset's, kept through an edit.
+// `amountB` is the upper hand's own depth (G6, the hands), where it has one:
+// on a control of a section each hand has its own of, the lower hand's is
+// `amount` and the upper's this; none is the upper at the lower's, which is
+// what every routing meant before G6 (the page's routingDepthB).
 struct Routing {
   std::string sourceId, destId;
   double amount = 0;
   long serial = 0;
+  std::optional<double> amountB;
   std::string key() const { return sourceId + ">" + destId; }  // routeKey
+  double depthB() const { return amountB ? *amountB : amount; }
 };
 
 enum class FadeMode { Off, In, Out, Both };
@@ -201,7 +207,7 @@ class Matrix {
 
   const std::vector<Routing>& routings() const { return routings_; }
   void add(std::string sourceId, std::string destId, double amount) {
-    routings_.push_back({ std::move(sourceId), std::move(destId), amount, ++serial_ });
+    routings_.push_back({ std::move(sourceId), std::move(destId), amount, ++serial_, std::nullopt });
     touch();
   }
   void remove(std::string_view sourceId, std::string_view destId) {
@@ -217,6 +223,13 @@ class Matrix {
     }
     touch();
   }
+  // The upper hand's own depth on a routing (G6), as the page sets `amountB`.
+  void setAmountB(std::string_view sourceId, std::string_view destId, double amount) {
+    for (auto& r : routings_) {
+      if (r.sourceId == sourceId && r.destId == destId) { r.amountB = amount; break; }
+    }
+    touch();
+  }
   // The page's list after an edit there - one added, dropped or given a new
   // depth - as the list now stands. A routing that was already there keeps
   // what it was, its serial among it, as the page's object is kept. The
@@ -228,7 +241,7 @@ class Matrix {
       const auto had = std::find_if(routings_.begin(), routings_.end(), [&](const Routing& o) {
         return o.sourceId == r.sourceId && o.destId == r.destId;
       });
-      next.push_back({ r.sourceId, r.destId, r.amount, had != routings_.end() ? had->serial : ++serial_ });
+      next.push_back({ r.sourceId, r.destId, r.amount, had != routings_.end() ? had->serial : ++serial_, r.amountB });
     }
     routings_ = std::move(next);
     touch();
@@ -236,7 +249,7 @@ class Matrix {
   // A preset's routings: every one new.
   void load(const std::vector<Routing>& list) {
     routings_.clear();
-    for (const auto& r : list) routings_.push_back({ r.sourceId, r.destId, r.amount, ++serial_ });
+    for (const auto& r : list) routings_.push_back({ r.sourceId, r.destId, r.amount, ++serial_, r.amountB });
     touch();
   }
 
@@ -297,13 +310,16 @@ class Matrix {
     touches_++;
     for (auto& r : routings_) {
       const ModSource* s = source(r.sourceId);
-      if (s && s->reach > 0 && !s->reachVaries) r.amount = routingAmount(s, r.amount);
+      if (s && s->reach > 0 && !s->reachVaries) {
+        r.amount = routingAmount(s, r.amount);
+        if (r.amountB) r.amountB = routingAmount(s, *r.amountB);
+      }
     }
     // A fade holds the page's routing object itself, so a depth changed since
     // the last frame is the depth that fades out if the routing goes before
     // the next one. Here the fade holds a copy, brought up to date by serial.
     for (auto& g : gains_) {
-      for (const auto& r : routings_) if (r.serial == g.routing.serial) { g.routing.amount = r.amount; break; }
+      for (const auto& r : routings_) if (r.serial == g.routing.serial) { g.routing.amount = r.amount; g.routing.amountB = r.amountB; break; }
     }
   }
 
@@ -315,6 +331,27 @@ class Matrix {
       out += r.sourceId + ">" + r.destId + "@" + jsToFixed(r.amount, 3);
     }
     return out;
+  }
+  /* encodeRoutingsB (G6): the upper hand's own depths, in `mod`'s grammar, as
+     the setup's `modB` keeps them: only the routings that have one. */
+  static std::string encodeB(const std::vector<Routing>& list) {
+    std::string out;
+    for (const auto& r : list) {
+      if (!r.amountB) continue;
+      if (!out.empty()) out += ";";
+      out += r.sourceId + ">" + r.destId + "@" + jsToFixed(*r.amountB, 3);
+    }
+    return out;
+  }
+  // applyRoutingsB: `modB` onto the list `mod` made, each to the first routing of its pair with none yet.
+  static void applyB(std::vector<Routing>& list, std::string_view text) {
+    for (const auto& b : decode(text)) {
+      for (auto& r : list) {
+        if (r.sourceId != b.sourceId || r.destId != b.destId) continue;
+        if (!r.amountB) r.amountB = b.amount;
+        break;
+      }
+    }
   }
   // decodeRoutings: each part `src>dest@amount`, anything else skipped.
   static std::vector<Routing> decode(std::string_view text) {
@@ -332,7 +369,7 @@ class Matrix {
           && part.substr(gt + 1, atSign - gt - 1).find('@') == std::string_view::npos
           && isAmount(part.substr(atSign + 1))) {
         out.push_back({ std::string(part.substr(0, gt)), std::string(part.substr(gt + 1, atSign - gt - 1)),
-                        jsNumber(part.substr(atSign + 1)), 0 });
+                        jsNumber(part.substr(atSign + 1)), 0, std::nullopt });
       }
       if (end >= text.size()) break;
       at = end + 1;
@@ -430,18 +467,25 @@ class Matrix {
   }
   std::size_t fading() const { return gains_.size(); }
 
-  // stageRoutings: the stage's routes at a Picture amount (nought to one),
-  // made again only when the amount changes, and none at nought.
-  void setStageAmount(double amount) {
-    if (amount == stageAt_) return;
+  // stageRoutings: the stage's routes at each hand's Picture amount (nought
+  // to one; G6), made again only when one changes, the upper hand's its own
+  // depth while the two differ, and none while both are nought.
+  void setStageAmount(double amount, double amountB) {
+    if (amount == stageAt_ && amountB == stageAtB_) return;
     stageAt_ = amount;
+    stageAtB_ = amountB;
     stage_.clear();
-    if (amount > 0) {
+    if (amount > 0 || amountB > 0) {
       long serial = 0;
-      for (const auto& b : kStageBundles) stage_.push_back({ b.source, b.dest, amount * b.weight, --serial });
+      for (const auto& b : kStageBundles) {
+        Routing r { b.source, b.dest, amount * b.weight, --serial, std::nullopt };
+        if (amountB != amount) r.amountB = amountB * b.weight;
+        stage_.push_back(std::move(r));
+      }
     }
     dirty_ = true;
   }
+  void setStageAmount(double amount) { setStageAmount(amount, amount); }
   const std::vector<Routing>& stage() const { return stage_; }
   // How many times the routings have been touched, for a harness to read.
   int touches() const { return touches_; }
@@ -477,10 +521,12 @@ class Matrix {
         c.heldB = layered || (pictured_ && c.source->perLayered) ? sourceNow(*c.source, 1) : c.held;
       } else if (c.index < 0) {
         c.held = loopValue(c, 0);
-        c.heldB = layered || pictured_ ? loopValue(c, 1) : c.held;
+        // B's own while a part has a depth of its own on the upper hand (G6).
+        c.heldB = layered || pictured_ || c.perHand ? loopValue(c, 1) : c.held;
       }
+      // B's depth is A's, worked out as it always was, unless the routing has its own (G6).
       c.amount = c.loop ? c.full : c.full * fadeGain(c.key, 0);
-      c.amountB = c.loop || !layered ? c.amount : c.full * fadeGain(c.key, 1);
+      c.amountB = c.loop ? c.amount : c.fullB * fadeGain(c.key, layered ? 1 : 0);
       r.held = c.index < 0 ? c.held : 0;
       r.heldB = c.index < 0 ? c.heldB : 0;
       r.slot = c.slot;
@@ -553,16 +599,17 @@ class Matrix {
     std::array<Ramp, 2> values;
     std::array<Gate, 2> gates;
   };
-  struct LoopPart { const ModSource* source; std::string key; double amount; bool unipolar; };
+  struct LoopPart { const ModSource* source; std::string key; double amount; bool unipolar; double amountB; };
   struct Compiled {
     int index = -1;
     const ModSource* source = nullptr;
     std::vector<LoopPart> parts;  // the loop's routes into one slot, as one
     bool loop = false;
+    bool perHand = false;  // a part with its own depth on the upper hand (G6)
     double held = 0, heldB = 0;
     int slot = 0;
     std::string key;
-    double full = 0, amount = 0, amountB = 0;
+    double full = 0, fullB = 0, amount = 0, amountB = 0;
     bool unipolar = false;
   };
 
@@ -726,20 +773,21 @@ class Matrix {
       if (s->picture()) {
         auto at = std::find_if(loopBySlot.begin(), loopBySlot.end(), [&](const auto& e) { return e.first == d->slot; });
         if (at == loopBySlot.end()) { loopBySlot.push_back({ d->slot, {} }); at = loopBySlot.end() - 1; }
-        at->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar });
+        at->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar, routingAmount(s, r.depthB()) });
         continue;
       }
       const double amount = routingAmount(s, r.amount);
       Compiled c;
       c.index = s->index; c.source = s; c.slot = d->slot; c.key = r.key();
-      c.full = amount; c.amount = amount; c.unipolar = d->unipolar;
+      c.full = amount; c.fullB = routingAmount(s, r.depthB()); c.amount = amount; c.unipolar = d->unipolar;
       compiled_.push_back(std::move(c));
     }
     // The loop's routes into one slot, combined before they cross into the
     // per-sample loop, so their total is bounded as a picture destination's is.
     for (auto& [at, parts] : loopBySlot) {
       Compiled c;
-      c.slot = at; c.full = 1; c.amount = 1; c.loop = true;
+      c.slot = at; c.full = 1; c.fullB = 1; c.amount = 1; c.loop = true;
+      for (const auto& part : parts) if (part.amountB != part.amount) c.perHand = true;
       c.parts = std::move(parts);
       compiled_.push_back(std::move(c));
     }
@@ -754,7 +802,7 @@ class Matrix {
     double total = 0;
     for (const auto& part : c.parts) {
       const double v = pictured_ && part.source->perLayered ? part.source->perLayer(layer) : part.source->value();
-      const double amount = part.amount * fadeGain(part.key, pictured_ ? layer : 0);
+      const double amount = (layer == 1 ? part.amountB : part.amount) * fadeGain(part.key, pictured_ || c.perHand ? layer : 0);
       total += part.unipolar ? amount * (1 - v) / 2 : amount * v;
     }
     return clampLoop(total);
@@ -776,7 +824,7 @@ class Matrix {
   std::vector<Route> routes_;
   mutable std::vector<Routing> heard_;
   std::vector<Routing> stage_;
-  double stageAt_ = -1;  // no amount yet, so the first is made
+  double stageAt_ = -1, stageAtB_ = -1;  // no amount yet, so the first is made
   std::array<int, 2> strikes_ { 0, 0 };
   bool layered_ = false;
   bool pictured_ = false;

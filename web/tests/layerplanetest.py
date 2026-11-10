@@ -205,7 +205,8 @@ with sync_playwright() as pw:
     b_echo = [["delayMix", 0.5, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]]
     a_echo = [["delayMix", 0.5, 0], ["delayMs", half, 0], ["delayFeedback", 0, 0]]
     dry = core({"sets": []})
-    e_own = core({"sets": [["planeOwn", True, 1]] + b_echo})
+    # B's own delay is its bit of timeOwn since G6 (4), where planeOwn gave B every effect at once.
+    e_own = core({"sets": [["timeOwn", 4, 1]] + b_echo})
     e_off = core({"sets": b_echo})
     e_both = core({"sets": a_echo})
     ratio = lambda lanes, k: peak(lanes[k]) / peak(dry[k])
@@ -225,7 +226,7 @@ with sync_playwright() as pw:
           abs(hb(e_both, fb) / hb(dry, fb) - 0.5) < 0.03 and abs(hb(e_both, fa) / hb(dry, fa) - 1) > 0.1)
     # The echo's level routed, with nothing of its own: a held value of one,
     # so B's depth of one is a push of half - the same half-level echo.
-    eroute = lambda a, bb: {"sets": [["planeOwn", True, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]],
+    eroute = lambda a, bb: {"sets": [["timeOwn", 4, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]],
                             "routes": [{"dest": "gen.echo", "held": 1, "heldB": 1, "amount": a, "amountB": bb}]}
     r_b, r_a = core(eroute(0, 1)), core(eroute(1, 0))
     print("    B's X against dry, the echo's level routed: through B's fade %.3f, through A's alone %.3f"
@@ -234,15 +235,20 @@ with sync_playwright() as pw:
           abs(ratio(r_b, 4) - 0.5) < 0.02, "%.4f" % ratio(r_b, 4))
     check("and through A's fade alone it leaves B's picture as it was", abs(ratio(r_a, 4) - 1) < 1e-3, "%.4f" % ratio(r_a, 4))
 
-    print("\n--- the panel ---")
+    print("\n--- the panel: the Plane's link (G6) ---")
+    # Since G6 a link on the Plane's line, where Together, A and B were: the
+    # same in both, or the hand's own, unlinking copying the hand on the face
+    # into the other and linking copying it back over; the header's Editing
+    # chooses the hand, and the upper's own Turn takes the Turn's place.
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const read = () => ({ row: el.planeLayerRow.hidden, title: el.planeTitle.textContent, turnRow: el.planeTurnRow.hidden,
+      const link = document.getElementById('linkPlane');
+      const read = () => ({ link: link.hidden, said: link.textContent, pressed: link.getAttribute('aria-pressed'),
+        title: el.planeTitle.textContent, turnRow: el.planeTurnRow.hidden, rotateRow: el.rotateRow.hidden,
         own: planeB.own, edit: midi.layers.edit, bMirror: planeB.mirror, aMirror: plane.mirror, bSnap: planeB.snap,
         aTwist: plane.twist, bTwist: planeB.twist, turn: planeB.turn, shownMirror: el.planeMirror.value,
         shownTwist: el.planeTwist.value, genA: genSettings(0).planeMirror, genB: genSettings(1).planeMirror,
-        genOwn: genSettings(1).planeOwn, genTurn: genSettings(1).planeTurn,
-        checked: ['Both', 'A', 'B'].filter((k) => el['planeLayer' + k].getAttribute('aria-checked') === 'true') });
+        genOwn: genSettings(1).planeOwn, genTurn: genSettings(1).planeTurn });
       const out = {};
       out.one = read();
       setScreenKeys(true); setMidiMode('poly');
@@ -250,37 +256,36 @@ with sync_playwright() as pw:
       midi.layers.point = 60; await wait(80);
       el.planeSnap.value = '5'; el.planeSnap.dispatchEvent(new Event('change'));
       out.layered = read();
-      el.planeLayerB.click(); await wait(30); out.b = read();
+      document.getElementById('editHandB').click(); link.click(); await wait(30); out.b = read();
       el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change'));
       el.planeTurn.value = '25'; el.planeTurn.dispatchEvent(new Event('input'));
       out.bMoved = read();
-      el.planeLayerA.click(); await wait(30);
+      document.getElementById('editHandA').click(); await wait(30);
       el.planeTwist.value = '40'; el.planeTwist.dispatchEvent(new Event('input'));
       out.a = read();
-      el.midiEditB.click(); await wait(30); out.playB = read();
-      el.planeLayerBoth.click(); await wait(30); out.both = read();
+      document.getElementById('editHandB').click(); await wait(30); out.playB = read();
+      link.click(); await wait(30); out.both = read();
       return out;
     }""")
     one, lay, pb, moved, pa, playb, both_ = (panel[k] for k in ("one", "layered", "b", "bMoved", "a", "playB", "both"))
-    check("with one layer the Layers row is hidden and the section is the Plane",
-          one["row"] and one["title"] == "Plane" and one["turnRow"], str(one))
-    check("with two it shows, on Together, and a menu moved writes both layers' plane",
-          not lay["row"] and lay["checked"] == ["Both"] and lay["title"] == "Plane" and not lay["own"]
-          and lay["bSnap"] == 5, str(lay))
-    check("B gives B a plane of its own that starts as A's, shows it, and puts B on the panel",
-          pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["title"] == "Plane · B"
-          and pb["checked"] == ["B"] and not pb["turnRow"] and pb["edit"] == 1, str(pb))
+    check("with one layer the link is hidden, the section is the Plane and its Turn the screen's",
+          one["link"] and one["title"] == "Plane" and one["turnRow"] and not one["rotateRow"], str(one))
+    check("with two it shows, the same in both, and a menu moved writes both hands' plane",
+          not lay["link"] and lay["said"] == "Both" and lay["pressed"] == "true" and not lay["own"] and lay["bSnap"] == 5, str(lay))
+    check("unlinked with the upper edited, B has a plane of its own that starts as the hand on the face, shown, its own Turn in the Turn's place",
+          pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["said"] == "Upper" and pb["pressed"] == "false"
+          and not pb["turnRow"] and pb["rotateRow"] and pb["edit"] == 1, str(pb))
     check("a menu and the Turn moved with B's shown are B's, and A's plane is untouched",
           moved["bMirror"] == 1 and moved["aMirror"] == 0 and moved["genB"] == 1 and moved["genA"] == 0
           and moved["turn"] == 0.25 and abs(moved["genTurn"] - math.pi / 2) < 1e-12, str(moved))
-    check("A shows A's plane, without the Turn, and writes A's alone",
-          pa["title"] == "Plane · A" and pa["turnRow"] and pa["aTwist"] == 0.4 and pa["bTwist"] == 0
+    check("the lower shows A's plane with the screen's Turn, and writes A's alone",
+          pa["said"] == "Lower" and pa["turnRow"] and not pa["rotateRow"] and pa["aTwist"] == 0.4 and pa["bTwist"] == 0
           and pa["shownMirror"] == "0" and pa["bMirror"] == 1, str(pa))
-    check("the Play tab's B button shows B's plane here as well",
-          playb["checked"] == ["B"] and playb["shownMirror"] == "1" and playb["shownTwist"] == "0", str(playb))
-    check("Together lets B's own go: B follows A again, and the generator is told",
-          not both_["own"] and both_["genOwn"] is False and both_["bMirror"] == 0 and both_["bTwist"] == 0.4
-          and both_["checked"] == ["Both"], str(both_))
+    check("the upper chosen again shows B's plane",
+          playb["said"] == "Upper" and playb["shownMirror"] == "1" and playb["shownTwist"] == "0", str(playb))
+    check("linked again from the upper, B's plane is copied over A's, B's turn goes, and the generator is told",
+          not both_["own"] and both_["genOwn"] is False and both_["aMirror"] == 1 and both_["aTwist"] == 0
+          and both_["bMirror"] == 1 and both_["turn"] == 0 and both_["said"] == "Both", str(both_))
 
     print("\n--- the screen's rotation, and B turning itself ---")
     # B's figure is drawn second, so the beam's points after a frame are B's.
@@ -301,27 +306,29 @@ with sync_playwright() as pw:
         for (let i = 0; i < n; i++) { sx = Math.max(sx, Math.abs(beamX[i] - cx)); sy = Math.max(sy, Math.abs(beamY[i] - cy)); }
         return { n, x: sx, y: sy };
       };
-      el.planeLayerB.click(); const own = await measure();
-      el.planeLayerBoth.click(); const together = await measure();
+      const link = document.getElementById('linkPlane');
+      link.click(); const own = await measure();
+      link.click(); const together = await measure();
       state.rotate = 0; midiPanic();
       return { own, together };
     }""")
-    print("    B's spread across and up: its own %.1f / %.1f px, Together %.1f / %.1f px"
+    print("    B's spread across and up: its own %.1f / %.1f px, linked %.1f / %.1f px"
           % (spread["own"]["x"], spread["own"]["y"], spread["together"]["x"], spread["together"]["y"]))
-    check("with B's own, the screen's rotation leaves B's figure a diagonal",
+    check("with the Plane the upper's own, the screen's rotation leaves B's figure a diagonal",
           spread["own"]["n"] > 100 and spread["own"]["x"] > 20 and abs(spread["own"]["x"] - spread["own"]["y"]) < 0.1 * spread["own"]["y"],
           str(spread["own"]))
-    check("and Together turns it onto the Y axis, as it turns A",
+    check("and linked turns it onto the Y axis, as it turns A",
           spread["together"]["x"] < 0.1 * spread["together"]["y"] and spread["together"]["y"] > 20, str(spread["together"]))
 
     print("\n--- setup codes ---")
     codes = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      el.planeLayerB.click(); await wait(20);
+      const link = document.getElementById('linkPlane');
+      document.getElementById('editHandB').click(); if (linked('plane')) link.click(); await wait(20);
       el.planeSnap.value = '6'; el.planeSnap.dispatchEvent(new Event('change'));
       el.planeTurn.value = '-12'; el.planeTurn.dispatchEvent(new Event('input'));
       const saved = { ...planeB }, code = encodeSetup(snapshot());
-      el.planeLayerBoth.click(); await wait(20);
+      link.click(); await wait(20);
       const offCode = encodeSetup(snapshot());
       restore(decodeSetup(code)); await wait(20);
       const back = { ...planeB };
@@ -338,72 +345,70 @@ with sync_playwright() as pw:
     check("a code of B's own with a field missing takes A's for it",
           codes["partial"]["own"] and codes["partial"]["mirror"] == 2 and codes["partial"]["snap"] == 5
           and codes["partial"]["turn"] == 0, str(codes["partial"]))
-    check("a code from before it has B following A, and with it off nothing of it is written",
+    check("a code from before it has B following A, and linked nothing of it is written",
           not codes["old"]["own"] and codes["old"]["snap"] == 5 and not codes["offHas"]
           and codes["onHas"] == ["bMirror", "bPlane", "bSnap", "bTurn"], str(codes["onHas"]))
 
-    print("\n--- the Delay module: B's own effects ---")
+    print("\n--- the Delay module's link ---")
     tp = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const read = () => ({ row: el.timeLayerRow.hidden, title: el.timeTitle.textContent, own: planeB.own,
-        edit: midi.layers.edit, aMix: echo.mix, bMix: echoB.mix, aMs: echo.ms, bMs: echoB.ms, bChorus: echoB.chorus,
+      const link = document.getElementById('linkDelay');
+      const read = () => ({ said: link.textContent, own: !linked('delay'), planeOwn: planeB.own,
+        edit: midi.layers.edit, aMix: echo.mix, bMix: echoB.mix, aMs: echo.ms, bMs: echoB.ms, aChorus: echo.chorus, bChorus: echoB.chorus,
         shownMix: el.delayMix.value, shownMs: el.delayMs.value, genA: genSettings(0).delayMix, genB: genSettings(1).delayMix,
-        genBMs: genSettings(1).delayMs, genBChorus: genSettings(1).chorusMix,
-        checked: ['Both', 'A', 'B'].filter((k) => el['timeLayer' + k].getAttribute('aria-checked') === 'true'),
-        planeChecked: ['Both', 'A', 'B'].filter((k) => el['planeLayer' + k].getAttribute('aria-checked') === 'true') });
+        genBMs: genSettings(1).delayMs, genBChorus: genSettings(1).chorusMix, timeOwn: genSettings(1).timeOwn });
       const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       const out = {};
-      // The codes above loaded setups with the layers off.
+      // The codes above loaded setups with the layers off, and with nothing of B's in the rack.
       setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(50);
-      el.planeLayerBoth.click(); await wait(20);
+      document.getElementById('editHandA').click(); await wait(20);
       slide('delayMix', 30); out.together = read();
-      el.timeLayerB.click(); await wait(20); out.b = read();
+      document.getElementById('editHandB').click(); link.click(); await wait(20); out.b = read();
       slide('delayMs', 120); slide('chorusMix', 60); out.bMoved = read();
-      el.timeLayerA.click(); await wait(20); slide('delayMix', 70); out.a = read();
-      el.midiEditB.click(); await wait(20); out.playB = read();
+      document.getElementById('editHandA').click(); await wait(20); slide('delayMix', 70); out.a = read();
+      document.getElementById('editHandB').click(); await wait(20); out.playB = read();
       // B's synced to the tempo, and the tempo moved: the time follows, as A's does.
       el.delaySync.value = '1/4'; el.delaySync.dispatchEvent(new Event('change'));
       setTempo(120); clockStep(performance.now()); const at120 = genSettings(1).delayMs;
       setTempo(60); clockStep(performance.now()); const at60 = genSettings(1).delayMs;
       out.tempo = { at120, at60, aSync: echo.sync, bSync: echoB.sync };
       const code = encodeSetup(snapshot()), saved = { ...echoB };
-      el.timeLayerBoth.click(); await wait(20); out.both = read();
+      link.click(); await wait(20); out.both = read();
       const offCode = encodeSetup(snapshot());
       restore(decodeSetup(code)); await wait(20);
       out.back = { ...echoB }; delete out.back.sent; delete saved.sent; out.saved = saved;
       restore({ bPlane: true, bDelayMix: 45, delayMix: 20, delayFeedback: 60 });
       out.partial = { ...echoB };
-      // Nine of the delay's - five, and F5c's tone, low cut, width and wow - and five of the chorus's.
+      // The delay's nine - five, and F5c's tone, low cut, width and wow - and none of the chorus's, which stayed linked.
       out.onHas = Object.keys(decodeSetup(code)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
       out.offHas = Object.keys(decodeSetup(offCode)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
-      el.planeLayerBoth.click(); await wait(20);
+      restore({});
       return out;
     }""")
     tog, tb, tbm, ta, tplay, tboth = (tp[k] for k in ("together", "b", "bMoved", "a", "playB", "both"))
-    check("with two layers the Delay module has a Layers row, on Together, and its controls write both layers' echo",
-          not tog["row"] and tog["checked"] == ["Both"] and tog["title"] == "Delay" and tog["genA"] == 0.3
-          and tog["genB"] == 0.3, str(tog))
-    check("B there gives B its own effects - the Plane's row says so too - starting as A's, and shows B's",
-          tb["own"] and tb["checked"] == ["B"] and tb["planeChecked"] == ["B"] and tb["bMix"] == 0.3
-          and tb["title"] == "Delay \u00b7 B" and tb["edit"] == 1, str(tb))
-    check("the echo's time and the chorus moved with B's shown are B's, and A's echo is untouched",
-          tbm["bMs"] == 120 and tbm["genBMs"] == 120 and tbm["bChorus"] == 0.6 and tbm["genBChorus"] == 0.6
-          and tbm["aMs"] == 375, str(tbm))
-    check("A shows A's echo and writes A's alone",
-          ta["title"] == "Delay \u00b7 A" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
+    check("with two layers the Delay's link shows, the same in both, and its controls write both hands' echo",
+          tog["said"] == "Both" and not tog["own"] and tog["genA"] == 0.3 and tog["genB"] == 0.3, str(tog))
+    check("unlinked with the upper edited, B has an echo of its own that starts as the hand on the face, and nothing else of its own",
+          tb["own"] and tb["said"] == "Upper" and tb["bMix"] == 0.3 and tb["timeOwn"] == 4 and not tb["planeOwn"]
+          and tb["edit"] == 1, str(tb))
+    check("the echo's time moved with B's shown is B's, A's untouched, and the chorus, linked, moves both",
+          tbm["bMs"] == 120 and tbm["genBMs"] == 120 and tbm["aMs"] == 375
+          and tbm["bChorus"] == 0.6 == tbm["aChorus"] and tbm["genBChorus"] == 0.6, str(tbm))
+    check("the lower shows A's echo and writes A's alone",
+          ta["said"] == "Lower" and ta["aMix"] == 0.7 and ta["bMix"] == 0.3 and ta["genB"] == 0.3
           and ta["shownMs"] == "375", str(ta))
-    check("the Play tab's B button shows B's echo here as well",
-          tplay["checked"] == ["B"] and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))
+    check("the upper chosen again shows B's echo",
+          tplay["said"] == "Upper" and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))
     check("B's own echo synced to a crotchet follows the tempo: 500 ms at 120, 1000 at 60, and A's stays free",
           tp["tempo"] == {"at120": 500, "at60": 1000, "aSync": "", "bSync": "1/4"}, str(tp["tempo"]))
-    check("Together lets B's own go: B's echo follows A's again, and the generator is told",
-          not tboth["own"] and tboth["bMix"] == 0.7 and tboth["bMs"] == 375 and tboth["genB"] == 0.7
-          and tboth["checked"] == ["Both"] and tboth["planeChecked"] == ["Both"], str(tboth))
+    check("linked again from the upper, B's echo is copied over A's, and the generator is told B has none of its own",
+          not tboth["own"] and tboth["aMix"] == 0.3 and tboth["bMix"] == 0.3 and tboth["genA"] == 0.3
+          and tboth["timeOwn"] == 0 and tboth["said"] == "Both", str(tboth))
     check("B's own echo is written into a code and read back as it was",
-          tp["back"] == tp["saved"] and tp["saved"]["sync"] == "1/4" and tp["saved"]["chorus"] == 0.6 and tp["onHas"] == 14,
-          "%r / %r" % (tp["saved"], tp["back"]))
-    check("a code of B's own with a field missing takes A's for it, and with it off none of it is written",
+          tp["back"] == tp["saved"] and tp["saved"]["sync"] == "1/4" and tp["saved"]["chorus"] == 0.6 and tp["onHas"] == 9,
+          "%r / %r %r" % (tp["saved"], tp["back"], tp["onHas"]))
+    check("a code of B's own with a field missing takes A's for it, and linked none of it is written",
           tp["partial"]["mix"] == 0.45 and tp["partial"]["feedback"] == 0.6 and tp["offHas"] == 0, str(tp["partial"]))
     p.close()
 
@@ -425,10 +430,14 @@ with sync_playwright() as pw:
         const w = state.source.getLatestWindow(4096);
         return { lanes: w.length, aX: Math.min(...w[0]), bX: Math.min(...w[2]), bPeak: Math.max(...w[2].map(Math.abs)) };
       };
-      el.planeLayerB.click(); await wait(50);
+      // The links pressed as a hand presses them, so the instrument is told (G6).
+      const hand = (h) => document.getElementById(h ? 'editHandB' : 'editHandA').click();
+      const press = (id) => document.getElementById(id).click();
+      hand(1); press('linkPlane'); await wait(50);
       el.planeMirror.value = '1'; el.planeMirror.dispatchEvent(new Event('change'));
       const own = await lows();
-      el.planeLayerBoth.click();
+      // Linked again from the lower hand, whose plane is bare, so B's goes.
+      hand(0); press('linkPlane');
       const together = await lows();
       // B's own echo, 21 ms late at half level: B's 523 Hz note is ten
       // periods and a fiftieth late, so it adds near enough in step - B's
@@ -440,26 +449,26 @@ with sync_playwright() as pw:
       };
       const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       const eDry = await big();
-      el.timeLayerB.click(); await wait(50);
+      hand(1); press('linkDelay'); await wait(50);
       slide('delayFeedback', 0); slide('delayMs', 21); slide('delayMix', 50);
       const eOwn = await big();
-      el.timeLayerBoth.click();
+      hand(0); press('linkDelay');
       const eBack = await big();
       midiPanic();
       return { own, together, eDry, eOwn, eBack, kind: state.source.kind, driver: lfoDriver() };
     }""")
-    print("    %s: lowest X, A's and B's: B's own mirror %.3f %.3f; Together %.3f %.3f"
+    print("    %s: lowest X, A's and B's: B's own mirror %.3f %.3f; linked %.3f %.3f"
           % (inst["kind"], inst["own"]["aX"], inst["own"]["bX"], inst["together"]["aX"], inst["together"]["bX"]))
     check("on the instrument, B's own mirror moved on its panel folds the B lanes it draws, and not A's",
           inst["kind"] == "host" and inst["own"]["lanes"] == 4 and inst["own"]["bX"] > -1e-3 and inst["own"]["bPeak"] > 0.05
           and inst["own"]["aX"] < -0.05, str(inst["own"]))
-    check("and Together, with A's plane bare, folds neither", inst["together"]["bX"] < -0.05, str(inst["together"]))
+    check("and linked again from the lower hand, A's plane bare, folds neither", inst["together"]["bX"] < -0.05, str(inst["together"]))
     ed, eo, ebk = inst["eDry"], inst["eOwn"], inst["eBack"]
-    print("    B's lanes and A's, largest: dry %.3f %.3f; B's own echo %.3f %.3f; Together again %.3f %.3f"
+    print("    B's lanes and A's, largest: dry %.3f %.3f; B's own echo %.3f %.3f; linked again %.3f %.3f"
           % (ed["b"], ed["a"], eo["b"], eo["a"], ebk["b"], ebk["a"]))
     check("on the instrument, B's own echo moved on its panel makes B's lanes half as big again, and not A's",
           abs(eo["b"] / ed["b"] - 1.5) < 0.05 and abs(eo["a"] / ed["a"] - 1) < 0.02, "%.3f %.3f" % (eo["b"] / ed["b"], eo["a"] / ed["a"]))
-    check("and Together, where the echo is A's and dry, B's are as they were", abs(ebk["b"] / ed["b"] - 1) < 0.02,
+    check("and linked again from the lower, where the echo is A's and dry, B's are as they were", abs(ebk["b"] / ed["b"] - 1) < 0.02,
           "%.3f" % (ebk["b"] / ed["b"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))

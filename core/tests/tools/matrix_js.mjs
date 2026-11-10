@@ -16,7 +16,8 @@
      route SRC DEST AMOUNT   unroute SRC DEST   amount SRC DEST A
      load SRC>DEST@A;...   edit SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
      env LAYER key=value...   layers 0|1   strike LAYER   at MS   frame   routes   encode   dests
-     stage PERCENT (the Picture slider moved, as its handler takes it)
+     stage PERCENT [PERCENT_B] (the Picture amount on each hand, G6; one is both)
+     amountb SRC DEST A (a routing's own depth on the upper hand, G6)   loadb CODE CODE_B (a setup's mod and modB)   encodeb
    Usage: node matrix_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -59,8 +60,8 @@ const LIFTED = [
   "fadeTravel", "rampMs", "rampAt", "rampDone", "rampTo", "rampStill", "gatePhase", "gateSet", "fadeGain",
   "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
   "eventSeen", "fireEvents", "genMod", "genRoutes", "modDirty", "repaintQueued", "touchRoutings", "compileRoutes",
-  "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings",
-  "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutings", "isStageKey",
+  "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings", "routingDepthB", "encodeRoutingsB", "applyRoutingsB",
+  "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutingsAtB", "stageRoutings", "isStageKey",
 // The drawings' two slots (G2) only while the page still names them, as js_core.mjs has it.
 ].filter((name) => !["SWING_SLOT", "SPIN_SLOT"].includes(name) || page.includes("\nconst " + name + " = "));
 
@@ -79,16 +80,17 @@ const noop = () => {};
 // The page in the plugin sends its routings after an edit; this harness is no plugin.
 const saveFade = noop, paintRoutings = noop, hostRoutings = noop;
 const requestAnimationFrame = (f) => f();
-// The Picture slider at nought, where the page's starts at sixty, so that the
-// runs from before the picture stage hear what they always heard; the
-// stage's own runs move it.
-const el = { pictureAmount: { value: "0" } };
+// The Picture amount at nought on both hands, where the page's starts at
+// sixty, so that the runs from before the picture stage hear what they
+// always heard; the stage's own runs move it, each hand's (G6).
+const el = {};
+const pictureHands = [{ amount: 0, strike: 50 }, { amount: 0, strike: 50 }];
 `;
 
 const source = STUBS + LIFTED.map(definition).join("\n")
   + statement('for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));')
   + visualLoop() + `
-return { state, midi, log, fade, el, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
+return { state, midi, log, fade, el, pictureHands, encodeRoutingsB, applyRoutingsB, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
          setFadeEnvelope, fadeStep, fireEvents, applyVisual, workletRoutes, encodeRoutings, decodeRoutings,
          routingsHeard, routeKey,
          setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty,
@@ -165,7 +167,18 @@ function run(commands) {
         part[k] = v === "true" ? true : v === "false" ? false : Number(v);
       }
       m.setFadeEnvelope(part, Number(a[0]));
-    } else if (cmd === "stage") { m.el.pictureAmount.value = a[0]; m.touchRoutings(); }
+    } else if (cmd === "stage") {
+      m.pictureHands[0].amount = Number(a[0]);
+      m.pictureHands[1].amount = Number(a[1] === undefined ? a[0] : a[1]);
+      m.touchRoutings();
+    } else if (cmd === "amountb") {
+      const r = m.state.modRoutings.find((x) => x.sourceId === a[0] && x.destId === a[1]);
+      if (r) r.amountB = Number(a[2]);
+      m.touchRoutings();
+    } else if (cmd === "loadb") {
+      m.state.modRoutings = m.applyRoutingsB(m.decodeRoutings(a[0] || ""), a[1] || "");
+      m.touchRoutings();
+    }
     else if (cmd === "layers") m.setLayered(a[0] === "1");
     else if (cmd === "strike") m.midi.strikesBy[Number(a[0])]++;
     else if (cmd === "at") m.setClock(Number(a[0]));
@@ -183,12 +196,14 @@ function run(commands) {
       const routes = m.workletRoutes();
       said = ["routes", routes.map((r) => [show(r.index), show(r.held), show(r.heldB), r.slot, show(r.amount), show(r.amountB), show(r.unipolar)].join("/")).join("+") || "-"];
     } else if (cmd === "encode") said = ["code", m.encodeRoutings(m.state.modRoutings) || "-"];
+    else if (cmd === "encodeb") said = ["codeb", m.encodeRoutingsB(m.state.modRoutings) || "-"];
     // The generator's destinations as the page registers them.
     else if (cmd === "dests") said = ["dests", [...m.MOD_DESTS.values()].filter((d) => d.kind === "audio")
       .map((d) => d.id + "/" + d.slot + "/" + show(d.unipolar === true)).join("+")];
     else throw new Error("unknown command " + cmd);
 
-    const amounts = m.state.modRoutings.map((r) => show(r.amount)).join("+") || "-";
+    // And each upper hand's (G6): its own, or "u" where it is the lower's.
+    const amounts = m.state.modRoutings.map((r) => show(r.amount) + "/" + show(r.amountB)).join("+") || "-";
     lines.push([cmd, ...m.log.flatMap((l) => ["::", l]), "|", ...said, "amounts", amounts,
                 "heard", m.routingsHeard().length, "gains", m.fade.gains.size, "dirty", show(m.dirty())].join(" "));
   }

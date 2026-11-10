@@ -48,10 +48,11 @@ def null(name, red, detail=""):
 # Controls the doc marks as removed by a later stage: no words, on purpose.
 # Anything else without words fails. (The drawings' rows and the keyboard's
 # drive and play were here until G2 took them off the page; A and B and the
-# views until G4 did. Enlarge's controls, which G4 added, are in the toolbar
-# and so asked of, though they show only while the screen is enlarged.)
-REMOVED = {"midiEditA", "midiEditB",
-           "planeTurn", "planeLayerBoth", "planeLayerA", "planeLayerB", "timeLayerBoth", "timeLayerA", "timeLayerB"}
+# views until G4 did; Edit A / B, the rack's Together / A / B and B's turn on
+# a row of its own until G6, which gave the turn the Turn's place and words of
+# its own. Enlarge's controls, which G4 added, are in the toolbar and so asked
+# of, though they show only while the screen is enlarged.)
+REMOVED = set()
 
 # Every control the face shows, and those without words.
 UNSAID = """(removed) => {

@@ -72,6 +72,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `keystest.py` | the keyboard on the screen: pointer, latch and the letters |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
 | `layouttest.py` | the layout: the modulation cards (four since G5a) and their editor, the selected source's panel and meter, reaching any control, search and where it lands |
+| `handstest.py` | the hands (G6): the header's Editing shown only with two hands and naming them Lower and Upper on a split, A and B layered; a link on each of the eleven sections and none on the Keyboard; linked, a hand moved moves both, unlinked the one on the face; unlinking starting the other hand as a copy and linking copying the hand on the face over; a new split linked throughout and a code from before G6 loading each section with B values as the hand's own; the Picture's Amount and Strike per hand, as the stage's routes and a note's light; a routing on a linked control at one depth and on an unlinked one the edited hand's, its rows saying which, and `modB`; the tab cards' *differs in*, each with its null |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
@@ -94,7 +95,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers; with the modulation row in place across the window (G5a), cards at 1400x900 and chips at the four smaller windows, and the null that the cards' row puts Ink over at 1100x860 |
 | `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, kept by a restore since G5b (forgotten until then) and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
-| `ringtest.py` | modulation on a knob (G5b): the selected source's ring and its direction on an asymmetric pair (+40% and -25% on the Frequency), the others' ticks, the dot as the sum; Alt-drag and Shift+Alt with real keys, the ring's handle; the editor named for the knob, its bar's bands, a typed depth; the right-click menu with and without sources and on a menu, Reset, Type a value, Copy to layer B, What is this?, Esc, a click away, the arrows, Shift+F10, a long press, the browser's own menu prevented and left to a text box; the info line's right-click; the silence stored, restored, through a code and through the plugin's text, each with its null |
+| `ringtest.py` | modulation on a knob (G5b): the selected source's ring and its direction on an asymmetric pair (+40% and -25% on the Frequency), the others' ticks, the dot as the sum; Alt-drag and Shift+Alt with real keys, the ring's handle; the editor named for the knob, its bar's bands, a typed depth; the right-click menu with and without sources and on a menu, Reset, Type a value, Copy to the other hand (on a section each hand has its own of, since G6), What is this?, Esc, a click away, the arrows, Shift+F10, a long press, the browser's own menu prevented and left to a text box; the info line's right-click; the silence stored, restored, through a code and through the plugin's text, each with its null |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
@@ -5585,3 +5586,40 @@ WebKitGTK (`xvfb-run -a`), and what it cannot do is press the X server's right
 button: the web view is a child process's window, beyond JUCE, and the
 container has no XTest tool, so it dispatches the contextmenu event WebKit
 itself would at the knob's centre and reads whether the page prevents it.
+
+**A linked section is one value held twice.** The hands (G6) did not give the
+generator a "linked" switch: layer B keeps every field it had, and a linked
+section is one whose B values are kept equal to A's - every hand on a linked
+control writes both layers (`handSet`), the rack's linked modules are copied
+into B's on every sync, and a setup without a section's B fields loads B as A.
+Two things followed that were nearly missed. While B is on the panel, layer
+A's control values are kept aside (`panelKeptA`) and put back when A is shown;
+a both-hands write has to update that copy too, or showing A again puts back
+the value from before the write, and the generator and the panel disagree.
+And the rack's modules each have a link, but B's time stage was one object:
+with the delay B's own and the chorus shared, B's stage would have swept its
+chorus from wherever it last stopped, not with A's. So a shared module in B's
+stage is A's to the sample, copied after each tick (`timeShare`, page and
+core), and parity holds a shared module beside an own one to Together's sound
+exactly. The link itself is not stored: it is read off which B fields a setup
+has (`linksOfSetup`, `scope::restoreSetup`), which is what makes a code from
+before G6 - every B value written - load each hand its own.
+
+**A routing's depth on one hand is a second depth, not a second routing.** On a
+section each hand has its own of, a routing has the lower hand's depth in
+`amount` and the upper's in `amountB`, and a hand without it has nought there.
+Two routings of one pair would each have a fade and a key (`routeKey`), so a
+hand's depth changed would have faded a new routing in. The upper's depths are
+stored beside `mod` as `modB`, in `mod`'s grammar, as `modSilent` is, so `mod`
+keeps its grammar and an older reader plays every routing at the lower's
+depth. The stage's routes take the same shape: at two Picture amounts the
+upper hand's push is its own depth, and the loop's combined route asks B's
+value of its parts whenever any part has one (`perHand`), with or without a
+layer fade or pictures of their own - and asks it of the shared picture
+unless those pictures are live, which the first version did not, and the
+fuzzed matrix runs found.
+
+**Parity reads the page while it runs.** `core/tests/parity.py` lifts functions
+out of `web/scope.html` each time a harness starts, over ten minutes and more,
+so a page edited while it runs can fail a harness halfway with an error that is
+not the core's. Run it once the page is still.

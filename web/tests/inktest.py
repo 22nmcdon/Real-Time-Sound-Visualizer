@@ -159,11 +159,10 @@ with sync_playwright() as pw:
     print("\n--- the loop overlay's rings ---")
     rings = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      // Scan depth is a layer's own, so each is set with its layer on the panel.
-      setLoopOverlay(true); setControl('oscScan', 60);
-      el.midiEditB.click(); setControl('oscScan', 60); el.midiEditA.click(); await wait(900);
+      // Scan depth is the Picture section's, which moves both hands while it is linked (G6).
+      setLoopOverlay(true); setControl('oscScan', 60); await wait(900);
       const r = (loopOverlay.drawn && loopOverlay.drawn.rings || []).map((x) => [x.layer, x.ink]);
-      setLoopOverlay(false); setControl('oscScan', 0); el.midiEditB.click(); setControl('oscScan', 0); el.midiEditA.click();
+      setLoopOverlay(false); setControl('oscScan', 0);
       return r;
     }""")
     check("each ring is stroked in its own figure's ink: A charcoal, B plum",

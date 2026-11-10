@@ -180,17 +180,19 @@ with sync_playwright() as pw:
 
     print("\n--- A and B are gone (G4) ---")
     # The versions went with G4: the header has neither button, and the page
-    # no second history. The Keyboard's Edit A / B is a different thing - the
-    # hand being edited - and stays until G6; it must not be caught up here.
+    # no second history. The hands' selector is a different thing - the hand
+    # being edited, which G6 moved here from the Keyboard's Edit A / B - and
+    # names its hands A and B while layered; it must not be caught up here.
     GONE = """() => ({ buttons: ['abA', 'abB', 'viewScope', 'viewBench'].filter((id) => document.getElementById(id)),
       versions: typeof versions !== 'undefined', inHeader: Array.from(document.querySelectorAll('header button'))
         // The header's own row, not the panels it opens: Perform's morph and Settings' fade have A and B ends.
-        .filter((b) => !b.closest('.menu-panel') && /^[AB]$/.test(b.textContent.trim())).map((b) => b.id),
-      editAB: !!document.getElementById('midiEditA') && !!document.getElementById('midiEditB') })"""
+        .filter((b) => !b.closest('.menu-panel') && !b.closest('#handsPick') && /^[AB]$/.test(b.textContent.trim())).map((b) => b.id),
+      editAB: !!document.getElementById('midiEditA') || !!document.getElementById('midiEditB'),
+      hands: !!document.querySelector('header #handsPick #editHandA') && !!document.querySelector('header #handsPick #editHandB') })"""
     gone = p.evaluate(GONE)
     check("no A or B button in the header, no Scope or Bench switch, and one history behind undo",
           gone["buttons"] == [] and not gone["versions"] and gone["inHeader"] == [], str(gone))
-    check("and the Keyboard's Edit A / B, which is the hands' and G6's, is still there", gone["editAB"], str(gone))
+    check("and the Keyboard's Edit A / B went in G6, the header's Editing in its place", not gone["editAB"] and gone["hands"], str(gone))
     # The null: an A put back in the header, as the page had it before G4, is found.
     was = p.evaluate("""(read) => { const b = document.createElement('button'); b.id = 'abA'; b.textContent = 'A';
       document.getElementById('undoButton').before(b); const r = (0, eval)('(' + read + ')')(); b.remove(); return r; }""", GONE)

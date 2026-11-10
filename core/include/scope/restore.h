@@ -271,8 +271,16 @@ struct Brain {
   // Scan's softness in cells (P7a), the page's `scan.soft`: the slider's tenths.
   double scanSoft = 3;
   /* A note's strike on the screen (P7b), the page's `scan.strike`: the
-     slider's percent as a fraction, a full-velocity note's light. */
-  double scanStrike = 0.5;
+     slider's percent as a fraction, a full-velocity note's light; and the
+     upper hand's (G6, `scan.strikeB`). */
+  double scanStrike = 0.5, scanStrikeB = 0.5;
+  /* The hands (G6): which sections the upper hand has its own of, by
+     HandSection (the page's handLinks, false there where true here), and the
+     Picture section's Amount and Strike on each hand in the sliders' units
+     (pictureHands), which the sliders show one of. */
+  std::array<bool, 11> handOwn {};
+  struct PictureHand { double amount = 60, strike = 50; };
+  std::array<PictureHand, 2> pictureHands {};
   // What each layer's Scan reads (P7b, cross-scan): the page's `scan.reads`, "A", "B" or "both".
   std::array<std::string, 2> scanReads { { "A", "B" } };
   // Whose sound layer A's picture moves, and B's (P6): "A", "B" or "both" - the page's layerPictures.moves.
@@ -477,6 +485,71 @@ inline bool isVoiceControl(std::string_view id) {
   return id.substr(0, 3) == "osc" || id.substr(0, 3) == "shp" || id.substr(0, 3) == "vcf";
 }
 
+/* The hands (G6, the-face-second-pass.md), the page's HAND_SECTIONS: each
+   section a hand can have its own of, with its link's button, its controls,
+   its B fields and the routings' destinations that follow it, in the page's
+   order. A section is the upper hand's own while a setup has any of its B
+   fields (a rack module's only with bPlane on, as they always were) or a
+   routing with its own depth on the upper hand on one of its destinations;
+   linked, editing either hand edits both, and the two are one value. The
+   page's comment over HAND_SECTIONS says why the link is read off the fields
+   rather than stored. */
+enum HandSection : int {
+  kHandGen, kHandAmpEnv, kHandVcf, kHandOsc, kHandShp, kHandPicture, kHandPlane, kHandPhaser, kHandChorus, kHandDelay,
+  kHandReverb, kHandSections
+};
+struct HandSectionSpec {
+  const char* name; const char* link; std::vector<std::string_view> controls, fields, dests; int bit;
+};
+inline const std::array<HandSectionSpec, kHandSections>& handSections() {
+  static const std::array<HandSectionSpec, kHandSections> specs { {
+    { "gen", "linkGen", { "amp", "shape", "bars", "morph", "width", "table" },
+      { "bAmp", "bShape", "bBars", "bMorph", "bWidth", "bTable" },
+      { "gen.amp", "gen.morph", "gen.width", "gen.table", "gen.bar0", "gen.bar1", "gen.bar2", "gen.bar3", "gen.bar4",
+        "gen.bar5", "gen.bar6", "gen.bar7", "gen.bar8" }, 0 },
+    { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease" }, { "bAtk", "bDec", "bSus", "bRel" }, {}, 0 },
+    { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel" },
+      { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel" }, { "gen.vcf" }, 0 },
+    { "osc", "linkOsc", { "oscRatio", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSubOct", "oscSubShape",
+                          "oscUnison", "oscSpread" },
+      { "bRatio", "bFm", "bBend", "bBendAt", "bRing", "bSync", "bSub", "bSubOct", "bSubShape", "bUnison", "bSpread" },
+      { "gen.fm", "gen.sync", "gen.bend", "gen.bendAt" }, 0 },
+    { "shp", "linkShp", { "shpDrive", "shpFold", "shpBits", "shpRate" }, { "bDrive", "bFold", "bBits", "bRate" },
+      { "gen.drive", "gen.fold" }, 0 },
+    { "picture", "linkPicture", { "pictureAmount", "oscScan", "scanStrike" }, { "bPictureAmount", "bScan", "bScanStrike" }, {}, 0 },
+    { "plane", "linkPlane", { "planeMirror", "planeLimit", "planeRadius", "planeTwist", "planeSnap", "planeScaleX", "planeScaleY",
+                              "planeShear", "planeTurn" },
+      { "bMirror", "bLimit", "bRadius", "bTwist", "bSnap", "bScaleX", "bScaleY", "bShear", "bTurn" },
+      { "gen.radius", "gen.twist", "gen.turn" }, 0 },
+    { "phaser", "linkPhaser", { "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback" },
+      { "bPhaserMix", "bPhaserRate", "bPhaserDepth", "bPhaserFeedback" }, { "gen.phaser" }, 1 },
+    { "chorus", "linkChorus", { "chorusMix", "chorusRate", "chorusDepth", "chorusTime", "chorusFeedback" },
+      { "bChorusMix", "bChorusRate", "bChorusDepth", "bChorusTime", "bChorusFeedback" }, {}, 2 },
+    { "delay", "linkDelay", { "delayMix", "delayMs", "delaySync", "delayFeedback", "delayPingPong", "delayTone", "delayLowCut",
+                              "delayWidth", "delayWow" },
+      { "bDelayMix", "bDelayMs", "bDelaySync", "bDelayFeedback", "bDelayPingPong", "bDelayTone", "bDelayLowCut", "bDelayWidth",
+        "bDelayWow" },
+      { "gen.echo", "gen.echoTime", "gen.delayTone" }, 4 },
+    { "reverb", "linkReverb", { "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread" },
+      { "bReverbMix", "bReverbSize", "bReverbTone", "bReverbPre", "bReverbSpread" },
+      { "gen.reverb", "gen.reverbSize", "gen.reverbTone" }, 8 },
+  } };
+  return specs;
+}
+// The section a control or a routing's destination is in, or none (-1): a shared one.
+inline int handSectionOfControl(std::string_view id) {
+  for (int k = 0; k < kHandSections; k++)
+    for (const auto c : handSections()[static_cast<std::size_t>(k)].controls) if (c == id) return k;
+  return -1;
+}
+inline int handSectionOfDest(std::string_view id) {
+  for (int k = 0; k < kHandSections; k++)
+    for (const auto d : handSections()[static_cast<std::size_t>(k)].dests) if (d == id) return k;
+  return -1;
+}
+// linked: none, or a section the hands share.
+inline bool handLinked(const std::array<bool, kHandSections>& own, int sec) { return sec < 0 || !own[static_cast<std::size_t>(sec)]; }
+
 // The voice's controls from the panel into one layer, each through its law,
 // as `restore` sends layer A's after writing them.
 inline void applyVoiceLaws(Generator& gen, const Controls& panel, int layer) {
@@ -575,8 +648,67 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
   b.keptA = layer == 1;
   b.panelLayer = layer;
 }
+static_assert(kHandSections == 11, "Brain::handOwn has a place for each section");
+inline bool handLinked(const Brain& b, int sec) { return handLinked(b.handOwn, sec); }
+
+/* handSet: a control on a section with a link, written - both layers while
+   the section is linked, with A's kept value following while B is on the
+   panel (so showing A again shows what A has); the layer on the panel
+   otherwise. The page's handSet. */
+inline void keptAFollows(Brain& b, std::string_view id) {
+  if (b.panelLayer != 1 || !b.keptA) return;
+  for (const auto& row : layerControls()) {
+    if (row.id != id) continue;
+    for (auto& [kept, text] : b.panelKeptA) if (kept == id) text = layerPanelValue(b.panel, row);
+  }
+}
+inline void handSet(Brain& b, Generator& gen, std::string_view id, std::string_view field, double x) {
+  if (!handLinked(b, handSectionOfControl(id))) { gen.set(field, x, b.panelLayer); return; }
+  gen.set(field, x, 0); gen.set(field, x, 1);
+  keptAFollows(b, id);
+}
+inline void handSet(Brain& b, Generator& gen, std::string_view id, std::string_view field, std::string_view text) {
+  if (!handLinked(b, handSectionOfControl(id))) { gen.set(field, text, b.panelLayer); return; }
+  gen.set(field, text, 0); gen.set(field, text, 1);
+  keptAFollows(b, id);
+}
+// The hands a section's controls write: both while it is linked, the one on the face otherwise.
+inline bool handWrites(const Brain& b, const Keyboard& keys, int sec, int hand) {
+  return handLinked(b, sec) || keys.editLayer() == hand;
+}
+/* The Picture section's Amount or Strike written (pictureWrite), and the
+   section's two sliders onto the hand it shows (syncPictureHand). */
+inline void pictureWrite(Brain& b, const Keyboard& keys, bool strike, double v) {
+  for (int hand = 0; hand < 2; hand++) {
+    if (!handWrites(b, keys, kHandPicture, hand)) continue;
+    (strike ? b.pictureHands[static_cast<std::size_t>(hand)].strike : b.pictureHands[static_cast<std::size_t>(hand)].amount) = v;
+  }
+  b.scanStrike = b.pictureHands[0].strike / 100;
+  b.scanStrikeB = b.pictureHands[1].strike / 100;
+}
+inline void syncPictureHand(Brain& b, const Keyboard& keys) {
+  const Brain::PictureHand& hand = b.pictureHands[handLinked(b, kHandPicture) ? 0 : static_cast<std::size_t>(keys.editLayer())];
+  b.panel.setRangeNumber("pictureAmount", hand.amount);
+  b.panel.setRangeNumber("scanStrike", hand.strike);
+  b.scanStrike = b.pictureHands[0].strike / 100;
+  b.scanStrikeB = b.pictureHands[1].strike / 100;
+}
+// The amount moved by the pedal or the wheel, as the page's slider moved by them: as a hand moves it.
+inline void pictureAmountTo(Brain& b, const Keyboard& keys, double v) {
+  b.panel.setRangeNumber("pictureAmount", v);
+  pictureWrite(b, keys, false, b.panel.range("pictureAmount"));
+}
+// B's own time modules, the generator's `timeOwn` (timeOwnMask).
+inline int timeOwnMask(const Brain& b) {
+  int mask = 0;
+  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb })
+    if (!handLinked(b, sec)) mask |= handSections()[static_cast<std::size_t>(sec)].bit;
+  return mask;
+}
+
 // The plane section's, defined with the other refreshers below.
 inline std::string planeSide(const Brain& b, const Keyboard& keys);
+inline std::string echoSides(const Brain& b, const Keyboard& keys);
 inline void syncPlanePanel(Brain& b, const Keyboard& keys);
 inline void syncEchoPanel(Brain& b, const Keyboard& keys);
 // syncLayerPanel: the layer the keyboard says is being edited, on the panel.
@@ -584,13 +716,17 @@ inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys)
   showLayerOnPanel(b, gen, b.panelHeldOnA ? 0 : keys.editLayer());
   // syncPlaneLayer: the plane section says whose plane it shows the moment that changes.
   if (planeSide(b, keys) != b.planeShown) syncPlanePanel(b, keys);
-  if (planeSide(b, keys) != b.echoShown) syncEchoPanel(b, keys);
+  if (echoSides(b, keys) != b.echoShown) syncEchoPanel(b, keys);
+  syncPictureHand(b, keys);
 }
 
 // Layer B's sound: B's own field where the setup gives one, else what the
 // setup gives layer A - a number held to its slider's range, a registration
 // that does not read falling back to A's sliders - and nothing at all for a
 // value that cannot be used.
+// The hand on the face copied into the other (G6), defined with the links below.
+inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to);
+
 template <class Field>
 void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& panel) {
   static const std::pair<const char*, const char*> keys[] = {
@@ -647,13 +783,20 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
 /* planeEditsB, planeTarget: which layer's plane the section's controls are -
    B's while B has its own and is the layer on the panel, A's otherwise. */
 inline bool planeEditsB(const Brain& b, const Keyboard& keys) {
-  return !b.panelHeldOnA && keys.layersOn() && b.planeB.own && keys.editLayer() == 1;
+  return !b.panelHeldOnA && keys.layersOn() && !handLinked(b, kHandPlane) && keys.editLayer() == 1;
 }
 inline Brain::PlaneShape& planeTarget(Brain& b, const Keyboard& keys) {
   return planeEditsB(b, keys) ? static_cast<Brain::PlaneShape&>(b.planeB) : b.plane;
 }
-inline std::string planeSide(const Brain& b, const Keyboard& keys) {
-  return !keys.layersOn() ? "one" : !b.planeB.own ? "both" : planeEditsB(b, keys) ? "b" : "a";
+// rackSide: what a module of the rack shows, for knowing when to show it again.
+inline std::string rackSide(const Brain& b, const Keyboard& keys, int sec) {
+  // While a setup is restored the panel is A's, and says so, so the hand is shown again once it is done.
+  return !keys.layersOn() ? "one" : handLinked(b, sec) ? "both" : !b.panelHeldOnA && keys.editLayer() == 1 ? "b" : "a";
+}
+inline std::string planeSide(const Brain& b, const Keyboard& keys) { return rackSide(b, keys, kHandPlane); }
+inline std::string echoSides(const Brain& b, const Keyboard& keys) {
+  return rackSide(b, keys, kHandPhaser) + "," + rackSide(b, keys, kHandChorus) + "," + rackSide(b, keys, kHandDelay) + ","
+       + rackSide(b, keys, kHandReverb);
 }
 inline void planeBFollow(Brain& b) { static_cast<Brain::PlaneShape&>(b.planeB) = b.plane; }
 inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
@@ -684,13 +827,18 @@ inline void echoBFollow(Brain& b) {
   b.echoB = b.echo;
   b.echoB.sent = sent;
 }
-inline Brain::EchoState& echoTarget(Brain& b, const Keyboard& keys) {
-  return planeEditsB(b, keys) ? b.echoB : b.echo;
+// Which hand's module a control in the rack writes (G6): B's own while the module is and B is edited.
+inline Brain::EchoState& echoTarget(Brain& b, const Keyboard& keys, int sec) {
+  return !b.panelHeldOnA && keys.layersOn() && !handLinked(b, sec) && keys.editLayer() == 1 ? b.echoB : b.echo;
 }
 // The time a synced echo shows is the tempo's, and its slider stands still.
 inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
-  b.echoShown = planeSide(b, keys);
-  const Brain::EchoState& e = echoTarget(b, keys);
+  // Each module the hand it shows (G6): four targets where there was one.
+  b.echoShown = echoSides(b, keys);
+  const Brain::EchoState& e = echoTarget(b, keys, kHandDelay);
+  const Brain::EchoState& ec = echoTarget(b, keys, kHandChorus);
+  const Brain::EchoState& ep = echoTarget(b, keys, kHandPhaser);
+  const Brain::EchoState& er = echoTarget(b, keys, kHandReverb);
   b.panel.setRangeNumber("delayMix", jsMathRound(e.mix * 100));
   b.panel.setRangeNumber("delayMs", !e.sync.empty() ? jsMathRound(delayTimeMs(b, e)) : e.ms);
   b.panel.setRangeNumber("delayFeedback", jsMathRound(e.feedback * 100));
@@ -698,26 +846,27 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   b.panel.setRangeNumber("delayLowCut", jsMathRound(e.lowCut * 100));
   b.panel.setRangeNumber("delayWidth", jsMathRound(e.width * 100));
   b.panel.setRangeNumber("delayWow", jsMathRound(e.wow * 100));
-  b.panel.setRangeNumber("chorusMix", jsMathRound(e.chorus * 100));
-  b.panel.setRangeNumber("chorusRate", jsMathRound(e.rate * 100));
-  b.panel.setRangeNumber("chorusDepth", jsMathRound(e.depthMs * 10));
-  b.panel.setRangeNumber("chorusTime", jsMathRound(e.centreMs * 10));
-  b.panel.setRangeNumber("chorusFeedback", jsMathRound(e.chorusFeedback * 100));
-  b.panel.setRangeNumber("phaserMix", jsMathRound(e.phaser * 100));
-  b.panel.setRangeNumber("phaserRate", jsMathRound(e.phRate * 100));
-  b.panel.setRangeNumber("phaserDepth", jsMathRound(e.phDepth * 100));
-  b.panel.setRangeNumber("phaserFeedback", jsMathRound(e.phFeedback * 100));
-  b.panel.setRangeNumber("reverbMix", jsMathRound(e.rvMix * 100));
-  b.panel.setRangeNumber("reverbSize", jsMathRound(e.rvSize * 100));
-  b.panel.setRangeNumber("reverbTone", jsMathRound(e.rvTone * 100));
-  b.panel.setRangeNumber("reverbPre", jsMathRound(e.rvPre));
-  b.panel.setRangeNumber("reverbSpread", jsMathRound(e.rvSpread * 100));
+  b.panel.setRangeNumber("chorusMix", jsMathRound(ec.chorus * 100));
+  b.panel.setRangeNumber("chorusRate", jsMathRound(ec.rate * 100));
+  b.panel.setRangeNumber("chorusDepth", jsMathRound(ec.depthMs * 10));
+  b.panel.setRangeNumber("chorusTime", jsMathRound(ec.centreMs * 10));
+  b.panel.setRangeNumber("chorusFeedback", jsMathRound(ec.chorusFeedback * 100));
+  b.panel.setRangeNumber("phaserMix", jsMathRound(ep.phaser * 100));
+  b.panel.setRangeNumber("phaserRate", jsMathRound(ep.phRate * 100));
+  b.panel.setRangeNumber("phaserDepth", jsMathRound(ep.phDepth * 100));
+  b.panel.setRangeNumber("phaserFeedback", jsMathRound(ep.phFeedback * 100));
+  b.panel.setRangeNumber("reverbMix", jsMathRound(er.rvMix * 100));
+  b.panel.setRangeNumber("reverbSize", jsMathRound(er.rvSize * 100));
+  b.panel.setRangeNumber("reverbTone", jsMathRound(er.rvTone * 100));
+  b.panel.setRangeNumber("reverbPre", jsMathRound(er.rvPre));
+  b.panel.setRangeNumber("reverbSpread", jsMathRound(er.rvSpread * 100));
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
 // generator whole.
 // Layer B's, into layer B; following A's while it has none of its own.
 inline void syncPlaneB(Brain& b, Generator& gen) {
+  b.planeB.own = !handLinked(b, kHandPlane);
   if (!b.planeB.own) planeBFollow(b);
   const Brain::PlaneBState& p = b.planeB;
   gen.set("planeOwn", p.own ? 1 : 0, 1);
@@ -741,7 +890,21 @@ inline int fxOrderIndex(const Brain& b) {
 }
 // Layer B's, into layer B, following A's while it has none of its own.
 inline void syncEchoB(Brain& b, Generator& gen) {
-  if (!b.planeB.own) echoBFollow(b);
+  // Each module the hands share follows A's (G6); B's own of the rest are its own.
+  Brain::EchoState& f = b.echoB;
+  const Brain::EchoState& a = b.echo;
+  if (handLinked(b, kHandDelay)) {
+    f.mix = a.mix; f.ms = a.ms; f.sync = a.sync; f.feedback = a.feedback; f.pingPong = a.pingPong;
+    f.tone = a.tone; f.lowCut = a.lowCut; f.width = a.width; f.wow = a.wow;
+  }
+  if (handLinked(b, kHandChorus)) {
+    f.chorus = a.chorus; f.rate = a.rate; f.depthMs = a.depthMs; f.centreMs = a.centreMs; f.chorusFeedback = a.chorusFeedback;
+  }
+  if (handLinked(b, kHandPhaser)) { f.phaser = a.phaser; f.phRate = a.phRate; f.phDepth = a.phDepth; f.phFeedback = a.phFeedback; }
+  if (handLinked(b, kHandReverb)) {
+    f.rvMix = a.rvMix; f.rvSize = a.rvSize; f.rvTone = a.rvTone; f.rvPre = a.rvPre; f.rvSpread = a.rvSpread;
+  }
+  gen.set("timeOwn", timeOwnMask(b), 1);
   const Brain::EchoState& e = b.echoB;
   gen.set("delayMix", e.mix, 1); gen.set("delayMs", delayTimeMs(b, e), 1); gen.set("delayFeedback", e.feedback, 1);
   gen.set("delayPingPong", e.pingPong ? 1 : 0, 1); gen.set("chorusMix", e.chorus, 1); gen.set("chorusRate", e.rate, 1);
@@ -815,8 +978,8 @@ inline bool clockFrame(Brain& b, Generator& gen, double now) {
     const double ms = delayTimeMs(b);
     if (delayFollows(b.clock, ms, b.echo.sent)) { b.echo.sent = ms; gen.set("delayMs", ms); sent = true; }
   }
-  // And layer B's own, while it has one.
-  if (b.planeB.own && !b.echoB.sync.empty()) {
+  // And layer B's own, while its delay is its own (G6).
+  if (!handLinked(b, kHandDelay) && !b.echoB.sync.empty()) {
     const double ms = delayTimeMs(b, b.echoB);
     if (delayFollows(b.clock, ms, b.echoB.sent)) { b.echoB.sent = ms; gen.set("delayMs", ms, 1); sent = true; }
   }
@@ -1029,6 +1192,33 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   } held { brain, gen, keys };
   brain.panelHeldOnA = true;
   showLayerOnPanel(brain, gen, 0);
+  /* The hands' links (G6), the page's linksOfSetup: a section is the upper
+     hand's own where the setup has any of its B fields - a rack module's only
+     while bPlane is on, as they always were - or a routing with its own depth
+     on the upper hand on one of its destinations. First, since the rack's B
+     fields are read by them below. */
+  {
+    const auto falsy = [](const Json* v) {
+      return !v || v->type == Json::Type::Null || (v->type == Json::Type::Bool && !v->b)
+          || (v->type == Json::Type::Number && (v->n == 0 || std::isnan(v->n))) || (v->type == Json::Type::String && v->s.empty());
+    };
+    std::vector<Routing> routed;
+    const Json* mod = given ? partial.get("mod") : nullptr;
+    if (!falsy(mod)) routed = Matrix::decode(utf16To8(jsToString(*mod)));
+    const Json* modB = given ? partial.get("modB") : nullptr;
+    if (!falsy(modB)) Matrix::applyB(routed, utf16To8(jsToString(*modB)));
+    const Json* bPlane = given ? partial.get("bPlane") : nullptr;
+    const bool rackOwn = bPlane && bPlane->type == Json::Type::Bool && bPlane->b;
+    for (int sec = 0; sec < kHandSections; sec++) {
+      const HandSectionSpec& spec = handSections()[static_cast<std::size_t>(sec)];
+      bool own = false;
+      if (given && (sec < kHandPlane || rackOwn))
+        for (const auto key : spec.fields) if (partial.get(key)) own = true;
+      for (const auto& r : routed) if (r.amountB && handSectionOfDest(r.destId) == sec) own = true;
+      brain.handOwn[static_cast<std::size_t>(sec)] = own;
+    }
+    brain.planeB.own = brain.handOwn[kHandPlane];
+  }
   // Menus and ranges are the table's (field, below), not written here: they
   // were, beside the page's, until 7 Nov (schema.h has why).
   Controls& panel = brain.panel;
@@ -1180,6 +1370,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
 
   // Layer B: its own field where the setup gives one, else layer A's.
   applyLayerB(partial, s, gen, panel);
+  /* A section the hands share is one value (G6): B as A, as A's controls now
+     hold it, whatever the generator held before - the page's restore does
+     the same after its B loop. */
+  for (const int sec : { kHandGen, kHandAmpEnv, kHandVcf, kHandOsc, kHandShp, kHandPicture })
+    if (handLinked(brain, sec)) copyHand(brain, gen, sec, 0, 1);
 
   k.polyJust = fieldFlag("midiPolyJust");
   // Math.min and Math.max carry a NaN through, where fmin and fmax drop it.
@@ -1195,6 +1390,15 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   if (const Json* named = partial.type == Json::Type::Object ? partial.get("pictureAmount") : nullptr) {
     const double want = jsToNumber(named);
     panel.setRangeNumber("pictureAmount", std::isfinite(want) ? want : 60);
+    brain.pictureHands[0].amount = panel.range("pictureAmount");
+  }
+  /* The upper hand's (G6): its own where the Picture is its own and the
+     setup gives one, by its rule and held as the slider holds it; else the
+     lower hand's as it now stands. The sliders show their hand once the
+     restore is done (syncLayerPanel). */
+  {
+    const auto amountB = handLinked(brain, kHandPicture) ? std::nullopt : own("bPictureAmount");
+    brain.pictureHands[1].amount = amountB ? rangeSanitiseNumber(*rangeSpec("pictureAmount"), amountB->n) : brain.pictureHands[0].amount;
   }
   k.hold = fieldFlag("midiHold");
   k.truth = fieldFlag("midiTruth");
@@ -1288,8 +1492,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
        is A's; with it off, B follows A. */
     Brain::PlaneBState& q = brain.planeB;
     planeBFollow(brain);
-    q.own = fieldFlag("bPlane");
     q.turn = 0;
+    // B's own while the Plane is the upper hand's own (G6; until then while bPlane said so).
     if (q.own) {
       // B's own where it has a usable one, by A's rule, else A's as it stands.
       const auto menu = [&](std::string_view key, double a) { const auto v = own(key); return v ? v->n : a; };
@@ -1349,37 +1553,46 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     /* Layer B's own echo and chorus, with its plane (bPlane): a field the
        setup lacks is A's, as B's plane's are. */
     echoBFollow(brain);
-    if (brain.planeB.own) {
+    {
       Brain::EchoState& f = brain.echoB;
       // By A's rules, the twins in the table; a sync the menu has not got is
       // A's, as every other field of B's is (it was Free until 7 Nov).
       const auto slide = [&](std::string_view key, double scale, double a) { const auto v = own(key); return v ? v->n / scale : a; };
-      f.mix = slide("bDelayMix", 100, e.mix);
-      const auto ms = own("bDelayMs");
-      f.ms = ms ? jsMathRound(ms->n) : e.ms;
-      const auto sync = own("bDelaySync");
-      f.sync = sync ? utf16To8(sync->s) : e.sync;
-      f.feedback = slide("bDelayFeedback", 100, e.feedback);
-      const auto ping = own("bDelayPingPong");
-      f.pingPong = ping ? ping->b : e.pingPong;
-      f.tone = slide("bDelayTone", 100, e.tone);
-      f.lowCut = slide("bDelayLowCut", 100, e.lowCut);
-      f.width = slide("bDelayWidth", 100, e.width);
-      f.wow = slide("bDelayWow", 100, e.wow);
-      f.chorus = slide("bChorusMix", 100, e.chorus);
-      f.rate = slide("bChorusRate", 100, e.rate);
-      f.depthMs = slide("bChorusDepth", 10, e.depthMs);
-      f.centreMs = slide("bChorusTime", 10, e.centreMs);
-      f.chorusFeedback = slide("bChorusFeedback", 100, e.chorusFeedback);
-      f.phaser = slide("bPhaserMix", 100, e.phaser);
-      f.phRate = slide("bPhaserRate", 100, e.phRate);
-      f.phDepth = slide("bPhaserDepth", 100, e.phDepth);
-      f.phFeedback = slide("bPhaserFeedback", 100, e.phFeedback);
-      f.rvMix = slide("bReverbMix", 100, e.rvMix);
-      f.rvSize = slide("bReverbSize", 100, e.rvSize);
-      f.rvTone = slide("bReverbTone", 100, e.rvTone);
-      f.rvPre = slide("bReverbPre", 1, e.rvPre);
-      f.rvSpread = slide("bReverbSpread", 100, e.rvSpread);
+      // Each module B's own while its link says so (G6): until then all of them, with the plane.
+      if (!handLinked(brain, kHandDelay)) {
+        f.mix = slide("bDelayMix", 100, e.mix);
+        const auto ms = own("bDelayMs");
+        f.ms = ms ? jsMathRound(ms->n) : e.ms;
+        const auto sync = own("bDelaySync");
+        f.sync = sync ? utf16To8(sync->s) : e.sync;
+        f.feedback = slide("bDelayFeedback", 100, e.feedback);
+        const auto ping = own("bDelayPingPong");
+        f.pingPong = ping ? ping->b : e.pingPong;
+        f.tone = slide("bDelayTone", 100, e.tone);
+        f.lowCut = slide("bDelayLowCut", 100, e.lowCut);
+        f.width = slide("bDelayWidth", 100, e.width);
+        f.wow = slide("bDelayWow", 100, e.wow);
+      }
+      if (!handLinked(brain, kHandChorus)) {
+        f.chorus = slide("bChorusMix", 100, e.chorus);
+        f.rate = slide("bChorusRate", 100, e.rate);
+        f.depthMs = slide("bChorusDepth", 10, e.depthMs);
+        f.centreMs = slide("bChorusTime", 10, e.centreMs);
+        f.chorusFeedback = slide("bChorusFeedback", 100, e.chorusFeedback);
+      }
+      if (!handLinked(brain, kHandPhaser)) {
+        f.phaser = slide("bPhaserMix", 100, e.phaser);
+        f.phRate = slide("bPhaserRate", 100, e.phRate);
+        f.phDepth = slide("bPhaserDepth", 100, e.phDepth);
+        f.phFeedback = slide("bPhaserFeedback", 100, e.phFeedback);
+      }
+      if (!handLinked(brain, kHandReverb)) {
+        f.rvMix = slide("bReverbMix", 100, e.rvMix);
+        f.rvSize = slide("bReverbSize", 100, e.rvSize);
+        f.rvTone = slide("bReverbTone", 100, e.rvTone);
+        f.rvPre = slide("bReverbPre", 1, e.rvPre);
+        f.rvSpread = slide("bReverbSpread", 100, e.rvSpread);
+      }
     }
     syncEchoB(brain, gen);
     syncEchoPanel(brain, keys);
@@ -1399,6 +1612,13 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
                       || (mod->type == Json::Type::Number && (mod->n == 0 || std::isnan(mod->n)))
                       || (mod->type == Json::Type::String && mod->s.empty());
       if (!falsy) list = Matrix::decode(utf16To8(jsToString(*mod)));
+      // And each routing's own depth on the upper hand (G6), as the page's applyRoutingsB.
+      if (const Json* modB = partial.get("modB")) {
+        const bool none = modB->type == Json::Type::Null || (modB->type == Json::Type::Bool && !modB->b)
+                       || (modB->type == Json::Type::Number && (modB->n == 0 || std::isnan(modB->n)))
+                       || (modB->type == Json::Type::String && modB->s.empty());
+        if (!none) Matrix::applyB(list, utf16To8(jsToString(*modB)));
+      }
     } else {
       for (int i = 0; i < 2; i++) {
         const std::u16string name = str("l" + std::to_string(i) + "d");
@@ -1407,7 +1627,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
           { u"depth", "gen.depth" }, { u"freq", "gen.freq" }, { u"amp", "gen.amp" },
         };
         for (const auto& [word, dest] : legacy) {
-          if (name == word) list.push_back({ "lfo" + std::to_string(i + 1), dest, jsToNumber(s("l" + std::to_string(i) + "a")) / 100, 0 });
+          if (name == word) list.push_back({ "lfo" + std::to_string(i + 1), dest, jsToNumber(s("l" + std::to_string(i) + "a")) / 100, 0, std::nullopt });
         }
       }
     }
@@ -1497,7 +1717,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       brain.scanSoft = panel.range("scanSoft") / 10;
       // The strike, held to its slider, and what each layer's Scan reads (P7b).
       panel.setRange("scanStrike", fieldText("scanStrike"));
-      brain.scanStrike = panel.range("scanStrike") / 100;
+      // Each hand's (G6), as the Amount is: the upper's own, or the lower's.
+      brain.pictureHands[0].strike = panel.range("scanStrike");
+      const auto strikeB = handLinked(brain, kHandPicture) ? std::nullopt : own("bScanStrike");
+      brain.pictureHands[1].strike = strikeB ? rangeSanitiseNumber(*rangeSpec("scanStrike"), strikeB->n) : brain.pictureHands[0].strike;
+      brain.scanStrike = brain.pictureHands[0].strike / 100;
+      brain.scanStrikeB = brain.pictureHands[1].strike / 100;
       for (int l = 0; l < 2; l++) {
         const std::string own = l == 0 ? "A" : "B";
         const Json* v = s(l == 0 ? "scanReadsA" : "scanReadsB");
@@ -1523,7 +1748,8 @@ namespace scope {
 inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>& lfos) {
   const double v = b.panel.range(id);
   const int layer = b.panelLayer;
-  const auto layerSet = [&](std::string_view field, double x) { gen.set(field, x, layer); };
+  // A section's control writes both hands while it is linked, the one on the panel otherwise (G6).
+  const auto layerSet = [&](std::string_view field, double x) { handSet(b, gen, id, field, x); };
   if (id == "freq") { gen.set("freq", v); keys.panel().freq = v; }
   else if (id == "amp") layerSet("amp", v / 100);
   else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
@@ -1532,7 +1758,10 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "envDecay") layerSet("decayMs", v);
   else if (id == "envSustain") layerSet("sustain", v / 100);
   else if (id == "envRelease") layerSet("releaseMs", v);
-  else if (id == "glide") layerSet("glideMs", v);
+  // The generator's, read on layer A alone (G6): written there whichever hand is on the panel.
+  else if (id == "glide") gen.set("glideMs", v, 0);
+  // The Picture section's Amount and Strike, on each hand it is on (G6).
+  else if (id == "pictureAmount") pictureWrite(b, keys, false, v);
   else if (id == "inputDepth") gen.set("inputDepth", v / 100);
   else if (id == "lfoRate0" || id == "lfoRate1") {
     const std::size_t i = id.back() == '1' ? 1 : 0;
@@ -1547,7 +1776,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "menvRel") gen.set("menvReleaseMs", v);
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
-  else if (id == "scanStrike") b.scanStrike = v / 100;
+  else if (id == "scanStrike") pictureWrite(b, keys, true, v);
   else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
@@ -1556,7 +1785,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     static constexpr const char* barIds[] { "bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8" };
     std::array<double, 9> bars {};
     for (std::size_t k = 0; k < 9; k++) bars[k] = b.panel.range(barIds[k]);
-    gen.setBars(bars.data(), bars.size(), layer);
+    if (!handLinked(b, kHandGen)) gen.setBars(bars.data(), bars.size(), layer);
+    else { gen.setBars(bars.data(), bars.size(), 0); gen.setBars(bars.data(), bars.size(), 1); keptAFollows(b, "bars"); }
   }
   else if (id == "planeRadius" || id == "planeTwist" || id == "planeScaleX" || id == "planeScaleY" || id == "planeShear") {
     Brain::PlaneShape& p = planeTarget(b, keys);
@@ -1573,7 +1803,9 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback" || id == "phaserMix"
            || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback" || id == "reverbMix"
            || id == "reverbSize" || id == "reverbTone" || id == "reverbPre" || id == "reverbSpread") {
-    Brain::EchoState& e = echoTarget(b, keys);
+    // Each module's own target (G6).
+    const int sec = handSectionOfControl(id);
+    Brain::EchoState& e = echoTarget(b, keys, sec);
     if (id == "delayMix") e.mix = v / 100;
     else if (id == "delayMs") e.ms = v;
     else if (id == "delayFeedback") e.feedback = v / 100;
@@ -1620,6 +1852,7 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
       if (id == row.id && isVoiceControl(row.id) && row.kind == LayerControl::Range) layerSet(row.field, row.law(v));
     }
   }
+  (void)layer;
 }
 
 // A hand on a slider: the value written as the browser takes it, then the
@@ -1650,7 +1883,6 @@ inline void moveSliderTo(const std::string& id, double value, Brain& b, Generato
 inline bool controlChange(const std::string& id, const std::u16string& written, bool checked, Brain& b, Generator& gen,
                           Keyboard& keys, std::vector<Lfo>& lfos) {
   Controls& panel = b.panel;
-  const int layer = b.panelLayer;
   // A menu takes only a value it has; one it has not got reads "". LFO 2's
   // menus are made when it is chosen, from the lists LFO 1's are.
   const bool menu = selectSpec(id) != nullptr;
@@ -1666,13 +1898,13 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   // The generator.
   if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
   else if (id == "inputMode") { b.inputMode = orElse(number, 0); gen.set("inputMode", b.inputMode, 0); }
-  else if (id == "shape") gen.set("shape", text, layer);
+  else if (id == "shape") handSet(b, gen, id, "shape", text);
   else if (id == "shpOS") gen.set("shapeOS", number, 0);
   else if (isVoiceControl(id) && menu) {
     for (const auto& row : layerControls()) {
       if (row.id != id) continue;
-      if (row.kind == LayerControl::Text) gen.set(row.field, text, layer);
-      else gen.set(row.field, row.law(number), layer);
+      if (row.kind == LayerControl::Text) handSet(b, gen, id, row.field, text);
+      else handSet(b, gen, id, row.field, row.law(number));
     }
   }
   // The plane and the echo.
@@ -1681,7 +1913,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     (id == "planeMirror" ? p.mirror : id == "planeLimit" ? p.limit : p.snap) = number;
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
-  else if (id == "delaySync") { echoTarget(b, keys).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }
+  else if (id == "delaySync") { echoTarget(b, keys, kHandDelay).sync = text; syncEchoPanel(b, keys); syncEcho(b, gen); }
   // F5b: the rack's order, one for both layers whichever is on the panel; a menu
   // value it has not got reads "" and is the first order, as on the page.
   else if (id == "fxOrder") {
@@ -1689,7 +1921,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     panel.setSelect("fxOrder", utf8To16(b.fxOrder));
     syncEcho(b, gen);
   }
-  else if (id == "delayPingPong") { echoTarget(b, keys).pingPong = checked; syncEcho(b, gen); }
+  else if (id == "delayPingPong") { echoTarget(b, keys, kHandDelay).pingPong = checked; syncEcho(b, gen); }
   // The key and the quantiser.
   else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }
   else if (id == "keyScale") { b.keyScale = text; syncQuantiser(b, gen); }
@@ -1791,32 +2023,113 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   return true;
 }
 
+/* setLink (G6), the page's: the hand on the face copied into the other -
+   unlinked, as the other's start; linked, so the two are one value again -
+   then the link, and linking drops the other hand's own routing depths on
+   the section, a routing only the other hand had with them. Then B's own
+   rack told to the generator and the panels shown again (handsChanged). */
+inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
+  if (from == to) return;
+  if (sec == kHandPlane) {
+    Brain::PlaneShape& planeB = b.planeB;
+    if (from == 0) planeB = static_cast<const Brain::PlaneShape&>(b.plane);
+    else static_cast<Brain::PlaneShape&>(b.plane) = static_cast<const Brain::PlaneShape&>(planeB);
+    // A's turn is the screen's rotation, shared; B's own starts at none and goes when the two are one again.
+    b.planeB.turn = 0;
+    return;
+  }
+  if (sec >= kHandPhaser) {
+    const Brain::EchoState& f = from == 0 ? b.echo : b.echoB;
+    Brain::EchoState& t = from == 0 ? b.echoB : b.echo;
+    if (sec == kHandDelay) {
+      t.mix = f.mix; t.ms = f.ms; t.sync = f.sync; t.feedback = f.feedback; t.pingPong = f.pingPong;
+      t.tone = f.tone; t.lowCut = f.lowCut; t.width = f.width; t.wow = f.wow;
+    } else if (sec == kHandChorus) {
+      t.chorus = f.chorus; t.rate = f.rate; t.depthMs = f.depthMs; t.centreMs = f.centreMs; t.chorusFeedback = f.chorusFeedback;
+    } else if (sec == kHandPhaser) {
+      t.phaser = f.phaser; t.phRate = f.phRate; t.phDepth = f.phDepth; t.phFeedback = f.phFeedback;
+    } else {
+      t.rvMix = f.rvMix; t.rvSize = f.rvSize; t.rvTone = f.rvTone; t.rvPre = f.rvPre; t.rvSpread = f.rvSpread;
+    }
+    return;
+  }
+  if (sec == kHandPicture) b.pictureHands[static_cast<std::size_t>(to)] = b.pictureHands[static_cast<std::size_t>(from)];
+  // The voice's controls: the panel shows `from`, so its values are the ones to copy.
+  for (const auto& row : layerControls()) {
+    if (handSectionOfControl(row.id) != sec) continue;
+    if (std::string_view(row.id) == "bars") {
+      std::vector<double> bars;
+      for (int k = 0; k < 9; k++) bars.push_back(b.panel.range("bar" + std::to_string(k)));
+      gen.setBars(bars, to);
+    } else if (row.kind == LayerControl::Text) {
+      gen.set(row.field, std::string_view(b.panel.select(row.id)), to);
+    } else {
+      gen.set(row.field, row.law(row.kind == LayerControl::Range ? b.panel.range(row.id) : b.panel.selectNumber(row.id)), to);
+    }
+    if (to == 0 && b.panelLayer == 1 && b.keptA)
+      for (auto& [kept, text] : b.panelKeptA) if (kept == row.id) text = layerPanelValue(b.panel, row);
+  }
+}
+inline void handsChanged(Brain& b, Generator& gen, const Keyboard& keys) {
+  b.planeB.own = !handLinked(b, kHandPlane);
+  syncPlane(b, gen);
+  syncEcho(b, gen);
+  syncPlanePanel(b, keys);
+  syncEchoPanel(b, keys);
+  syncPictureHand(b, keys);
+}
+inline void setLink(Brain& b, Generator& gen, const Keyboard& keys, Matrix* matrix, int sec, bool on) {
+  if (handLinked(b, sec) == on) return;
+  const int from = keys.editLayer(), to = 1 - from;
+  copyHand(b, gen, sec, from, to);
+  b.handOwn[static_cast<std::size_t>(sec)] = !on;
+  if (matrix) {
+    if (on) {
+      std::vector<Routing> next;
+      for (Routing r : matrix->kept()) {
+        if (handSectionOfDest(r.destId) == sec && r.amountB) {
+          const double depth = from == 1 ? *r.amountB : r.amount;
+          r.amountB.reset();
+          r.amount = depth;
+          if (depth == 0) continue;
+        }
+        next.push_back(std::move(r));
+      }
+      matrix->keep(next, matrix->silent(), false);
+    } else {
+      matrix->touch();
+    }
+  }
+  handsChanged(b, gen, keys);
+}
+
 // What the page's buttons that reach the sound do when pressed. Each answers
 // whether it knew the control, so the plugin keeps only what did something.
-inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboard& keys) {
+// The matrix, where it is given, for a link's routings (G6).
+inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboard& keys, Matrix* matrix = nullptr) {
+  // A section's link (G6): pressed, the other way.
+  for (int sec = 0; sec < kHandSections; sec++) {
+    if (id != handSections()[static_cast<std::size_t>(sec)].link) continue;
+    setLink(b, gen, keys, matrix, sec, !handLinked(b, sec));
+    return true;
+  }
   if (id == "tuneJust" || id == "tuneEqual") gen.set("just", id == "tuneJust" ? 1 : 0, 0);
   else if (id == "midiDyad") keys.setMode(NoteMode::Dyad);
   else if (id == "midiMono") keys.setMode(NoteMode::Mono);
   else if (id == "midiPoly") keys.setMode(NoteMode::Poly);
-  else if (id == "midiEditA" || id == "midiEditB") keys.setEdit(id == "midiEditB" ? 1 : 0);
+  /* The header's Editing (G6), and the Keyboard's Edit A / B it replaced,
+     which a project saved before it may still have among its hands. */
+  else if (id == "editHandA" || id == "editHandB" || id == "midiEditA" || id == "midiEditB") {
+    keys.setEdit(id.back() == 'B' ? 1 : 0);
+    syncLayerPanel(b, gen, keys);
+  }
+
   else if (id == "menvPhrase" || id == "menvEvery") gen.set("menvEvery", id == "menvEvery" ? 1 : 0);
   else if (id == "planeOS1" || id == "planeOS2" || id == "planeOS4") {
     b.plane.os = id.back() - '0';
     syncPlanePanel(b, keys); syncPlane(b, gen);
   }
-  /* setPlaneLayer: Together lets B's own go; A or B gives B its own - which
-     is already a copy of A's, kept one by syncPlaneB and syncEchoB - and
-     puts that layer on the panel. The Delay and chorus section's Layers row
-     is the same choice. */
-  else if (id == "planeLayerBoth" || id == "timeLayerBoth") {
-    b.planeB.own = false;
-    syncPlanePanel(b, keys); syncPlane(b, gen); syncEchoPanel(b, keys); syncEcho(b, gen);
-  }
-  else if (id == "planeLayerA" || id == "planeLayerB" || id == "timeLayerA" || id == "timeLayerB") {
-    b.planeB.own = true;
-    keys.setEdit(id == "planeLayerB" || id == "timeLayerB" ? 1 : 0);
-    syncPlanePanel(b, keys); syncPlane(b, gen); syncEchoPanel(b, keys); syncEcho(b, gen);
-  }
+  // Together, A and B (setPlaneLayer) were here until G6: each module's link now.
   // The view's buttons.
   else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");
   else if (id == "edgeRising" || id == "edgeFalling") b.view.edge = id == "edgeRising" ? "rising" : "falling";

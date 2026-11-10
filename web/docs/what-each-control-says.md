@@ -7,12 +7,14 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-312 controls: 303 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
-again in G5a, which added the Routings panel's, the Photocell's editor's and the Envelope's
-two switches, and moved the fade to Routings; and in G5b, which added a depth's three - its
-slider, its number and its cross - wherever a row of depths is, and whose right-click menu
-has no controls of its own to describe: its items are its words, and *What is this?* in it
-opens a control's card).
+317 controls: 317 lines, none marked as removed by a later stage, 76 wanting a paragraph
+(counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
+Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
+three - its slider, its number and its cross - wherever a row of depths is, and whose
+right-click menu has no controls of its own to describe: its items are its words, and
+*What is this?* in it opens a control's card; and in G6, which took Edit A / B, the rack's
+Together / A / B and B's turn on a row of its own, gave the turn the Turn's place, and
+added the header's Editing and a link on eleven sections).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -49,8 +51,8 @@ And about the words:
    does. Add it to Strike's (it would need shortening), or leave it to the card?
 9. **The scope's tools change what Scan reads** (the filter, AC, full scale, zoom and the
    rest feed the grid). Only the filter's line says so. Say it for the family?
-10. **Lines name today's A and B** for the hands; G6 renames them *Lower* and *Upper*, and
-    those lines change with it.
+10. ~~**Lines name today's A and B**~~ - settled in G6: the hands are *Lower* and *Upper*
+    on a split and *A* and *B* layered, on the face as in these lines.
 11. **Plugin-only differences**: MIDI and the audio device are the host's in the plugin.
     The device line says so; should the MIDI lines?
 12. **Loose words**: what FM, Resonance and the upper drawbars do to the figure ("busier",
@@ -89,10 +91,8 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiPoly | Poly | Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline. | 118 | yes: outline notes lean to their side and still sound in both ears, the rest drawn along the diagonal; Glide, Phase and Interval do nothing to a chord; the voice budget |
 | midiLayers | Layers | Whether a second sound plays: one, a split at a key with low notes one sound and high another, or layered, every note both. | 123 | yes: Poly only; kept but not applied while your input is drawn, and the note under it says so |
 | midiSplitLearn | Split point | The key the upper layer starts from. Press it, then play that key on your keyboard or the screen's. | 99 | - |
-| midiEditA | Edit A | removed (G6) | - | - |
-| midiEditB | B | removed (G6) | - | - |
 | midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right. | 121 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B puts A in the left ear only and B in the right |
-| midiDrawCount | Draw | How many held notes make the figure's outline, for the layer being edited. The rest are drawn along the diagonal, heard in both ears. | 133 | - |
+| midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
 | polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
@@ -111,6 +111,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkGen | Generator’s link | Whether the Generator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 143 | yes — linked, a knob moved on either hand moves both, and a routing on it moves both; unlinked, the hand being edited alone, and its routings say which hand; the drawbars and the morph are the Generator’s |
 | shape | Shape | The wave each note is made of. A sine is pure and draws smooth curves; sharper shapes are brighter and put corners in the figure. | 129 | yes: the gist of each - pulse, the noises, stepped, drawbars, morph, drawn cycle, wavetable - and which of them bring a row of their own |
 | morph | Morph | One knob through sine, triangle, saw and square, crossfading each pair. Put a source on it and the tone and the figure change as you play. | 138 | - |
 | width | Width | How much of each cycle the pulse is up, 5 to 95 per cent. At 50 it is the square; narrower is thinner and more nasal. | 117 | - |
@@ -126,6 +127,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkAmpEnv | Amp envelope’s link | Whether the amp envelope is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 146 | - |
 | envAttack | Attack | How long a note takes to reach full level once its key goes down, and the figure grows with it. Only while a keyboard is playing. | 129 | yes: with no keyboard and the keys on screen shut, the level is the knob's and nothing else; a second key over a held one changes the pitch without starting the envelope again |
 | envDecay | Decay | How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck. | 104 | - |
 | envSustain | Sustain | The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own. | 115 | - |
@@ -135,6 +137,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkVcf | Voice filter’s link | Whether the voice filter is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 146 | - |
 | vcfType | Type | Which filter is in every note: low pass darkens, high pass thins, band pass keeps a middle, notch takes one out. Off, the knobs below are idle. | 143 | yes: not the Filter in Scope & measure, which is on the whole trace and for looking |
 | vcfCut | Cutoff | Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first. | 142 | - |
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
@@ -172,6 +175,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkOsc | Oscillator’s link | Whether the oscillator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 144 | - |
 | freq | Frequency | The pitch while no keyboard is playing; a note in Dyad or Mono moves it. On Y–T, higher puts more cycles on the screen. | 119 | yes: Poly's chords leave it where it is; it is clamped to 30 Hz to 4 kHz, so the top of the keyboard stops at 4 kHz |
 | phase | Phase | Where the second channel starts in its cycle against the first. At a unison, 0° draws a diagonal line and 90° a circle. Not for Poly's chords. | 142 | - |
 | oscRatio | Ratio | The voice's second oscillator, as a ratio to the note, heard only through FM and Ring. A 3:2 sounds harmonic for the reason a 3:2 figure closes. | 144 | - |
@@ -190,6 +194,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkShp | Shaping’s link | Whether the shaping is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 141 | - |
 | shpDrive | Drive | Pushes the wave into a soft ceiling: a sine rounds towards a square, and so does its figure. The reading is how much quiet parts are lifted. | 140 | - |
 | shpFold | Fold | Bends the wave back each time it would pass full scale: on Y–T the peaks fold inward, and in X–Y the figure grows petals. | 121 | - |
 | shpBits | Crush | Fewer levels for each sample, the stepped grit of a bitcrusher: the trace turns to a staircase. Off keeps every level. | 118 | - |
@@ -208,12 +213,10 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkPlane | Plane’s link | Whether the Plane is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 139 | - |
 | planeTwist | Twist | Turns each point by more the further it is from the middle, so loud parts swirl and the quiet centre stays still: a stereo turn that follows level. | 147 | yes — the reading is the turn at full scale; a source swirls it half a turn at most; with Picture above nought, Memory pushes it when the figure stops moving |
 | rotate | Turn | Turns the figure on the screen. The sound turns with it only while Speakers get, in Scope & measure, is on Shaped. | 114 | yes — worth most with a source on it; on a band split or the lag lane it turns the figure only; Numbers read decides whether the readings follow it |
-| planeTurn | B’s turn | removed (G6) | - | - |
-| planeLayerBoth | Layers (Together) | removed (G6) | - | - |
-| planeLayerA | Layers (A) | removed (G6) | - | - |
-| planeLayerB | Layers (B) | removed (G6) | - | - |
+| planeTurn | Turn (upper) | The upper hand’s own turn, in the Turn’s place while the Plane is that hand’s own: it turns the upper figure, and the lower’s stays. | 132 | - |
 | planeMirror | Mirror | Folds the figure onto one half of itself; to the ear, the octave-up pedal, every harmonic even. The folded wave sits above zero. | 128 | yes — which half each choice folds; the offset reaches the speakers unless AC coupling, under Vertical, takes it off |
 | planeLimit | Radial | What happens where the figure meets a circle of the Radius. Clip rounds loud parts off without bending the stereo image; Fold reflects them back in. | 148 | - |
 | planeRadius | Radius | Where the clip or fold acts, as a part of full scale. Smaller, and more of the figure meets the circle: quieter and more distorted. | 131 | yes — marked at 0.2, where the owner found the clip quieter and distorted in a way worth keeping; two taps land there; shown only while Radial is on |
@@ -229,6 +232,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkPhaser | Phaser’s link | Whether the phaser is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 140 | - |
 | phaserMix | Mix | How much phaser you hear; nought is off. It opens a line into a loop that widens and closes, and twists a figure unevenly. | 122 | yes — with Picture above nought, Memory brings it in on a figure that has stopped moving; a source on it runs the phaser from nought |
 | phaserRate | Sweep | How fast the notches sweep, one channel on a sine and the other on its cosine: the pace at which the loop widens and closes. | 124 | - |
 | phaserDepth | Range | How far the sweep reaches, up to two and a half octaves either side of 700 Hz. At nought the notches stand still. | 113 | - |
@@ -238,6 +242,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkChorus | Chorus’s link | Whether the chorus is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 140 | - |
 | chorusMix | Mix | How much chorus you hear; nought is off. A late copy of the pair whose lateness swings, so the figure breathes and turns. | 121 | - |
 | chorusRate | Rate | How fast the copy’s lateness swings, one channel on a sine and the other on its cosine: the pace the figure breathes and turns at. | 130 | - |
 | chorusDepth | Depth | How far the copy’s lateness swings either side of Centre. More is a wider wobble in pitch and a figure that breathes further. | 125 | - |
@@ -248,6 +253,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkDelay | Delay’s link | Whether the delay is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 139 | - |
 | delayMix | Mix | How loud the repeats are; nought is off. In X–Y they are ghost figures trailing the live one. | 93 | yes — a source on it brings repeats in from none, and the delay keeps listening at nought; with Picture above nought, Motion pushes it; near full it keeps a held chord moving |
 | delayMs | Time | How long before each repeat, up to two seconds. Greyed while Sync follows the tempo; a source on it bends the repeats’ pitch, like tape. | 136 | - |
 | delayFeedback | Feedback | How many times each repeat comes back. Stops at 0.9, so it always dies away, and no source can be patched onto it. | 114 | - |
@@ -257,14 +263,12 @@ them; G3b gives each a `data-say` with the key in the first column:
 | delayWow | Wow | Drifts the delay time slowly, as a tape’s speed drifts, so each repeat is a little off pitch and its ghost figure turns. | 120 | - |
 | delaySync | Sync | Free, or the time as a note value of the tempo in Perform, following it when it moves. While it is synced, Time is greyed. | 122 | - |
 | delayPingPong | Ping-pong | Sends each repeat to the other side, so the ghost figures alternate between the figure and its reflection across the diagonal. | 126 | - |
-| timeLayerBoth | Layers (Together) | removed (G6) | - | - |
-| timeLayerA | Layers (A) | removed (G6) | - | - |
-| timeLayerB | Layers (B) | removed (G6) | - | - |
 
 ### Reverb
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkReverb | Reverb’s link | Whether the reverb is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 140 | - |
 | reverbMix | Mix | How loud the tail is; nought is off. Past 0.2 it keeps a held chord moving: the screen goes on drawing the tail and Scan reading it. | 132 | yes — its switch gives 0.15, which keeps every preset under its heading; the loudest settings are bounded, not forbidden, the owner’s call over a defence that would make Scan’s knob lie |
 | reverbSize | Size | How long the tail takes to fall away, from 0.3 to 9 seconds. Longer leaves a longer trail of where the figure has been. | 119 | - |
 | reverbTone | Tone | How dark the tail is: lower takes more of the top off it, down to 500 Hz. At the top it is open. | 96 | - |
@@ -291,21 +295,22 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 |---|---|---|---|---|
 | pictureOnly | Picture only | Hides all that is drawn over the trace: the graticule and its labels, the reticle, the loop, the hand's mark, the verdict and the panes. | 136 | yes — what it hides is drawn apart from the light Scan reads, so the sound is the same either way |
 | handsBoth | Which hands: Both | Draws both hands' figures. Only the look: Scan reads both however many are drawn. | 81 | - |
-| handsA | Which hands: A | Draws only layer A's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both. | 115 | - |
-| handsB | Which hands: B | Draws only layer B's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both. | 115 | - |
+| handsA | Which hands: Lower (A) | Draws only the lower hand’s figure (A’s, layered), so two figures piled into one cloud can be seen apart. Only the look. | 120 | - |
+| handsB | Which hands: Upper (B) | Draws only the upper hand’s figure (B’s, layered), so two figures piled into one cloud can be seen apart. Only the look. | 120 | - |
 | enlargeTrail | Trail | How long the enlarged screen keeps a stroke: as heard, half as long, or short. Only the look: Scan reads the Persistence's trail. | 129 | yes — Half halves the half-life, Short is the Persistence menu's Short; an infinite Persistence's Half is Long's |
 
 ### The Picture section
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| linkPicture | Picture’s link | Whether Amount, Scan and Strike are the same in both hands or each hand’s own. Softness and Persistence are the screen’s, shared. | 129 | yes — unlinking starts the other hand as a copy of this one and linking copies this one over it; the title says the hand while it is its own; a host’s Amount and Strike move both while linked, the hand being edited otherwise |
 | pictureMore | Advanced | Opens what Scan reads and the score, and the screen’s look: the beam, its inks, the panes and the loop overlay. | 111 | - |
 | pictureAmount | Amount | How far the picture moves the sound by itself: its glow folds it, its motion echoes it, its memory turns it. At nought, a plain synthesiser. | 140 | yes — the three reads and their meters; a keyboard’s expression pedal (CC 11) sets it; every preset sets it; it shares half a control’s reach with the photocell |
-| oscScan | Scan | How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone. | 133 | yes — read sixty times a second round a circle by the figure; the pitch holds; reined in to a quarter while the loop runs away; with a split, the layer being edited |
+| oscScan | Scan | How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone. | 133 | yes — read sixty times a second round a circle by the figure; the pitch holds; reined in to a quarter while the loop runs away; with a split, the hand being edited, or both while the Picture is linked |
 | scanStrike | Strike | How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades. | 141 | yes — only while Scan is above nought; each note at its own place round the circle, as hard as it was played |
 | scanSoft | Softness | How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on. | 139 | - |
 | scanMemory | Persistence | How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more. | 133 | yes — the screen’s, shared by both hands; the photocell’s memory too; the same setting as the menu over the screen |
-| amp | Level | How loud the generator plays, and so how large it draws its figure. With a split, the layer being edited. | 105 | - |
+| amp | Level | How loud the generator plays, and so how large it draws its figure. With a split, the hand being edited, or both while linked. | 126 | - |
 
 ### Picture › Advanced
 
@@ -317,10 +322,10 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| scanReadsA | Reads (A) | Whose picture layer A’s Scan reads: its own, layer B’s, or both averaged. Crossed, each hand’s tone comes from the other’s figure. | 130 | yes — shown only while each hand draws a figure; crossed loops are reined in together when either runs away |
-| scanReadsB | Reads (B) | Whose picture layer B’s Scan reads: its own, layer A’s, or both averaged. Shown only while each hand draws a figure of its own. | 127 | - |
-| pictureMovesA | Pictures (A) | Whose sound layer A’s picture moves through the Amount: its own, layer B’s, or both. A sound that hears two takes their average. | 128 | - |
-| pictureMovesB | Pictures (B) | Whose sound layer B’s picture moves through the Amount: its own, layer A’s, or both. Shown only while each hand draws a figure. | 127 | - |
+| scanReadsA | Reads (Lower) | Whose picture the lower hand’s Scan reads: its own, the upper’s, or both averaged. Crossed, each hand’s tone comes from the other’s figure. | 139 | yes — shown only while each hand draws a figure; crossed loops are reined in together when either runs away |
+| scanReadsB | Reads (Upper) | Whose picture the upper hand’s Scan reads: its own, the lower’s, or both averaged. Shown only while each hand draws a figure of its own. | 136 | - |
+| pictureMovesA | Pictures (Lower) | Whose sound the lower hand’s picture moves through the Amount: its own, the upper’s, or both. A sound hearing two takes their average. | 134 | - |
+| pictureMovesB | Pictures (Upper) | Whose sound the upper hand’s picture moves through the Amount: its own, the lower’s, or both. Shown only while each hand draws a figure. | 136 | - |
 
 ### Picture › Advanced › Score
 
@@ -351,7 +356,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | inkCh3 | Ink: Olive | Draws the X–Y figure in olive. Only the look: Scan reads the light, not its colour. | 83 | - |
 | inkCh4 | Ink: Sage | Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour. | 82 | - |
 | inkCh5 | Ink: Plum | Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour. | 82 | - |
-| bInk | Layer B's ink | The colour of layer B’s figure while each hand draws one: its lane’s ink to start, or one you choose. Only the look. | 116 | - |
+| bInk | The upper hand’s ink | The colour of the upper hand’s figure while each hand draws one: its lane’s ink to start, or one you choose. Only the look. | 123 | - |
 | traceWidth | Thickness | How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn. | 103 | - |
 | graticuleOn | Graticule | Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid. | 105 | - |
 | beamXY | X–Y | Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way. | 122 | - |
@@ -379,9 +384,9 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | menvOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope. | 108 | yes — its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
-| menvFollow | Follows Play | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 98 | - |
-| menvItsOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs. | 92 | - |
-| menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope. | 115 | - |
+| menvFollow | Follows Play | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 99 | - |
+| menvItsOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs. | 93 | - |
+| menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope. | 114 | - |
 | menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope. | 124 | - |
 | menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play. | 100 | - |
 | menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play. | 100 | - |
@@ -405,6 +410,8 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| editHandA | Editing: Lower | Puts the lower hand on the face: its own sections show and write its values. Named A when layered. Only with a split or layers. | 127 | yes — a section linked is both hands whichever is chosen; the hand’s figure’s ink on its dot; the tab cards say where the hands differ |
+| editHandB | Editing: Upper | Puts the upper hand on the face: its own sections show and write its values. Named B when layered. Only with a split or layers. | 127 | - |
 | presetPrev | The previous preset | Loads the previous sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 130 | - |
 | preset | Plain sine | The sound loaded now, with its heading above it; Custom once you change it. Press to open the preset browser. | 109 | - |
 | presetNext | The next preset | Loads the next sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 126 | - |
@@ -474,7 +481,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| photoButton | On | Puts a light sensor on the screen, landing on the figure; drag its reticle there to aim it. Off, it reads nought. | 112 | yes — how bright the screen is under it, a source that moves a control at most half way and no faster than two swings a second; Persistence is its memory |
+| photoButton | On | Puts a light sensor on the screen, landing on the figure; drag its reticle there to aim it. Off, it reads nought. | 113 | yes — how bright the screen is under it, a source that moves a control at most half way and no faster than two swings a second; Persistence is its memory |
 | photoPlace | Place it on the figure | Moves the reticle to the nearest bright part of the figure, as switching it on does. Off, it switches it on. | 108 | - |
 
 ### Routings
@@ -492,8 +499,8 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | fadeMode | Fade | Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go. | 122 | yes — the envelope drawn under it and how to drag it; LFOs, the picture and knobs are not eased; with it on, a preset glides its knobs into place; kept in this browser, not in a setup code |
-| fadeEditA | Fade · A | Shows layer A’s fade envelope to draw, with B’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
-| fadeEditB | Fade · B | Shows layer B’s fade envelope to draw, with A’s faint behind. Each layer’s sound follows its own; only with a split or layers. | 126 | - |
+| fadeEditA | Fade · Lower (A) | Shows the lower hand’s fade envelope to draw, the upper’s faint behind. Each hand’s sound follows its own; only with two hands. | 127 | - |
+| fadeEditB | Fade · Upper (B) | Shows the upper hand’s fade envelope to draw, the lower’s faint behind. Each hand’s sound follows its own; only with two hands. | 127 | - |
 | fadeRestart | Restart | Runs the fade’s envelope again, from where it is, on every note you strike. | 75 | - |
 | fadeLoop | Loop | Sends the fade’s attack and decay round again and again for as long as a note is held. | 86 | - |
 

@@ -266,12 +266,13 @@ with sync_playwright() as pw:
       setScreenKeys(true); setMidiMode('poly');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(30);
-      el.midiEditB.click(); await wait(30);
+      // The upper hand, its Generator its own (G6: linked, the width would be both hands').
+      document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(30);
       el.shape.value = 'pulse'; el.shape.dispatchEvent(new Event('change'));
       el.width.value = '60'; el.width.dispatchEvent(new Event('input'));
       const whileB = { a: genSettings(0).width, b: genSettings(1).width, reading: el.widthValue.textContent,
                        row: !el.widthRow.hidden };
-      el.midiEditA.click(); await wait(30);
+      document.getElementById('editHandA').click(); await wait(30);
       const code = snapshot();
       const backA = { slider: el.width.value, reading: el.widthValue.textContent,
                       width: code.width, bWidth: code.bWidth };

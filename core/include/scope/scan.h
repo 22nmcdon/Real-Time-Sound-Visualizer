@@ -402,21 +402,22 @@ class ScanReader {
   }
 
   /* scanStrike: a note's light, at `velocity` (a fraction) times `amount`
-     (Strike), laid in each picture a layer the note is in reads - `layers`
-     has A as 1 and B as 2 - where that layer's Scan is on, each picture
-     once. `lay(picture, x0, y0, x1, y1, level)` lays one segment: into that
+     (Strike) - each layer's own, `amountB` B's (G6, the hands), which a
+     caller with one Strike gives as A's - laid in each picture a layer the
+     note is in reads - `layers` has A as 1 and B as 2 - where that layer's
+     Scan is on and its Strike lights anything, each picture once. `lay(picture, x0, y0, x1, y1, level)` lays one segment: into that
      layer's own picture (0 or 1) while the layers draw one each, and into
      the shown screen (-1) always, in the page's order. Nothing when Strike
      is at nought, the note is silent, or on the spectrogram. */
   template <typename Cell, class Lay>
   void strike(int note, double velocity, int layers, double amount, bool spect, const ScanInput<Cell>& in,
-              const Plot& plot, Lay&& lay) const {
-    if (!(amount > 0) || spect) return;
-    const double level = jsMin(1, jsMax(0, velocity) * amount);
-    if (!(level > 0)) return;
+              const Plot& plot, Lay&& lay, double amountB = NAN) const {
+    if (std::isnan(amountB)) amountB = amount;
+    if (!(amount > 0 || amountB > 0) || spect) return;
     std::array<bool, 2> struck { { false, false } };
     for (std::size_t l = 0; l < 2; l++) {
-      if (!(layers & (1 << l)) || !(in.depth[l] > 0)) continue;
+      const double level = jsMin(1, jsMax(0, velocity) * (l == 1 ? amountB : amount));
+      if (!(level > 0) || !(layers & (1 << l)) || !(in.depth[l] > 0)) continue;
       std::array<std::size_t, 2> from { { 0, 0 } };
       const std::size_t count = in.live ? scanPicturesOf(in.reads[l], from) : 1;
       for (std::size_t i = 0; i < count; i++) {
