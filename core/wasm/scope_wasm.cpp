@@ -410,6 +410,18 @@ std::u16string brainIn, brainOut;
 std::vector<std::uint8_t> midiIn;            // the bytes of every message waiting
 std::vector<std::size_t> midiLengths;        // and each one's length
 std::vector<scope::Instrument::Event> midiEvents;
+/* When each waiting message came, in the audio context's milliseconds, or
+   below nought where the page did not say; and the time of the block about
+   to run, from the worklet. How early a message came is how long before its
+   block it arrived, less the least of that seen lately: what is left is the
+   wait the browser added to each one, without the output's latency or the
+   two clocks' offset, which are the same for every message and would only
+   push the bar back. The least is let go after a second with no timed
+   message, so a clock that comes again later, or a device whose latency
+   changed, starts afresh. */
+std::vector<double> midiTimes;
+double blockAt = -1, earliest = -1, earliestAt = -1;
+constexpr double kMostEarlyMs = 250;  // past this the time is taken as wrong, not early
 std::vector<std::uint8_t> midiOut;           // each message sent, its length first
 // Eight lanes of a block: the heard pair, then the picture's six (a pair, two, or the band split's four).
 constexpr std::size_t kBrainLanes = 2 + scope::Instrument::kRingLanes;
@@ -435,7 +447,7 @@ EXPORT(brain_make) int brainMake(double rate, int block) {
     midiOut.push_back(static_cast<std::uint8_t>(length));
     midiOut.insert(midiOut.end(), bytes, bytes + length);
   };
-  midiIn.clear(); midiLengths.clear(); midiOut.clear();
+  midiIn.clear(); midiLengths.clear(); midiTimes.clear(); midiOut.clear();
   auto setup = scope::Instrument::setup(brainAscii(0));
   instrument->prepare(rate, block, setup ? *setup->setup : scope::Json::object());
   return setup ? 1 : 0;
@@ -469,13 +481,18 @@ EXPORT(brain_fade) int brainFade() {
   return command ? 1 : 0;
 }
 
-// One MIDI message, of one to three bytes, for the top of the next block.
-EXPORT(brain_midi) void brainMidi(int a, int b, int c, int length) {
+// One MIDI message, of one to three bytes, for the top of the next block, and
+// when it came in the audio context's milliseconds, or below nought.
+EXPORT(brain_midi) void brainMidi(int a, int b, int c, int length, double at) {
   const std::uint8_t bytes[3] = { static_cast<std::uint8_t>(a), static_cast<std::uint8_t>(b), static_cast<std::uint8_t>(c) };
   const std::size_t n = static_cast<std::size_t>(std::clamp(length, 1, 3));
   midiIn.insert(midiIn.end(), bytes, bytes + n);
   midiLengths.push_back(n);
+  midiTimes.push_back(at >= 0 ? at : -1);
 }
+
+// The audio context's time of the next block's first frame, in milliseconds.
+EXPORT(brain_now) void brainNow(double ms) { blockAt = ms; }
 
 EXPORT(brain_lanes) float* brainLanesAt(int n) {
   brainLength = static_cast<std::size_t>(n);
@@ -500,7 +517,17 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
   brainLength = frames;
   midiEvents.clear();
   std::size_t at = 0;
-  for (const std::size_t length : midiLengths) { midiEvents.push_back({ 0, midiIn.data() + at, length }); at += length; }
+  for (std::size_t i = 0; i < midiLengths.size(); ++i) {
+    double early = 0;
+    if (blockAt >= 0 && midiTimes[i] >= 0) {
+      const double late = blockAt - midiTimes[i];
+      if (earliest < 0 || late < earliest || blockAt - earliestAt > 1000) earliest = late;
+      earliestAt = blockAt;
+      early = std::clamp(late - earliest, 0.0, kMostEarlyMs);
+    }
+    midiEvents.push_back({ 0, midiIn.data() + at, midiLengths[i], early });
+    at += midiLengths[i];
+  }
   midiOut.clear();
   float* lanes = brainLanes.data();
   const int count = std::clamp(given, 0, scope::Instrument::kRingLanes);
@@ -509,7 +536,8 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
   instrument->block(lanes, lanes + frames, n, midiEvents.data(), midiEvents.size(), nullptr, nullptr, 0, count ? &input : nullptr);
   for (int c = 0; c < scope::Instrument::kRingLanes; ++c)
     instrument->latestLane(c, lanes + (2 + static_cast<std::size_t>(c)) * frames, frames);
-  midiIn.clear(); midiLengths.clear();
+  midiIn.clear(); midiLengths.clear(); midiTimes.clear();
+  blockAt = -1;
   return static_cast<int>(midiOut.size());
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }

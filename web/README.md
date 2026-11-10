@@ -5628,3 +5628,24 @@ fuzzed matrix runs found.
 out of `web/scope.html` each time a harness starts, over ten minutes and more,
 so a page edited while it runs can fail a harness halfway with an error that is
 not the core's. Run it once the page is still.
+
+**A fix held to parity alone can miss the site's bridge.** A synced delay
+warbled under a MIDI clock, and the 6 Nov fix (`DELAY_SYNC_SLACK`, a time sent
+again only past two per cent) was checked by parity, which hands the core
+each tick at its exact time. The site never did: the worklet can only give the
+core a message at the top of a block, so the core's clock timed every tick by
+the block it arrived in, and a browser hands messages over in bunches. The
+tempo read from those times swung by several per cent, past the slack, and
+each new time glided the read head - 450 to 630 cents of warble on the
+default brain, none on `?brain=js`, whose clock reads the port's own
+timestamps. Each port message now goes over with its time on the audio
+context's clock (the context's `getOutputTimestamp` pair maps the page's
+clock onto it), the worklet tells the bridge each block's time, and the
+bridge works out how early each message came, less the least seen lately so
+that the output's latency does not push the bar back (`Instrument::Event`'s
+`earlyMs`, nought in the plugin, whose host places each message at its own
+sample). `braintest.py` hands exact ticks over 40 ms at a time and holds the
+repeats' pitch still, with the times withheld as its null; it is the first
+check of the clock through the bridge rather than beside it. The general
+lesson: where the page and the plugin reach the core by different roads, a
+parity pass covers the road parity drives, and the other wants its own check.

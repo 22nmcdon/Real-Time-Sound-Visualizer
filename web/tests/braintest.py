@@ -15,6 +15,9 @@ native one sample for sample; this holds what the page does with it:
 - a slider, a preset, the kind menu and a port's bytes reach the instrument,
   and a port's bytes are passed on once, not again as the notes the page
   makes of them;
+- a port's clock reaches the instrument at each tick's own time, not the
+  block it was handed over in, so a synced delay holds its pitch and follows
+  the clock's tempo;
 - what the instrument sends to a MIDI port goes out of the page's port on the
   page's channel, and the page's own brain sends nothing beside it;
 - the sound switch opens and closes the instrument's way out;
@@ -689,6 +692,82 @@ with sync_playwright() as pw:
     check("and the fade comes back after a reload", kept == {"mode": "both", "attack": 1.25, "kind": "host"}, str(kept))
     p.evaluate("() => { setFade('off'); saveFade(); }")
     check("no page errors", not errors, "; ".join(errors[:3]))
+    p.close()
+
+    # A port's MIDI clock, timed (10 Nov). The worklet can only hand a message
+    # to the instrument at the top of a block, so its clock timed each tick by
+    # the block it came in; a browser hands messages over in bunches, the
+    # tempo read from them swung past the delay's slack, and a synced delay's
+    # read head glided to and fro. Sync warbled on the site; parity, which
+    # times its ticks exactly, never saw it. Here the ticks are exact but
+    # handed over 40 ms at a time, as a busy page does, with a held note
+    # under a sixteenth's delay all wet: the pitch of the repeats over two
+    # seconds may not move. The null is the same with the times kept from the
+    # instrument, which is the old bridge and must warble.
+    p, errors = opened(b, "")
+    CLOCKED = """async ([sync, timed, bpm, held]) => {
+      const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+      const set = (id, v, ev) => { el[id].value = String(v); el[id].dispatchEvent(new Event(ev || 'input', { bubbles: true })); };
+      const send = scopeHost.midi;
+      if (!timed) scopeHost.midi = (bytes) => send.call(scopeHost, bytes);
+      const gap = 60000 / bpm / 24, t0 = performance.now();
+      let k = 0;
+      const ticker = setInterval(() => {
+        const now = performance.now();
+        for (; t0 + k * gap <= now; k++) midiBytes(Uint8Array.from([0xf8]), t0 + k * gap);
+      }, 40);
+      try {
+        await wait(1500);
+        set('delayMs', 400); set('delayFeedback', 0); set('delayMix', 100);
+        set('delaySync', sync, 'change');
+        setScreenKeys(true); await wait(600);
+        const rate = state.source.sampleRate;
+        midiNoteOn(57, 110); await wait(held);
+        midiNoteOff(57); await wait(held >= 1000 ? 300 : 900);
+        const [l] = state.source.getLatestWindow(Math.round(rate * (held >= 1000 ? 1.9 : 1.2)));
+        if (held >= 1000) {
+          // The pitch of each 20 ms of the held note and its repeats, from rising zero crossings.
+          const F = Math.round(rate * 0.02), hz = [];
+          for (let i = 0; i + F <= l.length - Math.round(rate * 0.35); i += F) {
+            const ups = [];
+            for (let j = i + 1; j < i + F; j++) if (l[j - 1] < 0 && l[j] >= 0) ups.push(j - l[j - 1] / (l[j] - l[j - 1]));
+            if (ups.length > 2) hz.push(rate * (ups.length - 1) / (ups[ups.length - 1] - ups[0]));
+          }
+          return { cents: 1200 * Math.log2(Math.max(...hz) / Math.min(...hz)), frames: hz.length };
+        }
+        /* A short note and its repeat: the first two rises out of silence,
+           2 ms at a time. Out of silence, since the window can open on the
+           tail of what played before the keys gated it. */
+        const F = Math.round(rate * 0.002), en = [];
+        for (let i = 0; i + F <= l.length; i += F) { let e = 0; for (let j = i; j < i + F; j++) e = Math.max(e, Math.abs(l[j])); en.push(e); }
+        const top = Math.max(...en), rises = [];
+        let quiet = false;
+        for (let j = 0; j < en.length && rises.length < 2; j++) {
+          if (en[j] < top * 0.05) quiet = true;
+          else if (quiet && en[j] > top * 0.3) { rises.push(j); quiet = false; }
+        }
+        return { ms: rises.length < 2 ? null : (rises[1] - rises[0]) * 2, from: transport.from };
+      } finally {
+        clearInterval(ticker); scopeHost.midi = send; setScreenKeys(false); set('delaySync', '', 'change');
+      }
+    }"""
+    still = p.evaluate(CLOCKED, ["1/16", True, 120, 2000])
+    warbled = p.evaluate(CLOCKED, ["1/16", False, 120, 2000])
+    free = p.evaluate(CLOCKED, ["", False, 120, 2000])
+    check("under a port's clock handed over in bunches, a synced delay's repeats hold their pitch, as Free's do",
+          still["frames"] > 50 and still["cents"] < 2 and free["cents"] < 2,
+          "%.1f cents synced, %.1f free, over %d frames" % (still["cents"], free["cents"], still["frames"]))
+    check("and the check fails with the ticks' times kept from the instrument: the old bridge's warble",
+          not warbled["cents"] < 2, "%.1f cents" % warbled["cents"])
+    # The times are the ticks' own, not merely steady: an eighth at 120 is
+    # 250 ms and at 100 is 300, each read from where the repeat starts.
+    at120 = p.evaluate(CLOCKED, ["1/8", True, 120, 60])
+    at100 = p.evaluate(CLOCKED, ["1/8", True, 100, 60])
+    check("and the instrument reads the clock's tempo from them: an eighth's repeat 250 ms on at 120 and 300 at 100",
+          at120["ms"] is not None and at100["ms"] is not None and abs(at120["ms"] - 250) <= 8 and abs(at100["ms"] - 300) <= 8
+          and at120["from"] == "midi", "%s and %s ms" % (at120["ms"], at100["ms"]))
+    check("and fails against the other tempo's time", not (at100["ms"] is not None and abs(at100["ms"] - 250) <= 8))
+    check("no page errors under the clock", not errors, "; ".join(errors[:3]))
     p.close()
     b.close()
 

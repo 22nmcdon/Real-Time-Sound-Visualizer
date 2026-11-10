@@ -70,8 +70,18 @@ class Instrument {
   };
   // The host's transport for a block, where it gives one.
   struct Transport { double bpm = 120; std::optional<double> ppq; bool playing = false; };
-  // A MIDI message at its sample in the block.
-  struct Event { int sample; const std::uint8_t* data; std::size_t size; };
+  /* A MIDI message at its sample in the block, and how many milliseconds
+     before that sample it really came, where its owner knows better than
+     the sample says. A host places each message at its own sample, so the
+     plugin leaves it at nought; the site's worklet can only hand a message
+     over at the top of the next block, which is late by however long the
+     browser held it, so the page sends each one's time with it and the
+     bridge works this out (10 Nov). Only the clock reads it: a tick timed
+     by its block was off by up to a callback's worth, the tempo it was read
+     from swung by more than the delay's slack, and a synced delay's read
+     head glided back and forth - Sync warbled on the site and not in parity,
+     which times its ticks exactly. */
+  struct Event { int sample; const std::uint8_t* data; std::size_t size; double earlyMs = 0; };
   // A host parameter moved since the last block: a hand on its slider.
   struct HostSlider { const char* id; double value; };
   /* A block's input: what a host's input bus or a page's microphone hands
@@ -466,7 +476,7 @@ class Instrument {
          chord handed to the generator is copied there, which can allocate on
          a note - once per layer, and a known cost until the brain's state is
          fixed in size (PLAN.md). */
-      clockIn_->at(blockMs + 1000.0 * at / rate_);  // a clock byte at its own time
+      clockIn_->at(blockMs + 1000.0 * at / rate_ - event.earlyMs);  // a clock byte at its own time
       keyboard_->bytes(event.data, event.size);
     }
     wakesUntil(frames);
