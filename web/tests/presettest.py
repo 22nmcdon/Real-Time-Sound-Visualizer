@@ -76,6 +76,11 @@ with sync_playwright() as pw:
             // the band split's third, and the tone has two. It falls back,
             // rightly, and the band split's own test holds the real thing.
             if ((key === 'xy0' || key === 'xy1') && setup[key] >= state.channels.length) continue;
+            /* A B field equal to A's loads its section linked (G6, the owner's
+               call), and a linked section writes no B fields: what it named is
+               then A's value, which the setup carries. */
+            const sec = HAND_SECTION_IDS.find((s) => HAND_SECTIONS[s].fields.includes(key));
+            if (!(key in snap) && sec && linked(sec)) continue;
             if (!(key in snap)) { wrong.push([name, key, 'not a setup field']); continue; }
             if (snap[key] !== setup[key]) wrong.push([name, key, setup[key], snap[key]]);
           }

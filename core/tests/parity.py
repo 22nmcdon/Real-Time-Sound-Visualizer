@@ -4537,9 +4537,52 @@ check("a routing's own depth on the upper hand loads it (modB), and the section 
 check("a rack module's B fields are the hand's own only with bPlane on, as they always were",
       hp[7]["hands"]["own"] == ["delay"] and hp[7]["b"]["timeOwn"] == 4 and hp[7]["echoB"]["mix"] == 0.5
       and hp[8]["hands"]["own"] == [] and hp[8]["echoB"]["mix"] == hp[8]["echo"]["mix"], "%r %r" % (hp[7]["hands"], hp[8]["hands"]))
-check("an upper Amount that is not a number is the lower's, and one out of range is held as the slider holds it",
-      hp[9]["hands"]["own"] == ["picture"] and hp[9]["hands"]["picture"][1][0] == hp[9]["hands"]["picture"][0][0]
-      and hp[10]["hands"]["picture"] == [[34, 50], [100, 0]], "%r %r" % (hp[9]["hands"], hp[10]["hands"]))
+# Since the owner's call on G6 a section is the hand's own only where a B
+# value differs from A's: an upper Amount that is not a number is the lower's,
+# so that section loads linked.
+check("an upper Amount that is not a number is the lower's, and loads linked; one out of range is held as the slider holds it",
+      hp[9]["hands"]["own"] == [] and hp[9]["hands"]["picture"][1][0] == hp[9]["hands"]["picture"][0][0]
+      and hp[10]["hands"]["own"] == ["picture"] and hp[10]["hands"]["picture"] == [[34, 50], [100, 0]],
+      "%r %r" % (hp[9]["hands"], hp[10]["hands"]))
+# And a fuzz of its own: in each section A and B set to one value, to two, or
+# B left out - linked, the hand's own, linked - so the links both sides read
+# are exactly the sections whose values differ.
+HEQ = [("gen", "amp", "bAmp", 0, 140), ("ampEnv", "atk", "bAtk", 0, 200), ("vcf", "vcfCut", "bVcfCut", 0, 1000),
+       ("osc", "oscFm", "bFm", 0, 100), ("shp", "shpDrive", "bDrive", 0, 100), ("picture", "oscScan", "bScan", 0, 100),
+       ("plane", "planeTwist", "bTwist", -100, 100), ("phaser", "phaserMix", "bPhaserMix", 0, 100),
+       ("chorus", "chorusRate", "bChorusRate", 5, 500), ("delay", "delayMix", "bDelayMix", 0, 100),
+       ("reverb", "reverbMix", "bReverbMix", 0, 100)]
+erng = random.Random(707)
+def heq_setup():
+    st, want = dict(HSPLIT, bPlane=True), []
+    for sec, a, bk, lo, hi in HEQ:
+        c = erng.random()
+        if c < 0.33: continue
+        v = erng.randint(lo, hi)
+        st[a] = v
+        if c < 0.66: st[bk] = v
+        else:
+            st[bk] = v + erng.choice([-1, 1]) * erng.randint(1, 5) if lo < v < hi else (v + 3 if v == lo else v - 3)
+            want.append(sec)
+    return _json.dumps(st), want
+heq = [heq_setup() for _ in range(80)]
+eqpg, eqpt = rboth([s for s, _ in heq], "restore_hands_equal.txt")
+eqb = rbad(eqpg, eqpt)
+eqown = [_json.loads(l)["hands"]["own"] for l in eqpg]
+check("%d setups with B equal to A in some sections and not in others: both read the same links" % len(heq),
+      not eqb, eqb[0] if eqb else "")
+check("and the hand's own is exactly the sections whose values differ, the rest linked",
+      all(own == want for own, (_, want) in zip(eqown, heq)) and any(heq[i][1] for i in range(len(heq)))
+      and sum(1 for (st, want), own in zip(heq, eqown) if '"bAmp"' in st and "gen" not in own) > 3,
+      next(("%s: %r against %r" % (s, own, want) for own, (s, want) in zip(eqown, heq) if own != want), ""))
+def eqnull(what, index, change):
+    lines = [s for s, _ in heq[:index + 1]]
+    lines[index] = _json.dumps(change(_json.loads(lines[index])))
+    page, _ = rboth(lines, "restore_hands_equal_null.txt")
+    check("and against " + what, _json.loads(page[index])["hands"]["own"] != eqown[index])
+ieq = next(i for i, (s, want) in enumerate(heq) if '"bAmp"' in s and "gen" not in want)
+eqnull("an equal level made a step apart", ieq, lambda st: st | {"bAmp": st["amp"] + (1 if st["amp"] < 140 else -1)})
+
 check("the random ones reach every section linked and its own",
       all(any(sec in r["hands"]["own"] for r in hp) for sec in ("gen", "ampEnv", "vcf", "osc", "shp", "picture", "plane",
                                                                   "phaser", "chorus", "delay", "reverb"))

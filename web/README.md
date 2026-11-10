@@ -5602,8 +5602,13 @@ chorus from wherever it last stopped, not with A's. So a shared module in B's
 stage is A's to the sample, copied after each tick (`timeShare`, page and
 core), and parity holds a shared module beside an own one to Together's sound
 exactly. The link itself is not stored: it is read off which B fields a setup
-has (`linksOfSetup`, `scope::restoreSetup`), which is what makes a code from
-before G6 - every B value written - load each hand its own.
+has (`linksOfSetup`, `scope::restoreSetup`), and then settled on the values
+loaded (`linksSettle`, the owner's call): a section with B fields is the hand's
+own only where one of B's values differs from A's, or a routing on it has its
+own upper-hand depth. Read off the fields alone, every code saved before G6 -
+which wrote every B field whatever it held - loaded every section as the
+hand's own, and Crossed hands, whose hands are one but for what each reads,
+showed *Upper's own* on three sections with nothing different in them.
 
 **A routing's depth on one hand is a second depth, not a second routing.** On a
 section each hand has its own of, a routing has the lower hand's depth in

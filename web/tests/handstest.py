@@ -150,15 +150,26 @@ with sync_playwright() as pw:
       const beforeMove = genSettings(0).amp;
       __click('editHandB'); __input('amp', 70); const oldMoved = [genSettings(0).amp, genSettings(1).amp];
       restore({ layers: 'split', midiMode: 'poly', amp: 50 }); await wait(50); const plain = own();
+      // Every B value A's, as a code saved before G6 with the hands one wrote them; then one a step apart.
+      const same = { layers: 'split', midiMode: 'poly', amp: 50, bAmp: 50, shape: 'ramp', bShape: 'ramp', atk: 8, bAtk: 8,
+                     bFm: 0, bDrive: 0, bVcf: 0, bScan: 0, bPlane: true, delayMix: 20, bDelayMix: 20, bTwist: 0 };
+      restore(same); await wait(30); const allSame = own();
+      restore(Object.assign({}, same, { bAtk: 9 })); await wait(30); const oneApart = own();
       // A rack module's B fields count only with bPlane, as they always did.
       restore({ layers: 'split', midiMode: 'poly', bPlane: true, bDelayMix: 40 }); const rack = own();
       restore({ layers: 'split', midiMode: 'poly', bPlane: false, bDelayMix: 40 }); const rackOff = own();
       __click('editHandA');
-      return { fresh, old, beforeMove, oldMoved, plain, rack, rackOff };
+      return { fresh, old, beforeMove, oldMoved, plain, rack, rackOff, allSame, oneApart };
     }""")
     check("a new split starts with everything linked", codes["fresh"] == [], str(codes["fresh"]))
-    check("a code with B values loads each section that has them as the hand's own",
-          codes["old"] == ["gen", "ampEnv", "vcf", "osc", "shp", "picture"], str(codes["old"]))
+    # The owner's call on G6: a section is the hand's own only where a B value
+    # differs from A's. This code's level and shape differ; its attack,
+    # FM, drive, filter and Scan are A's, as every code before G6 wrote them.
+    check("a code with B values loads the hand's own only where they differ from A's, the rest linked",
+          codes["old"] == ["gen"], str(codes["old"]))
+    check("an old code whose every B value is A's loads linked throughout", codes["allSame"] == [], str(codes["allSame"]))
+    null("one B value a step apart loads that section as the hand's own and the rest linked",
+         codes["oneApart"] == ["ampEnv"], str(codes["oneApart"]))
     check("so moving the upper hand there leaves the lower as the code had it",
           codes["oldMoved"] == [0.5, 0.7] and codes["beforeMove"] == 0.5, str(codes["oldMoved"]))
     null("a code without B values loads linked", codes["plain"] == [], str(codes["plain"]))

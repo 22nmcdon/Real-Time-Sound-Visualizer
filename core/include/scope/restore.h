@@ -726,6 +726,8 @@ inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys)
 // value that cannot be used.
 // The hand on the face copied into the other (G6), defined with the links below.
 inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to);
+// And the links settled once a setup is in, with them.
+inline void linksSettle(Brain& b, Generator& gen, const Matrix& matrix);
 
 template <class Field>
 void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& panel) {
@@ -1196,7 +1198,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
      hand's own where the setup has any of its B fields - a rack module's only
      while bPlane is on, as they always were - or a routing with its own depth
      on the upper hand on one of its destinations. First, since the rack's B
-     fields are read by them below. */
+     fields are read by them below; settled at the end on the values loaded
+     (linksSettle), linked wherever every B value is A's. */
   {
     const auto falsy = [](const Json* v) {
       return !v || v->type == Json::Type::Null || (v->type == Json::Type::Bool && !v->b)
@@ -1733,6 +1736,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     w.spectroSpan = num("span");
     setZoom(brain, num("zoom"));
   }
+  // The links settled on what was loaded (G6): linked wherever the hands are one.
+  linksSettle(brain, gen, matrix);
 }
 
 }  // namespace scope
@@ -2069,6 +2074,53 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
     if (to == 0 && b.panelLayer == 1 && b.keptA)
       for (auto& [kept, text] : b.panelKeptA) if (kept == row.id) text = layerPanelValue(b.panel, row);
   }
+}
+/* handsEqual, linksSettle (the owner's call on G6): a section with B fields
+   is the hand's own only where one of B's values, as restore made it,
+   differs from A's, or a routing on it has its own depth on the upper hand;
+   where every B value is A's it loads linked. The page's, which says why. */
+inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
+  if (sec == kHandPlane) {
+    const Brain::PlaneShape &p = b.plane, &q = b.planeB;
+    return q.mirror == p.mirror && q.limit == p.limit && q.radius == p.radius && q.twist == p.twist && q.snap == p.snap
+        && q.scaleX == p.scaleX && q.scaleY == p.scaleY && q.shear == p.shear && b.planeB.turn == 0;
+  }
+  const Brain::EchoState &e = b.echo, &f = b.echoB;
+  if (sec == kHandDelay)
+    return f.mix == e.mix && f.ms == e.ms && f.sync == e.sync && f.feedback == e.feedback && f.pingPong == e.pingPong
+        && f.tone == e.tone && f.lowCut == e.lowCut && f.width == e.width && f.wow == e.wow;
+  if (sec == kHandChorus)
+    return f.chorus == e.chorus && f.rate == e.rate && f.depthMs == e.depthMs && f.centreMs == e.centreMs
+        && f.chorusFeedback == e.chorusFeedback;
+  if (sec == kHandPhaser) return f.phaser == e.phaser && f.phRate == e.phRate && f.phDepth == e.phDepth && f.phFeedback == e.phFeedback;
+  if (sec == kHandReverb)
+    return f.rvMix == e.rvMix && f.rvSize == e.rvSize && f.rvTone == e.rvTone && f.rvPre == e.rvPre && f.rvSpread == e.rvSpread;
+  if (sec == kHandPicture && (b.pictureHands[0].amount != b.pictureHands[1].amount
+                              || b.pictureHands[0].strike != b.pictureHands[1].strike)) return false;
+  const LayerSettings &a = gen.tone(), &t = gen.toneB();
+  for (const auto& row : layerControls()) {
+    if (handSectionOfControl(row.id) != sec) continue;
+    const std::string_view field = row.field;
+    if (field == "shape") { if (a.shapeName != t.shapeName) return false; }
+    else if (field == "subShape") { if (a.subShapeName != t.subShapeName) return false; }
+    else if (field == "bars") { if (a.bars != t.bars) return false; }
+    else if (!(layerFieldValue(a, field) == layerFieldValue(t, field))) return false;
+  }
+  return true;
+}
+inline void linksSettle(Brain& b, Generator& gen, const Matrix& matrix) {
+  bool moved = false;
+  for (int sec = 0; sec < kHandSections; sec++) {
+    if (handLinked(b, sec) || !handsEqual(b, gen, sec)) continue;
+    bool routed = false;
+    for (const auto& r : matrix.kept()) if (r.amountB && handSectionOfDest(r.destId) == sec) routed = true;
+    if (routed) continue;
+    b.handOwn[static_cast<std::size_t>(sec)] = false;
+    moved = true;
+  }
+  if (!moved) return;
+  syncPlane(b, gen);
+  syncEcho(b, gen);
 }
 inline void handsChanged(Brain& b, Generator& gen, const Keyboard& keys) {
   b.planeB.own = !handLinked(b, kHandPlane);

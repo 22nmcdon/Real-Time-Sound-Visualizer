@@ -428,11 +428,18 @@ Each leaves the suite green and is pushed alone.
   routing at one depth on both hands, which is what it meant. A routing's rows in the
   source's editor and in Routings say *Both*, *Lower* or *Upper*, one row a hand with a
   depth there. B's time modules each have their own bit in the generator's `timeOwn`, and
-  a shared module beside an own one is A's to the sample (`timeShare`). Decided where the
+  a shared module beside an own one is A's to the sample (`timeShare`). The owner's call
+  after it: a section with B fields loads as the hand's own only where one of B's values,
+  as restore makes them, differs from A's (or a routing on it has its own depth on the
+  upper hand), and linked where every one is A's - so every code from before G6, which
+  wrote every B field whatever it held, loads linked wherever the hands were one. The bank
+  after it: Bass under the tine piano has its Amp envelope, Voice filter, Oscillator and
+  Picture its upper hand's own and its Generator linked (B's sine is A's); Bass under the
+  pad its Generator (B's level 40 against 45), Amp envelope, Voice filter and Picture;
+  Crossed hands is linked throughout (B's sine, ratio and Scan are A's). Decided where the
   design was open: links are kept while the layers are off, so a split switched off and
   on keeps each hand as it was (a setup that never parted them is linked, which is how a
-  new split starts); a code from before G6, which wrote every B field, loads each section
-  with B values as the hand's own even where they equal A's; relinking copies the hand on
+  new split starts); relinking copies the hand on
   the face over the other, and drops the other hand's own routing depths on the section;
   Frequency, Phase, Glide, Interval and Tuning stay shared, and still hide while the upper
   hand is edited; the Plane's Turn shows the upper hand's own turn in its place while the
