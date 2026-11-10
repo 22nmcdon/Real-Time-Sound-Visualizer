@@ -46,6 +46,10 @@ A *Draw* choice, beside today's (which stays the default):
 4. Later, perhaps: **a trail** - notes laid across the screen in the order they are
    played, so a fast line reads as a line of figures in time.
 
+**Chosen (the owner, 10 Nov):** *One figure* stays the default, and the four to build
+beside it are **Constellation**, **Clock**, **Pairs** and **Ripples**. Helix and Split
+screen were sketched and not chosen. The trail stays a maybe.
+
 ## Where a note lands: Scatter
 
 The owner asked whether placement could be truly random, against the repeatable
@@ -74,8 +78,9 @@ What Free costs, so it stays a choice and not the default:
 
 ## How it is to be built
 
-1. A mockup on the design canvas: a held triad and a fast run, drawn as one figure, as a
-   constellation by pitch, and as a seeded scatter, side by side.
+1. A mockup on the design canvas: a held triad and a fast run, drawn as one figure and
+   in each of the four chosen modes, with Constellation's places by pitch and by a
+   seeded scatter, side by side.
 2. A page-only prototype behind a switch, to hear what Scan makes of a constellation
    before anything is ported.
 3. Then the core, with parity; a voice budget for many small figures; and new honesty
