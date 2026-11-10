@@ -7475,10 +7475,11 @@ registerSource({
    this thread or in the worklet. Reading it is the only honest option - a
    second envelope on the frame clock would be a staircase of a different
    shape, and it would be the one the picture answered to. */
+// Sage, as the second pass drew it: on slate it was LFO 2's ink, and with a
+// ring for one source and a tick for each other on a knob (G5b) the two could
+// not be told apart. (Above the call, not inside it: parity's generator
+// harness finds this source by the text that opens it.)
 registerSource({
-  // Sage, as the second pass drew it: on slate it was LFO 2's ink, and with
-  // a ring for one source and a tick for each other on a knob (G5b) the two
-  // could not be told apart.
   id: "env.note", label: "Envelope", ink: "ch4", bipolar: false, order: 11,
   family: "signal",
   description: "Where the generator's attack, decay, sustain and release have got to - "
