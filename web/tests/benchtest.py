@@ -60,7 +60,9 @@ with sync_playwright() as pw:
         title: groupTitle(g), home: g.dataset.home,
         // In Settings' panel, in one of its two columns since F7b.
         inPanel: !!g.closest('#menuPanel'), inMeasure: !!g.closest('#measurePanel'),
-        onBench: !!g.closest('#bench') && !g.closest('#measurePanel') }));
+        // Routings (G5a) is over the tabs, inside the Bench, and is a home of its own.
+        inRoutings: !!g.closest('#routingsPanel'),
+        onBench: !!g.closest('#bench') && !g.closest('#measurePanel') && !g.closest('#routingsPanel') }));
       const bench = where();
       setEnlarged(true); setEnlarged(false);
       const back = where();
@@ -69,7 +71,7 @@ with sync_playwright() as pw:
     }""")
     misplaced = [g["title"] + " in " + when for when in ("bench", "back") for g in homes[when]
                  if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]
-                 or (g["home"] == "measure") != g["inMeasure"]]
+                 or (g["home"] == "measure") != g["inMeasure"] or (g["home"] == "routings") != g["inRoutings"]]
     check("every section is in its home, on the face and after Enlarge and back", misplaced == [], str(misplaced))
     # F1 (redesigning-the-face.md): the scope's own tools are Scope & measure's,
     # a panel over the screen in either view - the null is the P8 drawer's tab.
@@ -83,11 +85,14 @@ with sync_playwright() as pw:
     performed = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#performPanel')).map(groupTitle).sort()""")
     check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
           performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
-    check("Settings holds only the settings: MIDI, audio, the inputs (since F3), the modulation fade (F4) and this window (F7b)",
+    check("Settings holds only the settings: MIDI, audio, the inputs (since F3) and this window (F7b)",
           # Presets left in F6, for the preset browser's footer; the beam in
-          # F7b, for the Picture's Advanced.
-          sorted(homes["panelTitles"]) == ["Audio", "Input", "Input into the generator", "MIDI", "Modulation fade", "This window"],
+          # F7b, for the Picture's Advanced; the modulation fade, there from
+          # F4, in G5a, for Routings.
+          sorted(homes["panelTitles"]) == ["Audio", "Input", "Input into the generator", "MIDI", "This window"],
           str(homes["panelTitles"]))
+    routed = sorted(g["title"] for g in homes["bench"] if g["inRoutings"])
+    check("Routings holds the fade (G5a)", routed == ["Fade"], str(routed))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
     check("and Settings opens from the face", p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
     check("still no duplicates after a round trip", p.evaluate(DUPES) == [])
@@ -213,21 +218,24 @@ with sync_playwright() as pw:
       el.benchSearch.value = ''; el.benchSearch.dispatchEvent(new Event('input'));
       return { chips: chips.filter((id) => id.startsWith('stage.')), lfo: chips.includes('lfo1'), found };
     }""")
-    # The Photocell's switch is in the Picture's Advanced since F2, for
-    # everyone, whatever the drawer: until then it went with the drawer while
-    # off. The null is the same switch with Advanced shut, out of sight.
+    # The Photocell's switch is in its card's editor since G5a, as On; it
+    # was in the Picture's Advanced from F2, and with the drawer before. It
+    # is there whatever the photocell is doing, and the null is the same
+    # switch with the editor shut, out of sight - and the Picture's Advanced
+    # open, which no longer holds it.
     cell = p.evaluate("""() => {
       const shown = () => !!el.photoButton.offsetParent;
       const out = {};
-      setPictureOpen(true);
-      setPhoto(false); out.shutOff = shown();
-      setPhoto(true); out.shutOn = shown();
+      openModCard('photo.1');
       setPhoto(false); out.openOff = shown();
+      setPhoto(true); out.openOn = shown();
+      setPhoto(false);
+      closeModCard(); setPictureOpen(true); out.advanced = shown();
       setPictureOpen(false); out.closed = shown();
       return out;
     }""")
-    check("the Photocell's switch is in the Picture's Advanced whatever the photocell, and out of sight with it shut",
-          cell == {"shutOff": True, "shutOn": True, "openOff": True, "closed": False}, str(cell))
+    check("the Photocell's switch is in its card's editor whatever the photocell, and out of sight with it shut",
+          cell == {"openOff": True, "openOn": True, "advanced": False, "closed": False}, str(cell))
     check("the stage's reads are not offered by hand: no card, and not found by a search",
           hidden["chips"] == [] and hidden["lfo"] and not any("Glow" in f for f in hidden["found"]), str(hidden))
 

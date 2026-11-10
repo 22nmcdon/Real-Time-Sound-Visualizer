@@ -205,7 +205,7 @@ with sync_playwright() as pw:
                scrolls: el.menuPanel.scrollHeight > el.menuPanel.clientHeight + 1,
                left: col('settingsLeft'), right: col('settingsRight') }; }"""
     fits = {}
-    for w, h in ((1400, 900), (960, 600), (960, 480)):
+    for w, h in ((1400, 900), (960, 600), (960, 420)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(250)
         fits[(w, h)] = p.evaluate(SET)
         p.evaluate("() => setMenuOpen(false)")
@@ -216,11 +216,15 @@ with sync_playwright() as pw:
               fits[size]["inside"] and not fits[size]["scrolls"], str(fits[size]))
     # The null: a window too short for it must be seen not to fit. At 960
     # wide the header's two rows were what put the old panel off the window.
-    check("null: at 960x480 the same check says it does not fit", not (fits[(960, 480)]["inside"] and not fits[(960, 480)]["scrolls"]),
-          str(fits[(960, 480)]))
-    check("two columns as drawn: MIDI, the fade and this window; the inputs and the audio",
-          fits[(1400, 900)]["left"] == ["MIDI", "Modulation fade", "This window"]
+    # 960x480 until G5a took the fade to Routings, which left the panel short
+    # enough to fit there; at 420 it scrolls (measured at 440 too).
+    check("null: at 960x420 the same check says it does not fit", not (fits[(960, 420)]["inside"] and not fits[(960, 420)]["scrolls"]),
+          str(fits[(960, 420)]))
+    # The fade was the left column's middle from F7b to G5a, which moved it to Routings.
+    check("two columns as drawn: MIDI and this window; the inputs and the audio",
+          fits[(1400, 900)]["left"] == ["MIDI", "This window"]
           and fits[(1400, 900)]["right"] == ["Input", "Audio", "Input into the generator"], str(fits[(1400, 900)]))
+
     notes = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setMenuOpen(true);

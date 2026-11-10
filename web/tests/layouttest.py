@@ -52,13 +52,14 @@ with sync_playwright() as pw:
         p.evaluate("(q) => { el.benchSearch.value = q; el.benchSearch.dispatchEvent(new Event('input')); }", q)
         return p.evaluate(RESULTS)
 
-    print("\n--- the modulation cards (F4) ---")
-    # Three cards under the screen, whatever is plugged in or patched: they
-    # replaced a tab of six families, which grew a chip for every controller
-    # learned (until F4b cut learning) and the photocell. So the check moves a
-    # controller, turns the photocell on and routes a hearing source first -
-    # each of which the old strip answered with another chip - and still
-    # wants exactly three.
+    print("\n--- the modulation cards (F4, four since G5a) ---")
+    # Four cards in the row across the window, whatever is plugged in or
+    # patched: they replaced a tab of six families, which grew a chip for
+    # every controller learned (until F4b cut learning) and the photocell.
+    # So the check moves a controller, turns the photocell on and routes a
+    # hearing source first - each of which the old strip answered with
+    # another chip - and still wants exactly the four, the Photocell's last
+    # (G5a made it a card; until then it was a switch and no card).
     cards = p.evaluate("""async () => {
       setView('bench'); setBenchTab('play');
       state.modRoutings = []; touchRoutings();
@@ -74,8 +75,8 @@ with sync_playwright() as pw:
       return { ids, parked };
     }""")
     print("    %s" % cards)
-    check("three cards, LFO 1, LFO 2 and the Envelope, with a controller learned, the photocell on and a hearing source patched",
-          cards["ids"] == ["lfo1", "lfo2", "env.note"], str(cards["ids"]))
+    check("four cards, LFO 1, LFO 2, the Envelope and the Photocell, with a controller learned, the photocell on and a hearing source patched",
+          cards["ids"] == ["lfo1", "lfo2", "env.note", "photo.1"], str(cards["ids"]))
     check("and a parked source on a knob still shows its ink there", cards["parked"] == {"pips": 1, "empty": False},
           str(cards["parked"]))
 
@@ -86,13 +87,20 @@ with sync_playwright() as pw:
       pressed: Array.from(el.modStrip.querySelectorAll('.mod-card[aria-pressed=true]')).map((c) => c.dataset.source),
       overScreen: el.modEditor.getBoundingClientRect().left < el.traceSheet.getBoundingClientRect().right,
       rate: !!document.getElementById('lfoRate1') })""")
-    p.locator('#benchTab-ink').click(); p.wait_for_timeout(200)
+    # The editor covers the tab cards since G5a, so a tab is reached from code,
+    # as a search result lands on one (showControl); the hand's way back is
+    # the card again, or Close.
+    p.evaluate("() => setBenchTab('ink')"); p.wait_for_timeout(200)
     shut = p.evaluate("() => ({ shown: !el.modEditor.hidden, tab: benchTab, pressed: el.modStrip.querySelectorAll('.mod-card[aria-pressed=true]').length })")
     print("    %s; then %s" % (opened, shut))
     check("pressing a card opens its editor on that source, with its rate, the card marked, beside the screen rather than over it",
           opened == {"shown": True, "title": "LFO 2", "selected": "lfo2", "pressed": ["lfo2"], "overScreen": False, "rate": True},
           str(opened))
     check("null: and going to a tab puts it away", shut == {"shown": False, "tab": "ink", "pressed": 0}, str(shut))
+    p.locator('.mod-card[data-source="lfo2"]').click(); p.wait_for_timeout(200)
+    p.locator('.mod-card[data-source="lfo2"]').click(); p.wait_for_timeout(200)
+    again = p.evaluate("() => ({ shown: !el.modEditor.hidden, pressed: el.modStrip.querySelectorAll('.mod-card[aria-pressed=true]').length })")
+    check("and pressing the card again puts it away", again == {"shown": False, "pressed": 0}, str(again))
 
     print("\n--- the editor ---")
     detail = p.evaluate("""async () => {
@@ -137,8 +145,9 @@ with sync_playwright() as pw:
           detail["rows"] == ["view.rotate"] and "view.rotate" not in detail["offered"]
           and "gen.freq" in detail["offered"], str(detail))
 
-    # The control's own editor, opened from its ring, offers the three and
-    # nothing else: before F4 it listed every source a hand could route.
+    # The control's own editor, opened from its ring, offers the cards' four
+    # (three until G5a made the Photocell one) and nothing else: before F4 it
+    # listed every source a hand could route.
     offer = p.evaluate("""async () => {
       setBenchTab('play'); state.modRoutings = []; touchRoutings();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -149,7 +158,7 @@ with sync_playwright() as pw:
       closeOverlay();
       return ids;
     }""")
-    check("a control's own editor offers the three cards' sources and no others", offer == ["lfo1", "lfo2", "env.note"], str(offer))
+    check("a control's own editor offers the four cards' sources and no others", offer == ["lfo1", "lfo2", "env.note", "photo.1"], str(offer))
     # A controller could be forgotten from its own panel, until F4b cut
     # learning: the null now is that moving one registered nothing.
     cc = p.evaluate("() => [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.'))")
@@ -229,15 +238,21 @@ with sync_playwright() as pw:
           not any(r[0] == "Draw" for r in dyad) and any(r[0] == "Draw" for r in poly), str((dyad, poly)))
     # The photocell's source, which came and went with its switch and was
     # found while it was there ("a source is found only while it exists").
-    # Since F4 only the three cards' sources are searched: the photocell's is
-    # parked, so it is found neither way, and the cards' are found always.
+    # Since F4 only the cards' sources are searched, and the cards' are found
+    # always. The photocell's was parked from F4 and found neither way; since
+    # G5a it is a card, found with the photocell on and off alike. The null is
+    # a parked source, the microphone's pitch, found with neither.
     p.evaluate("() => setPhoto(true)")
     back = search("photocell")
     p.evaluate("() => setPhoto(false)")
+    gone = search("photocell")
     lfo = search("lfo")
-    check("only the cards' sources are searched: the photocell's is not, with it on, and both oscillators are",
-          not any(r[1] == "Modulation" for r in back) and [r for r in lfo if r[1] == "Modulation"] == [["LFO 1", "Modulation"], ["LFO 2", "Modulation"]],
-          str((back, lfo)))
+    pitch = search("pitch")
+    check("only the cards' sources are searched: the photocell's, on or off, and both oscillators are",
+          ["Photocell", "Modulation"] in back and ["Photocell", "Modulation"] in gone
+          and [r for r in lfo if r[1] == "Modulation"] == [["LFO 1", "Modulation"], ["LFO 2", "Modulation"]],
+          str((back, gone, lfo)))
+    check("null: a parked source, the microphone's pitch, is not", not any(r[1] == "Modulation" for r in pitch), str(pitch))
 
     jump = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -990,6 +990,9 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
   padding-block: 14px 16px; max-width: 1640px; margin-inline: auto; width: 100%;
   box-sizing: border-box; container-type: size;
 }
+/* Under the tabs is the modulation row's rule since G5a: less padding than
+   over them, which gives the tabs back some of the row's height. */
+.bench-wrap { padding-bottom: 8px; }
 .bench-main {
   flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px;
 }
@@ -1059,31 +1062,51 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 [data-mod-dest]:hover .mod-open.empty, .mod-open.empty:focus-visible { opacity: 1; }
 @media (hover: none) { .mod-open.empty { opacity: 0.45; } }
 
-/* --- modulation (F4) --------------------------------------------------------
-   Three cards under the screen, each drawing its shape: drag one onto a knob
-   to put it there, press it to open its editor. Under the screen rather than
-   under the tabs, as the design drew them: the screen's column had height to
-   spare and the tabs had none, after F3's cards took 78 px of it. */
-.mod-strip { flex: 0 0 auto; display: flex; align-items: stretch; gap: 8px; min-width: 0; }
-.mod-strip-head { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+/* --- modulation (F4; a row across the window since G5a) ----------------------
+   A card per source, each drawing what its source is doing with a dot where it
+   is now: drag one onto a knob to put it there, press it to open its editor.
+   Across the whole window under the screen and the tabs since G5a
+   (web/docs/the-face-second-pass.md), with Routings in its corner. From F4 to
+   G5a they were three cards in the screen's column, which had height to spare
+   while the tabs had none; across the window the row's height comes out of the
+   tabs instead, and what that cost is measured by fittest.py at its five
+   windows. The row is a sibling of the Bench, not inside it, so Enlarge's
+   frame covers it with the rest of the face. */
+.mod-row { order: 3; flex: 0 0 auto; background: var(--cream); border-top: 1px solid var(--line); }
+.mod-row > .wrap {
+  max-width: 1640px; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; gap: 10px 18px; padding-block: 8px;
+}
+.mod-strip { flex: 1 1 auto; display: flex; align-items: stretch; gap: 10px; min-width: 0; }
+.mod-strip-head { flex: 0 0 96px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
 .mod-strip-head .menu-title { margin: 0; padding: 0; border: 0; }
 .mod-strip-head .bench-hint { margin: 0; }
+/* Read across: the source's dot and name, how many controls it is on, its
+   reading; its drawing under them, the card's width. */
 .mod-card {
-  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px;
-  padding: 6px 8px 4px; cursor: grab; touch-action: none; text-align: left;
+  flex: 0 1 240px; min-width: 0; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center; column-gap: 6px; row-gap: 3px;
+  padding: 6px 10px 5px; cursor: grab; touch-action: none; text-align: left;
   background: var(--paper); border: 1px solid var(--line); border-radius: 1px;
-  font-family: var(--sans); color: var(--charcoal);
+  font-family: var(--sans); font-size: 12px; color: var(--charcoal); white-space: nowrap;
 }
 .mod-card[aria-pressed="true"] { box-shadow: inset 0 3px 0 var(--blush-deep); }
 .mod-card:hover { border-color: var(--blush-deep); }
-.mod-card-head { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
-.mod-card-head .reading { margin-left: auto; font-size: 11px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
-.mod-card-head .count { font-size: 10.5px; color: var(--text-soft); }
-.mod-card canvas { display: block; width: 100%; height: 30px; }
-/* The editor: over the tab's body, to the right of the screen, so the picture
+.mod-card .count { font-size: 10.5px; color: var(--text-soft); }
+.mod-card .reading { grid-column: 4; font-size: 11px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
+.mod-card canvas { grid-column: 1 / -1; display: block; width: 100%; height: 36px; }
+/* A source silenced in Routings still draws, and says it is silent. */
+.mod-card[data-silent] canvas { opacity: 0.4; }
+.mod-routes { flex: 0 0 auto; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.mod-routes .bench-hint { margin: 0; }
+/* The editor: over the tabs, to the right of the screen, so the picture
    stays in view while a source is changed (redesigning-the-face.md, rule 3).
-   Two columns - the source's own controls, and where it goes - so a source on
-   many controls lengthens the second without the panel scrolling. */
+   Over the tab cards too since G5a, as the second pass draws it: the editor
+   draws its source, and the drawing wants the height. Two columns - the
+   source's own controls, and where it goes - so a source on many controls
+   lengthens the second without the panel scrolling. Routings (G5a) is the
+   same panel in the same place. */
+.bench-main { position: relative; }
 .bench-stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .mod-editor {
   position: absolute; inset: 0; z-index: 20; background: var(--paper);
@@ -1095,10 +1118,66 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 .mod-editor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .mod-editor-name { font-family: var(--serif); font-size: 21px; color: var(--charcoal); }
 .mod-editor-close { margin-left: auto; }
+.mod-editor-head .src-desc { margin: 0; font-size: 12px; color: var(--text-soft); flex: 0 1 auto; min-width: 0;
+                             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-editor-head .dot-sm { flex: 0 0 auto; }
 #srcDetail {
-  flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr); gap: 0 30px; align-items: start;
 }
+#srcDetail .src-goes { border-left: 1px solid var(--line); padding-left: 22px; align-self: stretch; }
+/* What an editor draws (G5a): the source itself, large, with a dot where it
+   is now - an LFO's wave, the Envelope's curve, what the Photocell sees and
+   its last four seconds. Canvases sized here and drawn by paintModLive. */
+.src-draw { display: block; width: 100%; height: 150px; background: var(--cream); border: 1px solid var(--line); box-sizing: border-box; }
+.src-own > .menu-row:first-of-type, .src-own > .src-draw + * { margin-top: 10px; }
+.src-env-top { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 10px; }
+.src-env-top .switch button { padding: 5px 11px; }
+.photo-view { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+.photo-view .src-draw { height: 110px; }
+.photo-view .photo-crop { width: 150px; height: 150px; background: var(--paper); }
+.photo-view .src-sub { margin: 0 0 4px; }
+.photo-at, .photo-now { font-size: 11.5px; color: var(--text-soft); margin: 0; }
+.photo-now b { font-weight: 400; color: var(--charcoal); font-variant-numeric: tabular-nums; font-size: 13px; }
+.photo-acts { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-top: 12px; }
+.photo-acts #photoButton[aria-pressed="true"]::before { content: "\2713\00a0"; }
+
+/* Routings (G5a): every routing, by source or by destination, with a switch
+   per source; the fade beside them, moved here from Settings. */
+.routings-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.routings-head .switch { margin-left: auto; }
+.routings-head .switch button { padding: 5px 11px; }
+.routings-body {
+  flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr); gap: 0 26px;
+}
+/* The list scrolls inside itself, as Where it goes does: how many routings a
+   sound has is the player's, not a height this page decided. */
+.routings-list { min-height: 0; overflow-y: auto; padding-right: 6px; }
+.routings-side { border-left: 1px solid var(--line); padding-left: 22px; min-height: 0; }
+.routings-side > .menu-group { margin: 0; padding: 0; border: 0; }
+.routings-side .menu-note { display: none; }
+.route-head { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-bottom: 4px;
+              border-bottom: 1px solid var(--line); font-size: 13.5px; color: var(--charcoal); }
+.route-head:first-child { margin-top: 2px; }
+.route-head .count { font-size: 11px; color: var(--text-soft); }
+.route-group[data-silent] .mod-edit, .mod-edit[data-silent] { opacity: 0.45; }
+.route-switch:disabled { opacity: 0.4; cursor: default; }
+.routings-list .mod-edit { margin-top: 4px; padding-left: 4px; }
+.routings-list .mod-edit-name { flex-basis: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A source's switch: on, its routings are heard; off, kept and silent. */
+.route-switch {
+  flex: 0 0 auto; width: 30px; height: 16px; padding: 0; border: 0; border-radius: 30px; position: relative;
+  background: var(--line);
+}
+.route-switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--paper); transition: left 0.12s;
+}
+.route-switch[aria-checked="true"] { background: var(--charcoal); }
+.route-switch[aria-checked="true"]::after { left: 16px; }
+.routings-acts { display: flex; gap: 8px 18px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.routings-acts #routingsClear { color: var(--rust); }
 /* Past about a dozen destinations the list scrolls inside itself, as the
    Sources tab's list did, rather than putting the panel over: how many
    controls one oscillator is on is the player's, not a height this page
@@ -1649,8 +1728,27 @@ span.fx-handle { visibility: hidden; }
 [data-compact] .bench-rail button { padding: 6px 10px 7px; }
 [data-compact] .bench-rail .tab-name { font-size: 16px; }
 [data-compact] .bench-rail .tab-line { display: none; }
-[data-compact] .mod-card canvas, [data-compact] .mod-strip-head .bench-hint { display: none; }
-[data-compact] .mod-card { padding-block: 4px; }
+/* The cards as chips (G5a), each still with a small drawing of its shape
+   between its name and its reading: on the compact face, and on a full face
+   under 900 px tall (setCompact), where the cards' 87 px came out of tabs
+   that had not got it - at 1100x860 Ink was 22 px over and Space & Memory,
+   two layers and the delay open, 36 (fittest.py). Chips cost 36. */
+[data-chips] .mod-row > .wrap { padding-block: 4px; gap: 8px 12px; }
+[data-chips] .mod-strip { gap: 8px; align-items: center; }
+[data-chips] .mod-strip-head { flex-basis: auto; }
+[data-chips] .mod-strip-head .bench-hint, [data-chips] .mod-routes .bench-hint, [data-chips] .mod-card .count { display: none; }
+[data-chips] .mod-card { display: flex; align-items: center; gap: 6px; flex: 0 1 auto; padding: 2px 10px; border-radius: 20px; font-size: 11.5px; }
+[data-chips] .mod-card canvas { order: 1; flex: 0 0 44px; width: 44px; height: 16px; }
+[data-chips] .mod-card .reading { order: 2; }
+/* The room the row takes is given back where the tabs had padding to spare:
+   under the tabs the row's own rule is the edge, and on the compact face the
+   gap over the tab body was more than the cards' rule needs. */
+[data-compact] .bench-wrap { padding-block: 10px 4px; }
+[data-compact] .bench-main { gap: 8px; }
+[data-compact] .src-draw { height: 96px; }
+[data-compact] .photo-view { grid-template-columns: 110px minmax(0, 1fr); }
+[data-compact] .photo-view .photo-crop { width: 110px; height: 110px; }
+[data-compact] .photo-view .src-draw { height: 80px; }
 [data-compact] .menu-row select, [data-compact] .menu-row .reading { font-size: 11.5px; }
 [data-compact] .picture-bar { padding-block: 6px; }
 [data-compact] .bench-body { gap: 18px; }   /* BENCH_GAP_COMPACT */
@@ -1669,13 +1767,20 @@ span.fx-handle { visibility: hidden; }
 /* The modulation editor's dozen destinations, and the rack's lines, tighter. */
 [data-compact] .mod-editor { padding: 8px 14px; }
 [data-compact] .mod-edit { margin-top: 2px; }
-[data-compact] .fx-head { min-height: 36px; padding-block: 3px; }
+/* 34 rather than 36 since G5a: the modulation row across the window took 36 px
+   from the tabs, and with two layers, every effect on and the delay open the
+   compact rack fitted at 960x600 with nothing to spare. Two pixels a line is
+   eight over the four folded lines, and the icon and the switch still fit. */
+[data-compact] .fx-head { min-height: 34px; padding-block: 3px; }
 [data-compact] .bench-body .fx-rest { padding-left: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 14px; }
 /* The on-screen keys shorter, and without the line of which letters play.
    They are an overlay along the foot of the window, so they take no height
    from the tab and its fit never sees them; what they cover does. At full
-   height, at 960x600, they reached over the modulation cards and the foot of
-   the tab (windowtest.py); at 80 px they stop under the cards. */
+   height, at 960x600, they reached over the foot of the tab (windowtest.py);
+   at 80 px they stop under it. They stopped under the modulation cards too
+   while those were in the screen's column; since G5a put the cards in a row
+   along the foot, the keys cover it while they are up, as they cover the
+   Picture section - under it they would have 76 px for their bar and keys. */
 [data-compact] .keys-bed { height: 80px; }
 [data-compact] .keys-hint { display: none; }
 [data-compact] .screen-keys { padding-block: 4px 6px; }
@@ -2461,11 +2566,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <p class="menu-note" id="morphNote"></p>
           </div>
 
-          <!-- The fade, in Settings since F4 retired the Sources tab it sat on:
-               it is about every routing at once rather than one source, and it
-               is set once and left. See `fade` in the script. -->
-          <div class="menu-group" id="fadeGroup" data-home="settings" data-place="settingsLeft">
-            <span class="menu-title">Modulation fade</span>
+          <!-- The fade, in Settings from F4, when the Sources tab it sat on was
+               retired, to G5a, which moved it to Routings (data-home="routings"):
+               it acts on every routing at once, and Routings is where every
+               routing is. See `fade` in the script. -->
+          <div class="menu-group" id="fadeGroup" data-home="routings" data-place="routingsFade">
+            <span class="menu-title">Fade</span>
             <div class="menu-row" id="fadeRow">
               <label class="menu-label" for="fadeMode">Fade</label>
               <div class="grow"><select id="fadeMode" style="flex:1 1 auto"
@@ -3984,11 +4090,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           <div class="picture-halves">
             <div class="picture-half" id="pictureSound">
               <span class="half-title">Changes the sound</span>
-              <div class="menu-row picture-switch">
-                <button type="button" class="link-btn caps" id="photoButton" aria-pressed="false"
-                  title="A light sensor on the screen, as a modulation source">Photocell</button>
-                <span class="menu-note">A light sensor on the screen, as a modulation source: drag its reticle onto the figure.</span>
-              </div>
+              <!-- The Photocell's switch was here from F2 to G5a, when the
+                   Photocell became a modulation card with its own editor. -->
               <!-- Scan's reads and the score (data-place). -->
             </div>
             <div class="picture-half" id="pictureLook">
@@ -4125,8 +4228,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
 <!-- Empty on purpose: the control groups AND the screen are moved in from
      elsewhere in this page, never copied. #benchScope takes the trace sheet;
-     the side column keeps it and the source chips on every tab, so a chip can
-     be dragged onto a control whichever tab the control is on. -->
+     the side column keeps it on every tab. The modulation cards were there
+     too until G5a put them in a row across the window, under this. -->
 <section class="bench" id="bench">
   <div class="wrap bench-wrap">
     <!-- The screen on the left, as large as the window allows (F3 of
@@ -4134,7 +4237,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
          so the picture stays in view while it is being changed. -->
     <aside class="bench-side" id="benchSide">
       <div class="bench-scope" id="benchScope"></div>
-      <div class="mod-strip" id="modStrip" aria-label="Modulation"></div>
     </aside>
     <div class="bench-main">
       <div class="bench-head">
@@ -4150,10 +4252,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
       <div class="bench-stage" id="benchStage">
         <div class="bench-body" id="benchBody" role="tabpanel"></div>
-        <!-- A modulation card's editor (F4), over the tab's body. -->
+      </div>
+      <!-- A modulation card's editor (F4), over the tabs - their cards too since
+           G5a, as the second pass draws it - and beside the screen. -->
         <div class="mod-editor" id="modEditor" role="dialog" aria-labelledby="srcDetailTitle" hidden>
           <div class="mod-editor-head">
+            <span class="dot-sm" id="srcDetailDot"></span>
             <span class="mod-editor-name" id="srcDetailTitle">LFO 1</span>
+            <p class="src-desc" id="srcDetailDesc"></p>
             <button type="button" class="link-btn caps mod-editor-close" id="modEditorClose">Close</button>
           </div>
           <div id="srcDetail"></div>
@@ -4163,18 +4269,28 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                Envelope's editor while it is open, and back before the editor is
                built for another source (controls are moved, never copied). -->
           <div class="src-env" id="menvControls" hidden>
-            <label class="check"><input type="checkbox" id="menvOwn"> Its own envelope, not Play's</label>
-            <!-- Once a phrase, or again on every note (8 Nov). The bank's two headings
-                 want both: Settled is a note moving the sound as it strikes, Breathing
-                 one swell while held. One envelope for all the notes, so every note on
-                 a fast arpeggio twitches - a choice per sound, not one right answer. -->
-            <div class="menu-row">
-              <span class="menu-label">Starts</span>
+            <!-- Along the top, as the second pass draws it (G5a): whose envelope,
+                 and when it starts. The checkbox stays the value - the setup, the
+                 host and the core's panel read and write menvOwn as a switch - and
+                 is out of sight; the two buttons press it. -->
+            <div class="src-env-top">
+              <input type="checkbox" id="menvOwn" hidden>
+              <div class="switch" role="radiogroup" aria-label="Whether the Envelope follows Play's amp envelope or has its own">
+                <button type="button" class="caps" id="menvFollow" role="radio" aria-checked="true">Follows Play</button>
+                <button type="button" class="caps" id="menvItsOwn" role="radio" aria-checked="false">Its own</button>
+              </div>
+              <!-- Once a phrase, or again on every note (8 Nov). The bank's two headings
+                   want both: Settled is a note moving the sound as it strikes, Breathing
+                   one swell while held. One envelope for all the notes, so every note on
+                   a fast arpeggio twitches - a choice per sound, not one right answer. -->
               <div class="switch" role="radiogroup" aria-label="Whether the envelope starts once a phrase or on every note">
-                <button type="button" class="caps" id="menvPhrase" role="radio" aria-checked="true">Phrase</button>
+                <button type="button" class="caps" id="menvPhrase" role="radio" aria-checked="true">Each phrase</button>
                 <button type="button" class="caps" id="menvEvery" role="radio" aria-checked="false">Every note</button>
               </div>
             </div>
+            <!-- Its curve, with a dot where the phrase is: Play's, greyed, while it follows Play. -->
+            <canvas class="src-draw" id="menvCurve" role="img" aria-label="The Envelope's curve"></canvas>
+            <div class="src-knobs">
             <div class="menu-row">
               <label class="menu-label" for="menvAtk">Attack</label>
               <div class="grow">
@@ -4203,14 +4319,64 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="menvRelValue">400 ms</span>
               </div>
             </div>
+            </div>
+          </div>
+          <!-- The Photocell's own (G5a), written once and moved into its editor
+               while it is open, as the Envelope's are: its switch, the one that
+               was in the Picture's Advanced (the core hears it pressed by its id),
+               and Place it on the figure. -->
+          <div class="photo-acts" id="photoControls" hidden>
+            <button type="button" class="link-btn caps" id="photoButton" aria-pressed="false"
+              title="Switch the photocell on or off: a light sensor on the screen">On</button>
+            <button type="button" class="link-btn caps" id="photoPlace"
+              title="Move the reticle onto the nearest bright part of the figure">Place it on the figure</button>
           </div>
         </div>
-      </div>
+        <!-- Routings (G5a), from the modulation row's corner: every routing, by
+             source or by destination, a switch per source, and the fade, which
+             moved here from Settings (data-home="routings"). Not called Settings,
+             which the header has. -->
+        <div class="mod-editor routings-panel" id="routingsPanel" role="dialog" aria-labelledby="routingsTitle" hidden>
+          <div class="routings-head">
+            <span class="mod-editor-name" id="routingsTitle">Routings</span>
+            <p class="src-desc">Everything the cards are on, in one place</p>
+            <div class="switch" role="radiogroup" aria-label="List the routings by source or by destination">
+              <button type="button" class="caps" id="routingsBySource" role="radio" aria-checked="true">By source</button>
+              <button type="button" class="caps" id="routingsByDest" role="radio" aria-checked="false">By destination</button>
+            </div>
+            <button type="button" class="link-btn caps" id="routingsClose">Close</button>
+          </div>
+          <div class="routings-body">
+            <div class="routings-list" id="routingsList"></div>
+            <div class="routings-side" id="routingsSide">
+              <div id="routingsFade"></div>
+              <div class="routings-acts">
+                <button type="button" class="link-btn caps" id="routingsAllOff">Switch all off</button>
+                <button type="button" class="link-btn caps" id="routingsClear">Clear every routing</button>
+              </div>
+              <p class="bench-hint">A switch keeps a source's routings and silences them, to hear the sound without it.</p>
+            </div>
+          </div>
+        </div>
     </div>
     <!-- The sections of the tabs not showing. Kept in the document rather than
          detached, so every id still resolves and every listener is still bound:
          a control on another tab is out of sight, not gone. -->
     <div id="benchStore" hidden></div>
+  </div>
+</section>
+
+<!-- The modulation row (G5a of web/docs/the-face-second-pass.md): across the
+     window under the screen and the tabs, a card per source built into
+     #modStrip, and Routings in the corner. -->
+<section class="mod-row" id="modRow" aria-label="Modulation">
+  <div class="wrap">
+    <div class="mod-strip" id="modStrip"></div>
+    <div class="mod-routes">
+      <button type="button" class="link-btn caps" id="routingsButton" aria-expanded="false"
+              aria-controls="routingsPanel">Routings <span id="routingsCount">&middot; 0</span></button>
+      <span class="bench-hint">every routing, and the fade</span>
+    </div>
   </div>
 </section>
 
@@ -4661,8 +4827,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         browser and is never part of a setup.</span></li>
 
       <li><b>The photocell: the picture moving the controls</b>
-        <span><i>Photocell</i>, behind the Picture section's <i>Advanced</i>, puts a light
-        sensor on it &mdash; drag the
+        <span>The <i>Photocell</i> card, in the modulation row, puts a light sensor on the
+        screen: switch it <i>On</i> in its editor, or drag the card onto a knob, which switches
+        it on. Drag the
         reticle onto the picture, or give it focus and move it a cell at a time with the arrow
         keys. How bright the phosphor is under it becomes a source, <i>Photocell</i>, which can
         be put on a control like an LFO: park it on the edge of a figure and it pulses as the
@@ -4750,7 +4917,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         bottom of the window is the end of the loop: the <i>Amount</i>, Scan, Strike,
         Softness and Persistence, <i>Level</i> (the generator's, layer B's while B is on the
         panel) with the output's meter, the three reads as meters, and <i>Advanced</i> &mdash; what
-        Scan reads, the photocell and the score on one side, the loop overlay, the panes and
+        Scan reads and the score on one side, the loop overlay, the panes and
         the beam on the other, which only change the look. The beam's <i>Ink</i> is the
         figure's colour, the accent or one of five lane inks, and <i>Layer B's ink</i> is the
         second figure's, its lane's unless you choose (in Y&ndash;T each lane keeps its own);
@@ -4770,9 +4937,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         under the screen. On a wide window the Bench stops
         rather than spreading the columns apart. In a small one the face is compact: the
         header on one line (the preset's name opens the browser), the tabs without their
-        lines, the modulation cards as chips, and everything a size smaller. <i>Settings</i>
-        holds what you set once and leave, in two columns &mdash; <i>MIDI</i>, the
-        <i>Modulation fade</i> and <i>This window</i> (whether the help sheet opens the first
+        lines, the modulation cards as chips (as they are in any window under 900 tall), and
+        everything a size smaller. <i>Settings</i>
+        holds what you set once and leave, in two columns &mdash; <i>MIDI</i>
+        and <i>This window</i> (whether the help sheet opens the first
         time, and the <i>Size</i> of everything on the face: <i>Auto</i> is 90&nbsp;per cent in
         a window under 1100 by 680 and 100 otherwise, or choose 90, 100 or 125, which this
         browser remembers); the <i>Input</i>, the <i>Audio</i> device (the site's: in the plugin it is the
@@ -4837,9 +5005,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         drawbars, read across nine at a glance as an organ's are; the setup morph, a crossfader
         between its two ends; and the strip under the screen, which has width to spare.
         <br><br>
-        Under the screen are the <b>modulation cards</b>: <i>LFO 1</i>, <i>LFO 2</i> and the
-        <i>Envelope</i>, each drawing its shape. Drag one onto a knob to put it there; press
-        one to open its editor over the tabs. The picture moves the sound without them.
+        Across the window, under the screen and the tabs, is the <b>modulation row</b>: a card
+        each for <i>LFO 1</i>, <i>LFO 2</i>, the <i>Envelope</i> and the <i>Photocell</i>, each
+        drawing what its source is doing with a dot where it is now, and <i>Routings</i> in the
+        corner. Drag a card onto a knob to put it there; press one to open its editor over the
+        tabs. The picture moves the sound without them.
         (The microphone and input into the generator are in <i>Settings</i> since 7 November,
         and the arpeggiator, the clock, the key and tempo and the morph in the <i>Perform</i>
         menu in the header. The drawings &mdash; the harmonograph, the figures, the solids and
@@ -4852,20 +5022,32 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         remembered.</span></li>
 
       <li><b>Modulation</b>
-        <span>Three sources, a card each under the screen: two oscillators and the
-        <i>Envelope</i>, which follows the amp envelope on <i>Play</i> unless its editor's
-        <i>Its own envelope</i> is ticked: then it has an attack, decay, sustain and release of
-        its own, opened by the same notes, so a filter or the picture can swell on other
-        timings than the loudness. It is one envelope for all the notes held: on
-        <i>Phrase</i> a note played while it is open does not start it again, and on
+        <span>Four sources, a card each in the row across the window: two oscillators, the
+        <i>Envelope</i> and the <i>Photocell</i>. The Envelope follows the amp envelope on
+        <i>Play</i> unless its editor says <i>Its own</i>: then it has an attack, decay, sustain
+        and release of its own, opened by the same notes, so a filter or the picture can swell
+        on other timings than the loudness. It is one envelope for all the notes held: on
+        <i>Each phrase</i> a note played while it is open does not start it again, and on
         <i>Every note</i> each new key starts its attack again from where it is, which on a fast
-        arpeggio twitches. A card draws its shape
-        and says its rate, and counts the controls it is on. Press it and its editor opens over
-        the tabs, beside the screen so the picture stays in view: what it is and what it is
-        doing now, an oscillator's shape, sync and rate, and <i>Where it goes</i> &mdash; every
-        control it is on with its own depth and a cross to take it off, and <i>Add a
-        destination</i> to put it on another. <i>Close</i>, <b>Esc</b> or a tab puts it away.
-        Pressing a card also makes every control it is on draw its sweep.
+        arpeggio twitches. A card draws its source with a dot where it is now &mdash; an
+        oscillator's wave, the Envelope's curve, the Photocell's last four seconds &mdash; says
+        its rate or reading, and counts the controls it is on; in a small window it is a chip
+        with a small drawing. Press it and its editor opens over the tabs, beside the screen so
+        the picture stays in view: the source drawn large (an oscillator's wave with the dot
+        at its phase and its shape, sync and rate under it; the Envelope's curve, Play's and
+        greyed while it follows Play, with its four times; what the Photocell sees around its
+        reticle, its last four seconds and its value now, <i>On</i> and <i>Place it on the
+        figure</i>), and <i>Where it goes</i> &mdash; every control it is on with its own depth
+        and a cross to take it off, and <i>Add a destination</i> to put it on another. A
+        photocell moves a control at most half way, as the picture's sources do.
+        <i>Close</i>, <b>Esc</b>, the card again or a tab puts it away. Pressing a card also
+        makes every control it is on draw its sweep.
+        <br><br>
+        <i>Routings</i>, in the row's corner, is every routing in one place, by source or by
+        destination, each with its depth and a cross, and a switch per source that silences
+        its routings and keeps them, to hear the sound without it. A silence is a way of
+        listening, not part of the sound: the setup keeps the routings, and loading a preset
+        or a code, or undo, forgets it. Patching a silenced source switches it back on.
         <br><br>
         The keyboard reaches the instrument through <i>Expression</i>, under the Keyboard
         on <i>Play</i>: the pitch bend's range, and what the mod wheel, pressure
@@ -4875,7 +5057,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         offers it, but a setup that routes one still
         plays it, and its knob still shows its ink, to be taken off there.
         <br><br>
-        <i>Modulation fade</i>, in <i>Settings</i>, is for when modulation should not arrive or leave all
+        The <i>Fade</i>, in <i>Routings</i>, is for when modulation should not arrive or leave all
         at once. <i>In</i> eases it in, <i>Out</i> eases it away, and <i>In and out</i> does
         both. Under it is the fade's envelope: a wait, the attack, a decay to the level it holds
         at, the hold, and the release. Drag the end of each stretch sideways for its time; drag
@@ -5327,9 +5509,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         to take it off, and the sources not on it yet as buttons to add. That is the whole
         gesture, and it is the same with a mouse, a thumb or a keyboard.
         <br><br>
-        The sources offered are the three modulation cards'. Dragging a card from under the
-        screen straight onto a control is the quick way when you already know where it
-        goes.</span></li>
+        The sources offered are the four modulation cards'. Dragging a card from the row
+        under the screen and the tabs straight onto a control is the quick way when you
+        already know where it goes.</span></li>
 
       <li><b>The lane under a slider is the reading</b>
         <span>It only reads &mdash; there is nothing to aim at. The bar runs from the value
@@ -5600,6 +5782,9 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "handsField", "handsBoth", "handsA", "handsB", "enlargeTrail",
                   "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "measurePre", "measurePost", "modStrip", "modEditor", "modEditorClose", "midiVelocityTo", "benchStage",
+                  "modRow", "routingsButton", "routingsCount", "routingsPanel", "routingsClose", "routingsBySource", "routingsByDest",
+                  "routingsList", "routingsSide", "routingsFade", "routingsAllOff", "routingsClear",
+                  "srcDetailDot", "srcDetailDesc", "menvFollow", "menvItsOwn", "menvCurve", "photoControls", "photoPlace",
                   "genFault",
                   "envAttack", "envAttackValue", "envDecay", "envDecayValue",
                   "menvControls", "menvOwn", "menvAtk", "menvAtkValue", "menvDec", "menvDecValue",
@@ -7450,6 +7635,51 @@ syncMorphPanel();
    starting. */
 // `loads`: how many of the plugin's changes were loads, as of the last state applied (hostPull).
 const hostSync = { on: false, seen: 0, loads: null, applying: false, routings: "", fade: "", drawn: "" };
+
+/* The sources Routings has silenced (G5a), and their routings, held aside:
+   out of `state.modRoutings`, so the matrix, the fade, the events and the
+   instrument behind the page hear nothing of them, and kept here with where
+   each stood in the list, so switching the source back on puts them back as
+   they were. The matrix's own functions are not taught a silence: parity
+   lifts them into its harness by name (core/tests/tools/matrix_js.mjs), and
+   what they read is already "the routings heard".
+
+   The setup still has them - snapshot writes routingsKept() - so a silence is
+   no step in undo and a sound saved with a source silenced keeps that
+   source's routings, and plays them when it is loaded. That is the decision:
+   a silence is a way of listening, as Enlarge's Picture only is a way of
+   looking, and it is forgotten when a setup is put back (restore: a preset, a
+   code, undo). What it costs: the plugin, which is told the routings heard,
+   keeps a project saved while a source is silent without that source's
+   routings. A silence that survives that would be a field of the setup the
+   core reads too - the owner's call, not this stage's. */
+const held = new Map();             // sourceId -> [{ routing, at }]
+const silenced = (id) => held.has(id);
+// Every routing, heard or held, each where it stood.
+function routingsKept() {
+  if (!held.size) return state.modRoutings;
+  const out = state.modRoutings.slice();
+  const all = [].concat(...held.values()).sort((a, b) => a.at - b.at);
+  for (const { routing, at } of all) out.splice(Math.min(at, out.length), 0, routing);
+  return out;
+}
+function silenceSource(id, on) {
+  if (!!on === held.has(id)) return;
+  const all = routingsKept();
+  if (on) {
+    const kept = [];
+    all.forEach((routing, at) => { if (routing.sourceId === id) kept.push({ routing, at }); });
+    if (!kept.length) return;
+    held.set(id, kept);
+    state.modRoutings = state.modRoutings.filter((r) => r.sourceId !== id);
+  } else {
+    held.delete(id);
+    const others = new Set([].concat(...held.values()).map((entry) => entry.routing));
+    state.modRoutings = all.filter((routing) => !others.has(routing));
+  }
+  touchRoutings();
+}
+
 
 const FADE_MODES = [["off", "Off"], ["in", "In"], ["out", "Out"], ["both", "In and out"]];
 const FADE_KEY = "scope.fade";
@@ -16349,6 +16579,14 @@ const PHOTO_REACH = 0.5;
 const PHOTO_START = 0.2;       // a first routing, low: enough to see, no more
 const PHOTO_SLEW = 2;          // the most it moves in a second, of its whole range
 const photo = { on: false, u: 0.75, v: 0.5, raw: 0, value: 0 };
+const PHOTO_SOURCE = {
+  id: "photo.1", label: "Photocell", ink: "ch6", bipolar: false, order: 30,
+  family: "picture",
+  description: "How bright the screen is under the reticle, like a light sensor on the "
+    + "glass. Drag the reticle onto the picture to aim it.",
+  reach: PHOTO_REACH, start: PHOTO_START, fromPicture: true,
+  value: () => photo.value,
+};
 
 function photoStep(elapsed) {
   pictureEngine.photoStep(photo, elapsed, state.display === "spect");
@@ -19972,17 +20210,37 @@ function destOptions(selected) {
 }
 
 /* --- modulation: the cards ------------------------------------------------------
-   Three sources are offered (F4 of web/docs/redesigning-the-face.md): the two
-   oscillators and the Envelope, each a card under the screen. They replaced a
-   tab of twenty-eight sources in six families. The rest are cut or parked: the
-   learned controllers and most of the keyboard's are cut (F4b), the keyboard's
-   that remain are Expression's menus on Play, and the hearing family and the
-   drawings' readings are parked - not offered, but a setup that routes one
-   still plays it and its knob still shows its ink, to find out whether they
-   are missed (the owner's call, 7 Nov). Glow, Motion and Memory are the
-   Picture's and never were routable by hand. */
-const MOD_CARDS = ["lfo1", "lfo2", "env.note"];
+   Four sources are offered: the two oscillators, the Envelope and, since G5a
+   of web/docs/the-face-second-pass.md, the Photocell - each a card in the row
+   across the window under the screen and the tabs. F4 made the first three
+   cards in place of a tab of twenty-eight sources in six families; the row
+   has room for more, but forty chips read as a wall, so it stops at about six
+   and a source earns a card by acting on the loop. The rest are cut or
+   parked: the learned controllers and most of the keyboard's are cut (F4b),
+   the keyboard's that remain are Expression's menus on Play, and the hearing
+   family and the drawings' readings are parked - not offered, but a setup
+   that routes one still plays it and its knob still shows its ink, to find
+   out whether they are missed (the owner's call, 7 Nov). Glow, Motion and
+   Memory are the Picture's and are not routable by hand: they move the sound
+   with nothing routed, and routing them as well would be a second way to the
+   same thing. */
+const MOD_CARDS = ["lfo1", "lfo2", "env.note", "photo.1"];
+/* A card stands for its source whether or not the source is registered: the
+   Photocell's is only while it is on (setPhoto), and its card is there
+   either way, since the card is where it is switched on. */
+function cardSource(id) {
+  if (!MOD_CARDS.includes(id)) return null;
+  return MOD_SOURCES.get(id) || (id === "photo.1" ? PHOTO_SOURCE : null);
+}
+const cardSources = () => MOD_CARDS.map(cardSource).filter(Boolean);
 const offered = (source) => !!source && MOD_CARDS.includes(source.id);
+// The one line under an editor's name, as the second pass draws it; the long description is the info card's.
+const CARD_LINES = {
+  lfo1: "A wave that sweeps whatever it is on, back and forth by itself",
+  lfo2: "A wave that sweeps whatever it is on, back and forth by itself",
+  "env.note": "Rises as you play, holds, and falls as you let go",
+  "photo.1": "A light sensor on the screen: it reads how lit one spot is",
+};
 // Kept for the search's words: a source's family is still what it is.
 const SOURCE_FAMILIES = [
   ["oscillators", "Oscillators"], ["signal", "Signal"], ["hearing", "Hearing"],
@@ -19991,13 +20249,24 @@ const SOURCE_FAMILIES = [
 let selectedSource = "lfo1";
 // The card whose editor is open, or null.
 let editingSource = null;
-const routedCount = (id) => state.modRoutings.filter((r) => r.sourceId === id).length;
+const routedCount = (id) => routingsKept().filter((r) => r.sourceId === id).length;
+
+/* Patching from a card - a drag, Add a destination, the control's own list.
+   A photocell that is off reads nought and moves nothing, so patching it is
+   asking for it: it goes on first, through its switch, which lands it on the
+   figure and is what the instrument behind the page hears. And patching a
+   source Routings has silenced puts its routings back (addRouting): a hand
+   that patches a source means to hear it. */
+function routeFromCard(sourceId, destId) {
+  if (sourceId === "photo.1" && !photo.on) el.photoButton.click();
+  addRouting(sourceId, destId);
+}
 
 /* Selecting a source also focuses it, so every control it is on - on every
    tab - draws its sweep. The editor shows the selected source whether it is
    open or not, so a host's hand on an oscillator's shape finds its menu. */
 function selectSource(id) {
-  if (!MOD_SOURCES.has(id)) return;
+  if (!MOD_SOURCES.has(id) && !cardSource(id)) return;
   selectedSource = id;
   focusSource = id;
   buildSourceDetail();
@@ -20005,12 +20274,21 @@ function selectSource(id) {
   paintRoutings();
 }
 
+/* Pressing a card opens its editor, and pressing it again puts it away: the
+   editor covers the tab cards since G5a, so the card is the nearest way back.
+   The press only: opened from code - a search result, a suite - it opens,
+   whatever was open, as a search for what is already open should not shut it. */
+function pressModCard(id) {
+  if (editingSource === id && !el.modEditor.hidden) closeModCard(); else openModCard(id);
+}
 function openModCard(id) {
-  if (!offered(MOD_SOURCES.get(id))) return;
+  if (!offered(cardSource(id))) return;
   setEnlarged(false);
+  setRoutingsOpen(false);
   editingSource = id;
   selectSource(id);
   el.modEditor.hidden = false;
+  paintModLive();
 }
 function closeModCard() {
   if (editingSource === null) return;
@@ -20019,57 +20297,242 @@ function closeModCard() {
   paintCards();
 }
 
-/* Each card's shape, drawn small: an oscillator's wave over two cycles, as its
-   shape menu says; the Envelope's attack, decay, sustain and release, as the
-   amp envelope on Play has them, since that is what it follows. Redrawn when
-   asked (paintCards), and its reading a few times a second with the tab lines. */
-function drawCard(canvas, source) {
-  const w = canvas.clientWidth || 120, h = canvas.clientHeight || 30;
+/* --- what the cards and their editors draw (G5a) ---------------------------------
+   Each card draws its source with a dot where it is now, and its editor the
+   same, large: an oscillator's wave over two cycles with the dot at its
+   phase; the Envelope's attack, decay, sustain and release with the dot where
+   the phrase has got to; the Photocell's last four seconds with the dot at
+   the end, which is now. Redrawn once a frame (paintModLive, from
+   paintStage), since a dot that moves four times a second does not read as
+   moving. What each drew is kept on the canvas as `_drawn`, so a suite can
+   find the dot and read the pixels under it rather than trusting a number
+   the drawing never used. */
+function canvasFor(canvas) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return null;
   const dpr = window.devicePixelRatio || 1;
-  if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  }
   const g = canvas.getContext("2d");
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, w, h);
-  g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--" + source.ink).trim() || "#241f1d";
-  g.lineWidth = 1.4;
+  return { g, w, h };
+}
+const inkOf = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim() || fallback;
+function drawDot(g, x, y, r) {
+  g.fillStyle = inkOf("charcoal", "#241f1d");
+  g.beginPath(); g.arc(x, y, r, 0, TWO_PI); g.fill();
+}
+
+/* An oscillator, over two cycles as its shape menu says, and the dot at its
+   phase in the first. Random is a fixed picture of sample-and-hold, with the
+   dot at the level it holds now. */
+const RANDOM_PICTURE = [0.3, -0.7, 0.9, -0.2, 0.6, -0.9, 0.1, 0.7];
+function drawLfo(canvas, lfo, ink, large) {
+  const c = canvasFor(canvas);
+  if (!c) return;
+  const { g, w, h } = c, pad = large ? 4 : 3;
+  const y = (v) => h / 2 - v * (h / 2 - pad);
+  const at = (u) => {   // u across two cycles, 0 to 2
+    if (lfo.shape === "random") return RANDOM_PICTURE[Math.floor((u / 2) * RANDOM_PICTURE.length) % RANDOM_PICTURE.length];
+    return waveAt(lfo.shape, (u % 1) * TWO_PI);
+  };
+  if (large) {
+    g.strokeStyle = inkOf("line", "#e4d9cc"); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+  }
+  g.strokeStyle = inkOf(ink, "#241f1d");
+  g.lineWidth = large ? 2 : 1.4;
   g.beginPath();
-  const y = (v) => h / 2 - v * (h / 2 - 3);
-  if (source.index !== undefined) {
-    const lfo = lfos[source.index];
-    const steps = [0.3, -0.7, 0.9, -0.2, 0.6, -0.9, 0.1, 0.7];   // a fixed picture of sample-and-hold
-    for (let i = 0; i <= w; i++) {
-      const phase = (i / w) * 2 * TWO_PI;
-      const v = lfo.shape === "random" ? steps[Math.floor((i / w) * steps.length) % steps.length]
-                                       : waveAt(lfo.shape, phase % TWO_PI);
-      if (i === 0) g.moveTo(i, y(v)); else g.lineTo(i, y(v));
-    }
-  } else {
-    // Its own four when it has them, otherwise Play's, which it then follows.
-    const own = el.menvOwn.checked;
-    const a = Number((own ? el.menvAtk : el.envAttack).value), d = Number((own ? el.menvDec : el.envDecay).value),
-          s = Number((own ? el.menvSus : el.envSustain).value) / 100, r = Number((own ? el.menvRel : el.envRelease).value);
-    // Times on a gentle square-root scale, so a 2 ms attack is still seen beside a 2 s release.
-    const t = (ms) => Math.sqrt(Math.max(0, ms));
-    const hold = t(400), total = t(a) + t(d) + hold + t(r) || 1;
-    const x = (u) => 2 + (u / total) * (w - 4), lo = h - 2, hi = 3;
-    let u = 0;
-    g.moveTo(x(0), lo);
-    u += t(a); g.lineTo(x(u), hi);
-    u += t(d); g.lineTo(x(u), lo - s * (lo - hi));
-    u += hold; g.lineTo(x(u), lo - s * (lo - hi));
-    u += t(r); g.lineTo(x(u), lo);
+  for (let i = 0; i <= w; i++) {
+    const v = at((i / w) * 2);
+    if (i === 0) g.moveTo(i, y(v)); else g.lineTo(i, y(v));
   }
   g.stroke();
+  const phase = ((lfo.phase % TWO_PI) + TWO_PI) % TWO_PI / TWO_PI;
+  const dx = phase * w / 2;
+  const dv = lfo.shape === "random" ? lfo.value : waveAt(lfo.shape, phase * TWO_PI);
+  if (large) {
+    g.strokeStyle = inkOf("charcoal", "#241f1d"); g.lineWidth = 1; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(dx, 0); g.lineTo(dx, h); g.stroke(); g.setLineDash([]);
+  }
+  drawDot(g, dx, y(dv), large ? 5 : 3);
+  canvas._drawn = { dot: [dx, y(dv)], phase, shape: lfo.shape, w, h, y: (u) => y(at(u)) };
 }
+
+/* Where the Envelope has got to, for its dot: read off how its value moves,
+   since the envelope runs in the instrument and the page sees its level. */
+const envWhere = { last: 0, stage: "idle", from: 0 };
+function stepEnvWhere(v, gated) {
+  const rising = v > envWhere.last + 1e-4, falling = v < envWhere.last - 1e-4;
+  if (v < 1e-3 && !rising) envWhere.stage = "idle";
+  else if (rising) envWhere.stage = "attack";
+  else if (falling && !gated) {
+    if (envWhere.stage !== "release") envWhere.from = envWhere.last;
+    envWhere.stage = "release";
+  } else if (falling) envWhere.stage = envWhere.stage === "held" ? "held" : "decay";
+  else if (envWhere.stage === "attack" || envWhere.stage === "decay") envWhere.stage = "held";
+  envWhere.last = v;
+}
+// Its four times and its sustain: its own when it has them, Play's while it follows Play.
+function envTimes() {
+  const own = el.menvOwn.checked;
+  return { own, a: Number((own ? el.menvAtk : el.envAttack).value), d: Number((own ? el.menvDec : el.envDecay).value),
+           s: Number((own ? el.menvSus : el.envSustain).value) / 100, r: Number((own ? el.menvRel : el.envRelease).value) };
+}
+/* Times on a gentle square-root scale, so a 2 ms attack is still seen beside
+   a 2 s release, and the hold a fixed share, since a held note has no length
+   of its own. Following Play, the curve is Play's and greyed: it is set there. */
+function drawEnv(canvas, large) {
+  const c = canvasFor(canvas);
+  if (!c) return;
+  const { g, w, h } = c, { own, a, d, s, r } = envTimes();
+  const t = (ms) => Math.sqrt(Math.max(0, ms));
+  const hold = t(400), total = t(a) + t(d) + hold + t(r) || 1;
+  const pad = large ? 8 : 2, lo = h - (large ? 10 : 2), hi = large ? 10 : 3;
+  const x = (u) => pad + (u / total) * (w - 2 * pad);
+  const level = (v) => lo - v * (lo - hi);
+  const xs = [x(0), x(t(a)), x(t(a) + t(d)), x(t(a) + t(d) + hold), x(total)];
+  const ys = [level(0), level(1), level(s), level(s), level(0)];
+  const ink = own ? inkOf("ch2", "#5f6b86") : inkOf("unresolved", "#9a948c");
+  if (large) {
+    g.strokeStyle = inkOf("line", "#e4d9cc"); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, lo); g.lineTo(w, lo); g.stroke();
+    if (own) {
+      g.fillStyle = inkOf("blush", "#d9a6a0"); g.globalAlpha = 0.16;
+      g.beginPath(); g.moveTo(xs[0], ys[0]); for (let i = 1; i < 5; i++) g.lineTo(xs[i], ys[i]); g.closePath(); g.fill();
+      g.globalAlpha = 1;
+    }
+  }
+  g.strokeStyle = ink; g.lineWidth = large ? 2 : 1.4;
+  if (!own && large) g.setLineDash([5, 4]);
+  g.beginPath(); g.moveTo(xs[0], ys[0]); for (let i = 1; i < 5; i++) g.lineTo(xs[i], ys[i]); g.stroke();
+  g.setLineDash([]);
+  if (large) {
+    g.fillStyle = inkOf("text-soft", "#6b615a"); g.font = "10px " + (inkOf("sans", "sans-serif"));
+    const names = [["attack", 0], ["decay", 1], ["held", 2], ["release", 3]];
+    for (const [name, i] of names) {
+      const mid = (xs[i] + xs[i + 1]) / 2 - g.measureText(name).width / 2;
+      if (xs[i + 1] - xs[i] > g.measureText(name).width + 4) g.fillText(name, mid, lo - 4);
+    }
+  }
+  // The dot: along the stretch the phrase is in, at the level it is at.
+  const v = Math.max(0, Math.min(1, envWhere.last)), st = envWhere.stage;
+  const along = (i, f) => xs[i] + (xs[i + 1] - xs[i]) * Math.max(0, Math.min(1, f));
+  const dx = st === "attack" ? along(0, v)
+           : st === "decay" ? along(1, (1 - v) / Math.max(1e-6, 1 - s))
+           : st === "held" ? (xs[2] + xs[3]) / 2
+           : st === "release" ? along(3, 1 - v / Math.max(1e-6, envWhere.from))
+           : xs[0];
+  drawDot(g, dx, level(v), large ? 5 : 3);
+  canvas._drawn = { dot: [dx, level(v)], stage: st, own, corners: xs.map((cx, i) => [cx, ys[i]]), ink, w, h };
+}
+
+/* The Photocell's last four seconds, kept a frame at a time, and nought
+   while it is off, which is what it reads then. */
+const PHOTO_TRAIL_MS = 4000;
+const photoTrail = [];
+function stepPhotoTrail(now) {
+  photoTrail.push([now, photo.on ? photo.value : 0]);
+  while (photoTrail.length && photoTrail[0][0] < now - PHOTO_TRAIL_MS) photoTrail.shift();
+}
+function drawPhotoTrail(canvas, ink, large) {
+  const c = canvasFor(canvas);
+  if (!c) return;
+  const { g, w, h } = c, pad = large ? 6 : 3, now = performance.now();
+  const x = (t) => (1 - (now - t) / PHOTO_TRAIL_MS) * (w - pad);
+  const y = (v) => h - pad - Math.max(0, Math.min(1, v)) * (h - 2 * pad);
+  if (large) {
+    g.strokeStyle = inkOf("line", "#e4d9cc"); g.lineWidth = 1; g.setLineDash([2, 4]);
+    g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); g.setLineDash([]);
+  }
+  g.strokeStyle = inkOf(ink, "#a6552d"); g.lineWidth = large ? 1.6 : 1.4;
+  g.beginPath();
+  photoTrail.forEach(([t, v], i) => { if (i === 0) g.moveTo(x(t), y(v)); else g.lineTo(x(t), y(v)); });
+  g.stroke();
+  const v = photo.on ? photo.value : 0;
+  drawDot(g, w - pad, y(v), large ? 4 : 3);
+  canvas._drawn = { dot: [w - pad, y(v)], value: v, span: photoTrail.length ? now - photoTrail[0][0] : 0,
+                    points: photoTrail.length, w, h };
+}
+
+/* What the Photocell sees: the screen around its reticle, cropped from the
+   trace as it is drawn, a fifth of the screen across, with the reticle over
+   it. The trace is what the eye sees and the phosphor grid what it reads;
+   they hold the same strokes, and the crop is to aim by. */
+const PHOTO_CROP = 0.2;
+function drawPhotoCrop(canvas, ink) {
+  const c = canvasFor(canvas);
+  if (!c) return;
+  const { g, w, h } = c;
+  g.fillStyle = inkOf("paper", "#fffcf7"); g.fillRect(0, 0, w, h);
+  const trace = el.trace, scale = trace.width / (trace.clientWidth || 1);
+  const half = (plot.w * PHOTO_CROP) / 2;
+  const cx = plot.x + photo.u * plot.w, cy = plot.y + photo.v * plot.h;
+  const from = [(cx - half) * scale, (cy - half) * scale, 2 * half * scale];
+  if (photo.on && from[2] > 0) g.drawImage(trace, from[0], from[1], from[2], from[2], 0, 0, w, h);
+  g.strokeStyle = inkOf(ink, "#a6552d"); g.lineWidth = 1.6;
+  const r = w * 0.14;
+  g.beginPath(); g.arc(w / 2, h / 2, r, 0, TWO_PI); g.stroke();
+  g.beginPath();
+  g.moveTo(w / 2, h / 2 - r * 1.45); g.lineTo(w / 2, h / 2 - r * 0.65); g.moveTo(w / 2, h / 2 + r * 0.65); g.lineTo(w / 2, h / 2 + r * 1.45);
+  g.moveTo(w / 2 - r * 1.45, h / 2); g.lineTo(w / 2 - r * 0.65, h / 2); g.moveTo(w / 2 + r * 0.65, h / 2); g.lineTo(w / 2 + r * 1.45, h / 2);
+  g.stroke();
+  canvas._drawn = { from, scale, centre: [cx, cy], on: photo.on, w, h };
+}
+
+function drawCard(canvas, source) {
+  if (source.index !== undefined) drawLfo(canvas, lfos[source.index], source.ink, false);
+  else if (source.id === "env.note") drawEnv(canvas, false);
+  else if (source.id === "photo.1") drawPhotoTrail(canvas, source.ink, false);
+}
+
+/* Once a frame, from paintStage: the trail and the Envelope's place stepped,
+   every card drawn, and the open editor's drawings. */
+function paintModLive() {
+  if (!faceLaidOut) return;
+  const now = performance.now();
+  stepPhotoTrail(now);
+  const env = MOD_SOURCES.get("env.note");
+  stepEnvWhere(env ? Math.max(0, env.value()) : 0, !!(state.source && state.source.gated));
+  if (enlarge.on) return;
+  for (const card of el.modStrip.querySelectorAll(".mod-card")) {
+    const source = cardSource(card.dataset.source);
+    const canvas = card.querySelector("canvas");
+    if (source && canvas) drawCard(canvas, source);
+  }
+  if (editingSource === null || el.modEditor.hidden) return;
+  const source = cardSource(editingSource);
+  if (!source) return;
+  if (source.index !== undefined) {
+    const big = document.getElementById("srcDraw");
+    if (big) drawLfo(big, lfos[source.index], source.ink, true);
+  } else if (source.id === "env.note") {
+    drawEnv(el.menvCurve, true);
+  } else if (source.id === "photo.1") {
+    const crop = document.getElementById("photoCrop"), graph = document.getElementById("photoGraph");
+    if (crop) drawPhotoCrop(crop, source.ink);
+    if (graph) drawPhotoTrail(graph, source.ink, true);
+    const v = photo.on ? photo.value : 0;
+    const now = document.getElementById("photoNow"), at = document.getElementById("photoAt");
+    if (now) now.textContent = photo.on ? v.toFixed(2) : "off";
+    if (at) at.textContent = "At " + photo.u.toFixed(2) + " across, " + (1 - photo.v).toFixed(2) + " up";
+  }
+}
+
 /* The Envelope's own (8 Nov): into the generator, and its readings. The
-   rows are greyed while it follows Play, not hidden, so the editor does not
-   jump when it is ticked. */
+   knobs are greyed while it follows Play, not hidden, so the editor does not
+   jump when it is switched. Since G5a the switch is two buttons along the top,
+   Follows Play and Its own, over the checkbox that is its value. */
 function paintMenv() {
   el.menvAtkValue.textContent = el.menvAtk.value + " ms";
   el.menvDecValue.textContent = el.menvDec.value + " ms";
   el.menvSusValue.textContent = (Number(el.menvSus.value) / 100).toFixed(2);
   el.menvRelValue.textContent = el.menvRel.value + " ms";
   for (const id of ["menvAtk", "menvDec", "menvSus", "menvRel", "menvPhrase", "menvEvery"]) el[id].disabled = !el.menvOwn.checked;
+  el.menvItsOwn.setAttribute("aria-checked", String(el.menvOwn.checked));
+  el.menvFollow.setAttribute("aria-checked", String(!el.menvOwn.checked));
 }
 // A declaration, not a const: the generator's first settings read it before this line has run.
 function menvEvery() { return el.menvEvery.getAttribute("aria-checked") === "true"; }
@@ -20089,24 +20552,30 @@ function syncMenv() {
 }
 function cardReading(source) {
   if (source.index !== undefined) return lfoRateReading(lfos[source.index]);
+  if (source.id === "photo.1") return photo.on ? photo.value.toFixed(2) : "off";
   return el.menvOwn.checked ? "its own" : "follows Play";
 }
 
 function paintCards() {
   if (!el.modStrip) return;
   for (const card of el.modStrip.querySelectorAll(".mod-card")) {
-    const source = MOD_SOURCES.get(card.dataset.source);
+    const source = cardSource(card.dataset.source);
     if (!source) continue;
     card.setAttribute("aria-pressed", String(editingSource === source.id));
+    if (silenced(source.id)) card.dataset.silent = ""; else delete card.dataset.silent;
     const reading = card.querySelector(".reading");
     const said = cardReading(source);
     if (reading.textContent !== said) reading.textContent = said;
     const n = routedCount(source.id);
     card.querySelector(".count").textContent = n ? n + "\u2192" : "";
-    card.title = n ? "On " + n + " control" + (n === 1 ? "" : "s") + ". Drag onto a knob to add one; press to edit."
-                   : "Drag onto a knob to put it there; press to edit.";
+    card.title = (silenced(source.id) ? "Silenced in Routings. " : "")
+      + (n ? "On " + n + " control" + (n === 1 ? "" : "s") + ". Drag onto a knob to add one; press to edit."
+           : "Drag onto a knob to put it there; press to edit.");
     drawCard(card.querySelector("canvas"), source);
   }
+  const all = routingsKept().length;
+  const count = "\u00b7 " + all;
+  if (el.routingsCount.textContent !== count) el.routingsCount.textContent = count;
 }
 
 /* What an oscillator's rate reading says: its hertz, and the note value it
@@ -20116,32 +20585,45 @@ function lfoRateReading(lfo) {
   return lfo.rate.toFixed(2) + " Hz" + (sync && sync[0] ? " \u00b7 " + sync[1] : "");
 }
 
+/* The editor: the source's own column, drawn (G5a), and Where it goes. A
+   source without a card - a parked one a search or a suite selects - keeps
+   the plain editor it had: its description and a meter of where it is now. */
 function buildSourceDetail() {
   if (!el.srcDetail) return;
-  // The Envelope's own controls home before the editor is written over.
-  if (el.menvControls.parentElement !== el.modEditor) el.modEditor.appendChild(el.menvControls);
-  el.menvControls.hidden = true;
-  if (!MOD_SOURCES.has(selectedSource)) selectedSource = "lfo1";
-  const source = MOD_SOURCES.get(selectedSource);
+  // The Envelope's and the Photocell's own controls home before the editor is written over.
+  for (const block of [el.menvControls, el.photoControls]) {
+    if (block.parentElement !== el.modEditor) el.modEditor.appendChild(block);
+    block.hidden = true;
+  }
+  if (!MOD_SOURCES.has(selectedSource) && !cardSource(selectedSource)) selectedSource = "lfo1";
+  const source = MOD_SOURCES.get(selectedSource) || cardSource(selectedSource);
   if (!source) { el.srcDetail.innerHTML = ""; return; }
+  const carded = offered(source);
   el.srcDetailTitle.textContent = source.label;
+  el.srcDetailDot.style.background = "var(--" + source.ink + ")";
+  el.srcDetailDesc.textContent = carded ? CARD_LINES[source.id] || "" : "";
 
-  const routings = state.modRoutings.filter((r) => r.sourceId === source.id);
+  const routings = routingsKept().filter((r) => r.sourceId === source.id);
   const taken = new Set(routings.map((r) => r.destId));
   const tone = shownKind === "tone";
   const addable = Array.from(MOD_DESTS.values()).filter((dest) =>
     !taken.has(dest.id) && routingAllowed(source, dest));
   const lfoIndex = source.index;
   const lfo = lfoIndex !== undefined ? lfos[lfoIndex] : null;
+  const photocell = source.id === "photo.1";
 
-  // Two columns (F4): the source's own controls, and where it goes.
-  el.srcDetail.innerHTML =
-    '<div class="src-own"><p class="src-desc">' + escapeText(source.description || "") + "</p>"
-    + '<div class="menu-row"><span class="menu-label">Now</span><div class="grow">'
-    + '<span class="src-meter" style="--pip:var(--' + source.ink + ')">'
-    + '<span class="src-meter-fill" id="srcMeter"></span></span>'
-    + '<span class="reading" id="srcMeterValue"></span></div></div>'
-    + (lfo ? '<div class="menu-row"><label class="menu-label" for="lfoShape' + lfoIndex
+  let own = '<div class="src-own">';
+  if (!carded) {
+    own += '<p class="src-desc">' + escapeText(source.description || "") + "</p>"
+      + '<div class="menu-row"><span class="menu-label">Now</span><div class="grow">'
+      + '<span class="src-meter" style="--pip:var(--' + source.ink + ')">'
+      + '<span class="src-meter-fill" id="srcMeter"></span></span>'
+      + '<span class="reading" id="srcMeterValue"></span></div></div>';
+  }
+  if (lfo) {
+    own += '<canvas class="src-draw" id="srcDraw" role="img" aria-label="' + escapeText(source.label)
+        + '\u2019s wave, with a dot where it is now"></canvas>'
+        + '<div class="menu-row"><label class="menu-label" for="lfoShape' + lfoIndex
         + '">Shape</label><div class="grow"><select id="lfoShape' + lfoIndex
         + '" style="flex:1 1 auto">'
         + LFO_SHAPES.map(([v, t]) => '<option value="' + v + '"'
@@ -20158,8 +20640,22 @@ function buildSourceDetail() {
         + '" min="1" max="800" value="' + Math.round((lfo.sync ? lfo.free : lfo.rate) * 100) + '"'
         + (lfo.sync ? " disabled" : "") + ">"
         + '<span class="reading" id="lfoRateValue' + lfoIndex + '">' + lfoRateReading(lfo)
-        + "</span></div></div>" : "")
-    + '</div><div class="src-goes"><span class="src-sub">Where it goes</span>'
+        + "</span></div></div>"
+        + '<p class="bench-hint">The dot is where the wave is now.</p>';
+  }
+  if (photocell) {
+    own += '<div class="photo-view">'
+        + '<canvas class="src-draw photo-crop" id="photoCrop" role="img" aria-label="What the photocell sees: the screen around its reticle"></canvas>'
+        + '<div><span class="src-sub">Its reading, the last four seconds</span>'
+        + '<canvas class="src-draw" id="photoGraph" role="img" aria-label="The photocell\u2019s reading over the last four seconds"></canvas>'
+        + '<p class="photo-now">Now <b id="photoNow"></b></p></div>'
+        + '<p class="photo-at" id="photoAt"></p></div>';
+  }
+  own += "</div>";
+  const silent = silenced(source.id);
+  el.srcDetail.innerHTML = own
+    + '<div class="src-goes"><span class="src-sub">Where it goes</span>'
+    + (silent ? '<p class="bench-hint">Silenced in Routings: kept, and heard by nothing.</p>' : "")
     + (routings.length === 0
       ? '<p class="mod-empty">Not on anything yet.</p>'
       : routings.map((routing) => {
@@ -20178,19 +20674,28 @@ function buildSourceDetail() {
           + escapeText(dest.label) + (dead ? " \u2014 test tone only" : "") + "</option>";
       }).join("")
     + "</select></div></div>"
-    + '<p class="bench-hint">Drag the card onto a knob to add one; the ring on the knob sets how far.</p></div>';
+    + (photocell ? '<p class="bench-hint">The picture\u2019s sources keep their limit: a photocell can move a control at most half way.</p>'
+                 : '<p class="bench-hint">Drag the card onto a knob to add one; the ring on the knob sets how far.</p>')
+    + "</div>";
   dressKnobs(el.srcDetail);
+  const ownColumn = el.srcDetail.querySelector(".src-own");
   if (source.id === "env.note") {
-    el.srcDetail.querySelector(".src-own").appendChild(el.menvControls);
+    ownColumn.appendChild(el.menvControls);
     el.menvControls.hidden = false;
     dressKnobs(el.menvControls);
     paintMenv();
+    ownColumn.insertAdjacentHTML("beforeend", '<p class="bench-hint">Following Play, the curve is Play\u2019s amp envelope, greyed, and set there.</p>');
+  }
+  if (photocell) {
+    ownColumn.appendChild(el.photoControls);
+    el.photoControls.hidden = false;
+    ownColumn.insertAdjacentHTML("beforeend", '<p class="bench-hint">Drag the reticle on the screen to move it. It reads light, so it reads both hands\u2019 figures.</p>');
   }
 
   wireDepthRows(el.srcDetail, buildSourceDetail);
   const add = document.getElementById("srcDetail-add");
   add.addEventListener("change", () => {
-    if (add.value) addRouting(source.id, add.value);
+    if (add.value) routeFromCard(source.id, add.value);
     buildSourceDetail();
   });
   if (lfo) {
@@ -20214,6 +20719,7 @@ function buildSourceDetail() {
     });
   }
   updateSourceMeter();
+  paintModLive();
 }
 
 /* Every shown source's value, once a frame, while the tab is showing: the
@@ -20240,6 +20746,102 @@ function updateSourceMeter() {
   const reading = document.getElementById("srcMeterValue");
   if (reading) reading.textContent = (v > 0 && source.bipolar ? "+" : "") + v.toFixed(2);
 }
+
+/* --- Routings (G5a) -------------------------------------------------------------
+   From the modulation row's corner, over the tabs as an editor is: every
+   routing, by source or by destination, each with its depth and a cross; a
+   switch per source that silences its routings without losing them (see
+   `held`); and the fade, the one setting that acts on every routing, which
+   moved here from Settings (data-home="routings"). */
+let routingsOpen = false;
+let routingsBy = "source";
+function setRoutingsOpen(open) {
+  open = !!open && faceLaidOut;
+  if (open) { setEnlarged(false); closeModCard(); }
+  routingsOpen = open;
+  el.routingsPanel.hidden = !open;
+  el.routingsButton.setAttribute("aria-expanded", String(open));
+  if (open) buildRoutings();
+}
+function buildRoutings() {
+  if (!routingsOpen) return;
+  const all = routingsKept();
+  const label = (map, id) => { const it = map.get(id) || (map === MOD_SOURCES ? cardSource(id) : null); return it ? it.label : id + " (not here)"; };
+  const inkFor = (id) => { const s = MOD_SOURCES.get(id) || cardSource(id); return s ? s.ink : "unresolved"; };
+  const counted = (n) => n + " routing" + (n === 1 ? "" : "s");
+  let html = "";
+  if (routingsBy === "source") {
+    // The cards' four always, with nothing on them or not, then any parked source a setup routes.
+    const ids = MOD_CARDS.slice();
+    for (const r of all) if (!ids.includes(r.sourceId)) ids.push(r.sourceId);
+    for (const id of ids) {
+      const rows = all.filter((r) => r.sourceId === id), name = label(MOD_SOURCES, id), ink = inkFor(id);
+      html += '<div class="route-group" data-source="' + escapeText(id) + '"' + (silenced(id) ? " data-silent" : "") + ">"
+        + '<div class="route-head"><button type="button" class="route-switch" role="switch" data-silence="' + escapeText(id) + '"'
+        + ' aria-checked="' + !silenced(id) + '" aria-label="' + escapeText(name) + ': heard, or kept and silent"'
+        + (rows.length ? "" : " disabled") + "></button>"
+        + '<span class="dot-sm" style="background:var(--' + ink + ')"></span>' + escapeText(name)
+        + '<span class="count">' + counted(rows.length) + "</span></div>"
+        + rows.map((r) => {
+            const dest = label(MOD_DESTS, r.destId);
+            return depthRowHTML(r, dest, ink, name + " depth on " + dest);
+          }).join("")
+        + "</div>";
+    }
+  } else {
+    const ids = [];
+    for (const r of all) if (!ids.includes(r.destId)) ids.push(r.destId);
+    for (const id of ids) {
+      const rows = all.filter((r) => r.destId === id), dest = label(MOD_DESTS, id);
+      html += '<div class="route-group" data-dest="' + escapeText(id) + '">'
+        + '<div class="route-head">' + escapeText(dest) + '<span class="count">' + counted(rows.length) + "</span></div>"
+        + rows.map((r) => {
+            const name = label(MOD_SOURCES, r.sourceId);
+            return depthRowHTML(r, name, inkFor(r.sourceId), name + " depth on " + dest)
+              .replace('<div class="mod-edit"', '<div class="mod-edit"' + (silenced(r.sourceId) ? " data-silent" : ""));
+          }).join("")
+        + "</div>";
+    }
+    if (!ids.length) html = '<p class="mod-empty">Nothing is routed yet: drag a card onto a knob.</p>';
+  }
+  el.routingsList.innerHTML = html;
+  wireDepthRows(el.routingsList, buildRoutings);
+  el.routingsList.querySelectorAll("[data-silence]").forEach((button) => {
+    button.addEventListener("click", () => { silenceSource(button.dataset.silence, !silenced(button.dataset.silence)); buildRoutings(); });
+  });
+  el.routingsBySource.setAttribute("aria-checked", String(routingsBy === "source"));
+  el.routingsByDest.setAttribute("aria-checked", String(routingsBy === "dest"));
+  const anyHeard = state.modRoutings.length > 0;
+  el.routingsAllOff.textContent = anyHeard || !all.length ? "Switch all off" : "Switch all on";
+  el.routingsAllOff.disabled = !all.length;
+  el.routingsClear.disabled = !all.length;
+}
+el.routingsButton.addEventListener("click", () => setRoutingsOpen(!routingsOpen));
+el.routingsClose.addEventListener("click", () => setRoutingsOpen(false));
+el.routingsBySource.addEventListener("click", () => { routingsBy = "source"; buildRoutings(); });
+el.routingsByDest.addEventListener("click", () => { routingsBy = "dest"; buildRoutings(); });
+el.routingsAllOff.addEventListener("click", () => {
+  const all = routingsKept();
+  const on = state.modRoutings.length > 0;
+  for (const id of new Set(all.map((r) => r.sourceId))) silenceSource(id, on);
+  buildRoutings();
+});
+el.routingsClear.addEventListener("click", () => {
+  state.modRoutings = [];
+  held.clear();
+  touchRoutings();
+  buildRoutings();
+});
+
+/* The Envelope's two switches along the top press the checkbox that is its value. */
+el.menvFollow.addEventListener("click", () => {
+  if (!el.menvOwn.checked) return;
+  el.menvOwn.checked = false; el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
+});
+el.menvItsOwn.addEventListener("click", () => {
+  if (el.menvOwn.checked) return;
+  el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
+});
 
 function syncPanes() {
   el.goniPane.hidden = !state.panes.goni;
@@ -21005,7 +21607,8 @@ function snapshot() {
     morphA: encodeMorphEnd(morph.a, morphHome),
     morphB: encodeMorphEnd(morph.b, (id) => (morph.a ? morph.a[id] : morphHome(id))),
     morphPos: Math.round(state.morphPos * 100),
-    mod: encodeRoutings(state.modRoutings),
+    // Heard and held: a silence is not part of a sound (see `held`).
+    mod: encodeRoutings(routingsKept()),
     display: state.display,
     persistence: el.persistence.value,
     span: el.spectroSpan.value,
@@ -21103,6 +21706,8 @@ function snapshot() {
    halfway, so the preset's envelope went into B and A kept B's drawbars.
    Found by the plugin's port, which was right. */
 function restore(partial) {
+  // A silence is forgotten when a setup is put back: the routings are the setup's (see `held`).
+  held.clear();
   panelHeldOnA = true;
   try {
     restoreInto(partial);
@@ -24868,7 +25473,9 @@ const inSide = (group) => SIDE_GROUPS.indexOf(group.id) >= 0;
 /* And a fifth since F3: `perform`, the header's Perform menu - the arpeggiator,
    the clock, the key and tempo and the morph, which were the drawer's
    Perform tab, and before that the drawer's. */
-const homeOf = (group) => (["settings", "measure", "picture", "perform"].includes(group.dataset.home) ? group.dataset.home : "bench");
+/* And a sixth since G5a: `routings`, the panel the modulation row's corner
+   opens - the fade, which acts on every routing and was in Settings. */
+const homeOf = (group) => (["settings", "measure", "picture", "perform", "routings"].includes(group.dataset.home) ? group.dataset.home : "bench");
 const benchGroupsAll = () => settingsGroups().filter((g) => homeOf(g) === "bench");
 
 const benchable = () =>
@@ -25244,8 +25851,9 @@ function paintTabLines(now) {
 
 function setBenchTab(id) {
   if (!BENCH_TABS.some(([tab]) => tab === id)) return;
-  // A tab is the body under the editor: going to one puts the editor away.
+  // A tab is the body under the editor: going to one puts the editor away, and Routings.
   closeModCard();
+  setRoutingsOpen(false);
   benchTab = id;
   try { window.localStorage.setItem(TAB_KEY, id); } catch (error) { /* private window */ }
   if (faceLaidOut) {
@@ -25484,6 +26092,12 @@ function applyFolds() {
 // 860 tall, not the 760 first tried: the full face's rack, two layers and
 // every effect on with the Plane open, scrolled at 1100x800 and fits at 860.
 const COMPACT_W = 1100, COMPACT_H = 860;
+/* The modulation cards fold to chips on the compact face and on a full face
+   under 900 tall (G5a): the row's full cards are 87 px and its chips 36, and
+   at 1100x860 the tabs had not the 51 between them (fittest.py). Decided by
+   the window, as the compact face is, since the row's height is the tabs'
+   and a row that changed with the tab on show would move the screen. */
+const CHIPS_H = 900;
 /* Size (F8), in This window: everything on the face at 90, 100 or 125 per
    cent, as a zoom on the page, remembered by this browser (in the plugin,
    its window's). At 90 a window has a ninth more room in the page's own
@@ -25515,6 +26129,10 @@ function setCompact() {
   const compact = window.innerWidth / pageZoom < COMPACT_W || window.innerHeight / pageZoom < COMPACT_H;
   if (compact !== (document.body.dataset.compact !== undefined)) {
     if (compact) document.body.dataset.compact = ""; else delete document.body.dataset.compact;
+  }
+  const chips = compact || window.innerHeight / pageZoom < CHIPS_H;
+  if (chips !== (document.body.dataset.chips !== undefined)) {
+    if (chips) document.body.dataset.chips = ""; else delete document.body.dataset.chips;
   }
 }
 setCompact();
@@ -25565,6 +26183,7 @@ function setView() {
     else if (homeOf(group) === "measure") el[group.dataset.place || "measureBody"].appendChild(group);
     else if (homeOf(group) === "picture") el[group.dataset.place || "pictureSound"].appendChild(group);
     else if (homeOf(group) === "perform") el[group.dataset.place || "performBody"].appendChild(group);
+    else if (homeOf(group) === "routings") el[group.dataset.place || "routingsFade"].appendChild(group);
     else if (inSide(group)) el.benchSide.appendChild(group);
     else if (!group.closest("#bench")) el.benchBody.appendChild(group);
   }
@@ -25599,10 +26218,11 @@ function setView() {
 
 /* The screen, its toolbar and the verdict: in the Bench's column, or in
    Enlarge's frame. In the column the verdict and the readouts are a line
-   between the screen and the modulation cards (F8), as the redesign draws
-   it, rather than a band across the window that took 73 px of every tab's
-   height; in the frame they are a line under the screen, and Picture only
-   hides them. */
+   under the screen (F8), as the redesign draws it, rather than a band across
+   the window that took 73 px of every tab's height - over the modulation
+   cards until G5a put them in a row across the window, and the column's
+   last thing since; in the frame they are a line under the screen, and
+   Picture only hides them. */
 function placeScreen(enlarged) {
   if (enlarged) {
     const wrap = el.panes.parentElement;
@@ -25612,7 +26232,7 @@ function placeScreen(enlarged) {
   } else {
     el.benchScope.appendChild(el.traceSheet);
     el.benchSide.insertBefore(el.screenTools, el.benchScope);
-    el.benchSide.insertBefore(el.dock, el.modStrip);
+    el.benchSide.appendChild(el.dock);
   }
 }
 
@@ -25650,7 +26270,7 @@ function setEnlarged(on) {
   enlarge.on = on;
   closeOverlay();
   setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); setMenuOpen(false);
-  if (on) closeModCard();
+  if (on) { closeModCard(); setRoutingsOpen(false); }
   keepGridUntil = performance.now() + 600;
   placeScreen(on);
   if (on) document.body.dataset.enlarged = ""; else delete document.body.dataset.enlarged;
@@ -25712,6 +26332,8 @@ function showControl(node) {
     setPictureOpen(true);     // over the bar along the bottom
   } else if (homeOf(group) === "perform") {
     setPerformOpen(true);     // from the header
+  } else if (homeOf(group) === "routings") {
+    setRoutingsOpen(true);    // from the modulation row's corner, over the tabs
   } else {
     if (typeof showBenchFor === "function") showBenchFor(group);
     unfold(group);
@@ -25811,7 +26433,8 @@ function searchEntries() {
                  crumb: (homeOf(group) === "settings" ? "Settings \u203a "
                          : homeOf(group) === "measure" ? "Scope & measure \u203a "
                          : homeOf(group) === "picture" ? "Picture \u203a Advanced \u203a "
-                         : homeOf(group) === "perform" ? "Perform \u203a " : "")
+                         : homeOf(group) === "perform" ? "Perform \u203a "
+                         : homeOf(group) === "routings" ? "Routings \u203a " : "")
                    + section + (behind ? " (behind \u22ef)" : ""),
                  hay: rowWords(row, label, section) });
     }
@@ -25840,9 +26463,9 @@ function searchEntries() {
     out.push({ kind: "panel", row: field, label, crumb: "Scope & measure \u203a " + block,
                hay: rowWords(field, label, block) });
   }
-  // The modulation cards (F4): the three offered sources, and no others.
-  for (const source of MOD_SOURCES.values()) {
-    if (!byHand(source) || !offered(source)) continue;
+  // The modulation cards (F4): the offered sources, four since G5a, and no others.
+  for (const source of cardSources()) {
+    if (!byHand(source)) continue;
     const family = (SOURCE_FAMILIES.find(([id]) => id === source.family) || [0, "Other"])[1];
     out.push({ kind: "source", id: source.id, label: source.label,
                crumb: "Modulation",
@@ -25982,6 +26605,8 @@ function addRouting(sourceId, destId) {
   if (!MOD_SOURCES.has(sourceId) || !MOD_DESTS.has(destId)) return;
   const source = MOD_SOURCES.get(sourceId);
   if (!routingAllowed(source, MOD_DESTS.get(destId))) return;
+  // A hand that patches a source Routings has silenced means to hear it.
+  silenceSource(sourceId, false);
   const start = routingAmount(source, source.start !== undefined ? source.start : MOD_START_AMOUNT);
   const already = state.modRoutings.find(
     (r) => r.sourceId === sourceId && r.destId === destId);
@@ -25996,42 +26621,49 @@ function addRouting(sourceId, destId) {
 function dropRouting(sourceId, destId) {
   state.modRoutings = state.modRoutings.filter(
     (r) => !(r.sourceId === sourceId && r.destId === destId));
+  // A silenced source's routing is taken off where it is held, and the silence with its last.
+  if (held.has(sourceId)) {
+    const left = held.get(sourceId).filter((entry) => entry.routing.destId !== destId);
+    if (left.length) held.set(sourceId, left); else held.delete(sourceId);
+  }
   touchRoutings();
 }
 
 function clearSource(sourceId) {
   state.modRoutings = state.modRoutings.filter((r) => r.sourceId !== sourceId);
+  held.delete(sourceId);
   touchRoutings();
 }
 
 /* --- the cards, built ---------------------------------------------------
    What every place a source comes or goes calls - a keyboard arriving, a
    preset loaded - under the name the chips beside the screen had, since F4
-   put the cards where they were. Three cards whatever is patched: a source
-   that is not offered keeps its ink on its knob and is taken off there. */
+   put the cards where they were. Four cards whatever is patched (G5a): a
+   source that is not offered keeps its ink on its knob and is taken off there. */
 function buildSourceChips() {
   if (!el.modStrip) return;
   el.modStrip.innerHTML = '<div class="mod-strip-head"><span class="menu-title">Modulation</span>'
-    + '<p class="bench-hint">Drag onto a knob.<br>Press to edit.</p></div>'
-    + MOD_CARDS.map((id) => MOD_SOURCES.get(id)).filter(Boolean).map((source) =>
+    + '<p class="bench-hint">Drag onto a knob.<br>Press to open.</p></div>'
+    + cardSources().map((source) =>
         '<button type="button" class="mod-card" data-source="' + source.id + '" aria-pressed="false"'
-        + ' aria-label="' + escapeText(source.label) + ': drag onto a knob, or press to edit">'
-        + '<span class="mod-card-head"><span class="dot-sm" style="background:var(--' + source.ink + ')"></span>'
-        + escapeText(source.label) + '<span class="count"></span><span class="reading"></span></span>'
+        + ' aria-label="' + escapeText(source.label) + ': drag onto a knob, or press to open">'
+        + '<span class="dot-sm" style="background:var(--' + source.ink + ')"></span>'
+        + '<span class="mod-card-name">' + escapeText(source.label) + '</span><span class="count"></span><span class="reading"></span>'
         + "<canvas></canvas></button>").join("");
   el.modStrip.querySelectorAll(".mod-card").forEach((card) => {
     card.addEventListener("pointerdown", (event) => beginChipDrag(card.dataset.source, card, event));
     // The keyboard's way: Enter or space on a focused card is the press.
     card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openModCard(card.dataset.source); }
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pressModCard(card.dataset.source); }
     });
   });
-  if (!MOD_SOURCES.has(selectedSource)) buildSourceDetail();
+  if (!MOD_SOURCES.has(selectedSource) && !cardSource(selectedSource)) buildSourceDetail();
   paintCards();
 }
 el.modEditorClose.addEventListener("click", () => closeModCard());
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && editingSource !== null) closeModCard();
+  else if (event.key === "Escape" && routingsOpen) setRoutingsOpen(false);
 });
 
 /* Arming is a MODE now, not a moment. It used to survive exactly one tap - arm
@@ -26049,7 +26681,7 @@ function armSource(id) {
 function beginChipDrag(id, chip, event) {
   const ghost = document.createElement("div");
   ghost.className = "mod-ghost";
-  ghost.textContent = MOD_SOURCES.get(id).label;
+  ghost.textContent = cardSource(id) ? cardSource(id).label : MOD_SOURCES.get(id).label;
   ghost.style.left = event.clientX + "px";
   ghost.style.top = event.clientY + "px";
   document.body.appendChild(ghost);
@@ -26087,8 +26719,8 @@ function beginChipDrag(id, chip, event) {
 
     // A tap is not a failed drag: it opens the card's editor (F4), whose
     // Add a destination is the assignment a touch screen has.
-    if (!moved) { openModCard(sourceId); return; }
-    if (over) { addRouting(sourceId, over.dataset.modDest); }
+    if (!moved) { pressModCard(sourceId); return; }
+    if (over) { routeFromCard(sourceId, over.dataset.modDest); }
   };
 
   chip.addEventListener("pointermove", move);
@@ -26234,6 +26866,7 @@ const CONTROL_WORDS = {
   "fx-arrow": ["A rack module's arrow", "Opens the rest of this module under it, one module at a time."],
   "fx-handle": ["A rack module's handle", "Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last."],
   "mod-card": ["A modulation card", "Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs."],
+  "route-switch": ["A source’s switch in Routings", "Off silences every routing from this source and keeps them; on puts them back as they were. Not part of a setup."],
   "tab-play": ["The Play tab", "What you play: the keyboard and its expression, the generator and its envelope, the voice filter."],
   "tab-ink": ["The Ink tab", "What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle."],
   "tab-space": ["The Space & Memory tab", "What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order."],
@@ -26353,7 +26986,7 @@ const CONTROL_WORDS = {
   "handsA": ["Which hands: A", "Draws only layer A's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both."],
   "handsB": ["Which hands: B", "Draws only layer B's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both."],
   "enlargeTrail": ["Trail", "How long the enlarged screen keeps a stroke: as heard, half as long, or short. Only the look: Scan reads the Persistence's trail."],
-  "pictureMore": ["Advanced", "Opens what Scan reads, the score and the photocell, and the screen’s look: the beam, its inks, the panes and the loop overlay."],
+  "pictureMore": ["Advanced", "Opens what Scan reads and the score, and the screen’s look: the beam, its inks, the panes and the loop overlay."],
   "pictureAmount": ["Amount", "How far the picture moves the sound by itself: its glow folds it, its motion echoes it, its memory turns it. At nought, a plain synthesiser."],
   "oscScan": ["Scan", "How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone."],
   "scanStrike": ["Strike", "How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades."],
@@ -26361,7 +26994,6 @@ const CONTROL_WORDS = {
   "scanMemory": ["Persistence", "How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more."],
   "amp": ["Level", "How loud the generator plays, and so how large it draws its figure. With a split, the layer being edited."],
   "pictureClose": ["Close", "Closes Advanced. Everything set in it stays set, the loop overlay and the panes included."],
-  "photoButton": ["Photocell", "Puts a light sensor on the screen, landing on the figure; drag its reticle to aim it. Only a setup that routes it can use its reading yet."],
   "scanReadsA": ["Reads (A)", "Whose picture layer A’s Scan reads: its own, layer B’s, or both averaged. Crossed, each hand’s tone comes from the other’s figure."],
   "scanReadsB": ["Reads (B)", "Whose picture layer B’s Scan reads: its own, layer A’s, or both averaged. Shown only while each hand draws a figure of its own."],
   "pictureMovesA": ["Pictures (A)", "Whose sound layer A’s picture moves through the Amount: its own, layer B’s, or both. A sound that hears two takes their average."],
@@ -26388,13 +27020,16 @@ const CONTROL_WORDS = {
   "beamYT": ["Y–T waveform", "Lets Intensity dim the waveform where it moves fast. Off to start, since dimming a square wave’s steep edge hides what Y–T shows."],
   "beamGoni": ["Goniometer", "Lets Intensity dim the goniometer’s trace where it moves fast, as on the main screen. Only the look."],
   "modEditorClose": ["Close", "Closes the editor and brings the tab back. The source keeps moving everything it is on."],
+  "routingsButton": ["Routings", "Opens every routing in one place, by source or by destination, with a switch per source and the fade. The number is how many."],
   "lfoShape0": ["Shape", "The wave the LFO sweeps with. Ramp rises and drops back; Random jumps to a new level each cycle and holds it."],
   "lfoSync0": ["Sync", "Free runs at Rate; a note value locks the LFO to the tempo, and it starts again on the beat."],
   "lfoRate0": ["Rate", "How fast the LFO sweeps, from 0.01 to 8 cycles a second. Greyed while Sync locks it to the tempo."],
   "srcDetail-add": ["Add a destination", "Puts this source on another control, from every one it can reach. Dragging its card onto a knob does the same."],
-  "menvOwn": ["Its own envelope, not Play's", "Gives the Envelope four times of its own, one swell for the notes held. Unticked, it follows Play’s amp envelope."],
-  "menvPhrase": ["Starts: Phrase", "Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope ticked."],
-  "menvEvery": ["Starts: Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope."],
+  "menvOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope."],
+  "menvFollow": ["Follows Play", "The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play."],
+  "menvItsOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs."],
+  "menvPhrase": ["Each phrase", "Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope."],
+  "menvEvery": ["Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope."],
   "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play."],
   "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play."],
   "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Greyed while it follows Play."],
@@ -26434,6 +27069,13 @@ const CONTROL_WORDS = {
   "midiConnect": ["MIDI in", "Asks the browser for MIDI, then listens to every keyboard connected. Needs a secure page; Safari has no Web MIDI."],
   "midiOut": ["MIDI out", "A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it."],
   "midiOutCh": ["MIDI out channel", "The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent."],
+  "photoButton": ["On", "Puts a light sensor on the screen, landing on the figure; drag its reticle there to aim it. Off, it reads nought."],
+  "photoPlace": ["Place it on the figure", "Moves the reticle to the nearest bright part of the figure, as switching it on does. Off, it switches it on."],
+  "routingsBySource": ["By source", "Lists every routing under the card it comes from, each source with its switch."],
+  "routingsByDest": ["By destination", "Lists every routing under the control it moves, to see all that is on one knob."],
+  "routingsClose": ["Close", "Closes Routings and brings the tab back. Every routing and switch stays as set."],
+  "routingsAllOff": ["Switch all off", "Silences every source’s routings and keeps them; pressed again, it puts them all back."],
+  "routingsClear": ["Clear every routing", "Takes every routing off, from every source. Undo puts them back."],
   "fadeMode": ["Fade", "Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go."],
   "fadeEditA": ["Fade · A", "Shows layer A’s fade envelope to draw, with B’s faint behind. Each layer’s sound follows its own; only with a split or layers."],
   "fadeEditB": ["Fade · B", "Shows layer B’s fade envelope to draw, with A’s faint behind. Each layer’s sound follows its own; only with a split or layers."],
@@ -26526,7 +27168,7 @@ const INFO_KEY = "scope.infoLine";
 // Controls with no id of their own, and the bench's tabs, whose ids are made.
 const SAY_KEYS = [
   ["[data-fx-on]", "fx-switch"], ["[data-fx-open]", "fx-arrow"], ["[data-fx-move]", "fx-handle"],
-  [".mod-card", "mod-card"], ["#benchTab-play", "tab-play"], ["#benchTab-ink", "tab-ink"],
+  [".mod-card", "mod-card"], ["[data-silence]", "route-switch"], ["#benchTab-play", "tab-play"], ["#benchTab-ink", "tab-ink"],
   ["#benchTab-space", "tab-space"],
 ];
 let infoAt = null, infoPending = null, infoTimer = 0;
@@ -26758,7 +27400,7 @@ function wireDepthRows(container, redraw) {
     const slider = line.querySelector("input");
     const value = line.querySelector(".mod-edit-val");
     slider.addEventListener("input", () => {
-      const routing = state.modRoutings.find(
+      const routing = routingsKept().find(
         (r) => r.sourceId === sourceId && r.destId === destId);
       if (!routing) return;
       const percent = Number(slider.value);
@@ -26784,9 +27426,9 @@ function openModEditor(destId, anchor, reading) {
 
   openOverlay(anchor, dest.label, reading || "", (body) => {
     // Only the sources that may reach this destination are offered here.
-    // And only the cards' three since F4: a parked source already on it is listed above, to be taken off.
-    const sources = () => Array.from(MOD_SOURCES.values())
-      .filter((source) => byHand(source) && offered(source) && routingAllowed(source, dest))
+    // And only the cards' (four since G5a): a parked source already on it is listed above, to be taken off.
+    const sources = () => cardSources()
+      .filter((source) => byHand(source) && routingAllowed(source, dest))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const draw = () => {
@@ -26812,7 +27454,7 @@ function openModEditor(destId, anchor, reading) {
 
       body.querySelectorAll("[data-add]").forEach((button) => {
         button.addEventListener("click", () => {
-          addRouting(button.dataset.add, destId);
+          routeFromCard(button.dataset.add, destId);
           draw();
         });
       });
@@ -26884,8 +27526,10 @@ function paintKnob(input) {
 // A Bench row a knob can stand for: a label, then one range input with its reading.
 function knobInput(row) {
   if (!row.matches(".menu-row") || row.matches(".drawbar, [data-knob='no']")) return null;
-  // The Bench's rows, and since F2 the Picture section's along the bottom.
-  if (!row.closest('[data-home="bench"], .picture-bar')) return null;
+  // The Bench's rows, and since F2 the Picture section's along the bottom; since
+  // G5a a card's editor's own column (an LFO's Rate, the Envelope's four times),
+  // as the second pass draws them. Where it goes keeps its depths as sliders.
+  if (!row.closest('[data-home="bench"], .picture-bar, .src-own')) return null;
   const label = row.querySelector(":scope > .menu-label");
   const grow = row.querySelector(":scope > .grow");
   if (!label || !grow) return null;
@@ -27212,9 +27856,11 @@ function paintRoutings() {
   updateLanes();
   buildSourceChips();            // and the Sources tab's grid with it
   // Not while a depth in it is being dragged: the rebuild would replace the
-  // slider under the finger.
-  if (!(document.activeElement && el.srcDetail && el.srcDetail.contains(document.activeElement)
-        && document.activeElement.type === "range")) buildSourceDetail();
+  // slider under the finger. Routings likewise.
+  const dragging = (box) => document.activeElement && box && box.contains(document.activeElement)
+    && document.activeElement.type === "range";
+  if (!dragging(el.srcDetail)) buildSourceDetail();
+  if (!dragging(el.routingsList)) buildRoutings();
 }
 
 
@@ -27400,20 +28046,14 @@ el.helpDialog.addEventListener("click", (event) => {
 
 /* --- the photocell, as controls -------------------------------------------- */
 
-/* Registered while it is on and not otherwise - a chip for a source that
-   cannot move is a chip spent on nothing. Its routings are skipped while it is
-   off rather than dropped, the rule every unregistered source already has. */
+/* Registered while it is on and not otherwise: its routings are skipped while
+   it is off rather than dropped, the rule every unregistered source already
+   has. Its card is there either way since G5a (cardSource), and patching from
+   the card switches it on. */
 function setPhoto(on) {
   photo.on = on;
   if (on) {
-    registerSource({
-      id: "photo.1", label: "Photocell", ink: "ch6", bipolar: false, order: 30,
-      family: "picture",
-      description: "How bright the screen is under the reticle, like a light sensor on the "
-        + "glass. Drag the reticle onto the picture to aim it.",
-      reach: PHOTO_REACH, start: PHOTO_START, fromPicture: true,
-      value: () => photo.value,
-    });
+    registerSource(PHOTO_SOURCE);
   } else {
     /* Only the photocell's own reading. The picture's sources used to come
        and go with it, and the meter start afresh, which made the picture a
@@ -27695,6 +28335,7 @@ let pictureHeldByLink = null;
    nothing however much the picture is doing. */
 function paintStage() {
   paintTabLines(performance.now());
+  paintModLive();
   const amount = Number(el.pictureAmount.value) / 100;
   // Its reading, since F2 made it a knob: here, as anything can set it without an event.
   const said = Math.round(amount * 100) + "%";
@@ -27732,6 +28373,13 @@ el.photoButton.addEventListener("click", () => {
   const on = !photo.on;
   setPhoto(on);
   if (on) landPhoto();
+});
+/* Place it on the figure, in the Photocell's editor (G5a): the landing its
+   switch does when it goes on, asked for again - after the figure has moved,
+   say. Switched off, it switches it on, which lands it. */
+el.photoPlace.addEventListener("click", () => {
+  if (!photo.on) { el.photoButton.click(); return; }
+  landPhoto();
 });
 
 /* The next frame wipes rather than fades - the screen, the phosphor grid under

@@ -359,8 +359,9 @@ with sync_playwright() as pw:
       return { learned: [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.')), vibrato,
                cards: Array.from(document.querySelectorAll('.mod-card')).map((c) => c.dataset.source) };
     }""")
-    check("controllers moved are learned as nothing, and the cards are still three",
-          moved["learned"] == [] and moved["cards"] == ["lfo1", "lfo2", "env.note"], str(moved))
+    # Four since G5a made the Photocell a card; a learned controller would have been a fifth.
+    check("controllers moved are learned as nothing, and the cards are still the four",
+          moved["learned"] == [] and moved["cards"] == ["lfo1", "lfo2", "env.note", "photo.1"], str(moved))
     check("null: the wheel still sets the vibrato", moved["vibrato"] > 0.3, str(moved["vibrato"]))
 
     # A code from before: version 8, a controller on the frequency and its

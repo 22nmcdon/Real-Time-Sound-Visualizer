@@ -542,7 +542,7 @@ with sync_playwright() as pw:
 
     p.evaluate("""() => { setFadeEnvelope({ delay: 0, attack: 1, decay: 1, sustain: 0.6, release: 1,
                                             attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 }); drawFadeEnvelope(); showControl('fadeMode');
-                  // In Settings since F4, a panel that scrolls: the envelope is under its menu, and a hand scrolls to it.
+                  // In Routings since G5a (Settings from F4): the envelope is under its menu, and a hand scrolls to it if it must.
                   el.fadeEnv.scrollIntoView({ block: 'nearest' }); }""")
     p.wait_for_timeout(200)
     def drag(name, dx, dy):

@@ -59,13 +59,14 @@ UNSAID = """(removed) => {
      doc has no rows for - it was let off with the drawings' rows when it
      still held the second generator, and only that part of it went in G2. */
   const drawings = '#inputGroup, #helpDialog';
-  const places = '.menu-group, header, .picture-bar, .screen-tools, #keysPanel, .mod-strip, #benchRail';
+  // The modulation row's corner and the card editors and Routings (G5a), which open over the tabs.
+  const places = '.menu-group, header, .picture-bar, .screen-tools, #keysPanel, .mod-row, #modEditor, #routingsPanel, #benchRail';
   const out = [];
   for (const c of document.querySelectorAll('input, select, button')) {
     if (c.type === 'file' || c.type === 'hidden' || c.closest(drawings) || !c.closest(places)) continue;
     if (c.closest('.over, .info-line, #benchResults')) continue;
-    // Made for a moment and unnamed: the cards' editors' rows, a chip's clear.
-    if (!c.id && !c.matches('[data-fx-on], [data-fx-open], [data-fx-move], .mod-card, [role=tab][id^="benchTab-"]')) continue;
+    // Made for a moment and unnamed: the cards' editors' rows, a chip's clear. A source's switch in Routings is asked of.
+    if (!c.id && !c.matches('[data-fx-on], [data-fx-open], [data-fx-move], .mod-card, [data-silence], [role=tab][id^="benchTab-"]')) continue;
     if (removed.includes(c.id)) continue;
     if (!wordsKey(c)) out.push(c.id || c.className);
   }
@@ -108,6 +109,17 @@ with sync_playwright() as pw:
     for tab in ("play", "ink", "space"):
         p.evaluate("(t) => setBenchTab(t)", tab); p.wait_for_timeout(150)
         unsaid += p.evaluate(UNSAID, sorted(REMOVED))
+    # The card editors and Routings (G5a), each opened, since their rows are
+    # built as they open: an LFO's, the Envelope's, the Photocell's, and
+    # Routings with a routing, so a source's switch is there to be asked of.
+    for js in ("() => { state.modRoutings = []; addRouting('lfo1', 'view.rotate'); openModCard('lfo1'); }",
+               "() => openModCard('env.note')", "() => openModCard('photo.1')", "() => setRoutingsOpen(true)"):
+        p.evaluate(js); p.wait_for_timeout(150)
+        unsaid += p.evaluate(UNSAID, sorted(REMOVED))
+    switched = p.evaluate("""(removed) => { const keep = CONTROL_WORDS['route-switch']; delete CONTROL_WORDS['route-switch'];
+      const u = (%s)(removed); CONTROL_WORDS['route-switch'] = keep;
+      return { u, asked: document.querySelectorAll('#routingsPanel [data-silence]').length }; }""" % UNSAID, sorted(REMOVED))
+    p.evaluate("() => { setRoutingsOpen(false); state.modRoutings = []; touchRoutings(); }")
     unsaid = sorted(set(unsaid))
     check("every control on the face, but those a later stage removes, has its words", not unsaid, str(unsaid[:12]))
     knocked = p.evaluate("""(removed) => { const keep = CONTROL_WORDS.vcfCut; delete CONTROL_WORDS.vcfCut;
@@ -117,6 +129,8 @@ with sync_playwright() as pw:
     knocked = p.evaluate("""(removed) => { const keep = CONTROL_WORDS.handsB; delete CONTROL_WORDS.handsB;
       const u = (%s)(removed); CONTROL_WORDS.handsB = keep; return u; }""" % UNSAID, sorted(REMOVED))
     null("with Which hands' B's words taken out, the check finds it, hidden as it is on the face", "handsB" in knocked, str(knocked))
+    null("with a source's switch's words taken out, in Routings, the check finds the switches",
+         switched["asked"] == 4 and "route-switch" in switched["u"], str(switched))
     keyed = p.evaluate("""() => ['[data-fx-on]', '[data-fx-open]', '[data-fx-move]', '.mod-card', '#benchTab-ink']
       .map((s) => { setBenchTab('space'); const n = document.querySelector(s); return [s, n ? wordsKey(n) : 'missing']; })""")
     check("the controls with no id find theirs: the rack's switch, arrow and handle, a card, a tab",

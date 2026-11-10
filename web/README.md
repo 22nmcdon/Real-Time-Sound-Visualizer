@@ -71,7 +71,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `contracttest.py` | the lane contract on the band split, and a lane with no audio behind it |
 | `keystest.py` | the keyboard on the screen: pointer, latch and the letters |
 | `polytest.py` | poly: which notes are drawn, what is heard and what is not, per-voice envelopes, tuning, the cap |
-| `layouttest.py` | the layout: source families and their hints, the selected source's panel and meter, reaching any control, search and where it lands |
+| `layouttest.py` | the layout: the modulation cards (four since G5a) and their editor, the selected source's panel and meter, reaching any control, search and where it lands |
 | `layertest.py` | two layers: one oscillator step a sample, which notes go where, each layer's picture, sound, rule and envelope, A against B, the panel editing one layer at a time |
 | `pedaltest.py` | the sustain pedal: what it holds and lets go, the switch point, the source it also is, the screen's pedal and the space bar |
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
@@ -92,7 +92,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
-| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers |
+| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers; with the modulation row in place across the window (G5a), cards at 1400x900 and chips at the four smaller windows, and the null that the cards' row puts Ink over at 1100x860 |
+| `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, forgotten by a restore and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
@@ -5486,3 +5487,39 @@ those out made room at every window the suites measure; `.head` and the preset's
 row are also `nowrap` above 760 px, so the title block's line gives way to an
 ellipsis inside its 260 px first. Below 760 the header still wraps, since there
 a row that cannot wrap is a page that scrolls sideways.
+
+**A routing held aside, not a matrix taught a silence (G5a).** Routings' switch
+per source silences its routings without losing them. The obvious way was a
+filter in `routingsHeard`, `fadeStep`, `setFade` and `fireEvents`, and it
+worked on the page - and would have broken parity, which lifts those four into
+its harness by name (`core/tests/tools/matrix_js.mjs`, `LIFTED`), where a new
+name the page calls is a throw on the first frame while the web suite stays
+green. So the silence takes the source's routings out of `state.modRoutings`
+into `held`, each with where it stood, and the matrix's functions read what
+they always read: the routings heard. The setup writes `routingsKept()`, the
+two put back in order, so a silence is no change to the code and no step in
+undo; `restore` forgets it. Before giving a lifted function a new name to
+call, grep `core/tests/tools/*.mjs` for the function's name in quotes.
+
+**The modulation row comes out of the tabs.** The cards were in the screen's
+column from F4, which had height to spare; across the window under the screen
+and the tabs (G5a) their 87 px came out of every tab, and at 1100x860 Ink was
+22 px over in its plainest state and Space & Memory 36 with two layers and the
+delay open. They fold to chips (36 px) on any window under 900 tall
+(`CHIPS_H`, `body[data-chips]`), not only on the compact face, and the compact
+face gave back 26 px of padding and two pixels a rack line. Two things moved
+that suites had pinned: the rack folds at 1400x900 with two layers now (41 px
+over unfolded; one layer still keeps its knobs), and the on-screen keys at
+960x600 cover the row, as they cover the Picture section, rather than stopping
+under the cards. `fittest.py` reads the row back as there in every sweep, with
+the null that the cards' row in place of the chips puts Ink over at 1100x860.
+
+**A card's editor covers the tab cards, so the tab is no longer the way out.**
+Since G5a an editor and Routings lie over the whole of the tabs' column, rail
+included, as the second pass draws them, so a test that clicked a tab to put
+the editor away times out on the click. Pressing the card again puts it away
+(`openModCard` toggles), as do Close and Esc; going to a tab from code
+(`setBenchTab`, a search) still does. And the cards are built again whenever
+a routing or a source changes (`buildSourceChips`), as are the editor's
+drawings: a test holding a card's canvas across a photocell switched on is
+holding a detached one, and reads its last drawing for ever.

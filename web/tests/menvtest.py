@@ -6,10 +6,11 @@ What would go wrong, and what is checked for it:
   moved into the Envelope's editor while it is open; LFO 1's editor opened
   after it must not have them, there must be one of each id after going
   round, and the Envelope's again must;
-- a switch that paints and does not send: ticked with the mouse, the
-  generator's own field must turn, the card must read "its own" and the
-  knobs come alive; a knob moved by hand must reach the generator in its
-  units;
+- a switch that paints and does not send: Its own pressed with the mouse
+  (a box ticked until G5a put the two buttons along the editor's top over
+  it), the generator's own field must turn, the card must read "its own",
+  the knobs come alive and the buttons say which; a knob moved by hand must
+  reach the generator in its units;
 - the source reading the wrong envelope: with a slow attack of its own and
   Play's quick one, a held note's Envelope must still be low after a tenth
   of a second, where Play's has long since arrived - and the null is the
@@ -56,13 +57,16 @@ with sync_playwright() as pw:
           env2["inEditor"] and all(n == 1 for n in env1["ids"] + lfo["ids"] + env2["ids"]), str(env2))
 
     print("\n--- the switch and the knobs, by hand ---")
-    before = p.evaluate("() => ({ own: genSettings().menvOwn, reading: cardReading(MOD_SOURCES.get('env.note')), dis: el.menvAtk.disabled })")
-    p.locator("#menvOwn").check(); p.wait_for_timeout(150)
-    after = p.evaluate("() => ({ own: genSettings().menvOwn, reading: cardReading(MOD_SOURCES.get('env.note')), dis: el.menvAtk.disabled })")
-    check("unticked it follows Play: the generator's field off, the card says so, the knobs asleep",
-          before == {"own": False, "reading": "follows Play", "dis": True}, str(before))
-    check("ticked with the mouse, the generator's field turns, the card reads its own and the knobs wake",
-          after == {"own": True, "reading": "its own", "dis": False}, str(after))
+    STATE = """() => ({ own: genSettings().menvOwn, reading: cardReading(MOD_SOURCES.get('env.note')), dis: el.menvAtk.disabled,
+      pressed: [el.menvFollow.getAttribute('aria-checked'), el.menvItsOwn.getAttribute('aria-checked')] })"""
+    before = p.evaluate(STATE)
+    # Its own, pressed with the mouse: the checkbox under it is out of sight since G5a.
+    p.locator("#menvItsOwn").click(); p.wait_for_timeout(150)
+    after = p.evaluate(STATE)
+    check("following Play: the generator's field off, the card says so, the knobs asleep, Follows Play pressed",
+          before == {"own": False, "reading": "follows Play", "dis": True, "pressed": ["true", "false"]}, str(before))
+    check("Its own pressed with the mouse: the generator's field turns, the card reads its own, the knobs wake, Its own pressed",
+          after == {"own": True, "reading": "its own", "dis": False, "pressed": ["false", "true"]}, str(after))
     knobs = p.evaluate("""() => {
       for (const [id, v] of [['menvAtk', 700], ['menvDec', 900], ['menvSus', 25], ['menvRel', 1200]]) setControl(id, v);
       const t = genSettings();
@@ -116,7 +120,9 @@ with sync_playwright() as pw:
       midiNoteOff(60); midiPanic(); await wait(400);
       return { settled, second, resettled, lifted, field: genSettings().menvEvery };
     }"""
-    p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(200)
+    # Opened from code: the screen's keys, left up by the section before, lie
+    # over the modulation row since G5a put it along the foot of the window.
+    p.evaluate("() => openModCard('env.note')"); p.wait_for_timeout(200)
     ev = p.evaluate(STRIKE, [True])
     ph = p.evaluate(STRIKE, [False])
     check("on Every note, a second key starts its attack again: up from its sustain within 120 ms",

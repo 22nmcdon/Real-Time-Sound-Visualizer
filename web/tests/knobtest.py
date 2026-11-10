@@ -95,6 +95,28 @@ with sync_playwright() as pw:
     }""")
     null("an undressed row reads as a slider", fresh["before"] is False, str(fresh))
     check("and dressing it makes it a knob", fresh["after"] is True, str(fresh))
+    # Since G5a a card's editor's own column is dressed too: an LFO's Rate and
+    # the Envelope's four times are knobs, as the second pass draws them. Where
+    # it goes keeps its depths as sliders - a list of amounts, rebuilt as
+    # routings come and go - and the null is a probe row put there, which the
+    # dressing must leave a slider.
+    editor = p.evaluate("""() => {
+      state.modRoutings = []; addRouting('lfo1', 'view.rotate'); openModCard('lfo1');
+      const knob = (id) => { const i = document.getElementById(id);
+        return !!(i && i.closest('.knob-row') && i.parentElement.querySelector('.knob-face')); };
+      const out = { rate: knob('lfoRate0'), depth: !!el.srcDetail.querySelector('.src-goes .knob-face') };
+      const goes = el.srcDetail.querySelector('.src-goes'), row = document.createElement('div'); row.className = 'menu-row';
+      row.innerHTML = '<label class="menu-label" for="knobProbe2">Probe</label><div class="grow">'
+        + '<input type="range" id="knobProbe2" min="0" max="10" value="3"><span class="reading">3</span></div>';
+      goes.appendChild(row); dressKnobs(el.srcDetail); out.probe = row.classList.contains('knob-row'); row.remove();
+      openModCard('env.note');
+      out.env = ['menvAtk', 'menvDec', 'menvSus', 'menvRel'].map(knob);
+      closeModCard(); state.modRoutings = []; touchRoutings();
+      return out;
+    }""")
+    check("a card's editor's own controls are knobs: an LFO's Rate and the Envelope's four times, and its depths stay sliders",
+          editor["rate"] and all(editor["env"]) and not editor["depth"], str(editor))
+    null("a row put in Where it goes is left a slider by the dressing", editor["probe"] is False, str(editor))
     access = p.evaluate("""() => { const i = el.oscFm; const cs = getComputedStyle(i);
       return { labels: i.labels.length, display: cs.display, tab: i.tabIndex, hidden: i.closest('[hidden]') !== null }; }""")
     check("the input is still there for the keyboard and a screen reader",

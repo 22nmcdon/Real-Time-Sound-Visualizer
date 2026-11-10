@@ -7,8 +7,9 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-299 controls: 290 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
-again in G4, which took out A and B and the views and added Enlarge's six).
+309 controls: 300 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
+again in G5a, which added the Routings panel's, the Photocell's editor's and the Envelope's
+two switches, and moved the fade to Routings).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -32,8 +33,8 @@ what each control actually does:
 4. **Stop may not hold the tone in the compiled instrument.** The help sheet says Stop
    holds the screen and so the tone; the core does not hear Run. Should Stop hold Scan's
    tone in the plugin, as it does in the page?
-5. **The Photocell can be switched on but not routed by hand** until G5 makes it a card.
-   Its line says so; keep that until then?
+5. ~~**The Photocell can be switched on but not routed by hand**~~ - settled in G5a: it
+   is a card, routed as the others are, and its switch is *On* in its editor.
 6. ***A against B* puts layer A in the left ear only and B in the right.** Nothing on the
    face says so. Intended?
 7. **Kind has one choice once G2 takes the drawings.** Keep a one-item menu, or let it go
@@ -65,6 +66,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
 | fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
 | mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs. | 98 |
+| route-switch | A source’s switch in Routings | Off silences every routing from this source and keeps them; on puts them back as they were. Not part of a setup. | 113 |
 | tab-play | The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
 | tab-ink | The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
 | tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order. | 117 |
@@ -291,7 +293,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| pictureMore | Advanced | Opens what Scan reads, the score and the photocell, and the screen’s look: the beam, its inks, the panes and the loop overlay. | 126 | - |
+| pictureMore | Advanced | Opens what Scan reads and the score, and the screen’s look: the beam, its inks, the panes and the loop overlay. | 111 | - |
 | pictureAmount | Amount | How far the picture moves the sound by itself: its glow folds it, its motion echoes it, its memory turns it. At nought, a plain synthesiser. | 140 | yes — the three reads and their meters; a keyboard’s expression pedal (CC 11) sets it; every preset sets it; it shares half a control’s reach with the photocell |
 | oscScan | Scan | How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone. | 133 | yes — read sixty times a second round a circle by the figure; the pitch holds; reined in to a quarter while the loop runs away; with a split, the layer being edited |
 | scanStrike | Strike | How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades. | 141 | yes — only while Scan is above nought; each note at its own place round the circle, as hard as it was played |
@@ -304,7 +306,6 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | pictureClose | Close | Closes Advanced. Everything set in it stays set, the loop overlay and the panes included. | 89 | - |
-| photoButton | Photocell | Puts a light sensor on the screen, landing on the figure; drag its reticle to aim it. Only a setup that routes it can use its reading yet. | 138 | yes — how bright the screen is under it, a source that moves a control at most half way and no faster than two swings a second; Persistence is its memory |
 
 ### Picture › Advanced › What Scan reads
 
@@ -356,6 +357,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | modEditorClose | Close | Closes the editor and brings the tab back. The source keeps moving everything it is on. | 87 | - |
+| routingsButton | Routings | Opens every routing in one place, by source or by destination, with a switch per source and the fade. The number is how many. | 125 | - |
 
 ### A modulation card’s editor › LFO 1 and LFO 2
 
@@ -370,9 +372,11 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| menvOwn | Its own envelope, not Play's | Gives the Envelope four times of its own, one swell for the notes held. Unticked, it follows Play’s amp envelope. | 113 | yes — its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
-| menvPhrase | Starts: Phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope ticked. | 121 | - |
-| menvEvery | Starts: Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope. | 124 | - |
+| menvOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope. | 108 | yes — its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
+| menvFollow | Follows Play | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 98 | - |
+| menvItsOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs. | 92 | - |
+| menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope. | 115 | - |
+| menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope. | 124 | - |
 | menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play. | 100 | - |
 | menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play. | 100 | - |
 | menvSus | Sustain | Where it rests while notes are held, from nought to the top. Greyed while it follows Play. | 90 | - |
@@ -460,7 +464,24 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | midiOut | MIDI out | A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it. | 107 | yes — at most forty notes a second; every note is ended when the scope stops, the page is hidden or the port changes; the readout says sending |
 | midiOutCh | MIDI out channel | The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent. | 97 | - |
 
-### Settings › Modulation fade
+### A modulation card’s editor › The Photocell
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| photoButton | On | Puts a light sensor on the screen, landing on the figure; drag its reticle there to aim it. Off, it reads nought. | 112 | yes — how bright the screen is under it, a source that moves a control at most half way and no faster than two swings a second; Persistence is its memory |
+| photoPlace | Place it on the figure | Moves the reticle to the nearest bright part of the figure, as switching it on does. Off, it switches it on. | 108 | - |
+
+### Routings
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| routingsBySource | By source | Lists every routing under the card it comes from, each source with its switch. | 78 | - |
+| routingsByDest | By destination | Lists every routing under the control it moves, to see all that is on one knob. | 79 | - |
+| routingsClose | Close | Closes Routings and brings the tab back. Every routing and switch stays as set. | 79 | - |
+| routingsAllOff | Switch all off | Silences every source’s routings and keeps them; pressed again, it puts them all back. | 86 | - |
+| routingsClear | Clear every routing | Takes every routing off, from every source. Undo puts them back. | 64 | - |
+
+### Routings › Fade
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|

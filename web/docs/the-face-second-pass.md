@@ -374,6 +374,22 @@ Each leaves the suite green and is pushed alone.
   with the fade; CLAUDE.md's rule rewritten. And modulation on a knob: the ring, the
   ticks and the dot, Alt-drag and the ring's handle, the new editor, and the right-click
   menu in place of the shoulder's dots (with the plugin's shell test for it).
+  **G5a built 10 Nov**, the row and what it opens, page only: four cards drawing their
+  sources with a dot that moves; the Photocell's card, routable whether or not it is on
+  (patching it switches it on), its switch moved from the Picture's Advanced into its
+  editor as *On*; the editors drawn and over the tab cards as well as the tabs, an LFO's
+  Rate and the Envelope's times as knobs; Routings, by source or destination, with the
+  fade moved from Settings (`data-home="routings"`), *Switch all off* and *Clear every
+  routing*. Decided where the design was open: the cards fold to chips on any window under
+  900 px tall, not only the compact face - the cards are 87 px and the chips 36, and at
+  1100x860 Ink was 22 px over and Space & Memory (two layers, the delay open) 36; the
+  compact face gave back 26 px of padding and two pixels a rack line. A silence is a way
+  of listening, not a field: the setup keeps a silenced source's routings, the instrument
+  is told the routings heard, and loading a setup forgets it (so the plugin saves a
+  project without a silenced source's routings; a stored silence would be a field the
+  core reads too). Not built: dragging the Envelope's corners, the LFO's Start and Fade
+  in, the Photocell's Size and Smooth, and the routing rows' *Both / Upper / Lower*,
+  which wait for G6's hands. `modrowtest.py` holds it. Modulation on a knob is G5b.
 - **G6 The hands.** The selector, a link per section, the new twins, routings that follow
   the link, Edit A/B and the modules' layer switches retired.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.

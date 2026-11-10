@@ -92,10 +92,13 @@ with sync_playwright() as pw:
     # Every source a hand can patch: the picture stage's three reads are
     # registered and routed by the stage alone (byHand), so never offered.
     # And only the modulation cards' since F4: the oscillators and the
-    # Envelope, where it was every source a hand could patch, twenty-odd.
-    every = p.evaluate("() => [...MOD_SOURCES.values()].filter((s) => s.event !== true && byHand(s) && offered(s)).length")
-    check("nothing on it yet, so every card's source is offered, and only those three",
-          every == 3 and
+    # Envelope, where it was every source a hand could patch, twenty-odd;
+    # and the Photocell since G5a, whose card is offered whether or not it is
+    # on (cardSources), so it is counted from the cards, not the registry,
+    # where it is only while it is on.
+    every = p.evaluate("() => cardSources().filter((s) => s.event !== true && byHand(s)).length")
+    check("nothing on it yet, so every card's source is offered, and only those four, the Photocell's while it is off",
+          every == 4 and p.evaluate("() => photo.on") is False and
           len(opened["add"]) == every, "%d offered of %d"
           % (len(opened["add"]), every))
 

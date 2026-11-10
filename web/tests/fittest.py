@@ -20,6 +20,12 @@ So, against the ways it fails:
   top of the layered case's extra rows: each module is opened in turn;
 - the modulation editor over in the worst case it has: an oscillator on a
   dozen controls, each a row of Where it goes;
+- the modulation row (G5a) taking more than the tabs can give: since it runs
+  across the window under the screen and the tabs, every case above is
+  measured with it in place, and the row is read back as there, under the
+  tabs, as cards at 1400x900 and chips at every smaller window. Its null:
+  at 1100x860 the same Ink tab with the cards' row in place of the chips
+  scrolls, so the fold to chips is what fits it;
 - a dealer that measures a section at a width it will not have. It stacks
   every section in the first column to measure them, and with the empty
   columns hidden that column was the whole Bench wide, so everything that
@@ -126,7 +132,20 @@ SWEEP = """async ([bands]) => {
                    over: el.modEditor.scrollHeight - el.modEditor.clientHeight,
                    list: goes.scrollHeight - goes.clientHeight };
   closeModCard(); state.modRoutings = []; touchRoutings();
-  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened };
+  // The row, read back: where it is and what it is showing.
+  const rowBox = el.modRow.getBoundingClientRect(), mainBox = document.querySelector('.bench-main').getBoundingClientRect();
+  const row = { under: rowBox.top >= mainBox.bottom - 1 && rowBox.top >= el.benchSide.getBoundingClientRect().bottom - 1,
+                height: Math.round(rowBox.height), chips: document.body.dataset.chips !== undefined,
+                cards: el.modStrip.querySelectorAll('.mod-card').length };
+  /* The null: the cards' row in place of the chips, on Ink, the tab that was
+     over at 1100x860 before the fold. Only where the row is chips. */
+  if (row.chips) {
+    setBenchTab('ink'); await wait(80);
+    delete document.body.dataset.chips; await wait(80);
+    row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+    document.body.dataset.chips = ''; await wait(80);
+  }
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row };
 }"""
 
 with sync_playwright() as pw:
@@ -175,6 +194,13 @@ with sync_playwright() as pw:
               # layered and rack cases.
               r["over"] == [] and r["cases"] >= (24 if name == "tone" else 12) and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
+        want_chips = (w, h) != (1400, 900)
+        check("the modulation row was across the window under the tabs, four %s (%dx%d)" % ("chips" if want_chips else "cards", w, h),
+              r["row"]["under"] and r["row"]["cards"] == 4 and r["row"]["chips"] == want_chips
+              and (r["row"]["height"] <= 40 if want_chips else r["row"]["height"] >= 70), str(r["row"]))
+        if (w, h) == (1100, 860) and name == "tone":
+            check("null: at 1100x860 the cards' row in place of the chips puts Ink over", r["row"].get("cardsOver", 0) > 0,
+                  str(r["row"]))
         check("and every section is dealt at the height it was measured at (%dx%d)" % (w, h),
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
         check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll (%dx%d)" % (w, h),

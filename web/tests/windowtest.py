@@ -22,7 +22,9 @@ What would go wrong, and what is checked for it:
 - the rack folding always, as F5 did, or never: at 1400x900 with every effect
   on and the Plane open the others keep their knobs; at 1200x680 they fold and
   the tab does not scroll, and the null is the same rack with the fold taken
-  off, which must scroll - otherwise the fold is not what fits it. A module
+  off, which must scroll - otherwise the fold is not what fits it. Since G5a
+  put the modulation row across the window, 1400x900 with two layers folds
+  too, by 41 px, with the same null. A module
   switched on by a value, with no press on the rack, must fold the others too
   (paintRack), and closing the module must unfold them.
 """
@@ -131,7 +133,7 @@ with sync_playwright() as pw:
     check("and resized back it is the full face at 100 again", back["zoom"] == 1 and not back["compact"], str(back))
     p.close(); ctx.close()
 
-    print("\n--- the compact face as drawn: three columns, and the keys under the cards ---")
+    print("\n--- the compact face as drawn: three columns, and the keys under the tab ---")
     COLS = """() => { setView('bench'); setBenchTab('play');
       const W = el.benchBody.clientWidth;
       return { dealt: Array.from(el.benchBody.querySelectorAll(':scope > .bench-col')).filter((c) => c.children.length).length,
@@ -154,12 +156,18 @@ with sync_playwright() as pw:
               const low = Math.max(...ctl.map((r) => r.bottom));
               setScreenKeys(false);
               return { top: keys.top, height: keys.height, bottom: keys.bottom, cards: cards.bottom, low }; }""")
-            check("at 960x600 the keys stop under the modulation cards and the tab's lowest control",
-                  k["top"] >= k["cards"] and k["top"] >= k["low"], str(k))
+            # Since G5a the cards are a row along the foot, over the Picture
+            # section, and the keys cover them both while they are up, as they
+            # covered the Picture section before: under the cards, as they
+            # stopped while the cards were in the screen's column, they would
+            # have 76 px for their bar and their keys. What they must not cover
+            # is the tab: it is what is played with while the keys are up.
+            check("at 960x600 the keys stop under the tab's lowest control, over the modulation row",
+                  k["top"] >= k["low"] and k["top"] < k["cards"], str(k))
             # The null: keys at the full face's 175 px from the same foot.
             full_top = k["bottom"] - 175
-            check("null: keys at the full face's height from the same foot would cover the cards",
-                  full_top < k["cards"], "top would be %.0f, cards end at %.0f" % (full_top, k["cards"]))
+            check("null: keys at the full face's height from the same foot would cover the tab's lowest control",
+                  full_top < k["low"], "top would be %.0f, the lowest control ends at %.0f" % (full_top, k["low"]))
         p.close()
     ctx.close()
 
@@ -175,9 +183,11 @@ with sync_playwright() as pw:
     scope0 = p.evaluate(WHERE)
     p.evaluate("() => setEnlarged(false)"); p.wait_for_timeout(200)
     bench = p.evaluate(WHERE)
-    check("on the face the verdict is in the screen's column, under the screen and over the modulation cards",
-          bench["parent"] == "bench-side" and bench["before"] == "modStrip" and bench["shown"] and bench["under"], str(bench))
-    null("Enlarge's place is not the face's", scope0["parent"] == "bench-side" and scope0["before"] == "modStrip")
+    # The column's last thing since G5a, when the modulation cards it sat over
+    # went to a row across the window.
+    check("on the face the verdict is in the screen's column, under the screen, the column's last thing",
+          bench["parent"] == "bench-side" and bench["before"] is None and bench["shown"] and bench["under"], str(bench))
+    null("Enlarge's place is not the face's", scope0["parent"] == "bench-side" and scope0["before"] is None)
     p.evaluate("() => { setEnlarged(false); setEnlarged(true); setEnlarged(false); setEnlarged(true); }"); p.wait_for_timeout(200)
     scope1 = p.evaluate(WHERE)
     check("enlarged it is a line under the enlarged screen, the same after going round twice",
@@ -233,7 +243,11 @@ with sync_playwright() as pw:
         tag = "%dx%d%s" % (w, h, ", two layers" if layers else "")
         check("at %s the Plane's and the Delay's Layers rows are %s" % (tag, "on show" if layers else "hidden"),
               r["layered"] == layers)
-        if w == 1400:
+        # Two layers at 1400x900 fold since G5a: the modulation row across the
+        # window took 87 px from the tabs, and the layered rack with its
+        # Layers rows (which G6 retires) was 41 over unfolded. One layer
+        # still keeps its knobs there, as drawn.
+        if w == 1400 and not layers:
             check("at %s, every effect on and the Plane open, the others keep their knobs" % tag,
                   not r["open"]["tight"] and all(r["open"]["knobs"]) and r["open"]["over"] <= 0, str(r["open"]))
         else:
