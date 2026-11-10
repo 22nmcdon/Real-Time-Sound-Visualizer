@@ -16,9 +16,9 @@ What would go wrong, and what is checked for it:
 - the compact face chosen from the device rather than the window, or from the
   window without the zoom: at 1400x900 it is the full face at 100 and compact
   at 125, where the page is 1120x720 to itself;
-- the verdict left in a band across the window on the Bench, or not put back
-  on Scope: its parent and neighbours are read in both views and after going
-  round twice;
+- the verdict left in a band across the window on the face, or not put back
+  after Enlarge: its parent and neighbours are read on the face, enlarged, and
+  after going round twice (the Scope view's round trip until G4 took it);
 - the rack folding always, as F5 did, or never: at 1400x900 with every effect
   on and the Plane open the others keep their knobs; at 1200x680 they fold and
   the tab does not scroll, and the null is the same rack with the fold taken
@@ -170,18 +170,22 @@ with sync_playwright() as pw:
       before: d.nextElementSibling && d.nextElementSibling.id, after: d.previousElementSibling && d.previousElementSibling.tagName,
       shown: el.verdict.getBoundingClientRect().height > 0,
       under: el.verdict.getBoundingClientRect().top >= el.benchScope.getBoundingClientRect().bottom - 1 } }"""
-    p.evaluate("() => setView('scope')"); p.wait_for_timeout(200)
+    # Picture only off, so the verdict is shown enlarged; it hides it otherwise (enlargetest.py).
+    p.evaluate("() => { enlarge.pictureOnly = false; setEnlarged(true); }"); p.wait_for_timeout(200)
     scope0 = p.evaluate(WHERE)
-    p.evaluate("() => setView('bench')"); p.wait_for_timeout(200)
+    p.evaluate("() => setEnlarged(false)"); p.wait_for_timeout(200)
     bench = p.evaluate(WHERE)
-    check("on the Bench the verdict is in the screen's column, under the screen and over the modulation cards",
+    check("on the face the verdict is in the screen's column, under the screen and over the modulation cards",
           bench["parent"] == "bench-side" and bench["before"] == "modStrip" and bench["shown"] and bench["under"], str(bench))
-    null("the Scope view's place is not the Bench's", scope0["parent"] == "bench-side" and scope0["before"] == "modStrip")
-    p.evaluate("() => { setView('scope'); setView('bench'); setView('scope'); }"); p.wait_for_timeout(200)
+    null("Enlarge's place is not the face's", scope0["parent"] == "bench-side" and scope0["before"] == "modStrip")
+    p.evaluate("() => { setEnlarged(false); setEnlarged(true); setEnlarged(false); setEnlarged(true); }"); p.wait_for_timeout(200)
     scope1 = p.evaluate(WHERE)
-    check("on Scope it is back across the foot where it started, after going round twice",
+    check("enlarged it is a line under the enlarged screen, the same after going round twice",
           scope1["parent"] == scope0["parent"] and scope1["before"] == scope0["before"] and scope1["after"] == scope0["after"]
-          and scope1["shown"] and scope0["parent"] != "bench-side", "%s / %s" % (scope0, scope1))
+          and scope1["shown"] and scope0["parent"] == "wrap" and scope0["after"] == "DIV", "%s / %s" % (scope0, scope1))
+    p.evaluate("() => { setEnlarged(false); enlarge.pictureOnly = true; paintEnlarge(); }"); p.wait_for_timeout(200)
+    back = p.evaluate(WHERE)
+    check("and back on the face it is where it was", back == bench, "%s / %s" % (bench, back))
     check("and there is one verdict on the page", p.evaluate("() => document.querySelectorAll('#verdict, #dock').length") == 2)
     p.close(); ctx.close()
 

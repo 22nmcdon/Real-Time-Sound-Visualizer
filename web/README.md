@@ -51,7 +51,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `lagtest.py` | lag X-Y: figure geometry, the slow pitch lock, mid/side exclusivity, preset round trip |
 | `captest.py` | what `capture()` asks a source for, and what gives way when it will not fit |
 | `livetest.py` | live input: one shared stream, nothing reaching the speakers, the crossovers |
-| `benchtest.py` | the Bench: one DOM node per control across both views, and the rail |
+| `benchtest.py` | the Bench, the one face since G4: one DOM node per control, on the face and through Enlarge, every section in its home, and the rail |
 | `modtest.py` | the modulation matrix, and the enum migration every old setup depends on |
 | `miditest.py` | the keyboard, off a stubbed port: parsing, the note stack, the dyad, controllers |
 | `aliastest.py` | band-limiting: the generator's spectrum, measured by numpy rather than by the page |
@@ -96,6 +96,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
+| `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the phosphor grid and Scan's table the same with it on and off and with Which hands on one hand, on `?brain=js`; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
@@ -122,15 +123,16 @@ samples than it holds and you get silence at the front of the window, not an
 error. Every buffer size in `capture()` is clamped against `source.capacity` for
 that reason, and `captest.py` exists to keep it that way.
 
-**The Bench moves things, it does not copy them.** `setView` relocates the same
-`.menu-group` elements between `#menuPanel`, `#benchBody` and `#benchSide`, and
-it moves the screen too: `#traceSheet` goes between `.panes` and `#benchScope`,
-so there is exactly one `#trace` canvas and every cursor handler, resize path
-and persistence buffer travels with it. Anything that builds a second copy of a
+**The Bench moves things, it does not copy them.** `setView` puts the same
+`.menu-group` elements in their homes - Settings' columns, the panels, `#benchBody`
+and `#benchSide` - and `setEnlarged` moves the screen: `#traceSheet` goes between
+`#benchScope` and Enlarge's `.panes`, with its toolbar and the dock, so there is
+exactly one `#trace` canvas and every cursor handler, resize path and
+persistence buffer travels with it. Anything that builds a second copy of a
 control gives two elements one id, and `getElementById` returns the first —
 which is how the dock's readout line came to display nothing for weeks.
-`benchtest.py` asserts there are no duplicate ids in either view or after a
-round trip.
+`benchtest.py` asserts there are no duplicate ids on the face, enlarged, or
+after a round trip. (Until G4 the round trip was the Scope view and back.)
 
 `SIDE_GROUPS` names the groups that live in the side column instead of taking a
 turn in the rail. The oscillators are there because a control you cannot see
@@ -5417,3 +5419,70 @@ so those routings load, are skipped as any unknown destination is, and are
 saved again; the corpus's *Wobbling* is one. Mapping the three words to
 nothing would end it, and has to be done in the core's restore too or parity
 parts on that preset.
+
+**One face since G4, and `setView` kept its name.** The Scope view and the
+versions A and B went (`the-face-second-pass.md`); the Bench is the face, and
+Enlarge took the Scope view's frame (`main.screen`, now `#screenFrame`) and its
+panes, which show nowhere else. `setView` still lays the face out and still
+takes an argument it ignores, because thirty suites call `setView('bench')` to
+put the face back as it opens; renaming it would have changed every one of
+them to say the same thing. A suite that called `setView('scope')` meant the
+old view and was changed. What used to ask "is the Bench the view" asks
+`faceLaidOut` (has the face been laid out yet), because the Scope view also
+answered no to it at boot. The browser's old `scope.view` key is removed at
+boot, and the B key, which switched views, is left free. Undo's history is one
+(`undoHistory`), where it was one per version; it is not called `history`,
+which is the window's.
+
+**Enlarge changes nothing heard, and three things keep it so.** Scan, the
+picture's reads and the photocell read the phosphor grid, not the canvas, so
+what Picture only hides and what the Trail fades are the canvas's alone. But:
+
+- *Hiding is drawing at nought, not skipping.* Which hands draws the other
+  hand's figure at an alpha of nought rather than leaving it out, because
+  `strokeBeam` is what works out each segment's level (`beamStepOf`), and the
+  deposit that follows reads it; a figure skipped would deposit nothing, or
+  the last figure's levels. `enlargetest.py` compares the grids to the bit,
+  shared and each hand's, and the mutation that skips the figure fails it.
+- *The grid fades by the Persistence, the canvas by `displayFade`.* The Trail
+  shortens only the canvas's fade, and only while Enlarge is open; `phosphorFade`
+  never asks it. Half is the square of the heard keep a frame, half the
+  half-life; Short is the Persistence menu's Short, 0.3. Half of an infinite
+  Persistence is Long's fade, since half of never has no number.
+- *Opening keeps the grid.* Opening and closing resize the canvas, and a
+  resized canvas has always wiped the grid with it, so the canvas and the grid
+  could not disagree. For a look-only button that was a moment of darkness for
+  Scan to read, so a resize within 600 ms of the button (`keepGridUntil`) wipes
+  the canvas and not the grid, and the screen fills in from the next strokes.
+  Any other resize wipes both, as before. The comparison is `>=`, not `>`: the
+  parity harness stubs `performance.now` to nought, and with `>` its resizes
+  stopped wiping.
+
+Two things learned measuring it. The beam's shading follows a median of the
+strokes over time, so two frames of one held figure lay levels that differ by
+an eighth (0.125) of their own accord: a comparison to the bit turns the beam
+off (`beam: 'off'`), or it can never pass. And a canvas's fade is read slow in
+eight bits: at 0.04 a frame the deep pixels of a fading figure keep 0.965 a
+frame where the arithmetic says 0.96, since each step of four hundredths of a
+pixel's distance from the paper is rounded. The figure is taken off the
+screen by offsetting both lanes fifty full scales rather than by turning the
+level down, because a figure shrinking to the middle inks part of what is
+being read on its way (that read 0.008 slow on its own).
+
+**The parity harness lifts the drawing by name, and Enlarge added names to
+it.** `core/tests/tools/beam_js.mjs` lifts `clearOrFade`, `wipeOutside`,
+`drawMain` and `drawXY` out of the page, and since G4 they call `displayFade`,
+`bareScreen`, `handHidden` and `laneHandHidden`, which read `enlarge`,
+`enlargedHands`, `keepGridUntil`, `TRAIL_SHORT` and `TRAIL_HALF_OF_INFINITE`
+(declared on one line with `TRAIL_SHORT`, so lifting `TRAIL_SHORT` lifts both).
+Each goes into `LIFTED` there, or the harness throws on the first frame while
+the web suite, which runs the page whole, stays green - the lesson the wash fix
+taught once already.
+
+**The header is one row above a phone's width.** Before any sound the line
+under the title ends "... press anything to hear it", and with A and B and the
+views beside it that put help and Settings on a second row at 1920x1080. Taking
+those out made room at every window the suites measure; `.head` and the preset's
+row are also `nowrap` above 760 px, so the title block's line gives way to an
+ellipsis inside its 260 px first. Below 760 the header still wraps, since there
+a row that cannot wrap is a page that scrolls sideways.

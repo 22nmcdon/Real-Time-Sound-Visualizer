@@ -365,7 +365,11 @@ Each leaves the suite green and is pushed alone.
   for everything on the face after G3 (read by the owner before it ships), the notes
   behind the dots retired, and the test that every control has its sentence.
 - **G4 The header and Enlarge.** Versions A/B and the views out; Enlarge with Picture
-  only, which hands and the trail.
+  only, which hands and the trail. Built 10 Nov: Which hands is *Both · A · B* until G6
+  names the hands, and is offered only while each hand draws a figure; the Trail is a
+  menu, *As heard · Half · Short*; Picture only hides the graticule too, with no switch
+  of its own (the Graticule switch in the Picture's Advanced still rules the face);
+  nothing in Enlarge is remembered past the page. `enlargetest.py` holds it.
 - **G5 The modulation row.** Full width, the Photocell card, the drawn editors, Routings
   with the fade; CLAUDE.md's rule rewritten. And modulation on a knob: the ring, the
   ticks and the dot, Alt-drag and the ring's handle, the new editor, and the right-click

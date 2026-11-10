@@ -345,11 +345,12 @@ with sync_playwright() as pw:
 
     print("\n--- the page's keys, and Custom ---")
     p.click("#preset"); p.wait_for_timeout(200)
-    # The page's own keys stand aside: 2 would switch to X-Y, B to the Bench.
+    # The page's own keys stand aside: 2 would switch to X-Y, C the cursors on.
+    # (B, which went to the Bench, was the second key until G4 took the views.)
     keys = p.evaluate("""() => {
-      const was = [state.display, document.body.dataset.view];
-      for (const key of ['2', 'b', '3']) document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
-      return { was, now: [state.display, document.body.dataset.view] };
+      const was = [state.display, state.cursors];
+      for (const key of ['2', 'c', '3']) document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      return { was, now: [state.display, state.cursors] };
     }""")
     check("the page's own keys do nothing while it is open", keys["was"] == keys["now"], str(keys))
     p.keyboard.press("Escape"); p.wait_for_timeout(150)

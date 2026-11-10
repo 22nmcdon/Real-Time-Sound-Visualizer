@@ -421,7 +421,7 @@ with sync_playwright() as pw:
       out.restored = genSettings().shape;
       out.menu = el.shape.value;
       out.kind = 'mode' in genSettings();
-      setView('scope');
+      // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       return out;
     }""", code({"gen": "figure", "shape": "triangle"}))
     check("inside the plugin the page keeps the generator's panel, its shape menu moves the page's generator and is sent",

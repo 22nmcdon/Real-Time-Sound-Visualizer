@@ -1,5 +1,5 @@
 """The header (F7 of web/docs/redesigning-the-face.md): the preset's arrows, its
-heading, Browse and Save, A/B and undo.
+heading, Browse and Save, and undo.
 
 What would go wrong, and what is checked for it:
 
@@ -13,9 +13,9 @@ What would go wrong, and what is checked for it:
   change no hand made (a host's automation would fill the history), or that
   puts back the sound and not its name; redo that is lost, or kept after a
   new change;
-- A and B that are one version: a change on B heard on A, B not starting as
-  A, or one history for both, so that undo after a switch walks back through
-  the other version;
+- A and B coming back (G4 took them out, the-face-second-pass.md): no button
+  for either and no second history behind undo. Until G4 this suite held
+  them to being two versions, each with its own history;
 - Ctrl+Z in a text field taken from the field.
 
 Every change here is made with the real mouse and keyboard, since undo counts
@@ -42,10 +42,11 @@ with sync_playwright() as pw:
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(800)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
+    # One history since G4: what was versions[versions.on] is undoHistory.
     state = lambda: p.evaluate("""() => ({ value: el.preset.value, heading: document.getElementById('presetLabel').textContent,
-      name: el.presetCurrent.textContent, freq: Number(el.freq.value), undo: versions[versions.on].undo.length,
-      redo: versions[versions.on].redo.length, undoOff: el.undoButton.disabled, redoOff: el.redoButton.disabled,
-      on: versions.on })""")
+      name: el.presetCurrent.textContent, freq: Number(el.freq.value), undo: undoHistory.undo.length,
+      redo: undoHistory.redo.length, undoOff: el.undoButton.disabled, redoOff: el.redoButton.disabled })""")
+    CLEAR = "undoHistory.undo = []; undoHistory.redo = []; undoRebase(); paintUndo();"
     settle = lambda: p.wait_for_timeout(700)
 
     print("\n--- the arrows and the heading ---")
@@ -91,7 +92,7 @@ with sync_playwright() as pw:
 
     print("\n--- undo ---")
     p.evaluate("() => applyPreset('b:Slow pad')"); settle()
-    p.evaluate("() => { versions.a.undo = []; versions.a.redo = []; undoRebase(); paintUndo(); }")
+    p.evaluate("() => { %s }" % CLEAR)
     start = state()
     # Five presses of the arrow key on the frequency, quickly: one step.
     p.evaluate("() => { showControl('freq'); el.freq.focus(); }")
@@ -126,7 +127,7 @@ with sync_playwright() as pw:
     # twice between each - still one step, since it waits 400 ms for them to
     # stop. (At 90 ms apart a history that recorded any change seen twice
     # would also have made one step, and the mutation pass showed it.)
-    p.evaluate("() => { versions.a.undo = []; versions.a.redo = []; undoRebase(); paintUndo(); el.freq.focus(); }")
+    p.evaluate("() => { %s el.freq.focus(); }" % CLEAR)
     for _ in range(5):
         p.keyboard.press("ArrowUp"); p.wait_for_timeout(250)
     settle(); spread = state()
@@ -152,12 +153,12 @@ with sync_playwright() as pw:
     # trusted too, another. (A knob's face sends its value by code, so on a
     # knob the second half was absorbed and the mutation pass could not tell.)
     p.evaluate("() => { applyPreset('b:Drawbar organ'); setBenchTab('ink'); }"); p.wait_for_timeout(600)
-    p.evaluate("() => { versions.a.undo = []; versions.a.redo = []; undoRebase(); paintUndo(); }")
+    p.evaluate("() => { %s }" % CLEAR)
     bar = p.evaluate("() => { const r = el.bar3.getBoundingClientRect(); return [r.x, r.y + r.height / 2, r.width, el.bar3.value]; }")
     p.mouse.move(bar[0] + 6, bar[1]); p.mouse.down(); p.mouse.move(bar[0] + bar[2] * 0.35, bar[1], steps=6)
     p.wait_for_timeout(700)
     p.mouse.move(bar[0] + bar[2] * 0.75, bar[1], steps=6); p.mouse.up(); settle()
-    slid = p.evaluate("() => ({ value: el.bar3.value, undo: versions.a.undo.length })")
+    slid = p.evaluate("() => ({ value: el.bar3.value, undo: undoHistory.undo.length })")
     check("a drawbar dragged, held still half way and let go is one step",
           slid["undo"] == 1 and slid["value"] != bar[3] and int(slid["value"]) >= 5, str((bar[3], slid)))
     p.evaluate("() => setBenchTab('play')")
@@ -172,34 +173,29 @@ with sync_playwright() as pw:
     before_typing = state()["undo"]
     p.evaluate("() => { openPresets(); showSaving(true); }")
     p.keyboard.type("abc"); p.keyboard.press("Control+z"); p.wait_for_timeout(200)
-    field = p.evaluate("() => ({ undo: versions[versions.on].undo.length, value: el.preset.value })")
+    field = p.evaluate("() => ({ undo: undoHistory.undo.length, value: el.preset.value })")
     p.keyboard.press("Escape"); p.wait_for_timeout(150)
     check("Ctrl+Z while typing a name is the field's, not the sound's",
           field["undo"] == before_typing and before_typing > 0, str((before_typing, field)))
 
-    print("\n--- A and B ---")
-    p.evaluate("() => applyPreset('b:Slow pad')"); settle()
-    a_freq = state()["freq"]
-    p.click("#abB"); settle(); onb = state()
-    check("B starts as a copy of A, with a history of its own",
-          onb["on"] == "b" and onb["freq"] == a_freq and onb["value"] == "b:Slow pad" and onb["undo"] == 0, str(onb))
-    # Its own tab first: since G3 Frequency is on Ink, and the tab here is Play.
-    p.evaluate("() => { showControl('freq'); el.freq.focus(); }")
-    for _ in range(3): p.keyboard.press("ArrowUp")
-    settle(); b_freq = state()["freq"]
-    p.click("#abA"); settle(); ona = state()
-    p.click("#abB"); settle(); onb2 = state()
-    check("a change on B is B's: A is as it was, and B comes back changed",
-          ona["on"] == "a" and ona["freq"] == a_freq and ona["value"] == "b:Slow pad"
-          and onb2["freq"] == b_freq and b_freq != a_freq, str((a_freq, b_freq, ona["freq"], onb2["freq"])))
-    check("null: B changed is not A", b_freq != a_freq)
-    undo_b = onb2["undo"]
-    p.click("#abA"); settle(); undo_a = state()["undo"]
-    p.click("#undoButton"); settle(); after = state()
-    check("each has its own history: B's change is one step on B and none on A, and undo on A leaves B's change alone",
-          undo_b == 1 and after["on"] == "a" and (undo_a == 0 or after["freq"] != b_freq), str((undo_b, undo_a, after)))
-    p.click("#abB"); settle()
-    check("and B still holds its own change", state()["freq"] == b_freq, str(state()))
+    print("\n--- A and B are gone (G4) ---")
+    # The versions went with G4: the header has neither button, and the page
+    # no second history. The Keyboard's Edit A / B is a different thing - the
+    # hand being edited - and stays until G6; it must not be caught up here.
+    GONE = """() => ({ buttons: ['abA', 'abB', 'viewScope', 'viewBench'].filter((id) => document.getElementById(id)),
+      versions: typeof versions !== 'undefined', inHeader: Array.from(document.querySelectorAll('header button'))
+        // The header's own row, not the panels it opens: Perform's morph and Settings' fade have A and B ends.
+        .filter((b) => !b.closest('.menu-panel') && /^[AB]$/.test(b.textContent.trim())).map((b) => b.id),
+      editAB: !!document.getElementById('midiEditA') && !!document.getElementById('midiEditB') })"""
+    gone = p.evaluate(GONE)
+    check("no A or B button in the header, no Scope or Bench switch, and one history behind undo",
+          gone["buttons"] == [] and not gone["versions"] and gone["inHeader"] == [], str(gone))
+    check("and the Keyboard's Edit A / B, which is the hands' and G6's, is still there", gone["editAB"], str(gone))
+    # The null: an A put back in the header, as the page had it before G4, is found.
+    was = p.evaluate("""(read) => { const b = document.createElement('button'); b.id = 'abA'; b.textContent = 'A';
+      document.getElementById('undoButton').before(b); const r = (0, eval)('(' + read + ')')(); b.remove(); return r; }""", GONE)
+    check("null: an A button put back in the header fails it",
+          not (was["buttons"] == [] and not was["versions"] and was["inHeader"] == []), str(was))
 
     print("\n--- Settings (F7b) ---")
     SET = """() => { setMenuOpen(true);

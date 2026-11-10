@@ -227,10 +227,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   back in the loop's order. A section that would crowd a tab still goes to
   another one. The Picture section along the bottom of the window (F2) holds
   the Amount, Scan, Strike, Softness, the one Persistence and the three reads,
-  in either view and on every tab; what Scan reads, the photocell and the
-  score are behind its *Advanced*, with the loop overlay and the panes, which
-  only change the look (home `picture`). The display and Clear are above the
-  screen. Since F3 the screen is on the left, the largest square the window
+  on every tab (Enlarge covers it); what Scan reads, the photocell and the
+  score are behind its *Advanced*, with the loop overlay and the choice of
+  panes, which only change the look (home `picture`); the panes themselves
+  show only in Enlarge. The display, Clear, Scope & measure and Enlarge are
+  above the screen. Since F3 the screen is on the left, the largest square the window
   allows less the three columns the tabs need, and the tabs are cards along
   the top of the right column, each with one line of what its stage is doing
   (`TAB_LINES`, read from the values a few times a second, never from the
@@ -318,7 +319,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Autoset, the trigger, timebase and zoom and the readouts' switch; shut by
   default, the readouts off by default, and nothing in it scrolls down to the
   plugin's 960x600 - `benchtest.py`), and a
-  section stays in its home in both views. Settings and the Bench used to hold
+  section stays in its home; only the screen, its toolbar and the verdict move,
+  into Enlarge and back. Settings and the Bench used to hold
   the same sections, which made neither a place for anything. To reach a
   control from code - a search result, a test - use `showControl(id)`; do not
   assume the Settings popover holds it.
@@ -361,13 +363,15 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **The header is the preset and what acts on the whole sound** (F7a, 8
   Nov): the title over the line of what is playing; the preset between
   arrows that step the bank in the browser's order, its heading above its
-  name; Browse; Save; A and B; undo and redo; then the run status, the views,
-  Perform, help and Settings. Undo records the setup (`snapshot`) once a
+  name; Browse; Save; undo and redo; then the run status, Perform, help and
+  Settings, one row above a phone's width with the line under the title or
+  without it (G4). Undo records the setup (`snapshot`) once a
   change has held still for 400 ms with no pointer down, and only after a
   trusted event - a host's automation and the plugin's own state moving the
   base, not making steps - a hundred deep, and puts a step back as a preset
-  is loaded (`putBack`). A and B are two versions for the session, each with
-  its own history; B starts as a copy of A, and switching is never a step.
+  is loaded (`putBack`). One history (`undoHistory`); the versions A and B
+  went in G4, since undo, saved presets and the morph's two ends already
+  compare.
   The transport row under the header is hidden: it only carries the
   persistence menu the core's panel names. The host's parameters (F7c) are
   marked where they are, a gold dot before the name (`HOST_PARAMS`, in the
@@ -386,12 +390,26 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (`setCompact`, `body[data-compact]`): the header one row without the line
   of what is playing or Browse, the tabs without their lines, the cards as
   chips, narrower columns (`BENCH_COL_COMPACT`) with labels beside their
-  menus, smaller knobs and the keys shorter. On the Bench the
-  verdict and readouts are a line in the screen's column, between the screen
-  and the cards, and back across the foot on Scope. `windowtest.py` and
+  menus, smaller knobs and the keys shorter. The verdict and readouts are a
+  line in the screen's column, between the screen and the cards, and a line
+  under the screen in Enlarge, where Picture only hides them. `windowtest.py` and
   `fittest.py` hold it.
+- **One face, and Enlarge** (G4, 10 Nov). The Scope / Bench views went; the
+  Bench is the face (`setView` still lays it out and ignores its argument,
+  since thirty suites call it). Enlarge, at the end of the screen's toolbar,
+  fills the window with the screen (`setEnlarged`, `#screenFrame`); Esc or the
+  button again comes back, Esc closing a panel first. Picture only, on there
+  by default, hides everything over the trace, the graticule included; Which
+  hands (Both · A · B, while each hand draws a figure) and the Trail (As heard
+  · Half · Short, the owner's choice over a knob) are only the look. None of
+  it is in a setup, a step in undo or remembered, and none reaches what Scan
+  reads: the grid fades by the Persistence and is kept across Enlarge's
+  resize, and a hidden hand is drawn at alpha nought. The panes show only
+  here, with Picture only off (the owner's call over beside the screen on the
+  face, which has no height to spare). `enlargetest.py` holds it.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
-  into a section's detail overlay and back. Two elements with one id is how the
+  into a section's detail overlay and back, and the screen, its toolbar and
+  the dock into Enlarge's frame and back. Two elements with one id is how the
   dock's readout line silently stopped displaying for weeks.
 
 ## Before saying you are done

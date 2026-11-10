@@ -142,7 +142,7 @@ with sync_playwright() as pw:
     check("and keeps the generator's panel, shape and frequency, and its voice",
           panel["shape"] and panel["freq"] and panel["sound"] and panel["settings"], str(panel))
     check("and offers Tone and Mic as what the instrument draws", panel["others"], str(panel))
-    p.evaluate("() => setView('scope')")
+    # The Scope view this went back to went in G4; the face stays as it is.
 
     # No keyboard - no port, the screen's keys shut - and nothing played: the
     # instrument draws its generator, as the website opens. It used to open
@@ -618,7 +618,7 @@ with sync_playwright() as pw:
     lines = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setScreenKeys(false); loadCorpus('Harmonic tone'); await wait(300);
-      setView('scope');
+      // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       // The keyboard split, on the generator and then with the input drawn:
       // a stream of one oscillator handed over where the page asks for a live
       // one, as above, since this page is not the one that had it.

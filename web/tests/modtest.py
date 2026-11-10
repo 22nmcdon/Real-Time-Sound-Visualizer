@@ -291,7 +291,7 @@ with sync_playwright() as pw:
       const amount = lfoRouting(0) ? lfoRouting(0).amount : null;
       el.srcDetail.querySelector('.mod-edit[data-dest="gen.ratio"] .mod-edit-off').click();
       const out = { after, amount, cleared: state.modRoutings.length };
-      setView('scope');
+      // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       return out;
     }""")
     check("adding a destination makes the routing", ui["after"] == ["gen.ratio"], str(ui["after"]))
@@ -492,7 +492,7 @@ with sync_playwright() as pw:
         if (before === after) dead.push(row.dataset.modDest + ' (#' + input.id + ')');
       }
       }
-      setBenchTab('play'); setView('scope');
+      setBenchTab('play');  // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       return { dead, checked: seen.size };
     }""")
     check("every destination's own control drives something",

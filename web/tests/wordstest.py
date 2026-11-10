@@ -47,8 +47,10 @@ def null(name, red, detail=""):
 
 # Controls the doc marks as removed by a later stage: no words, on purpose.
 # Anything else without words fails. (The drawings' rows and the keyboard's
-# drive and play were here until G2 took them off the page.)
-REMOVED = {"abA", "abB", "viewScope", "viewBench", "midiEditA", "midiEditB",
+# drive and play were here until G2 took them off the page; A and B and the
+# views until G4 did. Enlarge's controls, which G4 added, are in the toolbar
+# and so asked of, though they show only while the screen is enlarged.)
+REMOVED = {"midiEditA", "midiEditB",
            "planeTurn", "planeLayerBoth", "planeLayerA", "planeLayerB", "timeLayerBoth", "timeLayerA", "timeLayerB"}
 
 # Every control the face shows, and those without words.
@@ -111,6 +113,10 @@ with sync_playwright() as pw:
     knocked = p.evaluate("""(removed) => { const keep = CONTROL_WORDS.vcfCut; delete CONTROL_WORDS.vcfCut;
       setBenchTab('play'); const u = (%s)(removed); CONTROL_WORDS.vcfCut = keep; return u; }""" % UNSAID, sorted(REMOVED))
     null("with the cutoff's words taken out, the check finds the cutoff", "vcfCut" in knocked, str(knocked))
+    # Enlarge's own (G4) are asked of too, though they are hidden until it opens.
+    knocked = p.evaluate("""(removed) => { const keep = CONTROL_WORDS.handsB; delete CONTROL_WORDS.handsB;
+      const u = (%s)(removed); CONTROL_WORDS.handsB = keep; return u; }""" % UNSAID, sorted(REMOVED))
+    null("with Which hands' B's words taken out, the check finds it, hidden as it is on the face", "handsB" in knocked, str(knocked))
     keyed = p.evaluate("""() => ['[data-fx-on]', '[data-fx-open]', '[data-fx-move]', '.mod-card', '#benchTab-ink']
       .map((s) => { setBenchTab('space'); const n = document.querySelector(s); return [s, n ? wordsKey(n) : 'missing']; })""")
     check("the controls with no id find theirs: the rack's switch, arrow and handle, a card, a tab",

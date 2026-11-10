@@ -7,7 +7,8 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-292 controls: 277 lines, 15 marked as removed by a later stage, 70 wanting a paragraph.
+299 controls: 290 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
+again in G4, which took out A and B and the views and added Enlarge's six).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -272,6 +273,19 @@ them; G3b gives each a `data-say` with the key in the first column:
 | dispXY | X–Y | The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off. | 126 | yes — switching in with Persistence off sets it to a short fade, once; change it after and it stays |
 | dispSpect | Spect | Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave. | 131 | yes — the photocell reads nothing too, and Persistence is greyed |
 | clearButton | Clear | Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set. | 130 | - |
+| enlargeButton | Enlarge | Fills the window with the screen; Esc or this again brings the face back. Nothing it does changes the sound or is a step in undo. | 129 | yes — added in G4: it replaced the Scope view; the panes show only in it; the light Scan reads is kept as it opens and closes, the canvas redrawn from blank |
+
+### The screen's toolbar › Enlarge
+
+Shown only while the screen is enlarged (G4). All of them are the look's alone.
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| pictureOnly | Picture only | Hides all that is drawn over the trace: the graticule and its labels, the reticle, the loop, the hand's mark, the verdict and the panes. | 136 | yes — what it hides is drawn apart from the light Scan reads, so the sound is the same either way |
+| handsBoth | Which hands: Both | Draws both hands' figures. Only the look: Scan reads both however many are drawn. | 81 | - |
+| handsA | Which hands: A | Draws only layer A's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both. | 115 | - |
+| handsB | Which hands: B | Draws only layer B's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both. | 115 | - |
+| enlargeTrail | Trail | How long the enlarged screen keeps a stroke: as heard, half as long, or short. Only the look: Scan reads the Persistence's trail. | 129 | yes — Half halves the half-life, Short is the Persistence menu's Short; an infinite Persistence's Half is Long's |
 
 ### The Picture section
 
@@ -316,8 +330,8 @@ them; G3b gives each a `data-say` with the key in the first column:
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | loopButton | Loop | Draws over the screen where Scan reads, the wave it is playing and the picture’s verdict. Only the look; nothing shows until Scan is on. | 136 | - |
-| panesButton | Panes | Opens the panes to put beside the screen: goniometer, spectrum, harmonics and tuner, and the spectrogram’s span. Only the look. | 127 | - |
-| panesClose | Close | Closes the list of panes; the ones ticked stay beside the screen. | 65 | - |
+| panesButton | Panes | Chooses the panes shown beside the screen in Enlarge: goniometer, spectrum, harmonics and tuner, and the spectrogram’s span. Only the look. | 139 | - |
+| panesClose | Close | Closes the list of panes; the ones ticked show beside the enlarged screen. | 74 | - |
 
 ### Picture › Advanced › Beam
 
@@ -386,12 +400,8 @@ them; G3b gives each a `data-say` with the key in the first column:
 | presetNext | The next preset | Loads the next sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 126 | - |
 | presetBrowse | Browse | Opens the preset browser: the bank under Settled and Breathing, and your saved sounds. Choosing a card there loads nothing. | 123 | - |
 | presetSaveHead | Save | Opens the preset browser at its save field, to keep the sound as it is now under a name of your own, in this browser. | 117 | - |
-| abA | Version A | removed (G4) | - | - |
-| abB | Version B: starts as a copy of A | removed (G4) | - | - |
 | undoButton | Undo | Takes back your last change, up to a hundred. A knob turned counts once, after it has rested; Ctrl or ⌘ Z does the same. | 120 | yes — what counts as a step (400 ms at rest, only after your own hand; a host’s automation is never one), and that only what a setup code holds is undone (not the fade, the size or the input) |
 | redoButton | Redo | Puts back a change Undo took away. Any new change clears what was left to redo; Ctrl or ⌘ Shift Z does the same. | 112 | - |
-| viewScope | Scope | removed (G4) | - | - |
-| viewBench | Bench | removed (G4) | - | - |
 | performButton | Perform | Opens what is set at the start and played over: the arpeggiator, the clock, the key and tempo, and the morph. | 109 | - |
 | helpButton | How this works | Opens the help sheet: what each part of the instrument does to the sound and the picture, and where to find it. | 111 | - |
 | menuButton | Settings | Opens what is set once and left: MIDI, the modulation fade, this window’s size, the input and the audio device. | 111 | - |

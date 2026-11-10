@@ -154,7 +154,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .preset-bar .preset-button .eyebrow { font-size: 9.5px; letter-spacing: 0.24em; }
 .preset-bar #presetCurrent { font-family: var(--serif); font-size: 17px; line-height: 1.2; max-width: 100%; }
-.ab-switch button { min-width: 30px; padding-inline: 9px; }
 /* The host's parameters, marked where they are (F7c): a gold dot before the
    name, the house's marker, rather than a strip of copies of them. Inline and
    before the name, so a knob's cell is the same size with it or without. */
@@ -163,6 +162,19 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--gold); margin-right: 5px; vertical-align: 0.12em;
 }
 .head-gap { flex: 1 1 0; min-width: 0; }
+/* One row, with the line under the title or without it (G4). Before any sound
+   it reads "... press anything to hear it", and at 1920x1080 its length put
+   help and Settings on a second row, 34 px taken from every tab. So the row
+   never wraps above a phone's width: the title block gives way first, its
+   line ending in an ellipsis inside its 260 px, the gap before the status
+   next, and nothing else moves. Taking A and B and the views out made room
+   at every window fittest.py and windowtest.py measure; this is what keeps
+   a longer line from wrapping it again. headertest.py and enlargetest.py
+   hold it, before a sound and after. */
+@media (min-width: 761px) {
+  .head, .preset-bar { flex-wrap: nowrap; }
+  .head > :not(.title-block):not(.head-gap):not(.preset-bar) { flex-shrink: 0; }
+}
 .style-mark { color: var(--text-soft); }
 .sheet-title {
   font-family: var(--serif); font-weight: 600;
@@ -869,24 +881,68 @@ dialog[open] { display: flex; flex-direction: column; }
    both axes at once.
 
    The bench holds no markup of its own but the frames. The control groups AND
-   the screen itself are MOVED here and moved back when the view changes. Two
+   the screen itself are MOVED here - and the screen into Enlarge and back. Two
    copies of a control is two elements answering to one id, and the last time
    that happened in this page a whole readout line silently stopped displaying
    and stayed broken for weeks. Moving the canvas rather than drawing a second
    one means the cursor handlers, the resize path and the persistence buffer
    all come with it and none of them know anything happened.                 */
-.bench { display: none; background: var(--cream-2); border-top: 1px solid var(--line); }
-body[data-view="bench"] .bench { display: flex; flex: 1 1 auto; min-height: 0; }
+.bench { display: flex; flex: 1 1 auto; min-height: 0; background: var(--cream-2); border-top: 1px solid var(--line); }
 
-/* The bench IS the screen here, so the full-height one goes away rather than
-   being squeezed in above it. The dock stays: it is the readout for whichever
-   screen is showing, and it is ordered after the bench because the page
-   declares it before one. */
-body[data-view="bench"] .screen { display: none; }
-body[data-view="bench"] .bench { order: 2; }
-body[data-view="bench"] .dock  { order: 3; }
-/* The Picture along the bottom of the window, under the dock, in either view (F2). */
-body[data-view="bench"] .picture-bar { order: 4; }
+/* The Bench is the one face since G4: the Scope view, the screen at full
+   height with the controls in a popover, went, and Enlarge took its frame
+   (.screen, below). Ordered, because the page declares the frame and the
+   dock before the bench. */
+.bench { order: 2; }
+.dock  { order: 3; }
+/* The Picture along the bottom of the window, under the dock (F2). */
+.picture-bar { order: 4; }
+
+/* --- Enlarge (G4) -------------------------------------------------------------
+   The screen fills the window: the frame is fixed over the face, under the
+   on-screen keys (z-index 80) so the keys can still be played over it, and
+   over everything else on it. The canvas is not square in here - a Y-T trace
+   wants the width, and drawXY draws its square in the middle of whatever box
+   it is given - and the panes go beside it as the Scope view had them. */
+.screen { display: none; }
+body[data-enlarged] .screen {
+  display: flex; position: fixed; inset: 0; z-index: 70; background: var(--cream);
+  padding-block: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+body[data-enlarged] .screen > .wrap { max-width: none; width: 100%; }
+/* Picture only: nothing over the trace. The reticle, the hand's mark and the
+   loop are elements and a canvas of their own over the trace sheet, so hiding
+   them is a style; the graticule, its labels, the trigger's marks, the
+   cursors and the score's playhead are drawn into the trace, and drawMain
+   leaves them out (bareScreen). None of them is what Scan reads: it reads the
+   phosphor grid, which the traces alone are laid into (enlargetest.py). */
+body[data-bare] #traceSheet > .photo-reticle,
+body[data-bare] #traceSheet > .bend-mark,
+body[data-bare] #traceSheet > .loop-overlay,
+body[data-bare] .screen .dock,
+body[data-bare] .screen .aside { display: none !important; }
+/* The sheet loses its edge and shadow too: they are a frame drawn round the picture. */
+body[data-bare] .screen .sheet.main { border-color: transparent; box-shadow: none; }
+/* The verdict and readouts under the enlarged screen, as a line, with Picture only off. */
+.screen > .wrap > .dock { background: none; border-top: 0; padding: 8px 0 0; flex: 0 0 auto; }
+.screen > .wrap > .dock > .wrap { padding: 0; max-width: none; margin: 0; }
+.screen > .wrap > .dock .readout { min-height: 0; }
+.screen > .wrap > .dock .foot { display: none; }
+/* Its choices, shown only in it. */
+.enlarge-tools { display: none; }
+body[data-enlarged] .enlarge-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.trail-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-soft); }
+.trail-field select { font-size: 12.5px; }
+.look-tag { font-size: 10.5px; font-style: italic; color: var(--text-soft); }
+.enlarge-btn {
+  flex: 0 0 26px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 1px;
+  background: none; color: var(--charcoal); display: inline-flex; align-items: center; justify-content: center;
+}
+.enlarge-btn:hover { border-color: var(--blush); }
+.enlarge-btn svg { width: 13px; height: 13px; }
+.enlarge-btn .enlarge-in, body[data-enlarged] .enlarge-btn .enlarge-out { display: none; }
+body[data-enlarged] .enlarge-btn .enlarge-in { display: inline; }
+body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(--blush-deep); }
 /* The info line (G3b), in the Picture section's free middle: two lines of
    it at most, then More. */
 .picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: center; }
@@ -919,7 +975,7 @@ body[data-view="bench"] .picture-bar { order: 4; }
 .info-card dt { color: var(--text-soft); }
 .info-card dd { margin: 0; color: var(--text); }
 .info-card .info-card-steps { display: flex; gap: 16px; margin-top: 12px; }
-/* Settings opens from both views: its sections live there and nowhere else. */
+/* Settings opens from the header: its sections live there and nowhere else. */
 
 /* Wider than the 1180px measure the rest of the app is set in. Since F3
    (web/docs/redesigning-the-face.md) the screen is on the left, as large as
@@ -1271,8 +1327,8 @@ span.fx-handle { visibility: hidden; }
 .bench-side .menu-group { margin-top: 0; padding-top: 0; border-top: 0; }
 .bench-side .menu-row { gap: 4px 8px; margin-top: 3px; }
 /* The prose goes. This column is a working surface, not a page to read: the
-   paragraphs are still under Settings in the Scope view and the cheat sheet
-   still teaches the gesture. */
+   paragraphs are behind each section's dots and the cheat sheet still
+   teaches the gesture. */
 .bench-side .menu-note { display: none; }
 /* Two lines at most. The column has to hold the screen, the sources and two
    oscillators without scrolling, and prose is the first thing that gives when
@@ -1755,7 +1811,7 @@ span.fx-handle { visibility: hidden; }
 }
 
 /* --- the screen's toolbar, and Scope & measure (F1) ------------------------ */
-/* Above the screen in either view: what it shows, Clear, and the
+/* Above the screen, on the face and in Enlarge: what it shows, Clear, and the
    oscilloscope's own tools in a panel over it. The panel takes a popover's
    look and none of its scrolling: nothing on this face scrolls, so its two
    columns are what it may hold. */
@@ -1777,7 +1833,7 @@ span.fx-handle { visibility: hidden; }
 .measure-run, .measure-pair { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
 /* Rows, not a strip: the eyebrows the top bar gave these fields read as
    section titles here, and the sections' own notes (what AC is, what holdoff
-   does) are the cheat sheet's - in either view the panel holds the controls. */
+   does) are the cheat sheet's - the panel holds the controls. */
 .measure-panel .field > .eyebrow { font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-soft); }
 .measure-panel .menu-group .menu-note { display: none; }
 /* Tight enough for the plugin's smallest window, 960x600, with nothing scrolling. */
@@ -1857,8 +1913,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
       <!-- The preset and what acts on the whole sound (F7 of redesigning-the-face.md):
            the arrows step through the bank without opening anything; Save opens the
-           browser at its save field; A and B are two versions to compare, for this
-           session; undo and redo walk back through the setup's changes. -->
+           browser at its save field; undo and redo walk back through the setup's
+           changes. The versions A and B went in G4 (the-face-second-pass.md): undo,
+           saved presets and the morph's two stored sounds already compare, and it
+           was one of three different "A/B"s on the face. -->
       <div class="preset-bar">
         <button type="button" class="step-btn" id="presetPrev" aria-label="The previous preset" title="The previous preset"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg></button>
         <button type="button" class="preset-button" id="preset" value="" aria-haspopup="dialog"
@@ -1866,19 +1924,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <button type="button" class="step-btn" id="presetNext" aria-label="The next preset" title="The next preset"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.5 8 6 4.5 9.5"/></svg></button>
         <button type="button" class="link-btn caps" id="presetBrowse" aria-haspopup="dialog">Browse</button>
         <button type="button" class="link-btn caps" id="presetSaveHead" aria-haspopup="dialog">Save</button>
-        <div class="switch ab-switch" role="radiogroup" aria-label="Compare two versions of the sound">
-          <button type="button" class="caps" id="abA" role="radio" aria-checked="true" title="Version A">A</button>
-          <button type="button" class="caps" id="abB" role="radio" aria-checked="false" title="Version B: starts as a copy of A">B</button>
-        </div>
         <button type="button" class="step-btn" id="undoButton" aria-label="Undo" title="Undo" disabled><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2 1.8 4.2 4 6.4"/><path d="M2 4.2h5a3 3 0 0 1 0 6H5"/></svg></button>
         <button type="button" class="step-btn" id="redoButton" aria-label="Redo" title="Redo" disabled><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l2.2 2.2L8 6.4"/><path d="M10 4.2H5a3 3 0 0 0 0 6h2"/></svg></button>
       </div>
       <span class="head-gap"></span>
       <span class="status caps" id="status" data-state="ready">running</span>
-      <div class="switch" role="radiogroup" aria-label="View" style="flex:0 0 auto">
-        <button type="button" class="caps" id="viewScope" role="radio" aria-checked="true">Scope</button>
-        <button type="button" class="caps" id="viewBench" role="radio" aria-checked="false">Bench</button>
-      </div>
       <!-- Perform (F3 of redesigning-the-face.md): what is set at the start of a
            session and played over - the arpeggiator, the clock, the key and
            tempo, and the morph - a menu in the header, as Settings is. -->
@@ -2197,7 +2247,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
 
           <!-- The half of the keyboard that is set once and left: the port and the
-               controllers it has learned. Its home is Settings, in both views;
+               controllers it has learned. Its home is Settings;
                the half you play is the Keyboard section on the Bench. -->
           <div class="menu-group" id="midiSetGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">MIDI</span>
@@ -3756,12 +3806,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
   </div>
 </header>
 
-<main class="screen">
+<!-- Enlarge (G4 of web/docs/the-face-second-pass.md): the frame the screen fills
+     the window in. Shut, it is empty and not drawn: the toolbar, the screen and
+     the verdict live in the Bench's screen column, and setEnlarged moves them
+     in here and back - moved, never copied, so there is one canvas and one set
+     of cursor handlers. It replaced the Scope view, whose frame this was. -->
+<main class="screen" id="screenFrame" aria-label="The screen, enlarged">
   <div class="wrap">
     <!-- The screen's own toolbar (F1 of web/docs/redesigning-the-face.md):
          what is shown and Clear, and Scope & measure, the oscilloscope's tools
-         over the screen. It travels with the screen between the two views
-         (setView), so it is always above what it acts on. -->
+         over the screen. It travels with the screen into Enlarge and back
+         (setEnlarged), so it is always above what it acts on. -->
     <div class="screen-tools" id="screenTools">
       <div class="field fixed">
           <span class="eyebrow" hidden>Display</span>
@@ -3773,6 +3828,26 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         </div>
       <button type="button" class="link-btn caps" id="clearButton"
               title="Wipe the screen and start the persistence over">Clear</button>
+      <!-- Enlarge's own choices, shown only while it is open. All three are the
+           look's alone: none is in a setup, none is a step in undo, and none is
+           remembered past the page (setEnlarged). -->
+      <span class="enlarge-tools" id="enlargeTools">
+        <button type="button" class="link-btn caps" id="pictureOnly" aria-pressed="true"
+                title="Hide everything drawn over the trace: the graticule and its labels, the reticle, the loop, the hand's mark, the verdict and the panes">Picture only</button>
+        <span class="switch hands-switch" id="handsField" role="radiogroup" aria-label="Which hands the enlarged screen draws, only the look" hidden>
+          <button type="button" class="caps" id="handsBoth" role="radio" aria-checked="true">Both</button>
+          <button type="button" class="caps" id="handsA" role="radio" aria-checked="false" title="Only layer A's figure">A</button>
+          <button type="button" class="caps" id="handsB" role="radio" aria-checked="false" title="Only layer B's figure">B</button>
+        </span>
+        <label class="trail-field"><span>Trail</span>
+          <select id="enlargeTrail" aria-label="Trail, only the look">
+            <option value="heard" selected>As heard</option>
+            <option value="half">Half</option>
+            <option value="short">Short</option>
+          </select>
+        </label>
+        <span class="look-tag" title="What Scan hears is unchanged by these">only the look</span>
+      </span>
       <span class="menu-wrap screen-measure">
         <button type="button" class="link-btn caps" id="measureButton" aria-expanded="false"
                 aria-controls="measurePanel">Scope &amp; measure</button>
@@ -3833,7 +3908,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
         </div>
       </span>
+      <!-- At the end of the toolbar (G4): the screen fills the window, and Esc or
+           this again brings it back. An icon, since the toolbar sits in the
+           screen's column, which at the plugin's minimum has no room for a word. -->
+      <button type="button" class="enlarge-btn" id="enlargeButton" aria-pressed="false" aria-label="Enlarge"
+              title="Enlarge: the screen fills the window (Esc to come back)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="enlarge-out" d="M1.5 5V1.5H5M9 1.5h3.5V5M12.5 9v3.5H9M5 12.5H1.5V9"/><path class="enlarge-in" d="M5 1.5V5H1.5M12.5 5H9V1.5M9 12.5V9h3.5M1.5 9H5v3.5"/></svg></button>
     </div>
+    <!-- The screen and the panes beside it. The panes are shown only in Enlarge,
+         and only with Picture only off (G4, the owner's call over putting them
+         beside the screen on the face, which has no height to spare). -->
     <div class="panes" id="panes">
       <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><div class="bend-mark" id="bendMark" hidden></div><canvas class="loop-overlay" id="loopOverlay" hidden aria-hidden="true"></canvas></div>
       <div class="aside" id="aside">
@@ -3881,7 +3964,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 </footer>
 
 <!-- The Picture (F2 of web/docs/redesigning-the-face.md): the end of the
-     loop, along the bottom and in view on every tab and in either view - how
+     loop, along the bottom and in view on every tab (Enlarge covers it) - how
      much the picture moves the sound, Scan and what feeds it, the one
      Persistence, and the three reads. Advanced holds the rest over its right
      side: what changes the sound, and what only changes the look. -->
@@ -3951,7 +4034,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               </div>
             </div>
                 </div>
-                <span class="menu-note">The goniometer, spectrum, harmonics and tuner beside the screen.</span>
+                <span class="menu-note">The goniometer, spectrum, harmonics and tuner beside the screen in Enlarge, with Picture only off.</span>
               </div>
               <p class="menu-note picture-foot">Nothing on this side reaches the sound: Scan reads the light, not its colour.</p>
             </div>
@@ -4014,7 +4097,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
     <!-- The info line (G3b of web/docs/the-face-second-pass.md): what the control
          the pointer has rested on does, with More for its card. In the Picture
          section's free middle, between Level's meter and the three reads, at every
-         size and in either view. The design drew it along the foot of the window;
+         size. The design drew it along the foot of the window;
          there it took 26 px from the tabs, and at 1100x860 the Space & Memory tab
          with the keys, the photocell and a split scrolled by 9. Here it costs no
          height and wraps to a second line where it must. Its words
@@ -4643,13 +4726,28 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         each column's range rather than a path, and a range has no speed.</span></li>
 
       <li><b>Panes</b>
-        <span>What sits down the right-hand side, behind the Picture section's
-        <i>Advanced</i>. Turn them all off and the trace takes the whole width.</span></li>
+        <span>The goniometer, spectrum, harmonics and tuner, chosen in the Picture section's
+        <i>Advanced</i> and shown beside the screen in <i>Enlarge</i>, with <i>Picture only</i>
+        off. Turn them all off and the trace takes the whole width.</span></li>
 
-      <li><b>Scope, the Bench and Settings</b>
-        <span><i>Scope</i> is for watching and playing: the screen has the window, and the
-        strip along the top keeps the preset, and the Picture section along the bottom of
-        the window, in either view, the end of the loop: the <i>Amount</i>, Scan, Strike,
+      <li><b>Enlarge</b>
+        <span>The square button at the end of the screen's toolbar fills the window with the
+        screen; <b>Esc</b>, or the button again, brings the face back. <i>Picture only</i>, on
+        to begin with, hides everything drawn over the trace: the graticule and its labels,
+        the trigger's marks and the cursors, the photocell's reticle, the loop overlay, the
+        hand's mark, and the verdict and readouts. Turned off, they are back, with the panes
+        beside the screen. Two choices are the look's alone, and say so: <i>Which hands</i>,
+        <i>Both</i>, <i>A</i> or <i>B</i>, while a split or a layer draws a figure for each
+        hand, so two figures piled into one cloud can be seen one at a time; and
+        <i>Trail</i>, <i>As heard</i>, <i>Half</i> or <i>Short</i>, which fades the screen
+        faster than the Persistence Scan hears. None of it changes the sound &mdash; Scan
+        reads the light each stroke leaves, faded by the Persistence, however the screen is
+        drawn &mdash; none of it is a step in undo, and the page forgets it when it closes.
+        Opening and closing redraw the screen from blank; the light Scan reads is kept.</span></li>
+
+      <li><b>The face and Settings</b>
+        <span>The strip along the top keeps the preset, and the Picture section along the
+        bottom of the window is the end of the loop: the <i>Amount</i>, Scan, Strike,
         Softness and Persistence, <i>Level</i> (the generator's, layer B's while B is on the
         panel) with the output's meter, the three reads as meters, and <i>Advanced</i> &mdash; what
         Scan reads, the photocell and the score on one side, the loop overlay, the panes and
@@ -4659,21 +4757,21 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <i>Thickness</i> draws the traces thinner or thicker, and <i>Graticule</i> rules the
         divisions or leaves the screen bare. Scan reads where the light went, not its colour
         or its width, so none of them changes what you hear. Above the
-        screen, in either view, are the display (Y&ndash;T, X&ndash;Y, spectrogram),
-        <i>Clear</i>, and <i>Scope &amp; measure</i>: the oscilloscope's own tools in a panel
+        screen are the display (Y&ndash;T, X&ndash;Y, spectrogram),
+        <i>Clear</i>, <i>Scope &amp; measure</i> &mdash; the oscilloscope's own tools in a panel
         over the screen &mdash; run, mode and <i>Autoset</i>; the trigger; the timebase and
         zoom; the vertical scale, the trace filter, the lanes, the cursors, a saved reference
         and the readouts under the screen, which are off until you ask for them there. Two of
         its rows reach the speakers, and are marked so: lag X&ndash;Y's <i>Heard</i> and the
-        filter's <i>Speakers get</i>.
-        The <i>Bench</i> is where everything is tuned: the screen on the left, as large as
+        filter's <i>Speakers get</i> &mdash; and <i>Enlarge</i> at the end.
+        The face is the <i>Bench</i>, where everything is played and tuned: the screen on the left, as large as
         the window allows and still running, and the controls to its right, so you can watch
         a figure answer with your hand on the control, and the verdict and readouts a line
         under the screen. On a wide window the Bench stops
         rather than spreading the columns apart. In a small one the face is compact: the
         header on one line (the preset's name opens the browser), the tabs without their
-        lines, the modulation cards as chips, and everything a size smaller. <i>Settings</i> opens from either
-        and holds what you set once and leave, in two columns &mdash; <i>MIDI</i>, the
+        lines, the modulation cards as chips, and everything a size smaller. <i>Settings</i>
+        holds what you set once and leave, in two columns &mdash; <i>MIDI</i>, the
         <i>Modulation fade</i> and <i>This window</i> (whether the help sheet opens the first
         time, and the <i>Size</i> of everything on the face: <i>Auto</i> is 90&nbsp;per cent in
         a window under 1100 by 680 and 100 otherwise, or choose 90, 100 or 125, which this
@@ -4750,8 +4848,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <br><br>
         Press <b>/</b> to find any control by name &mdash; it knows a few other words for
         things, so <i>adsr</i> finds the envelope and <i>lfo</i> the oscillators &mdash; and
-        choosing a result takes you to it, opening whatever it is behind. <b>B</b>
-        switches between Scope and the Bench, and the view and the tab are
+        choosing a result takes you to it, opening whatever it is behind. The tab is
         remembered.</span></li>
 
       <li><b>Modulation</b>
@@ -5300,14 +5397,13 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         is not one of the bank's, the next is the first. <i>Browse</i> opens the browser, and
         <i>Save</i> opens it at its save field.</span></li>
 
-      <li><b>Undo, and A and B</b>
+      <li><b>Undo</b>
         <span>The curved arrows undo and redo changes to the sound and the picture, a hundred
         back: a knob turned, a menu, a preset loaded. A change is one step once it has held
         still for a moment, so a whole turn of a knob is one, and only a change you made is
-        one &mdash; a host's automation moving a knob is not. <i>A</i> and <i>B</i> are two
-        versions to compare: B starts as a copy of A the first time you choose it, each keeps
-        its own changes and its own undo, and switching is never a step. They last for this
-        session; save one you want to keep.</span></li>
+        one &mdash; a host's automation moving a knob is not. The history lasts for this
+        session. To compare two sounds, save one, or put them at the morph's two
+        ends.</span></li>
 
       <li><b>Custom means you have moved off one</b>
         <span>Nothing is lost; the picker is just telling you the truth.</span></li>
@@ -5322,9 +5418,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
       <li><b>Keys</b>
         <span><b>Space</b> run and stop &middot; <b>S</b> single &middot; <b>A</b> autoset
-        &middot; <b>B</b> bench &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
+        &middot; <b>1 2 3</b> Y&ndash;T, X&ndash;Y, spectrogram &middot;
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
         <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet &middot;
+        <b>Esc</b> back from Enlarge &middot;
         <b>Ctrl Z</b> undo and <b>Ctrl Shift Z</b> or <b>Ctrl Y</b> redo (<b>&#8984;</b> on a Mac).
         With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
         <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave, and <b>Space</b> held is the
@@ -5462,12 +5559,22 @@ const TIMEBASE_DEFAULT = 4;                              // 2 ms/div = 20 ms
    the top of the graticule. Drop it to open up a quiet signal. */
 const FULL_SCALE_DB = [0, -3, -6, -12, -18, -24, -30, -40, -50];
 
+/* Whether setView has laid the face out yet: until then the bench's rail,
+   the tab lines and the modulation editor have nowhere to be built. Until G4
+   the same question was asked as "is the Bench the view", which the Scope
+   view answered no to as well. */
+let faceLaidOut = false;
+// Enlarge's state (setEnlarged): up here, since the drawing and showControl ask it from the first frame.
+const ENLARGE_TRAILS = ["heard", "half", "short"];
+const enlarge = { on: false, pictureOnly: true, hands: "both", trail: "heard" };
+let keepGridUntil = 0;
+
 const el = {};
 for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
                   "pictureAmountValue", "levelMeter", "performButton", "performPanel", "performClose", "performBody",
                   "performSide", "dock", "pictureLook", "settingsLeft", "settingsRight", "settingsSub", "helpFirst", "windowGroup", "sizeAuto", "size90", "size100", "size125", "credit", "status", "presetPrev", "presetNext", "presetBrowse", "presetSaveHead",
-                  "abA", "abB", "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
+                  "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
                   "expressionGroup", "ampEnvGroup", "ampEnvTitle", "ampEnvCurve",
                   "infoLine", "infoName", "infoValue", "infoHost", "infoHand", "infoText", "infoMore", "infoLineOn",
@@ -5489,7 +5596,8 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "micShapeRow", "micWhole", "micBands", "micNote",
                   "liveKindRow", "kindMic", "kindLine", "monitorRow", "monitorLive",
                   "monitorLatency",
-                  "viewScope", "viewBench", "benchRail", "benchBody",
+                  "benchRail", "benchBody", "screenFrame", "enlargeButton", "enlargeTools", "pictureOnly",
+                  "handsField", "handsBoth", "handsA", "handsB", "enlargeTrail",
                   "benchSide", "benchScope", "traceSheet", "panes",
                   "rotate", "rotateValue", "measurePre", "measurePost", "modStrip", "modEditor", "modEditorClose", "midiVelocityTo", "benchStage",
                   "genFault",
@@ -17009,19 +17117,25 @@ let wipeScreen = false;
 
 function clearOrFade(ctx, w, h, resized) {
   const wipe = resized || wipeScreen;
+  /* The grid is kept across the resize Enlarge makes, opening or closing, and
+     wiped on any other: see setEnlarged. Clear still wipes it. */
+  // At or after, not after: parity's harness stubs the clock to nought, and its resizes must still wipe.
+  const wipeGrid = wipeScreen || (resized && performance.now() >= keepGridUntil);
   wipeScreen = false;
   // The grid fades here, with the canvas, so the two cannot disagree about
-  // how much of a stroke is left.
-  phosphorFade(wipe);
-  if (state.persistence === 0 || wipe) {
+  // how much of a stroke is left - except by Enlarge's Trail, which is the
+  // point of it, and which fades only the canvas (displayFade).
+  phosphorFade(wipeGrid);
+  const fade = displayFade(state.persistence);
+  if (fade === 0 || wipe) {
     ctx.fillStyle = ink.paper;
     ctx.fillRect(0, 0, w, h);
     return;
   }
-  if (state.persistence < 0) return;
+  if (fade < 0) return;
 
   ctx.save();
-  ctx.globalAlpha = state.persistence;
+  ctx.globalAlpha = fade;
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
   /* The last few levels, which the fade above cannot finish on its own. The
@@ -17043,7 +17157,7 @@ function clearOrFade(ctx, w, h, resized) {
      Crossed hands' 0.0255 the last faint twenty levels take five or six
      seconds to go, where before they never went. `washtest.py` holds it to
      two levels. */
-  fadeNudge += Math.min(1, Math.max(0.06, 2 * state.persistence));
+  fadeNudge += Math.min(1, Math.max(0.06, 2 * fade));
   if (fadeNudge >= 1) {
     fadeNudge -= 1;
     ctx.globalAlpha = 1;
@@ -17058,6 +17172,24 @@ function clearOrFade(ctx, w, h, resized) {
 }
 let fadeNudge = 0;
 
+/* How much the canvas fades a frame: the Persistence, as Scan hears it,
+   except in Enlarge with a shorter Trail. The phosphor grid never asks this;
+   it fades by the Persistence in phosphorFade, so what Scan, the reads and
+   the photocell take in is the same whatever the Trail (enlargetest.py).
+
+   Half halves the half-life - a frame keeps the square of what it kept - and
+   Short is the Persistence menu's Short, 0.3 a frame, or the heard fade if
+   that is shorter still. Of an infinite Persistence, Half is Long's fade
+   (0.04): half of never has no number, and a long trail is the nearest
+   reading of it. Off stays off: there is no trail to shorten. */
+const TRAIL_SHORT = 0.3, TRAIL_HALF_OF_INFINITE = 0.04;
+function displayFade(p) {
+  if (!enlarge.on || enlarge.trail === "heard" || p === 0) return p;
+  if (enlarge.trail === "short") return p < 0 ? TRAIL_SHORT : Math.max(p, TRAIL_SHORT);
+  if (p < 0) return TRAIL_HALF_OF_INFINITE;
+  return 1 - (1 - p) * (1 - p);
+}
+
 /* What lies outside the plot is written fresh every frame - the axes' names,
    the amplitudes, the lanes' names - and the traces are clipped to the plot,
    so nothing out there should persist. Faded with the rest it did: a name
@@ -17065,7 +17197,7 @@ let fadeNudge = 0;
    name under a split's. Wiped to the paper instead, so only the current
    words are ever there. */
 function wipeOutside(ctx, w, h, x, y, pw, ph) {
-  if (state.persistence === 0) return;
+  if (displayFade(state.persistence) === 0) return;
   ctx.save();
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, y);
@@ -17077,6 +17209,23 @@ function wipeOutside(ctx, w, h, x, y, pw, ph) {
 
 const PAD = { left: 44, right: 14, top: 16, bottom: 28 };
 let plot = { x: 0, y: 0, w: 1, h: 1 };   // the graticule, in CSS pixels
+
+/* Enlarge's Which hands (G4): whether a figure, or a lane's figure, is left
+   undrawn. Only while the two hands draw a figure each; with one figure there
+   is no hand to leave out. Undrawn, not unmade: the strokes go on being laid
+   into the phosphor grid as before, at an alpha of nought on the canvas, so
+   the beam's anchors and every deposit are the same as with both drawn and
+   nothing Scan reads can tell (enlargetest.py). */
+function handHidden(figure, count) {
+  const hands = enlargedHands();
+  return hands !== "both" && count === 2 && figure !== (hands === "a" ? 0 : 1);
+}
+function laneHandHidden(lane) {
+  if (enlargedHands() === "both") return false;
+  const figures = sourceFigures();
+  if (!figures || figures.length !== 2) return false;
+  return handHidden(figures.findIndex(([x, y]) => x === lane || y === lane), 2);
+}
 
 function drawMain(frame, elapsed) {
   const fit = fitCanvas(el.trace);
@@ -17137,6 +17286,8 @@ function drawMain(frame, elapsed) {
   const durationMs = visible / frame.rate * 1000;
 
   // --- the ruling ---------------------------------------------------------
+  // None of it with Enlarge's Picture only: the ruling, its labels, the trigger's marks, the cursors.
+  const bare = bareScreen();
   ctx.lineWidth = 1;
   ctx.strokeStyle = ink.line;
   ctx.fillStyle = ink["text-soft"];
@@ -17163,9 +17314,9 @@ function drawMain(frame, elapsed) {
     ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h);
   }
   // Ruled only with the graticule on; its labels stay, being the measurement.
-  if (state.graticule) ctx.stroke();
+  if (state.graticule && !bare) ctx.stroke();
 
-  if (isStack && state.graticule) {
+  if (isStack && state.graticule && !bare) {
     ctx.save();
     ctx.globalAlpha = 0.55;
     ctx.beginPath();
@@ -17180,7 +17331,9 @@ function drawMain(frame, elapsed) {
   // Labels: amplitude as a fraction of full scale, time from the trigger -
   // negative to its left, which is the whole point of pre-trigger.
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  if (isStack) {
+  if (bare) {
+    // Nothing: the picture alone.
+  } else if (isStack) {
     /* The band's own name, in its own ink, where the amplitude numbers would
        otherwise be. This is the secondary encoding six lanes need: the ink
        tells them apart at a glance and the word settles it, so nobody has to
@@ -17199,7 +17352,7 @@ function drawMain(frame, elapsed) {
 
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   const zeroMs = (frame.pre - from) / frame.rate * 1000;
-  for (let d = 0; d <= DIVS_X; d++) {
+  for (let d = 0; d <= DIVS_X && !bare; d++) {
     const t = (d / DIVS_X) * durationMs - zeroMs;
     const x = plot.x + (d / DIVS_X) * plot.w;
     const text = Math.abs(t) < 1e-9 ? "0"
@@ -17212,6 +17365,7 @@ function drawMain(frame, elapsed) {
   const trigOffset = state.channels[state.trigSource].offset;
 
   ctx.save();
+  if (bare) ctx.globalAlpha = 0;
   ctx.setLineDash([4, 4]);
   ctx.strokeStyle = ink["blush-deep"];
   ctx.beginPath();
@@ -17231,7 +17385,7 @@ function drawMain(frame, elapsed) {
   // like the waveform sliding for no reason. Hidden when a zoom has pushed
   // it off the side rather than drawn clinging to the edge.
   const trigAt = (frame.pre - from) / visible;
-  if (trigAt >= 0 && trigAt <= 1) {
+  if (trigAt >= 0 && trigAt <= 1 && !bare) {
     const trigX = plot.x + trigAt * plot.w;
     ctx.fillStyle = ink["blush-deep"];
     ctx.beginPath();
@@ -17249,7 +17403,7 @@ function drawMain(frame, elapsed) {
   // The reference first, so the live trace is the one on top. Drawn in the
   // channel's own ink at low alpha rather than in a colour of its own: it is
   // the same signal, earlier, and a fourth hue would say otherwise.
-  if (state.reference) {
+  if (state.reference && !bare) {
     ctx.save();
     ctx.globalAlpha = 0.34;
     ctx.setLineDash([3, 3]);
@@ -17278,6 +17432,7 @@ function drawMain(frame, elapsed) {
     ctx.lineWidth = traceWidth(1.5);
     ctx.lineJoin = "round";
     ctx.save();
+    if (laneHandHidden(index)) ctx.globalAlpha = 0;
     ctx.beginPath();
     // Clipped to its own band when stacked, so a loud lane swings into its
     // neighbour's ink instead of over it.
@@ -17349,7 +17504,7 @@ function drawMain(frame, elapsed) {
     ctx.restore();
   });
 
-  if (state.cursors && state.display === "yt") drawCursors(ctx, durationMs, zeroMs, !isStack);
+  if (state.cursors && state.display === "yt" && !bare) drawCursors(ctx, durationMs, zeroMs, !isStack);
 }
 
 /* X-Y: one channel against the other, with time left out of it entirely.
@@ -17408,13 +17563,16 @@ function drawXY(frame, fit, elapsed) {
     const across = Math.round(plot.x + (d / DIVS_Y) * size) + 0.5;
     ctx.moveTo(across, plot.y); ctx.lineTo(across, plot.y + size);
   }
-  // The divisions only with the graticule on; the edge of the square stays, being where the screen ends.
-  if (state.graticule) ctx.stroke();
+  /* The divisions only with the graticule on; the edge of the square stays,
+     being where the screen ends - but not with Enlarge's Picture only, where
+     the picture is all there is. */
+  const bare = bareScreen();
+  if (state.graticule && !bare) ctx.stroke();
 
   ctx.strokeStyle = ink["text-soft"];
   ctx.beginPath();
   ctx.rect(plot.x + 0.5, plot.y + 0.5, size - 1, size - 1);
-  ctx.stroke();
+  if (!bare) ctx.stroke();
   ctx.restore();
 
   /* Any two lanes, not just left against right. With a rack loaded this is
@@ -17507,6 +17665,10 @@ function drawXY(frame, fit, elapsed) {
 
   const inkName = figureInk(figure, fx);
   const colours = state.beamXY ? beamColours(inkName) : null;
+  // Which hands: drawn at nought, laid into the grid as ever (handHidden).
+  const unseen = handHidden(figure, figures.length);
+  const alphaWas = ctx.globalAlpha;
+  if (unseen) ctx.globalAlpha = 0;
 
   if (colours !== null) {
     strokeBeam(ctx, figure === 0 ? "xy" : "xy" + figure, n, colours, elapsed, traceWidth(1.4));
@@ -17529,11 +17691,13 @@ function drawXY(frame, fit, elapsed) {
     }
     ctx.stroke();
   }
+  if (unseen) ctx.globalAlpha = alphaWas;
   });
 
   ctx.restore();
   xyView = view;
 
+  if (bare) return;
   ctx.fillStyle = ink["text-soft"];
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -17658,6 +17822,8 @@ function drawSpectrogram(frame, fit, elapsed) {
 
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(board.canvas, plot.x, plot.y, plot.w, plot.h);
+  // Enlarge's Picture only: the picture, and no frame, axes, scale or reading over it.
+  if (bareScreen()) return;
 
   ctx.strokeStyle = ink.line;
   ctx.lineWidth = 1;
@@ -19841,7 +20007,7 @@ function selectSource(id) {
 
 function openModCard(id) {
   if (!offered(MOD_SOURCES.get(id))) return;
-  if (document.body.dataset.view !== "bench") setView("bench");
+  setEnlarged(false);
   editingSource = id;
   selectSource(id);
   el.modEditor.hidden = false;
@@ -20066,7 +20232,7 @@ function fillMeter(fill, source) {
   return v;
 }
 function updateSourceMeter() {
-  if (document.body.dataset.view !== "bench" || editingSource === null) return;
+  if (!faceLaidOut || editingSource === null) return;
   const fill = document.getElementById("srcMeter");
   const source = MOD_SOURCES.get(selectedSource);
   if (!fill || !source) return;
@@ -22317,11 +22483,10 @@ el.presetNext.addEventListener("click", () => stepPreset(1));
 el.presetBrowse.addEventListener("click", openPresets);
 el.presetSaveHead.addEventListener("click", () => { openPresets(); showSaving(true); });
 
-/* --- A/B and undo (F7) ------------------------------------------------------------
-   Undo walks back through the setup's changes, and A and B are two versions
-   of it to compare. Both work on the setup as a code holds it (snapshot), and
-   put a version back the way a preset is loaded, so the plugin is sent the
-   whole of it.
+/* --- undo (F7) -------------------------------------------------------------------
+   Undo walks back through the setup's changes. It works on the setup as a
+   code holds it (snapshot), and puts a step back the way a preset is loaded,
+   so the plugin is sent the whole of it.
 
    What counts as a change: the setup differing from the last one kept, and
    staying so for UNDO_SETTLE - so a knob turned is one step, not one per
@@ -22332,12 +22497,13 @@ el.presetSaveHead.addEventListener("click", () => { openPresets(); showSaving(tr
    base instead, silently. What it costs: a change made by code and nothing
    else is never a step.
 
-   Each of A and B has its own history, and switching is never a step: undo
-   after a switch walks back through the version you are on. Both are this
-   session's only - not in a code, not saved with a project - which is what a
-   compare is for. B starts as a copy of A the first time it is chosen. */
+   One history, this session's only - not in a code, not saved with a
+   project. Until G4 there were two, one for each of the versions A and B,
+   with a switch between them that was never a step; the versions went
+   (the-face-second-pass.md: undo, saved presets and the morph's two stored
+   sounds already compare), and their histories became this one. */
 const UNDO_SETTLE = 400, UNDO_MOST = 100;
-const versions = { on: "a", a: { undo: [], redo: [], kept: null }, b: { undo: [], redo: [], kept: null } };
+const undoHistory = { undo: [], redo: [] };
 let undoBase = null, undoPending = null, undoHanded = false, undoPointer = false;
 const undoNow = () => ({ snap: snapshot(), loaded: loadedSetup, value: el.preset.value });
 const undoText = (entry) => JSON.stringify(entry.snap);
@@ -22356,13 +22522,10 @@ function undoRebase() {
   undoPending = null;
 }
 function paintUndo() {
-  const v = versions[versions.on];
-  el.undoButton.disabled = v.undo.length === 0;
-  el.redoButton.disabled = v.redo.length === 0;
-  el.undoButton.title = v.undo.length ? "Undo (" + v.undo.length + ")" : "Nothing to undo";
-  el.redoButton.title = v.redo.length ? "Redo (" + v.redo.length + ")" : "Nothing to redo";
-  el.abA.setAttribute("aria-checked", String(versions.on === "a"));
-  el.abB.setAttribute("aria-checked", String(versions.on === "b"));
+  el.undoButton.disabled = undoHistory.undo.length === 0;
+  el.redoButton.disabled = undoHistory.redo.length === 0;
+  el.undoButton.title = undoHistory.undo.length ? "Undo (" + undoHistory.undo.length + ")" : "Nothing to undo";
+  el.redoButton.title = undoHistory.redo.length ? "Redo (" + undoHistory.redo.length + ")" : "Nothing to redo";
 }
 // A few times a second: a change that has settled, after a hand, is a step.
 function watchUndo(now) {
@@ -22373,15 +22536,14 @@ function watchUndo(now) {
   if (!undoHanded) { undoRebase(); return; }
   if (!undoPending || undoPending.text !== text) { undoPending = { text, at: now }; return; }
   if (now - undoPending.at < UNDO_SETTLE) return;
-  const v = versions[versions.on];
-  v.undo.push(undoBase);
-  if (v.undo.length > UNDO_MOST) v.undo.shift();
-  v.redo = [];
+  undoHistory.undo.push(undoBase);
+  if (undoHistory.undo.length > UNDO_MOST) undoHistory.undo.shift();
+  undoHistory.redo = [];
   undoHanded = false;
   undoRebase();
   paintUndo();
 }
-// A version put back as a preset is: quietly, then the whole of it to a host.
+// A step put back as a preset is: quietly, then the whole of it to a host.
 function putBack(entry) {
   hostQuietly(() => restore(entry.snap));
   loadedSetup = entry.loaded;
@@ -22393,25 +22555,14 @@ function putBack(entry) {
 }
 function undoStep(back) {
   watchUndo(Infinity);  // a change still settling is a step of its own first
-  const v = versions[versions.on];
-  const from = back ? v.undo : v.redo, to = back ? v.redo : v.undo;
+  const from = back ? undoHistory.undo : undoHistory.redo, to = back ? undoHistory.redo : undoHistory.undo;
   if (!from.length) return;
   to.push(undoNow());
   putBack(from.pop());
   paintUndo();
 }
-function chooseVersion(which) {
-  if (which === versions.on) return;
-  watchUndo(Infinity);
-  versions[versions.on].kept = undoNow();
-  versions.on = which;
-  if (versions[which].kept) putBack(versions[which].kept); else undoRebase();
-  paintUndo();
-}
 el.undoButton.addEventListener("click", () => undoStep(true));
 el.redoButton.addEventListener("click", () => undoStep(false));
-el.abA.addEventListener("click", () => chooseVersion("a"));
-el.abB.addEventListener("click", () => chooseVersion("b"));
 // Ctrl or Cmd with Z, with Shift to redo, or Y: not while typing, where the field has its own.
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || typingInto(event.target)) return;
@@ -22460,7 +22611,7 @@ function showSource(pending) {
      generator half of the destination list, and that greys out per entry in
      the Sources tab's Add menu. */
   buildSourceDetail(); // the destination list says which ones this source has
-  /* The device picker lives in Settings now, in both views, so it is greyed
+  /* The device picker lives in Settings now, so it is greyed
      rather than hidden when there is no live input: a setting that vanishes
      with the source cannot be found. Choosing a device opens that input, so
      over the tone it would be a source change made from the wrong place. */
@@ -22480,7 +22631,7 @@ function showSource(pending) {
   /* The lanes of whatever is loaded, while it has them - the band split's
      four, the one source left with lanes since P5 cut the rack - their
      solo, mute and show, and the layout: a section that does not apply is
-     off in both views, not an empty heading. */
+     off, not an empty heading. */
   if (state.source.lanes && kind === "mic") delete el.laneGroup.dataset.off;
   else el.laneGroup.dataset.off = "1";
 
@@ -22490,7 +22641,7 @@ function showSource(pending) {
      said it again - Test tone, Live bands - went with the face's F1 (7 Nov):
      a developer's label on an instrument's face. */
   el.credit.textContent = state.source.describe();
-  if (document.body.dataset.view === "bench") buildBenchRail();
+  if (faceLaidOut) buildBenchRail();
   peakHold.fill(-120);
   clearSpectro();
   /* Every source change comes through here, so here is where a generator
@@ -23405,7 +23556,7 @@ function scoreStop() {
 }
 // The playhead, over the picture, where the column it is reading lies.
 function drawScorePlayhead() {
-  if (!score.on || score.col < 0 || state.display === "spect") return;
+  if (!score.on || score.col < 0 || state.display === "spect" || bareScreen()) return;
   const ctx = el.trace.getContext("2d");
   const x = plot.x + (score.col + 0.5) / PHOSPHOR_N * plot.w;
   ctx.save();
@@ -24612,6 +24763,9 @@ el.layOver.addEventListener("click", () => setLayout(false));
    displaying and stayed broken for weeks. Moving them also keeps every
    listener bound at boot, so nothing has to be rewired on a view change.    */
 
+/* The view a browser remembered until G4, when the Scope view went: removed
+   from storage at boot, so a page that last opened on Scope leaves nothing
+   behind that a later stage could misread. */
 const VIEW_KEY = "scope.view";
 let benchGroups = null;      // in the order the popover had them
 /* The Bench's tabs, by task rather than one per section: a generator slider
@@ -24701,7 +24855,7 @@ const SIDE_GROUPS = [];
 const inSide = (group) => SIDE_GROUPS.indexOf(group.id) >= 0;
 
 /* Where a section lives. Every section has one home, `data-home`, and stays
-   there in both views: Settings holds what is set once and left, the Bench
+   there: Settings holds what is set once and left, the Bench
    everything played or tuned. It used to be that every section moved between
    the two, so Settings and the Bench had identical contents and neither was
    a place for anything in particular. */
@@ -24889,7 +25043,7 @@ function openFx(fx, only) {
     if (rest.hidden) delete module.dataset.open; else module.dataset.open = "1";
     if (button) button.setAttribute("aria-expanded", String(!rest.hidden));
   }
-  if (fitRack() && document.body.dataset.view === "bench") layoutBenchBody();
+  if (fitRack() && faceLaidOut) layoutBenchBody();
 }
 /* Whether the other modules fold while one is open: only if the tab would
    scroll with their knobs showing. Measured with them showing, and folded in
@@ -25072,7 +25226,7 @@ function paintTabLines(now) {
     if (now - tabLinesAt < 250) return;
     tabLinesAt = now;
   }
-  if (document.body.dataset.view !== "bench") return;
+  if (!faceLaidOut) return;
   paintCards();
   paintRack();
   paintAmpEnv();
@@ -25094,7 +25248,7 @@ function setBenchTab(id) {
   closeModCard();
   benchTab = id;
   try { window.localStorage.setItem(TAB_KEY, id); } catch (error) { /* private window */ }
-  if (document.body.dataset.view === "bench") {
+  if (faceLaidOut) {
     layoutBenchBody();
     buildBenchRail();
     requestAnimationFrame(paintRoutings);
@@ -25110,8 +25264,9 @@ function showBenchFor(group) {
 
 /* Folding. Three sections - the presets, the beam, the measuring tools - are
    set once and left, so on the bench they start shut and cost one click. The
-   popover in Scope has no folds at all: it is a list you scroll, and a fold
-   there would be a second thing to open inside a thing you already opened. */
+   Settings panel has no folds at all: its notes are behind each section's
+   dots, and a fold there would be a second thing to open inside a thing you
+   already opened. */
 function unfold(group) {
   if (!group.classList.contains("folded")) return;
   group.classList.remove("folded");
@@ -25231,7 +25386,7 @@ function layoutBenchBody() {
 
 let benchResize = null;
 window.addEventListener("resize", () => {
-  if (document.body.dataset.view !== "bench") return;
+  if (!faceLaidOut) return;
   if (benchResize) clearTimeout(benchResize);
   benchResize = setTimeout(() => {
     benchResize = null;
@@ -25256,7 +25411,7 @@ window.addEventListener("resize", () => {
 let benchSettle = null, dealing = false;
 
 function benchOverflowed() {
-  if (dealing || document.body.dataset.view !== "bench") return;
+  if (dealing || !faceLaidOut) return;
   if (benchSettle) clearTimeout(benchSettle);
   benchSettle = setTimeout(() => {
     benchSettle = null;
@@ -25294,13 +25449,10 @@ function decorateGroup(group) {
   title.appendChild(dots);
 }
 
-function applyFolds(bench) {
-  /* The class is inert outside the bench - the rule that acts on it is scoped
-     to `.bench-body` - so leaving it alone on the way to the popover is both
-     simpler and what anyone would expect: a section you shut stays shut when
-     you come back to it. Stripping it here is what made every fold spring open
-     after a trip to Scope and back. */
-  if (!bench) return;
+/* A section you shut stays shut. Stripping the class on the way to the
+   Scope view's popover once made every fold spring open after a trip there
+   and back; the view went in G4, and the rule with it. */
+function applyFolds() {
   for (const group of benchGroupsAll()) {
     const title = group.querySelector(":scope > .menu-title");
     if (!title) continue;
@@ -25392,20 +25544,21 @@ function setSize(choice) {
   applyZoom();
   window.dispatchEvent(new Event("resize"));
 }
-// Where the dock lives on Scope: put back there from the Bench's column.
-let dockHome = null;
-function setView(view) {
-  if (dockHome === null) dockHome = { parent: el.dock.parentNode, next: el.dock.nextSibling };
-  const bench = view === "bench";
-  // Anything moved into an overlay has to go home before the groups move.
+/* The face, laid out: every section to its home and the screen into its
+   column. One face since G4 - the Scope view went, and Enlarge took its
+   frame - so this takes no view any more. The name and the argument are
+   kept because thirty suites call setView('bench') to put the face back as
+   it opens, and renaming it would change every one of them to say the same
+   thing; a call with 'scope' lays out the same face, so a suite that meant
+   the old view is wrong, and those were changed (G4). */
+function setView() {
+  // Anything moved into an overlay has to go home before the groups move,
+  // and the screen out of Enlarge before it is put in its column.
   closeOverlay();
-  document.body.dataset.view = bench ? "bench" : "scope";
-  el.viewScope.setAttribute("aria-checked", String(!bench));
-  el.viewBench.setAttribute("aria-checked", String(bench));
+  if (enlarge.on) setEnlarged(false);
+  faceLaidOut = true;
 
-  /* Each section to its home, whichever view is showing. A Bench section
-     stays on the Bench while Scope is up - hidden with it - so Scope is for
-     watching and playing, and Settings holds only settings. */
+  // Each section to its home.
   const groups = settingsGroups();
   for (const group of groups) {
     if (homeOf(group) === "settings") el[group.dataset.place || "settingsRight"].appendChild(group);
@@ -25419,21 +25572,12 @@ function setView(view) {
   /* The screen moves too, and it is the same argument as the controls: a
      second canvas would be a second thing to resize, a second set of cursor
      handlers and a second persistence buffer that disagrees with the first.
-     One canvas, carried between two frames. Everything drawing into it reads
-     its parent's box every frame, so none of it needs telling. */
-  if (bench) el.benchScope.appendChild(el.traceSheet);
-  else el.panes.insertBefore(el.traceSheet, el.aside);
-  // Its toolbar, with Scope & measure, above it in either.
-  if (bench) el.benchSide.insertBefore(el.screenTools, el.benchScope);
-  else el.panes.parentElement.insertBefore(el.screenTools, el.panes);
-  /* And the verdict and the readouts under it (F8): on the Bench, in the
-     screen's column between it and the modulation cards, as the redesign
-     draws it, rather than a band across the window that took 73 px of
-     every tab's height; on Scope, across the foot as before. */
-  if (bench) el.benchSide.insertBefore(el.dock, el.modStrip);
-  else dockHome.parent.insertBefore(el.dock, dockHome.next);
+     One canvas, carried between the Bench's column and Enlarge's frame.
+     Everything drawing into it reads its parent's box every frame, so none
+     of it needs telling. */
+  placeScreen(false);
 
-  // Nothing is hidden in either view now; the bench folds rather than hides.
+  // Nothing is hidden; the bench folds rather than hides.
   for (const group of groups) group.hidden = false;
   /* But a section that is only there for one shape - the drawn cycle's, the
      drawbars' greyed state - is the shape's to show, and unhiding every group
@@ -25441,22 +25585,109 @@ function setView(view) {
      it on the way in until G2 took the menu out, and then Ink scrolled by
      46 px at 1100x860 (fittest.py). */
   syncBars();
-  applyFolds(bench);
+  applyFolds();
 
-  if (bench) {
-    setMenuOpen(false);
-    setPanesOpen(false);
-    layoutBenchBody();
-    buildBenchRail();
-  }
+  setMenuOpen(false);
+  setPanesOpen(false);
+  layoutBenchBody();
+  buildBenchRail();
 
   // The lanes are positioned from a measured box, and every control on the
   // page just changed width.
   requestAnimationFrame(paintRoutings);
-
-  try { window.localStorage.setItem(VIEW_KEY, document.body.dataset.view); }
-  catch (error) { /* private window */ }
 }
+
+/* The screen, its toolbar and the verdict: in the Bench's column, or in
+   Enlarge's frame. In the column the verdict and the readouts are a line
+   between the screen and the modulation cards (F8), as the redesign draws
+   it, rather than a band across the window that took 73 px of every tab's
+   height; in the frame they are a line under the screen, and Picture only
+   hides them. */
+function placeScreen(enlarged) {
+  if (enlarged) {
+    const wrap = el.panes.parentElement;
+    wrap.insertBefore(el.screenTools, el.panes);
+    el.panes.insertBefore(el.traceSheet, el.aside);
+    wrap.appendChild(el.dock);
+  } else {
+    el.benchScope.appendChild(el.traceSheet);
+    el.benchSide.insertBefore(el.screenTools, el.benchScope);
+    el.benchSide.insertBefore(el.dock, el.modStrip);
+  }
+}
+
+/* --- Enlarge (G4 of web/docs/the-face-second-pass.md) ------------------------------
+   The screen on its own, filling the window; Esc or its button again brings
+   it back. It replaced the Scope view, and the panes the Scope view showed
+   are shown only here. Everything about it is the look's alone, which is a
+   rule with three parts:
+
+   - nothing it does is in a setup or a step in undo: `enlarge` is not read by
+     snapshot, and opening it changes no control;
+   - nothing it hides or fades reaches the sound: Scan, the reads and the
+     photocell read the phosphor grid, which only the traces are laid into,
+     and the grid fades by the Persistence in phosphorFade whatever the Trail
+     says (enlargetest.py holds both, on the page's own brain, where the grid
+     is the one Scan reads);
+   - nothing about it is remembered past the page. The Scope view was (the
+     view key), and opening the page enlarged - the plugin especially, whose
+     window then has no controls - is not a thing anyone chooses twice. The
+     loop overlay is remembered because it is a way of seeing the face, not
+     a place to be. Picture only, the hands and the Trail are kept while the
+     page is open, so going in and out keeps what was chosen in it.
+
+   Opening and closing resize the canvas, and a resized canvas is wiped. The
+   grid is kept across it (keepGridUntil): wiped too, the moment Enlarge
+   opened would be a moment of darkness for Scan to read, and the sound
+   would change for a button that only changes the look. So for a moment the
+   screen shows less than Scan reads, and the next strokes fill it in. */
+// The look as Enlarge has it now: whether the screen is bare, and the hands and trail it draws.
+const bareScreen = () => enlarge.on && enlarge.pictureOnly;
+const enlargedHands = () => (enlarge.on ? enlarge.hands : "both");
+function setEnlarged(on) {
+  on = !!on && faceLaidOut;
+  if (on === enlarge.on) return;
+  enlarge.on = on;
+  closeOverlay();
+  setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); setMenuOpen(false);
+  if (on) closeModCard();
+  keepGridUntil = performance.now() + 600;
+  placeScreen(on);
+  if (on) document.body.dataset.enlarged = ""; else delete document.body.dataset.enlarged;
+  paintEnlarge();
+  requestAnimationFrame(paintRoutings);
+  if (on) el.enlargeButton.focus();
+}
+function paintEnlarge() {
+  if (bareScreen()) document.body.dataset.bare = ""; else delete document.body.dataset.bare;
+  el.enlargeButton.setAttribute("aria-pressed", String(enlarge.on));
+  el.enlargeButton.setAttribute("aria-label", enlarge.on ? "Back from Enlarge" : "Enlarge");
+  el.enlargeButton.title = enlarge.on ? "Back to the face (Esc)" : "Enlarge: the screen fills the window (Esc to come back)";
+  el.pictureOnly.setAttribute("aria-pressed", String(enlarge.pictureOnly));
+  for (const [id, hands] of [["handsBoth", "both"], ["handsA", "a"], ["handsB", "b"]]) {
+    el[id].setAttribute("aria-checked", String(enlarge.hands === hands));
+  }
+  el.enlargeTrail.value = enlarge.trail;
+  paintHands();
+}
+/* Which hands is offered only while the two hands each draw a figure (a split
+   or a layer, laid out "each", in X-Y or Y-T): with one figure - A against B,
+   or one layer - there is no hand to leave out. Asked a few times a second,
+   since a split comes and goes with the keyboard. */
+function paintHands() {
+  const figures = sourceFigures();
+  el.handsField.hidden = !(enlarge.on && figures && figures.length === 2);
+}
+el.enlargeButton.addEventListener("click", () => setEnlarged(!enlarge.on));
+el.pictureOnly.addEventListener("click", () => { enlarge.pictureOnly = !enlarge.pictureOnly; paintEnlarge(); });
+for (const [id, hands] of [["handsBoth", "both"], ["handsA", "a"], ["handsB", "b"]]) {
+  el[id].addEventListener("click", () => { enlarge.hands = hands; paintEnlarge(); });
+}
+el.enlargeTrail.addEventListener("change", () => {
+  if (ENLARGE_TRAILS.includes(el.enlargeTrail.value)) enlarge.trail = el.enlargeTrail.value;
+  paintEnlarge();
+});
+window.setInterval(() => { if (enlarge.on) paintHands(); }, 250);
 
 /* Show a control, wherever it lives: open the Bench, or Settings, and bring
    its section into view. Search jumps with it, and so do the tests - which
@@ -25470,16 +25701,18 @@ function showControl(node) {
   if (el.pictureBar.contains(target) && !el.picturePanel.contains(target)) return true;
   const group = target.closest(".menu-group");
   if (!group) return false;
+  /* Out of Enlarge first, except for Scope & measure, which opens over the
+     screen there as on the face: everything else is under the frame. */
+  if (homeOf(group) !== "measure") setEnlarged(false);
   if (homeOf(group) === "settings") {
-    setMenuOpen(true);        // over either view
+    setMenuOpen(true);
   } else if (homeOf(group) === "measure") {
-    setMeasureOpen(true);     // over the screen, in either view
+    setMeasureOpen(true);     // over the screen, enlarged or not
   } else if (homeOf(group) === "picture") {
-    setPictureOpen(true);     // over the bar along the bottom, in either view
+    setPictureOpen(true);     // over the bar along the bottom
   } else if (homeOf(group) === "perform") {
-    setPerformOpen(true);     // from the header, in either view
+    setPerformOpen(true);     // from the header
   } else {
-    if (document.body.dataset.view !== "bench") setView("bench");
     if (typeof showBenchFor === "function") showBenchFor(group);
     unfold(group);
     // In the rack, the module it is in, opened if it is among the rest (F5).
@@ -25721,8 +25954,6 @@ el.benchSearch.addEventListener("keydown", (event) => {
 });
 el.benchSearch.addEventListener("blur", () => { el.benchResults.hidden = true; });
 
-el.viewScope.addEventListener("click", () => setView("scope"));
-el.viewBench.addEventListener("click", () => setView("bench"));
 // The menus it governs: the drawings out of reach, whatever is chosen kept.
 
 /* --- patching -----------------------------------------------------------------
@@ -26116,6 +26347,12 @@ const CONTROL_WORDS = {
   "dispXY": ["X–Y", "The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off."],
   "dispSpect": ["Spect", "Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave."],
   "clearButton": ["Clear", "Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set."],
+  "enlargeButton": ["Enlarge", "Fills the window with the screen; Esc or this again brings the face back. Nothing it does changes the sound or is a step in undo."],
+  "pictureOnly": ["Picture only", "Hides all that is drawn over the trace: the graticule and its labels, the reticle, the loop, the hand's mark, the verdict and the panes."],
+  "handsBoth": ["Which hands: Both", "Draws both hands' figures. Only the look: Scan reads both however many are drawn."],
+  "handsA": ["Which hands: A", "Draws only layer A's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both."],
+  "handsB": ["Which hands: B", "Draws only layer B's figure, so two figures piled into one cloud can be seen apart. Only the look; Scan hears both."],
+  "enlargeTrail": ["Trail", "How long the enlarged screen keeps a stroke: as heard, half as long, or short. Only the look: Scan reads the Persistence's trail."],
   "pictureMore": ["Advanced", "Opens what Scan reads, the score and the photocell, and the screen’s look: the beam, its inks, the panes and the loop overlay."],
   "pictureAmount": ["Amount", "How far the picture moves the sound by itself: its glow folds it, its motion echoes it, its memory turns it. At nought, a plain synthesiser."],
   "oscScan": ["Scan", "How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone."],
@@ -26135,8 +26372,8 @@ const CONTROL_WORDS = {
   "scoreLow": ["From", "The note at the bottom of the screen. The rows go up from it in the page’s key."],
   "scoreOctaves": ["Octaves", "How many octaves the screen’s height covers, up from the bottom note. More octaves, wider leaps from the same picture."],
   "loopButton": ["Loop", "Draws over the screen where Scan reads, the wave it is playing and the picture’s verdict. Only the look; nothing shows until Scan is on."],
-  "panesButton": ["Panes", "Opens the panes to put beside the screen: goniometer, spectrum, harmonics and tuner, and the spectrogram’s span. Only the look."],
-  "panesClose": ["Close", "Closes the list of panes; the ones ticked stay beside the screen."],
+  "panesButton": ["Panes", "Chooses the panes shown beside the screen in Enlarge: goniometer, spectrum, harmonics and tuner, and the spectrogram’s span. Only the look."],
+  "panesClose": ["Close", "Closes the list of panes; the ones ticked show beside the enlarged screen."],
   "beamLevel": ["Intensity", "How much the trace dims where it moves fast, as a real beam does: bright at the turns, faint in the sweeps. Scan reads the dimming too."],
   "inkAccent": ["Ink: Rose", "Draws the X–Y figure in rose, the accent. Only the look: Scan reads the light, not its colour, and Y–T lanes keep their own inks."],
   "inkCh1": ["Ink: Charcoal", "Draws the X–Y figure in charcoal. Only the look: Scan reads the light, not its colour."],
@@ -26991,7 +27228,7 @@ function setMenuOpen(open) {
   el.menuButton.setAttribute("aria-expanded", String(open));
   if (open) {
     setPanesOpen(false); setMeasureOpen(false); setPictureOpen(false); setPerformOpen(false); placeSettings();
-    /* Each section's notes behind its dots (F7b), in either view. Done as it
+    /* Each section's notes behind its dots (F7b). Done as it
        opens, since groupExtras skips what is inside something hidden and the
        panel is hidden until now - done at load, every section looked empty. */
     for (const group of settingsGroups()) if (homeOf(group) === "settings") decorateGroup(group);
@@ -27096,6 +27333,17 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  /* Esc leaves Enlarge, but only when it has nothing nearer to close: a panel
+     over the screen, a card, a dialog, a drag. Asked before the panels below
+     close, so one press closes the panel and the next leaves. */
+  if (event.key === "Escape" && enlarge.on && !event.defaultPrevented
+      && el.menuPanel.hidden && el.panesPanel.hidden && el.measurePanel.hidden && el.picturePanel.hidden
+      && el.performPanel.hidden && !overlay && !document.querySelector("dialog[open]")) {
+    event.preventDefault();
+    setEnlarged(false);
+    el.enlargeButton.focus();
+    return;
+  }
   if (event.key === "Escape") {
     if (!el.menuPanel.hidden) { setMenuOpen(false); el.menuButton.focus(); }
     if (!el.panesPanel.hidden) { setPanesOpen(false); el.panesButton.focus(); }
@@ -27553,15 +27801,14 @@ document.addEventListener("keydown", (event) => {
       el.cursorsOn.checked = !el.cursorsOn.checked;
       el.cursorsOn.dispatchEvent(new Event("change"));
       break;
-    case "b": case "B":
-      event.preventDefault();
-      setView(document.body.dataset.view === "bench" ? "scope" : "bench");
-      break;
-    /* Find a control, from either view: the search lives on the Bench, so
-       from Scope it opens the Bench first. */
+    /* B switched between the Scope view and the Bench until G4 took the
+       views; it is left free rather than given to Enlarge, which has its
+       button and Esc. */
+    /* Find a control: the search lives on the Bench, so from Enlarge it
+       comes back first. */
     case "/":
       event.preventDefault();
-      if (document.body.dataset.view !== "bench") setView("bench");
+      setEnlarged(false);
       el.benchSearch.focus();
       break;
     // By their buttons, so a display chosen from the keys is a hand on the button, which the plugin hears.
@@ -27603,12 +27850,11 @@ applyPreset("n:" + BASE_NAME);
 // And inside the plugin, on what the plugin is playing.
 if (scopeHost) toHost();
 
-let startView = "scope";
-try { startView = window.localStorage.getItem(VIEW_KEY) || "scope"; }
-catch (error) { startView = "scope"; }
+try { window.localStorage.removeItem(VIEW_KEY); } catch (error) { /* private window */ }
 // Before the routings are painted, so their lanes are made on the faces.
 dressKnobs(document);
-setView(startView);
+setView();
+paintEnlarge();
 paintRoutings();
 showHelpTab(0);
 

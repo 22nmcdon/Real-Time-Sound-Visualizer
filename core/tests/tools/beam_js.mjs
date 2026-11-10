@@ -71,7 +71,7 @@ const LIFTED = ["RISING", "DIVS_X", "MIN_WINDOW", "HYSTERESIS", "SEARCH_SECONDS"
   "filterInPlace", "filterNow", "AC_CORNER_MIN", "dcBlockerCoefficients", "turnOf", "rotateTurns", "rotatesSignal",
   "MID_SIDE_TURNS", "MID_SIDE_GAIN", "MID_SIDE_FLIP", "lagSeconds", "lagActive", "SHAPE_STRIDE", "strayBetween",
   "capture", "findTriggerIndex",
-  "PAD", "plot", "wipeScreen", "clearOrFade", "fadeNudge", "wipeOutside", "stacked", "sourceFigures", "TRACE_WIDTHS", "traceWidth", "drawMain", "figureInk", "drawXY", "playingKind",
+  "PAD", "plot", "wipeScreen", "enlarge", "keepGridUntil", "enlargedHands", "bareScreen", "TRAIL_SHORT", "displayFade", "handHidden", "laneHandHidden", "clearOrFade", "fadeNudge", "wipeOutside", "stacked", "sourceFigures", "TRACE_WIDTHS", "traceWidth", "drawMain", "figureInk", "drawXY", "playingKind",
   "PHOSPHOR_N", "phosphor", "makeMoments", "phosphorFade", "phosphorFadeInto", "phosphorSegment", "phosphorSegmentInto",
   "phosphorDeposit", "phosphorReadGrid", "METER_COARSE", "METER_EVERY", "METER_DEPTH", "METER_RECENT", "METER_WINDOW", "METER_DRIFT",
   "makePictureMeter", "PICTURE_KEYS", "makePictureEngine", "const pictureEngine = makePictureEngine();",

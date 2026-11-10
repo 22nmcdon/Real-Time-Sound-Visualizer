@@ -12,7 +12,9 @@ What would go wrong, and what is checked for it:
   against a source whose value is set here, at a positive and a negative
   number, so a meter that ignored the sign or the bipolar centre would show;
 - the Add menu offering a destination the source is already on;
-- `showControl` opening the wrong view or the wrong tab;
+- `showControl` opening the wrong tab, or leaving the screen enlarged over
+  what it opened (G4: each case starts in Enlarge, which took the Scope
+  view's place as the one thing a control can be hidden behind);
 - search indexing the options inside menus (which made "cutoff" land on every
   destination menu), missing rows behind the dots, going stale when a row
   appears later, or jumping somewhere that is not the row;
@@ -155,18 +157,19 @@ with sync_playwright() as pw:
 
     print("\n--- reaching any control ---")
     reach = p.evaluate("""() => {
-      setView('scope'); setMenuOpen(false);
+      const view = () => enlarge.on ? 'enlarged' : 'face';
+      setView('bench'); setMenuOpen(false);
       setBenchTab('play');
+      setEnlarged(true);
       showControl('planeMirror');
-      const bench = { view: document.body.dataset.view, tab: benchTab, seen: el.planeMirror.offsetWidth > 0 };
-      setView('scope');
+      const bench = { view: view(), tab: benchTab, seen: el.planeMirror.offsetWidth > 0 };
+      setEnlarged(true);
       showControl('filterCutoff');
-      const measure = { view: document.body.dataset.view, open: !el.measurePanel.hidden,
+      const measure = { view: view(), open: !el.measurePanel.hidden,
                         seen: el.filterCutoff.offsetWidth > 0 };
       setMeasureOpen(false);
-      setView('scope');
       showControl('midiConnect');
-      const settings = { view: document.body.dataset.view, open: !el.menuPanel.hidden,
+      const settings = { view: view(), open: !el.menuPanel.hidden,
                          seen: el.midiConnect.offsetWidth > 0 };
       setMenuOpen(false);
       return { bench, measure, settings };
@@ -174,19 +177,19 @@ with sync_playwright() as pw:
     # The plane's mirror, on Space & Memory from Play: a control on another
     # tab. (It was the arpeggiator in the drawer until F3 took Perform to the
     # header, and the trace filter until F1 took the Measure tab away.)
-    check("a Bench control opens the Bench on its tab", reach["bench"] == {"view": "bench", "tab": "space", "seen": True},
+    check("from Enlarge, a Bench control comes back to the face on its tab", reach["bench"] == {"view": "face", "tab": "space", "seen": True},
           str(reach["bench"]))
-    check("a scope's tool opens Scope & measure over the view you were in",
-          reach["measure"] == {"view": "scope", "open": True, "seen": True}, str(reach["measure"]))
-    check("and a setting opens Settings over the view you were in",
-          reach["settings"] == {"view": "scope", "open": True, "seen": True}, str(reach["settings"]))
+    check("a scope's tool opens Scope & measure over the enlarged screen, which stays enlarged",
+          reach["measure"] == {"view": "enlarged", "open": True, "seen": True}, str(reach["measure"]))
+    check("and a setting comes back from Enlarge and opens Settings",
+          reach["settings"] == {"view": "face", "open": True, "seen": True}, str(reach["settings"]))
 
     print("\n--- search ---")
-    p.evaluate("() => setView('scope')")
+    p.evaluate("() => { setEnlarged(true); document.activeElement.blur(); }")
     p.keyboard.press("/"); p.wait_for_timeout(200)
-    slash = p.evaluate("() => ({ view: document.body.dataset.view, focus: document.activeElement.id })")
-    check("/ from Scope opens the Bench with the search box focused",
-          slash == {"view": "bench", "focus": "benchSearch"}, str(slash))
+    slash = p.evaluate("() => ({ enlarged: enlarge.on, focus: document.activeElement.id })")
+    check("/ from Enlarge comes back to the face with the search box focused",
+          slash == {"enlarged": False, "focus": "benchSearch"}, str(slash))
     p.keyboard.type("a/b"); p.wait_for_timeout(100)
     check("and a slash typed into it is a slash, not the shortcut",
           p.evaluate("el.benchSearch.value") == "a/b", p.evaluate("el.benchSearch.value"))

@@ -1,8 +1,10 @@
 """The Bench and Settings: every section in its home, the Bench as tabs.
 
-Each section lives in one place in both views - Settings for what is set once,
-the Bench for everything played - and the Bench shows one task's sections at
-a time. The thing most likely to go wrong is still duplication - a control copied into
+Each section lives in one place - Settings for what is set once, the Bench for
+everything played - and the Bench shows one task's sections at a time. The
+Bench is the one face since G4 (the Scope view went; Enlarge took its frame),
+so what this held "in both views" it now holds on the face and after the
+screen has been to Enlarge and back, which is the one move left. The thing most likely to go wrong is still duplication - a control copied into
 the bench instead of moved gives two elements one id, and getElementById
 silently returns the first. That has already cost this page one readout line,
 so it is the first thing asserted.
@@ -42,16 +44,17 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
-    print("\n--- one node per control, in both views ---")
-    check("no duplicate ids in Scope", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
+    print("\n--- one node per control, on the face and through Enlarge ---")
+    check("no duplicate ids on the face", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
+    p.locator("#enlargeButton").click(); p.wait_for_timeout(400)
+    check("no duplicate ids with the screen enlarged", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
+    p.keyboard.press("Escape"); p.wait_for_timeout(300)
 
-    p.locator("#viewBench").click(); p.wait_for_timeout(400)
-    check("no duplicate ids in Bench", p.evaluate(DUPES) == [], str(p.evaluate(DUPES)))
-
-    # Every section has a home now and stays in it in both views: Settings
-    # holds what is set once and left, the Bench everything played. This
-    # used to assert the opposite - every group moved to the Bench and every
-    # group came back - which is what made the two views identical.
+    # Every section has a home and stays in it: Settings holds what is set
+    # once and left, the Bench everything played. Read on the face and again
+    # after Enlarge (the old Scope view's round trip, since G4): Scope & measure
+    # travels with the screen, so its sections are the ones that could be left
+    # behind in the frame.
     homes = p.evaluate("""() => {
       const where = () => settingsGroups().map((g) => ({
         title: groupTitle(g), home: g.dataset.home,
@@ -59,16 +62,15 @@ with sync_playwright() as pw:
         inPanel: !!g.closest('#menuPanel'), inMeasure: !!g.closest('#measurePanel'),
         onBench: !!g.closest('#bench') && !g.closest('#measurePanel') }));
       const bench = where();
-      setView('scope');
-      const scope = where();
-      return { bench, scope,
-               menuInScope: getComputedStyle(el.menuButton).display !== 'none',
+      setEnlarged(true); setEnlarged(false);
+      const back = where();
+      return { bench, back,
                panelTitles: Array.from(el.menuPanel.querySelectorAll('.settings-col > .menu-group')).map(groupTitle) };
     }""")
-    misplaced = [g["title"] + " in " + view for view in ("bench", "scope") for g in homes[view]
+    misplaced = [g["title"] + " in " + when for when in ("bench", "back") for g in homes[when]
                  if (g["home"] == "settings") != g["inPanel"] or (g["home"] == "bench") != g["onBench"]
                  or (g["home"] == "measure") != g["inMeasure"]]
-    check("every section is in its home in both views", misplaced == [], str(misplaced))
+    check("every section is in its home, on the face and after Enlarge and back", misplaced == [], str(misplaced))
     # F1 (redesigning-the-face.md): the scope's own tools are Scope & measure's,
     # a panel over the screen in either view - the null is the P8 drawer's tab.
     measured = sorted(g["title"] for g in homes["bench"] if g["inMeasure"])
@@ -87,8 +89,7 @@ with sync_playwright() as pw:
           sorted(homes["panelTitles"]) == ["Audio", "Input", "Input into the generator", "MIDI", "Modulation fade", "This window"],
           str(homes["panelTitles"]))
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(300)
-    check("and Settings opens from the Bench as well as from Scope",
-          homes["menuInScope"] and p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
+    check("and Settings opens from the face", p.evaluate("getComputedStyle(el.menuButton).display !== 'none'"))
     check("still no duplicates after a round trip", p.evaluate(DUPES) == [])
     dev = p.evaluate("() => ({ shown: !el.deviceRow.hidden, disabled: el.device.disabled, why: el.device.title })")
     check("the device picker is there over the tone, greyed with the reason",
@@ -401,13 +402,14 @@ with sync_playwright() as pw:
       return { inked, pixels: px.length / 4, height: c.getBoundingClientRect().height,
                fps: state.fps };
     }""")
-    p.evaluate("() => setView('scope')"); p.wait_for_timeout(400)
+    # Enlarge took the Scope view's frame and its panes (G4): there the sheet is in the panes.
+    p.evaluate("() => setEnlarged(true)"); p.wait_for_timeout(400)
     scope_home = p.evaluate("""() => ({
       parent: el.traceSheet.parentElement.id,
       height: el.trace.getBoundingClientRect().height,
       screenShown: getComputedStyle(document.querySelector('.screen')).display,
     })""")
-    p.evaluate("() => setView('bench')"); p.wait_for_timeout(400)
+    p.evaluate("() => setEnlarged(false)"); p.wait_for_timeout(400)
     bench_home = p.evaluate("""() => {
       const box = el.traceSheet.getBoundingClientRect();
       return {
@@ -418,11 +420,11 @@ with sync_playwright() as pw:
     }""")
     check("the screen is one canvas, moved rather than copied",
           p.evaluate("() => document.querySelectorAll('#trace').length") == 1)
-    check("in Scope it lives in the panes", scope_home["parent"] == "panes",
+    check("enlarged it lives in the panes", scope_home["parent"] == "panes",
           scope_home["parent"])
-    check("in Bench it lives in the square", bench_home["parent"] == "benchScope",
+    check("on the face it lives in the square", bench_home["parent"] == "benchScope",
           bench_home["parent"])
-    check("and the full-height screen is gone rather than squeezed",
+    check("and Enlarge's frame is not drawn on the face, and is while enlarged",
           bench_home["screenShown"] == "none" and scope_home["screenShown"] != "none",
           "%s / %s" % (bench_home["screenShown"], scope_home["screenShown"]))
     check("the bench screen is square",
@@ -473,14 +475,17 @@ with sync_playwright() as pw:
     check("and the generator's come back with the tone", mod["tone"]["genAlive"],
           str(mod["tone"]))
 
-    print("\n--- the view is remembered ---")
-    # Ink rather than Play, which is where a forgotten tab lands.
-    p.evaluate("() => setBenchTab('ink')")
+    print("\n--- the tab is remembered, and Enlarge is not ---")
+    # Ink rather than Play, which is where a forgotten tab lands. The view was
+    # remembered too until G4 took the views; a page that last opened on
+    # Scope has its key removed, and Enlarge is not kept past the page.
+    p.evaluate("() => { setBenchTab('ink'); localStorage.setItem('scope.view', 'scope'); setEnlarged(true); }")
     p.reload(); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    kept = p.evaluate("() => ({ view: document.body.dataset.view, tab: benchTab })")
-    check("the bench and its tab survive a reload",
-          kept == {"view": "bench", "tab": "ink"}, str(kept))
+    kept = p.evaluate("""() => ({ tab: benchTab, view: localStorage.getItem('scope.view'), attr: document.body.dataset.view || null,
+      enlarged: document.body.dataset.enlarged !== undefined, sheet: el.traceSheet.parentElement.id })""")
+    check("the tab survives a reload; the old view's key is gone, and the page opens on the face, not enlarged",
+          kept == {"tab": "ink", "view": None, "attr": None, "enlarged": False, "sheet": "benchScope"}, str(kept))
     check("no errors after reload", not bad, "; ".join(bad[:3]))
     # A tab remembered from before P8 lands where its sections went, and a
     # name that never was a tab lands on Play - the null, which shows the
@@ -556,16 +561,18 @@ with sync_playwright() as pw:
     print("\n--- Scope & measure (F1) ---")
     # The scope's own tools in a panel over the screen, shut by default; the
     # readouts under the screen off unless asked for; the toolbar above the
-    # screen in either view; and the developer's labels gone from the face.
+    # screen on the face and enlarged (the Scope view's place until G4); and
+    # the developer's labels gone from the face.
     FIT = """() => {
       const out = {};
-      for (const view of ['bench', 'scope']) {
-        setView(view); setMeasureOpen(true);
+      for (const view of ['bench', 'enlarged']) {
+        setView('bench'); if (view === 'enlarged') setEnlarged(true);
+        setMeasureOpen(true);
         const box = el.measurePanel.getBoundingClientRect();
         out[view] = { inside: box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth,
                       scrolls: el.measurePanel.scrollHeight > el.measurePanel.clientHeight + 1,
                       over: el.screenTools.nextElementSibling === (view === 'bench' ? el.benchScope : el.panes) };
-        setMeasureOpen(false);
+        setMeasureOpen(false); setEnlarged(false);
       }
       return out;
     }"""
@@ -582,12 +589,13 @@ with sync_playwright() as pw:
     for w, h in ((1400, 900), (960, 600)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
         fit = p.evaluate(FIT)
-        check("at %dx%d the panel is inside the window in both views, nothing in it scrolls, and its toolbar is on the screen" % (w, h),
+        check("at %dx%d the panel is inside the window on the face and enlarged, nothing in it scrolls, and its toolbar is on the screen" % (w, h),
               all(v == {"inside": True, "scrolls": False, "over": True} for v in fit.values()), str(fit))
     print("\n--- the Picture along the bottom (F2) ---")
+    # On the face: Enlarge covers it, which is its point (G4; the Scope view had it too).
     BAR = """() => {
       const out = {};
-      for (const view of ['bench', 'scope']) {
+      for (const view of ['bench']) {
         setView(view);
         const bar = el.pictureBar.getBoundingClientRect();
         const knobs = Array.from(el.pictureBar.querySelectorAll('.knob-row input[type=range]')).map((i) => i.id);
@@ -606,7 +614,7 @@ with sync_playwright() as pw:
     for w, h in ((1400, 900), (960, 600)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
         bar = p.evaluate(BAR)
-        check("at %dx%d the Picture is along the bottom in both views, its six knobs (Level last), one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
+        check("at %dx%d the Picture is along the bottom, its six knobs (Level last), one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
               all(v == want_bar for v in bar.values()), str(bar))
     # Its null: the menu put back on the face is a second Persistence.
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
@@ -625,7 +633,6 @@ with sync_playwright() as pw:
     p.evaluate("() => setSize('auto')")
     check("null: at 960x480 the same check says the panel does not fit", not short["bench"]["inside"], str(short))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
-    p.evaluate("() => setView('scope')")
     check("no page errors across the run", not bad, "; ".join(bad[:4]))
     b.close()
 

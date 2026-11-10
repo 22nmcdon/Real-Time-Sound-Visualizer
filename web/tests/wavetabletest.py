@@ -254,7 +254,7 @@ with sync_playwright() as pw:
       for (const [tab] of BENCH_TABS) { setBenchTab(tab); over[tab] = el.benchBody.scrollHeight - el.benchBody.clientHeight; }
       const out = { over, table: genSettings().table,
                     bank: JSON.stringify(genSettings().wavetable) === JSON.stringify(drawnCycle.bank) };
-      setView('scope');
+      // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       return out;
     }""")
     print("    %s" % fit)
