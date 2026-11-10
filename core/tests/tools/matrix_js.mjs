@@ -54,7 +54,7 @@ const LIFTED = [
   "CUTOFF_STEPS", "DRAWBARS", "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT",
   "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT",
   "SPIN_SLOT", "TURN_SLOT", "BEND_SLOT", "BEND_AT_SLOT", "PHASER_SLOT", "DELAY_TONE_SLOT", "REVERB_SLOT", "REVERB_SIZE_SLOT", "REVERB_TONE_SLOT", "MOD_SOURCES", "MOD_DESTS", "registerSource", "registerDest", "routingAllowed", "LOOP_TOTAL",
-  "clampLoop", "routingAmount", "GEN_DESTS",
+  "clampLoop", "routingAmount", "GEN_DESTS", "GEN_SLOTS",
   "FADE_MODES", "FADE_LIMITS", "ENV_DEFAULT", "fade", "routeKey", "fadesIn", "fadesOut", "fadeLayered",
   "fadeTravel", "rampMs", "rampAt", "rampDone", "rampTo", "rampStill", "gatePhase", "gateSet", "fadeGain",
   "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
