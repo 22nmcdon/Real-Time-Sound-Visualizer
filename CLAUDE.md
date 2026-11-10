@@ -19,9 +19,20 @@ will save you rediscovering them.
 
 ## Always
 
-**Run the tests.** Not a subset at the end — the suite is fast enough to run
-while you work, and it is the only thing standing between a subtle change and a
-silently broken instrument.
+**Run the tests.** While building, run the suites near the change, as often as
+you like. Before anything reaches the working branch - a push there publishes the
+site - run the whole web suite **and** parity, once per batch of stages rather
+than once per stage (the owner's call, 10 Nov: a batch costs one wait, and the
+cost is that a failure has more candidates). Changes that cannot alter behaviour
+- docs, design notes, the info line's words, whose own suite checks them - merge
+after the suites that read them. Any change to `core/`, or to anything the core
+shares with the page (a setup field, a slot, a slider's place in the markup),
+runs parity before it merges, however small: twice in one day the web suite was
+green while parity was not, because the web suite runs the page whole and the
+page agrees with itself. And do not narrow the full run to the suites you think
+are affected: on this one-file page that guess was wrong about half the time on
+9 Nov (a layout change broke the plugin's checks; a glide change exposed a
+harness the wash fix had broken a day earlier).
 
 ```
 python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
