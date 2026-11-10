@@ -77,7 +77,7 @@ BIN = """() => { window.__bin = (x, f, rate) => {
 CORE = """([setup, rounds]) => {
   const rate = 44100, HZ = (n) => 440 * Math.pow(2, (n - 69) / 12);
   const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 0.9, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
   core.set('shape', 'sine'); core.set('shape', 'sine', 1);
   core.set('voices', [{ note: 48, freq: HZ(48), velocity: 1, role: 'x' }, { note: 55, freq: HZ(55), velocity: 1, role: 'y' }]);
   core.set('voices', [{ note: 69, freq: HZ(69), velocity: 1, role: 'xy' }], 1);
@@ -186,13 +186,14 @@ with sync_playwright() as pw:
     check("and with B's own plane off the routing turns nothing",
           same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
     way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: !!el.planeTurnRow.querySelector('.mod-open'),
-                                 listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === SPIN_SLOT + 3
-                                   && GEN_DESTS.findIndex((d) => d.id === 'gen.turn') === SPIN_SLOT + 3 })""")
+                                 listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === 32 })""")
     # It was the table's last slot when it came, so that no slot before it
     # moved, and this asserted exactly that; since P6c the bend's two come
     # after it, so what is held is the same thing said directly - it sits
-    # after the third axis, and the table's order is the slots'.
-    check("the Turn row takes a routing like any destination, and it sits after the third axis, where it was added",
+    # after the third axis. Since G2 the three axes' slots are unused and the
+    # table no longer has an entry a slot, so the number itself is held: 32,
+    # where it was added, since the core shares it and nothing is closed up.
+    check("the Turn row takes a routing like any destination, and it is slot 32, where it was added",
           way == {"dest": "gen.turn", "open": True, "listed": True}, str(way))
 
     print("\n--- the core: B's own echo and chorus ---")

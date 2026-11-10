@@ -235,44 +235,15 @@ def calls():
     out += [voices_call(v) for v in voice_scenarios()]
     out += [plane_call(v) for v in plane_scenarios()]
     out += LAG_RUNS
-    out += drawing_calls()
+    out += hypot_and_lfo_calls()
     return out
 
-SOLIDS = ["Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"]
-
-def drawing_calls():
-    """The figures at their corners and between, each detail rounded either
-    way and fractional where the figure keeps the fraction, a rose far into
-    its turns; a compiled path, a path of one point and none. The solids as
-    built, and walked: turned, slow and fast, switched and reset mid-lap.
-    The LFOs, the random one fast enough to draw many times."""
+def hypot_and_lfo_calls():
+    """Math.hypot, which the picture's length and roundness read, and the
+    LFOs, the random one fast enough to draw many times. The figures at
+    their corners and the solids as built and walked were here too, until
+    G2 took the drawings."""
     out = []
-    figures = ["Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph",
-               "Butterfly", "Nonsense"]
-    ts = sorted({k / d for d in (4, 5, 6, 7, 8, 12) for k in range(d)} | {rng.random() for _ in range(12)}
-                | {0.999999999, 1e-12})
-    for name in figures:
-        for detail in (0, 2.5, 3, 4.5, 5, 6.5, 7, 12):
-            for t in ts:
-                out.append("figureAt %s %r %r -" % (name, t, detail))
-    for t in (0.0, 1.25, 517.3, 10079.999):
-        out.append("figureAt Rose %r 3.7 -" % t)
-    path = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
-    for t in ts + [3.4, 0.5, 0.18]:
-        for name in ("Text", "Path", "Drawn"):
-            out.append("figureAt %s %r 5 %s" % (name, t, path))
-    # A path with a time more than it has points, which the path above was by
-    # mistake for as long as this harness has had it. The page reads the
-    # missing point as undefined and answers NaN past the last one; the core
-    # read past the end of its vector, and the comparison skipped NaN, so
-    # both went unseen. Nothing the page builds is short; this holds the core
-    # to NaN rather than to whatever memory follows.
-    short = "P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"
-    for t in (0.1, 0.6, 0.9, 0.99):
-        out.append("figureAt Path %r 5 %s" % (t, short))
-    out.append("figureAt Drawn 0.3 5 P:0.4,0.4;0")
-    out.append("figureAt Text 0.3 5 -")
-    for s in SOLIDS: out.append("solidData " + s)
     # Math.hypot to the last bit: V8 scales by the largest and compensates the
     # sum, which only the last place shows. Values whose squares carry well
     # past a double's width, so the compensation has something to keep.
@@ -280,11 +251,6 @@ def drawing_calls():
         vals = [rng.uniform(-1, 1) * 10 ** rng.randint(-3, 3) for _ in range(rng.choice([2, 3]))]
         out.append("hypot " + " ".join("%r" % v for v in vals))
     out.append("hypot 0.0 0.0 0.0")
-    for s in SOLIDS:
-        out.append("wireRun model=%s samples=1800 rate=48000 laps=40 depth=0.45 s0=0.11 s1=0.17 s2=0.3 ev=" % s)
-    out.append("wireRun model=Cube samples=3000 rate=48000 laps=300 depth=0.9 s0=2 s1=-1.3 s2=0.7 "
-               "ev=700:model:Knot;1300:depth:0.1;1900:reset;2300:model:Torus;2600:model:Torus")
-    out.append("wireRun model=Icosahedron samples=1200 rate=44100 laps=0.5 depth=1 s0=0 s1=0 s2=0 ev=600:model:Nonsense")
     for shape in ("sine", "triangle", "ramp", "square", "random"):
         for hz, seed in ((0.2, 1), (7.0, 9), (300.0, 4)):
             out.append("lfoRun %s %r %d 2000 48000" % (shape, hz, seed))
@@ -605,7 +571,7 @@ for call, a, b in zip(lines, js_rows, cpp_rows):
     name = call.split()[0] + (" " + call.split()[1] if call.startswith(("waveAt", "noiseRun")) else "")
     if call.startswith("voicesRun"): name += " " + call.split(" shape=")[1].split()[0]
     if call.startswith("planeRun"): name += " at %sx" % call.split(" planeOS=")[1].split()[0]
-    if call.startswith(("figureAt", "lfoRun")): name += " " + call.split()[1]
+    if call.startswith("lfoRun"): name += " " + call.split()[1]
     by_name[name] = max(by_name.get(name, 0.0), w)
     if w > worst_line[1]: worst_line = (call[:80], w)
 check("every call answered by both: %d calls" % len(lines), len(js_rows) == len(cpp_rows) == len(lines),
@@ -870,11 +836,8 @@ check("and against B's own reverb given A's pushes",
 rm = next(i for i, l in enumerate(lines) if "5000:reverbSpread:1" in l)
 check("and against the reverb's moves under the pairs with the spread's left out",
       worst(js_one(lines[rm].replace("5000:reverbSpread:1;", "")), row(cpp_rows[rm])) > 1e-6)
-# The drawings: a solid that was never reset mid-lap, and a random LFO drawing
-# from another seed, must both be told apart.
-walk = next(i for i, l in enumerate(lines) if "1900:reset" in l)
-check("and against a solid that was not reset mid-lap",
-      worst(js_one(lines[walk].replace(";1900:reset", "")), row(cpp_rows[walk])) > 1e-6)
+# A random LFO drawing from another seed must be told apart. (A solid that
+# was never reset mid-lap was the other, until G2 took the solids.)
 held = next(i for i, l in enumerate(lines) if l.startswith("lfoRun random 300.0"))
 check("and against a random LFO from another seed",
       worst(js_one(lines[held].replace(" 4 2000", " 5 2000")), row(cpp_rows[held])) > 1e-6)
@@ -884,10 +847,13 @@ check("and against a pulse of 0.3 answered as one of 0.31",
             row(cpp_rows[pulse])) > 1e-6)
 
 print("\n--- the whole generator ---")
-# Slots, as GEN_DESTS has them.
-FREQ, AMP, PHASE, RATIO, DETAIL, TUMBLE, DEPTH, BAR = 0, 1, 2, 3, 4, 5, 6, 7
-MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT, SWING, WIDTH, TABLE, SPIN = range(16, 30)
-TURN = SPIN + 3
+# Slots, as GEN_DESTS has them. 4 to 6, 26 and 29 to 31 were the drawings'
+# (the figure's detail, the solid's spin rate, perspective and three spins,
+# the pendulums' energy) and are empty since G2: nothing after them moved.
+FREQ, AMP, PHASE, RATIO, BAR = 0, 1, 2, 3, 7
+MORPH, RADIUS, TWIST, FM, SYNC, DRIVE, FOLD, VCF, ECHO, ECHOT = range(16, 26)
+WIDTH, TABLE = 27, 28
+TURN = 32
 BEND, BEND_AT = TURN + 1, TURN + 2
 PHASER_S, DTONE = BEND_AT + 1, BEND_AT + 2
 REVERB, RSIZE, RTONE = DTONE + 1, DTONE + 2, DTONE + 3
@@ -900,10 +866,11 @@ def notes(*ns):
     return "+".join("%d/%r/%r/%s" % (n[0], 440 * 2 ** ((n[0] - 69) / 12), n[2] if len(n) > 2 else 1.0, n[1]) for n in ns)
 
 def gen_runs():
-    """The page's makeGeneratorCore and the port, driven alike: every mode,
-    each feature in it, and the calls a worklet makes between blocks - the
-    routings, the chord, the gate, a strike, a kick, a reswing - landing
-    while things sound."""
+    """The page's makeGeneratorCore and the port, driven alike: the dyad and
+    the chord, each feature in them, and the calls a worklet makes between
+    blocks - the routings, the chord, the gate, a strike, a reswing - landing
+    while things sound. (The figures, the solids, the pendulums and the
+    second generator had runs of their own until G2 took them.)"""
     grng = random.Random(7)
     def tset():
         sizes = [16, 8, 4, 2]
@@ -1057,7 +1024,7 @@ def gen_runs():
                                               route(FM, 0.3, amountB=-0.2, index=1)])),
                     (0, "set drive 0.3 1"), (0, "set fmIndex 1 1"),
                     # Fields layer B does not have are not written into A by a set on B.
-                    (512, "set freq 500 1"), (512, "set planeTwist 1.5 1"), (512, "set mode figure 1"), (512, "set amp 0.3"),
+                    (512, "set freq 500 1"), (512, "set planeTwist 1.5 1"), (512, "set amp 0.3"),
                     # A held routing that holds one value for A and another for B.
                     (1024, "routes " + route(FREQ, 0.25, held=0.2, heldB=-0.6)),
                     (1536, "voices 1 " + notes((74, "x"))), (2560, "voices 1 null"), (3072, "voices 1 " + notes((79, "y")))])
@@ -1108,45 +1075,6 @@ def gen_runs():
     add("governed-tails", tails, samples=2048)
     # And the block right after the let-go, while the tails cut are still fading.
     add("governed-cut", tails, samples=640)
-    # The drawings.
-    for fig in ("Circle", "Square", "Polygon", "Star", "Rose", "Heart", "Infinity", "Spiral", "Spirograph", "Butterfly"):
-        add("figure-" + fig, [(0, "set mode figure"), (0, "set figure " + fig), (0, "set figureRate 170"),
-                              (0, "routes " + route(DETAIL, 0.4, index=1)), (2048, "set detail 7.5")])
-    add("figure-path", [(0, "set mode figure"), (0, "set figure Text"),
-                        (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
-                        (0, "set figureRate 90")])
-    # This run's path had a time more than it had points, by mistake, for as
-    # long as it has existed; the page drew NaN for the last stretch and the
-    # core read past its vector, and a comparison that skipped NaN called
-    # them the same. The short path is held at figureAt now, where NaN is
-    # compared as NaN. Not here: the generator's output is clamped, with
-    # fmin and fmax in the core, which take the bound for a NaN, and with
-    # Math.min and Math.max on the page, which keep it - so a NaN sample is
-    # full scale in one and NaN in the other. The core's is the safer for a
-    # host, and nothing the page builds makes a NaN to reach it.
-    add("figure-path-cleared", [(0, "set mode figure"), (0, "set figure Path"),
-                                (0, "figPath P:-0.5,0.2,0.3,0.8,0.9,-0.4,-0.1,-0.7,0.4,0.1,-0.5,0.2;0,0.18,0.5,0.5,0.86,1"),
-                                (0, "set figureRate 90"), (2048, "figPath none")])
-    add("figure-rose-turns", [(0, "set mode figure"), (0, "set figure Rose"), (0, "set detail 2.37"),
-                              (0, "set figureRate 2400")], samples=6144)
-    for model in ("Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"):
-        add("solid-" + model, [(0, "set mode wireframe"), (0, "set model " + model), (0, "set figureRate 60"),
-                               (0, "routes " + "+".join([route(TUMBLE, 0.5, index=0), route(DEPTH, 0.6, index=1),
-                                                         route(SPIN + 1, 0.8, index=1)])),
-                               (1024, "kick 2"), (2048, "spin 0.5,-0.2,0.9"), (3072, "kick -1.5")], lfo0="sine,2")
-    # Run down inside the run (a decay of 40 is a fortieth of a second a
-    # neper), so it is let go again and the relet's fade is in the output;
-    # then struck, then driven.
-    add("swing", [(0, "set mode harmonograph"), (0, "set decay 40"), (0, "set swingRate 40"), (0, "set detune 0.02"),
-                  (5248, "reswing"), (5632, "set swingDrive 0.5"), (5632, "routes " + route(SWING, 0.5, index=1)),
-                  (6400, "set swingDrive 0"), (6400, "routes none")],
-        samples=7168)
-    # A change of mode lets the pendulums go again, mid-swing.
-    add("swing-mode", [(0, "set mode harmonograph"), (0, "set decay 3"), (0, "set swingRate 30"),
-                       (1536, "set mode figure"), (2048, "set mode harmonograph")])
-    add("swing-pitched", [(0, "set mode harmonograph"), (0, "set pitched true"), (0, "set ringMs 40"),
-                          (0, "set freq 330"), (0, "set qMask 2741"), (1024, "reswing"), (2048, "set freq 290"),
-                          (2560, "reswing"), (3584, "set decay 0.5")])
     # The plane on a dyad and on a chord.
     add("plane-dyad", [(0, "set planeTwist 0.9"), (0, "set planeLimit 1"), (0, "set planeRadius 0.3"),
                        (0, "set chorusMix 0.5"), (0, "set chorusRate 3"), (0, "set delayMix 0.4"), (0, "set delayMs 9"),
@@ -1216,24 +1144,21 @@ def gen_runs():
                                   (0, "set chorusRate 4 1"), (0, "set delayMix 0.4 1"), (0, "set delayMs 6 1"),
                                   (1024, "set planeOwn true 1"), (2048, "set planeOwn false 1"),
                                   (2560, "set planeOwn true 1"), (3072, "set delayMs 9 1")])
-    # The score's voice, and the input three ways and from the second
-    # generator. Five strikes on a traced figure, the fifth taking the voice
-    # furthest into its decay. (The crossings had a run here, and a second
-    # where the beam dipped below a line without re-arming it; both went in P5.)
-    add("score-struck", [(0, "set mode figure"), (0, "set figureRate 30"), (0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"),
+    # The score's voice, and the input three ways. Five strikes on the dyad,
+    # the fifth taking the voice furthest into its decay. (On a traced
+    # figure, and the input from the second generator too, until G2. The
+    # crossings had a run here, and a second where the beam dipped below a
+    # line without re-arming it; both went in P5.)
+    add("score-struck", [(0, "set scoreDecayMs 10"), (2048, "strike 440 0.8"),
                          (2560, "strike 550 1"), (2688, "strike 660 0.4"), (2816, "strike 880 0.9"), (2944, "strike 990 0.7")],
         samples=8192)
     # A clock input that never goes below nought: it dips into the
     # hysteresis and out again, which re-arms nothing.
-    add("input-clock-dc", [(0, "input 97 0.295 0.3"), (0, "set inputMode 3"), (0, "set mode figure")])
+    add("input-clock-dc", [(0, "input 97 0.295 0.3"), (0, "set inputMode 3")])
     for mode in (1, 2, 3):
         add("input-%d" % mode, [(0, "input 97 0.6"), (0, "set inputMode %d" % mode), (0, "set inputDepth 0.4"),
-                                (0, "set mode figure"), (2048, "set mode wave"), (3072, "input 0 0")])
+                                (3072, "input 0 0")])
     add("input-ride-poly", [(0, "input 61 0.5"), (0, "set inputMode 2"), (0, "voices 0 " + notes((60, "x"), (64, "u")))])
-    for mode in (1, 2, 3):
-        add("gen2-%d" % mode, [(0, "set inputFrom gen2"), (0, "set inputMode %d" % mode), (0, "set gen2Figure Star"),
-                               (0, "set gen2Rate 73"), (0, "set mode figure"), (2048, "set mode wave"),
-                               (3072, "set gen2Rate 70000")])
     add("effect", [(0, "fx 1"), (0, "input 140 0.7"), (0, "set planeTwist 0.7"), (0, "set chorusMix 0.6"),
                    (0, "routes " + route(TWIST, 0.5, index=0)), (2048, "set planeSnap 4")])
     # More of the effect, now that the compiled core plays it too: the echo
@@ -1313,12 +1238,12 @@ for family in sorted(gworst):
 
 # Each run has to be able to show what it is for: a comparison of two cores
 # doing nothing would pass. The report at the end of a row is envelope, pitch,
-# the kick, the swing, then the budget (units,
-# asked A and B, unison A and B, asked factor, factor, silenced), the drawing
-# (swing, pendulum, three turns, facing), the voices on each layer, and then
-# the sources that read the generator, the page's registrations against the
-# core's: the note envelope and the drawings' six.
-TAIL = 29   # the end values: twenty, each layer's read-head (P8f), then the seven sources
+# then the budget (units, asked A and B, unison A and B, asked factor, factor,
+# silenced), the voices on each layer, each layer's read-head (P8f), and then
+# the source that reads the generator, the page's registration against the
+# core's: the note envelope. (The kick, the swing, the drawing's six readings
+# and the drawings' six sources were in it too, until G2.)
+TAIL = 15   # the end values: twelve, each layer's read-head, then the source
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -1328,8 +1253,8 @@ quiet = [n for n, _ in runs if max(abs(x) for x in col(grow(n)[0], 0)) < 0.01]
 check("every run puts something on the screen", not quiet, ", ".join(quiet))
 body, tail = grow("governed-held")
 check("the governor, given everything, takes copies and voices away",
-      tail[7] < tail[5] and tail[8] < tail[6] and tail[10] < tail[9] and tail[11] > 0,
-      "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[5], tail[6], tail[7], tail[8], tail[10], tail[9], tail[11]))
+      tail[5] < tail[3] and tail[6] < tail[4] and tail[8] < tail[7] and tail[9] > 0,
+      "asked %d/%d, given %d/%d, factor %d of %d, %d silenced" % (tail[3], tail[4], tail[5], tail[6], tail[8], tail[7], tail[9]))
 body, _ = grow("layered")
 check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 0.05)
 # The loop overlay's read-head (P8f) is in every run's tail, so the page's
@@ -1340,12 +1265,12 @@ check("layer B draws a picture of its own", max(abs(x) for x in col(body, 4)) > 
 _, ltail = grow("layered")
 _, ctail = (lambda v: (v[:-TAIL], v[-TAIL:]))(row(gcpp[next(k for k, (n, _) in enumerate(runs) if n == "layered")]))
 check("each layer's read-head is a place round the circle, the same in the page and the core",
-      0 <= ltail[20] < 1 and 0 <= ltail[21] < 1 and ltail[20] not in (0.0, 0.25, 0.5, 0.75)
-      and ltail[20] == ctail[20] and ltail[21] == ctail[21], "A %.6f, B %.6f" % (ltail[20], ltail[21]))
+      0 <= ltail[12] < 1 and 0 <= ltail[13] < 1 and ltail[12] not in (0.0, 0.25, 0.5, 0.75)
+      and ltail[12] == ctail[12] and ltail[13] == ctail[13], "A %.6f, B %.6f" % (ltail[12], ltail[13]))
 plain = [n for n, r in runs if "voices" not in r and "fx 1" not in r]
 _, ptail = grow(plain[0])
-check("with no layer B, B's read-head is nobody's", ptail[21] == -1 and 0 <= ptail[20] < 1,
-      "%s: A %.6f, B %.6f" % (plain[0], ptail[20], ptail[21]))
+check("with no layer B, B's read-head is nobody's", ptail[13] == -1 and 0 <= ptail[12] < 1,
+      "%s: A %.6f, B %.6f" % (plain[0], ptail[12], ptail[13]))
 own, off = grow("plane-own")[0], grow("plane-own-off")[0]
 check("layer B's own plane bends B's picture and its share of the sound, and leaves A's picture as it was",
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
@@ -1397,24 +1322,14 @@ def inner_drawn(with_, without):
 check("a chord's inner voice is drawn: the picture differs from the same chord without it",
       inner_drawn(body, grow("poly-no-inner")[0]))
 check("and the check fails on two pictures of one chord", not inner_drawn(body, body))
-check("the second generator is drawn while there is no layer B", all(max(abs(x) for x in col(grow("gen2-%d" % m)[0], 4)) > 0.1
-                                                                     for m in (1, 2, 3)))
-_, tail = grow("solid-Cube")
-check("a solid turns, and a kick is still spinning it", abs(tail[14]) + abs(tail[15]) > 0.01 and tail[2] != 0)
-# The sources: a solid whose three turns all differ, so a swapped axis is not
-# hidden; the envelope as a source somewhere non-zero; and somewhere ungated,
-# where the generator reports one and the source has to read nought.
+# The source: the envelope somewhere non-zero, and somewhere ungated, where
+# the generator reports one and the source has to read nought.
 tails = {n: grow(n)[1] for n, _ in runs}
-# The sources start at 22, after the twenty and each layer's read-head.
-turned = [n for n, t in tails.items() if len({round(x, 9) for x in t[25:28]}) == 3 and min(abs(x) for x in t[25:28]) > 1e-3]
-swung = [n for n, t in tails.items() if abs(t[23]) > 1e-3 and abs(t[24]) > 1e-3]
-enveloped = [n for n, t in tails.items() if t[22] > 1e-3]
-ungated = [n for n, t in tails.items() if t[0] == 1 and t[22] == 0]
-check("the runs can show the sources: a solid's three turns apart, the pendulums swinging, an envelope, and an ungated one",
-      turned and swung and enveloped and ungated, "%d, %d, %d, %d" % (len(turned), len(swung), len(enveloped), len(ungated)))
-_, tail = grow("swing-pitched")
-check("pitched, the pendulums sound at a quantised pitch", abs(12 * math.log2(tail[1] / 440) - round(12 * math.log2(tail[1] / 440))) < 1e-9
-      and tail[1] > 200, "%.4f Hz" % tail[1])
+# The source is at 14, after the twelve and each layer's read-head.
+enveloped = [n for n, t in tails.items() if t[14] > 1e-3]
+ungated = [n for n, t in tails.items() if t[0] == 1 and t[14] == 0]
+check("the runs can show the source: an envelope, and an ungated one",
+      enveloped and ungated, "%d, %d" % (len(enveloped), len(ungated)))
 # Nulls: the page told something different, and the port must disagree.
 def gjs_one(text):
     path = os.path.join(BUILD, "one_gen.txt")
@@ -1428,7 +1343,6 @@ def gnull(name, old, new, what):
 gnull("poly", "/0.7/y", "/0.69/y", "a chord with one velocity a hundredth less")
 gnull("input-3", "input 97 0.6", "input 98 0.6", "a clock a hertz faster")
 gnull("governed-held", "set shapeOS 4", "set shapeOS 2", "a governor that never had four times to give up")
-gnull("solid-Knot", "kick 2", "kick 2.01", "a kick a two-hundredth harder")
 gnull("plane-own-time", "set delayMs 4 1", "set delayMs 7 1", "layer B's own echo as long as layer A's")
 gnull("menv-decay", "set menvOwn 1", "set menvOwn 0", "the Envelope following Play's")
 gnull("reverb-fields", "set reverbSpread 0.7\n", "set reverbSpread 0.6\n", "A's reverb spread a tenth narrower")
@@ -1445,8 +1359,8 @@ _, one = grow("menv-poly-one")
 _, leg0 = grow("menv-poly-legato-play")
 _, one0 = grow("menv-poly-one-play")
 check("its own envelope is one swell for overlapping notes: a second note held leaves it where one note does",
-      leg[22] == one[22] and leg[22] > 0, "%.6f, %.6f" % (leg[22], one[22]))
-check("null: following Play, the second note's own envelope shows", leg0[22] != one0[22], "%.6f, %.6f" % (leg0[22], one0[22]))
+      leg[14] == one[14] and leg[14] > 0, "%.6f, %.6f" % (leg[14], one[14]))
+check("null: following Play, the second note's own envelope shows", leg0[14] != one0[14], "%.6f, %.6f" % (leg0[14], one0[14]))
 # Every note: struck again at 3072, 512 samples on it is back up its attack,
 # where Phrase is still decaying, and below where Phrase was at the strike.
 _, ev = grow("menv-every")
@@ -1454,9 +1368,9 @@ _, ph = grow("menv-phrase")
 _, sh = grow("menv-every-shut")
 _, sg = grow("menv-every-gate")
 check("every note: a key gone down mid-decay starts its own envelope's attack again, from where it was",
-      ev[22] > ph[22] + 0.05 and ev[22] < 1, "every %.4f, phrase %.4f" % (ev[22], ph[22]))
+      ev[14] > ph[14] + 0.05 and ev[14] < 1, "every %.4f, phrase %.4f" % (ev[14], ph[14]))
 check("and a key gone down while it is shut opens nothing: the note after it starts where the note alone does",
-      sh[22] == sg[22] and sh[22] > 0, "%.4f, %.4f" % (sh[22], sg[22]))
+      sh[14] == sg[14] and sh[14] > 0, "%.4f, %.4f" % (sh[14], sg[14]))
 gnull("menv-every", "set menvEvery 1", "set menvEvery 0", "the Envelope on Phrase")
 # The bend's offset, read as the mean of whole cycles (240 samples at 200 Hz)
 # against the wave's own size: before the term a sine bent 0.9 at a quarter
@@ -1504,7 +1418,7 @@ gnull("bend-ramp-dc", "set warp 0.9", "set warp 0.89", "the ramp's bend a hundre
 _, mt = grow("menv-sustain")
 _, md = grow("menv-decay")
 check("its own envelope as the source: at its sustain, 0.3, not the velocity's share of it nor Play's 0.9",
-      abs(mt[22] - 0.3) < 1e-6 and 0.3 < md[22] < 1, "%.6f, decaying %.4f" % (mt[22], md[22]))
+      abs(mt[14] - 0.3) < 1e-6 and 0.3 < md[14] < 1, "%.6f, decaying %.4f" % (mt[14], md[14]))
 gnull("plane-own-time-switch", "set chorusRate 4 1", "set chorusRate 1.5 1", "layer B's own chorus at layer A's rate")
 # Scan (P7a): each run able to show it - the tables heard, and nothing
 # before the first, nothing on noise - and the port told apart from a page
@@ -1611,26 +1525,13 @@ kruns = [
                    "bytes 0x90,72,0xF8,77,0xFA,0xFB,0xFC", "bytes 0xB0,16,90,17,30,0xC0,5,0x90,62,0",
                    "bytes 1,2,3", "bytes 0xF2,1,2,64,90", "bytes 0x90,74,0x80,74,0", "bytes 0xD0,9,0x90,76,99",
                    "bytes 0xE0,0,64,0xB0,64,127", "bytes 0x99,30,10,0x8F,30,10,0xBF,123,0", "frame 16")),
-    ("figure", krun("gen mode figure", "frame 16", "on 57 100", "on 64 100", "panel figureRate 120", "on 81 100",
-                    "off 57", "play 1", "on 40 90", "play 0", "gen figure Rose", "on 52 100", "on 59 100",
-                    "off 52", "panel detail 7", "on 40 50", "off 59", "hold 1", "on 47 40", "on 54 40",
-                    "gen just false", "on 61 40", "on 40 100", "on 64 100", "mode mono", "on 71 40", "frame 16")),
-    ("figure-far", krun("gen mode figure", "frame 16", "panel figureRate 200", "on 100 100", "play 1", "on 127 100",
-                        "on 1 10", "play 0", "on 0 10", "frame 16")),
-    ("harmonograph", krun("gen mode harmonograph", "frame 16", "on 57 100", "play 1", "on 64 90", "off 64",
-                          "on 69 80", "drive 0", "on 72 70", "drive 1", "frame 16", "play 0", "on 74 60",
-                          "frame 16")),
-    ("wireframe", krun("gen mode wireframe", "frame 16", "on 57 100", "on 64 90", "drive 1", "on 69 80", "play 1",
-                       "on 72 70", "drive 0", "on 76 60", "frame 16")),
-    ("drive", krun("frame 16", "on 57 100", "on 64 90", "panel freq 330", "panel interval 4", "drive 0", "on 69 100",
-                   "frame 16", "drive 1", "frame 16", "undrive", "mode mono", "frame 16", "on 60 100", "play 1")),
-    ("kinds", krun("frame 16", "on 57 100", "gen mode figure", "frame 16", "on 64 90", "gen mode wave", "frame 16",
-                   "mode poly", "gen mode harmonograph", "frame 16", "on 67 80", "gen mode wave", "frame 16",
-                   "layers split", "gen mode figure", "frame 16", "gen mode wave", "frame 16")),
+    # The panel's interval, which mono plays under its note where the dyad
+    # plays the two held. (The figure, the pendulums and the solid had runs
+    # here, with the switches that chose which kinds notes played, until G2.)
+    ("panel", krun("frame 16", "on 57 100", "on 64 90", "panel freq 330", "panel interval 4", "mode mono", "frame 16",
+                   "on 60 100", "off 60", "gen just false", "on 62 90", "frame 16")),
     ("absent", krun("frame 16", "on 57 100", "on 64 90", "mode poly", "frame 16", "present 1", "frame 16",
                     "on 67 80", "present 0", "frame 16", "layers split", "present 1", "frame 16", head="present=0")),
-    ("second", krun("frame 16", "gen inputFrom gen2", "frame 16", "mode poly", "layers split", "on 40 100",
-                    "on 70 100", "frame 16", "layers off", "frame 16", "gen inputFrom live", "frame 16")),
 ]
 
 # And sequences no one wrote: seeded, so a failure is the same failure again.
@@ -1654,10 +1555,8 @@ def kfuzz(n):
         elif r < 0.76: out.append("hold %d" % krng.randint(0, 1))
         elif r < 0.78: out.append("learn")
         elif r < 0.81: out.append("cc %d %d" % (krng.choice([16, 17, 42, 64, 7]), krng.randint(0, 127)))
-        elif r < 0.83: out.append("gen mode " + krng.choice(["wave", "wave", "figure", "harmonograph", "wireframe"]))
-        elif r < 0.85: out.append("drive %d" % krng.randint(0, 1))
-        elif r < 0.87: out.append("play %d" % krng.randint(0, 1))
-        elif r < 0.88: out.append("gen figure " + krng.choice(["Rose", "Circle"]))
+        # The kinds, the switches that chose which played and a rose's petals, until G2.
+        elif r < 0.88: out.append("panel interval %d" % krng.randint(0, 12))
         elif r < 0.89: out.append("panic")
         elif r < 0.91: out.append("bytes " + ",".join(str(krng.choice([0x90, 0x80, 0xB0, 0xF8, krng.randint(0, 127), krng.randint(0, 127)])) for _ in range(krng.randint(1, 7))))
         else: out.append("frame %d" % krng.choice([16, 16, 33, 0, 250]))
@@ -1682,13 +1581,12 @@ kruns += [
                         "off 60", "off 64", "at 1400", "tick", "off 67", "at 1500", "tick", "on 72 60", *steps(1500, 2000, 50))),
     ("arp-random", krun("out 1", "arp random 1/16 2", "at 0", "on 57 100", "on 60 90", "on 64 80", "on 69 70",
                         *steps(30, 2000, 25))),
-    ("arp-undriven", krun("arp up 1/8 1", "drive 0", "at 0", "on 60 100", "on 64 90", *steps(30, 600, 50), "drive 1",
-                          *steps(600, 1200, 50), "arp nonsense 1/9 0", *steps(1200, 1500, 50))),
-    # The keys come up while the kind takes no notes, so nothing tells the
-    # arpeggiator; the kind changed back, the next frame finds it running with
-    # nothing held, and stops it.
-    ("arp-kind", krun("out 1", "arp up 1/8 1", "at 0", "on 60 100", "on 64 90", *steps(30, 400, 50), "gen mode wireframe",
-                      "off 60", "off 64", "gen mode wave", "at 450", "tick", "at 500", "tick")),
+    # A pattern, a rate and a count of octaves the menus have not got, which
+    # the page plays as up, a quaver and one. (This run held the notes off
+    # the generator first, and a run beside it changed the kind under a
+    # running arpeggio, until G2 took the kinds and the switch with them.)
+    ("arp-nonsense", krun("arp up 1/8 1", "at 0", "on 60 100", "on 64 90", *steps(30, 600, 50),
+                          "arp nonsense 1/9 0", *steps(600, 1500, 50))),
     ("arp-pedal", krun("arp up 1/8 1", "pedal 1", "at 0", "on 60 100", "on 67 90", "off 60", *steps(30, 700, 50), "pedal 0",
                        *steps(700, 1200, 50), "off 67", "at 1300", "tick")),
 ]
@@ -1711,8 +1609,7 @@ def kafuzz(n):
         elif r < 0.73: out.append("mode " + krng.choice(["dyad", "mono", "poly"]))
         elif r < 0.75: out.append("pedal %r" % krng.choice([0, 1]))
         elif r < 0.77: out.append("layers " + krng.choice(["off", "split", "layer"]))
-        elif r < 0.79: out.append("drive %d" % krng.randint(0, 1))
-        elif r < 0.80: out.append("gen mode " + krng.choice(["wave", "figure", "wireframe"]))
+        elif r < 0.80: out.append("panel interval %d" % krng.randint(0, 12))
         elif r < 0.81: out.append("panic")
         else: out.append("frame 16")
     return krun(*out)
@@ -1747,9 +1644,8 @@ check("the pedal holds released keys, and lets them go", "sustained 60" in kout(
       and "sustained 60+64" in kout("pedal"))
 check("bytes: running status, a clock tick inside a note, and the realtime handed on",
       "realtime 248" in kout("bytes") and "notes 64/" in kout("bytes"))
-check("a played rose takes the dyad's ratio as its petals", "set detail 1.5" in kout("figure"))
-check("the pitched harmonograph is pitched, and a key strikes it", "set pitched 1" in kout("harmonograph")
-      and ":: reswing" in kout("harmonograph"))
+check("mono plays the panel's interval under its note, and a key reswings nothing (G2 took the pendulums)",
+      "set interval 4.0" in kout("panel") and "reswing" not in ktext and ":: reswing" not in kjs and ":: reswing" not in kcpp)
 # A controller walked towards where it was moved, once learned; since F4b
 # (7 Nov) none is learned. What a controller still does: the wheel sets the
 # vibrato through Expression, and a drawbar's controller sets nothing.
@@ -1758,8 +1654,8 @@ check("the wheel sets the vibrato, and a controller the keyboard does not use se
       and not any(":: " in line for line in kout("controllers").split("\n") if line.startswith("cc 16 ") or line.startswith("cc 42 ")),
       kout("controllers")[:300])
 rnd = "\n".join(kslice(kjs, i) for i, (n, _) in enumerate(kruns) if n.startswith("random-"))
-check("the random sequences reach chords, layers, the pedal and the drawings",
-      all(w in rnd for w in ("set voices", " 1 | ", "layout each", "sustained 6", "set figureRate", "set pitched 1")))
+check("the random sequences reach chords, layers and the pedal",
+      all(w in rnd for w in ("set voices", " 1 | ", "layout each", "sustained 6")))
 
 # Nulls: the page told something different, and the port must disagree.
 def knull(name, old, new, what):
@@ -1818,12 +1714,11 @@ check("switched off with keys down, the generator is given the whole of what is 
 last_off = next(l for l in S if l.startswith("off") and " - 3 - -" in l.split(" arp ")[-1])
 check("letting go of the last key stops it: the generator is told nothing is held, and the last note out is let go",
       "outoff 67" in last_off and "gate 0" in last_off, last_off[:120])
-K = kout("arp-kind").strip().split("\n")
-check("a running arpeggio that finds nothing held at its next frame stops, and lets its last note go",
-      "outoff 64" in K[-3] and " - " in K[-3].split(" arp ")[-1] and "gate 0" in K[-3], K[-3][:120])
-U = arpsteps("arp-undriven")
-check("with notes not driving the generator it does not step, and driven again it starts",
-      all(st["t"] >= 600 for st in U) and len(U) >= 2, str([st["t"] for st in U][:4]))
+U = arpsteps("arp-nonsense")
+check("a pattern the menus have not got steps as up does, at a quaver",
+      len([st for st in U if st["mode"] == "nonsense"]) >= 3 and len([st for st in U if st["t"] < 600]) >= 2
+      and [st["current"][-1] for st in U if st["mode"] == "nonsense"][:2] == [60, 64],
+      str([(st["t"], st["mode"], st["current"]) for st in U][:6]))
 R = arpsteps("arp-random")
 check("a random walk picks only what is held, and is not the order up",
       set(st["current"][-1] for st in R) <= {57, 60, 64, 69, 72, 76, 81} and len(set(st["current"][-1] for st in R)) >= 5
@@ -1835,7 +1730,7 @@ knull("poly-outer", "on 67 80", "on 67 81", "a chord with one velocity a step ha
 knull("split", "layers split", "layers layer", "a layer where there was a split")
 knull("pedal", "pedal 1", "pedal 0.4", "a pedal not quite down")
 knull("bytes", "0x90,72,0xF8,77", "0x90,72,77,0xF8", "a clock tick after the velocity instead of inside it")
-knull("figure", "panel figureRate 120", "panel figureRate 121", "a trace-rate slider a hertz on")
+knull("panel", "panel interval 4", "panel interval 5", "the panel's interval a semitone wider")
 knull("dyad-hold", "hold 1", "hold 0", "Hold left off")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(kjs.strip().split("\n")[1:]), "\n".join(kcpp.strip().split("\n")[:-1])) is not None)
@@ -1855,7 +1750,11 @@ def mboth(text, name="matrix_one.txt"):
 
 # The sources every run has: an LFO the loop reads for itself, a held level,
 # a stepped key, two picture sources with a reach, one whose reach varies,
-# and two event sources, one from the picture.
+# and two event sources, one from the picture. And two event destinations,
+# the run's own: they keep the names of the two the generator had, a kick
+# and a reswing, which G2 took with the drawings, so the page has no event
+# destination of its own now and the matrix's machinery for them is held
+# here on stand-ins.
 MSETUP = ["source lfo1 index=0", "source lfo2 index=1", "source level", "source key stepped", "source pedal stepped",
           "source photo picture reach=0.5", "source shape picture reach=0.5", "source hear reach=0.5 varies",
           "source onset event", "source pic.hit event picture", "source stage.glow picture reach=0.5",
@@ -1868,7 +1767,7 @@ def frames(start, stop, step): return ["at %d" % t if i % 2 == 0 else "frame" fo
 
 mruns = [
     ("routes", mrun("dests", "at 0", "frame", "route lfo1 gen.freq 0.4", "route level gen.amp 0.8", "route level gen.bar3 -0.5",
-                    "route lfo2 gen.spinZ 1", "route nobody gen.freq 1", "route level gen.nowhere 1",
+                    "route lfo2 gen.turn 1", "route lfo2 gen.spinZ 1", "route nobody gen.freq 1", "route level gen.nowhere 1",
                     "route onset gen.freq 1", "route level gen.kick 1", "frame", "value level 0.25", "frame",
                     "amount level gen.amp 0", "frame", "encode")),
     ("reach", mrun("source pvary picture reach=0.3 varies", "value pvary 0.5", "route pvary gen.twist 0.9",
@@ -2044,8 +1943,12 @@ def frame_lines(name): return [l for l in mout(name).split("\n") if l.startswith
 def route_amounts(line):
     m = re.search(r"routes (\S+)", line)
     return [] if not m or m.group(1) == "-" else [float(r.split("/")[4]) for r in m.group(1).split("+")]
-check("the generator's destinations are the page's, each on its slot", "gen.spinZ/31/0" in mout("routes")
-      and "gen.amp/1/1" in mout("routes") and mout("routes").count("/0+") >= 30)
+# The drawings' seven went in G2 and the slots after them did not move:
+# B's turn is on 32, after where the solid's three spins were.
+check("the generator's destinations are the page's, each on its slot, and none of the drawings'",
+      "gen.turn/32/0" in mout("routes") and "gen.width/27/0" in mout("routes")
+      and "gen.amp/1/1" in mout("routes") and mout("routes").count("/0+") >= 30
+      and not any(d in mout("routes") for d in ("gen.spinZ/", "gen.detail/", "gen.swing/", "gen.tumble/", "gen.depth/")))
 fi = [route_amounts(l) for l in frame_lines("fade-in")]
 check("a routing fades in: part-way at first, whole by the end of its time",
       any(0.05 < a[0] < 0.75 for a in fi if a) and any(abs(a[0] - 0.8) < 1e-12 for a in fi if a))
@@ -2163,7 +2066,8 @@ def sboth(lines, name="setup_one.txt"):
     return js, subprocess.run([sexe, path], check=True, capture_output=True, text=True).stdout.split("\n")
 
 srng = random.Random(97)
-DEFAULT_KEYS = ["gen", "shape", "freq", "amp", "interval", "just", "phase", "figure", "detail", "figText", "mod", "bars",
+# (The figure, its detail and its text were three of these until G2 took them with the drawings.)
+DEFAULT_KEYS = ["gen", "shape", "freq", "amp", "interval", "just", "phase", "morph", "glide", "atk", "mod", "bars",
                 "midiMode", "layers", "splitAt", "planeLimit", "delayMs", "oscFm", "vcfCut", "c0s", "c1s", "level", "trig",
                 "pictureMovesA", "pictureMovesB"]
 NUMBERS = [0, -0.0, 1, -1, 0.1, 0.5, 1/3, 2/3, 123.456, 1e-6, 1e-7, 1.5e-7, 9.99e-7, 123456789012345680000.0, 1e21, 1.5e21,
@@ -2227,6 +2131,27 @@ def old_setup_v6():
     for key in v6rng.sample(GONE_V6, v6rng.randint(0, 3)): st[key] = v6rng.choice([0, 40, 100, "Grit|Space", "", None, [1]])
     if v6rng.random() < 0.5: st["freq"] = v6rng.choice([220, 330, "440"])
     return st
+# What version 10 took out (G2, 9 Nov): the drawings' fields, the kind
+# brought to the waveform, and every routing from one of the drawings'
+# sources or to one of their destinations - spaced, among others, and near
+# misses each way: a source with a letter more or one before it, a
+# destination with a letter more, and the input's mode and depth, which stay.
+GONE_V10 = ["figure", "detail", "figureRate", "figText", "figPath", "figDrawn", "swingRate", "decay", "detune", "swingDrive",
+            "inputFrom", "gen2Figure", "gen2Rate", "model", "spinX", "spinY", "spinZ", "spinRate", "depth", "midiDrive",
+            "midiPlay", "ring"]
+MOD_V9 = ["draw.swing>gen.freq@0.500;lfo1>gen.amp@0.400", " lfo2>gen.detail@0.3 ;draw.turnX>gen.fm@1;lfo1>gen.spinZ@-1",
+          "hear.onset>gen.reswing@1.000;hear.onset>gen.kick@0.5;lfo1>gen.freq@0.400;;\u00a0draw.facing>view.rotate@0.2;",
+          "draw.swings>gen.amp@1;xdraw.pendulum>gen.amp@1;lfo1>gen.detailx@1;lfo1>gen.depthy@0.2;lfo2>gen.turn@0.5",
+          "lfo1>gen.tumble@1;lfo1>gen.depth@1;lfo1>gen.swing@1;lfo1>gen.spinX@1;lfo1>gen.spinY@1", "draw.turnY>", "lfo1>gen.amp@0.4"]
+v10rng = random.Random(1092)
+def old_setup_v9():
+    st = {"v": v10rng.choice([7, 8, 9, 9, 10, 10, "9", 9.5, None])}
+    if v10rng.random() < 0.8: st["mod"] = v10rng.choice(MOD_V9)
+    if v10rng.random() < 0.7: st["gen"] = v10rng.choice(["wave", "harmonograph", "figure", "wireframe", "bogus", 5, None, True, ["wave"]])
+    for key in v10rng.sample(GONE_V10, v10rng.randint(0, 5)): st[key] = v10rng.choice([0, 40, 100, "Rose", "", None, [1], True])
+    if v10rng.random() < 0.5: st["inputMode"] = v10rng.choice([0, 1, 3])
+    if v10rng.random() < 0.5: st["freq"] = v10rng.choice([220, 330, "440"])
+    return st
 def code_of(text):
     raw = text.encode("latin-1") if all(ord(c) < 256 for c in text) else text.encode("utf-8")
     return base64.b64encode(raw).decode()
@@ -2242,13 +2167,16 @@ def mangle(code):
     return code
 scmds = ["defaults"]
 scmds += ["encode " + dumps(snapshot()) for _ in range(300)]
-scmds += ["encode {\"figText\":\"caf\u00e9 \u00ff\",\"gen\":\"figure\"}", "encode {\"figText\":\"\u4e2d\"}",
-          "encode {\"figText\":\"\U0001F3B5\"}", "encode {\"figText\":\"\u0100\"}", "encode {\"figText\":\"\u00ff\"}", "encode {}", "encode []", "encode 5", "encode {\"a\":1,\"a\":2,\"0\":3}", "encode {bad"]
+# Text past Latin-1 in a field, which the browser's btoa throws on (a figure's word, until G2 took it, and a routing list now).
+scmds += ["encode {\"mod\":\"caf\u00e9 \u00ff\",\"shape\":\"square\"}", "encode {\"mod\":\"\u4e2d\"}",
+          "encode {\"mod\":\"\U0001F3B5\"}", "encode {\"mod\":\"\u0100\"}", "encode {\"mod\":\"\u00ff\"}", "encode {}", "encode []", "encode 5", "encode {\"a\":1,\"a\":2,\"0\":3}", "encode {bad"]
 for _ in range(400):
     text = _json.dumps(old_setup(), separators=(",", ":"))
     scmds.append("decode " + mangle(code_of(text)))
 for _ in range(120):
     scmds.append("decode " + code_of(_json.dumps(old_setup_v6(), separators=(",", ":"))))
+for _ in range(200):
+    scmds.append("decode " + code_of(_json.dumps(old_setup_v9(), separators=(",", ":"))))
 for text in ["5", "\"abc\"", "true", "false", "null", "0", "\"\"", "[1,2]", "-0", "{\"v\":\"4\"}", "{\"v\":4,\"level\":5}",
              "{bad json}", "{\"x\":\"caf\u00e9\"}", "{\"x\":\"\\ud800\"}", "  {\"trig\":1,\"c1s\":3,\"level\":64}  ", "{\"9\":1,\"1\":2,\"b\":3,\"a\":4,\"1\":5}"]:
     scmds.append("decode " + code_of(text))
@@ -2269,7 +2197,7 @@ for text in ['{"a":01}', '{"a":1.}', '{"a":-}', '{"a":1e}', '{"a":"x\\/y"}', '{"
 for raw in ['{"v":4,"gen":"figure"}', '{"v":2,"trig":1,"c1s":"5","level":7}']:
     c = code_of(raw)
     scmds += ["decode " + c[:4] + "\t" + c[4:], "decode " + c[:4] + "\f" + c[4:8] + "\r\u000b" + c[8:]]
-scmds += ['encode {"freq":330,"gen":"figure"}', "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}')]
+scmds += ['encode {"freq":330,"shape":"square"}', "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}')]
 # Each layer's picture menus (P6): at their defaults left out of the code, as
 # the page leaves a default out; set otherwise, written; and read back as
 # written, nonsense and all, since the codec keeps what restore later holds
@@ -2300,6 +2228,24 @@ V8_CODE = ('{"v":8,"cc":"16:Drawbar 1;42:Fx","freq":330,"mod":"cc.16>gen.freq@0.
            'notes.spread>gen.amp@1;notes.top>gen.amp@1;notes.inner>gen.amp@1;'
            'midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"}')
 scmds += ["decode " + code_of(V8_CODE)]
+# Version 10 (G2, 9 Nov): the drawings cut. A code that named one as its kind
+# is the waveform, every field of theirs goes, and so does every routing from
+# their sources or to their destinations; the near misses stay, and so do the
+# input's mode and depth, Key, the hearing and B's turn.
+V9_CODE = ('{"v":9,"gen":"harmonograph","figure":"Rose","detail":7,"figureRate":90,"figText":"HI","figPath":"M0 0 L1 1",'
+           '"figDrawn":"0,0 1,1","swingRate":30,"decay":20,"detune":40,"swingDrive":10,"inputFrom":"gen2","gen2Figure":"Star",'
+           '"gen2Rate":70,"model":"Torus","spinX":5,"spinY":-5,"spinZ":2,"spinRate":120,"depth":60,"midiDrive":"wave,figure",'
+           '"midiPlay":"figure","ring":900,"inputMode":1,"inputDepth":40,"freq":330,'
+           '"mod":"draw.swing>gen.freq@0.500; lfo1>gen.amp@0.400;lfo2>gen.detail@0.3;draw.turnX>gen.fm@1;lfo1>gen.spinZ@1;'
+           'hear.onset>gen.reswing@1.000;hear.onset>gen.kick@0.5;draw.facing>view.rotate@0.2;draw.pendulum>gen.amp@1;'
+           'draw.turnY>gen.amp@1;draw.turnZ>gen.amp@1;lfo1>gen.tumble@1;lfo1>gen.depth@1;lfo1>gen.swing@1;lfo1>gen.spinX@1;'
+           'lfo1>gen.spinY@1;lfo1>gen.detailx@1;draw.swings>gen.amp@1;xdraw.swing>gen.amp@1;midi.key>gen.fm@0.300;'
+           'hear.bright>gen.freq@0.1;lfo2>gen.turn@0.5"}')
+V9_KEPT = '" lfo1>gen.amp@0.400;lfo1>gen.detailx@1;draw.swings>gen.amp@1;xdraw.swing>gen.amp@1;midi.key>gen.fm@0.300;hear.bright>gen.freq@0.1;lfo2>gen.turn@0.5"'
+# And one that named no kind at all, which is the waveform too (the page's `setup.gen !== "wave"`).
+V9_BARE = '{"v":9,"freq":330,"detail":7}'
+# The first code again marked 10, so nothing migrates it: the null for the check of the pass below.
+scmds += ["decode " + code_of(V9_CODE), "decode " + code_of(V9_BARE), "decode " + code_of(V9_CODE.replace('"v":9', '"v":10'))]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
@@ -2337,28 +2283,48 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":9' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":10' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
 check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":9' in v5_read and '"freq":330' in v5_read
+      v5_read.startswith("read ") and '"v":10' in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
 # Version 7 likewise: a version-6 code saved with the latch on loses it.
 v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
 check("a version-6 code comes up to date without the latch, the rest as written",
-      v6_read.startswith("read ") and '"v":9' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+      v6_read.startswith("read ") and '"v":10' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
       and '"midiLatch"' not in v6_read, v6_read)
 v7_read = sjs[scmds.index("decode " + code_of(V7_CODE))]
 check("a version-7 code comes up to date without the kaleidoscope, its snap of three bits at five and of six as it was",
-      v7_read.startswith("read ") and '"v":9' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
+      v7_read.startswith("read ") and '"v":10' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
       and '"planeSnap":5' in v7_read and '"bSnap":6' in v7_read, v7_read)
 v8_read = sjs[scmds.index("decode " + code_of(V8_CODE))]
 check("a version-8 code comes up to date without the cut sources' routes or the controllers' names, the near misses, Key and hearing kept",
-      v8_read.startswith("read ") and '"v":9' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
+      v8_read.startswith("read ") and '"v":10' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
       and '"mod":" lfo1>gen.amp@0.400;midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"' in v8_read,
       v8_read)
+def v10_done(line):
+    return (line.startswith("read ") and '"v":10' in line and '"gen":"wave"' in line and '"freq":330' in line
+            and '"inputMode":1' in line and '"inputDepth":40' in line and '"mod":' + V9_KEPT in line
+            and not any('"%s"' % k in line for k in GONE_V10))
+v9_read = sjs[scmds.index("decode " + code_of(V9_CODE))]
+check("a version-9 code comes up to date as the waveform, without the drawings' fields or routes, the near misses and the input kept",
+      v10_done(v9_read), v9_read)
+# Its null: the same code marked 10, which nothing migrates, keeps its kind,
+# its fields and its routes, and the check has to say so.
+v9_as10 = sjs[scmds.index("decode " + code_of(V9_CODE.replace('"v":9', '"v":10')))]
+check("null: the same code marked 10 is not taken for one the pass has been over",
+      not v10_done(v9_as10) and '"gen":"harmonograph"' in v9_as10 and "draw.swing>gen.freq" in v9_as10, v9_as10[:120])
+v9_bare = sjs[scmds.index("decode " + code_of(V9_BARE))]
+check("and one that named no kind is the waveform too", v9_bare.startswith("read ") and '"gen":"wave"' in v9_bare
+      and '"detail"' not in v9_bare and '"freq":330' in v9_bare, v9_bare)
+check("and the random codes reach the drawings' pass both ways: routes it drops, near misses it keeps, fields and kinds it takes out",
+      sum(1 for l in sjs if '"mod":"draw.swing>gen.freq@0.500;' in l) >= 1
+      and sum(1 for l in sjs if '"mod":"draw.swings>gen.amp@1;xdraw.pendulum>gen.amp@1;lfo1>gen.detailx@1;lfo1>gen.depthy@0.2;lfo2>gen.turn@0.5"' in l) >= 2
+      and sum(1 for l in sjs if l.startswith("read ") and '"v":10' in l and '"gen":"harmonograph"' in l) >= 1
+      and sum(1 for l in sjs if l.startswith("read ") and '"gen":"wave"' in l and '"v":10' in l) >= 20)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
@@ -2371,7 +2337,7 @@ def snull(what, before, after):
     i = scmds.index(before)
     js, _ = sboth([scmds[i].replace(before, after, 1)])
     check("and against " + what, js[0] != scpp[i])
-snull("a frequency a hertz higher", 'encode {"freq":330,"gen":"figure"}', 'encode {"freq":331,"gen":"figure"}')
+snull("a frequency a hertz higher", 'encode {"freq":330,"shape":"square"}', 'encode {"freq":331,"shape":"square"}')
 snull("an old code's level one more", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
       "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":101}'))
 snull("an old code a version later", "decode " + code_of('{"v":1,"trig":1,"c1s":3,"level":100}'),
@@ -2386,6 +2352,10 @@ snull("the version-7 code marked 8, which keeps its kaleidoscope and its three b
       "decode " + code_of(V7_CODE.replace('"v":7', '"v":8')))
 snull("the version-8 code marked 9, which keeps its controllers and their routes", "decode " + code_of(V8_CODE),
       "decode " + code_of(V8_CODE.replace('"v":8', '"v":9')))
+snull("the version-9 code marked 10, which keeps its drawings and their routes", "decode " + code_of(V9_CODE),
+      "decode " + code_of(V9_CODE.replace('"v":9', '"v":10')))
+snull("the code with no kind marked 10, which leaves it without one", "decode " + code_of(V9_BARE),
+      "decode " + code_of(V9_BARE.replace('"v":9', '"v":10')))
 snull("layer B's picture moving both where the page has it move A", PM_SET, PM_SET.replace('"pictureMovesB":"A"', '"pictureMovesB":"both"'))
 def pm_read(cmd):
     code = scpp[scmds.index(cmd)].split(" ", 1)[1]
@@ -4168,8 +4138,13 @@ MENUS = {
             "threshold>gen.freq@0.500;lfo1>gen.amp@0.400;lfo2>gen.pluck@1.000"],
 }
 BOOLS = ["midiPolyJust", "midiHold", "midiTruth", "midiFollow", "photoOn", "quant", "scoreOn", "delayPingPong", "just"]
+# The sliders and menus above still name the drawings' (the figure, its
+# detail and rate, the pendulums, the solid, the second generator, the
+# switches for which kinds notes play) and so do the setups below: since G2
+# both sides read none of them, so they are setups a restore has to pass by,
+# and kept as they were so every other field in them is what it was.
 # The drawn cycles and the figures made of strokes, in and out of their
-# grammars: a cycle of 256 bytes, of the wrong length, with white space atob
+# grammars (the figures' only to be passed by now, as above): a cycle of 256 bytes, of the wrong length, with white space atob
 # forgives and with a character it does not, and one that is a default slot
 # written out a byte at a time (which reads as the default within a byte's
 # step, the encoder's own question); words that upper-case into more letters
@@ -4272,7 +4247,8 @@ def rsetup():
 # And two more made to be read: B's morph end is written against A's, which
 # shows only when they differ on different sliders; and a routing list given
 # as an array is read as its text, as String() reads it.
-# And the cycles and figures, made to be read: a default slot written out a
+# And the cycles and figures, made to be read - the figures' since G2 only
+# for a restore to pass by: a default slot written out a
 # byte at a time, which is written back as no cycle at all; a word with an "ß", which
 # upper-cases to two letters, beside the same word in capitals; a path read,
 # then one with a number after its Z, refused, with the first kept; a path
@@ -4292,19 +4268,6 @@ FIG_MADE = [_json.dumps({"cycle": base64.b64encode(rdefault_bytes(0)).decode(), 
             _json.dumps({"figPath": "   "}),
             _json.dumps({"figDrawn": " ".join("%g,0" % (i / 1000) for i in range(1600)) + ";"
                                      + " ".join("0,%g" % (i / 1000) for i in range(1600)), "figure": "Drawn"})]
-# And every character whose upper case is an ASCII letter or more than one
-# character, as V8 has them, each between two letters - since a word of
-# nothing the font draws compiles to no path at all, and then how many
-# characters the upper case made cannot show.
-FIG_UPPER_CPS = _json.loads(subprocess.run(["node", "-e", """
-  const out = [];
-  for (let c = 0x80; c <= 0x10FFFF; c++) {
-    if (c >= 0xD800 && c <= 0xDFFF) continue;
-    const up = Array.from(String.fromCodePoint(c).toUpperCase());
-    if (up.length !== 1 || up.some((x) => x.codePointAt(0) < 0x80)) out.push(c);
-  }
-  console.log(JSON.stringify(out));"""], check=True, capture_output=True, text=True).stdout)
-FIG_UPPER = [_json.dumps({"figText": "A" + chr(c) + "Z"}) for c in FIG_UPPER_CPS]
 # Layer B's own plane, from a generator of its own so the setups above are
 # the ones they always were: the switch true, false and not a boolean, B's
 # fields in range, out of it, of the wrong type and missing (when they are
@@ -4372,8 +4335,8 @@ PHASER_MADE = [_json.dumps(d) for d in ({"phaserMix": 70, "phaserRate": 45, "pha
                                          "layers": "layer", "midiMode": "poly"},
                                         {"bPlane": True, "phaserMix": 55, "phaserFeedback": 20, "layers": "split",
                                          "midiMode": "poly"})] + [phaser_setup() for _ in range(40)]
-rsetups = ['{"freq":2014.5,"detail":"abc"}', '{"freq":"2014.5e0","detail":" 9"}',
-           '{"morphA":"=freq:330","morphB":"=detail:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + FIG_UPPER + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BEND_MADE + PHASER_MADE + BTIME + BPLANE
+rsetups = ['{"freq":2014.5,"amp":"abc"}', '{"freq":"2014.5e0","amp":" 9"}',
+           '{"morphA":"=freq:330","morphB":"=amp:9"}', '{"mod":["lfo1>gen.freq@0.500"]}'] + FIG_MADE + [rsetup() for _ in range(400)] + [_json.dumps(_json.loads(rrng.choice(presets)) | _json.loads(rsetup())) for _ in range(100)] + BEND_MADE + PHASER_MADE + BTIME + BPLANE
 rpg, rpt = rboth(rsetups, "restore_random.txt")
 rb = rbad(rpg, rpt)
 check("%d random setups, in and out of range, of every type, load to the same instrument" % len(rsetups), not rb, rb[0] if rb else "")
@@ -4401,52 +4364,28 @@ check("and the phaser's, A's clamped into range, B's own with fields of its own 
       and phown[3]["planeB"]["own"] and phown[3]["echoB"]["phaser"] == phown[3]["echo"]["phaser"] == 0.55
       and any(not r["planeB"]["own"] and r["echoB"] == r["echo"] and r["echo"]["phaser"] > 0 for r in phown),
       repr([(r["echo"]["phaser"], r["echoB"]["phaser"]) for r in phown[:4]]))
-check("the setups reach every kind, both layers, the old LFO enum, the morph and the tempo",
-      {r["a"]["mode"] for r in allr} >= {"wave", "harmonograph", "figure", "wireframe"}
-      and any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
+# Every kind was in it too until G2: there is one, and the setups that name the others are passed by.
+check("the setups reach both layers, the old LFO enum, the morph and the tempo",
+      any(r["midi"]["layers"]["mode"] == "split" for r in allr) and any(r["a"]["amp"] != r["b"]["amp"] for r in allr)
       and any("lfo1>gen.phase" in r["mod"] for r in allr) and any(r["morph"]["a"] for r in allr)
       and any(r["lfos"][0]["rate"] != r["lfos"][0]["free"] for r in allr)
       and any(r["a"]["qMask"] not in (0, 4095) for r in allr) and any(r["echo"]["sync"] for r in allr))
 fm = [_json.loads(l) for l in rpg[4:4 + len(FIG_MADE)]]
-fu = [_json.loads(l) for l in rpg[4 + len(FIG_MADE):4 + len(FIG_MADE) + len(FIG_UPPER)]]
-check("the %d characters whose upper case is an ASCII letter or longer each lay out as the page lays them out, and change the width"
-      % len(FIG_UPPER), len(FIG_UPPER) == 104 and all(u["figure"]["textPath"] for u in fu)
-      and len({_json.dumps(u["figure"]["textPath"]) for u in fu}) > 10)
 check("a default slot written out a byte at a time is written back as no cycle, though what plays is the bytes",
       fm[0]["cycles"]["codes"] == ["", ""] and fm[0]["cycles"]["cycle"] != _json.loads(ppage[0])["cycles"]["cycle"]
       and fm[0]["cycles"]["points"][0] != _json.loads(ppage[0])["cycles"]["points"][0], repr(fm[0]["cycles"]["codes"]))
-check("\"stra\u00dfe\" is written as STRASSE, seven letters, the \u00df upper-cased to two",
-      fm[1]["figure"]["textPath"] == fm[2]["figure"]["textPath"] and fm[1]["figure"]["text"] != fm[2]["figure"]["text"]
-      and fm[1]["figure"]["sent"] == fm[1]["figure"]["textPath"] and len(fm[1]["figure"]["textPath"]["xy"]) > 50)
-check("a number after a Z is refused, and the path before it kept and still drawn",
-      fm[4]["figure"]["fault"].startswith("That path could not be read: unexpected character")
-      and fm[4]["figure"]["kept"] == "M0 0 L10 0 L10 10" and fm[4]["figure"]["sent"] == fm[3]["figure"]["sent"] != None,
-      fm[4]["figure"]["fault"])
-check("a drawing with no length draws nothing, and one past three thousand points keeps three thousand",
-      fm[7]["figure"]["drawnPath"] is None and fm[7]["figure"]["drawn"] == "0.5,0.5 0.5,0.5"
-      and len(fm[10]["figure"]["drawnPath"]["xy"]) == 2 * 3001 and fm[10]["figure"]["drawn"].replace(";", " ").count(" ") + 1 == 3000,
-      "%r, %d" % (fm[7]["figure"]["drawnPath"], len(fm[10]["figure"]["drawnPath"]["xy"]) if fm[10]["figure"]["drawnPath"] else -1))
-check("a slot 0.94 of a step from its default at one point is written back, and a path of spaces is no path and no complaint",
-      fm[8]["cycles"]["codes"][1].startswith(",") and len(fm[8]["cycles"]["codes"][1]) > 300
-      and fm[9]["figure"]["fault"] == "" and fm[9]["figure"]["kept"] == "" and fm[9]["figure"]["path"] is None,
-      "%r %r" % (fm[8]["cycles"]["codes"][1][:12], fm[9]["figure"]["fault"]))
-check("a path of more than six thousand points is refused as too detailed",
-      fm[5]["figure"]["fault"] == "That path could not be read: too detailed: 6201 points, and the most is 6000.", fm[5]["figure"]["fault"])
+check("a slot 0.94 of a step from its default at one point is written back",
+      fm[8]["cycles"]["codes"][1].startswith(",") and len(fm[8]["cycles"]["codes"][1]) > 300, "%r" % fm[8]["cycles"]["codes"][1][:12])
 rall = [_json.loads(l) for l in rpg]
-faults = {(r["figure"]["fault"].split(" at ")[0].split(": ")[1] if ": " in r["figure"]["fault"] else r["figure"]["fault"]).rstrip(".")
-          for r in rall}
-check("the random setups reach every refusal, paths, drawings and cycles read and refused, and every figure of strokes sent",
-      {"expected a number", "expected an arc flag", "unexpected character", "a path starts with a command",
-       "Nothing in that path to draw"} <= faults
-      and sum(1 for r in rall if r["cycles"]["codes"][0]) > 20 and sum(1 for r in rall if r["cycles"]["codes"][1]) > 5
-      and sum(1 for r in rall if r["figure"]["drawnPath"]) > 20
-      and {r["figure"]["sent"] is not None and (r["figure"]["sent"] == r["figure"]["textPath"], r["figure"]["sent"] == r["figure"]["path"],
-           r["figure"]["sent"] == r["figure"]["drawnPath"]) for r in rall} >= {(True, False, False), (False, True, False), (False, False, True)},
-      ", ".join(sorted(faults)))
+# The figures' refusals and paths were counted here too, until G2.
+check("the random setups reach cycles read and refused, in both of a setup's fields",
+      sum(1 for r in rall if r["cycles"]["codes"][0]) > 20 and sum(1 for r in rall if r["cycles"]["codes"][1]) > 5)
+# Amplitude, which runs from nought to 140, so its middle is seventy - 0.7
+# as the generator holds it. (The figure's detail, two to twelve, until G2.)
 r0, r1 = _json.loads(rpg[0]), _json.loads(rpg[1])
 check("a slider snaps what it is given: a half goes up, and what is not a number takes its middle",
-      r0["a"]["freq"] == 2015 and r0["a"]["detail"] == 7 and r1["a"]["freq"] == 2015 and r1["a"]["detail"] == 7,
-      "%r %r, %r %r" % (r0["a"]["freq"], r0["a"]["detail"], r1["a"]["freq"], r1["a"]["detail"]))
+      r0["a"]["freq"] == 2015 and r0["a"]["amp"] == 0.7 and r1["a"]["freq"] == 2015 and r1["a"]["amp"] == 0.7,
+      "%r %r, %r %r" % (r0["a"]["freq"], r0["a"]["amp"], r1["a"]["freq"], r1["a"]["amp"]))
 # Nulls: the page told something different, and the port must disagree.
 def rnull(what, index, change):
     setups = list(presets[:index + 1])
@@ -4459,12 +4398,21 @@ rnull("a preset on the next scale", 7, lambda st: st | {"keyScale": "dorian", "q
 pdrawn = next(i for i, p in enumerate(presets) if '"cycle"' in p)
 rnull("the drawn cycle's preset with one character of its cycle changed", pdrawn,
       lambda st: st | {"cycle": ("K" if st["cycle"][0] != "K" else "L") + st["cycle"][1:]})
-ptext = next(i for i, p in enumerate(presets) if '"figText"' in p)
-rnull("the written preset with one letter changed", ptext, lambda st: st | {"figText": "HELLP"})
-ppath = next(i for i, p in enumerate(presets) if '"figPath"' in p)
-rnull("the imported preset with one number of its path changed", ppath, lambda st: st | {"figPath": st["figPath"].replace("80", "81", 1)})
-pdraw = next(i for i, p in enumerate(presets) if '"figDrawn"' in p)
-rnull("the drawn preset with one point moved", pdraw, lambda st: st | {"figDrawn": st["figDrawn"].replace("0.6", "0.61", 1)})
+# The old library's drawings (G2): each side passes by a drawing's fields and
+# kind, so a drawing's preset loads to the instrument it loads to with them
+# all taken out - the written one, the imported one, the drawn one, and the
+# first of each kind. The nulls above are what show a change can be seen.
+def rsame(what, index, change):
+    setups = list(presets[:index + 1])
+    setups[index] = _json.dumps(change(_json.loads(setups[index])))
+    page, port = rboth(setups, "restore_same.txt")
+    check(what, rdiff(_json.loads(page[index]), _json.loads(ppage[index])) == []
+          and rdiff(_json.loads(port[index]), _json.loads(pport[index])) == [])
+DRAWING_KEYS = set(GONE_V10) | {"gen"}
+for field in ('"figText"', '"figPath"', '"figDrawn"', '"gen":"harmonograph"', '"gen":"figure"', '"gen":"wireframe"'):
+    at = next(i for i, p in enumerate(presets) if field in p)
+    rsame("the old library's first preset with %s loads as it would with every drawing's field taken out" % field, at,
+          lambda st: {k: v for k, v in st.items() if k not in DRAWING_KEYS})
 check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
 
 print("\n--- the morph ---")
@@ -4650,15 +4598,17 @@ print("\n--- menus, switches and buttons ---")
 # scope::controlChange and controlClick - what the page in the plugin sends
 # for each, as it sends a slider. Between presets and sliders, as a hand has
 # them, and with values a menu has not got.
-CMENUS = ["genMode", "interval", "figure", "inputMode", "inputFrom", "gen2Figure", "model", "shape", "shpOS", "oscRatio",
+# The kind, the figure, the solid, the second generator's figure and where the
+# input came from were menus here too, the switches for which kinds notes
+# played and at what pitch switches, and the path's d a text box, until G2.
+CMENUS = ["interval", "inputMode", "shape", "shpOS", "oscRatio",
           "oscSubOct", "oscSubShape", "oscUnison", "shpBits", "shpRate", "vcfType", "planeMirror", "planeLimit",
           "planeSnap", "delaySync", "keyRoot", "keyScale", "midiDrawCount",
           "midiDrawWhich", "midiLayers", "midiLayerPair", "arpMode", "arpRate", "arpOctaves", "scoreStep",
           "scoreVoices", "scoreLow", "scoreOctaves", "lfoShape0", "lfoSync0"]
 CMORE = {"lfoShape1": pctl["selects"]["lfoShape0"]["options"], "lfoSync1": pctl["selects"]["lfoSync0"]["options"]}
-CSWITCHES = ["delayPingPong", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "midiDrive",
-             "midiPlay", "scoreOn"]
-CTEXT = {"figPathD": ["M0 0 L10 0 L10 10", "M0 0 L20 5 L5 20 Z", "junk", ""]}
+CSWITCHES = ["delayPingPong", "quantise", "midiPolyJust", "midiHold", "midiTruth", "midiFollow", "scoreOn"]
+CTEXT = {}
 # The four macros' names were text boxes here until P8d: still drawn from, so
 # every op and run after one is the one it was, and a step played instead.
 CTEXT_GONE = {"macroName%d" % i: ["Wobble", "Wob|ble  ", "   ", "a name much longer than sixteen", ""] for i in range(1, 5)}
@@ -4696,15 +4646,16 @@ def cop_drawn():
     return mslider(ctl_ids)
 def crun():
     return [_json.loads(rrng.choice(presets)) if rrng.random() < 0.7 else {}] + [cop() for _ in range(rrng.randint(4, 14))]
-# Made to be read: each family once, with what it should leave. The figure's
-# path is drawn while the Path figure is chosen; the LFO is locked to a
-# quarter at 120 and let go. (Lines 14, 15, 28 and 29 switched the crossings
-# on and set the threshold watching, until P5 cut both; the switches and menus
-# in their places keep every index after them.)
-CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},                                  # 1
-         {"op": "change", "id": "genMode", "value": "figure"}, {"op": "change", "id": "figure", "value": "Path"},
-         {"op": "change", "id": "figPathD", "value": "M0 0 L20 5 L5 20 Z"},                              # 4
-         {"op": "change", "id": "genMode", "value": "wave"}, {"op": "change", "id": "shape", "value": "square"},
+# Made to be read: each family once, with what it should leave. The LFO is
+# locked to a quarter at 120 and let go. (Lines 14, 15, 28 and 29 switched
+# the crossings on and set the threshold watching, until P5 cut both; the
+# switches and menus in their places keep every index after them. Lines 1 to
+# 5 chose the kinds, the Path figure and drew its path, and 39 and 40 played
+# the harmonograph at the note's pitch, until G2: steps in their places.)
+CMADE = [{}, {"op": "step"},                                                                             # 1
+         {"op": "step"}, {"op": "step"},
+         {"op": "step"},                                                                                 # 4
+         {"op": "step"}, {"op": "change", "id": "shape", "value": "square"},
          {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "change", "id": "vcfType", "value": "2"},  # 7, 8
          {"op": "change", "id": "shpOS", "value": "4"}, {"op": "change", "id": "planeSnap", "value": "6"},  # 9, 10
          {"op": "click", "id": "planeOS4"}, {"op": "change", "id": "delaySync", "value": "1/4"},             # 11, 12
@@ -4723,7 +4674,7 @@ CMADE = [{}, {"op": "change", "id": "genMode", "value": "harmonograph"},        
          {"op": "change", "id": "shape", "value": "nonsense"}, {"op": "click", "id": "tuneJust"},           # 34, 35
          {"op": "change", "id": "keyRoot", "value": "2"}, {"op": "change", "id": "keyScale", "value": "minor"},  # 36, 37
          {"op": "change", "id": "scoreVoices", "value": "nonsense"},                                       # 38
-         {"op": "change", "id": "genMode", "value": "harmonograph"}, {"op": "change", "id": "midiPlay", "value": True},  # 39, 40
+         {"op": "step"}, {"op": "step"},                                                                 # 39, 40
          {"op": "slider", "id": "lfoRate1", "value": 120}, {"op": "change", "id": "lfoSync1", "value": "1/4"},  # 41, 42
          {"op": "slider", "id": "lfoRate1", "value": 300}]                                                 # 43
 clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(150) for o in crun()]
@@ -4732,9 +4683,6 @@ cb = rbad(cpg, cpt)
 check("%d menus, switches, text boxes and buttons leave the same instrument" % len(clines),
       not cb and len(clines) > 1200, cb[0] if cb else "")
 cp = [_json.loads(l) for l in cpg]
-check("the kind menu changes the kind, and a path drawn under the Path figure is what the figure sends",
-      cp[1]["a"]["mode"] == "harmonograph" and cp[3]["a"]["figure"] == "Path" and cp[4]["figure"]["sent"] is not None
-      and cp[4]["figure"]["sent"] != cp[3]["figure"]["sent"], "%r %r" % (cp[1]["a"]["mode"], cp[3]["a"]["figure"]))
 check("the shape, the unison, the filter's type and the oversampling reach the tone",
       cp[6]["a"]["shape"] == "square" and cp[7]["a"]["unison"] == 3 and cp[8]["a"]["vcfType"] == 2 and cp[9]["a"]["shapeOS"] == 4)
 check("the snap's menu and the plane's 4x button reach the tone",
@@ -4765,8 +4713,6 @@ check("the score switched on with four voices, and a number of voices the menu h
 check("LFO 2's rate moves it, and moved while it is synced is its free rate, the beat's going on",
       cp[41]["lfos"][1]["rate"] == 1.2 and cp[41]["lfos"][1]["free"] == 1.2 and cp[42]["lfos"][1]["rate"] == 2
       and cp[43]["lfos"][1]["free"] == 3 and cp[43]["lfos"][1]["rate"] == 2, repr([cp[i]["lfos"][1] for i in (41, 42, 43)]))
-check("the harmonograph played at the note's pitch by its switch",
-      cp[39]["midi"]["play"]["harmonograph"] is False and cp[40]["midi"]["play"]["harmonograph"] is True, repr(cp[40]["midi"]["play"]))
 check("a shape the menu has not got is no shape", cp[34]["a"]["shape"] != "nonsense", repr(cp[34]["a"]["shape"]))
 cops = [_json.loads(l) for l in clines]
 cmoved = {o["id"] for i, o in enumerate(cops) if o.get("op") in ("change", "click") and i and rdiff(cp[i], cp[i - 1])}
@@ -4777,7 +4723,7 @@ def cnull(what, index, change):
     lines[index] = _json.dumps(change(_json.loads(lines[index])))
     page, _ = rboth(lines, "control_null.txt")
     check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(cpt[index])) != [])
-cnull("the other kind", 1, lambda o: o | {"value": "wireframe"})
+cnull("another shape", 6, lambda o: o | {"value": "triangle"})
 cnull("the 2x button", 11, lambda o: o | {"id": "planeOS2"})
 cnull("the LFO locked to an eighth", 25, lambda o: o | {"value": "1/8"})
 cnull("LFO 1 a square", 28, lambda o: o | {"value": "square"})
@@ -4803,13 +4749,17 @@ def lop():
     if c < 0.86: return {"op": "change", "id": "midiLayers", "value": rrng.choice(["off", "split", "layer", "layer"])}
     if c < 0.9: return {"op": "click", "id": rrng.choice(["midiPoly", "midiPoly", "midiMono", "midiDyad"])}
     if c < 0.92: return {"op": "keys", "value": rrng.random() < 0.7}
-    if c < 0.94: return {"op": "change", "id": "genMode", "value": rrng.choice(["wave", "wave", "figure"])}
+    # The kind menu, which a figure took the layers away with, until G2: a step in its place.
+    if c < 0.94: return {"op": "step"}
     if c < 0.96: return {"op": "store", "end": rrng.choice(["a", "b"])}
     if c < 0.98: return {"op": "pos", "value": rrng.randint(0, 100)}
     return _json.loads(rrng.choice(presets))
+# Each run's third hand set the kind menu to the waveform, so a drawing's
+# preset did not take the layers away, until G2 took the kinds: here and in
+# the two families of runs below, a step in its place keeps every hand after it.
 def lrun():
     start = [_json.loads(rrng.choice(presets)) if rrng.random() < 0.6 else {}, {"op": "keys", "value": True},
-             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "step"}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": rrng.choice(["split", "layer"])}, {"op": "click", "id": "midiEditB"}]
     return start + [lop() for _ in range(rrng.randint(6, 16))]
 # Made to be read: A's level set to 30, B chosen and its level set to 80,
@@ -4891,7 +4841,7 @@ def pop():
     return _json.loads(prng.choice(presets))
 def prun():
     start = [_json.loads(prng.choice(presets)) if prng.random() < 0.5 else {}, {"op": "keys", "value": True},
-             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "step"}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": prng.choice(["split", "layer"])},
              {"op": "click", "id": prng.choice(["planeLayerA", "planeLayerB"])}]
     return start + [pop() for _ in range(prng.randint(6, 16))]
@@ -4966,7 +4916,7 @@ def top():
     return _json.loads(trng2.choice(presets))
 def trun():
     start = [_json.loads(trng2.choice(presets)) if trng2.random() < 0.5 else {}, {"op": "keys", "value": True},
-             {"op": "change", "id": "genMode", "value": "wave"}, {"op": "click", "id": "midiPoly"},
+             {"op": "step"}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": trng2.choice(["split", "layer"])},
              {"op": "click", "id": trng2.choice(["timeLayerA", "timeLayerB"])}]
     return start + [top() for _ in range(trng2.randint(6, 16))]
@@ -5100,8 +5050,8 @@ def vop():
         return {"op": "change", "id": id, "value": rrng.choice(VMENUS[id] + ["nonsense", "2"])}
     if c < 0.65: return {"op": "change", "id": rrng.choice(VSWITCHES), "value": rrng.random() < 0.5}
     if c < 0.88: return {"op": "click", "id": rrng.choice(VCLICKS)}
-    # The kind menu, which turns the screen to X-Y for a drawing - from Y-T, and only from Y-T.
-    if c < 0.9: return {"op": "change", "id": "genMode", "value": rrng.choice(["wave", "harmonograph", "figure"])}
+    # The kind menu, which turned the screen to X-Y for a drawing, until G2: a step in its place.
+    if c < 0.9: return {"op": "step"}
     return {"op": "change", "id": "photoReticle",
             "value": rrng.choice(["%.3f,%.3f" % (rrng.random(), rrng.random()), "1.5,-0.2", "abc,0.5", "0.5,", "0.5"])}
 # Setups that name lanes the generator has not got, or one lane twice: the
@@ -5171,8 +5121,8 @@ print("\n--- the generator in WebAssembly ---")
 # carries, driven through the page's own `makeWasmCore` - the bridge the
 # worklet uses - and held to the page's JavaScript generator driven the same
 # way, run for run, through what the worklet reads back of a core: the
-# samples, the envelope, the budget, the drawing, and the
-# oscillators as each left them. The same runs as the whole generator's, the
+# samples, the envelope, the budget, the pitch, and the oscillators as each
+# left them (and the drawing's readings, until G2). The same runs as the whole generator's, the
 # effect's among them, which the effects worklet runs.
 WBUILD = os.path.join(CORE, "wasm", "build.py")
 WSRC = os.path.join(CORE, "wasm", "scope_wasm.cpp")
@@ -5313,9 +5263,12 @@ iruns["hands"] = [["make", 44100, 128, icode["Harmonic tone"]], NOTE_ON(57)] + b
     + [["slider", "amp", "30"]] + blocks(10) + [["control", "planeMirror", "3"]] + blocks(10) \
     + [["control", "delayPingPong", True], ["click", "planeOS4"]] + blocks(10) \
     + [["routings", "lfo1>gen.vcf@0.55;lfo1>gen.freq@0.35"]] + blocks(20) + [["fade", FADE]] + blocks(10) \
-    + [["control", "genMode", "harmonograph"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
+    + [["control", "shape", "square"]] + blocks(20) + [["click", "midiPoly"], NOTE_ON(60), NOTE_ON(64)] + blocks(20) \
     + [["slider", "lfoRate1", "300"], ["click", "dispXY"], ["control", "persistence", "0.3"], ["click", "photoButton"]] \
-    + blocks(40) + [["control", "figPathD", "Brückner — 🎹"], ["click", "clearButton"]] + blocks(10)
+    + blocks(40) + [["control", "keyScale", "Brückner — 🎹"], ["click", "clearButton"]] + blocks(10)
+# (The kind menu to the harmonograph, and a figure's path as text past ASCII,
+# were two of these hands until G2: the shape, and a scale's name past ASCII
+# that the menu has not got, in their places.)
 iruns["refused"] = [["make", 48000, 128, "not a code at all"]] + blocks(4) + [["slider", "noSuchSlider", "1"],
     ["setup", "eyJub3QiOg=="], ["fade", "{not json"], ["slider", "amp", "20"]] + blocks(4)
 # Every preset in turn, a note held through each, so whatever a preset leaves
@@ -5329,7 +5282,10 @@ for k in range(400): iruns["clock"] += ([["midi", 0xF8]] if k % 2 == 0 else []) 
 iruns["clock"] += [["midi", 0xFC], NOTE_OFF(60), NOTE_OFF(64), NOTE_OFF(67)] + blocks(40, 128, 5)
 # A loop through the picture: the photocell reads the grid the instrument
 # draws for itself, at sixty frames a second of audio time, and bends the sound.
-iruns["photocell"] = [["make", 48000, 256, ocode["Pendulums bent by the light"]], NOTE_ON(57)] + blocks(500, 256, 9)
+# On the old library's fifth that detunes itself by the light: its pendulums
+# bent by the light did the same through the ratio until G2 took them, and
+# would open as the waveform now, its pendulums' routes dropped.
+iruns["photocell"] = [["make", 48000, 256, ocode["The fifth detunes itself"]], NOTE_ON(57)] + blocks(500, 256, 9)
 # A clock byte alone, after a note: one byte and not three, since two more
 # would be data under the note's running status - a note-on for note nought
 # at velocity nought, which lets go of a note nought held.
@@ -5339,13 +5295,14 @@ iruns["realtime"] = [["make", 48000, 128, icode["Harmonic tone"]], NOTE_ON(0), N
 # seventy-three on the right, made by arithmetic on both sides. Drawn, it
 # goes through the plane - mirrored, then the twist under a routing -
 # and a preset loaded meanwhile leaves it drawn; given to the generator, it
-# moves a figure by each of its three modes; mono, and then none at all.
+# moves the waveform by each of its three modes (a figure, until G2); mono,
+# and then none at all.
 def icode_of(setup):
     return base64.b64encode(_json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
 iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
     + [["click", "srcMic"]] + blocks(10) + [["control", "planeMirror", "3"]] + blocks(10) \
     + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", ocode["Pluck"]]] + blocks(10) \
-    + [["click", "srcTone"], ["control", "genMode", "figure"], ["control", "inputMode", "1"]] + blocks(20) \
+    + [["click", "srcTone"], ["control", "inputMode", "1"]] + blocks(20) \
     + [["control", "inputMode", "2"]] + blocks(20) + [["control", "inputMode", "3"]] + blocks(30) \
     + [["feed", 64], ["click", "srcMic"]] + blocks(10) + [["feed"]] + blocks(10)
 # A state that opens with the input drawn, as a project reopened does.
@@ -5364,8 +5321,8 @@ iruns["unkeyed"] = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "k
     + [["control", "keyboardPresent", "1"]] + blocks(60) + [["control", "keyboardPresent", "0"]] + blocks(10)
 # Two layers (5m): poly, split at middle C, a note each side, drawn as a
 # figure each - four lanes - and A against B, the same notes summed into one
-# pair; and the second generator beside the first, drawn as a figure each
-# with the layers off.
+# pair. (And the second generator beside the first, drawn as a figure each
+# with the layers off, until G2.)
 LAYERED = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "midiPoly"], ["control", "midiLayers", "split"]]
 iruns["layered"] = LAYERED + [NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 iruns["layered against"] = LAYERED + [["control", "midiLayerPair", "against"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
@@ -5380,17 +5337,14 @@ iruns["layered input"] = LAYERED + [["feed", 100, 73], ["click", "srcMic"], ["cl
                                     ["click", "midiEditA"], ["click", "srcTone"], NOTE_ON(48), NOTE_ON(72)] + blocks(40)
 # A drawing (5m): a square-ish cycle and a sketched figure, sent as the setup's
 # own fields, as the page sends what it draws; the generator playing its drawn
-# cycle, and no keyboard, so it plays with no note.
+# cycle, and no keyboard, so it plays with no note. The sketch is a figure's,
+# which G2 took: sent all the same, so its being passed by is held.
 SQUARE = base64.b64encode(bytes((round((0.8 if k < 128 else -0.8) * 127) + 256) % 256 for k in range(256))).decode()
 SKETCH = "0.1,0.2 0.3,0.4"
 DRAWN = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"], ["control", "shape", "drawn"]] + blocks(10)
 iruns["drawn"] = DRAWN + [["control", "drawn", _json.dumps({"cycle": SQUARE, "cycles": "", "figDrawn": SKETCH})]] + blocks(30)
 iruns["drawn none"] = DRAWN + blocks(30)
-# A figure drawn on the screen: a horizontal stroke, sent to the generator's Drawn figure.
-FIG = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPresent", "0"], ["control", "genMode", "figure"],
-       ["control", "figure", "Drawn"]] + blocks(10)
-iruns["drawn figure"] = FIG + [["control", "drawn", _json.dumps({"figDrawn": "-0.5,0 0.5,0"})]] + blocks(30)
-iruns["drawn figure none"] = FIG + blocks(30)
+# (A figure drawn on the screen, a horizontal stroke sent to the Drawn figure, and its null, until G2.)
 iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, ocode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 # Scan (P7a): the instrument reading its own grid at its own picture frame,
@@ -5470,10 +5424,10 @@ check("scanned: Scan is heard in the compiled instrument, against the same with 
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)
-# All but the two that are silent by design: the refusals, and the Drawn
-# figure with nothing drawn, which is the stroke's null.
+# All but the one that is silent by design: the refusals. (The Drawn figure
+# with nothing drawn, the stroke's null, was the other until G2.)
 check("and the runs had sound in them, states that changed, MIDI sent and refusals said",
-      all(ipeak(n) > 0.05 for n in iruns if n not in ("refused", "drawn figure none")) and icount("hands", "state ") >= 8
+      all(ipeak(n) > 0.05 for n in iruns if n != "refused") and icount("hands", "state ") >= 8
       and icount("clock", "out ") >= 10 and icount("refused", "no") == 4 and icount("presets", "state ") >= len(onames) + len(inames),
       "peaks %s; hands states %d, clock sends %d, refusals %d, preset states %d" % (
           {n: round(ipeak(n), 3) for n in iruns}, icount("hands", "state "), icount("clock", "out "),
@@ -5703,8 +5657,9 @@ check("and with no layers, the screen's grid and the shared stage's hold",
 # same grid as at Strike nought, which is the null that the difference is
 # the strike's), and in a split the note's own layer's picture - or, with
 # B reading A's, A's - while the other's grid is untouched. On figures that
-# are drawn, not a dark screen: the fifth sounds with no key down (the keys
-# drive no waveform, as in Scan breathes), and the split holds a note in
+# are drawn, not a dark screen: the fifth sounds with no key down (no
+# keyboard, so nothing gates it - it was the keys driving no waveform, as in
+# Scan breathes, until G2 took that switch), and the split holds a note in
 # each half first. Those held notes strike too, so Strike goes to nought
 # only just before the measured note (`late`), or the two runs would differ
 # from their first note on and every grid with them.
@@ -5713,11 +5668,12 @@ def istrike(setup, note, vel=100, extra=(), read="grid", held=(), late=()):
         + list(late) + [NOTE_ON(note, vel)] + blocks(1, 512, 512) + [[read]]
     w = [l for l in icpp(iscript("strike", lines)) if l.startswith(read + " ")][-1].split()
     return [float(x) for x in w[1:]]
-STRUCK = {"oscScan": 100, "display": "xy", "persistence": "0.12", "shape": "sine", "pictureAmount": 0, "interval": 7,
-          "midiDrive": "harmonograph,figure"}
+STRUCK = {"oscScan": 100, "display": "xy", "persistence": "0.12", "shape": "sine", "pictureAmount": 0, "interval": 7}
 NOSTRIKE = [["slider", "scanStrike", "0"]]
-g_none, g_hard, g_soft = istrike(STRUCK, 60, extra=NOSTRIKE), istrike(STRUCK, 60), istrike(STRUCK, 60, vel=40)
-g_off, g_off0 = istrike(dict(STRUCK, oscScan=0), 60), istrike(dict(STRUCK, oscScan=0), 60, extra=NOSTRIKE)
+UNKEYED = [["control", "keyboardPresent", "0"]]
+g_none, g_hard, g_soft = (istrike(STRUCK, 60, extra=UNKEYED + NOSTRIKE), istrike(STRUCK, 60, extra=UNKEYED),
+                          istrike(STRUCK, 60, vel=40, extra=UNKEYED))
+g_off, g_off0 = istrike(dict(STRUCK, oscScan=0), 60, extra=UNKEYED), istrike(dict(STRUCK, oscScan=0), 60, extra=UNKEYED + NOSTRIKE)
 check("the instrument's note strikes its own screen where Scan is on, a softer note less, and Scan off lays nothing",
       g_none[0] < g_soft[0] < g_hard[0] and g_off == g_off0 and g_none[1] > 5, "none %.6g soft %.6g hard %.6g; off %r against %r"
       % (g_none[0], g_soft[0], g_hard[0], g_off, g_off0))
@@ -5730,14 +5686,11 @@ check("in a split, the upper note lands in B's picture and leaves A's alone; wit
       l_own[2] > l_none[2] and l_own[0:2] == l_none[0:2] and l_crossed[0] > l_crossed0[0]
       and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))
 lu = ilayers(split=False, notes=(48, 55))
-
-lg = ilayers(["control", "inputFrom", "gen2"], ["control", "inputMode", "1"], split=False, notes=(48,))
 lt = ilayers(display="dispYT")
 shared_fold = lambda r: abs(r["fold"][0] - 0.48 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
 check("unsplit, no layer pictures: both sounds hear exactly the shared picture, which moves",
       all(not r["live"] and shared_fold(r) for r in lu) and any(r["fold"][0] > 0.01 for r in lu))
-check("the second generator's two figures with no layers stay on the one picture",
-      all(r["figures"] == 2 and not r["live"] and shared_fold(r) for r in lg), "%r" % [(r["figures"], r["live"]) for r in lg[:2]])
+# (The second generator's two figures with no layers stayed on the one picture too, until G2.)
 check("and a split in Y-T draws lanes, not figures, so has none either", all(not r["live"] and shared_fold(r) for r in lt))
 check("and the readings fail on the split in X-Y, whose sounds hear their own", not all(not r["live"] and shared_fold(r) for r in lo))
 # Each grid holds its own figure, read by what the walk and the step give it:
@@ -5759,24 +5712,18 @@ check("and a slider moved with B chosen while the input is drawn is A's, as the 
       input_a < 0.01 and input_b > 0.05, "A %.4f, B %.3f" % (input_a, input_b))
 # The drawing heard and kept: the picture's crest - peak over RMS - falls from a
 # sine's 1.41 towards a square's 1 once the square is sent, and the state the
-# instrument publishes carries both fields, so a project reopened draws them.
+# instrument publishes carries the cycle, so a project reopened draws it -
+# and not the sketch, a figure's, which G2 took and which is passed by.
 def icrest(name, first, last):
     xs = ilane(name, 0, first, last)
     return max(abs(v) for v in xs) / math.sqrt(sum(v * v for v in xs) / len(xs))
 dstates = [l for l in iout["drawn"][1] if l.startswith("state ")]
 dlast = _json.loads(base64.b64decode(dstates[-1].split(" ", 2)[2] + "=" * (-len(dstates[-1].split(" ", 2)[2]) % 4)))
-check("and a drawing sent is played and kept: the drawn cycle heard, the crest of a square, and the cycle and the sketch in the state",
-      icrest("drawn", 2, 10) > 1.3 and icrest("drawn", 20, 40) < 1.2 and dlast.get("cycle") == SQUARE and dlast.get("figDrawn") == SKETCH,
+check("and a drawing sent is played and kept: the drawn cycle heard, the crest of a square, and the cycle in the state, the sketch not",
+      icrest("drawn", 2, 10) > 1.3 and icrest("drawn", 20, 40) < 1.2 and dlast.get("cycle") == SQUARE and "figDrawn" not in dlast,
       "crest %.2f then %.2f; state has the cycle %s, the sketch %s" % (icrest("drawn", 2, 10), icrest("drawn", 20, 40),
-                                                                       dlast.get("cycle") == SQUARE, dlast.get("figDrawn") == SKETCH))
+                                                                       dlast.get("cycle") == SQUARE, "figDrawn" in dlast))
 check("and the reading fails without the drawing sent", not icrest("drawn none", 20, 40) < 1.2, "%.2f" % icrest("drawn none", 20, 40))
-def istroke(name):
-    xs, ys = ilane(name, 0, 20, 40), ilane(name, 1, 20, 40)
-    return max(xs) - min(xs) > 0.4 and max(abs(v) for v in ys) < 1e-6
-check("and a figure drawn on the screen is the figure drawn: a horizontal stroke, across in X and flat in Y",
-      istroke("drawn figure"), "X %.3f to %.3f, Y within %g" % (min(ilane("drawn figure", 0, 20, 40)), max(ilane("drawn figure", 0, 20, 40)),
-                                                                max(abs(v) for v in ilane("drawn figure", 1, 20, 40))))
-check("and the reading fails without the stroke sent", not istroke("drawn figure none"))
 urows = [ifloats(l) for l in iout["unkeyed"][1] if l.startswith("block ")]
 upeak = [max(abs(v) for v in row[2 * 128:3 * 128]) for row in urows]
 # Told nothing, the instrument is the plugin's: a keyboard, and silent until a note.

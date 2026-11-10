@@ -104,7 +104,7 @@ PRESET_RUN = """async () => {
     const real = Math.random;
     Math.random = mul(seed);
     try {
-      const c = wasm ? makeWasmCore(bytes, 48000, GEN_DESTS.length, ls, seed) : makeGeneratorCore(48000, GEN_DESTS.length, ls);
+      const c = wasm ? makeWasmCore(bytes, 48000, GEN_SLOTS, ls, seed) : makeGeneratorCore(48000, GEN_SLOTS, ls);
       const asSent = JSON.parse(JSON.stringify({ tone, toneB }));
       for (const f in asSent.tone) c.set(f, asSent.tone[f]);
       for (const f in asSent.toneB) c.set(f, asSent.toneB[f], 1);
@@ -122,9 +122,10 @@ PRESET_RUN = """async () => {
         else c.block(bufs[0], bufs[1], N, bufs[2], bufs[3], bufs[4], bufs[5]);
         for (const buf of bufs) for (let i = 0; i < N; i++) out.push(buf[i]);
         for (let i = 0; i < N; i++) out.peak = Math.max(out.peak, Math.abs(bufs[0][i]), Math.abs(bufs[1][i]));
-        const d = c.drawing, g = c.budget;
+        // The drawings' readings were pushed here too, until G2 took them.
+        const g = c.budget;
         out.push(c.envelope, g.units, g.asked[0], g.asked[1], g.unison[0], g.unison[1],
-                 g.askedFactor, g.factor, g.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing);
+                 g.askedFactor, g.factor, g.silenced);
         for (const l of ls) out.push(l.phase, l.held, l.value);
       }
       return out;
@@ -140,7 +141,7 @@ PRESET_RUN = """async () => {
     const real = Math.random;
     Math.random = mul(seed);
     try {
-      const c = wasm ? makeWasmCore(bytes, 48000, GEN_DESTS.length, ls, seed) : makeGeneratorCore(48000, GEN_DESTS.length, ls);
+      const c = wasm ? makeWasmCore(bytes, 48000, GEN_SLOTS, ls, seed) : makeGeneratorCore(48000, GEN_SLOTS, ls);
       const asSent = JSON.parse(JSON.stringify(tone));
       for (const f in asSent) c.set(f, asSent[f]);
       c.setRoutes(JSON.parse(JSON.stringify(routes)));
@@ -393,9 +394,13 @@ with sync_playwright() as pw:
       // showed in what the picture says, through edge contact, which P5 cut;
       // direction does not change with a turn. A word, because a figure with
       // a mirror in it (a 3:2 Lissajous, a heart) clips the same turned either
-      // way, which hid a turn applied backwards.
-      scenarios.push(["a word turned and clipped", () => {
-        loadCorpus("Written on the screen"); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
+      // way, which hid a turn applied backwards. The word was a figure, which
+      // went in G2; a pulse a quarter wide, its right channel a fifth above
+      // and at a phase of no symmetry, is lopsided the same way.
+      scenarios.push(["a lopsided figure turned and clipped", () => {
+        hostQuietly(() => restore(Object.assign({}, DEFAULTS, { shape: "pulse", width: 25, interval: 7, phase: 37,
+                                                               midiMode: "dyad", timebase: 3 })));
+        hostSendSetup(); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
       }]);
       // And the turn the picture applies itself, rather than the signal: with
       // the lag on, the pair is a signal against its own past, which no turn
@@ -508,12 +513,13 @@ with sync_playwright() as pw:
                    b('{"v":1,"trig":1,"c1s":3,"level":100}'), b('{"v":2,"c0s":4}'), b('{"v":3,"planeClip":true}'),
                    b('{"v":9,"freq":1}'), b('{"v":5,"mac1":40,"macroNames":"A|B","mod":"macro.1>gen.vcf@0.7;lfo1>gen.amp@0.4"}'), b('{"1":5,"9":1,"b":3,"a":4}'), "  " + b('{"v":4,"freq":330}') + "\\n"];
       const oddRows = odd.map((code) => [code, tried(() => wasm.decode(code)), tried(() => js.decode(code))]);
-      const names = [{ figText: "caf\\u00e9" }, { figText: "\\u4e2d\\u6587" }, { figText: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
+      // Text in a field of free text: a figure's words until G2, the morph's first end now.
+      const names = [{ morphA: "caf\\u00e9" }, { morphA: "\\u4e2d\\u6587" }, { morphA: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
                      null, [1, 2], 5, "a string"];
       const nameRows = names.map((snap) => [JSON.stringify(snap), tried(() => wasm.encode(snap)), tried(() => js.encode(snap))]);
       // A setup longer than one of the reader's chunks - twenty thousand
       // characters of text - made and read back by each.
-      const long = { figText: "x".repeat(20000) + "y" };
+      const long = { morphA: "x".repeat(20000) + "y" };
       const longCode = js.encode(long);
       nameRows.push(["a long setup", tried(() => wasm.decode(longCode)), tried(() => js.decode(longCode))]);
       // And a code that is not a string, which the page's own throws on.

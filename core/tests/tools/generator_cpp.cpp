@@ -78,7 +78,6 @@ void run(const std::vector<std::string>& head, const Events& events) {
           else if (isNumber(v)) core.set(arg(1), num(v), layer);
           else core.set(arg(1), std::string_view(v), layer);
         } else if (cmd == "bars") core.setBars(numbers(arg(2)), static_cast<int>(num(arg(1))));
-        else if (cmd == "spin") { const auto s = numbers(arg(1)); core.setSpin({ s[0], s[1], s[2] }); }
         else if (cmd == "voices") {
           const int layer = static_cast<int>(num(arg(1)));
           if (arg(2) == "null") core.setVoices(nullptr, layer);
@@ -108,7 +107,6 @@ void run(const std::vector<std::string>& head, const Events& events) {
         } else if (cmd == "gate") core.gate(arg(1) == "1", num(arg(2)));
         else if (cmd == "noteDown") core.noteDown();
         else if (cmd == "gated") core.setGated(arg(1) == "1");
-        else if (cmd == "kick") core.kick(num(arg(1)));
         else if (cmd == "strike") core.strike(num(arg(1)), num(arg(2)));
         else if (cmd == "reswing") core.reswing();
         // Scan's tables (P7a), kept for the run: the generator holds them by pointer, as it holds the instrument's.
@@ -119,17 +117,11 @@ void run(const std::vector<std::string>& head, const Events& events) {
         }
         else if (cmd == "cycle" && arg(1) == "none") core.setCycle(nullptr);
         else if (cmd == "wavetable" && arg(1) == "none") core.setWavetable(nullptr);
-        else if (cmd == "figPath" && arg(1) == "none") core.setFigPath(nullptr);
         else if (cmd == "cycle") core.setCycle(std::make_shared<scope::CycleTables>(tables(arg(1).substr(2))));
         else if (cmd == "wavetable") {
           auto bank = std::make_shared<std::vector<scope::CycleTables>>();
           for (const auto& c : splitOn(arg(1).substr(2), '!')) bank->push_back(tables(c));
           core.setWavetable(bank);
-        } else if (cmd == "figPath") {
-          const auto parts = splitOn(arg(1).substr(2), ';');
-          auto path = std::make_shared<scope::FigurePath>();
-          path->xy = numbers(parts[0]); path->at = numbers(parts[1]);
-          core.setFigPath(path);
         } else if (cmd == "lfo") {
           auto& lfo = lfos[static_cast<std::size_t>(num(arg(1)))];
           lfo.setShape(arg(2)); lfo.rate = num(arg(3));
@@ -158,17 +150,15 @@ void run(const std::vector<std::string>& head, const Events& events) {
     for (std::size_t k = 0; k < N; k++) out.insert(out.end(), { l[k], r[k], hl[k], hr[k], bl[k], br[k] });
   }
   const auto& b = core.budget();
-  const auto d = core.drawing();
-  out.insert(out.end(), { core.envelope(), core.pitch(), core.spinKick(), core.swingLevel(), b.units, static_cast<double>(b.asked[0]),
+  out.insert(out.end(), { core.envelope(), core.pitch(), b.units, static_cast<double>(b.asked[0]),
                           static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                           static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor),
-                          static_cast<double>(b.factor), static_cast<double>(b.silenced), d.swing, d.pendulum,
-                          d.turn[0], d.turn[1], d.turn[2], d.facing, static_cast<double>(core.voices().size()),
+                          static_cast<double>(b.factor), static_cast<double>(b.silenced),
+                          static_cast<double>(core.voices().size()),
                           static_cast<double>(core.voicesB().size()), core.scanHead(0), core.scanHead(1) });
-  // The sources that read it, as the matrix would.
+  // The source that reads it, as the matrix would: the note envelope, the
+  // one left since G2 took the drawings' six.
   out.push_back(scope::EnvelopeSource(core).value());
-  using D = scope::DrawingSource::Kind;
-  for (const D k : { D::Swing, D::Pendulum, D::TurnX, D::TurnY, D::TurnZ, D::Facing }) out.push_back(scope::DrawingSource(k, core).value());
   for (std::size_t i = 0; i < out.size(); i++) std::printf(i ? " %.17g" : "%.17g", out[i]);
   std::printf("\n");
 }

@@ -89,24 +89,10 @@ with sync_playwright() as pw:
           not plain["live"] and not plain["made"] and plain["routes"] >= 2 and plain["same"] and plain["moving"]
           and not plain["row"], str(plain))
 
-    # The second generator, with no split, lays out a figure each too - its
-    # figure in layer B's lanes - and it is not a layer: the layer screens stay
-    # off. A mutant that dropped the split from the condition lived until this.
-    second = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      el.inputFrom.value = 'gen2'; el.inputFrom.dispatchEvent(new Event('change'));
-      await wait(1500);
-      stepRoutes();
-      const loops = genRoutes.filter((x) => x.loopTotal);
-      const out = { figures: (sourceFigures() || []).length, layers: layersOn(), live: layerPictures.live,
-                    same: loops.every((x) => x.heldB === x.held) };
-      el.inputFrom.value = 'live'; el.inputFrom.dispatchEvent(new Event('change'));
-      await wait(300);
-      return out;
-    }""")
-    print("    the second generator, unsplit: %s" % second)
-    check("and with the second generator drawn as a figure of its own, still one picture for both sounds",
-          second["figures"] == 2 and not second["layers"] and not second["live"] and second["same"], str(second))
+    # The second generator, with no split, laid out a figure each too - its
+    # figure in layer B's lanes - and was not a layer: the layer screens
+    # stayed off. Held here until G2 took it; the split's own condition is
+    # what is left, and the unsplit case above holds it.
 
     print("\n--- each layer's screen measures its own figure ---")
     a_moves = p.evaluate(SPLIT, 1)

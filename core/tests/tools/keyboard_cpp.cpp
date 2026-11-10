@@ -41,7 +41,6 @@ class Logged : public scope::GeneratorNotes {
     log_.push_back("set voices " + text + " " + std::to_string(layer));
     GeneratorNotes::setVoices(list, layer);
   }
-  void reswing() override { log_.push_back("reswing"); GeneratorNotes::reswing(); }
   void gate(bool open, double velocity) override {
     log_.push_back(std::string("gate ") + (open ? "1" : "0") + " " + show(velocity));
     GeneratorNotes::gate(open, velocity);
@@ -116,21 +115,15 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     else if (cmd == "learn") k.learnSplit();
     else if (cmd == "pair") k.setPair(arg(1) == "against");
     else if (cmd == "hold") k.setHold(arg(1) == "1");
-    else if (cmd == "drive") k.setDrive(arg(1) == "1");
-    else if (cmd == "play") k.setPlay(arg(1) == "1");
     else if (cmd == "gen") {
       const std::string v = arg(2);
       if (v == "true" || v == "false") gen.set(arg(1), v == "true" ? 1.0 : 0.0);
-      else if (arg(1) == "mode" || arg(1) == "figure" || arg(1) == "inputFrom") gen.set(arg(1), std::string_view(v));
       else gen.set(arg(1), num(v));
     } else if (cmd == "panel") {
       auto& p = k.panel();
       if (arg(1) == "freq") p.freq = num(arg(2));
       else if (arg(1) == "interval") p.interval = static_cast<int>(num(arg(2)));
-      else if (arg(1) == "figureRate") p.figureRate = num(arg(2));
-      else if (arg(1) == "detail") p.detail = num(arg(2));
     } else if (cmd == "frame") k.frame(num(arg(1)));
-    else if (cmd == "undrive") k.undrive();
     else if (cmd == "present") k.setPresent(arg(1) == "1");
     else if (cmd == "arp") k.setArp(arg(1), arg(2), num(arg(3)));
     else if (cmd == "bpm") k.setTempo(num(arg(1)));

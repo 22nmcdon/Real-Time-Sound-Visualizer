@@ -4,13 +4,17 @@ Against the way each would fail:
 
 - an input that leaks in when the mode is off, or at a depth of nought;
 - FM that is not a factor on the rate: a steady input of a quarter at full
-  depth must draw exactly what twice the rate draws, and a deep enough
-  negative input must stop the trace rather than run it backwards;
+  depth must draw exactly what twice the pitch draws, and a deep enough
+  negative input must stop the waveform rather than run it backwards;
 - a ride that shifts the figure instead of scaling it: every sample is the
   plain one times (1 + 2 depth x), to float precision;
-- a clock that does not lock: fed 100 Hz, a figure at 40 Hz must repeat every
-  441 samples exactly, and a waveform at 330 must too; and when the input
+- a clock that does not lock: fed 100 Hz, a waveform at 330 must repeat
+  every 441 samples exactly, where unclocked it does not; and when the input
   stops, the generator must run free at its own pitch again, not stall;
+
+Until G2 the FM and the clock were held on a figure as well, a star traced
+40 times a second; the figures went with the drawings, and the waveform is
+held to the same laws.
 - a worklet that ignores its input;
 - on the page: an input opened when it cannot reach the generator, or left
   open when it is no longer wanted.
@@ -35,7 +39,7 @@ def check(name, ok, detail=""):
 # A core off the page, one step at a time, each with its own input.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
   core.set('amp', 0.4); core.set('shape', 'sine'); core.set('interval', 0);
   const out = { L: [], R: [], X: [] };
   let t = 0;
@@ -88,8 +92,7 @@ with sync_playwright() as pw:
     run = lambda steps: p.evaluate(CORE, {"steps": steps})
     most = lambda a, c: max(abs(x - y) for x, y in zip(a, c))
     N = 8820
-    wave = {"mode": "wave", "freq": 220}
-    fig = {"mode": "figure", "figure": "Star", "figureRate": 40, "detail": 5}
+    wave = {"freq": 220}
     sine7 = {"hz": 7, "amp": 0.5}
 
     print("\n--- off is off ---")
@@ -110,42 +113,33 @@ with sync_playwright() as pw:
           gap < 1e-6 and most(ride["L"], plain["L"]) > 0.1, "%.2e" % gap)
 
     print("\n--- FM ---")
-    fast = run([{"tone": dict(fig, figureRate=80), "n": N}])
-    fm = run([{"tone": dict(fig, inputMode=1, inputDepth=1), "n": N, "input": {"value": 0.25}}])
     fastw = run([{"tone": dict(wave, freq=440), "n": N}])
     fmw = run([{"tone": dict(wave, inputMode=1, inputDepth=1), "n": N, "input": {"value": 0.25}}])
-    print("    a steady quarter at full depth against twice the rate: figure %.2e, waveform %.2e"
-          % (most(fm["L"], fast["L"]), most(fmw["L"], fastw["L"])))
-    check("FM is a factor on the rate: a steady quarter at full depth draws what twice the rate draws, "
-          "figure and waveform alike",
-          most(fm["L"], fast["L"]) < 1e-9 and most(fmw["L"], fastw["L"]) < 1e-9
-          and most(fm["L"], run([{"tone": fig, "n": N}])["L"]) > 0.1,
-          "%.2e, %.2e" % (most(fm["L"], fast["L"]), most(fmw["L"], fastw["L"])))
-    stop = run([{"tone": dict(fig, inputMode=1, inputDepth=1), "n": N, "input": {"value": -1}}])
-    check("and a deep enough negative input stops the trace rather than running it backwards",
+    print("    a steady quarter at full depth against twice the pitch: %.2e" % most(fmw["L"], fastw["L"]))
+    # The null: the same waveform with no FM, which twice the pitch is not.
+    check("FM is a factor on the rate: a steady quarter at full depth draws what twice the pitch draws",
+          most(fmw["L"], fastw["L"]) < 1e-9 and most(fmw["L"], plain["L"]) > 0.1,
+          "%.2e, against the plain wave %.3f" % (most(fmw["L"], fastw["L"]), most(fmw["L"], plain["L"])))
+    stop = run([{"tone": dict(wave, inputMode=1, inputDepth=1), "n": N, "input": {"value": -1}}])
+    check("and a deep enough negative input stops the waveform rather than running it backwards",
           max(stop["L"][100:]) - min(stop["L"][100:]) < 1e-9, "%.2e" % (max(stop["L"][100:]) - min(stop["L"][100:])))
 
     print("\n--- clock ---")
     hundred = {"hz": 100, "amp": 0.5}
     P = 441
-    clocked = run([{"tone": dict(fig, inputMode=3), "n": N * 2, "input": hundred}])
-    free = run([{"tone": fig, "n": N * 2}])
-    lock = most(clocked["L"][4410:-P], clocked["L"][4410 + P:])
+    # The null: unclocked, 330 Hz is 3.3 periods in 441 samples and does not repeat there.
+    free = run([{"tone": dict(wave, freq=330), "n": N * 2}])
     loose = most(free["L"][4410:-P], free["L"][4410 + P:])
-    print("    a 40 Hz star against a 100 Hz input: repeats every 441 samples to %.2e; unclocked, %.3f"
-          % (lock, loose))
-    check("clocked by 100 Hz, a 40 Hz figure repeats every 441 samples: the input holds it still",
-          lock < 1e-6 and loose > 0.1, "%.2e against %.3f" % (lock, loose))
     cw = run([{"tone": dict(wave, freq=330, inputMode=3), "n": N * 2, "input": hundred},
               {"n": N * 2, "input": {"value": 0}}])
     wlock = most(cw["L"][4410:N * 2 - P], cw["L"][4410 + P:N * 2])
     tail = cw["L"][N * 2 + 2000:]
     ups = sum(1 for a, c in zip(tail, tail[1:]) if a <= 0 < c)
     hz = ups * 44100 / len(tail)
-    print("    a 330 Hz waveform clocked by 100 Hz repeats every 441 samples to %.2e; input gone, it runs at "
-          "%.1f Hz" % (wlock, hz))
+    print("    a 330 Hz waveform clocked by 100 Hz repeats every 441 samples to %.2e (unclocked %.3f); input gone, "
+          "it runs at %.1f Hz" % (wlock, loose, hz))
     check("a waveform clocked by the input plays at the input's pitch, and runs free at its own when the input stops",
-          wlock < 1e-6 and abs(hz - 330) < 5, "%.2e, %.1f Hz" % (wlock, hz))
+          wlock < 1e-6 and loose > 0.1 and abs(hz - 330) < 5, "%.2e against %.3f, %.1f Hz" % (wlock, loose, hz))
 
     # The restart at each crossing, which a steady input cannot show by
     # periodicity alone - the waveform repeats every 441 samples either way.

@@ -83,7 +83,6 @@ with sync_playwright() as pw:
           freq: state.source.settings.freq,
           interval: state.source.settings.interval,
           octaves: state.source.settings.octaves,
-          rate: state.source.settings.figureRate,
           menu: Number(el.interval.value),
           credit: el.credit.textContent,
         })""")
@@ -159,8 +158,7 @@ with sync_playwright() as pw:
     print("\n--- the dyad (D2) ---")
     p.evaluate("""() => {
       midiPanic();
-      midi.mode = 'dyad'; midi.hold = false; midi.drive.wave = true;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
+      midi.mode = 'dyad'; midi.hold = false;
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.tuneJust.click();
       syncMidi();
@@ -338,29 +336,9 @@ with sync_playwright() as pw:
           and wide_then_mono["interval"] == 4, str(wide_then_mono))
     p.evaluate("() => { midiPanic(); el.midiDyad.click(); }")
 
-    print("\n--- which generators a note plays (D4) ---")
-    kinds = p.evaluate("""() => {
-      midiPanic();
-      const out = {};
-      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
-      out.box = el.midiDrive.checked;
-      out.base = state.source.settings.figureRate;
-      midiBytes(Uint8Array.from([0x90, 69, 100]));
-      out.off = state.source.settings.figureRate;
-      el.midiDrive.checked = true; el.midiDrive.dispatchEvent(new Event('change'));
-      out.on = state.source.settings.figureRate;
-      el.midiDrive.checked = false; el.midiDrive.dispatchEvent(new Event('change'));
-      out.back = state.source.settings.figureRate;
-      midiPanic();
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
-      return out;
-    }""")
-    check("wireframe starts deaf to notes", kinds["box"] is False
-          and close(kinds["off"], kinds["base"], 1e-9), str(kinds))
-    check("and hears them when asked: A4 is twice the trace rate of A3",
-          close(kinds["on"], min(200, kinds["base"] * 2), 1e-9), str(kinds))
-    check("turning it off hands the slider back",
-          close(kinds["back"], kinds["base"], 1e-9), str(kinds))
+    # Which generator kinds a note played (D4), a box a kind, went with the
+    # drawings in G2: notes always play the waveform. That they do is every
+    # check above; that nothing is left to untick is the setup's, below.
 
     print("\n--- controllers ---")
     # A controller became a source the first time it moved, named from the
@@ -403,11 +381,17 @@ with sync_playwright() as pw:
     truth = p.evaluate("""() => {
       midiPanic();
       state.modRoutings = []; touchRoutings();
-      midi.drive.wave = false;                 // a deliberately wrong estimate
-      el.freq.value = '100'; el.freq.dispatchEvent(new Event('input'));
       state.lagOn = true; state.lagAuto = true;
       midi.truth = true;
+      // A dyad, whose pitch is the slider's once the note has set it; a
+      // chord's voices keep their notes' pitches whatever the slider says.
+      el.midiDyad.click();
       midiBytes(Uint8Array.from([0x90, 69, 100]));   // A4, 440 Hz
+      /* A deliberately wrong estimate: the generator moved off the note after
+         it was struck, so the note and the signal disagree. Until G2 this
+         unticked the waveform's drive first, so the note never moved it;
+         notes always play the waveform now, so it is moved back by hand. */
+      el.freq.value = '100'; el.freq.dispatchEvent(new Event('input'));
       lagLock = null;
       lagLockUpdate(capture());
       return lagLock;
@@ -450,7 +434,7 @@ with sync_playwright() as pw:
     tuner = p.evaluate("""() => {
       state.panesExtra.tuner = true; syncPanes();
       midiPanic();
-      midi.drive.wave = true; midi.truth = true;
+      midi.truth = true;
       midiBytes(Uint8Array.from([0x90, 57, 100]));
       return true;
     }""")
@@ -468,32 +452,27 @@ with sync_playwright() as pw:
     print("\n--- the setup, round tripped ---")
     trip = p.evaluate("""() => {
       midi.mode = 'mono'; midi.hold = true; midi.truth = false; midi.follow = true;
-      midi.drive.wireframe = true; midi.drive.figure = false;
       syncMidi();
-      const code = encodeSetup(snapshot());
+      const snap = snapshot(), code = encodeSetup(snap);
       midi.mode = 'dyad'; midi.hold = false; midi.truth = true; midi.follow = false;
-      midi.drive.wireframe = false; midi.drive.figure = true;
       restore(decodeSetup(code));
+      // The keyboard's drive and play went with the drawings (G2): a code has neither.
       return { mode: midi.mode, hold: midi.hold, truth: midi.truth,
-               follow: midi.follow, drive: Object.assign({}, midi.drive),
+               follow: midi.follow, kept: ['midiDrive', 'midiPlay'].filter((k) => k in snap),
                shown: el.midiMono.getAttribute('aria-checked') };
     }""")
-    check("every keyboard setting comes back",
+    check("every keyboard setting comes back, and a code carries no drive or play",
           trip["mode"] == "mono" and trip["hold"] and trip["truth"] is False
-          and trip["follow"] and trip["drive"]["wireframe"] is True
-          and trip["drive"]["figure"] is False, str(trip))
+          and trip["follow"] and trip["kept"] == [], str(trip))
     check("and the panel says so", trip["shown"] == "true", str(trip["shown"]))
 
     defaults = p.evaluate("""() => {
       restore({});
-      return { mode: midi.mode, truth: midi.truth, follow: midi.follow,
-               drive: Object.assign({}, midi.drive) };
+      return { mode: midi.mode, truth: midi.truth, follow: midi.follow };
     }""")
     check("a setup written before the keyboard existed restores the defaults",
           defaults["mode"] == "dyad" and defaults["truth"] is True
-          and defaults["follow"] is False
-          and defaults["drive"] == {"wave": True, "harmonograph": True,
-                                    "figure": True, "wireframe": False},
+          and defaults["follow"] is False,
           str(defaults))
 
 

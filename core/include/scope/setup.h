@@ -38,7 +38,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 9;  // SETUP_VERSION
+constexpr int kSetupVersion = 10;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -373,6 +373,51 @@ inline bool migrateSetup(Json& setup) {
           || from(p, u"notes.count") || from(p, u"notes.spread") || from(p, u"notes.top") || from(p, u"notes.inner")
           || from(p, u"env.live");
         if (!cutSource) { if (!first) kept += u';'; kept += part; first = false; }
+        if (end == std::u16string::npos) break;
+        at = end + 1;
+      }
+      setup.set("mod", Json::string(kept));
+    }
+  }
+  // 9 -> 10: the drawings cut (G2, 9 Nov) - the harmonograph, the figures,
+  // the solids and the second generator. A code that named one as its kind
+  // loads as the waveform, their fields go, and so does every routing from
+  // one of their sources or to one of their destinations (the page's pattern
+  // beside CUT_SOURCE). Read as that pattern reads a routing: the source is
+  // what comes before the first arrow, the destination what follows it up
+  // to the next "@" - so a destination that only begins with one of these,
+  // or a source that ends with one, is another and stays.
+  if (!(v >= 10) && setup.type == Json::Type::Object) {
+    // Anything but "wave", missing included, is the waveform: `setup.gen !== "wave"` on the page.
+    const Json* gen = setup.get("gen");
+    if (!(gen && gen->type == Json::Type::String && gen->s == u"wave")) setup.set("gen", Json::string(std::string_view("wave")));
+    for (const char* key : { "figure", "detail", "figureRate", "figText", "figPath", "figDrawn", "swingRate", "decay",
+                             "detune", "swingDrive", "inputFrom", "gen2Figure", "gen2Rate", "model", "spinX", "spinY",
+                             "spinZ", "spinRate", "depth", "midiDrive", "midiPlay", "ring" }) setup.erase(key);
+    const Json* mod = field("mod");
+    if (mod && mod->type == Json::Type::String && !mod->s.empty()) {
+      const std::u16string& text = mod->s;
+      std::u16string kept;
+      bool first = true;
+      std::size_t at = 0;
+      static const char16_t* const sources[] = { u"draw.swing", u"draw.pendulum", u"draw.turnX", u"draw.turnY",
+                                                 u"draw.turnZ", u"draw.facing" };
+      static const char16_t* const dests[] = { u"gen.detail", u"gen.tumble", u"gen.depth", u"gen.swing", u"gen.spinX",
+                                               u"gen.spinY", u"gen.spinZ", u"gen.reswing", u"gen.kick" };
+      while (true) {
+        const std::size_t end = text.find(u';', at);
+        const std::u16string part = text.substr(at, end == std::u16string::npos ? std::u16string::npos : end - at);
+        const std::u16string p = jsTrim(part);
+        const std::size_t arrow = p.find(u'>');
+        bool cut = false;
+        if (arrow != std::u16string::npos) {
+          for (const char16_t* id : sources) cut = cut || p.compare(0, arrow, id) == 0;
+          for (const char16_t* id : dests) {
+            const std::u16string head = std::u16string(id) + u"@";
+            cut = cut || p.compare(arrow + 1, head.size(), head) == 0;
+          }
+        }
+        if (!cut) { if (!first) kept += u';'; kept += part; first = false; }
         if (end == std::u16string::npos) break;
         at = end + 1;
       }

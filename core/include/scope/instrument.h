@@ -569,7 +569,7 @@ class Instrument {
     for (std::size_t k = 0; k < n - take; ++k) out[k] = 0.0f;
     for (std::size_t k = 0; k < take; ++k) out[n - take + k] = picture_[((at + kPictureFrames - take + k) % kPictureFrames) * kRingLanes + c];
   }
-  // The generator, for what the page reads off it: its envelope, gate, budget and drawing.
+  // The generator, for what the page reads off it: its envelope, gate and budget.
   const Generator& generator() const { return *core_; }
   // Each layer's picture (P6), for the page's readings and a harness.
   const LayerPictures& layerPictures() const { return pictureRun_->layers(); }
@@ -586,7 +586,7 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = lfosServed_[i].load(std::memory_order_relaxed);
     return out;
   }
-  // How many lanes the picture has: two, or four for two figures or the band split.
+  // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
 
   // What the owners and their tests read.
@@ -672,25 +672,22 @@ class Instrument {
     changed_ = true;
   }
 
-  /* What is drawn by hand - the cycles, and a figure drawn on the screen -
-     as the setup's own fields in one JSON object: "cycle", "cycles",
-     "figDrawn", any of them. A drawing is neither a slider moved nor a
-     preset loaded, so it reached the instrument by neither: on the site and
-     in the plugin, a cycle drawn on the panel was never heard. Kept in the
-     setup the state is made from, rather than as a hand, so a project
-     reopened draws it again by the same restore that a preset does. */
+  /* What is drawn by hand - the cycles - as the setup's own fields in one
+     JSON object: "cycle", "cycles", either. A drawing is neither a slider
+     moved nor a preset loaded, so it reached the instrument by neither: on
+     the site and in the plugin, a cycle drawn on the panel was never heard.
+     Kept in the setup the state is made from, rather than as a hand, so a
+     project reopened draws it again by the same restore that a preset does.
+     A figure drawn on the screen ("figDrawn") came this way too until G2
+     took the figures; one sent now is not kept. */
   void drawnFrom(const std::u16string& text) {
     const auto part = jsonParse(text);
     if (!part || part->type != Json::Type::Object) return;
     if (setup_.type != Json::Type::Object) setup_ = Json::object();
-    for (const char* key : { "cycle", "cycles", "figDrawn" })
+    for (const char* key : { "cycle", "cycles" })
       if (const Json* v = part->get(key)) setup_.set(key, *v);
     if (part->get("cycle") || part->get("cycles"))
       restoreCycles(setup_.get("cycle"), setup_.get("cycles"), *brain_, *core_);
-    if (const Json* strokes = part->get("figDrawn")) {
-      restoreDrawnFigure(strokes, *brain_);
-      core_->setFigPath(figurePathFor(*brain_, brain_->panel.select("figure")));
-    }
     changed_ = true;
   }
 
@@ -753,10 +750,10 @@ class Instrument {
      chose; and layer B's figure left to its own turn while it has a plane
      of its own and is drawn as a figure of its own. Until this the grid was
      given neither, so it walked layer A's pair alone, and the photocell and
-     the picture's sources in the plugin never saw layer B or the second
-     generator. Worked out every block, and written only when it changes:
-     the lanes' vector can grow, which allocates, once, the first time two
-     figures are drawn. */
+     the picture's sources in the plugin never saw layer B (or, until G2,
+     the second generator). Worked out every block, and written only when
+     it changes: the lanes' vector can grow, which allocates, once, the
+     first time two figures are drawn. */
   void layOutPicture(Layout lay) {
     const int lanes = lay == Layout::Each ? 4 : 2;
     Brain::ViewState& w = brain_->view;
@@ -874,16 +871,17 @@ class Instrument {
     /* A hand on a control the list already has makes the earlier one
        redundant: what the control says now is the later. Not when a hand
        between them is on a control whose handler reads this one, or this
-       one's reads it - the keyboard's drive and play are for the kind chosen
-       at the time, an LFO's rate moved while it is synced is its free rate -
-       since the earlier one's effect would then be put back in a different
-       place. */
+       one's reads it - an LFO's rate moved while it is synced is its free
+       rate - since the earlier one's effect would then be put back in a
+       different place. (The kind menu, the keyboard's drive and play, which
+       were for the kind chosen at the time, and the figure and its path went
+       with the drawings in G2.) */
     static const std::vector<std::vector<std::string>> reads {
-      { "c:genMode", "c:midiDrive", "c:midiPlay" }, { "c:lfoSync0", "s:lfoRate0" }, { "c:lfoSync1", "s:lfoRate1" }, { "c:delaySync", "s:delayMs" },
-      { "c:figure", "c:figPathD" }, { "c:arpMode", "c:arpRate", "c:arpOctaves" },
+      { "c:lfoSync0", "s:lfoRate0" }, { "c:lfoSync1", "s:lfoRate1" }, { "c:delaySync", "s:delayMs" },
+      { "c:arpMode", "c:arpRate", "c:arpOctaves" },
       // The view's: the pair's two menus keep it off one lane twice, mid and side and the lag turn each other off,
-      // and a display of X-Y reads the persistence, which the kind menu's choice of X-Y does too.
-      { "c:xyX", "c:xyY" }, { "c:midSide", "c:lagOn" }, { "k:disp", "c:persistence", "c:genMode" },
+      // and a display of X-Y reads the persistence.
+      { "c:xyX", "c:xyY" }, { "c:midSide", "c:lagOn" }, { "k:disp", "c:persistence" },
     };
     const auto related = [&](const std::string& a, const std::string& b) {
       if (a == b) return false;
@@ -1013,13 +1011,13 @@ class Instrument {
       }
       /* The figures the generator lays out, as the page's tone source lays
          them out (getLatestWindow): layer A's pair alone; A's and B's as two
-         pairs, or A's and the second generator's ("each"), four lanes; or
-         one pair with B's added, clamped ("against") - where the generator
-         has already put A on X and B on Y, and B's own pair is silent, so
-         the sum is the page's and changes nothing. The keyboard works the
-         layout out, as the page's syncLayers does. Until 5m the pair
-         was A's whatever the layout, so in the plugin and on the site layer
-         B and the second generator were heard and never drawn. */
+         pairs ("each"), four lanes; or one pair with B's added, clamped
+         ("against") - where the generator has already put A on X and B on
+         Y, and B's own pair is silent, so the sum is the page's and changes
+         nothing. The keyboard works the layout out, as the page's
+         syncLayers does. Until 5m the pair was A's whatever the layout, so
+         in the plugin and on the site layer B (and the second generator,
+         until G2) were heard and never drawn. */
       const Layout lay = drawsInput_ ? Layout::One : notes_->layout();
       pictureSource_.channels = lay == Layout::Each ? 4 : 2;
       layOutPicture(lay);
@@ -1093,7 +1091,7 @@ class Instrument {
   bool changed_ = false;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_, mono_, heardL_, heardR_;  // a block's worth, made in prepare
-  std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, or the second generator's, as the generator draws it
+  std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, as the generator draws it
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator
   bool bands_ = false;            // the input split into four bands, drawn as lanes

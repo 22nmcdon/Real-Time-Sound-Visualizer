@@ -10,11 +10,11 @@
 // - The learned controllers, `cc.N`, each registered the first frame after
 //   the keyboard learns it - and the routes compiled again then, since a
 //   routing from a controller that had not moved yet was skipped.
-// - The level (`env.live`), the note envelope (`env.note`) and the drawings'
-//   six - Swing, Pendulum, Tilt, Turn, Roll and Facing - read from the
-//   generator, as the page reads them from its core.
-// - Swing again and Kick, the two things a hit can strike. Pluck, a third,
-//   went in P5 with the threshold.
+// - The note envelope (`env.note`), read from the generator, as the page
+//   reads it from its core. The drawings' six - Swing, Pendulum, Tilt, Turn,
+//   Roll and Facing - and the two things a hit could strike, Swing again and
+//   Kick, went with the drawings in G2 (Pluck, a third, in P5 with the
+//   threshold); the level in F4b.
 //
 // The morph's fader is the Brain's (restore.h), and the hearing's
 // sources are its own (hearing.h); the picture's sources arrive with stage 4.
@@ -76,63 +76,16 @@ class EnvelopeSource : public ModSource {
   const Generator& gen_;
 };
 
-// What the harmonograph and a solid are doing (drawingNow): nought from a
-// drawing that is not the one playing, as the generator reports it.
-class DrawingSource : public ModSource {
- public:
-  enum class Kind { Swing, Pendulum, TurnX, TurnY, TurnZ, Facing };
-  DrawingSource(Kind kind, const Generator& gen) : ModSource(idFor(kind)), kind_(kind), gen_(gen) {}
-  double value() const override {
-    const auto d = gen_.drawing();
-    switch (kind_) {
-      case Kind::Swing: return d.swing;
-      case Kind::Pendulum: return d.pendulum;
-      case Kind::TurnX: return d.turn[0];
-      case Kind::TurnY: return d.turn[1];
-      case Kind::TurnZ: return d.turn[2];
-      case Kind::Facing: return d.facing;
-    }
-    return 0;
-  }
-  static const char* idFor(Kind k) {
-    switch (k) {
-      case Kind::Swing: return "draw.swing";
-      case Kind::Pendulum: return "draw.pendulum";
-      case Kind::TurnX: return "draw.turnX";
-      case Kind::TurnY: return "draw.turnY";
-      case Kind::TurnZ: return "draw.turnZ";
-      case Kind::Facing: return "draw.facing";
-    }
-    return "";
-  }
-
- private:
-  Kind kind_;
-  const Generator& gen_;
-};
-
-// The ported sources, made and registered together, and the generator's
-// struck destinations registered beside them.
+// The ported sources, made and registered together.
 class CoreSources {
  public:
-  CoreSources(Matrix& matrix, Generator& gen, const std::vector<Lfo>& lfos, const Keyboard& keys) : envelope_(gen) {
+  CoreSources(Matrix& matrix, const Generator& gen, const std::vector<Lfo>& lfos, const Keyboard& keys) : envelope_(gen) {
     for (int i = 0; i < static_cast<int>(lfos.size()); i++) lfo_.emplace_back(i, lfos);
     using K = KeyboardSource::Kind;
     for (const K k : { K::Key }) keys_.emplace_back(k, keys);
-    using D = DrawingSource::Kind;
-    for (const D k : { D::Swing, D::Pendulum, D::TurnX, D::TurnY, D::TurnZ, D::Facing }) drawing_.emplace_back(k, gen);
     for (auto& s : lfo_) matrix.registerSource(&s);
     for (auto& s : keys_) matrix.registerSource(&s);
-    for (auto& s : drawing_) matrix.registerSource(&s);
     matrix.registerSource(&envelope_);
-    const auto struck = [&](const char* id, std::function<void(double)> fire) {
-      ModDest d;
-      d.id = id; d.kind = DestKind::Event; d.fire = std::move(fire);
-      matrix.registerDest(std::move(d));
-    };
-    Generator* g = &gen;
-    struck("gen.reswing", [g](double) { g->reswing(); });
-    struck("gen.kick", [g](double amount) { g->kick(amount); });
   }
   CoreSources(const CoreSources&) = delete;
   CoreSources& operator=(const CoreSources&) = delete;
@@ -145,7 +98,6 @@ class CoreSources {
   // Kept where they were made: the matrix holds pointers to them.
   std::vector<LfoSource> lfo_;
   std::vector<KeyboardSource> keys_;
-  std::vector<DrawingSource> drawing_;
   Level level_;
   EnvelopeSource envelope_;
 };

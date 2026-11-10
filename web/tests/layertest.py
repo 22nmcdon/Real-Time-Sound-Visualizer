@@ -80,7 +80,7 @@ with sync_playwright() as pw:
       const rate = 44100;
       const run = (layered) => {
         const lfos = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-        const core = makeGeneratorCore(rate, GEN_DESTS.length, lfos);
+        const core = makeGeneratorCore(rate, GEN_SLOTS, lfos);
         const chord = [{ note: 48, freq: 130.8, velocity: 1, role: 'x' }];
         core.set('voices', chord);
         if (layered) core.set('voices', [{ note: 72, freq: 523.3, velocity: 1, role: 'xy' }], 1);
@@ -101,7 +101,7 @@ with sync_playwright() as pw:
     core = p.evaluate("""([A, B]) => {
       const rate = 44100;
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
       core.set('shape', 'sine'); core.set('shape', 'square', 1);
       // Layer B slow to speak and A quick, so an envelope shared between them
       // shows as B arriving at A's speed.
@@ -135,7 +135,7 @@ with sync_playwright() as pw:
         // And a caller that does not ask for B's lanes still hears B: the
         // same chord again, from a second core, with only the heard pair.
         alone: (() => {
-          const again = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+          const again = makeGeneratorCore(rate, GEN_SLOTS, quiet);
           again.set('shape', 'sine'); again.set('shape', 'square', 1);
           again.set('attackMs', 2); again.set('attackMs', 400, 1);
           again.set('voices', A); again.set('voices', B, 1);
@@ -176,7 +176,7 @@ with sync_playwright() as pw:
     life = p.evaluate("""() => {
       const rate = 44100;
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
       core.set('releaseMs', 50, 1);
       // A chord on layer A with nothing in it, and one note on layer B: the
       // envelope a player hears is B's.

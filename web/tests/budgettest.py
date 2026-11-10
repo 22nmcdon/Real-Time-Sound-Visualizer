@@ -77,7 +77,7 @@ ALL = {"shape": "drawbars", "unison": 7, "fmIndex": 2, "syncRatio": 1.5, "subLev
 
 HELPERS = """
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const make = () => { const c = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]); c.set('mode', 'wave'); return c; };
+  const make = () => { const c = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]); return c; };
   // Eight notes a minor third apart; the lowest drawn on X and the highest on Y.
   const chord = (base, hz) => { const v = []; for (let k = 0; k < 8; k++) v.push({ note: base + k * 3,
     freq: hz ? hz * (1 + k / 8) : 440 * Math.pow(2, (base + k * 3 - 69) / 12), velocity: 1,
@@ -360,7 +360,6 @@ with sync_playwright() as pw:
         const core = make();
         for (const [k, v] of Object.entries(genSettings())) if (k !== 'voices') core.set(k, v);
         for (const [k, v] of Object.entries(genSettings(1))) if (k !== 'voices') core.set(k, v, 1);
-        core.set('mode', 'wave');
         core.set('voices', chord(48)); if (layered) core.set('voices', chord(60), 1);
         run(core, 128);
         const b = core.budget;

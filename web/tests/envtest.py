@@ -16,10 +16,10 @@ THE SHAPE, RENDERED. Not the value of a variable read back, which would only
 say the code wrote what it wrote: the real worklet in an `OfflineAudioContext`,
 with the envelope measured off the samples that came out of it.
 
-NO STEP AT ANY EDGE. A gate edge, and the harmonograph's restart - which B1
-turned up and flagged for this stage. The pendulums run down and the loop lets
-them go again, and that used to put the envelope back to one in a single
-sample: invisible on a screen, a click the moment there is an output.
+NO STEP AT ANY EDGE. A gate edge. (And until G2 took the drawings, the
+harmonograph's restart, which B1 turned up and flagged for this stage: the
+pendulums ran down and the loop let them go again, which used to put the
+envelope back to one in a single sample.)
 
 LEGATO. A second note over a held one changes the pitch and leaves the
 envelope alone, which is what makes a run of notes a phrase. After a release
@@ -107,7 +107,7 @@ with sync_playwright() as pw:
         { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
       ];
       const rate = 44100, n = 4410;
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, own());
+      const core = makeGeneratorCore(rate, GEN_SLOTS, own());
       core.set('shape', 'sine');
       const l = new Float32Array(n), r = new Float32Array(n);
       core.block(l, r, n);
@@ -144,10 +144,10 @@ with sync_playwright() as pw:
         'data:application/javascript,' + encodeURIComponent(generatorModuleSource()));
       const tone = Object.assign(
         JSON.parse(JSON.stringify(state.source.settings)),
-        { shape: 'sine', mode: 'wave', freq: 220, amp: 0.55 }, patch || {});
+        { shape: 'sine', freq: 220, amp: 0.55 }, patch || {});
       const node = new AudioWorkletNode(ctx, 'generator', {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-        processorOptions: { slots: GEN_DESTS.length, lfos: [
+        processorOptions: { slots: GEN_SLOTS, lfos: [
           { shape: 'sine', rate: 0.2, depth: 0.5 },
           { shape: 'sine', rate: 0.5, depth: 0.3 },
         ], tone, routes: [], gated },
@@ -259,37 +259,8 @@ with sync_playwright() as pw:
           edges["release"]["worst"] < slope * 1.2,
           "%.4f at sample %d" % (edges["release"]["worst"], edges["release"]["at"]))
 
-    # The harmonograph, which is the one B1 flagged. Decay wound right up so
-    # the pendulums run down and are let go several times inside one render.
-    # Ungated, because the thing being measured is the harmonograph's OWN
-    # envelope running down and being let go again. A note envelope on top
-    # would be a second amplitude and the step could hide behind it.
-    harmo = p.evaluate(STAGED, [1.0, 0.95, False, {
-        "mode": "harmonograph", "decay": 20, "swingRate": 2.1, "amp": 0.55,
-    }])
-    letgo = p.evaluate("""([left]) => {
-      const s = Float32Array.from(left);
-      const worst = window.__step(s, 0, s.length);
-      // How many times it was let go: the envelope's own restarts show as the
-      // signal coming back up after falling to nearly nothing.
-      const env = window.__env(s, 44100, 20);
-      let restarts = 0;
-      for (let i = 1; i < env.length; i++) {
-        if (env[i - 1] < 0.02 && env[i] > 0.05) restarts++;
-      }
-      return { worst: worst.worst, at: worst.at, restarts };
-    }""", [harmo["left"]])
-    print("    let go %d times in a second, steepest step %.4f"
-          % (letgo["restarts"], letgo["worst"]))
-    check("the pendulums really were let go again inside the render",
-          letgo["restarts"] >= 2, str(letgo["restarts"]))
-    # A harmonograph at 2.1 Hz is a much slower waveform than the sine above,
-    # so its own slope is tiny and a step stands out by a long way. The old
-    # behaviour put a quarter of full scale in one sample.
-    check("and letting them go is a fade, not a step",
-          letgo["worst"] < 0.01,
-          "%.4f at sample %d, against the 0.275 a one-sample restart gave"
-          % (letgo["worst"], letgo["at"]))
+    # The harmonograph's restart, the one B1 flagged, was rendered here and
+    # held to a fade until G2 took the drawings.
 
     print("\n--- legato, and what is not legato ---")
     legato = p.evaluate("""() => {
@@ -298,7 +269,7 @@ with sync_playwright() as pw:
         { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
       ];
       const rate = 44100;
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, own());
+      const core = makeGeneratorCore(rate, GEN_SLOTS, own());
       core.set('shape', 'sine');
       core.set('attackMs', 20); core.set('decayMs', 40);
       core.set('sustain', 0.5); core.set('releaseMs', 60);
@@ -355,7 +326,7 @@ with sync_playwright() as pw:
       ];
       const rate = 44100;
       const measure = (gated) => {
-        const core = makeGeneratorCore(rate, GEN_DESTS.length, own());
+        const core = makeGeneratorCore(rate, GEN_SLOTS, own());
         core.set('shape', 'sine');
         core.set('glideMs', 200);
         core.set('sustain', 1);
@@ -398,7 +369,7 @@ with sync_playwright() as pw:
       ];
       const rate = 44100;
       const measure = (glideMs) => {
-        const core = makeGeneratorCore(rate, GEN_DESTS.length, own());
+        const core = makeGeneratorCore(rate, GEN_SLOTS, own());
         core.set('shape', 'sine');
         core.set('glideMs', glideMs);
         core.set('freq', 220);
@@ -425,8 +396,6 @@ with sync_playwright() as pw:
     # exists to make.
     played = p.evaluate("""async () => {
       await midiConnect();
-      midi.drive.wave = true;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       state.source.set('attackMs', 10);
       state.source.set('decayMs', 20);
@@ -444,21 +413,24 @@ with sync_playwright() as pw:
       await wait(200);
       const gone = { gated: state.source.gated, env: read() };
 
-      /* A key already down when the gate is HANDED OVER has to sound. Ticking
-         Drives while holding a note is the obvious way to do it, and the
+      /* A key already down when the gate is HANDED OVER has to sound, and the
          obvious way for it to be wrong is for the gate to open and then wait
-         for a key that is already there. */
-      midi.drive.wave = false;
+         for a key that is already there. Until G2 the handover was ticking
+         Drives while holding a note; notes always play the waveform now, so
+         it is the keyboard arriving - `midi.access`, which is what
+         keyboardPresent reads, taken away and given back. */
+      const access = window.__access = midi.access;
+      midi.access = null;
       await wait(120);
       window.__send([0x90, 69, 100]);
       await wait(80);
       const beforeHandover = { gated: state.source.gated, env: read() };
-      midi.drive.wave = true;
+      midi.access = access;
       await wait(160);
       const afterHandover = { gated: state.source.gated, env: read() };
 
-      // Unticking Drives has to hand the generator back, not leave it shut.
-      midi.drive.wave = false;
+      // The keyboard going has to hand the generator back, not leave it shut.
+      midi.access = null;
       await wait(120);
       const handedBack = { gated: state.source.gated, env: read() };
       /* Left with the keyboard not driving it, because that is what the next
@@ -469,7 +441,7 @@ with sync_playwright() as pw:
       return { idle, held, gone, handedBack, line,
                beforeHandover, afterHandover };
     }""")
-    print("    idle %s, held %s, released %s, drives off %s"
+    print("    idle %s, held %s, released %s, keyboard gone %s"
           % (played["idle"], played["held"], played["gone"], played["handedBack"]))
     check("connecting a keyboard that drives the generator gates it",
           played["idle"]["gated"] is True and played["idle"]["env"] == 0,
@@ -485,7 +457,7 @@ with sync_playwright() as pw:
           and played["afterHandover"]["gated"] is True
           and played["afterHandover"]["env"] > 0.5,
           "%s then %s" % (played["beforeHandover"], played["afterHandover"]))
-    check("unticking Drives hands the generator back wide open",
+    check("the keyboard going hands the generator back wide open",
           played["handedBack"]["gated"] is False
           and played["handedBack"]["env"] == 0
           and p.evaluate("() => state.source.settings.amp > 0"),
@@ -521,12 +493,13 @@ with sync_playwright() as pw:
       };
       const says = () => el.readoutDetail.textContent.indexOf("no note held") >= 0;
 
-      midi.drive.wave = true;
+      // The keyboard back (it was left away above), and away again.
+      midi.access = window.__access;
       const appeared = await until(says, 1500);
       const gated = state.source.gated;
       const line = el.readoutDetail.textContent;
 
-      midi.drive.wave = false;
+      midi.access = null;
       const cleared = await until(() => !says(), 1500);
       return { gated, line, appeared, cleared,
                after: el.readoutDetail.textContent };
@@ -536,23 +509,8 @@ with sync_playwright() as pw:
     check("and stops saying it when the generator is handed back",
           said["cleared"], said["after"][:80])
 
-    # And the drawn modes are not gated at all, which is the decision that
-    # keeps a keyboard from blanking a harmonograph nobody is playing.
-    drawn = p.evaluate("""async () => {
-      midi.drive.harmonograph = true;
-      el.genMode.value = 'harmonograph';
-      el.genMode.dispatchEvent(new Event('change'));
-      await new Promise((r) => setTimeout(r, 300));
-      const gated = state.source.gated;
-      const w = state.source.getLatestWindow(4096)[0];
-      let peak = 0;
-      for (let i = 0; i < w.length; i++) peak = Math.max(peak, Math.abs(w[i]));
-      el.genMode.value = 'wave';
-      el.genMode.dispatchEvent(new Event('change'));
-      return { gated, peak };
-    }""")
-    check("a harmonograph with a keyboard attached is not gated, and draws",
-          drawn["gated"] is False and drawn["peak"] > 0.05, str(drawn))
+    # That the drawn modes were not gated at all, so a keyboard could not
+    # blank a harmonograph nobody was playing, was held here until G2.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -44,7 +44,7 @@ HZ = lambda note: 440 * 2 ** ((note - 69) / 12)
 RUN = """([steps, shape]) => {
   const rate = 44100;
   const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
   for (const layer of [0, 1]) {
     core.set('shape', shape || 'ramp', layer); core.set('attackMs', 1, layer); core.set('decayMs', 1, layer);
     core.set('sustain', 1, layer); core.set('releaseMs', 5, layer);

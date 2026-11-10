@@ -64,8 +64,8 @@ CORE = """([morph, freq, n, extra]) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const lfos = [still(), still()];
   if (extra && extra.lfo) Object.assign(lfos[0], extra.lfo);
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, lfos);
-  core.set('mode', 'wave'); core.set('shape', 'morph'); core.set('morph', morph);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, lfos);
+  core.set('shape', 'morph'); core.set('morph', morph);
   core.set('freq', freq); core.set('amp', 0.9); core.set('interval', 0);
   if (extra && extra.routes) core.setRoutes(extra.routes.map((r) => Object.assign({}, r, { slot: MORPH_SLOT })));
   const L = new Float32Array(n), R = new Float32Array(n);
@@ -169,7 +169,6 @@ with sync_playwright() as pw:
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setView('bench'); setBenchTab('play');
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       const sine = el.morphRow.hidden;
       el.shape.value = 'morph'; el.shape.dispatchEvent(new Event('change'));
@@ -188,14 +187,12 @@ with sync_playwright() as pw:
           clipped.push(el.morphValue.textContent);
         }
       }
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      const figure = el.morphRow.hidden;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
-      return { sine, shown, saw, late, figure, clipped };
+      // And not for a figure, until G2 took the figures.
+      return { sine, shown, saw, late, clipped };
     }""")
     print("    %s" % panel)
-    check("the Morph row is on Play only with Morph chosen, and not for a figure",
-          panel["sine"] and not panel["shown"]["row"] and panel["figure"], str(panel))
+    check("the Morph row is on Play only with Morph chosen",
+          panel["sine"] and not panel["shown"]["row"], str(panel))
     check("it starts half-way from the triangle to the saw, and says where it is",
           panel["shown"]["reading"] == "tri→saw" and panel["shown"]["at"] == 1.5
           and panel["saw"] == {"reading": "saw", "at": 2} and panel["late"] == "saw→sqr",
@@ -275,9 +272,8 @@ with sync_playwright() as pw:
       // A at the square, B at the sine: a third harmonic in A's picture and
       // none in B's is B's own position, not A's.
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-      core.set('mode', 'wave');
-      core.set('shape', 'morph'); core.set('morph', 3);
+      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+            core.set('shape', 'morph'); core.set('morph', 3);
       core.set('shape', 'morph', 1); core.set('morph', 0, 1); core.set('amp', 0.9, 1);
       // Velocity is a fraction here, as the keyboard hands it over; 127 drove
       // both layers into the clamp and a sine came out square.

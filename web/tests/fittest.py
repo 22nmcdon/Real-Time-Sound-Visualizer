@@ -12,8 +12,8 @@ feature added a line to it.
 So, against the ways it fails:
 
 - a tab over in some combination: every tab, on the tone and on the band
-  split, with and without the keyboard's sources and the Photocell's, for each
-  of the four kinds of generator. (Until F4 the Sources tab was swept with
+  split, with and without the keyboard's sources and the Photocell's, on the
+  waveform (and until G2 for each of the four kinds of generator). (Until F4 the Sources tab was swept with
   each family on show, and thirty controllers learned; the tab went with F4
   and the modulation cards, whose editor is held below instead.)
 - the rack (F5) over with every effect on and its tallest module open, on
@@ -73,23 +73,18 @@ SWEEP = """async ([bands]) => {
       const by = el.benchBody.scrollHeight - el.benchBody.clientHeight;
       const name = family ? tab + ':' + family : tab;
       cases.push(label + '/' + name);
-      /* F8: at the compact sizes the drawings are let off. They are parked
-         (no menu offers them; only an old code loads one), and at 960x600
-         the harmonograph's rows are 135 px past the tab - a code that loads
-         one there scrolls, and that is the stated cost, not a fit by luck.
-         At the page's own size they are held as everything else is. */
-      const parked = document.body.dataset.compact !== undefined && /harmonograph|figure|wireframe/.test(label);
-      if (by > 0 && !parked) over.push([label, name, by]);
+      /* F8 let the drawings off at the compact sizes, parked and 135 px past
+         the tab at 960x600; G2 took them, and every case is held now. */
+      if (by > 0) over.push([label, name, by]);
     }
   };
   for (const keys of [false, true]) {
     if (keys) { setScreenKeys(true); await wait(100); }
     for (const photoOn of [false, true]) {
       if (photoOn !== photo.on) { el.photoButton.click(); await wait(150); }
-      for (const mode of ['wave', 'harmonograph', 'figure', 'wireframe']) {
-        el.genMode.value = mode; el.genMode.dispatchEvent(new Event('change')); await wait(120);
-        measure([bands ? 'bands' : 'tone', keys ? 'keys' : '', photoOn ? 'photo' : '', mode].filter(Boolean).join('+'));
-      }
+      // Each generator kind in turn until G2; the waveform is the one now.
+      await wait(120);
+      measure([bands ? 'bands' : 'tone', keys ? 'keys' : '', photoOn ? 'photo' : '', 'wave'].filter(Boolean).join('+'));
     }
   }
   /* Two layers, with layer B's own plane on the panel: the Plane section
@@ -97,7 +92,6 @@ SWEEP = """async ([bands]) => {
      radius's, and the Delay module grows its own Layers row. A drawn input
      keeps a split without applying it, so only the tone. */
   if (!bands) {
-    el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
     setMidiMode('poly');
     el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
     el.planeLayerB.click();
@@ -175,8 +169,11 @@ with sync_playwright() as pw:
         print("\n--- %s at %dx%d: %d tab-and-state cases ---" % (name, w, h, r["cases"]))
         check("on the %s at %dx%d, no tab scrolls in any of them" % ("band split" if name == "bands" else "tone", w, h),
               # Three tabs since F4 took the Sources tab and its seven families,
-              # so the sweep is about fifty cases where it was 180.
-              r["over"] == [] and r["cases"] >= 48 and r["lanes"] == (4 if name == "bands" else 2),
+              # so the sweep was about fifty cases where it was 180; and one
+              # kind since G2 where there were four, so twelve on the band
+              # split (four states, three tabs) and 27 on the tone with its
+              # layered and rack cases.
+              r["over"] == [] and r["cases"] >= (24 if name == "tone" else 12) and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
         check("and every section is dealt at the height it was measured at (%dx%d)" % (w, h),
               r["mismeasured"] == [], str(r["mismeasured"][:4]))

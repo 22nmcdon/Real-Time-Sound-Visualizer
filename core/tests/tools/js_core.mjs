@@ -80,8 +80,13 @@ const core = (() => {
   const start = page.indexOf("\nfunction makeGeneratorCore(");
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
+/* The drawings' two slots (G2) only while the page still names them: their
+   numbers stay empty either way, and a page that writes the slots after them
+   without them has nothing here to lift. A name the page has not got would
+   otherwise be lifted as whatever follows the page's first line. */
 const OUTER = ["TWO_PI", "DRAWBAR_HARMONICS", "cycleOf", "polyBlep", "polyBlamp", "cycleRead", "waveAt", "svfG", "svfStep", "makeEnvelope",
-               "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT", "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT", "SPIN_SLOT", "TURN_SLOT", "BEND_SLOT", "BEND_AT_SLOT", "PHASER_SLOT", "DELAY_TONE_SLOT", "REVERB_SLOT", "REVERB_SIZE_SLOT", "REVERB_TONE_SLOT"];
+               "DRAWBAR_SLOT", "MORPH_SLOT", "RADIUS_SLOT", "TWIST_SLOT", "FM_SLOT", "SYNC_SLOT", "DRIVE_SLOT", "FOLD_SLOT", "VCF_SLOT", "ECHO_SLOT", "ECHO_TIME_SLOT", "SWING_SLOT", "WIDTH_SLOT", "TABLE_SLOT", "SPIN_SLOT", "TURN_SLOT", "BEND_SLOT", "BEND_AT_SLOT", "PHASER_SLOT", "DELAY_TONE_SLOT", "REVERB_SLOT", "REVERB_SIZE_SLOT", "REVERB_TONE_SLOT"]
+  .filter((name) => !["SWING_SLOT", "SPIN_SLOT"].includes(name) || page.includes("\nconst " + name + " = "));
 export function coreScope(names, rate, random, given = {}) {
   const outer = OUTER.map((name) => {
     let start = page.indexOf("\nfunction " + name + "(");

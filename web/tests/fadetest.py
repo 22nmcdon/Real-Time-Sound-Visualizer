@@ -443,7 +443,7 @@ with sync_playwright() as pw:
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
       const bin = (x, hz) => { let re = 0, im = 0; for (let i = 0; i < x.length; i++) { const w = 2 * Math.PI * hz * i / rate; re += x[i] * Math.cos(w); im += x[i] * Math.sin(w); } return 2 * Math.hypot(re, im) / x.length; };
       const layerPitch = (route) => {
-        const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+        const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
         core.set('shape', 'sine'); core.set('shape', 'sine', 1); core.set('attackMs', 1); core.set('attackMs', 1, 1);
         core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }]);
         core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }], 1);
@@ -461,7 +461,7 @@ with sync_playwright() as pw:
          drive (a sine driven grows a third harmonic) and the level (the
          tremolo destination ducks to silence at a held value of minus one). */
       const layerOut = (route) => {
-        const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+        const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
         core.set('shape', 'sine'); core.set('shape', 'sine', 1); core.set('attackMs', 1); core.set('attackMs', 1, 1);
         core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }]);
         core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }], 1);

@@ -23,11 +23,14 @@ async ([seconds]) => {
       [["picture.round", "view.lag", 0.5], ["photo.1", "view.rotate", 0.5]]],
     ["equal fifth drifting", () => { restore(preset("Tumbling")); genSet('just', false); },
       [["photo.1", "view.zoom", 0.5], ["picture.cover", "view.rotate", 0.5]]],
-    ["harmonograph running down", () => { restore(preset("Harmonograph")); },
+    /* A harmonograph running down, a traced rose and a tumbling cube were
+       the other three until G2 took the drawings; three waveforms as unlike
+       each other stand in, each with the routings its drawing had. */
+    ["supersaw fifth", () => { restore(preset("Supersaw")); },
       [["photo.1", "view.zoom", 0.5], ["picture.novelty", "view.rotate", 0.5]]],
-    ["traced rose", () => { restore(preset("Rose")); },
+    ["wavetable pad", () => { restore(preset("Wavetable pad")); },
       [["picture.novelty", "view.rotate", 0.5], ["picture.round", "view.zoom", 0.5]]],
-    ["tumbling cube", () => { restore(preset("Tumbling cube")); },
+    ["folded third", () => { restore(preset("Coverage folds the sound")); },
       [["photo.1", "view.rotate", 0.5], ["picture.change", "view.zoom", 0.5]]],
   ];
   const rows = [];

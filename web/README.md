@@ -78,8 +78,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
-| `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a pendulum, the readout, Autoset and the lag |
-| `playtest.py` | the drawings as instruments: the pitched harmonograph's pitch, ring, beating and strike, a key striking it, Play the figure, per kind |
+| `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a tone at two hertz, the readout, Autoset and the lag |
+| `onsettest.py` | Onset and the events it fires, against stand-in destinations the suite registers since G2 took Swing again and Kick: events only to what is struck, one attack one onset, the gap, a strike once a count |
 | `schematest.py` | the setup's table of fields (`SETUP_FIELDS`): snapshot and the table key for key, every menu and range its control's, every default its own rule's, the readers and restore through them, each with its null |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
@@ -92,7 +92,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
-| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, every kind, ten learned controllers |
+| `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
@@ -5381,3 +5381,39 @@ while Glide is off, so a setup without it is the same to the bit. The cost:
 a note joining a chord normally starts in step with it, so the chord's
 figure holds still; a sliding note cannot, and its figure turns a little
 before it settles.
+
+**The drawings went in G2, and four things they left behind are on purpose.**
+The harmonograph, the figures, the solids and the second generator were cut on
+9 Nov (version 10's decode pass drops their fields and routings, on the page
+and in the core alike). What a reader would otherwise trip over:
+
+- *The slots are not closed up.* Slots 4 to 6, 26 and 29 to 31 were the
+  drawings' and are unused; Width is still 27, Table 28 and Turn 32, because the
+  core's `slot::` table and the worklets' arrays share the numbers. So the
+  accumulator is sized by `GEN_SLOTS` (one past the last slot), never by
+  `GEN_DESTS.length`, which is now seven short of it: a core made with that
+  many has no slots for the reverb's three, and `|| 0` hides it.
+- *`reswing` stays, as a restart.* `restore` calls `genReswing`, and on the
+  waveform it always put both phases and the voice's copies back to nought, so
+  a setup loads in step; what went is only the pendulums' part. It keeps its
+  name because the compiled core answers to it (`scope_reswing`).
+- *The compiled core's readings keep their places.* `scope_state` and
+  `brain_readings` still have the drawings' slots, written as noughts, and the
+  page reads the pitch and the oscillators at the indices it always did.
+  Closing them up on one side is the budget read as the pitch.
+- *Notes always play the waveform.* `midiDrive` was the only way to have a
+  note and the signal disagree, and two suites leaned on it (the lag's ground
+  truth in `miditest.py`, the gate's handover in `envtest.py`). A note now sets
+  the pitch; to have them disagree, strike in Dyad and move the slider after,
+  and to hand the gate over, take `midi.access` away and give it back, which is
+  what `keyboardPresent` reads. In Poly the voices keep their notes' pitches
+  whatever the slider says.
+
+One gap is left open, on both sides alike: a code from before the matrix
+names its oscillators' destination with the old enum (`l0d`), and
+`LEGACY_DESTS` still turns *detail*, *tumble* and *depth* into routings to
+`gen.detail`, `gen.tumble` and `gen.depth`. Version 10's pass reads only `mod`,
+so those routings load, are skipped as any unknown destination is, and are
+saved again; the corpus's *Wobbling* is one. Mapping the three words to
+nothing would end it, and has to be done in the core's restore too or parity
+parts on that preset.

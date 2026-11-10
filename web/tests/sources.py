@@ -47,7 +47,8 @@ with sync_playwright() as pw:
 
     def tone_visible():
         p.evaluate("() => { setMenuOpen(false); setBenchTab('play'); }"); p.wait_for_timeout(100)
-        seen = p.locator("#genMode").is_visible()
+        # The Shape menu, the generator's first row since G2 took Kind.
+        seen = p.locator("#shape").is_visible()
         to_inputs()
         return seen
     # What the head says is playing: its credit, since F1 took the mark beside the name.

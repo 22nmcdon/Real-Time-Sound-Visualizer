@@ -76,8 +76,8 @@ def alias_floor(x, f0):
 # A core off the page: L, R, and the heard pair when asked.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('shape', 'sine'); core.set('amp', 0.8);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  core.set('shape', 'sine'); core.set('amp', 0.8);
   for (const k in setup.tone) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
   const n = setup.n, L = new Float32Array(n), R = new Float32Array(n);
@@ -307,8 +307,8 @@ with sync_playwright() as pw:
     print("\n--- what it costs ---")
     cost = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-      core.set('mode', 'wave'); core.set('shape', 'sine');
+      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+      core.set('shape', 'sine');
       const v = [];
       for (let k = 0; k < 8; k++) v.push({ note: 48 + k * 3, freq: 130.81 * Math.pow(2, k / 4), velocity: 1, role: k ? 'u' : 'x' });
       core.set('voices', v); core.set('voices', v, 1); core.set('shape', 'sine', 1);
@@ -337,7 +337,6 @@ with sync_playwright() as pw:
       const radiusOn = { core: genSettings().planeLimit, radius: genSettings().planeRadius, row: el.planeRadiusRow.hidden };
       el.planeOS4.click();
       const os = { core: genSettings().planeOS, aria: el.planeOS4.getAttribute('aria-checked') };
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.interval.value = '0'; el.interval.dispatchEvent(new Event('change'));
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));

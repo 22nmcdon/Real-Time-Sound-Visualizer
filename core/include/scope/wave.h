@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <initializer_list>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -34,6 +36,32 @@ constexpr double kTwoPi = kPi * 2;
 inline double jsRound(double x) {
   const double r = std::floor(x);
   return x - r >= 0.5 ? r + 1 : r;
+}
+
+/* JavaScript's Math.hypot as V8 computes it: every value divided by the
+   largest, the squares summed with Kahan's compensation, and the root taken
+   and scaled back. `std::hypot` is a different algorithm and may differ in
+   the last place. It came with the solids, which divided their corners by
+   their longest; the picture's roundness and length still need it, so it
+   stayed when the solids went in G2. */
+inline double jsHypot(std::initializer_list<double> values) {
+  // An infinity wins over a NaN wherever it stands, as the language says.
+  for (const double v : values) if (std::isinf(v)) return std::numeric_limits<double>::infinity();
+  double most = 0;
+  for (const double v : values) {
+    if (std::isnan(v)) return std::numeric_limits<double>::quiet_NaN();
+    most = std::fmax(most, std::fabs(v));
+  }
+  if (most == 0) return 0;
+  double sum = 0, compensation = 0;
+  for (const double v : values) {
+    const double n = std::fabs(v) / most;
+    const double summand = n * n - compensation;
+    const double preliminary = sum + summand;
+    compensation = (preliminary - sum) - summand;
+    sum = preliminary;
+  }
+  return std::sqrt(sum) * most;
 }
 
 inline double cycleOf(double phase) {

@@ -45,14 +45,18 @@ def null(name, red, detail=""):
     """A check's null: the same comparison fed a value it must reject."""
     check("null: " + name, red, detail)
 
-# Controls the doc marks as removed by a later stage, and the drawings' rows,
-# which G2 takes out: no words, on purpose. Anything else without words fails.
-REMOVED = {"abA", "abB", "viewScope", "viewBench", "midiEditA", "midiEditB", "midiDrive", "midiPlay",
+# Controls the doc marks as removed by a later stage: no words, on purpose.
+# Anything else without words fails. (The drawings' rows and the keyboard's
+# drive and play were here until G2 took them off the page.)
+REMOVED = {"abA", "abB", "viewScope", "viewBench", "midiEditA", "midiEditB",
            "planeTurn", "planeLayerBoth", "planeLayerA", "planeLayerB", "timeLayerBoth", "timeLayerA", "timeLayerB"}
 
 # Every control the face shows, and those without words.
 UNSAID = """(removed) => {
-  const drawings = '#figureRows, #wireRows, #harmoRows, #traceRateRow, #inputGroup, #gen2Rows, #helpDialog';
+  /* Not asked of: the cheat sheet, and Input into the generator, which the
+     doc has no rows for - it was let off with the drawings' rows when it
+     still held the second generator, and only that part of it went in G2. */
+  const drawings = '#inputGroup, #helpDialog';
   const places = '.menu-group, header, .picture-bar, .screen-tools, #keysPanel, .mod-strip, #benchRail';
   const out = [];
   for (const c of document.querySelectorAll('input, select, button')) {

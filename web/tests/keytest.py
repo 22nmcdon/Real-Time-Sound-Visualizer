@@ -56,8 +56,8 @@ CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const lfos = [still(), still()];
   if (setup.lfo) Object.assign(lfos[0], setup.lfo);
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, lfos);
-  core.set('mode', 'wave'); core.set('shape', 'sine'); core.set('amp', 0.9);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, lfos);
+  core.set('shape', 'sine'); core.set('amp', 0.9);
   for (const k in setup.tone || {}) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
   if (setup.routes) core.setRoutes(setup.routes);
@@ -161,8 +161,8 @@ with sync_playwright() as pw:
     print("\n--- the glide is its own ---")
     glide = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-      core.set('mode', 'wave'); core.set('shape', 'sine');
+      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+      core.set('shape', 'sine');
       core.set('qMask', 4095); core.set('qGlideMs', 100); core.set('freq', 220);
       const L = new Float32Array(1), R = new Float32Array(1);
       for (let i = 0; i < 4410; i++) core.block(L, R, 1);

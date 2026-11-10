@@ -69,19 +69,12 @@ Json layerBJson(const scope::LayerBSettings& t) {
 
 Json toneJson(const scope::Tone& t) {
   Json o = layerJson(t);
-  o.set("mode", str(t.modeName)); o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
+  o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
   o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase)); o.set("polyRound", flag(t.polyRound));
   o.set("pitchBend", num(t.pitchBend)); o.set("vibrato", num(t.vibrato));
-  o.set("figure", str(t.figureName)); o.set("detail", num(t.detail)); o.set("figureRate", num(t.figureRate));
-  o.set("swingRate", num(t.swingRate)); o.set("decay", num(t.decay)); o.set("swingDrive", num(t.swingDrive));
-  o.set("inputMode", num(t.inputMode)); o.set("inputDepth", num(t.inputDepth)); o.set("inputFrom", str(t.inputFromName));
-  o.set("gen2Figure", str(t.gen2FigureName)); o.set("gen2Rate", num(t.gen2Rate)); o.set("gen2Amp", num(t.gen2Amp));
-  o.set("pitched", flag(t.pitched)); o.set("ringMs", num(t.ringMs)); o.set("detune", num(t.detune));
-  o.set("model", str(t.modelName));
-  Json spin = Json::array();
-  for (const double v : t.spin) spin.a.push_back(num(v));
-  o.set("spin", spin);
-  o.set("spinRate", num(t.spinRate)); o.set("depth", num(t.depth)); o.set("shapeOS", num(t.shapeOS));
+  // The kind and the drawings' fields were here too until G2: the tone has none of them now.
+  o.set("inputMode", num(t.inputMode)); o.set("inputDepth", num(t.inputDepth));
+  o.set("shapeOS", num(t.shapeOS));
   o.set("glideMs", num(t.glideMs)); o.set("qMask", num(t.qMask)); o.set("qGlideMs", num(t.qGlideMs));
   o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
@@ -237,18 +230,11 @@ int main(int argc, char** argv) {
     midi.set("bendRange", num(keys.bendRange()));
     midi.set("wheelTo", str(scope::utf16To8(scope::expressName(keys.wheelTo()))));
     midi.set("pressureTo", str(scope::utf16To8(scope::expressName(keys.pressureTo()))));
-    Json drive = Json::object(), play = Json::object();
-    const char* kinds[] = { "wave", "harmonograph", "figure", "wireframe" };
-    for (int i = 0; i < 4; i++) drive.set(kinds[i], flag(k.drive[static_cast<std::size_t>(i)]));
-    for (int i = 1; i < 4; i++) play.set(kinds[i], flag(k.play[static_cast<std::size_t>(i)]));
-    midi.set("drive", drive); midi.set("play", play);
     out.set("midi", midi);
     Json panel = Json::object();
     panel.set("freq", str(scope::jsNumberToString(keys.panel().freq)));
     panel.set("interval", str(brain.panel.select("interval")));
     panel.set("keysInterval", num(keys.panel().interval));
-    panel.set("figureRate", str(scope::jsNumberToString(keys.panel().figureRate)));
-    panel.set("detail", str(scope::jsNumberToString(keys.panel().detail)));
     out.set("panel", panel);
     Json lfoList = Json::array();
     for (int i = 0; i < 2; i++) {
@@ -390,21 +376,7 @@ int main(int argc, char** argv) {
       cycles.set("codes", codes); cycles.set("points", points);
       cycles.set("cycle", digest(gen.tone().cycle.get())); cycles.set("bank", bank);
       out.set("cycles", cycles);
-      const auto pathOf = [](const scope::FigurePath* f) {
-        if (!f) return Json::null();
-        Json o = Json::object(), xy = Json::array(), at = Json::array();
-        for (const double v : f->xy) xy.a.push_back(num(v));
-        for (const double v : f->at) at.a.push_back(num(v));
-        o.set("xy", xy); o.set("at", at);
-        return o;
-      };
-      Json figure = Json::object();
-      figure.set("text", Json::string(brain.figText)); figure.set("d", Json::string(brain.figPathD));
-      figure.set("kept", Json::string(brain.fig.pathD)); figure.set("fault", Json::string(brain.fig.fault));
-      figure.set("drawn", str(scope::encodeDrawn(brain.fig.strokes)));
-      figure.set("textPath", pathOf(brain.fig.text.get())); figure.set("path", pathOf(brain.fig.path.get()));
-      figure.set("drawnPath", pathOf(brain.fig.drawn.get())); figure.set("sent", pathOf(gen.tone().figPath.get()));
-      out.set("figure", figure);
+      // The figures made of strokes - the word, the path, the drawing, and which was sent - until G2.
     }
     const auto& p = brain.plane;
     Json plane = Json::object();

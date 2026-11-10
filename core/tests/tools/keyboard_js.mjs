@@ -4,8 +4,7 @@
    prints them.
 
    The generator it plays is a stand-in that writes down every call the
-   keyboard makes of it (`set`, the chord, the gate, `setGated`, `reswing`,
-   the layout) and keeps the settings those calls change, which is all the
+   keyboard makes of it (`set`, the chord, the gate, `setGated`, the layout) and keeps the settings those calls change, which is all the
    keyboard reads back. The panel's sliders the keyboard reads and writes are
    stand-ins too, holding strings as an input element does. Everything else
    - the functions that decide - is the page's own text.
@@ -14,8 +13,8 @@
      on NOTE VEL   off NOTE   pedal V   panic   cc N RAW   name N [WORDS_WITH_UNDERSCORES]   bytes b,b,...
      mode dyad|mono|poly   draw LAYER COUNT WHICH   just 0|1
      layers off|split|layer   learn   pair each|against   hold 0|1
-     drive 0|1   play 0|1   gen FIELD VALUE   panel FIELD VALUE
-     frame MS   undrive   present 0|1
+     gen FIELD VALUE   panel FIELD VALUE
+     frame MS   present 0|1
      arp MODE RATE OCTAVES   bpm BPM   at MS   tick   out 0|1
    `at` moves the clock, firing first any timer due by then at its own time;
    `tick` is the frame's arpTick; `out` opens or closes the MIDI out.
@@ -42,15 +41,22 @@ function definition(name) {
 }
 
 const LIFTED = [
-  "POLY_VOICES", "MIDI_ROOT", "CC_SMOOTH", "INTERVALS", "midiHz", "midi", "screenKeys",
+  "POLY_VOICES", "CC_SMOOTH", "INTERVALS", "midiHz", "midi", "screenKeys",
   "intervalRatio", "keyboardPresent", "midiPitch", "midiNoteOn", "midiNoteOff", "midiSetPedal", "midiPanic",
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
-  "midiPair", "midiInterval", "midiDrivesGenerator", "midiApplyGate", "midiGateNotes",
-  "midiApplyNotes", "midiNotesBefore", "midiApplyNotesTo", "roseDetail", "midiUndrive", "midiControl", "midiSmooth",
-  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "syncPlay", "genSettings", "genSet", "genReswing",
+  "midiPair", "midiInterval", "midiApplyGate", "midiGateNotes",
+  "midiApplyNotes", "midiNotesBefore", "midiApplyNotesTo", "midiControl", "midiSmooth",
+  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
 ];
+/* Lifted only where the page still has them. G2 took the drawings, and with
+   them what only chose between them and the waveform - MIDI_ROOT (a trace
+   rate's pitch), roseDetail, midiUndrive and syncPlay went for certain;
+   midiDrivesGenerator may stay as the question of whether the generator is
+   playing at all. Either way the keyboard here is the page's. */
+const IF_PRESENT = ["MIDI_ROOT", "midiDrivesGenerator", "roseDetail", "midiUndrive", "syncPlay"]
+  .filter((name) => page.includes("\nfunction " + name + "(") || page.includes("\nconst " + name + " = "));
 
 /* The page's surroundings, as little as the lifted functions reach for: the
    clock and its timers, the tempo, and a MIDI out that writes down what it is
@@ -65,7 +71,8 @@ const show = (v) => v === null ? "null" : v === true ? "1" : v === false ? "0"
   : typeof v === "number" ? v.toPrecision(17)
   : Array.isArray(v) ? (v.length ? v.map((n) => n.note + "/" + n.freq.toPrecision(17) + "/" + n.velocity.toPrecision(17) + "/" + n.role).join("+") : "none")
   : String(v);
-const settings = { mode: "wave", figure: "Circle", just: true, pitched: false, voices: null, inputFrom: "live" };
+// The waveform, the one kind of generator since G2.
+const settings = { mode: "wave", just: true, voices: null };
 const settingsB = { voices: null };
 let gatedNow = false, layoutNow = "one";
 const toneSource = {
@@ -74,7 +81,7 @@ const toneSource = {
   get layout() { return layoutNow; },
   setLayout(next) { log.push("layout " + next); layoutNow = next; },
   set(field, value, layer) { log.push("set " + field + " " + show(value) + " " + (layer || 0)); (layer === 1 ? settingsB : settings)[field] = value; },
-  reswing() { log.push("reswing"); },
+  reswing() { log.push("reswing"); },  // a key no longer reswings anything (G2); kept so one that did would show
   gate(open, velocity) { log.push("gate " + show(open) + " " + show(velocity)); },
   noteDown() { log.push("noteDown"); },
   setGated(on) { log.push("setGated " + show(on)); gatedNow = on; },
@@ -82,7 +89,8 @@ const toneSource = {
   describe() { return ""; },
 };
 const state = { source: toneSource };
-const genInput = { from: "live" };
+// Input into the generator: its mode and depth, which the keyboard does not read; its "from" went with the second generator.
+const genInput = {};
 let clock = 0;
 const performance = { now: () => clock };
 const timers = [];
@@ -109,16 +117,15 @@ const touchRoutings = noop;
 const scanStrike = noop;
 const element = () => ({ value: "", textContent: "", checked: false, hidden: false, disabled: false, setAttribute: noop });
 const elements = { interval: Object.assign(element(), { value: "0" }), freq: Object.assign(element(), { value: "220" }),
-                   figureRate: Object.assign(element(), { value: "40" }), detail: Object.assign(element(), { value: "5" }),
                    arpMode: Object.assign(element(), { value: "off" }), arpRate: Object.assign(element(), { value: "1/8" }),
                    arpOctaves: Object.assign(element(), { value: "1" }) };
 const el = new Proxy(elements, { get: (t, k) => (k in t ? t[k] : (t[k] = element())) });
 `;
 
-const source = STUBS + LIFTED.map(definition).join("\n") + `
+const source = STUBS + [...LIFTED, ...IF_PRESENT].map(definition).join("\n") + `
 return { midi, screenKeys, settings, settingsB, sources, log, show, el, genInput, toneSource,
          midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
-         midiApplyNotes, midiUndrive, midiRegisterKey, setMidiMode, syncLayers, syncLayerPanel, syncPlay, genSettings,
+         midiApplyNotes, midiRegisterKey, setMidiMode, syncLayers, syncLayerPanel, genSettings,
          POLY_VOICES, layersOn, arp, arpSet, arpTick, timers, transport,
          setClock: (ms) => { clock = ms; }, setOut: (on) => { outOpen = on; },
          setPresent: (on) => { midi.access = on ? {} : null; } };`;
@@ -154,26 +161,12 @@ function run(head, commands) {
     } else if (cmd === "learn") k.midi.layers.learning = !k.midi.layers.learning;
     else if (cmd === "pair") { k.midi.layers.pair = a[0]; k.syncLayers(); k.midiApplyNotes(); }
     else if (cmd === "hold") k.midi.hold = a[0] === "1";
-    else if (cmd === "drive") {
-      const tone = k.genSettings();
-      k.midi.drive[tone.mode] = a[0] === "1";
-      if (a[0] === "1") k.midiApplyNotes(); else k.midiUndrive();
-      k.syncPlay();
-    } else if (cmd === "play") {
-      const tone = k.genSettings();
-      if (tone.mode in k.midi.play) {
-        k.midi.play[tone.mode] = a[0] === "1";
-        k.syncPlay();
-        if (k.midi.play[tone.mode]) k.midiApplyNotes(); else k.midiUndrive();
-      }
-    } else if (cmd === "gen") {
+    else if (cmd === "gen") {
       // Straight onto the generator, as another section of the panel would.
       const v = a[1] === "true" ? true : a[1] === "false" ? false : Number.isNaN(Number(a[1])) ? a[1] : Number(a[1]);
       k.settings[a[0]] = v;
-      if (a[0] === "inputFrom") k.genInput.from = v;
     } else if (cmd === "panel") k.el[a[0]].value = a[1];
     else if (cmd === "frame") { k.midiSmooth(Number(a[0])); k.midiApplyGate(); }
-    else if (cmd === "undrive") k.midiUndrive();
     else if (cmd === "present") k.setPresent(a[0] === "1");
     else if (cmd === "arp") {
       k.el.arpMode.value = a[0]; k.el.arpRate.value = a[1]; k.el.arpOctaves.value = a[2];

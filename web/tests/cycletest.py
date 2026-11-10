@@ -98,7 +98,7 @@ with sync_playwright() as pw:
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
       const square = cycleTables(Array.from({ length: CYCLE_POINTS }, (_, i) => i < CYCLE_POINTS / 2 ? 0.9 : -0.9));
       const run = (shapeB) => {
-        const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
+        const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
         core.set('cycle', square);
         core.set('voices', [{ note: 57, freq: 220, velocity: 1, role: 'xy' }]);
         core.set('voices', [{ note: 69, freq: 440, velocity: 1, role: 'xy' }], 1);

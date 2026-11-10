@@ -12,8 +12,8 @@ wrong by leaving one out or by the core reaching for a name that exists only
 on the main thread. Neither is a parse error, so `node --check` sees nothing
 and the browser reports a worklet that failed to construct. `workletharness.mjs`
 evaluates the text against the three globals a worklet actually gets and drives
-every mode and every shape, so a missing name is a `ReferenceError` with the
-name in it.
+every setter and every shape, so a missing name is a `ReferenceError` with the
+name in it. (It drove the four kinds there were until G2 left the waveform.)
 
 IT IS SERVED FROM SOMEWHERE THE BROWSER WILL FETCH. A Blob URL is the obvious
 answer and it does not work: from `file://` the origin is opaque, the URL comes
@@ -31,7 +31,7 @@ advance paths check it, and the check throws.
 # worklet and who drives the oscillators - which core/tests/parity.py holds
 # the instrument to, sample for sample. The instrument, the site's default
 # since 5m, is braintest.py's and hosttest.py's.
-import json, os, subprocess, sys, tempfile
+import json, math, os, subprocess, sys, tempfile
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -58,7 +58,7 @@ with sync_playwright() as pw:
 
     print("\n--- the module, run in Node against a worklet's globals ---")
     built = p.evaluate("""() => ({
-      text: generatorModuleSource(), slots: GEN_DESTS.length, echoSlot: ECHO_SLOT,
+      text: generatorModuleSource(), slots: GEN_SLOTS, echoSlot: ECHO_SLOT,
     })""")
     module_path = os.path.join(tempfile.gettempdir(), "generator-module.js")
     with open(module_path, "w", encoding="utf-8") as f:
@@ -81,12 +81,12 @@ with sync_playwright() as pw:
         for mode, got in report["modes"].items():
             print("    %-13s peak %.3f, mean square %.5f"
                   % (mode, got["worst"], got["energy"]))
-        check("every mode produces finite samples inside full scale",
+        check("the waveform produces finite samples inside full scale",
               all(m["finite"] and m["worst"] <= 1.0 for m in report["modes"].values()),
               str({k: round(v["worst"], 3) for k, v in report["modes"].items()}))
         # Silence would satisfy "finite and inside full scale", which is the
         # sort of check that passes whatever the code does.
-        check("and none of them is silence",
+        check("and is not silence",
               all(m["energy"] > 1e-6 for m in report["modes"].values()),
               str({k: round(v["energy"], 5) for k, v in report["modes"].items()}))
         check("every waveform shape works, band-limited ones included",
@@ -109,39 +109,13 @@ with sync_playwright() as pw:
         check("and the drawn cycle is its tables, not a sine by default",
               report["shapes"]["drawn"]["print"] != report["shapes"]["sine"]["print"],
               "%s against %s" % (report["shapes"]["drawn"]["print"], report["shapes"]["sine"]["print"]))
-        # Each of these is a table lookup of its own, and the model lookup is
-        # the one that was missing from the module: `MODEL_BY_NAME` is a Map,
-        # which `JSON.stringify` turns into `{}`.
-        prints = [m["print"] for m in report["models"].values()]
-        check("every solid draws, which is the lookup that was missing",
-              all(m["finite"] and m["worst"] > 0.01
-                  for m in report["models"].values()),
-              str({k: round(v["worst"], 3) for k, v in report["models"].items()}))
-        # And draws a DIFFERENT solid. `wire.set` keeps what it has when the
-        # name is not found, so an empty lookup gives three cubes that are all
-        # finite, all loud, and all the same - which is what the missing
-        # `MODEL_BY_NAME` did and what the check above could not see.
-        check("and each one is a different solid, not the cube three times",
-              len(set(prints)) == len(prints), str(prints))
-        check("and every figure",
-              all(f["finite"] and f["worst"] > 0.01
-                  for f in report["figures"].values()),
-              str({k: round(v["worst"], 3) for k, v in report["figures"].items()}))
-        fprints = [f["print"] for f in report["figures"].values()]
-        check("and each figure is its own, not the circle under another name",
-              len(set(fprints)) == len(fprints), str(dict(zip(report["figures"], fprints))))
-        sec = report["second"]
-        check("the second generator draws its pair at its size, and FM through it changes what the first draws",
-              sec["off"]["finite"] and sec["fm"]["finite"] and abs(sec["off"]["pair"] - 0.4) < 1e-6
-              and sec["off"]["print"] != sec["fm"]["print"], str(sec))
+        # The solids, the figures and the second generator were checked here,
+        # each against a fingerprint of its own, until G2 took them.
         check("and it posts its samples back rather than only playing them",
               report["posted"] > 0, str(report["posted"]))
         q = report["quantised"]
         check("the quantiser runs in the worklet: 225 Hz to A3, 220 exactly, and left alone when off",
               abs(q["on"] - 220) < 1e-9 and abs(q["off"] - 225) < 1e-9, str(q))
-        ph = report["pitched"]
-        check("the pitched harmonograph runs in the worklet, at the note's pitch, and strikes cleanly",
-              ph["finite"] and ph["peak"] > 0.1 and abs(ph["pitch"] - 220) < 1e-9, str(ph))
         pl = report["plane"]
         check("the plane runs in the worklet at 1x, 2x and 4x: mirrored and held inside the radius",
               all(v["finite"] and v["low"] > -0.02 and 0.15 < v["high"] <= 0.31 for v in pl.values()), str(pl))
@@ -198,8 +172,17 @@ with sync_playwright() as pw:
         # the routing gone there is none.
         check("and a routing on the echo's level turns its delay on from nought: the impulse repeats 96 samples on",
               fx is not None and abs(fx["echoRouted"] - 0.25) < 1e-6 and fx["echoUnrouted"] == 0, str(fx))
-        check("a kick sent by message lands in the worklet's core: six times the spin",
-              abs(report.get("kicked", 0) - 6) < 1e-9, str(report.get("kicked")))
+        # A restart, sent as a setup's load sends it: the first sample after
+        # is the sine one step on from nought, 0.5 sin(2 pi 220 / 48000) on
+        # the left and that step plus a quarter turn on the right. Held
+        # against the sample before it as the null - a restart that did
+        # nothing would read where the phase had run to, not this.
+        rs = report.get("restart", {})
+        step = 2 * math.pi * 220 / 48000
+        want = [0.5 * math.sin(step), 0.5 * math.sin(step + math.pi / 2)]
+        near = lambda got: bool(got) and abs(got[0] - want[0]) < 1e-4 and abs(got[1] - want[1]) < 1e-4
+        check("a restart sent by message lands in the worklet's core: both phases back to nought",
+              near(rs.get("after")) and not near(rs.get("before")), "%s, want %s" % (rs, want))
         inp = report.get("input", {})
         check("the generator's worklet reads its input: a ride at half depth on a steady half is 1.5 times the output",
               inp.get("energy", 0) > 1 and inp.get("worst", 1) < 1e-6, str(inp))

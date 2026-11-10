@@ -278,7 +278,8 @@ with sync_playwright() as pw:
       send('switch', () => { el.quantise.checked = true; el.quantise.dispatchEvent(new Event('change', { bubbles: true })); });
       send('view', () => { el.persistence.value = '0.3'; el.persistence.dispatchEvent(new Event('change', { bubbles: true })); });
       send('button', () => el.planeOS4.click());
-      send('other', () => el.reswing.click());
+      // A reference trace, the view's own: Swing again was this button until G2.
+      send('other', () => el.saveReference.click());
       send('route', () => addRouting('lfo1', 'gen.freq'));
       send('depth', () => { state.modRoutings[state.modRoutings.length - 1].amount = 0.123456789012345; touchRoutings(); });
       send('again', () => touchRoutings());
@@ -394,37 +395,42 @@ with sync_playwright() as pw:
 
     # The generator's panel, inside the plugin. A hosted page used to keep no
     # generator at all, so its whole section went from the panel - no kind,
-    # no frequency, no shape - and the kind menu, had it been there, wrote to
+    # no frequency, no shape - and its menus, had they been there, wrote to
     # nothing. Now the page keeps a mirror of the plugin's generator, by its
     # own handlers, and restores it from the plugin's state like the rest.
+    # It was asked through the Kind menu until G2 took the drawings and the
+    # menu with them; the Shape menu is asked now, and a state that names a
+    # drawing as its kind puts the waveform's shape back and no kind at all.
     gen = p.evaluate("""async (code) => {
       const t = window.__hostTest, out = {};
-      // Kind on Play and Frequency on Ink, each on its own tab since G3.
+      // Shape on Play and Frequency on Ink, each on its own tab since G3.
       setView('bench'); setBenchTab('play');
       await new Promise((r) => setTimeout(r, 200));
-      const kindShown = el.genMode.offsetParent !== null;
+      const shapeShown = el.shape.offsetParent !== null;
       setBenchTab('ink'); await new Promise((r) => setTimeout(r, 100));
-      out.shown = kindShown && el.freq.offsetParent !== null;
+      out.shown = shapeShown && el.freq.offsetParent !== null;
       setBenchTab('play');
       out.sound = !!genVoice();
       t.log.length = 0;
-      el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));
+      el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change', { bubbles: true }));
       out.sent = t.log.slice();
-      out.mode = genSettings().mode;
-      out.rows = !el.harmoRows.hidden;
-      // And a state from the plugin with another kind puts the mirror there.
+      out.shape = genSettings().shape;
+      // And a state from the plugin with another shape puts the mirror there.
       t.state = { version: 9, code };
       await new Promise((r) => setTimeout(r, 700));
-      out.restored = genSettings().mode;
-      out.menu = el.genMode.value;
+      out.restored = genSettings().shape;
+      out.menu = el.shape.value;
+      out.kind = 'mode' in genSettings();
       setView('scope');
       return out;
-    }""", code({"gen": "figure"}))
-    check("inside the plugin the page keeps the generator's panel, its kind menu moves the page's generator and is sent",
-          gen["shown"] and gen["mode"] == "harmonograph" and gen["rows"]
-          and gen["sent"] == [["scopeControl", "genMode", "harmonograph"]], str(gen))
-    check("and the plugin's state puts the generator's kind back on the page; heard through the host, the page has no voice of its own",
-          gen["restored"] == "figure" and gen["menu"] == "figure" and gen["sound"] is False, str(gen))
+    }""", code({"gen": "figure", "shape": "triangle"}))
+    check("inside the plugin the page keeps the generator's panel, its shape menu moves the page's generator and is sent",
+          gen["shown"] and gen["shape"] == "square"
+          and gen["sent"] == [["scopeControl", "shape", "square"]], str(gen))
+    check("and the plugin's state puts the generator's shape back on the page, a drawing's kind with it ignored; "
+          "heard through the host, the page has no voice of its own",
+          gen["restored"] == "triangle" and gen["menu"] == "triangle" and gen["kind"] is False
+          and gen["sound"] is False, str(gen))
 
     # The input (5g): inside the plugin, Mic is the host's input bus. The press
     # is sent; the device is the host's; a state that says the input is drawn

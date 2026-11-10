@@ -588,11 +588,14 @@ int main() {
   {
     /* No editor is opened anywhere here: the grid, the photocell and the
        picture's sources are the plugin's own, drawn from its picture ring.
-       "Pendulums bent by the light" is a harmonograph in X-Y whose photocell
-       bends the ratio of the figure it draws - a loop through the picture,
-       which the heard pendulums do not carry; "Brightness opens the ellipse"
-       turns the phase between a held sine's two channels, and is heard as the
-       stereo image opening. Each check against the failure it would show:
+       "The fifth detunes itself" is a held fifth in X-Y whose photocell bends
+       the ratio of the figure it draws - a loop through the picture; "Brightness
+       opens the ellipse" turns the phase between a held sine's two channels,
+       and is heard as the stereo image opening. The first was "Pendulums bent
+       by the light" until G2 took the pendulums, which swung with no key
+       down; a fifth is gated by the keys, so SCOPE_HOLD_NOTE holds one from
+       the start of each run that opens on it, as the standalone's switch
+       does for looking at it without a keyboard. Each check against the failure it would show:
        the loop's routings taken away is the null for the loop doing
        anything, and the photocell switched off from the page must be exactly
        that null, picture and sound, since its sources are then not there. */
@@ -641,12 +644,10 @@ int main() {
       return worst;
     };
     const int blocks = static_cast<int>(std::ceil(2 * rate / block));  // two seconds
-    const char* bent = "Pendulums bent by the light";
+    const char* bent = "The fifth detunes itself";
+    setenv("SCOPE_HOLD_NOTE", "57,64", 1);
     const Run looped = run(bent, false, blocks, nullptr);
-    const Run open = run(bent, false, blocks, [](ScopeProcessor& p) {
-      p.matrix().remove("photo.1", "gen.ratio");
-      p.matrix().remove("picture.bored", "gen.swing");
-    });
+    const Run open = run(bent, false, blocks, [](ScopeProcessor& p) { p.matrix().remove("photo.1", "gen.ratio"); });
     const Run off = run(bent, false, blocks, [](ScopeProcessor& p) { p.pageClick("photoButton"); });
     const Run yt = run(bent, false, blocks, [](ScopeProcessor& p) { p.pageClick("dispYT"); });
     const double seconds = blocks * static_cast<double>(block) / rate;
@@ -658,7 +659,7 @@ int main() {
           looped.registered && looped.lit > 1 && looped.most - looped.least > 0.01,
           "lit " + num(looped.lit) + ", reading " + num(looped.least) + " to " + num(looped.most));
     const double bentApart = most(looped.picture, open.picture);
-    check("the loop goes round with no window: the photocell bends the figure the pendulums draw, against the same without its routings",
+    check("the loop goes round with no window: the photocell bends the figure the fifth draws, against the same without its routing",
           bentApart > 0.01, "the pictures apart by " + num(bentApart));
     const double offPicture = most(off.picture, open.picture), offSound = most(off.l, open.l) + most(off.r, open.r);
     check("and the photocell switched off from the page is that null exactly, picture and sound, its source gone",
@@ -705,7 +706,10 @@ int main() {
       }
       return out;
     };
+    // On its own notes, so without the fifth held from the start.
+    unsetenv("SCOPE_HOLD_NOTE");
     const Layered ownPictures = layered("B"), crossedB = layered("A");
+    setenv("SCOPE_HOLD_NOTE", "57,64", 1);
     check("split in X-Y with no window, each layer's figure is a picture of its own and B's sound is moved by B's picture",
           ownPictures.live && ownPictures.own && ownPictures.apart && ownPictures.lines > 100,
           "live " + std::to_string(ownPictures.live) + ", own " + std::to_string(ownPictures.own) + ", apart "
@@ -718,7 +722,7 @@ int main() {
        Clear button, with persistence at infinite so everything drawn stays:
        the frame after it starts the grid again. */
     const Run zoomed = run(bent, false, blocks, [](ScopeProcessor& p) {
-      p.pageRoutings("photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300;lfo1>view.zoom@1.000");
+      p.pageRoutings("photo.1>gen.ratio@0.300;lfo1>view.zoom@1.000");
     });
     double zoomMod = 0, zoomNow = 0, zoomStep = 0;
     {
@@ -726,7 +730,7 @@ int main() {
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       oldBoot();
-      p.pageRoutings("photo.1>gen.ratio@0.300;picture.bored>gen.swing@0.300;lfo1>view.zoom@1.000");
+      p.pageRoutings("photo.1>gen.ratio@0.300;lfo1>view.zoom@1.000");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       for (int k = 0; k < 40; ++k) { buf.clear(); p.processBlock(buf, m); }
@@ -736,25 +740,51 @@ int main() {
           zoomMod != 0 && std::fabs(zoomNow - std::pow(2, (zoomStep + zoomMod) / 4)) < 1e-12 && zoomNow != std::pow(2, zoomStep / 4)
           && std::fabs(zoomed.lit - looped.lit) > 1,
           "offset " + num(zoomMod) + ", zoom " + num(zoomNow) + ", lit " + num(zoomed.lit) + " against " + num(looped.lit));
-    double kept = 0, cleared = 0;
-    {
+    /* Everything drawn stays only if what is drawn moves on: the pendulums
+       shrank as they ran down and laid each figure inside the last, until G2
+       took them. A held fifth draws one dense figure over itself, which
+       fills nearly as much at 0.12 as at infinite (390 cells' worth against
+       490), and neither an oscillator on its ratio nor one note's circle
+       opened and closed by one on its phase did much better (410 against 355
+       at 0.04): the cells keep the brightest they were laid at, and what a
+       sweep lays was mostly lit already. So these runs hold one note, a
+       circle, and let it go a quarter of the way in: its release shrinks
+       it, as the pendulums ran down, and then there is nothing. The
+       reference is the same at 0.04, which lets the rings go with the
+       sound. Each run's Clear is pressed after it, or before
+       (`clearFirst`); `early` is what one frame after it lays. */
+    const auto swept = [&](const char* persistence, bool clearFirst, double& early) {
+      setenv("SCOPE_HOLD_NOTE", "57", 1);
       setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       oldBoot();
-      p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
+      setenv("SCOPE_HOLD_NOTE", "57,64", 1);
+      p.pageControl("persistence", scope::Json::string(std::string_view(persistence)));
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       const auto litNow = [&] { double lit = 0; for (const float c : p.picture().phosphor().grid()) lit += c; return lit; };
-      for (int k = 0; k < blocks; ++k) { buf.clear(); p.processBlock(buf, m); }
-      kept = litNow();
-      p.pageClick("clearButton");
       // Two blocks: the click at the first one's top, and a frame due in one or the other.
-      for (int k = 0; k < 2; ++k) { buf.clear(); p.processBlock(buf, m); }
-      cleared = litNow();
-    }
+      const auto cleared = [&] {
+        p.pageClick("clearButton");
+        for (int k = 0; k < 2; ++k) { buf.clear(); p.processBlock(buf, m); }
+        early = litNow();
+      };
+      if (clearFirst) cleared();
+      for (int k = 0; k < blocks; ++k) {
+        buf.clear();
+        juce::MidiBuffer let;
+        if (k == blocks / 4) let.addEvent(juce::MidiMessage::noteOff(1, 57), 0);
+        p.processBlock(buf, let);
+      }
+      const double lit = litNow();
+      if (!clearFirst) cleared();
+      return lit;
+    };
+    double cleared = 0, fadingCleared = 0;
+    const double fading = swept("0.04", false, fadingCleared), kept = swept("-1", false, cleared);
     check("with persistence at infinite the grid keeps everything, and the page's Clear starts it again",
-          kept > looped.lit * 2 && cleared < kept / 4, "lit " + num(kept) + ", then " + num(cleared));
+          kept > fading * 2 && cleared < kept / 4, "lit " + num(kept) + " against " + num(fading) + " at 0.04, then " + num(cleared));
     /* The frame the plugin draws by is the page's capture of its picture
        ring as the ring stood at the top of that frame's block - which is the
        ring as the block before left it - at the host's rate, within the
@@ -841,27 +871,14 @@ int main() {
     check("the photocell switched off mid-run takes its source away and reads nought, the picture's staying; switched on from off, the loop starts",
           !wentOff->matrix().source("photo.1") && wentOff->matrix().source("picture.bored") && wentOff->picture().pictures().photo() == 0
           && cameOn->matrix().source("photo.1") && cameApart > 0.01, "the picture apart from never on by " + num(cameApart));
-    double refilled = 0, clearedNow = 0;
-    {
-      setenv("SCOPE_PRESET", corpusText(bent).c_str(), 1);
-      ScopeProcessor p;
-      p.prepareToPlay(rate, block);
-      oldBoot();
-      p.pageControl("persistence", scope::Json::string(std::string_view("-1")));
-      p.pageClick("clearButton");
-      juce::AudioBuffer<float> buf(2, block);
-      juce::MidiBuffer m;
-      const auto litNow = [&] { double lit = 0; for (const float c : p.picture().phosphor().grid()) lit += c; return lit; };
-      for (int k = 0; k < 2; ++k) { buf.clear(); p.processBlock(buf, m); }
-      clearedNow = litNow();
-      for (int k = 0; k < blocks; ++k) { buf.clear(); p.processBlock(buf, m); }
-      refilled = litNow();
-    }
+    double clearedNow = 0;
+    const double refilled = swept("-1", true, clearedNow);
     check("and after a Clear the grid fills again, rather than wiping every frame",
-          refilled > clearedNow * 4 && refilled > looped.lit * 2, "lit " + num(clearedNow) + ", then " + num(refilled));
+          refilled > clearedNow * 4 && refilled > fading * 2, "lit " + num(clearedNow) + ", then " + num(refilled));
     /* The loop's rules: the photocell and the picture's sources are read as
        the picture's, so their pushes are bounded as one, and each holds a
-       depth to its reach - half a destination's span, and boredom 0.3. */
+       depth to its reach - half a destination's span, and boredom 0.3.
+       Boredom on the twist, where it was on the pendulums' energy until G2. */
     std::string held;
     bool loopFlags = false;
     {
@@ -869,7 +886,7 @@ int main() {
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
       oldBoot();
-      p.pageRoutings("photo.1>gen.ratio@0.900;picture.bored>gen.swing@-0.900");
+      p.pageRoutings("photo.1>gen.ratio@0.900;picture.bored>gen.twist@-0.900");
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       for (int k = 0; k < 4; ++k) { buf.clear(); p.processBlock(buf, m); }
@@ -879,7 +896,8 @@ int main() {
       loopFlags = photo && round && photo->picture() && round->picture();
     }
     check("the photocell and the picture's sources are the loop's, and hold a depth to their reach: half, and boredom 0.3",
-          loopFlags && held == "photo.1>gen.ratio@0.500;picture.bored>gen.swing@-0.300", held);
+          loopFlags && held == "photo.1>gen.ratio@0.500;picture.bored>gen.twist@-0.300", held);
+    unsetenv("SCOPE_HOLD_NOTE");
     /* The view's hands as the state keeps them: a display undoes the one
        before, the photocell's switch keeps every press, and the Clear
        button, which leaves nothing behind it, is not kept - nor does a view
@@ -1048,14 +1066,14 @@ int main() {
   {
     /* The level held to the picture: the newest 2048 frames of its left
        channel, as the page is handed them before the block, against a
-       scope::Level of the test's own, a block at a time, on pendulums that
-       swing from the moment the preset is loaded - a drawing is not gated by
-       the keys. The null is the same Level fed the oldest 2048 frames of the
-       ring instead, which reads another moment of the swing. Before P5 this
-       was half of a check on the threshold, which watched this level and
-       plucked when it rose through 0.40; the threshold went, and the level's
-       half stays. */
-    setenv("SCOPE_PRESET", corpusText("Harmonograph").c_str(), 1);
+       scope::Level of the test's own, a block at a time, on a low saw whose
+       filter an oscillator sweeps, a note held from the first block. The null
+       is the same Level fed the oldest 2048 frames of the ring instead, which
+       reads another moment of the sweep. Before P5 this was half of a check
+       on the threshold, which watched this level and plucked when it rose
+       through 0.40; the threshold went, and the level's half stays. On
+       pendulums that swung with no key down until G2 took them. */
+    setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
     auto p = std::make_unique<ScopeProcessor>();
     p->prepareToPlay(rate, step);  // a step a block, so the test reads the ring between the instrument's steps (6 Nov)
     oldBoot();
@@ -1074,6 +1092,7 @@ int main() {
       oldest.update(early.data(), early.size(), k == 0 ? 0 : 1000.0 * step / rate);
       buf.clear();
       juce::MidiBuffer m;
+      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 45, static_cast<juce::uint8>(100)), 0);
       p->processBlock(buf, m);
       levelOff = std::fmax(levelOff, std::fabs(p->level() - own.value()));
       oldestOff = std::fmax(oldestOff, std::fabs(p->level() - oldest.value()));
@@ -1138,37 +1157,10 @@ int main() {
           off == 0 && bright > 0.1 && std::fabs(pitch - std::log2(220 / scope::kPitchRef) / 2) < 1e-9 && heard > 0.05,
           "off by " + num(off) + ", brightness " + num(bright) + ", pitch " + num(pitch) + "; without the routing it differs by " + num(heard));
   }
-  {
-    /* "Hits restart the pendulums": the onset on Swing again. What it hears
-       is the generator it would strike, so the routing is refused - every
-       strike would be the next onset - and the pendulums play as if it were
-       not there, though the onset fires. The preset went in P5 with Drawn by
-       your playing, and from then until P8d this ran on the boot preset by
-       its missing name, where a routing that is not there is trivially the
-       same as one refused; its setup is written out here now, and the check
-       requires the pendulums and the routing to be what it is played on. */
-    const char* pendulums = R"({"gen":"harmonograph","interval":4,"detune":30,"decay":30,"display":"xy",)"
-                            R"("persistence":"0.04","timebase":5,"pGoni":false,"mod":"hear.onset>gen.reswing@1.000"})";
-    const std::vector<std::pair<int, juce::MidiMessage>> held { { 100, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(110)) } };
-    const auto routed = playLeft(pendulums, held, 94);
-    const auto plain = playLeft(pendulums, held, 94, "hear.onset", "gen.reswing");
-    ScopeProcessor p;
-    if (const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(pendulums))))
-      p.setStateInformation(code->data(), static_cast<int>(code->size()));
-    p.prepareToPlay(rate, block);
-    bool hasRoute = false;
-    for (const auto& r : p.matrix().routings()) hasRoute = hasRoute || (r.sourceId == "hear.onset" && r.destId == "gen.reswing");
-    juce::AudioBuffer<float> buf(2, block);
-    for (int k = 0; k < 94; ++k) {
-      buf.clear();
-      juce::MidiBuffer m;
-      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(110)), 100);
-      p.processBlock(buf, m);
-    }
-    check("an onset hearing the generator it would strike is refused it: the pendulums play as without the routing, though it fires",
-          apart(routed, plain, 0, routed.size()) == 0 && p.hearing().onset.count > 0 && hasRoute && p.tone().modeName == "harmonograph",
-          std::to_string(p.hearing().onset.count) + " onsets; apart by " + num(apart(routed, plain, 0, routed.size())));
-  }
+  /* "Hits restart the pendulums" was held here: the onset on Swing again,
+     refused because what it hears is the generator it would strike. G2 took
+     the pendulums and the solid's kick, the two things a hit could strike,
+     so the generator has no event destination left to refuse one. */
 
   std::printf("\n--- the host's parameters, and the state ---\n");
   {
@@ -1226,8 +1218,8 @@ int main() {
      list said once, with the two that were lost as its null. */
   {
     std::string missing;
-    for (const char* name : { "Wobble", "Intervals in turn", "A sine, sung", "Harmonic tone", "Harmonograph",
-                              "Brightness swirls it", "Stretched echoes", "Wah", "Pendulums bent by the light",
+    for (const char* name : { "Wobble", "Intervals in turn", "A sine, sung", "Harmonic tone", "Brightness opens the ellipse",
+                              "Brightness swirls it", "Stretched echoes", "Wah", "The fifth detunes itself",
                               "A drawn cycle", "Wheel wah", "Envelope sync sweep", "Playing, lag X\u2013Y",
                               "Playing, waveform" })
       if (!corpusFind(name)) missing += std::string(missing.empty() ? "" : ", ") + name;
@@ -1589,19 +1581,20 @@ int main() {
           "apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by " + num(apart(heardA, heardNone, 0, heardA.size())));
   }
   {
-    /* A control moved twice is kept once, at its latest. But the keyboard's
-       drive is the kind's chosen at the time, so a drive between two kinds
-       keeps its place: the solid driven and the waveform not, both come back.
-       Kept as the latest alone, the solid's would have been lost. */
+    /* A control moved twice is kept once, at its latest. But LFO 1's rate
+       moved while it is synced is its free rate, so a rate between two of
+       its sync menu's changes keeps its place, and so does the menu: all
+       four come back. (It was the keyboard's drive between two kinds of
+       generator, the solid driven and the waveform not, until G2.) */
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     // A menu moved twice: the radial menu, to the fold and then the clip (the kaleidoscope's, until it was cut).
     p.pageControl("planeLimit", scope::Json::string(std::string_view("2")));
     p.pageControl("planeLimit", scope::Json::string(std::string_view("1")));
-    p.pageControl("genMode", scope::Json::string(std::string_view("wireframe")));
-    p.pageControl("midiDrive", scope::Json::boolean(true));
-    p.pageControl("genMode", scope::Json::string(std::string_view("wave")));
-    p.pageControl("midiDrive", scope::Json::boolean(false));
+    p.pageControl("lfoSync0", scope::Json::string(std::string_view("1/4")));
+    p.pageSlider("lfoRate0", u"50");
+    p.pageControl("lfoSync0", scope::Json::string(std::string_view("")));
+    p.pageSlider("lfoRate0", u"80");
     p.pageClick("tuneJust");
     p.pageClick("tuneEqual");  // the same set of buttons: the later is kept alone
     juce::AudioBuffer<float> buf(2, block);
@@ -1615,10 +1608,10 @@ int main() {
     const auto decoded = scope::decodeSetup(p.pageState().code);
     const scope::Json* hands = decoded.kind == scope::DecodedSetup::Kind::Read ? decoded.setup.get("pluginHands") : nullptr;
     const std::size_t count = hands && hands->type == scope::Json::Type::Array ? hands->a.size() : 0;
-    check("a control moved twice is kept once, a button once for its set, and the drive kept in its place between the kinds: all come back",
-          p.tone().planeLimit == 1 && q.tone().planeLimit == 1 && count == 6 && p.keys().drive[3] && !p.keys().drive[0]
-          && q.keys().drive == p.keys().drive && q.tone().modeName == "wave" && !q.tone().just,
-          std::to_string(count) + " kept; the solid driven " + (q.keys().drive[3] ? "yes" : "no") + ", the waveform " + (q.keys().drive[0] ? "yes" : "no"));
+    check("a control moved twice is kept once, a button once for its set, and LFO 1's rate kept in its place between its sync's: all come back",
+          p.tone().planeLimit == 1 && q.tone().planeLimit == 1 && count == 6 && p.lfoRate(0) == 0.8 && q.lfoRate(0) == p.lfoRate(0)
+          && !q.tone().just,
+          std::to_string(count) + " kept; LFO 1 at " + num(p.lfoRate(0)) + " Hz, and " + num(q.lfoRate(0)) + " Hz come back");
     // And a setup loaded starts the list again: what was done to the last one is not done to it.
     const auto code = scope::encodeSetup(corpusSetup("Wah"));
     if (code) p.pageSetup(*code);
@@ -2005,17 +1998,18 @@ int main() {
           !fx.drawsInput() && back.apart > 0.3 && back.peak > 0.05 && backDecoded.kind == scope::DecodedSetup::Kind::Read
           && backDecoded.setup.get("pluginInput") == nullptr, "apart from the input by " + num(back.apart));
 
-    /* The generator's live-input modes: a figure whose rate the input's FM
-       moves, against the same with the mode off, and the same with the input
-       bus off. The null is the mode off, where the input must change nothing. */
+    /* The generator's live-input modes: the waveform whose pitch the input's
+       FM moves, against the same with the mode off, and the same with the
+       input bus off. The null is the mode off, where the input must change
+       nothing. On the note every fed run holds, where until G2 it was a
+       figure, which played whether or not one was held. */
     const auto played = [&](bool busOn, const char* mode) {
       ScopeProcessor p;
       if (busOn) p.enableAllBuses();
       p.prepareToPlay(rate, block);
       long long k = 0;
       return feed(p, k, 12, [&](ScopeProcessor& q, int b) {
-        if (b == 0) { q.pageControl("genMode", scope::Json::string(std::u16string(u"figure")));
-                      q.pageControl("inputMode", scope::Json::string(scope::utf8To16(mode))); }
+        if (b == 0) q.pageControl("inputMode", scope::Json::string(scope::utf8To16(mode)));
       }).outL;
     };
     const auto most = [](const std::vector<float>& a, const std::vector<float>& b) {
@@ -2024,7 +2018,7 @@ int main() {
       return m;
     };
     const double moved = most(played(true, "1"), played(false, "1")), still = most(played(true, "0"), played(false, "0"));
-    check("drawing the generator, the input reaches it: FM from the input moves the figure, and with the mode off changes nothing",
+    check("drawing the generator, the input reaches it: FM from the input moves the waveform, and with the mode off changes nothing",
           moved > 0.05 && still == 0, "moved " + num(moved) + ", mode off " + num(still));
     /* The band split, the one way left to draw lanes since P5 cut the rack:
        what it hears is never a loop through its own sound, as the generator
@@ -2075,8 +2069,7 @@ int main() {
       std::vector<float> outL;
       juce::AudioBuffer<float> buf(2, block);
       for (int b = 0; b < 12; ++b) {
-        if (b == 0) { p.pageControl("genMode", scope::Json::string(std::u16string(u"figure")));
-                      p.pageControl("inputMode", scope::Json::string(std::u16string(u"1"))); }
+        if (b == 0) p.pageControl("inputMode", scope::Json::string(std::u16string(u"1")));
         buf.clear();
         for (int i = 0; i < block; ++i) {
           const long long k = static_cast<long long>(b) * block + i;

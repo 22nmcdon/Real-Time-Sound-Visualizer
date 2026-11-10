@@ -26,17 +26,18 @@
 // - The drawn cycles' tables are built again only for a slot whose points
 //   have changed. The page builds all four on every restore; the tables are
 //   the same either way, and each costs some 25 ms.
-// - The cycles and the figures made of strokes are the page's from the first
-//   restore on: a Brain starts with none, where the page starts with its
-//   defaults, and the plugin restores before it plays.
+// - The cycles are the page's from the first restore on: a Brain starts with
+//   none, where the page starts with its defaults, and the plugin restores
+//   before it plays.
 // - "Now", where restore asks for it (setting the tempo re-bases the bar), is
 //   the clock's `now()`, which its owner keeps up to date; the page asks
 //   `performance.now()`.
-// - Three fields the page passes on raw are taken by their truth or their
-//   name: `gen` (a mode the page has not got leaves the generator as it was
-//   told, and the core plays a waveform), `just` (anything truthy is just),
-//   and an LFO's shape (any shape the page does not know plays a sine). The
-//   page keeps the raw value as well, which only its panel reads.
+// - Two fields the page passes on raw are taken by their truth or their
+//   name: `just` (anything truthy is just) and an LFO's shape (any shape the
+//   page does not know plays a sine). The page keeps the raw value as well,
+//   which only its panel reads. `gen`, the kind of generator, is read by
+//   nothing since G2 took the drawings: the waveform is the only kind, and
+//   version 10 of the code (setup.h) writes it as that.
 // - A legacy LFO destination naming something on Object.prototype ("toString")
 //   is not followed; the page would take the function for a destination.
 
@@ -67,7 +68,6 @@
 #include "scope/scan.h"           // scanReadsOf
 #include "scope/score.h"
 #include "scope/setup.h"
-#include "scope/strokes.h"
 
 namespace scope {
 
@@ -250,7 +250,6 @@ struct Brain {
   std::vector<std::pair<std::string, std::u16string>> panelKeptA;
   bool keptA = false;
   bool panelHeldOnA = false;  // while a setup is restored, as the page's restore holds it
-  std::string inputFrom = "live";  // genInput.from
   double inputMode = 0;            // genInput.mode
   struct LfoSetting { Json shape = Json::string(std::string_view("sine")); double free = 0.2; std::string sync; };
   std::array<LfoSetting, 2> lfo { { { Json::string(std::string_view("sine")), 0.2, "" },
@@ -329,15 +328,6 @@ struct Brain {
   std::array<CyclePoints, kCycleSlots> cycles;
   std::shared_ptr<const std::vector<CycleTables>> cycleBank;
   std::array<CyclePoints, kCycleSlots> cycleBuiltFrom;  // what the bank's tables were built from
-  // figDrawing, and the two text rows: the word and the path's d as their
-  // inputs hold them, the d last read, and why the last one was not.
-  std::u16string figText, figPathD;
-  struct FigDrawing {
-    std::shared_ptr<const FigurePath> text, path, drawn;
-    std::u16string pathD, fault;
-    Strokes strokes;
-    bool full = false;
-  } fig;
 };
 
 // --- the tables restore reads -----------------------------------------------------------
@@ -862,32 +852,6 @@ inline void cycleSend(Brain& b, Generator& gen) {
   gen.setWavetable(b.cycleBank);
 }
 
-// A text input's value as the browser keeps it: its line breaks taken out.
-inline std::u16string textInputValue(const std::u16string& v) {
-  std::u16string out;
-  for (const char16_t c : v) if (c != u'\n' && c != u'\r') out += c;
-  return out;
-}
-// setFigureText: the word as its row holds it, at most twenty-four units.
-inline void setFigureText(Brain& b, const std::u16string& text) {
-  b.figText = textInputValue(text.substr(0, kTextMost));
-  b.fig.text = compilePath(textStrokes(b.figText));
-}
-// setFigurePathD: a d that cannot be read leaves the drawing as it was and
-// says why; one that reads to nothing says that.
-inline void setFigurePathD(Brain& b, const std::u16string& d) {
-  b.figPathD = textInputValue(d);
-  if (jsTrim(d).empty()) { b.fig.path = nullptr; b.fig.pathD.clear(); b.fig.fault.clear(); return; }
-  const PathRead read = svgStrokes(d);
-  if (!read.strokes) { b.fig.fault = u"That path could not be read: " + utf8To16(read.error) + u"."; return; }
-  b.fig.path = compilePath(*read.strokes);
-  b.fig.pathD = d;
-  b.fig.fault = b.fig.path ? u"" : u"Nothing in that path to draw.";
-}
-inline std::shared_ptr<const FigurePath> figurePathFor(const Brain& b, std::string_view name) {
-  return name == "Text" ? b.fig.text : name == "Path" ? b.fig.path : name == "Drawn" ? b.fig.drawn : nullptr;
-}
-
 // --- the handlers' part, in restore's order -------------------------------------------------
 
 // --- the view ---------------------------------------------------------------------------
@@ -1034,12 +998,6 @@ inline void restoreCycles(const Json* first, const Json* rest, Brain& brain, Gen
   decodeCycleSlots(rest, brain.cycles);
   cycleSend(brain, gen);
 }
-// A figure drawn on the screen, as a setup carries it ("figDrawn").
-inline void restoreDrawnFigure(const Json* strokes, Brain& brain) {
-  brain.fig.strokes = decodeDrawn(strokes);
-  brain.fig.full = false;
-  brain.fig.drawn = compilePath(brain.fig.strokes);  // drawnCompile: decodeDrawn keeps no stroke of one point
-}
 
 // The Expression menus' value for each place, as the page's menus hold them.
 inline std::u16string expressName(Keyboard::Express e) {
@@ -1063,7 +1021,6 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   };
   const auto num = [&](std::string_view key) { return jsToNumber(s(key)); };
   const auto str = [&](std::string_view key) -> std::u16string { const Json* v = s(key); return v ? jsToString(*v) : u"undefined"; };
-  const auto isString = [&](std::string_view key, std::u16string_view want) { const Json* v = s(key); return v && v->type == Json::Type::String && v->s == want; };
   // The controls say layer A while a setup is being written into them, held
   // there until it is done, and then whatever the keyboard says.
   struct HeldOnA {
@@ -1101,60 +1058,25 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("amp", str("amp"));
   panel.setSelect("interval", str("interval"));
   panel.setRange("phase", str("phase"));
-  panel.setSelect("figure", str("figure"));
-  panel.setRange("detail", str("detail"));
-  panel.setRange("figureRate", str("figureRate"));
-  panel.setRange("swingRate", str("swingRate"));
-  panel.setRange("decay", str("decay"));
-  panel.setRange("swingDrive", str("swingDrive"));
   panel.setSelect("inputMode", fieldText("inputMode"));
   panel.setRange("inputDepth", str("inputDepth"));
-  brain.inputFrom = isString("inputFrom", u"gen2") ? "gen2" : "live";
-  {
-    const Json* f = s("gen2Figure");
-    static const char16_t* figures[] = { u"Circle", u"Square", u"Polygon", u"Star", u"Rose", u"Heart", u"Infinity",
-                                         u"Spiral", u"Spirograph", u"Butterfly" };
-    bool ok = false;
-    if (f && f->type == Json::Type::String) for (const char16_t* x : figures) if (f->s == x) ok = true;
-    panel.setSelect("gen2Figure", ok ? f->s : u"Circle");
-    const double rate = num("gen2Rate");
-    panel.setRange("gen2Rate", toU16(jsNumberToString(jsMathRound(std::fmax(1, std::fmin(1000, rate == 0 || std::isnan(rate) ? 110 : rate))))));
-  }
-  gen.set("gen2Figure", panel.select("gen2Figure"), 0);
-  setA("gen2Rate", panel.range("gen2Rate"));
-  gen.set("inputFrom", brain.inputFrom, 0);  // syncGen2
   restoreCycles(s("cycle"), s("cycles"), brain, gen);
   {
     const double mode = panel.selectNumber("inputMode");
     brain.inputMode = mode == 0 || std::isnan(mode) ? 0 : mode;
     setA("inputMode", brain.inputMode);
   }
-  panel.setRange("detune", str("detune"));
   panel.setRange("envAttack", str("atk"));
   panel.setRange("envDecay", str("dec"));
   panel.setRange("envSustain", str("sus"));
   panel.setRange("envRelease", str("rel"));
   panel.setRange("glide", str("glide"));
-  panel.setSelect("model", str("model"));
-  for (const char* axis : { "spinX", "spinY", "spinZ" }) panel.setRange(axis, str(axis));
-  panel.setRange("spinRate", str("spinRate"));
-  panel.setRange("depth", str("depth"));
-  panel.setSelect("genMode", str("gen"));
 
   // The sliders' handlers, as `restore` fires them.
   setA("freq", panel.range("freq"));
   setA("amp", panel.range("amp") / 100);
   setA("phase", panel.range("phase") * kPi / 180);
-  setA("detail", panel.range("detail"));
-  setA("figureRate", panel.range("figureRate"));
-  setA("swingRate", panel.range("swingRate") / 10);
-  setA("decay", panel.range("decay") / 100);
-  setA("swingDrive", panel.range("swingDrive") / 100);
   setA("inputDepth", panel.range("inputDepth") / 100);
-  setA("detune", panel.range("detune") / 10000);
-  gen.setSpin({ panel.range("spinX") / 100, panel.range("spinY") / 100, panel.range("spinZ") / 100 });
-  setA("spinRate", panel.range("spinRate") / 100);
-  setA("depth", panel.range("depth") / 100);
   setA("attackMs", panel.range("envAttack"));
   setA("decayMs", panel.range("envDecay"));
   setA("sustain", panel.range("envSustain") / 100);
@@ -1190,23 +1112,10 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("shapeOS", panel.selectNumber("shpOS"));
   applyVoiceLaws(gen, panel, 0);
 
-  {
-    const Json* text = s("figText");
-    setFigureText(brain, text && text->type == Json::Type::String ? text->s : defaults.get("figText")->s);
-    const Json* d = s("figPath");
-    setFigurePathD(brain, d && d->type == Json::Type::String ? d->s : u"");
-    restoreDrawnFigure(s("figDrawn"), brain);
-  }
-  gen.set("figure", panel.select("figure"), 0);
-  gen.setFigPath(figurePathFor(brain, panel.select("figure")));  // syncFigurePath
-  gen.set("model", panel.select("model"), 0);
   setA("interval", panel.selectNumber("interval"));
 
-  // The kind, a reswing, and the tuning, as the page passes them.
-  {
-    const Json* g = s("gen");
-    gen.set("mode", g && g->type == Json::Type::String ? std::string_view(utf16To8(g->s)) : std::string_view("wave"), 0);
-  }
+  // A reswing - the pair's phases from nought - and the tuning, as the page
+  // passes them. The kind went before the reswing until G2; there is one.
   gen.reswing();
   {
     const Json* j = s("just");
@@ -1290,29 +1199,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   k.hold = fieldFlag("midiHold");
   k.truth = fieldFlag("midiTruth");
   k.follow = fieldFlag("midiFollow");
-  const auto kinds = [&](std::string_view key) {
-    const std::u16string list = str(key);
-    std::array<bool, 4> out { false, false, false, false };
-    static const char16_t* names[] = { u"wave", u"harmonograph", u"figure", u"wireframe" };
-    std::size_t at = 0;
-    while (at <= list.size()) {
-      const std::size_t end = std::min(list.find(u',', at), list.size());
-      for (std::size_t i = 0; i < 4; i++) if (list.substr(at, end - at) == names[i]) out[i] = true;
-      if (end >= list.size()) break;
-      at = end + 1;
-    }
-    return out;
-  };
-  k.drive = kinds("midiDrive");
-  k.play = kinds("midiPlay");
-  {
-    const double ring = num("ring");
-    panel.setRange("ringTime", toU16(jsNumberToString(std::fmax(20, std::fmin(4000, ring == 0 || std::isnan(ring) ? 600 : ring)))));
-    setA("ringMs", panel.range("ringTime"));
-  }
   keys.setSettings(k);
-  keys.panel() = { panel.range("freq"), static_cast<int>(panel.selectNumber("interval")), panel.range("figureRate"),
-                   panel.range("detail") };
+  keys.panel() = { panel.range("freq"), static_cast<int>(panel.selectNumber("interval")) };
   keys.apply();
 
   // The LFOs, the key, the quantiser and the tempo.
@@ -1631,26 +1519,11 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "amp") layerSet("amp", v / 100);
   else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
   else if (id == "phase") gen.set("phase", v * kPi / 180);
-  else if (id == "detail") { gen.set("detail", v); keys.panel().detail = v; }
-  else if (id == "figureRate") { gen.set("figureRate", v); keys.panel().figureRate = v; }
-  else if (id == "spinX" || id == "spinY" || id == "spinZ") {
-    std::array<double, 3> spin = gen.tone().spin;
-    spin[static_cast<std::size_t>(id[4] - 'X')] = v / 100;
-    gen.setSpin(spin);
-  }
-  else if (id == "spinRate") gen.set("spinRate", v / 100);
-  else if (id == "depth") gen.set("depth", v / 100);
   else if (id == "envAttack") layerSet("attackMs", v);
   else if (id == "envDecay") layerSet("decayMs", v);
   else if (id == "envSustain") layerSet("sustain", v / 100);
   else if (id == "envRelease") layerSet("releaseMs", v);
   else if (id == "glide") layerSet("glideMs", v);
-  else if (id == "ringTime") gen.set("ringMs", v);
-  else if (id == "swingRate") gen.set("swingRate", v / 10);
-  else if (id == "decay") gen.set("decay", v / 100);
-  else if (id == "detune") gen.set("detune", v / 10000);
-  else if (id == "swingDrive") gen.set("swingDrive", v / 100);
-  else if (id == "gen2Rate") gen.set("gen2Rate", v);
   else if (id == "inputDepth") gen.set("inputDepth", v / 100);
   else if (id == "lfoRate0" || id == "lfoRate1") {
     const std::size_t i = id.back() == '1' ? 1 : 0;
@@ -1782,19 +1655,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   Keyboard::Settings k = keys.settings();
 
   // The generator.
-  if (id == "genMode") {
-    gen.set("mode", text, 0);
-    keys.syncPlayed();
-    // A figure and a harmonograph are X-Y things: shown against time they are a waveform nobody asked for.
-    if (text != "wave" && b.view.screen.display == "yt") setDisplay(b, "xy");
-  }
-  else if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
-  else if (id == "figure") { gen.set("figure", text, 0); gen.setFigPath(figurePathFor(b, text)); }
-  else if (id == "figPathD") { setFigurePathD(b, value); gen.setFigPath(figurePathFor(b, panel.select("figure"))); }
+  if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
   else if (id == "inputMode") { b.inputMode = orElse(number, 0); gen.set("inputMode", b.inputMode, 0); }
-  else if (id == "inputFrom") { b.inputFrom = text == "gen2" ? "gen2" : "live"; gen.set("inputFrom", b.inputFrom, 0); }
-  else if (id == "gen2Figure") gen.set("gen2Figure", text, 0);
-  else if (id == "model") gen.set("model", text, 0);
   else if (id == "shape") gen.set("shape", text, layer);
   else if (id == "shpOS") gen.set("shapeOS", number, 0);
   else if (isVoiceControl(id) && menu) {
@@ -1848,8 +1710,6 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   }
   else if (id == "midiTruth") { k.truth = checked; keys.setSettings(k); }
   else if (id == "midiFollow") { k.follow = checked; keys.setSettings(k); }
-  else if (id == "midiDrive") keys.setDrive(checked);
-  else if (id == "midiPlay") keys.setPlay(checked);
   // The arpeggiator and the score.
   else if (id == "arpMode") {
     // arpSet reads all three menus. The other two are the brain's, which a

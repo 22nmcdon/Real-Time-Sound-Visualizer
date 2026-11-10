@@ -1,8 +1,9 @@
 // The generator, ported from `makeGeneratorCore` in web/scope.html: the
-// per-sample loop that makes every mode's pair - the dyad, the chord on two
-// layers, the figure, the solid, the pendulums - through the routings, the
-// governor, the plane and the score's voices, and the calls the
-// worklet makes of it. It is held to the page's own `makeGeneratorCore` whole,
+// per-sample loop that makes the waveform's pair - the dyad, or the chord on
+// one layer or two - through the routings, the governor, the plane and the
+// score's voices, and the calls the worklet makes of it. (The drawings - the
+// pendulums, the figures, the solids and the second generator - went in G2,
+// 9 Nov: the owner did not miss them.) It is held to the page's own `makeGeneratorCore` whole,
 // driven through the same calls, by core/tests/parity.py.
 //
 // The pieces it is made of are ported and held to the page one at a time in
@@ -14,8 +15,8 @@
 //
 // - The page's tone is a JavaScript object written by name, and holds whatever
 //   it is handed. Here it is two structs and `set` is typed: a number, a word,
-//   or one of the structured fields (the bars, the spin, the chord, a drawn
-//   cycle, a path), each with its own call. A field the page would take but
+//   or one of the structured fields (the bars, the chord, a drawn cycle),
+//   each with its own call. A field the page would take but
 //   never reads is ignored rather than kept.
 // - The routings' accumulator is a Float32Array in the page, so it is `float`
 //   here and every sum into it is rounded as the page rounds it. It is made at
@@ -38,7 +39,6 @@
 #include <vector>
 
 #include "scope/envelope.h"
-#include "scope/figures.h"
 #include "scope/lfo.h"
 #include "scope/noise.h"
 #include "scope/osc.h"
@@ -47,25 +47,30 @@
 #include "scope/voice.h"
 #include "scope/voices.h"
 #include "scope/wave.h"
-#include "scope/wireframe.h"
 
 namespace scope {
 
 // Where each destination sits in the routings' accumulator: GEN_DESTS's slots.
+// The drawings' went in G2 and their slots are left empty rather than the
+// rest renumbered: the page's GEN_DESTS and this share the numbers, and an
+// off-by-one between them would be silent. Nothing writes or reads 4, 5, 6
+// (the figure's detail, the solid's spin rate and perspective), 26 (the
+// pendulums' energy) or 29 to 31 (the solid's three spins).
 namespace slot {
-constexpr int Freq = 0, Amp = 1, Phase = 2, Ratio = 3, Detail = 4, Tumble = 5, Depth = 6;
+constexpr int Freq = 0, Amp = 1, Phase = 2, Ratio = 3;
 constexpr int Drawbar = 7, Morph = Drawbar + 9, Radius = Morph + 1, Twist = Radius + 1, Fm = Twist + 1, Sync = Fm + 1;
 constexpr int Drive = Sync + 1, Fold = Drive + 1, Vcf = Fold + 1, Echo = Vcf + 1, EchoTime = Echo + 1;
-constexpr int Swing = EchoTime + 1, Width = Swing + 1, Table = Width + 1, Spin = Table + 1;
-constexpr int Turn = Spin + 3;  // layer B's turn, after the third axis
+constexpr int Width = EchoTime + 2, Table = Width + 1;
+constexpr int Turn = Table + 4;  // layer B's turn, after the solid's three spins that were
 constexpr int Bend = Turn + 1, BendAt = Bend + 1;  // the voice's bend and where it centres
 constexpr int Phaser = BendAt + 1;  // the phaser's amount (P8e)
 constexpr int DelayTone = Phaser + 1;  // the delay's tone (8 Nov)
 constexpr int Reverb = DelayTone + 1, ReverbSize = Reverb + 1, ReverbTone = ReverbSize + 1;  // P9
 constexpr int Used = ReverbTone + 1;  // the slots the loop reads
+// Held where they were before G2 emptied the drawings' slots between them.
+static_assert(Drawbar == 7 && EchoTime == 25 && Width == 27 && Table == 28 && Turn == 32 && Used == 40,
+              "a slot moved: the page's GEN_DESTS numbers them too");
 }  // namespace slot
-
-enum class Mode { Wave, Harmonograph, Figure, Wireframe };
 
 // A layer's own tone: the voice, its level and two envelopes, its bars and
 // its chord. Layer B is one of these and nothing else.
@@ -90,11 +95,6 @@ struct LayerBSettings : LayerSettings, PlaneLayerTone {
 
 // Layer A's tone, which is also the page's: everything but the voice.
 struct Tone : LayerSettings, PlaneTone {
-  Mode mode = Mode::Wave;
-  // The words as the page's tone holds them, whatever they are: a setup can
-  // give a menu a value it has not got, and the page keeps the "" that results.
-  std::string modeName = "wave", figureName = "Circle", gen2FigureName = "Circle", modelName = "Cube";
-  std::string inputFromName = "live";
   double freq = 220;
   int interval = 0;
   double octaves = 0;
@@ -106,19 +106,9 @@ struct Tone : LayerSettings, PlaneTone {
   bool menvOwn = false;
   bool menvEvery = false;  // once a phrase, or again on every note, as the page's
   EnvelopeTone menv { 10, 300, 0.5, 400 };
-  Figure figure = Figure::Circle;
-  double detail = 5, figureRate = 40, swingRate = 2.1, decay = 0.12, swingDrive = 0;
   double inputMode = 0, inputDepth = 0.5;
-  bool fromGen2 = false;  // the page's inputFrom === "gen2"
-  Figure gen2Figure = Figure::Circle;
-  double gen2Rate = 110, gen2Amp = 0.5;
   std::shared_ptr<const CycleTables> cycle;
   std::shared_ptr<const std::vector<CycleTables>> wavetable;
-  std::shared_ptr<const FigurePath> figPath;
-  bool pitched = false;
-  double ringMs = 600, detune = 0.004;
-  std::array<double, 3> spin { 0.11, 0.17, 0.0 };
-  double spinRate = 1, depth = 0.45;
   double shapeOS = 2, glideMs = 0;
   int qMask = 0;
   double qGlideMs = 0;
@@ -148,7 +138,6 @@ class Generator {
   Generator(double rate, int slots, std::vector<Lfo>& lfos, std::uint32_t seed = 1)
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
         genMod_(static_cast<std::size_t>(std::max(slots, slot::Used)), 0.0f), genModB_(genMod_),
-        reletSamples_(std::max(1, static_cast<int>(jsRound(10 * rate / 1000)))),
         env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), ctx_(rate),
         scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
@@ -187,20 +176,8 @@ class Generator {
     else if (field == "pitchBend") a.pitchBend = value;
     else if (field == "vibrato") a.vibrato = value;
     else if (field == "phase") a.phase = value;
-    else if (field == "detail") a.detail = value;
-    else if (field == "figureRate") a.figureRate = value;
-    else if (field == "swingRate") a.swingRate = value;
-    else if (field == "decay") { a.decay = value; restartSwing(); }
-    else if (field == "swingDrive") a.swingDrive = value;
     else if (field == "inputMode") a.inputMode = value;
     else if (field == "inputDepth") a.inputDepth = value;
-    else if (field == "gen2Rate") a.gen2Rate = value;
-    else if (field == "gen2Amp") a.gen2Amp = value;
-    else if (field == "pitched") a.pitched = value != 0;
-    else if (field == "ringMs") a.ringMs = value;
-    else if (field == "detune") a.detune = value;
-    else if (field == "spinRate") a.spinRate = value;
-    else if (field == "depth") a.depth = value;
     else if (field == "shapeOS") a.shapeOS = value;
     else if (field == "glideMs") a.glideMs = value;
     else if (field == "qMask") a.qMask = static_cast<int>(value);
@@ -225,16 +202,6 @@ class Generator {
       return;
     }
     if (field == "subShape") { t.subSine = value == "sine"; t.subShapeName = std::string(value); return; }
-    if (layer == 1) return;
-    if (field == "mode") {
-      a_.modeName = std::string(value);
-      a_.mode = value == "harmonograph" ? Mode::Harmonograph : value == "figure" ? Mode::Figure
-              : value == "wireframe" ? Mode::Wireframe : Mode::Wave;
-      restartSwing();
-    } else if (field == "figure") { a_.figure = figureNamed(value); a_.figureName = std::string(value); }
-    else if (field == "inputFrom") { a_.fromGen2 = value == "gen2"; a_.inputFromName = std::string(value); }
-    else if (field == "gen2Figure") { a_.gen2Figure = figureNamed(value); a_.gen2FigureName = std::string(value); }
-    else if (field == "model") { wire_.set(value); a_.modelName = std::string(value); }
   }
 
   // Copied and clamped; the page ignores a registration that is not nine.
@@ -247,10 +214,8 @@ class Generator {
       t.bars[k] = std::fmax(0.0, std::fmin(8.0, v));
     }
   }
-  void setSpin(const std::array<double, 3>& spin) { a_.spin = spin; }
   void setCycle(std::shared_ptr<const CycleTables> c) { a_.cycle = std::move(c); }
   void setWavetable(std::shared_ptr<const std::vector<CycleTables>> w) { a_.wavetable = std::move(w); }
-  void setFigPath(std::shared_ptr<const FigurePath> p) { a_.figPath = std::move(p); }
   /* Scan's latest table for a layer, taken at the next tick (the page's
      `scanTable`). Not owned: the caller keeps it alive while it is this, or
      the one the layer is fading from or to (`scanPrev`, `scanNext`), which is
@@ -275,8 +240,6 @@ class Generator {
 
   // --- the rest of the worklet's calls --------------------------------------
 
-  void kick(double amount) { kick_ = std::fmax(-kKickMost, std::fmin(kKickMost, kick_ + amount * kKickSize)); }
-
   // The next block's input, or none.
   void setInput(const float* samples, int length) { inBuf_ = samples; inLen_ = samples ? length : 0; }
 
@@ -290,12 +253,11 @@ class Generator {
     scoreStruck_ = 1;
   }
 
+  /* The page's genReswing, which restore still calls: the pair's phases
+     back to nought and the voice's copies with them. Named for the
+     pendulums it struck until G2; what is left of it is the waveform's. */
   void reswing() {
-    if (a_.mode == Mode::Harmonograph && a_.pitched) {
-      strikeFrom_ = lastGain_; striking_ = true; swing_ = 0; relet_ = reletSamples_;
-      return;
-    }
-    swing_ = 0; swingEnv_ = 1; phaseL_ = 0; phaseR_ = 0; relet_ = 0; striking_ = false; wire_.reset();
+    phaseL_ = 0; phaseR_ = 0;
     oscL_.n = 0; oscR_.n = 0;
   }
 
@@ -332,10 +294,8 @@ class Generator {
   const std::vector<Voice>& voices() const { return voices_; }
   const std::vector<Voice>& voicesB() const { return voicesB_; }
   const Budget& budget() const { return budget_; }
-  double spinKick() const { return kick_; }
   // Where layer `l`'s voice was in its cycle at the last tick, 0 to 1, or -1 (scanHeadOf).
   double scanHead(int l) const { return scanHead_[l == 1 ? 1 : 0]; }
-  double swingLevel() const { return swingEnv_; }
   static bool cutting(const Voice& v) { return v.gone || v.fade > 0; }
 
   /* The loop overlay's read-head (P8f): where a layer's voice was in its
@@ -355,16 +315,6 @@ class Generator {
     if (std::isnan(phase)) return -1;
     const double turns = phase / kTwoPi;
     return turns - std::floor(turns);
-  }
-
-  struct Drawing { double swing, pendulum; std::array<double, 3> turn; double facing; };
-  Drawing drawing() const {
-    const bool swinging = a_.mode == Mode::Harmonograph, solid = a_.mode == Mode::Wireframe;
-    const auto& a = wire_.angles();
-    return { swinging ? lastGain_ : 0, swinging ? std::sin(phaseL_) : 0,
-             solid ? std::array<double, 3> { std::sin(a[0]), std::sin(a[1]), std::sin(a[2]) }
-                   : std::array<double, 3> { 0, 0, 0 },
-             solid ? std::cos(a[0]) * std::cos(a[1]) : 0 };
   }
 
   // --- S1: a live input through the plane -----------------------------------
@@ -442,10 +392,8 @@ class Generator {
     const double octave = std::pow(2.0, a_.octaves);
     const double glide = a_.glideMs > 0 ? poleFor(a_.glideMs, rate_) : 1;
     const double bendGlide = poleFor(kBendGlideMs, rate_);
-    const double kickFriction = std::exp(-dt / kKickTau);
     if (!freqStarted_) { freqNow_ = a_.freq; freqStarted_ = true; }
-    const bool fromGen2 = a_.fromGen2;
-    const int inMode = fromGen2 || (inBuf_ != nullptr && inLen_ >= n) ? toInt32(a_.inputMode) : 0;
+    const int inMode = inBuf_ != nullptr && inLen_ >= n ? toInt32(a_.inputMode) : 0;
     const double inDepth = a_.inputDepth;
 
     for (int i = 0; i < n; i++) {
@@ -467,9 +415,6 @@ class Generator {
       const double amp = a_.amp * (1 - mod(slot::Amp)) * level;
       const double phase = a_.phase + mod(slot::Phase) * kPi;
       const double ratio = intervalRatio(a_.interval, a_.just) * octave + mod(slot::Ratio) * 0.5;
-      const double detail = a_.detail + mod(slot::Detail) * 4;
-      const double tumble = a_.spinRate * std::pow(3.0, mod(slot::Tumble));
-      const double depth = std::fmax(0.0, std::fmin(1.0, a_.depth + mod(slot::Depth) * 0.5));
       const WaveTables bars = tablesFor(a_, barsA_, genMod_);
       const double morphPush = modOr0(slot::Morph) * 1.5;
       const double widthPush = modOr0(slot::Width) * 0.45;
@@ -495,16 +440,8 @@ class Generator {
 
       double xin = 0, fmIn = 1, clockHz = 0;
       bool clockReset = false;
-      double g2x = 0, g2y = 0;
-      if (fromGen2) {
-        gen2Phase_ += a_.gen2Rate * dt;
-        if (gen2Phase_ >= 1) gen2Phase_ -= std::floor(gen2Phase_);
-        const auto at2 = figureAt(a_.gen2Figure, gen2Phase_, 5, nullptr);
-        g2x = a_.gen2Amp * at2[0];
-        g2y = a_.gen2Amp * at2[1];
-      }
       if (inMode != 0) {
-        xin = fromGen2 ? g2x : inBuf_[i];
+        xin = inBuf_[i];
         if (inMode == 1) fmIn = std::fmax(0.0, 1 + inDepth * 4 * xin);
         else if (inMode == 3) {
           clock_.since++;
@@ -519,53 +456,7 @@ class Generator {
 
       double l, r;
 
-      if (a_.mode == Mode::Figure) {
-        if (clockHz > 0) figurePhase_ = std::fmod(static_cast<double>(clock_.since) / clock_.period, 1.0);
-        else figurePhase_ += a_.figureRate * fmIn * dt;
-        if (figurePhase_ >= 1) { figurePhase_ -= 1; figureTurns_ = (figureTurns_ + 1) % kRoseTurns; }
-        const auto at = figureAt(a_.figure, a_.figure == Figure::Rose ? figurePhase_ + figureTurns_ : figurePhase_,
-                                 detail, a_.figPath.get());
-        l = amp * at[0];
-        r = amp * at[1];
-      } else if (a_.mode == Mode::Wireframe) {
-        const double spun = kick_ == 0 ? tumble : tumble * (1 + kick_);
-        if (kick_ != 0) { kick_ *= kickFriction; if (std::fabs(kick_) < 1e-4) kick_ = 0; }
-        const auto at = wire_.step(dt, a_.figureRate * fmIn, depth, {
-          (a_.spin[0] + modOr0(slot::Spin) * 0.6) * spun,
-          (a_.spin[1] + modOr0(slot::Spin + 1) * 0.6) * spun,
-          (a_.spin[2] + modOr0(slot::Spin + 2) * 0.6) * spun,
-        });
-        l = amp * at[0];
-        r = amp * at[1];
-      } else if (a_.mode == Mode::Harmonograph) {
-        swing_ += dt;
-        const double drive = a_.pitched ? 0 : std::fmax(0.0, std::fmin(1.0, a_.swingDrive + modOr0(slot::Swing) * 0.5));
-        double env;
-        if (a_.pitched) env = std::exp(-swing_ * 1000 / std::fmax(1.0, a_.ringMs));
-        else if (drive > 0) {
-          swingEnv_ += (-a_.decay * swingEnv_ + kSwingDriveRate * drive * (1 - swingEnv_)) * dt;
-          env = swingEnv_;
-          swing_ = -std::log(std::fmax(1e-9, env)) / std::fmax(1e-6, a_.decay);
-        } else { env = std::exp(-a_.decay * swing_); swingEnv_ = env; }
-        if (env < 0.015 && !a_.pitched) { swing_ = 0; swingEnv_ = 1; phaseL_ = 0; phaseR_ = 0; relet_ = reletSamples_; }
-        const double k = 1 + a_.detune;
-        const double swingHz = (!a_.pitched ? a_.swingRate
-                                : ctx_.qMask ? quantise(qA_, freq, ctx_.qMask, ctx_.qHold, ctx_.qGlide) : freq) * fmIn;
-        if (a_.pitched) lastHz_ = swingHz;
-        phaseL_ += kTwoPi * swingHz * dt;
-        phaseR_ += kTwoPi * swingHz * ratio * dt;
-        double gain = env;
-        if (relet_ > 0) {
-          const double through = 1 - static_cast<double>(relet_) / reletSamples_;
-          const double rise = 0.5 - 0.5 * std::cos(kPi * through);
-          gain = striking_ ? strikeFrom_ + (env - strikeFrom_) * rise : env * rise;
-          relet_--;
-          if (relet_ == 0) striking_ = false;
-        }
-        lastGain_ = gain;
-        l = amp * gain * (std::sin(phaseL_) + std::sin(phaseL_ * k + phase)) / 2;
-        r = amp * gain * (std::sin(phaseR_ + phase) + std::sin(phaseR_ * k)) / 2;
-      } else if (poly) {
+      if (poly) {
         sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq) + pitchOct), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
               a_.polyRound, glide);
         l = ctx_.mix[0]; r = ctx_.mix[1];
@@ -621,8 +512,7 @@ class Generator {
       outR[i] = static_cast<float>(r);
 
       // Layer B through its plane whether or not its lanes were asked for,
-      // since it is heard either way; the second generator, drawn in B's
-      // lanes, heard with them.
+      // since it is heard either way.
       double bx = 0, by = 0;
       if (layered) {
         const WaveTables barsOfB = tablesFor(b_, barsB_, genModB_);
@@ -633,8 +523,6 @@ class Generator {
               vxB_, ctx_, a_.polyRound, glide);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
         if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
-      } else if (fromGen2) {
-        bx = g2x; by = g2y;
       }
       if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
 
@@ -669,11 +557,8 @@ class Generator {
   }
 
  private:
-  static constexpr double kKickSize = 6, kKickTau = 1.2, kKickMost = 20;
   static constexpr double kBendGlideMs = 5, kVibratoHz = 5.5;  // BEND_GLIDE_MS, VIBRATO_HZ
-  static constexpr double kSwingDriveRate = 3;
   static constexpr double kClockHyst = 0.01;
-  static constexpr int kRoseTurns = 10080;
 
   // JavaScript's `| 0`: towards nought, and a value past 32 bits wrapped.
   static int toInt32(double v) {
@@ -791,8 +676,6 @@ class Generator {
     vxA_.scanX = vxB_.scanX = scanClock_ / scanPer_;
   }
 
-  void restartSwing() { swing_ = 0; swingEnv_ = 1; relet_ = 0; striking_ = false; }
-
   // The accumulator read as the page reads it: plainly, or with `|| 0`, which
   // also turns a NaN into nought.
   double mod(int k) const { return genMod_[static_cast<std::size_t>(k)]; }
@@ -890,12 +773,11 @@ class Generator {
   }
 
   void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn) {
-    const bool waving = a_.mode == Mode::Wave;
     const bool poly = a_.voices.has_value(), layered = b_.voices.has_value();
     std::vector<std::vector<Voice>*> pools;
-    if (waving && poly) pools.push_back(&voices_);
+    if (poly) pools.push_back(&voices_);
     if (layered) pools.push_back(&voicesB_);
-    int countA = !waving ? 0 : poly ? liveIn(voices_) : 2;
+    int countA = poly ? liveIn(voices_) : 2;
     int countB = layered ? liveIn(voicesB_) : 0;
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;
     // A pass through the plane for each layer's pair; the heard pair's own
@@ -963,16 +845,10 @@ class Generator {
   std::vector<Route> routes_;
   Registration barsA_, barsB_;
 
-  double phaseL_ = 0, phaseR_ = 0, figurePhase_ = 0;
-  int figureTurns_ = 0;
-  double swing_ = 0, swingEnv_ = 1, kick_ = 0;
+  double phaseL_ = 0, phaseR_ = 0;
   const float* inBuf_ = nullptr;
   int inLen_ = 0;
-  double gen2Phase_ = 0;
   struct { bool low = true; long since = 0, period = 0; } clock_;
-  int reletSamples_, relet_ = 0;
-  bool striking_ = false;
-  double strikeFrom_ = 0, lastGain_ = 0;
   bool gated_ = false;
   Envelope env_, fenv_;
   Envelope menv_;          // the Envelope card's own, one for the generator
@@ -996,7 +872,6 @@ class Generator {
   std::array<ScoreVoice, 4> score_;
   double scoreFade_ = 0;
   int scoreStruck_ = 0;
-  Wireframe wire_;
   VoiceFx vxA_, vxB_;
   double scanPer_ = rate_ / kScanRate, scanClock_ = 0;
   std::array<double, 2> scanHead_ { { -1, -1 } };

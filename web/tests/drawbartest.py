@@ -81,8 +81,8 @@ def partials(x):
 # oscillators that do nothing so only the drawbars move anything.
 CORE = """([bars, freq, n, extra]) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('shape', 'drawbars'); core.set('bars', bars);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  core.set('shape', 'drawbars'); core.set('bars', bars);
   core.set('freq', freq); core.set('amp', 0.9); core.set('interval', 0);
   if (extra && extra.routes) core.setRoutes(extra.routes);
   const L = new Float32Array(n), R = new Float32Array(n);
@@ -113,7 +113,6 @@ with sync_playwright() as pw:
     # put the second harmonic 0.6 dB low and the check failed a real saw.
     def harmonics_of(shape):
         p.evaluate("""(shape) => {
-          el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
           el.shape.value = shape; el.shape.dispatchEvent(new Event('change'));
           el.freq.value = '440'; el.freq.dispatchEvent(new Event('input'));
         }""", shape)
@@ -176,8 +175,8 @@ with sync_playwright() as pw:
       // 22.4 kHz and crosses Nyquist at 2756 Hz. A block's loudest sample,
       // block by block, is the level as it went.
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-      core.set('mode', 'wave'); core.set('shape', 'drawbars');
+      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+      core.set('shape', 'drawbars');
       core.set('bars', [0, 0, 0, 0, 0, 0, 0, 0, 8]); core.set('amp', 0.9);
       const L = new Float32Array(64), R = new Float32Array(64), peaks = [];
       for (let b = 0; b < 690; b++) {
@@ -285,9 +284,8 @@ with sync_playwright() as pw:
     # no 16', so a 110 Hz in B's lanes can only have come from B's bars.
     heard = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-      core.set('mode', 'wave');
-      core.set('shape', 'drawbars'); core.set('bars', [0, 0, 8, 0, 0, 0, 0, 0, 0]);
+      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+            core.set('shape', 'drawbars'); core.set('bars', [0, 0, 8, 0, 0, 0, 0, 0, 0]);
       core.set('shape', 'drawbars', 1); core.set('bars', [8, 0, 0, 0, 0, 0, 0, 0, 0], 1);
       core.set('amp', 0.9, 1);
       // Velocity is a fraction here, as the keyboard hands it over; 127 drove
@@ -363,7 +361,6 @@ with sync_playwright() as pw:
     print("\n--- the panel ---")
     panel = p.evaluate("""() => {
       setView('bench'); setBenchTab('play');
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       const sine = { row: el.barsGoRow.hidden, idle: el.barsGroup.hasAttribute('data-idle'),
                      why: el.barsState.textContent, use: !el.barsUse.hidden };
@@ -374,14 +371,11 @@ with sync_playwright() as pw:
       el.barsGo.click();
       const went = { tab: document.querySelector('[role=tab][aria-selected=true] .tab-name').textContent.trim(),
                      shown: el.bar2.offsetParent !== null };
-      // Not on the drawbars when the kind changes, or the button is hidden
-      // for having been used and a figure offering it would never show.
+      // Back to a shape that is not the drawbars, as the search below was
+      // written against. (A figure, which had no waveform to colour and said
+      // so, was asked here on the way, until G2 took it.)
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      const figure = { idle: el.barsGroup.hasAttribute('data-idle'), why: el.barsState.textContent,
-                       use: !el.barsUse.hidden };
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
-      return { sine, used, went, figure };
+      return { sine, used, went };
     }""")
     print("    %s" % panel)
     check("with another shape the registration row is not on Play, and the bars say why they are greyed",
@@ -392,9 +386,6 @@ with sync_playwright() as pw:
                             "text": "00 8740 000 ›", "idle": False, "state": True}, str(panel["used"]))
     check("pressing it goes to the bars, on the Ink tab",
           panel["went"] == {"tab": "Ink", "shown": True}, str(panel["went"]))
-    check("a figure has no waveform to colour, and does not offer to use them",
-          panel["figure"]["idle"] and panel["figure"]["why"] == "Only a waveform has drawbars."
-          and not panel["figure"]["use"], str(panel["figure"]))
 
     print("\n--- found by name ---")
     def search(q):

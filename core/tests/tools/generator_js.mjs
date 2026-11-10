@@ -5,8 +5,7 @@
 
    The core is assembled from the page the way `generatorModuleSource`
    assembles the worklet: the names that function binds, read out of its own
-   text, each definition lifted from the page, and the solids handed over as
-   JSON as the worklet gets them. So a helper added to the core and to the
+   text, each definition lifted from the page. So a helper added to the core and to the
    worklet's list is in this runner too, and one missing from the list fails
    here as it would in a browser.
 
@@ -14,9 +13,9 @@
    then `end`. N is a sample at the start of a block. Commands:
      set FIELD VALUE [LAYER]      a number, true or false, or a word
      bars LAYER v,v,...           voices LAYER null | note/hz/vel/role+...
-     spin a,b,c                   routes none | index/held/heldB/slot/amount/amountB/unipolar+...
-     gate 0|1 VEL   gated 0|1     kick AMT   strike HZ VEL   reswing
-     cycle T:...   wavetable B:...   figPath P:xy;at   (each, or none)   lfo I SHAPE RATE
+     routes none | index/held/heldB/slot/amount/amountB/unipolar+...
+     gate 0|1 VEL   gated 0|1     strike HZ VEL   reswing
+     cycle T:...   wavetable B:...   (each, or none)   lfo I SHAPE RATE
      scan LAYER T:... | none      (Scan's latest table for a layer, P7a)
      restart I   (an oscillator's phase to nought, as the worklet restarts one)
      input HZ AMP [DC]   (0 for none)  fx 0|1 (the effect instead of the block)
@@ -24,14 +23,15 @@
    With CORE=wasm in the environment the core is the page's `makeWasmCore`
    over the module the page carries, and with CORE=js the page's JavaScript
    core printed the same way: the samples, then what the worklets and the
-   main thread read of a core - the envelope, the budget, the
-   drawing, the pitch, the kick, the swing's envelope, whether gated - and the
-   oscillators as it left them, the effect's runs included.
+   main thread read of a core - the envelope, the budget, the pitch, whether
+   gated - and the oscillators as it left them, the effect's runs included.
+   (The drawing's readings, the kick and the swing's envelope went with the
+   drawings in G2, and the solids the core was handed with them.)
    Usage: node generator_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pageSpan, mulberry32 } from "./js_core.mjs";
+import { mulberry32 } from "./js_core.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // SCOPE_PAGE names another copy of the page, for a check that alters one.
@@ -52,23 +52,18 @@ const listing = (() => {
   return page.slice(start, page.indexOf("\n}\n", start));
 })();
 const bound = [...listing.matchAll(/bind\("(\w+)"/g)].map((m) => m[1]);
-const solids = pageSpan("const MODELS = [", "/* --- what rate this machine actually runs at", ["TWO_PI"], ["MODELS"]);
-const source = bound.map((name) => name === "MODELS" ? "const MODELS = " + JSON.stringify(solids.MODELS) + ";"
-                                                     : definition(name)).join("\n")
-  + "\nconst MODEL_BY_NAME = new Map(MODELS.map((m) => [m.name, m]));"
-  + "\nreturn { makeGeneratorCore, makeWasmCore };";
-// The page's sources that read the generator - the note envelope and the
-// drawings' six - registered as the page registers them, over a tone source
-// that is this core, gated as the run gates it.
+const source = bound.map(definition).join("\n") + "\nreturn { makeGeneratorCore, makeWasmCore };";
+// The page's source that reads the generator - the note envelope, the one
+// left since G2 took the drawings' six - registered as the page registers
+// it, over a tone source that is this core, gated as the run gates it.
 const sourcesText = (() => {
   const env = page.indexOf('\nregisterSource({\n  id: "env.note"');
-  const draw = page.indexOf("\nconst drawingNow = () => {");
-  if (env < 0 || draw < 0) throw new Error("no envelope or drawing sources in scope.html");
-  return page.slice(env + 1, page.indexOf("\n});\n", env) + 5) + page.slice(draw + 1, page.indexOf("\n}));\n", draw) + 5);
+  if (env < 0) throw new Error("no envelope source in scope.html");
+  return page.slice(env + 1, page.indexOf("\n});\n", env) + 5);
 })();
-// They ask what is playing (playingKind, since 5m), lifted from the page beside them.
+// It asks what is playing (playingKind, since 5m), lifted from the page beside it.
 const readSources = new Function("state", "registerSource", definition("playingKind") + "\n" + sourcesText);
-const SOURCE_IDS = ["env.note", "draw.swing", "draw.pendulum", "draw.turnX", "draw.turnY", "draw.turnZ", "draw.facing"];
+const SOURCE_IDS = ["env.note"];
 // One seeded Math.random for everything the core reaches, as the worklet has one.
 const MODE = process.env.CORE || "";
 // PAIRS=picture: the picture pair only, as the main thread asks for a block -
@@ -90,7 +85,7 @@ const build = (seed) => {
   return MODE === "wasm" ? (rate, slots, lfos) => made.makeWasmCore(wasmBytes, rate, slots, lfos, seed) : made.makeGeneratorCore;
 };
 
-// In the worklet's two modes the tables and the path are typed arrays, as a
+// In the worklet's two modes the tables are typed arrays, as a
 // page could hand them over: the JavaScript core indexes either alike, and
 // the compiled one is given them through JSON, which has to write a typed
 // array as the array it holds.
@@ -118,7 +113,6 @@ function run(head, events) {
       const [cmd, ...a] = words;
       if (cmd === "set") core.set(a[0], value(a[1]), a[2] === undefined ? undefined : Number(a[2]));
       else if (cmd === "bars") core.set("bars", a[1].split(",").map(Number), Number(a[0]));
-      else if (cmd === "spin") core.set("spin", a[0].split(",").map(Number));
       else if (cmd === "voices") {
         core.set("voices", a[1] === "null" ? null : a[1] === "none" ? [] : a[1].split("+").map((n) => {
           const [note, freq, velocity, role] = n.split("/");
@@ -132,18 +126,14 @@ function run(head, events) {
       } else if (cmd === "gate") core.gate(a[0] === "1", Number(a[1]));
       else if (cmd === "noteDown") core.noteDown();
       else if (cmd === "gated") { core.setGated(a[0] === "1"); gated = a[0] === "1"; }
-      else if (cmd === "kick") core.kick(Number(a[0]));
       else if (cmd === "strike") core.strike(Number(a[0]), Number(a[1]));
       else if (cmd === "reswing") core.reswing();
       // Scan's table for a layer (P7a): `scan LAYER T:...` or `scan LAYER none`.
       else if (cmd === "scan") core.set("scanTable", a[1] === "none" ? null : tables(a[1]), Number(a[0]));
-      else if (a[0] === "none" && ["cycle", "wavetable", "figPath"].includes(cmd)) core.set(cmd, null);
+      else if (a[0] === "none" && ["cycle", "wavetable"].includes(cmd)) core.set(cmd, null);
       else if (cmd === "cycle") core.set("cycle", tables(a[0]));
       else if (cmd === "wavetable") core.set("wavetable", a[0].slice(2).split("!").map((c) => tables("T:" + c)));
-      else if (cmd === "figPath") {
-        const [xy, t] = a[0].slice(2).split(";");
-        core.set("figPath", { xy: numbers(xy), at: numbers(t) });
-      } else if (cmd === "lfo") { lfos[Number(a[0])].shape = a[1]; lfos[Number(a[0])].rate = Number(a[2]); }
+      else if (cmd === "lfo") { lfos[Number(a[0])].shape = a[1]; lfos[Number(a[0])].rate = Number(a[2]); }
       else if (cmd === "restart") lfos[Number(a[0])].phase = 0;
       else if (cmd === "input") { inHz = Number(a[0]); inAmp = Number(a[1]); inDc = Number(a[2] || 0); }
       else if (cmd === "fx") fx = a[0] === "1";
@@ -169,21 +159,19 @@ function run(head, events) {
     for (let k = 0; k < N; k++) out.push(l[k], r[k], hl[k], hr[k], bl[k], br[k]);
   }
   // And what the core says of itself at the end, as the worklet posts it.
-  const b = core.budget, d = core.drawing;
+  const b = core.budget;
   if (MODE) {
     out.push(core.envelope, b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1],
-             b.askedFactor, b.factor, b.silenced, d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing,
-             core.pitch, core.spinKick, core.swingLevel, core.gated ? 1 : 0);
+             b.askedFactor, b.factor, b.silenced, core.pitch, core.gated ? 1 : 0);
     for (const l of lfos) out.push(l.phase, l.held, l.value);
     out.push(core.scanHead[0], core.scanHead[1]);
     return show(out);
   }
-  out.push(core.envelope, core.pitch, core.spinKick, core.swingLevel,
+  out.push(core.envelope, core.pitch,
            b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced,
-           d.swing, d.pendulum, d.turn[0], d.turn[1], d.turn[2], d.facing, core.voices.length, core.voicesB.length,
-           core.scanHead[0], core.scanHead[1]);
+           core.voices.length, core.voicesB.length, core.scanHead[0], core.scanHead[1]);
   const sources = new Map();
-  readSources({ source: { kind: "tone", gated, envelope: core.envelope, drawing: core.drawing } },
+  readSources({ source: { kind: "tone", gated, envelope: core.envelope } },
               (entry) => sources.set(entry.id, entry));
   for (const id of SOURCE_IDS) out.push(sources.get(id).value());
   return show(out);

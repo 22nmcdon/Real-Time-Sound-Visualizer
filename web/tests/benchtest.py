@@ -153,26 +153,25 @@ with sync_playwright() as pw:
     check("and with the menu shut it still plays a held chord, where switched off it does not",
           arp["running"] is True and arp["offRunning"] is False, str(arp))
 
-    # The drawings and the second generator, in the drawer since P5: shut, the
-    # Kind menu offers the waveform alone and From your input alone; open, all
-    # four and the second generator - the null, which shows the reading can
-    # say more than one. A drawing loaded by a preset with the drawer shut
-    # stays chosen, offered and drawn, by the drawer's rule; and a search for
-    # one opens the drawer, where a search for the attack does not. (The
-    # tempo was that null until P8 put Key and tempo in the drawer, where a
-    # search for it now rightly opens it.)
+    # The drawings and the second generator: in the drawer from P5, offered
+    # by no menu from F2 (a loaded one stayed chosen, offered and drawn), and
+    # cut in G2. So there is no Kind menu and no From - the Input menu beside
+    # where From was is the null, which shows the lookup can find a menu -
+    # and a drawing loaded from the old library loads as the waveform, with
+    # none of a drawing's rows. A search for one finds nothing, where a
+    # search for the attack finds it. (The tempo was a null here until P8 put
+    # Key and tempo in the drawer, where a search for it rightly opens it.)
     drawings = p.evaluate("""() => {
-      const offered = (sel) => Array.from(sel.options).filter((o) => !o.hidden && !o.disabled).map((o) => o.value);
       const out = {};
-      out.shut = { kinds: offered(el.genMode), from: offered(el.inputFrom) };
-      // The old library's harmonograph and plain tone, from before P8g: the
-      // new bank has no drawing, and this asks what the drawer does with one
-      // loaded from a setup while it is shut, not what is in the bank.
-      loadCorpus('Harmonograph');
-      out.loaded = { mode: genSettings().mode, menu: el.genMode.value,
-                     kinds: offered(el.genMode), rows: !el.harmoRows.hidden };
-      loadCorpus('Harmonic tone');
-      out.after = offered(el.genMode);
+      const has = (id) => !!document.getElementById(id);
+      out.menus = { kind: has('genMode'), from: has('inputFrom'), input: has('inputMode') };
+      // The old library's harmonograph, from before P8g: the bank never had
+      // a drawing, and this asks what a code that names one becomes.
+      // What the code says it is, against what it loaded as: the decode pass's
+      // answer, since the snapshot writes the waveform whatever played.
+      const loaded = loadCorpus('Harmonograph');
+      out.loaded = { was: corpusSetup('Harmonograph').gen, kind: loaded.gen,
+                     rows: ['harmoRows', 'figureRows', 'wireRows', 'traceRateRow', 'gen2Rows'].filter(has) };
       const search = (q) => { el.benchSearch.value = q; showSearch(); const first = searchShown[0];
                               chooseSearch(first); const menu = !el.performPanel.hidden;
                               setPerformOpen(false); closeModCard();
@@ -183,18 +182,14 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    drawings: %s" % drawings)
-    # Out of reach since 7 Nov, the owner's call: neither on the face nor cut,
-    # to see whether they are missed. Until then the open drawer offered them;
-    # the null is that.
-    check("the generator offers the waveform alone, and From your input alone: the drawings and the second generator are out of reach",
-          drawings["shut"] == {"kinds": ["wave"], "from": ["live"]}
-          and drawings["shut"] != {"kinds": ["wave", "harmonograph", "figure", "wireframe"], "from": ["live", "gen2"]},
-          str(drawings["shut"]))
-    check("a drawing loaded by a preset stays chosen, offered and drawn, and goes when it is left",
-          drawings["loaded"] == {"mode": "harmonograph", "menu": "harmonograph",
-                                 "kinds": ["wave", "harmonograph"], "rows": True} and drawings["after"] == ["wave"],
-          str(drawings["loaded"]) + " " + str(drawings["after"]))
-    check("and a search finds the attack", drawings["searchAttack"]["found"] is not None, str(drawings))
+    # Out of reach from 7 Nov, the owner's call, to see whether they were
+    # missed; they were not, and went on 9 Nov.
+    check("the generator has no Kind menu and its input no From: the drawings and the second generator are gone",
+          drawings["menus"] == {"kind": False, "from": False, "input": True}, str(drawings["menus"]))
+    check("a drawing's code from the old library loads as the waveform, with no drawing's rows",
+          drawings["loaded"] == {"was": "harmonograph", "kind": "wave", "rows": []}, str(drawings["loaded"]))
+    check("and a search for one finds nothing, where a search finds the attack",
+          drawings["searchDrawing"]["found"] is None and drawings["searchAttack"]["found"] is not None, str(drawings))
     check("and a search for the tempo, in the header's Perform menu since F3, opens that",
           drawings["searchTempo"]["menu"] is True and drawings["searchTempo"]["found"] == "Tempo", str(drawings))
 

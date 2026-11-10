@@ -10,7 +10,8 @@ What would go wrong, and what is checked for it:
   read 0.4 per cent high;
 - a pitch read from too little: a note needs two periods on screen, and a
   window with less says nothing rather than something;
-- a pendulum at two hertz on a long timebase, which needs the second pass;
+- a tone at two hertz on a long timebase, which needs the second pass (the
+  harmonograph's pendulums, until G2 took them; a sine at their rate now);
 - noise named as a note;
 - the readout, Autoset and the lag not using any of it;
 - the cost, which is paid every frame the tuner is open.
@@ -34,8 +35,8 @@ def null(name, red, detail=""):
 
 READ = """([tone, n, rate]) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(rate, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('amp', 0.8);
+  const core = makeGeneratorCore(rate, GEN_SLOTS, [still(), still()]);
+  core.set('amp', 0.8);
   for (const k in tone) core.set(k, tone[k]);
   const L = new Float32Array(n), R = new Float32Array(n);
   core.block(L, R, n);
@@ -108,8 +109,10 @@ with sync_playwright() as pw:
     deeper = read({"shape": "sine", "freq": 44100 / 245}, 441)["hz"]
     check("nor does one that never dips at all, whose deepest point is the edge",
           deeper is None, str(deeper))
-    swing = read({"mode": "harmonograph", "swingRate": 2.1}, 88200)["hz"]
-    check("a harmonograph at 2.1 Hz on a two-second window reads 2.1, through the second pass",
+    # The harmonograph's 2.1 Hz pendulums were the fixture until G2 took them;
+    # what needs the second pass is the rate, so a sine at it stands in.
+    swing = read({"shape": "sine", "freq": 2.1}, 88200)["hz"]
+    check("a 2.1 Hz tone on a two-second window reads 2.1, through the second pass",
           near(swing, 2.1, 0.02), str(swing))
     # Unseeded, so about one noise in four hundred has its deepest dip at the
     # range's edge, and the estimator finds nothing at all rather than an

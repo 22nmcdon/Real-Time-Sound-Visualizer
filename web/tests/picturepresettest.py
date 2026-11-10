@@ -63,10 +63,18 @@ def check(name, ok, detail=""):
 
 SECTIONS = ["The picture plays itself", "Played with the picture"]
 WANDERER = "The organ registers itself"
-# Held to their sources moving and no more: a harmonograph runs down and
-# starts again by itself, and wanders with or without the light's hand in it,
-# which neither the meter's verdict nor the reading can tell apart.
-SELF_MOVED = {"Pendulums bent by the light", "Light feeds the pendulums"}
+# The sections' drawings - harmonographs, roses, solids - are not run. Since
+# G2 they load as the waveform with their drawings' routings dropped, which is
+# not the loop they were and not a loop at all, so every check below would
+# fail on them for a reason that is not the loop's. They are named here from
+# the corpus itself rather than listed, so none is skipped by a slip. (Two of
+# them, the pendulums, were held to their sources moving and no more: a
+# harmonograph ran down and started again by itself.)
+DRAWN = sorted(e[0] for s, entries, _ in corpus.LIBRARY if s in SECTIONS
+               for e in entries if e[1].get("gen", "wave") != "wave")
+RUN = sum(1 for s, entries, _ in corpus.LIBRARY if s in SECTIONS for e in entries) - len(DRAWN)
+# The first section's, which are run again without their loops: 16 until G2, 9 of them waveforms.
+LOOPS = sum(1 for s, entries, _ in corpus.LIBRARY if s == SECTIONS[0] for e in entries if e[1].get("gen", "wave") == "wave")
 PICTURE = "/^(photo\\.|picture\\.)/"
 
 with sync_playwright() as pw:
@@ -131,12 +139,14 @@ with sync_playwright() as pw:
           "%d with two, %d with three, at most %d, of %d walked" % (shape["two"], shape["three"], shape["most"], shape["walked"]))
 
     print("\n--- each one run: alive, and not running away ---")
-    runs = p.evaluate("""async ([names, secs]) => {
+    print("    not run, being drawings the waveform now stands in for: %s" % ", ".join(DRAWN))
+    runs = p.evaluate("""async ([names, secs, drawn]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const picture = """ + PICTURE + """;
       const out = [];
       for (const name of names) {
         for (const [preset] of CORPUS.find(([s]) => s === name)[1]) {
+          if (drawn.includes(preset)) continue;
           /* The meter cleared first, every run: it keeps fifteen seconds of
              pictures and loading a preset does not clear it, so without this
              each run began with the one before it still in its history - and
@@ -207,7 +217,7 @@ with sync_playwright() as pw:
       }
       restore({}); await wait(100);
       return out;
-    }""", [SECTIONS, SECONDS])
+    }""", [SECTIONS, SECONDS, DRAWN])
     def share(v):
         v = {k: n for k, n in v.items() if k != "listening"}
         total = sum(v.values()) or 1
@@ -222,15 +232,15 @@ with sync_playwright() as pw:
     landed = [r["preset"] for r in runs if r["landed"]]
     print("    pressed onto their figures, their stored cells dark: %s" % (landed or "none"))
     check("at most two presets needed the reticle pressed onto their figure, so the stored placements are read",
-          len(landed) <= 2 and len(runs) >= 16, "%d of %d: %s" % (len(landed), len(runs), landed))
+          len(landed) <= 2 and len(runs) == RUN and RUN >= 10, "%d of %d: %s" % (len(landed), len(runs), landed))
     dead = [(r["preset"], r["moved"]) for r in runs if not (r["compiled"] and r["moved"] >= 0.05)]
     check("in every one, the picture's sources are there, move, and are routed onto what they alter",
           dead == [], str(dead))
-    loops = [r for r in runs if "open" in r and r["preset"] not in SELF_MOVED]
+    loops = [r for r in runs if "open" in r]
     same = [(r["preset"], round(apart(r["verdicts"], r["open"]), 2), r["swing"], r["openSwing"]) for r in loops
             if apart(r["verdicts"], r["open"]) < 0.25 and r["swing"] - r["openSwing"] < 0.2]
     check("and each loop changes what the picture does, against itself without the loop: the verdicts or the reading",
-          same == [] and len(loops) >= 12, str(same))
+          same == [] and len(loops) == LOOPS and LOOPS >= 8, str(same))
     away = [r["preset"] for r in runs if r["verdict"] == "running away"]
     check("and none of them ends running away", away == [], str(away))
     wander = next((r for r in runs if r["preset"] == WANDERER), None) or {}

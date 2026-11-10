@@ -520,8 +520,9 @@ with sync_playwright() as pw:
       restore(snap); await frames(10);
       const dark = { u: photo.u, v: photo.v, on: photo.on, read: phosphorRead(0.05, 0.05) };
       // The old library's, from before P8g, loaded as a preset was: the bank
-      // has no setup that turns the photocell on.
-      loadCorpus('The knot leans into the light'); await frames(10);
+      // has no setup that turns the photocell on. A waveform's since G2, when
+      // the knot it used to be went with the solids.
+      loadCorpus('The figure sets its own FM'); await frames(10);
       const preset = { u: photo.u, v: photo.v, on: photo.on };
       return { before, after, nudged, again, dark, preset };
     }""")
@@ -538,7 +539,7 @@ with sync_playwright() as pw:
           land["dark"]["on"] and (land["dark"]["u"], land["dark"]["v"]) == (0.05, 0.05) and land["dark"]["read"] < 0.05,
           str(land["dark"]))
     check("a preset that turns it on keeps its own placement, not a landing",
-          land["preset"] == {"u": 0.55, "v": 0.45, "on": True}, str(land["preset"]))
+          land["preset"] == {"u": 0.625, "v": 0.275, "on": True}, str(land["preset"]))
 
     print("\n--- what it costs ---")
     cost = p.evaluate("""async () => {

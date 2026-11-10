@@ -66,8 +66,8 @@ def bessel_j(n, x):
 # applied and then that many samples are made, one continuous run.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('shape', 'sine'); core.set('amp', 0.5);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  core.set('shape', 'sine'); core.set('amp', 0.5);
   const out = { L: [], R: [], HL: [], HR: [], BL: [], BR: [] };
   for (const step of setup.steps) {
     for (const k in step.tone || {}) core.set(k, step.tone[k]);

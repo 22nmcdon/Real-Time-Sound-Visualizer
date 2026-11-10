@@ -53,10 +53,12 @@ with sync_playwright() as pw:
           // A routing list when the preset has one - as a setup code does -
           // and the old enum when it does not.
           if (setup.mod !== undefined) {
-            // Less the sources version 9 cut (F4b), whose routings its decode
-            // pass drops: the corpus is the old library, from before.
+            // Less the sources version 9 cut (F4b), and the drawings' sources
+            // and destinations version 10 cut (G2), whose routings their
+            // decode passes drop: the corpus is the old library, from before.
             for (const r of decodeRoutings(setup.mod)) {
-              if (!CUT_SOURCE.test(r.sourceId + '>')) want.push(r.sourceId + '>' + r.destId);
+              const text = r.sourceId + '>' + r.destId + '@' + r.amount;
+              if (!CUT_SOURCE.test(text) && !CUT_DRAWING.test(text)) want.push(r.sourceId + '>' + r.destId);
             }
           } else for (const i of [0, 1]) {
             const legacy = setup['l' + i + 'd'];
@@ -164,7 +166,11 @@ with sync_playwright() as pw:
 
     print("\n--- the setup round trip ---")
     trip = p.evaluate("""() => {
-      loadCorpus('Wobbling');            // two routings, wireframe destinations
+      /* Two routings in the old enum, onto the phase and the ratio. Wobbling
+         until G2, whose two were onto a solid's spin rate and perspective:
+         destinations that went with the solids, so the routings it kept
+         would have survived as text while routing to nothing. */
+      loadCorpus('Tumbling');
       const before = snapshot();
       const code = encodeSetup(before);
       const decoded = decodeSetup(code);
@@ -224,6 +230,50 @@ with sync_playwright() as pw:
     check("and the same code marked version 5 keeps them, so the pass is what took them out",
           "threshold>gen.freq" in cut["five"]["routes"] and "lfo2>gen.pluck" in cut["five"]["routes"]
           and cut["five"]["stale"] == ["crossOn", "threshWatch", "pluckNote"], str(cut["five"]))
+
+    # Version 10 cut the drawings (G2): a kind that was a drawing, or none at
+    # all, becomes the waveform, the drawings' 22 fields go, and so does a
+    # routing whose source is a drawing's reading or whose destination is a
+    # drawing's - each read whole, the source anchored before the arrow and
+    # the destination exactly between it and the "@", so near-misses stay:
+    # a source that only ends in "draw.swing", a destination that only begins
+    # with "gen.depth". Read through both codecs, the page's own (the
+    # reference) and the one the site decodes with, which is the compiled
+    # core's; the second is held to the first. The same code marked 10 is the
+    # null: nothing is taken, so the check can fail.
+    print("\n--- a code written before the drawings went ---")
+    g2 = p.evaluate("""() => {
+      const DRAWN = ['figure', 'detail', 'figureRate', 'figText', 'figPath', 'figDrawn', 'swingRate', 'decay',
+                     'detune', 'swingDrive', 'inputFrom', 'gen2Figure', 'gen2Rate', 'model', 'spinX', 'spinY',
+                     'spinZ', 'spinRate', 'depth', 'midiDrive', 'midiPlay', 'ring'];
+      const fields = Object.fromEntries(DRAWN.map((k, i) => [k, k === 'inputFrom' ? 'gen2' : i + 1]));
+      const mod = 'draw.swing>gen.freq@0.500;lfo1>gen.detail@0.300;lfo1>gen.freq@0.200;draw.turnX>gen.amp@0.100;'
+        + 'xdraw.swing>gen.vcf@0.250;lfo2>gen.depthX@0.400;lfo1>gen.kick@1.000;draw.facing>gen.spinZ@0.700';
+      const code = (setup) => btoa(JSON.stringify(setup)).replace(/=+$/, '');
+      const read = (decode, setup) => {
+        const d = decode(code(setup));
+        return { v: d.v, gen: d.gen, mod: d.mod, shape: d.shape, kept: DRAWN.filter((k) => k in d) };
+      };
+      const old = Object.assign({ v: 9, gen: 'figure', shape: 'square', mod }, fields);
+      const out = {};
+      for (const [name, decode] of [['page', decodeSetupHere], ['site', decodeSetup]]) {
+        out[name] = { nine: read(decode, old), none: read(decode, { v: 9, shape: 'square' }),
+                      ten: read(decode, Object.assign({}, old, { v: 10 })) };
+      }
+      return out;
+    }""")
+    G2_KEPT = "lfo1>gen.freq@0.200;xdraw.swing>gen.vcf@0.250;lfo2>gen.depthX@0.400"
+    pg = g2["page"]
+    check("a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, "
+          "and only the drawings' routings dropped, near-misses kept",
+          pg["nine"] == {"v": 10, "gen": "wave", "mod": G2_KEPT, "shape": "square", "kept": []}, str(pg["nine"]))
+    check("and one that names no kind at all is given the waveform", pg["none"]["gen"] == "wave", str(pg["none"]))
+    check("and the same code marked version 10 keeps everything, so the pass is what took it",
+          pg["ten"]["gen"] == "figure" and len(pg["ten"]["kept"]) == 22 and pg["ten"]["mod"].count(";") == 7,
+          str(pg["ten"]))
+    # Red until the page carries a core built with version 10 (core/wasm/build.py).
+    check("and the site's codec, the compiled core's, reads all three as the page's does",
+          g2["site"] == g2["page"], "site %s" % g2["site"])
 
     # The card's editor is the view of the list now (the Sources tab until F4),
     # where the one-destination dropdown was: Add makes a routing, its row's
@@ -410,19 +460,15 @@ with sync_playwright() as pw:
         return out.join('|');
       };
 
-      /* Every generator kind in turn: the figure and wireframe rows are hidden
-         in the others, and a hidden row is exactly where an inert control goes
-         unnoticed. `#spinRate` - the one that was actually broken - is only on
-         screen in wireframe. */
+      /* Every generator kind in turn, until G2 left one: the figure and
+         wireframe rows were hidden in the others, and a hidden row is exactly
+         where an inert control goes unnoticed. `#spinRate` - the one that was
+         actually broken - was only on screen in wireframe. */
       const seen = new Set();
       const dead = [];
       /* And every Bench tab: a control counts only if it can be seen, and
          since the Bench became tabs only one tab's controls can be at once. */
       setView('bench');
-      for (const kind of ['wave', 'figure', 'wireframe', 'harmonograph']) {
-        el.genMode.value = kind;
-        el.genMode.dispatchEvent(new Event('change'));
-
       for (const [tab] of BENCH_TABS) {
       setBenchTab(tab);
       for (const row of document.querySelectorAll('[data-mod-dest]')) {
@@ -446,10 +492,7 @@ with sync_playwright() as pw:
         if (before === after) dead.push(row.dataset.modDest + ' (#' + input.id + ')');
       }
       }
-      }
       setBenchTab('play'); setView('scope');
-      el.genMode.value = 'wave';
-      el.genMode.dispatchEvent(new Event('change'));
       return { dead, checked: seen.size };
     }""")
     check("every destination's own control drives something",

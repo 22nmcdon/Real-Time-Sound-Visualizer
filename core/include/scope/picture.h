@@ -29,7 +29,7 @@
 #include <vector>
 
 #include "scope/loop.h"       // kPhosphorN, kPhotoReach
-#include "scope/wireframe.h"  // jsHypot, as V8 computes it
+#include "scope/wave.h"  // jsHypot, as V8 computes it
 
 namespace scope {
 
@@ -480,7 +480,8 @@ class PictureStage {
 
    Live only while the layers draw a figure each in X-Y. The test is whether
    there are layers, not whether two figures are drawn: the second generator
-   lays out two figures too, and with no layers they stay on the one picture.
+   laid out two figures too until G2 took it, and with no layers they stayed
+   on the one picture.
    Both grids are made up front, where the page makes them the first time a
    split needs them, since nothing on the audio thread may allocate. */
 inline std::string pictureMovesOf(const std::string& value, const std::string& own) {

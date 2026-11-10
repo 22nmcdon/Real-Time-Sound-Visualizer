@@ -356,6 +356,8 @@ Each leaves the suite green and is pushed alone.
 - **G1 The wash.** The labels and graticule on their own layer, the fade that reaches
   the paper, the test that fails today.
 - **G2 Remove the drawings.** Page, core, parity, the version-10 pass, the corpus suites.
+  Done 10 Nov: about 3,200 lines out of the page and the core, seven suites gone with
+  them, and Kind off the face (one choice left).
 - **G3 Play as drawn,** and the strays moved (Frequency and Phase to Ink, the scope's
   options to Scope & measure, the pictures' row to Advanced), Expression on show above the
   compact face, the filter greyed, the cut-off menus, the face growing at large windows.

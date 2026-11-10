@@ -214,8 +214,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
   went in F2: its knobs are the Picture section along the bottom; the
-  drawer's Sources went in F4) - and one tab at a time must fit. `patchtest.py` measures every tab across every generator mode;
-  `fittest.py` does it in every combination of generator kind, tone or band
+  drawer's Sources went in F4) - and one tab at a time must fit. `patchtest.py` measures every tab across every shape;
+  `fittest.py` does it in every combination of shape, tone or band
   split, keyboard and Photocell, and the modulation editor with a source on a dozen controls,
   at five windows: 1400x900, 1100x860, 1200x680, 1100x680 and the plugin's
   960x600 at Auto's 90 per cent (see the minimum window, below).
@@ -247,10 +247,15 @@ Do not re-litigate these without a reason; each replaced something that failed.
   that drops their routings (`CUT_SOURCE`) and the `cc` field: the learned
   controllers (the wheel, the swell, the pedal and the panics still act),
   the keyboard's pedal, pressure and four readings of the notes, and the
-  level, which is the output meter now. Parked: the hearing family and the
-  drawings' readings, like the drawings themselves (`syncDrawerMenus`), are
-  offered nowhere but still play when a setup routes them, and keep their ink
-  on the knob they are on, so the owner can find out whether they are missed.
+  level, which is the output meter now. Parked: the hearing family is
+  offered nowhere but still plays when a setup routes it, and keeps its ink
+  on the knob it is on, so the owner can find out whether it is missed. The
+  drawings (the harmonograph, the figures, the solids and the second
+  generator) and their readings were parked here too, and went in G2 (10
+  Nov, the owner did not miss them), with a version-10 decode pass on both
+  sides that loads a drawing's code as the waveform and drops its fields and
+  routings (`CUT_DRAWING`); the generator's slots they used stay unnumbered
+  rather than renumbered (`GEN_SLOTS`).
   Velocity's FM is Expression's menu on Play, reading and writing the one
   routing it stands for rather than a field. The Envelope follows Play's amp
   envelope unless its editor's switch gives it its own four times (8 Nov),
@@ -381,8 +386,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (`setCompact`, `body[data-compact]`): the header one row without the line
   of what is playing or Browse, the tabs without their lines, the cards as
   chips, narrower columns (`BENCH_COL_COMPACT`) with labels beside their
-  menus, smaller knobs and the keys shorter. The parked drawings scroll on
-  the compact face and are let off there, the stated cost. On the Bench the
+  menus, smaller knobs and the keys shorter. On the Bench the
   verdict and readouts are a line in the screen's column, between the screen
   and the cards, and back across the foot on Scope. `windowtest.py` and
   `fittest.py` hold it.

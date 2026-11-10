@@ -81,8 +81,8 @@ def duty(x):
 # value, `slot` the destination's accumulator slot by name.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('amp', 0.9); core.set('interval', 0); core.set('phase', 0);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  core.set('amp', 0.9); core.set('interval', 0); core.set('phase', 0);
   for (const k in setup.tone) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
   if (setup.voices) { core.set('voices', setup.voices); core.set('voices', setup.voices, 1); }
@@ -205,7 +205,6 @@ with sync_playwright() as pw:
     print("\n--- on the panel, and patched ---")
     panel = p.evaluate("""async () => {
       setView('bench'); setBenchTab('play');
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       const rows = {};
       for (const shape of ['square', 'morph', 'pulse']) {
         el.shape.value = shape; el.shape.dispatchEvent(new Event('change'));
@@ -219,15 +218,13 @@ with sync_playwright() as pw:
         if (r.right > row.right + 0.5) clipped.push(el.widthValue.textContent);
       }
       const set = { reading: el.widthValue.textContent, at: genSettings().width };
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      const figure = !el.widthRow.hidden;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
-      return { rows, shown, set, clipped, figure };
+      // And not for a figure, until G2 took the figures.
+      return { rows, shown, set, clipped };
     }""")
     print("    %s" % panel)
-    check("the Width row is on Play only with Pulse chosen - not the square, not the morph, not a figure",
-          panel["rows"] == {"square": [False, False], "morph": [False, True], "pulse": [True, False]}
-          and panel["figure"] is False, str(panel["rows"]))
+    check("the Width row is on Play only with Pulse chosen - not the square, not the morph",
+          panel["rows"] == {"square": [False, False], "morph": [False, True], "pulse": [True, False]},
+          str(panel["rows"]))
     check("it starts at a quarter, says so, and the slider writes the generator",
           panel["shown"] == {"reading": "25%", "at": 0.25} and panel["set"] == {"reading": "95%", "at": 0.95}
           and panel["clipped"] == [], str(panel))

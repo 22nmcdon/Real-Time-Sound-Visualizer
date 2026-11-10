@@ -11,7 +11,6 @@
 
 #include <map>
 
-#include "scope/figures.h"
 #include "scope/lfo.h"
 #include "scope/noise.h"
 #include "scope/osc.h"
@@ -20,7 +19,6 @@
 #include "scope/voice.h"
 #include "scope/voices.h"
 #include "scope/wave.h"
-#include "scope/wireframe.h"
 
 namespace {
 std::vector<std::string> splitOn(const std::string& text, char sep) {
@@ -356,61 +354,8 @@ int main(int argc, char** argv) {
       show(out);
       continue;
     }
-    if (name == "figureAt") {
-      scope::FigurePath path;
-      const bool has = w[4] != "-";
-      if (has) {
-        const auto parts = splitOn(w[4].substr(2), ';');
-        path.xy = numbers(parts[0]); path.at = numbers(parts[1]);
-      }
-      const auto at = scope::figureAt(scope::figureNamed(w[1]), num(w[2]), num(w[3]), has ? &path : nullptr);
-      show({ at[0], at[1] });
-      continue;
-    }
     if (name == "hypot") {
       show({ w.size() == 3 ? scope::jsHypot({ num(w[1]), num(w[2]) }) : scope::jsHypot({ num(w[1]), num(w[2]), num(w[3]) }) });
-      continue;
-    }
-    if (name == "solidData") {
-      for (const auto& s : scope::solids()) {
-        if (s.name != w[1]) continue;
-        std::vector<double> out(s.route.begin(), s.route.end());
-        for (const auto& p : s.v) out.insert(out.end(), p.begin(), p.end());
-        show(out);
-      }
-      continue;
-    }
-    if (name == "wireRun") {
-      std::map<std::string, std::string> p;
-      for (std::size_t i = 1; i < w.size(); i++) { const auto eq = w[i].find('='); p[w[i].substr(0, eq)] = w[i].substr(eq + 1); }
-      auto d = [&](const char* k) { return num(p[k]); };
-      scope::Wireframe wire;
-      wire.set(p["model"]);
-      std::map<long, std::vector<std::vector<std::string>>> events;
-      for (const auto& e : splitOn(p["ev"], ';')) {
-        if (e.empty()) continue;
-        const auto f = splitOn(e, ':');
-        events[std::strtol(f[0].c_str(), nullptr, 10)].push_back({ f.begin() + 1, f.end() });
-      }
-      double depth = d("depth");
-      const double dt = 1 / d("rate");
-      std::vector<double> out;
-      for (long i = 0; i < static_cast<long>(d("samples")); i++) {
-        const auto ev = events.find(i);
-        if (ev != events.end()) {
-          for (const auto& e : ev->second) {
-            if (e[0] == "model") wire.set(e[1]);
-            else if (e[0] == "reset") wire.reset();
-            else if (e[0] == "depth") depth = num(e[1]);
-          }
-        }
-        const auto at = wire.step(dt, d("laps"), depth,
-                                  { d("s0"), d("s1") * (1 + 0.5 * std::sin(static_cast<double>(i) * 0.001)), d("s2") });
-        out.insert(out.end(), at.begin(), at.end());
-      }
-      const auto& ang = wire.angles();
-      out.insert(out.end(), ang.begin(), ang.end());
-      show(out);
       continue;
     }
     if (name == "lfoRun") {

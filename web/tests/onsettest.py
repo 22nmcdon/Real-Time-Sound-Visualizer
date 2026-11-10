@@ -1,29 +1,27 @@
-"""The sound driving the drawings (Stage J2), and the events that do it (S3).
+"""Onset (J1) and the events it fires (S3): what was left of drawingtest.py
+when G2 took the drawings, whose Swing again and Kick were the only things an
+event could strike.
 
-Written against the way each would fail:
+The event machinery stays for the next thing struck (`fireEvents`, the rule
+that an event reaches only an event), and Onset with the parked hearing
+family, so both are held here against stand-in destinations this suite
+registers itself - the page has none of its own until something struck comes
+back. Written against the way each would fail:
 
-- energy in that does not hold the swing, or holds it somewhere other than
-  where the law puts it: a steady drive against a decay of 0.5 a second must
-  settle at 3 / 3.5, and a routing at full depth must be the slider at one,
-  sample for sample;
-- a drive that stops with a step: the swing picks up the plain decay from
-  where it is, not from where the clock says it would be, which is a jump
-  from 0.52 to 0.14;
-- a kick that is not a kick: six times the spin at once, 1/e of that after
-  the friction's 1.2 s, never past twenty (read one sample of friction
-  later, so 19.9996), and gone in ten seconds; and a kick of nought that
-  changes anything;
 - an event that reaches a value, or a value an event: the matrix refuses
   both, the editor never offers them, a drop does nothing;
 - an onset that fires on a held note, on a release, on the click of a note
   cut off, more than once an attack, or faster than the gap allows;
 - a routing that fires when it is made, or never fires at all.
+
+What drawingtest.py also held went with the drawings: the pendulums' energy
+in, and a solid's kick and its friction.
 """
 # On ?brain=js (5m): this suite reads the page's own brain - its sources'
 # functions, bound directly - which core/tests/parity.py holds the instrument
 # to, sample for sample. The instrument, the site's default since 5m, is
 # braintest.py's and hosttest.py's.
-import math, os
+import os
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,25 +32,6 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
-
-# A core off the page, as the time tests use: each step's settings, then that
-# many samples. Returns what the getters say after each step, and the output.
-CORE = """(setup) => {
-  const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('amp', 0.5);
-  const out = { L: [], after: [] };
-  for (const step of setup.steps) {
-    for (const k in step.tone || {}) core.set(k, step.tone[k]);
-    if (step.routes) core.setRoutes(step.routes);
-    if (step.kick !== undefined) core.kick(step.kick);
-    const L = new Float32Array(step.n), R = new Float32Array(step.n);
-    core.block(L, R, step.n);
-    if (setup.keep) for (let i = 0; i < step.n; i++) out.L.push(L[i]);
-    out.after.push({ swing: core.swingLevel, kick: core.spinKick });
-  }
-  return out;
-}"""
 
 STUB = """
   window.__wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -87,66 +66,40 @@ with sync_playwright() as pw:
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    run = lambda steps, keep=False: p.evaluate(CORE, {"steps": steps, "keep": keep})
-    SR = 44100
-    slot = p.evaluate("() => SWING_SLOT")
-    harmo = {"mode": "harmonograph", "pitched": False, "decay": 0.5, "swingRate": 2}
 
-    print("\n--- energy in ---")
-    plain = run([{"tone": dict(harmo, swingDrive=0), "n": 4 * SR}])["after"][0]["swing"]
-    held = run([{"tone": dict(harmo, swingDrive=1), "n": 6 * SR}])["after"][0]["swing"]
-    print("    no drive, after 4 s: %.4f (want %.4f); full drive, after 6 s: %.4f (want %.4f)"
-          % (plain, math.exp(-2), held, 3 / 3.5))
-    check("with no drive the swing runs down as it always did, and a full drive holds it at 3 / (3 + decay)",
-          abs(plain - math.exp(-2)) < 1e-3 and abs(held - 3 / 3.5) < 0.005, "%.4f, %.4f" % (plain, held))
-    static = run([{"tone": dict(harmo, swingDrive=1), "n": SR}], keep=True)["L"]
-    routed = run([{"tone": dict(harmo, swingDrive=0), "n": SR,
-                   "routes": [{"held": 1, "slot": slot, "amount": 2, "unipolar": False}]}], keep=True)["L"]
-    gap = max(abs(a - c) for a, c in zip(static, routed))
-    print("    routed at full depth against the slider at one: largest difference %.2e" % gap)
-    check("and a routing that pushes it to one draws exactly what the slider at one draws",
-          gap < 1e-6 and max(abs(a) for a in routed) > 0.1, "%.2e" % gap)
-    stop = run([{"tone": dict(harmo, swingDrive=1), "n": 3 * SR}, {"tone": {"swingDrive": 0}, "n": SR}])["after"]
-    want = stop[0]["swing"] * math.exp(-0.5)
-    print("    driven 3 s to %.4f, then a second of plain decay: %.4f (want %.4f; from the clock, %.4f)"
-          % (stop[0]["swing"], stop[1]["swing"], want, math.exp(-0.5 * 4)))
-    check("and when the drive stops it runs down from where it is, not from where the clock says",
-          abs(stop[1]["swing"] - want) < 2e-3, "%.4f against %.4f" % (stop[1]["swing"], want))
-
-    print("\n--- a kick, and friction ---")
-    wire = {"mode": "wireframe", "model": "Cube", "spinRate": 1}
-    k = run([{"tone": wire, "n": 1, "kick": 1}, {"n": int(1.2 * SR)}, {"n": 1, "kick": 10}, {"n": 10 * SR}])["after"]
-    print("    after the kick %.4f; after 1.2 s %.4f (want %.4f); kicked hard %.3f; ten seconds on %.5f"
-          % (k[0]["kick"], k[1]["kick"], k[0]["kick"] / math.e, k[2]["kick"], k[3]["kick"]))
-    check("a kick is six times the spin at once, 1/e of that after the friction's 1.2 s, never past twenty, "
-          "and gone ten seconds on",
-          abs(k[0]["kick"] - 6) < 1e-3 and abs(k[1]["kick"] - 6 / math.e) < 0.01 and abs(k[2]["kick"] - 20) < 1e-3
-          and k[3]["kick"] < 0.01, str([round(x["kick"], 4) for x in k]))
-    base = run([{"tone": wire, "n": SR // 2}], keep=True)["L"]
-    kicked = run([{"tone": wire, "n": SR // 2, "kick": 1}], keep=True)["L"]
-    nought = run([{"tone": wire, "n": SR // 2, "kick": 0}], keep=True)["L"]
-    moved = max(abs(a - c) for a, c in zip(base, kicked))
-    same = max(abs(a - c) for a, c in zip(base, nought))
-    check("and it turns the solid faster, where a kick of nought changes nothing at all",
-          moved > 0.05 and same == 0, "kicked %.3f, nought %.2e" % (moved, same))
+    # The page has no event destination of its own since G2 (Swing again and
+    # Kick were the two), so the suite registers two stand-ins, struck into a
+    # log: `test.once` counts its strikes and `test.depth` keeps each depth.
+    # They are the registry's own entries, read by the page's own rules.
+    p.evaluate("""() => {
+      window.__struck = { once: 0, depth: [] };
+      registerDest({ id: 'test.once', kind: 'event', label: 'Once', fire: () => { __struck.once++; } });
+      registerDest({ id: 'test.depth', kind: 'event', label: 'Depth', fire: (amount) => { __struck.depth.push(amount); } });
+    }""")
+    # The null: with nothing struck registered at all, an onset reaches
+    # nothing - so the check below reads the stand-ins, not something left
+    # on the page.
+    bare = p.evaluate("""() => [...MOD_DESTS.values()].filter((d) => d.kind === 'event' && !d.id.startsWith('test.'))
+                                 .map((d) => d.id)""")
+    check("the page itself has no event destination left (G2 took Swing again and Kick)", bare == [], str(bare))
 
     print("\n--- events reach only what is struck (S3) ---")
     p.evaluate("() => __mic()")
     s3 = p.evaluate("""() => {
       const offered = (id) => [...MOD_SOURCES.values()].filter((s) => routingAllowed(s, MOD_DESTS.get(id))).map((s) => s.id);
       const reaches = (id) => [...MOD_DESTS.values()].filter((d) => routingAllowed(MOD_SOURCES.get(id), d)).map((d) => d.id);
-      state.modRoutings = []; addRouting('hear.onset', 'view.rotate'); addRouting('hear.flux', 'gen.reswing');
+      state.modRoutings = []; addRouting('hear.onset', 'view.rotate'); addRouting('hear.flux', 'test.once');
       const dropped = state.modRoutings.length;
-      return { reswing: offered('gen.reswing'), kick: offered('gen.kick'), onset: reaches('hear.onset').sort(),
+      return { once: offered('test.once'), depth: offered('test.depth'), onset: reaches('hear.onset').sort(),
                rotate: offered('view.rotate').includes('hear.onset'), dropped };
     }""")
     print("    %s" % s3)
-    # The events, written out: the onset, and the two things it strikes. The
-    # threshold (K1) was an event too, and Pluck a third thing struck, until
-    # P5 cut both.
-    check("an onset reaches only what is struck - Swing again, Kick - and only events reach those",
-          s3["reswing"] == ["hear.onset"] and s3["kick"] == ["hear.onset"]
-          and s3["onset"] == ["gen.kick", "gen.reswing"] and not s3["rotate"], str(s3))
+    # The events, written out: the onset, and the two stand-ins it strikes.
+    # The threshold (K1) was an event too, and Pluck a thing struck, until P5
+    # cut both; Swing again and Kick were struck until G2.
+    check("an onset reaches only what is struck, and only events reach that",
+          s3["once"] == ["hear.onset"] and s3["depth"] == ["hear.onset"]
+          and s3["onset"] == ["test.depth", "test.once"] and not s3["rotate"], str(s3))
     check("and dropping an event on a value, or a value on an event, makes no routing", s3["dropped"] == 0,
           str(s3["dropped"]))
 
@@ -208,23 +161,20 @@ with sync_playwright() as pw:
       el.srcTone.click(); await __wait(500);
       const hit = registerSource({ id: 'test.hit', label: 'Hit', ink: 'ch1', event: true, count: 0,
                                    value: () => 0 });
-      const kicks = [], swings = [];
-      const src = state.source, kick = src.kick.bind(src), reswing = src.reswing.bind(src);
-      src.kick = (a) => { kicks.push(a); kick(a); };
-      src.reswing = () => { swings.push(1); reswing(); };
+      const log = window.__struck;
+      log.once = 0; log.depth = [];
       hit.count = 5;
-      state.modRoutings = [{ sourceId: 'test.hit', destId: 'gen.reswing', amount: 1 },
-                           { sourceId: 'test.hit', destId: 'gen.kick', amount: 0.5 }];
+      state.modRoutings = [{ sourceId: 'test.hit', destId: 'test.once', amount: 1 },
+                           { sourceId: 'test.hit', destId: 'test.depth', amount: 0.5 }];
       touchRoutings(); await __wait(300);
-      const made = [swings.length, kicks.length];
+      const made = [log.once, log.depth.length];
       hit.count++; await __wait(200);
-      const once = [swings.length, kicks.slice()];
+      const once = [log.once, log.depth.slice()];
       hit.count += 3; await __wait(200);
-      const skipped = [swings.length, kicks.length];
+      const skipped = [log.once, log.depth.length];
       // The onset itself, hearing the generator on the tone, is refused.
-      const refused = routingAllowed(MOD_SOURCES.get('hear.onset'), MOD_DESTS.get('gen.reswing'));
+      const refused = routingAllowed(MOD_SOURCES.get('hear.onset'), MOD_DESTS.get('test.once'));
       state.modRoutings = []; touchRoutings(); MOD_SOURCES.delete('test.hit');
-      src.kick = kick; src.reswing = reswing;
       return { made, once, skipped, refused };
     }""")
     print("    %s" % fire)
@@ -236,8 +186,6 @@ with sync_playwright() as pw:
     check("and an onset hearing the generator it would strike is refused", fire["refused"] is False,
           str(fire["refused"]))
 
-    # Which lane of a rack counted as the generator was checked here until P5
-    # cut the rack: on the tone it is always the generator, as above.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -61,7 +61,8 @@ const LIFTED = [
   "eventSeen", "fireEvents", "genMod", "genRoutes", "modDirty", "repaintQueued", "touchRoutings", "compileRoutes",
   "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings",
   "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutings", "isStageKey",
-];
+// The drawings' two slots (G2) only while the page still names them, as js_core.mjs has it.
+].filter((name) => !["SWING_SLOT", "SPIN_SLOT"].includes(name) || page.includes("\nconst " + name + " = "));
 
 const STUBS = `
 let clock = 0;

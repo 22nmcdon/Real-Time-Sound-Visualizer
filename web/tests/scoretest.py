@@ -136,7 +136,7 @@ with sync_playwright() as pw:
     print("\n--- the voice ---")
     voice = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const make = () => { const c = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
+      const make = () => { const c = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
                            c.set('amp', 0.3); c.set('freq', 110); return c; };
       const run = (struck) => {
         const core = make(), n = 44100;

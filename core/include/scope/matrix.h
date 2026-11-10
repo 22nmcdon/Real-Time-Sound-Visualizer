@@ -85,7 +85,9 @@ struct ModDest {
 };
 
 // GEN_DESTS: the generator's destinations, each on its slot of the routings'
-// accumulator. Amplitude only ever ducks.
+// accumulator. Amplitude only ever ducks. The drawings' seven (the figure's
+// detail, the solid's spin rate, perspective and three spins, and the
+// pendulums' energy) went in G2, and their slots with nothing on them.
 inline std::vector<ModDest> genDests() {
   std::vector<ModDest> out;
   const auto add = [&](std::string id, int at, bool unipolar = false) {
@@ -94,14 +96,12 @@ inline std::vector<ModDest> genDests() {
     out.push_back(std::move(d));
   };
   add("gen.freq", slot::Freq); add("gen.amp", slot::Amp, true); add("gen.phase", slot::Phase);
-  add("gen.ratio", slot::Ratio); add("gen.detail", slot::Detail); add("gen.tumble", slot::Tumble);
-  add("gen.depth", slot::Depth);
+  add("gen.ratio", slot::Ratio);
   for (int k = 0; k < 9; k++) add("gen.bar" + std::to_string(k), slot::Drawbar + k);
   add("gen.morph", slot::Morph); add("gen.radius", slot::Radius); add("gen.twist", slot::Twist);
   add("gen.fm", slot::Fm); add("gen.sync", slot::Sync); add("gen.drive", slot::Drive); add("gen.fold", slot::Fold);
   add("gen.vcf", slot::Vcf); add("gen.echo", slot::Echo); add("gen.echoTime", slot::EchoTime);
-  add("gen.swing", slot::Swing); add("gen.width", slot::Width); add("gen.table", slot::Table);
-  add("gen.spinX", slot::Spin); add("gen.spinY", slot::Spin + 1); add("gen.spinZ", slot::Spin + 2);
+  add("gen.width", slot::Width); add("gen.table", slot::Table);
   add("gen.turn", slot::Turn);
   add("gen.bend", slot::Bend); add("gen.bendAt", slot::BendAt);
   add("gen.phaser", slot::Phaser);

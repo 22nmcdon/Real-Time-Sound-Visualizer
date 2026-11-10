@@ -90,11 +90,10 @@ scope::CycleTables tablesOf(const scope::Json& v) {
   return t;
 }
 
-// The tables and the path as numbers rather than JSON: a wavetable bank is a
-// megabyte and more as text, and the page sends it with every preset, so the
-// text cost a tenth of a second a preset that a copy does not. A table is its
-// harmonic ceiling, how many levels, then each level's length and samples; a
-// path is the length of xy, xy, the length of at, at.
+// The tables as numbers rather than JSON: a wavetable bank is a megabyte and
+// more as text, and the page sends it with every preset, so the text cost a
+// tenth of a second a preset that a copy does not. A table is its harmonic
+// ceiling, how many levels, then each level's length and samples.
 struct Reader {
   const double* at;
   const double* end;
@@ -158,11 +157,6 @@ EXPORT(scope_set) int scopeSet(int fieldBytes, int valueBytes, int layer) {
     return 1;
   }
   if (field == "bars") { core->setBars(numberList(v), layer); return 1; }
-  if (field == "spin") {
-    const auto s = numberList(v);
-    if (s.size() == 3) core->setSpin({ s[0], s[1], s[2] });
-    return 1;
-  }
   if (field == "cycle") {
     core->setCycle(v.type == T::Object ? std::make_shared<scope::CycleTables>(tablesOf(v)) : nullptr);
     return 1;
@@ -174,22 +168,17 @@ EXPORT(scope_set) int scopeSet(int fieldBytes, int valueBytes, int layer) {
     core->setWavetable(bank);
     return 1;
   }
-  if (field == "figPath") {
-    if (v.type != T::Object) { core->setFigPath(nullptr); return 1; }
-    auto path = std::make_shared<scope::FigurePath>();
-    if (const scope::Json* xy = v.get("xy")) path->xy = numberList(*xy);
-    if (const scope::Json* at = v.get("at")) path->at = numberList(*at);
-    core->setFigPath(path);
-    return 1;
-  }
+  // The solid's spin and a figure's path, which G2 took, are no field of the generator's now: an array or
+  // an object for a field it does not know is passed by, as a number or a word for one is.
   if (v.type == T::Number) core->set(field, v.n, layer);
   else if (v.type == T::Bool) core->set(field, v.b ? 1.0 : 0.0, layer);
   else if (v.type == T::String) core->set(field, std::string_view(scope::utf16To8(v.s)), layer);
   return 1;
 }
 
-// cycle, wavetable or figPath (`which` 0, 1, 2) from the first `count` of the
-// numbers buffer, in the shapes above; a count of nought is none.
+// cycle or wavetable (`which` 0 or 1) from the first `count` of the numbers
+// buffer, in the shapes above; a count of nought is none. A figure's path was
+// `which` 2 until G2 took the figures, and is passed by.
 EXPORT(scope_tables) void scopeTables(int which, int count) {
   Reader r { numbers.data(), numbers.data() + count };
   if (which == 0) {
@@ -199,12 +188,6 @@ EXPORT(scope_tables) void scopeTables(int which, int count) {
     auto bank = std::make_shared<std::vector<scope::CycleTables>>();
     for (std::size_t k = r.count(); k > 0 && r.at < r.end; k--) bank->push_back(r.tables());
     core->setWavetable(bank);
-  } else {
-    if (!count) { core->setFigPath(nullptr); return; }
-    auto path = std::make_shared<scope::FigurePath>();
-    path->xy = r.list();
-    path->at = r.list();
-    core->setFigPath(path);
   }
 }
 
@@ -243,7 +226,6 @@ EXPORT(scope_routes) void scopeRoutes(int count) {
 EXPORT(scope_gate) void scopeGate(int open, double velocity) { core->gate(open != 0, velocity); }
 EXPORT(scope_noteDown) void scopeNoteDown() { core->noteDown(); }
 EXPORT(scope_gated) void scopeGated(int on) { core->setGated(on != 0); }
-EXPORT(scope_kick) void scopeKick(double amount) { core->kick(amount); }
 EXPORT(scope_strike) void scopeStrike(double hz, double velocity) { core->strike(hz, velocity); }
 EXPORT(scope_reswing) void scopeReswing() { core->reswing(); }
 
@@ -390,18 +372,20 @@ EXPORT(setup_decode) int setupDecode() {
   return 2;
 }
 
-// What goes back with the samples: the envelope, the
-// budget, the drawing's readings, the pitch layer A last played, the kick on
-// the spin and the swing's envelope, and each oscillator's phase, held value
-// and value.
+// What goes back with the samples: the envelope, the budget, six noughts
+// where the drawing's readings were, the pitch layer A last played, two more
+// where the kick on the spin and the swing's envelope were, and each
+// oscillator's phase, held value and value. The noughts keep every reading
+// after them where the page reads it: G2 took the drawings, and moving the
+// oscillators' places would be a second change on both sides with nothing to
+// show for it, and silent if one side missed it.
 EXPORT(scope_state) double* scopeState() {
   const auto& b = core->budget();
-  const auto d = core->drawing();
   state.assign({ core->envelope(), b.units,
                  static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                  static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
-                 static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0], d.turn[1],
-                 d.turn[2], d.facing, core->pitch(), core->spinKick(), core->swingLevel() });
+                 static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, 0, 0, 0, 0,
+                 0, 0, core->pitch(), 0, 0 });
   for (const auto& l : lfos) state.insert(state.end(), { l.phase, l.held, l.value });
   // Last, so the oscillators' places do not move: each layer's read-head (P8f).
   state.insert(state.end(), { core->scanHead(0), core->scanHead(1) });
@@ -530,9 +514,10 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }
 // What the page reads off the generator, as scope_state gives it for the
-// page's own: the envelope, whether it is gated, the
-// budget, and the drawing's readings - for the meters and the readouts, which
-// with the instrument playing had nothing to read and stood at nought. Then
+// page's own: the envelope, whether it is gated, the budget, and six noughts
+// where the drawing's readings were until G2 (kept so nothing after them
+// moves, as in scope_state) - for the meters and the readouts, which with
+// the instrument playing had nothing to read and stood at nought. Then
 // each oscillator's phase, held value and value, for the page's picture to
 // be moved by the oscillators that move the sound rather than by copies of
 // its own, started at another moment and never in step. Last, each layer's
@@ -547,12 +532,10 @@ std::array<double, 128> scanThumb {};
 EXPORT(brain_readings) double* brainReadings() {
   const auto& g = instrument->generator();
   const auto& b = g.budget();
-  const auto d = g.drawing();
   brainRead.assign({ g.envelope(), g.gated() ? 1.0 : 0.0, b.units,
                      static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                      static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
-                     static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, d.swing, d.pendulum, d.turn[0],
-                     d.turn[1], d.turn[2], d.facing });
+                     static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, 0, 0, 0, 0, 0, 0 });
   for (const auto& o : instrument->lfos()) brainRead.insert(brainRead.end(), { o.phase, o.held, o.value });
   const auto& layers = instrument->layerPictures();
   brainRead.push_back(layers.live() ? 1.0 : 0.0);

@@ -9,9 +9,9 @@
    where that happens: in a test, with the name in the message, rather than as
    a generator that is silent in a browser for a reason nobody can see.
 
-   Every mode is driven, because the four of them touch different halves of
-   the code - the wireframe is the only thing that reaches for MODELS, and the
-   figure is the only thing that calls `figureAt`.
+   Every setter is called and every shape driven, because each touches a
+   different part of the code. (Until G2 there were four kinds as well, and
+   only the wireframe reached for MODELS, only a figure called `figureAt`.)
 
    Usage: node workletharness.mjs <module.js> <slots>
 */
@@ -65,19 +65,18 @@ try {
 
   const out = [new Float32Array(128), new Float32Array(128)];
 
-  /* Every field set, not just the ones a mode reads.
+  /* Every field set, not just the ones a block reads.
 
-     The first version of this drove the four modes with `{mode}` alone and
-     passed while the real thing threw in its constructor: `set("model", ...)`
-     is the only caller of `wire.set`, which is the only caller of
-     `MODEL_BY_NAME`, which was the name missing from the module. A setter
-     that is never called is a branch that is never checked, so this calls all
-     of them with values a panel could actually produce. */
+     The first version of this drove the four kinds there were with `{mode}`
+     alone and passed while the real thing threw in its constructor:
+     `set("model", ...)` was the only caller of `wire.set`, which was the only
+     caller of `MODEL_BY_NAME`, which was the name missing from the module. A
+     setter that is never called is a branch that is never checked, so this
+     calls all of them with values a panel could actually produce. The
+     drawings' went in G2. */
   const everyField = {
-    mode: "wave", shape: "harmonic", freq: 220, amp: 0.55, interval: 3,
-    octaves: 1, just: false, phase: 1.2, figure: "Spirograph", detail: 7,
-    figureRate: 40, swingRate: 2.1, decay: 0.12, detune: 0.004,
-    model: "Tetrahedron", spin: [0.11, 0.17, 0], spinRate: 1, depth: 0.45,
+    shape: "harmonic", freq: 220, amp: 0.55, interval: 3,
+    octaves: 1, just: false, phase: 1.2,
   };
   for (const field in everyField) {
     node.port.onmessage({ data: { tone: { [field]: everyField[field] } } });
@@ -85,9 +84,9 @@ try {
   node.port.onmessage({ data: { reswing: true } });
   node.port.onmessage({ data: { lfos: [{ shape: "ramp", rate: 3, depth: 1 }] } });
 
+  // The waveform, the one kind since G2: the four used to be run here in turn.
   report.modes = {};
-  for (const mode of ["wave", "harmonograph", "figure", "wireframe"]) {
-    node.port.onmessage({ data: { tone: { mode } } });
+  for (const mode of ["wave"]) {
     let worst = 0, energy = 0, finite = true;
     for (let round = 0; round < 60; round++) {
       node.process([], [out], {});
@@ -103,9 +102,8 @@ try {
     report.modes[mode] = { worst, finite, energy: energy / (60 * 128 * 2) };
   }
 
-  // And every shape of the waveform mode, since each is a different branch of
+  // And every shape of the waveform, since each is a different branch of
   // `waveAt` and the band-limiting is only on three of them.
-  node.port.onmessage({ data: { tone: { mode: "wave" } } });
   report.shapes = {};
   /* G2's drawn cycle needs its tables, which the main thread builds: a small
      one is handed over here, a cycle that rises and falls in straight lines,
@@ -138,111 +136,25 @@ try {
     report.shapes[shape] = { worst, finite, print: Math.round(print * 1e6) / 1e6 };
   }
 
-  node.port.onmessage({ data: { tone: { mode: "wireframe" } } });
-  report.models = {};
-  for (const model of ["Cube", "Tetrahedron", "Octahedron", "Dodecahedron", "Icosahedron", "Torus", "Knot"]) {
-    node.port.onmessage({ data: { tone: { model } } });
-    node.port.onmessage({ data: { reswing: true } });   // from the same attitude
-    let worst = 0, finite = true, fingerprint = 0;
-    for (let round = 0; round < 30; round++) {
-      node.process([], [out], {});
-      for (let i = 0; i < 128; i++) for (const channel of out) {
-        if (!Number.isFinite(channel[i])) finite = false;
-        worst = Math.max(worst, Math.abs(channel[i]));
-        fingerprint += channel[i] * channel[i];
-      }
-    }
-    fingerprint = Math.round(fingerprint * 1e6) / 1e6;
-    // A fingerprint rather than a peak. `wire.set` keeps the model it has
-    // when the name is not found, so three solids that all quietly drew the
-    // cube would every one of them be "finite and not silent" - which is what
-    // the missing `MODEL_BY_NAME` actually did, and what the first version of
-    // this check could not see.
-    report.models[model] = { worst, finite, print: fingerprint };
-  }
-
-  node.port.onmessage({ data: { tone: { mode: "figure" } } });
-  report.figures = {};
-  /* Text and Path draw a table of points the main thread compiles; here each
-     is handed one, as it would be - a square for the one and a triangle for
-     the other, so their fingerprints differ from each other's and the
-     circle's. Without one they draw a dot, which "worst > 0.01" catches. */
-  const TABLES = {
-    Text: { xy: [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5], at: [0, 0.25, 0.5, 0.75, 1] },
-    Path: { xy: [0, 0.8, -0.7, -0.4, 0.7, -0.4, 0, 0.8], at: [0, 1 / 3, 2 / 3, 1] },
-    Drawn: { xy: [-0.8, 0, 0, 0.6, 0.8, 0, 0, -0.3, -0.8, 0], at: [0, 0.3, 0.6, 0.8, 1] },
-  };
-  for (const figure of ["Circle", "Square", "Polygon", "Star", "Rose", "Heart",
-                        "Infinity", "Spiral", "Spirograph", "Butterfly", "Text", "Path", "Drawn"]) {
-    node.port.onmessage({ data: { tone: { figure, figPath: TABLES[figure] || null } } });
-    let worst = 0, finite = true, fingerprint = 0;
-    for (let round = 0; round < 20; round++) {
-      node.process([], [out], {});
-      for (let i = 0; i < 128; i++) for (const channel of out) {
-        if (!Number.isFinite(channel[i])) finite = false;
-        worst = Math.max(worst, Math.abs(channel[i]));
-        fingerprint += channel[i] * channel[i];
-      }
-    }
-    /* A fingerprint, as the solids have. Every figure peaks at the same
-       amplitude, and a name `figureAt` does not know falls through to the
-       circle - so a misspelt figure was "finite and loud" and nothing more. */
-    report.figures[figure] = { worst, finite, print: Math.round(fingerprint * 1e6) / 1e6 };
-  }
-
-  /* The second generator, in the thread it runs in: its pair drawn on lanes
-     three and four at its size, and FM through it changing what the first
-     draws - measured against the same blocks with the mode off. */
-  const second = (mode) => {
-    node.port.onmessage({ data: { tone: { mode: "figure", figure: "Circle", figPath: null, inputFrom: "gen2",
-      gen2Figure: "Square", gen2Rate: 90, gen2Amp: 0.4, inputMode: mode, inputDepth: 0.5 } } });
-    node.port.onmessage({ data: { reswing: true } });
-    let pair = 0, finite = true, print = 0;
-    for (let round = 0; round < 20; round++) {
-      node.process([], [out], {});
-      for (let i = 0; i < 128; i++) {
-        pair = Math.max(pair, Math.abs(node.pictBL[i]), Math.abs(node.pictBR[i]));
-        if (!Number.isFinite(out[0][i]) || !Number.isFinite(node.pictBL[i])) finite = false;
-        print += out[0][i] * out[0][i];
-      }
-    }
-    return { pair, finite, print: Math.round(print * 1e6) / 1e6 };
-  };
-  report.second = { off: second(0), fm: second(1) };
-  node.port.onmessage({ data: { tone: { inputFrom: "live", inputMode: 0 } } });
+  /* The solids and the figures, a fingerprint each, and the second
+     generator were run here until G2 took them. */
 
   /* The quantiser, in the thread it runs in: 225 Hz is 0.39 of a semitone
      above A3, so chromatic takes it to 220 exactly, and off leaves it. */
   node.port.onmessage({ data: { routes: [] } });      // nothing else moving the pitch
-  node.port.onmessage({ data: { tone: { mode: "wave", shape: "sine", freq: 225, octaves: 0, qMask: 4095 } } });
+  node.port.onmessage({ data: { tone: { shape: "sine", freq: 225, octaves: 0, qMask: 4095 } } });
   for (let round = 0; round < 20; round++) node.process([], [out], {});
   report.quantised = { on: node.core.pitch };
   node.port.onmessage({ data: { tone: { qMask: 0 } } });
   for (let round = 0; round < 5; round++) node.process([], [out], {});
   report.quantised.off = node.core.pitch;
 
-  /* The pitched harmonograph, and a strike, in the thread they run in: at
-     220 Hz it sounds, and a reswing while it sounds is a strike rather than
-     a restart from nothing. */
-  node.port.onmessage({ data: { tone: { mode: "harmonograph", pitched: true, freq: 220, ringMs: 400,
-                                        interval: 0, octaves: 0 } } });
-  let pitchedPeak = 0, pitchedFinite = true;
-  for (let round = 0; round < 200; round++) {
-    if (round === 100) node.port.onmessage({ data: { reswing: true } });
-    node.process([], [out], {});
-    for (let i = 0; i < 128; i++) {
-      if (!Number.isFinite(out[0][i])) pitchedFinite = false;
-      pitchedPeak = Math.max(pitchedPeak, Math.abs(out[0][i]));
-    }
-  }
-  report.pitched = { pitch: node.core.pitch, peak: pitchedPeak, finite: pitchedFinite };
-  node.port.onmessage({ data: { tone: { mode: "wave", pitched: false } } });
 
   /* The plane, at each factor, in the thread it runs in: a mirrored sine
      has no negative half left, whatever the filters do to its corners. */
   report.plane = {};
   for (const os of [1, 2, 4]) {
-    node.port.onmessage({ data: { tone: { mode: "wave", shape: "sine", freq: 220, amp: 0.5,
+    node.port.onmessage({ data: { tone: { shape: "sine", freq: 220, amp: 0.5,
                                           planeMirror: 3, planeRadius: 0.3, planeLimit: 1, planeOS: os } } });
     let low = Infinity, high = -Infinity, finite = true;
     for (let round = 0; round < 40; round++) {
@@ -267,7 +179,7 @@ try {
   const PLANE_OFF = { planeTwist: 0, planeMirror: 0, planeLimit: 0, planeSnap: 0, planeScaleX: 1,
                       chorusMix: 0, delayMix: 0, planeOS: 2, amp: 0.5 };
   const runFor = (tone, rounds) => {
-    node.port.onmessage({ data: { tone: Object.assign({ mode: "wave", shape: "sine", freq: 220, interval: 0,
+    node.port.onmessage({ data: { tone: Object.assign({ shape: "sine", freq: 220, interval: 0,
                                                         octaves: 0, phase: 0 }, PLANE_OFF, tone) } });
     // Both oscillators back to nought: earlier here Y ran an octave above
     // X, and the two phases were left apart - no diagonal without this.
@@ -338,10 +250,18 @@ try {
                                         subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0,
                                         vcfType: 0 } } });
 
-  // A kick is an event sent by message, as a reswing is; it has to land in
-  // the worklet's own core, which is the one drawing while the voice sounds.
-  node.port.onmessage({ data: { kick: 1 } });
-  report.kicked = node.core.spinKick;
+  /* A restart sent by message (`reswing`, which a setup's load sends) lands
+     in the worklet's own core, the one drawing while the voice sounds: its
+     phases back to nought, so the first sample after is the sine's at its
+     phase, with the right channel a quarter on. Until G2 a kick to a solid's
+     spin was read here too. */
+  node.port.onmessage({ data: { tone: Object.assign({ shape: "sine", freq: 220, interval: 0, octaves: 0,
+                                                      phase: Math.PI / 2, amp: 0.5 }, PLANE_OFF) } });
+  for (let round = 0; round < 7; round++) node.process([], [out], {});
+  const mid = [out[0][0], out[1][0]];
+  node.port.onmessage({ data: { reswing: true } });
+  node.process([], [out], {});
+  report.restart = { before: mid, after: [out[0][0], out[1][0]] };
 
   /* J3: the generator reads its input. Two processors built alike, with a
      ride at half depth; one is handed a steady half on its input and one
@@ -349,7 +269,7 @@ try {
      sample. */
   const twin = () => new registered.cls({ processorOptions: {
     slots, lfos: [{ shape: "sine", rate: 2, depth: 0 }, { shape: "sine", rate: 1, depth: 0 }],
-    tone: { mode: "wave", shape: "sine", freq: 220, amp: 0.4, inputMode: 2, inputDepth: 0.5 }, routes: [],
+    tone: { shape: "sine", freq: 220, amp: 0.4, inputMode: 2, inputDepth: 0.5 }, routes: [],
   } });
   const fed = twin(), bare = twin();
   const half = new Float32Array(128).fill(0.5);
@@ -425,7 +345,7 @@ try {
   {
     const chord = [];
     for (let k = 0; k < 8; k++) chord.push({ note: 48 + k * 3, freq: 130.81 * Math.pow(2, k / 4), velocity: 1, role: "u" });
-    node.port.onmessage({ data: { tone: { mode: "wave", shape: "ramp", unison: 7, fmIndex: 2, syncRatio: 1.5,
+    node.port.onmessage({ data: { tone: { shape: "ramp", unison: 7, fmIndex: 2, syncRatio: 1.5,
                                           drive: 0.5, shapeOS: 4, voices: chord } } });
     const before = node.posted;
     for (let round = 0; round < 40; round++) node.process([], [out], {});

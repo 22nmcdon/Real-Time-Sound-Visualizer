@@ -132,14 +132,15 @@ with sync_playwright() as pw:
           first["timebase"] == 3, str(first["timebase"]))
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }")
     p.wait_for_timeout(300)
-    # Frequency on Ink since G3: looked for on its own tab, then back to Play's Kind.
+    # Frequency on Ink since G3: looked for on its own tab, then back to Play's
+    # Shape (its Kind until G2 took the drawings, and the menu with them).
     freq_shown = p.evaluate("() => { setBenchTab('ink'); const s = !!el.freq && el.freq.offsetParent !== null; setBenchTab('play'); return s; }")
-    panel = p.evaluate("""() => ({ kind: el.genMode.offsetParent !== null,
-      sound: !!genVoice(), mode: genSettings() && genSettings().mode,
+    panel = p.evaluate("""() => ({ shape: el.shape.offsetParent !== null,
+      sound: !!genVoice(), settings: !!genSettings(),
       others: ![el.srcTone, el.srcMic].some((b) => b.disabled) })""")
     panel["freq"] = freq_shown
-    check("and keeps the generator's panel, kind and frequency, and its voice",
-          panel["kind"] and panel["freq"] and panel["sound"] and panel["mode"] == "wave", str(panel))
+    check("and keeps the generator's panel, shape and frequency, and its voice",
+          panel["shape"] and panel["freq"] and panel["sound"] and panel["settings"], str(panel))
     check("and offers Tone and Mic as what the instrument draws", panel["others"], str(panel))
     p.evaluate("() => setView('scope')")
 
@@ -229,19 +230,21 @@ with sync_playwright() as pw:
           str(out))
     check("and the page's own brain sends nothing beside it", out["page"] is False and not out["of100"], str(out))
 
-    # The kind menu, through the page's own handler: the mirror, the panel, the view, and a hand sent.
+    # A menu, through the page's own handler: the mirror, the panel and a hand
+    # sent. The Kind menu was asked, a figure's rows and X-Y with it, until
+    # G2 took the drawings; the Shape menu is asked now.
     kind = p.evaluate("""async () => {
       loadCorpus('Harmonic tone');
       await new Promise((r) => setTimeout(r, 300));
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change', { bubbles: true }));
+      el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change', { bubbles: true }));
       await new Promise((r) => setTimeout(r, 600));
       const s = await scopeHost.call('scopeState');
       const hands = decodeSetup(s.code).pluginHands || [];
-      return { mode: genSettings().mode, rows: !el.figureRows.hidden, display: state.display,
-               sent: hands.some((h) => h[0] === 'c' && h[1] === 'genMode' && h[2] === 'figure') };
+      return { shape: genSettings().shape, menu: el.shape.value,
+               sent: hands.some((h) => h[0] === 'c' && h[1] === 'shape' && h[2] === 'square') };
     }""")
-    check("the kind menu moves the page's generator and the instrument's: the figure's rows, X-Y, and the hand kept",
-          kind == {"mode": "figure", "rows": True, "display": "xy", "sent": True}, str(kind))
+    check("the shape menu moves the page's generator and the instrument's, and the hand is kept",
+          kind == {"shape": "square", "menu": "square", "sent": True}, str(kind))
 
     # A port's bytes, passed on once and not again as the notes the page makes of them.
     port = p.evaluate("""async () => {

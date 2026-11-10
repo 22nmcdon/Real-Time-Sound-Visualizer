@@ -81,8 +81,8 @@ GRID = """(spec) => {
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const rate = setup.rate || 44100;
-  const core = makeGeneratorCore(rate, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('amp', 0.5); core.set('interval', 0); core.set('phase', 0);
+  const core = makeGeneratorCore(rate, GEN_SLOTS, [still(), still()]);
+  core.set('amp', 0.5); core.set('interval', 0); core.set('phase', 0);
   const table = (h) => {
     if (h === null) return null;
     const pts = new Float64Array(SCAN_POINTS);

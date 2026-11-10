@@ -102,6 +102,18 @@ leaves first, each piece held to the page before the next was started:
   a live input goes through - with the calls the worklet makes between
   blocks.
 
+**The drawings went in G2** (9 Nov, `web/docs/the-face-second-pass.md`): the
+harmonograph, the figures and their strokes, the solids and the second
+generator, page and core together. `figures.h`, `wireframe.h` and `strokes.h`
+are gone (`jsHypot`, which the picture still reads, moved to `wave.h`); the
+generator has one kind, the waveform, and notes always play it, so the
+keyboard's switches for which kinds notes played, and at whose pitch, went
+too. The drawings' slots in the routings' accumulator are left empty rather
+than the rest renumbered. A setup code is version 10: a kind other than the
+waveform loads as the waveform, the drawings' fields are dropped, and so is
+every routing from their sources or to their destinations. What this section
+says of them below is how they were ported, kept as history.
+
 The pieces are held by about 18,000 calls written by `parity.py` and answered
 by both (`functions_js.mjs`, `functions_cpp`). The functions inside
 `makeGeneratorCore`, which the page does not export, are lifted out by name

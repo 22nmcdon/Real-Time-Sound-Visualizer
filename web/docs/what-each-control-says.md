@@ -36,7 +36,7 @@ what each control actually does:
 6. ***A against B* puts layer A in the left ear only and B in the right.** Nothing on the
    face says so. Intended?
 7. **Kind has one choice once G2 takes the drawings.** Keep a one-item menu, or let it go
-   with them?
+   with them? *Answered in G2: it went with them, and its row with it.*
 
 And about the words:
 
@@ -86,9 +86,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the layer being edited. The rest are drawn along the diagonal, heard in both ears. | 133 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
-| midiDrive | Notes play this generator | removed (G2) | - | - |
 | polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
-| midiPlay | Play the figure at the note's pitch | removed (G2) | - | - |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
 
 ### Expression
@@ -104,7 +102,6 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| genMode | Kind | What the generator plays: the waveform, a shape at each note's pitch. (One choice once G2 takes the drawings; see the questions.) | 129 | - |
 | shape | Shape | The wave each note is made of. A sine is pure and draws smooth curves; sharper shapes are brighter and put corners in the figure. | 129 | yes: the gist of each - pulse, the noises, stepped, drawbars, morph, drawn cycle, wavetable - and which of them bring a row of their own |
 | morph | Morph | One knob through sine, triangle, saw and square, crossfading each pair. Put a source on it and the tone and the figure change as you play. | 138 | - |
 | width | Width | How much of each cycle the pulse is up, 5 to 95 per cent. At 50 it is the square; narrower is thinner and more nasal. | 117 | - |

@@ -108,7 +108,7 @@ with sync_playwright() as pw:
       touchRoutings();
       await wait(600);
       compileRoutes();
-      const routes = genRoutes.filter((r) => r.slot === GEN_DESTS.findIndex((d) => d.id === 'gen.freq'));
+      const routes = genRoutes.filter((r) => r.slot === MOD_DESTS.get('gen.freq').slot);
       const bounded = 220 * Math.pow(2, 0.5), unbounded = 220 * Math.pow(2, 1.5);
       /* Read until a window says so, every 200 ms for three seconds, rather
          than once at 600 ms. At the opening's Picture of 60 the picture
@@ -160,7 +160,7 @@ with sync_playwright() as pw:
       state.modRoutings = [];
       const loop = ['photo.1', 'picture.round'];
       const saved = loop.map((id) => MOD_SOURCES.get(id).value);
-      const slot = GEN_DESTS.findIndex((d) => d.id === 'gen.amp');
+      const slot = MOD_DESTS.get('gen.amp').slot;
       const rms = (x) => Math.sqrt(x.reduce((a, v) => a + v * v, 0) / x.length);
       const out = {};
       for (const level of [1, 0]) {

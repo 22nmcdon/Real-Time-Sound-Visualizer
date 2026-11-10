@@ -222,7 +222,6 @@ with sync_playwright() as pw:
     # `fill` tells it how fast it is running. With that argument left off, the
     # unit checks all pass and the instrument aliases anyway.
     p.evaluate("""() => {
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
       el.freq.value = '4000'; el.freq.dispatchEvent(new Event('input'));
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
@@ -233,97 +232,10 @@ with sync_playwright() as pw:
     check("the generator's own samples are band-limited, not just waveAt",
           audible <= -40, "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
 
-    print("\n--- the drawn generators, which polyBLEP cannot reach ---")
-    # A figure, a solid and a harmonograph are parametric paths: their
-    # discontinuities, where they have any, are at no phase anything knows in
-    # advance, so the correction above does not apply to them. The plan's
-    # choice was between rendering them at 4x and decimating, or leaving them
-    # and stating the limit. Measured, they do not need it: the worst of them
-    # is no worse than the corrected square, which is the floor this page has
-    # decided to live with. These checks keep that true - a figure added later
-    # with a jump in it will say so here.
-    def drawn(name, setup, f0, want, settle=1100):
-        p.evaluate(setup)
-        p.wait_for_timeout(settle)
-        got = p.evaluate("(n) => Array.from(state.source.getLatestWindow(n)[0])", N)
-        peak, audible = alias_floors(got, f0, against="loudest")
-        check("%s stays under %d dB" % (name, want), audible <= want,
-              "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
-
-    drawn("a star traced 200 times a second", """() => {
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      el.figure.value = 'Star'; el.figure.dispatchEvent(new Event('change'));
-      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 200, -70)
-
-    # The butterfly is the longest path of any figure - fifty-seven times the
-    # circle's - so it has the most above its trace rate, and it is measured
-    # at the fastest rate there is. It is a smooth curve with no corner, and
-    # measured at -96.7 dB; held to the star's -70, the figures' floor.
-    drawn("a butterfly traced 200 times a second", """() => {
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      el.figure.value = 'Butterfly'; el.figure.dispatchEvent(new Event('change'));
-      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 200, -70)
-
-    # Text and an imported drawing: strokes with fast travel between them,
-    # the one kind of figure whose path has anything like a jump in it. The
-    # travel is continuous, not a step, and measured it costs little: a word
-    # at 40 is -89 dB and a drawing -87, held to the figures' -70. At 200 a
-    # word is -62 - worse than the star, since "SCOPE" turns forty corners a
-    # lap to the star's five, and held to the -42 the solids are, whose
-    # corners it has more in common with.
-    drawn("a word written 40 times a second", """() => {
-      el.genMode.value = 'figure'; el.genMode.dispatchEvent(new Event('change'));
-      el.figure.value = 'Text'; el.figure.dispatchEvent(new Event('change'));
-      setFigureText('SCOPE'); syncFigurePath();
-      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 40, -70)
-    drawn("a word written 200 times a second", """() => {
-      el.figureRate.value = '200'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 200, -42)
-    drawn("an imported drawing at 40", """() => {
-      el.figure.value = 'Path'; el.figure.dispatchEvent(new Event('change'));
-      setFigurePathD('M 30 80 a 12 9 -20 1 1 0.1 0 M 42 78 L 42 20 C 50 30 62 34 58 52'); syncFigurePath();
-      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 40, -70)
-
-    drawn("a cube tumbling at 40", """() => {
-      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
-      el.model.value = 'Cube'; el.model.dispatchEvent(new Event('change'));
-      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 40, -42)
-
-    # The torus and the knot are the solids with the most segments a lap, 144
-    # and 210, and so the most corners a second for the beam to turn. Both
-    # measured near -52.5 dB, better than the cube, whose corners are
-    # sharper; held to the cube's -42, the solids' floor.
-    drawn("a torus tumbling at 40", """() => {
-      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
-      el.model.value = 'Torus'; el.model.dispatchEvent(new Event('change'));
-      el.figureRate.value = '40'; el.figureRate.dispatchEvent(new Event('input'));
-    }""", 40, -42)
-    drawn("a knot tumbling at 40", """() => {
-      el.model.value = 'Knot'; el.model.dispatchEvent(new Event('change'));
-    }""", 40, -42)
-
-    # The harmonograph's partials are two hertz apart, which no window can
-    # separate, so "is this a harmonic" is not a question that can be put to
-    # it. It is also not worth putting: a sum of sines at a few hertz has
-    # nothing above Nyquist to fold. What can be asked is whether anything
-    # lands up high at all.
-    p.evaluate("""() => {
-      el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change'));
-      el.swingRate.value = '21'; el.swingRate.dispatchEvent(new Event('input'));
-      state.source.reswing();
-    }""")
-    p.wait_for_timeout(1100)
-    swung = np.asarray(p.evaluate("(n) => Array.from(state.source.getLatestWindow(n)[0])", N))
-    spec = np.abs(np.fft.rfft(swung * window(len(swung))))
-    hz = np.arange(len(spec)) * RATE / len(swung)
-    high = 20 * math.log10(max(float(spec[hz > 1000].max()), 1e-12) / spec.max())
-    check("the harmonograph puts nothing above a kilohertz", high < -100,
-          "%.1f dB down" % high)
+    # The drawn generators - the figures, the solids and the harmonograph,
+    # parametric paths polyBLEP could not reach - were measured here against
+    # the corrected square's floor until G2 took them; the waveform is all
+    # the generator plays now, and everything above holds it.
 
     print("\n--- what it costs the picture ---")
     # The generator is a picture first and will be a sound second, so it is
@@ -360,7 +272,6 @@ with sync_playwright() as pw:
     # nothing to do with band-limiting, but it catches anyone who tries this
     # with a round number.
     p.evaluate("""() => {
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
       el.freq.value = '431'; el.freq.dispatchEvent(new Event('input'));
       state.panesExtra.harmonics = true; syncPanes();

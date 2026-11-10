@@ -55,7 +55,7 @@ BIN_SRC = """(x, f, rate) => {
 CORE = """([voices, seconds, shape]) => {
   const rate = 44100;
   const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
   core.set('shape', shape || 'sine');
   core.set('voices', voices);
   window.__core = core;
@@ -173,7 +173,7 @@ with sync_playwright() as pw:
     jump = p.evaluate("""([C]) => {
       const rate = 44100;
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
       core.set('shape', 'square');
       core.set('voices', [{ note: 48, freq: C, velocity: 1, role: 'x' }]);
       const a = [0, 1, 2, 3].map(() => new Float32Array(8820));
@@ -356,16 +356,14 @@ with sync_playwright() as pw:
 
     rowed = p.evaluate("""() => {
       setMidiMode('poly');
+      // A wireframe was the other place with no row, until G2 took it.
       const out = { wave: !el.midiDrawRow.hidden };
-      el.genMode.value = 'wireframe'; el.genMode.dispatchEvent(new Event('change'));
-      out.wireframe = !el.midiDrawRow.hidden;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
       setMidiMode('dyad'); out.dyad = !el.midiDrawRow.hidden;
       setMidiMode('poly');
       return out;
     }""")
     check("the Draw row is there only where a chord can play",
-          rowed == {"wave": True, "wireframe": False, "dyad": False}, str(rowed))
+          rowed == {"wave": True, "dyad": False}, str(rowed))
 
     # While the input is drawn, whole or in bands, the generator's own figure
     # is not, so there is no second figure to lay notes across: every note is
@@ -401,9 +399,7 @@ with sync_playwright() as pw:
       const out = { on: genSettings().voices !== null };
       setMidiMode('dyad'); out.dyad = genSettings().voices;
       setMidiMode('poly'); out.back = genSettings().voices !== null;
-      el.genMode.value = 'harmonograph'; el.genMode.dispatchEvent(new Event('change'));
-      midiApplyGate(); out.harmonograph = genSettings().voices;
-      el.genMode.value = 'wave'; el.genMode.dispatchEvent(new Event('change'));
+      // A harmonograph played no chord either, until G2 took it.
       midiApplyGate(); out.wave = genSettings().voices !== null;
       setScreenKeys(false); midiApplyGate(); out.closed = genSettings().voices;
       return out;
@@ -411,8 +407,6 @@ with sync_playwright() as pw:
     print("    %s" % gone)
     check("switching to dyad ends the chord", gone["on"] and gone["dyad"] is None, str(gone))
     check("and back to poly resumes it", gone["back"], str(gone))
-    check("a generator that is not a waveform plays no chord",
-          gone["harmonograph"] is None and gone["wave"], str(gone))
     check("and neither does one with no keyboard to play it", gone["closed"] is None, str(gone))
 
     print("\n--- through the worklet: the picture crosses a thread, the sound does not ---")
@@ -490,7 +484,7 @@ with sync_playwright() as pw:
     # at G4 from the start, so the early reading can tell a glide from none.
     GLIDE = """(glideMs) => {
       const rate = 44100, quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_DESTS.length, quiet);
+      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
       core.set('shape', 'sine'); core.set('glideMs', glideMs); core.set('releaseMs', 2);
       const run = (sec) => { const n = Math.round(rate * sec), a = [0, 1, 2, 3].map(() => new Float32Array(n));
                              core.block(a[0], a[1], n, a[2], a[3]); return a[2]; };

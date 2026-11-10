@@ -77,8 +77,8 @@ def rms(x):
 
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-  core.set('mode', 'wave'); core.set('amp', 1); core.set('interval', 0); core.set('phase', 0);
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  core.set('amp', 1); core.set('interval', 0); core.set('phase', 0);
   for (const k in setup.tone) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
   if (setup.voices) { core.set('voices', setup.voices); core.set('voices', setup.voices, 1); }

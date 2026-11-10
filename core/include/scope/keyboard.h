@@ -12,10 +12,9 @@
 //
 // What differs from the page, and why, so nobody goes looking:
 //
-// - The page reads and writes the panel's sliders (`el.freq`, `el.interval`,
-//   `el.figureRate`, `el.detail`): a note moves the frequency slider and the
-//   interval menu with it, and handing the controls back reads them. Here they
-//   are `Panel`, which the brain will own when the setup is in the core.
+// - The page reads and writes the panel's controls (`el.freq`, `el.interval`):
+//   a note moves the frequency slider and the interval menu with it. Here
+//   they are `Panel`, which the brain owns now that the setup is in the core.
 // - The page asks `keyboardPresent()` - a port or the screen's keys - and
 //   whether the source can lay out two figures. Here both are flags. The
 //   first (`setPresent`) is yes in the plugin, whose host is always a
@@ -24,8 +23,10 @@
 //   itself: no while it draws its input, whole or split into bands, since
 //   layer B's figure has nowhere to go. (And while it drew a rack, until P5
 //   cut the rack.)
-// - The page's `genInput.from` is the generator's `inputFrom`; here it is read
-//   from the tone, where the two are always the same.
+// - Notes always play the waveform. Until G2 (9 Nov) a switch said whether
+//   they played each kind of generator, and another whether a drawing was
+//   played at the note's pitch; both went with the drawings, and the
+//   waveform's switch had been on in every setup that left it alone.
 // - The arpeggiator's first step waits 25 ms for the rest of the chord, on a
 //   timer in the page. The core has no timers: the keyboard keeps its wakes
 //   (`arpWake`), and its owner calls `wakeArp` at each one's time - the
@@ -58,23 +59,22 @@ namespace scope {
 inline double midiHz(double note) { return 440 * std::pow(2.0, (note - 69) / 12); }
 
 constexpr int kPolyVoices = 8;     // POLY_VOICES: held notes sounding at once, per layer
-constexpr double kMidiRoot = 220;  // A3, the pitch a trace rate is measured against
 constexpr double kCcSmooth = 0.03; // seconds, one pole over the pedal's and pressure's steps
 
-// One pair of figures, two, or layer A against layer B as one.
+// One pair of figures, two (a layer each), or layer A against layer B as one.
 enum class Layout { One, Each, Against };
 inline const char* layoutName(Layout l) { return l == Layout::Each ? "each" : l == Layout::Against ? "against" : "one"; }
 
-// What the keyboard plays: the calls the page's `genSet`, `genReswing` and the
-// tone source's gate make, and the few settings the keyboard reads back.
+// What the keyboard plays: the calls the page's `genSet` and the tone
+// source's gate make, and the few settings the keyboard reads back. (A key
+// reswung a pitched harmonograph, and the keyboard read the tone for which
+// kind was playing, until G2 took the drawings.)
 class NoteTarget {
  public:
   virtual ~NoteTarget() = default;
-  virtual const Tone& tone() const = 0;
   virtual bool hasVoices(int layer) const = 0;
   virtual void set(std::string_view field, double value) = 0;  // layer A's
   virtual void setVoices(const std::vector<NoteWant>* list, int layer) = 0;
-  virtual void reswing() = 0;
   virtual void gate(bool open, double velocity) = 0;
   // A key gone down (8 Nov): the page's midiApplyNotesTo tells the generator.
   virtual void noteDown() = 0;
@@ -89,13 +89,11 @@ class NoteTarget {
 class GeneratorNotes : public NoteTarget {
  public:
   explicit GeneratorNotes(Generator& g) : g_(g) {}
-  const Tone& tone() const override { return g_.tone(); }
   bool hasVoices(int layer) const override {
     return layer == 1 ? g_.toneB().voices.has_value() : g_.tone().voices.has_value();
   }
   void set(std::string_view field, double value) override { g_.set(field, value, 0); }
   void setVoices(const std::vector<NoteWant>* list, int layer) override { g_.setVoices(list, layer); }
-  void reswing() override { g_.reswing(); }
   void gate(bool open, double velocity) override { g_.gate(open, velocity); }
   void noteDown() override { g_.noteDown(); }
   void setGated(bool on) override { g_.setGated(on); }
@@ -129,8 +127,6 @@ class RealtimeIn {
 struct Panel {
   double freq = 220;
   int interval = 0;
-  double figureRate = 40;
-  double detail = 5;
 };
 
 struct Held { int note; double velocity; };
@@ -175,9 +171,6 @@ class Keyboard {
     applyNotes();
     // And on the screen, where Scan reads (P7b): the layers the note is in, A's as 1 and B's as 2.
     if (onStrike_) onStrike_(note, velocity / 127, layersOf(note));
-    // A key struck on a pitched harmonograph strikes the pendulums.
-    const Tone& tone = t_.tone();
-    if (tone.mode == Mode::Harmonograph && tone.pitched) t_.reswing();
   }
 
   // midiNoteOff. Under the pedal the key comes up and the note does not.
@@ -333,22 +326,8 @@ class Keyboard {
   void learnSplit() { layers_.learning = !layers_.learning; }
   void setPair(bool against) { layers_.against = against; syncLayers(); applyNotes(); }
   void setHold(bool on) { hold_ = on; }
-  // Whether notes drive the generator in the kind it is now.
-  void setDrive(bool on) {
-    drive_[kindOf(t_.tone().mode)] = on;
-    if (on) applyNotes(); else undrive();
-    syncPlay();
-  }
-  // Whether a note plays a drawing at its own pitch; the waveform has no say.
-  void setPlay(bool on) {
-    const std::size_t kind = kindOf(t_.tone().mode);
-    if (kind == 0) return;
-    play_[kind] = on;
-    syncPlay();
-    if (on) applyNotes(); else undrive();
-  }
   void setPresent(bool on) { present_ = on; }
-  // Whether the generator is on its own, to lay out two figures: not while the input is drawn.
+  // Whether the generator is on its own, to lay out a figure for each layer: not while the input is drawn.
   void setLayable(bool on) { layable_ = on; }
   Panel& panel() { return panel_; }
 
@@ -373,7 +352,7 @@ class Keyboard {
   // where the mode's handler (arpSet) starts the arpeggio afresh.
   void setArpRate(std::string rate) { arp_.rate = std::move(rate); }
   void setArpOctaves(double octaves) { arp_.octaves = octaves == 0 || std::isnan(octaves) ? 1 : octaves; }
-  bool arpActive() const { return arp_.mode != "off" && drives(); }
+  bool arpActive() const { return arp_.mode != "off"; }
   // arpStepMs: the step in milliseconds at the tempo in force.
   double arpStepMs() const {
     static const std::pair<const char*, double> rates[] = {
@@ -428,35 +407,17 @@ class Keyboard {
     LayerMode layers = LayerMode::Off;
     int point = 60;
     bool against = false, polyJust = false, hold = false, truth = true, follow = false;
-    std::array<bool, 4> drive { true, true, true, false };
-    std::array<bool, 4> play { false, false, false, false };
   };
   Settings settings() const {
-    return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_, drive_, play_ };
+    return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_ };
   }
   void setSettings(const Settings& s) {
     mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
     layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
-    drive_ = s.drive; play_ = s.play;
   }
-  // syncMidi's part that reaches the generator, then midiApplyNotes: what
-  // `restore` ends the keyboard with, so what is under the hands outranks
-  // what the setup asked for.
-  void apply() {
-    syncPlay();
-    applyNotes();
-  }
-  // syncPlay alone, as the page's panel calls it when the kind changes.
-  void syncPlayed() { syncPlay(); }
-
-  // midiUndrive: the controls handed back, read from the panel.
-  void undrive() {
-    t_.set("detail", panel_.detail);
-    t_.set("freq", panel_.freq);
-    t_.set("figureRate", panel_.figureRate);
-    t_.set("interval", panel_.interval);
-    t_.set("octaves", 0);
-  }
+  // midiApplyNotes: what `restore` ends the keyboard with, so what is under
+  // the hands outranks what the setup asked for.
+  void apply() { applyNotes(); }
 
   // --- what it says ---------------------------------------------------------
 
@@ -474,7 +435,7 @@ class Keyboard {
   double key() const { return key_; }
   double pedal() const { return pedal_; }
 
-  // layersOn: two layers, in poly on the waveform with the generator alone.
+  // layersOn: two layers, in poly with the generator alone.
   bool layersOn() const { return layers_.mode != LayerMode::Off && layable_ && polyWanted(); }
   /* Which layer the panel shows (editLayer): B only while there is one, so
      no control writes into a layer nobody hears. The A and B buttons choose,
@@ -499,9 +460,6 @@ class Keyboard {
   struct Interval { int index = 0, octaves = 0; };
   struct Layers { LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0; };
 
-  static std::size_t kindOf(Mode m) {
-    return m == Mode::Harmonograph ? 1 : m == Mode::Figure ? 2 : m == Mode::Wireframe ? 3 : 0;
-  }
   std::vector<Held>::iterator find(int note) {
     return std::find_if(notes_.begin(), notes_.end(), [note](const Held& h) { return h.note == note; });
   }
@@ -518,12 +476,8 @@ class Keyboard {
   }
   void tick(int status) { if (realtime_) realtime_->realtime(status); }
 
-  bool drives() const { return drive_[kindOf(t_.tone().mode)]; }  // midiDrivesGenerator
-
-  // polyWanted: only the waveform plays chords.
-  bool polyWanted() const {
-    return mode_ == NoteMode::Poly && t_.tone().mode == Mode::Wave && drives() && present_;
-  }
+  // polyWanted: chords, while there is a keyboard to play them.
+  bool polyWanted() const { return mode_ == NoteMode::Poly && present_; }
 
   // polyHz: equal by default; just is every note on a small ratio to the lowest.
   double polyHz(int note, int root) const {
@@ -628,16 +582,15 @@ class Keyboard {
       if (!on) t_.setVoices(nullptr, 1);
       if (polyWanted()) applyPoly();
     }
-    const Layout want = !on ? (t_.tone().fromGen2 ? Layout::Each : Layout::One)
-                      : layers_.against ? Layout::Against : Layout::Each;
+    const Layout want = !on ? Layout::One : layers_.against ? Layout::Against : Layout::Each;
     if (t_.layout() != want) t_.setLayout(want);
   }
 
-  // midiApplyGate: only the waveform is gated, and only while notes drive it
-  // and there is a keyboard to play them. Only the change opens it here.
+  // midiApplyGate: gated while there is a keyboard to play it. Only the
+  // change opens it here.
   void applyGate() {
     syncPoly();
-    const bool on = drives() && present_ && t_.tone().mode == Mode::Wave;
+    const bool on = present_;
     const bool was = t_.gated();
     t_.setGated(on);
     if (on && !was && !notes_.empty()) t_.gate(true, notes_.back().velocity);
@@ -738,7 +691,6 @@ class Keyboard {
     notesBefore_.clear();
     for (const auto& n : notes_) notesBefore_.push_back(n.note);
     if (struck && t_.gated()) t_.noteDown();
-    if (!drives()) return;
     if (polyWanted()) { applyPoly(); return; }
     if (notes_.empty()) return;
 
@@ -749,7 +701,6 @@ class Keyboard {
       low = std::min(a, b);
       high = std::max(a, b);
     }
-    const Tone& tone = t_.tone();
     const int lead = mode_ == NoteMode::Mono ? notes_.back().note : low;
     const double hz = midiHz(lead);
 
@@ -767,35 +718,10 @@ class Keyboard {
       t_.set("octaves", 0);
     }
 
-    if (tone.mode == Mode::Wave) {
-      // Clamped to the slider's own range, so the control and the signal agree.
-      const double set = std::fmax(30.0, std::fmin(4000.0, hz));
-      t_.set("freq", set);
-      panel_.freq = jsRound(set);
-    } else if (tone.mode == Mode::Figure || tone.mode == Mode::Wireframe) {
-      const double rate = play_[kindOf(tone.mode)] ? std::fmax(1.0, std::fmin(4000.0, hz))
-                        : std::fmax(1.0, std::fmin(200.0, panel_.figureRate * hz / kMidiRoot));
-      t_.set("figureRate", rate);
-      // A dyad on a rose sets its petals to the dyad's own ratio.
-      if (tone.mode == Mode::Figure && tone.figure == Figure::Rose) t_.set("detail", roseDetail());
-    } else if (tone.mode == Mode::Harmonograph && play_[1]) {
-      const double set = std::fmax(30.0, std::fmin(4000.0, hz));
-      t_.set("freq", set);
-      panel_.freq = jsRound(set);
-    }
-  }
-
-  // roseDetail: the dyad's ratio, octaves and all; a unison leaves the slider's.
-  double roseDetail() const {
-    if (mode_ != NoteMode::Dyad || (interval_.index == 0 && interval_.octaves == 0)) return panel_.detail;
-    return intervalRatio(interval_.index, t_.tone().just) * std::pow(2.0, interval_.octaves);
-  }
-
-  // syncPlay: a harmonograph is pitched only while notes can strike it.
-  void syncPlay() {
-    const Tone& tone = t_.tone();
-    const bool pitched = tone.mode == Mode::Harmonograph && play_[1] && drive_[1];
-    if (tone.pitched != pitched) t_.set("pitched", pitched ? 1 : 0);
+    // Clamped to the slider's own range, so the control and the signal agree.
+    const double set = std::fmax(30.0, std::fmin(4000.0, hz));
+    t_.set("freq", set);
+    panel_.freq = jsRound(set);
   }
 
   NoteTarget& t_;
@@ -815,9 +741,6 @@ class Keyboard {
   bool sustain_ = false;
   double bendRange_ = 2, bend_ = 0, pressure_ = 0, pressureTarget_ = 0;  // Expression (6 Nov)
   Express wheelTo_ = Express::Vibrato, pressureTo_ = Express::Off;
-  // Per generator kind: wave, harmonograph, figure, wireframe.
-  std::array<bool, 4> drive_ { true, true, true, false };
-  std::array<bool, 4> play_ { false, false, false, false };
   double key_ = 0;
   Interval interval_;
   PolyCount poly_;

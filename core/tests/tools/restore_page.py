@@ -2,8 +2,8 @@
 the page loads a preset or a code, and what it leaves in the instrument
 written out as one JSON line - both layers' tones as the generator holds them,
 the keyboard's settings and the panel it reads, the LFOs, the routings, the
-key and the quantiser, the score, the arpeggiator, the morph, the plane and the echo, the drawn cycles
-and the figures made of strokes, and every slider.
+key and the quantiser, the score, the arpeggiator, the morph, the plane and the echo, the drawn cycles,
+and every slider. (The figures made of strokes too, until G2 took the drawings.)
 A line may instead be an operation - {"op": "slider", "id", "value"}, a morph
 end stored ("store", "end"), the fader moved ("pos"), the matrix pushing it
 for one frame ("mod") or from now on ("hold"),
@@ -31,7 +31,7 @@ CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/c
 
 # What restore leaves behind, read out of the page. The tones leave out what
 # is not a setting (the chord being played) and what a later piece of the
-# port carries (the drawn cycles and the figures made of strokes).
+# port carries (the drawn cycles).
 DUMP = """(setups) => {
   const out = [];
   // Every slider the page opened with, by id, less lfoRate0: that one is made
@@ -43,11 +43,9 @@ DUMP = """(setups) => {
   // `just` by its truth, which is what the generator plays by: the page keeps
   // the raw value as well, for its panel, and the core does not.
   // The cycles' tables and points by two sums each - weighted by position, so
-  // a point out of place shows, and squared - and two of a table's values; a
-  // compiled path in full.
+  // a point out of place shows, and squared - and two of a table's values.
   const sums = (arr) => { let a = 0, b = 0; arr.forEach((v, i) => { a += v * (i + 1); b += v * v; }); return [a, b]; };
   const digest = (c) => c ? { most: c.most, levels: c.levels.map((t) => [t.length, ...sums(t), t[0], t[517]]) } : null;
-  const pathOf = (p) => p ? { xy: Array.from(p.xy), at: Array.from(p.at) } : null;
   const tone = (t, skip) => { const o = {}; for (const k of Object.keys(t)) if (!skip.includes(k)) o[k] = k === "just" ? !!t[k] : t[k]; return o; };
   // An operation rather than a setup: a hand on a slider, an end of the morph
   // stored, the fader moved, the matrix pushing it for a frame (mod) or from
@@ -100,16 +98,14 @@ DUMP = """(setups) => {
     out.push(JSON.stringify({
       error,
       // Scan's table is a reading of the screen, not a setting, as the chord is a playing (P7a).
-      a: tone(genSettings(), ["cycle", "wavetable", "voices", "figPath", "scanTable"]),
+      a: tone(genSettings(), ["cycle", "wavetable", "voices", "scanTable"]),
       b: tone(genSettings(1), ["cycle", "wavetable", "voices", "scanTable"]),
       midi: { mode: midi.mode, draws: midi.draws, layers: { mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair },
-              polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow, drive: midi.drive,
-              bendRange: midi.bendRange, wheelTo: midi.wheelTo, pressureTo: midi.pressureTo,
-              play: midi.play },
+              polyJust: midi.polyJust, hold: midi.hold, truth: midi.truth, follow: midi.follow,
+              bendRange: midi.bendRange, wheelTo: midi.wheelTo, pressureTo: midi.pressureTo },
       // The interval twice: the core's panel and its keyboard each keep one,
       // where the page's keyboard reads the menu as a number.
-      panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: Number(el.interval.value),
-               figureRate: el.figureRate.value, detail: el.detail.value },
+      panel: { freq: el.freq.value, interval: el.interval.value, keysInterval: Number(el.interval.value) },
       // And what each plays, by its wave a radian in: the core keeps the
       // shape it plays apart from the name the brain keeps.
       lfos: lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, free: l.free, sync: l.sync,
@@ -149,9 +145,6 @@ DUMP = """(setups) => {
       cycles: { codes: [cycleIsDefault(0) ? "" : encodeCycle(drawnCycle.slots[0]), encodeCycleSlots()],
                 points: drawnCycle.slots.map(sums), cycle: digest(genSettings().cycle),
                 bank: (genSettings().wavetable || []).map(digest) },
-      figure: { text: el.figText.value, d: el.figPathD.value, kept: figDrawing.pathD, fault: figDrawing.fault,
-                drawn: encodeDrawn(figDrawing.strokes), textPath: pathOf(figDrawing.text), path: pathOf(figDrawing.path),
-                drawnPath: pathOf(figDrawing.drawn), sent: pathOf(genSettings().figPath) },
       plane: { mirror: plane.mirror, limit: plane.limit, radius: plane.radius, os: plane.os, twist: plane.twist,
                snap: plane.snap, scaleX: plane.scaleX, scaleY: plane.scaleY, shear: plane.shear },
       planeB: { own: planeB.own, mirror: planeB.mirror, limit: planeB.limit, radius: planeB.radius, twist: planeB.twist,

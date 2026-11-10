@@ -326,8 +326,8 @@ with sync_playwright() as pw:
         restore({ fxOrder: order, phaserMix: 80, phaserRate: 500, chorusMix: 60, chorusRate: 220, chorusFeedback: 40,
                   delayMix: 50, delayMs: 10, delayFeedback: 60 });
         const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-        const core = makeGeneratorCore(44100, GEN_DESTS.length, [still(), still()]);
-        core.set('mode', 'wave'); core.set('shape', 'sine'); core.set('amp', 0.5);
+        const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+        core.set('shape', 'sine'); core.set('amp', 0.5);
         const t = genSettings(0);
         for (const k of ['delayMix', 'delayMs', 'delayFeedback', 'chorusMix', 'chorusRate', 'chorusDepthMs', 'chorusMs',
                          'chorusFeedback', 'phaserMix', 'phaserRate', 'phaserDepth', 'phaserFeedback', 'fxOrder']) core.set(k, t[k]);
