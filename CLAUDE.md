@@ -452,9 +452,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   or the hand's name in the rack and the Picture). Linked writes both hands
   (`handSet`); unlinking copies the edited hand into the other; linking copies
   it back and drops the other hand's own routing depths there. A link is never
-  stored: a section is the hand's own while a setup has any of its B fields
-  (so every code from before G6, which wrote them all, loads as the hands'
-  own), and links survive the layers going off. The Picture amount and Strike
+  stored: a section is linked while a setup has none of its B fields, and
+  with any it is the hand's own only where a B value, as restore makes it,
+  differs from A's or a routing on it has its own upper-hand depth
+  (`linksSettle`, page and core), so a code from before G6 loads linked
+  wherever the hands were one; links survive the layers going off. The Picture amount and Strike
   are per hand (`bPictureAmount`, `bScanStrike`); the rack's Together · A · B
   rows and B's Turn row went, each module's own state is a bit in `timeOwn`,
   and a module the hands share beside one that is B's own plays A's state, as
