@@ -167,6 +167,8 @@ inline constexpr SelectSpec kSelects[] = {
   { "scoreLow", "36" "\x1f" "48" "\x1f" "60", "48" },
   { "scoreOctaves", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4", "3" },
   { "filterType", "lowpass" "\x1f" "highpass" "\x1f" "bandpass" "\x1f" "notch", "lowpass" },
+  // Enlarge's Trail (G4): only the look, never in a setup, kept here because every menu is.
+  { "enlargeTrail", "heard" "\x1f" "half" "\x1f" "short", "heard" },
 };
 
 // The sliders the morph walks (MORPH_IDS), in the order the page found them
