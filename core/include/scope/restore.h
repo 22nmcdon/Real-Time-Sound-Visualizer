@@ -1411,7 +1411,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
         }
       }
     }
-    matrix.load(list);
+    // And the sources silenced (G5b), held aside with their routings: the
+    // page's silentIds, whose `if (!text)` is the same falsiness as the list's.
+    std::vector<std::string> silent;
+    if (const Json* ids = s("modSilent")) {
+      const bool falsy = ids->type == Json::Type::Null || (ids->type == Json::Type::Bool && !ids->b)
+                      || (ids->type == Json::Type::Number && (ids->n == 0 || std::isnan(ids->n)))
+                      || (ids->type == Json::Type::String && ids->s.empty());
+      if (!falsy) silent = Matrix::silentIds(utf16To8(jsToString(*ids)));
+    }
+    matrix.keep(list, silent, true);
   }
   // buildSourceDetail: the chosen source's rate slider, made again from where
   // its LFO is (the first LFO, which is the source the page opens on).

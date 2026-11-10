@@ -8,6 +8,8 @@
 #include <thread>
 #include <cmath>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
@@ -2815,6 +2817,85 @@ int main() {
     std::vector<float> late(small.size(), 0.0f);
     for (std::size_t i = 1; i < small.size(); ++i) late[i] = small[i - 1];
     check("null: the same render a sample late is not the same samples", apart(small, late) > 0.01, num(apart(small, late)));
+  }
+
+  std::printf("\n--- the face's right-click (G5b) ---\n");
+  {
+    /* A right-click on a knob opens the page's own menu, and the web view's
+       (Reload, Inspect) is never shown: the page prevents the contextmenu
+       event over everything but a text box, and a web view shows its own
+       menu only for an event not prevented. The face opened as a host opens
+       it, on a window, under a virtual display (xvfb-run -a) with WebKitGTK;
+       without a web view the check says so and fails rather than passing by
+       not running. What it cannot do is press the X server's right button:
+       the web view is a child process's window, out of JUCE's reach, and the
+       container has no XTest tool. So the event is the one WebKit itself
+       dispatches for a right button pressed - a contextmenu at the knob's
+       centre, at whatever is under that point - run in the plugin's own web
+       view, through its own page, and what the check reads is whether that
+       engine and page prevent it and open the page's menu. The null: the same
+       event over the setup code's text box is not prevented, so the web view
+       would show its own there, where Paste is wanted. */
+    ScopeProcessor faced;
+    faced.prepareToPlay(rate, block);
+    std::unique_ptr<juce::AudioProcessorEditor> owned(faced.createEditor());
+    auto* face = dynamic_cast<ScopeEditor*>(owned.get());
+    if (face == nullptr || !face->hasFace()) {
+      check("a web view to open the face in (run under xvfb-run -a, with WebKitGTK)", false, "no web view");
+    } else {
+      owned->addToDesktop(juce::ComponentPeer::windowHasTitleBar);
+      owned->setVisible(true);
+      // Shared, so an answer that comes after the wait has given up has somewhere to go.
+      const auto ask = [&](const juce::String& script, int waitMs) {
+        auto answer = std::make_shared<std::optional<juce::String>>();
+        face->evaluate(script, [answer](juce::WebBrowserComponent::EvaluationResult r) {
+          if (const juce::var* v = r.getResult()) *answer = v->toString();
+          else *answer = "error: " + (r.getError() ? r.getError()->message : juce::String("?"));
+        });
+        for (int waited = 0; !*answer && waited < waitMs; waited += 20)
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+        return answer->value_or("no answer");
+      };
+      juce::String ready;
+      for (int k = 0; k < 300 && ready != "true"; ++k)
+        ready = ask("String(typeof openControlMenu === 'function' && typeof faceLaidOut !== 'undefined' && !!faceLaidOut"
+                    " && !!document.querySelector('[data-mod-dest=\"gen.amp\"] .knob-face'))", 200);
+      const juce::String knob = ask(R"js(
+        (() => {
+          const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+          closeOverlay();
+          const r = document.querySelector('[data-mod-dest="gen.amp"] .knob-face').getBoundingClientRect();
+          const x = r.left + r.width / 2, y = r.top + r.height / 2, at = document.elementFromPoint(x, y);
+          const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true, button: 2, buttons: 2,
+                                                    clientX: x, clientY: y, view: window });
+          at.dispatchEvent(e);
+          const o = document.querySelector('.over.ctx');
+          return JSON.stringify({ prevented: e.defaultPrevented, menu: o ? o.querySelector('.over-title').textContent : null,
+                                  items: o ? o.querySelectorAll('.ctx-item').length : 0 });
+        })())js", 3000);
+      const juce::String text = ask(R"js(
+        (() => {
+          closeOverlay();
+          const box = document.getElementById('presetCode');
+          const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, view: window });
+          box.dispatchEvent(e);
+          return JSON.stringify({ prevented: e.defaultPrevented, menu: !!document.querySelector('.over.ctx') });
+        })())js", 3000);
+      check("the face opened in the web view, and the page answered", ready == "true", ready.toStdString());
+      check("a right-click on the Level knob opens the page's menu, headed Level, and the web view's own is prevented",
+            knob.contains("\"prevented\":true") && knob.contains("\"menu\":\"Level\"") && !knob.contains("\"items\":0"),
+            knob.toStdString());
+      check("null: over the setup code's text box the web view's own menu is left alone, and the page's does not open",
+            text.contains("\"prevented\":false") && text.contains("\"menu\":false"), text.toStdString());
+      /* Put away as a host closes it: hidden, the web view's child let go of
+         its window while the loop still runs, then the editor gone. Taken off
+         the desktop straight away, the X server was asked about a window the
+         child had already destroyed (BadWindow), which ends the process. */
+      owned->setVisible(false);
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      owned.reset();
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+    }
   }
 
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");

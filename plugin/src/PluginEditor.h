@@ -21,9 +21,16 @@ class ScopeEditor final : public juce::AudioProcessorEditor {
  public:
   explicit ScopeEditor(ScopeProcessor& owner);
   void resized() override;
+  /* For the shell test, which opens the face under a virtual display: whether
+     there is a web view, and a script run in the page with what it returns. */
+  bool hasFace() const { return face_; }
+  void evaluate(const juce::String& script, juce::WebBrowserComponent::EvaluationCallback done) {
+    browser_.evaluateJavascript(script, std::move(done));
+  }
 
  private:
   ScopeProcessor& processor_;
+  bool face_ = false;
   juce::WebBrowserComponent browser_;
   juce::Label missing_;  // said instead of the face where there is no web view
 

@@ -713,8 +713,16 @@ class Instrument {
     changed_ = true;
   }
 
+  /* The page's routings after an edit: every routing, and since G5b, after a
+     bar, the sources Routings has silenced (hostRoutingsText), whose
+     routings are kept and not heard. The hand keeps the text whole, so a
+     project saved while a source is silent has its routings back when it
+     opens. A text with no bar is one from before, every routing heard. */
   void route(const std::string& text) {
-    matrix_->setRoutings(Matrix::decode(text));
+    const std::size_t bar = text.find('|');
+    matrix_->keep(Matrix::decode(std::string_view(text).substr(0, bar)),
+                  bar == std::string::npos ? std::vector<std::string>() : Matrix::silentIds(std::string_view(text).substr(bar + 1)),
+                  false);
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("r"))); hand.a.push_back(Json::string(std::string_view("")));
     hand.a.push_back(Json::string(std::string_view(text)));

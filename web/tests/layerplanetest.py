@@ -185,7 +185,8 @@ with sync_playwright() as pw:
     flat_off = core({"sets": []})
     check("and with B's own plane off the routing turns nothing",
           same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
-    way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: !!el.planeTurnRow.querySelector('.mod-open'),
+    # Its way in is its right-click menu since G5b, where it was the shoulder's dots: B's Turn has no words, and has one all the same.
+    way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: menuControl(el.planeTurnRow.querySelector('input[type=range]')) !== null,
                                  listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === 32 })""")
     # It was the table's last slot when it came, so that no slot before it
     # moved, and this asserted exactly that; since P6c the bend's two come

@@ -111,6 +111,8 @@ DUMP = """(setups) => {
       lfos: lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, free: l.free, sync: l.sync,
                                phase: l.phase, epoch: l.epoch, plays: l.shape === "random" ? "random" : waveAt(l.shape, 1) })),
       mod: encodeRoutings(state.modRoutings),
+      // What is kept with the silenced sources' routings held aside, and which (G5b).
+      kept: encodeRoutings(routingsKept()), silent: [...held.keys()],
       key: { root: state.keyRoot, scale: state.keyScale, quantise: state.quantise, glide: state.quantiseGlide, bpm: transport.set },
       score: { on: score.on, step: score.step, voices: score.voices, low: score.low, octaves: score.octaves },
       arp: { mode: el.arpMode.value, rate: el.arpRate.value, octaves: el.arpOctaves.value },

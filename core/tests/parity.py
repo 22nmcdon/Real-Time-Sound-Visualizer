@@ -4415,6 +4415,47 @@ for field in ('"figText"', '"figPath"', '"figDrawn"', '"gen":"harmonograph"', '"
           lambda st: {k: v for k, v in st.items() if k not in DRAWING_KEYS})
 check("and the comparison fails against the page's setups one out of step", rbad(ppage[1:], pport[:-1]) != [])
 
+# The silence, stored (G5b): Routings' switch per source, kept in a setup as
+# `modSilent` beside every routing in `mod`. Each side holds a silenced
+# source's routings aside - kept, in their places, and not heard - and reads
+# the field by the same rules: falsy is none, an empty part names nothing, a
+# source named twice is silenced once, and one with no routing is not.
+SILENT_MOD = "lfo1>gen.freq@0.400;lfo2>gen.amp@-0.250;lfo1>gen.vcf@0.300;env.note>gen.fm@0.500"
+SILENT_MADE = [{"mod": SILENT_MOD, "modSilent": "lfo1"}, {"mod": SILENT_MOD, "modSilent": "lfo2,lfo1"},
+               {"mod": SILENT_MOD, "modSilent": "lfo1,lfo1,,photo.1"}, {"mod": SILENT_MOD, "modSilent": ""},
+               {"mod": SILENT_MOD}, {"mod": SILENT_MOD, "modSilent": 0}, {"mod": SILENT_MOD, "modSilent": None},
+               {"mod": SILENT_MOD, "modSilent": ["lfo2", "env.note"]}, {"mod": SILENT_MOD, "modSilent": True},
+               {"l0d": "freq", "l0a": 40, "modSilent": "lfo1"}, {"mod": "env.note>gen.fm@0.500", "modSilent": "env.note"},
+               {"mod": SILENT_MOD, "modSilent": " lfo1"}]
+# Loaded in turn, so a silence left over from the setup before would show in the next.
+silent_page, silent_port = rboth([_json.dumps(d) for d in SILENT_MADE], "restore_silent.txt")
+sbad = rbad(silent_page, silent_port)
+check("%d setups with sources silenced load to the same instrument: what is heard, what is kept and which are silent"
+      % len(SILENT_MADE), not sbad, sbad[0] if sbad else "")
+sr = [_json.loads(l) for l in silent_page]
+check("a silenced source's routings are kept in their places and not heard",
+      sr[0]["kept"] == SILENT_MOD and sr[0]["mod"] == "lfo2>gen.amp@-0.250;env.note>gen.fm@0.500" and sr[0]["silent"] == ["lfo1"],
+      repr((sr[0]["mod"], sr[0]["kept"], sr[0]["silent"])))
+check("two silenced, in the order the setup names them, and every routing still kept",
+      sr[1]["mod"] == "env.note>gen.fm@0.500" and sr[1]["kept"] == SILENT_MOD and sr[1]["silent"] == ["lfo2", "lfo1"],
+      repr((sr[1]["mod"], sr[1]["silent"])))
+check("a source named twice is silenced once; an empty part, and a source with nothing routed, silence nothing",
+      sr[2]["silent"] == ["lfo1"] and sr[2]["mod"] == sr[0]["mod"], repr(sr[2]["silent"]))
+check("null: an empty field, none, nought and null silence nothing - and the setup after one with a silence has none left",
+      all(r["silent"] == [] and r["mod"] == SILENT_MOD for r in sr[3:7]), repr([r["silent"] for r in sr[3:7]]))
+check("a list is read as its text, as String() reads it, and true as the word, which names no source",
+      sr[7]["silent"] == ["lfo2", "env.note"] and sr[8]["silent"] == [] and sr[8]["mod"] == SILENT_MOD,
+      repr((sr[7]["silent"], sr[8]["silent"])))
+check("the old enum's routing is silenced like any, and a setup can silence all it routes",
+      sr[9]["mod"] == "" and sr[9]["kept"] == "lfo1>gen.freq@0.400" and sr[10]["mod"] == "" and sr[10]["silent"] == ["env.note"],
+      repr((sr[9]["kept"], sr[10]["kept"])))
+check("an id is not trimmed: a space before it names another source, which has nothing routed",
+      sr[11]["silent"] == [] and sr[11]["mod"] == SILENT_MOD, repr(sr[11]["silent"]))
+# Its null: the page told a different silence, and the port must disagree.
+snull_page, _ = rboth([_json.dumps(dict(SILENT_MADE[0], modSilent="lfo2"))], "restore_silent_null.txt")
+check("null: the page told LFO 2 silenced where the port was told LFO 1 disagrees with it",
+      rdiff(_json.loads(snull_page[0]), _json.loads(silent_port[0])) != [])
+
 print("\n--- the morph ---")
 # A hand on the sliders, the morph's ends stored and the fader moved - by hand
 # and by the matrix - through the page's own handlers against
@@ -5374,6 +5415,17 @@ iruns["expression"] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=False
     + [["control", "midiPressureTo", "vibrato"], ["midi", 0xD0, 120]] + blocks(30) + [["midi", 0xD0, 0]] + blocks(10)
 iruns["scanned off"] = [["make", 48000, 128, ocode["Scanned fifth"]], ["slider", "oscScan", "0"], NOTE_ON(57)] \
     + blocks(200, 128, 9) + [["setup", ocode["Scanned interference"]], ["slider", "oscScan", "0"]] + blocks(150, 128, 9)
+# The silence, stored (G5b): the page sends every routing and, after a bar,
+# the sources Routings has silenced (hostRoutingsText). A silenced source's
+# routing is kept and not heard: the run with LFO 1 silenced is to play what
+# the run that never routed LFO 1 plays, every sample, and the run with it
+# heard is not (the null) - LFO 1 on the voice filter's cutoff, LFO 2 on the
+# pitch, under a held note. Checked after the runs, with the project reopened.
+SILENCE_ROUTES = "lfo1>gen.vcf@0.55;lfo2>gen.freq@0.35"
+SILENCE_MAKE = [["make", 48000, 128, ocode_of({"vcfType": 1, "vcfCut": 500, "shape": "ramp", "timebase": 3})], NOTE_ON(57)] + blocks(4)
+iruns["silenced"] = SILENCE_MAKE + [["routings", SILENCE_ROUTES + "|lfo1"]] + blocks(24)
+iruns["silenced as heard"] = SILENCE_MAKE + [["routings", "lfo2>gen.freq@0.35"]] + blocks(24)
+iruns["silenced heard"] = SILENCE_MAKE + [["routings", SILENCE_ROUTES]] + blocks(24)
 # The picture stage (P3) is on in everything the instrument plays, and moves
 # the fold, the echo, the twist and the phase from the picture - so the runs
 # above, which hold the instrument's plumbing and read its sound for an input
@@ -5421,6 +5473,43 @@ a, b = iblocks("scanned"), iblocks("scanned off")
 sapart = max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")
 check("scanned: Scan is heard in the compiled instrument, against the same with its depth at nought",
       0.05 < sapart < float("inf"), "apart by %g" % sapart)
+# The silence (G5b): heard as if never routed, and not as if routed.
+def iapart(a, b):
+    a, b = iblocks(a), iblocks(b)
+    return max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")
+check("silenced: a silenced source's routing is not heard - the same, every sample, as never routing it",
+      iapart("silenced", "silenced as heard") == 0, "apart by %g" % iapart("silenced", "silenced as heard"))
+check("null: and the same routing heard is heard", 0.01 < iapart("silenced", "silenced heard") < float("inf"),
+      "apart by %g" % iapart("silenced", "silenced heard"))
+# Kept: the state the plugin saves has every routing and the silence, so a
+# project reopened from it has LFO 1's routing still, silent, and plays what
+# was played. Reopened against the same hands made fresh, and against the
+# state with the bar's part cut off, which hears LFO 1 again (the null).
+def istate(name):
+    code = [l for l in iout[name][1] if l.startswith("state ")][-1].split(" ", 2)[2]
+    return _json.loads(base64.b64decode(code + "=" * (-len(code) % 4)))
+sstate = istate("silenced")
+shands = [h for h in sstate.get("pluginHands", []) if h[0] == "r"]
+check("and kept: the state the plugin saves has LFO 1's routing and the silence beside the heard one",
+      shands and shands[-1][2] == SILENCE_ROUTES + "|lfo1", repr(shands))
+def ireopen(state, name):
+    lines = [["make", 48000, 128, base64.b64encode(_json.dumps(state).encode()).decode().rstrip("=")], NOTE_ON(57)] + blocks(16)
+    path = iscript(name, lines)
+    a, b = icpp(path), ijs(path)
+    most, other = icompare(a, b)
+    return a, most, other
+unsilenced = dict(sstate, pluginHands=[h if h[0] != "r" else ["r", "", SILENCE_ROUTES] for h in sstate["pluginHands"]])
+fresh = dict(sstate, pluginHands=[h if h[0] != "r" else ["r", "", "lfo2>gen.freq@0.35"] for h in sstate["pluginHands"]])
+ro, ro_most, ro_other = ireopen(sstate, "silenced reopened")
+rf, _, _ = ireopen(fresh, "silenced fresh")
+ru, _, _ = ireopen(unsilenced, "silenced unsilenced")
+def iblocks_of(out): return [float(v) for l in out if l.startswith("block ") for v in l.split()[1:]]
+reo = max(abs(x - y) for x, y in zip(iblocks_of(ro), iblocks_of(rf)))
+reu = max(abs(x - y) for x, y in zip(iblocks_of(ro), iblocks_of(ru)))
+check("a project reopened from that state keeps the silence: it plays what LFO 2 alone plays, the compiled as the native",
+      reo == 0 and ro_most == 0 and not ro_other and len(iblocks_of(ro)) == len(iblocks_of(rf)) > 0,
+      "apart by %g; compiled %g %s" % (reo, ro_most, ro_other))
+check("null: the same state with the silence cut off hears LFO 1 again", reu > 0.01, "apart by %g" % reu)
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)

@@ -7,9 +7,12 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-309 controls: 300 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
+312 controls: 303 lines, 9 marked as removed by a later stage, 73 wanting a paragraph (counted
 again in G5a, which added the Routings panel's, the Photocell's editor's and the Envelope's
-two switches, and moved the fade to Routings).
+two switches, and moved the fade to Routings; and in G5b, which added a depth's three - its
+slider, its number and its cross - wherever a row of depths is, and whose right-click menu
+has no controls of its own to describe: its items are its words, and *What is this?* in it
+opens a control's card).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -65,11 +68,14 @@ them; G3b gives each a `data-say` with the key in the first column:
 | fx-switch | A rack module's switch | Takes the module's Mix to nought and keeps what it had; on puts it back. The Plane's switch rests its shaping and its Turn. | 123 |
 | fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
 | fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
-| mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor over the tabs. | 98 |
-| route-switch | A source’s switch in Routings | Off silences every routing from this source and keeps them; on puts them back as they were. Not part of a setup. | 113 |
+| mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on. | 125 |
+| route-switch | A source’s switch in Routings | Off silences every routing from this source and keeps them; on puts them back as they were. A silence is kept with the sound. | 125 |
 | tab-play | The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
 | tab-ink | The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
 | tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order. | 117 |
+| mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
+| mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
+| mod-remove | Take it off | Takes this source off this control. The source goes on moving everything else it is on. | 87 |
 
 ## Play
 

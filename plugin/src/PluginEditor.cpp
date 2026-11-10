@@ -7,10 +7,24 @@
 #include "BinaryData.h"
 
 namespace {
+/* WebView2 on Windows, and the platform's own web view elsewhere. WebView2
+   was asked for on every platform until G5b. The component never minded -
+   macOS and Linux build their own whatever is asked - but areOptionsSupported
+   does: on both it says yes only to the default, so from the day the editor
+   began asking it (6439001, the "no web view" message) every Mac and Linux
+   face was that message instead of the page. Found when the shell test first
+   opened the face under a virtual display, to right-click a knob in it. */
+constexpr auto kBackend =
+#if JUCE_WINDOWS
+    juce::WebBrowserComponent::Options::Backend::webview2;
+#else
+    juce::WebBrowserComponent::Options::Backend::defaultBackend;
+#endif
+
 juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<juce::WebBrowserComponent::Resource>(const juce::String&)> provider,
                                                   ScopeProcessor& owner) {
   return juce::WebBrowserComponent::Options{}
-      .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+      .withBackend(kBackend)
       .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
                                   .withUserDataFolder(juce::File::getSpecialLocation(juce::File::tempDirectory)))
       .withNativeIntegrationEnabled()
@@ -100,6 +114,7 @@ ScopeEditor::ScopeEditor(ScopeProcessor& owner)
      so now, and that the sound and the host's parameters go on working. */
   const bool supported = juce::WebBrowserComponent::areOptionsSupported(
       browserOptions([](const juce::String&) { return std::optional<juce::WebBrowserComponent::Resource> {}; }, owner));
+  face_ = supported;
   if (supported) {
     addAndMakeVisible(browser_);
   } else {

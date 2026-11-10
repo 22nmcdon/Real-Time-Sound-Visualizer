@@ -151,7 +151,8 @@ with sync_playwright() as pw:
       const other = capAt();
       return { alone, withCompany, other,
                min: Number(el.freq.min), max: Number(el.freq.max),
-               pips: document.querySelectorAll('[data-mod-dest="gen.freq"] .mod-open .pip').length };
+               // Since G5b the other source is a tick on the ring, where it was a second dot at the shoulder.
+               ticks: [...document.querySelectorAll('[data-mod-dest="gen.freq"] .lane-tick')].map((t) => t.dataset.source) };
     }"""); p.wait_for_timeout(200)
 
     def freq_x(hz):
@@ -167,7 +168,7 @@ with sync_playwright() as pw:
     check("focusing the second shows the second, at its own depth",
           abs(both["other"] - want_two) < 1e-6,
           "%.2f wanted %.2f" % (both["other"], want_two))
-    check("and both are counted on the button", both["pips"] == 2, str(both["pips"]))
+    check("and the one not drawn is a tick", both["ticks"] == ["lfo1"], str(both["ticks"]))
 
     print("\n--- a bipolar source sweeps both ways, an envelope one ---")
     def bar_for(routing_js, elid, want_section):
@@ -241,7 +242,8 @@ with sync_playwright() as pw:
       state.modRoutings = []; paintRoutings();
       const host = el.rotate.parentElement;
       return { parts: Array.from(host.querySelectorAll('.mod-lane')).filter((n) => !n.hidden).length,
-               ring: !!document.querySelector('[data-mod-dest="view.rotate"] .mod-open .ring') };
+               // The way in since G5b: the control's right-click menu, where it was a hollow ring.
+               ring: menuControl(el.rotate) === el.rotate };
     }"""); p.wait_for_timeout(200)
     check("nothing on it, nothing drawn", bare["parts"] == 0, str(bare))
     check("but the way in is still there", bare["ring"] is True, str(bare))

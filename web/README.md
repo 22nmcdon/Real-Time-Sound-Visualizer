@@ -59,7 +59,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `actest.py` | AC coupling: the picture's blocker and the speakers', from one corner |
 | `trigtest.py` | the trigger level in fractions of full scale, and the v1 setup migration |
 | `scaletest.py` | full scale as a continuous gain, its nine detents, and both setup migrations |
-| `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths |
+| `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths; since G5b through the right-click menu and a long press, with the ring and its ticks counting the sources |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
 | `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
 | `ratetest.py` | the sample-rate audit: everything that was secretly a count of samples, from 22 kHz to 96 kHz |
@@ -93,7 +93,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers; with the modulation row in place across the window (G5a), cards at 1400x900 and chips at the four smaller windows, and the null that the cards' row puts Ink over at 1100x860 |
-| `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, forgotten by a restore and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
+| `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, kept by a restore since G5b (forgotten until then) and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
+| `ringtest.py` | modulation on a knob (G5b): the selected source's ring and its direction on an asymmetric pair (+40% and -25% on the Frequency), the others' ticks, the dot as the sum; Alt-drag and Shift+Alt with real keys, the ring's handle; the editor named for the knob, its bar's bands, a typed depth; the right-click menu with and without sources and on a menu, Reset, Type a value, Copy to layer B, What is this?, Esc, a click away, the arrows, Shift+F10, a long press, the browser's own menu prevented and left to a text box; the info line's right-click; the silence stored, restored, through a code and through the plugin's text, each with its null |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
@@ -5523,3 +5524,64 @@ the editor away times out on the click. Pressing the card again puts it away
 a routing or a source changes (`buildSourceChips`), as are the editor's
 drawings: a test holding a card's canvas across a photocell switched on is
 holding a detached one, and reads its last drawing for ever.
+
+**A silence is stored as the sources silenced, beside every routing (G5b).**
+G5a held a silenced source's routings out of `state.modRoutings` and told the
+instrument the routings heard, so the plugin saved a project without them. The
+owner chose to store it: `modSilent`, the silenced sources' ids joined by
+commas, beside `mod`, which still has every routing. A list of sources rather
+than a mark on each routing, because a silence is a source's (its switch is in
+Routings' heading for the source, and patching the source lifts it), and
+because `mod` keeps its grammar: an older page or plugin reading a newer code
+plays the silenced routings rather than dropping them, which a routing with a
+mark it could not parse would have been. Additive, so no version bump. Read by
+the same rules on both sides: falsy is none, the text split at commas with
+nothing trimmed, an empty part naming nothing, a source named twice silenced
+once, one with no routing not silenced at all (`silentIds`,
+`scope::Matrix::silentIds` and `keep`). The instrument behind the page is told
+every routing and, after a bar, the silence (`hostRoutingsText`,
+`kept|lfo1`), which `Instrument::route` splits, and the plugin's hand keeps the
+text whole, so a project reopened has the routings and the silence; a text
+with no bar is one from before, every routing heard. The matrix's own
+functions still read only what is heard, on both sides, so parity's lifted
+functions need nothing new. What it costs: a silence is now a change to the
+sound, and a step in undo.
+
+**The right-click menu names its Reset without moving the control.** A
+reading is written by each slider's own handler; nothing outside it knows how
+to format a value. Working out the Reset's reading by moving the control and
+reading it back would change the sound while the menu is merely open. So the
+page keeps a note of every reading a range has shown for a value
+(`seenReadings`: the markup's own readings at load, and every reading after an
+`input` event, read from a listener on the document that bubbles, so after the
+control's handler has written it), and Reset names the default from that, or
+nothing if the control has never shown it. *Type a value*, once chosen, does
+move the control: by halves across its range, reading back each time, to the
+value whose reading is nearest what was typed, in the reading's own terms
+(`readingNumber`: *2k* and *2 kHz* are 2000, seconds against milliseconds,
+*off* nought). A reading that does not rise or fall steadily with its control
+lands near, not nearest; a reading that is not a number (a shape's name) takes
+the typed number as the control's own.
+
+**The ring's handle finds a depth by trying each one.** Pointed at, the end of
+a knob's ring is a handle (`wireRingHandle`). Where the pointer is round the
+face is a value of the control; the depth is the whole percent whose reach is
+nearest it, found by trying all of them (`depthForValue`), because some
+destinations' laws have no inverse to write and an octave law's does not read
+well. Ties go to the smaller depth, so dragging past the end of the range asks
+for no more than it takes to get there. The handle is the one part of the ring
+that takes the pointer; everything else on it is `pointer-events: none`, or a
+press on the ring would stop turning the knob.
+
+**The plugin's face was its "no web view" message on Linux and macOS.** The
+editor asked JUCE for WebView2 on every platform, which the component ignores
+outside Windows, but since 6439001 it also asked `areOptionsSupported`, which
+on Linux and macOS says yes only to the default backend: every face there was
+the message, and the shell test, which built editors only to measure their
+size, passed. Found in G5b, when the shell test first opened the face under a
+virtual display to right-click a knob in it; the backend is WebView2 on
+Windows alone now. The shell test's check runs the page in the plugin's own
+WebKitGTK (`xvfb-run -a`), and what it cannot do is press the X server's right
+button: the web view is a child process's window, beyond JUCE, and the
+container has no XTest tool, so it dispatches the contextmenu event WebKit
+itself would at the knob's centre and reads whether the page prevents it.

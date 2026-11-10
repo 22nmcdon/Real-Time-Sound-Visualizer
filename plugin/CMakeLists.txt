@@ -61,7 +61,10 @@ target_link_libraries(ScopeInstrument
 # neither a host nor a web view. `ctest` or run it directly.
 juce_add_console_app(ScopeShellTest PRODUCT_NAME "ScopeShellTest" NEEDS_WEB_BROWSER TRUE)
 target_sources(ScopeShellTest PRIVATE tests/ShellTest.cpp src/PluginProcessor.cpp src/PluginEditor.cpp)
-target_compile_definitions(ScopeShellTest PRIVATE JucePlugin_Name="Scope" JUCE_WEB_BROWSER=1 JUCE_USE_CURL=0)
+# Modal loops, for the test alone: it opens the face and waits on the message
+# thread for the page to answer (the right-click, G5b).
+target_compile_definitions(ScopeShellTest PRIVATE JucePlugin_Name="Scope" JUCE_WEB_BROWSER=1 JUCE_USE_CURL=0
+                           JUCE_MODAL_LOOPS_PERMITTED=1)
 # The preset library before P8g, which the shell test opens the presets it was
 # written against from: the bank the plugin ships is eleven since then.
 target_compile_definitions(ScopeShellTest PRIVATE

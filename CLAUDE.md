@@ -201,8 +201,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **A control's appearance must not depend on how many modulation sources are on
   it.** Two designs failed here. `patchtest.py` measures the knob's cell - its
   box, and where its face and reading sit - with nought, one, two and three
-  sources and requires all four identical; the editor's button sits at the
-  face's shoulder, out of the flow.
+  sources and requires all four identical; the ring, its ticks and its dot
+  are drawn outside the face's box, out of the flow, and the way in is the
+  control's right-click menu (G5b).
 - **The Bench's controls are knobs over their range inputs** (P8c, from the
   owner's Headroom). The input stays the value, the keyboard and what every
   test and host knob writes; the face follows it through a setter on the
@@ -237,13 +238,31 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (`TAB_LINES`, read from the values a few times a second, never from the
   readings beside them, which only an input event writes). The cards took
   78 px of the tabs' height at 1400x900, so the fit has less slack than it had.
-- **Three modulation sources, a card each, and no drawer** (F4 of
-  `web/docs/redesigning-the-face.md`, 7 Nov). LFO 1, LFO 2 and the Envelope
-  are cards under the screen (`MOD_CARDS`, `offered`): drag one onto a knob,
-  press one to open its editor over the tabs - beside the screen, two
-  columns, its destination list scrolling inside itself past a dozen, and
-  `fittest.py` requires a dozen to fit. The control's own editor and the
-  search offer those three and no others. The rest of the twenty-eight are
+- **Four modulation sources, a card each, in a row across the window, and
+  no drawer** (F4 of `web/docs/redesigning-the-face.md`, 7 Nov; the row and
+  the knob G5 of `the-face-second-pass.md`, 10 Nov). LFO 1, LFO 2, the
+  Envelope and the Photocell are cards in a row under the screen and the
+  tabs, the window's width (`MOD_CARDS`, `offered`, `cardSources`), each
+  drawing what its source is doing with a dot where it is now, and
+  *Routings* with its count in the corner. Under 900 tall, and on the
+  compact face, they are chips with a small drawing each (`CHIPS_H`): the
+  cards are 87 px and the tabs had not the difference. The on-screen keys
+  cover the row, as they cover the Picture section (the owner's call: hide
+  them to patch). Drag a card onto a knob; press one to open its editor over
+  the tabs, its source drawn large and *Where it goes* in a second column
+  scrolling inside itself past a dozen, and `fittest.py` requires a dozen to
+  fit. The Photocell's card is there whether or not it is on, and patching
+  from it switches it on. On a knob, the selected source (the card or editor
+  row last pressed, if it is on the knob, else its first) is a ring from the
+  hand's value to its reach, every other a tick at its reach, and a dot the
+  control now; Alt-drag (Shift with it finer) or the ring's handle moves the
+  selected depth, all through `setDepth`. *Routings* lists every routing by
+  source or by destination, with a switch per source that silences its
+  routings and keeps them, stored as `modSilent` beside `mod` (additive,
+  read by the page and the core; the instrument is told `kept|ids`), so a
+  silence survives a preset, a code and a plugin project; and it holds the
+  modulation fade (`data-home="routings"`). The control's own editor and the
+  search offer the four cards' sources and no others. The rest of the twenty-eight are
   cut or parked. Cut in F4b, with a version-9 decode pass on both sides
   that drops their routings (`CUT_SOURCE`) and the `cc` field: the learned
   controllers (the wheel, the swell, the pedal and the panics still act),
@@ -263,16 +282,30 @@ Do not re-litigate these without a reason; each replaced something that failed.
   once a phrase or again on every note (`noteDown`, page and core):
   those controls are written once in the page, outside the editor, and moved
   into it while it is open, so their ids resolve from the start for the
-  plugin's panel and the morph. This replaced the drawer
+  plugin's panel and the morph. Envelope's ink is sage since G5b, as drawn: on
+  slate it was LFO 2's, and a ring and a tick in one ink cannot be told apart.
+  This replaced the drawer
   (*Advanced*, P3 to F3, which hid the routing matrix and every tab that was
   not the loop) and the Sources tab, which showed six families one at a time
   because forty chips at once read as a wall; F1 to F3 found each of the
   drawer's other tabs a place of its own. An unpatched control's hollow ring
   stays in its place, transparent until the control is pointed at (faint on
   a touch screen), so the face is quiet at rest and a control still says it
-  can take a patch. A tab remembered from before a rename lands where its
-  sections went (`BENCH_TAB_RENAMED`). `layouttest.py`, `benchtest.py` and
-  `patchtest.py` hold it.
+  can take a patch - until G5b, which took the hollow ring and the dots at
+  the shoulder away for the right-click menu below. A tab remembered from
+  before a rename lands where its sections went (`BENCH_TAB_RENAMED`).
+  `layouttest.py`, `benchtest.py`, `patchtest.py`, `modrowtest.py` and
+  `ringtest.py` hold it.
+- **The right-click menu is the way to a control's modulation and value**
+  (G5b, 10 Nov): right-click, Ctrl-click on a Mac, a long press, or Shift+F10
+  with it focused. Its modulation first (each source on it opening the
+  control's editor over the knob, the others to add, Clear), then Type a
+  value, Reset (naming where it starts) and on a split Copy to the other
+  hand, then What is this?, the info line's card. Menus and switches have
+  it without the modulation. The browser's own menu is never shown but over
+  a text box, so Paste still works there. `ringtest.py` holds it, and the
+  plugin's shell test right-clicks a knob in the real face under
+  `xvfb-run -a`.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
   is the screen's rotation), Phaser, Chorus, Delay, then the Reverb (9
@@ -280,7 +313,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   main knobs, Mix first. Its arrow opens the rest under it, one module at a
   time, and while one is open the others fold to their lines only if the
   tab would scroll with their knobs showing (`fitRack`, F8): at 1400x900 they
-  keep them, as drawn, and on the compact face they fold. Decided by room,
+  keep them, as drawn, with one layer (two fold since G5a's row), and on the
+  compact face they fold. Decided by room,
   not by window size, so it is right at sizes nobody measured.
   The switch is a view over values, not a field: off takes the Mix (the
   Plane's shaping and turn) to rest and keeps what it had, on puts it back
@@ -312,7 +346,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, the inputs, the modulation fade, This window; two columns by
   `data-place` since F7b, notes behind each section's dots, the panel under
-  the header on the window's right), `bench` (everything played or tuned) or, since
+  the header on the window's right), `bench` (everything played or tuned),
+  since G5a `routings` (the modulation fade, in Routings), or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced, with the
   Beam since F7b) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
   the screen opened from the toolbar above it, which also holds run, mode,
@@ -390,7 +425,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   (`setCompact`, `body[data-compact]`): the header one row without the line
   of what is playing or Browse, the tabs without their lines, the cards as
   chips, narrower columns (`BENCH_COL_COMPACT`) with labels beside their
-  menus, smaller knobs and the keys shorter. The verdict and readouts are a
+  menus, smaller knobs and the keys shorter; the modulation cards are chips
+  there and on any window under 900 tall. The verdict and readouts are a
   line in the screen's column, between the screen and the cards, and a line
   under the screen in Enlarge, where Picture only hides them. `windowtest.py` and
   `fittest.py` hold it.

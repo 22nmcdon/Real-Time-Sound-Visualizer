@@ -1,6 +1,6 @@
 # The face, second pass
 
-A design, not built. It is the brief for the stage after the reverb: the face's second
+A design, built through G5 (see *Stages*). It is the brief for the stage after the reverb: the face's second
 pass, agreed with the owner from mockups on 9 November 2026, after the second review
 (`second-review.md`, beside this). The first pass is `redesigning-the-face.md`; this one
 keeps its rules and changes four things about the face, fixes one bug that is in the
@@ -390,6 +390,26 @@ Each leaves the suite green and is pushed alone.
   core reads too). Not built: dragging the Envelope's corners, the LFO's Start and Fade
   in, the Photocell's Size and Smooth, and the routing rows' *Both / Upper / Lower*,
   which wait for G6's hands. `modrowtest.py` holds it. Modulation on a knob is G5b.
+  **G5b built 10 Nov**, modulation on a knob, page, core and plugin: the ring in the
+  selected source's ink and backwards for a negative depth, a tick for each other source,
+  the dot as the sum; Alt-drag (Shift for fine) and the ring's handle, the reading and the
+  info line saying whose depth while it moves; the editor over the knob, named for the
+  control, with its bar, a picture of each source and a depth to type; the right-click
+  menu (a long press, Ctrl-click, Shift+F10 or the menu key) in place of the shoulder's
+  dots, with *Copy to layer B* (or A) on a split until G6 names the hands, and the
+  browser's own menu prevented but over a text box; and the info line saying *Right-click
+  for modulation and more*. Decided where the design was open: the silence is stored, the
+  owner's call, as a list of silenced sources (`modSilent`) beside every routing in `mod`
+  rather than a mark on each routing - a silence is a source's, and `mod` keeps its
+  grammar, so an older reader plays the routings rather than losing them - and the core
+  reads and keeps it (`scope::Matrix::keep`), so the plugin's project keeps a silent
+  source's routings; it is a step in undo now. *Reset* names the value from a reading the
+  control has shown, never by moving it; *Type a value* is in the reading's own terms
+  (*2k*, *330 Hz*), found by moving the control once chosen. A slider that takes a source
+  keeps its one lane; the ticks and the handle are a knob's. The plugin's face had been the
+  *no web view* message on Linux and macOS since the editor began asking (it asked for
+  WebView2 everywhere); fixed, found by the shell test's new right-click.
+  `ringtest.py` and the shell test hold it.
 - **G6 The hands.** The selector, a link per section, the new twins, routings that follow
   the link, Edit A/B and the modules' layer switches retired.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.

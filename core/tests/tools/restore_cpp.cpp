@@ -249,6 +249,12 @@ int main(int argc, char** argv) {
     }
     out.set("lfos", lfoList);
     out.set("mod", str(scope::Matrix::encode(matrix.routings())));
+    out.set("kept", str(scope::Matrix::encode(matrix.kept())));
+    {
+      Json silent = Json::array();
+      for (const auto& id : matrix.silent()) silent.a.push_back(str(id));
+      out.set("silent", silent);
+    }
     Json key = Json::object();
     key.set("root", num(brain.keyRoot)); key.set("scale", str(brain.keyScale)); key.set("quantise", flag(brain.quantise));
     key.set("glide", num(brain.quantiseGlide)); key.set("bpm", num(brain.clock.set));

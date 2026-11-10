@@ -6,11 +6,16 @@ state any number and was horrible to aim. Both made a drag the only way in, and
 both were hard to use for the same reason: the target was a few pixels tall and
 nothing said it was there until you had already picked something up.
 
-So: a button on every control that can take a patch, present whether or not
-anything is on it, opening a panel of ordinary sliders. One gesture, the same
-on a pointer, a keyboard and a thumb. What is asserted here is mostly that -
-that the way in is always visible, that the panel is made of real controls, and
-that using it never changes the shape of the page underneath.
+So: a way in on every control that can take a patch, whether or not anything
+is on it, opening a panel of ordinary sliders. One gesture, the same on a
+pointer, a keyboard and a thumb. Until G5b it was a button at the knob's
+shoulder - a hollow ring, then a dot per source - and since G5b it is the
+control's right-click menu (a long press on a thumb, Shift+F10 or the menu key
+on a keyboard), while the ring round the knob and its ticks say what is on it.
+What is asserted here is mostly that - that the way in is on every control,
+that the panel is made of real controls, and that using it never changes the
+shape of the page underneath. ringtest.py holds the menu and the ring in
+detail.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -26,6 +31,9 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 ROUTES = "() => state.modRoutings.map((r) => r.sourceId + '>' + r.destId + '@' + r.amount)"
+def null(name, red, detail=""):
+    """A check's null: the same comparison fed a value it must reject."""
+    check("null: " + name, red, detail)
 
 
 def open_bench(page):
@@ -52,24 +60,32 @@ with sync_playwright() as pw:
 
     print("\n--- the way in is always there ---")
     # The complaint about both earlier designs: nothing on an unpatched control
-    # said it could take a patch. Every one of them carries the button now,
-    # empty or not, and it is in the same place at the same size either way.
+    # said it could take a patch. Every one of them has its right-click menu
+    # since G5b, empty or not, with the modulation in it - the shoulder's
+    # button, which was there until then, has gone.
     ways = p.evaluate("""() => {
       const rows = Array.from(document.querySelectorAll('[data-mod-dest]'));
-      const missing = rows.filter((r) => !r.querySelector('.mod-open')).length;
-      const shown = rows.filter((r) => {
-        const b = r.querySelector('.mod-open');
-        return b && b.offsetWidth > 0;
-      }).length;
-      return { rows: rows.length, missing,
-               shown,                       // the ones whose section is on screen
-               rings: document.querySelectorAll('.mod-open .ring').length };
+      const ranges = rows.map((r) => r.querySelector('input[type=range]')).filter(Boolean);
+      return { rows: rows.length, ranges: ranges.length,
+               missing: ranges.filter((c) => menuControl(c) !== c).map((c) => c.id),
+               button: menuControl(el.clearButton) === null,
+               shoulders: document.querySelectorAll('.mod-open').length };
     }""")
-    check("every destination has a way in", ways["missing"] == 0, str(ways))
-    check("and an empty one still shows a ring", ways["rings"] >= 6, str(ways))
+    check("every destination's control has a right-click menu", ways["ranges"] >= 30 and ways["missing"] == [], str(ways))
+    null("a button has none", ways["button"], str(ways))
+    check("and the shoulder's buttons are gone", ways["shoulders"] == 0, str(ways))
 
     print("\n--- the editor is made of ordinary controls ---")
-    p.locator('[data-mod-dest="gen.freq"] .mod-open').click(); p.wait_for_timeout(300)
+    # A real right-click, and the menu's Modulate with.
+    fx, fy = (lambda bb: (bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2))(
+        p.locator('[data-mod-dest="gen.freq"] .knob-face').bounding_box())
+    p.mouse.click(fx, fy, button="right"); p.wait_for_timeout(300)
+    menu = p.evaluate("() => [...document.querySelectorAll('.over.ctx .ctx-item[data-item=add]')].map((b) => b.dataset.source)")
+    p.locator('.ctx-item[data-item="add"][data-source="lfo1"]').click(); p.wait_for_timeout(300)
+    added = p.evaluate(ROUTES)
+    p.mouse.click(fx, fy, button="right"); p.wait_for_timeout(300)
+    p.locator('.ctx-item[data-item="routing"][data-source="lfo1"]').click(); p.wait_for_timeout(300)
+    p.locator('.over .mod-edit-off').click(); p.wait_for_timeout(300)
     opened = p.evaluate("""() => {
       const over = document.querySelector('.over');
       if (!over) return null;
@@ -79,8 +95,10 @@ with sync_playwright() as pw:
                add: Array.from(over.querySelectorAll('.mod-add-one'))
                  .map((n) => n.textContent.trim()) };
     }""")
-    check("pressing the dots opens it on that parameter",
-          opened and opened["title"] == "Frequency", str(opened))
+    check("right-clicked, its menu offers the cards' sources, and one patches it",
+          menu == ["lfo1", "lfo2", "env.note", "photo.1"] and added == ["lfo1>gen.freq@0.35"], "%s %s" % (menu, added))
+    check("choosing it there opens the editor on that parameter, and its cross takes it off again",
+          opened and opened["title"] == "Frequency" and opened["rows"] == 0, str(opened))
     check("it says what the control is at", opened["sub"] == "220 Hz", str(opened))
     # Counted from the registry rather than pinned at three. It was three, and
     # then the note envelope became a source and three tests in this file said
@@ -97,9 +115,9 @@ with sync_playwright() as pw:
     # on (cardSources), so it is counted from the cards, not the registry,
     # where it is only while it is on.
     every = p.evaluate("() => cardSources().filter((s) => s.event !== true && byHand(s)).length")
-    check("nothing on it yet, so every card's source is offered, and only those four, the Photocell's while it is off",
+    check("nothing on it now, so every card's source is offered, and only those four, the Photocell's while it is off",
           every == 4 and p.evaluate("() => photo.on") is False and
-          len(opened["add"]) == every, "%d offered of %d"
+          len(opened["add"]) == every and len(menu) == every, "%d offered of %d"
           % (len(opened["add"]), every))
 
     p.locator('.mod-add-one[data-add="lfo1"]').click(); p.wait_for_timeout(300)
@@ -110,7 +128,7 @@ with sync_playwright() as pw:
       const slider = line.querySelector('input[type=range]');
       return { name: line.querySelector('.mod-edit-name').textContent,
                kind: slider.type, value: slider.value,
-               reads: line.querySelector('.mod-edit-val').textContent,
+               reads: line.querySelector('.mod-edit-val').value,
                offered: document.querySelectorAll('.mod-add-one').length };
     }""")
     check("and it becomes a row with a real slider in it",
@@ -126,8 +144,9 @@ with sync_playwright() as pw:
     check("dragging it sets the routing",
           abs(p.evaluate("() => state.modRoutings[0].amount") + 0.8) < 1e-6,
           str(p.evaluate("() => state.modRoutings[0].amount")))
+    # A box to type into since G5b, written with a true minus.
     check("and the readout follows",
-          p.evaluate("() => document.querySelector('.over .mod-edit-val').textContent") == "-80%")
+          p.evaluate("() => document.querySelector('.over .mod-edit-val').value") == "\u221280%")
     # A keyboard gets this for nothing, which neither earlier design managed.
     p.locator(".over .mod-edit input[type=range]").focus()
     p.keyboard.press("ArrowRight"); p.wait_for_timeout(200)
@@ -210,13 +229,14 @@ with sync_playwright() as pw:
       addRouting('lfo1', 'gen.freq');     await settle();  const one = snap();
       addRouting('lfo2', 'gen.freq');     await settle();  const two = snap();
       addRouting('env.note', 'gen.freq'); await settle();  const three = snap();
-      return { none, one, two, three,
-               pips: row.querySelectorAll('.mod-open .pip').length };
+      return { none, one, two, three, ring: !face.querySelector('.lane-span').hidden,
+               ticks: face.querySelectorAll('.lane-tick').length };
     }"""); p.wait_for_timeout(200)
     same = (shape["none"] == shape["one"] == shape["two"] == shape["three"]) and shape["none"]["knob"]
     check("nought, one, two and three sources measure the same", same,
           "%s / %s / %s / %s" % (shape["none"], shape["one"], shape["two"], shape["three"]))
-    check("and the button counts them", shape["pips"] == 3, str(shape["pips"]))
+    # The ring and its ticks, outside the face, are what count them since G5b.
+    check("and the ring and its ticks count them: one ring, two ticks", shape["ring"] and shape["ticks"] == 2, str(shape))
 
     print("\n--- dragging a card is the quick way ---")
     # From the modulation cards under the screen onto a control on another tab
@@ -443,21 +463,29 @@ with sync_playwright() as pw:
     t.on("pageerror", lambda e: tbad.append("pageerror: " + str(e)))
     open_bench(t)
 
-    size = t.evaluate("""() => {
-      const b = document.querySelector('[data-mod-dest="gen.freq"] .mod-open');
-      const r = b.getBoundingClientRect();
-      return { w: r.width, h: r.height };
-    }""")
-    check("the way in is a thumb-sized target", size["h"] >= 18, str(size))
-
-    t.locator('[data-mod-dest="gen.freq"] .mod-open').tap(); t.wait_for_timeout(350)
-    check("tapping it opens the editor",
-          t.evaluate("() => !!document.querySelector('.over')"))
-    t.locator('.mod-add-one[data-add="lfo1"]').tap(); t.wait_for_timeout(300)
+    # A thumb has no right button: a long press is the menu (G5b), by real
+    # touches through the browser's protocol, since Playwright's own tap is short.
+    face = t.locator('[data-mod-dest="gen.freq"] .knob-face').bounding_box()
+    tx, ty = face["x"] + face["width"] / 2, face["y"] + face["height"] / 2
+    cdp = ctxb.new_cdp_session(t)
+    def long_press():
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": tx, "y": ty}]})
+        t.wait_for_timeout(900)
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        t.wait_for_timeout(300)
+    long_press()
+    check("a long press on the knob opens its menu",
+          t.evaluate("() => !!document.querySelector('.over.ctx')"))
+    t.locator('.ctx-item[data-item="add"][data-source="lfo1"]').tap(); t.wait_for_timeout(300)
     check("and a source can be added with one tap",
           t.evaluate(ROUTES) == ["lfo1>gen.freq@0.35"], str(t.evaluate(ROUTES)))
+    long_press()
+    t.locator('.ctx-item[data-item="routing"][data-source="lfo1"]').tap(); t.wait_for_timeout(350)
+    check("a long press and a tap on it open the editor",
+          t.evaluate("() => !!document.querySelector('.over.mod-over')"))
+    size = t.evaluate("() => { const r = document.querySelector('.over .mod-edit-off').getBoundingClientRect(); return { w: r.width, h: r.height }; }")
     t.locator(".over .mod-edit-off").tap(); t.wait_for_timeout(300)
-    check("and taken off with another", t.evaluate(ROUTES) == [], str(t.evaluate(ROUTES)))
+    check("and taken off with another", t.evaluate(ROUTES) == [], "%s %s" % (t.evaluate(ROUTES), size))
 
     t.locator(".over-close").tap(); t.wait_for_timeout(250)
     check("the close button puts it away",

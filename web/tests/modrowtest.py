@@ -27,8 +27,10 @@ What would go wrong, and what is checked for it:
   pixels a crop-width away must not all be (the null);
 - a silence that loses the routing or silences nothing: switched off, the
   routing must stop moving its control, stay in the setup and come back
-  when switched on; the instrument behind the page must be told the routings
-  heard. And Routings must list by source and by destination;
+  when switched on; the instrument behind the page must be told every
+  routing and the silence (since G5b, which stores it: a restore keeps it,
+  where in G5a it forgot it). And Routings must list by source and by
+  destination;
 - the fade not working from its new home: chosen there, the fade must be the
   page's, and Settings must no longer hold it.
 
@@ -210,8 +212,9 @@ with sync_playwright() as pw:
     check("and on the figure it turns the screen", routed["value"] > 0.1 and abs(routed["turn"]) > 0.01, str(routed))
     null("in the dark it reads nought and turns nothing", dark["value"] < 0.02 and abs(dark["turn"]) < 0.005, str(dark))
     offered = p.evaluate("""() => { el.photoButton.click(); state.modRoutings = []; touchRoutings();
-      const opener = document.querySelector('.mod-open[data-dest="vcf.cut"]') || document.querySelector('.mod-open');
-      const dest = opener.dataset.dest; openModEditor(dest, opener);
+      // The control's editor, opened as its menu opens it since G5b (from the shoulder's dots until then).
+      const row = document.querySelector('[data-mod-dest="gen.vcf"]') || document.querySelector('[data-mod-dest]');
+      const dest = row.dataset.modDest; openModEditor(dest, row);
       const adds = [...document.querySelectorAll('.over [data-add]')].map((b) => b.dataset.add); closeOverlay();
       return { dest, adds, on: photo.on }; }""")
     check("a control's own list offers the four cards, the Photocell's while it is off",
@@ -378,13 +381,16 @@ with sync_playwright() as pw:
     check("and the routing is kept: in the setup as it was, counted, its card marked silent, the switch off",
           held["heard"] == 0 and held["kept"] == ["lfo2>view.rotate@0.5"] and held["code"] == code and held["switch"] == "false"
           and held["card"] and held["count"] == "· 1", str(held))
-    check("the instrument behind the page is told the routings heard, which are none", held["told"] == "", repr(held["told"]))
+    # Every routing and, after a bar, the source silenced, since G5b, so the plugin keeps it in its project (scope::Instrument::route).
+    check("the instrument behind the page is told every routing and the silence after a bar",
+          held["told"] == "lfo2>view.rotate@0.5|lfo2", repr(held["told"]))
     check("switched on, it is back as it was and moving the Turn", after == ["lfo2>view.rotate@0.5"] and back > 0.05, "%s %.3f" % (after, back))
     null("silenced, the Turn did not move as it moves heard", quiet < heard / 10)
+    # Stored since G5b (in G5a a restore forgot it): the setup names it, and putting the setup back keeps it.
     forgot = p.evaluate("""() => { silenceSource('lfo2', true); const before = held.size; restore(decodeSetup(encodeSetup(snapshot())));
-      return { before, after: held.size, heard: state.modRoutings.map((r) => r.sourceId) }; }""")
-    check("a silence is forgotten when a setup is put back, and the setup's routings are heard",
-          forgot == {"before": 1, "after": 0, "heard": ["lfo2"]}, str(forgot))
+      return { before, after: held.size, heard: state.modRoutings.map((r) => r.sourceId), kept: routingsKept().length }; }""")
+    check("a silence is kept when a setup is put back: the routing kept and not heard",
+          forgot == {"before": 1, "after": 1, "heard": [], "kept": 1}, str(forgot))
     patched = p.evaluate("""() => { silenceSource('lfo2', true); addRouting('lfo2', 'gen.freq');
       return { silenced: held.has('lfo2'), heard: state.modRoutings.map((r) => r.sourceId + '>' + r.destId) }; }""")
     check("patching a silenced source switches it back on", patched == {"silenced": False, "heard": ["lfo2>view.rotate", "lfo2>gen.freq"]},

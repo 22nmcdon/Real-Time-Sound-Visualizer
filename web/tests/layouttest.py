@@ -68,16 +68,17 @@ with sync_playwright() as pw:
       buildSourceChips();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const ids = Array.from(el.modStrip.querySelectorAll('.mod-card')).map((c) => c.dataset.source);
-      // A parked source keeps its ink on its knob, to be seen and taken off there.
-      const ring = document.querySelector('.mod-open[data-dest="gen.freq"]');
-      const parked = { pips: ring ? ring.querySelectorAll('.pip').length : -1, empty: ring ? ring.classList.contains('empty') : null };
+      // A parked source keeps its ink on its knob, to be seen and taken off there: its ring, since G5b.
+      const face = document.querySelector('[data-mod-dest="gen.freq"] .knob-face');
+      const parked = { ring: !face.querySelector('.lane-span').hidden,
+                       ink: face.parentElement.style.getPropertyValue('--pip') === 'var(--' + MOD_SOURCES.get('hear.bright').ink + ')' };
       state.modRoutings = []; touchRoutings();
       return { ids, parked };
     }""")
     print("    %s" % cards)
     check("four cards, LFO 1, LFO 2, the Envelope and the Photocell, with a controller learned, the photocell on and a hearing source patched",
           cards["ids"] == ["lfo1", "lfo2", "env.note", "photo.1"], str(cards["ids"]))
-    check("and a parked source on a knob still shows its ink there", cards["parked"] == {"pips": 1, "empty": False},
+    check("and a parked source on a knob still shows its ink there", cards["parked"] == {"ring": True, "ink": True},
           str(cards["parked"]))
 
     # Pressed - a real press, so the drag's tap is what opens it - a card opens
@@ -145,14 +146,13 @@ with sync_playwright() as pw:
           detail["rows"] == ["view.rotate"] and "view.rotate" not in detail["offered"]
           and "gen.freq" in detail["offered"], str(detail))
 
-    # The control's own editor, opened from its ring, offers the cards' four
-    # (three until G5a made the Photocell one) and nothing else: before F4 it
-    # listed every source a hand could route.
+    # The control's own editor, opened from its menu since G5b (from its ring
+    # until then), offers the cards' four (three until G5a made the Photocell
+    # one) and nothing else: before F4 it listed every source a hand could route.
     offer = p.evaluate("""async () => {
-      setBenchTab('play'); state.modRoutings = []; touchRoutings();
+      setBenchTab('ink'); state.modRoutings = []; touchRoutings();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const ring = document.querySelector('.mod-open[data-dest="gen.freq"]');
-      ring.click();
+      openModEditor('gen.freq', document.querySelector('[data-mod-dest="gen.freq"]'));
       await new Promise((r) => setTimeout(r, 100));
       const ids = Array.from(document.querySelectorAll('.mod-add-one')).map((b) => b.dataset.add);
       closeOverlay();

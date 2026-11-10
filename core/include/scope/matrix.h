@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <functional>
 #include <limits>
 #include <map>
@@ -237,6 +238,56 @@ class Matrix {
     routings_.clear();
     for (const auto& r : list) routings_.push_back({ r.sourceId, r.destId, r.amount, ++serial_ });
     touch();
+  }
+
+  // --- a silence (Routings' switch, G5a; stored since G5b) ----------------------
+  // The page's `held`: the routings of the sources Routings has silenced, out
+  // of what the matrix hears and kept with where each stood in the whole list,
+  // so a setup or a project saved with a source silent keeps its routings.
+  // The matrix's own work never reads them, as the page's lifted functions
+  // never do (core/tests/tools/matrix_js.mjs): what it hears is routings_.
+  struct Held { Routing routing; std::size_t at; };
+  // silentIds: a setup's `modSilent` - ids joined by commas, an empty part naming nothing.
+  static std::vector<std::string> silentIds(std::string_view text) {
+    std::vector<std::string> out;
+    std::size_t at = 0;
+    while (at <= text.size()) {
+      const std::size_t end = std::min(text.find(',', at), text.size());
+      if (end > at) out.emplace_back(text.substr(at, end - at));
+      if (end >= text.size()) break;
+      at = end + 1;
+    }
+    return out;
+  }
+  // Every routing, heard and held, and the sources silenced: the heard to
+  // the matrix (as a setup's, every one new, or as an edit's, each kept that
+  // was there), the rest held. silenceSource in turn: a source silenced
+  // twice, or with nothing in the list, is not silenced.
+  void keep(const std::vector<Routing>& kept, const std::vector<std::string>& ids, bool fresh) {
+    held_.clear();
+    silent_.clear();
+    for (const auto& id : ids) {
+      if (std::find(silent_.begin(), silent_.end(), id) != silent_.end()) continue;
+      if (std::none_of(kept.begin(), kept.end(), [&](const Routing& r) { return r.sourceId == id; })) continue;
+      silent_.push_back(id);
+    }
+    std::vector<Routing> heard;
+    for (std::size_t i = 0; i < kept.size(); ++i) {
+      if (silenced(kept[i].sourceId)) held_.push_back({ kept[i], i }); else heard.push_back(kept[i]);
+    }
+    if (fresh) load(heard); else setRoutings(heard);
+  }
+  bool silenced(std::string_view id) const {
+    return std::find(silent_.begin(), silent_.end(), id) != silent_.end();
+  }
+  const std::vector<std::string>& silent() const { return silent_; }
+  // routingsKept: the heard with each held one put back where it stood.
+  std::vector<Routing> kept() const {
+    std::vector<Routing> out = routings_;
+    std::vector<Held> all = held_;
+    std::stable_sort(all.begin(), all.end(), [](const Held& a, const Held& b) { return a.at < b.at; });
+    for (const auto& h : all) out.insert(out.begin() + static_cast<std::ptrdiff_t>(std::min(h.at, out.size())), h.routing);
+    return out;
   }
 
   // touchRoutings: stored within reach, except for a source whose reach
@@ -713,6 +764,8 @@ class Matrix {
   std::vector<ModDest> dests_;
   std::map<std::string, std::size_t> destIndex_;
   std::vector<Routing> routings_;
+  std::vector<Held> held_;
+  std::vector<std::string> silent_;
   long serial_ = 0;
   FadeMode mode_ = FadeMode::Off;
   std::array<FadeEnvelope, 2> envs_ {};

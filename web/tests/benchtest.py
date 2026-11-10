@@ -105,33 +105,37 @@ with sync_playwright() as pw:
     # the Sources tab, the chips beside the screen and the hollow rings with it
     # while shut. F4 put each of its tabs somewhere of its own and the matrix
     # in the modulation cards, so the switch went. What it guarded still holds:
-    # what is patched plays and keeps its inks; and a control with nothing on
-    # it keeps its ring in place, unseen until the control is pointed at.
+    # what is patched plays and keeps its inks - since G5b the ring round its
+    # knob in the source's ink, where it was dots at the shoulder; and a
+    # control with nothing on it draws nothing round its knob, pointed at or
+    # not, and keeps its way in, the right-click menu (the hollow ring that
+    # was the way in until G5b, unseen until pointed at, went with the dots).
     drawer = p.evaluate("""() => {
       const rail = () => Array.from(el.benchRail.querySelectorAll('[role=tab]')).map((b) => b.querySelector('.tab-name').textContent);
-      const shown = (node) => !!(node && node.offsetParent);
-      const ring = (dest) => document.querySelector('.mod-open[data-dest="' + dest + '"]');
+      const ring = (dest) => document.querySelector('[data-mod-dest="' + dest + '"] .knob-face .lane-span');
       // Ink: Frequency's tab since G3.
       setBenchTab('ink');
       state.modRoutings = []; addRouting('lfo1', 'gen.freq'); touchRoutings(); paintRoutings();
       return { rail: rail(), switch: document.getElementById('benchDrawer'), attr: document.body.dataset.drawer || null,
-               attached: shown(ring('gen.freq')) && getComputedStyle(ring('gen.freq')).opacity === '1',
+               attached: !ring('gen.freq').hidden && ring('gen.freq').parentElement.parentElement.style.getPropertyValue('--pip') === 'var(--ch1)',
                heard: routingsHeard().filter((r) => r.sourceId === 'lfo1').map((r) => r.destId) };
     }""")
     p.wait_for_timeout(200)
-    # The empty ring at rest, then with the pointer on its control: a real hover.
-    rest = p.evaluate("() => getComputedStyle(document.querySelector('[data-mod-dest=\"gen.amp\"] .mod-open')).opacity")
+    # The empty control at rest, then with the pointer on it: a real hover.
+    BARE = """() => ({ drawn: [...document.querySelectorAll('[data-mod-dest="gen.amp"] .mod-lane')].filter((n) => !n.hidden).length,
+                       menu: menuControl(el.amp) === el.amp })"""
+    rest = p.evaluate(BARE)
     p.locator('[data-mod-dest="gen.amp"]').first.hover(); p.wait_for_timeout(300)
-    pointed = p.evaluate("() => getComputedStyle(document.querySelector('[data-mod-dest=\"gen.amp\"] .mod-open')).opacity")
+    pointed = p.evaluate(BARE)
     p.mouse.move(5, 5); p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
-    print("    %s; empty ring at rest %s, pointed at %s" % (drawer, rest, pointed))
+    print("    %s; empty at rest %s, pointed at %s" % (drawer, rest, pointed))
     loop_tabs = ["Play", "Ink", "Space & Memory"]
     check("no drawer: the loop's three tabs, and no Advanced switch", drawer["rail"] == loop_tabs
           and drawer["switch"] is None and drawer["attr"] is None, str(drawer))
     check("a patched control keeps its inks, and what is patched is heard",
           drawer["attached"] and drawer["heard"] == ["gen.freq"], str(drawer))
-    check("an empty control's ring is unseen at rest and seen when the control is pointed at",
-          rest == "0" and pointed == "1", "%s / %s" % (rest, pointed))
+    check("an empty control draws nothing round its knob, at rest or pointed at, and keeps its right-click menu",
+          rest == pointed == {"drawn": 0, "menu": True}, "%s / %s" % (rest, pointed))
     # The arpeggiator, moved to the drawer in P5: on Perform and not on Play,
     # reached from anywhere by showControl, which opens the drawer, and still
     # playing a held chord with the drawer shut, as everything patched does.
