@@ -29,14 +29,21 @@ screen is what Scan reads back as sound. A way to draw is therefore a way the in
 A *Draw* choice, beside today's (which stays the default):
 
 1. **One figure** - today's: every note merged, the outline notes on X and Y.
-2. **A figure each note** - the *constellation*. Each held note draws its own small
-   figure: the note against the chord's lowest note, so each figure is the interval it
-   makes with the bass (a major triad is a still 5:4 and a still 3:2 side by side; a
-   cluster is several busy, turning shapes). Each figure is sized by how hard the note was
-   played and fades with its own envelope, so Persistence decides how long the
-   constellation lingers. A fast run scatters a trail of small figures rather than
-   smearing one.
-3. Later, perhaps: **a trail** - notes laid across the screen in the order they are
+2. **A figure each note** - the *constellation*. Each held note draws its own figure,
+   the one it would draw alone: a sine with Quarter turn is a ring, and another shape its
+   own closed curve. It is not an interval figure: a figure of two notes is a dyad's, one
+   on each axis, and has no place in a constellation (the owner's correction, 10 Nov, to a
+   first draft that drew each note against the bass; the interval figures are *Pairs*,
+   below). A note's figure is as large as it is loud, so it grows on the attack and fades
+   with its envelope, and Persistence decides how long the constellation lingers. A fast
+   run scatters a trail of rings rather than smearing one figure.
+3. **Clock**, **Helix**, **Pairs**, **Ripples** and **Split screen**, sketched live with
+   these (`https://claude.ai/artifact/J8CE64RxhCoSybijwxN2Bc`, drawn from the notes' real
+   equal-tempered frequencies and the instrument's own roles): each note's ring round
+   Scan's circle by pitch class (Clock, the strongest tie to the loop) or on a spiral by
+   octave (Helix); every pair of notes as the dyad it makes (Pairs); each note's ring
+   spreading from where it lands (Ripples); each hand's figure on its own half (Split).
+4. Later, perhaps: **a trail** - notes laid across the screen in the order they are
    played, so a fast line reads as a line of figures in time.
 
 ## Where a note lands: Scatter
@@ -78,7 +85,5 @@ What Free costs, so it stays a choice and not the default:
 
 - Whether *Fixed* places by pitch (a clock face) or by a scatter seeded by the note - the
   mockup should show both.
-- Whether the constellation's figures are each note against the bass, or against its
-  nearest neighbour below.
 - How the two hands of a split draw in constellation mode: one constellation each, or one
   shared.
