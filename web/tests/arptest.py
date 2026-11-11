@@ -14,8 +14,39 @@ Against the way it would fail:
 - the dyad not drawing the chord's intervals: each step pairs the lowest held
   note with the arpeggio's, so C E G is unison, a major third and a fifth;
 - a note left hanging: letting go stops it and ends what went out as MIDI;
-- switching it off with keys down leaving the generator on one note.
+- switching it off with keys down leaving the generator on one note;
+- switching it off once it has stepped leaving the keys on the last step's
+  envelope (11 Nov): what is held is struck, the gate closed and opened, and
+  inside the gather, before a step, it is not; and on both brains, a setup
+  without it loaded over a key held through one with it sounds the key at
+  the new setup's level. Its null is a key struck under a lower sustain and
+  held into the same setup, which keeps the lower level.
 """
+# The level a held key reaches under setups loaded over it, on a brain: the
+# peak of the last quarter second of the picture, a setup at a time, with
+# time between for the arpeggiator to step, which on the site's instrument
+# it does on the audio's clock.
+LEVEL = """async (steps) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const load = (over) => { const s = Object.assign({}, BASE_SETUP, over); hostQuietly(() => restore(s)); hostSendSetup(); };
+  const peak = () => { const n = Math.round(state.source.sampleRate / 4); let most = 0;
+    for (const lane of state.source.getLatestWindow(n).slice(0, 2)) for (const v of lane) most = Math.max(most, Math.abs(v));
+    return most; };
+  const out = [];
+  for (const [what, arg] of steps) {
+    if (what === 'load') load(arg);
+    else if (what === 'on') midiNoteOn(arg, 127);
+    else if (what === 'off') midiNoteOff(arg);
+    else if (what === 'wait') await wait(arg);
+    else if (what === 'read') out.push(peak());
+  }
+  midiPanic();
+  return out;
+}"""
+PLAIN = {"midiMode": "dyad", "atk": 1, "dec": 200, "sus": 70, "rel": 50}
+ARP = {"midiMode": "dyad", "arpMode": "up", "arpRate": "1/16", "arpOctaves": 2, "atk": 1, "dec": 200, "sus": 30, "rel": 50}
+LOW = dict(PLAIN, sus=30)
+
 # On ?brain=js (5m): this suite reads the page's own brain - its sources'
 # functions, bound directly - which core/tests/parity.py holds the instrument
 # to, sample for sample. The instrument, the site's default since 5m, is
@@ -220,6 +251,49 @@ with sync_playwright() as pw:
     }""")
     check("when the layers change mid-arpeggio the generator is still given the step, not the whole chord",
           book["before"] == [60] and book["after"] == [60], str(book))
+
+    print("\n--- switched off once it has stepped, what is held is struck ---")
+    off = p.evaluate("""() => {
+      const src = state.source, gate = src.gate.bind(src), gates = [];
+      el.arpMode.value = 'up'; el.arpOctaves.value = '1'; el.arpMode.dispatchEvent(new Event('change'));
+      for (const k of [60, 64, 67]) __send([0x90, k, 100]);
+      arpTick(arp.start + 1);
+      src.gate = (open, v) => { gates.push(open); gate(open, v); };
+      el.arpMode.value = 'off'; el.arpMode.dispatchEvent(new Event('change'));
+      const stepped = { gates: gates.slice(), voices: __voices().slice().sort() };
+      gates.length = 0;
+      // On and off again inside the gather, before its first step.
+      el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
+      el.arpMode.value = 'off'; el.arpMode.dispatchEvent(new Event('change'));
+      const gathering = { gates: gates.slice(), voices: __voices().slice().sort() };
+      src.gate = gate;
+      for (const k of [60, 64, 67]) __send([0x80, k, 0]);
+      return { stepped, gathering };
+    }""")
+    print("    %s" % off)
+    check("switched off after a step, the held chord is struck: the gate closes and opens, and the generator has all of it",
+          off["stepped"]["gates"][-2:] == [False, True] and off["stepped"]["voices"] == [60, 64, 67], str(off["stepped"]))
+    check("null: switched off inside the gather, before any step, the chord it never took is not struck again",
+          False not in off["gathering"]["gates"] and off["gathering"]["voices"] == [60, 64, 67], str(off["gathering"]))
+
+    # The sound, on both brains: a key held under a plain setup, then through
+    # an arpeggiated one long enough for it to step, then the plain one again.
+    for query, brain in (("", "the site's instrument"), ("&brain=js", "the page's own brain")):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html?picture=0" + query); q.wait_for_timeout(1500)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        through = q.evaluate(LEVEL, [["load", PLAIN], ["on", 57], ["wait", 700], ["read", None],
+                                     ["load", ARP], ["wait", 800], ["load", PLAIN], ["wait", 600], ["read", None]])
+        low = q.evaluate(LEVEL, [["load", PLAIN], ["on", 57], ["wait", 700], ["read", None], ["off", 57],
+                                 ["load", LOW], ["wait", 300], ["on", 57], ["wait", 600], ["load", PLAIN], ["wait", 600],
+                                 ["read", None]])
+        q.close()
+        ref, after = through
+        check("on %s, a key held through an arpeggiated setup and into a plain one sounds at the plain one's level" % brain,
+              ref > 0.1 and abs(after / ref - 1) < 0.03, "%.4f against %.4f struck under it" % (after, ref))
+        check("null: on %s a key struck under a sustain of 0.3 and held into the same setup keeps its lower level" % brain,
+              low[1] / low[0] < 0.6, "%.4f against %.4f" % (low[1], low[0]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

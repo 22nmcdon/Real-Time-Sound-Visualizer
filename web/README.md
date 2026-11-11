@@ -5722,4 +5722,65 @@ note will do) turned up four things worth knowing:
   `?brain=js` the held key sounds at once, so the instrument and the page it
   is a port of differ here, on a path parity does not drive (loads over a held
   key). `rotatetest.py` walks every preset and found it; it strikes again
-  after the walk. Not fixed here, and not new: the drone hid it.
+  after the walk. Not fixed here, and not new: the drone hid it. (Fixed 11
+  Nov, and the page was wrong too: see *A key held through the arpeggiator*.)
+
+**A module switched on starts from silence (11 Nov).** The delay's lines, the
+chorus's, the phaser's states and the reverb's network are written only while
+their module runs, so a module switched off kept what it held, and switched on
+again - by its switch, a Mix brought up from nought, a preset, the layers coming
+back - played it: the delay the moment it was switched off, with its feedback
+going round, and the reverb a tail of up to nine seconds. The owner's call: on
+is from silence. Each pair's modules note which of them ran in a block
+(`timeRuns`, `ran` and `was` on `makeTimeFx`, and `TimeFx` in the core), and one
+that ran in neither this block nor the last is emptied before it runs
+(`timeFresh`), lines, tone and cut memories, the glide's `dNow` and the wow's
+phase - so a switch-on is the first time over again. It is asked as the pair is
+stepped rather than worked out in `planeSetup`, because only the block knows
+whether B's pair is stepped at all, and a B that was not stepped while the
+layers were off comes back emptied the same way. The sweeps are not emptied:
+they are not sound, and a shared module's sweep is A's (`timeShare`). The
+rejected way was to write the lines while off, so a Mix brought up from nought
+echoes the last few notes, as a hardware delay does; that is a delay and a
+reverb run every sample while off. What it costs: two seconds of delay line a
+channel cleared in the block a delay comes on, about 0.7 MB at 48 kHz, on the
+audio thread with nothing allocated. `delaytest.py` holds it on every module and
+every way a hand has one, `parity.py` on the page's runs and the core's, each
+with a null that keeps the line.
+
+**What a switch kept belongs to the sound it was kept from (11 Nov).** The
+rack's switch keeps a module's Mix (the Plane's shaping and its turn) to put
+back, and kept it for the visit: switch the delay off, load another preset,
+switch it on, and the first preset's Mix came back; with two hands, what the
+upper hand's own delay kept came back on the lower's. It is kept per hand now
+(`fxKept[hand]`, `fxHand`), and anything that goes through `restore` forgets it
+(`fxForget`): a preset, New, a code, the plugin's state taken back. Undo's steps
+carry it (`undoNow`, `putBack`), so a step put back puts back what its switches
+had, rather than forgetting it as a load does. The switch is the page's alone:
+the core and the plugin's panel have only the Mix, which the switch moves.
+
+**A key held through the arpeggiator (11 Nov).** Found on the site's instrument
+by `rotatetest.py`'s walk, and taken there for the core and the page differing:
+on the instrument, a key held through an arpeggiated preset and into one
+without played at the first preset's sustain until the next key, and on
+`?brain=js` at its own level. They did not differ. The arpeggiator steps on the
+audio's clock in the instrument and on the page's timers on `?brain=js`, and the
+walk loads every preset in one synchronous evaluate, so the page's never
+stepped while the instrument's did. Given the time - loads a frame or more
+apart, as a player's are - both left the key on the last step's envelope: the
+step struck it under the arpeggiated sound's envelope, a setup restores the
+arpeggiator after the envelope, and switched off with keys down it gave the
+generator the keys with the gate already open, which a note's envelope takes as
+nothing new. So the page was the wrong one too. Both now strike what is held
+when the arpeggiator is switched off after a step (`arpSet`, `Keyboard::setArp`),
+the gate closed and opened as a step does, and not when it is switched off
+inside the gather, before a step, when the keys were never taken from the
+generator. Two lessons. A probe that does everything in one evaluate sees a
+page whose timers never fire, so a difference between the brains found that way
+wants the same probe with time between before it is called a port's. And a
+setup loaded over a held key still leaves the key's envelope where it was
+struck (*A note is not the drone*, above): fixing the arpeggiator does not
+change that, so `rotatetest.py` still strikes again after its walk. `arptest.py`
+holds the strike on the page's lines and the level on both brains, with a key
+struck under a lower sustain as the null; parity's `arp-off-held` holds the
+core to it, with a page that does not strike as its null.

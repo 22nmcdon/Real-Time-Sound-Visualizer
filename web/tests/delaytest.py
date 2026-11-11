@@ -23,7 +23,13 @@ What would go wrong, and what is checked for it:
 - the knobs not reaching the generator, or reading wrongly: each is moved as
   a hand moves it and the generator's own field read, with its reading;
 - codes: the four go out and come back, B's own with bPlane, an old code
-  without them is the old delay, and a width past its range is held to it.
+  without them is the old delay, and a width past its range is held to it;
+- a module switched on replaying what it held when it was switched off (11
+  Nov): each of the four, on A, on B through A's settings and B's own, and
+  B's delay over the layers let go and taken up again, is played under a
+  note, switched off while it still holds the note, and on again over
+  silence, where it must be silent. The null is the same run with the module
+  left on through the silence, which still sounds there.
 """
 import math, os, sys
 import numpy as np
@@ -55,6 +61,43 @@ CORE = """(setup) => {
     for (let i = 0; i < n; i++) { out.L.push(L[i]); out.R.push(R[i]); }
   }
   return out;
+}"""
+
+# A module switched off under a note and on again over silence: the peak of
+# what the lanes asked for carry once it is back. `layers` are the layers
+# whose Mix the switch moves; `own` B's own modules; `gap` takes layer B away
+# for the silence instead (B not stepped at all), and brings it back.
+FRESH = """(o) => {
+  const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
+  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  for (const layer of [0, 1]) {
+    core.set('shape', 'sine', layer); core.set('attackMs', 1, layer); core.set('amp', 0.5, layer);
+    for (const k in o.tone) core.set(k, o.tone[k], layer);
+  }
+  const bVoice = [{ note: 76, freq: 659.255, velocity: 1, role: 'xy' }];
+  core.set('voices', [{ note: 69, freq: 440, velocity: 1, role: 'xy' }]);
+  core.set('voices', bVoice, 1);
+  core.set('timeOwn', o.own, 1);
+  const n = 128, L = new Float32Array(n), R = new Float32Array(n), HL = new Float32Array(n), HR = new Float32Array(n);
+  const BL = new Float32Array(n), BR = new Float32Array(n);
+  const mix = (v) => { for (const layer of o.layers) core.set(o.field, v, layer); };
+  let peak = 0, heard = 0;
+  const blocks = (k, read) => {
+    for (let i = 0; i < k; i++) {
+      core.block(L, R, n, HL, HR, BL, BR);
+      for (let j = 0; j < n; j++) {
+        heard = Math.max(heard, Math.abs(L[j]), Math.abs(BL[j]));
+        if (read) for (const lane of o.read === 'b' ? [BL, BR] : [L, R]) peak = Math.max(peak, Math.abs(lane[j]));
+      }
+    }
+  };
+  mix(o.mix); blocks(30, false);                       // on under the notes, about 90 ms
+  for (const layer of [0, 1]) core.set('amp', 0, layer); // and silence
+  if (o.gap) core.set('voices', null, 1); else if (!o.keep) mix(0);
+  blocks(10, false);                                   // off, holding what it was given
+  if (o.gap) core.set('voices', bVoice, 1); else mix(o.mix);
+  blocks(60, true);                                    // and on again over the silence
+  return { peak, heard };
 }"""
 
 def onepole_low(f, fc):
@@ -239,6 +282,28 @@ with sync_playwright() as pw:
     check("the code carries all four", knobs["code"] == [30, 60, 40, 25], str(knobs["code"]))
     check("and put back, the generator is at rest and the readings say open, off, 100% and off",
           knobs["rest"] == {"tone": 1, "cut": 0, "width": 1, "wow": 0, "readings": ["open", "off", "100%", "off"]}, str(knobs["rest"]))
+
+    print("\n--- switched on again, from silence ---")
+    MODULES = [("delay", "delayMix", 1, {"delayMs": 100, "delayFeedback": 0.6}, 4),
+               ("chorus", "chorusMix", 0.7, {"chorusFeedback": 0.6}, 2),
+               ("phaser", "phaserMix", 1, {"phaserFeedback": 0.75}, 1),
+               ("reverb", "reverbMix", 1, {"reverbSize": 0.6}, 8)]
+    WAYS = [("on A", [0], 0, "a"), ("on B through A's settings", [0], 0, "b"), ("on B's own", [1], None, "b")]
+    for name, field, mix, tone, bit in MODULES:
+        for where, layers, own, read in WAYS:
+            o = {"field": field, "mix": mix, "tone": tone, "layers": layers, "own": bit if own is None else own, "read": read}
+            # The phaser's ring has fallen to about a ten-thousandth by the end of
+            # the silence when it is left on, so its null is read to 1e-5; what
+            # the check itself reads, switched off and on, is exactly nought.
+            back = p.evaluate(FRESH, o)
+            kept = p.evaluate(FRESH, dict(o, keep=True))
+            check("the %s switched off under a note and on again over silence, %s: nothing" % (name, where),
+                  back["peak"] < 1e-9 and back["heard"] > 0.1 and kept["peak"] > 1e-5,
+                  "%.3g; left on through the silence (the null) %.3g" % (back["peak"], kept["peak"]))
+    o = {"field": "delayMix", "mix": 1, "tone": {"delayMs": 100, "delayFeedback": 0.6}, "layers": [0, 1], "own": 4, "read": "b"}
+    gap, kept = p.evaluate(FRESH, dict(o, gap=True)), p.evaluate(FRESH, dict(o, keep=True))
+    check("and B's own delay over the layers let go and taken up again: nothing", gap["peak"] < 1e-9 and kept["peak"] > 1e-3,
+          "%.3g; the layers kept (the null) %.3g" % (gap["peak"], kept["peak"]))
 
     print("\n--- codes ---")
     codes = p.evaluate("""() => {

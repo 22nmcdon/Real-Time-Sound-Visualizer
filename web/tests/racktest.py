@@ -14,6 +14,13 @@ What would go wrong, and what is checked for it:
   while B has a plane of its own, and both halves of that are read;
 - the Plane with nothing to put back turning itself on at something it
   chose: it opens its rest instead and moves nothing;
+- a switch putting back what it kept for an earlier sound (11 Nov): the
+  delay switched off, another setup loaded, and on again is the module's
+  default, not the first sound's Mix; the Plane after a load opens its rest
+  again; with two hands, what the upper hand's own delay kept is not the
+  lower's; and an undo step put back puts back what its switches had kept.
+  The null each time is the same switch with nothing loaded between, which
+  does put the kept value back;
 - a module's line that only an input event writes: a setup is restored
   under the rack, with no event, and the lines and switches must follow it
   within the half second the tab lines take. The null is the line read
@@ -105,7 +112,7 @@ with sync_playwright() as pw:
       pill('chorus').click(); await wait(50);
       const back = { mix: el.chorusMix.value, engine: echo.chorus, on: pill('chorus').getAttribute('aria-pressed') };
       // Switched on from a fresh page: the module's default Mix, not nought.
-      setControl('phaserMix', 0); delete fxKept.phaser; paintRack();
+      setControl('phaserMix', 0); delete fxKept[0].phaser; paintRack();
       pill('phaser').click(); await wait(50);
       const fresh = { mix: el.phaserMix.value, engine: echo.phaser };
       setControl('phaserMix', 0);
@@ -130,7 +137,7 @@ with sync_playwright() as pw:
       const away = { planeMirror: '1', planeLimit: '1', planeTwist: '20', planeSnap: '6',
                      planeScaleX: '80', planeScaleY: '120', planeShear: '30', rotate: '10', planeTurn: '0' };
       // Nothing kept yet: on opens the rest and moves nothing.
-      delete fxKept.plane; openFx(null);
+      delete fxKept[0].plane; openFx(null);
       const rest0 = read(); pill.click(); await wait(50);
       const opened = { open: document.getElementById('rackGroup').dataset.open || null, same: JSON.stringify(read()) === JSON.stringify(rest0) };
       openFx(null);
@@ -162,6 +169,86 @@ with sync_playwright() as pw:
           and plane["back"]["engine"] == plane["set"]["engine"], str(plane["back"]))
     check("B's own turn is nothing while B shares A's plane, and the Plane on once B has its own",
           plane["shared"] is False and plane["own"] is True, str((plane["shared"], plane["own"])))
+
+    print("\n--- what a switch kept belongs to the sound it was kept from ---")
+    kept = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const pill = (fx) => document.querySelector('.fx-on[data-fx-on="' + fx + '"]');
+      const shaping = () => JSON.stringify(PLANE_SHAPING.map(([id]) => el[id].value));
+      // Kept, nothing loaded between: the null, which puts the 55 back.
+      restore({ delayMix: 55 }); paintRack();
+      pill('delay').click(); await wait(30); pill('delay').click(); await wait(30);
+      const same = el.delayMix.value;
+      // Kept, then another sound loaded with its delay off.
+      pill('delay').click(); await wait(30);
+      restore({ delayMix: 0, chorusMix: 10 }); paintRack();
+      pill('delay').click(); await wait(30);
+      const loaded = { mix: el.delayMix.value, engine: echo.mix };
+      // The Plane, shaped and switched off, then a load: on opens its rest again.
+      restore({}); openFx(null);
+      setControl('planeMirror', '1'); setControl('planeTwist', '20'); paintRack();
+      pill('plane').click(); await wait(30);
+      restore({}); openFx(null);
+      const rest = shaping();
+      pill('plane').click(); await wait(30);
+      const plane = { open: document.getElementById('rackGroup').dataset.open || null, same: shaping() === rest };
+      openFx(null);
+      // An undo step put back: its switches' kept values with it.
+      restore({ delayMix: 55 }); paintRack();
+      pill('delay').click(); await wait(30);
+      const step = undoNow();
+      restore({}); paintRack();
+      putBack(step); paintRack();
+      pill('delay').click(); await wait(30);
+      const undone = el.delayMix.value;
+      putBack(Object.assign({}, step, { kept: undefined })); paintRack();
+      pill('delay').click(); await wait(30);
+      const undoneBare = el.delayMix.value;
+      restore({});
+      return { same, loaded, plane, undone, undoneBare };
+    }""")
+    print("    %s" % kept)
+    check("the delay switched off, another sound loaded, and on again: its default 35, not the first sound's 55",
+          kept["loaded"] == {"mix": "35", "engine": 0.35}, str(kept["loaded"]))
+    check("null: with nothing loaded between, on puts back the 55", kept["same"] == "55", kept["same"])
+    check("the Plane switched off, a sound loaded, and on again opens its rest and moves nothing",
+          kept["plane"] == {"open": "plane", "same": True}, str(kept["plane"]))
+    check("an undo step put back puts back what its switch kept: on again is the 55",
+          kept["undone"] == "55", kept["undone"])
+    check("null: the same step without what was kept comes back on at the default", kept["undoneBare"] == "35",
+          kept["undoneBare"])
+    hands = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const pill = (fx) => document.querySelector('.fx-on[data-fx-on="' + fx + '"]');
+      const click = (id) => document.getElementById(id).click();
+      restore(BASE_SETUP); setScreenKeys(true); setMidiMode('poly');
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      click('editHandA'); await wait(30);
+      setLink('delay', false);
+      // The upper hand's own delay at 60, switched off: kept as the upper hand's.
+      click('editHandB'); await wait(30);
+      setControl('delayMix', 60); paintRack();
+      pill('delay').click(); await wait(30);
+      const upperOff = { mix: echoB.mix, lower: echo.mix };
+      // The lower hand's, off from the start, switched on: its default, not the upper's 60.
+      click('editHandA'); await wait(30);
+      pill('delay').click(); await wait(30);
+      const lower = { mix: el.delayMix.value, a: echo.mix, b: echoB.mix };
+      // And the upper's on again: its own 60.
+      click('editHandB'); await wait(30);
+      pill('delay').click(); await wait(30);
+      const upper = { mix: el.delayMix.value, a: echo.mix, b: echoB.mix };
+      click('editHandA');
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
+      setScreenKeys(false); restore({});
+      return { upperOff, lower, upper };
+    }""")
+    print("    %s" % hands)
+    check("with the upper hand's own delay switched off, the lower's switched on is its default, not the upper's 60",
+          hands["upperOff"] == {"mix": 0, "lower": 0} and hands["lower"] == {"mix": "35", "a": 0.35, "b": 0},
+          str(hands))
+    check("and the upper's on again is its own 60, the lower's left at 35",
+          hands["upper"] == {"mix": "60", "a": 0.35, "b": 0.6}, str(hands["upper"]))
 
     print("\n--- the lines follow values written with no event ---")
     lines = p.evaluate("""async () => {
