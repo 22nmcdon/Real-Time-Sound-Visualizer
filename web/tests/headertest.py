@@ -277,7 +277,8 @@ with sync_playwright() as pw:
       none: getComputedStyle(el.freq.closest('.menu-row').querySelector('.menu-label'), '::before').content,
     })""")
     print("    %s" % marks)
-    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 13,
+    # Fourteen since G7 added the master Output, in Level's old corner.
+    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 14,
           str((marks["list"], plugin)))
     check("every one, and only those, is marked on the face", sorted(marks["marked"]) == sorted(plugin), str(marks["marked"]))
     check("with a gold dot, and a control that is not one has none",

@@ -122,6 +122,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | interval | Interval | The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3. | 149 | yes: the menu shows what the notes set; Poly's chords ignore it; at a unison Phase decides between line and circle |
 | tuneJust | Just | Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick. | 135 | yes: how fast tempered intervals turn - a fifth about three quarters of a turn a second, a major third nearly nine, a blur under persistence |
 | tuneEqual | Equal | Takes the keys as an equal-tempered piano has them, a little off the ratios, so the figure turns at the rate the interval beats. | 128 | - |
+| amp | Level | How loud the generator plays, and so how large it draws its figure and what Scan reads. Each hand’s, or both while the Generator is linked. | 139 | yes — in the Picture section’s corner until G7, where it read as a master volume it never was; the Output there now is how loud you hear, and leaves the picture alone |
 
 ### Amp envelope
 
@@ -310,7 +311,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | scanStrike | Strike | How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades. | 141 | yes — only while Scan is above nought; each note at its own place round the circle, as hard as it was played |
 | scanSoft | Softness | How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on. | 139 | - |
 | scanMemory | Persistence | How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more. | 133 | yes — the screen’s, shared by both hands; the photocell’s memory too; the same setting as the menu over the screen |
-| amp | Level | How loud the generator plays, and so how large it draws its figure. With a split, the hand being edited, or both while linked. | 126 | - |
+| output | Output | How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it. | 139 | yes — both hands’, on what is heard alone, like a monitor’s volume; −6 dB at 71, −12 dB at 50, unity at the top; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; its meter is what is heard |
 
 ### Picture › Advanced
 

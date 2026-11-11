@@ -77,16 +77,22 @@ int main() {
   // its number, a hundred times each across its range. The plugin's kKnobs
   // names them (plugin/src/PluginProcessor.h, which this cannot include for
   // JUCE's sake); parity reads that list and requires this one to be it.
-  // In the plugin's kKnobs order, which parity.py reads and holds this to (F7c added three, the reverb one).
-  for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "amp", "vcfCut", "oscBend",
+  // In the plugin's kKnobs order, which parity.py reads and holds this to (F7c added three, the reverb one,
+  // G7 the Output before the level).
+  for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output", "amp", "vcfCut", "oscBend",
                           "planeTwist", "delayMix", "phaserMix", "reverbMix", "morphPos" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
-    scope::moveSliderTo(id, r->min, brain, gen, keys, lfos);
+    /* Up from the bottom, or down from the top for one that starts at its
+       top - the Output, at unity - so the walk ends somewhere it did not
+       start and the line can say it moved. */
+    const bool down = from == r->max;
+    scope::moveSliderTo(id, down ? r->max : r->min, brain, gen, keys, lfos);
     long counted = 0;
     for (int k = 1; k <= 100; ++k) {
       const long start = allocations.load();
-      scope::moveSliderTo(id, r->min + (r->max - r->min) * k / 100.0, brain, gen, keys, lfos);
+      const double t = down ? 1 - k / 100.0 : k / 100.0;
+      scope::moveSliderTo(id, r->min + (r->max - r->min) * t, brain, gen, keys, lfos);
       counted += allocations.load() - start;
     }
     std::printf("host:%s %ld %.9g\n", id, counted, brain.panel.range(id) - from);

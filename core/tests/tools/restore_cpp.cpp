@@ -77,6 +77,8 @@ Json toneJson(const scope::Tone& t) {
   o.set("shapeOS", num(t.shapeOS));
   o.set("glideMs", num(t.glideMs)); o.set("qMask", num(t.qMask)); o.set("qGlideMs", num(t.qGlideMs));
   o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
+  // The Output (G7): never a setup's, so a restore leaves it where a hand put it, on both sides.
+  o.set("output", num(t.output));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
   o.set("planeLimit", num(t.planeLimit)); o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY));
   o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist));

@@ -1241,6 +1241,17 @@ def gen_runs():
     # And a chord of noise, whose voices go through `sound` rather than the dyad's branch.
     add("scan-poly-noise", [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "set shape brown"), (0, "set scan 1")] + feed,
         samples=4096)
+    # The master Output (G7): two hands, a saw through the plane's echo and
+    # the score's voice struck, so every part of the heard pair is in it,
+    # at unity and with the Output put to 0.25 - the knob at 50 - a block in,
+    # and then to nought and back to 0.25 a block at a time near the end, as
+    # a host's steps would come. "output-unity" is the same with no Output.
+    OUTPUT_RUN = [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                  (0, "set shape ramp"), (0, "set delayMix 0.4"), (0, "set delayMs 30"), (0, "set scoreDecayMs 200"),
+                  (512, "strike 440 0.8"), (4096, "strike 660 1"), (12800, "strike 550 0.9")]
+    add("output-moved", OUTPUT_RUN + [(128, "set output 0.25"), (20480, "set output 0"), (20608, "set output 0.25")],
+        samples=24576)
+    add("output-unity", OUTPUT_RUN + [(128, "set output 1")], samples=24576)
     return runs
 
 runs = gen_runs()
@@ -1325,7 +1336,9 @@ def one_pair(v, struck=False):
 # The effect runs are a live input through the plane, not the generator's
 # block: they have no heard pair to hold.
 struck_runs = {n for n, text in runs if " strike " in text}
-apart = [n for n, _ in runs if not n.startswith("effect") and not one_pair(grow(n)[0], n in struck_runs)]
+# And the Output's runs, whose heard pair is the lanes at a gain: held below.
+apart = [n for n, _ in runs if not n.startswith("effect") and not n.startswith("output-moved")
+         and not one_pair(grow(n)[0], n in struck_runs)]
 check("in every run what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
       not apart and struck_runs, ", ".join(apart[:4]))
 lay = grow("layered")[0]
@@ -1478,6 +1491,45 @@ check("a table is taken at the core's tick: given a block later, before the same
 gnull("scan-dyad", "at 1024 scan 0 ", "at 1664 scan 0 ", "a table given after the tick")
 gnull("scan-22050", "set scan 1", "set scan 0.999", "a depth a thousandth less, where the tick falls between samples")
 gnull("scan-layered", "set scan 0.5 1", "set scan 0.6 1", "layer B's depth a tenth more")
+# The master Output (G7): on what is heard and nothing else. Its picture -
+# A's lanes and B's - the same to the bit as the run at unity, every sample;
+# its heard pair the unity run's at the gain, and once the glide has landed
+# (within a millionth of 0.75 is 13.5 time constants of 20 ms, 12960 samples)
+# exactly a quarter of it, which a power of two keeps exact in a float.
+# Each check fed the wrong thing fails: the heard pair read as the picture,
+# the unity run's heard pair as the turned-down one's, a gain stepped.
+om, ou = grow("output-moved")[0], grow("output-unity")[0]
+def same_picture(a, b): return all(col(a, c) == col(b, c) for c in (0, 1, 4, 5))
+def quartered(a, b, lo, hi): return all(x == 0.25 * y for c in (2, 3) for x, y in zip(col(a, c)[lo:hi], col(b, c)[lo:hi]))
+check("the Output leaves the picture as it was, A's lanes and B's, to the bit: only the heard pair moves",
+      same_picture(om, ou) and max(abs(x) for x in col(ou, 4)) > 0.05 and max(abs(x) for x in col(ou, 0)) > 0.05)
+check("null: the heard pair read as the picture is not the same", not same_picture(
+      [v for k in range(len(col(om, 0))) for v in (col(om, 2)[k], col(om, 3)[k], col(om, 2)[k], col(om, 3)[k], col(om, 4)[k], col(om, 5)[k])],
+      [v for k in range(len(col(ou, 0))) for v in (col(ou, 2)[k], col(ou, 3)[k], col(ou, 2)[k], col(ou, 3)[k], col(ou, 4)[k], col(ou, 5)[k])]))
+check("and the heard pair is the unity run's at the Output: landed, a quarter of it to the bit, the score's voice and the echo with it",
+      quartered(om, ou, 14336, 20480) and max(abs(x) for x in col(ou, 2)[14336:20480]) > 0.05)
+check("null: the unity run's heard pair is not a quarter of itself", not quartered(ou, ou, 14336, 20480))
+# The glide: a sample at a time, no step bigger than the pole's first
+# (0.75 x 0.00104 at 48 kHz), where a gain set a block at a time steps 0.75 at once.
+# The gain where the unity run's sample is big enough to read it by, with the
+# sample it was read at: a step is the change a sample, over a gap where the
+# signal was too small to read.
+def gains(a, b, lo, hi):
+    return [(k, x / y) for k, (x, y) in enumerate(zip(col(a, 2)[lo:hi], col(b, 2)[lo:hi])) if abs(y) > 0.02]
+def glides(g):
+    step = max(abs(g[j + 1][1] - g[j][1]) / (g[j + 1][0] - g[j][0]) for j in range(len(g) - 1))
+    return 0 < step < 1e-3 and abs(g[0][1] - 1) < 0.1 and g[-1][1] == 0.25, step
+g = gains(om, ou, 128, 14336)
+ok, gstep = glides(g)
+check("it glides from unity a sample at a time, no zipper: no step over a thousandth a sample, and it lands at 0.25",
+      ok, "worst step %.2g, first %.6f, last %r" % (gstep, g[0][1], g[-1][1]))
+check("null: a gain set at once, unity for a block and 0.25 after, is a step",
+      not glides(list(enumerate([1.0] * 128 + [0.25] * 128)))[0])
+_, otail = grow("output-moved")
+_, utail = grow("output-unity")
+check("and what is measured off the generator - its envelope, pitch, budget, read-heads - is the same at any Output",
+      otail == utail)
+gnull("output-moved", "set output 0.25", "set output 0.26", "an Output a hundredth louder")
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
@@ -4738,6 +4790,22 @@ mpg, mpt = rboth(mlines, "morph_ops.txt")
 mb = rbad(mpg, mpt)
 check("%d operations on the sliders and the morph leave the same instrument" % len(mlines),
       not mb and len(mlines) > 1500, mb[0] if mb else "")
+# The master Output (G7) by hand, then a preset and a code loaded over it:
+# the page's handler and the core's give the same gain - the knob's fraction
+# squared - and neither restore puts it back, since no setup names it. The
+# morph's random hands above reach it too, among every slider. Its null: the
+# page told 60 where the core was told 50 disagrees.
+OUTPUT_OPS = [{}, {"op": "slider", "id": "output", "value": 50}, _json.loads(bank_setups[0]), {"pictureAmount": 30},
+              {"op": "slider", "id": "output", "value": 0}, _json.loads(bank_setups[-1]), {"op": "slider", "id": "output", "value": 71}]
+opg, opt = rboth([_json.dumps(o) for o in OUTPUT_OPS], "output_ops.txt")
+ob_ = rbad(opg, opt)
+oseen = [(_json.loads(l)["a"]["output"], _json.loads(l)["ranges"]["output"]) for l in opg]
+check("the Output by hand is the same gain on the page and in the core, and no preset or code puts it back",
+      not ob_ and oseen == [(1, 100), (0.25, 50), (0.25, 50), (0.25, 50), (0, 0), (0, 0), (0.71 * 0.71, 71)],
+      (ob_[0] if ob_ else "") + " %r" % oseen)
+onull, _ = rboth([_json.dumps(o) for o in OUTPUT_OPS[:1] + [{"op": "slider", "id": "output", "value": 60}]], "output_null.txt")
+check("null: the page told 60 where the core was told 50 disagrees with it",
+      rdiff(_json.loads(onull[1]), _json.loads(opt[1])) != [])
 # A slider the panel has not got - the page had Scan's three before the core
 # did (P7a), and a hand on one crashed the core in the middle of the morph's
 # walk, which is how this was found - does nothing, the walk going on. The
@@ -4801,7 +4869,8 @@ check("and P7b's: the strike held to its slider and by hand, each layer's Reads 
 mp = [_json.loads(l) for l in mpg]
 check("storing an end moves nothing and puts the fader at it",
       mp[6]["ranges"]["amp"] == 80 and mp[6]["morph"]["pos"] == 1 and mp[3]["morph"]["pos"] == 0
-      and mp[6]["morph"]["b"] == "=freq:880,amp:80",
+      # In the morph's order, which since G7 has Level with the Generator, before Frequency.
+      and mp[6]["morph"]["b"] == "=amp:80,freq:880",
       "%r %r %r" % (mp[6]["ranges"]["amp"], mp[6]["morph"]["pos"], mp[6]["morph"]["b"]))
 check("the fader a quarter of the way puts amp a quarter of the way, and its handler tells the generator",
       mp[7]["ranges"]["amp"] == 35 and mp[7]["a"]["amp"] == 0.35, "%r %r" % (mp[7]["ranges"]["amp"], mp[7]["a"]["amp"]))
@@ -4930,7 +4999,12 @@ CMADE = [{}, {"op": "step"},                                                    
          {"op": "change", "id": "scoreVoices", "value": "nonsense"},                                       # 38
          {"op": "step"}, {"op": "step"},                                                                 # 39, 40
          {"op": "slider", "id": "lfoRate1", "value": 120}, {"op": "change", "id": "lfoSync1", "value": "1/4"},  # 41, 42
-         {"op": "slider", "id": "lfoRate1", "value": 300}]                                                 # 43
+         {"op": "slider", "id": "lfoRate1", "value": 300},                                                 # 43
+         # The plane's 2x back after 11's 4x: the random runs below clicked it
+         # where it moved something only by chance, and G7's Output, one more
+         # slider for the morph's random hands to choose from, moved the
+         # stream they share so that none did.
+         {"op": "click", "id": "planeOS2"}]                                                               # 44
 clines = [_json.dumps(o) for o in CMADE] + [_json.dumps(o) for _ in range(150) for o in crun()]
 cpg, cpt = rboth(clines, "control_ops.txt")
 cb = rbad(cpg, cpt)
@@ -5666,6 +5740,21 @@ SILENCE_MAKE = [["make", 48000, 128, ocode_of({"vcfType": 1, "vcfCut": 500, "sha
 iruns["silenced"] = SILENCE_MAKE + [["routings", SILENCE_ROUTES + "|lfo1"]] + blocks(24)
 iruns["silenced as heard"] = SILENCE_MAKE + [["routings", "lfo2>gen.freq@0.35"]] + blocks(24)
 iruns["silenced heard"] = SILENCE_MAKE + [["routings", SILENCE_ROUTES]] + blocks(24)
+# The master Output (G7), the instrument's: the knob at 50, a quarter, on the
+# generator, then the input drawn whole, then split in bands, then a preset
+# loaded over it - each of the instrument's three heard pairs, and a load,
+# which must leave it. "output unity" is the same hands with no Output.
+OUTPUT_HANDS = [["feed", 100, 73], NOTE_ON(57)] + blocks(4) + ["OUT"] + blocks(120) + [["click", "srcMic"]] + blocks(40) \
+    + [["control", "srcBands", "1"]] + blocks(40) + [["control", "srcBands", "0"], ["click", "srcTone"]] + blocks(10) \
+    + [["setup", ocode["Pluck"]], NOTE_ON(60)] + blocks(60)
+OUTPUT_MAKE = [["make", 48000, 128, icode["Harmonic tone"]]]
+iruns["output"] = OUTPUT_MAKE + [["slider", "output", "50"] if h == "OUT" else h for h in OUTPUT_HANDS]
+iruns["output unity"] = OUTPUT_MAKE + [h for h in OUTPUT_HANDS if h != "OUT"]
+# And moved while the bands are drawn, against the same at unity: the glide
+# there is the generator's, one step a sample, though the generator runs too.
+OUTPUT_BANDS = [["feed", 100, 73], NOTE_ON(57), ["control", "srcBands", "1"]] + blocks(10)
+iruns["output bands"] = OUTPUT_MAKE + OUTPUT_BANDS + [["slider", "output", "50"]] + blocks(20)
+iruns["output bands unity"] = OUTPUT_MAKE + OUTPUT_BANDS + blocks(20)
 # The picture stage (P3) is on in everything the instrument plays, and moves
 # the fold, the echo, the twist and the phase from the picture - so the runs
 # above, which hold the instrument's plumbing and read its sound for an input
@@ -5750,6 +5839,87 @@ check("a project reopened from that state keeps the silence: it plays what LFO 2
       reo == 0 and ro_most == 0 and not ro_other and len(iblocks_of(ro)) == len(iblocks_of(rf)) > 0,
       "apart by %g; compiled %g %s" % (reo, ro_most, ro_other))
 check("null: the same state with the silence cut off hears LFO 1 again", reu > 0.01, "apart by %g" % reu)
+# The master Output (G7) in the instrument: block by block, the picture's six
+# lanes the same to the bit as at unity, on the generator, the input whole,
+# the bands and after a preset; the heard pair, once landed (block 106 on),
+# a quarter of unity's to the bit on each. Its nulls: the heard pair offered
+# as the picture, and unity's heard pair as the quarter.
+def isplit(name):
+    out = []
+    for line in [l for l in iout[name][1] if l.startswith("block ")]:
+        v = array("f", [float(x) for x in line.split()[1:]]).tolist()
+        n = len(v) // 8
+        out.append((v[:2 * n], v[2 * n:]))
+    return out
+ob, ub = isplit("output"), isplit("output unity")
+def ipictures_same(a, b): return len(a) == len(b) and all(x[1] == y[1] for x, y in zip(a, b))
+def iquarter(a, b, spans): return all(x == 0.25 * y for lo, hi in spans for p, q in zip(a[lo:hi], b[lo:hi]) for x, y in zip(p[0], q[0]))
+# Blocks: 4 before the Output, 120 on the generator (landed within a
+# millionth after 101 of them), 40 the input, 40 the bands, 10 back on the
+# generator, 60 after the preset.
+OSPANS = [(106, 124), (125, 164), (165, 204), (215, 274)]
+check("the instrument's Output leaves its picture as it was, every lane, the generator's, the input's and the bands'",
+      ipictures_same(ob, ub) and len(ob) == 274 and max(abs(v) for b in ub[130:200] for v in b[1]) > 0.05)
+check("null: its heard pair offered as the picture is not the same", not ipictures_same([(x[1], x[0]) for x in ob], [(x[1], x[0]) for x in ub]))
+check("and what it hears is a quarter of unity's to the bit, once landed: the generator, the input, the bands, and after a preset",
+      iquarter(ob, ub, OSPANS) and all(max(abs(v) for b in ub[lo:hi] for v in b[0]) > 0.02 for lo, hi in OSPANS),
+      "peaks %s" % [round(max(abs(v) for b in ub[lo:hi] for v in b[0]), 3) for lo, hi in OSPANS])
+check("null: unity's heard pair is not a quarter of itself", not iquarter(ub, ub, OSPANS))
+# Kept beside the setup, never as a hand: the state says pluginOutput 50, has
+# no hand on it, and still says it after the preset's load; at unity it says nothing.
+ostate, ustate = istate("output"), istate("output unity")
+# Every state from the move on, the one before the preset's load as well as after it.
+def istates(name):
+    out = []
+    for l in [l for l in iout[name][1] if l.startswith("state ")]:
+        code = l.split(" ", 2)[2]
+        out.append(_json.loads(base64.b64decode(code + "=" * (-len(code) % 4))))
+    return out
+ohands = [h for st in istates("output") for h in st.get("pluginHands", []) if h[1] == "output"]
+# From the first state that has it, every one has it: more than one, so a
+# state between the move and the preset's load is among them.
+def output_states_kept(states):
+    first = next((i for i, st in enumerate(states) if "pluginOutput" in st), None)
+    return first is not None and len(states) - first >= 2 and all(st.get("pluginOutput") == 50 for st in states[first:])
+check("the state keeps the Output beside the setup, through a preset's load, and as no hand, before the load or after",
+      ostate.get("pluginOutput") == 50 and not ohands and "pluginOutput" not in ustate
+      and output_states_kept(istates("output")),
+      repr((ostate.get("pluginOutput"), ohands, len(istates("output")))))
+# The glide while the bands are drawn: each heard sample's gain against
+# unity's, where unity's is big enough to read it by, is the one-pole's from
+# the move, a step a sample at 20 ms - and not twice as fast, which a second
+# stage stepping on the same gain would make it. The null is that faster glide.
+bb, bu = isplit("output bands"), isplit("output bands unity")
+pole = 1 - math.exp(-1 / (20 * 48000 / 1000))
+def band_glide(rate_steps):
+    most, k = 0.0, 0
+    for p_, q_ in zip(bb[10:], bu[10:]):
+        n = len(p_[0]) // 2
+        for i in range(n):
+            g = 0.25 + 0.75 * (1 - pole) ** (rate_steps * (k + i + 1))
+            if abs(q_[0][i]) > 0.02: most = max(most, abs(p_[0][i] / q_[0][i] - g))
+        k += n
+    return most
+check("moved while the bands are drawn, the Output glides a step a sample, as on the generator",
+      band_glide(1) < 1e-5 and len(bb) == len(bu) == 30, "worst %.3g" % band_glide(1))
+check("null: a glide stepped twice a sample is not it", band_glide(2) > 1e-3, "%.3g" % band_glide(2))
+# A project reopened at 50 opens at a quarter, from its first sample: against
+# the same project at unity, every heard sample a quarter, every picture the
+# same. Null: the project with its Output taken out is not.
+ore, ore_most, ore_other = ireopen(ostate, "output reopened")
+oun, _, _ = ireopen(dict(ostate, pluginOutput=100), "output reopened unity")
+def ihalves(out):
+    rows = []
+    for line in [l for l in out if l.startswith("block ")]:
+        v = array("f", [float(x) for x in line.split()[1:]]).tolist()
+        n = len(v) // 8
+        rows.append((v[:2 * n], v[2 * n:]))
+    return rows
+oreb, ounb = ihalves(ore), ihalves(oun)
+check("a project reopened at 50 is a quarter from its first sample, its picture the unity project's, the compiled as the native",
+      ore_most == 0 and not ore_other and iquarter(oreb, ounb, [(0, len(oreb))]) and ipictures_same(oreb, ounb)
+      and max(abs(v) for b in ounb for v in b[0]) > 0.02)
+check("null: the same project at unity is not a quarter of itself", not iquarter(ounb, ounb, [(0, len(ounb))]))
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)

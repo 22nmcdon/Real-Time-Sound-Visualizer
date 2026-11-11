@@ -414,8 +414,12 @@ Do not re-litigate these without a reason; each replaced something that failed.
   persistence menu the core's panel names. The host's parameters (F7c) are
   marked where they are, a gold dot before the name (`HOST_PARAMS`, in the
   order of the plugin's `kKnobs`, which `headertest.py` reads): the Picture
-  section's six, cutoff, warp, twist, the delay's, phaser's and reverb's mix, and the
-  morph. `headertest.py` holds it, with real mouse and keys, since a
+  section's six (the master Output last, since G7), Level, cutoff, warp, twist, the
+  delay's, phaser's and reverb's mix, and the morph. The Output is how loud
+  you hear and nothing else - the picture is the same to the bit at any
+  setting - and no setup's: the browser keeps it (`scope.output`), the
+  plugin's state beside the setup (`pluginOutput`), and no preset, code,
+  undo step or morph moves it (`outputtest.py`, parity). `headertest.py` holds it, with real mouse and keys, since a
   dispatched event is rightly no step.
 - **The minimum window** (F8, 8 Nov). The plugin opens at 1200x680, will not
   go under 960x600, and remembers its size (`pluginWindow`, which the

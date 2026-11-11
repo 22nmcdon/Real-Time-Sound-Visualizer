@@ -122,8 +122,10 @@ class ScopeProcessor final : public juce::AudioProcessor {
      slider, and a hand on the slider moves the parameter.
 
      The main bank is the Picture section along the bottom of the face -
-     the amount, Scan, strike, softness, persistence, the level - then the
-     cutoff, the warp, the twist, the delay's and the phaser's mix (F7c).
+     the amount, Scan, strike, softness, persistence and, since G7, the
+     master Output in the corner the level had - then the level, now the
+     Generator's, the cutoff, the warp, the twist, the delay's and the
+     phaser's mix (F7c).
      The phaser's amount takes the eighth place when the phaser is built,
      inserted before the morph. The macros were four of the first eight and
      are not parameters any more: nobody had saved a project, so nothing was
@@ -145,14 +147,20 @@ class ScopeProcessor final : public juce::AudioProcessor {
      the hand the panel shows while it is that hand's own (`readBack` when
      the panel turns to the other hand). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 13> kKnobs { {
+  static constexpr std::array<HostKnob, 14> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the
     // bottom of the face, then the sound controls people automate. Strike,
     // softness and twist arrived in version 3; the rest kept their ids, so
     // automation already written follows them to their new places.
     { "picture", "Picture", "pictureAmount", 2, true }, { "scan", "Scan", "oscScan", 2, true },
     { "strike", "Strike", "scanStrike", 3, true }, { "softness", "Softness", "scanSoft", 3, true },
-    { "persistence", "Persistence", "scanMemory", 2, true }, { "level", "Level", "amp", 1, true },
+    { "persistence", "Persistence", "scanMemory", 2, true },
+    /* G7: the master Output, new in version 5, in the corner the level
+       had; the level keeps its id and its meaning, the generator's, and
+       moves one along with everything after it. The Output is both hands'
+       and has no layer to read back. Not a hand on the setup: the plugin's
+       state keeps it as `pluginOutput`, beside the setup. */
+    { "output", "Output", "output", 5, true }, { "level", "Level", "amp", 1, true },
     { "cutoff", "Cutoff", "vcfCut", 1, true }, { "bend", "Warp", "oscBend", 2, true },
     { "twist", "Twist", "planeTwist", 3, true },
     // Shown as Delay mix since F5, the rack's name for the effect and its

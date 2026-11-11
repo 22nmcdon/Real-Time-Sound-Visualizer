@@ -1,6 +1,6 @@
 # The face, second pass
 
-A design, built through G6 (see *Stages*). It is the brief for the stage after the reverb: the face's second
+A design, built through G7 (see *Stages*). It is the brief for the stage after the reverb: the face's second
 pass, agreed with the owner from mockups on 9 November 2026, after the second review
 (`second-review.md`, beside this). The first pass is `redesigning-the-face.md`; this one
 keeps its rules and changes four things about the face, fixes one bug that is in the
@@ -312,7 +312,7 @@ not the knob under the hand, and nothing says they are there.
 
 ![The info line, with Strike pointed at](the-face-second-pass/08-info-line.png)
 
-**The info line** sits in the Picture section's free middle, between Level's meter and
+**The info line** sits in the Picture section's free middle, between Level's meter (the Output's since G7) and
 the three reads, at every size: the control's name, its value, the gold dot if a host can
 automate it, the hand it applies to, one plain sentence, and **More**, in two lines at
 most. (Drawn first along the foot of the window, and under the screen on the compact
@@ -451,6 +451,34 @@ Each leaves the suite green and is pushed alone.
   project reopens each hand's edits on the hand they were made on. `handstest.py` holds
   it, parity the core's.
 - **G7 Level and Output.** Level into the Generator, Output added, the host's `output`.
+  **Built 11 Nov**, page, core and plugin. Level is the Generator's last row on Play,
+  after Interval (and Tuning, behind the dots), each hand's on the Generator's link as it
+  already was; the host's `level` keeps its id and its meaning. The **Output** has its
+  corner: one gain after everything, both hands', on what is heard and nothing else (the
+  owner, 11 Nov). It is the last thing the generator's block does to the heard pair, after
+  the lanes and the score's voice are summed (`makeGeneratorCore`, `scope::Generator`), and
+  the instrument puts the same stage on what it hears of an input, whole or in bands
+  (`Generator::hear`); the picture's lanes are never touched, so the screen, Scan, the
+  photocell and the loop are the same to the bit at any Output. Its law is the knob's
+  fraction squared (unity at the top, -6 dB at 71, -12 at 50, read in decibels, *silent*
+  at nought), nothing above unity, gliding a sample at a time with a 20 ms time constant
+  and landing exactly once within a millionth. Decided where the design was open: it is
+  **no part of a setup**, as recommended - a preset or a code must not change how loud you
+  listen, and a setup field would be put back to unity by every load - so the browser
+  remembers it (`scope.output`, wrapped as the Size is), the plugin's state carries it
+  beside the setup as `pluginOutput` (written by the instrument where it is not unity and
+  by the plugin's own save always, so a project saved at unity reopens at unity; an
+  instrument opened on a project starts at it without the glide), and undo, the morph
+  and modulation never touch it. What that costs: a code sent to someone plays at their
+  Output, which is the point, and the site's Output is per browser, not per sound. The
+  host's `output` (version 5) takes the Picture section's sixth place in `kKnobs`, before
+  the level, which moves one along with everything after it - no projects are saved yet.
+  The meter went with the Output rather than with Level: it is the screen's level at the
+  Output's gain, since the heard pair never reaches the page on the site or in the plugin;
+  it leaves out what is heard and not drawn (the score's voice, and in a split the other
+  figure). `outputtest.py`, parity (the generator's runs, the instrument's three heard
+  pairs, a project reopened, the handler's law through a restore) and the shell test hold
+  it, each with its null.
 - **G8 The second review's bugs** not covered above (`second-review.md`). They do not
   wait for G7: the plugin's window size, the delay's line while it is off and the rack's
   memory are small and lose or misplay sound today, so they can go first.

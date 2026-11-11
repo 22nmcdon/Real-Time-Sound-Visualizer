@@ -136,6 +136,14 @@ void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
     if (decoded.kind == scope::DecodedSetup::Kind::Read && decoded.setup.type == scope::Json::Type::Object) {
       const auto [w, h] = windowSize();
       decoded.setup.set("pluginWindow", scope::Json::string(std::string_view(std::to_string(w) + "x" + std::to_string(h))));
+      /* And the master Output (G7), always, at unity too: the instrument
+         writes it only where it is not unity, and a project saved at unity
+         must reopen at unity in an instance that was turned down. Read off
+         its parameter, which follows the slider and is safe to read here,
+         where the instrument is the audio thread's. A state waiting to load
+         that names its own keeps it. */
+      if (!decoded.setup.get("pluginOutput"))
+        decoded.setup.set("pluginOutput", scope::Json::number(static_cast<double>(knob(std::string_view("output"))->get())));
       if (const auto encoded = scope::encodeSetup(decoded.setup)) code = *encoded;
     }
   }

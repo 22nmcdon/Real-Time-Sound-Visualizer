@@ -99,6 +99,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
+| `outputtest.py` | Level in the Generator and the master Output (G7): where each is and Level on the Generator's link; the Output's law (the knob's fraction squared) and its reading in decibels; no setup's - a preset, a code, undo under real keys and the morph leave it, each against Level, which they move; this browser's storage, and the page opening at unity with storage refused; the picture the same to the bit and the heard pair a quarter on the compiled instrument the page carries and on the page's own generator, played deterministically on the main thread; the meter at the Output's gain; the site's instrument told the remembered Output as it connects, each with its null |
 | `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the phosphor grid and Scan's table the same with it on and off and with Which hands on one hand, on `?brain=js`; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
@@ -5723,3 +5724,43 @@ note will do) turned up four things worth knowing:
   is a port of differ here, on a path parity does not drive (loads over a held
   key). `rotatetest.py` walks every preset and found it; it strikes again
   after the walk. Not fixed here, and not new: the drone hid it.
+
+**Output is on the heard pair, after the sum, and nowhere else (G7).** The
+picture and the sound are one pair (P4): the heard pair is the lanes summed,
+plus the score's voice. So a monitor's volume has exactly one place - the
+last line of the generator's block, after that sum (`makeGeneratorCore`,
+`scope::Generator`) - and anywhere earlier is on the lanes, which are the
+screen, Scan, the photocell and the loop. The instrument hears an input as a
+copy of its picture, so it puts the same stage on that copy (`Generator::hear`)
+and never on what it draws; and in the band split it no longer asks the
+generator for a heard pair it throws away, since that would have stepped the
+Output's glide twice a sample. Two things made "the picture the same to the
+bit" checkable rather than nearly so. A gain of 0.25 (the knob at 50) is a
+power of two, so a float scaled by it is exact: once landed the turned-down
+heard pair is a quarter of unity's to the bit, with no tolerance for a change
+elsewhere to hide in. And the glide lands: within a millionth it is snapped to
+where it was put, which takes 13.5 time constants from unity to a quarter -
+270 ms at 20 ms each, 101 blocks of 128 at 48 kHz, not the "a few time
+constants" a first draft of the check assumed, which read a gain still 0.0002
+away. Reading a glide off two runs'
+ratio, skip the samples too small to divide by, and divide each step by the
+gap it spans: a gap of four samples looked like a zipper three times over.
+
+**The Output is no part of a setup, and three places keep it instead.** The
+owner's recommendation, taken: a preset or a code loaded must not change how
+loud you listen, and a field in `SETUP_FIELDS` would be laid back to unity by
+every load (`Object.assign` over the defaults). So the site's browser keeps it
+(`scope.output`, read once at boot and wrapped against storage refused, as the
+Size is; not read in the plugin, where the project's must win), the plugin's
+state carries it beside the setup (`pluginOutput`: the instrument writes it
+where it is not unity and reads it in `load`, never as a hand, since a load
+clears the hands; the plugin's own save writes it always, so a project saved at
+unity reopens at unity in an instance someone had turned down), and the page
+learns it from the instrument's state (`hostOutput`) rather than from a hand.
+On the site the instrument in its worklet is told the remembered value as the
+page connects; without that it played at unity while the knob said otherwise.
+The mirror of the hosted generator on the page needed telling too: it is made
+after the knob is read at boot. MORPH_SKIP holds it out of the morph, and undo
+never sees it because undo records the setup. A slider whose start is its top
+also broke parity's allocation walk, which judged "moved" by where the walk
+ended against where it began: it walks down from the top for that one.

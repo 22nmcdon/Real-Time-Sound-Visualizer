@@ -1746,6 +1746,15 @@ namespace scope {
 
 // --- a slider moved: its handler ---------------------------------------------------------
 
+/* The master Output's law (G7), the page's outputGain: the knob's fraction
+   squared, so its upper half is the last 12 dB and its lower half the rest,
+   as a monitor's volume tapers - 71 is -6 dB, 50 is -12 - with unity at the
+   top, where it starts. */
+inline double outputGain(double v) {
+  const double x = std::fmax(0.0, std::fmin(1.0, v / 100));
+  return x * x;
+}
+
 // What the page's "input" handler for a slider does with its new value, for
 // every slider whose handler reaches the sound or a setting a setup carries -
 // a hand on it, or the morph walking it. The view's sliders do the view's
@@ -1757,6 +1766,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   const auto layerSet = [&](std::string_view field, double x) { handSet(b, gen, id, field, x); };
   if (id == "freq") { gen.set("freq", v); keys.panel().freq = v; }
   else if (id == "amp") layerSet("amp", v / 100);
+  // The master Output (G7): both hands', on what is heard alone, and never a setup's.
+  else if (id == "output") gen.set("output", outputGain(v), 0);
   else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
   else if (id == "phase") gen.set("phase", v * kPi / 180);
   else if (id == "envAttack") layerSet("attackMs", v);

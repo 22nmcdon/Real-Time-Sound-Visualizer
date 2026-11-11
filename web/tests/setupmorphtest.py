@@ -141,7 +141,8 @@ with sync_playwright() as pw:
                               "note": "A is stored. Change the sound and store B."}
           and blend["both"]["pos"] == "100" and blend["both"]["b"] == "true", str(blend["stored"]))
     check("and with both, it counts what moves: two sliders, and the menu is not one of them",
-          blend["both"]["moving"] == ["freq", "amp"]
+          # In the page's order, which since G7 has Level in the Generator, before Frequency on Ink.
+          blend["both"]["moving"] == ["amp", "freq"]
           and blend["both"]["note"] == "2 sliders move between A and B. Menus and switches stay as they are.",
           str(blend["both"]))
     check("halfway, the pitch is an octave from each end, 440 not 550, and the amplitude is halfway",

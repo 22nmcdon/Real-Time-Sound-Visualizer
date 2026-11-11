@@ -1189,11 +1189,13 @@ int main() {
       grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
-    // P9 added the reverb's mix, version 4, before the morph.
-    check("the host's parameters are the loop's twelve and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 13
-          && names == "Picture, Scan, Strike, Softness, Persistence, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
+    // P9 added the reverb's mix, version 4, before the morph; G7 the master Output, version 5, before the level.
+    check("the host's parameters are the loop's thirteen and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 14
+          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
           && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
+          // The Output at unity, its slider's top, which no setup moves.
+          && p.knob("output")->get() == 100 && p.slider("output") == 100
           // F7c's three, each its own slider: strike and softness differ at
           // the page's defaults (50 and 30), so one wired to the other's fails.
           && p.knob("strike")->get() == p.slider("scanStrike") && p.knob("softness")->get() == p.slider("scanSoft")
@@ -1203,11 +1205,12 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Strike Softness Persistence Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
-          && p.knob("phaser") == p.getParameters()[10] && p.knob("reverb") == p.getParameters()[11]
-          && p.knob("morph") == p.getParameters()[12]
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
+          && p.knob("output") == p.getParameters()[5] && p.knob("level") == p.getParameters()[6]
+          && p.knob("phaser") == p.getParameters()[11] && p.knob("reverb") == p.getParameters()[12]
+          && p.knob("morph") == p.getParameters()[13]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads
@@ -1319,6 +1322,86 @@ int main() {
             early == 0 && late > 0.01 && moved.after == c.value && moved.before != c.value,
             "before the move " + num(early) + ", after " + num(late) + "; slider " + num(moved.before) + " then " + num(moved.after));
     }
+  }
+  /* The master Output (G7), automated to 50 from block 20: heard from that
+     block, quieter, a quarter of the same unautomated by the end, and the
+     picture the same to the bit - the Output is what is heard and nothing
+     else. The picture compared is the ring the page draws and the
+     photocell reads, so a gain on the lanes would fail it; the null is the
+     Level, automated the same way, which moves both. */
+  {
+    const auto withPicture = [&](const char* id, float value) {
+      ScopeProcessor p;
+      if (opening) p.setStateInformation(opening->data(), static_cast<int>(opening->size()));
+      p.prepareToPlay(rate, block);
+      std::vector<float> got;
+      auto* knob = id ? p.knob(std::string_view(id)) : nullptr;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 200; ++k) {
+        if (k == 20 && knob) knob->setValueNotifyingHost(knob->convertTo0to1(value));
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 120); }
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) got.push_back(buf.getSample(0, i));
+      }
+      return std::make_pair(got, p.pictureSnapshot());
+    };
+    const auto still = withPicture(nullptr, 0), output = withPicture("output", 50), level = withPicture("level", 14);
+    const std::size_t end = still.first.size(), tail = end - static_cast<std::size_t>(20 * block);
+    bool quarter = true;
+    for (std::size_t i = tail; i < end; ++i) quarter = quarter && output.first[i] == 0.25f * still.first[i];
+    check("automating the Output is heard from its block, a quarter by the end, and the picture is the same to the bit",
+          apart(still.first, output.first, 0, 20 * block) == 0 && apart(still.first, output.first, 20 * block, end) > 0.01 && quarter
+          && output.second == still.second,
+          "after the move " + num(apart(still.first, output.first, 20 * block, end)));
+    check("null: the Level automated as far moves the picture too", level.second != still.second && apart(still.first, level.first, 20 * block, end) > 0.01);
+  }
+  /* Kept with the project, beside the setup and never in it (G7): saved at
+     50, a fresh plugin reopens at 50, its parameter with it; a preset then
+     loaded leaves it; and a project saved at unity, opened into a plugin
+     turned down, is at unity - the plugin's save writes it always. The null
+     is that state with the Output taken out, which leaves the turned-down
+     plugin where it was: the field is what does it. */
+  {
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    const auto stateOf = [&](ScopeProcessor& p) { juce::MemoryBlock m; p.getStateInformation(m); return m; };
+    ScopeProcessor a;
+    a.prepareToPlay(rate, block);
+    a.knob("output")->setValueNotifyingHost(a.knob("output")->convertTo0to1(50));
+    a.processBlock(buf, none);
+    const auto saved = stateOf(a);
+    ScopeProcessor b;
+    b.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    b.prepareToPlay(rate, block);
+    const bool reopened = b.knob("output")->get() == 50 && b.slider("output") == 50 && b.tone().output == 0.25;
+    b.setCurrentProgram(1);
+    b.processBlock(buf, none);
+    const bool kept = b.slider("output") == 50 && b.tone().output == 0.25 && b.knob("output")->get() == 50;
+    check("the Output is kept with the project: reopened at 50, its parameter with it, and a preset loaded after leaves it",
+          reopened && kept, num(b.slider("output")) + ", parameter " + num(b.knob("output")->get()));
+    ScopeProcessor u;
+    u.prepareToPlay(rate, block);
+    u.processBlock(buf, none);
+    const auto unity = stateOf(u);
+    const auto into = [&](const juce::MemoryBlock& state) {
+      ScopeProcessor d;
+      d.prepareToPlay(rate, block);
+      d.knob("output")->setValueNotifyingHost(d.knob("output")->convertTo0to1(20));
+      d.processBlock(buf, none);
+      d.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+      d.processBlock(buf, none);
+      return d.slider("output");
+    };
+    auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(unity.getData()), unity.getSize()));
+    decoded.setup.erase(u"pluginOutput");
+    const auto stripped = scope::encodeSetup(decoded.setup);
+    juce::MemoryBlock without;
+    if (stripped) without.append(stripped->data(), stripped->size());
+    const double atUnity = into(unity), atStripped = into(without);
+    check("a project saved at unity opens at unity in a plugin turned down", atUnity == 100, num(atUnity));
+    check("null: the same state without the Output leaves it turned down", atStripped == 20, num(atStripped));
   }
   {
     /* With the layers on, the panel's voice sliders show the layer being
@@ -2365,11 +2448,12 @@ int main() {
     juce::MemoryBlock earlySaved;
     early.getStateInformation(earlySaved);
     const std::string earlyCode(static_cast<const char*>(earlySaved.getData()), earlySaved.getSize());
-    // Less the face's window, which a saved state carries beside the setup.
+    // Less the face's window and the master Output (G7), which a saved state carries beside the setup.
     const auto unwindowed = [&](const std::string& code) {
       auto d = scope::decodeSetup(code);
       if (d.kind != scope::DecodedSetup::Kind::Read) return std::string("unread");
       d.setup.erase(u"pluginWindow");
+      d.setup.erase(u"pluginOutput");
       return scope::utf16To8(scope::jsonStringify(d.setup));
     };
     check("saved before it has played a block, it saves the state it was handed",

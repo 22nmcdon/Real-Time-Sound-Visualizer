@@ -124,6 +124,9 @@ with sync_playwright() as pw:
     # The empty control at rest, then with the pointer on it: a real hover.
     BARE = """() => ({ drawn: [...document.querySelectorAll('[data-mod-dest="gen.amp"] .mod-lane')].filter((n) => !n.hidden).length,
                        menu: menuControl(el.amp) === el.amp })"""
+    # Level is the Generator's since G7, on Play; it was in the Picture
+    # section, on every tab, which is why this never chose one.
+    p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
     rest = p.evaluate(BARE)
     p.locator('[data-mod-dest="gen.amp"]').first.hover(); p.wait_for_timeout(300)
     pointed = p.evaluate(BARE)
@@ -621,12 +624,12 @@ with sync_playwright() as pw:
       }
       return out;
     }"""
-    want_bar = {"bottom": True, "knobs": ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "amp"],
+    want_bar = {"bottom": True, "knobs": ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output"],
                 "persistence": [False, True], "panel": True}
     for w, h in ((1400, 900), (960, 600)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(300)
         bar = p.evaluate(BAR)
-        check("at %dx%d the Picture is along the bottom, its six knobs (Level last), one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
+        check("at %dx%d the Picture is along the bottom, its six knobs (the Output last, Level's place until G7), one Persistence, and its Advanced inside the window, nothing scrolling" % (w, h),
               all(v == want_bar for v in bar.values()), str(bar))
     # Its null: the menu put back on the face is a second Persistence.
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)

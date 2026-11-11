@@ -117,6 +117,8 @@ struct Tone : LayerSettings, PlaneTone {
   int qMask = 0;
   double qGlideMs = 0;
   double scoreDecayMs = 400, scoreLevel = 0.4;
+  // The master Output (G7), as a gain on what is heard alone: the page's tone says why.
+  double output = 1;
 };
 
 // A routing, as `setRoutes` copies one: an LFO's index or a held value.
@@ -196,6 +198,7 @@ class Generator {
     else if (field == "menvReleaseMs") a.menv.releaseMs = value;
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
+    else if (field == "output") a.output = value;
     else if (field == "planeOS") a.planeOS = value;
   }
 
@@ -399,6 +402,7 @@ class Generator {
     const double octave = std::pow(2.0, a_.octaves);
     const double glide = a_.glideMs > 0 ? poleFor(a_.glideMs, rate_) : 1;
     const double bendGlide = poleFor(kBendGlideMs, rate_);
+    const double outGlide = poleFor(kOutputGlideMs, rate_);
     if (!freqStarted_) { freqNow_ = a_.freq; freqStarted_ = true; }
     const int inMode = inBuf_ != nullptr && inLen_ >= n ? toInt32(a_.inputMode) : 0;
     const double inDepth = a_.inputDepth;
@@ -546,10 +550,11 @@ class Generator {
         if (live == 0) scoreStruck_ = 0;
       }
 
-      // What is heard: the lanes, summed, and the score's voice.
+      // What is heard: the lanes, summed, and the score's voice, at the Output (G7).
       if (heardL) {
-        heardL[i] = static_cast<float>(outL[i] + bx + scored);
-        heardR[i] = static_cast<float>(outR[i] + by + scored);
+        outputStep(outGlide);
+        heardL[i] = static_cast<float>((outL[i] + bx + scored) * outNow_);
+        heardR[i] = static_cast<float>((outR[i] + by + scored) * outNow_);
       }
     }
 
@@ -563,8 +568,36 @@ class Generator {
     }
   }
 
+  /* The Output on a pair that is heard and was never the generator's: the
+     instrument's input, drawn whole or in bands, whose heard pair is the
+     picture (Instrument::render). The same stage as the block's, glide and
+     all, so going from the generator to the input and back is one gain that
+     never jumps. Not the page's: its live input is not heard. */
+  void hear(float* left, float* right, int n) {
+    const double glide = poleFor(kOutputGlideMs, rate_);
+    for (int i = 0; i < n; i++) {
+      outputStep(glide);
+      left[i] = static_cast<float>(left[i] * outNow_);
+      if (right) right[i] = static_cast<float>(right[i] * outNow_);
+    }
+  }
+  // Where the Output's gain has got to, for a harness.
+  double outputNow() const { return outNow_; }
+  /* The Output's gain put where it is asked, with no glide: for an
+     instrument opening on a project that was turned down, whose first
+     samples - an input heard at once, a note held from the start - would
+     otherwise come out at unity for the glide's first tenth of a second. */
+  void settleOutput() { outNow_ = a_.output; }
+
  private:
   static constexpr double kBendGlideMs = 5, kVibratoHz = 5.5;  // BEND_GLIDE_MS, VIBRATO_HZ
+  // OUTPUT_GLIDE_MS and OUTPUT_SNAP, the page's block's: why there.
+  static constexpr double kOutputGlideMs = 20, kOutputSnap = 1e-6;
+  void outputStep(double glide) {
+    outNow_ += (a_.output - outNow_) * glide;
+    if (std::fabs(a_.output - outNow_) < kOutputSnap) outNow_ = a_.output;
+  }
+  double outNow_ = 1;  // the Output's gain as it glides, a sample at a time
   static constexpr double kClockHyst = 0.01;
 
   // JavaScript's `| 0`: towards nought, and a value past 32 bits wrapped.

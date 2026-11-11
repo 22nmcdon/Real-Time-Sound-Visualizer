@@ -231,6 +231,8 @@ class Instrument {
        a note do. */
     keyboard_->setPresent(true);
     load(setup, true);
+    // Opening at the Output it was saved at, not gliding down to it (G7).
+    core_->settleOutput();
     keyboard_->frame(0);
     changed_ = true;
     levelLane_.assign(kLevelFrames, 0.0f);
@@ -239,7 +241,6 @@ class Instrument {
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
     pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
     pictureBL_.assign(size, 0.0f); pictureBR_.assign(size, 0.0f);
-    heardL_.assign(size, 0.0f); heardR_.assign(size, 0.0f);
   }
 
   // A setup loaded as a preset is: the core restored, the hands on it since put back.
@@ -283,6 +284,15 @@ class Instrument {
       drawFrom(drawn->type == Json::Type::Bool && drawn->b);
     if (const Json* split = setup_.type == Json::Type::Object ? setup_.get("pluginBands") : nullptr)
       drawBands(split->type == Json::Type::Bool && split->b);
+    /* The master Output (G7), which a saved state carries beside the setup,
+       as it carries the input: a project reopens at the level it was heard
+       at. A preset or a code says nothing, and leaves it where it is - which
+       is the point of its being no setup's: loading a sound must not change
+       how loud you are listening. Not a hand, so no hand clears it. */
+    if (const Json* out = setup_.type == Json::Type::Object ? setup_.get("pluginOutput") : nullptr) {
+      if (out->type == Json::Type::Number) scope::moveSliderTo("output", out->n, *brain_, *core_, *keyboard_, lfos_);
+      setup_.erase("pluginOutput");
+    }
     // A setup restores two lanes' worth of view; the band split has four, and keeps them.
     if (bands_) { brain_->view.capture.channels.resize(static_cast<std::size_t>(kBandCount)); fitView(*brain_); }
     if (hooks.loaded) hooks.loaded();
@@ -545,6 +555,10 @@ class Instrument {
     setup.erase("pluginBands");
     if (drawsInput_) setup.set("pluginInput", Json::boolean(true));
     if (bands_) setup.set("pluginBands", Json::boolean(true));
+    // The Output beside it, where it is not where it starts; the plugin's own save writes it always.
+    setup.erase("pluginOutput");
+    if (brain_ && brain_->panel.range("output") != rangeSpec("output")->value)
+      setup.set("pluginOutput", Json::number(brain_->panel.range("output")));
     const auto code = encodeSetup(setup);
     return code ? *code : std::string();
   }
@@ -659,6 +673,20 @@ class Instrument {
     keepSlider(id, fromHost);
   }
   void keepSlider(const std::string& id, bool fromHost) {
+    /* The Output is not a hand on the setup (G7): the state carries it as
+       `pluginOutput`, beside the setup, so a load - which clears the hands -
+       never takes it back to unity. Its host parameter and the page still
+       follow it as any other slider's. */
+    if (id == "output") {
+      changed_ = true;
+      if (fromHost) {
+        hostVersion_++;
+        if (std::find(hostMoved_.begin(), hostMoved_.end(), id) == hostMoved_.end()) hostMoved_.push_back(id);
+      } else if (hooks.sliderMoved) {
+        hooks.sliderMoved(id, brain_->panel.range(id));
+      }
+      return;
+    }
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("s"))); hand.a.push_back(Json::string(std::string_view(id)));
     hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->panel.range(id)))));
@@ -1019,7 +1047,8 @@ class Instrument {
            and what is heard the bands summed at the page's mixer's gains.
            The generator runs all the same, since it steps the oscillators
            every modulation reads; nothing of it is heard. */
-        core_->block(pictureL_.data(), pictureR_.data(), n, heardL_.data(), heardR_.data());
+        // Its heard pair is not asked for: what is heard here is the bands', at the Output below.
+        core_->block(pictureL_.data(), pictureR_.data(), n);
         std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
         for (int k = 0; k < n; ++k) {
           float* row = &picture_[ring * kRingLanes];
@@ -1037,6 +1066,7 @@ class Instrument {
           ring = (ring + 1) % kPictureFrames;
         }
         publish(ring);
+        core_->hear(left + at, heardR, n);  // the Output, on what is heard and never on the bands drawn
         continue;
       }
       if (drawsInput_) {
@@ -1044,6 +1074,8 @@ class Instrument {
         core_->effect(inL, inR, pictureL_.data(), pictureR_.data(), n);
         std::copy(pictureL_.begin(), pictureL_.begin() + n, left + at);
         std::copy(pictureR_.begin(), pictureR_.begin() + n, heardR);
+        // The Output (G7), on the copy that is heard: the picture is what came out of the plane.
+        core_->hear(left + at, heardR, n);
       } else {
         if (inL) {
           for (int k = 0; k < n; ++k) mono_[static_cast<std::size_t>(k)] = input_->right ? (inL[k] + inR[k]) * 0.5f : inL[k];
@@ -1133,7 +1165,7 @@ class Instrument {
   std::vector<std::string> hostMoved_;  // the sliders the host has moved since the last load
   bool changed_ = false;
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
-  std::vector<float> pictureL_, pictureR_, spare_, mono_, heardL_, heardR_;  // a block's worth, made in prepare
+  std::vector<float> pictureL_, pictureR_, spare_, mono_;  // a block's worth, made in prepare
   std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, as the generator draws it
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator

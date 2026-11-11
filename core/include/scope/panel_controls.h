@@ -21,6 +21,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "pictureAmount", 0, 100, 1, 60 },
   { "freq", 30, 4000, 1, 220 },
   { "amp", 0, 140, 1, 55 },
+  // The master Output (G7): the Picture section's corner, never a setup's.
+  { "output", 0, 100, 1, 100 },
   { "morph", 0, 300, 1, 150 },
   { "width", 5, 95, 1, 25 },
   { "table", 0, 300, 1, 150 },
@@ -177,7 +179,8 @@ inline constexpr SelectSpec kSelects[] = {
 // LFO's rate) as well as the ones MORPH_SKIP names. The order is what a setup
 // code writes an end in, so it is held to the page like the rest.
 inline constexpr const char* kMorphIds[] = {
-  "morph", "width", "table", "glide", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
+  // Level in the Generator since G7, after Glide, where the page lays it out.
+  "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
   "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY",
   "planeShear", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
   "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth",
@@ -185,7 +188,7 @@ inline constexpr const char* kMorphIds[] = {
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
   "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes", "level", "position", "holdoff", "timebase", "zoom",
-  "oscScan", "scanStrike", "scanSoft", "amp", "menvAtk", "menvDec", "menvSus", "menvRel",
+  "oscScan", "scanStrike", "scanSoft", "menvAtk", "menvDec", "menvSus", "menvRel",
 };
 
 }  // namespace scope

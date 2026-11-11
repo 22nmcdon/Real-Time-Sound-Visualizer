@@ -2687,6 +2687,21 @@ redone natively or left out.
   sliders as the plugin's own list, read from `kKnobs`, so a parameter added
   there is one it has to walk.
 
+  G7 (11 Nov) added the master Output, `output`, version 5, in the sixth
+  place where the level was, since the face's Picture section has it in
+  Level's old corner; the level moved one along, keeping its id and its
+  meaning (the generator's, both hands while the Generator is linked), and
+  everything after it with it - an index moved once more before anyone has
+  saved a project. The Output is a gain on what is heard and nothing else
+  (`scope::Generator`'s last line, and `Generator::hear` on an input heard),
+  so automating it leaves the picture the same to the bit, which the shell
+  test reads off the picture ring against the Level automated alike (the
+  null). It is no hand on the setup: the state carries it beside the setup
+  as `pluginOutput`, which `getStateInformation` always writes, so a preset
+  loaded leaves it and a project reopens at it, at unity too; and an
+  instrument opened on a project starts at it without its glide. It has no
+  layer to read back.
+
   That run found the one real fault: moving the persistence allocated on the
   audio thread, where the seven others did not - harmless while only a hand
   on the page moved it, not once a host automates it. `setPersistence`
