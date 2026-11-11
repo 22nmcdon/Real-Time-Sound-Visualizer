@@ -50,6 +50,29 @@ A *Draw* choice, beside today's (which stays the default):
 beside it are **Constellation**, **Clock**, **Pairs** and **Ripples**. Helix and Split
 screen were sketched and not chosen. The trail stays a maybe.
 
+**Restructured (the owner, 11 Nov):** looking at the mockup, the owner saw that Clock,
+Pairs and Ripples are not modes beside Constellation but settings of it - Clock is a
+constellation placed by pitch class on Scan's circle, Pairs one with a dyad for each
+figure, Ripples one whose figures move - and agreed to build it that way. So there are
+two ways to draw, and the second has three settings:
+
+| Draw | Setting | Choices |
+|---|---|---|
+| **One figure** (today's, the default) | - | - |
+| **Constellation** | **Figure** - what each figure is | *Note* (the figure it would draw alone) · *Pair* (the dyad two notes make, between their places) |
+| | **Place** - where it lands | *Pitch* (pitch class round a clock face, octave as distance from the middle) · *Clock* (pitch class on Scan's circle, octave ignored) · *Seeded* (the scatter below) |
+| | **Motion** - how it moves | *Still* · *Ripple* (each strike sends the figure outward; a held note sends one again) |
+
+The settings are not cosmetic, because Scan reads the screen back as sound. Place decides
+which notes are read at all: on Clock every note crosses Scan's circle, by Pitch a
+middle-register chord can sit just clear of it. A ripple reaches the circle a moment
+after the strike, so the note brightens late, like an echo in the timbre, and a held note
+pulses. Pair draws the intervals rather than the notes - the only setting that shows the
+harmony - and costs most: n notes make n(n-1)/2 figures, fifteen for six, so it needs a
+limit (neighbouring notes only, or a cap). What the structure gains: fewer top-level
+choices, and combinations four modes did not allow (Pairs on the Clock, seeded Ripples).
+What it costs: the combinations multiply what parity and `honestytest.py` must cover.
+
 ## Where a note lands: Scatter
 
 The owner asked whether placement could be truly random, against the repeatable
@@ -78,13 +101,17 @@ What Free costs, so it stays a choice and not the default:
 
 ## How it is to be built
 
-1. A mockup on the design canvas: a held triad and a fast run, drawn as one figure and
-   in each of the four chosen modes, with Constellation's places by pitch and by a
-   seeded scatter, side by side.
+1. A mockup on the design canvas (`https://claude.ai/artifact/C7EtMKWiMK6LXo4ZKRuyBz`):
+   first the four modes side by side (10 Nov), then, after the owner's restructuring, one
+   board per setting (11 Nov) - Draw on a sine, a triangle and a saw; Place on a triad and
+   a run; Figure on a triad and six notes; Motion at three moments after a strike; and a
+   split's two layouts. A gold dot marks where a figure crosses Scan's circle.
 2. A page-only prototype behind a switch, to hear what Scan makes of a constellation
    before anything is ported.
 3. Then the core, with parity; a voice budget for many small figures; and new honesty
    measurements for any preset that uses it.
+4. In order: Constellation with *Note* and the three places first; *Pair* and *Ripple*
+   once the first has been heard.
 
 ## Open
 
