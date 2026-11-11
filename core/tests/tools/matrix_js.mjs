@@ -58,7 +58,7 @@ const LIFTED = [
   "clampLoop", "routingAmount", "GEN_DESTS", "GEN_SLOTS",
   "FADE_MODES", "FADE_LIMITS", "ENV_DEFAULT", "fade", "routeKey", "fadesIn", "fadesOut", "fadeLayered",
   "fadeTravel", "rampMs", "rampAt", "rampDone", "rampTo", "rampStill", "gatePhase", "gateSet", "fadeGain",
-  "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
+  "routingsHeard", "routedFrom", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
   "eventSeen", "fireEvents", "genMod", "genRoutes", "modDirty", "repaintQueued", "touchRoutings", "compileRoutes",
   "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings", "routingDepthB", "encodeRoutingsB", "applyRoutingsB",
   "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutingsAtB", "stageRoutings", "isStageKey",
@@ -92,7 +92,7 @@ const source = STUBS + LIFTED.map(definition).join("\n")
   + visualLoop() + `
 return { state, midi, log, fade, el, pictureHands, encodeRoutingsB, applyRoutingsB, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
          setFadeEnvelope, fadeStep, fireEvents, applyVisual, workletRoutes, encodeRoutings, decodeRoutings,
-         routingsHeard, routeKey,
+         routingsHeard, routedFrom, routeKey,
          setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty,
          setPictured: (on) => { layerPictures.live = on; } };`;
 
@@ -205,7 +205,7 @@ function run(commands) {
     // And each upper hand's (G6): its own, or "u" where it is the lower's.
     const amounts = m.state.modRoutings.map((r) => show(r.amount) + "/" + show(r.amountB)).join("+") || "-";
     lines.push([cmd, ...m.log.flatMap((l) => ["::", l]), "|", ...said, "amounts", amounts,
-                "heard", m.routingsHeard().length, "gains", m.fade.gains.size, "dirty", show(m.dirty())].join(" "));
+                "heard", m.routingsHeard().length, "fromhear", show(m.routedFrom("hear")), "fromstage", show(m.routedFrom("stage.")), "gains", m.fade.gains.size, "dirty", show(m.dirty())].join(" "));
   }
   return lines.join("\n");
 }

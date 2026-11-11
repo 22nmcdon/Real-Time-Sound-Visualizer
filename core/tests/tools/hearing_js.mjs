@@ -13,7 +13,7 @@
    A file is runs of `run`, then one command a line, then `end`:
      at MS   rate HZ   len N   lanes 1|2   tone LANE HZ AMP PHASE   noise LANE SEED AMP   clear
      gap none|first|second|early   frame ELAPSED   held NOTE... | held -   running 0|1   gen 0|1
-     trig LANE   xy A B
+     trig LANE   xy A B   routed 0|1 (whether a routing heard comes from a hearing source; one to begin)
    Usage: node hearing_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -55,6 +55,9 @@ const MOD_SOURCES = new Map();
 function registerSource(entry) { MOD_SOURCES.set(entry.id, entry); return entry; }
 let touched = 0;
 const touchRoutings = () => { touched++; };
+// The page asks its routings; the run says. Asked by any other name, it is no.
+let routed = true;
+const routedFrom = (prefix) => routed && prefix === "hear.";
 const midi = { notes: [] };
 const state = { source: null, running: true, trigSource: 0, xyPair: [0, 1] };
 `;
@@ -62,7 +65,8 @@ const state = { source: null, running: true, trigSource: 0, xyPair: [0, 1] };
 const source = STUBS + LIFTED.map(definition).join("\n")
   + block("HEARING_SOURCES.forEach((entry, i) => {", "\n});\n")
   + block('registerSource({\n  id: "hear.onset"', "\n});\n") + `
-return { MOD_SOURCES, hearing, onset, hearingStep, state, midi, touched: () => touched, setClock: (ms) => { clock = ms; } };`;
+return { MOD_SOURCES, hearing, onset, hearingStep, state, midi, touched: () => touched, setClock: (ms) => { clock = ms; },
+         setRouted: (on) => { routed = on; } };`;
 
 const show = (v) => (v === null ? "null" : Number(v).toPrecision(17));
 const IDS = ["hear.pitch", "hear.bright", "hear.band1", "hear.band2", "hear.band3", "hear.band4", "hear.width", "hear.flux", "hear.onset"];
@@ -116,13 +120,14 @@ function run(commands) {
     else if (cmd === "gen") gen = a[0] === "1";
     else if (cmd === "trig") s.state.trigSource = Number(a[0]);
     else if (cmd === "xy") s.state.xyPair = [Number(a[0]), Number(a[1])];
+    else if (cmd === "routed") s.setRouted(a[0] === "1");
     else throw new Error("unknown command " + cmd);
     const h = s.hearing, o = s.onset;
     const src = IDS.map((id) => { const e = s.MOD_SOURCES.get(id); return (e.fromPicture ? 1 : 0) + "/" + show(e.reach === undefined ? 0 : e.reach); });
     lines.push([cmd, "| pitch", show(h.pitch), "bright", show(h.bright), "bands", ...h.bands.map(show), "width", show(h.width),
                 "flux", show(h.flux), "raw", show(h.fluxRaw), "frame", h.frame, "want", show(h.pitchWant),
                 "onset", o.count, show(o.last), o.armed ? 1 : 0, show(s.MOD_SOURCES.get("hear.onset").value()),
-                "touched", s.touched(), "sources", ...src].join(" "));
+                "touched", s.touched(), "idle", h.idle ? 1 : 0, "runs", h.runs, "sources", ...src].join(" "));
   }
   return lines.join("\n");
 }

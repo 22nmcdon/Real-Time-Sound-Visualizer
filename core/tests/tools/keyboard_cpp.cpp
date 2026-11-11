@@ -123,7 +123,7 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
       auto& p = k.panel();
       if (arg(1) == "freq") p.freq = num(arg(2));
       else if (arg(1) == "interval") p.interval = static_cast<int>(num(arg(2)));
-    } else if (cmd == "frame") k.frame(num(arg(1)));
+    } else if (cmd == "frame") k.frame();
     else if (cmd == "present") k.setPresent(arg(1) == "1");
     else if (cmd == "arp") k.setArp(arg(1), arg(2), num(arg(3)));
     else if (cmd == "bpm") k.setTempo(num(arg(1)));

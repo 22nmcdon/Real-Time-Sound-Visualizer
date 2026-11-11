@@ -147,7 +147,7 @@ with sync_playwright() as pw:
       touchRoutings(); await settle();
       const withCompany = capAt();
 
-      focusSource = null; armSource('lfo2'); await settle();
+      selectSource('lfo2'); await settle();
       const other = capAt();
       return { alone, withCompany, other,
                min: Number(el.freq.min), max: Number(el.freq.max),

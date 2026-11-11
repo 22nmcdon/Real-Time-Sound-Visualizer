@@ -57,21 +57,42 @@ Taking things out of the face mostly left them in the code: the page grew 7% (it
 stylesheet 36%) across a stage that retired the drawer, the Sources tab and twenty-five
 sources.
 
-- **Parked, still running (checked).** The hearing family runs a 4096-point FFT whether
+- ~~**Parked, still running (checked).** The hearing family runs a 4096-point FFT whether
   or not anything routes it: about 375 times a second in the plugin, costing about five
   points of a core on the plain sine, and about 2 ms of every frame on the page. Nothing
-  on the face reads it. It should run only when a hearing source is routed.
+  on the face reads it. It should run only when a hearing source is routed.~~ Fixed 11
+  Nov: it runs while a routing heard comes from a hearing source - in the setup, fading
+  out or the stage's, and not while Routings silences it - on the page (`routedFrom`) and
+  in the core (`Matrix::routedFrom`, asked at the step's time). Measured on the plain sine
+  at 48 kHz, the instrument went from 3.8 per cent of a core to 0.64 (two notes held, 5.0
+  to 1.0); on the page `hearingStep` went from 0.36 ms a frame on a fast machine to
+  0.004. A routing arriving hears the sound as it is on its first frame rather than
+  gliding there from where the hearing was left (web/README.md says why and what it
+  cannot know); `hearingtest.py`, parity's `hear-rest` and `hear-heard` and the
+  instrument's own count hold it.
 - **Parked, still shipped.** The drawings - about 1,300 lines of figures, a stroke font,
   wireframes, their editors and their rows - cost nothing until chosen, but every change
   carries them. (Since decided: removed. See the end.)
-- **Dead or orphaned:** 24 elements fetched and never read (13 at the first review);
+- ~~**Dead or orphaned:** 24 elements fetched and never read (13 at the first review);
   about 30 CSS rules, 130 lines, matching nothing (the Sources tab's, the old chips', the
   colophon's); `SIDE_GROUPS = []` still tested in four places, `railTabs`, and a search
   loop over the hidden transport row; from the first review, still there: `destOptions`,
   `trigGain`, and `hannOf` (a Blackman-Harris window under a Hann name). Pressure and
   pedal smoothing still run on the page, and the level follower and pressure smoothing in
   the core, for sources that were cut. `setLfoDest`, `setLfoDepth`, `lfoRouting`,
-  `armSource`, `clearSource`, `benchable` and `beatRate` have only tests for callers.
+  `armSource`, `clearSource`, `benchable` and `beatRate` have only tests for callers.~~
+  Fixed 11 Nov: 26 fetches no code or test reads (the elements stay; a fetch read through
+  a section's `data-place`, `el[id + "Value"]` or a test's `el.` stayed), 35 rules and
+  their comments (the Sources tab's, the chips', the colophon's, the Reverb's dashed slot,
+  the learned controllers' name box), and every helper named here; `hannOf` is
+  `blackmanHarrisOf`. The pedal's and pressure's walks went on both sides, and the
+  instrument no longer follows the level (scope::Level stays as the port parity holds the
+  page's meter to). The tests that called the helpers patch, focus and unpatch as a
+  player does (`addRouting`, `setDepth`, `selectSource`, `dropRouting`), and the two
+  checks that held only `beatRate` went, the samples' beat kept. web/README.md says how a
+  name can look unread and not be. Left: `SEARCH_SKIP = []`, kept by its own comment for
+  the next section a search should skip, and the drawings' slot names, which number the
+  slots after them.
 - **Redundant:** `snapshot` and `restoreInto` still list every setup field by hand,
   guarded by the schema's test now; `jsMathRound` repeats `jsRound`; the loop that drops
   cut routings is written out three times in `setup.h`; `restore.h` is still 2,039 lines.

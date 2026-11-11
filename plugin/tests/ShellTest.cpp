@@ -238,14 +238,13 @@ int main() {
       scope::morphStore(brain, true);
       matrix.add("lfo1", "morph.pos", -1);
     }
-    keys.frame(0);
+    keys.frame();
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
     // Each step: the keyboard's frame, the matrix's, and the routes held
     // across the step - as the plugin is meant to do it, written out.
     const auto top = [&] {
-      const double ms = 1000.0 * step / rate;
-      keys.frame(done == 0 ? 0 : ms);
+      keys.frame();
       matrix.setLayered(keys.layersOn());
       matrix.setStrikes(keys.strikes());
       matrix.frame(done * 1000.0 / rate);
@@ -1087,45 +1086,10 @@ int main() {
     check("the note envelope as a source sweeps the sync in the plugin as in the core, sample for sample",
           off == 0 && unswept > 0.05, "off by " + num(off) + "; without the routing it differs by " + num(unswept));
   }
-  {
-    /* The level held to the picture: the newest 2048 frames of its left
-       channel, as the page is handed them before the block, against a
-       scope::Level of the test's own, a block at a time, on a low saw whose
-       filter an oscillator sweeps, a note held from the first block. The null
-       is the same Level fed the oldest 2048 frames of the ring instead, which
-       reads another moment of the sweep. Before P5 this was half of a check
-       on the threshold, which watched this level and plucked when it rose
-       through 0.40; the threshold went, and the level's half stays. On
-       pendulums that swung with no key down until G2 took them. */
-    setenv("SCOPE_PRESET", corpusText("Wobble").c_str(), 1);
-    auto p = std::make_unique<ScopeProcessor>();
-    p->prepareToPlay(rate, step);  // a step a block, so the test reads the ring between the instrument's steps (6 Nov)
-    oldBoot();
-    scope::Level own, oldest;
-    double levelOff = 0, oldestOff = 0, peak = 0;
-    juce::AudioBuffer<float> buf(2, step);
-    for (int k = 0; k < 94 * block / step; ++k) {
-      const auto picture = scopeResource("/picture.bin", *p);
-      std::vector<float> lane(2048), early(2048);
-      const std::size_t frames = picture->data.size() / sizeof(float) / 2;
-      for (std::size_t i = 0; i < lane.size(); ++i) {
-        std::memcpy(&lane[i], picture->data.data() + ((frames - lane.size() + i) * 2) * sizeof(float), sizeof(float));
-        std::memcpy(&early[i], picture->data.data() + (i * 2) * sizeof(float), sizeof(float));
-      }
-      own.update(lane.data(), lane.size(), k == 0 ? 0 : 1000.0 * step / rate);
-      oldest.update(early.data(), early.size(), k == 0 ? 0 : 1000.0 * step / rate);
-      buf.clear();
-      juce::MidiBuffer m;
-      if (k == 0) m.addEvent(juce::MidiMessage::noteOn(1, 45, static_cast<juce::uint8>(100)), 0);
-      p->processBlock(buf, m);
-      levelOff = std::fmax(levelOff, std::fabs(p->level() - own.value()));
-      oldestOff = std::fmax(oldestOff, std::fabs(p->level() - oldest.value()));
-      peak = std::fmax(peak, p->level());
-    }
-    check("the level is read off the picture's newest frames, step for step, as the page reads it",
-          levelOff == 0 && peak > 0.1 && oldestOff > 1e-3,
-          "off by " + num(levelOff) + ", at most " + num(peak) + "; read off the oldest frames it is off by " + num(oldestOff));
-  }
+  /* The level was held to the picture here - the newest 2048 frames of its
+     left channel against a scope::Level of the test's own - until the
+     second review's sweep: the instrument followed the level for the source
+     F4b cut, and nothing read it after, so it no longer runs it. */
 
   std::printf("\n--- the hearing ---\n");
   {
@@ -1159,7 +1123,7 @@ int main() {
         }
         const double now = 1000.0 * k * step / rate;
         own.setNow(now);
-        own.step(ownMatrix, true, l.data(), l.data(), r.data(), l.size(), rate, k == 0 ? 0 : 1000.0 * step / rate,
+        own.step(ownMatrix, true, true, l.data(), l.data(), r.data(), l.size(), rate, k == 0 ? 0 : 1000.0 * step / rate,
                  k * step > 100 ? std::optional<double>(scope::midiHz(57)) : std::nullopt, now);
         buf.clear();
         juce::MidiBuffer m;

@@ -2054,6 +2054,11 @@ mruns = [
     ("codes", mrun("load a>b@1;;x>y@1.2.3;level>gen.freq@-0.0625;bad;@;c>d@;e>f@.5;g>h>i@0.1875;j@k>l@1;m>n@-.25;o>p@5.;q>r@-",
                    "encode", "frame", "load level>gen.amp@0.0005;level>gen.fm@1.9995;level>gen.freq@-0.00049;p0>q0@-0;p9>q9@9.9996;pm>qm@-99.9999", "encode",
                    "load", "encode")),
+    # Whether the hearing has anything to hear it (second review, part 2): a routing from it in the setup, then taken off
+    # under a fade of a second, which is heard until the fade has gone, and a routing from anything else, which is not.
+    ("hear-heard", mrun("at 0", "route lfo1 gen.fm 0.5", "frame", "route hear gen.fm 0.4", "frame", "fade out 1", "at 16", "frame",
+                        "unroute hear gen.fm", "at 32", "frame", "at 500", "frame", "at 1040", "frame", "at 1100", "frame",
+                        "route hear view.rotate 0.2", "fade off", "frame", "unroute hear view.rotate", "frame")),
 ]
 
 mrng = random.Random(96)
@@ -2177,6 +2182,17 @@ check("the generator's destinations are the page's, each on its slot, and none o
       "gen.turn/32/0" in mout("routes") and "gen.width/27/0" in mout("routes")
       and "gen.amp/1/1" in mout("routes") and mout("routes").count("/0+") >= 30
       and not any(d in mout("routes") for d in ("gen.spinZ/", "gen.detail/", "gen.swing/", "gen.tumble/", "gen.depth/")))
+# A line a command, after the sources every run has: the routing taken off at 16 is heard until its fade, begun at the
+# frame at 32, has run its second - so at 500 and not at 1040.
+heard = [l.split(" fromhear ")[1].split()[0] for l in mout("hear-heard").split("\n") if " fromhear " in l]
+check("the hearing is heard while a routing from it is in the setup or fading out, and not before, after, or for another source's",
+      set(heard[:-22]) == {"0"} and heard[-22:] == "0 0 0 1 1 1 1 1 1 1 1 1 1 0 0 0 0 1 1 1 0 0".split(), " ".join(heard[-22:]))
+# And the walk asks the picture stage's routings too, which come from the picture's sources and never the hearing's:
+# asked for those, it answers while the stage's amount is above nought, and not once it is nought.
+staged = [l.split(" fromstage ")[1].split()[0] for l in mout("stage").split("\n") if " fromstage " in l]
+_stage_at = [l for l in dict(mruns)["stage"].split("\n") if l and l not in ("run", "end")].index("stage 60")
+check("and asked for the picture stage's sources, it hears the stage's routings while its amount is above nought, and not at nought",
+      set(staged[:_stage_at]) == {"0"} and staged[_stage_at] == "1" and staged[-6:] == "0 0 1 1 1 1".split(), " ".join(staged))
 fi = [route_amounts(l) for l in frame_lines("fade-in")]
 check("a routing fades in: part-way at first, whole by the end of its time",
       any(0.05 < a[0] < 0.75 for a in fi if a) and any(abs(a[0] - 0.8) < 1e-12 for a in fi if a))
@@ -4080,6 +4096,15 @@ hruns = [
     # Windows too short to hear, the shortest heard, and long ones; the longest past the estimator's 16384, decimated.
     ("hear-lengths", hrun("tone 0 180 0.4 0", "noise 0 3 0.3", "len 128", *hframes(3), "len 256", *hframes(6), "len 1024", *hframes(6),
                           "len 32768", *hframes(6), "len 4096", *hframes(6))),
+    # Nothing routed: a full-scale 2 kHz sine held for ten frames is not analysed, and every reading stands where it began. A
+    # routing arrives: the first window is taken as it stands - the high mid band at its level, the pitch named at once -
+    # rather than followed and slewed there from nought, and the flux nought, so the arrival is no onset. Rested again while
+    # the tone moves to 440 Hz, and back: the pitch is 440's on the first frame, not a slew's step from 2 kHz's. And a stopped
+    # scope is not a rest: stopped and started, the next frame slews on from where it was.
+    ("hear-rest", hrun("routed 0", "tone 0 2000 1 0", *hframes(10), "routed 1", *hframes(5), "routed 0", "clear", "tone 0 440 0.5 0",
+                       *hframes(10), "routed 1", "frame 16", "frame 16", "running 0", "clear", "tone 0 220 0.5 0", "frame 16",
+                       "running 1", *hframes(3), "clear", *hframes(10), "tone 0 600 0.5 0", "gap first", "frame 16", "gap none",
+                       "routed 0", "frame 16", "routed 1", "frame 16")),
 ]
 def hfuzz(n):
     out = []
@@ -4098,7 +4123,8 @@ def hfuzz(n):
             elif r < 0.84: cmds.append("held %s" % hrng.choice(["-", "-", "60", "45 52", "81"]))
             elif r < 0.88: cmds.append("gen %d" % hrng.randint(0, 1))
             elif r < 0.91: cmds.append("running %d" % hrng.randint(0, 1))
-            elif r < 0.95: cmds.append("trig %d" % hrng.randint(0, 2))
+            elif r < 0.93: cmds.append("trig %d" % hrng.randint(0, 2))
+            elif r < 0.95: cmds.append("routed %d" % hrng.choice([0, 1, 1]))
             else: cmds.append("xy %d %d" % (hrng.randint(0, 2), hrng.randint(0, 2)))
         out.append(hrun(*cmds))
     return out
@@ -4123,10 +4149,14 @@ check("a full-scale sine inside a band reads near one there and near nought in t
       str([[round(x, 3) for x in r] for r in reads]))
 L = [l for l in hout("hear-pitch") if l.startswith("frame")]
 want220, want440 = math.log2(220 / 261.6256) / 2, math.log2(440 / 261.6256) / 2
-check("220 Hz with nothing held is named, the pitch moving 0.064 a frame of 16 ms towards it, and 440 Hz an octave up",
-      abs(float(hfield(L[0], "pitch")) - (-0.064)) < 1e-12 and abs(float(hfield(L[29], "pitch")) - want220) < 1e-3
+# The first frame is the hearing's first window, taken as it stands (see
+# hear-rest), so the slew is held on the step to 440: 0.064 a frame of 16 ms.
+# It was held on the first frame, from nought, until the hearing rested.
+check("220 Hz with nothing held is named, and 440 Hz an octave up, the pitch moving 0.064 a frame of 16 ms towards it",
+      abs(float(hfield(L[0], "pitch")) - want220) < 1e-3 and abs(float(hfield(L[29], "pitch")) - want220) < 1e-3
+      and abs(float(hfield(L[30], "pitch")) - float(hfield(L[29], "pitch")) - 0.064) < 1e-12
       and abs(float(hfield(L[59], "pitch")) - want440) < 1e-3 and hfield(L[0], "frame") == "1",
-      "%s, %s, %s" % (hfield(L[0], "pitch"), hfield(L[29], "pitch"), hfield(L[59], "pitch")))
+      "%s, %s, %s, %s" % (hfield(L[0], "pitch"), hfield(L[29], "pitch"), hfield(L[30], "pitch"), hfield(L[59], "pitch")))
 L = [l for l in hout("hear-held") if l.startswith("frame")]
 check("a held key outranks what is heard, a chord's lowest note is the key, and let go the estimator names the tone again",
       abs(float(hfield(L[19], "want")) - math.log2(440 / 261.6256) / 2) < 1e-12
@@ -4163,6 +4193,31 @@ L = [l for l in hout("hear-lengths") if l.startswith("frame")]
 check("a window under 256 samples is not heard, 256 is, and 32768, past the estimator's window, is too",
       hfield(L[2], "frame") == "0" and hfield(L[3], "frame") == "1" and int(hfield(L[20], "frame")) > int(hfield(L[14], "frame")),
       "%s, %s, %s" % (hfield(L[2], "frame"), hfield(L[3], "frame"), hfield(L[20], "frame")))
+L = [l for l in hout("hear-rest") if l.startswith("frame")]
+first = [float(x) for x in hfield(L[10], "bands", 4)]
+want2k = min(1, math.log2(2000 / 261.6256) / 2)  # past two octaves up, held at one
+check("with nothing routed a 2 kHz sine is not analysed and nothing moves; routed, its first window reads the high mid band "
+      "at full and the pitch at once, the flux nought, and no onset",
+      all(hfield(L[i], "runs") == "0" and hfield(L[i], "idle") == "1" and hfield(L[i], "bands", 4) == hfield(L[0], "bands", 4)
+          and hfield(L[i], "pitch") == hfield(L[0], "pitch") for i in range(10))
+      and float(hfield(L[0], "bands", 4)[2]) == 0 and first[2] > 0.95 and abs(float(hfield(L[10], "pitch")) - want2k) < 1e-3
+      and hfield(L[10], "runs") == "1" and hfield(L[10], "idle") == "0" and float(hfield(L[10], "flux")) == 0
+      and hfield(L[14], "onset") == "0" and hfield(L[14], "runs") == "5",
+      "bands %s, then %s; pitch %s; runs %s, %s; onsets %s" % (hfield(L[9], "bands", 4), [round(b, 3) for b in first],
+                                                               hfield(L[10], "pitch"), hfield(L[9], "runs"), hfield(L[10], "runs"),
+                                                               hfield(L[14], "onset")))
+want440r = math.log2(440 / 261.6256) / 2
+check("rested while the tone moves to 440 Hz, nothing is analysed; routed again the pitch is 440's on the first frame, not a slew's step",
+      all(hfield(L[i], "runs") == "5" and hfield(L[i], "pitch") == hfield(L[14], "pitch") for i in range(15, 25))
+      and abs(float(hfield(L[25], "pitch")) - want440r) < 1e-3 and abs(float(hfield(L[14], "pitch")) - want440r) > 0.5,
+      "%s, then %s" % (hfield(L[24], "pitch"), hfield(L[25], "pitch")))
+check("and a rest that follows an onset leaves the flux nought for the next window, not falling from the onset's",
+      float(hfield(L[41], "flux")) > 0.3 and float(hfield(L[43], "flux")) == 0 and hfield(L[43], "idle") == "0",
+      "%s, then %s" % (hfield(L[41], "flux"), hfield(L[43], "flux")))
+check("and a stopped scope is not a rest: started again on 220 Hz the pitch slews from 440's, 0.064 a frame",
+      hfield(L[27], "runs") == hfield(L[26], "runs") and hfield(L[28], "idle") == "0"
+      and abs(float(hfield(L[26], "pitch")) - float(hfield(L[28], "pitch")) - 0.064) < 1e-12,
+      "%s, then %s" % (hfield(L[26], "pitch"), hfield(L[28], "pitch")))
 def hnull(what, name, old, new):
     text = dict(hruns)[name]
     assert text.count(old) >= 1, old
@@ -4173,6 +4228,7 @@ hnull("a tone a cent sharp", "hear-pitch", "tone 0 220 0.5 0", "tone 0 220.127 0
 hnull("the other key held", "hear-held", "held 69", "held 70")
 hnull("an onset a frame later", "hear-onset", "at 16\nframe 16\ngap none", "at 17\nframe 16\ngap none")
 hnull("the generator heard throughout", "hear-gen", "gen 0\nframe 16", "gen 1\nframe 16")
+hnull("a hearing never rested", "hear-rest", "routed 0", "routed 1")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(hjs.split("\n")[1:]), "\n".join(hcpp.split("\n")[:-1])) is not None)
 
@@ -6251,6 +6307,33 @@ def igrid(*hands, note=True):
     lines = [["make", 48000, 128, icode["Harmonic tone"]], ["click", "dispXY"], ["click", "midiPoly"],
              ["control", "midiLayers", "split"], *hands] + ([NOTE_ON(72)] if note else []) + blocks(60, 128, 64) + [["grid"]]
     return tuple(float(v) for v in [l for l in icpp(iscript("grid", lines)) if l.startswith("grid ")][-1].split()[1:])
+# The hearing only while a routing heard comes from it (second review, part
+# 2), read natively: the base, a note held, nothing routed, then Brightness
+# on the twist, then that source silenced in Routings with its routing kept,
+# then heard again. Counted in windows analysed, and the routed sound against
+# the same routing at a depth of nought, so it is the brightness that moves
+# the twist and not the routing's being there: against no routing at all the
+# two differed even with the hearing never run.
+# The base as a setup code, stamped with the core's version, as the page's encodeSetup would write it.
+_setup_v = int(re.search(r"kSetupVersion = (\d+)", open(os.path.join(CORE, "include", "scope", "setup.h")).read()).group(1))
+BASE_CODE = base64.b64encode(_json.dumps(dict({"v": _setup_v}, **_json.loads(pbase)), separators=(",", ":")).encode()).decode().rstrip("=")
+def ihearing(routing):
+    lines = [["make", 48000, 128, BASE_CODE], NOTE_ON(57)] + blocks(40) + [["hearing"]] \
+        + [["routings", routing]] + blocks(40) + [["hearing"]] \
+        + [["routings", "hear.bright>gen.twist@0.3|hear.bright"]] + blocks(40) + [["hearing"]] \
+        + [["routings", "hear.bright>gen.twist@0.3"]] + blocks(40) + [["hearing"]]
+    out = icpp(iscript("hearing", lines))
+    return [l.split() for l in out if l.startswith("hearing ")], [l for l in out if l.startswith("block ")]
+ih, ih_blocks = ihearing("hear.bright>gen.twist@0.3")
+_, ih_plain = ihearing("hear.bright>gen.twist@0")
+ih_runs = [int(h[1]) for h in ih]
+check("the instrument analyses no window while nothing routes the hearing, one a step while Brightness is on the twist, "
+      "none while it is silenced, and again once heard",
+      ih_runs[0] == 0 and ih_runs[1] >= 35 and ih_runs[2] == ih_runs[1] and ih_runs[3] >= ih_runs[2] + 35
+      and float(ih[1][2]) > 0.05, "%s; brightness %s" % (ih_runs, ih[1][2]))
+check("and the routing is heard: the brightness moves the twist, against the same routing at nought",
+      ih_blocks[:40] == ih_plain[:40] and ih_blocks[40:80] != ih_plain[40:80],
+      "%d of the routed blocks differ" % sum(a != b for a, b in zip(ih_blocks[40:80], ih_plain[40:80])))
 g_quiet = igrid(note=False)
 # The Plane the upper hand's own (G6; B's own plane chosen with A / B until then).
 g_b, g_own_turned = igrid(), igrid(["click", "editHandB"], ["click", "linkPlane"], ["slider", "rotate", "12"])

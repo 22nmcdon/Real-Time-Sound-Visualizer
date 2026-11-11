@@ -17,7 +17,14 @@ the way it would fail:
   jump in pitch is measured frame by frame against the limit;
 - a loop that is not bounded: on the generator these hear its own output and
   must take the picture's reach and the loop's total, and a switch of source
-  must change that without anyone touching a routing.
+  must change that without anyone touching a routing;
+- a hearing that runs for nobody (second review, part 2): with nothing routed
+  from it no window is analysed, counted rather than timed, while frames go
+  by; routed, it is, and the control it is routed to moves with it; silenced
+  in Routings, it rests again; and a routing arriving hears the sound as it
+  is, not a glide from where the hearing was left - 880 Hz after a rest at
+  110 reads 880 on its first frame, where a glide would read 110's and a
+  step.
 """
 import math, os
 from playwright.sync_api import sync_playwright
@@ -97,13 +104,69 @@ with sync_playwright() as pw:
       setView('bench'); buildSourceChips();
       return { ids, cards: [...el.modStrip.querySelectorAll('.mod-card')].map((c) => c.dataset.source).filter((id) => id.startsWith('hear.')) };
     }""")
-    # Eight values and one event, the onset, which drawingtest.py holds. They
+    # Eight values and one event, the onset, which onsettest.py holds. They
     # had a family of their own on the Sources tab; since F4 they are parked -
     # registered and heard when a setup routes them, but no card offers them.
     check("nine sources that hear, eight values and the onset, registered and parked: no card offers one",
           len(reg["ids"]) == 9 and reg["cards"] == [] and reg["ids"][-1] == "hear.onset", str(reg))
 
     p.evaluate("() => __mic()")
+    print("\n--- only while something hears it ---")
+    # Counted against the frame's own calls of hearingStep, so a page that
+    # stalled, or a step nobody called, cannot pass the first check by doing
+    # nothing.
+    rest = p.evaluate("""async () => {
+      const frames = () => new Promise((done) => { let n = 0; const tick = () => (++n < 30 ? requestAnimationFrame(tick) : done()); requestAnimationFrame(tick); });
+      const real = hearingStep;
+      let asked = 0;
+      hearingStep = (elapsed) => { asked++; real(elapsed); };
+      state.modRoutings = []; touchRoutings(); await __wait(100);
+      const before = hearing.runs;
+      asked = 0;
+      await frames();
+      const idle = { runs: hearing.runs - before, frames: asked, turn: state.rotateMod };
+      hearingStep = real;
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings();
+      const at = hearing.runs;
+      await frames();
+      const routed = { runs: hearing.runs - at };
+      silenceSource('hear.bright', true); await __wait(50);
+      const hushed = hearing.runs;
+      await frames();
+      const silent = { runs: hearing.runs - hushed, kept: routingsKept().length };
+      silenceSource('hear.bright', false); await __wait(50);
+      return { idle, routed, silent };
+    }""")
+    check("with nothing routed from it no window is analysed while thirty frames go by, and nothing it could move moves",
+          rest["idle"]["runs"] == 0 and rest["idle"]["frames"] >= 30 and rest["idle"]["turn"] == 0, str(rest["idle"]))
+    check("routed, a window every frame; silenced in Routings, none, with the routing kept",
+          rest["routed"]["runs"] >= 25 and rest["silent"]["runs"] == 0 and rest["silent"]["kept"] == 1,
+          "%s, %s" % (rest["routed"], rest["silent"]))
+    # The routed control, the X-Y rotation, at half of the brightness, frame
+    # for frame, at two brightnesses far apart: it moves as it always did.
+    turns = p.evaluate("""async () => {
+      const read = async (hz) => { __play(hz, 'same', 0.8); await __wait(1500);
+        return { bright: hearing.bright, turn: state.rotateMod, base: state.rotate }; };
+      return [await read(200), await read(4000)];
+    }""")
+    check("and the control it is routed to moves with it: the X-Y rotation at half the brightness, low on 200 Hz and high on 4 kHz",
+          all(abs(t["turn"] - 0.5 * t["bright"]) < 1e-9 and t["base"] == 0 for t in turns)
+          and turns[1]["turn"] - turns[0]["turn"] > 0.2, str(turns))
+    arrive = p.evaluate("""async () => {
+      __play(110, 'same', 0.8);
+      for (let t = 0; t < 5000 && Math.abs(hearing.pitch - %r) > 0.005; t += 100) await __wait(100);
+      const left = hearing.pitch;
+      state.modRoutings = []; touchRoutings();
+      __play(880, 'same', 0.8); await __wait(800);
+      const rested = hearing.pitch, at = hearing.runs;
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings();
+      // Two seconds of frames at most, so a hearing that never counts fails here rather than hanging the suite.
+      for (let i = 0; i < 120 && hearing.runs === at; i++) await new Promise((r) => requestAnimationFrame(r));
+      return { left, rested, first: hearing.pitch, runs: hearing.runs - at };
+    }""" % PITCH(110))
+    check("a routing arriving after a rest hears 880 Hz on its first frame, not a glide up from the 110 the hearing was left at",
+          abs(arrive["rested"] - PITCH(110)) < 0.005 and arrive["runs"] == 1 and abs(arrive["first"] - PITCH(880)) < 0.005,
+          str(arrive))
     print("\n--- pitch ---")
     # The pitch is a slewed reading, so it is asked until it arrives or five
     # seconds pass, rather than once at 1.2 s: in a full run on a loaded

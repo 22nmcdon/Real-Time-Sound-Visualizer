@@ -101,8 +101,12 @@ with sync_playwright() as pw:
          would be, so the two-second cycle the reads are timed for is the one
          playing. */
       hostSendSetup();
-      setLfoDest(0, 'gen.freq');
-      setLfoDepth(0, 1);                          // one octave each way
+      // Patched as a player patches: the card dropped on the knob, and its
+      // depth set to the whole of it (setLfoDest and setLfoDepth, which this
+      // called until the second review, were the drawer's LFO rows'). One
+      // octave each way.
+      addRouting('lfo1', 'gen.freq');
+      setDepth(state.modRoutings.find((r) => r.sourceId === 'lfo1' && r.destId === 'gen.freq'), 100, true);
       /* The window is 100 ms and the first read used to come 60 ms after the
          load, so it held the seam where the sound was loaded - a jump of
          nearly the whole amplitude between two samples, with 440 Hz before
@@ -119,7 +123,7 @@ with sync_playwright() as pw:
         const hz = estimateFrequency(f.channels[0], f.rate);
         if (hz) seen.push(hz);
       }
-      setLfoDest(0, '');
+      dropRouting('lfo1', 'gen.freq');
       return { lo: Math.min(...seen), hi: Math.max(...seen), n: seen.length };
     }""")
     print("    440 Hz swept between %.0f and %.0f Hz" % (swept["lo"], swept["hi"]))
@@ -290,7 +294,8 @@ with sync_playwright() as pw:
       const after = state.modRoutings.map((r) => r.destId);
       const depth = el.srcDetail.querySelector('.mod-edit[data-dest="gen.ratio"] input');
       depth.value = '35'; depth.dispatchEvent(new Event('input'));
-      const amount = lfoRouting(0) ? lfoRouting(0).amount : null;
+      const made = state.modRoutings.find((r) => r.sourceId === 'lfo1');
+      const amount = made ? made.amount : null;
       el.srcDetail.querySelector('.mod-edit[data-dest="gen.ratio"] .mod-edit-off').click();
       const out = { after, amount, cleared: state.modRoutings.length };
       // No setView('scope') back: the Scope view went in G4, and the face is the Bench.

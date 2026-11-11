@@ -1,7 +1,13 @@
 // The level, ported from web/scope.html: how loud the signal on the screen is,
-// as the source `env.live` - an envelope follower over a lane of samples, fast
-// to rise and slow to fall, so it describes a note rather than flickering on
-// every cycle. `updateEnvelope` and the source's value.
+// as the source `env.live` was - an envelope follower over a lane of samples,
+// fast to rise and slow to fall, so it describes a note rather than flickering
+// on every cycle. `updateEnvelope` and the source's value.
+//
+// The instrument does not run it. F4b cut the source, the meter is the page's
+// own, and the core followed the picture once a block for nobody until the
+// second review's sweep took the call out. The class stays as the port parity
+// holds the page's follower to (the meter reads that follower), and its
+// constants are the hearing's, which follows and releases at the same rates.
 //
 // What differs from the page, and why, so nobody goes looking:
 //

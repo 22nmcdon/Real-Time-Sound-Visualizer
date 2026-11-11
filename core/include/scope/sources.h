@@ -14,7 +14,8 @@
 //   reads it from its core. The drawings' six - Swing, Pendulum, Tilt, Turn,
 //   Roll and Facing - and the two things a hit could strike, Swing again and
 //   Kick, went with the drawings in G2 (Pluck, a third, in P5 with the
-//   threshold); the level in F4b.
+//   threshold); the level in F4b, and the follower that fed it, which the
+//   instrument ran for nobody after, in the second review's sweep.
 //
 // The morph's fader is the Brain's (restore.h), and the hearing's
 // sources are its own (hearing.h); the picture's sources arrive with stage 4.
@@ -26,7 +27,6 @@
 
 #include "scope/generator.h"
 #include "scope/keyboard.h"
-#include "scope/level.h"
 #include "scope/lfo.h"
 #include "scope/matrix.h"
 
@@ -90,15 +90,10 @@ class CoreSources {
   CoreSources(const CoreSources&) = delete;
   CoreSources& operator=(const CoreSources&) = delete;
 
-  // The level, which its owner feeds once a frame with the signal on the screen.
-  Level& level() { return level_; }
-  const Level& level() const { return level_; }
-
  private:
   // Kept where they were made: the matrix holds pointers to them.
   std::vector<LfoSource> lfo_;
   std::vector<KeyboardSource> keys_;
-  Level level_;
   EnvelopeSource envelope_;
 };
 

@@ -212,7 +212,7 @@ int main(int argc, char** argv) {
       else if (what == "fade") scope::fadeFromPage(matrix, value ? *value : Json::null());
       // The screen's keys open or shut, which moved whether the layers were on
       // until 10 Nov; the page's frame still runs, and nothing else here moves.
-      else if (what == "keys") keys.frame(0);
+      else if (what == "keys") keys.frame();
     } else {
       scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
     }

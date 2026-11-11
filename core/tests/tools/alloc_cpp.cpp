@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   for (int frame = 0; frame < 120; ++frame) {
     for (auto& v : window) v = static_cast<float>(0.5 * std::sin(2 * M_PI * hz * static_cast<double>(at++) / rate));
     const long start = allocations.load();
-    hearing.step(matrix, true, window.data(), window.data(), window.data(), window.size(), rate, 16, std::nullopt, frame * 16.0);
+    hearing.step(matrix, true, true, window.data(), window.data(), window.data(), window.size(), rate, 16, std::nullopt, frame * 16.0);
     stepped += allocations.load() - start;
   }
   const auto want = hearing.hearing().pitchWant;

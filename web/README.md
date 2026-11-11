@@ -5904,3 +5904,43 @@ place for an edited sound. A known limitation: a project reopened in the
 plugin says Custom there even when it is the program untouched, because the
 number does not say whether a code was loaded after it; the host's list is
 where the number shows.
+
+**The hearing runs only while something hears it (second review, part 2).**
+The parked hearing family - pitch, brightness, the four bands, width, flux
+and the onset - analysed a 4096-sample window every frame on the page and
+every block in the plugin whether or not any routing read it. On the plain
+sine at 48 kHz the instrument took 3.8 per cent of a core with it and 0.64
+without (two notes held, 5.0 and 1.0), and on the page it was 0.36 ms of
+every frame on a fast machine, about 2 on the reviewer's. It now runs while a routing
+heard comes from a `hear.` source - in the setup, fading out, or the
+stage's - and a source silenced in Routings is not heard (`routedFrom`,
+`Matrix::routedFrom`, which asks at the step's own time rather than the
+matrix's last frame, because a fade's end can fall between them). Nothing
+on the face reads the readings but a routing: the meter reads the page's own
+level, and the lag's lock and the readouts run the estimator on their own
+windows. Two things worth knowing. A first window after a rest is taken as
+it stands - the bands, brightness, width and pitch go straight to what it
+reads, the flux is nought and the estimator is asked at once - because a
+follower that had been running on a steady sound would be there, and
+gliding from wherever the hearing was left would be a sweep nobody played;
+what it cannot know is a sound that was changing while it rested. And a
+stopped scope is not a rest: stopped and started, the readings run on from
+where they were, as they always have. `hearingtest.py` counts the windows
+analysed (`hearing.runs`) against the frame's own calls, so a stalled page
+cannot pass the unrouted check by doing nothing; parity's `hear-rest` and
+`hear-heard` hold the page and the core to each other, and the instrument's
+own count is held natively.
+
+**Dead code is found by what reads it, not by what names it (second
+review).** The sweep that took out the page's dead fetches, rules and
+helpers found three ways a name looks unread and is not: `el[id + "Value"]`
+(the envelope table reads `glideValue` so), `el[group.dataset.place]` (a
+section's `data-place` names the column it is put in - `settingsLeft`,
+`measureSide`, `pictureLook` and others are read only so), and a class built
+from pieces (`"env-handle env-" + kind` styles `.env-corner`, `.env-time`
+and `.env-bend`). And a name a test reads by `el.` is still read, if only by
+the test: those stayed fetched - `oscGroup` among them, which the sweep took
+out on a grep that printed only each name's first three readers and put back
+when `voicefxtest.py` and `bendtest.py` threw. A comment is not a reader: the scan that
+found the dead rules strips comments first, or `.colophon` is kept alive by
+a sentence that mentions a colophon.
