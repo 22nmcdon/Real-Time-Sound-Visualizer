@@ -5957,3 +5957,22 @@ its comment says, but the FM'd saw the run before it left playing; and
 `block_alloc_cpp reuse` struck its note at once after turning the drive on
 in one history and not the other, so it lets the shaper cross in during a
 block of silence first.
+
+The crossfade has a price, and the plugin's shell test found it. Bridging a
+stage's latency is a slide or a step, nothing else: the 63 samples of the
+shaper's and the plane's oversamplers, crossed in 10 ms, bend a held 220 Hz
+note's pitch for two periods and dip it 1.7 dB, where the straight switch
+was a step of half the scale ringing at the top of the band. The stage's own
+echo replays that onset 375 ms later at a sixtieth, and the shell test's
+"the wheel half way shakes nothing", which read the second half of 0.64 s
+of a held note for under 2 cents peak to peak, read it: one period 0.19 of a
+sample short and the next long, 3.09 cents. The echoed click had moved no
+upward crossing, so the old instrument read 0.00025 at every timing tried.
+It is the stage, not the wheel: with the echo's route taken out it is gone
+at twelve timings of note and wheel, with the amount set by hand at the
+same moment it is the same to the period, and its size, 1 to 5 cents, is
+where the echo's opening falls. The check now holds the wheel to the amount
+set by hand, period for period, with the wheel half way on the vibrato as
+its null (16.8 cents apart). A latency that does not change - the plain
+path always delayed by the stages' 63 samples - would remove the slide too,
+at the price of every sound being later than it is, and was not done.

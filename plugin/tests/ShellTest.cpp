@@ -2900,15 +2900,52 @@ int main() {
           swing > 2 * 33.3 * 0.85 && swing < 2 * 33.3 * 1.15 && std::fabs(turns / seconds - 5.5) < 1,
           num(swing) + " cents peak to peak, " + num(turns / seconds) + " a second");
     check("null: with the wheel down the pitch stands", stillSwing < 2, num(stillSwing) + " cents");
-    // The wheel given to the Picture amount instead: half way, half the amount, and no vibrato.
+    /* The wheel given to the Picture amount instead: half way, half the
+       amount, and no vibrato - read against the same note with the amount put
+       at half by hand at the same moment, period for period. Until 11 Nov
+       this was "under 2 cents peak to peak" alone, which held while a stage
+       switched in under a held note clicked: the stage's echo replays its
+       own onset 375 ms later, inside this window, and a click echoed at a
+       sixtieth moves no upward crossing. Since the stages crossfade the
+       onset is a 10 ms slide of the oversamplers' 63 samples, and its echo
+       moves one period by 0.19 of a sample - 1 to 5 cents by the timing of
+       the echo's opening, 3.09 here, none with the echo's route taken out at
+       any timing, and the same to the period with the amount moved by hand.
+       So the spread is the Picture amount's, not the wheel's, and what this
+       holds is the wheel's: that it adds nothing to it. A block of silence
+       first, so both settle the generator before the note, and the hand
+       lands where the wheel's message does. The null is the wheel left on
+       the vibrato, half way. */
+    const std::vector<std::uint8_t> halfWay { 0xB0, 1, 64 };
     ScopeProcessor toPicture; fresh(toPicture);
     toPicture.pageControl("midiWheelTo", scope::Json::string(std::u16string(u"picture")));
-    const auto unshaken = play(toPicture, { a3, { 0xB0, 1, 64 } }, 60);
-    double m2 = 0, n2 = 1e9;
-    for (const double t : unshaken) { m2 = std::fmax(m2, t); n2 = std::fmin(n2, t); }
-    check("given to the Picture amount, the wheel half way sets it near half and shakes nothing",
-          std::fabs(toPicture.slider("pictureAmount") - 50) <= 1 && centsOf(m2, n2) < 2,
-          "amount " + num(toPicture.slider("pictureAmount")) + ", " + num(centsOf(m2, n2)) + " cents");
+    play(toPicture, {}, 1);
+    const auto unshaken = play(toPicture, { a3, halfWay }, 60);
+    ScopeProcessor byHand; fresh(byHand);
+    play(byHand, {}, 1);
+    byHand.pageSlider("pictureAmount", u"50");
+    const auto handSet = play(byHand, { a3 }, 60);
+    ScopeProcessor vibrato; fresh(vibrato);
+    play(vibrato, {}, 1);
+    const auto vibrated = play(vibrato, { a3, halfWay }, 60);
+    const auto apart = [&](const std::vector<double>& a, const std::vector<double>& b) {
+      if (a.size() != b.size() || a.empty()) return 1e9;
+      double most = 0;
+      for (std::size_t i = 0; i < a.size(); ++i) most = std::fmax(most, std::fabs(centsOf(a[i], b[i])));
+      return most;
+    };
+    const auto spread = [&](const std::vector<double>& a) {
+      double m = 0, n = 1e9;
+      for (const double t : a) { m = std::fmax(m, t); n = std::fmin(n, t); }
+      return centsOf(m, n);
+    };
+    check("given to the Picture amount, the wheel half way sets it near half and shakes nothing the amount itself does not",
+          std::fabs(toPicture.slider("pictureAmount") - 50) <= 1 && std::fabs(byHand.slider("pictureAmount") - 50) <= 1
+          && apart(unshaken, handSet) < 0.01,
+          "amount " + num(toPicture.slider("pictureAmount")) + ", the periods within " + num(apart(unshaken, handSet))
+          + " cents of the amount set by hand, whose own spread is " + num(spread(handSet)) + " cents");
+    check("null: the wheel half way on the vibrato is told apart from the amount set by hand", apart(vibrated, handSet) > 2,
+          num(apart(vibrated, handSet)) + " cents");
 
     // Pressure: by default nothing. It was a source too until F4b (7 Nov) cut
     // the keyboard's sources but Key; the null is that it is no longer one.
