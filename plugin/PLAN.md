@@ -2368,6 +2368,19 @@ how many lanes are drawn (the layers' figures, the band split), which makes
 its lanes once. Moving the state's encoding off the audio thread is still
 the way to the first, and needs the state double-buffered.
 
+The wheel or the pedal on the Picture amount (11 Nov) was a block that
+allocated without a hand: each step of the amount made the stage's five
+routes again and compiled them, fifteen allocations a picture frame while
+the wheel moved. The matrix now moves their depths where they stand
+(`Matrix::setStageAmount`), and `block_alloc_cpp picture` holds a wheel moved
+every block to no allocations at all; the routes are still made and compiled
+when the amount leaves nought and dropped when it arrives, which is its null
+(`nought`). On the site the page also sent each step again as a hand on the
+slider, so the instrument kept a hand and encoded its whole state a hundred
+times a second; it no longer does (`hostSlider`, `wheeltest.py`). The click
+the owner heard was not the allocation but the stages those routes switch,
+which now crossfade (`switchMs`, web/README.md).
+
 Handing a retired voice's ring and shaper to the next is only right if the
 voice then sounds as one that made them new, and nothing compared that, since
 the page's voices never reuse anything and the generator's parity runs never

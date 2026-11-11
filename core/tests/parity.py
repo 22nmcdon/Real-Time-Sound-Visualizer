@@ -1326,6 +1326,21 @@ def gen_runs():
     add("output-moved", OUTPUT_RUN + [(128, "set output 0.25"), (20480, "set output 0"), (20608, "set output 0.25")],
         samples=24576)
     add("output-unity", OUTPUT_RUN + [(128, "set output 1")], samples=24576)
+    # A stage switched in and out under a held sound (11 Nov): the voice's
+    # shaper by a routing on the fold, the plane's non-linear stage by one on
+    # the twist, both at depths too small to change the sound, as the Picture
+    # amount's five routes are made and dropped at its first and last step -
+    # and once switched back before its crossfade was through. In the dyad
+    # and in a chord on both layers; with `switchMs` at nought, the switch as
+    # it was, and with nothing switched, which sets the bound.
+    SWITCHED = [(1024, "routes " + "+".join([route(FOLD, 0.02, held=0.5), route(TWIST, 0.02, held=0.5)])),
+                (3072, "routes none"), (5120, "routes " + route(FOLD, 0.02, held=0.5)), (5248, "routes none"),
+                (5376, "routes " + route(TWIST, 0.02, held=0.5))]
+    for kind, base in (("dyad", []), ("poly", [(0, "voices 0 " + notes((57, "x"), (64, "y"))), (0, "voices 1 " + notes((76, "xy")))])):
+        base = base + [(0, "set planeOS 2")]
+        add("switch-" + kind, base + SWITCHED, samples=8192)
+        add("switch-" + kind + "-straight", base + [(0, "set switchMs 0")] + SWITCHED, samples=8192)
+        add("switch-" + kind + "-still", base, samples=8192)
     return runs
 
 runs = gen_runs()
@@ -1613,6 +1628,28 @@ _, utail = grow("output-unity")
 check("and what is measured off the generator - its envelope, pitch, budget, read-heads - is the same at any Output",
       otail == utail)
 gnull("output-moved", "set output 0.25", "set output 0.26", "an Output a hundredth louder")
+# The switches (11 Nov): what is heard steps no further from one sample to the
+# next with the shaper and the plane's stage switched in and out than with
+# nothing switched - the bound the sound itself sets, and a quarter over it -
+# where the switch straight, as it was, stepped by several times that. The
+# page's lines, which parity has just held the core's to.
+# From sample 1000, the notes' onsets past and the first switch to come.
+def gstep(name):
+    body = grow(name)[0]
+    return max(max(abs(a - b) for a, b in zip(col(body, c)[1001:], col(body, c)[1000:-1])) for c in (2, 3))
+for kind in ("dyad", "poly"):
+    still, faded, straight = gstep("switch-%s-still" % kind), gstep("switch-" + kind), gstep("switch-%s-straight" % kind)
+    check("in the %s, a stage switched in and out under a held sound steps no further than the sound alone, "
+          "where switched straight it stepped" % kind,
+          faded <= 1.25 * still and straight > 3 * still, "%.4f with nothing switched, %.4f faded, %.4f straight"
+          % (still, faded, straight))
+    # And once the last crossfade is through, the stage is what it was, to the
+    # bit: the faded run and the straight one agree from 6400 on (the last
+    # switch at 5376, ten milliseconds 480 samples, the oversampler's 32 after);
+    # before it they must not, or the crossfade did nothing.
+    body, sbody = grow("switch-" + kind)[0], grow("switch-%s-straight" % kind)[0]
+    check("and in the %s, once the crossfade is through, the stage switched in sounds as it did switched straight, to the bit"
+          % kind, body[6 * 6400:] == sbody[6 * 6400:] and body[6 * 1024:6 * 1504] != sbody[6 * 1024:6 * 1504])
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
@@ -2151,6 +2188,40 @@ def mhfuzz(n):
             out += ["at %d" % t, "frame"]
     return mrun(*MLAYER, *out)
 mruns += [("random-hands-%d" % i, mhfuzz(100)) for i in range(10)]
+# The wheel or the pedal on the Picture amount (11 Nov): the core moves the
+# stage's depths where they stand and compiles nothing, where the page makes
+# its routings afresh and compiles them - the routes each frame are to be the
+# same. Beside a routing by hand in the loop's total on the fold, the two
+# hands apart and together, through nought and back, under a fade; and the
+# same at random, with routings made and dropped between the wheel's moves
+# so the depths are moved while a compile is due as well as while none is.
+WHEEL_STEPS = ["59", "40", "40 20", "20 20", "1", "0", "0 30", "30", "100", "1 0", "0", "45"]
+mruns += [
+    ("wheel", mrun("at 0", "route photo gen.fold 0.4", "route level gen.twist 0.5", "value stage.glow 1",
+                   "value stage.memory 0.5", "stage 60", "frame",
+                   *sum((["wheel %s" % w, "at %d" % (16 * (k + 1)), "frame", "routes"] for k, w in enumerate(WHEEL_STEPS)), []),
+                   "fade both 1", "wheel 30", "at 400", "frame", "routes", "wheel 70", "at 420", "frame", "routes")),
+]
+wrng = random.Random(1111)
+def mwfuzz(n):
+    out, t = ["at 0", "stage 60", "frame"], 0
+    for _ in range(n):
+        r = wrng.random()
+        if r < 0.45: out.append("wheel %d" % wrng.choice([0, 1, 30, 59, 60, 100, wrng.randint(0, 100)])
+                                + ("" if wrng.random() < 0.6 else " %d" % wrng.choice([0, 20, 60, wrng.randint(0, 100)])))
+        elif r < 0.52: out.append("route %s %s %r" % (wrng.choice(["photo", "stage.glow", "lfo1", "level"]),
+                                                     wrng.choice(["gen.fold", "gen.twist", "gen.echo", "gen.phase"]),
+                                                     round(wrng.uniform(-1, 1), 3)))
+        elif r < 0.56: out.append("unroute %s %s" % (wrng.choice(["photo", "stage.glow", "lfo1", "level"]),
+                                                    wrng.choice(["gen.fold", "gen.twist", "gen.echo", "gen.phase"])))
+        elif r < 0.66: out.append("value %s %r" % (wrng.choice(["stage.glow", "shape", "stage.memory", "photo"]),
+                                                  round(wrng.uniform(-1, 1), 3)))
+        elif r < 0.68: out.append("stage %d" % wrng.choice([0, 35, 60]))
+        else:
+            t += wrng.choice([16, 33, 100])
+            out += ["at %d" % t, "frame", "routes"]
+    return mrun(*out)
+mruns += [("random-wheel-%d" % i, mwfuzz(80)) for i in range(12)]
 
 mtext = "".join(t for _, t in mruns)
 mjs, mcpp = mboth(mtext, "matrix.txt")
@@ -3986,7 +4057,7 @@ def balloc(*args):
     out = subprocess.run([bexe, *map(str, args)], check=True, capture_output=True, text=True).stdout.split()
     return out[0], int(out[1]), int(out[2]), float(out[3])
 _bpaths = ["plain", "held", "input", "bands", "rack", "morph", "photo", "yt", "spect", "lag", "turn", "notes", "arp", "score",
-           "wheel"]
+           "wheel", "picture"]
 _brows = [balloc(p) for p in _bpaths]
 _bmade = balloc("made", "plain")
 _bhost = balloc("host")
@@ -4002,6 +4073,14 @@ check("a steady block allocates nothing on any of %d paths, each seen doing what
 # a step, one that does not divide it, and one four times the size the
 # instrument was prepared for - which it renders in pieces - are each played.
 _bsizes = [balloc("held", n, p) for n, p in ((64, 64), (100, 100), (441, 441), (2048, 512))]
+# The wheel on the Picture amount (11 Nov), `picture` above: every block a
+# step, and the stage's five routes moved where they stand rather than made
+# again and compiled, which was fifteen allocations a picture frame. Its
+# null is the same wheel past nought and back, where the routes are made and
+# dropped, which still compiles: the same counter, reading the making.
+_bnought = balloc("nought")
+check("the wheel past nought makes the stage's routes, which allocates: the wheel's path is counted",
+      _bnought[1] > 0 and _bnought[3] > 0, "%d allocations, the amount walked %g" % (_bnought[1], _bnought[3]))
 check("and nothing at blocks of 64, 100, 441 and 2048 frames, two hands held",
       all(r[1] == 0 and r[3] > 0 for r in _bsizes), "%r" % [(r[1], r[3]) for r in _bsizes])
 # What lets a note allocate nothing is a voice taking the ring and shaper a
@@ -5942,6 +6021,20 @@ STAGED = {"staged notes": iruns["notes"], "staged hands": iruns["hands"]}
 for name in list(iruns):
     if name != "refused": iruns[name] = iruns[name][:1] + [["slider", "pictureAmount", "0"]] + iruns[name][1:]
 iruns.update(STAGED)
+# The wheel given to the Picture amount (11 Nov), with the stage on: a held
+# note on the bank's Harmonic tone, the wheel taken from where the amount
+# stands down to nought, held there and brought back, a message every four
+# blocks - a hundred a second. At nought the stage's five routes are dropped
+# and on the way back made, which switches the voice's shaper and the
+# plane's non-linear stage out and in; switched straight, as they were
+# (`switchMs` at nought), that stepped the heard sound by ten times what the
+# sound steps by itself. The same note with the wheel still sets the bound.
+WHEEL_DOWN = [round(76 * (1 - k / 24)) for k in range(25)]
+WHEEL_SWEEP = [x for v in WHEEL_DOWN + [0] * 15 + WHEEL_DOWN[::-1] for x in ([["midi", 0xB0, 1, v]] + blocks(4))]
+WHEEL_MAKE = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "midiWheelTo", "picture"], NOTE_ON(57)] + blocks(300)
+iruns["wheel picture"] = WHEEL_MAKE + WHEEL_SWEEP
+iruns["wheel picture straight"] = WHEEL_MAKE[:2] + [["control", "switchMs", "0"]] + WHEEL_MAKE[2:] + WHEEL_SWEEP
+iruns["wheel picture still"] = WHEEL_MAKE + [l for l in WHEEL_SWEEP if l[0] == "block"]
 
 iout = {}
 # Every sample alike, except where a drawn cycle is played: its tables are
@@ -5952,7 +6045,8 @@ iout = {}
 # cos and a sin of the angle, 2.8e-17 apart at most. With the stage on, nine
 # of the runs above were that far apart; with it out, all of them are exact.
 # Scan's tables are read with exp, sin and cos too (the follow, the blur, the circle), so its runs are as well.
-ILIBM = {"drawn", "drawn none", "staged notes", "staged hands", "scanned", "scanned off"}
+ILIBM = {"drawn", "drawn none", "staged notes", "staged hands", "scanned", "scanned off",
+         "wheel picture", "wheel picture straight", "wheel picture still"}
 for name, lines in iruns.items():
     path = iscript(name, lines)
     a, b = icpp(path), ijs(path)
@@ -5966,6 +6060,20 @@ for name, lines in iruns.items():
 # hands with it out, which is the null for their agreeing with the native
 # instrument meaning anything about the stage.
 def iblocks(name): return [float(v) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]]
+# The wheel's runs: the most the heard pair steps from one sample to the next
+# while the wheel moves, in the instrument as the plugin and the site play it.
+def iwheelstep(name):
+    rows = [ifloats(l) for l in iout[name][1] if l.startswith("block ")][300:]
+    most = 0.0
+    for lane in (0, 1):
+        heard = [v for r in rows for v in r[lane * 128:(lane + 1) * 128]]
+        most = max(most, max(abs(a - b) for a, b in zip(heard[1:], heard[:-1])))
+    return most
+_wstill, _wheel, _wstraight = iwheelstep("wheel picture still"), iwheelstep("wheel picture"), iwheelstep("wheel picture straight")
+check("the wheel on the Picture amount, past nought and back under a held note, steps the sound no further than the "
+      "note alone, where the stage switched straight stepped it several times as far",
+      _wheel <= 1.25 * _wstill and _wstraight > 3 * _wstill and iblocks("wheel picture") != iblocks("wheel picture still"),
+      "%.4f with the wheel still, %.4f moving, %.4f switched straight" % (_wstill, _wheel, _wstraight))
 for staged, plain in (("staged notes", "notes"), ("staged hands", "hands")):
     a, b = iblocks(staged), iblocks(plain)
     apart = max((abs(x - y) for x, y in zip(a, b)), default=0) if len(a) == len(b) else float("inf")

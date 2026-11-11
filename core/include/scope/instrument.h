@@ -729,6 +729,11 @@ class Instrument {
        always one. Not a hand on the setup: it is where the instrument is
        playing, not what it plays. The gate follows at the next block. */
     if (id == "keyboardPresent") { keyboard_->setPresent(text != u"0"); return; }
+    /* How long a stage switched in or out crossfades (the generator's
+       `switchMs`), in milliseconds: parity's handle on the switch as it
+       was, at nought, which is the null for its check that the wheel on the
+       Picture amount no longer clicks. Nothing on the page sends it. */
+    if (id == "switchMs") { core_->set("switchMs", jsNumber(utf16To8(text))); return; }
     if (id == "drawn") { drawnFrom(text); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
     Json hand = Json::array();

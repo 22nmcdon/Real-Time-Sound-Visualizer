@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -104,6 +105,13 @@ class Shaper {
     h_.assign(taps.begin(), taps.end());
     inX_.assign(2 * kPer, 0.0);
     up_.assign(static_cast<std::size_t>(2 * n_), 0.0);
+    pos_ = 0; at_ = 0;
+  }
+
+  // Its history emptied, for a shaper coming back in: what it held is from the last time it ran.
+  void clear() {
+    std::fill(inX_.begin(), inX_.end(), 0.0);
+    std::fill(up_.begin(), up_.end(), 0.0);
     pos_ = 0; at_ = 0;
   }
 

@@ -98,12 +98,15 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
                          "makeOsc", "wrapJump", "oscStep", "makeVoiceFx", "voiceFxFor", "unisonAsked", "lowpassTaps",
                          "shapeTaps", "shDrive", "shapeFactor", "shapeSample", "setShaping", "makeShaper", "shaperOf",
                          "makeCrush", "crushStep", "KEY_REF", "makeVcf", "vcfHz", "vcfCoef", "CUT_SAMPLES", "fenvView",
-                         "fviewA", "POLY_TAILS", "POLY_LEAN", "POLY_INNER", "ROLES", "ROUND_RING", "roundsRole", "chordMoved", "glideFrom", "reconcileVoices", "sound"],
+                         "fviewA", "POLY_TAILS", "POLY_LEAN", "POLY_INNER", "ROLES", "ROUND_RING", "roundsRole", "chordMoved", "glideFrom", "reconcileVoices",
+                         "switchBlend", "sound"],
                         rate, mulberry32(n("seed")), { tone, toneB });
     c.__set("qMaskNow", n("qmask")); c.__set("qGlide", n("qglide")); c.__set("shapeFactor", n("factor"));
     const x = c.makeVoiceFx();
     c.voiceFxFor(t, x, n("fmr") === 1, n("syncr") === 1, n("shr") === 1);
     x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = n("vpush"); x.warpA = t.warp; x.warpC = t.warpAt;
+    // The shaper at rest, in or out, as a block leaves it once its crossfade is through (11 Nov).
+    x.shapeW = x.shaping ? 1 : 0; x.shapeRun = x.shaping;
     c.setShaping(t, n("dp"), n("fp"));
     const bars = p.bars === "-" ? undefined : arg(p.bars);
     const events = new Map();
@@ -223,7 +226,9 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "DELAY_TONE_LOW", "WOW_STEP", "CHORUS_MAX",
                          "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "timeFresh", "timeRuns", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
-                         "turnRoutedB", "timeOwnB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeShare", "timeTick", "planeStep",
+                         "turnRoutedB", "timeOwnB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeShare", "timeTick",
+                         // The non-linear stage's crossfade at the core's default here, a step of one: switched straight (11 Nov).
+                         "switchStep", "switchBlend", "planeStep",
                          "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
                          "allpassCoef", "allpassChain", "FX_ORDER_STAGES",
                          "REVERB_LINES", "REVERB_LINE_MS", "REVERB_DIFFUSE_MS", "REVERB_DIFFUSE_G", "REVERB_PRE_MAX",

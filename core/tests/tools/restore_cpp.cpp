@@ -79,6 +79,8 @@ Json toneJson(const scope::Tone& t) {
   o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
   // The Output (G7): never a setup's, so a restore leaves it where a hand put it, on both sides.
   o.set("output", num(t.output));
+  // How long a switched stage crossfades (11 Nov): no setup's either, so a restore leaves it.
+  o.set("switchMs", num(t.switchMs));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
   o.set("planeLimit", num(t.planeLimit)); o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY));
   o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist));

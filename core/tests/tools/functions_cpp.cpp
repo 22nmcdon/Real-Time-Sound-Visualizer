@@ -139,6 +139,8 @@ int main(int argc, char** argv) {
       scope::VoiceFx x;
       scope::voiceFxFor(t, x, d("fmr") == 1, d("syncr") == 1, d("shr") == 1);
       x.fmI = t.fmIndex; x.syncR = t.syncRatio; x.vcfPush = d("vpush"); x.warpA = t.warp; x.warpC = t.warpAt;
+      // The shaper at rest, in or out, as a block leaves it once its crossfade is through (11 Nov).
+      x.shapeW = x.shaping ? 1 : 0; x.shapeRun = x.shaping;
       scope::setShaping(c.shaping, t, d("dp"), d("fp"));
       std::map<long, std::vector<std::string>> events;
       for (const auto& e : splitOn(p["ev"], ';')) {

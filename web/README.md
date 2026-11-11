@@ -5904,3 +5904,56 @@ place for an edited sound. A known limitation: a project reopened in the
 plugin says Custom there even when it is the program untouched, because the
 number does not say whether a code was loaded after it; the host's list is
 where the number shows.
+
+**A routing that switches a stage on switches a delay in (11 Nov).** The owner
+gave the mod wheel to the Picture amount, and moving it under a held note
+broke the sound up. Measured before anything was changed, on the site's
+instrument and in the core alike: a sweep that stayed above nought stepped
+the heard sound no further than the note alone (0.035 from one sample to the
+next on Harmonic tone, either way), and one that reached nought stepped it by
+0.5, at the sample the amount arrived at nought and again where it left. The
+stage's five routes are dropped at nought and made again as it leaves, and a
+routing on the fold or the twist switches the voice's shaper and the plane's
+non-linear stage on with their knobs at rest. Both run oversampled, and an
+oversampler is a filter about 32 samples long, so switched straight in or out
+it moved the whole wave by that much in one sample. It was not zipper, which
+the depths stepping at the picture's frame rate could have been: no step rose
+above what the stage's own reads already step by. It was not a recompile
+losing state either. The allocation was real (fifteen a picture frame while
+the wheel moved), but on the site it lands in the module's own memory with no
+lock to wait on, and nothing heard came of it.
+
+The stages now crossfade over the tone's `switchMs`, ten milliseconds, a layer
+or a pair at a time (`shapeFade` and the pair's `nlIn`, page and core), their
+histories emptied as they come in, since what they held is from the last time
+they ran, and then run unheard for 64 samples while they fill. That second
+part was found by the first version's own check: an emptied filter fed a
+wave that is already there makes an onset of its own, and heard at even a
+sixteenth of the crossfade it stepped the dyad by 0.056 against the note's
+0.032, at the 31st sample after the switch. At rest, in or out, they are what they were to the bit, and a
+core's first block starts them where they are asked, so a render with the
+drive already up is not a fade from dry. It mends every switch of the two,
+not only the wheel's: a routing made by hand on the twist, the drive leaving
+nought, the pedal on the amount. Parity holds the page's generator to the
+core's through switches mid-sound and one reversed mid-fade, the step held to
+what the note alone steps by, with `switchMs` at nought (the switch as it
+was) as the null; the instrument's `wheel picture` runs and `wheeltest.py`
+hold it through the wheel itself. Two more were found on the way. The site's
+page sent each wheel step twice, as the port's bytes and again as a hand on
+the slider they moved, so the instrument kept a hand and published its whole
+state at every step: `hostSlider` now sends no slider that a port's bytes
+moved. And the matrix made the stage's routes afresh for every step of the
+amount, which it now moves in place (`setStageAmount`), held to the page's
+freshly made routes by parity's `wheel` runs. The lesson: a routing at a
+depth of nought changes nothing only on a stage with no latency. Bendtest's
+"switched on at nought is the plain wave to the bit" is true of the bend; the
+shaper and the plane were never such stages, and drivetest says so, "the
+voice 31 samples late". Three checks read across a switch and moved with
+it, each for a reason of its own: worklettest's mirror was read in the
+block after it was asked for, and is read once the crossover is through;
+its filter was read in the block that switched the shaper out, so that run
+switches straight (`switchMs` nought) - and its 0.546 is not a sine's, as
+its comment says, but the FM'd saw the run before it left playing; and
+`block_alloc_cpp reuse` struck its note at once after turning the drive on
+in one history and not the other, so it lets the shaper cross in during a
+block of silence first.

@@ -273,14 +273,16 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     if (vx.scanW > 0 && !vx.on && !tone.noise) {
       w = scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
     }
-    if (vx.shaping) {
+    if (vx.shapeRun) {
       if (!voice.shp || voice.shp->factor() != c.shapeFactor) {
         const auto& taps = c.shapeFactor == 4 ? c.taps4 : c.taps2;
         if (!voice.shp && !c.spareShapers.empty()) { voice.shp.emplace(std::move(c.spareShapers.back())); c.spareShapers.pop_back(); }
         if (voice.shp) voice.shp->reset(c.shapeFactor, taps);
         else voice.shp.emplace(c.shapeFactor, taps);
+      } else if (vx.shapeFresh) {
+        voice.shp->clear();
       }
-      w = voice.shp->step(w, c.shaping);
+      w = switchBlend(w, voice.shp->step(w, c.shaping), vx.shapeW);
     }
     if (vx.crushing) w = crushStep(voice.cr, w, tone, vx, c.rate);
     if (vx.filtering) w = svfStep(voice.vcf, w, vcfCoef(voice.vcf, tone, f, voice.fenv.step(), vx.vcfPush, c.rate), vx.vcfK, tone.vcfType);
