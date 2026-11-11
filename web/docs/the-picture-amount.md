@@ -828,6 +828,49 @@ and that reading the other hand's picture against a slow, wide range keeps the s
 as harsh as now) and removes the over-reaction (the soft notes +0.1 dB in sequence, 0.0 from a
 fresh start). Cutting the stage would remove the over-reaction too, and the swell with it.
 
+## Decided with the owner (11 Nov)
+
+Nothing here is built yet. The owner asked for it to wait until the agents then running
+had finished and G8 had passed its full run on a quiet machine.
+
+**What the owner found by playing.** The swell that comes instantly was a note in the
+lower hand's register: in the repeatable sequence, the "Gb grace note to Ab" was Ab3, below
+the split at C4, so it added a fourth note to the left hand's chord and changed that hand's
+own figure, which its own Glow reads. The swell every four to eight seconds with nothing
+played is the self-loop of section 3; the owner finds that "cool to an extent" but too
+abrupt and not consistent. Reading the keyboard directly (velocity, note density) was
+rejected as disingenuous to the instrument: the picture is the synth, so every fix reads
+only the picture.
+
+**The shape.** How the picture responds becomes a choice in the Picture section's
+*Advanced*, beside *Picture moves* (which already chooses whose picture pushes each hand's
+sound, as *Scan reads* does for Scan; Crossed hands crosses only *Scan reads* today):
+
+| Control | Choices | Default | Decided because |
+|---|---|---|---|
+| **Responds to** | Change · Level · Both | to settle when built | Change flares on a new or harder gesture and settles; Level follows how much is lit, like a drive your playing turns; Both is a base with a flare on it |
+| **Rise** and **Fall** | a menu - Snappy · Smooth · Slow - with *Custom* showing two knobs | a quick rise and a slower fall | one row and every choice sounds good; the knobs when a feel between them is wanted |
+| **Swell** | off · on: the picture breathing by itself while held | off | the self-loop made a designed, smooth breathing rather than a side effect of the range collapsing |
+| Swell's rate | follows the Persistence | - | no new control, and the screen and the sound stay in step: a picture that lingers breathes slowly. A rate of its own can come later if missed |
+
+Each is **each hand's own, with a link**, as the Amount, Scan and Strike are (G6): linked by
+default, so a split can have a steady left hand on Level under a right hand flaring on
+Change.
+
+**The echo route is kept and fixed**, not cut: its Motion read measures change against a
+fixed scale rather than relative to the light present, so one soft note no longer throws
+it to its top. If it is still barely audible once fixed (+0.4 dB alone today), it goes.
+
+**Under all of it, whatever the mode:** the range never closes so far that a small change
+reads as a large one (a floor on the span; section 4's option 3 measured 0.4 with a tenth
+of today's relaxation); the routes reach their top at 100 rather than 75; and the pushes
+are smoothed, which is also part of the wheel's crackle.
+
+**What it costs:** new setup fields, so the schema, the core and parity; `honestytest.py`
+across the modes; `fittest.py` with four more rows in *Advanced* down to the plugin's
+960x600; and the presets re-heard, Crossed hands first, with *Picture moves* crossed
+considered for it.
+
 ## What this did not measure
 
 - **Listening.** Every number here is a spectrum, a level or a grid. Whether the recommended
