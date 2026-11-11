@@ -1995,6 +1995,11 @@ mruns = [
     ("preset", mrun("route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "fade both 1", "at 0", "frame",
                     "load level>gen.freq@0.6;photo>gen.twist@0.4", "at 10", "frame", *frames(200, 1400, 300),
                     "fade off", "frame", "fade in", "frame")),
+    # The same two lists, the second arriving as an edit rather than a load:
+    # an edit is a hand, and fades; a load lands (11 Nov). The null for the
+    # landing check below.
+    ("preset-edit", mrun("route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "fade both 1", "at 0", "frame",
+                         "edit level>gen.freq@0.6;photo>gen.twist@0.4", "at 10", "frame", *frames(200, 1400, 300))),
     ("stepped", mrun("fade both 1", "env 0 delay=0.2 attack=0.5 decay=0.4 sustain=0.6 release=0.8",
                      "route key gen.fm 1", "route pedal view.rotate 1", "at 0", "frame", "value key 0.7", "at 10",
                      "frame", *frames(100, 1400, 150), "value key 0.9", *frames(1400, 2000, 150), "value key 0.4",
@@ -2180,6 +2185,16 @@ check("the generator's destinations are the page's, each on its slot, and none o
 fi = [route_amounts(l) for l in frame_lines("fade-in")]
 check("a routing fades in: part-way at first, whole by the end of its time",
       any(0.05 < a[0] < 0.75 for a in fi if a) and any(abs(a[0] - 0.8) < 1e-12 for a in fi if a))
+# A preset loaded lands (the owner's call, 11 Nov): its first frame is the
+# frame it settles on - the routing it brings whole, the one it drops gone,
+# with no ghost heard - on both sides, as the comparison above holds. The
+# null: the same list arriving by an edit, which a fade eases, differs.
+def settles_at_once(name):
+    f = [l.split(" | ", 1)[1] for l in frame_lines(name)]
+    return f[1] == f[5] and "heard 2" in f[1]
+check("a preset loaded under a fade lands: its first frame is its last, no ghost heard", settles_at_once("preset"),
+      frame_lines("preset")[1][-200:])
+check("null: the same routings arriving by an edit fade in, so its first frame is not its last", not settles_at_once("preset-edit"))
 fo = frame_lines("fade-out")
 check("a routing taken off is heard fading, then forgotten", "heard 3" in "\n".join(fo) and fo[-1].split("heard ")[1].startswith("0"))
 check("the loop's total into one slot is held to a half", "/1.0000000000000000/1.0000000000000000/0" in mout("reach")

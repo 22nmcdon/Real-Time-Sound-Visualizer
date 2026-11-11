@@ -246,11 +246,13 @@ class Matrix {
     routings_ = std::move(next);
     touch();
   }
-  // A preset's routings: every one new.
+  // A preset's routings: every one new, and landed - whole at once, whatever
+  // the fade (the page's restore calls fadeLand).
   void load(const std::vector<Routing>& list) {
     routings_.clear();
     for (const auto& r : list) routings_.push_back({ r.sourceId, r.destId, r.amount, ++serial_, r.amountB });
     touch();
+    land();
   }
 
   // --- a silence (Routings' switch, G5a; stored since G5b) ----------------------
@@ -390,21 +392,22 @@ class Matrix {
     }
     if (mode != mode_) {
       mode_ = mode;
-      gains_.clear();
       stepFade_.clear();
-      // Keyed as the page's Map is: a pair twice over is one entry, where the
-      // first of them stood, holding the last of them.
-      for (const auto& r : routings_) {
-        const std::string key = r.key();
-        Gain* entry = nullptr;
-        for (auto& g : gains_) if (g.key == key) { entry = &g; break; }
-        if (entry) *entry = { key, { still(1, 0), still(1, 1) }, r };
-        else gains_.push_back({ key, { still(1, 0), still(1, 1) }, r });
-      }
-      dirty_ = true;
+      settle();
     }
   }
   FadeMode fadeMode() const { return mode_; }
+
+  // fadeLand: a sound loaded lands (the owner's call, 11 Nov). Every routing
+  // in it whole at once, every one the last sound had and this has not gone
+  // with no ghost to fade out; the stepped sources left where they are, since
+  // a load does not move a held note. Until then a preset's routings faded in
+  // over the fade's attack, and playing straight after a switch was playing
+  // a sound that was neither.
+  void land() {
+    if (mode_ == FadeMode::Off) return;
+    settle();
+  }
 
   // setFadeEnvelope: each number clamped, the old names taken as the new.
   void setFadeEnvelope(const FadePart& part, int layer = 0) {
@@ -648,6 +651,20 @@ class Matrix {
 
   // The ramps and gates of the page's fades, with the time handed in.
   static Ramp still(double value, int layer) { return { value, value, -kInf, true, layer }; }
+  // Every routing fully on and nothing fading: setFade's start from where
+  // things are, and a load's landing. Keyed as the page's Map is: a pair
+  // twice over is one entry, where the first of them stood, holding the last.
+  void settle() {
+    gains_.clear();
+    for (const auto& r : routings_) {
+      const std::string key = r.key();
+      Gain* entry = nullptr;
+      for (auto& g : gains_) if (g.key == key) { entry = &g; break; }
+      if (entry) *entry = { key, { still(1, 0), still(1, 1) }, r };
+      else gains_.push_back({ key, { still(1, 0), still(1, 1) }, r });
+    }
+    dirty_ = true;
+  }
   double rampMs(const Ramp& ramp) const {
     const FadeEnvelope& env = envs_[static_cast<std::size_t>(ramp.layer)];
     return (ramp.arriving ? env.attack : env.release) * 1000;

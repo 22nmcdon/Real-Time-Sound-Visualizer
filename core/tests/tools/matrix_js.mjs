@@ -58,7 +58,7 @@ const LIFTED = [
   "clampLoop", "routingAmount", "GEN_DESTS", "GEN_SLOTS",
   "FADE_MODES", "FADE_LIMITS", "ENV_DEFAULT", "fade", "routeKey", "fadesIn", "fadesOut", "fadeLayered",
   "fadeTravel", "rampMs", "rampAt", "rampDone", "rampTo", "rampStill", "gatePhase", "gateSet", "fadeGain",
-  "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade",
+  "routingsHeard", "fadeStep", "stepFade", "sourceNow", "setFadeEnvelope", "setFade", "fadeLand",
   "eventSeen", "fireEvents", "genMod", "genRoutes", "modDirty", "repaintQueued", "touchRoutings", "compileRoutes",
   "stepRoutes", "workletRoutes", "encodeRoutings", "decodeRoutings", "routingDepthB", "encodeRoutingsB", "applyRoutingsB",
   "STAGE_BUNDLES", "stageRoutingsMade", "stageRoutingsAtB", "stageRoutings", "isStageKey",
@@ -90,7 +90,7 @@ const pictureHands = [{ amount: 0, strike: 50 }, { amount: 0, strike: 50 }];
 const source = STUBS + LIFTED.map(definition).join("\n")
   + statement('for (const dest of GEN_DESTS) registerDest(Object.assign({ kind: "audio" }, dest));')
   + visualLoop() + `
-return { state, midi, log, fade, el, pictureHands, encodeRoutingsB, applyRoutingsB, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade,
+return { state, midi, log, fade, el, pictureHands, encodeRoutingsB, applyRoutingsB, MOD_SOURCES, MOD_DESTS, registerSource, registerDest, touchRoutings, setFade, fadeLand,
          setFadeEnvelope, fadeStep, fireEvents, applyVisual, workletRoutes, encodeRoutings, decodeRoutings,
          routingsHeard, routeKey,
          setClock: (ms) => { clock = ms; }, setLayered: (on) => { layered = on; }, dirty: () => modDirty,
@@ -141,9 +141,11 @@ function run(commands) {
       if (r) r.amount = Number(a[2]);
       m.touchRoutings();
     } else if (cmd === "load") {
-      // A preset: every routing a new object, as `restore` makes them.
+      // A preset: every routing a new object, as `restore` makes them, and
+      // landed whole at once, as `restore` lands them.
       m.state.modRoutings = m.decodeRoutings(a[0] || "");
       m.touchRoutings();
+      m.fadeLand();
     } else if (cmd === "edit") {
       // The list as an edit on the page leaves it - one added, dropped or
       // given a new depth - which the page in the plugin sends whole: a pair
@@ -178,6 +180,7 @@ function run(commands) {
     } else if (cmd === "loadb") {
       m.state.modRoutings = m.applyRoutingsB(m.decodeRoutings(a[0] || ""), a[1] || "");
       m.touchRoutings();
+      m.fadeLand();
     }
     else if (cmd === "layers") m.setLayered(a[0] === "1");
     else if (cmd === "strike") m.midi.strikesBy[Number(a[0])]++;
