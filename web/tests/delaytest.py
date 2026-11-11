@@ -46,7 +46,7 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 # The generator core alone, steps in order on one core: a burst, then the
-# amplitude at nought and the repeats coming round.
+# amplitude routed to nought (`silence`) and the repeats coming round.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
@@ -92,7 +92,12 @@ FRESH = """(o) => {
     }
   };
   mix(o.mix); blocks(30, false);                       // on under the notes, about 90 ms
-  for (const layer of [0, 1]) core.set('amp', 0, layer); // and silence
+  /* And silence, in a sample: the amplitude routed to nought (STOP, below).
+     This put each Level to nought until the Level glided (11 Nov, 20 ms a
+     sample at a time), and then the notes were still at about a tenth when
+     the module came back, which was read as the module replaying - and B's
+     note, taken up again with its layer, sounded again. */
+  core.setRoutes([o.stop]);
   if (o.gap) core.set('voices', null, 1); else if (!o.keep) mix(0);
   blocks(10, false);                                   // off, holding what it was given
   if (o.gap) core.set('voices', bVoice, 1); else mix(o.mix);
@@ -124,6 +129,18 @@ with sync_playwright() as pw:
     def run(*steps):
         out = p.evaluate(CORE, {"steps": list(steps)})
         return {k: np.asarray(v, dtype=float) for k, v in out.items()}
+    # Silence after a burst, in one sample. Each burst used to end by putting
+    # the Level to nought, which since 11 Nov glides there over about 0.27 s
+    # (20 ms a sample at a time), so the first repeat had the
+    # burst's tail under it: a width of nought read 0.04 of side for nought,
+    # and a pass through a 220 Hz tone 0.5974 for 0.5938.
+    # A routing on the amplitude rides on the Level unsmoothed and only ever
+    # ducks: held at -1 at full depth it is nought from the next sample, which
+    # is what nought on the Level used to be. Layer B's half too.
+    AMP = p.evaluate("() => MOD_DESTS.get('gen.amp').slot")
+    STOP = {"held": -1, "heldB": -1, "slot": AMP, "amount": 1, "amountB": 1, "unipolar": True}
+    def silence(n, routes=()):
+        return {"routes": list(routes) + [STOP], "n": n}
 
     # A burst of 100 ms, then 600 ms of silence: the repeats at 150 ms come
     # round four times, each read in the middle of its 100 ms, away from the
@@ -133,7 +150,7 @@ with sync_playwright() as pw:
         base = dict(freq=freq, interval=0, phase=90, delayMix=1, delayMs=MS, delayFeedback=fb)
         first = {"tone": dict(base, **extra), "n": int(0.1 * RATE)}
         if routes: first["routes"] = routes
-        out = run(first, {"tone": {"amp": 0}, "n": int(0.6 * RATE)})
+        out = run(first, silence(int(0.6 * RATE), routes or []))
         L = out["L"]
         level = []
         for k in range(1, 4):
@@ -175,8 +192,7 @@ with sync_playwright() as pw:
     # goes round after it. A tone reckoned once and kept (the cache never
     # asked again) still loses only the feedback here.
     late = run({"tone": dict(freq=5000, interval=0, phase=90, delayMix=1, delayMs=MS, delayFeedback=FB), "n": int(0.1 * RATE)},
-               {"tone": {"amp": 0}, "n": int(0.6 * RATE),
-                "routes": [{"held": -0.8, "slot": dts, "amount": 1, "unipolar": False}]})["L"]
+               silence(int(0.6 * RATE), [{"held": -0.8, "slot": dts, "amount": 1, "unipolar": False}]))["L"]
     late_lv = [rms(late[int(k * MS / 1000 * RATE) + 1000: int(k * MS / 1000 * RATE) + int(0.1 * RATE) - 1000]) for k in (1, 2)]
     check("and a push that arrives after the first pass darkens the passes after it alike",
           abs(late_lv[1] / late_lv[0] - want) / want < 0.03, "%.4f against %.4f" % (late_lv[1] / late_lv[0], want))
@@ -207,7 +223,7 @@ with sync_playwright() as pw:
     # A fifth between the channels, so left and right differ.
     def wide(w):
         out = run({"tone": dict(freq=330, interval=7, phase=90, delayMix=1, delayMs=MS, delayFeedback=0.5, delayWidth=w),
-                   "n": int(0.1 * RATE)}, {"tone": {"amp": 0}, "n": int(0.4 * RATE)})
+                   "n": int(0.1 * RATE)}, silence(int(0.4 * RATE)))
         a, z = int(0.16 * RATE), int(0.24 * RATE)
         return out, out["L"][a:z] - out["R"][a:z], out["L"][:int(0.1 * RATE)] - out["R"][:int(0.1 * RATE)]
     _, side0, live0 = wide(0)
@@ -233,7 +249,7 @@ with sync_playwright() as pw:
     # half-hertz sinusoid fitted to the pitch, whose amplitude is the swing.
     def wow(v):
         out = run({"tone": dict(freq=1000, interval=0, phase=90, delayMix=1, delayMs=1900, delayFeedback=0, delayWow=v),
-                   "n": 4 * RATE}, {"tone": {"amp": 0}, "n": 2 * RATE})
+                   "n": 4 * RATE}, silence(2 * RATE))
         x = out["L"][int(4.05 * RATE): int(5.85 * RATE)]
         # The pitch between each pair of rising crossings, interpolated.
         s = np.signbit(x)
@@ -295,12 +311,14 @@ with sync_playwright() as pw:
             # The phaser's ring has fallen to about a ten-thousandth by the end of
             # the silence when it is left on, so its null is read to 1e-5; what
             # the check itself reads, switched off and on, is exactly nought.
+            o["stop"] = STOP
             back = p.evaluate(FRESH, o)
             kept = p.evaluate(FRESH, dict(o, keep=True))
             check("the %s switched off under a note and on again over silence, %s: nothing" % (name, where),
                   back["peak"] < 1e-9 and back["heard"] > 0.1 and kept["peak"] > 1e-5,
                   "%.3g; left on through the silence (the null) %.3g" % (back["peak"], kept["peak"]))
-    o = {"field": "delayMix", "mix": 1, "tone": {"delayMs": 100, "delayFeedback": 0.6}, "layers": [0, 1], "own": 4, "read": "b"}
+    o = {"field": "delayMix", "mix": 1, "tone": {"delayMs": 100, "delayFeedback": 0.6}, "layers": [0, 1], "own": 4, "read": "b",
+         "stop": STOP}
     gap, kept = p.evaluate(FRESH, dict(o, gap=True)), p.evaluate(FRESH, dict(o, keep=True))
     check("and B's own delay over the layers let go and taken up again: nothing", gap["peak"] < 1e-9 and kept["peak"] > 1e-3,
           "%.3g; the layers kept (the null) %.3g" % (gap["peak"], kept["peak"]))

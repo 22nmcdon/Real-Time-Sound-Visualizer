@@ -52,7 +52,8 @@ def null(name, red, detail=""):
 
 # The generator core alone, steps in order on one core. A ramp at 220 Hz on
 # both channels (interval nought, phase nought), so X and Y are one
-# asymmetric signal; a step with `amp: 0` is the silence the tail rings into.
+# asymmetric signal; a step with the amplitude routed to nought (`silence`)
+# is the silence the tail rings into.
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
@@ -85,9 +86,21 @@ with sync_playwright() as pw:
     def run(*steps):
         out = p.evaluate(CORE, {"steps": list(steps)})
         return {k: np.asarray(v, dtype=float) for k, v in out.items()}
+    # Silence after a burst, in one sample. Each burst used to end by putting
+    # the Level to nought, which since 11 Nov glides there over about 0.27 s
+    # (20 ms a sample at a time), so the tail was the reverb's
+    # plus the burst's own glide down, and a Mix of one read 1.76 times a
+    # half, for 2.000000.
+    # A routing on the amplitude rides on the Level unsmoothed and only ever
+    # ducks: held at -1 at full depth it is nought from the next sample, which
+    # is what nought on the Level used to be. Layer B's half too.
+    AMP = p.evaluate("() => MOD_DESTS.get('gen.amp').slot")
+    STOP = {"held": -1, "heldB": -1, "slot": AMP, "amount": 1, "amountB": 1, "unipolar": True}
+    def silence(n, routes=()):
+        return {"routes": list(routes) + [STOP], "n": n}
     BURST = int(0.05 * RATE)
     def burst(tone, after=1.0):
-        return run({"tone": tone, "n": BURST}, {"tone": {"amp": 0}, "n": int(after * RATE)})
+        return run({"tone": tone, "n": BURST}, silence(int(after * RATE)))
 
     print("\n--- it keeps the figure, and Spread lets it go ---")
     s0 = burst({"reverbMix": 1, "reverbSpread": 0})

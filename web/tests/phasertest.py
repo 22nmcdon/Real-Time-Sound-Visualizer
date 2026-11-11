@@ -184,7 +184,14 @@ with sync_playwright() as pw:
     check("a sine through the phaser at full range comes out with nothing a harmonic away, 80 dB down or more",
           s_ph < -80, "%.1f dB" % s_ph)
     check("and the same check finds the drive's harmonics (the null)", s_drv > -60, "%.1f dB" % s_drv)
-    tail = run({"tone": dict(sweepy, phaserFeedback=0.75), "n": 4410}, {"tone": {"amp": 0}, "n": 44100 * 3})
+    # The note ends in one sample: the amplitude routed to nought, which rides
+    # on the Level unsmoothed and only ever ducks. This put the Level to
+    # nought until the Level glided (11 Nov, 20 ms a sample at a time); then
+    # the first 200 samples after it were the sine itself at about 0.5, read
+    # 0.891 for the ring's 0.645, and would have passed with no phaser at all.
+    stop = {"held": -1, "heldB": -1, "slot": p.evaluate("() => MOD_DESTS.get('gen.amp').slot"),
+            "amount": 1, "amountB": 1, "unipolar": True}
+    tail = run({"tone": dict(sweepy, phaserFeedback=0.75), "n": 4410}, {"routes": [stop], "n": 44100 * 3})
     t = tail["L"][4410:]
     rang = float(np.abs(t[:200]).max())
     last = np.nonzero(t)[0]

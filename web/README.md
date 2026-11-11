@@ -6178,3 +6178,26 @@ set by hand, period for period, with the wheel half way on the vibrato as
 its null (16.8 cents apart). A latency that does not change - the plain
 path always delayed by the stages' 63 samples - would remove the slide too,
 at the price of every sound being later than it is, and was not done.
+
+**To end a burst in a sample, route the amplitude to nought; the Level
+glides (11 Nov).** Four suites made a burst, or silence, by putting the Level
+to nought, and once it glided (above) each read the burst's own 0.27 s tail as
+what followed it: `timetest.py`'s repeats were 3.3e-2 off for 1.5e-8,
+`reverbtest.py`'s Mix of one 1.76 times a half for 2.000000, `delaytest.py`
+heard every module replaying over a silence that was still a tenth of the note,
+and `phasertest.py`'s "the resonance rings" read the sine itself at 0.89 and
+passed with the phaser's Mix at nought. A routing on the amplitude (`gen.amp`,
+held at -1, full depth, unipolar, B's half too) rides on the Level unsmoothed and
+only ever ducks, so it is nought from the next sample, as nought on the Level
+used to be; each suite's `STOP` is that, and they read again exactly what they
+read before the glide. Two other ways were tried and are worse here. The
+difference from the same run with the module's Mix at nought takes the tail
+out but not the module's repeats of it: with a 150 ms delay and a 100 ms burst
+whose tail lasts 270 ms, the second repeat's window held the first repeat of
+the tail, and the delay's tone read 0.6028 for 0.5938, further off than
+before. And a reference run in which the module never heard the note cannot
+stand in for a module switched on again, because the chorus's and the
+phaser's sweeps advance only while they are on, so the two come back at
+different points of the sweep. A harness that can only send the worklet a tone,
+as `workletharness.mjs` does, has to wait out the 0.27 s before it calls
+anything silence, and read the difference before that.

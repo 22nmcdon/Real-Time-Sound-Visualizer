@@ -96,13 +96,25 @@ with sync_playwright() as pw:
     def run(*steps):
         out = p.evaluate(CORE, {"steps": list(steps)})
         return {k: np.asarray(v) for k, v in out.items()}
+    # Silence after a burst, in one sample. Each burst used to end by putting
+    # the Level to nought, which since 11 Nov glides there over about 0.27 s
+    # (20 ms a sample at a time), so the repeats were each the burst plus the
+    # tail of the one before, read at 3.3e-2 against 1.5e-8 and a feedback of
+    # 0.8844 for 0.9. A routing on the amplitude rides on the Level unsmoothed
+    # and only ever ducks: held at -1 at full depth it is nought from the next
+    # sample, which is what nought on the Level used to be. Layer B's half
+    # too, so a run with B in it stops alike.
+    AMP = p.evaluate("() => MOD_DESTS.get('gen.amp').slot")
+    STOP = {"held": -1, "heldB": -1, "slot": AMP, "amount": 1, "amountB": 1, "unipolar": True}
+    def silence(n, routes=()):
+        return {"routes": list(routes) + [STOP], "n": n}
 
     print("\n--- the repeats, sample for sample ---")
     # A burst of 2000 samples, then silence: 100 ms is 4410 samples, so each
     # repeat has 2410 samples of silence before the next.
     D, B = 4410, 2000
     fig = {"freq": 220, "interval": 7, "delayMs": 100, "delayMix": 0.7, "delayFeedback": 0.5}
-    out = run({"tone": fig, "n": B}, {"tone": {"amp": 0}, "n": 4 * D})
+    out = run({"tone": fig, "n": B}, silence(4 * D))
     burstL, burstR = out["L"][:B], out["R"][:B]
     worst, levels = 0, []
     for k in (1, 2, 3):
@@ -123,7 +135,7 @@ with sync_playwright() as pw:
     # smooths it again and loses it energy - and read 16537.0 of a delay
     # that was right; the model is exact, so it is compared exactly.
     out = run({"tone": {"freq": 220, "interval": 0, "delayMs": 375, "delayMix": 1, "delayFeedback": 0}, "n": 300},
-              {"tone": {"amp": 0}, "n": 17500})
+              silence(17500))
     burst = np.concatenate([out["L"][:300], np.zeros(17800 - 300)])
     at = np.arange(16537, 16900)
     half = 0.5 * (burst[at - 16538] + burst[at - 16537])
@@ -133,7 +145,7 @@ with sync_playwright() as pw:
           err < 1e-6 and np.abs(out["L"][at] - whole).max() > 1e-3, "worst %.2e" % err)
 
     print("\n--- ping-pong ---")
-    pp = run({"tone": dict(fig, delayPingPong=True), "n": B}, {"tone": {"amp": 0}, "n": 4 * D})
+    pp = run({"tone": dict(fig, delayPingPong=True), "n": B}, silence(4 * D))
     cross = []
     for k in (1, 2, 3):
         want = 0.7 * 0.5 ** (k - 1)
@@ -145,7 +157,7 @@ with sync_playwright() as pw:
           cross == [(True, False), (False, True), (True, False)], str(cross))
 
     print("\n--- the feedback is held ---")
-    held = run({"tone": dict(fig, delayFeedback=5), "n": B}, {"tone": {"amp": 0}, "n": 4 * D})
+    held = run({"tone": dict(fig, delayFeedback=5), "n": B}, silence(4 * D))
     ratio = [np.abs(held["L"][(k + 1) * D:(k + 1) * D + B]).max() / np.abs(held["L"][k * D:k * D + B]).max() for k in (1, 2)]
     check("asked for a feedback of 5 the delay gives 0.9: each repeat 0.9 of the last",
           all(abs(r - 0.9) < 1e-4 for r in ratio), str([round(r, 5) for r in ratio]))
@@ -174,13 +186,11 @@ with sync_playwright() as pw:
     base = {"freq": 1000, "interval": 0, "amp": 0.5, "delayFeedback": 0, "delayMs": 100}
     held = lambda slot, amount, value=1: [{"held": value, "slot": slot, "amount": amount, "unipolar": False}]
     slots = p.evaluate("() => [ECHO_SLOT, ECHO_TIME_SLOT]")
-    burst_off = {"amp": 0}
     def burst(tone, routes=None, then_routes=None):
         first = {"tone": dict(base, **tone), "n": 2000}
         if routes is not None: first["routes"] = routes
-        second = {"tone": burst_off, "n": 16000}
-        if then_routes is not None: second["routes"] = then_routes
-        return run(first, second)
+        # The stop is one more routing, so the burst's own stay on with it.
+        return run(first, silence(16000, then_routes if then_routes is not None else routes or []))
     static_mix = burst({"delayMix": 0.5})
     routed_mix = burst({"delayMix": 0}, held(slots[0], 1))
     unrouted = burst({"delayMix": 0})
@@ -224,7 +234,7 @@ with sync_playwright() as pw:
     check("the read position glides: no step bigger than one and a half times the steady tone's",
           step.max() < 1.5 * steady, "%.4f against %.4f" % (step.max(), steady))
     settled = run({"tone": tone, "n": 13230}, {"tone": {"delayMs": 133}, "n": 30000},
-                  {"tone": {"amp": 0}, "n": 7000})
+                  silence(7000))
     tail = settled["L"][43230:]
     # After the tone stops, the echo is the tone 133 ms ago: silent from
     # 5865 samples on, not 4410.
