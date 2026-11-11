@@ -17,6 +17,7 @@
      load SRC>DEST@A;...   edit SRC>DEST@A;...   forget ID   fade MODE [SECONDS]
      env LAYER key=value...   layers 0|1   strike LAYER   at MS   frame   routes   encode   dests
      stage PERCENT [PERCENT_B] (the Picture amount on each hand, G6; one is both)
+     wheel PERCENT [PERCENT_B] (the same moved by a controller: the core is not touched, 11 Nov)
      amountb SRC DEST A (a routing's own depth on the upper hand, G6)   loadb CODE CODE_B (a setup's mod and modB)   encodeb
    Usage: node matrix_js.mjs <runs> */
 import fs from "node:fs";
@@ -169,7 +170,8 @@ function run(commands) {
         part[k] = v === "true" ? true : v === "false" ? false : Number(v);
       }
       m.setFadeEnvelope(part, Number(a[0]));
-    } else if (cmd === "stage") {
+    } else if (cmd === "stage" || cmd === "wheel") {
+      // The page has one way: a wheel moves the slider, whose handler touches the routings.
       m.pictureHands[0].amount = Number(a[0]);
       m.pictureHands[1].amount = Number(a[1] === undefined ? a[0] : a[1]);
       m.touchRoutings();

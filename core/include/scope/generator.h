@@ -119,6 +119,8 @@ struct Tone : LayerSettings, PlaneTone {
   double scoreDecayMs = 400, scoreLevel = 0.4;
   // The master Output (G7), as a gain on what is heard alone: the page's tone says why.
   double output = 1;
+  // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
+  double switchMs = kSwitchMs;
 };
 
 // A routing, as `setRoutes` copies one: an LFO's index or a held value.
@@ -204,6 +206,7 @@ class Generator {
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "output") a.output = value;
+    else if (field == "switchMs") a.switchMs = value;
     else if (field == "planeOS") a.planeOS = value;
   }
 
@@ -366,7 +369,9 @@ class Generator {
       if (r.slot == slot::Phaser) phaserRouted = true;
       if (r.slot == slot::Reverb) reverbRouted = true;
     }
+    plane_.setSwitchStep(1000 / (a_.switchMs * rate_), a_.switchMs > 0 ? kSwitchPrime : 0);
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, nullptr, 0, false, phaserRouted, reverbRouted);
+    if (!switchStarted_) { switchStarted_ = true; plane_.settleSwitch(); }
     for (int i = 0; i < n; i++) {
       lfoStep(lfos_[0], rate_, random_);
       lfoStep(lfos_[1], rate_, random_);
@@ -404,6 +409,10 @@ class Generator {
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
     const int timeOwn = b_.timeOwn & 15;
+    // A sample's walk of a stage's crossfade, the page's `switchStep`.
+    const double switchStep = 1000 / (a_.switchMs * rate_);
+    const int switchPrime = a_.switchMs > 0 ? kSwitchPrime : 0;
+    plane_.setSwitchStep(switchStep, switchPrime);
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && (b_.planeOwn || timeOwn != 0) ? &b_ : nullptr,
                                       b_.planeTurn, turnRouted, phaserRouted, reverbRouted, b_.planeOwn, timeOwn);
     govern(fmRouted, syncRouted, shapeRouted, planeOn);
@@ -415,6 +424,14 @@ class Generator {
       shapeR_ = Shaper(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
     }
     voiceFxFor(b_, vxB_, fmRouted, syncRouted, shapeRouted);
+    // The stages' crossfades start where they are asked on the first block (the page's switchStarted says why).
+    if (!switchStarted_) {
+      switchStarted_ = true;
+      vxA_.shapeW = vxA_.shaping ? 1 : 0;
+      vxB_.shapeW = vxB_.shaping ? 1 : 0;
+      vxA_.shapeWait = vxB_.shapeWait = 0;
+      plane_.settleSwitch();
+    }
     // The bend's offset blocker, and the oscillator held on a second after a bend (the page says why).
     vxA_.dcK = vxB_.dcK = poleFor(1000 / (kTwoPi * kBendDcHz), rate_);
     vxA_.dcHold = a_.warp != 0 || bendRouted ? rate_ : std::fmax(0.0, vxA_.dcHold - n);
@@ -480,7 +497,8 @@ class Generator {
       const double drivePush = modOr0(slot::Drive) * 0.5, foldPush = modOr0(slot::Fold) * 0.5;
       vxA_.vcfPush = modOr0(slot::Vcf) * 3;
       vxB_.vcfPush = modBOr0(slot::Vcf) * 3;
-      if (vxA_.shaping) setShaping(ctx_.shaping, a_, drivePush, foldPush);
+      shapeFade(vxA_, switchStep, switchPrime);
+      if (vxA_.shapeRun) setShaping(ctx_.shaping, a_, drivePush, foldPush);
 
       double xin = 0, fmIn = 1, clockHz = 0;
       bool clockReset = false;
@@ -531,7 +549,11 @@ class Generator {
             wr = scanMix(wr, vxA_.scanPrev, vxA_.scanNext, phaseR_ + phase, stepR, vxA_.scanX, vxA_.scanW);
           }
         }
-        if (vxA_.shaping) { wl = shapeL_.step(wl, ctx_.shaping); wr = shapeR_.step(wr, ctx_.shaping); }
+        if (vxA_.shapeRun) {
+          if (vxA_.shapeFresh) { shapeL_.clear(); shapeR_.clear(); }
+          wl = switchBlend(wl, shapeL_.step(wl, ctx_.shaping), vxA_.shapeW);
+          wr = switchBlend(wr, shapeR_.step(wr, ctx_.shaping), vxA_.shapeW);
+        }
         if (vxA_.crushing) { wl = crushStep(crushL_, wl, a_, vxA_, rate_); wr = crushStep(crushR_, wr, a_, vxA_, rate_); }
         if (vxA_.filtering) {
           const double fl = gated_ ? fenv_.step() : 0;
@@ -562,7 +584,8 @@ class Generator {
         const WaveTables barsOfB = tablesFor(b_, barsB_, genModB_);
         const double amountOfB = shapeAmount(b_, modBOr0(slot::Morph) * 1.5, modBOr0(slot::Width) * 0.45,
                                              modBOr0(slot::Table) * 1.5);
-        if (vxB_.shaping) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
+        shapeFade(vxB_, switchStep, switchPrime);
+        if (vxB_.shapeRun) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
         sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq) + pitchOct), 1 - modB(slot::Amp), dt, roleGlide,
               vxB_, ctx_, a_.polyRound, glide);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
@@ -961,6 +984,7 @@ class Generator {
     menv_.gate(open, 1);
   }
   bool freqStarted_ = false;
+  bool switchStarted_ = false;  // the page's switchStarted
   double freqNow_ = 0;
   std::array<double, 2> glideFrom_ {};  // each layer's last note's pitch, for Poly's glide out of silence
   double bendNow_ = 0, vibNow_ = 0, vibPhase_ = 0;  // the bend and the vibrato as they glide, and its cycle

@@ -96,6 +96,10 @@ int main(int argc, char** argv) {
       const bool retired = g.voices().empty();
       g.set("polyRound", 1);
       g.set("drive", 0.5);
+      /* A block of silence first, in which the second history's shaper
+         crosses in (11 Nov): struck at once it would be fading in where the
+         first's had always been on, and the two would differ for that. */
+      run(2, false);
       std::vector<scope::NoteWant> note { want(62, "xy", struck) };
       g.setVoices(&note, 0);
       run(8, true);
@@ -117,8 +121,10 @@ int main(int argc, char** argv) {
   const int prepared = !made && argc > 3 ? std::atoi(argv[3]) : block;
   const double rate = 48000;
   Instrument ins;
-  // Two hands on the paths that want them: the bank's split under the pad. A plain one otherwise.
-  const bool hands = path != "input" && path != "bands" && path != "plain" && path != "turn";
+  // Two hands on the paths that want them: the bank's split under the pad. A plain one otherwise -
+  // the wheel's two among them, since that split has a Picture of each hand's own, and the wheel
+  // moving the lower hand's alone would never take both amounts to nought, which `nought` needs.
+  const bool hands = path != "input" && path != "bands" && path != "plain" && path != "turn" && path != "picture" && path != "nought";
   const scope::Preset* preset = scope::findPreset(hands ? "Bass under the pad" : "Turning fifths");
   if (!preset) { std::fprintf(stderr, "no preset\n"); return 2; }
   counting = made;
@@ -147,6 +153,8 @@ int main(int argc, char** argv) {
   if (path == "turn") slide("rotate", u"20");
   if (path == "arp") ins.apply(Instrument::control("arpMode", str("up")));
   if (path == "score") ins.apply(Instrument::control("scoreOn", scope::Json::boolean(true)));
+  // The wheel given to the Picture amount (11 Nov), as Expression's Wheel menu gives it.
+  if (path == "picture" || path == "nought") ins.apply(Instrument::control("midiWheelTo", str("picture")));
 
   std::vector<float> left(static_cast<std::size_t>(block)), right(left), inL(left), inR(left);
   std::vector<Instrument::Event> events;
@@ -179,6 +187,13 @@ int main(int argc, char** argv) {
       std::uint8_t bend[3] = { 0xE0, 0, static_cast<std::uint8_t>(64 + 40 * std::sin(static_cast<double>(tick) * 0.07)) };
       std::uint8_t mod[3] = { 0xB0, 1, static_cast<std::uint8_t>(64 + 60 * std::sin(static_cast<double>(tick) * 0.03)) };
       if (path == "wheel") { events.push_back({ block / 4, bend, 3 }); events.push_back({ block / 2, mod, 3 }); }
+      /* On `picture` the mod wheel on the Picture amount, every block and never
+         at nought, so only the stage's depths move; on `nought` past nought and
+         back, so its routes are made and dropped, which compiles them - the
+         counter's null for `picture`. */
+      std::uint8_t swept[3] = { 0xB0, 1, static_cast<std::uint8_t>(std::clamp(64 + 90 * std::sin(static_cast<double>(tick) * 0.03), 0.0, 127.0)) };
+      if (path == "picture") events.push_back({ block / 2, mod, 3 });
+      if (path == "nought") events.push_back({ block / 2, swept, 3 });
       const Instrument::Input input { inL.data(), inR.data() };
       const Instrument::HostSlider moved { "morphPos", 50 + 40 * std::sin(static_cast<double>(tick) * 0.05) };
       const bool host = path == "host";
@@ -189,7 +204,7 @@ int main(int argc, char** argv) {
       events.clear();
       if (!counted) continue;
       for (int i = 0; i < block; ++i) heard += std::fabs(left[static_cast<std::size_t>(i)]) + std::fabs(right[static_cast<std::size_t>(i)]);
-      const double cut = ins.slider("vcfCut");
+      const double cut = ins.slider(path == "picture" || path == "nought" ? "pictureAmount" : "vcfCut");
       lo = std::fmin(lo, cut); hi = std::fmax(hi, cut);
     }
   };
@@ -208,6 +223,7 @@ int main(int argc, char** argv) {
      - held: what was heard, with voices held in both hands;
      - rack: what was heard, with all five of the rack's modules on;
      - morph, host: how far the cutoff the fader walks moved in the blocks;
+     - picture, nought: how far the wheel walked the Picture amount;
      - notes, arp: voices born in the blocks;
      - wheel: what was heard, with the bend away from nought at the end;
      - score: the score's steps in the blocks. */
@@ -224,7 +240,7 @@ int main(int argc, char** argv) {
   if (path == "photo" && !ins.matrix().source("photo.1")) did = 0;
   if (path == "held" && !(heldIn(ins.generator().voices()) && heldIn(ins.generator().voicesB()))) did = 0;
   if (path == "rack" && !(tone.delayMix > 0 && tone.chorusMix > 0 && tone.phaserMix > 0 && tone.reverbMix > 0 && tone.planeTwist != 0)) did = 0;
-  if (path == "morph" || path == "host") did = hi - lo;
+  if (path == "morph" || path == "host" || path == "picture" || path == "nought") did = hi - lo;
   if (path == "notes" || path == "arp") did = bornLast - bornFirst;
   if (path == "score") did = ins.score().steps - stepsFirst;
   if (path == "wheel" && ins.keyboard().bend() == 0) did = 0;

@@ -96,7 +96,36 @@ struct VoiceFx {
      so the logarithm is taken once a move rather than once a sample. NaN
      until the first sample, which lands each where its setup says. */
   double level = std::nan(""), cut = std::nan(""), cutLn = std::nan(""), cutTo = std::nan(""), cutToLn = std::nan("");
+  /* The shaper's share of the voice, nought to one, walked a sample at a
+     time towards `shaping` over the generator's switch time, so a shaper
+     switched in or out mid-note crossfades rather than steps (the page's
+     makeVoiceFx says why). `shapeRun` is whether it runs this sample,
+     `shapeFresh` that it has just come in, when its history is emptied. */
+  double shapeW = 0;
+  bool shapeRun = false, shapeFresh = false;
+  int shapeWait = 0;  // samples still to prime, plus one, the page's shapeWait
 };
+
+/* SWITCH_MS: how long a stage that a routing switches in or out - the
+   voice's shaper, the plane's non-linear stage - takes to cross over, and
+   SWITCH_PRIME how many samples it runs unheard first, to fill its emptied
+   history (the page's say why). */
+inline constexpr double kSwitchMs = 10;
+inline constexpr int kSwitchPrime = 64;
+
+// One sample of the shaper's crossfade, the page's shapeFade.
+inline void shapeFade(VoiceFx& x, double step, int prime) {
+  x.shapeFresh = false;
+  if (!x.shaping) x.shapeWait = 0;
+  else if (x.shapeW == 0) {
+    if (x.shapeWait == 0) { x.shapeFresh = true; x.shapeWait = prime + 1; }
+    if (--x.shapeWait > 0) { x.shapeRun = true; return; }
+  }
+  x.shapeW = x.shaping ? std::fmin(1.0, x.shapeW + step) : std::fmax(0.0, x.shapeW - step);
+  x.shapeRun = x.shapeW > 0;
+}
+// A stage's sample as heard while it fades: all of it once the fade is done, to the bit.
+inline double switchBlend(double dry, double wet, double w) { return w >= 1 ? wet : dry + (wet - dry) * w; }
 
 // The voice's shape with Scan in it: `ink` is the shape at this phase, `x`
 // how far through the tick the crossfade is, `w` how much of the voice is

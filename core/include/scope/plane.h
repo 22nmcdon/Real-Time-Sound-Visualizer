@@ -165,7 +165,8 @@ class Plane {
     turnRoutedB_ = turnRouted;  // read only where B has its own
     turnB_ = turnB;
     linearOn_ = shapeA_.linear || (shapeOwnB_ && (shapeB_.linear || shapeB_.turn != 0 || turnRoutedB_));
-    nonlinearOn_ = shapeA_.nonlinear || (shapeOwnB_ && shapeB_.nonlinear);
+    // Or a pair's stage still fading out, which has to be stepped to get there.
+    nonlinearOn_ = shapeA_.nonlinear || (shapeOwnB_ && shapeB_.nonlinear) || nlIn_[0] > 0 || nlIn_[1] > 0;
     timeSet(timeA_, t, echoRouted);
     if (timeOwnB_ != 0) timeSet(timeB_, *b, echoRouted);
     timeOn_ = timeA_.on || (timeOwnB_ != 0 && timeB_.on);
@@ -204,10 +205,30 @@ class Plane {
       const double sheared = x + s.shear * y;
       x = s.sx * sheared; y = s.sy * y;
     }
-    if (s.nonlinear) {
-      cur_ = &s;
-      if (factor_ == 1) { op(x, y); x = this->x; y = this->y; }
-      else { os_[pair].step(*this, x, y); x = os_[pair].outX; y = os_[pair].outY; }
+    /* Crossfaded in and out over the switch time, a pair at a time, as
+       the voice's shaper is: the oversampler is a delay of its own, so a
+       stage switched straight in or out - a routing on the twist arriving,
+       the Picture amount crossing nought - was a step (the page's
+       planeStep says why). Its history is emptied as it comes in. */
+    double& in = nlIn_[pair];
+    int& wait = nlWait_[pair];
+    if (!s.nonlinear) wait = 0;
+    if (s.nonlinear || in > 0) {
+      // Emptied as it comes in, then run unheard while it fills (kSwitchPrime), then crossfaded.
+      bool priming = false;
+      if (s.nonlinear && in == 0) {
+        if (wait == 0) { wait = switchPrime_ + 1; if (factor_ != 1) os_[pair].clear(); }
+        priming = --wait > 0;
+      }
+      if (!priming) in = s.nonlinear ? std::fmin(1.0, in + switchStep_) : std::fmax(0.0, in - switchStep_);
+      if (priming || in > 0) {
+        cur_ = &s;
+        double nx, ny;
+        if (factor_ == 1) { op(x, y); nx = this->x; ny = this->y; }
+        else { os_[pair].step(*this, x, y); nx = os_[pair].outX; ny = os_[pair].outY; }
+        x = switchBlend(x, nx, in);
+        y = switchBlend(y, ny, in);
+      }
     }
     if (s.turn != 0) {
       const double tx = x * s.tc - y * s.ts;
@@ -227,6 +248,14 @@ class Plane {
   // What the governor costs it by: the factor, and which stages are on.
   int factor() const { return factor_; }
   bool nonlinearOn() const { return nonlinearOn_; }
+  // A sample's walk of the non-linear stage's crossfade, set each block.
+  void setSwitchStep(double step, int prime) { switchStep_ = step; switchPrime_ = prime; }
+  // Each pair's share where `setup` asks it, with no crossfade: the generator's first block.
+  void settleSwitch() {
+    nlIn_[0] = shapeA_.nonlinear ? 1 : 0;
+    nlIn_[1] = (shapeOwnB_ ? shapeB_ : shapeA_).nonlinear ? 1 : 0;
+    nlWait_ = { 0, 0 };
+  }
   bool timeOn() const { return timeOn_; }
 
  private:
@@ -383,6 +412,8 @@ class Plane {
       factor = f; n = 32 * f; at = 0; h = &taps;
       inX.fill(0); inY.fill(0); upX.fill(0); upY.fill(0);
     }
+    // Its histories emptied, its factor kept: a stage coming back in.
+    void clear() { at = 0; inX.fill(0); inY.fill(0); upX.fill(0); upY.fill(0); }
     void step(Plane& plane, double x, double y) {
       const auto& c = *h;
       for (int k = kPer - 1; k > 0; k--) { inX[k] = inX[k - 1]; inY[k] = inY[k - 1]; }
@@ -605,6 +636,10 @@ class Plane {
   std::vector<double> taps2_, taps4_;
   int factor_ = 0;
   std::array<Oversampler, 2> os_;
+  std::array<double, 2> nlIn_ {};  // each pair's share of the non-linear stage, the page's fx.nlIn
+  std::array<int, 2> nlWait_ {};   // and its samples still to prime, plus one, the page's fx.nlWait
+  double switchStep_ = 1;
+  int switchPrime_ = 0;
   std::array<TimeFx, 2> fx_;
   bool linearOn_ = false, nonlinearOn_ = false, timeOn_ = false, ownB_ = false, turnRoutedB_ = false;
   bool shapeOwnB_ = false;  // B's own plane in force (planeOwn)

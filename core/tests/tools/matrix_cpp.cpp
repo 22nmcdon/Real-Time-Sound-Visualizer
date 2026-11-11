@@ -47,6 +47,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   std::vector<std::string> log;
   std::array<int, 2> strikes { 0, 0 };
   double clock = 0;
+  bool wheeled = false;  // the stage moved by a wheel since the routes were last taken
   for (const auto& words : commands) {
     const std::string& cmd = words[0];
     const auto arg = [&](std::size_t i) { return i < words.size() ? words[i] : std::string(); };
@@ -96,6 +97,15 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     // frame, and the page's handler touches the routings.
     // Each hand's (G6): one amount is both.
     else if (cmd == "stage") { m.setStageAmount(num(arg(1)) / 100, num(arg(2).empty() ? arg(1) : arg(2)) / 100); m.touch(); }
+    // The amount as a wheel or a pedal moves it in the instrument: handed over
+    // at the next frame and nothing touched, so only the depths move (11 Nov).
+    /* Reported dirty until the next routes are taken, as the page's touch
+       leaves it: there the routes are compiled again, here moved where they
+       stand, and either way the next block's are not the last's. */
+    else if (cmd == "wheel") {
+      m.setStageAmount(num(arg(1)) / 100, num(arg(2).empty() ? arg(1) : arg(2)) / 100);
+      wheeled = true;
+    }
     else if (cmd == "amountb") m.setAmountB(arg(1), arg(2), num(arg(3)));
     else if (cmd == "loadb") {
       auto list = scope::Matrix::decode(arg(1));
@@ -126,6 +136,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "strike") { strikes[static_cast<std::size_t>(num(arg(1)))]++; }
     else if (cmd == "at") { clock = num(arg(1)); m.setTime(clock); }
     else if (cmd == "frame" || cmd == "routes") {
+      wheeled = false;
       m.setStrikes(strikes);
       if (cmd == "frame") m.frame(clock);
       std::string routes;
@@ -156,7 +167,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     for (const auto& r : m.routings())
       amounts += (amounts.empty() ? "" : "+") + show(r.amount) + "/" + (r.amountB ? show(*r.amountB) : std::string("u"));
     line += " | " + said + "amounts " + (amounts.empty() ? "-" : amounts) + " heard " + std::to_string(m.heard().size())
-          + " gains " + std::to_string(m.fading()) + " dirty " + (m.dirty() ? "1" : "0");
+          + " gains " + std::to_string(m.fading()) + " dirty " + (m.dirty() || wheeled ? "1" : "0");
     std::printf("%s\n", line.c_str());
   }
 }

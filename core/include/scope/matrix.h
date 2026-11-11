@@ -477,6 +477,35 @@ class Matrix {
     if (amount == stageAt_ && amountB == stageAtB_) return;
     stageAt_ = amount;
     stageAtB_ = amountB;
+    /* Only the depths moved, as a wheel or a pedal moves them many times a
+       second: the five routes as they stand and the compiled ones with
+       them, so a step of the amount on the audio thread makes no strings
+       and compiles nothing. The page makes its routings afresh and
+       compiles them, which gives the same routes; parity's `wheel` runs
+       hold the two together. Made and dropped as before when the amounts
+       arrive at nought or leave it. */
+    if ((amount > 0 || amountB > 0) && !stage_.empty()) {
+      for (std::size_t i = 0; i < stage_.size(); ++i) {
+        const double weight = kStageBundles[i].weight;
+        stage_[i].amount = amount * weight;
+        if (amountB != amount) stage_[i].amountB = amountB * weight; else stage_[i].amountB.reset();
+      }
+      if (dirty_) return;  // compiled from these at the next block anyway
+      for (auto& c : compiled_) {
+        if (c.parts.empty()) continue;
+        bool perHand = false;
+        for (auto& part : c.parts) {
+          if (part.stage >= 0) {
+            const Routing& r = stage_[static_cast<std::size_t>(part.stage)];
+            part.amount = routingAmount(part.source, r.amount);
+            part.amountB = routingAmount(part.source, r.depthB());
+          }
+          if (part.amountB != part.amount) perHand = true;
+        }
+        c.perHand = perHand;
+      }
+      return;
+    }
     stage_.clear();
     if (amount > 0 || amountB > 0) {
       long serial = 0;
@@ -602,7 +631,8 @@ class Matrix {
     std::array<Ramp, 2> values;
     std::array<Gate, 2> gates;
   };
-  struct LoopPart { const ModSource* source; std::string key; double amount; bool unipolar; double amountB; };
+  // `stage` is which of the stage's routes a part is, or -1 for any other.
+  struct LoopPart { const ModSource* source; std::string key; double amount; bool unipolar; double amountB; int stage = -1; };
   struct Compiled {
     int index = -1;
     const ModSource* source = nullptr;
@@ -781,16 +811,20 @@ class Matrix {
     compiled_.clear();
     std::vector<std::pair<int, std::vector<LoopPart>>> loopBySlot;
     const std::vector<Routing> list = heard();
-    for (const auto& r : list) {
+    // The stage's routes stand after the setup's in what is heard, when there are any.
+    const std::size_t stageFrom = stage_.empty() ? list.size() : routings_.size();
+    for (std::size_t at = 0; at < list.size(); ++at) {
+      const Routing& r = list[at];
       const ModSource* s = source(r.sourceId);
       const ModDest* d = dest(r.destId);
       if (!s || !d) continue;
       if (d->kind != DestKind::Audio) continue;
       if (!routingAllowed(s, d)) continue;
       if (s->picture()) {
-        auto at = std::find_if(loopBySlot.begin(), loopBySlot.end(), [&](const auto& e) { return e.first == d->slot; });
-        if (at == loopBySlot.end()) { loopBySlot.push_back({ d->slot, {} }); at = loopBySlot.end() - 1; }
-        at->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar, routingAmount(s, r.depthB()) });
+        auto slotAt = std::find_if(loopBySlot.begin(), loopBySlot.end(), [&](const auto& e) { return e.first == d->slot; });
+        if (slotAt == loopBySlot.end()) { loopBySlot.push_back({ d->slot, {} }); slotAt = loopBySlot.end() - 1; }
+        const int stage = at >= stageFrom && at < stageFrom + stage_.size() ? static_cast<int>(at - stageFrom) : -1;
+        slotAt->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar, routingAmount(s, r.depthB()), stage });
         continue;
       }
       const double amount = routingAmount(s, r.amount);

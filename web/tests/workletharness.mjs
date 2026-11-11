@@ -255,11 +255,16 @@ try {
                             subLevel: 0.5, unison: 5, unisonCents: 15 });
   report.shaped = voiceRun({ drive: 0.5, fold: 0.3, crushBits: 6, crushHz: 8000 });
   // And through the voice filter, resonant, its envelope and its tracking on.
-  report.filtered = voiceRun({ drive: 0, fold: 0, crushBits: 0, crushHz: 0, vcfType: 1, vcfCutoff: 800, vcfQ: 8,
+  /* With the stages switched straight (`switchMs` nought), as they were
+     before 11 Nov: the shaper switched out in this message crossfades now,
+     and the filter switched on in it was read over that crossfade - the
+     wave against itself 31 samples late - rather than over what its 0.546
+     was measured on. This is the filter's check, not the switch's. */
+  report.filtered = voiceRun({ switchMs: 0, drive: 0, fold: 0, crushBits: 0, crushHz: 0, vcfType: 1, vcfCutoff: 800, vcfQ: 8,
                                vcfTrack: 1, vcfEnv: 3 });
   node.port.onmessage({ data: { tone: { shape: "sine", fmIndex: 0, modRatio: 1, ringMix: 0, syncRatio: 1,
                                         subLevel: 0, unison: 1, drive: 0, fold: 0, crushBits: 0, crushHz: 0,
-                                        vcfType: 0 } } });
+                                        vcfType: 0, switchMs: 10 } } });
 
   /* A restart sent by message (`reswing`, which a setup's load sends) lands
      in the worklet's own core, the one drawing while the voice sounds: its
@@ -326,6 +331,10 @@ try {
     fx.process([[inL]], [fo], {});
     const mono = Math.max(gap(fo[0], inL), gap(fo[1], inL));
     fx.port.onmessage({ data: { tone: { planeMirror: 3 } } });
+    /* Since 11 Nov a stage switched in while something sounds crosses over:
+       64 samples unheard to fill it, then ten milliseconds, 480 at 48 kHz.
+       Five blocks of the same input see it through, and the sixth is read. */
+    for (let k = 0; k < 5; k++) fx.process([[inL, inR]], [fo], {});
     fx.process([[inL, inR]], [fo], {});
     const low = Math.min(...fo[0], ...fo[1]);
     const folded = Math.max(gap(fo[0], inL.map(Math.abs)), gap(fo[1], inR.map(Math.abs)));
