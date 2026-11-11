@@ -293,6 +293,20 @@ class Generator {
   }
 
   // In poly the loudest voice; otherwise the envelope, or one ungated.
+  // envelopeLeading: the envelope `envelope` reads - the Envelope's own, the
+  // loudest voice's, the one Mono and Dyad play - or none while nothing gates
+  // it; the first of equals, as the page's.
+  const Envelope* envelopeLeading() const {
+    if (a_.menvOwn) return gated_ ? &menv_ : nullptr;
+    if (a_.voices) {
+      double most = -1;
+      const Envelope* lead = nullptr;
+      for (const auto& v : voices_) if (v.env.level() > most) { most = v.env.level(); lead = &v.env; }
+      for (const auto& v : voicesB_) if (v.env.level() > most) { most = v.env.level(); lead = &v.env; }
+      return lead;
+    }
+    return gated_ ? &env_ : nullptr;
+  }
   double envelope() const {
     if (a_.menvOwn) return gated_ ? menv_.level() : 0;  // the Envelope card's own, as the page's
     if (a_.voices) {
@@ -302,6 +316,16 @@ class Generator {
       return most;
     }
     return gated_ ? env_.level() : 1;
+  }
+  // The stage of the envelope `envelope` reads, nought to four as Envelope::Stage
+  // counts them, and its velocity: the Envelope card's dot (11 Nov), as the page's.
+  int envelopeStage() const {
+    const Envelope* lead = envelopeLeading();
+    return lead ? static_cast<int>(lead->stage()) : 0;
+  }
+  double envelopeVelocity() const {
+    const Envelope* lead = envelopeLeading();
+    return lead ? lead->velocity() : 1;
   }
   bool gated() const { return gated_; }
   double pitch() const { return lastHz_; }

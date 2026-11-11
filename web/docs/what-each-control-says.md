@@ -499,7 +499,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| fadeMode | Fade | Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go. | 122 | yes — the envelope drawn under it and how to drag it; LFOs, the picture and knobs are not eased; with it on, a preset glides its knobs into place; kept in this browser, not in a setup code |
+| fadeMode | Fade | Whether modulation eases in and out rather than arriving at once: a routing patched or taken off, a note struck or let go. | 122 | yes — the envelope drawn under it and how to drag it; LFOs, the picture and knobs are not eased; a sound loaded (a preset, New, a code, undo) is never eased but lands at once, knobs and routings, whatever the fade (the owner's call, 11 Nov); kept in this browser, not in a setup code |
 | fadeEditA | Fade · Lower (A) | Shows the lower hand’s fade envelope to draw, the upper’s faint behind. Each hand’s sound follows its own; only with two hands. | 127 | - |
 | fadeEditB | Fade · Upper (B) | Shows the upper hand’s fade envelope to draw, the lower’s faint behind. Each hand’s sound follows its own; only with two hands. | 127 | - |
 | fadeRestart | Restart | Runs the fade’s envelope again, from where it is, on every note you strike. | 75 | - |

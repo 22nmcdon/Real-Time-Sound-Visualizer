@@ -18,7 +18,18 @@ So these read the canvas's own pixels, never the code's intentions:
   comparison can tell a stain from paper;
 - the axis label changed from Left to Mid: the label's strip is what a
   cleared screen draws for Mid alone. The null: Left's strip, from a cleared
-  screen, is not Mid's, so the comparison can tell one label from another.
+  screen, is not Mid's, so the comparison can tell one label from another;
+- Crossed hands loaded with nothing played, on a canvas the GPU draws: the
+  screen stays the paper. Everything above passed while the owner's screen
+  was pink (11 Nov): on an accelerated canvas the paper laid over itself at
+  0.0255 came back a level short in green and blue every frame, so the whole
+  screen slid to (255, 236, 236), played or not, and the suites' software
+  canvas rounds that fill exactly and never showed it. So a second browser
+  with the 2D canvas accelerated (on SwiftShader, as there is no GPU here),
+  read by a screenshot rather than getImageData, since Chrome takes a canvas
+  read back often enough off the GPU and the test would then be reading the
+  software canvas again. The null: the fade as it was put back in that same
+  browser, which turns the screen pink, so the check can see it here.
 
 Serial: it waits on real seconds of fading.
 """
@@ -98,6 +109,64 @@ STRIP = """() => {
   return Array.from(ctx.getImageData(x0, y0, w, h).data);
 }"""
 
+# A canvas the GPU draws, on SwiftShader since there is no GPU here: the
+# software canvas the rest of this runs on rounds a low-alpha fill exactly
+# and cannot show what a player's screen does.
+ACCEL = ["--enable-gpu-rasterization", "--enable-accelerated-2d-canvas", "--ignore-gpu-blocklist",
+         "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+PAPER = (255, 252, 247)
+
+# This many frames drawn, counted, rather than a time: SwiftShader draws the
+# page at a few frames a second, and what is measured is per frame.
+FRAMES = """async (n) => {
+  let seen = 0;
+  await new Promise((done) => { const tick = () => { if (++seen >= n) done(); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  return { frames: seen, persistence: state.persistence };
+}"""
+
+# The fade as it was until 11 Nov - the paper at the fade's alpha, then the
+# nudge - put in place of the page's own, for the null.
+OLD_FADE = """() => {
+  window.clearOrFade = function (ctx, w, h, resized) {
+    const wipe = resized || wipeScreen;
+    const wipeGrid = wipeScreen || (resized && performance.now() >= keepGridUntil);
+    wipeScreen = false;
+    phosphorFade(wipeGrid);
+    const fade = displayFade(state.persistence);
+    if (fade === 0 || wipe) { ctx.fillStyle = ink.paper; ctx.fillRect(0, 0, w, h); return; }
+    if (fade < 0) return;
+    ctx.save();
+    ctx.globalAlpha = fade; ctx.fillStyle = ink.paper; ctx.fillRect(0, 0, w, h);
+    fadeNudge += Math.min(1, Math.max(0.06, 2 * fade));
+    if (fadeNudge >= 1) {
+      fadeNudge -= 1; ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = "rgb(1, 1, 1)"; ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = "darken"; ctx.fillStyle = ink.paper; ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
+  };
+  wipeScreen = true;
+}"""
+
+# The plot as the screen shows it: a screenshot, decoded on a canvas of its
+# own, so the trace's canvas is never read back. Its middle colour, channel by
+# channel - the median, which the ruling and a faint figure cannot move.
+DECODE = """async (b64) => {
+  const blob = await (await fetch('data:image/png;base64,' + b64)).blob();
+  const bmp = await createImageBitmap(blob);
+  const c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0);
+  const d = g.getImageData(0, 0, bmp.width, bmp.height).data, ch = [[], [], []];
+  for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) ch[k].push(d[i + k]);
+  return ch.map((v) => v.sort((a, b) => a - b)[v.length >> 1]);
+}"""
+
+def plot_colour(page):
+    import base64
+    box = page.evaluate("() => { const r = el.trace.getBoundingClientRect(); return { x: r.left + plot.x + 4, y: r.top + plot.y + 4, width: plot.w - 8, height: plot.h - 8 }; }")
+    shot = page.screenshot(clip=box)
+    return page.evaluate(DECODE, base64.b64encode(shot).decode())
+
 def differ(a, b):
     return max(abs(x - y) for x, y in zip(a, b)) if a and b and len(a) == len(b) else 999
 
@@ -175,6 +244,30 @@ with sync_playwright() as pw:
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
+
+    print("\n--- Crossed hands on an accelerated canvas ---")
+    accel = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"] + ACCEL)
+    q = accel.new_context(viewport={"width": 1400, "height": 900}, device_scale_factor=1).new_page()
+    qbad = []
+    q.on("pageerror", lambda e: qbad.append(str(e)))
+    q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(2500)
+    q.evaluate("() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close(); }")
+    q.evaluate("() => { applyPreset('b:Crossed hands'); wipeScreen = true; }")
+    now = q.evaluate(FRAMES, 90)
+    stays = plot_colour(q)
+    print("    %d frames at %s: the screen's middle colour %s, the paper %s" % (now["frames"], now["persistence"], stays, list(PAPER)))
+    check("loaded and left alone, the screen stays the paper: every channel within two levels",
+          max(abs(a - b) for a, b in zip(stays, PAPER)) <= 2 and now["persistence"] == 0.0255 and now["frames"] >= 90,
+          "%s against %s" % (stays, list(PAPER)))
+    # The null: the fade as it was until 11 Nov, the paper laid over at the fade's alpha.
+    q.evaluate(OLD_FADE)
+    then = q.evaluate(FRAMES, 90)
+    pink = plot_colour(q)
+    print("    the fade as it was, %d frames: %s" % (then["frames"], pink))
+    null("with the fade as it was, the same screen goes pink: green and blue sink while red stays",
+         PAPER[1] - pink[1] > 6 and PAPER[2] - pink[2] > 6 and abs(PAPER[0] - pink[0]) <= 2, "%s" % pink)
+    check("no page errors on the accelerated canvas", not qbad, "; ".join(qbad[:3]))
+    accel.close()
 
 print("\n%d failed" % len(fails))
 sys.exit(1 if fails else 0)

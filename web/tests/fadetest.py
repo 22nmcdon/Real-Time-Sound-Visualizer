@@ -1,7 +1,10 @@
-"""Fading a routing in and out, and a preset's sliders gliding.
+"""Fading a routing in and out, and a sound loaded landing at once.
 
-Asked for so that patching a source, or loading a preset, need not be a jump
-in the sound and a snap in the picture. The failures to guard against:
+Asked for so that patching a source need not be a jump in the sound and a
+snap in the picture. Loading a preset glided its knobs and faded in its
+routings too, until the owner found that playing straight after a switch was
+playing a sound that was neither (11 Nov): a sound loaded lands now, whatever
+the fade. The failures to guard against:
 
 - a fade that is only on one path. A routing reaches a picture destination
   through the matrix and the generator through `genRoutes`, in three places
@@ -17,7 +20,10 @@ in the sound and a snap in the picture. The failures to guard against:
 - a pair in both the old and the new preset that dips to nought and back,
   because loading replaces every routing object;
 - turning the fade on fading in what was already playing;
-- a preset whose sliders jump, or a glide that fights the hand;
+- a sound loaded that arrives over the fade rather than at once - its knobs
+  walked from the last sound's, its routings faded in, the ones it drops
+  fading out as ghosts - by any of the ways a sound is loaded, and heard so
+  on either brain;
 - the setting stored in the setup code, where every preset load would put it
   back to off before its routings could fade.
 
@@ -27,7 +33,7 @@ moves it. It was a macro until P8d cut them; now this file registers two
 stand-ins of its own, `hand.1` and `hand.2`, sources with nothing behind them
 but a value the test sets, which is all a macro was to the matrix.
 """
-import os, sys
+import json, os, sys
 import corpus
 from playwright.sync_api import sync_playwright
 
@@ -182,19 +188,29 @@ with sync_playwright() as pw:
       // A load that keeps one pair and brings another: restore, as a preset does.
       restore({ mod: 'hand.1>gen.fm@0.300;hand.2>gen.vcf@0.300' }); setHand(0, 1); setHand(1, 1);
       const kept = route('gen.fm'), arrived = route('gen.vcf');
+      // And one that drops the second: gone at once, not a ghost fading out.
+      setFade('both', 1); restore({ mod: 'hand.1>gen.fm@0.300' }); setHand(0, 1);
+      await wait(50); const dropped = route('gen.vcf'), heard = routingsHeard().length;
+      // The null: the same pair made by a hand fades in from nought.
+      addRouting('hand.2', 'gen.vcf'); state.modRoutings.find((r) => r.sourceId === 'hand.2').amount = 0.3; touchRoutings();
+      const patched = route('gen.vcf'); dropRouting('hand.2', 'gen.vcf');
+      setFade('in', 1);
       await wait(1200);
       // Taken off, half faded, and put back: from where it had got to.
       setFade('both', 1); dropRouting('hand.1', 'gen.fm'); await wait(500);
       const half = route('gen.fm'); addRouting('hand.1', 'gen.fm');
       state.modRoutings.find((r) => r.sourceId === 'hand.1').amount = 0.3; touchRoutings();
       const back = route('gen.fm');
-      return { already, kept, arrived, half, back };
+      return { already, kept, arrived, dropped, heard, patched, half, back };
     """)
     print("    %s" % keep)
     check("turning the fade on leaves what is playing whole",
           keep["already"] == 0.3, str(keep))
-    check("a load keeps a pair both setups have whole, and fades in the one that is new",
-          keep["kept"] == 0.3 and keep["arrived"] == 0, str(keep))
+    check("a load keeps a pair both setups have whole, and brings the one that is new whole at once",
+          keep["kept"] == 0.3 and keep["arrived"] == 0.3, str(keep))
+    check("and a load that drops a pair has it gone at once, with no ghost heard",
+          keep["dropped"] is None and keep["heard"] == 1, str(keep))
+    check("null: the same pair patched by hand fades in from nought", keep["patched"] == 0, str(keep))
     check("put back half-way through fading out, it carries on from where it was rather than starting again",
           keep["half"] is not None and 0.05 < keep["half"] < 0.25 and abs(keep["back"] - keep["half"]) < 0.06, str(keep))
 
@@ -256,67 +272,144 @@ with sync_playwright() as pw:
           0.05 < note["before"] < 0.45 and abs(note["after"] - note["before"]) < 0.05, str(note))
     check("and a knob is not eased: a hand's source on a control answers at once", note["knob"] == 0.5, str(note))
 
-    print("\n--- a preset's sliders glide ---")
-    # A preset of the new bank (P8g), since the glide is applyPreset's own: it
-    # was Pianist's piano, and the bank's first preset at the same 220 Hz
-    # stands in for it, with a name of its own to show in the strip - found by
-    # its frequency rather than named, since the bank is tuned by ear.
-    first = p.evaluate("() => { setFade('off'); restore({ freq: 880 }); return el.freq.value; }")
+    print("\n--- a preset lands at once, whatever the fade ---")
+    # The owner's call of 11 Nov: a preset (and New, a code, a saved sound,
+    # undo and redo, the header's arrows) lands at once with the fade on. It
+    # glided its knobs over the fade's attack and faded in its routings, and
+    # playing straight after a switch got a sound that was neither. A preset
+    # of the new bank at 220 Hz, found by its frequency rather than named,
+    # since the bank is tuned by ear; and one with routings, found by having
+    # them. The null is the glide put back in the test, as it was: the old
+    # values read, and then a value between.
     at220 = p.evaluate("() => PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]")
-    p.wait_for_timeout(100)
-    snap_off = p.evaluate("(name) => { applyPreset('b:' + name); return Number(el.freq.value); }", at220)
-    glide = run(p, """
+    routed = p.evaluate("() => PRESETS.flatMap(([, e]) => e).find(([, st]) => st.mod)[0]")
+    land = run(p, """
+      const name = %s, routed = %s;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
       restore({ freq: 880 }); await wait(100);
-      setFade('both', 1);
-      applyPreset("b:" + PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]);
-      const path = [Number(el.freq.value)], names = [];
-      for (let i = 0; i < 6; i++) { await wait(250); path.push(Number(el.freq.value)); names.push(el.presetCurrent.textContent); }
-      return { path, names: [...new Set(names)], shown: el.presetCurrent.textContent, mode: fade.mode, inCode: 'fade' in snapshot() || 'fadeMode' in snapshot() };
-    """)
-    print("    off: 880 -> %s at once; glided: %s" % (snap_off, glide))
-    path = glide["path"]
-    check("with the fade off a preset's frequency is there at once (the null)", first == "880" and snap_off == 220,
-          "%s %s" % (first, snap_off))
-    check("with it on, the frequency starts where it was, passes between, and lands on the preset's",
-          path[0] == 880 and any(220 < v < 880 for v in path[1:4]) and path[-1] == 220
-          and all(a >= b for a, b in zip(path, path[1:])), str(path))
-    check("the strip names the preset throughout the glide and once it has landed, and loading it did not put the fade back to off",
-          glide["shown"] == at220 and glide["names"] == [at220] and glide["mode"] == "both",
-          str(glide))
-    check("and the fade is not in the setup code", glide["inCode"] is False)
+      setFade('both'); setFadeEnvelope({ attack: 1, release: 1, attackMid: 0.5, releaseMid: 0.5, sustain: 1, delay: 0 }, 0);
+      applyPreset('b:' + name);
+      const at = [Number(el.freq.value)];
+      await frame(); at.push(Number(el.freq.value));
+      for (let i = 0; i < 4; i++) { await wait(250); at.push(Number(el.freq.value)); }
+      const names = el.presetCurrent.textContent, mode = fade.mode;
+      const inCode = 'fade' in snapshot() || 'fadeMode' in snapshot();
+      // Its routings: whole in the routes the instrument is sent, the frame it loads.
+      applyPreset('b:' + routed);
+      const want = state.modRoutings.map((r) => routeKey(r));
+      const gains = want.map((k) => fadeGain(k, 0));
+      await frame(); const after = want.map((k) => fadeGain(k, 0));
+      // The null for the gains: the same routings as the fade saw them before
+      // a load landed them - unseen, so nought under a fade in.
+      const saved = new Map(fade.gains); for (const k of want) fade.gains.delete(k);
+      const unseen = want.map((k) => fadeGain(k, 0));
+      for (const [k, v] of saved) fade.gains.set(k, v);
+      // The null for the sliders: the glide as it was, put back here - the
+      // preset loaded, its sliders put back where they were and walked to
+      // the new values along the attack.
+      restore({ freq: 880 }); await wait(100);
+      const before = morphCapture();
+      applyPreset('b:' + name);
+      const to = morphCapture(), ids = MORPH_IDS.filter((id) => before[id] !== to[id] && !document.getElementById(id).disabled);
+      const t0 = performance.now();
+      const walk = () => { const t = Math.min(1, (performance.now() - t0) / 1000);
+        for (const id of ids) blendSlider(id, before[id], to[id], t); if (t < 1) requestAnimationFrame(walk); };
+      walk();
+      const old = [Number(el.freq.value)];
+      await frame(); old.push(Number(el.freq.value));
+      await wait(250); old.push(Number(el.freq.value));
+      await wait(1000);
+      return { at, names, mode, inCode, want, gains, after, unseen, old };
+    """ % (json.dumps(at220), json.dumps(routed)))
+    print("    %s" % land)
+    check("with the fade on, a preset's frequency is its own as it loads, a frame later, and from then on",
+          all(v == 220 for v in land["at"]), str(land["at"]))
+    check("null: the glide put back reads the old frequency as it loads and a value between after",
+          land["old"][0] == 880 and any(220 < v < 880 for v in land["old"][1:]), str(land["old"]))
+    check("and its routings are whole in what the instrument is sent, as it loads and a frame later",
+          land["want"] and all(g == 1 for g in land["gains"] + land["after"]), "%s %s %s" % (land["want"], land["gains"], land["after"]))
+    check("null: the same routings unseen by the fade, as a load left them until 11 Nov, are at nought",
+          all(g == 0 for g in land["unseen"]), str(land["unseen"]))
+    check("the strip names the preset, loading it did not put the fade back to off, and the fade is not in the setup code",
+          land["names"] == at220 and land["mode"] == "both" and land["inCode"] is False, str(land))
 
-    p.evaluate("() => { restore({ freq: 880 }); }"); p.wait_for_timeout(100)
-    p.evaluate("(name) => { applyPreset('b:' + name); showControl('freq'); }", at220)
-    p.wait_for_timeout(200)
-    p.locator("#freq").focus(); p.keyboard.press("ArrowRight")
-    held = p.evaluate("() => Number(el.freq.value)")
-    p.wait_for_timeout(1200)
-    after = p.evaluate("() => Number(el.freq.value)")
-    check("a slider the hand moves during the glide is left to the hand",
-          220 < held < 880 and after == held, "moved to %s, a second later %s" % (held, after))
+    print("\n--- every way a sound is loaded lands ---")
+    # The same of New, a pasted code, a saved sound, undo and redo and the
+    # header's arrows: the whole setup is the loaded one in the frame it
+    # loads, sliders and routings. Each from a sound that differs from it.
+    ways = run(p, """
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      setFade('both'); setFadeEnvelope({ attack: 2, attackMid: 0.5 }, 0);
+      const out = {};
+      // What the setup is, and whether every routing is whole, a frame after
+      // a load: against what it should be, or what the load said it was.
+      const landed = async (label, load, should) => {
+        load(); const want = should || loadedSetup.snap; await frame();
+        const now = snapshot(), diff = Object.keys(want).filter((k) => now[k] !== want[k]);
+        const gains = state.modRoutings.map((r) => fadeGain(routeKey(r), 0));
+        out[label] = { diff: diff.slice(0, 4), routings: gains.length, whole: gains.every((g) => g === 1) };
+      };
+      const bank = PRESETS.flatMap(([, e]) => e), routedName = bank.find(([, st]) => st.mod)[0];
+      applyPreset('n:' + BASE_NAME); await wait(100);
+      const baseSnap = snapshot();
+      applyPreset('b:' + routedName); await wait(100);
+      const routedSnap = snapshot(), code = encodeSetup(routedSnap);
+      await landed('new', () => applyPreset('n:' + BASE_NAME), baseSnap);
+      await landed('code', () => loadCode(code), routedSnap);
+      applyPreset('n:' + BASE_NAME); await wait(100);
+      // A saved sound: the routed one under a name of its own.
+      const savedWas = window.localStorage.getItem(SAVED_KEY);
+      try {
+        window.localStorage.setItem(SAVED_KEY, JSON.stringify({ 'Fade test': routedSnap }));
+        await landed('saved', () => applyPreset('s:Fade test'), routedSnap);
+      } finally { if (savedWas === null) window.localStorage.removeItem(SAVED_KEY); else window.localStorage.setItem(SAVED_KEY, savedWas); }
+      // The arrows: the preset after the routed one, from the routed one,
+      // against what the load took it to be.
+      applyPreset('b:' + routedName); await wait(100);
+      await landed('arrow', () => stepPreset(1), null);
+      out.arrow.from = routedName; out.arrow.to = el.presetCurrent.textContent;
+      // Undo and redo, between the base and the routed sound.
+      applyPreset('n:' + BASE_NAME); await wait(100); undoRebase();
+      applyPreset('b:' + routedName); undoHanded = true; watchUndo(performance.now()); watchUndo(performance.now() + 1000);
+      await landed('undo', () => undoStep(true), baseSnap);
+      await landed('redo', () => undoStep(false), routedSnap);
+      return out;
+    """)
+    print("    %s" % ways)
+    for way in ("new", "code", "saved", "arrow", "undo", "redo"):
+        got = ways.get(way, {})
+        check("%s lands: the whole setup the loaded one a frame later, every routing whole" % way,
+              got.get("diff") == [] and got.get("whole") is True, str(got))
+    check("and the routed sound loaded those ways has routings for the check to see",
+          all(ways.get(w, {}).get("routings", 0) > 0 for w in ("code", "saved", "redo")), str(ways))
 
     print("\n--- every preset in the library lands as itself ---")
-    # Chained, so each glides from the one before - a different start each time.
-    # Found the echo's time: while locked to the tempo its slider is disabled
-    # and shows the locked time, and gliding it wrote that back as the free one.
-    # The old library from before P8g as well as the bank: 268 real setups to
-    # land, where the bank alone is eleven. They go through applyPreset itself,
-    # put at the front of PRESETS for their turn (where the three names the
-    # two share find the old one) and taken out again, since the glide and
-    # the snapshot it lands on are applyPreset's and not the corpus's.
+    # Chained, so each loads over the one before - a different start each
+    # time, at a fade a second long. The old library from before P8g as well
+    # as the bank: 268 real setups, where the bank alone is eleven, through
+    # applyPreset itself (put at the front of PRESETS for their turn, where
+    # the three names the two share find the old one, and taken out again).
+    # Each must be itself in the frame it loads, sliders and routings, and
+    # every routing a frame later whole. Most must differ from the one before
+    # in a slider, or a check that passes would pass on loads that changed
+    # nothing - the guard the glide's count was until 11 Nov: two in three.
     landed = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setFade('both', 0.1); const bad = []; let glided = 0, total = 0;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      setFade('both', 1); const bad = []; let moved = 0, routed = 0, total = 0;
       const walk = async (names) => { for (const name of names) {
         total++;
-        applyPreset('b:' + name); if (glide.ids) glided++;
-        /* Until the glide says it has landed, and a frame more: a fixed wait
-           was a race with the frame rate, hidden while the curve was an S -
-           flat at its end - and lost once a straight line was the default. */
-        for (let i = 0; i < 40 && glide.ids; i++) await wait(25);
-        await wait(50);
+        const before = morphCapture();
+        applyPreset('b:' + name);
+        const to = morphCapture();
+        if (MORPH_IDS.some((id) => before[id] !== to[id])) moved++;
+        await frame();
         const now = snapshot(), d = {};
         for (const k of Object.keys(now)) if (now[k] !== loadedSetup.snap[k]) d[k] = [loadedSetup.snap[k], now[k]];
+        const gains = state.modRoutings.map((r) => fadeGain(routeKey(r), 0));
+        if (gains.length) routed++;
+        if (gains.some((g) => g !== 1)) d.gains = gains;
+        if (routingsHeard().length !== state.modRoutings.length + stageRoutings().length) d.ghosts = routingsHeard().length;
         if (Object.keys(d).length) bad.push([name, d]);
       } };
       const names = (lib) => lib.flatMap(([, e]) => e.map(([n]) => n));
@@ -324,16 +417,79 @@ with sync_playwright() as pw:
       try { await walk(names(CORPUS)); } finally { PRESETS.splice(0, CORPUS.length); }
       await walk(names(PRESETS));
       setFade('off');
-      return { bad, glided, total };
+      return { bad, moved, routed, total };
     }""")
-    # Most must glide, or a landing check that passes would pass on loads with
-    # nothing gliding. Over four in five did until G8 took the scope's view out
-    # of what the glide walks (MORPH_SKIP): 233 of 277 then, 200 now, the 33
-    # between being presets that differ from the one before only in their
-    # timebase, zoom or trigger, which land at once. So two in three.
-    check("every preset, glided into from the one before, ends as the preset and not something near it",
-          landed["bad"] == [] and landed["glided"] > landed["total"] * 0.65,
-          "%d of %d glided; %s" % (landed["glided"], landed["total"], landed["bad"][:3]))
+    check("every preset, loaded over the one before, is itself a frame later, its routings whole and no ghost heard",
+          landed["bad"] == [] and landed["moved"] > landed["total"] * 0.65 and landed["routed"] > 20,
+          "%d of %d moved a slider, %d had routings; %s" % (landed["moved"], landed["total"], landed["routed"], landed["bad"][:3]))
+
+    print("\n--- heard: a preset's tremolo, on both brains ---")
+    # What the instrument plays, not what the page says: a held note, the
+    # fade's attack at eight seconds, and a preset whose one routing is an LFO
+    # at twelve hertz on the level at 0.9. Read off the picture every 50 ms
+    # after the load - a window of 4096 samples, the last tenth of a second
+    # and one cycle of the LFO - as the quietest cycle of the note over the
+    # loudest: whole, about 0.1, and under 0.3 only past three quarters of
+    # the way in. Landed, it is there as soon as the load is heard - a
+    # restore costs a few hundred milliseconds of the page's own time here,
+    # more with other suites beside it, and the instrument hears the setup
+    # after it, so it is given two seconds; faded in, it would be a quarter of
+    # the way at two seconds, about 0.8, and under 0.3 at six. The null on
+    # each brain: the same routing patched by a hand, which a fade eases.
+    HEARD = """async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const depth = () => {
+        const [l] = state.source.getLatestWindow(4096), at = [];
+        for (let k = 1; k < l.length; k++) if (l[k - 1] < 0 && l[k] >= 0) at.push(k - 1 + l[k - 1] / (l[k - 1] - l[k]));
+        const peaks = [];
+        for (let i = 0; i + 1 < at.length; i++) { let m = 0; for (let k = Math.floor(at[i]); k < at[i + 1]; k++) m = Math.max(m, Math.abs(l[k])); peaks.push(m); }
+        return peaks.length > 10 ? +(Math.min(...peaks) / Math.max(...peaks)).toFixed(3) : null;
+      };
+      const TREM = { shape: 'sine', freq: 220, midiMode: 'mono', display: 'xy', pictureAmount: 0, oscScan: 0,
+                     mod: 'lfo1>gen.amp@0.900', l0r: 1200, l0a: 100, l0s: 'sine' };
+      PRESETS.unshift(['Fade test', [['Tremolo for the fade test', TREM, 'x', ['a', 'b']]], 'generator']);
+      try {
+        setFade('both'); setFadeEnvelope({ attack: 8, release: 2, attackMid: 0.5, releaseMid: 0.5, sustain: 1, delay: 0 }, 0); saveFade();
+        // How long after `from` the tremolo is whole, and how deep it is then; none within two seconds, null.
+        const whole = async (from) => {
+          for (let i = 0; i < 80; i++) {
+            await wait(50); const d = depth();
+            // Then a window later, all of it after the load: the first can straddle it.
+            if (d !== null && d < 0.3) { const ms = Math.round(performance.now() - from); await wait(150); return { ms, d: depth() }; }
+            if (performance.now() - from > 2000) break;
+          }
+          return { ms: null, d: depth() };
+        };
+        applyPreset('n:' + BASE_NAME); await wait(300);
+        el.midiMono.click(); midiNoteOn(57, 127); await wait(600);
+        const still = depth();
+        let from = performance.now();
+        applyPreset('b:Tremolo for the fade test');
+        const loaded = await whole(from); await wait(2000); const settled = depth();
+        applyPreset('n:' + BASE_NAME); await wait(600);
+        from = performance.now();
+        addRouting('lfo1', 'gen.amp'); state.modRoutings.find((r) => r.sourceId === 'lfo1').amount = 0.9; touchRoutings();
+        const patched = await whole(from);
+        midiPanic(); setFade('off'); applyPreset('n:' + BASE_NAME);
+        return { kind: state.source.kind, still, loaded, settled, patched };
+      } finally { PRESETS.shift(); }
+    }"""
+    js = ctx.new_page()
+    js.add_init_script(STUB)
+    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
+    js.goto(f"file://{ART}/scope.html?picture=0&brain=js"); js.wait_for_timeout(1500)
+    if js.locator("#helpClose").is_visible(): js.locator("#helpClose").click()
+    for label, page in (("the instrument", p), ("the page's own brain", js)):
+        got = page.evaluate(HEARD)
+        print("    %s: %s" % (label, got))
+        check("on %s a held note is steady before, and the tremolo is whole within two seconds of the load, as deep as it settles" % label,
+              got["still"] is not None and got["still"] > 0.95 and got["loaded"]["ms"] is not None
+              and got["settled"] is not None and abs(got["loaded"]["d"] - got["settled"]) < 0.08, str(got))
+        check("null: on %s the same routing patched by hand is not whole within two seconds" % label,
+              got["patched"]["ms"] is None and got["patched"]["d"] is not None and got["patched"]["d"] > 0.5, str(got))
+    check("and the two brains are the two: the instrument, then the page's own",
+          p.evaluate("() => state.source.kind") == "host" and js.evaluate("() => state.source.kind") == "tone")
+    js.close()
 
     print("\n--- the envelope: two times and two shapes ---")
     env = run(p, """
@@ -347,11 +503,7 @@ with sync_playwright() as pw:
       await wait(250); const quick = route('gen.fm'); clearSource('hand.1'); await wait(2200);
       setFadeEnvelope({ attackMid: 0.15 }); addRouting('hand.1', 'gen.fm');
       await wait(250); const slow = route('gen.fm'); clearSource('hand.1'); await wait(2200);
-      // A preset glides along the attack, so over its time and not the release's.
-      restore({ freq: 880 }); await wait(100);
-      setFadeEnvelope({ attack: 0.5, release: 5, attackMid: 0.5 });
-      applyPreset("b:" + PRESETS.flatMap(([, e]) => e).find(([, st]) => st.freq === 220)[0]); await wait(700); const glided = Number(el.freq.value);
-      return { inDone, outHalf, outDone, quick, slow, glided };
+      return { inDone, outHalf, outDone, quick, slow };
     """)
     print("    %s" % env)
     check("a fade in and a fade out each take their own time: in by half a second, out still going at one of two",
@@ -359,7 +511,6 @@ with sync_playwright() as pw:
           str(env))
     check("the shape is heard: a quarter of the way into a fade, quick to start is most of the way, slow to start barely begun",
           env["quick"] > 0.15 and env["slow"] < 0.05, str(env))
-    check("a preset glides over the attack time", env["glided"] == 220, str(env))
 
     print("\n--- the envelope's stretches, on a note ---")
     # Velocity at full on the drive at half depth: the drive's push is half
@@ -636,4 +787,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("routings fade in and out on every path, and presets glide")
+print("routings fade in and out on every path, and a sound loaded lands at once")

@@ -1366,11 +1366,12 @@ for family in sorted(gworst):
 # Each run has to be able to show what it is for: a comparison of two cores
 # doing nothing would pass. The report at the end of a row is envelope, pitch,
 # then the budget (units, asked A and B, unison A and B, asked factor, factor,
-# silenced), the voices on each layer, each layer's read-head (P8f), and then
+# silenced), the voices on each layer, each layer's read-head (P8f), then
 # the source that reads the generator, the page's registration against the
-# core's: the note envelope. (The kick, the swing, the drawing's six readings
-# and the drawings' six sources were in it too, until G2.)
-TAIL = 15   # the end values: twelve, each layer's read-head, then the source
+# core's: the note envelope; and last the envelope's stage and velocity (11
+# Nov, the Envelope card's dot). (The kick, the swing, the drawing's six
+# readings and the drawings' six sources were in it too, until G2.)
+TAIL = 17   # the end values: twelve, each layer's read-head, the source, then the stage and velocity
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -1398,6 +1399,15 @@ plain = [n for n, r in runs if "voices" not in r and "fx 1" not in r]
 _, ptail = grow(plain[0])
 check("with no layer B, B's read-head is nobody's", ptail[13] == -1 and 0 <= ptail[12] < 1,
       "%s: A %.6f, B %.6f" % (plain[0], ptail[12], ptail[13]))
+# The envelope's stage and velocity (11 Nov), which go back with its level for
+# the Envelope card's dot: the runs end in more than one stage and at more than
+# one velocity, so the comparison of every row above, which holds the page's
+# to the core's, has something to hold.
+gstages = sorted({grow(n)[1][15] for n, _ in runs})
+gvels = sorted({grow(n)[1][16] for n, _ in runs})
+check("the envelope's stage and velocity go back with its level: the runs end in %d stages and %d velocities, page and core alike"
+      % (len(gstages), len(gvels)), len(gstages) >= 3 and set(gstages) <= {0, 1, 2, 3, 4} and len(gvels) >= 2,
+      "%s %s" % (gstages, gvels[:6]))
 own, off = grow("plane-own")[0], grow("plane-own-off")[0]
 check("layer B's own plane bends B's picture and its share of the sound, and leaves A's picture as it was",
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05
@@ -2060,6 +2070,11 @@ mruns = [
     ("preset", mrun("route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "fade both 1", "at 0", "frame",
                     "load level>gen.freq@0.6;photo>gen.twist@0.4", "at 10", "frame", *frames(200, 1400, 300),
                     "fade off", "frame", "fade in", "frame")),
+    # The same two lists, the second arriving as an edit rather than a load:
+    # an edit is a hand, and fades; a load lands (11 Nov). The null for the
+    # landing check below.
+    ("preset-edit", mrun("route level gen.freq 0.8", "route lfo1 gen.amp 0.5", "fade both 1", "at 0", "frame",
+                         "edit level>gen.freq@0.6;photo>gen.twist@0.4", "at 10", "frame", *frames(200, 1400, 300))),
     ("stepped", mrun("fade both 1", "env 0 delay=0.2 attack=0.5 decay=0.4 sustain=0.6 release=0.8",
                      "route key gen.fm 1", "route pedal view.rotate 1", "at 0", "frame", "value key 0.7", "at 10",
                      "frame", *frames(100, 1400, 150), "value key 0.9", *frames(1400, 2000, 150), "value key 0.4",
@@ -2245,6 +2260,16 @@ check("the generator's destinations are the page's, each on its slot, and none o
 fi = [route_amounts(l) for l in frame_lines("fade-in")]
 check("a routing fades in: part-way at first, whole by the end of its time",
       any(0.05 < a[0] < 0.75 for a in fi if a) and any(abs(a[0] - 0.8) < 1e-12 for a in fi if a))
+# A preset loaded lands (the owner's call, 11 Nov): its first frame is the
+# frame it settles on - the routing it brings whole, the one it drops gone,
+# with no ghost heard - on both sides, as the comparison above holds. The
+# null: the same list arriving by an edit, which a fade eases, differs.
+def settles_at_once(name):
+    f = [l.split(" | ", 1)[1] for l in frame_lines(name)]
+    return f[1] == f[5] and "heard 2" in f[1]
+check("a preset loaded under a fade lands: its first frame is its last, no ghost heard", settles_at_once("preset"),
+      frame_lines("preset")[1][-200:])
+check("null: the same routings arriving by an edit fade in, so its first frame is not its last", not settles_at_once("preset-edit"))
 fo = frame_lines("fade-out")
 check("a routing taken off is heard fading, then forgotten", "heard 3" in "\n".join(fo) and fo[-1].split("heard ")[1].startswith("0"))
 check("the loop's total into one slot is held to a half", "/1.0000000000000000/1.0000000000000000/0" in mout("reach")

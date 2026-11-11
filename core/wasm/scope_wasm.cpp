@@ -372,8 +372,10 @@ EXPORT(setup_decode) int setupDecode() {
   return 2;
 }
 
-// What goes back with the samples: the envelope, the budget, six noughts
-// where the drawing's readings were, the pitch layer A last played, two more
+// What goes back with the samples: the envelope, the budget, six places
+// where the drawing's readings were - the first two the envelope's stage and
+// velocity since 11 Nov, for the Envelope card's dot, the rest noughts - the
+// pitch layer A last played, two more
 // where the kick on the spin and the swing's envelope were, and each
 // oscillator's phase, held value and value. The noughts keep every reading
 // after them where the page reads it: G2 took the drawings, and moving the
@@ -384,7 +386,8 @@ EXPORT(scope_state) double* scopeState() {
   state.assign({ core->envelope(), b.units,
                  static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                  static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
-                 static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, 0, 0, 0, 0,
+                 static_cast<double>(b.silenced), scope::Generator::kVoiceBudget,
+                 static_cast<double>(core->envelopeStage()), core->envelopeVelocity(), 0, 0,
                  0, 0, core->pitch(), 0, 0 });
   for (const auto& l : lfos) state.insert(state.end(), { l.phase, l.held, l.value });
   // Last, so the oscillators' places do not move: each layer's read-head (P8f).
@@ -542,9 +545,10 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }
 // What the page reads off the generator, as scope_state gives it for the
-// page's own: the envelope, whether it is gated, the budget, and six noughts
+// page's own: the envelope, whether it is gated, the budget, and six places
 // where the drawing's readings were until G2 (kept so nothing after them
-// moves, as in scope_state) - for the meters and the readouts, which with
+// moves, as in scope_state; the first two the envelope's stage and velocity
+// since 11 Nov, for the Envelope card's dot) - for the meters and the readouts, which with
 // the instrument playing had nothing to read and stood at nought. Then
 // each oscillator's phase, held value and value, for the page's picture to
 // be moved by the oscillators that move the sound rather than by copies of
@@ -563,7 +567,8 @@ EXPORT(brain_readings) double* brainReadings() {
   brainRead.assign({ g.envelope(), g.gated() ? 1.0 : 0.0, b.units,
                      static_cast<double>(b.asked[0]), static_cast<double>(b.asked[1]), static_cast<double>(b.unison[0]),
                      static_cast<double>(b.unison[1]), static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
-                     static_cast<double>(b.silenced), scope::Generator::kVoiceBudget, 0, 0, 0, 0, 0, 0 });
+                     static_cast<double>(b.silenced), scope::Generator::kVoiceBudget,
+                     static_cast<double>(g.envelopeStage()), g.envelopeVelocity(), 0, 0, 0, 0 });
   for (const auto& o : instrument->lfos()) brainRead.insert(brainRead.end(), { o.phase, o.held, o.value });
   const auto& layers = instrument->layerPictures();
   brainRead.push_back(layers.live() ? 1.0 : 0.0);

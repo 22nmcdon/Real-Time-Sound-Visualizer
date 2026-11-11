@@ -3550,9 +3550,10 @@ off, or a preset loaded, and it was gone the same frame - on a big depth a
 jump in the sound and a snap in the picture. *Fade*, under the families on the
 Sources tab, eases a routing in when it is patched, out when it is taken off,
 or both, over a time from a tenth of a second to ten. With it on, loading a
-preset also glides every slider from where it was to the preset's value, so
-the picture morphs into the new one; menus and switches still change at once,
-as under the morph fader. `fadetest.py` holds it.
+preset also glided every slider from where it was to the preset's value, so
+the picture morphed into the new one - until 11 Nov, when the owner had it
+taken out (*A sound loaded lands at once*, below): the bullets about the glide
+are kept for what they found. `fadetest.py` holds it.
 
 - *A fade on one path is a sound that fades on the tone and not in a rack.*
   The depth reaches a picture destination through the matrix, and the
@@ -3604,19 +3605,18 @@ as under the morph fader. `fadetest.py` holds it.
   turned fast. The live tick on each control shows the eased value, so the
   fade can be watched on the slider it moves.
 - What it does not fade: an event routing, which fires or does not; a depth
-  you drag, which should answer the hand; a knob or macro; and a slider you
-  touch during a glide, which is dropped from it.
+  you drag, which should answer the hand; a knob or macro; and, since 11 Nov,
+  a sound loaded, which lands.
 - *The fade is an envelope you can see and take hold of.* One time for both
   halves and an S-curve nobody could see was the first version: a velocity
   that should bloom slowly and let go at once could not be had, and there was
   no way to tell what the fade was doing except by listening. Under the
   families now is a drawing: a rise, a hold and a fall, with the peak and the
   end as the two times and the middle of each slope as its shape. A dot rides
-  it with whatever fade started last - a note, a routing, a preset - and
-  waits on the hold while the note is held. Everything that fades moves along
-  one ramp (`rampTo`, `rampAt`) on the half it is on, so routings, stepped
-  sources and the preset glide all answer the same drawing; the glide takes
-  the in half, since a preset is arriving.
+  it with whatever fade started last - a note or a routing (a preset too,
+  until the glide went) - and waits on the hold while the note is held.
+  Everything that fades moves along one ramp (`rampTo`, `rampAt`) on the half
+  it is on, so routings and stepped sources answer the same drawing.
 - *The shape is stored as the handle.* A shape is how far a fade has got
   half-way through its time, which is exactly where the handle on the slope
   sits, so what is dragged and what is stored are one number; the curve is
@@ -3631,10 +3631,44 @@ as under the morph fader. `fadetest.py` holds it.
 - *The default is a straight line now,* not the S. It is the one a reader of
   the drawing reads without help. It cost the preset sweep a race it had
   been winning by luck: it waited a fixed 150 ms for a 100 ms glide, and the
-  S, flat at its end, hid a late frame that a straight line does not. It now
-  waits until the glide says it has landed.
+  S, flat at its end, hid a late frame that a straight line does not. It
+  waited until the glide said it had landed, and since the glide went it
+  reads each preset a frame after it loads.
 - A stored fade from before the envelope - one time - comes back as that
   time for both halves.
+
+**A sound loaded lands at once (11 Nov).** The owner, with the fade on:
+changing sounds "gradually shifts all of the settings to the correct ones
+instead of snapping there, so playing right after a switch got you a wrong
+sound and kept you guessing when you were actually in the next preset". The
+glide had two halves and both went. The sliders: `applyPreset` captured the
+sliders, loaded, put them back and walked them over the fade's attack
+(`glideFrom`, `glideStep`, gone). The routings: `restore` replaces every
+routing, and `fadeStep` saw each new pair as arriving and faded it in, and
+each dropped one as a ghost fading out - on the page and in the instrument,
+which keeps its own fades. A sound loaded now lands whole whatever the fade:
+`restore` calls `fadeLand`, setFade's start from where things are without its
+forgetting the stepped sources (a note held through a load keeps its place on
+its envelope), and the core's `Matrix::load` calls `land()` likewise, so a
+preset, New, a pasted code, a saved sound, undo and redo, the header's arrows,
+the plugin's state and its program change all land the same way, being all
+`restore`. The fade still eases a routing patched or taken off by hand and
+each step of the stepped sources, which is what it was for; the morph fader is
+the way to slide between two sounds. What it cost: the picture no longer
+morphs into a preset under the fade, which was the glide's point when it was
+asked for. `fadetest.py` holds it every way a sound is loaded, a frame after
+the load, sliders and routings, with the glide put back in the test as the
+null; and heard, on both brains, as a tremolo whole within two seconds of the load
+(it was heard at 0.4 to 0.7 s) where a hand's routing is still fading in; parity's `preset` run holds
+the core to the page, with an edit, which fades, as its null. Two things
+found on the way. A restore costs a few hundred milliseconds of the page's own
+time on the test machine (335 ms a preset on the instrument's brain and 750 on
+the page's own, with parity running beside it), during which the last sound
+goes on: that is the load's latency, not a glide, and it is why the heard
+check waits for the tremolo rather than reading at a fixed moment, which
+failed at 250 ms under load. And the old library's sweep still needs a
+guard against passing on loads that changed nothing: two in three move a
+slider (200 of 277).
 
 **Five sources and more.** Four presets with five or more sources, two of
 them the picture's among many others. *Eight things your hands do* (Many
@@ -4895,8 +4929,8 @@ next.
 Two more from moving the suites onto that corpus. A check that every routing
 in a set of presets is alive passes when there are no routings at all, and
 performtest's did, with nothing loaded; it now also requires every preset it
-plays to have some. And a check about `applyPreset`'s own behaviour - the glide
-from the fade, the preset marking itself in use - cannot load from the corpus,
+plays to have some. And a check about `applyPreset`'s own behaviour - landing
+under the fade, the preset marking itself in use - cannot load from the corpus,
 since `loadCorpus` restores and sends the setup and does neither; fadetest puts
 the old library at the front of `PRESETS` for its turn and takes it out again
 in a `finally`.
@@ -5350,6 +5384,35 @@ of a fade, where that check measures (95 levels down to 8 at Short), and the
 canvas fell to 0.848 a frame against the grid's 0.880. At twice the persistence
 it is 0.870, inside the check's 0.02, and the cost moved to the long end: at
 0.0255 the last faint twenty levels take five or six seconds to go.
+
+**A low-alpha fill on a GPU canvas is not the software canvas's (11 Nov).**
+The owner found Crossed hands' screen pink again after G1 had fixed the wash,
+"playing or not". Every suite was green, and every suite's canvas is the
+software one, which rounds the paper laid over itself at 0.0255 back to the
+paper exactly. A canvas the GPU draws - every browser on a real machine, and
+the plugin's window - quantises a fill at that alpha short of its colour: the
+paper over the paper came back a level darker in green and blue every frame,
+and red, at 255, stayed. So the whole screen, where the beam had been and
+where it never went, slid a level a frame towards pink, and G1's nudge, a
+level every seventeen frames, held it at (255, 236, 236). It is seen here with
+the 2D canvas accelerated on SwiftShader (`--enable-gpu-rasterization
+--enable-accelerated-2d-canvas --ignore-gpu-blocklist --use-gl=angle
+--use-angle=swiftshader --enable-unsafe-swiftshader`), where the page runs at
+a few frames a second, and only if the canvas is not read back: Chrome takes a
+canvas that is read often enough off the GPU, after which the drift stops and
+the probe is reading the software canvas again. A screenshot reads what is
+shown without touching the canvas. `clearOrFade` now fades the ink's distance
+from the paper instead: `difference` against the paper, `multiply` by the
+grey of what the frame keeps (carried from frame to frame, so 0.9745 is right
+on average), `difference` back. Each is exact on whole levels, and a multiply
+by less than one cannot come out larger than it went in however it rounds,
+so the screen can only fade towards the paper on any canvas. Three passes a
+frame where there was one; `phototest.py`'s check of the canvas's rate
+against the grid's still reads 0.884 against 0.88. `washtest.py` loads Crossed
+hands in an accelerated browser and requires the screen's median colour to be
+the paper, with the old fade put back as its null, which reads exactly the
+owner's (255, 236, 236). Whether a real GPU drifts the same way, or another
+way, could not be tried here; the new fade does not depend on which.
 
 **A control's words are a doc's, written in.** What each control says on the
 info line is `web/docs/what-each-control-says.md`, one row a control, and the
@@ -5838,9 +5901,10 @@ stays in, since it is heard. Where the line falls is a judgement, said at
 `MORPH_SKIP`: the zoom and the timebase do reach what Scan reads, but they
 frame the signal; the trace filter, the AC corner and the lag change it, and
 stay. Three things followed that a reader would otherwise find the slow way.
-The preset glide (`glideFrom`) walks `MORPH_IDS` too, so a preset's view now
-lands at once rather than gliding - one list on purpose, since two notions of
-which sliders are the sound would drift. Parity's made-to-be-read morph lines
+The preset glide (`glideFrom`) walked `MORPH_IDS` too, so a preset's view
+landed at once rather than gliding - one list on purpose, since two notions of
+which sliders are the sound would drift. (The glide went on 11 Nov: a preset
+lands whole now.) Parity's made-to-be-read morph lines
 used the trigger level as its slider two thousand steps wide and the timebase
 as the one found out of layout order; taken out of the walk, those lines walk
 nothing, and page and core agree on nothing perfectly well, so only the
@@ -5849,6 +5913,34 @@ attack and the voice filter's cutoff now). And a timebase fixture over 8 on the
 test tone is put back to 8, the buffer having no room for it, which reads at
 first exactly like a morph that moved it: `setupmorphtest.py` keeps its
 timebases at 8 or under.
+
+**The Envelope's dot is told where it is, not left to guess (11 Nov).** The
+owner saw the dot on the Envelope's card "jump across the view with no
+apparent reason". A trace of it every frame, on both brains, in Mono and Poly,
+found four reasons, each in the guess it made of the stage from which way the
+level moved. The level is the curve times the note's velocity, so at velocity
+100 the attack stopped at 0.79 of its stretch and the decay began half-way
+along its own. `gated`, taken for a key held, says whether the envelope is in
+force at all - always, since the site waits for a note - so a release was
+never recognised: it fell as "held" at the hold's middle and jumped home at
+rest. The level reaches the page a batch at a time, and the frames between two
+batches saw it still and called it held, so on the page's own brain the dot
+flicked from the attack to the hold and back several times a note. And in
+Poly the level is the loudest voice's, which no direction of travel can
+place. The generator now sends back, with the level, the stage and the
+velocity of the envelope it reads (`envelopeLeading`, page and core; the
+worklet's message, `scope_state`'s places 10 and 11 and `brain_readings`' 11
+and 12, which were noughts kept since G2), and the card places the dot by the
+stage, draws the curve at that note's velocity, so the dot - the level itself,
+which is what a routing from it is given - sits on the line, and waits at the
+end of the release at rest, so the only jump back is a note struck. A release
+from above the sustain comes down to the line. Parity holds the stage and the
+velocity to the core's in every generator run. `modrowtest.py` reads the dot
+every frame and requires the stages in order, only forwards, on the curve, on
+both brains, Mono and Poly, following Play and its own; and over notes in a
+row, back only into an attack. Its null is the old guess put back in the
+page, which fails both. Not done: in the plugin the page is sent no readings
+at all, so its Envelope card's dot has never moved there.
 
 **Switching the photocell on is not patching it.** `setPhoto(true)` registers
 the source and leaves the reticle where it was, by default in the dark, so a
