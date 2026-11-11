@@ -37,6 +37,11 @@ def check(name, ok, detail=""):
 
 # Each pixel the figure darkened, sorted to the nearest ink, counted. Paper
 # and the ruling are left out by distance: they are lighter than every ink.
+# A pixel nearer some other ink's half-tone over paper than the ink it is
+# nearest is that other ink's edge, and is not counted: charcoal's
+# anti-aliased edge, (66,62,59), is 30 from olive and 52 from charcoal, and
+# was being counted as olive - up to 26 of it over a turn of A's fifth
+# against a bar of 30 for "B's lane ink gone" (11 Nov).
 COUNT = """() => {
   const names = ['blush-deep', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5'];
   const rgb = names.map((n) => hexToRgb(ink[n]));
@@ -50,7 +55,15 @@ COUNT = """() => {
     if (d2(paper) < 60 * 60) continue;
     let best = 0;
     for (let k = 1; k < rgb.length; k++) if (d2(rgb[k]) < d2(rgb[best])) best = k;
-    if (d2(rgb[best]) < 30 * 30) out[names[best]]++;
+    if (d2(rgb[best]) >= 30 * 30) continue;
+    // The squared distance to the line from paper to ink q, short of the ink.
+    const toTone = (q) => {
+      const v = [q[0] - paper[0], q[1] - paper[1], q[2] - paper[2]];
+      const a = Math.max(0, Math.min(1, ((p[0] - paper[0]) * v[0] + (p[1] - paper[1]) * v[1] + (p[2] - paper[2]) * v[2]) / (v[0] ** 2 + v[1] ** 2 + v[2] ** 2)));
+      return (p[0] - paper[0] - a * v[0]) ** 2 + (p[1] - paper[1] - a * v[1]) ** 2 + (p[2] - paper[2] - a * v[2]) ** 2;
+    };
+    if (rgb.some((q, k) => k !== best && toTone(q) < d2(rgb[best]))) continue;
+    out[names[best]]++;
   }
   return out;
 }"""
@@ -63,6 +76,28 @@ def counted(p, frames=4):
     for _ in range(frames):
         for k, v in p.evaluate(COUNT).items(): best[k] = max(best.get(k, 0), v)
         p.wait_for_timeout(120)
+    return best
+
+def drift_period(low, high):
+    # How long an equal-tempered fifth takes to go once round its shapes: the
+    # relative phase 3*f_low - 2*f_high turns at a third of a hertz for G2
+    # and D3, so the Lissajous figure is a different curve every second, and
+    # twice a turn it closes onto itself and is half as long.
+    f = lambda n: 440 * 2 ** ((n - 69) / 12)
+    return 1 / abs(3 * f(low) - 2 * f(high))
+
+def counted_over(p, seconds, step=60):
+    # The most of each ink over a whole turn of the figure rather than four
+    # frames of it. The lower hand's fifth laid 79 to 218 pixels of full
+    # charcoal per frame over one turn (11 Nov, forty frames in a run), and
+    # half a second of it caught anything from 142 to 207, against a bar of
+    # 150: whether it passed was where in the turn the half second fell.
+    # Over a whole turn the largest is the figure at its longest, whichever
+    # frame the reading starts on.
+    best, t = {}, 0
+    while t < seconds * 1000 + step:
+        for k, v in p.evaluate(COUNT).items(): best[k] = max(best.get(k, 0), v)
+        p.wait_for_timeout(step); t += step
     return best
 
 with sync_playwright() as pw:
@@ -152,13 +187,16 @@ with sync_playwright() as pw:
     }""")
     check("the split draws two figures, B's on a lane of its own", two["figures"] and len(two["figures"]) == 2 and two["laneInk"], str(two))
     p.evaluate("() => { el.beamInk.querySelector('[data-ink=\"ch1\"]').click(); }"); p.wait_for_timeout(400)
-    lane = counted(p)
+    turn = drift_period(43, 50)
+    lane = counted_over(p, turn)
     check("B in its lane's ink by default, A in charcoal", lane.get(two["laneInk"], 0) > 150 and lane["ch1"] > 150, str(lane))
     p.select_option("#bInk", "ch5"); p.wait_for_timeout(400)
-    plumB = counted(p)
+    plumB = counted_over(p, turn)
     check("B's ink set to plum: B in plum, A still charcoal, and B's lane ink gone",
           plumB["ch5"] > 150 and plumB["ch1"] > 150 and plumB.get(two["laneInk"], 0) < 30, str(plumB))
     check("null: before, there was next to no plum", lane["ch5"] < 30)
+    check("null: read over the same turn, an ink neither hand is in comes out near nothing, so the turn's best is not the counter's noise",
+          lane["ch2"] < 30 and plumB["ch2"] < 30 and lane["blush-deep"] < 30, "%s %s" % (lane["ch2"], plumB["ch2"]))
 
     print("\n--- the loop overlay's rings ---")
     rings = p.evaluate("""async () => {
