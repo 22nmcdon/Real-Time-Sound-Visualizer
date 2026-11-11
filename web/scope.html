@@ -17764,10 +17764,44 @@ function clearOrFade(ctx, w, h, resized) {
   }
   if (fade < 0) return;
 
+  /* Not the paper laid over the screen at the fade's alpha, which is what
+     this was until the owner found Crossed hands pink again after G1 (11
+     Nov). On a canvas the GPU draws - every browser and the plugin's window,
+     though not the software canvas the suites ran on - a fill at an alpha
+     this low is quantised short of its colour: the paper at 0.0255 laid over
+     the paper itself came back a level darker in green and blue, every
+     frame, and red, already at 255, stayed. So the whole screen, beam or no
+     beam, slid a level a frame towards pink, and the nudge below, a level
+     every seventeen frames, held it at about (255, 236, 236): a pink wash
+     over everything, playing or not. Only at the lowest persistences; at
+     0.12 the quantised alpha happened to land the paper on itself.
+
+     So what fades is the ink's distance from the paper, and it can only
+     shrink. `difference` against the paper turns each pixel into that
+     distance (every ink is darker than the paper in every channel, which
+     `darken` below keeps true), `multiply` by a grey scales it by what the
+     frame keeps, and `difference` again turns it back. Both are exact on
+     whole levels, and a multiply by less than one, rounded either way, never
+     comes out larger than it went in: on any canvas the screen can only
+     fade towards the paper, never past it or away from it. The grey is
+     carried from frame to frame, so a keep that falls between two levels
+     (0.9745 is 248.5 of 255) is right on average rather than rounded every
+     frame. What it costs: three passes over the screen a frame instead of
+     one. `washtest.py` holds it on an accelerated canvas as well as the
+     software one, with this fade as it was as its null. */
   ctx.save();
-  ctx.globalAlpha = fade;
+  ctx.globalCompositeOperation = "difference";
   ctx.fillStyle = ink.paper;
   ctx.fillRect(0, 0, w, h);
+  const keep = 255 * (1 - fade) + fadeCarry, grey = Math.round(keep);
+  fadeCarry = keep - grey;
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = "rgb(" + grey + ", " + grey + ", " + grey + ")";
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "difference";
+  ctx.fillStyle = ink.paper;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "source-over";
   /* The last few levels, which the fade above cannot finish on its own. The
      canvas is 8-bit, and a pixel within half a level divided by the
      persistence of the paper - twenty levels at 0.0255, four at 0.12 - is
@@ -17801,6 +17835,8 @@ function clearOrFade(ctx, w, h, resized) {
   ctx.restore();
 }
 let fadeNudge = 0;
+// What the last frame's grey left over, carried into the next (see the fade above).
+let fadeCarry = 0;
 
 /* How much the canvas fades a frame: the Persistence, as Scan hears it,
    except in Enlarge with a shorter Trail. The phosphor grid never asks this;

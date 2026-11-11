@@ -5350,6 +5350,35 @@ canvas fell to 0.848 a frame against the grid's 0.880. At twice the persistence
 it is 0.870, inside the check's 0.02, and the cost moved to the long end: at
 0.0255 the last faint twenty levels take five or six seconds to go.
 
+**A low-alpha fill on a GPU canvas is not the software canvas's (11 Nov).**
+The owner found Crossed hands' screen pink again after G1 had fixed the wash,
+"playing or not". Every suite was green, and every suite's canvas is the
+software one, which rounds the paper laid over itself at 0.0255 back to the
+paper exactly. A canvas the GPU draws - every browser on a real machine, and
+the plugin's window - quantises a fill at that alpha short of its colour: the
+paper over the paper came back a level darker in green and blue every frame,
+and red, at 255, stayed. So the whole screen, where the beam had been and
+where it never went, slid a level a frame towards pink, and G1's nudge, a
+level every seventeen frames, held it at (255, 236, 236). It is seen here with
+the 2D canvas accelerated on SwiftShader (`--enable-gpu-rasterization
+--enable-accelerated-2d-canvas --ignore-gpu-blocklist --use-gl=angle
+--use-angle=swiftshader --enable-unsafe-swiftshader`), where the page runs at
+a few frames a second, and only if the canvas is not read back: Chrome takes a
+canvas that is read often enough off the GPU, after which the drift stops and
+the probe is reading the software canvas again. A screenshot reads what is
+shown without touching the canvas. `clearOrFade` now fades the ink's distance
+from the paper instead: `difference` against the paper, `multiply` by the
+grey of what the frame keeps (carried from frame to frame, so 0.9745 is right
+on average), `difference` back. Each is exact on whole levels, and a multiply
+by less than one cannot come out larger than it went in however it rounds,
+so the screen can only fade towards the paper on any canvas. Three passes a
+frame where there was one; `phototest.py`'s check of the canvas's rate
+against the grid's still reads 0.884 against 0.88. `washtest.py` loads Crossed
+hands in an accelerated browser and requires the screen's median colour to be
+the paper, with the old fade put back as its null, which reads exactly the
+owner's (255, 236, 236). Whether a real GPU drifts the same way, or another
+way, could not be tried here; the new fade does not depend on which.
+
 **A control's words are a doc's, written in.** What each control says on the
 info line is `web/docs/what-each-control-says.md`, one row a control, and the
 page carries it as `CONTROL_WORDS`, which `web/tools/write_words.py` writes
