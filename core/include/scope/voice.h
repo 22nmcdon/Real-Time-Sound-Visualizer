@@ -24,8 +24,9 @@ namespace scope {
 // Middle C: where key tracking leaves the cutoff where the slider says.
 constexpr double kKeyRef = 261.63;
 
-inline double vcfHz(const VoiceTone& t, double noteHz, double envLevel, double push, double rate) {
-  double fc = t.vcfCutoff * std::pow(2.0, t.vcfEnv * envLevel + push);
+// `cut` is the hand's cutoff as it glides, not the slider's: the page's vcfHz says why.
+inline double vcfHz(const VoiceTone& t, double noteHz, double envLevel, double push, double cut, double rate) {
+  double fc = cut * std::pow(2.0, t.vcfEnv * envLevel + push);
   if (t.vcfTrack > 0 && noteHz > 0) fc *= std::pow(noteHz / kKeyRef, t.vcfTrack);
   return std::fmax(10.0, std::fmin(0.45 * rate, fc));
 }
@@ -39,11 +40,11 @@ struct VcfState : SvfState {
   double lv = std::nan(""), lp = std::nan(""), lf = std::nan(""), lc = std::nan(""), le = std::nan(""), lt = std::nan("");
 };
 
-inline double vcfCoef(VcfState& s, const VoiceTone& t, double noteHz, double envLevel, double push, double rate) {
-  if (envLevel != s.lv || push != s.lp || noteHz != s.lf || t.vcfCutoff != s.lc
+inline double vcfCoef(VcfState& s, const VoiceTone& t, double noteHz, double envLevel, double push, double cut, double rate) {
+  if (envLevel != s.lv || push != s.lp || noteHz != s.lf || cut != s.lc
       || t.vcfEnv != s.le || t.vcfTrack != s.lt) {
-    s.lv = envLevel; s.lp = push; s.lf = noteHz; s.lc = t.vcfCutoff; s.le = t.vcfEnv; s.lt = t.vcfTrack;
-    s.g = svfG(vcfHz(t, noteHz, envLevel, push, rate), rate);
+    s.lv = envLevel; s.lp = push; s.lf = noteHz; s.lc = cut; s.le = t.vcfEnv; s.lt = t.vcfTrack;
+    s.g = svfG(vcfHz(t, noteHz, envLevel, push, cut, rate), rate);
   }
   return s.g;
 }

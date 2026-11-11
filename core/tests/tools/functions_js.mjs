@@ -128,6 +128,8 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
         }
       }
       const bend = n("bend") + (n("bend2") - n("bend")) * i / samples;
+      // A voice reads its hand's level and cutoff as the generator glides them; here there is no glide to read.
+      x.level = t.amp; x.cut = t.vcfCutoff;
       c.sound(voices, t, bars, n("amount"), bend, n("duck"), c.dtOf, n("glide"), x, false, n("pglide"));
       // Left and right, drawn and heard: since P4 one pair.
       values.push(c.mix[0], c.mix[1]);
@@ -341,7 +343,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     const key = { cutoff: "vcfCutoff", env: "vcfEnv", track: "vcfTrack" }[rest[10]];
     out.push(show(xs.map((x, i) => {
       if (i === 80 && key) t[key] = a[11];
-      return f.svfStep(st, x, c.vcfCoef(st, t, note, envs[i], push), k, type);
+      return f.svfStep(st, x, c.vcfCoef(st, t, note, envs[i], push, t.vcfCutoff), k, type);
     })));
     continue;
   }

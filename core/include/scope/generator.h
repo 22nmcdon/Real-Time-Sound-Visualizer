@@ -408,6 +408,7 @@ class Generator {
     const double glide = a_.glideMs > 0 ? poleFor(a_.glideMs, rate_) : 1;
     const double bendGlide = poleFor(kBendGlideMs, rate_);
     const double outGlide = poleFor(kOutputGlideMs, rate_);
+    const double levelGlide = poleFor(kLevelGlideMs, rate_);
     if (!freqStarted_) { freqNow_ = a_.freq; freqStarted_ = true; }
     const int inMode = inBuf_ != nullptr && inLen_ >= n ? toInt32(a_.inputMode) : 0;
     const double inDepth = a_.inputDepth;
@@ -418,6 +419,9 @@ class Generator {
       scanAdvance();
       sumRoutes();
       if (gated_) menv_.step();  // the Envelope card's own, as the page's
+      // Each hand's level and cutoff, B's whether or not it is sounding (the page's block says why).
+      levelsStep(vxA_, a_, levelGlide);
+      levelsStep(vxB_, b_, levelGlide);
 
       freqNow_ += (a_.freq - freqNow_) * glide;
       // Pitch bend and the wheel's vibrato, in octaves, glided (the page says why).
@@ -428,7 +432,7 @@ class Generator {
       const double pitchOct = (bendNow_ + (vibNow_ != 0 ? vibNow_ * std::sin(vibPhase_) : 0)) / 12;
       const double level = gated_ ? env_.step() : 1;
       const double freq = freqNow_ * std::pow(2.0, mod(slot::Freq) + pitchOct);
-      const double amp = a_.amp * (1 - mod(slot::Amp)) * level;
+      const double amp = vxA_.level * (1 - mod(slot::Amp)) * level;
       const double phase = a_.phase + mod(slot::Phase) * kPi;
       const double ratio = intervalRatio(a_.interval, a_.just) * octave + mod(slot::Ratio) * 0.5;
       const WaveTables bars = tablesFor(a_, barsA_, genMod_);
@@ -507,8 +511,8 @@ class Generator {
         if (vxA_.crushing) { wl = crushStep(crushL_, wl, a_, vxA_, rate_); wr = crushStep(crushR_, wr, a_, vxA_, rate_); }
         if (vxA_.filtering) {
           const double fl = gated_ ? fenv_.step() : 0;
-          wl = svfStep(vcfL_, wl, vcfCoef(vcfL_, a_, hz, fl, vxA_.vcfPush, rate_), vxA_.vcfK, a_.vcfType);
-          wr = svfStep(vcfR_, wr, vcfCoef(vcfR_, a_, hz * ratio, fl, vxA_.vcfPush, rate_), vxA_.vcfK, a_.vcfType);
+          wl = svfStep(vcfL_, wl, vcfCoef(vcfL_, a_, hz, fl, vxA_.vcfPush, vxA_.cut, rate_), vxA_.vcfK, a_.vcfType);
+          wr = svfStep(vcfR_, wr, vcfCoef(vcfR_, a_, hz * ratio, fl, vxA_.vcfPush, vxA_.cut, rate_), vxA_.vcfK, a_.vcfType);
         }
         l = amp * wl;
         r = amp * wr;
@@ -587,8 +591,10 @@ class Generator {
       if (right) right[i] = static_cast<float>(right[i] * outNow_);
     }
   }
-  // Where the Output's gain has got to, for a harness.
+  // Where the Output's gain has got to, for a harness; and a hand's level and cutoff (layer 1 is B's).
   double outputNow() const { return outNow_; }
+  double levelNow(int layer) const { return (layer == 1 ? vxB_ : vxA_).level; }
+  double cutNow(int layer) const { return (layer == 1 ? vxB_ : vxA_).cut; }
   /* The Output's gain put where it is asked, with no glide: for an
      instrument opening on a project that was turned down, whose first
      samples - an input heard at once, a note held from the start - would
@@ -602,6 +608,23 @@ class Generator {
   void outputStep(double glide) {
     outNow_ += (a_.output - outNow_) * glide;
     if (std::fabs(a_.output - outNow_) < kOutputSnap) outNow_ = a_.output;
+  }
+  // LEVEL_GLIDE_MS, LEVEL_SNAP and CUT_SNAP, and the page's levelsStep, where the page says why.
+  static constexpr double kLevelGlideMs = 20, kLevelSnap = 1e-6, kCutSnap = 1e-6;
+  static void levelsStep(VoiceFx& vx, const LayerTone& t, double k) {
+    if (std::isnan(vx.level)) vx.level = t.amp;
+    vx.level += (t.amp - vx.level) * k;
+    if (std::fabs(t.amp - vx.level) < kLevelSnap) vx.level = t.amp;
+    if (vx.cut == t.vcfCutoff) return;
+    if (!(t.vcfCutoff > 0) || !(vx.cut > 0)) {
+      vx.cut = vx.cutTo = t.vcfCutoff;
+      vx.cutLn = vx.cutToLn = std::log(t.vcfCutoff);
+      return;
+    }
+    if (t.vcfCutoff != vx.cutTo) { vx.cutTo = t.vcfCutoff; vx.cutToLn = std::log(t.vcfCutoff); }
+    vx.cutLn += (vx.cutToLn - vx.cutLn) * k;
+    if (std::fabs(vx.cutToLn - vx.cutLn) < kCutSnap) { vx.cutLn = vx.cutToLn; vx.cut = t.vcfCutoff; }
+    else vx.cut = std::exp(vx.cutLn);
   }
   double outNow_ = 1;  // the Output's gain as it glides, a sample at a time
   static constexpr double kClockHyst = 0.01;

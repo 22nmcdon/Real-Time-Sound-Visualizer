@@ -32,7 +32,7 @@ log of every call and its arguments:
 - a preset loaded on the page is sent whole, as a code that reads back as
   that preset.
 """
-import base64, json, os, sys
+import base64, json, os, re, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -57,7 +57,7 @@ FAKE = """
     }, 0);
     window.__JUCE__ = {
       initialisationData: { __juce__functions: ['scopeHost', 'scopeReport', 'scopeSlider', 'scopeSetup', 'scopeState',
-                                                 'scopeControl', 'scopeClick', 'scopeRoutings'] },
+                                                 'scopeControl', 'scopeClick', 'scopeRoutings', 'scopeGesture'] },
       backend: {
         addEventListener(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
         emitEvent(name, payload) {
@@ -65,7 +65,7 @@ FAKE = """
           window.__hostTest.calls.push(payload.name);
           if (!['scopeHost', 'scopeState', 'scopeReport'].includes(payload.name)) window.__hostTest.log.push([payload.name, ...payload.params]);
           if (payload.name === 'scopeState') { reply(payload.resultId, window.__hostTest.state); return; }
-          if (['scopeSlider', 'scopeSetup', 'scopeControl', 'scopeClick', 'scopeRoutings'].includes(payload.name)) {
+          if (['scopeSlider', 'scopeSetup', 'scopeControl', 'scopeClick', 'scopeRoutings', 'scopeGesture'].includes(payload.name)) {
             reply(payload.resultId, true); return;
           }
           if (payload.name === 'scopeHost') {
@@ -107,6 +107,8 @@ FAKE = """
     };
   })();
 """
+
+def centre(box): return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
 
 def code(setup):
     """A setup code as the page and the plugin write them."""
@@ -551,6 +553,141 @@ with sync_playwright() as pw:
           split["restored"] == [True, True, 4, "true", "true"] and split["back"] == [False, 2, "true"] and split["log"] == [], str(split))
     check("a lane the plugin has not served yet reads as silence, and Tone lets the split go",
           split["early"] == [4, 0, True] and split["tone"] == [False, 2], str(split["early"]) + " " + str(split["tone"]))
+
+    print("\n--- change gestures (second review, 1.2) ---")
+    # A host records touch and latch automation by the gestures round a
+    # parameter's moves. Each move the player makes of one of the host's
+    # parameters must be inside one - begun as they take hold, ended as they
+    # let go - and nothing else may be: a knob that is no parameter, the
+    # host's own automation, a load. Real mouse and real keys, so the
+    # browser's own default actions (an arrow's step, a native slider's drag)
+    # are what is sent. Read from the fake's log as letters for one slider:
+    # b a begin, v a value, e an end.
+    def letters(log, sid):
+        out = ""
+        for c in log:
+            if len(c) > 2 and c[1] == sid and c[0] == "scopeGesture": out += "b" if c[2] is True else "e"
+            elif len(c) > 2 and c[1] == sid and c[0] == "scopeSlider": out += "v"
+        return out
+    def shaped(s): return re.fullmatch(r"bv+e", s) is not None
+    def balanced(s):
+        if re.fullmatch(r"(bv*e|v)*", s) is None: return -1
+        return s.count("b")
+    check("null: the shape is told from a drag with no begin, one ended twice, one begun twice and one with no value",
+          not shaped("vvve") and not shaped("bvvee") and not shaped("bbvve") and not shaped("be") and shaped("bvve")
+          and balanced("bvebve") == 2 and balanced("bvbvee") == -1 and balanced("bvv") == -1)
+    p.evaluate("() => { closeOverlay(); setBenchTab('play'); }")
+    p.wait_for_timeout(300)
+    def face(sid):
+        box = p.locator("#%s" % sid).locator("xpath=..").locator(".knob-face").bounding_box()
+        return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    def logged(act, wait=300):
+        p.evaluate("() => { window.__hostTest.log.length = 0; }")
+        act()
+        p.wait_for_timeout(wait)
+        return p.evaluate("() => window.__hostTest.log.slice()")
+    def drag(sid, dy=-30, hold=False, between=None):
+        def go():
+            x, y = face(sid)
+            p.mouse.move(x, y); p.mouse.down()
+            p.mouse.move(x, y + dy / 2, steps=4)
+            if between: p.evaluate(between)
+            p.mouse.move(x, y + dy, steps=4)
+            if not hold: p.mouse.up()
+        return go
+    dragged = logged(drag("amp"))
+    check("a knob that is a host parameter, dragged, is one gesture: begun, its values, ended",
+          shaped(letters(dragged, "amp")) and [c[0] for c in dragged if c[0] == "scopeGesture"] == ["scopeGesture"] * 2,
+          letters(dragged, "amp") + " " + str(dragged[:3]))
+    # Taking hold is the begin, before anything moves: a host in touch mode holds the value from then.
+    x, y = face("amp")
+    pressed = logged(lambda: (p.mouse.move(x, y), p.mouse.down()), 100)
+    released = logged(lambda: p.mouse.up(), 100)
+    check("pressing the knob begins its gesture before it moves, and letting go unmoved ends it",
+          letters(pressed, "amp") == "b" and letters(released, "amp") == "e", letters(pressed, "amp") + " " + letters(released, "amp"))
+    # The ring's handle on a patched knob moves the depth, not the value: no gesture for the knob.
+    p.evaluate("() => addRouting('lfo1', 'gen.amp')")
+    p.wait_for_timeout(300)
+    def ring():
+        box = p.locator("#amp").locator("xpath=..").locator(".lane-handle").bounding_box()
+        x, y = centre(box)
+        p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + 25, y + 25, steps=5); p.mouse.up()
+    ringed = logged(ring)
+    p.evaluate("() => dropRouting('lfo1', 'gen.amp')")
+    check("the ring's handle on a patched knob moves its depth and begins no gesture for the knob",
+          letters(ringed, "amp") == "" and any(c[0] == "scopeRoutings" for c in ringed), str(ringed[:3]))
+    attack = logged(drag("envAttack"))
+    check("one that is not, dragged, is sent and begins nothing",
+          not any(c[0] == "scopeGesture" for c in attack) and letters(attack, "envAttack").count("v") >= 2, str(attack[:3]))
+    def keys():
+        p.evaluate("() => el.amp.focus()")
+        for _ in range(3): p.keyboard.press("ArrowUp")
+    keyed = logged(keys, 800)
+    check("three arrow keys on it are one gesture, ended once they have stopped", letters(keyed, "amp") == "bvvve",
+          letters(keyed, "amp"))
+    def taps():
+        x, y = face("amp")
+        p.mouse.click(x, y); p.mouse.click(x, y)
+    tapped = logged(taps)
+    # The first tap's end waits for its release's handlers, so a second tap
+    # that comes first is the same gesture; either way the value is inside one.
+    check("two taps that put it back send the value inside a gesture, none left open or nested",
+          re.fullmatch(r"(be)?bve", letters(tapped, "amp")) is not None and p.evaluate("() => el.amp.value") == "55", letters(tapped, "amp"))
+    def typed():
+        x, y = face("amp")
+        p.mouse.click(x, y, button="right")
+        p.locator('.over.ctx [data-item="type"]').click()
+        p.keyboard.press("Control+A"); p.keyboard.type("0.33"); p.keyboard.press("Enter")
+    typing = logged(typed)
+    def reset():
+        x, y = face("amp")
+        p.mouse.click(x, y, button="right")
+        p.locator('.over.ctx [data-item="reset"]').click()
+    resetting = logged(reset)
+    check("Type a value and Reset are a gesture each round the one value they send, the typing's probes unsent",
+          letters(typing, "amp") == "bve" and ["scopeSlider", "amp", "33"] in typing and letters(resetting, "amp") == "bve",
+          letters(typing, "amp") + " " + letters(resetting, "amp"))
+    morph = logged(lambda: (p.evaluate("() => showControl(el.morphPos)"), p.wait_for_timeout(300),
+                            p.mouse.move(*centre(p.locator("#morphPos").bounding_box())), p.mouse.down(),
+                            p.mouse.move(centre(p.locator("#morphPos").bounding_box())[0] + 40, centre(p.locator("#morphPos").bounding_box())[1], steps=5),
+                            p.mouse.up(), p.keyboard.press("Escape")))
+    check("the morph's fader, a plain slider, dragged is one gesture too", shaped(letters(morph, "morphPos")), letters(morph, "morphPos"))
+    p.evaluate("() => { closeOverlay(); setBenchTab('play'); }")
+    automated = p.evaluate("""async (code) => {
+      const t = window.__hostTest;
+      t.log.length = 0;
+      t.state = { version: 40, loads: hostSync.loads, moved: 'amp', code };
+      await new Promise((r) => setTimeout(r, 700));
+      return { amp: el.amp.value, log: t.log.slice() };
+    }""", code({"pluginHands": [["s", "amp", "91"]]}))
+    check("the host's automation moving the knob moves it on the face, and sends back no gesture and no value",
+          automated == {"amp": "91", "log": []}, str(automated))
+    loaded = logged(drag("amp", between="() => applyPreset('n:' + BASE_NAME)"))
+    order = [c[0] + ("+" if c[0] == "scopeGesture" and c[2] is True else "-" if c[0] == "scopeGesture" else "")
+             for c in loaded if c[0] in ("scopeGesture", "scopeSetup")]
+    check("a preset loaded mid-drag ends the gesture before the load is sent, and the hand still on the knob begins another",
+          balanced(letters(loaded, "amp")) == 2 and order[:3] == ["scopeGesture+", "scopeGesture-", "scopeSetup"]
+          and order[-1] == "scopeGesture-", letters(loaded, "amp") + " " + str(order))
+    # And a load from the host - a program chosen in its list - while the knob is held: the same.
+    hosted = logged(drag("amp", between="""async () => {
+      window.__hostTest.state = { version: 50, loads: 99, moved: '', code: '%s' };
+      await new Promise((r) => setTimeout(r, 700));
+    }""" % code({"vcfCut": 300})))
+    check("a load from the host mid-drag ends the gesture, and the hand still on the knob begins another",
+          balanced(letters(hosted, "amp")) == 2 and p.evaluate("() => el.vcfCut.value") == "300", letters(hosted, "amp"))
+    # Back to the middle, as the drags before may have taken it to the top, where a drag up moves nothing.
+    p.evaluate("() => { el.amp.value = '55'; }")
+    # Read while the button is still down: the end must be the blur's, not the release's.
+    blurred = logged(lambda: (drag("amp", hold=True)(), p.evaluate("() => window.dispatchEvent(new Event('blur'))")), 100)
+    held_open = p.evaluate("() => hostGestures.open.size + hostGestures.pointers.size")
+    p.mouse.up()
+    check("the window losing focus mid-drag ends the gesture there, with the button still down, and none is left open",
+          shaped(letters(blurred, "amp")) and held_open == 0, letters(blurred, "amp") + ", %d open" % held_open)
+    p.evaluate("() => { el.amp.value = '55'; window.__begin = gestureBegin; window.gestureBegin = () => {}; }")
+    unbegun = logged(drag("amp"))
+    p.evaluate("() => { window.gestureBegin = window.__begin; }")
+    check("null: a page whose drag sends no begin is told apart", not shaped(letters(unbegun, "amp")) and "v" in letters(unbegun, "amp"),
+          letters(unbegun, "amp"))
 
     print("\n--- the plugin's oscillators ---")
     # An oscillator routed to the sound and the picture moves both in step

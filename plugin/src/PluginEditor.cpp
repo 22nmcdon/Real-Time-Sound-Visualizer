@@ -48,6 +48,11 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
           owner.pageSlider(args[0].toString().toStdString(), scope::toU16(args[1].toString().toStdString()));
         complete(juce::var());
       })
+      // A change gesture on a host parameter's slider, begun (true) or ended (false): pageGesture.
+      .withNativeFunction("scopeGesture", [&owner](const juce::Array<juce::var>& args, auto complete) {
+        if (args.size() >= 2) owner.pageGesture(args[0].toString().toStdString(), static_cast<bool>(args[1]));
+        complete(juce::var());
+      })
       // The code, and the page's preset menu as it landed, for the program's number (G8).
       .withNativeFunction("scopeSetup", [&owner](const juce::Array<juce::var>& args, auto complete) {
         const auto code = args.isEmpty() ? std::string() : args[0].toString().toStdString();

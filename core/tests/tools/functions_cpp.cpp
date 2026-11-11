@@ -181,6 +181,8 @@ int main(int argc, char** argv) {
           }
         }
         const double bend = d("bend") + (d("bend2") - d("bend")) * static_cast<double>(i) / static_cast<double>(samples);
+        // A voice reads its hand's level and cutoff as the generator glides them; here there is no glide to read.
+        x.level = t.amp; x.cut = t.vcfCutoff;
         scope::sound(voices, t, bars, d("amount"), bend, d("duck"), 1 / rate, d("glide"), x, c, false, d("pglide"));
         out.insert(out.end(), c.mix.begin(), c.mix.end());
       }
@@ -404,7 +406,7 @@ int main(int argc, char** argv) {
           else if (field == "env") t.vcfEnv = num(w[12]);
           else if (field == "track") t.vcfTrack = num(w[12]);
         }
-        out.push_back(scope::svfStep(st, xs[i], scope::vcfCoef(st, t, note, envs[i], push, rate), k, type));
+        out.push_back(scope::svfStep(st, xs[i], scope::vcfCoef(st, t, note, envs[i], push, t.vcfCutoff, rate), k, type));
       }
       show(out);
       continue;

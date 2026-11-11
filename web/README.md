@@ -5905,3 +5905,72 @@ place for an edited sound. A known limitation: a project reopened in the
 plugin says Custom there even when it is the program untouched, because the
 number does not say whether a code was loaded after it; the host's list is
 where the number shows.
+
+**A hand on a host's parameter is a change gesture, and its value goes from the
+message thread (11 Nov).** A host records touch and latch automation by the
+gestures round a parameter's moves, and the face sent only values. Now every
+move the player makes of one of `HOST_PARAMS` is inside one (`hostGestures`,
+`scopeGesture`, `ScopeProcessor::pageGesture`): a press on the knob or slider
+begins it and the release ends it, a key or the wheel begins it at the first
+step that moves it and ends it 400 ms after the last, and Type a value and Reset
+are one each. Five things a reader would otherwise find the slow way:
+- *JUCE's VST3 wrapper takes a gesture only on the message thread*, and a value
+  set from the audio thread goes to the host through the audio's own changes,
+  on another clock, so a gesture's end could reach the host before its last
+  value. The page's move of a host parameter used to reach the parameter from
+  the audio thread (the instrument's `sliderMoved`, as the queued slider was
+  applied); it is set in `pageSlider` now, on the message thread, between the
+  begin and the end, and the audio thread knows it for the page's own by
+  `pageSet_` rather than taking it for automation and sending it back.
+- *The release's end waits a turn* (`setTimeout`), because the knob's own
+  pointerup handler still sends a value - two taps put it back - and a window
+  capture listener runs before it. Ended at once, the reset value came after
+  the end.
+- *A gesture begins at the press, not the first move*, as a host's touch
+  holds the value from then; a press with no move is a begin and an end with
+  nothing between, as JUCE's own sliders send. A value sent while a hand is
+  still on the control and no gesture is open (after a load ended it) opens
+  one: `hostSlider` asks `gestureHeld`.
+- *Type a value probed the whole range through the instrument*: it finds the
+  value whose reading is nearest by moving the control and reading it back,
+  and every probe was sent. It probes quietly now (`hostQuietly`) and sends
+  where it lands, once, so a host recording touch does not get a sweep of the
+  range in a few milliseconds.
+- *What is not a gesture*: the host's own automation (applied while
+  `hostSync.applying`), a load and the preset glide. A load ends what is open
+  before the setup is sent; the window losing focus or being hidden ends it and
+  lets every hand go; the plugin ends what a closed window left open. The
+  plugin's count means a page that sends a begin twice or an end unbegun cannot
+  nest or orphan one at the host.
+`hosttest.py` holds the page with a real mouse and keys against the fake
+bridge's log; the shell test drags, keys and types on the real face in the
+plugin's web view and reads what a host hears through an
+`AudioProcessorListener`. A known gap: the hidden page's end
+(`visibilitychange`) is not driven by either, as no test can hide the page.
+
+**The level and the cutoff glide a sample at a time, and a host's move of them
+is not walked (11 Nov).** Each hand's Level and voice-filter cutoff glide on a
+20 ms one-pole a sample at a time, as the Output has since G7 (`levelsStep`,
+page and core), the cutoff in its logarithm so an octave takes as long
+anywhere. The instrument used to walk a host's move across the 128-sample steps
+its block held (`rampTo`), which is a walk at a block of 512 and none at 128;
+for the three that glide in the generator (`amp`, `vcfCut`, `output`) it no
+longer walks, or the sound would depend on the host's buffer again - the shell
+test holds it the same to the bit at 32, 64, 128 and 512. Only the slider's
+value glides: what modulates either rides on top unsmoothed, so an LFO on the
+cutoff sounds as it did. Three things to know. A voice reads its hand's
+glided values off the hand's `VoiceFx` (`vx.level`, `vx.cut`), so a harness
+that drives `sound` or `vcfCoef` alone must hand them the slider's
+(`functions_js.mjs` and `functions_cpp.cpp` do). The filter's coefficient cache
+must be keyed on the glided cutoff, not the slider's: keyed on the slider it is
+worked out once at the move and held at the old cutoff for good wherever
+nothing else moves the coefficient, which is the ungated dyad - and in a chord
+the filter envelope moves it every sample anyway, so a run of chords alone
+could not see it (parity's `level-dyad` is for that). And a glide checked
+against "the pole's share of what was left" must allow the snap, the last step
+of up to a millionth that lands it exactly where it was put. A Level put to
+nought no longer silences a tone in a sample: it takes about 0.27 s to land,
+so a check that stops a tone that way to hear what follows it must wait for
+that, or read the difference from the same stop without the thing it is
+listening for - `workletharness.mjs`'s delay check heard the tone's own tail
+as the repeat until it did the second.

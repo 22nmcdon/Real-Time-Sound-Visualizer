@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 
 #include "PluginEditor.h"
 
@@ -28,24 +29,26 @@ ScopeProcessor::ScopeProcessor()
   addParameterGroup(std::move(main));
   addParameterGroup(std::move(setups));
   moved_.reserve(kKnobs.size());
+  for (auto& set : pageSet_) set.store(std::numeric_limits<float>::quiet_NaN());
   // What the out sends goes to the host's MIDI out, at its sample.
   instrument_.hooks.midiOut = [this](const std::uint8_t* bytes, int length, int sample) { outgoing_.addEvent(bytes, length, sample); };
-  // A slider moved on the page: the host's parameter for it follows.
-  instrument_.hooks.sliderMoved = [this](const std::string& id, double value) {
-    for (std::size_t i = 0; i < kKnobs.size(); ++i) {
-      if (id != kKnobs[i].slider) continue;
-      knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(static_cast<float>(value)));
-      applied_[i] = knobs_[i]->get();
-    }
-  };
+  /* A slider moved on the page has its host parameter follow in pageSlider,
+     on the message thread, rather than here (the instrument's sliderMoved,
+     on the audio thread), which it did until the gestures: JUCE's VST3
+     wrapper takes a gesture only from the message thread and passes a value
+     from this thread on through the audio's own changes, so a gesture's end
+     could reach the host before its last value. */
   // A setup loaded: the parameters read back from the panel, so the host shows what it set.
   instrument_.hooks.loaded = [this] { readBack(false); };
 }
 
 void ScopeProcessor::readBack(bool unmovedOnly) {
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
-    // One the host has moved since it was last applied keeps the host's value, to be applied below.
-    if (unmovedOnly && knobs_[i]->get() != applied_[i]) continue;
+    /* One the host has moved since it was last applied keeps the host's
+       value, to be applied below. One the page has just set is not the
+       host's, and reads back like any other. */
+    const float now = knobs_[i]->get();
+    if (unmovedOnly && now != applied_[i] && now != pageSet_[i].load()) continue;
     const auto v = static_cast<float>(instrument_.slider(kKnobs[i].slider));
     knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
     applied_[i] = knobs_[i]->get();
@@ -60,7 +63,38 @@ bool ScopeProcessor::queue(std::optional<scope::Instrument::Command> command) {
   return true;
 }
 
-void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& text) { queue(scope::Instrument::slider(id, text)); }
+void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& text) {
+  if (!queue(scope::Instrument::slider(id, text))) return;
+  /* One of the host's parameters follows now, inside whatever gesture the
+     page has opened round the move. The value it will hold is noted first,
+     so an audio thread that finds it there before the slider's command has
+     reached it knows it for the page's. */
+  const double value = scope::jsNumber(scope::utf16To8(text));
+  if (!std::isfinite(value)) return;
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    if (id != kKnobs[i].slider) continue;
+    const float to = knobs_[i]->convertTo0to1(static_cast<float>(value));
+    pageSet_[i].store(knobs_[i]->convertFrom0to1(to));
+    knobs_[i]->setValueNotifyingHost(to);
+  }
+}
+
+void ScopeProcessor::pageGesture(const std::string& id, bool begin) {
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    if (id != kKnobs[i].slider || gesture_[i] == begin) continue;
+    gesture_[i] = begin;
+    if (begin) knobs_[i]->beginChangeGesture();
+    else knobs_[i]->endChangeGesture();
+  }
+}
+
+void ScopeProcessor::endGestures() {
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) {
+    if (!gesture_[i]) continue;
+    gesture_[i] = false;
+    knobs_[i]->endChangeGesture();
+  }
+}
 /* A drawing made by hand arrives a few times a second while it is drawn, and
    a drawn cycle's tables are milliseconds to build: built here, on the
    message thread, so the audio thread finds them made (CycleCache). */
@@ -321,6 +355,8 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const float v = knobs_[i]->get();
     if (v == applied_[i]) continue;
     applied_[i] = v;
+    // The page's own move, set by pageSlider and reaching the slider through the queue: no hand of the host's.
+    if (v == pageSet_[i].load()) continue;
     moved_.push_back({ kKnobs[i].slider, v });
   }
   /* The host's MIDI, as bytes at their samples, not JUCE's reading of them:
