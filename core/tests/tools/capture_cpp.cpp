@@ -47,7 +47,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       else {
         scope::CaptureSource src;
         src.rate = rate; src.capacity = capacity; src.channels = chans; src.lanes = lanes;
-        src.latest = [&](std::size_t n) {
+        src.latest = scope::latestFrom([&](std::size_t n) {
           std::vector<scope::Lane> out;
           for (int c = 0; c < chans; c++) {
             const scope::Lane& b = buffers[static_cast<std::size_t>(c)];
@@ -57,13 +57,13 @@ void run(const std::vector<std::vector<std::string>>& commands) {
             out.push_back(std::move(o));
           }
           return out;
-        };
+        });
         const scope::Frame f = scope::capture(v, src);
         extra = " trig " + std::to_string(f.triggered ? 1 : 0) + " level " + show(f.levelAt) + " asked " + show(f.asked)
               + " len " + show(f.length) + " pre " + show(f.pre) + " turned " + std::to_string(f.turned ? 1 : 0)
               + " shaped " + show(f.shapedAc) + " " + show(f.shapedFilter) + " lag " + show(f.lagActual)
               + " starved " + show(f.starved) + " measured " + (v.measurePost || !f.turned ? "drawn" : "signal")
-              + " | ch " + digest(f.channels) + " | sig " + digest(f.signal);
+              + " | ch " + digest(f.channels) + " | sig " + digest(f.signalLanes());
       }
     }
     else if (cmd == "chans") chans = static_cast<int>(num(arg(1)));

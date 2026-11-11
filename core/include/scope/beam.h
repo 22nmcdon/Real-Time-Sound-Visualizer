@@ -198,11 +198,13 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
   const Plot plot { cx - radius, cy - radius, size, size };
 
   const auto exists = [&](int ch) { return ch >= 0 && static_cast<std::size_t>(ch) < v.channels.size(); };
-  std::vector<LanePair> figures { s.xyPair };
-  if (const auto* asked = drawnFigures(v, s, lagging)) figures = *asked;
+  // The menus' pair, or the figures asked for: pointed at, not copied, since this is every frame on the audio thread (G8).
+  const LanePair* figures = &s.xyPair;
+  std::size_t count = 1;
+  if (const auto* asked = drawnFigures(v, s, lagging)) { figures = asked->data(); count = asked->size(); }
 
   const double ratio = s.beamXY ? beamRatio(s.beam) : 0;
-  for (std::size_t figure = 0; figure < figures.size(); figure++) {
+  for (std::size_t figure = 0; figure < count; figure++) {
     const int fx = figures[figure].x, fy = figures[figure].y;
     const auto lane = [&](int ch) -> const Lane* {
       return ch >= 0 && static_cast<std::size_t>(ch) < f.channels.size() ? &f.channels[static_cast<std::size_t>(ch)] : nullptr;

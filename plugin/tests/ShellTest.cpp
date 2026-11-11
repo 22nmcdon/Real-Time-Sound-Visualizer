@@ -17,9 +17,31 @@
 #include <tuple>
 #include <vector>
 
+#include <new>
+
 #include "../src/PluginEditor.h"
 #include "../src/PluginProcessor.h"
 #include "BinaryData.h"
+
+/* Every operator new on a thread that has asked to be counted (G8): the
+   audio thread's blocks, here the test's own thread around processBlock. The
+   web view's threads, the face's, never ask. Memory comes from malloc, so
+   free is the matching release; GCC, seeing the library's news inlined past
+   this, calls the pairing mismatched when it is not. */
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
+#endif
+namespace {
+std::atomic<long> blockAllocations { 0 };
+thread_local bool countingBlocks = false;
+}  // namespace
+void* operator new(std::size_t size) {
+  if (countingBlocks) blockAllocations++;
+  if (void* p = std::malloc(size ? size : 1)) return p;
+  throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 
 namespace {
 int failures = 0;
@@ -816,7 +838,7 @@ int main() {
         if (k > 1 && p.picture().phosphor().frames() != framesBefore) {
           scope::CaptureSource src;
           src.rate = rate; src.capacity = static_cast<double>(ScopeProcessor::kPictureFrames); src.channels = 2;
-          src.latest = [&](std::size_t n) {
+          src.latest = scope::latestFrom([&](std::size_t n) {
             std::vector<scope::Lane> out(2, scope::Lane(n, 0.0f));
             const std::size_t have = before.size() / 2, take = std::min(n, have);
             for (std::size_t i = 0; i < take; ++i) {
@@ -824,7 +846,7 @@ int main() {
               out[1][n - take + i] = before[(have - take + i) * 2 + 1];
             }
             return out;
-          };
+          });
           const scope::Frame want = scope::capture(viewBefore, src);
           const scope::Frame& got = p.picture().frame();
           // What it asked the ring for and how short it fell, as well as what it drew.
@@ -2448,12 +2470,13 @@ int main() {
     juce::MemoryBlock earlySaved;
     early.getStateInformation(earlySaved);
     const std::string earlyCode(static_cast<const char*>(earlySaved.getData()), earlySaved.getSize());
-    // Less the face's window and the master Output (G7), which a saved state carries beside the setup.
+    // Less the face's window, the master Output (G7) and the program's number (G8), which a saved state carries beside the setup.
     const auto unwindowed = [&](const std::string& code) {
       auto d = scope::decodeSetup(code);
       if (d.kind != scope::DecodedSetup::Kind::Read) return std::string("unread");
       d.setup.erase(u"pluginWindow");
       d.setup.erase(u"pluginOutput");
+      d.setup.erase(u"pluginProgram");
       return scope::utf16To8(scope::jsonStringify(d.setup));
     };
     check("saved before it has played a block, it saves the state it was handed",
@@ -2565,6 +2588,7 @@ int main() {
     programs.setCurrentProgram(organ);
     playBlocks(programs, 1);
     const std::string asOrgan = setupOf(programs.pageState().code);
+    const int chosen = programs.getCurrentProgram();
     if (ownCode) programs.setStateInformation(ownCode->data(), static_cast<int>(ownCode->size()));
     playBlocks(programs, 1);
     programs.setCurrentProgram(programs.getCurrentProgram());
@@ -2572,11 +2596,120 @@ int main() {
     const std::string afterReselect = setupOf(programs.pageState().code);
     check("the host sees the bank as programs, the plain sine first, and choosing one loads it",
           count == 1 + static_cast<int>(scope::presets().size()) && programs.getProgramName(0) == "Plain sine" && organ > 0
-          && asOrgan.find("drawbars") != std::string::npos && programs.getCurrentProgram() == organ,
+          && asOrgan.find("drawbars") != std::string::npos && chosen == organ,
           std::to_string(count) + " programs; the organ at " + std::to_string(organ));
     check("and a project restored, then its program chosen again as some hosts do, is kept",
           afterReselect.find("Drawbar 1") != std::string::npos && afterReselect.find("drawbars") == std::string::npos,
           afterReselect.substr(0, 100));
+
+    /* The program's number kept with the project (G8). The organ chosen by
+       the host, then edited on the page, which keeps the number; saved;
+       reopened as a host reopens a project - showing the organ, with the
+       edit, and nothing loaded over it - and then the organ chosen again, as
+       some hosts do, which finds it chosen and leaves the edit. The null is
+       the same state without the number: it reopens at the plain sine's, and
+       the host choosing the organ again loads the bank's organ over the
+       edit, which is the bug a project reopened met. */
+    {
+      const auto stateOf = [](ScopeProcessor& p) { juce::MemoryBlock m; p.getStateInformation(m); return m; };
+      const auto fieldOf = [](const juce::MemoryBlock& m, const char16_t* key) {
+        const auto d = scope::decodeSetup(std::string_view(static_cast<const char*>(m.getData()), m.getSize()));
+        const scope::Json* v = d.kind == scope::DecodedSetup::Kind::Read ? d.setup.get(key) : nullptr;
+        return v && v->type == scope::Json::Type::Number ? v->n : -1.0;
+      };
+      ScopeProcessor a;
+      a.prepareToPlay(rate, block);
+      a.setCurrentProgram(organ);
+      playBlocks(a, 1);
+      const double organCut = a.slider("vcfCut");
+      a.pageSlider("vcfCut", u"321");
+      playBlocks(a, 1);
+      const int afterEdit = a.getCurrentProgram();
+      const auto saved = stateOf(a);
+      auto stripped = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+      stripped.setup.erase(u"pluginProgram");
+      const auto strippedCode = scope::encodeSetup(stripped.setup);
+      juce::MemoryBlock without;
+      if (strippedCode) without.append(strippedCode->data(), strippedCode->size());
+      struct Reopened { int shown; double cut, cutAfterReselect; bool told; };
+      const auto reopen = [&](const juce::MemoryBlock& state) {
+        ScopeProcessor b;
+        b.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+        const int shown = b.getCurrentProgram();  // as a host's controller reads it straight after the state
+        b.prepareToPlay(rate, block);
+        playBlocks(b, 1);
+        const double cut = b.slider("vcfCut");
+        const bool told = setupOf(b.pageState().code).find("pluginProgram") != std::string::npos;
+        b.setCurrentProgram(organ);
+        playBlocks(b, 1);
+        return Reopened { shown, cut, b.slider("vcfCut"), told };
+      };
+      const Reopened kept = reopen(saved), lost = reopen(without);
+      check("the program's number is kept with the project: an edited organ reopens showing the organ, with its edit, "
+            "and the organ chosen again by the host leaves the edit",
+            organ > 0 && afterEdit == organ && fieldOf(saved, u"pluginProgram") == organ && kept.shown == organ
+            && kept.cut == 321 && kept.cutAfterReselect == 321 && organCut != 321,
+            "saved " + num(fieldOf(saved, u"pluginProgram")) + ", shown " + std::to_string(kept.shown) + ", cutoff "
+            + num(kept.cut) + " then " + num(kept.cutAfterReselect) + " (the organ's own " + num(organCut) + ")");
+      check("null: the same state without the number reopens at the plain sine's, and the host's choosing the organ loads it over the edit",
+            lost.shown == 0 && lost.cut == 321 && lost.cutAfterReselect == organCut,
+            "shown " + std::to_string(lost.shown) + ", cutoff " + num(lost.cut) + " then " + num(lost.cutAfterReselect));
+      check("and the number is the plugin's, never the setup's: the page of the project reopened is not shown it",
+            !kept.told && setupOf(a.pageState().code).find("pluginProgram") == std::string::npos);
+      /* A state handed to an instance already playing - a host's own preset,
+         its undo - is the whole sound: one that names no program clears the
+         number to the first, rather than leaving the organ shown over it. */
+      a.setStateInformation(without.getData(), static_cast<int>(without.getSize()));
+      check("and a state with no number, handed to an instance showing the organ, shows the first", a.getCurrentProgram() == 0,
+            std::to_string(a.getCurrentProgram()));
+
+      /* The page's preset menu moves it: a bank sound loaded there is its
+         program, and the host is told; a code pasted or a saved sound leaves
+         it, the host told nothing; the plain sine is the first. A host's
+         wrapper reads the number as it is told, so what it would read then is
+         kept too: told before the number moved, it would read the old one. */
+      struct Told final : juce::AudioProcessorListener {
+        int programs = 0;
+        std::vector<int> read;
+        void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {}
+        void audioProcessorChanged(juce::AudioProcessor* p, const ChangeDetails& d) override {
+          if (!d.programChanged) return;
+          ++programs;
+          read.push_back(p->getCurrentProgram());
+        }
+      } told;
+      ScopeProcessor c;
+      c.prepareToPlay(rate, block);
+      c.addListener(&told);
+      int tine = -1;
+      for (int k = 0; k < count; ++k) if (c.getProgramName(k) == "Tine piano") tine = k;
+      const auto codeOf = [&](int program) {
+        const auto code = scope::encodeSetup(program == 0 ? scope::baseSetup() : scope::presets()[static_cast<std::size_t>(program - 1)].setup);
+        return code ? *code : std::string();
+      };
+      std::vector<int> shown;
+      std::vector<int> toldAt;
+      const auto load = [&](int program, const char* chosen) {
+        c.pageSetup(codeOf(program), chosen);
+        playBlocks(c, 1);
+        shown.push_back(c.getCurrentProgram());
+        toldAt.push_back(told.programs);
+      };
+      load(tine, "b:Tine piano");
+      load(organ, "");
+      load(organ, "s:Mine");
+      load(tine, "b:Tine piano");
+      load(0, "n:Plain sine");
+      c.removeListener(&told);
+      check("a bank sound loaded on the page is that program, and the host is told; a code or a saved sound leaves the number; New is the first",
+            tine > 0 && tine != organ && shown == std::vector<int> { tine, tine, tine, tine, 0 } && toldAt == std::vector<int> { 1, 1, 1, 1, 2 }
+            && told.read == std::vector<int> { tine, 0 },
+            "shown " + std::to_string(shown[0]) + "," + std::to_string(shown[1]) + "," + std::to_string(shown[2]) + ","
+            + std::to_string(shown[3]) + "," + std::to_string(shown[4]) + "; told " + std::to_string(told.programs));
+      check("null: a name the bank has not got, or a saved sound with a bank sound's name, is no program",
+            ScopeProcessor::programOf("b:No such sound") == -1 && ScopeProcessor::programOf("s:Tine piano") == -1
+            && ScopeProcessor::programOf("b:Tine piano") == tine && ScopeProcessor::programOf("") == -1);
+    }
 
     /* The face's window: a size that fits a 1366x768 laptop with a host's
        frame round it, and the size it was left at kept with the project. */
@@ -2906,6 +3039,73 @@ int main() {
     std::vector<float> late(small.size(), 0.0f);
     for (std::size_t i = 1; i < small.size(); ++i) late[i] = small[i - 1];
     check("null: the same render a sample late is not the same samples", apart(small, late) > 0.01, num(apart(small, late)));
+  }
+
+  std::printf("\n--- a steady block allocates nothing (G8) ---\n");
+  {
+    /* The processor as a host runs it, the whole block: the host's MIDI
+       collected, the page's queue, the instrument, the MIDI out handed back
+       and the state published. Each run is prepared on the bank's split with
+       a chord across both hands, played twenty seconds - the picture's meter
+       fills its history in fifteen, and only then answers - and counted for
+       four hundred blocks, with one MIDI buffer kept as a host's wrapper
+       keeps its own and the pitch wheel moving in every block. The null is the same run with the host moving a
+       parameter every block, whose hand and the state's encoding for the
+       page still allocate, by design: the counter has to see those. */
+    struct Steady { long allocations = 0; double heard = 0; int sent = 0; bool hands = false, bands = false; };
+    const auto steady = [&](bool input, const std::function<void(ScopeProcessor&)>& set, bool hostMoves) {
+      setenv("SCOPE_PRESET", "Bass under the pad", 1);
+      ScopeProcessor p;
+      if (input) p.enableAllBuses();
+      p.prepareToPlay(rate, block);
+      oldBoot();
+      set(p);
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer midi;
+      midi.ensureSize(2048);
+      Steady r;
+      long long at = 0;
+      const int warm = static_cast<int>(20 * rate / block);
+      for (int b = 0; b < warm + 400; ++b) {
+        const bool counted = b >= warm;
+        for (int i = 0; i < block; ++i) {
+          const float x = 0.3f * static_cast<float>(std::sin(0.05 * static_cast<double>(at + i)));
+          buf.setSample(0, i, x); buf.setSample(1, i, 0.5f * x);
+        }
+        at += block;
+        midi.clear();
+        if (b == 0) for (const int note : { 40, 64, 76 }) midi.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
+        // And the pitch wheel moving every block after, a hand on it: the host's MIDI through the block, steadily.
+        else midi.addEvent(juce::MidiMessage::pitchWheel(1, 8192 + static_cast<int>(3000 * std::sin(b * 0.07))), block / 4);
+        if (hostMoves) p.knob("morph")->setValueNotifyingHost(static_cast<float>(0.5 + 0.4 * std::sin(b * 0.05)));
+        const long before = blockAllocations.load();
+        countingBlocks = counted;
+        p.processBlock(buf, midi);
+        countingBlocks = false;
+        if (!counted) continue;
+        r.allocations += blockAllocations.load() - before;
+        for (int i = 0; i < block; ++i) r.heard += std::fabs(buf.getSample(0, i)) + std::fabs(buf.getSample(1, i));
+        r.sent += midi.getNumEvents();
+      }
+      const auto heldIn = [](const auto& voices) { return voices && !voices->empty(); };
+      r.hands = heldIn(p.tone().voices) && heldIn(p.toneB().voices);
+      r.bands = p.bands();
+      return r;
+    };
+    const Steady held = steady(false, [](ScopeProcessor&) {}, false);
+    const Steady bands = steady(true, [](ScopeProcessor& p) {
+      p.pageClick("srcMic");
+      p.pageControl("srcBands", scope::Json::string(std::u16string(u"1")));
+    }, false);
+    const Steady arp = steady(false, [](ScopeProcessor& p) { p.pageControl("arpMode", scope::Json::string(std::u16string(u"up"))); }, false);
+    const Steady moved = steady(false, [](ScopeProcessor&) {}, true);
+    check("four hundred steady blocks of the processor allocate nothing: both hands held, an input heard in bands, and the arpeggio sent out",
+          held.allocations == 0 && bands.allocations == 0 && arp.allocations == 0 && held.hands && held.heard > 0 && bands.bands && bands.heard > 0
+          && arp.sent > 0,
+          std::to_string(held.allocations) + ", " + std::to_string(bands.allocations) + " and " + std::to_string(arp.allocations)
+          + " allocations; " + std::to_string(arp.sent) + " notes sent; heard " + num(held.heard) + ", " + num(bands.heard));
+    check("null: with the host moving a parameter every block the counter sees its bookkeeping", moved.allocations > 400,
+          std::to_string(moved.allocations) + " allocations");
   }
 
   std::printf("\n--- the face's right-click (G5b) ---\n");

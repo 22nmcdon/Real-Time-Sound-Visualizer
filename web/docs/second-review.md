@@ -119,9 +119,17 @@ sources.
    two LFOs and the Envelope are offered, but Advanced calls it "a light sensor... as a
    modulation source" and the cheat sheet tells you to use it like an LFO. Turned on, it
    changes nothing heard.
-5. **Every audio block allocates,** even a steady one: about 32 allocations and 138 KB a
-   block, mostly the capture and the voice budget.
-6. **The program's number is not saved,** so a reopened project shows the wrong one.
+5. ~~**Every audio block allocates,** even a steady one: about 32 allocations and 138 KB a
+   block, mostly the capture and the voice budget.~~ Fixed 11 Nov: a steady block
+   allocates nothing, on fifteen paths from a plain tone to two hands, the band split, the
+   rack, the morph, notes, the arpeggio and the score, where it was 42 to 98 allocations and
+   87 to 208 KB a 512-frame block once the picture's meter had filled (G8,
+   `plugin/PLAN.md`). A block in which the host moves a parameter still allocates, for the
+   hand and the state the page reads.
+6. ~~**The program's number is not saved,** so a reopened project shows the wrong one.~~
+   Fixed 11 Nov: kept beside the setup as `pluginProgram` and shown again on reopening,
+   with nothing loaded over the project; a bank sound loaded on the page moves it, an edit
+   or a code pasted does not (G8).
 7. **The morph also slides the screen's settings:** the timebase, the trigger level, the
    zoom, the tempo and more.
 8. **Stale text on the face (checked):** "the Picture tab" in the cheat sheet, "the

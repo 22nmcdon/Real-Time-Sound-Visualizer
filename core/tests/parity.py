@@ -2961,6 +2961,13 @@ cpruns += [
     ("exact", cprun("signal 30000", "add 0 square 0.5 100 0.1", "add 0 dc 0.5", "tb 3", "pos 0.5",
                     "level 1", "cap", "level 0.02", "cap", "level 0.5", "holdoff 10", "cap",
                     "holdoff 10.0083333333", "cap", "holdoff 9.99", "cap", "holdoff 0", "pos 0", "level 0.02", "cap")),
+    # The one edge there is, one sample into the fetch, armed only by the
+    # fetch's first sample: a slow square from below the band to over the
+    # level between samples nought and one, and nothing after it in the
+    # 2464 samples asked for. G8 made the search one pass, which has to count
+    # sample nought as armed before it looks at the edge after it; a pass
+    # that did not found nothing here and the window ran free.
+    ("first", cprun("signal 2464", "add 0 square 0.5 1 -0.000000001", "tb 0", "pos 0", "level 0", "cap")),
     # The probe: the trigger on a lane switched off measures lane one's coupling instead.
     ("probe", cprun("signal 40000", "add 0 sine 0.3 220 0", "add 0 dc 0.4", "add 1 sine 0.3 330 0", "add 1 dc 0.1", "tb 4",
                     "ac 0 1", "ac 1 1", "trig 1", "cap", "on 1 0", "cap", "filter lowpass 300 0", "cap")),
@@ -3961,6 +3968,54 @@ check("the morph's walk over each of its %d sliders, all of them together, and t
       made > 0 and not spent and not still and len(walked) == morph_count + len(host_walked) + 1 and morph_count >= 80
       and walked[-len(host_walked) - 1][0] == "all" and host_walked == host_sliders and len(host_sliders) >= 8,
       "%d made; allocating: %s; unmoved: %s; host walked %s, the plugin's %s" % (made, spent[:4], still[:4], host_walked, host_sliders))
+
+print("\n--- a steady block, on the audio thread ---")
+# G8: a steady block of the whole instrument allocates nothing - the capture,
+# the picture's meter, the voices' budget, the rack, the morph walked by an
+# LFO, notes struck and let go, the arpeggio, the score and the wheels - where before it
+# made 40 to 100 allocations and 90 to 210 kilobytes a 512-frame block, any of
+# which can wait on the allocator's lock. Each path is played twenty seconds
+# and then counted for four hundred blocks, and says with a number of its own
+# that it was doing what it is named for, so a path that did nothing, and so
+# could not allocate, fails. The nulls: what the making allocates, and a host
+# parameter moved every block, whose hand and the state's bookkeeping still
+# allocate by design - both through the same counter, both non-zero.
+bexe = build("block_alloc_cpp")
+def balloc(*args):
+    out = subprocess.run([bexe, *map(str, args)], check=True, capture_output=True, text=True).stdout.split()
+    return out[0], int(out[1]), int(out[2]), float(out[3])
+_bpaths = ["plain", "held", "input", "bands", "rack", "morph", "photo", "yt", "spect", "lag", "turn", "notes", "arp", "score",
+           "wheel"]
+_brows = [balloc(p) for p in _bpaths]
+_bmade = balloc("made", "plain")
+_bhost = balloc("host")
+check("the making allocates, and a host parameter moved every block does: the counter counts, in the making and in a block",
+      _bmade[1] > 0 and _bhost[1] > 0 and _bhost[3] > 0,
+      "%d made, %d in the host's blocks, the fader's cutoff walked %g" % (_bmade[1], _bhost[1], _bhost[3]))
+_bspent = ["%s %d (%d bytes)" % (r[0], r[1], r[2]) for r in _brows if r[1] != 0]
+_bidle = [r[0] for r in _brows if not (r[3] > 0)]
+check("a steady block allocates nothing on any of %d paths, each seen doing what it is named for" % len(_bpaths),
+      not _bspent and not _bidle and [r[0] for r in _brows] == _bpaths,
+      "allocating: %s; doing nothing: %s" % (_bspent, _bidle))
+# The steps are 128 frames whatever the host's block, so a block shorter than
+# a step, one that does not divide it, and one four times the size the
+# instrument was prepared for - which it renders in pieces - are each played.
+_bsizes = [balloc("held", n, p) for n, p in ((64, 64), (100, 100), (441, 441), (2048, 512))]
+check("and nothing at blocks of 64, 100, 441 and 2048 frames, two hands held",
+      all(r[1] == 0 and r[3] > 0 for r in _bsizes), "%r" % [(r[1], r[3]) for r in _bsizes])
+# What lets a note allocate nothing is a voice taking the ring and shaper a
+# retired one left, and that is only right if it then sounds as a voice
+# that made them new: the same note after a history that left both, and
+# after one that left neither, the same to the bit; the null is the second
+# struck a little softer. A spare ring not cleared, or a shaper's memory
+# kept, is heard on the right or on both.
+def breuse(velocity):
+    out = subprocess.run([bexe, "reuse", str(velocity)], check=True, capture_output=True, text=True).stdout.split()
+    return float(out[1]), float(out[2]), out[3] == "1"
+_bsame, _bsofter = breuse(1), breuse(0.9)
+check("a voice born on what a retired voice left sounds as one made new, to the bit; and the comparison sees a softer note",
+      _bsame[0] == 0 and _bsame[1] == 0 and _bsame[2] and _bsofter[0] > 0.01 and _bsofter[1] > 0.01,
+      "apart by %r; the softer by %r" % (_bsame[:2], _bsofter[:2]))
 
 print("\n--- the hearing ---")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)

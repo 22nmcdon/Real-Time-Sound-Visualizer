@@ -212,6 +212,17 @@ class PictureMeter {
  public:
   using Coarse = std::array<float, kMeterCoarse * kMeterCoarse>;
 
+  /* Room for fifteen seconds of pictures and a window of rows at the
+     instrument's sixty frames a second, twice over, and for the medians'
+     sort: the verdict is asked every frame on the audio thread, and each
+     median made its list afresh, twenty-five allocations a block with two
+     hands (G8). */
+  PictureMeter() {
+    history_.reserve(kMeterDepth + 1);
+    recent_.reserve(kMeterRows);
+    sorted_.reserve(kMeterRows);
+  }
+
   double coverage() const { return coverage_; }
   double lit() const { return lit_; }
   double change() const { return change_; }
@@ -285,10 +296,10 @@ class PictureMeter {
     return s > 1e-9 ? d / s : 0;
   }
   double median(double Row::*key) const {
-    std::vector<double> values;
-    for (const auto& r : recent_) values.push_back(r.*key);
-    std::sort(values.begin(), values.end());
-    return values[values.size() >> 1];
+    sorted_.clear();
+    for (const auto& r : recent_) sorted_.push_back(r.*key);
+    std::sort(sorted_.begin(), sorted_.end());
+    return sorted_[sorted_.size() >> 1];
   }
   // The change over the last `seconds`, per sixtieth of a second (METER_DRIFT).
   double rate(double seconds) const {
@@ -301,6 +312,8 @@ class PictureMeter {
   bool hasLast_ = false;
   std::vector<Coarse> history_;
   std::vector<Row> recent_;
+  static constexpr std::size_t kMeterRows = static_cast<std::size_t>(kMeterWindow * 60 * 2);
+  mutable std::vector<double> sorted_;  // the median's list, kept so a verdict allocates nothing
   double clock_ = 0, since_ = kMeterEvery;
   double coverage_ = 0, lit_ = 0, change_ = 0, novelty_ = 1, limiting_ = 0;
 };

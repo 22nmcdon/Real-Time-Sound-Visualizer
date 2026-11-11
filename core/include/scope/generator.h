@@ -140,6 +140,8 @@ struct Budget {
 class Generator {
  public:
   static constexpr double kVoiceBudget = 350;
+  // Every key a pedal can hold, and the tails let ring past them: more is made room for as it comes.
+  static constexpr std::size_t kVoicesKept = 128 + kPolyTails;
 
   Generator(double rate, int slots, std::vector<Lfo>& lfos, std::uint32_t seed = 1)
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
@@ -149,6 +151,9 @@ class Generator {
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
         noiseL_(random_), noiseR_(random_) {
     ctx_.random = &random_;
+    // Room for a held chord and its tails in each layer, so a note born does not move the list (G8).
+    voices_.reserve(kVoicesKept);
+    voicesB_.reserve(kVoicesKept);
     fenv_.reset(0);
     menv_.reset(0);
     barsA_.at.fill(-1); barsB_.at.fill(-1);
@@ -562,6 +567,7 @@ class Generator {
       for (std::size_t v = pool->size(); v-- > 0;) {
         const Voice& voice = (*pool)[v];
         if (!voice.held && (voice.env.stage() == Envelope::Stage::Idle || voice.gone)) {
+          retireVoice((*pool)[v], ctx_);
           pool->erase(pool->begin() + static_cast<long>(v));
         }
       }
@@ -799,7 +805,16 @@ class Generator {
   }
 
   // Releasing before held, inner voices before the outline, and the oldest of a rank.
-  Voice* victim(const std::vector<std::vector<Voice>*>& pools) {
+  /* The pools a block governs: one or both layers' voices. A fixed pair and a
+     count rather than a list made each step, which allocated on the audio
+     thread twice a step with two hands (G8). */
+  struct Pools {
+    std::array<std::vector<Voice>*, 2> at {};
+    std::size_t n = 0;
+    std::vector<Voice>* const* begin() const { return at.data(); }
+    std::vector<Voice>* const* end() const { return at.data() + n; }
+  };
+  Voice* victim(const Pools& pools) {
     Voice* best = nullptr;
     double bestRank = INFINITY;
     for (auto* pool : pools) {
@@ -814,9 +829,9 @@ class Generator {
 
   void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn) {
     const bool poly = a_.voices.has_value(), layered = b_.voices.has_value();
-    std::vector<std::vector<Voice>*> pools;
-    if (poly) pools.push_back(&voices_);
-    if (layered) pools.push_back(&voicesB_);
+    Pools pools;
+    if (poly) pools.at[pools.n++] = &voices_;
+    if (layered) pools.at[pools.n++] = &voicesB_;
     int countA = poly ? liveIn(voices_) : 2;
     int countB = layered ? liveIn(voicesB_) : 0;
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;

@@ -482,6 +482,15 @@ Each leaves the suite green and is pushed alone.
 - **G8 The second review's bugs** not covered above (`second-review.md`). They do not
   wait for G7: the plugin's window size, the delay's line while it is off and the rack's
   memory are small and lose or misplay sound today, so they can go first.
+  - *The plugin's own (11 Nov):* a steady block allocates nothing - the capture writes into
+    frames it keeps, the meter's medians, the voices' budget and the rack's sides into room
+    made once, retired voices leave their buffers to the next, and the arpeggio and the
+    score sort without a buffer - held by parity's `block_alloc_cpp` on fifteen paths and
+    the shell test on the processor's whole block, each against the making and a host
+    parameter moved every block, which still allocates by design. And the program's number
+    is kept with the project (`pluginProgram`, beside the setup): shown again on reopening
+    with nothing loaded over it, moved by a bank sound chosen on either face and by nothing
+    else, so an edit keeps the program it edits.
 
 ## Open
 

@@ -215,12 +215,23 @@ class Instrument {
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;
     pictureSource_.lanes = false;
-    // The latest n frames of the ring, oldest first, nought before the start
-    // of what it holds - which the capacity says it never asks for.
-    pictureSource_.latest = [this](std::size_t n) {
-      std::vector<Lane> out(static_cast<std::size_t>(pictureSource_.channels), Lane(n, 0.0f));
-      for (std::size_t c = 0; c < out.size(); ++c) latestLane(static_cast<int>(c), out[c].data(), n);
-      return out;
+    /* The latest n frames of the ring, oldest first, nought before the start
+       of what it holds - which the capacity says it never asks for - into
+       lanes the caller keeps. A lane count other than the one they have is
+       a change in what is drawn, a hand on the face, and makes its lanes
+       then, with room for the most a capture asks; otherwise this only
+       writes (G8). */
+    captureMost_ = captureMost(sampleRate, static_cast<double>(kPictureFrames));
+    pictureSource_.latest = [this](std::size_t n, std::vector<Lane>& out) {
+      const auto lanes = static_cast<std::size_t>(pictureSource_.channels);
+      if (out.size() != lanes) {
+        out.resize(lanes);
+        for (auto& lane : out) lane.reserve(captureMost_);
+      }
+      for (std::size_t c = 0; c < lanes; ++c) {
+        out[c].resize(n);
+        latestLane(static_cast<int>(c), out[c].data(), n);
+      }
     };
     /* A host is always a keyboard, so the generator is gated from the start -
        silent until a note - which is what the page's first frame does. Derived
@@ -231,6 +242,9 @@ class Instrument {
        a note do. */
     keyboard_->setPresent(true);
     load(setup, true);
+    /* The capture's room, for as many lanes as the setup draws: made here so
+       the first frame on the audio thread makes nothing (G8). */
+    pictureRun_->reserve(notes_->layout() == Layout::Each || bands_ ? 4 : 2, sampleRate, static_cast<double>(kPictureFrames));
     // Opening at the Output it was saved at, not gliding down to it (G7).
     core_->settleOutput();
     keyboard_->frame(0);
@@ -414,7 +428,10 @@ class Instrument {
        capture, and the photocell and the picture's sources stepped from the
        grid the last frame left, before the matrix reads them - with no
        limiter to read, the output being the owner's. Its capture and its
-       walk allocate as they go, a known cost on this thread (PLAN.md, 5v). */
+       walk allocated as they went, a known cost on this thread from 5v
+       until G8: the capture now writes into frames kept from frame to frame
+       and the walk points at its figures rather than copying them, so a
+       steady frame allocates nothing (parity's block_alloc_cpp). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
     if (pictureFrame) {
       pictureRun_->before(*matrix_, pictureSource_, 0);
@@ -485,9 +502,9 @@ class Instrument {
       /* The bytes, not anyone's reading of them: the keyboard is the page's
          `midiBytes` ported, so a note-on at velocity nought, a controller,
          the pedal and a panic all mean here what they mean on the page. A
-         chord handed to the generator is copied there, which can allocate on
-         a note - once per layer, and a known cost until the brain's state is
-         fixed in size (PLAN.md). */
+         chord handed to the generator is copied into the list it keeps, and
+         its voices take what retired ones left, so a note allocates nothing
+         (G8) unless it makes a chord larger than any before it. */
       clockIn_->at(blockMs + 1000.0 * at / rate_ - event.earlyMs);  // a clock byte at its own time
       keyboard_->bytes(event.data, event.size);
     }
@@ -819,7 +836,8 @@ class Instrument {
      the picture's sources in the plugin never saw layer B (or, until G2,
      the second generator). Worked out every block, and written only when
      it changes: the lanes' vector can grow, which allocates, once, the
-     first time two figures are drawn. */
+     first time two figures are drawn - and the capture makes its two
+     lanes more then (G8), a hand on the face rather than a steady block. */
   void layOutPicture(Layout lay) {
     const int lanes = lay == Layout::Each ? 4 : 2;
     Brain::ViewState& w = brain_->view;
@@ -1135,6 +1153,7 @@ class Instrument {
   // Scan's paths and tables (P7a): the generator reads the tables, which are made in prepare.
   std::unique_ptr<ScanReader> scan_;
   CaptureSource pictureSource_;
+  std::size_t captureMost_ = 0;  // the most a capture asks of the ring, which its lanes are made room for
 
   std::vector<Lfo> lfos_;
   std::unique_ptr<Generator> core_;

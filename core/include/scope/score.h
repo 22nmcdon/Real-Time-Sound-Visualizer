@@ -112,24 +112,33 @@ inline double scoreStepBeats(const std::string& step) {
   return 0.25;
 }
 
-// scorePitches: the pitches the rows can play, the key from `low`, `octaves` up.
-inline std::vector<int> scorePitches(double low, double octaves, int mask) {
-  std::vector<int> out;
+// scorePitches: the pitches the rows can play, the key from `low`, `octaves` up, written over `out`.
+inline void scorePitches(double low, double octaves, int mask, std::vector<int>& out) {
+  out.clear();
   for (double m = low; m < low + 12 * octaves; m++) {
     if (mask & (1 << static_cast<int>(std::fmod(m, 12)))) out.push_back(static_cast<int>(m));
   }
+}
+inline std::vector<int> scorePitches(double low, double octaves, int mask) {
+  std::vector<int> out;
+  scorePitches(low, octaves, mask, out);
   return out;
 }
 
 // scoreColumn: each pitch owns a band of rows, bottom up, as bright as its
 // brightest row; the `voices` brightest over the floor are the chord, loudest
 // first. Brightness is kept in single precision, as the page's Float32Array.
-inline std::vector<std::pair<int, double>> scoreColumn(const float* grid, int n, int col, const std::vector<int>& pitches,
-                                                       double voices) {
-  std::vector<std::pair<int, double>> picked;
-  if (pitches.empty()) return picked;
+//
+// Written over `picked`, with `bright` its working: the score steps on the
+// audio thread, and made afresh each step these, the pitches and a stable
+// sort's buffer were five allocations a step (G8). The sort is an insertion
+// sort, stable as the page's is, over a chord's few notes.
+inline void scoreColumn(const float* grid, int n, int col, const std::vector<int>& pitches, double voices,
+                        std::vector<float>& bright, std::vector<std::pair<int, double>>& picked) {
+  picked.clear();
+  if (pitches.empty()) return;
   const int len = static_cast<int>(pitches.size());
-  std::vector<float> bright(pitches.size(), 0.0f);
+  bright.assign(pitches.size(), 0.0f);
   for (int row = 0; row < n; row++) {
     const float g = grid[row * n + col];
     if (!(g > 0)) continue;
@@ -139,15 +148,27 @@ inline std::vector<std::pair<int, double>> scoreColumn(const float* grid, int n,
   for (int k = 0; k < len; k++) {
     if (bright[static_cast<std::size_t>(k)] >= kScoreFloor) picked.push_back({ pitches[static_cast<std::size_t>(k)], bright[static_cast<std::size_t>(k)] });
   }
-  std::stable_sort(picked.begin(), picked.end(), [](const auto& a, const auto& b) {
+  const auto before = [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
     return a.second != b.second ? a.second > b.second : a.first < b.first;
-  });
+  };
+  for (std::size_t i = 1; i < picked.size(); ++i) {
+    const auto p = picked[i];
+    std::size_t j = i;
+    for (; j > 0 && before(p, picked[j - 1]); --j) picked[j] = picked[j - 1];
+    picked[j] = p;
+  }
   // slice(0, voices): whole, by truncation, a negative end counted from the
   // end, and nothing for one that is not a number.
   const double size = static_cast<double>(picked.size());
   double keep = std::isnan(voices) ? 0 : std::trunc(voices);
   if (keep < 0) keep = std::fmax(0, size + keep);
   if (keep < size) picked.resize(static_cast<std::size_t>(keep));
+}
+inline std::vector<std::pair<int, double>> scoreColumn(const float* grid, int n, int col, const std::vector<int>& pitches,
+                                                       double voices) {
+  std::vector<float> bright;
+  std::vector<std::pair<int, double>> picked;
+  scoreColumn(grid, n, col, pitches, voices, bright, picked);
   return picked;
 }
 
@@ -159,6 +180,16 @@ struct ScoreState {
   int col = -1;
   double last = -1, steps = 0;
   std::vector<std::pair<int, double>> notes;
+  // A step's working, kept so a step allocates nothing (G8): room for every
+  // key of the widest range the score's menus give, and the chord picked.
+  std::vector<int> pitches;
+  std::vector<float> bright;
+  std::vector<std::pair<int, double>> picked;
+  ScoreState() {
+    for (auto* list : { &notes, &picked }) list->reserve(128);
+    pitches.reserve(128);
+    bright.reserve(128);
+  }
 };
 
 inline void scoreStop(ScoreState& score, NoteOut* out) {
@@ -188,8 +219,13 @@ inline void scoreTick(ScoreState& score, double now, bool scopeRunning, const Cl
   score.steps++;
   score.col = static_cast<int>(std::fmod(step, kPhosphorN));
   for (const auto& [note, velocity] : score.notes) if (out) out->noteOutOff(note);
-  score.notes = grid ? scoreColumn(grid, kPhosphorN, score.col, scorePitches(score.low, score.octaves, mask), score.voices)
-                     : std::vector<std::pair<int, double>> {};
+  if (grid) {
+    scorePitches(score.low, score.octaves, mask, score.pitches);
+    scoreColumn(grid, kPhosphorN, score.col, score.pitches, score.voices, score.bright, score.picked);
+    score.notes.swap(score.picked);
+  } else {
+    score.notes.clear();
+  }
   if (score.notes.empty()) return;
   for (const auto& [note, velocity] : score.notes) if (strike) strike(midiHz(note), velocity);
   for (const auto& [note, velocity] : score.notes) if (out) out->noteOut(note, velocity, now);
