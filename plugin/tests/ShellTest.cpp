@@ -98,6 +98,50 @@ std::string corpusText(const char* name) { return scope::utf16To8(scope::jsonStr
    what SCOPE_PRESET says between the checks that name something else. The
    base itself has a check of its own, which clears it. */
 void oldBoot() { setenv("SCOPE_PRESET", corpusText("Harmonic tone").c_str(), 1); }
+
+/* What a host hears of the parameters, as its wrapper does: each change
+   gesture's begin (b) and end (e) and each value (v), with the parameter's
+   index, in order. Called on whatever thread moves them; here that is the
+   test's own. */
+struct Heard final : juce::AudioProcessorListener {
+  struct Event { char kind; int index; float value; };
+  std::vector<Event> events;
+  void audioProcessorParameterChanged(juce::AudioProcessor*, int index, float value) override { events.push_back({ 'v', index, value }); }
+  void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails&) override {}
+  void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor*, int index) override { events.push_back({ 'b', index, 0 }); }
+  void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor*, int index) override { events.push_back({ 'e', index, 0 }); }
+  // One parameter's events as letters, "b v v e"; every event's kinds; and all of it, for a failure's detail.
+  std::string only(int index) const {
+    std::string out;
+    for (const auto& e : events) if (e.index == index) out += (out.empty() ? "" : " ") + std::string(1, e.kind);
+    return out;
+  }
+  std::string kinds() const {
+    std::string out;
+    for (const auto& e : events) out += (out.empty() ? "" : " ") + std::string(1, e.kind);
+    return out;
+  }
+  std::string said() const {
+    std::string out;
+    for (const auto& e : events) out += std::string(1, e.kind) + std::to_string(e.index) + " ";
+    return out.empty() ? "nothing" : out;
+  }
+  // One gesture and values only inside it: a begin, at least one value, an end, nothing after.
+  static bool shaped(const std::string& letters) {
+    if (letters.size() < 5 || letters.compare(0, 2, "b ") != 0 || letters.compare(letters.size() - 2, 2, " e") != 0) return false;
+    const std::string inside = letters.substr(2, letters.size() - 4);
+    return inside.find_first_not_of("v ") == std::string::npos;
+  }
+  // Every gesture closed and none inside another: begins and ends alternate, ending on an end; how many there were.
+  static int balanced(const std::string& letters) {
+    int open = 0, count = 0;
+    for (const char c : letters) {
+      if (c == 'b') { if (open) return -1; open = 1; ++count; }
+      if (c == 'e') { if (!open) return -1; open = 0; }
+    }
+    return open ? -1 : count;
+  }
+};
 }  // namespace
 
 int main() {
@@ -1462,6 +1506,17 @@ int main() {
     p.processBlock(buf, none);
     check("a host move in the block the panel turns is kept, and is the turned-to layer's",
           p.knob("level")->get() == 40 && p.toneB().amp == 0.4 && p.tone().amp == 0.3,
+          "parameter " + num(p.knob("level")->get()) + "; B " + num(p.toneB().amp) + ", A " + num(p.tone().amp));
+    /* But a page's own move in that block is not the host's (11 Nov: the
+       page's value reaches the parameter from the message thread at once,
+       ahead of the block): the panel turned after it, the parameter reads
+       back the turned-to hand, where keeping it as a host's move would show
+       the other hand's 70 while the panel shows A. */
+    p.pageSlider("amp", u"70");
+    p.pageClick("editHandA");
+    p.processBlock(buf, none);
+    check("a page's move in the block the panel turns reads back as the turned-to hand's, not kept as the host's",
+          p.knob("level")->get() == 30 && p.toneB().amp == 0.7 && p.tone().amp == 0.3,
           "parameter " + num(p.knob("level")->get()) + "; B " + num(p.toneB().amp) + ", A " + num(p.tone().amp));
   }
   {
@@ -3108,6 +3163,130 @@ int main() {
           std::to_string(moved.allocations) + " allocations");
   }
 
+  std::printf("\n--- the level and the cutoff glide a sample at a time (second review, 1.3) ---\n");
+  {
+    /* A host's step in the level or the cutoff, at a block of 32, 64, 128 and
+       512: the same sound to the bit at every one, and no step in it larger
+       than the 20 ms glide allows. Until 11 Nov the instrument walked a
+       host's move across the 128-sample steps its block held and the
+       generator set it at once, so at 512 the level stepped four times and at
+       128 or under once, the whole way: what was heard depended on the
+       host's buffer, and zippered. A filtered saw held from the start, its
+       envelope at sustain long before the move, which lands at 24576 - a
+       block's start at every size. */
+    setenv("SCOPE_PRESET", R"({"shape":"ramp","vcfType":1,"vcfCut":400,"pictureAmount":0})", 1);
+    const int at = 24576, length = 32768;
+    struct Run { std::vector<float> left; std::vector<double> level, cut; };
+    // `late` puts the move a block later: the null for the comparison across block sizes.
+    const auto play = [&](int size, const char* knob, float to, bool late = false) {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, size);
+      juce::AudioBuffer<float> buf(2, size);
+      Run run;
+      for (int start = 0; start < length; start += size) {
+        if (knob && start == at + (late ? size : 0)) p.knob(knob)->setValueNotifyingHost(p.knob(knob)->convertTo0to1(to));
+        buf.clear();
+        juce::MidiBuffer m;
+        if (start == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+        p.processBlock(buf, m);
+        for (int i = 0; i < size; ++i) run.left.push_back(buf.getSample(0, i));
+        run.level.push_back(p.generator().levelNow(0));
+        run.cut.push_back(p.generator().cutNow(0));
+      }
+      return run;
+    };
+    const auto worst = [](const std::vector<float>& a, const std::vector<float>& b) {
+      double w = a.size() == b.size() ? 0 : 1;
+      for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) w = std::fmax(w, std::fabs(static_cast<double>(a[i]) - b[i]));
+      return w;
+    };
+    for (const char* knob : { "level", "cutoff" }) {
+      const float to = std::string(knob) == "level" ? 110.0f : 3000.0f;
+      const Run r512 = play(512, knob, to), r128 = play(128, knob, to), r64 = play(64, knob, to), r32 = play(32, knob, to);
+      const Run still = play(512, nullptr, 0), late = play(32, knob, to, true);
+      const double spread = std::fmax(worst(r512.left, r128.left), std::fmax(worst(r512.left, r64.left), worst(r512.left, r32.left)));
+      check(std::string("a host's step in the ") + knob + " sounds the same at blocks of 32, 64, 128 and 512, to the bit",
+            spread == 0 && worst(r512.left, still.left) > 0.01,
+            "apart by " + num(spread) + "; from the unmoved run by " + num(worst(r512.left, still.left)));
+      check(std::string("null: the same step a block of 32 later is told apart"), worst(r32.left, late.left) > 1e-4,
+            "apart by " + num(worst(r32.left, late.left)));
+    }
+    /* The glide itself, read off the generator a sample at a time - a host's
+       block of one - after the host puts the level from 55 to 110 and the
+       cutoff from 400's 200 Hz or so to 3000's: every step at most the pole's
+       share of what was left (the level's in gain, the cutoff's in its
+       logarithm), the first of them under a thousandth of the whole, and each
+       landed where it was put. */
+    const double pole = 1 - std::exp(-1 / (0.020 * rate));
+    const auto walk = [&](const char* knob, float to, int samples) {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, 512);
+      juce::AudioBuffer<float> big(2, 512), one(2, 1);
+      juce::MidiBuffer m;
+      m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+      for (int k = 0; k < 48; ++k) { big.clear(); p.processBlock(big, m); m.clear(); }
+      const bool level = std::string(knob) == "level";
+      const auto read = [&] { return level ? p.generator().levelNow(0) : std::log(p.generator().cutNow(0)); };
+      std::vector<double> path { read() };
+      p.knob(knob)->setValueNotifyingHost(p.knob(knob)->convertTo0to1(to));
+      for (int i = 0; i < samples; ++i) { one.clear(); p.processBlock(one, m); path.push_back(read()); }
+      const double target = level ? p.tone().amp : std::log(p.tone().vcfCutoff);
+      return std::make_pair(path, target);
+    };
+    /* Whether a path glides: no step more than the pole's share of what was
+       left - and the last, the snap onto the target from within a millionth -
+       the first small, the last landed. */
+    const auto glides = [&](const std::vector<double>& path, double target) {
+      double over = 0;
+      for (std::size_t i = 1; i < path.size(); ++i)
+        over = std::fmax(over, std::fabs(path[i] - path[i - 1]) - pole * std::fabs(target - path[i - 1]) * (1 + 1e-9) - 1e-6);
+      const double whole = std::fabs(target - path.front());
+      return std::make_tuple(over <= 0 && whole > 0 && std::fabs(path[1] - path[0]) < 1e-3 * whole * 1.1 && path.back() == target,
+                             over, whole);
+    };
+    for (const char* knob : { "level", "cutoff" }) {
+      const auto [path, target] = walk(knob, std::string(knob) == "level" ? 110.0f : 3000.0f, 24000);
+      const auto [ok, over, whole] = glides(path, target);
+      check(std::string("the ") + knob + " glides from where it was a sample at a time, the pole's share a sample, and lands where it was put",
+            ok, "over the pole by " + num(over) + " of " + num(whole) + "; first step " + num(path[1] - path[0])
+            + ", last " + exact(path.back()) + " for " + exact(target));
+      // The null: the same path stepped the whole way at once, as a value set a block at a time is.
+      std::vector<double> stepped(path.size(), target);
+      stepped[0] = path[0];
+      check(std::string("null: the ") + knob + " put at once is no glide", !std::get<0>(glides(stepped, target)));
+    }
+    oldBoot();
+  }
+
+  std::printf("\n--- change gestures on the host's parameters (second review, 1.2) ---\n");
+  {
+    /* What the host is told, from the processor's side: a page's gesture on
+       a host parameter's slider is begun and ended once whatever the page
+       sends - begun twice is one, ended twice is one, ended unbegun is none
+       - a slider that is no parameter has none, and the editor going ends
+       what is open. Read through a listener, as a host's wrapper hears. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    Heard heard;
+    p.addListener(&heard);
+    const int level = p.knob("level")->getParameterIndex();
+    p.pageGesture("amp", true); p.pageGesture("amp", true);
+    p.pageSlider("amp", u"70");
+    p.pageGesture("amp", false); p.pageGesture("amp", false);
+    p.pageGesture("vcfCut", false);
+    p.pageGesture("envAttack", true); p.pageGesture("envAttack", false);
+    check("a page's gesture reaches the host once: begun, the value, ended, however often the page says so",
+          heard.only(level) == "b v e" && heard.kinds() == "b v e", heard.said());
+    check("null: a gesture with no begin, or ended twice, is not the one shape",
+          !Heard::shaped("v e") && !Heard::shaped("b v e e") && !Heard::shaped("b b v e") && !Heard::shaped("b e") && Heard::shaped("b v v e"));
+    heard.events.clear();
+    p.pageGesture("amp", true);
+    p.endGestures();
+    p.endGestures();
+    check("and one left open is ended once when the face goes", heard.kinds() == "b e", heard.said());
+    p.removeListener(&heard);
+  }
+
   std::printf("\n--- the face's right-click (G5b) ---\n");
   {
     /* A right-click on a knob opens the page's own menu, and the web view's
@@ -3176,6 +3355,138 @@ int main() {
             knob.toStdString());
       check("null: over the setup code's text box the web view's own menu is left alone, and the page's does not open",
             text.contains("\"prevented\":false") && text.contains("\"menu\":false"), text.toStdString());
+
+      /* Change gestures (second review, 1.2): a hand on one of the host's
+         parameters on the face reaches the host inside one gesture - begun,
+         the values, ended - so its touch and latch automation record it.
+         Driven in the plugin's own web view, through its own page, as the
+         right-click above is: the pointer's events as WebKit would dispatch
+         them for a drag, and a key's as it would for an arrow, with the
+         arrow's own step written as the browser's default does, since a
+         dispatched key event takes no default. Between the steps the audio
+         thread's blocks run, so a value sent back from there - an echo,
+         outside the gesture - is heard too. */
+      Heard heard;
+      faced.addListener(&heard);
+      const int level = faced.knob("level")->getParameterIndex();
+      juce::AudioBuffer<float> gbuf(2, block);
+      const auto settle = [&](int ms) {
+        for (int waited = 0; waited < ms; waited += 20) {
+          juce::MidiBuffer none;
+          gbuf.clear();
+          faced.processBlock(gbuf, none);
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+        }
+      };
+      // A drag on a knob's face, by its input's id: pressed if `down`, `between` run, `ups` steps up, and let go if `up`.
+      const auto drag = [&](const char* dest, int ups, bool down, bool up, const char* between = "") {
+        return ask(juce::String(R"js(
+          (() => {
+            closeOverlay();
+            const face = document.getElementById('DEST').parentElement.querySelector('.knob-face');
+            const r = face.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+            const ev = (type, dy, buttons) => new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: 1,
+              pointerType: 'mouse', isPrimary: true, button: 0, buttons, clientX: x, clientY: y - dy, view: window });
+            window.__dragged = window.__dragged || 0;
+            if (DOWN) { window.__dragged = 0; face.dispatchEvent(ev('pointerdown', 0, 1)); }
+            BETWEEN;
+            for (let k = 1; k <= UPS; k++) face.dispatchEvent(ev('pointermove', 6 * (window.__dragged + k), 1));
+            window.__dragged += UPS;
+            if (UP) face.dispatchEvent(ev('pointerup', 6 * window.__dragged, 0));
+            return face.parentElement.querySelector('input[type=range]').value;
+          })())js").replace("DEST", dest).replace("UPS", juce::String(ups)).replace("DOWN", down ? "true" : "false")
+                   .replace("UP)", up ? "true)" : "false)").replace("BETWEEN", between), 3000);
+      };
+      const juce::String before = ask("el.amp.value", 1000);
+      settle(200);
+      heard.events.clear();
+      const juce::String dragged = drag("amp", 5, true, true);
+      settle(400);
+      check("a knob dragged on the face is one gesture for the host: begun, its values, ended, and nothing after",
+            Heard::shaped(heard.only(level)) && heard.only(level).size() >= 9 && dragged != before && Heard::balanced(heard.kinds()) == 1,
+            heard.said() + "; Level " + before.toStdString() + " to " + dragged.toStdString());
+      heard.events.clear();
+      drag("envAttack", 5, true, true);
+      settle(400);
+      const juce::String attack = ask("el.envAttack.value", 1000);
+      check("a knob that is no host parameter, dragged, tells the host nothing", heard.events.empty() && attack != "8",
+            heard.said() + "; attack at " + attack.toStdString());
+      heard.events.clear();
+      const juce::String keyed = ask(R"js(
+        (() => {
+          const input = el.amp;
+          input.focus();
+          for (let k = 0; k < 3; k++) {
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+            input.stepUp();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          return input.value;
+        })())js", 3000);
+      settle(800);
+      check("three arrow keys on it are one gesture, ended once they have stopped",
+            heard.only(level) == "b v v v e", heard.said() + "; Level at " + keyed.toStdString());
+      heard.events.clear();
+      const juce::String typed = ask(R"js(
+        (() => {
+          closeOverlay();
+          const face = document.querySelector('[data-mod-dest="gen.amp"] .knob-face');
+          face.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, view: window }));
+          document.querySelector('.over.ctx [data-item="type"]').click();
+          const box = document.querySelector('.over.ctx .ctx-typed');
+          box.value = '0.33';
+          box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+          return el.amp.value;
+        })())js", 3000);
+      settle(300);
+      const std::string typedHeard = heard.only(level);
+      heard.events.clear();
+      const juce::String reset = ask(R"js(
+        (() => {
+          closeOverlay();
+          const face = document.querySelector('[data-mod-dest="gen.amp"] .knob-face');
+          face.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, view: window }));
+          document.querySelector('.over.ctx [data-item="reset"]').click();
+          return el.amp.value;
+        })())js", 3000);
+      settle(300);
+      check("Type a value and Reset are a gesture each round the one value they send, the typing's probes unsent",
+            typedHeard == "b v e" && heard.only(level) == "b v e" && typed == "33" && reset == "55",
+            typedHeard + " | " + heard.said() + "; typed " + typed.toStdString() + ", reset " + reset.toStdString());
+      /* The host's automation moving the knob: the page follows it, and
+         nothing comes back - no gesture and no value of its own. Set as a
+         host's wrapper sets it, without telling the listeners. */
+      heard.events.clear();
+      static_cast<juce::AudioProcessorParameter*>(faced.knob("level"))->setValue(faced.knob("level")->convertTo0to1(91));
+      settle(900);
+      const juce::String followed = ask("el.amp.value", 1000);
+      check("automation moving the knob is followed on the face and sends back nothing, no gesture and no value",
+            followed == "91" && heard.events.empty(), heard.said() + "; the face at " + followed.toStdString());
+      /* A preset loaded while the knob is held: the gesture ends before the
+         load reaches the instrument, and the hand still on the knob opens
+         another with its next move. Every gesture closed, none inside
+         another. */
+      heard.events.clear();
+      drag("amp", 3, true, false);
+      settle(100);
+      drag("amp", 3, false, true, "applyPreset('n:' + BASE_NAME)");
+      settle(500);
+      const int loaded = Heard::balanced(heard.only(level));
+      check("a preset loaded mid-drag ends the gesture, and the hand still on the knob begins another: none left open or nested",
+            loaded == 2, heard.only(level) + " (" + std::to_string(loaded) + ")");
+      /* The null, live: a page whose drag sends no begin is told apart. */
+      heard.events.clear();
+      ask("window.__gestureBegin = gestureBegin; window.gestureBegin = () => {}; 'off'", 1000);
+      drag("amp", 3, true, true);
+      settle(300);
+      ask("window.gestureBegin = window.__gestureBegin; 'on'", 1000);
+      check("null: the face with its begin taken out sends a drag the host cannot record as one gesture",
+            !Heard::shaped(heard.only(level)) && heard.only(level).find('v') != std::string::npos, heard.said());
+      // And a hand on the knob as the window closes: its gesture is ended as the face goes.
+      heard.events.clear();
+      drag("amp", 2, true, false);
+      settle(200);
+      const std::string held = heard.only(level);
       /* Put away as a host closes it: hidden, the web view's child let go of
          its window while the loop still runs, then the editor gone. Taken off
          the desktop straight away, the X server was asked about a window the
@@ -3184,6 +3495,10 @@ int main() {
       juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
       owned.reset();
       juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      check("a gesture open as the window closes is ended as the face goes",
+            held.size() >= 3 && held.compare(0, 1, "b") == 0 && held.find('e') == std::string::npos
+            && Heard::balanced(heard.only(level)) == 1, held + " then " + heard.only(level));
+      faced.removeListener(&heard);
     }
   }
 

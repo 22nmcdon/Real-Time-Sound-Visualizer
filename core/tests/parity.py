@@ -1326,6 +1326,26 @@ def gen_runs():
     add("output-moved", OUTPUT_RUN + [(128, "set output 0.25"), (20480, "set output 0"), (20608, "set output 0.25")],
         samples=24576)
     add("output-unity", OUTPUT_RUN + [(128, "set output 1")], samples=24576)
+    # Each hand's level and its voice filter's cutoff, gliding a sample at a
+    # time (second review, 1.3): two hands, each a filtered saw chord, one
+    # run with the levels put a block in (A's doubled, B's halved, so that
+    # once landed each is the still run's to the bit), one with the cutoffs
+    # put there (A's up three octaves, B's down one), one still, and one
+    # with the cutoffs where the moved run puts them from the start.
+    LEVEL_RUN = [(0, "voices 0 " + notes((48, "x"), (55, "y"))), (0, "voices 1 " + notes((72, "xy"))),
+                 (0, "set shape ramp"), (0, "set shape ramp 1"), (0, "set vcfType 1"), (0, "set vcfType 1 1"),
+                 (0, "set vcfQ 2"), (0, "set vcfQ 2 1")]
+    add("level-moved", LEVEL_RUN + [(0, "set vcfCutoff 500"), (0, "set vcfCutoff 1600 1"), (128, "set amp 1.1"),
+                                    (128, "set amp 0.275 1")], samples=20480)
+    add("level-still", LEVEL_RUN + [(0, "set vcfCutoff 500"), (0, "set vcfCutoff 1600 1")], samples=20480)
+    add("level-cutoff", LEVEL_RUN + [(0, "set vcfCutoff 500"), (0, "set vcfCutoff 1600 1"), (128, "set vcfCutoff 4000"),
+                                     (128, "set vcfCutoff 800 1")], samples=20480)
+    add("level-cutoff-there", LEVEL_RUN + [(0, "set vcfCutoff 4000"), (0, "set vcfCutoff 800 1")], samples=20480)
+    # And the dyad, whose level and filter are not a voice's, ungated so that
+    # nothing but the glide moves its filter's coefficient: a cache that
+    # missed the glide would hold the old cutoff for good.
+    add("level-dyad", [(0, "set shape ramp"), (0, "set vcfType 1"), (0, "set vcfCutoff 500"), (128, "set amp 1.1"),
+                       (128, "set vcfCutoff 2000")], samples=8192)
     return runs
 
 runs = gen_runs()
@@ -1613,6 +1633,51 @@ _, utail = grow("output-unity")
 check("and what is measured off the generator - its envelope, pitch, budget, read-heads - is the same at any Output",
       otail == utail)
 gnull("output-moved", "set output 0.25", "set output 0.26", "an Output a hundredth louder")
+# The level and the cutoff (second review, 1.3). The level: A's lanes over
+# the still run's are the gain, gliding from one to two and B's from one to a
+# half, a sample at a time - no step more than the pole's share of what was
+# left - and landed, each exactly double or half, to the bit. Each check fed
+# a gain set at once fails.
+lm, ls = grow("level-moved")[0], grow("level-still")[0]
+LPOLE = 1 - math.exp(-1 / (0.020 * 48000))
+def lane_gains(a, b, c, lo, hi):
+    return [(k, x / y) for k, (x, y) in enumerate(zip(col(a, c)[lo:hi], col(b, c)[lo:hi])) if abs(y) > 0.02]
+def level_glides(g, start, to):
+    # A step, over the samples it spans, at most the pole's share of what was
+    # left, or the snap onto where it was put from within a millionth of the
+    # gain (two millionths of these ratios to a level of 0.55); the first
+    # small; the last landed.
+    over = max(abs(g[j + 1][1] - g[j][1]) - LPOLE * (g[j + 1][0] - g[j][0]) * abs(to - g[j][1]) * (1 + 1e-6) - 2e-6
+               for j in range(len(g) - 1))
+    return over <= 0 and abs(g[0][1] - start) < 0.01 and g[-1][1] == to, over
+ga, gb = lane_gains(lm, ls, 0, 128, 20480), lane_gains(lm, ls, 4, 128, 20480)
+(oka, overa), (okb, overb) = level_glides(ga, 1, 2), level_glides(gb, 1, 0.5)
+check("each hand's level glides a sample at a time where it was put, the pole's share a sample, and lands exactly there",
+      oka and okb and max(abs(x) for x in col(ls, 4)) > 0.05,
+      "over the pole by %.3g and %.3g; A from %.4f to %r, B from %.4f to %r" % (overa, overb, ga[0][1], ga[-1][1], gb[0][1], gb[-1][1]))
+check("null: a level set at once, a block of the old gain and then the new, is a step",
+      not level_glides([(k, 1.0) for k in range(128)] + [(128 + k, 2.0) for k in range(128)], 1, 2)[0])
+check("and nothing moves before it is put, the first block the still run's to the bit, and the next not",
+      all(x == y for c in (0, 4) for x, y in zip(col(lm, c)[:128], col(ls, c)[:128]))
+      and any(x != y for x, y in zip(col(lm, 4)[128:256], col(ls, 4)[128:256])))
+# The cutoff: ten milliseconds after it is put, a glide of 20 ms has gone
+# only part of the way, so the sound is still between the old filter and the
+# new - where a cutoff put at once has the new filter's sound within a
+# cycle or two of its own. Then it lands: the run that had those cutoffs from
+# the start, to a millionth. Fed the run that started there, the first fails.
+lc, lt = grow("level-cutoff")[0], grow("level-cutoff-there")[0]
+def rms_apart(a, b, c, lo, hi): return math.sqrt(sum((x - y) ** 2 for x, y in zip(col(a, c)[lo:hi], col(b, c)[lo:hi])) / (hi - lo))
+def cut_glides(moved, there, still):
+    lo, hi = 128 + 480, 128 + 960
+    part = [rms_apart(moved, there, c, lo, hi) / max(1e-12, rms_apart(still, there, c, lo, hi)) for c in (0, 4)]
+    landed = max(abs(x - y) for c in (0, 4) for x, y in zip(col(moved, c)[-2048:], col(there, c)[-2048:]))
+    return all(0.2 < v < 1 for v in part) and landed < 1e-6, part, landed
+ok, part, landed = cut_glides(lc, lt, ls)
+check("each hand's cutoff glides: ten milliseconds on, part way from the old filter's sound to the new, and landed later",
+      ok, "of the way still to go %.2f and %.2f; landed within %.2g" % (part[0], part[1], landed))
+check("null: a cutoff that was there at once is no glide", not cut_glides(lt, lt, ls)[0])
+gnull("level-moved", "set amp 1.1\n", "set amp 1.09\n", "A's level a hundredth lower")
+gnull("level-cutoff", "set vcfCutoff 800 1", "set vcfCutoff 810 1", "B's cutoff ten hertz higher")
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 

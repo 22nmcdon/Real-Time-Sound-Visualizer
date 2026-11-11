@@ -121,6 +121,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
   const scope::Clock& clock() const { return instrument_.clock(); }
   const scope::ScoreState& score() const { return instrument_.score(); }
   const scope::PictureRun& picture() const { return instrument_.picture(); }
+  // The generator, for where its level and cutoff have glided to (levelNow, cutNow).
+  const scope::Generator& generator() const { return instrument_.generator(); }
   const scope::Brain::ViewState& view() const { return instrument_.view(); }
   double lfoRate(int i) const { return instrument_.lfoRate(i); }
   bool drawsInput() const { return instrument_.drawsInput(); }
@@ -202,6 +204,17 @@ class ScopeProcessor final : public juce::AudioProcessor {
      would save, with how many changes in it came from the host rather than
      the page, so the page applies only those and never echoes its own. */
   void pageSlider(const std::string& id, const std::u16string& text);
+  /* A change gesture on one of the host's parameters, by its slider's id,
+     begun as the player takes hold of the control on the page and ended as
+     they let go (second review, 1.2): what a host's touch and latch
+     automation record by. The page says when; here a gesture is never
+     begun twice nor ended unbegun, whatever the page sends, and the editor
+     ends any left open as it goes. Message thread only, as JUCE's VST3
+     wrapper takes a gesture from nowhere else - and so is the value a page's
+     move gives its parameter (pageSlider), so that the host sees the begin,
+     the values and the end in the order they were made. */
+  void pageGesture(const std::string& id, bool begin);
+  void endGestures();
   /* `chosen` is the page's preset menu as the setup lands: "b:" and a bank
      sound's name, "n:" and the plain sine's, "s:" a saved sound's, or
      nothing for a code or an edit put back. Only the first two move the
@@ -237,6 +250,12 @@ class ScopeProcessor final : public juce::AudioProcessor {
   juce::MidiBuffer outgoing_;  // what the out sent this block, handed over at its end
   std::array<juce::AudioParameterFloat*, kKnobs.size()> knobs_ {};
   std::array<float, kKnobs.size()> applied_ {};  // each parameter as last applied
+  /* Each parameter as the page last set it, from the message thread
+     (pageSlider): what the audio thread finds there is the page's own move
+     on its way through the queue, not the host's, and is not sent back to
+     the page as automation. NaN until the page has set one. */
+  std::array<std::atomic<float>, kKnobs.size()> pageSet_;
+  std::array<bool, kKnobs.size()> gesture_ {};  // a change gesture open on each, message thread only
   int panelLayer_ = 0;                          // the layer the panel showed at the last block
   // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
   void readBack(bool unmovedOnly);

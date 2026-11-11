@@ -518,6 +518,15 @@ class Instrument {
      one still walking walks on from where it has got to. */
   struct Ramp { const char* id = nullptr; double from = 0, to = 0; int steps = 0, done = 0; };
   void rampTo(const char* id, double to, int steps) {
+    /* The level, the cutoff and the Output glide a sample at a time in the
+       generator (its levelsStep and outputStep), so a host's move of one is
+       put whole at the next step and the glide is all its smoothing. Walked
+       across the block's steps as well, it was a walk at a block of 512 and
+       none at 128, so what was heard depended on the host's buffer, which
+       the steps exist to stop (second review, 1.3). The others still walk:
+       a hand on them sets the block's value, with nothing per sample under
+       it. */
+    if (std::strcmp(id, "amp") == 0 || std::strcmp(id, "vcfCut") == 0 || std::strcmp(id, "output") == 0) steps = 1;
     Ramp* r = nullptr;
     for (auto& x : ramps_) if (x.id && std::strcmp(x.id, id) == 0) { r = &x; break; }
     if (!r) for (auto& x : ramps_) if (!x.id) { r = &x; break; }

@@ -20,6 +20,8 @@ std::string asciiPage(const char* utf8, std::size_t size);
 class ScopeEditor final : public juce::AudioProcessorEditor {
  public:
   explicit ScopeEditor(ScopeProcessor& owner);
+  // A gesture the page left open - the window closed mid-drag - is ended as the face goes.
+  ~ScopeEditor() override { processor_.endGestures(); }
   void resized() override;
   /* For the shell test, which opens the face under a virtual display: whether
      there is a web view, and a script run in the page with what it returns. */

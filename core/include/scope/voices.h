@@ -283,8 +283,8 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       w = voice.shp->step(w, c.shaping);
     }
     if (vx.crushing) w = crushStep(voice.cr, w, tone, vx, c.rate);
-    if (vx.filtering) w = svfStep(voice.vcf, w, vcfCoef(voice.vcf, tone, f, voice.fenv.step(), vx.vcfPush, c.rate), vx.vcfK, tone.vcfType);
-    double a = tone.amp * duck * voice.env.step() * w;
+    if (vx.filtering) w = svfStep(voice.vcf, w, vcfCoef(voice.vcf, tone, f, voice.fenv.step(), vx.vcfPush, vx.cut, c.rate), vx.vcfK, tone.vcfType);
+    double a = vx.level * duck * voice.env.step() * w;
     if (voice.fade > 0) {
       a *= 0.5 - 0.5 * std::cos(kPi * voice.fade / c.cutSamples);
       if (--voice.fade == 0) voice.gone = true;

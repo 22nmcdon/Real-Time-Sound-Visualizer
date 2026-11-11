@@ -209,17 +209,28 @@ try {
     matrix: runFor({ planeScaleX: 0.5 }, 40),
     chorus: runFor({ chorusMix: 1, chorusDepthMs: 3, chorusMs: 12, chorusRate: 2, chorusFeedback: 0 }, 80),
   };
-  // 50 ms at 48 kHz is 2400 samples, under 19 blocks: the tone stops and
-  // the repeat is still coming for that long, then nothing.
-  runFor({ delayMix: 1, delayMs: 50, delayFeedback: 0 }, 40);
-  node.port.onmessage({ data: { tone: { amp: 0 } } });
-  let echoed = 0, after = 0;
-  for (let round = 0; round < 40; round++) {
-    node.process([], [out], {});
-    for (let i = 0; i < 128; i++) {
-      if (round < 17) echoed = Math.max(echoed, Math.abs(out[0][i]));
-      else if (round > 20) after = Math.max(after, Math.abs(out[0][i]));
+  /* 50 ms at 48 kHz is 2400 samples, under 19 blocks: the tone stops and
+     the repeat is still coming for that long, then nothing. Since the level
+     glides (11 Nov, 20 ms a sample at a time) the tone takes about 0.27 s to
+     land on nought rather than stopping in a sample, so what is read is the
+     delay's own part - the same stop with the delay against it without - and
+     "nothing" after the glide has landed and the last repeat gone. Read off
+     the stop alone, a delay that did nothing passed on the tone's own tail. */
+  const stopping = (fx) => {
+    runFor(fx, 40);
+    node.port.onmessage({ data: { tone: { amp: 0 } } });
+    const got = [];
+    for (let round = 0; round < 160; round++) {
+      node.process([], [out], {});
+      got.push(...out[0]);
     }
+    return got;
+  };
+  const wet = stopping({ delayMix: 1, delayMs: 50, delayFeedback: 0 }), dry = stopping({});
+  let echoed = 0, after = 0;
+  for (let i = 0; i < wet.length; i++) {
+    if (i < 17 * 128) echoed = Math.max(echoed, Math.abs(wet[i] - dry[i]));
+    else if (i >= 140 * 128) after = Math.max(after, Math.abs(wet[i]));
   }
   report.planeRest.delay = { echoed, after };
   node.port.onmessage({ data: { tone: PLANE_OFF } });

@@ -2407,6 +2407,96 @@ number with its edit, the host's re-choosing leaving the edit, and each
 page load; its null is the same state without the number, which reopens at
 the first and has the organ loaded over the edit.
 
+**Change gestures, and the level and the cutoff a sample at a time** (11 Nov,
+items 2 and 3 of the second review's first part). Two host habits the plugin
+lacked.
+
+Gestures. A host records touch and latch automation by the begin and end of
+a change gesture round a parameter's moves, and the page sent only values.
+The page now brackets every move the player makes of one of the fourteen
+(`HOST_PARAMS`) in a gesture - a press on its knob or slider to the release,
+a key or the wheel to 400 ms after the last step, Type a value and Reset
+one each - through a new native function, `scopeGesture(slider, begin)`, to
+`ScopeProcessor::pageGesture`, which keeps a count of its own so a gesture
+is never begun twice or ended unbegun whatever the page sends, and
+`endGestures`, called as the editor goes, which ends what a window closed
+mid-drag left open. A load, and the window losing focus, end the page's.
+What moved with it: the parameter a page's slider moves is set in
+`pageSlider`, on the message thread, rather than by the instrument's
+`sliderMoved` hook on the audio thread as the queued slider is applied,
+because JUCE's VST3 wrapper takes a gesture only from the message thread and
+passes a value set from the audio thread on through the audio's own output
+changes, so the end could have reached the host before the last value. The
+audio thread tells the page's own value from the host's automation by
+`pageSet_`, the value the page last set, which it skips; the read-back on a
+panel turned treats a page-set value as unmoved. The hook is left in the
+core for an owner that wants it; the plugin no longer uses it. The host's
+automation, a load and the preset glide are no gesture.
+
+The shell test reads what a host hears through an `AudioProcessorListener`:
+the processor's guard (a begin twice, an end twice, a slider that is no
+parameter, the face going); and on the real face in the plugin's web view
+under `xvfb-run -a`, a knob dragged, three arrow keys, Type a value and
+Reset, each one gesture with its values inside and nothing after, run with
+the audio thread's blocks between so an echo from there would show; a knob
+that is no parameter, and the host's automation followed on the face, telling
+the host nothing; a preset loaded mid-drag ending one gesture and the hand
+still on the knob beginning another; a window closed mid-drag ending it. Its
+nulls: the check fed a gesture with no begin, ended twice and begun twice,
+and the face with its begin taken out, live. `hosttest.py` holds the page
+with a real mouse and keys against its fake bridge.
+
+The glides. The instrument steps every 128 samples whatever the host's block,
+and walked a host's move across the steps its block held; the generator set
+the value at once. At a block of 512 that was four steps, at 128 or fewer
+none, so the level and the cutoff zippered and what was heard depended on the
+host's buffer - the thing the steps were made to stop. Each hand's level and
+voice-filter cutoff now glide a sample at a time on a 20 ms one-pole in the
+generator, as the Output has since G7 (`Generator::levelsStep`, the page's
+`levelsStep`): the level as a gain, the cutoff in its logarithm, each landing
+exactly where it was put once within a millionth, so a hand at rest is the
+value to the bit. A host's move of the level, the cutoff or the Output is put
+whole at the next step (`rampTo`), so the generator's glide is all of it. The
+other host parameters still walk, having no glide under them. Modulation is
+not smoothed by any of it: an LFO on the cutoff pushes the glided base as it
+pushed the slider's, and a tremolo ducks the glided level.
+
+The cutoff's coefficient is worked out again every sample while it glides:
+`svfG`'s tangent and `vcfHz`'s two powers per voice, which is what an LFO on
+the cutoff already costs and what the filter envelope costs through every
+attack and decay, and nothing once it has landed, as `vcfCoef`'s cache is
+keyed on the glided value. Coarser updates (every 16 or 32 samples) were
+considered and not taken: they would be a staircase again, at a finer grain,
+and would differ from the page unless both counted samples alike, for a
+saving that the measurement below puts at under a point of a core in the
+worst case. Measured as process time, 48 kHz, the median of seven runs of
+twenty seconds each, before and after, interleaved, on a machine shared with
+other work (run to run they spread by about half a point; `bench.cpp` and
+`bench_gen.cpp` in the session's scratch, not kept):
+
+| | before | after |
+|---|---|---|
+| the instrument, plain sine, a note held, blocks of 512 | 5.09% of a core | 4.92% |
+| the instrument, two hands held (*Bass under the pad*) | 13.88% | 14.12% |
+| the same, the host moving the level and the cutoff every block | 14.81% | 14.64% |
+| the generator alone, sixteen filtered saws at sustain, still | 1.97% | 1.99% |
+| the same, the cutoff moved every 128 samples | 2.11% | 2.93% |
+
+At rest nothing changes, as the cache promises. The last row is the worst
+case and the cost of the choice: sixteen voices working out their
+coefficients every sample instead of once a block, eight tenths of a point,
+which the instrument's own numbers do not resolve from noise.
+
+The shell test holds a host's step in each at blocks of 32, 64, 128 and 512
+to the same sound to the bit, with the same step a block later as its null,
+and reads the glide off the generator a sample at a time (a host block of
+one): no step more than the pole's share of what was left, the first under a
+thousandth, landed; its null is the same path put at once. Parity holds page
+and core to each other on four new runs and the dyad, and to the glide
+itself: the level's gain read off A's and B's lanes against a still run, and
+the cutoff part way from the old filter's sound to the new ten milliseconds
+on, landed later, each with a null.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

@@ -90,6 +90,12 @@ struct VoiceFx {
   const CycleTables* scanPrev = nullptr;
   const CycleTables* scanNext = nullptr;
   double scanX = 0;
+  /* The hand's level and cutoff as they glide (Generator::levelsStep, the
+     page's levelsStep), what a voice reads in place of the slider's: and the
+     cutoff's logarithm, and the cutoff it is gliding to with its logarithm,
+     so the logarithm is taken once a move rather than once a sample. NaN
+     until the first sample, which lands each where its setup says. */
+  double level = std::nan(""), cut = std::nan(""), cutLn = std::nan(""), cutTo = std::nan(""), cutToLn = std::nan("");
 };
 
 // The voice's shape with Scan in it: `ink` is the shape at this phase, `x`

@@ -37,10 +37,22 @@ Still missing, most important first:
    reach the host and MIDI learn was cut. The delay's time, the LFOs' rates, Strike and
    the filter's resonance cannot be automated; in Serum, Vital or Pigments everything can.
    It was a choice, and the largest gap left for someone in a DAW.
-2. **Moves on the face reach the host without a change gesture,** so touch and latch
-   automation do not record them.
-3. **Smoothing is per block,** not per sample: at host blocks of 128 or fewer there is
-   none, and the level and the cutoff can zipper.
+2. ~~**Moves on the face reach the host without a change gesture,** so touch and latch
+   automation do not record them.~~ Fixed 11 Nov: every move the player makes of one of
+   the host's parameters is inside one gesture - a press on its knob or slider to the
+   release, a key or the wheel to 400 ms after the last step, Type a value and Reset one
+   each - and the value reaches the host on the message thread, between the begin and the
+   end, where JUCE's VST3 wrapper takes them (`scopeGesture`, `pageGesture`). A load, the
+   window losing focus or closing ends what is open; the host's own automation, a load
+   and the preset glide are no gesture. The shell test drags, keys and types on the real
+   face and reads what a host hears; `hosttest.py` does it with a real mouse and keys.
+3. ~~**Smoothing is per block,** not per sample: at host blocks of 128 or fewer there is
+   none, and the level and the cutoff can zipper.~~ Fixed 11 Nov: each hand's level and
+   voice-filter cutoff glide a sample at a time on a 20 ms one-pole, as the Output does,
+   the cutoff in its logarithm, page and core alike, and a host's move of either (or the
+   Output) is no longer walked across the block, so the sound is the same at any host
+   block, to the bit (shell test, at 32, 64, 128 and 512; parity). Modulation rides on top
+   unsmoothed, as before. `plugin/PLAN.md` has the cost.
 4. **No MPE and no polyphonic aftertouch;** MIDI channels are merged.
 5. **Tuning is fixed at A440,** with no scale files or MTS-ESP.
 6. **No latency is reported,** though the plane's oversampling adds about 32 samples when
