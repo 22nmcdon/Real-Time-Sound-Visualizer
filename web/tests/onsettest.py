@@ -104,7 +104,10 @@ with sync_playwright() as pw:
           str(s3["dropped"]))
 
     print("\n--- onset ---")
+    # The onset routed onto a stand-in, since the hearing listens only while
+    # a routing hears it (second review, part 2): unrouted, it counts nothing.
     counts = p.evaluate("""async () => {
+      state.modRoutings = [{ sourceId: 'hear.onset', destId: 'test.once', amount: 1 }]; touchRoutings();
       const count = () => MOD_SOURCES.get('hear.onset').count;
       const out = {};
       __note(false); await __wait(500);

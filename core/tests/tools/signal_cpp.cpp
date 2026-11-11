@@ -7,7 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "scope/sources.h"
+#include "scope/level.h"
+#include "scope/noise.h"
 
 namespace {
 std::string show(double v) {

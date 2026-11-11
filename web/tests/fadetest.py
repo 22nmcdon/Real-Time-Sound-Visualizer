@@ -500,9 +500,9 @@ with sync_playwright() as pw:
       await wait(1300); const outDone = route('gen.fm');
       // The same second of fading in, along a curve quick to start and one slow to start.
       setFadeEnvelope({ attack: 1, attackMid: 0.85 }); addRouting('hand.1', 'gen.fm');
-      await wait(250); const quick = route('gen.fm'); clearSource('hand.1'); await wait(2200);
+      await wait(250); const quick = route('gen.fm'); dropRouting('hand.1', 'gen.fm'); await wait(2200);
       setFadeEnvelope({ attackMid: 0.15 }); addRouting('hand.1', 'gen.fm');
-      await wait(250); const slow = route('gen.fm'); clearSource('hand.1'); await wait(2200);
+      await wait(250); const slow = route('gen.fm'); dropRouting('hand.1', 'gen.fm'); await wait(2200);
       return { inDone, outHalf, outDone, quick, slow };
     """)
     print("    %s" % env)
@@ -588,7 +588,7 @@ with sync_playwright() as pw:
       setHand(0, 1); addRouting('hand.1', 'gen.fm'); await wait(400);
       const fm = (() => { const slot = MOD_DESTS.get('gen.fm').slot; const r = workletRoutes().find((x) => x.slot === slot);
                           return [+(r.held * r.amount).toFixed(3), +(r.heldB * r.amountB).toFixed(3)]; })();
-      clearSource('hand.1'); await wait(500);
+      dropRouting('hand.1', 'gen.fm'); await wait(500);
       // Unlayered, layer B's depth is layer A's, whatever its envelope says.
       restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500' }); await wait(200);
       __send([0x90, 60, 127]); await wait(400); const single = both(); __send([0x80, 60, 0]); await wait(800);

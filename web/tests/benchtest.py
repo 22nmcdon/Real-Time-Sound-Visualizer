@@ -266,7 +266,7 @@ with sync_playwright() as pw:
         if (!marked || marked.dataset.tab !== id) wrong.push(id + ' not marked');
         if (el.benchBody.scrollHeight > el.benchBody.clientHeight + 2) wrong.push(id + ' scrolls');
       }
-      const benchTitles = benchable().map(groupTitle);
+      const benchTitles = benchGroupsAll().filter((g) => g.dataset.off === undefined).map(groupTitle);
       return { titles, seen, wrong, benchTitles, role: el.benchRail.getAttribute('role') };
     }""")
     print("    tabs:", ", ".join(tabs["titles"]))
@@ -355,7 +355,7 @@ with sync_playwright() as pw:
     check("the arrow keys walk the tabs, and do not also move the timebase",
           keys["tab"] == "ink" and keys["focused"] == "benchTab-ink" and keys["timebase"], str(keys))
     check("no section starts folded: a tab has room for all of it",
-          p.evaluate("() => benchable().filter((g) => g.classList.contains('folded')).length") == 0)
+          p.evaluate("() => benchGroupsAll().filter((g) => g.dataset.off === undefined && g.classList.contains('folded')).length") == 0)
 
     print("\n--- columns hold still ---")
     # CSS multi-column re-balanced the whole flow whenever a section changed

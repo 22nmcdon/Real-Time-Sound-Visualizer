@@ -469,6 +469,21 @@ class Matrix {
     return heard_;
   }
   std::size_t fading() const { return gains_.size(); }
+  /* routedFrom: whether any routing heard at `now` comes from a source whose
+     id starts with `prefix` - what the hearing asks before it listens. The
+     walk of `heard` without its copy, so the audio thread can ask it every
+     step, and at a time of its own rather than the last frame's. */
+  bool routedFrom(std::string_view prefix, double now) const {
+    const auto from = [&](const Routing& r) { return r.sourceId.compare(0, prefix.size(), prefix) == 0; };
+    for (const auto& r : routings_) if (from(r)) return true;
+    for (const auto& r : stage_) if (from(r)) return true;
+    if (!fadesOut()) return false;
+    for (const auto& g : gains_) {
+      if (inSetup(g.key) || !from(g.routing)) continue;
+      for (const auto& ramp : g.ramps) if (ramp.to > 0 || !rampDone(ramp, now)) return true;
+    }
+    return false;
+  }
 
   // stageRoutings: the stage's routes at each hand's Picture amount (nought
   // to one; G6), made again only when one changes, the upper hand's its own

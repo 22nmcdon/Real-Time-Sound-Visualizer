@@ -116,7 +116,6 @@ class ScopeProcessor final : public juce::AudioProcessor {
   scope::Keyboard::Settings keys() const { return instrument_.keyboard().settings(); }
   // The routings, for the shell test to set. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return instrument_.matrix(); }
-  double level() const { return instrument_.level(); }
   const scope::Hearing& hearing() const { return instrument_.hearing(); }
   const scope::Clock& clock() const { return instrument_.clock(); }
   const scope::ScoreState& score() const { return instrument_.score(); }

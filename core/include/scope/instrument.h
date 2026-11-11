@@ -50,7 +50,6 @@ class Instrument {
      timebases and for the readout's analysis, at 64 KB a fetch. 2048 was a
      twentieth of a second, shorter than a 5 ms/div screen. */
   static constexpr std::size_t kPictureFrames = 8192;
-  static constexpr std::size_t kLevelFrames = 2048;
   /* The picture, drawn here for the photocell and the picture's sources so
      their loops go on with the window closed (stage 4): captured from the
      picture ring by the view the page set, at the page's sixty frames a
@@ -247,9 +246,8 @@ class Instrument {
     pictureRun_->reserve(notes_->layout() == Layout::Each || bands_ ? 4 : 2, sampleRate, static_cast<double>(kPictureFrames));
     // Opening at the Output it was saved at, not gliding down to it (G7).
     core_->settleOutput();
-    keyboard_->frame(0);
+    keyboard_->frame();
     changed_ = true;
-    levelLane_.assign(kLevelFrames, 0.0f);
     hearL_.assign(kHearN, 0.0f);
     hearR_.assign(kHearN, 0.0f);
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
@@ -394,27 +392,32 @@ class Instrument {
        without allocating (5v). Keeping the hand for the state still does, as
        the state's publishing at the block's end does (PLAN.md, 5v). */
     stepRamps();
-    /* The level over the last of the picture, the page's screen, as the frame
-       before this one left it. The page's window is its fetch, which follows
-       the timebase; this is 2048 frames, about 43 ms at 48 kHz. */
-    window(levelLane_, nullptr);
-    sources_->level().update(levelLane_.data(), levelLane_.size(), lastBlockMs_);
-    /* And the hearing, from the last 4096 frames, its held key the lowest the
+    /* The level was followed here, over the last 2048 frames of the picture,
+       for the source F4b cut; nothing read it after, and the second review's
+       sweep took it out (the meter is the page's own). The hearing, from the
+       last 4096 frames, its held key the lowest the
        hands hold. Once a block where the page's is once a frame. It was made
-       with room for this window, so it allocates nothing here (5t). */
-    window(hearL_, &hearR_);
+       with room for this window, so it allocates nothing here (5t). And only
+       while a routing heard comes from it: the family is parked, and its
+       transform every block was about five points of a core on the plain
+       sine for readings nothing read (second review, part 2). Asked at this
+       step's time, as the page asks at its frame's. */
+    const bool heard = matrix_->routedFrom("hear.", nowMs_);
     std::optional<double> heldHz;
-    if (!keyboard_->notes().empty()) {
-      int low = keyboard_->notes().front().note;
-      for (const auto& held : keyboard_->notes()) low = std::min(low, held.note);
-      heldHz = midiHz(low);
+    if (heard) {
+      window(hearL_, &hearR_);
+      if (!keyboard_->notes().empty()) {
+        int low = keyboard_->notes().front().note;
+        for (const auto& held : keyboard_->notes()) low = std::min(low, held.note);
+        heldHz = midiHz(low);
+      }
     }
     hearing_->hears(hearsItself());
     hearing_->setNow(nowMs_);
-    hearing_->step(*matrix_, true, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_, lastBlockMs_, heldHz, nowMs_);
+    hearing_->step(*matrix_, true, heard, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_, lastBlockMs_, heldHz, nowMs_);
     keyboard_->setNow(nowMs_);
     keyboard_->setTempo(brain_->clock.bpm);
-    keyboard_->frame(lastBlockMs_);
+    keyboard_->frame();
     outAt_ = at;  // what is sent before the step's events is sent at its top
     /* The score's step, the arpeggio's and the events, in the page's frame's
        order: once a step, as the page does them once a frame, so a note-off
@@ -656,7 +659,6 @@ class Instrument {
   Keyboard& keyboard() { return *keyboard_; }
   const Keyboard& keyboard() const { return *keyboard_; }
   Matrix& matrix() { return *matrix_; }
-  double level() const { return sources_->level().value(); }
   const Hearing& hearing() const { return hearing_->hearing(); }
   const Clock& clock() const { return brain_->clock; }
   const ScoreState& score() const { return brain_->score; }
@@ -1149,10 +1151,10 @@ class Instrument {
     }
   }
 
-  /* The last of the picture, the page's screen, for the level and the hearing
-     to read: its left channel for both, and its right for the hearing's
-     width. The band split's, as the page reads lanes: the trigger's lane for
-     both, and for the width the X-Y pair's other lane. */
+  /* The last of the picture, the page's screen, for the hearing to read: its
+     left channel, and its right for the width. The band split's, as the page
+     reads lanes: the trigger's lane, and for the width the X-Y pair's other
+     lane. */
   void window(std::vector<float>& left, std::vector<float>* right) const {
     const int a = bands_ ? std::clamp(static_cast<int>(brain_->view.trigSource), 0, kBandCount - 1) : 0;
     const int b = bands_ ? std::clamp(static_cast<int>(brain_->view.xy[1]), 0, kBandCount - 1) : 1;
@@ -1161,7 +1163,7 @@ class Instrument {
   }
 
   double rate_ = 48000;
-  std::vector<float> levelLane_, hearL_, hearR_;
+  std::vector<float> hearL_, hearR_;
   std::unique_ptr<HearingSources> hearing_;  // what it hears of itself, as sources
   std::unique_ptr<PictureRun> pictureRun_;
   // Scan's paths and tables (P7a): the generator reads the tables, which are made in prepare.

@@ -224,19 +224,15 @@ with sync_playwright() as pw:
       const t = state.source.settings;
       const one = intervalRatio(t.interval, true) * Math.pow(2, t.octaves);
       const two = intervalRatio(t.interval, false) * Math.pow(2, t.octaves);
-      return { just: one, equal: two,
-               beatJust: beatRate(t.interval, true, t.freq, t.octaves),
-               beatEqual: beatRate(t.interval, false, t.freq, t.octaves),
-               freq: t.freq };
+      return { just: one, equal: two, freq: t.freq };
     }""")
-    want_beat = abs(2 * ratios["freq"] * 2 ** (19 / 12) - 3 * 2 * ratios["freq"])
+    # The beat these make was asked of beatRate here until the second review:
+    # the readout stopped saying it, nothing on the page called it, and the
+    # fifth below is held to its beat in the samples instead.
     check("a wide dyad is 3:1 in just tuning", close(ratios["just"], 3.0, 1e-12),
           str(ratios["just"]))
     check("and 2^(19/12) in equal", close(ratios["equal"], 2 ** (19 / 12), 1e-12),
           str(ratios["equal"]))
-    check("the beat is zero in just and the octave-wide rate in equal",
-          ratios["beatJust"] == 0 and close(ratios["beatEqual"], want_beat, 1e-9),
-          "%.4f vs %.4f" % (ratios["beatEqual"], want_beat))
 
     print("\n--- tuning (D3) ---")
     p.evaluate("() => midiPanic()")
@@ -245,22 +241,15 @@ with sync_playwright() as pw:
       const t = state.source.settings;
       el.tuneJust.click();
       const just = intervalRatio(t.interval, t.just) * Math.pow(2, t.octaves);
-      const beatJust = beatRate(t.interval, t.just, t.freq, t.octaves);
       el.tuneEqual.click();
       const equal = intervalRatio(t.interval, t.just) * Math.pow(2, t.octaves);
-      const beatEqual = beatRate(t.interval, t.just, t.freq, t.octaves);
       el.tuneJust.click();
-      return { just, equal, beatJust, beatEqual, freq: t.freq };
+      return { just, equal, freq: t.freq };
     }""")
     check("a played fifth is exactly 3:2 in just tuning",
           close(fifth["just"], 1.5, 1e-12), str(fifth["just"]))
     check("and the tempered ratio in equal",
           close(fifth["equal"], 2 ** (7 / 12), 1e-12), str(fifth["equal"]))
-    check("so the figure stands still in just and turns in equal",
-          fifth["beatJust"] == 0
-          and close(fifth["beatEqual"], abs(2 * fifth["freq"] * 2 ** (7 / 12)
-                                            - 3 * fifth["freq"]), 1e-9),
-          "%.4f Hz" % fifth["beatEqual"])
 
     # The end of the argument: not what the page computes, but what came out of
     # the generator. The ring buffer has to turn over first.
@@ -278,8 +267,9 @@ with sync_playwright() as pw:
     # The estimator is good to about a part in ten million here, and just and
     # equal differ in the third decimal place, so the difference between a
     # figure that stands still and one that turns is measurable in the samples
-    # rather than only assertable about the state. The beat the page claims in
-    # its readout is |2*fR - 3*fL| of what actually came out.
+    # rather than only assertable about the state. The beat a tempered fifth
+    # should make is |2*fR - 3*fL| of the notes asked for, the root and its
+    # tempered fifth, and the samples are held to it.
     p.evaluate("() => el.tuneEqual.click()")
     p.wait_for_timeout(450)
     tempered = p.evaluate("""() => {
@@ -287,7 +277,7 @@ with sync_playwright() as pw:
       const t = state.source.settings;
       return { l: estimateFrequency(w[0], state.source.sampleRate),
                r: estimateFrequency(w[1], state.source.sampleRate),
-               claimed: beatRate(t.interval, t.just, t.freq, t.octaves) };
+               claimed: Math.abs(2 * t.freq * Math.pow(2, 7 / 12) - 3 * t.freq) };
     }""")
     p.evaluate("() => el.tuneJust.click()")
     p.wait_for_timeout(450)
@@ -300,7 +290,7 @@ with sync_playwright() as pw:
     check("in equal the samples carry the tempered ratio",
           close(tempered["r"] / tempered["l"], 2 ** (7 / 12), 1e-4),
           str(tempered["r"] / tempered["l"]) if tempered["r"] else "no pitch")
-    check("and the figure turns at the rate the readout claims",
+    check("and the figure turns at the rate a tempered fifth beats at",
           close(beat, tempered["claimed"], 0.05),
           "%.3f Hz measured, %.3f claimed" % (beat, tempered["claimed"]))
     check("in just it is 3:2 and stands still",

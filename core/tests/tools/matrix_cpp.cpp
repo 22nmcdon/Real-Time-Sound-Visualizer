@@ -167,6 +167,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     for (const auto& r : m.routings())
       amounts += (amounts.empty() ? "" : "+") + show(r.amount) + "/" + (r.amountB ? show(*r.amountB) : std::string("u"));
     line += " | " + said + "amounts " + (amounts.empty() ? "-" : amounts) + " heard " + std::to_string(m.heard().size())
+          + " fromhear " + (m.routedFrom("hear", clock) ? "1" : "0") + " fromstage " + (m.routedFrom("stage.", clock) ? "1" : "0")
           + " gains " + std::to_string(m.fading()) + " dirty " + (m.dirty() || wheeled ? "1" : "0");
     std::printf("%s\n", line.c_str());
   }

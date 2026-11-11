@@ -63,7 +63,6 @@ namespace scope {
 inline double midiHz(double note) { return 440 * std::pow(2.0, (note - 69) / 12); }
 
 constexpr int kPolyVoices = 8;     // POLY_VOICES: held notes sounding at once, per layer
-constexpr double kCcSmooth = 0.03; // seconds, one pole over the pedal's and pressure's steps
 
 // One pair of figures, two (a layer each), or layer A against layer B as one.
 enum class Layout { One, Each, Against };
@@ -237,10 +236,7 @@ class Keyboard {
     bend_ = v / (v < 0 ? 8192.0 : 8191.0);
     t_.set("pitchBend", bend_ * bendRange_);
   }
-  void pressure(int raw) {
-    pressureTarget_ = raw / 127.0;
-    express(pressureTo_, raw / 127.0);
-  }
+  void pressure(int raw) { express(pressureTo_, raw / 127.0); }
   /* midiExpress: vibrato is the generator's, set here as the page's genSet
      sets it; the Picture amount and Scan's depth are the panel's sliders,
      which whoever keeps the panel is told, as the expression pedal's is. */
@@ -256,7 +252,6 @@ class Keyboard {
   double bend() const { return bend_; }
   Express wheelTo() const { return wheelTo_; }
   Express pressureTo() const { return pressureTo_; }
-  double pressureValue() const { return pressure_; }
   void setExpress(std::function<void(Express, double)> f) { onExpress_ = std::move(f); }
 
   // midiBytes, with running status, and a real-time byte taken as a message of
@@ -298,18 +293,10 @@ class Keyboard {
 
   // --- once a frame ---------------------------------------------------------
 
-  // midiSmooth then midiApplyGate, as the page's frame has them: the
-  // controllers walk, and the gate and the chord are derived again.
-  void frame(double elapsedMs) {
-    smooth(elapsedMs);
-    applyGate();
-  }
-
-  void smooth(double elapsedMs) {
-    const double a = 1 - std::exp(-(std::fmax(0.0, elapsedMs) / 1000) / kCcSmooth);
-    pedal_ += (pedalTarget_ - pedal_) * a;
-    pressure_ += (pressureTarget_ - pressure_) * a;
-  }
+  /* midiApplyGate, as the page's frame has it: the gate and the chord derived
+     again. The pedal and pressure walked here first (midiSmooth), for the
+     sources F4b cut, and for nothing from then until the second review. */
+  void frame() { applyGate(); }
 
   // --- the panel's handlers -------------------------------------------------
 
@@ -446,7 +433,6 @@ class Keyboard {
 
   // Key, the one keyboard source left since F4b (velocity, Expression's FM).
   double key() const { return key_; }
-  double pedal() const { return pedal_; }
 
   // layersOn: two layers, in poly with the generator alone.
   bool layersOn() const { return layers_.mode != LayerMode::Off && layable_ && polyWanted(); }
@@ -761,9 +747,9 @@ class Keyboard {
   Layers layers_;
   bool polyJust_ = false, hold_ = false, present_ = true, layable_ = true;
   bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
-  double pedal_ = 0, pedalTarget_ = 0;
+  double pedalTarget_ = 0;
   bool sustain_ = false;
-  double bendRange_ = 2, bend_ = 0, pressure_ = 0, pressureTarget_ = 0;  // Expression (6 Nov)
+  double bendRange_ = 2, bend_ = 0;  // Expression (6 Nov)
   Express wheelTo_ = Express::Vibrato, pressureTo_ = Express::Off;
   double key_ = 0;
   Interval interval_;

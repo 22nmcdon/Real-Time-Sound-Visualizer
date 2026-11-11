@@ -45,11 +45,11 @@ function definition(name) {
 }
 
 const LIFTED = [
-  "POLY_VOICES", "CC_SMOOTH", "INTERVALS", "midiHz", "midi", "screenKeys",
+  "POLY_VOICES", "INTERVALS", "midiHz", "midi", "screenKeys",
   "intervalRatio", "keyboardPresent", "midiPitch", "midiNoteOn", "midiNoteOff", "midiSetPedal", "midiPanic",
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
   "midiPair", "midiInterval", "midiApplyGate", "midiGateNotes",
-  "midiApplyNotes", "midiNotesBefore", "midiApplyNotesTo", "midiControl", "midiSmooth",
+  "midiApplyNotes", "midiNotesBefore", "midiApplyNotesTo", "midiControl",
   "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
@@ -128,7 +128,7 @@ const el = new Proxy(elements, { get: (t, k) => (k in t ? t[k] : (t[k] = element
 
 const source = STUBS + [...LIFTED, ...IF_PRESENT].map(definition).join("\n") + `
 return { midi, screenKeys, settings, settingsB, sources, log, show, el, genInput, toneSource,
-         midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiSmooth, midiApplyGate,
+         midiNoteOn, midiNoteOff, midiSetPedal, midiPanic, midiControl, midiBytes, midiApplyGate,
          midiApplyNotes, midiRegisterKey, setMidiMode, syncLayers, syncLayerPanel, genSettings,
          POLY_VOICES, layersOn, arp, arpSet, arpTick, timers, transport,
          setClock: (ms) => { clock = ms; }, setOut: (on) => { outOpen = on; },
@@ -170,7 +170,7 @@ function run(head, commands) {
       const v = a[1] === "true" ? true : a[1] === "false" ? false : Number.isNaN(Number(a[1])) ? a[1] : Number(a[1]);
       k.settings[a[0]] = v;
     } else if (cmd === "panel") k.el[a[0]].value = a[1];
-    else if (cmd === "frame") { k.midiSmooth(Number(a[0])); k.midiApplyGate(); }
+    else if (cmd === "frame") k.midiApplyGate();
     else if (cmd === "present") k.setPresent(a[0] === "1");
     else if (cmd === "arp") {
       k.el.arpMode.value = a[0]; k.el.arpRate.value = a[1]; k.el.arpOctaves.value = a[2];

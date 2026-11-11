@@ -25,6 +25,11 @@
 //   written over after that, so a step on the audio thread allocates nothing.
 //   A window of another length is made room for when it first arrives - which
 //   allocates, once - and the plugin's never changes.
+// - Whether it runs at all is the owner's to say (`wanted`): the page asks
+//   its own routings (`routedFrom`), the instrument asks its matrix
+//   (Matrix::routedFrom), and both rest it while no routing heard comes from
+//   a hearing source. A first window after a rest is taken as it stands; see
+//   `hearingStep` on the page for what that reads.
 
 #pragma once
 
@@ -224,6 +229,13 @@ class Hearing {
   int frame = 0;
   std::optional<double> pitchWant;
   struct Onset { int count = 0; double last = -HUGE_VAL; bool armed = true; } onset;
+  // Whether it rested last time it was asked (`hearing.idle`), and how many
+  // windows it has analysed (`hearing.runs`), which the tests count.
+  bool idle = true;
+  long runs = 0;
+
+  // A step asked while nothing hears it: the next window is a first one.
+  void rest() { idle = true; }
 
   // Room made, on whatever thread makes it, for the window it will hear.
   Hearing() { prepare(kHearN); }
@@ -258,6 +270,11 @@ class Hearing {
             std::optional<double> heldHz, double now) {
     if (!x || n < 256 || (n & (n - 1)) != 0) return;
     if (re_.size() != n) prepare(n);
+    // The first window after a rest is taken as it stands, as though it had been listening all along.
+    const bool fresh = idle;
+    idle = false;
+    runs++;
+    if (fresh) { hasPrev_ = false; frame = 0; }
     double sum = 0, w2 = 0, early = 0;
     for (std::size_t i = 0; i < n; i++) {
       const double v = x[i];
@@ -282,7 +299,8 @@ class Hearing {
       double power = 0;
       for (std::size_t k = lo; k < hi; k++) power += mags_[k] * mags_[k];
       const double bandRms = std::sqrt(2 * power / (static_cast<double>(n) * w2));
-      bands[bi] = follow(bands[bi], jsMin(1, bandRms / kEnvFull), elapsed);
+      const double want = jsMin(1, bandRms / kEnvFull);
+      bands[bi] = fresh ? want : follow(bands[bi], want, elapsed);
     }
 
     // Flux: rising energy since the last spectrum, as a share of the whole.
@@ -293,7 +311,8 @@ class Hearing {
     prev_.swap(mags_);
     hasPrev_ = true;
     fluxRaw = total > 1e-9 ? jsMin(1, rise / total) : 0;
-    flux = follow(flux, rms < kHearFloor ? 0 : fluxRaw, elapsed);
+    const double fluxWant = rms < kHearFloor ? 0 : fluxRaw;
+    flux = fresh ? fluxWant : follow(flux, fluxWant, elapsed);
     onsetStep(rms, late > early, now);
 
     if (rms >= kHearFloor) {
@@ -303,7 +322,7 @@ class Hearing {
       if (mass > 1e-12) {
         const double centroid = weighted / mass;
         const double want = jsMax(0, jsMin(1, std::log2(jsMax(1, centroid) / 100) / std::log2(80.0)));
-        bright = slew(bright, want, elapsed);
+        bright = fresh ? want : slew(bright, want, elapsed);
       }
       // Pitch: a held key, else the estimator past its gate on a steady
       // window; the estimator every other frame, the slew every frame.
@@ -315,10 +334,10 @@ class Hearing {
         }
         if (hz && *hz > 0) pitchWant = jsMax(-1, jsMin(1, std::log2(*hz / kPitchRef) / 2));
       }
-      if (pitchWant) pitch = slew(pitch, *pitchWant, elapsed);
+      if (pitchWant) pitch = fresh ? *pitchWant : slew(pitch, *pitchWant, elapsed);
       // Width: the correlation of the pair the X-Y view draws; one lane is mono.
       const double want = a && b && a != b ? correlation(a, b, n) : 1;
-      width = slew(width, want, elapsed);
+      width = fresh ? want : slew(width, want, elapsed);
     }
   }
 
@@ -419,12 +438,14 @@ class HearingSources {
 
   // hearingStep's frame: nothing while the scope is stopped; the routes
   // compiled again when the answer has flipped since the last step, since
-  // they carry the decision; then the window.
-  void step(Matrix& matrix, bool running, const float* x, const float* a, const float* b, std::size_t n,
+  // they carry the decision; then, if a routing heard comes from one of
+  // these (`wanted`), the window, and if none does, a rest.
+  void step(Matrix& matrix, bool running, bool wanted, const float* x, const float* a, const float* b, std::size_t n,
             double rate, double elapsed, std::optional<double> heldHz, double now) {
     now_ = now;
     if (!running) return;
     if (!known_ || seen_ != hears_) { known_ = true; seen_ = hears_; matrix.touch(); }
+    if (!wanted) { hearing_.rest(); return; }
     hearing_.step(x, a, b, n, rate, elapsed, heldHz, now);
   }
   const Hearing& hearing() const { return hearing_; }

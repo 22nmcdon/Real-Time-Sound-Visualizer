@@ -27,7 +27,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   double rate = 48000, now = 0;
   long len = 4096, t0 = 0;
   int lanes = 2, trig = 0, xy0 = 0, xy1 = 1;
-  bool running = true, gen = true;
+  bool running = true, gen = true, routed = true;
   std::string gap = "none";
   std::vector<Part> parts;
   std::vector<int> held;
@@ -75,7 +75,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       }
       // The source as the page's frame finds it, then its step.
       hearing.hears(gen);
-      hearing.step(matrix, running, x, lane(xy0), lane(xy1), static_cast<std::size_t>(len), rate, elapsed, heldHz, now);
+      hearing.step(matrix, running, routed, x, lane(xy0), lane(xy1), static_cast<std::size_t>(len), rate, elapsed, heldHz, now);
     } else if (cmd == "held") {
       held.clear();
       if (arg(1) != "-") for (std::size_t i = 1; i < words.size(); i++) held.push_back(static_cast<int>(num(words[i])));
@@ -83,13 +83,14 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "gen") gen = arg(1) == "1";
     else if (cmd == "trig") trig = static_cast<int>(num(arg(1)));
     else if (cmd == "xy") { xy0 = static_cast<int>(num(arg(1))); xy1 = static_cast<int>(num(arg(2))); }
+    else if (cmd == "routed") routed = arg(1) == "1";
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     const auto& h = hearing.hearing();
     std::string line = cmd + " | pitch " + show(h.pitch) + " bright " + show(h.bright) + " bands";
     for (const double b : h.bands) line += " " + show(b);
     line += " width " + show(h.width) + " flux " + show(h.flux) + " raw " + show(h.fluxRaw) + " frame " + std::to_string(h.frame)
           + " want " + (h.pitchWant ? show(*h.pitchWant) : std::string("null")) + " onset " + std::to_string(h.onset.count) + " "
-          + show(h.onset.last) + " " + (h.onset.armed ? "1" : "0") + " " + show(matrix.source("hear.onset")->value()) + " touched " + std::to_string(matrix.touches()) + " sources";
+          + show(h.onset.last) + " " + (h.onset.armed ? "1" : "0") + " " + show(matrix.source("hear.onset")->value()) + " touched " + std::to_string(matrix.touches()) + " idle " + (h.idle ? "1" : "0") + " runs " + std::to_string(h.runs) + " sources";
     for (const char* id : { "hear.pitch", "hear.bright", "hear.band1", "hear.band2", "hear.band3", "hear.band4", "hear.width",
                             "hear.flux", "hear.onset" }) {
       const scope::ModSource* s = matrix.source(id);

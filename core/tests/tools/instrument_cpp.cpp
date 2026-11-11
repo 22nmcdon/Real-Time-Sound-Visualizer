@@ -14,6 +14,8 @@
 //                                    bit; one period is a mono input, none is no input
 //   ["block", n, stride?]            n frames; every stride-th sample printed (1 when left out)
 //   ["grid"]                         the instrument's own grid, by two sums (native only)
+//   ["hearing"]                      how many windows the hearing has analysed, and its
+//                                    brightness (native only)
 //   ["hold", layer, value]           a layer's picture stage's hold put in (native only)
 //   ["scan"]                         Scan's reading (P7a): when the freeze after a setup ends, in
 //                                    milliseconds of audio, the hold each layer last sent, and
@@ -103,6 +105,8 @@ int main(int argc, char** argv) {
     } else if (cmd == "feed") {
       feedL = a.size() > 1 ? a[1].n : 0;
       feedR = a.size() > 2 ? a[2].n : 0;
+    } else if (cmd == "hearing") {
+      std::printf("hearing %ld %.17g\n", instrument.hearing().runs, instrument.hearing().bright);
     } else if (cmd == "grid") {
       // The grid the instrument draws for itself, by two sums: weighted by
       // place, so where a figure lies shows, and squared. Native only - the
