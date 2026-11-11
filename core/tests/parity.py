@@ -443,7 +443,41 @@ def plane_scenarios():
                     bReverbSpread=0.6, bReverbPreMs=20, brvpush=0.4, brvspush=-0.5, brvtpush=0.6, samples=12000))
     out.append(dict(reverbMix=0.8, reverbSpread=0.5, samples=12000,
                     ev="3000:reverbSize:0.9;5000:reverbSpread:1;7000:reverbTone:0.2;9000:reverbMix:0"))
+    out.extend(FRESH_RUNS + FRESH_PLAYING)
     return out
+
+# A module switched on starts from silence (11 Nov): a burst through it, the
+# module switched off while it still holds the burst - the delay's repeats
+# going round, the chorus's line, the phaser's ring, the reverb's tail - and
+# on again over silence, so whatever comes out after the switch is what it
+# kept. Each of the four on A's settings, which B's pair goes through with
+# lines of its own; and B's own delay and reverb, with A's dry. The sample
+# each comes back on is the second event's. The reverb runs 3000 samples
+# first: its shortest way through, pre-delay, diffusers and a line, is 2000,
+# and before that its tone's memories are nought, so a core that kept them
+# would have passed (the mutation pass found it, and the chorus's the same
+# way: its line is 2404 samples, which the runs below fill before the switch).
+FRESH_RUNS = [dict(delayMix=0.5, delayMs=3, delayFeedback=0.6, inp=2, samples=3000, ev="400:delayMix:0;600:delayMix:0.5"),
+              dict(chorusMix=0.7, chorusFeedback=0.5, inp=2, samples=3000, ev="300:chorusMix:0;400:chorusMix:0.7"),
+              dict(phaserMix=1, phaserFeedback=0.75, inp=2, samples=3000, ev="300:phaserMix:0;500:phaserMix:1"),
+              dict(reverbMix=1, inp=2, samples=6000, ev="3000:reverbMix:0;3500:reverbMix:1"),
+              dict(planeScaleX=1.1, bown=1, bDelayMix=0.5, bDelayMs=3, bDelayFeedback=0.6, inp=2, samples=3000,
+                   ev="400:bDelayMix:0;600:bDelayMix:0.5"),
+              dict(planeScaleX=1.1, bown=1, bReverbMix=1, inp=2, samples=6000, ev="3000:bReverbMix:0;3500:bReverbMix:1")]
+# And the four switched off and on together with the pairs still playing, so
+# everything the emptying puts back to its start is heard where it lands: the
+# delay's time moved while it is off (a glide that went on from the old time
+# would be heard), its tone's and cut's memories, the wow's phase, the
+# phaser's feedback, the reverb's tone. On A's settings, and on B's own.
+FRESH_PLAYING = [dict(delayMix=0.5, delayMs=6, delayFeedback=0.5, delayTone=0.4, delayLowCut=0.3, delayWow=0.6,
+                      chorusMix=0.5, chorusFeedback=0.4, phaserMix=0.7, phaserFeedback=0.6, reverbMix=0.5, reverbTone=0.3,
+                      samples=6000, ev="3000:delayMix:0;3000:chorusMix:0;3000:phaserMix:0;3000:reverbMix:0;3200:delayMs:12;"
+                      "3500:delayMix:0.5;3500:chorusMix:0.5;3500:phaserMix:0.7;3500:reverbMix:0.5"),
+                 dict(planeScaleX=1.1, bown=1, bDelayMix=0.5, bDelayMs=6, bDelayFeedback=0.5, bDelayTone=0.4,
+                      bDelayLowCut=0.3, bDelayWow=0.6, bChorusMix=0.5, bChorusFeedback=0.4, bPhaserMix=0.7,
+                      bPhaserFeedback=0.6, bReverbMix=0.5, bReverbTone=0.3, samples=6000,
+                      ev="3000:bDelayMix:0;3000:bChorusMix:0;3000:bPhaserMix:0;3000:bReverbMix:0;3200:bDelayMs:12;"
+                      "3500:bDelayMix:0.5;3500:bChorusMix:0.5;3500:bPhaserMix:0.7;3500:bReverbMix:0.5")]
 
 VOICE_DEFAULTS = dict(rate=48000.0, samples=2400, seed=5, layer="a", shape="sine", amp=0.5, a=5, d=200, s=0.7, r=200,
                       fa=5, fd=200, fs=1, fr=200, vtype=0, vcut=2000, vq=0.7071, vtrack=0, venv=0, drive=0, fold=0,
@@ -773,6 +807,37 @@ check("and against the delay's moves under the pairs with the wow's left out",
 dbo = next(i for i, l in enumerate(lines) if l.startswith("planeRun") and " bDelayWow=0.8 " in l)
 check("and against B's own repeats given A's tone",
       worst(js_one(lines[dbo].replace(" bDelayTone=0.2 ", " bDelayTone=0.7 ")), row(cpp_rows[dbo])) > 1e-6)
+# A module switched on starts from silence: after the switch, over silence,
+# every sample of both pairs is nought on each side - B's lines too, through
+# A's settings or its own. Two nulls: the same run with the module left on
+# through the silence still sounds there, so the run can show a kept line;
+# and the page with its emptying taken out (timeRuns without timeFresh) keeps
+# one, so it is the emptying these hold and not something else that falls
+# silent.
+fresh_page = os.path.join(BUILD, "scope_fresh_null.html")
+with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: fresh_text = f.read()
+assert fresh_text.count("    if (!(fx.was & bit)) timeFresh(fx, bit);\n") == 1
+with open(fresh_page, "w", encoding="utf-8") as f: f.write(fresh_text.replace("    if (!(fx.was & bit)) timeFresh(fx, bit);\n", ""))
+for over in FRESH_RUNS:
+    k = next(i for i, l in enumerate(lines) if l == plane_call(over))
+    off, back = over["ev"].split(";")
+    at, what = int(back.split(":")[0]), back.split(":")[1]
+    after = {side: row(rows_[k])[4 * at:] for side, rows_ in (("page", js_rows), ("core", cpp_rows))}
+    kept = js_one(lines[k].replace("ev=" + over["ev"], "ev=" + back))[4 * at:]
+    stale = row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(lines[k])], check=True,
+                               capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)[4 * at:]
+    check("%s switched off and on again over silence: nothing after, on the page's side and the core's" % what,
+          after["page"] and max(abs(v) for v in after["page"]) == 0 and max(abs(v) for v in after["core"]) == 0,
+          "%.3g, %.3g" % (max(abs(v) for v in after["page"]), max(abs(v) for v in after["core"])))
+    check("null: left on through the silence it still sounds there, and a page that kept the line through the switch plays it",
+          max(abs(v) for v in kept) > 1e-3 and max(abs(v) for v in stale) > 1e-3,
+          "%.3g, %.3g" % (max(abs(v) for v in kept), max(abs(v) for v in stale)))
+for over in FRESH_PLAYING:
+    k = next(i for i, l in enumerate(lines) if l == plane_call(over))
+    stale = row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(lines[k])], check=True,
+                               capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)
+    check("and against a page that kept the four's lines through the switch, with the pairs still playing%s"
+          % (" (B's own)" if " bown=1 " in lines[k] else ""), worst(stale, row(cpp_rows[k])) > 1e-6)
 # P9, the reverb. First what it does, read off the core's runs; then each run
 # against the page's with one thing moved, which must not pass.
 def plane_row(over):
@@ -1166,6 +1231,15 @@ def gen_runs():
                    (0, "set chorusMix 0.5"), (0, "set chorusRate 1.5"), (0, "set chorusMix 0.5 1"),
                    (0, "set chorusRate 1.5 1"), (0, "set delayMix 0.4"), (0, "set delayMs 6"),
                    (0, "set delayMix 0.6 1"), (0, "set delayMs 3 1"), (0, "set timeOwn %d 1" % own)], samples=4096)
+    # The layers let go and taken up again under a delay (11 Nov): B's pair is
+    # not stepped while there is no B, so B's line is as B left it, and comes
+    # back emptied - with A's settings, and as B's own.
+    for name, own in (("layers-back", 0), ("layers-back-own", 4)):
+        add(name, [(0, "voices 0 " + notes((60, "x"), (67, "y"))), (0, "voices 1 " + notes((76, "xy"))),
+                   (0, "set delayMix 0.5"), (0, "set delayMs 20"), (0, "set delayFeedback 0.6"),
+                   (0, "set delayMix 0.5 1"), (0, "set delayMs 15 1"), (0, "set delayFeedback 0.6 1"),
+                   (0, "set timeOwn %d 1" % own), (1536, "voices 1 null"), (2560, "voices 1 " + notes((72, "xy")))],
+            samples=4096)
     # The score's voice, and the input three ways. Five strikes on the dyad,
     # the fifth taking the voice furthest into its decay. (On a traced
     # figure, and the input from the second generator too, until G2. The
@@ -1398,6 +1472,15 @@ check("and B's own delay, longer, is heard on B's figure alone",
       max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 4), col(grow("time-own-delay-off")[0], 4))) > 1e-3
       and max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 0), col(grow("time-own-delay-off")[0], 0))) == 0)
 gnull("time-own-delay", "set timeOwn 4 1", "set timeOwn 0 1", "B's delay shared, played at A's settings")
+# The layers back under a delay: the page with its emptying taken out (the
+# plane's null, above) keeps B's line through the gap and plays it, which the
+# core must not match - so these two runs can tell a line emptied from one kept.
+for name in ("layers-back", "layers-back-own"):
+    i = next(k for k, (n, _) in enumerate(runs) if n == name)
+    with open(os.path.join(BUILD, "one_gen.txt"), "w") as f: f.write(runs[i][1] + "\n")
+    kept = row(subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), os.path.join(BUILD, "one_gen.txt")],
+                              check=True, capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)
+    check("and against a page whose layer B kept its line through the layers' gap (%s)" % name, worst(kept, row(gcpp[i])) > 1e-6)
 # Legato: a second note while it is open leaves it exactly where one note
 # does. Following Play, the same two runs differ - the second voice is a new
 # envelope - which is what shows the comparison can see a second note at all.
@@ -1677,6 +1760,14 @@ kruns += [
                           "arp nonsense 1/9 0", *steps(600, 1500, 50))),
     ("arp-pedal", krun("arp up 1/8 1", "pedal 1", "at 0", "on 60 100", "on 67 90", "off 60", *steps(30, 700, 50), "pedal 0",
                        *steps(700, 1200, 50), "off 67", "at 1300", "tick")),
+    # Switched off with a key held once it has stepped, as a setup without
+    # one loaded over an arpeggiated one switches it (11 Nov): the key struck
+    # in the dyad, where it had been paired with its octave; then a second
+    # key and the arpeggiator on and off again inside the gather, before any
+    # step, where the keys were never taken from the generator.
+    ("arp-off-held", krun("mode dyad", "at 0", "on 57 100", "at 40", "arp up 1/8 2", *steps(100, 700, 50),
+                          "arp off 1/8 1", "at 800", "tick", "on 60 90", "at 810", "arp up 1/8 1", "at 820", "tick",
+                          "arp off 1/8 1", "at 900", "tick")),
 ]
 def kafuzz(n):
     out, t, held = ["frame 16"], 0, []
@@ -1796,9 +1887,31 @@ check("the step is the rate at the tempo in force: a sixteenth triplet at 120 is
       "%s | %s" % (gap(30, 600)[:4], gap(640, 1200)[:4]))
 S = kout("arp-switch").strip().split("\n")
 off_line = next(l for l in S if l.startswith("arp") and " arp off " in l)
+# The chord it is given is the last one on the line: since 11 Nov an empty
+# one comes first, the strike's closing half.
 check("switched off with keys down, the generator is given the whole of what is held at once, and the out lets go",
-      "outoff 64" in off_line and off_line.count("/") > 6 and "set voices 60/" in off_line and "64/" in off_line.split("set voices")[1],
+      "outoff 64" in off_line and off_line.count("/") > 6 and "set voices 60/" in off_line and "64/" in off_line.split("set voices")[-1],
       off_line[:160])
+check("and struck, as a step is: the gate closes and opens on it",
+      "gate 0" in off_line and off_line.index("gate 0") < off_line.rindex("gate 1"), off_line[:160])
+H = kout("arp-off-held").strip().split("\n")
+offs = [l for l in H if l.startswith("arp") and " arp off " in l]
+check("switched off once it has stepped, a held key is struck: the gate closes, opens, and a note goes down",
+      len(offs) == 2 and "gate 0" in offs[0] and offs[0].index("gate 0") < offs[0].rindex("gate 1") and ":: noteDown" in offs[0],
+      offs[0][:200] if offs else "")
+check("null: switched off inside the gather, before any step, the keys it never took are not struck again",
+      len(offs) == 2 and "gate 0" not in offs[1] and "noteDown" not in offs[1], offs[1][:200] if len(offs) > 1 else "")
+# And the page with that strike taken out (arpSet as it was before 11 Nov):
+# its lines must not pass for the core's, or the run could not tell.
+unstruck = os.path.join(BUILD, "scope_arp_null.html")
+with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: arp_text = f.read()
+assert arp_text.count("  if (stepped && !arpActive() && midi.notes.length) {") == 1
+with open(unstruck, "w", encoding="utf-8") as f: f.write(arp_text.replace("  if (stepped && !arpActive() && midi.notes.length) {", "  if (false) {"))
+with open(os.path.join(BUILD, "keyboard_null.txt"), "w") as f: f.write(dict(kruns)["arp-off-held"])
+kn = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), os.path.join(BUILD, "keyboard_null.txt")], check=True,
+                    capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=unstruck)).stdout
+check("and against a page that only gave the held key back, unstruck, as it did before 11 Nov",
+      kdiff(kn, kslice(kcpp, next(k for k, (n, _) in enumerate(kruns) if n == "arp-off-held"))) is not None)
 last_off = next(l for l in S if l.startswith("off") and " - 3 - -" in l.split(" arp ")[-1])
 check("letting go of the last key stops it: the generator is told nothing is held, and the last note out is let go",
       "outoff 67" in last_off and "gate 0" in last_off, last_off[:120])

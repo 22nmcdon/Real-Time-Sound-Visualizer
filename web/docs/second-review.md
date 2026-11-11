@@ -103,13 +103,18 @@ sources.
    empty editor up to the minimum, and `resized()` saves 960×600 over the stored size. The
    1200×680 default and the remembered size are never used. Reading the size first fixes
    it; no test builds an editor.
-2. **The delay replays old audio when it is turned back on (checked).** The line is
-   written only while the mix is above nought (`plane.h`), so turning it on plays the
-   moment it was turned off, with its old feedback. The site has it too.
-3. **Turning a module back on can bring back an earlier preset's settings (checked).**
-   `fxKept` remembers a module's mix when it is switched off and is never cleared: switch
-   the delay off, load another preset, switch it on, and it comes back at the first
-   preset's mix. The Plane brings back all of its shaping and its turn.
+2. ~~**The delay replays old audio when it is turned back on (checked).**~~ Fixed 11 Nov:
+   a module switched on starts from silence, the delay, chorus, phaser and reverb alike,
+   on both hands, page and core (`timeRuns`; web/README.md says what was rejected). The
+   line was written only while the mix is above nought (`plane.h`), so turning it on
+   played the moment it was turned off, with its old feedback. The site had it too.
+3. ~~**Turning a module back on can bring back an earlier preset's settings (checked).**~~
+   Fixed 11 Nov: what a switch kept is kept per hand and forgotten by anything that goes
+   through `restore`, and undo's steps carry it. `fxKept` remembered a module's mix when
+   it was switched off and was never cleared: switch the delay off, load another preset,
+   switch it on, and it came back at the first preset's mix. The Plane brought back all
+   of its shaping and its turn, and the upper hand's own delay's mix came back on the
+   lower's.
 4. **The Photocell cannot be routed, though the face says it can (checked).** Only the
    two LFOs and the Envelope are offered, but Advanced calls it "a light sensor... as a
    modulation source" and the cheat sheet tells you to use it like an LFO. Turned on, it

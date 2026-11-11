@@ -340,14 +340,23 @@ class Keyboard {
   void setOut(NoteOut* out) { out_ = out; }
 
   // arpSet: the menus' values. Switched with keys down, the generator is given
-  // what it should now have.
+  // what it should now have. Switched off once a step has played, what is
+  // held is struck, as a step is (11 Nov; the page's arpSet says why): a
+  // setup loaded over held keys left them on the last step's envelope.
   void setArp(std::string mode, std::string rate, double octaves) {
+    const bool stepped = !arp_.current.empty();
     arp_.mode = std::move(mode);
     arp_.rate = std::move(rate);
     arp_.octaves = octaves == 0 || std::isnan(octaves) ? 1 : octaves;
     if (arp_.start) { offSent(); arp_.start.reset(); }
     arp_.index = -1;
     arp_.current.clear();
+    if (stepped && !arpActive() && !notes_.empty()) {
+      std::swap(notes_, arpSaved_);
+      notes_.clear();
+      applyNotesTo();
+      std::swap(notes_, arpSaved_);
+    }
     applyNotes();
   }
   // The rate and octaves menus' own handlers: the field and nothing else,

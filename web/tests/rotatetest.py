@@ -189,11 +189,15 @@ with sync_playwright() as pw:
     check("every preset places both lanes alike and turns by nothing",
           presets["odd"] == [], str(presets["odd"][:2]))
     print("    %d presets checked" % presets["count"])
-    # Struck again after the walk: on the site's instrument, an arpeggiated
-    # preset loaded over a held key leaves the generator at a tenth of its
-    # level, or silent, once a later setup turns the arpeggiator off (the
-    # page's own brain sounds the key at once; web/README.md, *Silent until a
-    # note*), which the drone this suite read until 10 Nov never showed.
+    # Struck again after the walk, which loads every setup in one evaluate:
+    # too fast for the page's own arpeggiator, which steps on the page's
+    # timers, and not for the site's instrument, which steps on the audio's
+    # clock between the loads. So on the instrument the key is struck again
+    # where the arpeggiated presets give way, under the first setup after
+    # them (a Bell, at a tenth of its sustain), and a setup loaded over a
+    # held key leaves its envelope where it was struck; on ?brain=js it never
+    # was. Until 11 Nov the instrument left it on the last arpeggio step's
+    # envelope instead (web/README.md, *A key held through the arpeggiator*).
     p.evaluate("() => midiPanic()")
     corpus.held_tone(p)
 

@@ -169,6 +169,8 @@ class Plane {
     timeSet(timeA_, t, echoRouted);
     if (timeOwnB_ != 0) timeSet(timeB_, *b, echoRouted);
     timeOn_ = timeA_.on || (timeOwnB_ != 0 && timeB_.on);
+    // A new block for the pairs' modules, as the page's planeSetup: asked of each pair as it is stepped.
+    for (auto& fx : fx_) { fx.was = fx.ran; fx.ran = 0; }
     return linearOn_ || nonlinearOn_ || timeOn_;
   }
 
@@ -433,7 +435,34 @@ class Plane {
     std::array<double, 4 * kPhaserStages> ps {};  // the phaser's all-pass states, left then right
     double pl = 0, pr = 0;                        // and what each channel's chain last gave, fed back
     double tl = 0, tr = 0, hl = 0, hr = 0, wph = 0;  // F5c: the tone's and cut's memories, the wow's phase
+    int ran = 0, was = 0;  // the modules that ran this block and the last, by timeOwn's bits
   };
+
+  /* A module switched on starts from silence (11 Nov), as the page's
+     timeFresh: a module that ran in neither this block nor the last has its
+     lines and memories emptied before it runs. The page says why, and what
+     was rejected. Filled in place, so nothing is allocated here: the delay's
+     two lines are the most of it, about 0.7 MB at 48 kHz, once a switch-on. */
+  static void timeFresh(TimeFx& fx, int bit) {
+    if (bit == 1) { fx.ps.fill(0); fx.pl = 0; fx.pr = 0; }
+    else if (bit == 2) { std::fill(fx.cl.begin(), fx.cl.end(), 0.0f); std::fill(fx.cr.begin(), fx.cr.end(), 0.0f); }
+    else if (bit == 4) {
+      std::fill(fx.dl.begin(), fx.dl.end(), 0.0f); std::fill(fx.dr.begin(), fx.dr.end(), 0.0f);
+      fx.dNow = -1; fx.tl = 0; fx.tr = 0; fx.hl = 0; fx.hr = 0; fx.wph = 0;
+    } else {
+      for (auto* c : { &fx.rvx, &fx.rvy }) {
+        std::fill(c->pre.begin(), c->pre.end(), 0.0);
+        for (auto& buf : c->ap) std::fill(buf.begin(), buf.end(), 0.0);
+        for (auto& line : c->lines) std::fill(line.begin(), line.end(), 0.0);
+        c->damp.fill(0);
+      }
+    }
+  }
+  static void timeRuns(TimeFx& fx, int bit) {
+    if (fx.ran & bit) return;
+    if (!(fx.was & bit)) timeFresh(fx, bit);
+    fx.ran |= bit;
+  }
 
   static double readLine(const std::vector<float>& buf, int w, double d, int size) {
     double at = w - d;
@@ -494,6 +523,7 @@ class Plane {
       const char stage = order[k];
       if (stage == 'p') {
         if (T.phOn) {
+          timeRuns(fx, 1);
           const double fb = std::fmax(0.0, std::fmin(kPhaserFeedbackMax, t.phaserFeedback));
           const double wl = allpassChain(fx.ps, 0, T.aL, x + fb * fx.pl);
           const double wr = allpassChain(fx.ps, 2 * kPhaserStages, T.aR, y + fb * fx.pr);
@@ -503,6 +533,7 @@ class Plane {
         }
       } else if (stage == 'c') {
         if (t.chorusMix > 0) {
+          timeRuns(fx, 2);
           const double base = t.chorusMs * rate_ / 1000, depth = t.chorusDepthMs * rate_ / 1000;
           const double lim = chorusMax_ - 3;
           const double wl = readLine(fx.cl, fx.cw, std::fmax(1.0, std::fmin(lim, base + depth * T.sin)), chorusMax_);
@@ -516,6 +547,7 @@ class Plane {
         }
       } else {
         if (T.delayOn) {
+          timeRuns(fx, 4);
           const double want = std::fmax(1.0, std::fmin(static_cast<double>(delayMax_ - 3), T.echoMs * rate_ / 1000));
           fx.dNow = fx.dNow < 0 ? want : fx.dNow + (want - fx.dNow) * delayGlide_;
           // Wow: half a hertz, two milliseconds either side at the most, as the page's.
@@ -548,6 +580,7 @@ class Plane {
     }
     // The reverb last, after the three in their order, as the page's.
     if (T.revOn) {
+      timeRuns(fx, 8);
       reverbChannel(fx.rvx, T, x);
       reverbChannel(fx.rvy, T, y);
       double wx = 0, wy = 0;

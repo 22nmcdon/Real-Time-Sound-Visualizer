@@ -221,7 +221,7 @@ for (const raw of fs.readFileSync(process.argv[2], "utf8").split("\n")) {
     toneB.timeOwn = n("bown") === 1 ? 15 : 0;
     toneB.planeTurn = n("bTurn");
     const c = coreScope(["poleFor", "planeOf", "shapeA", "shapeOfB", "opX", "planeOp", "DELAY_MAX", "DELAY_TONE_LOW", "WOW_STEP", "CHORUS_MAX",
-                         "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "readLine", "timeStep", "lowpassTaps",
+                         "delayGlide", "timeOf", "timeA", "timeOfB", "makeTimeFx", "timeFresh", "timeRuns", "readLine", "timeStep", "lowpassTaps",
                          "makeOversampler", "planeFactor", "fxA", "linearOn", "genMod", "genModB",
                          "turnRoutedB", "timeOwnB", "shapeSet", "timeSet", "planeSetup", "planeTick", "timeShare", "timeTick", "planeStep",
                          "PHASER_STAGES", "PHASER_CENTRE", "PHASER_OCTAVES", "PHASER_FEEDBACK_MAX", "phaserTop",
