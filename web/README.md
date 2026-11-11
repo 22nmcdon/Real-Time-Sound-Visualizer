@@ -5821,7 +5821,10 @@ page whose timers never fire, so a difference between the brains found that way
 wants the same probe with time between before it is called a port's. And a
 setup loaded over a held key still leaves the key's envelope where it was
 struck (*A note is not the drone*, above): fixing the arpeggiator does not
-change that, so `rotatetest.py` still strikes again after its walk. `arptest.py`
+change that, so `rotatetest.py` still strikes again after its walk. That is
+the owner's call (11 Nov), not an oversight: a setup loaded over a held key
+does not strike it again, so a held note keeps the envelope it was struck
+under until it is played again. `arptest.py`
 holds the strike on the page's lines and the level on both brains, with a key
 struck under a lower sustain as the null; parity's `arp-off-held` holds the
 core to it, with a page that does not strike as its null.
