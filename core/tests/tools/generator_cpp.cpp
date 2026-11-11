@@ -159,6 +159,8 @@ void run(const std::vector<std::string>& head, const Events& events) {
   // The source that reads it, as the matrix would: the note envelope, the
   // one left since G2 took the drawings' six.
   out.push_back(scope::EnvelopeSource(core).value());
+  // And, last, the envelope's stage and velocity (11 Nov), for the Envelope card's dot.
+  out.insert(out.end(), { static_cast<double>(core.envelopeStage()), core.envelopeVelocity() });
   for (std::size_t i = 0; i < out.size(); i++) std::printf(i ? " %.17g" : "%.17g", out[i]);
   std::printf("\n");
 }

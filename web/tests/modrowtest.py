@@ -22,6 +22,13 @@ What would go wrong, and what is checked for it:
 - the Envelope's curve following the wrong envelope: following Play it must
   move with Play's attack and not with its own, and the other way round
   with its own, each with its null;
+- the Envelope's dot jumping about its card (the owner, 11 Nov): over a note
+  held and let go, on both brains, in Mono and Poly, following Play and its
+  own, read every frame, the dot must go through attack, decay, sustain and
+  release in that order and only forwards, and sit on the curve drawn; over
+  notes in a row it may go back only into a new note's attack. The null is
+  the guess it used to make from which way the level moved, put back in the
+  page for one run, which the same reading must fail;
 - the photocell's crop being a picture of somewhere else: the inked pixels
   of the trace around the reticle must be inked in the crop, and the same
   pixels a crop-width away must not all be (the null);
@@ -170,7 +177,7 @@ with sync_playwright() as pw:
       return { idle, idleStage, early, earlyStage, later };
     }""")
     print("    %s" % env)
-    check("the Envelope's card: its dot rests at the start with nothing played", env["idleStage"] == "idle", str(env))
+    check("the Envelope's card: its dot rests with nothing played", env["idleStage"] == "idle", str(env))
     check("and climbs the attack as a note is held, moving on", env["earlyStage"] == "attack" and env["later"][0] > env["early"][0]
           and env["later"][1] < env["early"][1], str(env))
     null("the resting dot is not where the attack took it", env["early"] != env["idle"])
@@ -435,6 +442,145 @@ with sync_playwright() as pw:
           chips[(1400, 860)]["chips"] and not chips[(1400, 860)]["compact"] and chips[(1400, 860)]["drawing"] == [44, 16]
           and chips[(1400, 860)]["height"] <= 40 and chips[(1200, 680)]["chips"], str(chips))
     null("the cards' row is taller than the chips'", chips[(1400, 900)]["height"] > 2 * chips[(1400, 860)]["height"])
+
+
+    print("\n--- the Envelope's dot, along a note ---")
+    # Every frame's dot off the card: its stage, where it is, and how far it
+    # is from the curve drawn there (the polyline through the corners).
+    TRACE = """async ([mode, own, phrase]) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      midiPanic(); await wait(100);
+      const set = (id, v) => { const i = document.getElementById(id); i.value = String(v); i.dispatchEvent(new Event('input', { bubbles: true })); };
+      // Slow enough to see each stretch at the few frames a second a busy machine draws:
+      // 600 ms up, 800 ms down to a half, 1 s away.
+      for (const [id, v] of [['envAttack', 600], ['envDecay', 800], ['envSustain', 50], ['envRelease', 1000],
+                             ['menvAtk', 600], ['menvDec', 800], ['menvSus', 50], ['menvRel', 1000]]) set(id, v);
+      if (el.menvOwn.checked !== own) { el.menvOwn.checked = own; el.menvOwn.dispatchEvent(new Event('change')); }
+      (mode === 'mono' ? el.midiMono : el.midiPoly).click();
+      await wait(400);
+      const canvas = () => el.modStrip.querySelector('[data-source="env.note"] canvas');
+      // How far the dot is below the curve there, in pixels: negative above it.
+      const offLine = (d) => {
+        const [x, y] = d.dot, c = d.corners;
+        for (let i = 0; i + 1 < c.length; i++) {
+          const [x0, y0] = c[i], [x1, y1] = c[i + 1];
+          if (x >= x0 - 0.01 && x <= x1 + 0.01) {
+            const f = x1 > x0 ? (x - x0) / (x1 - x0) : 0;
+            return y - (y0 + (y1 - y0) * f);
+          }
+        }
+        return 99;
+      };
+      const out = []; let run = true, strikes = 0;
+      const tick = () => {
+        if (!run) return;
+        const d = canvas()._drawn;
+        if (d) out.push({ strikes, stage: d.stage, x: +d.dot[0].toFixed(2), off: +offLine(d).toFixed(2),
+                          level: +MOD_SOURCES.get('env.note').value().toFixed(4), y: d.dot[1], h: d.h });
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      if (phrase) {
+        for (const n of [57, 60, 64, 67]) { strikes++; midiNoteOn(n, 100); await wait(500); midiNoteOff(n); await wait(100); }
+        await wait(1800);
+      } else {
+        strikes++; midiNoteOn(57, 100); await wait(2600); midiNoteOff(57); await wait(1800);
+      }
+      run = false;
+      if (own) { el.menvOwn.checked = false; el.menvOwn.dispatchEvent(new Event('change')); }
+      return out;
+    }"""
+    # The guess the card made until 11 Nov, put back for one run: the stage
+    # from which way the level moved and `gated` taken for a key held, the
+    # velocity left in the level.
+    OLD_GUESS = """() => {
+      window.__stepEnvWhere = stepEnvWhere;
+      let last = 0, stage = 'idle';
+      window.stepEnvWhere = (level) => {
+        const gated = !!(state.source && state.source.gated);
+        const rising = level > last + 1e-4, falling = level < last - 1e-4;
+        if (level < 1e-3 && !rising) stage = 'idle';
+        else if (rising) stage = 'attack';
+        else if (falling && !gated) stage = 'release';
+        else if (falling) stage = stage === 'sustain' ? 'sustain' : 'decay';
+        else if (stage === 'attack' || stage === 'decay') stage = 'sustain';
+        last = level;
+        envWhere.level = level; envWhere.stage = stage; envWhere.velocity = 1; envWhere.from = 0.5;
+      };
+    }"""
+    ORDER = ["attack", "decay", "sustain", "release", "idle"]
+
+    def off_curve(f):
+        """Off the curve drawn: by more than a pixel and a half either way, but
+        in a release only below it - one let go mid-attack starts above the
+        sustain's line and comes down to it, since the dot is the level."""
+        return f["off"] > 1.5 or (f["stage"] != "release" and f["off"] < -1.5)
+
+    def along(trace):
+        """What is wrong with a note's dot: the frames from its attack on must
+        go through the stages in order and only forwards, sit on the curve,
+        and see every stage; nothing wrong is an empty list."""
+        wrong = []
+        start = next((i for i, f in enumerate(trace) if f["stage"] == "attack"), None)
+        if start is None: return ["never an attack"]
+        frames = trace[start:]
+        seen = [f["stage"] for f in frames]
+        for a, b in zip(frames, frames[1:]):
+            if ORDER.index(b["stage"]) < ORDER.index(a["stage"]):
+                wrong.append("back from %s to %s" % (a["stage"], b["stage"])); break
+        for a, b in zip(frames, frames[1:]):
+            if b["x"] < a["x"] - 0.5:
+                wrong.append("x back from %.1f to %.1f in %s" % (a["x"], b["x"], b["stage"])); break
+        far = [f for f in frames if off_curve(f)]
+        if far: wrong.append("%d frames off the curve, the first %s" % (len(far), far[0]))
+        missing = [s for s in ORDER if s not in seen]
+        if missing: wrong.append("never in " + ", ".join(missing))
+        return wrong
+
+    def phrase(trace):
+        """Over notes in a row: back only into a new note's attack, on the curve throughout."""
+        wrong = []
+        for a, b in zip(trace, trace[1:]):
+            if b["x"] < a["x"] - 0.5 and b["stage"] != "attack":
+                wrong.append("x back from %.1f to %.1f into %s" % (a["x"], b["x"], b["stage"])); break
+        far = [f for f in trace if off_curve(f)]
+        if far: wrong.append("%d frames off the curve, the first %s" % (len(far), far[0]))
+        if not any(f["stage"] == "release" for f in trace): wrong.append("never a release")
+        return wrong
+
+    js = b.new_page(viewport={"width": 1400, "height": 900})
+    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
+    js.goto(f"file://{ART}/scope.html?brain=js"); js.wait_for_timeout(1200)
+    if js.locator("#helpClose").is_visible(): js.locator("#helpClose").click()
+    js.evaluate("() => { setView('bench'); setBenchTab('play'); }")
+    for label, page in (("the instrument", p), ("the page's own brain", js)):
+        for mode in ("mono", "poly"):
+            for own in (False, True):
+                trace = page.evaluate(TRACE, [mode, own, False])
+                wrong = along(trace)
+                stages = []
+                for f in trace:
+                    if not stages or stages[-1] != f["stage"]: stages.append(f["stage"])
+                check("on %s in %s, %s: over a note held and let go the dot goes attack, decay, sustain, release, only forwards and on the curve"
+                      % (label, mode.capitalize(), "its own" if own else "following Play"),
+                      not wrong, "%s; %d frames, %s" % ("; ".join(wrong), len(trace), " > ".join(stages)))
+        rowed = page.evaluate(TRACE, ["poly", False, True])
+        wrong = phrase(rowed)
+        check("on %s, over notes in a row in Poly, the dot goes back only into a new note's attack, and stays on the curve" % label,
+              not wrong, "; ".join(wrong))
+        # The level it is drawn at is the source's own, what a routing takes.
+        heights = [f for f in rowed if f["level"] > 0]
+        check("and its height is the source's level, what a routing from it is given",
+              heights and all(abs((f["h"] - 2) - f["y"] - min(1, f["level"]) * ((f["h"] - 2) - 3)) < 0.75 for f in heights),
+              str(heights[:2]))
+    # The null: the guess put back, on the instrument, Mono, following Play.
+    p.evaluate(OLD_GUESS)
+    guessed = p.evaluate(TRACE, ["mono", False, False])
+    guessedRow = p.evaluate(TRACE, ["poly", False, True])
+    p.evaluate("() => { window.stepEnvWhere = window.__stepEnvWhere; }")
+    null("the old guess, put back, fails the same reading over a held note", along(guessed) != [], "; ".join(along(guessed)))
+    null("and over notes in a row", phrase(guessedRow) != [], "; ".join(phrase(guessedRow)))
+    js.close()
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

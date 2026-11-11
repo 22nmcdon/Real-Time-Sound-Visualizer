@@ -5913,6 +5913,34 @@ test tone is put back to 8, the buffer having no room for it, which reads at
 first exactly like a morph that moved it: `setupmorphtest.py` keeps its
 timebases at 8 or under.
 
+**The Envelope's dot is told where it is, not left to guess (11 Nov).** The
+owner saw the dot on the Envelope's card "jump across the view with no
+apparent reason". A trace of it every frame, on both brains, in Mono and Poly,
+found four reasons, each in the guess it made of the stage from which way the
+level moved. The level is the curve times the note's velocity, so at velocity
+100 the attack stopped at 0.79 of its stretch and the decay began half-way
+along its own. `gated`, taken for a key held, says whether the envelope is in
+force at all - always, since the site waits for a note - so a release was
+never recognised: it fell as "held" at the hold's middle and jumped home at
+rest. The level reaches the page a batch at a time, and the frames between two
+batches saw it still and called it held, so on the page's own brain the dot
+flicked from the attack to the hold and back several times a note. And in
+Poly the level is the loudest voice's, which no direction of travel can
+place. The generator now sends back, with the level, the stage and the
+velocity of the envelope it reads (`envelopeLeading`, page and core; the
+worklet's message, `scope_state`'s places 10 and 11 and `brain_readings`' 11
+and 12, which were noughts kept since G2), and the card places the dot by the
+stage, draws the curve at that note's velocity, so the dot - the level itself,
+which is what a routing from it is given - sits on the line, and waits at the
+end of the release at rest, so the only jump back is a note struck. A release
+from above the sustain comes down to the line. Parity holds the stage and the
+velocity to the core's in every generator run. `modrowtest.py` reads the dot
+every frame and requires the stages in order, only forwards, on the curve, on
+both brains, Mono and Poly, following Play and its own; and over notes in a
+row, back only into an attack. Its null is the old guess put back in the
+page, which fails both. Not done: in the plugin the page is sent no readings
+at all, so its Envelope card's dot has never moved there.
+
 **Switching the photocell on is not patching it.** `setPhoto(true)` registers
 the source and leaves the reticle where it was, by default in the dark, so a
 probe that switches it on that way and routes it reads nought, moves nothing,

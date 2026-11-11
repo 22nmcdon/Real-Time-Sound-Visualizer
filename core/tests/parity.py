@@ -1346,11 +1346,12 @@ for family in sorted(gworst):
 # Each run has to be able to show what it is for: a comparison of two cores
 # doing nothing would pass. The report at the end of a row is envelope, pitch,
 # then the budget (units, asked A and B, unison A and B, asked factor, factor,
-# silenced), the voices on each layer, each layer's read-head (P8f), and then
+# silenced), the voices on each layer, each layer's read-head (P8f), then
 # the source that reads the generator, the page's registration against the
-# core's: the note envelope. (The kick, the swing, the drawing's six readings
-# and the drawings' six sources were in it too, until G2.)
-TAIL = 15   # the end values: twelve, each layer's read-head, then the source
+# core's: the note envelope; and last the envelope's stage and velocity (11
+# Nov, the Envelope card's dot). (The kick, the swing, the drawing's six
+# readings and the drawings' six sources were in it too, until G2.)
+TAIL = 17   # the end values: twelve, each layer's read-head, the source, then the stage and velocity
 def grow(name):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     v = row(gjs[i])
@@ -1378,6 +1379,15 @@ plain = [n for n, r in runs if "voices" not in r and "fx 1" not in r]
 _, ptail = grow(plain[0])
 check("with no layer B, B's read-head is nobody's", ptail[13] == -1 and 0 <= ptail[12] < 1,
       "%s: A %.6f, B %.6f" % (plain[0], ptail[12], ptail[13]))
+# The envelope's stage and velocity (11 Nov), which go back with its level for
+# the Envelope card's dot: the runs end in more than one stage and at more than
+# one velocity, so the comparison of every row above, which holds the page's
+# to the core's, has something to hold.
+gstages = sorted({grow(n)[1][15] for n, _ in runs})
+gvels = sorted({grow(n)[1][16] for n, _ in runs})
+check("the envelope's stage and velocity go back with its level: the runs end in %d stages and %d velocities, page and core alike"
+      % (len(gstages), len(gvels)), len(gstages) >= 3 and set(gstages) <= {0, 1, 2, 3, 4} and len(gvels) >= 2,
+      "%s %s" % (gstages, gvels[:6]))
 own, off = grow("plane-own")[0], grow("plane-own-off")[0]
 check("layer B's own plane bends B's picture and its share of the sound, and leaves A's picture as it was",
       max(abs(a - b) for a, b in zip(col(own, 4), col(off, 4))) > 0.05

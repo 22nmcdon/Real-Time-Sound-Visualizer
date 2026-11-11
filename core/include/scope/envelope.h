@@ -72,6 +72,8 @@ class Envelope {
 
   double level() const { return value_ * velocity_; }
   Stage stage() const { return stage_; }
+  // How hard the note that opened it was struck: the level is the curve times this.
+  double velocity() const { return velocity_; }
 
  private:
   static constexpr double kReach = 0.2;

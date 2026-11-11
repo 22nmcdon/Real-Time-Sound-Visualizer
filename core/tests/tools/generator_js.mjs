@@ -174,6 +174,8 @@ function run(head, events) {
              b.askedFactor, b.factor, b.silenced, core.pitch, core.gated ? 1 : 0);
     for (const l of lfos) out.push(l.phase, l.held, l.value);
     out.push(core.scanHead[0], core.scanHead[1]);
+    // And the envelope's stage and velocity (11 Nov), as the worklet posts them.
+    out.push(core.envelopeStage, core.envelopeVelocity);
     return show(out);
   }
   out.push(core.envelope, core.pitch,
@@ -183,6 +185,8 @@ function run(head, events) {
   readSources({ source: { kind: "tone", gated, envelope: core.envelope } },
               (entry) => sources.set(entry.id, entry));
   for (const id of SOURCE_IDS) out.push(sources.get(id).value());
+  // And, last, the envelope's stage and velocity (11 Nov), for the Envelope card's dot.
+  out.push(core.envelopeStage, core.envelopeVelocity);
   return show(out);
 }
 
