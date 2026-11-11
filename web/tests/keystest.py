@@ -68,9 +68,11 @@ with sync_playwright() as pw:
         p.evaluate("(on) => { el.keysLatch.checked = on; "
                    "el.keysLatch.dispatchEvent(new Event('change')); }", on)
 
-    print("\n--- a keyboard is there to wait for ---")
+    print("\n--- the keys, and a generator that waits for a note either way ---")
     # The waveform generator is the default source, so the gate is the thing
-    # to watch: it shuts between notes only while something could play one.
+    # to watch. It shut between notes only while something could play one
+    # until 10 Nov, which on the site was a drone before a port could connect;
+    # since then it waits for a note with the keys shut too, as the plugin does.
     before = p.evaluate("() => ({ present: keyboardPresent(), gated: state.source.gated })")
     # Things that are on the screen. The first draft measured the lag's mix
     # slider, which lives in the closed Settings panel: its box is all noughts
@@ -88,10 +90,13 @@ with sync_playwright() as pw:
     })""")
     opened["moved"] = p.evaluate(BOXES)
     print("    closed %s; open %s" % (before, opened))
-    check("with no port and no keys, nothing is waiting and the generator is not gated",
-          before["present"] is False and before["gated"] is False, str(before))
-    check("opening the keys makes a keyboard present, and the waveform waits for a note",
-          opened["present"] is True and opened["gated"] is True, str(opened))
+    waits = lambda r, present: r["present"] is present and r["gated"] is True
+    check("with no port and no keys there is no keyboard, and the waveform waits for a note all the same",
+          waits(before, False), str(before))
+    # The null: the reading as the page opened until 10 Nov, ungated.
+    check("and the reading fails against an ungated generator", not waits(dict(before, gated=False), False))
+    check("opening the keys makes a keyboard present, and the waveform still waits for a note",
+          waits(opened, True), str(opened))
     check("two octaves and the C that closes them, twenty-five keys",
           opened["shown"] and opened["keys"] == 25, str(opened["keys"]))
     check("and the Playing line shows, as it does for a port",
@@ -292,8 +297,8 @@ with sync_playwright() as pw:
     print("    port holding C4, screen holding C3, keys closed: %s" % closed)
     check("closing the keys releases what they held and not what a port holds",
           closed["notes"] == [60] and closed["latched"] == 0, str(closed))
-    check("and the generator stops waiting for a keyboard that has gone",
-          closed["present"] is False and closed["gated"] is False, str(closed))
+    check("and the generator goes on waiting for a note with the keys gone",
+          waits(closed, False), str(closed))
 
     p.keyboard.press("s"); p.wait_for_timeout(60)
     shortcut = p.evaluate("() => state.mode")

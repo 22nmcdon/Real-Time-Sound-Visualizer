@@ -152,7 +152,14 @@ with sync_playwright() as pw:
              each run began with the one before it still in its history - and
              the organ, run without its loop straight after running with it,
              read as wandering on what the loop had drawn. */
-          loadCorpus(preset); await wait(300);
+          /* Under a note held in Mono (corpus.held_tone), let go and struck
+             again round every load: the site waits for a note since 10 Nov,
+             and these loops were the tone it drew with none. A note held over
+             a load in Dyad would make every interval a unison. At full
+             sustain, as the drone was at its Level: the stored reticles were
+             placed on figures that size, and under the envelope's 0.7 three
+             of twelve fell off theirs. */
+          midiPanic(); loadCorpus(preset); heldTone(57, true); await wait(300);
           /* A cell in the dark pressed onto the figure, as a player presses
              the reticle (landPhoto). Only one in the dark - under a
              thousandth after a second and a half - since landPhoto's own
@@ -199,7 +206,7 @@ with sync_playwright() as pw:
           if (name === names[0]) {
             const setup = corpusSetup(preset);
             const kept = decodeRoutings(setup.mod || '').filter((r) => !picture.test(r.sourceId));
-            restore(Object.assign({}, setup, { mod: encodeRoutings(kept) }));
+            midiPanic(); restore(Object.assign({}, setup, { mod: encodeRoutings(kept) })); heldTone(57, true);
             // Without the loop from where the loop was measured: the landed cell, if it was.
             if (landed) movePhoto(landed[0], landed[1]);
             await wait(300); pictureMeter.reset();
@@ -215,7 +222,7 @@ with sync_playwright() as pw:
           out.push(row);
         }
       }
-      restore({}); await wait(100);
+      midiPanic(); restore({}); await wait(100);
       return out;
     }""", [SECTIONS, SECONDS, DRAWN])
     def share(v):

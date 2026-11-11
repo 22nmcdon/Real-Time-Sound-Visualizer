@@ -191,6 +191,9 @@ with sync_playwright() as pw:
           "%.1f dB taken off" % (just_filter["input"] - just_filter["shaped"]))
 
     print("\n--- and it says which one you are looking at ---")
+    # A note held: the line names what shaped a signal, and since 10 Nov the
+    # site is silent until a note, where it drew a steady tone before.
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(500)
     words = p.evaluate("""async () => {
       const was = { see: state.analyseAt, hear: state.monitorAt, on: state.filter.on,
                     rotate: state.rotate,
@@ -219,7 +222,7 @@ with sync_playwright() as pw:
 
       /* And the mirror. It needs real speakers, because the speakers' switch
          changes nothing when there is no chain to change - so the generator is
-         sounding, as it always is, for this one. */
+         heard, under the note held above, for this one. */
       await applyGeneratorSound();
       const audible = state.source.audible ? state.source.audible() : false;
       state.monitorAt = 'pre';
@@ -239,6 +242,7 @@ with sync_playwright() as pw:
       return { bare, bareOnInput, filtered, coupled, onInput,
                audible, speakersDry, bothShaped, speakersDrySilent };
     }""")
+    p.evaluate("() => midiNoteOff(57)")
     for name in ("bare", "bareOnInput", "filtered", "coupled", "onInput",
                  "speakersDry", "bothShaped", "speakersDrySilent"):
         print("    %-18s %s" % (name, words[name][:66]))

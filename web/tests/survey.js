@@ -11,7 +11,10 @@ async ([seconds]) => {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   /* The old library's setups, from before P8g, which the page no longer
      carries: corpus.py's install defines corpusSetup, and shapetest.py calls
-     it before running this. These are the pictures the survey was made on. */
+     it before running this. These are the pictures the survey was made on,
+     each under a note held in Mono (its heldTone, corpus.held_tone's), let go
+     and struck again round each setup: the site waits for a note since
+     10 Nov, and these were the tones it drew with none. */
   const preset = (name) => corpusSetup(name);
   const route = (list) => {
     state.modRoutings = [];
@@ -35,7 +38,7 @@ async ([seconds]) => {
   ];
   const rows = [];
   for (const [name, setup, routes] of configs) {
-    setup();
+    midiPanic(); setup(); heldTone();
     if (!photo.on) setPhoto(true);
     pictureMeter.reset();
     route(routes);
@@ -48,7 +51,7 @@ async ([seconds]) => {
     }
     el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event('change'));
   }
-  state.modRoutings = []; touchRoutings();
+  state.modRoutings = []; touchRoutings(); midiPanic();
 
   // Mutual information with fixed-width bins over each variable's own range.
   const BINS = 8;

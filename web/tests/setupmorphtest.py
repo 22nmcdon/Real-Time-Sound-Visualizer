@@ -23,6 +23,7 @@ Against the way each would fail:
 """
 import os
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -155,6 +156,9 @@ with sync_playwright() as pw:
     check("at rest it leaves a slider the hand has moved, and moving the fader takes it back",
           blend["hand"] == 20 and blend["moved"] == round(55 + 45 * 0.6), "%s then %s" % (blend["hand"], blend["moved"]))
 
+    # A note held in Mono, so the pitch is the slider's: the site waits for a
+    # note since 10 Nov, and this heard the tone it drew with none.
+    corpus.held_tone(p)
     driven = p.evaluate("""async () => {
       /* A source with nothing behind it but a value this suite sets - what a
          macro was to the matrix, until P8d. */
@@ -173,6 +177,8 @@ with sync_playwright() as pw:
       return { half, full, back };
     }""")
     print("    %s" % driven)
+    # And let go, since a held note sets the pitch a setup loaded after it names.
+    p.evaluate("() => midiPanic()")
     check("a source on the fader drives the morph: half is 440, full is B's 880, and the generator plays it",
           driven["half"]["freq"] == 440 and driven["full"]["freq"] == 880 and driven["back"] == 220
           and abs(driven["full"]["pitch"] - 880) < 15, str(driven))

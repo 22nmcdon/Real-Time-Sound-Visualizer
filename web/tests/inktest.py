@@ -76,6 +76,9 @@ with sync_playwright() as pw:
     # The beam off, so a stroke is the ink itself, and no persistence, so the
     # screen is only the frame just drawn.
     p.evaluate("() => { el.dispXY.click(); el.beamLevel.value = 'off'; el.beamLevel.dispatchEvent(new Event('change')); state.persistence = 0; }")
+    # A note held for A's ink, a lone note's ring in Poly: the site waits for
+    # a note since 10 Nov, and this counted the figure it drew with none.
+    p.evaluate("() => midiNoteOn(57, 127)")
     p.wait_for_timeout(400)
 
     print("\n--- A's ink, on the screen ---")
@@ -133,6 +136,7 @@ with sync_playwright() as pw:
     check("while the screen's pixels differ, shaded and plain, so the ink did change what is drawn", not grids["pixelsSame"], str(grids["out"]))
     check("null: the same frame a tenth smaller lays a different grid, so the comparison can see one", not grids["nullSame"])
 
+    p.evaluate("() => midiNoteOff(57)")
     print("\n--- B's ink, with two layers ---")
     two = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));

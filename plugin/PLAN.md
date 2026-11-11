@@ -1898,6 +1898,16 @@ not what it plays, so it is not remembered in the state, and the plugin
 never sends it. An instrument told nothing is the plugin's: gated until a
 note.
 
+10 Nov undid the site's half of this, at the owner's call. On the site the
+free generator was a drone from the moment the page opened, before a MIDI
+port had had the time to connect, so the site now waits for a note as the
+plugin does: the page's gate no longer asks `keyboardPresent`, the page
+sends nothing, and the instrument, told nothing, is the plugin's. What 5m-i
+was guarding against, a blank screen with nothing to explain it, is answered
+by a line on the empty screen until the first note (`syncPlayHint`). The core
+keeps the control, which only parity's fixtures for a generator heard with no
+note send now.
+
 With the fix, the flipped suite went to 1493 passed, 109 failed and 18
 suites crashed. The 109 that remain, read one by one, are in these
 groups:

@@ -20,7 +20,18 @@ does for this purpose, and holds both:
   with it off, every check below would pass whatever the page did);
 - a finger's tap starts it, on the site's compiled instrument and on the page's
   own brain, and samples reach the screen through the heard path;
-- a mouse click starts it.
+- a mouse click starts it;
+- and what a press starts is silence until a note (10 Nov, the owner's call):
+  on both brains, the site is as the plugin is, nothing sounding or drawn
+  until a key goes down, and the empty screen says how to play one until the
+  first has. A press that is not a note is where the drone used to begin, so
+  the silence is read after one, with the sound on - a press on the title,
+  since opening the keys would itself have gated the old drone, and a check
+  made after it could not fail; then the keys opened, a typed A and K are the
+  notes the line says they are, and the line is gone and stays gone;
+- and a key that is itself the first press sounds, held, on both brains: the
+  sound it starts arrives after the key, which nothing checked while the
+  generator sounded with no note.
 """
 import os, sys, threading, functools
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -101,6 +112,76 @@ with sync_playwright() as pw:
     check("one click starts the sound", after["audible"] is True and not after["fault"], str(after))
     check("no page errors", not bad, "; ".join(bad[:3]))
     c.close()
+
+    # Nothing until a note. The picture is read rather than the speakers: the
+    # same gate silences both, and on the instrument the picture is the
+    # instrument's own. A second of it, so a drone that started with the
+    # press and was not there a moment ago is in the window.
+    SILENT = """() => { const n = Math.round(state.source.sampleRate);
+      const lanes = state.source.getLatestWindow(n); let peak = 0;
+      for (const l of lanes) for (let i = 0; i < l.length; i++) peak = Math.max(peak, Math.abs(l[i]));
+      const v = genVoice();
+      return { peak, hint: !el.playHint.hidden, text: el.playHint.textContent, gated: !!state.source.gated,
+               audible: !!(v && v.audible && v.audible()), held: midi.notes.map((h) => h.note), kind: state.source.kind }; }"""
+    quiet = lambda r: r["peak"] < 1e-6 and r["hint"]
+    for query, brain in (("", "host"), ("?brain=js", "tone")):
+        print("\n--- nothing until a note, on %s ---" % ("the site's instrument" if brain == "host" else "the page's own brain"))
+        c, p, bad = open_page(b, False, query)
+        first = p.evaluate(SILENT)
+        print("    opened:", first)
+        check("opened and unpressed, nothing is drawn and the empty screen says how to play a note, the ways that are true here",
+              quiet(first) and first["kind"] == brain and first["gated"]
+              and first["text"].startswith("Play a note: show the keys and type A") and "connect MIDI in Settings" in first["text"],
+              str(first))
+        # A press that plays nothing and opens nothing: the title. Until 10 Nov
+        # this was the drone's first moment, with no keyboard there.
+        p.locator(".sheet-title").click()
+        p.wait_for_timeout(1500)
+        pressed = p.evaluate(SILENT)
+        print("    pressed:", pressed)
+        check("pressed, the sound is on and still nothing sounds, with no keyboard there: no drone before a note",
+              quiet(pressed) and pressed["audible"] and pressed["text"] == first["text"], str(pressed))
+        # The keys opened, as a visitor would, and the line names them.
+        p.locator("#keysOpen").click(); p.wait_for_timeout(300)
+        opened = p.evaluate(SILENT)
+        check("and with the keys opened the line names them and still nothing sounds",
+              quiet(opened) and "press a key below" in opened["text"], str(opened))
+        # The letters the line names: A is the keys' first C, K the C above.
+        p.keyboard.down("a"); p.wait_for_timeout(700)
+        played = p.evaluate(SILENT)
+        p.keyboard.up("a"); p.keyboard.down("k"); p.wait_for_timeout(100)
+        top = p.evaluate("() => midi.notes.map((h) => h.note)")
+        p.keyboard.up("k"); p.wait_for_timeout(1500)
+        let_go = p.evaluate("() => ({ hint: !el.playHint.hidden, held: midi.notes.length })")
+        print("    A held:", played, "K:", top, "let go:", let_go)
+        check("a typed A is C3 and sounds, and the line is gone with it",
+              played["held"] == [48] and played["peak"] > 0.1 and not played["hint"], str(played))
+        check("and K is the C above, so the line's A to K is an octave of keys", top == [60], str(top))
+        check("and the line stays gone once the notes are let go", not let_go["hint"] and let_go["held"] == 0, str(let_go))
+        # The nulls: each half of the quiet reading, against the note's own window.
+        check("and the silence reading fails on the note's window, and the line's on its hidden line",
+              not played["peak"] < 1e-6 and not quiet(dict(pressed, hint=played["hint"])))
+        check("no page errors", not bad, "; ".join(bad[:3]))
+        c.close()
+
+    # The first press a key on the screen's keys, held. The keys opened from
+    # code, which is no press, so the key is the one that starts the sound.
+    for query, brain in (("", "host"), ("?brain=js", "tone")):
+        print("\n--- a key as the first press, on %s ---" % ("the site's instrument" if brain == "host" else "the page's own brain"))
+        c, p, bad = open_page(b, False, query)
+        p.evaluate("() => setScreenKeys(true)"); p.wait_for_timeout(300)
+        unpressed = p.evaluate(SILENT)
+        key = p.locator('#keysBed [data-note="57"]').bounding_box()
+        p.mouse.move(key["x"] + key["width"] / 2, key["y"] + key["height"] * 0.8)
+        p.mouse.down(); p.wait_for_timeout(1500)
+        first = p.evaluate(SILENT)
+        p.mouse.up(); p.wait_for_timeout(200)
+        print("    A3 held as the first press:", first)
+        sounds = lambda r: r["audible"] and r["held"] == [57] and r["peak"] > 0.1 and r["kind"] == brain
+        check("a key as the first press starts the sound, and is heard while it is held", sounds(first), str(first))
+        check("and the reading fails on the page before the press", not sounds(unpressed), str(unpressed))
+        check("no page errors", not bad, "; ".join(bad[:3]))
+        c.close()
 
     b.close()
 

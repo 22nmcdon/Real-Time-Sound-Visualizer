@@ -217,6 +217,9 @@ with sync_playwright() as pw:
               served["blob"] != "loaded", served["blob"])
 
     print("\n--- switching it on ---")
+    # A note held from here to the end: the site waits for one since 10 Nov,
+    # and what follows read the tone it drew with none, heard and then not.
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(200)
     on = p.evaluate("""async () => {
       // A snapshot first, so "there are samples" cannot be satisfied by the
       // ones this thread put there before the switch was touched.

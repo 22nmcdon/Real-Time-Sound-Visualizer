@@ -220,8 +220,11 @@ with sync_playwright() as pw:
     print("\n--- and the generator passes its own step ---")
     # The one that matters. Everything above tests `waveAt`; this tests that
     # `fill` tells it how fast it is running. With that argument left off, the
-    # unit checks all pass and the instrument aliases anyway.
+    # unit checks all pass and the instrument aliases anyway. A note held in
+    # Mono, since the site waits for one (10 Nov): in Mono the Frequency
+    # slider moves the held note, as it moved the sound with no note before.
     p.evaluate("""() => {
+      el.midiMono.click(); midiNoteOn(69, 127);
       el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
       el.freq.value = '4000'; el.freq.dispatchEvent(new Event('input'));
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));

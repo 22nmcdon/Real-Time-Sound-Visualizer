@@ -368,6 +368,9 @@ with sync_playwright() as pw:
           mixed["dry"] < 0.1, str(mixed))
 
     print("\n--- and the numbers say which signal they are about ---")
+    # A note held: the readout names what AC did to a signal, and since 10 Nov
+    # the site is silent until a note, where it drew a steady tone before.
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(500)
     said = p.evaluate("""() => {
       const was = state.channels[0].ac;
       state.channels[0].ac = true;
@@ -382,6 +385,7 @@ with sync_playwright() as pw:
     check("the readout names the corner while AC is on",
           "AC 10.0 Hz" in said["on"] and "AC" not in said["off"],
           " | ".join(said["on"].split(" \u00b7 ")[-2:]))
+    p.evaluate("() => midiNoteOff(57)")
 
     trip = p.evaluate("""() => {
       el.acCorner.value = '75';

@@ -15,12 +15,14 @@
 // - The page reads and writes the panel's controls (`el.freq`, `el.interval`):
 //   a note moves the frequency slider and the interval menu with it. Here
 //   they are `Panel`, which the brain owns now that the setup is in the core.
-// - The page asks `keyboardPresent()` - a port or the screen's keys - and
-//   whether the source can lay out two figures. Here both are flags. The
-//   first (`setPresent`) is yes in the plugin, whose host is always a
-//   keyboard, and on the site the page says it, through the instrument's
-//   `keyboardPresent` control. The second (`setLayable`) the instrument sets
-//   itself: no while it draws its input, whole or split into bands, since
+// - Until 10 Nov the page asked `keyboardPresent()` - a port or the screen's
+//   keys - before it gated the generator, and it asks whether the source can
+//   lay out two figures. Here both are flags. The first (`setPresent`) is yes
+//   on both hosts now, since the site waits for a note as the plugin does;
+//   the instrument's `keyboardPresent` control still sets it, which only
+//   parity's fixtures do, for a generator heard with no note, and the page's
+//   keyboard has no counterpart to hold it to. The second (`setLayable`) the
+//   instrument sets itself: no while it draws its input, whole or split into bands, since
 //   layer B's figure has nowhere to go. (And while it drew a rack, until P5
 //   cut the rack.)
 // - Notes always play the waveform. Until G2 (9 Nov) a switch said whether

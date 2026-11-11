@@ -23,9 +23,10 @@ native one sample for sample; this holds what the page does with it:
 - the sound switch opens and closes the instrument's way out;
 - a module that will not make leaves the page as the website;
 - and in a browser that has not been pressed yet, the worklet runs no
-  blocks and says so, the same instrument draws on the page's thread
-  meanwhile and takes the page's hands, and the first press starts the
-  worklet, which has had those hands too.
+  blocks and says so, the same instrument plays on the page's thread
+  meanwhile - silent until a note, as the site has been since 10 Nov - and
+  takes the page's hands, and the first press starts the worklet, which has
+  had those hands too.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -148,12 +149,15 @@ with sync_playwright() as pw:
     # The Scope view this went back to went in G4; the face stays as it is.
 
     # No keyboard - no port, the screen's keys shut - and nothing played: the
-    # instrument draws its generator, as the website opens. It used to open
-    # gated, as the plugin does, which was a blank screen until a note.
-    unkeyed = p.evaluate("() => ({ present: keyboardPresent() })")
+    # instrument waits for a note, as the plugin does. From 5m until 10 Nov it
+    # drew its generator here, which on the site was a drone from the moment
+    # the page opened, before a port had had the time to connect; and before
+    # that it opened gated with nothing on the screen to say why, which the
+    # line on the empty screen says now (soundstarttest.py holds what it says).
+    unkeyed = p.evaluate("() => ({ present: keyboardPresent(), hint: !el.playHint.hidden })")
     free = p.evaluate(PEAK, 4096)
-    check("with no keyboard and nothing played the instrument draws its generator, as the website opens",
-          unkeyed["present"] is False and free > 0.1, "keyboard %s, peak %.3f" % (unkeyed["present"], free))
+    check("with no keyboard and nothing played the instrument is silent, as the plugin opens, and the screen says how to play",
+          unkeyed["present"] is False and free == 0 and unkeyed["hint"], "keyboard %s, peak %.3f" % (unkeyed["present"], free))
     # A note from the page's keys. Harmonic tone, the screen's keys open: gated, so
     # silent until a note. The old library's Harmonic tone here and below, from
     # before P8g, as at the top: a plain tone known to this suite. They stay open, so the rest is played on a keyboard.
@@ -166,6 +170,7 @@ with sync_playwright() as pw:
     check("a note played on the page is heard in the instrument at its pitch, after silence",
           before == 0 and abs(pitch - 220) < 0.5 and peak > 0.1, "before %g, %.2f Hz at %.3f" % (before, pitch, peak))
     check("and the pitch check fails against the semitone above", not abs(pitch - 233.08) < 0.5)
+    check("and the silence reading fails on the note's", not peak == 0, "%.3f" % peak)
     skew = p.evaluate(SKEW, 4096)
     check("and the picture's left is left and right is right: the right a quarter-cycle on, as the website draws it",
           abs(skew - site_skew) < 0.03 and min(abs(skew - 0.25), abs(skew - 0.75)) < 0.03,
@@ -605,18 +610,21 @@ with sync_playwright() as pw:
       await wait(500); out.high = hz();
       midiBytes(Uint8Array.from([0x80, 57, 0]));
       state.modRoutings = []; touchRoutings();
-      // The screen's keys open and nothing held: the waveform is gated, and the readout says why it is empty.
-      loadCorpus('Harmonic tone'); setScreenKeys(true); await wait(600);
+      // Nothing held: the waveform is gated, and the readout says why it is
+      // empty. Until 10 Nov the keys shut freed it, and the line went with
+      // that; it waits for a note with them shut now, so a note is what ends it.
+      loadCorpus('Harmonic tone'); setScreenKeys(false); await wait(600);
       out.gated = el.readoutDetail.textContent;
-      setScreenKeys(false); await wait(400);
-      out.free = el.readoutDetail.textContent;
+      midiNoteOn(57, 100); await wait(400);
+      out.held = el.readoutDetail.textContent;
+      midiNoteOff(57);
       return out;
     }""")
     check("a source routed to the frequency moves the instrument's pitch: an octave at full", abs(more["low"] - 220) < 0.5
           and abs(more["high"] - 440) < 1, "%s then %s" % (more["low"], more["high"]))
     check("and the reading fails against the pitch it started at", not abs(more["low"] - 440) < 1)
-    check("and the readout says why a gated screen is empty, and stops once nothing gates it",
-          "gated \u00b7 no note held" in more["gated"] and "gated" not in more["free"], str(more))
+    check("and the readout says why a gated screen is empty, with the keys shut too, and stops once a note is held",
+          "gated \u00b7 no note held" in more["gated"] and "no note held" not in more["held"], str(more))
     # A split kept and not applied while the input is drawn, the panel saying
     # why (layertest's). It was a rack holding the generator until P5. The crossings' lines drawn over the instrument's
     # generator were read here too, until P5 cut them.
@@ -666,9 +674,10 @@ with sync_playwright() as pw:
         }
         return { peaks, pos };
       };
-      // The old library's Pure sine, from before P8g: a free-running sine
-      // whose level the oscillator can be read off, where the new one is poly.
-      loadCorpus('Pure sine'); await wait(300);
+      // The old library's Pure sine, from before P8g: a sine whose level the
+      // oscillator can be read off, where the new one is poly. Held, since
+      // the site waits for a note (10 Nov): it was free-running until then.
+      loadCorpus('Pure sine'); midiNoteOn(57, 100); await wait(300);
       const setup = Object.assign(snapshot(), { l0s: 'sine', l0r: 100, l0a: 100, mod: 'lfo1>gen.amp@0.500;lfo1>trig.position@1.000' });
       hostQuietly(() => restore(setup)); hostSendSetup(); await wait(800);
       const alone = await watch();
@@ -676,6 +685,7 @@ with sync_playwright() as pw:
       const setup2 = Object.assign(snapshot(), { l1s: 'sine', l1r: 150, l1a: 100, mod: 'lfo2>gen.amp@0.500;lfo2>trig.position@1.000' });
       hostQuietly(() => restore(setup2)); hostSendSetup(); await wait(800);
       const second = await watch();
+      midiNoteOff(57);
       // The null: the position read a quarter of a cycle - four samples of 60 ms - after the peak.
       return { alone: r(alone.peaks, alone.pos), late: r(alone.peaks.slice(0, -4), alone.pos.slice(4)),
                second: r(second.peaks, second.pos), driver: lfoDriver() };
@@ -793,10 +803,16 @@ with sync_playwright() as pw:
     q.wait_for_timeout(2000)
     WAIT = """() => ({ kind: state.source.kind, waiting: state.source.waiting, standing: state.source.standing,
       credit: el.credit.textContent, seen: hostSync.seen, peak: Math.max(...state.source.getLatestWindow(2048)[0].map(Math.abs)) })"""
+    unplayed = q.evaluate(WAIT)
+    # Silent until a note, as the worklet is (10 Nov): a note from the page's
+    # keyboard, which is no press - evaluated, so no event the browser counts.
+    q.evaluate("() => midiNoteOn(57, 100)")
+    q.wait_for_timeout(600)
     waiting = q.evaluate(WAIT)
-    check("unpressed, the worklet plays no blocks and the page says so, and the instrument draws on this thread meanwhile",
+    check("unpressed, the worklet plays no blocks and the page says so, and the instrument plays on this thread meanwhile, silent until a note",
           waiting["kind"] == "host" and waiting["waiting"] and waiting["standing"] and waiting["seen"] >= 1
-          and "press anything to hear it" in waiting["credit"] and waiting["peak"] > 0.1, str(waiting))
+          and "press anything to hear it" in waiting["credit"] and unplayed["peak"] == 0 and waiting["peak"] > 0.1,
+          "%s; before the note %s" % (waiting, unplayed))
     # A hand on a slider before the press: the stand-in takes it, and so does the worklet.
     q.evaluate("() => { el.amp.value = String(Number(el.amp.value) / 2); el.amp.dispatchEvent(new Event('input')); }")
     q.wait_for_timeout(600)

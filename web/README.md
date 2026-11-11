@@ -893,7 +893,8 @@ off unless a keyboard is actually driving the generator, and off means the
 amplitude is the slider and nothing else — which every preset here and every
 test that predates a keyboard depends on. It is checked as the old arithmetic
 rather than as nearly it: the first sample and the last of an ungated core are
-both exactly the amplitude.
+both exactly the amplitude. (Since 10 Nov the page gates its generator from the
+first frame, keyboard or none; a core made outside the page is still ungated.)
 
 **Only the waveform is gated, and that is a decision.** In `wave` a note has a
 pitch, a beginning and an end, and an envelope is what makes it a note rather
@@ -1227,7 +1228,8 @@ have silently stopped the letters playing.
 **`midi.access !== null` was asking whether a keyboard could play, not whether
 a port was open.** The gate shuts the generator between notes only while
 something could play one, and the screen's keys are something. It is
-`keyboardPresent()` now, and the Playing line uses it too.
+`keyboardPresent()` now, and the Playing line uses it too. (Since 10 Nov only
+the Playing line does: the gate shuts with no keyboard too.)
 
 **Five places still asked `state.source.kind === "tone"` after the generator
 could be a lane, and the panel said the opposite of what they did.** The note
@@ -4132,7 +4134,9 @@ first, so none could see it. A probe of the page opened and left alone
 found it. When moving a rule from one host to another, check its
 assumptions about the host: here the page now tells the instrument
 whether a keyboard is there. And look at the screen before anything is
-pressed, because that is the first thing a visitor sees.
+pressed, because that is the first thing a visitor sees. (Undone 10 Nov, the
+other way: the site waits for a note as the plugin does, and the empty screen
+says how to play one. See *Silent until a note* below.)
 
 **Moving the default does not retire the reference.** `parity.py` lifts
 the page's JavaScript functions out of `scope.html` by name and holds the
@@ -4699,7 +4703,8 @@ it fails: the crossing never arrives, and B's strikes stay in B's picture. On
 the site the strike is laid on the instrument's own grid, which the page never
 draws, so the test reads it through the per-layer readings the instrument hands
 back - which exist only while a split draws two figures, which needs a keyboard
-present (`keyboardPresent`; the screen's will do) and a waveform the keys drive.
+present (`keyboardPresent`; the screen's will do; since 10 Nov, no keyboard at
+all) and a waveform the keys drive.
 
 **The suites run in two groups, and the ones that measure time go first.**
 `run.py` used to run every suite one after another, 42.6 minutes on the
@@ -4856,7 +4861,8 @@ controls and never reaches the compiled instrument on the site; a preset is
 loaded as `hostQuietly(() => restore(setup)); hostSendSetup()`, and a probe
 that skips the second half measures the old sound under new labels. With
 nothing keyboard-like open the generator drones on after a note-off, so a
-measure of what happens after letting go needs `setScreenKeys(true)` first.
+measure of what happens after letting go needs `setScreenKeys(true)` first
+(until 10 Nov; it falls silent with nothing open now too).
 And in a split the site hands back four lanes, a pair a layer: reading
 `getLatestWindow()[0]` reads only the left hand, and the right hand looked
 silent. `honestytest.py` judges each hand of a split on its own, since in
@@ -5183,8 +5189,8 @@ sets Size to 100 first. Any check that a size fails has to say which Size it
 was at, or a later rescue makes it pass for the wrong reason.
 
 **`layersOn()` needs a running source and a keyboard.** A test that sets
-`midiLayers` to split before the sound has been started, or with no keyboard
-present, gets the one-layer face and passes as if it were two. `windowtest.py`
+`midiLayers` to split before the sound has been started (or, until 10 Nov,
+with no keyboard present) gets the one-layer face and passes as if it were two. `windowtest.py`
 reads the Layers rows back before believing a layered case; it caught exactly
 this the first time it ran.
 
@@ -5411,7 +5417,8 @@ and in the core alike). What a reader would otherwise trip over:
   truth in `miditest.py`, the gate's handover in `envtest.py`). A note now sets
   the pitch; to have them disagree, strike in Dyad and move the slider after,
   and to hand the gate over, take `midi.access` away and give it back, which is
-  what `keyboardPresent` reads. In Poly the voices keep their notes' pitches
+  what `keyboardPresent` reads (since 10 Nov, draw an input and choose the
+  generator again with a key down: the gate no longer asks). In Poly the voices keep their notes' pitches
   whatever the slider says.
 
 One gap is left open, on both sides alike: a code from before the matrix
@@ -5649,3 +5656,70 @@ repeats' pitch still, with the times withheld as its null; it is the first
 check of the clock through the bridge rather than beside it. The general
 lesson: where the page and the plugin reach the core by different roads, a
 parity pass covers the road parity drives, and the other wants its own check.
+
+**Silent until a note, on the site as in the plugin (10 Nov).** On the site
+the generator used to sound with no note while nothing was plugged in
+(`keyboardPresent()`: a port, or the screen's keys), so a visitor heard a
+steady drone from the first press, before a MIDI port had had the time to
+connect. The owner's call: the site waits for a note as the plugin does. The
+gate, the chord (`polyWanted`) and so the layers no longer ask whether there
+is a keyboard; the page no longer sends the instrument `keyboardPresent`, so
+the instrument, told nothing, is the plugin's; and `keyboardPresent()` is left
+answering one question, whether the Playing line has anything to show. What
+5m-i was guarding against, a blank screen with nothing to explain it, is now a
+line on the empty screen until the first note (`syncPlayHint`): an element over
+the trace, never drawn into it, since the phosphor grid, the photocell and Scan
+would read a sentence drawn there; on the site only, as the plugin's notes come
+from the host; not over a microphone; and gone for the visit once a note has
+played, so it never sits over a release's fade. `soundstarttest.py` holds it on
+both brains, reading the silence after a press that is not a note, since the
+press is where the drone used to begin.
+
+Some thirty-five suites had leaned on the drone for something on the screen, and
+moving them to a held note (`corpus.held_tone`, or a `midiNoteOn` where one
+note will do) turned up four things worth knowing:
+
+- *Some were reading less than they said.* `noisetest.py` called pink noise
+  heard because the screen had a level, but it loaded the setup with
+  `restore()` alone, which never reaches the site's instrument: the level was
+  the instrument's own sine. It loads as a preset is loaded now and counts the
+  noise's crossings, with the sine's as the null. Several readout checks
+  (`actest`, `taptest`, `harmonytest`) need a signal for the line to name a
+  stage at all, and a just fifth read *settled* on silence as well as on the
+  fifth. In `washtest.py` only the nulls went red on the empty screen: every
+  fade passes when there is nothing to fade.
+- *A note is not the drone.* Its level is the Level times the amp envelope's
+  sustain (0.7 by default), and a note takes its sustain as it starts, so a
+  check on an absolute level sets the sustain and strikes again, or raises the
+  Level. Its pitch is the key's in Poly, which the page opens in, whatever the
+  slider says, and a setup loaded over a held note in Dyad makes it a unison:
+  `held_tone` presses Mono, by its button, since `setMidiMode` from a probe
+  never reaches the instrument. With a note held the note is the truth, so the
+  lag's lock reads the key, not the signal (`lagtest.py` turns *Note as truth*
+  off to test the estimator).
+- *Settings copied from the page carry the keyboard.* With the chord no longer
+  asking for a keyboard, the base (in Poly) hands over an empty chord
+  (`voices: []`), and a core made from `genSettings()` in a test plays nothing
+  under its own gate; `envtest.py` and `wasmtest.py` give their own cores
+  `voices: null`, one voice, which is what they handed over before. The same
+  in parity: its restore harness modelled the page with no keyboard, and so
+  with no layers, and a split preset now lays out four lanes on the page, so
+  the harness's keyboard is present and it lays out a layout's lanes as the
+  instrument's `layOutPicture` does (the X-Y menus had offered the page a
+  lane the harness refused).
+- *A worklet that came up shut under a key.* On `?brain=js` a key struck
+  while the generator had no worklet (the sound off and the panel shown
+  again, which lets the old one go) was a message to nothing, and the
+  worklet made when the sound came on started gated and shut, so the key
+  stayed silent until the next. The drone hid it. `looptest.py`'s stability
+  runs read nought at the speakers for four of seven seeds and passed every
+  bound, since a run that hears nothing never passes one; the worklet is now
+  handed the key's velocity as it starts (`heldAtStart`), and each run checks
+  that the speakers heard something, which fails without it.
+- *An arpeggiator left behind.* On the site's instrument, a preset with the
+  arpeggiator on loaded over a held key, and then one with it off, leaves the
+  generator at a tenth of its level or silent until the next key; on
+  `?brain=js` the held key sounds at once, so the instrument and the page it
+  is a port of differ here, on a path parity does not drive (loads over a held
+  key). `rotatetest.py` walks every preset and found it; it strikes again
+  after the walk. Not fixed here, and not new: the drone hid it.

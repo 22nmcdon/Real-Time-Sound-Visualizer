@@ -223,10 +223,12 @@ class Instrument {
       return out;
     };
     /* A host is always a keyboard, so the generator is gated from the start -
-       silent until a note - which is what the page's first frame does once a
-       keyboard is there. Derived by the keyboard, not set here. The site is
-       not always one: its page says so (keyboardPresent) once the worklet is
-       ready, a few blocks in, and an instrument told nothing is the plugin's. */
+       silent until a note - which is what the page's first frame does. Derived
+       by the keyboard, not set here. Until 10 Nov the site's page said when it
+       had no keyboard (the `keyboardPresent` control), and the generator then
+       played with no note; the site is silent until a note now too, so no
+       page sends it, and only parity's fixtures for a generator heard without
+       a note do. */
     keyboard_->setPresent(true);
     load(setup, true);
     keyboard_->frame(0);

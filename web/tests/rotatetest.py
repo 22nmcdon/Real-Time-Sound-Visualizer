@@ -95,6 +95,9 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("(shape) => { window.__shape = eval(shape); }", SHAPE)
+    # A note held throughout: the site waits for one since 10 Nov, and this
+    # suite was written against the tone it drew without.
+    corpus.held_tone(p)
 
     print("\n--- mid and side are what they were ---")
     # A circle out of the generator, and then the tone stopped so that two
@@ -186,6 +189,13 @@ with sync_playwright() as pw:
     check("every preset places both lanes alike and turns by nothing",
           presets["odd"] == [], str(presets["odd"][:2]))
     print("    %d presets checked" % presets["count"])
+    # Struck again after the walk: on the site's instrument, an arpeggiated
+    # preset loaded over a held key leaves the generator at a tenth of its
+    # level, or silent, once a later setup turns the arpeggiator off (the
+    # page's own brain sounds the key at once; web/README.md, *Silent until a
+    # note*), which the drone this suite read until 10 Nov never showed.
+    p.evaluate("() => midiPanic()")
+    corpus.held_tone(p)
 
     agree = p.evaluate("""() => {
       // And the algebra behind that claim, at a turn where it would show.
@@ -407,6 +417,12 @@ with sync_playwright() as pw:
       state.running = true;
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
       el.amp.value = '72'; el.amp.dispatchEvent(new Event('input'));
+      /* The held note's sustain at full, so the level is the knob's: the
+         envelope's 0.7 put this pair at 0.50, where 45 degrees cannot clip
+         it (10 Nov, when the drone this was written against became a note).
+         Struck again, since a note takes its sustain as it starts. */
+      el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+      midiNoteOff(57); midiNoteOn(57, 127);
       return was;
     }""")
     p.wait_for_timeout(400)

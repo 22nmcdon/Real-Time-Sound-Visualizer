@@ -324,6 +324,8 @@ with sync_playwright() as pw:
     print("\n--- on the page ---")
     live = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      // A note held in Mono, struck first: the site waits for one since 10 Nov.
+      setMidiMode('mono'); midiNoteOn(57, 127);
       setDisplay('xy'); genSet('shape', 'sine'); genSet('interval', 0); genSet('just', true);
       state.persistence = 0.12; el.persistence.value = '0.12';
       el.photoButton.click();

@@ -64,9 +64,18 @@ def check(name, ok, detail=""):
 def null(name, red, detail=""):
     check("null: " + name, red, detail)
 
-# A sine against itself a quarter on, by hand: the X-Y button and the menus.
+# A sine against itself a quarter on, by hand: the X-Y button and the menus;
+# and a note held in Mono, since the site waits for one (10 Nov) and this
+# figure was the tone it drew with none. The Level at 79, so that under the
+# envelope's sustain of 0.7 the circle is the 0.55 it was: smaller, the
+# extreme's pull fell just short. (A sustain at full instead keeps the size
+# but reads the ramp at 0.990 against its model, where it read 0.997 - not
+# understood, and left alone.) The note is the fixture, struck from code;
+# what is tested is still only pressed.
 SETUP = """async (shape) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  el.amp.value = '79'; el.amp.dispatchEvent(new Event('input', { bubbles: true }));
+  el.midiMono.click(); midiNoteOn(57, 127);
   el.dispXY.click();
   el.shape.value = shape; el.shape.dispatchEvent(new Event('change', { bubbles: true }));
   el.oscBend.value = '0'; el.oscBend.dispatchEvent(new Event('input', { bubbles: true }));

@@ -1564,8 +1564,10 @@ kruns = [
     # here, with the switches that chose which kinds notes played, until G2.)
     ("panel", krun("frame 16", "on 57 100", "on 64 90", "panel freq 330", "panel interval 4", "mode mono", "frame 16",
                    "on 60 100", "off 60", "gen just false", "on 62 90", "frame 16")),
-    ("absent", krun("frame 16", "on 57 100", "on 64 90", "mode poly", "frame 16", "present 1", "frame 16",
-                    "on 67 80", "present 0", "frame 16", "layers split", "present 1", "frame 16", head="present=0")),
+    # ("absent" held a page with no keyboard here - its generator ungated, no
+    # chord, no layers - and a keyboard arriving and going, until 10 Nov: the
+    # site waits for a note as the plugin does since, so the page's keyboard
+    # has no absent state to hold the core's `setPresent(false)` to.)
 ]
 
 # And sequences no one wrote: seeded, so a failure is the same failure again.
@@ -4990,7 +4992,8 @@ print("\n--- the hands on the panel (G6) ---")
 # a hand moved moves both; unlinked, the hand on the panel alone, the other
 # keeping its own. Unlinking copies the hand on the face into the other, and
 # linking copies it back over. The page's own handlers against scope's,
-# with a keyboard there - the layers are only on with one. (Edit A / B was
+# with a keyboard there, as the layers were only on with one until 10 Nov
+# (they no longer ask, and the keys are kept as a hand). (Edit A / B was
 # the choice until G6, and every section was the hand's own.)
 LSLIDERS = ["amp", "envAttack", "envDecay", "envSustain", "envRelease", "morph", "width", "table", "oscFm", "oscBend",
             "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt",
@@ -5024,7 +5027,8 @@ def lrun():
 # and the level set to 80, still both; the Generator unlinked, and the
 # upper's level, shape and a drawbar its own; the unison, on the Oscillator,
 # still both; the lower chosen again; the layers turned off under the upper
-# and on; a preset with no B fields, everything linked; the keyboard gone.
+# and on; the keyboard gone, which took the layers with it until 10 Nov and
+# changes nothing since; a preset with no B fields, everything linked.
 LMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},                    # 0-2
          {"op": "change", "id": "midiLayers", "value": "layer"}, {"op": "slider", "id": "amp", "value": 30},  # 3, 4
          {"op": "click", "id": "editHandB"}, {"op": "slider", "id": "amp", "value": 80},            # 5, 6
@@ -5032,8 +5036,8 @@ LMADE = [{}, {"op": "keys", "value": True}, {"op": "click", "id": "midiPoly"},  
          {"op": "change", "id": "shape", "value": "square"}, {"op": "slider", "id": "bar3", "value": 8},  # 9, 10
          {"op": "change", "id": "oscUnison", "value": "3"}, {"op": "click", "id": "editHandA"},     # 11, 12
          {"op": "click", "id": "editHandB"}, {"op": "change", "id": "midiLayers", "value": "off"},  # 13, 14
-         {"op": "change", "id": "midiLayers", "value": "layer"}, _json.loads(presets[4]),           # 15, 16
-         {"op": "keys", "value": False}]                                                           # 17
+         {"op": "change", "id": "midiLayers", "value": "layer"}, {"op": "keys", "value": False},    # 15, 16
+         _json.loads(presets[4])]                                                                  # 17
 llines = [_json.dumps(o) for o in LMADE] + [_json.dumps(o) for _ in range(80) for o in lrun()]
 lpg, lpt = rboth(llines, "layerb_ops.txt")
 lb = rbad(lpg, lpt)
@@ -5059,11 +5063,15 @@ check("the layers turned off under the upper put the lower back on the panel, an
       and lp[15]["ranges"]["amp"] == 40 and lp[15]["hands"]["own"] == ["gen"])
 p4 = _json.loads(presets[4])
 check("a preset with no B fields is linked throughout, B as A",
-      lp[16]["hands"]["own"] == [] and lp[16]["a"]["shape"] == p4["shape"] == lp[16]["b"]["shape"]
-      and lp[16]["a"]["amp"] == 0.55 == lp[16]["b"]["amp"] and lp[16]["a"]["bars"] == [0, 0, 8, 7, 4, 0, 0, 0, 0] == lp[16]["b"]["bars"],
-      "A %r %r %r, B %r %r %r" % (lp[16]["a"]["shape"], lp[16]["a"]["amp"], lp[16]["a"]["bars"], lp[16]["b"]["shape"],
-                                  lp[16]["b"]["amp"], lp[16]["b"]["bars"]))
-check("and the keyboard gone shows the lower", lp[17]["panelLayer"] == 0, repr(lp[17]["panelLayer"]))
+      lp[17]["hands"]["own"] == [] and lp[17]["a"]["shape"] == p4["shape"] == lp[17]["b"]["shape"]
+      and lp[17]["a"]["amp"] == 0.55 == lp[17]["b"]["amp"] and lp[17]["a"]["bars"] == [0, 0, 8, 7, 4, 0, 0, 0, 0] == lp[17]["b"]["bars"],
+      "A %r %r %r, B %r %r %r" % (lp[17]["a"]["shape"], lp[17]["a"]["amp"], lp[17]["a"]["bars"], lp[17]["b"]["shape"],
+                                  lp[17]["b"]["amp"], lp[17]["b"]["bars"]))
+# Until 10 Nov the keyboard gone took the layers away and showed the lower;
+# the site waits for a note with no keyboard now, and the layers stay.
+check("and the keyboard gone leaves the layers on, the upper on the panel and its own kept",
+      lp[16]["panelLayer"] == 1 and lp[16]["hands"] == lp[15]["hands"] and lp[16]["b"]["amp"] == 0.4,
+      "%r %r" % (lp[16]["panelLayer"], lp[16]["hands"]))
 lmoved = sum(1 for i in range(1, len(lp)) if lp[i]["panelLayer"] != lp[i - 1]["panelLayer"])
 lsplit = sum(1 for i in range(1, len(lp)) if lp[i]["b"] != lp[i - 1]["b"] and lp[i]["a"] == lp[i - 1]["a"])
 check("the runs move the panel between the hands %d times, and write the upper alone %d times" % (lmoved, lsplit),

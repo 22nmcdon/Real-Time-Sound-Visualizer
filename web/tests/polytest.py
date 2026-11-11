@@ -407,7 +407,13 @@ with sync_playwright() as pw:
     print("    %s" % gone)
     check("switching to dyad ends the chord", gone["on"] and gone["dyad"] is None, str(gone))
     check("and back to poly resumes it", gone["back"], str(gone))
-    check("and neither does one with no keyboard to play it", gone["closed"] is None, str(gone))
+    # Until 10 Nov the keys shut, with no port, ended the chord too: poly
+    # asked for a keyboard as the gate did. It plays the notes held with none
+    # since, as the site waits for a note as the plugin does; these two were
+    # struck from code rather than on the keys, so shutting them lets go of
+    # neither.
+    closed = [v["note"] for v in gone["closed"]] if isinstance(gone["closed"], list) else None
+    check("and the keys shut leave the chord the notes hold", closed == [48, 55], str(gone))
 
     print("\n--- through the worklet: the picture crosses a thread, the sound does not ---")
     heard = p.evaluate("""async () => {

@@ -22,6 +22,7 @@ Against the way it would fail:
 import math, os
 import numpy as np
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -116,6 +117,9 @@ with sync_playwright() as pw:
           "differs from a sine by %.3f" % layer["most"])
 
     print("\n--- the pane, and what the generator plays ---")
+    # A note held in Mono, the slider then at 55 Hz: the site waits for a note
+    # since 10 Nov, and this read the tone it drew with none.
+    corpus.held_tone(p)
     p.evaluate("""() => { el.shape.value = 'drawn'; el.shape.dispatchEvent(new Event('change'));
                           el.freq.value = '55'; el.freq.dispatchEvent(new Event('input')); showControl('cycleCanvas'); }""")
     p.wait_for_timeout(300)

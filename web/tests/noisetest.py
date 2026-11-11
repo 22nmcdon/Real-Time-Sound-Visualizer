@@ -188,18 +188,32 @@ with sync_playwright() as pw:
           abs(bs[1] + 6) < 0.3 and all(abs(v + 6) < 0.8 for v in bs[0]), str(bs))
 
     print("\n--- on the page ---")
+    # Loaded as a preset is, so the site's instrument hears it: restore()
+    # alone never reaches it, and until 10 Nov this read the instrument's
+    # free-running sine and called it heard, since any level passed. A note
+    # held now, as the site waits for one; and heard means noise, counted by
+    # its crossings, against the base's sine under the same note as the null.
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const offered = [...el.shape.options].map((o) => o.value);
-      restore({ shape: 'pink' }); await wait(400);
-      const x = state.source.getLatestWindow(8192)[0];
-      let power = 0; for (const v of x) power += v * v;
-      return { offered, shape: genSettings().shape, code: snapshot().shape, rms: Math.sqrt(power / x.length) };
+      const heard = async (setup) => {
+        hostQuietly(() => restore(setup)); hostSendSetup(); midiNoteOn(57, 127); await wait(400);
+        const x = state.source.getLatestWindow(8192)[0];
+        let power = 0, ups = 0;
+        for (let i = 0; i < x.length; i++) { power += x[i] * x[i]; if (i && x[i - 1] < 0 && x[i] >= 0) ups++; }
+        const out = { shape: genSettings().shape, code: snapshot().shape, rms: Math.sqrt(power / x.length), ups };
+        midiNoteOff(57); await wait(300);
+        return out;
+      };
+      const pink = await heard({ shape: 'pink' }), sine = await heard({ shape: 'sine' });
+      return Object.assign({ offered, sineUps: sine.ups }, pink);
     }""")
     print("    %s" % {k: v for k, v in page.items() if k != "offered"})
+    heard = lambda ups: page["rms"] > 0.05 and ups > 200
     check("the Shape menu offers the three, and a code's shape is heard and written back",
           {"pink", "brown", "stepped"} <= set(page["offered"]) and page["shape"] == "pink" and page["code"] == "pink"
-          and page["rms"] > 0.05, str(page))
+          and heard(page["ups"]), str(page))
+    check("and the reading fails on the sine under the same note", not heard(page["sineUps"]), str(page["sineUps"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

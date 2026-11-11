@@ -60,6 +60,10 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
+    # A note held in Mono throughout, and struck again at the top of every
+    # stability run, which lets go at its end: the site waits for a note
+    # since 10 Nov, and every loop here was the tone it drew with none.
+    corpus.held_tone(p)
 
     print("\n--- one total per destination ---")
     visual = p.evaluate("""() => {
@@ -239,6 +243,11 @@ with sync_playwright() as pw:
     heard = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       genSet('freq', 220); genSet('interval', 0); genSet('phase', Math.PI / 2);
+      /* The held note struck again under a sustain at full, so it is heard at
+         the level the tone it stands in for was: under the envelope's 0.7 it
+         read 0.027 against this check's 0.03 (10 Nov). */
+      el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+      midiNoteOff(57); midiNoteOn(57, 127);
       await applyGeneratorSound();
       const chain = Array.from(monitorChains)[0];
       const ctx = chain.input.context, rate = ctx.sampleRate;
@@ -259,6 +268,7 @@ with sync_playwright() as pw:
       MOD_SOURCES.get('photo.1').value = saved;
       state.modRoutings = []; touchRoutings();
       { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
+      el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input'));
       return out;
     }""")
     print("    photocell held at 0.6, onto pitch at 0.5, generator heard: energy at 220 x 2^0.3 %.4f, at 220 %.4f"
@@ -307,6 +317,7 @@ with sync_playwright() as pw:
     RUN = """async ([seed, seconds, scanDepth, mode]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       toTone(); setDisplay('xy');
+      midiPanic(); setMidiMode('mono'); midiNoteOn(57, 127);
       genSet('shape', 'harmonic'); genSet('interval', 7); genSet('just', false);
       genSet('freq', 220);
       genSet('amp', seed === 'silence' ? 0.0 : 1.0);
@@ -493,6 +504,7 @@ with sync_playwright() as pw:
     if p2.locator("#helpClose").is_visible(): p2.locator("#helpClose").click()
     p2.wait_for_timeout(200)
     p2.evaluate("() => { setDisplay('xy'); genSet('shape', 'sine'); el.photoButton.click(); }")
+    corpus.held_tone(p2)
     SEEDS = [("silence", None), ("full scale", None), ("full scale, with Scan at its top", None),
              ("full scale, Scan at its top, every note striking at full", "strike"),
              ("full scale, a split at Scan's top, each layer reading the other's picture", "cross"),
@@ -511,6 +523,11 @@ with sync_playwright() as pw:
         check("from %s, nothing goes NaN or infinite" % seed, not w["nan"] and math.isfinite(w["pre"]), str(w))
         check("from %s, what reaches the speakers never passes full scale" % seed, w["post"] <= 1.0 + 1e-6,
               "%.4f" % w["post"])
+        # And something reached them: a run the speakers never heard passes
+        # the bound above whatever the loop does. Every run here did, on
+        # 10 Nov, until it began to wait for a note and its worklet came up
+        # shut under the key (0.000 for every seed), which nothing caught.
+        check("from %s, and the speakers did hear it" % seed, w["post"] > 0.1, "%.4f" % w["post"])
         check("from %s, every destination stays inside the loop's total" % seed,
               w["res"] <= 0.5 * 50 + 1e-6 and w["rot"] <= 0.5 + 1e-9 and w["zoom"] <= 0.5 * 8 + 1e-9
               and w["total"] <= 0.5 + 1e-9, str(w))

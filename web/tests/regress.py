@@ -33,7 +33,12 @@ with sync_playwright() as pw:
     check("not stacked", p.evaluate("stacked()") is False)
     check("mid/side offered", p.evaluate("!el.midSide.parentElement.hidden"))
     check("legend has two", p.evaluate("el.laneLegend.children.length") == 2)
-    check("triggers", p.evaluate("capture().triggered"))
+    # Silent until a note since 10 Nov, as the plugin is: nothing to trigger
+    # on, and then a note held, which does.
+    check("silent, nothing triggers", not p.evaluate("capture().triggered"))
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(400)
+    check("triggers under a note", p.evaluate("capture().triggered"))
+    p.evaluate("() => midiNoteOff(57)")
 
     print("-- every preset applies --")
     # The old library from before P8g, 268 real setups, and then the bank: a
@@ -49,6 +54,11 @@ with sync_playwright() as pw:
     p.wait_for_timeout(400)
     check(f"{len(old)} old presets and {len(values)} of the bank, no errors",
           not bad and len(old) > 250 and len(values) > 0, bad[:2])
+    # Back on the base, the plain sound New loads: the bank ends on a split,
+    # whose two hands are four lanes with no keyboard too since 10 Nov (it was
+    # one layer, two lanes, until a keyboard came), and the checks below are
+    # about the tone's two.
+    p.evaluate("() => applyPreset('n:' + BASE_NAME)"); p.wait_for_timeout(300)
 
     print("-- the three displays --")
     for mode in ("xy", "spect", "yt"):

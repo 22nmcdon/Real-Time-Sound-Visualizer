@@ -257,8 +257,13 @@ with sync_playwright() as pw:
     # The beam's shading off: it follows a median of the strokes over time, so
     # with it on two frames of one held figure differ by a level (0.125) of
     # their own accord, and no comparison could be to the bit.
-    p.evaluate("""() => { hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
-                                                       persistence: 0.12, pictureAmount: 0, oscScan: 60, beam: 'off' })); hostSendSetup(); }""")
+    # Under a note held in Mono, which keeps the setup's fifth: the site waits
+    # for a note since 10 Nov, and this read the figure it drew with none.
+    # Let go first and struck after, since a note held in Dyad over a setup
+    # makes its fifth a unison.
+    p.evaluate("""() => { midiPanic(); hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
+                                                       persistence: 0.12, pictureAmount: 0, oscScan: 60, beam: 'off' })); hostSendSetup();
+                          el.midiMono.click(); midiNoteOn(57, 127); }""")
     p.wait_for_timeout(1500)
     p.locator("#enlargeButton").click(); p.wait_for_timeout(600)
     # Held, and left eight seconds: Scan's path follows the figure with a time
@@ -301,8 +306,10 @@ with sync_playwright() as pw:
     TRAIL = """async ([trail, enlarged]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setEnlarged(enlarged); await wait(400);
+      midiPanic();
       hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
                                    persistence: 0.04, pictureAmount: 0, oscScan: 0, graticule: false })); hostSendSetup();
+      el.midiMono.click(); midiNoteOn(57, 127);   // held, as above
       enlarge.trail = trail; enlarge.pictureOnly = true; paintEnlarge();
       const amp = document.getElementById('amp');
       amp.value = '55'; amp.dispatchEvent(new Event('input', { bubbles: true }));

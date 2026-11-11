@@ -29,6 +29,7 @@ agreeing with the page's own analysis would test nothing.
 import math, os, sys
 import numpy as np
 from playwright.sync_api import sync_playwright
+import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -109,6 +110,9 @@ with sync_playwright() as pw:
     core = lambda bars, freq, n=N, extra=None: p.evaluate(CORE, [bars, freq, n, extra])
 
     print("\n--- the saw is on the menu ---")
+    # A note held, as A4 at the Frequency the shapes are read at: the site
+    # waits for a note since 10 Nov, and this read the tone it drew with none.
+    corpus.held_tone(p, 69)
     # On a bin, with its harmonics: half a bin off, the window's scalloping
     # put the second harmonic 0.6 dB low and the check failed a real saw.
     def harmonics_of(shape):

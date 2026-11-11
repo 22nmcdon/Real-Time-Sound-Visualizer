@@ -85,7 +85,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| keysOpen | On screen | Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. While they are open, the generator waits for a note. | 147 | yes: the computer keyboard plays as music software lays it out (A is C, W C sharp, S D, along two rows), Z and X for octaves, Space a held pedal; letters play notes rather than shortcuts while open; Tap to hold for a mouse |
+| keysOpen | On screen | Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. Nothing sounds until a note, keys or none. | 137 | yes: the computer keyboard plays as music software lays it out (A is C, W C sharp, S D, along two rows), Z and X for octaves, Space a held pedal; letters play notes rather than shortcuts while open; Tap to hold for a mouse |
 | midiDyad | Dyad | Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks. | 129 | yes: the two most recent notes, ordered by pitch whichever landed first; a third note replaces the older; one note alone is a unison unless Hold is ticked |
 | midiMono | Mono | The newest note sets the pitch and the Interval menu puts the second channel above it, so one finger plays the whole figure. | 124 | - |
 | midiPoly | Poly | Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline. | 118 | yes: outline notes lean to their side and still sound in both ears, the rest drawn along the diagonal; Glide, Phase and Interval do nothing to a chord; the voice budget |
@@ -118,8 +118,8 @@ them; G3b gives each a `data-say` with the key in the first column:
 | table | Position | Where the wavetable sits among its four drawn cycles, crossfading the two either side. Put a source on it and the timbre travels. | 129 | - |
 | cycleGo | Cycle | Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw. | 117 | - |
 | barsGo | Drawbars | The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab. | 122 | - |
-| glide | Glide | How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there. | 142 | yes: one Glide for both hands; a note out of silence slides from the last note however long ago; a sliding note does not land in step with the chord, so its figure turns a little before it settles; with no keyboard it glides a turn of Frequency |
-| interval | Interval | The second channel against the first, in Mono or with no keyboard. Small whole-number ratios close the figure: a fifth is a still 2:3. | 134 | yes: in Dyad the notes you play set it, and the menu shows what they set; Poly's chords ignore it; at a unison Phase decides between line and circle |
+| glide | Glide | How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there. | 142 | yes: one Glide for both hands; a note out of silence slides from the last note however long ago; a sliding note does not land in step with the chord, so its figure turns a little before it settles; under a held note in Mono it glides a turn of Frequency too |
+| interval | Interval | The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3. | 149 | yes: the menu shows what the notes set; Poly's chords ignore it; at a unison Phase decides between line and circle |
 | tuneJust | Just | Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick. | 135 | yes: how fast tempered intervals turn - a fifth about three quarters of a turn a second, a major third nearly nine, a blur under persistence |
 | tuneEqual | Equal | Takes the keys as an equal-tempered piano has them, a little off the ratios, so the figure turns at the rate the interval beats. | 128 | - |
 
@@ -128,7 +128,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | linkAmpEnv | Amp envelope’s link | Whether the amp envelope is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 146 | - |
-| envAttack | Attack | How long a note takes to reach full level once its key goes down, and the figure grows with it. Only while a keyboard is playing. | 129 | yes: with no keyboard and the keys on screen shut, the level is the knob's and nothing else; a second key over a held one changes the pitch without starting the envelope again |
+| envAttack | Attack | How long a note takes to reach full level once its key goes down, and the figure grows with it. Between notes the generator is silent. | 134 | yes: a second key over a held one changes the pitch without starting the envelope again; until 10 Nov, on the site with no keyboard and the keys on screen shut, the level was the knob's and nothing else |
 | envDecay | Decay | How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck. | 104 | - |
 | envSustain | Sustain | The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own. | 115 | - |
 | envRelease | Release | How long a note takes to fade once you let go of its key. The figure shrinks with it. | 85 | - |
@@ -142,7 +142,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | vcfCut | Cutoff | Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first. | 142 | - |
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
 | vcfTrack | Key track | How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller. | 140 | - |
-| vcfEnvAmt | Envelope | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. Only while a keyboard is playing. | 128 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
+| vcfEnvAmt | Envelope | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
 | vcfAtk | Attack | How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought. | 118 | - |
 | vcfDec | Decay | How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah. | 104 | - |
 | vcfSus | Sustain | Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again. | 122 | - |
@@ -176,7 +176,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | linkOsc | Oscillator’s link | Whether the oscillator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 144 | - |
-| freq | Frequency | The pitch while no keyboard is playing; a note in Dyad or Mono moves it. On Y–T, higher puts more cycles on the screen. | 119 | yes: Poly's chords leave it where it is; it is clamped to 30 Hz to 4 kHz, so the top of the keyboard stops at 4 kHz |
+| freq | Frequency | The pitch: a note in Dyad or Mono sets it, and a turn moves the note held. On Y–T, higher puts more cycles on the screen. | 121 | yes: Poly's chords leave it where it is; it is clamped to 30 Hz to 4 kHz, so the top of the keyboard stops at 4 kHz |
 | phase | Phase | Where the second channel starts in its cycle against the first. At a unison, 0° draws a diagonal line and 90° a circle. Not for Poly's chords. | 142 | - |
 | oscRatio | Ratio | The voice's second oscillator, as a ratio to the note, heard only through FM and Ring. A 3:2 sounds harmonic for the reason a 3:2 figure closes. | 144 | - |
 | oscFm | FM | How far the second oscillator swings the voice's phase: pure at nought, then brighter, then bells and clangour. The figure gets busier with it. | 143 | yes: above about ten on a sharp shape the top folds back; Velocity's FM rides on this |

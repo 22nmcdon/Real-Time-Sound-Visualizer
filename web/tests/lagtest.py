@@ -84,7 +84,14 @@ with sync_playwright() as pw:
 
     # ---- the null test: a sine, quarter-period lag, is a circle -------------
     print("\n--- lag X-Y on a 440 Hz sine ---")
+    # A note held in Mono, so the Frequency slider moves the sound and the
+    # Interval menu sets the second channel, as they did with no note until
+    # 10 Nov, when the site began to wait for one; the page opens in Poly,
+    # where a note plays its key whatever the slider says. Mono by its
+    # button, which the site's instrument hears (setMidiMode alone it does
+    # not). Held to the end.
     p.evaluate("""() => {
+      el.midiMono.click(); midiNoteOn(69, 127);
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.freq.value = '440'; el.freq.dispatchEvent(new Event('input'));
       el.interval.value = '0'; el.interval.dispatchEvent(new Event('change'));
@@ -151,7 +158,10 @@ with sync_playwright() as pw:
 
     # ---- the slow lock ------------------------------------------------------
     print("\n--- the automatic lag locks slowly and gates on periodicity ---")
+    # The note as truth off: with a note held the lock takes the key's pitch
+    # (miditest's), and this is the estimator's lock, read off the signal.
     p.evaluate("""() => {
+      el.midiTruth.checked = false; el.midiTruth.dispatchEvent(new Event('change'));
       el.freq.value = '440'; el.freq.dispatchEvent(new Event('input'));
       setLagAuto(true);
     }""")

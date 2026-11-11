@@ -132,10 +132,15 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const read = async () => { await wait(450); return el.readoutDetail.textContent; };
       const out = {};
+      /* A note held in Mono, which leaves the interval to the generator: the
+         site waits for a note since 10 Nov, and this dyad was the tone it drew
+         with none. Struck first, since a note sets the pitch it plays. */
+      setMidiMode('mono'); midiNoteOn(57, 127);
       setDisplay('xy'); genSet('shape', 'sine'); genSet('freq', 220); genSet('interval', 7); genSet('just', false);
       out.dyad = await read();
       genSet('just', true); out.dyadJust = await read();
       genSet('interval', 0); out.unison = await read();
+      midiNoteOff(57);
       setScreenKeys(true); setMidiMode('poly');
       for (const n of [57, 61, 64]) midiNoteOn(n, 100);
       out.poly = await read();
@@ -168,7 +173,8 @@ with sync_playwright() as pw:
       const out = {};
       // The old library's Harmonic tone, from before P8g: the plain tone this
       // was measured on, whatever the bank's boot preset comes to set.
-      loadCorpus('Harmonic tone'); setDisplay('xy'); genSet('freq', 220);
+      // Held in Mono, as above.
+      loadCorpus('Harmonic tone'); setMidiMode('mono'); midiNoteOn(57, 127); setDisplay('xy'); genSet('freq', 220);
       for (const [name, interval, just] of [['just fifth', 7, true], ['equal third', 4, false]]) {
         genSet('interval', interval); genSet('just', just);
         await wait(800); pictureMeter.reset();
@@ -177,6 +183,7 @@ with sync_playwright() as pw:
         change.sort((a, b) => a - b);
         out[name] = { change: change[20], verdict: pictureMeter.verdict(), memory: pictureStage.memory };
       }
+      midiNoteOff(57);
       return out;
     }""")
     print("    %s" % loop)

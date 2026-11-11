@@ -177,7 +177,12 @@ PRESET_RUN = """async () => {
                      wrong: effects.length < 4 ? far(js, wet(true, { ...tone, planeTwist: (tone.planeTwist || 0) + 0.01 }, routes, 5)) : null });
     }
     if (kind !== "generator") continue;
-    const tone = genSettings(), toneB = genSettings(1) || {};
+    /* One voice, as the cores made here are ungated and play their tone:
+       since 10 Nov the page plays a chord in Poly with no keyboard too, and
+       a preset in Poly with nothing held hands over an empty one (voices: []),
+       which both cores agree is silence. Until then it handed over none. */
+    const tone = genSettings() && { ...genSettings(), voices: null };
+    const toneB = genSettings(1) ? { ...genSettings(1), voices: null } : {};
     if (!tone) { rows.push({ name, missing: true }); continue; }
     const routes = workletRoutes();
     const js = play(false, tone, toneB, routes, 11), wa = play(true, tone, toneB, routes, 11);
@@ -220,8 +225,10 @@ with sync_playwright() as pw:
         p.wait_for_timeout(200)
         return p, bad
 
+    # Under a note: the site waits for one since 10 Nov, and this read the
+    # tone it drew with none. Struck once a page; restruck, it is the same note.
     def sound(p):
-        p.evaluate("async () => { await applyGeneratorSound(); }")
+        p.evaluate("async () => { midiNoteOn(57, 127); await applyGeneratorSound(); }")
         p.wait_for_timeout(700)
         return p.evaluate("""() => {
           const f = capture();
@@ -461,6 +468,9 @@ with sync_playwright() as pw:
       ] : [];
       return { rows, nulls, turnedOnScreen };
     }"""
+    # A note held through every scenario, as the page's picture had its
+    # generator's tone with none until 10 Nov; a setup loaded over it keeps it.
+    corpus.held_tone(p)
     ran = p.evaluate(PICTURE)
     prow = ran["rows"]
     off = [(r["name"], r["worst"], r["worstAt"]) for r in prow if not r["worst"] <= TOL]
@@ -662,6 +672,8 @@ with sync_playwright() as pw:
     # The page's own WebAssembly refused before it loads; the worklets have a
     # global scope of their own, and theirs is untouched.
     p, bad = open_page("", "WebAssembly.Module = function () { throw new Error('refused for the test'); };")
+    # Under a note, which it draws: the site waits for one since 10 Nov.
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(400)
     early = p.evaluate("""() => { const f = capture(); let peak = 0; for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
                                   return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak,
                                            picture: pictureCoreKind, pictureWhy: pictureCoreWhy,

@@ -341,6 +341,15 @@ with sync_playwright() as pw:
       el.interval.value = '0'; el.interval.dispatchEvent(new Event('change'));
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
       el.amp.value = '55'; el.amp.dispatchEvent(new Event('input'));
+      /* Under the same held note as the source's below (held, letGo): the
+         site waits for a note since 10 Nov, and this read the diagonal it drew
+         with none. */
+      const held = () => { el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+        el.polyRound.checked = false; el.polyRound.dispatchEvent(new Event('change'));
+        midiRegisterKey(); midiNoteOn(57, 127); };
+      const letGo = () => { midiNoteOff(57); state.modRoutings = []; touchRoutings();
+        el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input')); };
+      held();
       await wait(500);
       const w = state.source.getLatestWindow(4410);
       let lowX = Infinity, longest = 0;
@@ -348,12 +357,7 @@ with sync_playwright() as pw:
       // A held source (a learned controller until F4b cut learning): a key
       // struck as hard as a key goes holds Key at one while it is down. A
       // lone note under the full sustain and no quarter turn is the same
-      // diagonal of 0.55 the panel drew without it.
-      const held = () => { el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
-        el.polyRound.checked = false; el.polyRound.dispatchEvent(new Event('change'));
-        midiRegisterKey(); midiNoteOn(57, 127); };
-      const letGo = () => { midiNoteOff(57); state.modRoutings = []; touchRoutings();
-        el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input')); };
+      // diagonal of 0.55 the panel drew without it. Struck again, as it was held above.
       // A source on the radius, full depth, pushed all the way.
       held();
       addRouting('midi.key', 'gen.radius');

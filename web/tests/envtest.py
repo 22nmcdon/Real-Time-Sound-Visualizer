@@ -7,10 +7,13 @@ you lifted your hands.
 
 Four things are checked here.
 
-IT IS NOT THERE UNTIL IT IS ASKED FOR. With no keyboard driving the generator
-the envelope is a multiply by one, and that is not a detail - every preset in
-this page and every test that predates a keyboard depends on a steady waveform.
-`setGated(false)` has to be exactly the old arithmetic and not nearly it.
+IT IS NOT THERE UNTIL IT IS ASKED FOR. A core nobody has gated is a multiply
+by one, and that is not a detail - a test's own core, a thumbnail's, and every
+check that predates a keyboard depend on a steady waveform. `setGated(false)`
+has to be exactly the old arithmetic and not nearly it. The page asks for it
+from its first frame: since 10 Nov the site waits for a note as the plugin
+does, keyboard or none, where until then it drew a steady drone until a
+keyboard was there to play.
 
 THE SHAPE, RENDERED. Not the value of a variable read back, which would only
 say the code wrote what it wrote: the real worklet in an `OfflineAudioContext`,
@@ -84,8 +87,10 @@ WORST_STEP = """(samples, from, to) => {
 }"""
 
 with sync_playwright() as pw:
+    # A fake microphone, for the gate handed over from an input to the generator.
     b = pw.chromium.launch(executable_path=CHROME,
-                           args=["--autoplay-policy=no-user-gesture-required"])
+                           args=["--autoplay-policy=no-user-gesture-required",
+                                 "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
     p.add_init_script(STUB)
     bad = []
@@ -125,9 +130,12 @@ with sync_playwright() as pw:
           and abs(ungated["peakLate"] - ungated["amp"]) < 1e-3,
           "%.4f then %.4f against %.4f"
           % (ungated["peakEarly"], ungated["peakLate"], ungated["amp"]))
-    # The page as it opens: no keyboard, so no gate, whatever else is true.
-    check("and the page opens with the generator ungated",
-          p.evaluate("() => state.source.kind === 'tone' && state.source.gated === false"))
+    # The page as it opens: no keyboard, and gated all the same - it waits for a note.
+    opens = p.evaluate("() => ({ kind: state.source.kind, gated: state.source.gated, present: keyboardPresent() })")
+    check("and the page opens with the generator gated before any keyboard is there",
+          opens == {"kind": "tone", "gated": True, "present": False}, str(opens))
+    check("and the reading fails against the page as it opened until 10 Nov, ungated",
+          not dict(opens, gated=False) == {"kind": "tone", "gated": True, "present": False})
 
     print("\n--- the shape, off the samples the worklet produced ---")
     # Timing an event inside an offline render is not obvious and the obvious
@@ -142,9 +150,13 @@ with sync_playwright() as pw:
       const ctx = new OfflineAudioContext(2, frames, rate);
       await ctx.audioWorklet.addModule(
         'data:application/javascript,' + encodeURIComponent(generatorModuleSource()));
+      /* One voice, the gate's, and no chord: the page opens in Poly, and
+         since 10 Nov it plays a chord there with no keyboard too, so the
+         settings copied carry an empty chord (`voices: []`), under which a
+         gate opens on nothing. Until then they carried none. */
       const tone = Object.assign(
         JSON.parse(JSON.stringify(state.source.settings)),
-        { shape: 'sine', freq: 220, amp: 0.55 }, patch || {});
+        { shape: 'sine', freq: 220, amp: 0.55, voices: null }, patch || {});
       const node = new AudioWorkletNode(ctx, 'generator', {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
         processorOptions: { slots: GEN_SLOTS, lfos: [
@@ -416,27 +428,26 @@ with sync_playwright() as pw:
       /* A key already down when the gate is HANDED OVER has to sound, and the
          obvious way for it to be wrong is for the gate to open and then wait
          for a key that is already there. Until G2 the handover was ticking
-         Drives while holding a note; notes always play the waveform now, so
-         it is the keyboard arriving - `midi.access`, which is what
-         keyboardPresent reads, taken away and given back. */
-      const access = window.__access = midi.access;
-      midi.access = null;
-      await wait(120);
+         Drives while holding a note, and until 10 Nov the keyboard arriving
+         (`midi.access` given back); the generator is gated from the first
+         frame now, so the one handover left is the generator coming back from
+         an input: the microphone drawn, a key struck, and the waveform chosen
+         again - a new generator, not yet gated, under a key already down. */
+      await toMic();
+      await wait(300);
       window.__send([0x90, 69, 100]);
       await wait(80);
-      const beforeHandover = { gated: state.source.gated, env: read() };
-      midi.access = access;
+      const beforeHandover = { kind: state.source.kind, gated: !!state.source.gated };
+      toTone();
       await wait(160);
-      const afterHandover = { gated: state.source.gated, env: read() };
+      const afterHandover = { kind: state.source.kind, gated: state.source.gated, env: read() };
 
-      // The keyboard going has to hand the generator back, not leave it shut.
+      // The keyboard going leaves the generator waiting for a note, not freed.
+      const access = window.__access = midi.access;
       midi.access = null;
-      await wait(120);
-      const handedBack = { gated: state.source.gated, env: read() };
-      /* Left with the keyboard not driving it, because that is what the next
-         check is about: the trace has to come back, and a generator that is
-         gated with nothing held is correctly silent. */
       midiPanic();
+      await wait(600);
+      const handedBack = { gated: state.source.gated, env: read() };
       const line = el.readoutDetail.textContent;
       return { idle, held, gone, handedBack, line,
                beforeHandover, afterHandover };
@@ -452,27 +463,32 @@ with sync_playwright() as pw:
           % (played["held"]["env"], 100 / 127))
     check("and letting go closes it",
           played["gone"]["env"] == 0, str(played["gone"]))
-    check("a key held while the gate is handed over sounds straight away",
-          played["beforeHandover"]["gated"] is False
-          and played["afterHandover"]["gated"] is True
+    check("a key held while the gate is handed over from an input sounds straight away",
+          played["beforeHandover"] == {"kind": "mic", "gated": False}
+          and played["afterHandover"]["kind"] == "tone" and played["afterHandover"]["gated"] is True
           and played["afterHandover"]["env"] > 0.5,
           "%s then %s" % (played["beforeHandover"], played["afterHandover"]))
-    check("the keyboard going hands the generator back wide open",
-          played["handedBack"]["gated"] is False
-          and played["handedBack"]["env"] == 0
-          and p.evaluate("() => state.source.settings.amp > 0"),
+    check("and the keyboard going leaves the generator gated and silent, waiting for a note",
+          played["handedBack"]["gated"] is True and played["handedBack"]["env"] == 0,
           str(played["handedBack"]))
 
-    # And the picture is really there again rather than merely ungated.
-    p.wait_for_timeout(300)
-    back = p.evaluate("""() => {
+    # And the picture is really silent, not merely gated: until 10 Nov the
+    # keyboard going freed the generator and the trace came back here.
+    PEAK = """() => {
       const w = state.source.getLatestWindow(4096)[0];
       let peak = 0;
       for (let i = 0; i < w.length; i++) peak = Math.max(peak, Math.abs(w[i]));
       return peak;
-    }""")
-    check("and the trace comes back with it",
-          back > 0.3, "peak %.3f" % back)
+    }"""
+    quiet = p.evaluate(PEAK)
+    p.evaluate("() => midiNoteOn(69, 100)"); p.wait_for_timeout(300)
+    sounding = p.evaluate(PEAK)
+    p.evaluate("() => midiNoteOff(69)"); p.wait_for_timeout(300)
+    # Under a thousandth rather than nought: the release's last samples can
+    # still be in the window (0.001 once in three runs at 300 ms).
+    check("and the trace is silent with it, and a note brings it back",
+          quiet < 0.001 and sounding > 0.3, "peak %.4f, then %.3f under a note" % (quiet, sounding))
+    check("and the silence reading fails on the note's trace", not sounding < 0.001)
 
     # The one state in this page where a blank screen is correct, and it has
     # to say so. A generator gated with no key down is silent by design; a
@@ -493,20 +509,22 @@ with sync_playwright() as pw:
       };
       const says = () => el.readoutDetail.textContent.indexOf("no note held") >= 0;
 
-      // The keyboard back (it was left away above), and away again.
-      midi.access = window.__access;
+      // With the keyboard away (it was left so above), as with nothing
+      // plugged in on the site: gated, and the line says so until a note.
       const appeared = await until(says, 1500);
       const gated = state.source.gated;
       const line = el.readoutDetail.textContent;
 
-      midi.access = null;
+      midiNoteOn(69, 100);
       const cleared = await until(() => !says(), 1500);
-      return { gated, line, appeared, cleared,
-               after: el.readoutDetail.textContent };
+      const after = el.readoutDetail.textContent;
+      midiNoteOff(69);
+      midi.access = window.__access;
+      return { gated, line, appeared, cleared, after };
     }""")
     check("a gate held open with nothing played says why the screen is empty",
           said["gated"] and said["appeared"], said["line"][:80])
-    check("and stops saying it when the generator is handed back",
+    check("and stops saying it once a note is held",
           said["cleared"], said["after"][:80])
 
     # That the drawn modes were not gated at all, so a keyboard could not

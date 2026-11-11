@@ -163,8 +163,10 @@ with sync_playwright() as pw:
       el.inputMode.value = '2'; el.inputMode.dispatchEvent(new Event('change'));
       await __wait(400);
       out.silent = { where: el.inputWhere.textContent, open: __open() };
-      // Heard: opened, connected, and the drawn size swings with the input.
+      // Heard: opened, connected, and the drawn size swings with the input,
+      // under a note held, since the site waits for one (10 Nov).
       el.inputDepth.value = '100'; el.inputDepth.dispatchEvent(new Event('input'));
+      midiNoteOn(57, 127);
       await applyGeneratorSound(); await __wait(1200);
       const peaks = [];
       for (let k = 0; k < 16; k++) {
@@ -179,6 +181,7 @@ with sync_playwright() as pw:
       el.inputMode.value = '0'; el.inputMode.dispatchEvent(new Event('change'));
       await __wait(300);
       out.off = { open: __open(), connected: state.source.inputConnected, where: el.inputWhere.textContent };
+      midiNoteOff(57);
       { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
       return out;
     }""")

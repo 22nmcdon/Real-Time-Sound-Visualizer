@@ -280,7 +280,10 @@ with sync_playwright() as pw:
     corr = """() => { const [l, r] = state.source.getLatestWindow(4096); let sl = 0, sr = 0, slr = 0;
       for (let i = 0; i < l.length; i++) { sl += l[i] * l[i]; sr += r[i] * r[i]; slr += l[i] * r[i]; }
       return { corr: slr / Math.sqrt(sl * sr + 1e-30), kind: state.source.kind }; }"""
+    # Under a note held in Mono, where a lone note is the line the menus set
+    # (in Poly it is a ring): the site waits for a note since 10 Nov.
     q.evaluate("""() => { const set = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
+      el.midiMono.click(); midiNoteOn(57, 127);
       set('interval', 0); set('phase', 0); set('pictureAmount', 0); }""")
     q.wait_for_timeout(800)
     before = q.evaluate(corr)

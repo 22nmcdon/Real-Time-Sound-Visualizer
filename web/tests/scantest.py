@@ -399,7 +399,7 @@ with sync_playwright() as pw:
     # run, where the first had hushed the voice).
     rebuilt = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      loadCorpus('Scanned fifth'); await wait(1200);
+      midiPanic(); loadCorpus('Scanned fifth'); heldTone(); await wait(1200);
       const table = genSettings().scanTable;
       const naive = JSON.parse(JSON.stringify(table)).levels[0].length;
       // Depth at nought across the rebuild and back up after it, so the
@@ -444,7 +444,7 @@ with sync_playwright() as pw:
 
     hold = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      loadCorpus('Scanned fifth'); await wait(600);
+      midiPanic(); loadCorpus('Scanned fifth'); heldTone(); await wait(600);
       const calm = [];
       for (let k = 0; k < 10; k++) { await wait(100); calm.push(genSettings().scanHold); }
       // The screen filled: what the meter calls running away.
@@ -495,7 +495,11 @@ with sync_playwright() as pw:
     FIRST = """async ([preset, scanOn, stopAt, seconds]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setRunning(true);
-      loadCorpus(preset);   // the old library's, as above
+      /* The old library's, as above, under a note held in Mono (corpus.held_tone):
+         the site waits for a note since 10 Nov, and this read the tone it drew
+         with none. Let go first, as a note held in Dyad over a setup makes its
+         fifth a unison. */
+      midiPanic(); loadCorpus(preset); heldTone();
       // The picture stage at nought, so what moves the sound here is Scan.
       el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
       if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
@@ -549,8 +553,8 @@ with sync_playwright() as pw:
     # depth at nought by the slider as the null, sent the way a hand's is.
     SITE = """async ([scanOn, seconds]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      // The old library's Scanned fifth, from before P8g, as on the page above.
-      loadCorpus('Scanned fifth'); await wait(400);
+      // The old library's Scanned fifth, from before P8g, as on the page above, held.
+      midiPanic(); loadCorpus('Scanned fifth'); heldTone(); await wait(400);
       el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
       if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input', { bubbles: true })); }
       await wait(600);

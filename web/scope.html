@@ -869,6 +869,20 @@ dialog[open] { display: flex; flex-direction: column; }
    nothing. Unmarked at the grab, before there is a pull to judge. */
 .bend-mark[data-hold="true"] { background: var(--gold); }
 .bend-mark[data-hold="false"] { opacity: 0.45; border-style: dashed; }
+/* How to play the first note, on the empty screen until one has played
+   (syncPlayHint). An element over the trace for the reticle's reason: drawn
+   into the canvas it would be laid on the phosphor, and the photocell, Scan
+   and the picture's reads would read a sentence. Quiet, in the credit's
+   hand, on the paper so the graticule does not strike it through, and it
+   takes no presses, so the screen under it is still the screen. */
+.play-hint {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: max-content; max-width: calc(100% - 48px); margin: 0; z-index: 2;
+  padding: 2px 8px; background: var(--paper);
+  font-family: var(--script); font-style: italic; font-size: 14px; line-height: 1.4;
+  color: var(--text-soft); text-align: center; pointer-events: none;
+}
+.play-hint[hidden] { display: none; }
 /* The loop on the screen (P8f): Scan's ring, its read-head, the table it is
    playing and the picture's verdict, drawn on a canvas of its own over the
    trace. Over it and never into it, for the reticle's reason and a stronger
@@ -938,6 +952,7 @@ body[data-enlarged] .screen > .wrap { max-width: none; width: 100%; }
    phosphor grid, which the traces alone are laid into (enlargetest.py). */
 body[data-bare] #traceSheet > .photo-reticle,
 body[data-bare] #traceSheet > .bend-mark,
+body[data-bare] #traceSheet > .play-hint,
 body[data-bare] #traceSheet > .loop-overlay,
 body[data-bare] .screen .dock,
 body[data-bare] .screen .aside { display: none !important; }
@@ -2623,9 +2638,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="envReleaseValue">180 ms</span>
               </div>
             </div>
-            <p class="menu-note">The envelope only does anything while the
-              keyboard is driving the generator &mdash; with nothing plugged in the
-              amplitude is the slider and nothing else, exactly as it was. A second note
+            <p class="menu-note">The envelope shapes every note the generator plays,
+              and between notes it is silent. A second note
               while one is still held changes the pitch without starting the envelope
               again, which is what makes a run of notes a phrase rather than a row of
               attacks; <i>glide</i> slides between them instead of stepping. The envelope
@@ -3351,7 +3365,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 
           <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="oscTitle">Oscillator<button type="button" class="hand-link" id="linkOsc" data-link="osc" aria-pressed="true" hidden></button></span>
-            <!-- The pitch with no keyboard, and the second channel's start:
+            <!-- The pitch, which a note sets and a turn moves, and the second channel's start:
                  the ink's, with the ratio and FM under them, since G3. On
                  Play they read as the instrument's main controls, which they
                  are not once a note is played. -->
@@ -4105,7 +4119,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
          and only with Picture only off (G4, the owner's call over putting them
          beside the screen on the face, which has no height to spare). -->
     <div class="panes" id="panes">
-      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><div class="bend-mark" id="bendMark" hidden></div><canvas class="loop-overlay" id="loopOverlay" hidden aria-hidden="true"></canvas></div>
+      <div class="sheet main" id="traceSheet"><canvas id="trace" role="img" aria-label="Oscilloscope screen"></canvas><div class="photo-reticle" id="photoReticle" hidden tabindex="0" role="slider" aria-label="Photocell - drag it onto the picture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><div class="bend-mark" id="bendMark" hidden></div><canvas class="loop-overlay" id="loopOverlay" hidden aria-hidden="true"></canvas><p class="play-hint" id="playHint" hidden></p></div>
       <div class="aside" id="aside">
         <div class="sheet pane" id="goniPane">
           <span class="pane-name">Goniometer</span>
@@ -4554,6 +4568,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         section, along the bottom, says what it does; <i>More</i>, or <b>?</b>, opens a card
         with what is moving it and the controls either side. <i>Settings &rarr; This window</i>
         turns the line off.</li>
+      <li class="help-lede">Nothing sounds until you play a note, as in the plugin:
+        <i>Show keys</i> on the <i>Play</i> tab and press one, or type <b>A</b> to <b>K</b>
+        while they are open, or connect a MIDI keyboard in <i>Settings</i>. Until the first
+        note the empty screen says so.</li>
       <li class="help-lede">An oscilloscope draws what a signal is doing. Three ways of
         drawing it, and the switch marked <i>Display</i> chooses.</li>
 
@@ -5398,9 +5416,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         controls, presets and drawings reach it, its notes go out of your MIDI port, and the
         picture is the one it drew. The browser lets it be heard only once you have pressed
         something, and the line under the title says so until then; meanwhile the same
-        instrument draws on the page's own thread, so the screen is never blank. With no
-        keyboard plugged in and the screen's keys shut it draws its generator at once; the
-        waveform waits for a note only once there is something to play one on. Every source
+        instrument plays on the page's own thread, so a note is drawn the moment it is
+        played. It waits for a note, as the plugin does: from the screen's keys, the
+        computer keyboard or a MIDI one, and until the first the empty screen says how to
+        play it. Every source
         is its: <i>Mic</i> is drawn through its plane effects and heard only if it is a line
         input you have asked to hear; <i>Into bands</i> is its own.
         <i>?brain=js</i> on the address is the way back: the page's own brain, written in
@@ -5411,10 +5430,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         inside the plugin alike.</span></li>
 
       <li><b>The envelope, and when it is in force</b>
-        <span>Only while a keyboard is playing. With nothing plugged in
-        the amplitude is its knob and nothing else, exactly as it always was. Where the gate <em>is</em> open with no key
-        down, the readout says <i>gated &middot; no note held</i> rather than leaving you
-        to wonder.
+        <span>Always, on the generator: it sounds only while a note does, from the keys on
+        the screen, the computer keyboard or a MIDI keyboard, and the envelope shapes every
+        note. With no key down the readout says <i>gated &middot; no note held</i> rather than
+        leaving you to wonder.
         <br><br>
         A second key over a held one changes the pitch without starting the envelope
         again, which is what makes a run of notes a phrase; <i>glide</i> slides between
@@ -5594,8 +5613,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         letters play notes rather than their shortcuts; close the keys to have the shortcuts
         back. <i>Pedal</i>, at the end of the keys, is a sustain pedal that stays down until
         pressed again, and holding <b>Space</b> while the keys are open is one you hold with
-        your thumb. Closing the keys lifts it. With the keys open the waveform waits for a note, as it does with a keyboard
-        plugged in.</span></li>
+        your thumb. Closing the keys lifts it.</span></li>
 
       <li><b>Right-click a control</b>
         <span>&mdash; or Ctrl-click on a Mac, hold a finger on it on a touch screen, or press
@@ -5876,7 +5894,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "benchSearch", "benchResults",
                   "audioGroup", "midiSetGroup", "audioNote",
                   "lagMixRow", "lagMix", "lagMixValue",
-                  "midiGroup", "laneGroup", "midiConnect", "keysPedal", "midiStatus", "midiPlayingRow", "midiMonitor",
+                  "midiGroup", "laneGroup", "midiConnect", "keysPedal", "midiStatus", "midiPlayingRow", "midiMonitor", "playHint",
                   "photoReticle", "photoButton", "loopButton", "loopOverlay", "clearButton", "pictureAmount", "pictureReads",
                   "morphGroup",
                   "morphPos", "morphStoreA", "morphStoreB", "morphNote",
@@ -7518,7 +7536,7 @@ registerSource({
   description: "Where the generator's attack, decay, sustain and release have got to - "
     + "in poly, the loudest note's - or, with its own envelope ticked, where its own four have: "
     + "one swell for the notes held, so the filter and the picture can move on other timings than "
-    + "the loudness. It moves only while a keyboard is playing the generator.",
+    + "the loudness. It moves only while notes are playing the generator.",
   value: () => {
     const source = state.source;
     return playingKind(source) === "tone" && source.gated ? source.envelope || 0 : 0;
@@ -8962,11 +8980,15 @@ const screenKeys = {
   spacePedal: false,            // the space bar is holding the pedal down
 };
 
-/* Whether there is a keyboard to wait for, which is the question the gate was
-   asking when it asked whether MIDI was connected. The envelope shuts the
-   generator between notes only while something could play one; with neither
-   a port nor the screen's keys, a shut gate would be a blank screen and no way
-   to open it. */
+/* Whether there is a keyboard here: a port, or the screen's keys. Until 10
+   Nov this was also whether the generator waited for a note, so on the site,
+   with neither, it sounded a steady drone from the moment the page opened -
+   before a port had had the time to connect. The owner's call that day: the
+   site is silent until a note, as the plugin always was, and the empty screen
+   says how to play one (`syncPlayHint`), which answers the worry this rule
+   was written for, a blank screen with no way to open it. So the gate no
+   longer asks this, nor the chord; only the keyboard's Playing line does, to
+   show what is held only where something could hold it. */
 function keyboardPresent() {
   return midi.access !== null || screenKeys.open;
 }
@@ -9179,11 +9201,11 @@ function polyVoices(layer) {
 
 /* Whether the generator should be playing a chord right now. Asked, not
    stored, and asked every frame by `syncPoly` - the same lesson the gate
-   learned: "is the keyboard driving this" moves when the mode changes, the
-   source changes or the keyboard goes away, and a flag set on one of those
-   events is wrong after the next. */
+   learned: "is the keyboard driving this" moves when the mode changes or the
+   source changes (and, until 10 Nov, when the keyboard went away), and a flag
+   set on one of those events is wrong after the next. */
 function polyWanted() {
-  return midi.mode === "poly" && midiDrivesGenerator() && keyboardPresent();
+  return midi.mode === "poly" && midiDrivesGenerator();
 }
 
 function midiApplyPoly() {
@@ -9295,31 +9317,35 @@ function midiDrivesGenerator() {
    split is deliberate: whether a phrase retriggers is a property of the
    envelope and belongs where the envelope is, not in the thing counting keys.
 
-   `setGated` is what keeps every page without a keyboard exactly as it was.
-   Off, the envelope is a multiply by one. It goes on when the keyboard is
-   actually driving the generator and off the moment it stops - a mode the
-   keyboard is not pointed at, a source that is not the generator, a panic -
-   because a gate left shut behind a source nobody is playing is a screen that
-   has gone blank for a reason nothing on the panel explains. */
+   `setGated` is on wherever the notes drive the generator, which since 10 Nov
+   is from the page's first frame, keyboard or none: the site waits for a
+   note as the plugin does, and the empty screen says how to play one
+   (`syncPlayHint`). Off, the envelope is a multiply by one, which is what a
+   core made outside the page still is (a test's own, a thumbnail's), and it
+   goes off the moment the generator is not what the notes play - drawing an
+   input - because a gate left shut behind a source nobody is playing is a
+   screen gone blank for a reason nothing on the panel explains. */
 function midiApplyGate() {
   // A chord or not, derived here for the same reason the gate is: see
   // `polyWanted`. Before the early return, because a rack has no gate and
   // its generator lane can still play a chord.
   syncPoly();
   const source = state.source;
-  // The instrument gates its own generator, and is told only what it cannot see.
-  if (source && typeof source.setKeyboard === "function") source.setKeyboard(keyboardPresent());
+  /* The instrument gates its own generator. It was told here whether a
+     keyboard was present, and freed its generator when none was; it is told
+     nothing now, which it takes, as the plugin's host is, for a keyboard. */
   if (!source || typeof source.setGated !== "function") return;
 
   /* Derived every frame rather than pushed when something changes, which is
      the third time this page has had to learn it. "Is the keyboard driving
-     this" moves when the source changes and when the keyboard goes away, and
-     moved, until G2, when the generator changed kind or `Drives` was
-     unticked - events most of which had no handler - and a gate that was
-     correct when it was set and shut four frames later is a screen that has
-     gone blank with nothing on the panel to explain it. `setGated`
-     early-returns when the answer has not moved, so asking is nearly free. */
-  const drives = midiDrivesGenerator() && keyboardPresent();
+     this" moves when the source changes, moved until 10 Nov when the
+     keyboard went away, and moved, until G2, when the generator changed kind
+     or `Drives` was unticked - events most of which had no handler - and a
+     gate that was correct when it was set and shut four frames later is a
+     screen that has gone blank with nothing on the panel to explain it.
+     `setGated` early-returns when the answer has not moved, so asking is
+     nearly free. */
+  const drives = midiDrivesGenerator();
   const was = source.gated;
   source.setGated(drives);
 
@@ -9930,8 +9956,9 @@ function generatorSettings() {
     table: 1.5,
 
     /* The envelope, in milliseconds and a fraction. Only in force while the
-       keyboard is actually driving the generator - see `gated` below - so a
-       page with nothing plugged in draws exactly the steady waveform it drew
+       core is gated - see `gated` below - which on a page is from its first
+       frame since 10 Nov (midiApplyGate); a core made on its own, a test's or
+       a thumbnail's, is not, and draws exactly the steady waveform it drew
        before this existed, sample for sample. */
     attackMs: 8,
     decayMs: 120,
@@ -12823,6 +12850,7 @@ function generatorProcessor() {
       // Said once, so the page can tell which one is playing, and why.
       this.port.postMessage({ core: made.kind, why: made.why });
       if (setup.gated) this.core.setGated(true);
+      if (setup.gated && setup.held > 0) this.core.gate(true, setup.held);
       if (setup.tone) {
         for (const field in setup.tone) this.core.set(field, setup.tone[field]);
       }
@@ -13094,7 +13122,7 @@ function workletRoutes() {
    is the waveform that went to the speakers, sample for sample, rather than a
    second run of the same arithmetic agreeing with it in character and not in
    phase. */
-function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
+function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart, heldAtStart }) {
   let ctx = null, node = null, level = null, unwire = null;
   /* J3's input: the stream asked for, and its node in this context while
      the worklet exists. The stream outlives a rebuild of the worklet, so
@@ -13168,9 +13196,18 @@ function makeGeneratorVoice(core, { open, wire, absorb, gatedAtStart }) {
           toneB: JSON.parse(JSON.stringify(core.toneB, plainArrays)),
           routes: plainRoutes(),
           /* Where the envelope already is. Switching the sound on with a key
-             held down must not arrive with the gate shut, and switching it on
-             with nothing plugged in must not arrive gated at all. */
+             held down must not arrive with the gate shut, nor with it open
+             and no key down. Until 10 Nov only the first half was done: a
+             new worklet came up gated and shut, and a key struck while there
+             was none - the sound off and the generator's panel shown again,
+             which lets the old worklet go - was a message to nothing, and
+             stayed silent until the next key. With no keyboard the generator
+             was not gated, so nothing showed it; once it waited for a note,
+             looptest's runs read nought at the speakers for it, and its
+             check that the speakers heard anything holds it. The velocity
+             of the key down, or nought. */
           gated: gatedAtStart(),
+          held: heldAtStart ? heldAtStart() : 0,
           // The compiled core, when the address asks for it, and its noise's seed.
           wasm: CORE_IN_WASM ? wasmCore().slice().buffer : undefined,
           seed: Math.floor(Math.random() * 4294967296),
@@ -13336,6 +13373,7 @@ function makeToneSource(atRate) {
     },
     absorb,
     gatedAtStart: () => core.gated,
+    heldAtStart: () => (core.gated && midi.notes.length ? midi.notes[midi.notes.length - 1].velocity : 0),
   });
 
   function fill(nowSeconds) {
@@ -14468,17 +14506,12 @@ function makeBrainHost() {
   Object.defineProperty(source, "bands", { get: () => !!bands });
   Object.defineProperty(source, "lanes", { get: () => bands || undefined });
   source.remix = () => { if (bands) laneMixer(bands); };
-  /* Whether there is a keyboard to wait for (keyboardPresent), asked every
-     frame by midiApplyGate as the page asks it of its own generator, and sent
-     when it moves: the instrument gates its generator only while something
-     could play a note, so the site opens drawing it as the page always has,
-     where the plugin - always a keyboard - opens silent until one. */
-  let keyboardSent = null;
-  source.setKeyboard = (present) => {
-    if (present === keyboardSent) return;
-    keyboardSent = present;
-    send({ op: "control", id: "keyboardPresent", value: present ? "1" : "0" });
-  };
+  /* Whether there was a keyboard to wait for was sent from here as the
+     `keyboardPresent` control until 10 Nov, and the instrument drew its
+     generator with no note while there was none. The site is silent until a
+     note now, as the plugin is, so the page sends nothing and the instrument,
+     told nothing, is the plugin's: a keyboard. The core keeps the control;
+     only parity's fixtures for a generator with no note send it now. */
   /* The input stream, connected to the worklet's input: the page opens it
      (syncGenInput) when the instrument draws it, or when the generator takes
      it for its live-input modes, which in the instrument hear it whether or
@@ -19028,6 +19061,7 @@ function frameLoop(now) {
   // or not: a switch thrown while the scope is stopped still takes.
   syncLiveFx();
   syncGenInput();
+  syncPlayHint();
 
   if (state.running) {
     const fresh = capture();
@@ -21581,6 +21615,8 @@ function syncMidi() {
 }
 
 function midiSayMonitor(text) {
+  // Every change to the stack comes through here, the screen's keys, the letters and a port's alike.
+  if (midi.notes.length) playHint.played = true;
   const held = midi.notes.map((note) => midiNoteName(note.note)).join(" ");
   midi.last = (text ? text + "  ·  " : "") + (held || "nothing held")
     + (midi.sustain ? "  ·  pedal" + (midi.sustained.size ? ", holding " + midi.sustained.size : "") : "");
@@ -21589,6 +21625,33 @@ function midiSayMonitor(text) {
 }
 
 el.midiConnect.addEventListener("click", midiConnect);
+
+/* The line on the empty screen until the first note (10 Nov): the site is
+   silent until a note, as the plugin is, and a screen that is empty and
+   silent with nothing to say why reads as broken. What it says is what is
+   true here: the letters play only while the keys are open, and a browser
+   with no Web MIDI is not told to connect it. Only on the site: in the
+   plugin the notes come from the host's track, which the page cannot open.
+   Only while the generator is what is drawn: over a microphone it would be
+   wrong. Once a note has played it does not come back for the visit - the
+   player knows how by then, and a sentence returning over every release's
+   fade would sit on the figure they are watching - and nothing remembers
+   it, so the next visit shows it again until a note. Derived every frame,
+   which is the gate's lesson: a source or a keyboard that moves is noticed
+   whatever moved it. */
+const playHint = { played: false };
+// "A to K" kept on one line: broken after the A, the letters read as a word and a stray K.
+function playHintText() {
+  if (screenKeys.open) return "Play a note: press a key below, or type A\u00a0to\u00a0K";
+  const keys = "Play a note: show the keys and type A\u00a0to\u00a0K";
+  if (!midi.supported) return keys;
+  return keys + (midi.access !== null ? ", or play your MIDI keyboard" : ", or connect MIDI in Settings");
+}
+function syncPlayHint() {
+  const show = !playHint.played && !window.__JUCE__ && playingKind() === "tone";
+  if (el.playHint.hidden === show) el.playHint.hidden = !show;
+  if (show) say(el.playHint, playHintText());
+}
 
 function setMidiMode(mode) {
   midi.mode = mode;
@@ -27597,7 +27660,7 @@ const CONTROL_WORDS = {
   "mod-depth": ["A source’s depth", "How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same."],
   "mod-depth-typed": ["A depth, typed", "The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further."],
   "mod-remove": ["Take it off", "Takes this source off this control. The source goes on moving everything else it is on."],
-  "keysOpen": ["On screen", "Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. While they are open, the generator waits for a note."],
+  "keysOpen": ["On screen", "Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. Nothing sounds until a note, keys or none."],
   "midiDyad": ["Dyad", "Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks."],
   "midiMono": ["Mono", "The newest note sets the pitch and the Interval menu puts the second channel above it, so one finger plays the whole figure."],
   "midiPoly": ["Poly", "Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline."],
@@ -27621,11 +27684,11 @@ const CONTROL_WORDS = {
   "cycleGo": ["Cycle", "Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw."],
   "barsGo": ["Drawbars", "The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab."],
   "glide": ["Glide", "How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there."],
-  "interval": ["Interval", "The second channel against the first, in Mono or with no keyboard. Small whole-number ratios close the figure: a fifth is a still 2:3."],
+  "interval": ["Interval", "The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3."],
   "tuneJust": ["Just", "Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick."],
   "tuneEqual": ["Equal", "Takes the keys as an equal-tempered piano has them, a little off the ratios, so the figure turns at the rate the interval beats."],
   "linkAmpEnv": ["Amp envelope’s link", "Whether the amp envelope is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
-  "envAttack": ["Attack", "How long a note takes to reach full level once its key goes down, and the figure grows with it. Only while a keyboard is playing."],
+  "envAttack": ["Attack", "How long a note takes to reach full level once its key goes down, and the figure grows with it. Between notes the generator is silent."],
   "envDecay": ["Decay", "How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck."],
   "envSustain": ["Sustain", "The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own."],
   "envRelease": ["Release", "How long a note takes to fade once you let go of its key. The figure shrinks with it."],
@@ -27634,7 +27697,7 @@ const CONTROL_WORDS = {
   "vcfCut": ["Cutoff", "Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first."],
   "vcfRes": ["Resonance", "How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure."],
   "vcfTrack": ["Key track", "How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller."],
-  "vcfEnvAmt": ["Envelope", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. Only while a keyboard is playing."],
+  "vcfEnvAmt": ["Envelope", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts."],
   "vcfAtk": ["Attack", "How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought."],
   "vcfDec": ["Decay", "How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah."],
   "vcfSus": ["Sustain", "Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again."],
@@ -27653,7 +27716,7 @@ const CONTROL_WORDS = {
   "bar7": ["1⅓′", "Two octaves and a fifth above the note, the sixth harmonic."],
   "bar8": ["1′", "Three octaves above the note, the eighth harmonic. On the highest notes it is left out rather than folded back."],
   "linkOsc": ["Oscillator’s link", "Whether the oscillator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
-  "freq": ["Frequency", "The pitch while no keyboard is playing; a note in Dyad or Mono moves it. On Y–T, higher puts more cycles on the screen."],
+  "freq": ["Frequency", "The pitch: a note in Dyad or Mono sets it, and a turn moves the note held. On Y–T, higher puts more cycles on the screen."],
   "phase": ["Phase", "Where the second channel starts in its cycle against the first. At a unison, 0° draws a diagonal line and 90° a circle. Not for Poly's chords."],
   "oscRatio": ["Ratio", "The voice's second oscillator, as a ratio to the note, heard only through FM and Ring. A 3:2 sounds harmonic for the reason a 3:2 figure closes."],
   "oscFm": ["FM", "How far the second oscillator swings the voice's phase: pure at nought, then brighter, then bells and clangour. The figure gets busier with it."],

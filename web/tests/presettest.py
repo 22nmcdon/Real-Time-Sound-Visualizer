@@ -88,7 +88,11 @@ with sync_playwright() as pw:
           const key = JSON.stringify(snap);
           if (snaps.has(key)) wrong.push([name, 'the same as', snaps.get(key)]);
           snaps.set(key, name);
+          /* Under a note each side of any split, since the site waits for a
+             note (10 Nov): until then every preset drew its generator with
+             none, and one silent for want of a key said so in its words. */
           if (kind === 'generator') {
+            midiNoteOn(48, 100); midiNoteOn(67, 100);
             await wait(260);
             const w = state.source.getLatestWindow(4410);
             let peak = 0, finite = true;
@@ -96,7 +100,8 @@ with sync_playwright() as pw:
               if (!Number.isFinite(ch[i])) finite = false;
               peak = Math.max(peak, Math.abs(ch[i]));
             }
-            if (!finite || peak < 0.01) silent.push([name, peak, /play it/i.test(blurb)]);
+            if (!finite || peak < 0.01) silent.push([name, peak]);
+            midiNoteOff(48); midiNoteOff(67);
           }
         }
       }
@@ -108,9 +113,7 @@ with sync_playwright() as pw:
     print("    %d presets in %d sections" % (report["count"], len(report["kinds"])))
     check("every field a preset names is in the setup it makes, at the value it names",
           report["wrong"] == [], str(report["wrong"][:4]))
-    unexplained = [s for s in report["silent"] if not s[2]]
-    check("every generator preset sounds on the tone, or says it waits for a key",
-          unexplained == [], "%s; waiting for a key: %s" % (unexplained, [s[0] for s in report["silent"] if s[2]]))
+    check("every generator preset sounds under a note each side of a split", report["silent"] == [], str(report["silent"]))
     check("every preset says what it is, every section what it is for, and says what it plays on",
           report["noBlurb"] == [] and report["about"] == []
           and all(k in ("generator", "display") for k in report["kinds"]),

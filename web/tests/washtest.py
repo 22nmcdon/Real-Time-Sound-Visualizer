@@ -38,12 +38,18 @@ def null(name, red, detail=""):
     """A check's null: the same comparison fed a value it must reject."""
     check("null: " + name, red, detail)
 
-# A fifth drawn as X-Y at a given persistence, so the figure covers the screen.
+# A fifth drawn as X-Y at a given persistence, so the figure covers the screen,
+# under a note held in Mono, which keeps the setup's fifth: the site waits for
+# a note since 10 Nov, and this washed the figure it drew with none (the
+# nulls below caught the empty screen). Let go first, as a note held in Dyad
+# over a setup makes its fifth a unison.
 DRAW = """async (persistence) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  midiPanic();
   hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
                                persistence, pictureAmount: 0, oscScan: 0 }));
   hostSendSetup();
+  el.midiMono.click(); midiNoteOn(57, 127);
   const amp = document.getElementById('amp');
   amp.value = '55'; amp.dispatchEvent(new Event('input', { bubbles: true }));
   wipeScreen = true;
@@ -156,7 +162,7 @@ with sync_playwright() as pw:
     def timebase(i):
         p.evaluate("(i) => { const t = el.timebase; t.value = String(i); t.dispatchEvent(new Event('input', { bubbles: true })); }", i)
         p.wait_for_timeout(300)
-    p.evaluate("() => { hostQuietly(() => restore({ shape: 'sine', freq: 220, display: 'yt', persistence: '0.0255', pictureAmount: 0, oscScan: 0 })); hostSendSetup(); }")
+    p.evaluate("() => { midiPanic(); hostQuietly(() => restore({ shape: 'sine', freq: 220, display: 'yt', persistence: '0.0255', pictureAmount: 0, oscScan: 0 })); hostSendSetup(); el.midiMono.click(); midiNoteOn(57, 127); }")
     timebase(4); p.wait_for_timeout(800)
     marks_a = strip_cleared()
     p.wait_for_timeout(1500)

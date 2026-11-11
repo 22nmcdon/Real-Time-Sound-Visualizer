@@ -18,7 +18,10 @@
      arp MODE RATE OCTAVES   bpm BPM   at MS   tick   out 0|1
    `at` moves the clock, firing first any timer due by then at its own time;
    `tick` is the frame's arpTick; `out` opens or closes the MIDI out.
-   A run's head may say present=0 for a page with no keyboard.
+   A run's head may say present=0, as `present 0` may: a page with no
+   keyboard, which until 10 Nov left the generator ungated. The page's gate no
+   longer asks (the site waits for a note as the plugin does), so on this side
+   it moves only `midi.access`, and no run says it.
    Usage: node keyboard_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";

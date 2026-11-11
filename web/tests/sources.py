@@ -74,7 +74,11 @@ with sync_playwright() as pw:
     check("and the head says the tone again", "test tone" in mark().lower(), mark())
 
     print("-- the tone still works after all of that --")
-    check("triggers", p.evaluate("capture().triggered"))
+    # Under a note, since the site waits for one (10 Nov), and not before it.
+    check("silent before a note, nothing triggers", not p.evaluate("capture().triggered"))
+    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(400)
+    check("triggers under a note", p.evaluate("capture().triggered"))
+    p.evaluate("() => midiNoteOff(57)")
     check("generator responds", p.evaluate("""() => {
         el.freq.value = '330'; el.freq.dispatchEvent(new Event('input'));
         return state.source.settings.freq; }""") == 330)

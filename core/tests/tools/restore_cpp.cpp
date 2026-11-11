@@ -162,7 +162,9 @@ int main(int argc, char** argv) {
   scope::Generator gen(48000, scope::slot::Used, lfos);
   scope::GeneratorNotes notes(gen);
   scope::Keyboard keys(notes);
-  keys.setPresent(false);  // the page in the harness has no keyboard plugged in
+  // The page in the harness has no keyboard plugged in, and since 10 Nov its
+  // gate, its chord and its layers no longer ask: told nothing, as the
+  // plugin's and the site's instrument are, the keyboard here is present.
   scope::Matrix matrix;
   scope::Brain brain;
   keys.setLayerPanel([&] { scope::syncLayerPanel(brain, gen, keys); });
@@ -206,9 +208,25 @@ int main(int argc, char** argv) {
         scope::controlChange(scope::utf16To8(setup->get("id")->s), written, checked, brain, gen, keys, lfos);
       } else if (what == "click") scope::controlClick(scope::utf16To8(setup->get("id")->s), brain, gen, keys, &matrix);
       else if (what == "fade") scope::fadeFromPage(matrix, value ? *value : Json::null());
-      else if (what == "keys") { keys.setPresent(value && value->type == Json::Type::Bool && value->b); keys.frame(0); }
+      // The screen's keys open or shut, which moved whether the layers were on
+      // until 10 Nov; the page's frame still runs, and nothing else here moves.
+      else if (what == "keys") keys.frame(0);
     } else {
       scope::restoreSetup(*setup, brain, gen, keys, matrix, lfos);
+    }
+    /* The lanes a layout draws, as the page's frame has them (syncLayers,
+       buildLaneRows, fitChannels) and the instrument's layOutPicture: four
+       while each hand draws a figure, else two. Until 10 Nov no keyboard
+       here meant no layers, and two lanes always; with the layers on for a
+       split with no keyboard, the X-Y menus offer four on the page. */
+    {
+      const int lanes = notes.layout() == scope::Layout::Each ? 4 : 2;
+      if (brain.view.lanes != lanes) {
+        brain.view.lanes = lanes;
+        brain.panel.setLanes(lanes);
+        brain.view.capture.channels.resize(static_cast<std::size_t>(lanes));
+        scope::fitView(brain);
+      }
     }
 
     Json out = Json::object();

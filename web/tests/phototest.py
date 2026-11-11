@@ -89,6 +89,9 @@ with sync_playwright() as pw:
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
     corpus.old_opening(p)  # the opening it was written against (P8h)
+    # Under a note held in Mono: the site waits for one since 10 Nov, and the
+    # opening was the tone it drew with none.
+    corpus.held_tone(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -498,6 +501,7 @@ with sync_playwright() as pw:
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(900)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     corpus.install(p)
+    corpus.held_tone(p)    # and held, as above
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     land = p.evaluate("""async () => {
       const frames = (n) => new Promise((done) => { let k = 0;

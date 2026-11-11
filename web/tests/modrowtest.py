@@ -281,6 +281,15 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const off = { crop: !!document.getElementById('photoCrop'), on: photo.on, inEditor: el.photoButton.closest('#modEditor') !== null,
                     shown: !!el.photoButton.offsetParent };
+      /* A note held, so there is a figure for the crop to show: the site waits
+         for one since 10 Nov, and this cropped the circle it drew with none.
+         In Mono and at full sustain it is the circle the drone drew, where
+         the reticle sits; a lone note in Poly is a ring of its own, and under
+         the envelope's 0.7 smaller still. */
+      el.envSustain.value = '100'; el.envSustain.dispatchEvent(new Event('input'));
+      el.midiMono.click(); midiNoteOn(57, 127);
+      // Drawn before the photocell is switched on, which lands it on the figure.
+      await wait(600);
       el.photoButton.click(); await wait(4400);
       const crop = document.getElementById('photoCrop');
       paintModLive();
@@ -318,6 +327,7 @@ with sync_playwright() as pw:
       const midInk = __inkAt(graph, g.w / 2);
       const out = { off, here, there, centre, window_, span: g.span, points: g.points, value: g.value, photo: photo.value,
                     now: document.getElementById('photoNow').textContent, midY: midInk.y, floor: g.h - 6 };
+      midiNoteOff(57); el.envSustain.value = '70'; el.envSustain.dispatchEvent(new Event('input')); el.midiPoly.click();
       el.photoButton.click(); await wait(4400); paintModLive();
       // Found afresh: the editor is built again as its source comes and goes.
       const after = document.getElementById('photoGraph');

@@ -87,8 +87,10 @@ with sync_playwright() as pw:
           amounts == [["lfo1", "gen.phase", 1.0], ["lfo2", "gen.ratio", 0.2]], str(amounts))
 
     print("\n--- a routing actually modulates ---")
+    # Each sound below under a note held in Mono (corpus.held_tone): the site
+    # waits for a note since 10 Nov, and these read the tone it drew with none.
     swept = p.evaluate("""async () => {
-      loadCorpus('Pure sine');
+      loadCorpus('Pure sine'); heldTone();
       state.timebase = 6;                        // 100 ms: enough cycles to measure
       lfos[0].shape = 'sine'; lfos[0].rate = lfos[0].free = 0.5;
       /* Written here, the rate is the page's alone: the site's instrument
@@ -316,7 +318,7 @@ with sync_playwright() as pw:
     # the answer was 45 degrees whatever the samples were, and whatever
     # `capture` did.
     p.evaluate("""() => {
-      loadCorpus('Circle');
+      loadCorpus('Circle'); heldTone();
       el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
       state.modRoutings = []; touchRoutings();
     }""")
@@ -376,7 +378,7 @@ with sync_playwright() as pw:
     # as paintStage takes it.
     print("\n--- the level follows what you play ---")
     env = p.evaluate("""async () => {
-      loadCorpus('Pure sine');
+      loadCorpus('Pure sine'); heldTone();
       const source = { value: () => Math.min(1, envLive / ENV_FULL) };
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
       await new Promise((r) => setTimeout(r, 600));

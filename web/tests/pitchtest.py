@@ -161,6 +161,12 @@ with sync_playwright() as pw:
                                return t.slice(i + 5, i + 14).trim(); };
       // The readouts are under the screen only when asked for, since F1.
       setReadouts(true);
+      /* A note held in Mono, so the slider is the pitch: the site waits for a
+         note since 10 Nov, and this read the tone it drew with none. The note
+         as truth off, or the readout would say the key's 220 whatever the
+         estimator made of the drawbars. */
+      el.midiTruth.checked = false; el.midiTruth.dispatchEvent(new Event('change'));
+      el.midiMono.click(); midiNoteOn(57, 127);
       el.dispYT.click();
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input'));
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
@@ -206,6 +212,8 @@ with sync_playwright() as pw:
     locked = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       midiPanic();
+      // Held again, in Mono, for the clean tone at the end (the note as truth still off).
+      el.midiMono.click(); midiNoteOn(57, 127);
       const was = { on: state.lagOn, auto: state.lagAuto };
       state.lagOn = true; state.lagAuto = true;
       const frame = { rate: state.source.sampleRate };
