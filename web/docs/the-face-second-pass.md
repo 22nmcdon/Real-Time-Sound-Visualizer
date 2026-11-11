@@ -482,6 +482,25 @@ Each leaves the suite green and is pushed alone.
 - **G8 The second review's bugs** not covered above (`second-review.md`). They do not
   wait for G7: the plugin's window size, the delay's line while it is off and the rack's
   memory are small and lose or misplay sound today, so they can go first.
+  **Built 11 Nov, the face's half** (the plugin's program number and its allocations
+  per block are the other half): the window's size (9 Nov), the delay's line and the
+  rack's memory (11 Nov) and the Photocell offered as a card (G5a) were already done,
+  and `second-review.md` now says so. The **morph leaves the scope's view alone**, the
+  owner's call: the timebase, the zoom and the trigger's level, position and holdoff are
+  skipped (`MORPH_VIEW` in `MORPH_SKIP`, and out of `kMorphIds`), because they frame the signal rather than change
+  it, though the zoom and the timebase do reach what Scan reads; the trace filter, the
+  AC corner and the lag stay, being transforms on the signal that Scan reads and the
+  speakers get on Shaped; and the **tempo stays**, since it is heard. The preset glide
+  walks the same list, so a preset's view lands at once; a code whose morph ends name
+  the view loses those on reading, the code's own view untouched. And **the stale text**:
+  the cheat sheet, Perform's and the keyboard's notes named the Picture and Sources tabs,
+  a Picture › Vertical and Picture › Lanes, a Display switch with no visible name, the
+  generator's "four minds" (three of them the drawings), the phaser as "the host's eighth
+  knob", the host's knobs without Level or the reverb, Expression behind the Keyboard's
+  dots and the six whole-picture readings as sources a card offers; each says where the
+  thing is now. `setupmorphtest.py` holds the morph, each against the old list put back,
+  and parity the core's list; `wordstest.py` reads every word the page can show for a
+  retired place, with nulls planted in the cheat sheet, a tooltip and the info line.
 
 ## Open
 

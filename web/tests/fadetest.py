@@ -326,8 +326,13 @@ with sync_playwright() as pw:
       setFade('off');
       return { bad, glided, total };
     }""")
+    # Most must glide, or a landing check that passes would pass on loads with
+    # nothing gliding. Over four in five did until G8 took the scope's view out
+    # of what the glide walks (MORPH_SKIP): 233 of 277 then, 200 now, the 33
+    # between being presets that differ from the one before only in their
+    # timebase, zoom or trigger, which land at once. So two in three.
     check("every preset, glided into from the one before, ends as the preset and not something near it",
-          landed["bad"] == [] and landed["glided"] > landed["total"] * 0.8,
+          landed["bad"] == [] and landed["glided"] > landed["total"] * 0.65,
           "%d of %d glided; %s" % (landed["glided"], landed["total"], landed["bad"][:3]))
 
     print("\n--- the envelope: two times and two shapes ---")

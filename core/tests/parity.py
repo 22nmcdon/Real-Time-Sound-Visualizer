@@ -3946,7 +3946,8 @@ check("a slider set by a number holds what the text of that number would leave, 
 spent = [r[0] for r in walked if int(r[1]) != 0]
 still = [r[0] for r in walked if float(r[2]) == 0]
 # As many as the core's list of the sliders the morph walks (80 since Scan's
-# two, P7a), read from the panel's table rather than written here, so a slider
+# two, P7a; 85 by G7, and 80 again once G8 took out the scope's five view
+# sliders), read from the panel's table rather than written here, so a slider
 # added to the walk is walked here as well rather than failing a count.
 _ids = open(os.path.join(CORE, "include", "scope", "panel_controls.h")).read()
 morph_count = len(re.findall(r'"([A-Za-z0-9]+)"', _ids[_ids.index("kMorphIds[]"):]))
@@ -4886,7 +4887,7 @@ MADE = [{}, {"op": "slider", "id": "amp", "value": 20}, {"op": "slider", "id": "
         {"op": "mod", "value": 0.00005}, {"op": "mod", "value": 0.25},                           # 9, 10
         {"op": "slider", "id": "amp", "value": 70}, {"op": "step"},                              # 11, 12
         {"op": "step"}, {"op": "step"},                                                          # 13, 14
-        {}, {"op": "slider", "id": "timebase", "value": 4}, {"op": "slider", "id": "freq", "value": 300},
+        {}, {"op": "slider", "id": "vcfCut", "value": 400}, {"op": "slider", "id": "freq", "value": 300},
         {"op": "store", "end": "a"},                                                             # 18
         {"l0y": "1/4"}, {"op": "slider", "id": "lfoRate0", "value": 50},                          # 19, 20
         {"delaySync": "1/4"}, {"op": "slider", "id": "delayMs", "value": 300},                    # 21, 22
@@ -4895,8 +4896,11 @@ MADE = [{}, {"op": "slider", "id": "amp", "value": 20}, {"op": "slider", "id": "
         {"op": "store", "end": "a"},                                                             # 28
         {"op": "hold", "value": -0.25}, {"op": "slider", "id": "amp", "value": 40},
         {"op": "store", "end": "b"}, {"op": "step"}, {"op": "hold", "value": 0},                 # 31, 32
-        {}, {"op": "slider", "id": "level", "value": -1000}, {"op": "store", "end": "a"},
-        {"op": "slider", "id": "level", "value": 1000}, {"op": "store", "end": "b"},
+        # The modulation envelope's attack, two thousand steps wide: the trigger
+        # level was this slider until G8 took the scope's view out of the morph,
+        # and with it these lines walked nothing.
+        {}, {"op": "slider", "id": "menvAtk", "value": 0}, {"op": "store", "end": "a"},
+        {"op": "slider", "id": "menvAtk", "value": 2000}, {"op": "store", "end": "b"},
         {"op": "pos", "value": 50}, {"op": "mod", "value": 0.0005}]                              # 39, 40
 mlines = [_json.dumps(o) for o in MADE] + [_json.dumps(o) for _ in range(90) for o in mrun()]
 mpg, mpt = rboth(mlines, "morph_ops.txt")
@@ -4994,13 +4998,15 @@ check("a push below the step's threshold moves nothing, and a quarter more from 
       mp[9]["ranges"]["amp"] == 50 and mp[10]["ranges"]["amp"] == 65,
       "%r %r" % (mp[9]["ranges"]["amp"], mp[10]["ranges"]["amp"]))
 check("a push of five ten-thousandths is past the step's threshold, and moves a wide slider a step",
-      mp[39]["ranges"]["level"] == 0 and mp[40]["ranges"]["level"] == 1,
-      "%r %r" % (mp[39]["ranges"]["level"], mp[40]["ranges"]["level"]))
+      mp[39]["ranges"]["menvAtk"] == 1000 and mp[40]["ranges"]["menvAtk"] == 1001,
+      "%r %r" % (mp[39]["ranges"]["menvAtk"], mp[40]["ranges"]["menvAtk"]))
 check("a hand on a slider with the fader at rest stays where the hand put it",
       mp[11]["ranges"]["amp"] == 70 and mp[12]["ranges"]["amp"] == 70 and mp[12]["a"]["amp"] == 0.7,
       "%r %r" % (mp[11]["ranges"]["amp"], mp[12]["ranges"]["amp"]))
 check("an end is written in the order the page found its sliders, not the order it lays them out",
-      mp[18]["morph"]["a"] == "=freq:300,timebase:4", mp[18]["morph"]["a"])
+      # The voice filter's cutoff, laid out before Frequency and found after it; the
+      # timebase was this pair's other half until G8 took the scope's view out of the morph.
+      mp[18]["morph"]["a"] == "=freq:300,vcfCut:400", mp[18]["morph"]["a"])
 check("LFO 1's rate moved while it is synced is its free rate, and it runs on at the beat's",
       mp[20]["lfos"][0]["free"] == 0.5 and mp[20]["lfos"][0]["rate"] == 2, repr(mp[20]["lfos"][0]))
 check("the delay's time moved while it is synced is kept, and its slider goes on showing the beat's 500 ms",
@@ -5025,7 +5031,7 @@ def mnull(what, index, change):
     check("and against " + what, rdiff(_json.loads(page[index]), _json.loads(mpt[index])) != [])
 mnull("the fader a point further", 7, lambda o: o | {"value": 26})
 mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
-mnull("the end stored without timebase", 16, lambda o: o | {"value": 7})
+mnull("the end stored without the cutoff", 16, lambda o: o | {"value": 667})
 check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
 
 print("\n--- menus, switches and buttons ---")

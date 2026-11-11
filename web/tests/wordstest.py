@@ -138,6 +138,68 @@ with sync_playwright() as pw:
           all(k not in (None, "missing") for _, k in keyed), str(keyed))
     p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
 
+    print("\n--- no words name a place that has gone ---")
+    # The second review found "the Picture tab" in the cheat sheet and "the
+    # Sources tab" in Perform's note, weeks after both went (G8). Every word
+    # the page can show is read here - its text, hidden panels and the cheat
+    # sheet included, the tooltips and labels, the info line's words and the
+    # sources' descriptions - for a tab, view or drawer the face no longer
+    # has, or a Scope & measure section filed under Picture. The nulls plant
+    # one in the cheat sheet, one in a tooltip and one in the info line's
+    # words, and each must be found.
+    RETIRED = """() => {
+      const RETIRED = [
+        // The Picture tab went in F2, Sources in F4, Shape, Effects and Measure in P8, Inputs and Perform with the drawer.
+        /\\b(Picture|Sources|Shape|Effects|Measure|Inputs|Perform) tab\\b/i,
+        /\\bdrawer\\b/i,                                    // P3 to F3
+        /\\b(Scope|Bench) view\\b/i,                        // G4
+        /\\bversions A\\b/i,                                // the header's A and B, G4
+        /\\bEdit A ?\\/ ?B\\b|\\bTogether ?\\/ ?A ?\\/ ?B\\b/, // G6
+        /\\bPicture ?[\\u2192\\u203a>] ?(Vertical|Lanes|Filter|Trigger)\\b/,  // Scope & measure's, since F1
+      ];
+      const texts = [];
+      const body = document.body.cloneNode(true);
+      for (const n of body.querySelectorAll('script, style')) n.remove();
+      texts.push(['the page', body.textContent]);
+      for (const e of document.querySelectorAll('[title], [aria-label], [placeholder]'))
+        for (const a of ['title', 'aria-label', 'placeholder']) if (e.hasAttribute(a)) texts.push([(e.id || e.className) + '@' + a, e.getAttribute(a)]);
+      for (const [k, v] of Object.entries(CONTROL_WORDS)) texts.push(['words:' + k, v.join(' ')]);
+      for (const s of MOD_SOURCES.values()) if (s.description) texts.push(['source:' + s.id, s.description]);
+      const found = [];
+      for (const [where, raw] of texts) {
+        const t = raw.replace(/\\s+/g, ' ');
+        // Every match, not the first: the page's text is one string, and a failure should name them all.
+        for (const re of RETIRED)
+          for (const m of t.matchAll(new RegExp(re.source, re.flags + 'g')))
+            found.push(where + ': ...' + t.slice(Math.max(0, m.index - 50), m.index + m[0].length + 20) + '...');
+      }
+      return { found, read: texts.length };
+    }"""
+    retired = p.evaluate(RETIRED)
+    check("no text on the face, the cheat sheet, a tooltip or the info line names a retired tab, view or drawer",
+          not retired["found"] and retired["read"] > 300, "%d read; %s" % (retired["read"], retired["found"][:4]))
+    planted = p.evaluate("""(probe) => {
+      const li = document.createElement('li');
+      li.innerHTML = 'Tick <i>Play the picture</i>, under <i>Score</i> on the <i>Picture</i>\\n tab, and a playhead crosses';
+      document.getElementById('panelScreen').appendChild(li);
+      const sheet = (eval(probe))().found;
+      li.remove();
+      el.tempoTap.setAttribute('title', 'Sync, on the Sources tab');
+      const tip = (eval(probe))().found;
+      el.tempoTap.removeAttribute('title');
+      const keep = CONTROL_WORDS.zoom;
+      CONTROL_WORDS.zoom = [keep[0], 'Under Picture \\u203a Vertical, in the drawer.'];
+      const words = (eval(probe))().found;
+      CONTROL_WORDS.zoom = keep;
+      return { sheet, tip, words, after: (eval(probe))().found };
+    }""", "(" + RETIRED + ")")
+    null("a line planted in the cheat sheet, its tab's name in a tag of its own and across a line break, is found",
+         any("Picture tab" in f for f in planted["sheet"]), str(planted["sheet"]))
+    null("and a tooltip naming the Sources tab", any(f.startswith("tempoTap@title") for f in planted["tip"]), str(planted["tip"]))
+    null("and info-line words naming a Picture section of Scope & measure and the drawer",
+         sum(f.startswith("words:zoom") for f in planted["words"]) == 2, str(planted["words"]))
+    check("and with each taken out again, nothing is found", planted["after"] == [], str(planted["after"]))
+
     print("\n--- resting, not passing ---")
     knobs = ["envAttack", "envDecay", "envSustain", "envRelease"]
     pts = [centre(p, face_of(k)) for k in knobs]

@@ -178,6 +178,10 @@ inline constexpr SelectSpec kSelects[] = {
 // its sections, and leaves out the sliders made later (the trace scales, the
 // LFO's rate) as well as the ones MORPH_SKIP names. The order is what a setup
 // code writes an end in, so it is held to the page like the rest.
+// Since G8 (11 Nov) without the scope's view - the trigger's level, position
+// and holdoff, the timebase and the zoom - which frame the signal rather than
+// change it, so a slide between two sounds leaves the screen where the player
+// set it; the tempo stays, since it is heard. The page's MORPH_SKIP says more.
 inline constexpr const char* kMorphIds[] = {
   // Level in the Generator since G7, after Glide, where the page lays it out.
   "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
@@ -187,7 +191,7 @@ inline constexpr const char* kMorphIds[] = {
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
-  "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes", "level", "position", "holdoff", "timebase", "zoom",
+  "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes",
   "oscScan", "scanStrike", "scanSoft", "menvAtk", "menvDec", "menvSus", "menvRel",
 };
 

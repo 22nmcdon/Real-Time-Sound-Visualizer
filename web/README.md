@@ -98,7 +98,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `ringtest.py` | modulation on a knob (G5b): the selected source's ring and its direction on an asymmetric pair (+40% and -25% on the Frequency), the others' ticks, the dot as the sum; Alt-drag and Shift+Alt with real keys, the ring's handle; the editor named for the knob, its bar's bands, a typed depth; the right-click menu with and without sources and on a menu, Reset, Type a value, Copy to the other hand (on a section each hand has its own of, since G6), What is this?, Esc, a click away, the arrows, Shift+F10, a long press, the browser's own menu prevented and left to a text box; the info line's right-click; the silence stored, restored, through a code and through the plugin's text, each with its null |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
-| `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height |
+| `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height; and no word the page can show - its text, hidden panels and the cheat sheet included, tooltips, the info line, the sources' descriptions - names a tab, view or drawer that has gone (G8), with nulls planted in each |
 | `outputtest.py` | Level in the Generator and the master Output (G7): where each is and Level on the Generator's link; the Output's law (the knob's fraction squared) and its reading in decibels; no setup's - a preset, a code, undo under real keys and the morph leave it, each against Level, which they move; this browser's storage, and the page opening at unity with storage refused; the picture the same to the bit and the heard pair a quarter on the compiled instrument the page carries and on the page's own generator, played deterministically on the main thread; the meter at the Output's gain; the site's instrument told the remembered Output as it connects, each with its null |
 | `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the phosphor grid and Scan's table the same with it on and off and with Which hands on one hand, on `?brain=js`; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
@@ -5828,3 +5828,41 @@ under until it is played again. `arptest.py`
 holds the strike on the page's lines and the level on both brains, with a key
 struck under a lower sustain as the null; parity's `arp-off-held` holds the
 core to it, with a page that does not strike as its null.
+
+**The morph and the glide walk one list, and the view is out of it (G8, 11
+Nov).** The owner's call: a slide between two sounds leaves the timebase, the
+zoom and the trigger's level, position and holdoff where the player set them
+(`MORPH_VIEW` in `MORPH_SKIP`, and `kMorphIds` without them), and the tempo
+stays in, since it is heard. Where the line falls is a judgement, said at
+`MORPH_SKIP`: the zoom and the timebase do reach what Scan reads, but they
+frame the signal; the trace filter, the AC corner and the lag change it, and
+stay. Three things followed that a reader would otherwise find the slow way.
+The preset glide (`glideFrom`) walks `MORPH_IDS` too, so a preset's view now
+lands at once rather than gliding - one list on purpose, since two notions of
+which sliders are the sound would drift. Parity's made-to-be-read morph lines
+used the trigger level as its slider two thousand steps wide and the timebase
+as the one found out of layout order; taken out of the walk, those lines walk
+nothing, and page and core agree on nothing perfectly well, so only the
+explicit value checks after them would say so (they use the modulation envelope's
+attack and the voice filter's cutoff now). And a timebase fixture over 8 on the
+test tone is put back to 8, the buffer having no room for it, which reads at
+first exactly like a morph that moved it: `setupmorphtest.py` keeps its
+timebases at 8 or under.
+
+**Switching the photocell on is not patching it.** `setPhoto(true)` registers
+the source and leaves the reticle where it was, by default in the dark, so a
+probe that switches it on that way and routes it reads nought, moves nothing,
+and concludes the photocell is not heard. The card's path, `routeFromCard`,
+presses its switch, which lands the reticle on the figure (`landPhoto`); that
+is what a player does, and through it a photocell on the frequency takes a held
+220 Hz to 280 on the site's compiled instrument. Probe through the player's
+path, or call `landPhoto` too.
+
+**A probe for words must read the page's text whole, not its text nodes.** "the
+<i>Picture</i> tab" is three text nodes, and a line break inside a sentence is
+a newline and indentation, so `wordstest.py`'s check for retired places takes
+the body's `textContent` with scripts and styles removed, collapses the
+whitespace, and matches globally, so a failure names every stale line rather
+than the first. Its first null plants a sentence with the tab's name in a tag of
+its own and across a line break for exactly this reason. Run against the page
+before G8 it found six, all of them lines a player reads.

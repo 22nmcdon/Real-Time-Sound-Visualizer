@@ -120,8 +120,9 @@ with sync_playwright() as pw:
       el.morphStoreB.click();
       out.both = { pos: el.morphPos.value, b: el.morphStoreB.getAttribute('aria-pressed'),
                    note: el.morphNote.textContent, moving: morphMoving() };
-      out.kept = MORPH_IDS.filter((id) => ['morphPos', 'keysVelocity', 'pictureAmount'].includes(id));
-      out.has = ['freq', 'vcfCut', 'delayMix', 'planeRadius', 'timebase'].every((id) => MORPH_IDS.includes(id));
+      out.kept = MORPH_IDS.filter((id) => ['morphPos', 'keysVelocity', 'pictureAmount', 'timebase', 'zoom',
+                                           'level', 'position', 'holdoff'].includes(id));
+      out.has = ['freq', 'vcfCut', 'delayMix', 'planeRadius', 'tempo', 'filterCutoff', 'lag'].every((id) => MORPH_IDS.includes(id));
       __set('morphPos', 50); await __wait(120);
       out.half = { freq: Number(el.freq.value), amp: Number(el.amp.value), genFreq: genSettings().freq,
                    genAmp: genSettings().amp, shape: el.shape.value };
@@ -143,7 +144,7 @@ with sync_playwright() as pw:
     check("and with both, it counts what moves: two sliders, and the menu is not one of them",
           # In the page's order, which since G7 has Level in the Generator, before Frequency on Ink.
           blend["both"]["moving"] == ["amp", "freq"]
-          and blend["both"]["note"] == "2 sliders move between A and B. Menus and switches stay as they are.",
+          and blend["both"]["note"] == "2 sliders move between A and B. Menus, switches and the scope's view stay as they are.",
           str(blend["both"]))
     check("halfway, the pitch is an octave from each end, 440 not 550, and the amplitude is halfway",
           blend["half"]["freq"] == 440 and blend["half"]["amp"] == 78, str(blend["half"]))
@@ -152,7 +153,8 @@ with sync_playwright() as pw:
           "%s, %s" % (blend["half"]["genFreq"], blend["half"]["genAmp"]))
     check("at nought it is A, but a menu set differently in A and B stays where it is",
           blend["zero"] == {"freq": 220, "amp": 55, "shape": "square"}, str(blend["zero"]))
-    check("the fader, the keys' strike and the Picture amount are never stored",
+    check("the fader, the keys' strike, the Picture amount and the scope's view are never stored; the tempo, "
+          "the trace filter and the lag are",
           blend["kept"] == [] and blend["has"], "%s, %s" % (blend["kept"], blend["has"]))
     check("at rest it leaves a slider the hand has moved, and moving the fader takes it back",
           blend["hand"] == 20 and blend["moved"] == round(55 + 45 * 0.6), "%s then %s" % (blend["hand"], blend["moved"]))
@@ -222,6 +224,87 @@ with sync_playwright() as pw:
           "%s, %d characters, phases %s" % (code["back"], code["length"], code["phases"]))
     check("and two ends that are the same say so", code["same"] == "A and B are the same: nothing to move.",
           code["same"])
+
+    print("\n--- the scope's view stays where the player set it (G8) ---")
+    # Two ends that differ in every one of the view's five and in two sound
+    # controls - the cutoff, and the tempo, which is heard - and then the
+    # player sets a view of their own, as one would while sliding. The view
+    # must stay theirs at every point of the fader while both sound controls
+    # walk. The null puts the five back into the walk, as the list was until
+    # G8, and stores the same ends: the view then moves, so the check can fail.
+    # Every timebase here is 8 or under: past it the buffer has no room and the
+    # slider is put back to 8, which read at first as a morph that moved it.
+    VIEW =["timebase", "zoom", "level", "position", "holdoff"]
+    view = p.evaluate("""async (view) => {
+      const ends = [{ timebase: 3, zoom: 0, level: -400, position: 10, holdoff: 0, vcfCut: 200, tempo: 90 },
+                    { timebase: 6, zoom: 12, level: 500, position: 60, holdoff: 30, vcfCut: 900, tempo: 150 }];
+      const mine = { timebase: 5, zoom: 4, level: 100, position: 25, holdoff: 10 };
+      const put = (vals) => { for (const [id, v] of Object.entries(vals)) __set(id, v); };
+      const read = () => Object.assign(Object.fromEntries([...view, 'vcfCut', 'tempo'].map((id) => [id, Number(el[id].value)])),
+                                       { bpm: transport.bpm });
+      const run = async () => {
+        restore({}); await __wait(150);
+        __set('morphPos', 0); await __wait(120);
+        put(ends[0]); el.morphStoreA.click();
+        put(ends[1]); el.morphStoreB.click();
+        put(mine); await __wait(60);
+        const seen = [];
+        for (const at of [25, 50, 100, 0]) { __set('morphPos', at); await __wait(120); seen.push(read()); }
+        return seen;
+      };
+      const now = await run();
+      // The null: the list as it was before G8.
+      MORPH_IDS.push(...view);
+      let old;
+      try { old = await run(); } finally { for (const id of view) MORPH_IDS.splice(MORPH_IDS.indexOf(id), 1); }
+      const back = view.filter((id) => MORPH_IDS.includes(id));
+      restore({}); await __wait(120);
+      return { now, old, mine, back };
+    }""", VIEW)
+    print("    now %s\n    old %s" % (view["now"], view["old"]))
+    still = lambda seen: all(all(r[k] == v for k, v in view["mine"].items()) for r in seen)
+    check("sliding from A to B and back leaves the timebase, the zoom and the trigger's level, position and "
+          "holdoff where the player set them", still(view["now"]), str(view["now"]))
+    check("while the cutoff and the tempo walk: a quarter, half, all the way and back, and the clock plays the tempo",
+          [(r["vcfCut"], r["tempo"], r["bpm"]) for r in view["now"]] == [(375, 105, 105), (550, 120, 120), (900, 150, 150), (200, 90, 90)],
+          str([(r["vcfCut"], r["tempo"], r["bpm"]) for r in view["now"]]))
+    null_view = not still(view["old"]) and all(view["old"][2][k] == v for k, v in
+                                               {"timebase": 6, "zoom": 12, "level": 500, "position": 60, "holdoff": 30}.items())
+    check("null: with the view back in the walk, as before G8, the same slide takes the view to B's",
+          null_view and view["back"] == [], "%s, left in: %s" % (view["old"][2], view["back"]))
+
+    # A code saved before G8 could hold the view in a morph's ends. Read now,
+    # the ends keep only what the morph walks, so the code's own view stays
+    # under the fader; its frequency still walks. Read by the site's codec and
+    # the page's own, as the macros' check above is. The null is the same
+    # ends read with the view ids put back into the walk.
+    old_code = p.evaluate("""async (view) => {
+      const setup = { timebase: 7, zoom: 2, freq: 220, morphPos: 0,
+                      morphA: '=timebase:2,zoom:10,level:-500,freq:220', morphB: '=timebase:5,zoom:20,level:600,freq:880' };
+      const text = btoa(JSON.stringify(setup));
+      const out = {};
+      for (const [name, decode] of [['site', decodeSetup], ['page', decodeSetupHere]]) {
+        restore(decode(text)); await __wait(150);
+        __set('morphPos', 100); await __wait(150);
+        out[name] = { timebase: Number(el.timebase.value), zoom: Number(el.zoom.value), level: Number(el.level.value),
+                      freq: Number(el.freq.value), ends: [morph.a && 'timebase' in morph.a, morph.b && 'zoom' in morph.b] };
+      }
+      MORPH_IDS.push(...view);
+      try {
+        restore(decodeSetupHere(text)); await __wait(150);
+        __set('morphPos', 100); await __wait(150);
+        out.null = { timebase: Number(el.timebase.value), zoom: Number(el.zoom.value), level: Number(el.level.value) };
+      } finally { for (const id of view) MORPH_IDS.splice(MORPH_IDS.indexOf(id), 1); }
+      restore({}); await __wait(120);
+      return out;
+    }""", VIEW)
+    print("    %s" % old_code)
+    check("a code from before G8 with the view in its morph's ends slides the frequency and leaves its own "
+          "timebase, zoom and trigger level, read by the site's codec and the page's own",
+          all(old_code[k] == {"timebase": 7, "zoom": 2, "level": 0, "freq": 880, "ends": [False, False]} for k in ("site", "page")),
+          str(old_code))
+    check("null: with the view back in the walk, those ends take the timebase, the zoom and the level to B's",
+          old_code["null"] == {"timebase": 5, "zoom": 20, "level": 600}, str(old_code["null"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

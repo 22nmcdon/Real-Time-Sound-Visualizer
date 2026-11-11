@@ -98,7 +98,10 @@ sources.
 
 **Wrong:**
 
-1. **The plugin opens at 960×600 every time (checked).** `setResizeLimits` runs before
+1. ~~**The plugin opens at 960×600 every time (checked).**~~ Fixed 9 Nov: the editor
+   reads the remembered size, or the 1200×680 default, and sets it before
+   `setResizeLimits`, which can then clamp nothing (`PluginEditor.cpp`, where the comment
+   says why). `setResizeLimits` runs before
    the remembered size is read (`PluginEditor.cpp:113`, `:115`); in JUCE that resizes the
    empty editor up to the minimum, and `resized()` saves 960×600 over the stored size. The
    1200×680 default and the remembered size are never used. Reading the size first fixes
@@ -115,16 +118,32 @@ sources.
    switch it on, and it came back at the first preset's mix. The Plane brought back all
    of its shaping and its turn, and the upper hand's own delay's mix came back on the
    lower's.
-4. **The Photocell cannot be routed, though the face says it can (checked).** Only the
-   two LFOs and the Envelope are offered, but Advanced calls it "a light sensor... as a
+4. ~~**The Photocell cannot be routed, though the face says it can (checked).**~~ Fixed
+   10 Nov (G5a): it is the fourth card in the modulation row, offered wherever the LFOs
+   and the Envelope are, and patching from its card switches it on, which lands its
+   reticle on the figure. Checked again for G8 (11 Nov) on the site's compiled
+   instrument: patched to the frequency from its card, it took a held 220 Hz to 280 Hz
+   with the slider unmoved; the cheat sheet's and the editor's claims about it are true.
+   Only the two
+   LFOs and the Envelope are offered, but Advanced calls it "a light sensor... as a
    modulation source" and the cheat sheet tells you to use it like an LFO. Turned on, it
    changes nothing heard.
 5. **Every audio block allocates,** even a steady one: about 32 allocations and 138 KB a
    block, mostly the capture and the voice budget.
 6. **The program's number is not saved,** so a reopened project shows the wrong one.
-7. **The morph also slides the screen's settings:** the timebase, the trigger level, the
+7. ~~**The morph also slides the screen's settings:**~~ Fixed 11 Nov (G8): the morph
+   leaves the scope's view alone - the timebase, the zoom and the trigger's level,
+   position and holdoff (`MORPH_SKIP`, `kMorphIds`) - and the preset glide, which walks
+   the same list, lands a preset's view at once. The tempo stays in it, the owner's call:
+   it is heard. So do the trace filter, the AC corner and the lag, which are in Scope &
+   measure but change the signal Scan reads and the speakers get on Shaped.
+   `setupmorphtest.py` and parity hold it. The timebase, the trigger level, the
    zoom, the tempo and more.
-8. **Stale text on the face (checked):** "the Picture tab" in the cheat sheet, "the
+8. ~~**Stale text on the face (checked):**~~ Fixed 11 Nov (G8): the cheat sheet, Perform's
+   and the keyboard's notes say where each thing is now, and `wordstest.py` reads every
+   word the page can show - text, hidden panels, tooltips, the info line, the sources'
+   descriptions - for a tab, view or drawer that has gone. Before, it found six. "the
+   Picture tab" in the cheat sheet, "the
    Sources tab" in Perform's note.
 
 ## 4. The face

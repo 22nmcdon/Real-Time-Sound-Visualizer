@@ -450,7 +450,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | morphStoreA | Morph · store A | Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide. | 126 | - |
-| morphPos | Morph | Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus and switches stay. | 131 | yes — a knob turned by hand keeps its place until the fader moves; an LFO on it moves the whole sound; the ends are part of the setup code |
+| morphPos | Morph | Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus, switches and the scope’s view stay. | 149 | yes — a knob turned by hand keeps its place until the fader moves; an LFO on it moves the whole sound; the ends are part of the setup code; the timebase, the zoom and the trigger are the view and stay where the player set them, the tempo is heard and slides (G8) |
 | morphStoreB | Morph · store B | Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear. | 104 | - |
 
 ### Perform › Key and tempo
