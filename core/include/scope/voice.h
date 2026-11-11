@@ -97,6 +97,15 @@ class Shaper {
         inX_(2 * kPer, 0.0), up_(static_cast<std::size_t>(2 * n_), 0.0) {}
 
   int factor() const { return factor_; }
+  /* Made again for `factor`, as new, in the room it already has: a voice
+     born takes a shaper a voice retired left behind (G8). */
+  void reset(int factor, const std::vector<double>& taps) {
+    factor_ = factor; n_ = 32 * factor; half_ = n_ / 2;
+    h_.assign(taps.begin(), taps.end());
+    inX_.assign(2 * kPer, 0.0);
+    up_.assign(static_cast<std::size_t>(2 * n_), 0.0);
+    pos_ = 0; at_ = 0;
+  }
 
   double step(double x, const Shaping& sh) {
     pos_ = pos_ == 0 ? kPer - 1 : pos_ - 1;

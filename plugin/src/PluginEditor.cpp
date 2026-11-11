@@ -48,9 +48,11 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
           owner.pageSlider(args[0].toString().toStdString(), scope::toU16(args[1].toString().toStdString()));
         complete(juce::var());
       })
+      // The code, and the page's preset menu as it landed, for the program's number (G8).
       .withNativeFunction("scopeSetup", [&owner](const juce::Array<juce::var>& args, auto complete) {
         const auto code = args.isEmpty() ? std::string() : args[0].toString().toStdString();
-        complete(juce::var(owner.pageSetup(code)));
+        const auto chosen = args.size() > 1 ? args[1].toString().toStdString() : std::string();
+        complete(juce::var(owner.pageSetup(code, chosen)));
       })
       // A menu's value or a text box's as text, a switch's as true or false.
       .withNativeFunction("scopeControl", [&owner](const juce::Array<juce::var>& args, auto complete) {

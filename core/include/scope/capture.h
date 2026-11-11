@@ -111,45 +111,42 @@ inline void filterInPlace(Lane& buffer, const Biquad& c) {
 // findTriggerIndex: the most recent edge in [minIndex, maxIndex] that has
 // travelled back past the hysteresis band since the last and has a quiet
 // holdoff before it. Nothing, if there is none.
+//
+// One pass and no lists (G8): it made four arrays a frame - the crossings,
+// those qualified, those usable and a sample-long record of when the signal
+// was last armed - on the audio thread, sixty times a second. The page's
+// four passes are one here because each list only ever looks back: a
+// crossing qualifies by where the signal was last armed before it, which is
+// what the pass has seen so far, and is usable by its distance from the last
+// one that qualified, and the answer is the last usable one in range. The
+// same index comes out, which parity's capture runs hold.
 inline std::optional<std::size_t> findTriggerIndex(const float* x, std::size_t n, double level, bool rising, double hysteresis,
                                                    double minIndex, double maxIndex, double holdoff) {
   const double lo = std::fmax(1, minIndex);
   const double hi = std::fmin(maxIndex, static_cast<double>(n) - 1);
   if (hi < lo) return std::nullopt;
-  std::vector<std::size_t> crossings;
+  const double arm = rising ? level - hysteresis : level + hysteresis;
+  const bool armed = hysteresis > 0;
+  long seen = -1, fired = -1;   // the last armed sample before this one, and the last crossing that qualified
+  std::optional<std::size_t> previous, found;
+  if (n > 0 && (rising ? x[0] < arm : x[0] > arm)) seen = 0;
   for (std::size_t i = 1; i < n; i++) {
     const double p = x[i - 1], c = x[i];
-    if (rising ? (p < level && c >= level) : (p > level && c <= level)) crossings.push_back(i);
-  }
-  if (crossings.empty()) return std::nullopt;
-  std::vector<std::size_t> qualified = crossings;
-  if (hysteresis > 0) {
-    const double arm = rising ? level - hysteresis : level + hysteresis;
-    std::vector<long> lastArmed(n);
-    long seen = -1;
-    for (std::size_t i = 0; i < n; i++) {
-      if (rising ? x[i] < arm : x[i] > arm) seen = static_cast<long>(i);
-      lastArmed[i] = seen;
+    if (rising ? (p < level && c >= level) : (p > level && c <= level)) {
+      bool qualified = true;
+      if (armed) {
+        qualified = seen > fired;
+        if (qualified) fired = static_cast<long>(i);
+      }
+      if (qualified) {
+        const bool usable = !(holdoff > 0) || !previous || static_cast<double>(i - *previous) >= holdoff;
+        previous = i;
+        if (usable && static_cast<double>(i) >= lo && static_cast<double>(i) <= hi) found = i;
+      }
     }
-    qualified.clear();
-    long fired = -1;
-    for (const std::size_t at : crossings) {
-      if (lastArmed[at - 1] > fired) { fired = static_cast<long>(at); qualified.push_back(at); }
-    }
-    if (qualified.empty()) return std::nullopt;
+    if (rising ? x[i] < arm : x[i] > arm) seen = static_cast<long>(i);
   }
-  std::vector<std::size_t> usable;
-  if (holdoff > 0) {
-    for (std::size_t k = 0; k < qualified.size(); k++) {
-      if (k == 0 || static_cast<double>(qualified[k] - qualified[k - 1]) >= holdoff) usable.push_back(qualified[k]);
-    }
-  } else {
-    usable = qualified;
-  }
-  for (std::size_t k = usable.size(); k-- > 0;) {
-    if (static_cast<double>(usable[k]) >= lo && static_cast<double>(usable[k]) <= hi) return usable[k];
-  }
-  return std::nullopt;
+  return found;
 }
 
 // The view's settings the capture reads, as the page's `state` holds them.
@@ -179,9 +176,17 @@ struct CaptureSource {
   double capacity = HUGE_VAL;  // Infinity, when it has no limit
   int channels = 2;
   bool lanes = false;           // the band split: lanes of its own
-  // getLatestWindow: the most recent n samples of each channel.
-  std::function<std::vector<Lane>(std::size_t)> latest;
+  /* getLatestWindow: the most recent n samples of each channel, written into
+     `out` - a lane a channel, each n long - rather than handed back new, so
+     a source that keeps `out` from frame to frame, as the capture does,
+     allocates nothing once its lanes are as long as it asks (G8). */
+  std::function<void(std::size_t n, std::vector<Lane>& out)> latest;
 };
+
+// A source written the old way, handing back fresh lanes, as a test harness writes it.
+inline std::function<void(std::size_t, std::vector<Lane>&)> latestFrom(std::function<std::vector<Lane>(std::size_t)> make) {
+  return [make = std::move(make)](std::size_t n, std::vector<Lane>& out) { out = make(n); };
+}
 
 inline double fullScaleDb(const View& v, int ch) {
   if (ch < 0 || static_cast<std::size_t>(ch) >= v.channels.size()) return 0;
@@ -214,26 +219,71 @@ inline FilterNow filterNow(const View& v) {
   return { v.filter.type, cutoffHz(step), decibels ? kButterworthQDb + res / 100 * 27 : 0.5 + res / 100 * 19.5 };
 }
 
-// One frame, as `capture` returns it.
+// One frame, as `capture` returns it. `signal`, the lanes before the turn,
+// is filled only when the frame was turned: otherwise it is `channels`, which
+// `signalLanes` answers without a copy of every lane a frame (G8).
 struct Frame {
   std::vector<Lane> channels, signal;
   bool turned = false, triggered = false;
   double shapedAc = 0, shapedFilter = 0;
   double levelAt = 0, asked = 0, capacity = 0, rate = 0, length = 0, pre = 0;
   double lagActual = 0, starved = 0;  // what the page leaves in state for the readout
-  const std::vector<Lane>& measured(const View& v) const { return v.measurePost ? channels : signal; }
+  const std::vector<Lane>& signalLanes() const { return turned ? signal : channels; }
+  const std::vector<Lane>& measured(const View& v) const { return v.measurePost ? channels : signalLanes(); }
 };
 
-inline double strayBetween(const Lane& a, const Lane& b, double from, double count, int stride) {
-  double worst = 0;
-  for (double i = from; i < from + count; i += stride) {
-    const double gap = std::fabs(static_cast<double>(a[static_cast<std::size_t>(i)]) - b[static_cast<std::size_t>(i)]);
-    if (gap > worst) worst = gap;
+/* What a capture works in, kept from one frame to the next so a steady
+   frame allocates nothing (G8): the fetch, coupled and filtered where it
+   lies and then cut of its lead, which is the frame's lanes before the turn;
+   the lag lane; the turned pair; and the probe's samples before each
+   shaping. The page makes every one of these afresh each frame, and so did
+   this, on the audio thread - two-thirds of what a block allocated. A source
+   that asks for more than the room made grows it, once. */
+struct CaptureScratch {
+  std::vector<Lane> lanes;
+  Lane delayed, turnedX, turnedY;
+  std::vector<float> probeRaw, probeBefore;
+  // Room for `count` lanes of `samples`, the most a source will ask for.
+  void reserve(std::size_t count, std::size_t samples) {
+    lanes.resize(count);
+    for (auto& lane : lanes) lane.reserve(samples);
+    for (Lane* lane : { &delayed, &turnedX, &turnedY }) lane->reserve(samples);
+    probeRaw.reserve(samples / kShapeStride + 1);
+    probeBefore.reserve(samples / kShapeStride + 1);
   }
-  return worst;
+};
+// The most a capture asks of a source: the longest window, or the source's whole capacity.
+inline std::size_t captureMost(double rate, double capacity) {
+  const double longest = std::fmax(kMinWindow, std::round(kTimebase.back() * kDivsX * rate / 1000));
+  return static_cast<std::size_t>(std::fmax(longest, std::isfinite(capacity) ? capacity : longest) + std::ceil(kLagMaxMs / 1000 * rate));
+}
+// Room in a frame for `count` lanes of `samples`, both its lists.
+inline void reserveFrame(Frame& f, std::size_t count, std::size_t samples) {
+  for (auto* list : { &f.channels, &f.signal }) {
+    list->resize(count);
+    for (auto& lane : *list) lane.reserve(samples);
+  }
 }
 
-inline Frame capture(const View& v, const CaptureSource& source) {
+// `list`'s lanes, each cut to [from, from + length), into `out`: the page's
+// slices, written over what `out` held.
+inline void cutLanes(std::vector<Lane>& out, const std::vector<Lane>& list, std::size_t count, double from, double length) {
+  out.resize(count);
+  for (std::size_t i = 0; i < count; i++) {
+    const Lane& b = list[i];
+    const std::size_t a = static_cast<std::size_t>(std::fmin(std::fmax(0.0, from), static_cast<double>(b.size())));
+    const std::size_t e = static_cast<std::size_t>(std::fmin(std::fmax(0.0, from + length), static_cast<double>(b.size())));
+    out[i].assign(b.begin() + static_cast<std::ptrdiff_t>(a), b.begin() + static_cast<std::ptrdiff_t>(std::max(a, e)));
+  }
+}
+
+/* One frame into `frame`, working in `scratch`. The page's capture, step for
+   step and to the same samples; what differs is only where they are kept.
+   The lead is cut from the front of the fetch rather than copied out of it,
+   mid and side and the turn work a sample at a time rather than from copies
+   of the pair, and the turn writes into its own pair so the fetch is still
+   the signal before it. */
+inline void captureInto(const View& v, const CaptureSource& source, Frame& frame, CaptureScratch& scratch) {
   const double rate = source.rate;
   const double capacity = source.capacity;
   const double length = std::fmax(kMinWindow, std::round(windowMs(v) * rate / 1000));
@@ -245,121 +295,149 @@ inline Frame capture(const View& v, const CaptureSource& source) {
   const double room = capacity - length;
   if (room - lead < std::round(kLagMinSpanSeconds * rate)) { tau = 0; lead = 0; }
   span = std::fmax(0.0, std::fmin(span, room - lead));
-  Frame frame;
+  frame.turned = false;
+  frame.triggered = false;
+  frame.shapedAc = 0;
+  frame.shapedFilter = 0;
   frame.lagActual = tau / rate * 1000;
   frame.starved = std::fmax(0.0, length - capacity);
 
-  const std::vector<Lane> raw = source.latest(static_cast<std::size_t>(length + span + lead));
-  // AC coupling, on the shaped side, over the whole fetch.
-  const Biquad ac = dcBlockerCoefficients(v.acHz, rate);
-  std::vector<Lane> full = raw;
-  std::vector<bool> copied(raw.size(), false);  // the page's "a new array", against its own handed back
-  for (std::size_t i = 0; i < raw.size(); i++) {
-    if (!v.shaping || i >= v.channels.size() || !v.channels[i].ac) continue;
-    filterInPlace(full[i], ac);
-    copied[i] = true;
-  }
+  std::vector<Lane>& full = scratch.lanes;
+  source.latest(static_cast<std::size_t>(length + span + lead), full);
+  const std::size_t count = full.size();
   const int onScreen = laneCount(v, source);
   const int probe = v.trigSource < onScreen && static_cast<std::size_t>(v.trigSource) < v.channels.size()
                     && v.channels[static_cast<std::size_t>(v.trigSource)].on ? v.trigSource : 0;
-  const double probeLength = static_cast<std::size_t>(probe) < raw.size() ? static_cast<double>(raw[static_cast<std::size_t>(probe)].size()) : 0;
+  const std::size_t probeLane = static_cast<std::size_t>(probe);
+  const double probeLength = probeLane < count ? static_cast<double>(full[probeLane].size()) : 0;
   const double probeFrom = std::fmax(0.0, probeLength - length);
   const double probeCount = probeLength - probeFrom;
-  frame.shapedAc = static_cast<std::size_t>(probe) < raw.size() && copied[static_cast<std::size_t>(probe)]
-                   ? strayBetween(full[static_cast<std::size_t>(probe)], raw[static_cast<std::size_t>(probe)], probeFrom, probeCount, kShapeStride) : 0;
+  // The probe's samples as fetched, every eighth, for how far the coupling moved them.
+  const auto coupled = [&](std::size_t i) { return v.shaping && i < v.channels.size() && v.channels[i].ac; };
+  const auto strided = [&](std::vector<float>& into) {
+    into.clear();
+    for (double i = probeFrom; i < probeFrom + probeCount; i += kShapeStride) into.push_back(full[probeLane][static_cast<std::size_t>(i)]);
+  };
+  const bool probeCoupled = probeLane < count && coupled(probeLane);
+  if (probeCoupled) strided(scratch.probeRaw);
+  // AC coupling, on the shaped side, over the whole fetch.
+  const Biquad ac = dcBlockerCoefficients(v.acHz, rate);
+  for (std::size_t i = 0; i < count; i++) if (coupled(i)) filterInPlace(full[i], ac);
+  if (probeCoupled) {
+    std::size_t k = 0;
+    for (double i = probeFrom; i < probeFrom + probeCount; i += kShapeStride, k++) {
+      const double gap = std::fabs(static_cast<double>(full[probeLane][static_cast<std::size_t>(i)]) - scratch.probeRaw[k]);
+      if (gap > frame.shapedAc) frame.shapedAc = gap;
+    }
+  }
 
   // The filter, each lane on its own after the coupling, over the whole fetch.
   if (v.filter.on && v.shaping) {
     const FilterNow now = filterNow(v);
     const Biquad coefficients = biquadCoefficients(now.type, now.hz, now.q, rate);
-    std::vector<float> before;
-    const bool probing = probeCount > 0 && static_cast<std::size_t>(probe) < full.size();
-    if (probing) {
-      for (double i = probeFrom; i < probeFrom + probeCount; i += kShapeStride) before.push_back(full[static_cast<std::size_t>(probe)][static_cast<std::size_t>(i)]);
-    }
-    for (std::size_t i = 0; i < full.size(); i++) {
+    const bool probing = probeCount > 0 && probeLane < count;
+    if (probing) strided(scratch.probeBefore);
+    for (std::size_t i = 0; i < count; i++) {
       if (static_cast<int>(i) >= onScreen || i >= v.channels.size() || !v.channels[i].on) continue;
       filterInPlace(full[i], coefficients);
     }
     if (probing) {
       std::size_t k = 0;
       for (double i = probeFrom; i < probeFrom + probeCount; i += kShapeStride, k++) {
-        const double gap = std::fabs(static_cast<double>(full[static_cast<std::size_t>(probe)][static_cast<std::size_t>(i)]) - before[k]);
+        const double gap = std::fabs(static_cast<double>(full[probeLane][static_cast<std::size_t>(i)]) - scratch.probeBefore[k]);
         if (gap > frame.shapedFilter) frame.shapedFilter = gap;
       }
     }
   }
 
-  // Everything downstream in the present; the lag lane reads behind it.
+  // Everything downstream in the present; the lag lane reads behind it, so it is made before the lead is cut.
   const std::size_t leadN = static_cast<std::size_t>(lead);
-  std::vector<Lane> channels;
-  for (const auto& b : full) channels.emplace_back(b.begin() + static_cast<std::ptrdiff_t>(std::min(leadN, b.size())), b.end());
-  if (tau > 0 && !full.empty()) {
+  const bool lagged = tau > 0 && count > 0;
+  if (lagged) {
     const Lane& src = full[0];
-    const std::size_t n = channels[0].size();
+    const std::size_t n = src.size() - std::min(leadN, src.size());
     const double d = lead - tau;
-    Lane delayed(n);
+    Lane& delayed = scratch.delayed;
+    delayed.resize(n);
     for (std::size_t i = 0; i < n; i++) {
       const double a = src[i];
       delayed[i] = static_cast<float>(a + d * (static_cast<double>(src[i + 1]) - a));
     }
-    if (channels.size() < 2) channels.resize(2);
-    channels[1] = std::move(delayed);
   }
+  for (auto& b : full) b.erase(b.begin(), b.begin() + static_cast<std::ptrdiff_t>(std::min(leadN, b.size())));
+  std::vector<Lane>& channels = full;
+  if (lagged) {
+    if (channels.size() < 2) channels.resize(2);
+    channels[1].swap(scratch.delayed);
+  }
+  const std::size_t lanes = channels.size();
   // Mid and side: the same rotation at 45 degrees, halved, side flipped.
-  if (v.midSide && channels.size() == 2 && source.channels == 2) {
+  if (v.midSide && lanes == 2 && source.channels == 2) {
     const double angle = kMidSideTurns * 2 * 3.14159265358979323846;
     const double cos = std::cos(angle), sin = std::sin(angle), gain = 1 / std::sqrt(2.0);
-    const Lane left = channels[0], right = channels[1];
+    Lane& left = channels[0];
+    Lane& right = channels[1];
     for (std::size_t i = 0; i < left.size(); i++) {
-      channels[0][i] = static_cast<float>((static_cast<double>(left[i]) * cos - static_cast<double>(right[i]) * sin) * gain);
-      channels[1][i] = static_cast<float>((static_cast<double>(left[i]) * sin + static_cast<double>(right[i]) * cos) * gain * kMidSideFlip);
+      const double l = left[i], r = right[i];
+      left[i] = static_cast<float>((l * cos - r * sin) * gain);
+      right[i] = static_cast<float>((l * sin + r * cos) * gain * kMidSideFlip);
     }
   }
-  // The turn, before the trigger, so the edge it finds is an edge on the screen.
-  const std::vector<Lane> signal = channels;
+  // The turn, before the trigger, so the edge it finds is an edge on the screen; the fetch stays the signal.
   const double spin = v.rotate + v.rotateMod;
-  frame.turned = v.shaping && spin != 0 && channels.size() == 2 && rotatesSignal(v, source);
+  frame.turned = v.shaping && spin != 0 && lanes == 2 && rotatesSignal(v, source);
   if (frame.turned) {
     const double angle = spin * 2 * 3.14159265358979323846;
     const double cos = std::cos(angle), sin = std::sin(angle);
-    const Lane left = channels[0], right = channels[1];
+    const Lane& left = channels[0];
+    const Lane& right = channels[1];
     const std::size_t n = std::min(left.size(), right.size());
-    Lane x(n), y(n);
+    Lane& x = scratch.turnedX;
+    Lane& y = scratch.turnedY;
+    x.resize(n); y.resize(n);
     for (std::size_t i = 0; i < n; i++) {
       x[i] = static_cast<float>(static_cast<double>(left[i]) * cos - static_cast<double>(right[i]) * sin);
       y[i] = static_cast<float>(static_cast<double>(left[i]) * sin + static_cast<double>(right[i]) * cos);
     }
-    channels[0] = std::move(x);
-    channels[1] = std::move(y);
   }
+  const auto drawn = [&](std::size_t i) -> const Lane& {
+    return frame.turned && i < 2 ? (i == 0 ? scratch.turnedX : scratch.turnedY) : channels[i];
+  };
   // The level is a fraction of full scale, made a voltage here, per capture.
   const double gain = gainOf(v, v.trigSource);
   frame.levelAt = v.level / gain;
   const double holdoff = std::round(v.holdoffMs * rate / 1000);
-  const Lane& watched = v.trigSource >= 0 && static_cast<std::size_t>(v.trigSource) < channels.size()
-                        ? channels[static_cast<std::size_t>(v.trigSource)] : channels[0];
+  const Lane& watched = v.trigSource >= 0 && static_cast<std::size_t>(v.trigSource) < lanes
+                        ? drawn(static_cast<std::size_t>(v.trigSource)) : drawn(0);
   const auto at = findTriggerIndex(watched.data(), watched.size(), frame.levelAt, v.rising, kHysteresis / gain,
                                    pre, pre + span, holdoff);
   const double total = length + span;
   const double from = at ? static_cast<double>(*at) - pre : total - length;
-  const auto cut = [&](const std::vector<Lane>& list) {
-    std::vector<Lane> out;
-    for (const auto& b : list) {
+  if (frame.turned) {
+    frame.channels.resize(2);
+    for (std::size_t i = 0; i < 2; i++) {
+      const Lane& b = drawn(i);
       const std::size_t a = static_cast<std::size_t>(std::fmin(std::fmax(0.0, from), static_cast<double>(b.size())));
       const std::size_t e = static_cast<std::size_t>(std::fmin(std::fmax(0.0, from + length), static_cast<double>(b.size())));
-      out.emplace_back(b.begin() + static_cast<std::ptrdiff_t>(a), b.begin() + static_cast<std::ptrdiff_t>(std::max(a, e)));
+      frame.channels[i].assign(b.begin() + static_cast<std::ptrdiff_t>(a), b.begin() + static_cast<std::ptrdiff_t>(std::max(a, e)));
     }
-    return out;
-  };
-  frame.channels = cut(channels);
-  frame.signal = frame.turned ? cut(signal) : frame.channels;
+    cutLanes(frame.signal, channels, lanes, from, length);
+  } else {
+    cutLanes(frame.channels, channels, lanes, from, length);
+  }
   frame.triggered = at.has_value();
   frame.asked = length + span + lead;
   frame.capacity = capacity;
   frame.rate = rate;
   frame.length = length;
   frame.pre = pre;
+}
+
+// One frame, made afresh: for a caller that keeps nothing between frames.
+inline Frame capture(const View& v, const CaptureSource& source) {
+  Frame frame;
+  CaptureScratch scratch;
+  captureInto(v, source, frame, scratch);
   return frame;
 }
 

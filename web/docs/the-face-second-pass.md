@@ -501,6 +501,15 @@ Each leaves the suite green and is pushed alone.
   thing is now. `setupmorphtest.py` holds the morph, each against the old list put back,
   and parity the core's list; `wordstest.py` reads every word the page can show for a
   retired place, with nulls planted in the cheat sheet, a tooltip and the info line.
+  - *The plugin's own (11 Nov):* a steady block allocates nothing - the capture writes into
+    frames it keeps, the meter's medians, the voices' budget and the rack's sides into room
+    made once, retired voices leave their buffers to the next, and the arpeggio and the
+    score sort without a buffer - held by parity's `block_alloc_cpp` on fifteen paths and
+    the shell test on the processor's whole block, each against the making and a host
+    parameter moved every block, which still allocates by design. And the program's number
+    is kept with the project (`pluginProgram`, beside the setup): shown again on reopening
+    with nothing loaded over it, moved by a bank sound chosen on either face and by nothing
+    else, so an edit keeps the program it edits.
 
 ## Open
 

@@ -44,7 +44,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "draw") {
       scope::CaptureSource src;
       src.rate = rate; src.capacity = capacity; src.channels = chans; src.lanes = lanes;
-      src.latest = [&](std::size_t n) {
+      src.latest = scope::latestFrom([&](std::size_t n) {
         std::vector<scope::Lane> out;
         for (int c = 0; c < chans; c++) {
           const scope::Lane& b = buffers[static_cast<std::size_t>(c)];
@@ -54,7 +54,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
           out.push_back(std::move(o));
         }
         return out;
-      };
+      });
       v.channels.resize(static_cast<std::size_t>(std::max(2, scope::laneCount(v, src))));
       const scope::Frame f = scope::capture(v, src);
       const scope::Plot p = scope::drawPicture(beam, phosphor, v, screen, src, f, canvas, num(arg(1)));

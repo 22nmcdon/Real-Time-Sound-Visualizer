@@ -2294,6 +2294,8 @@ the whole state at its end for the page (`publish`) - the state's
 bookkeeping, which needs either the state double-buffered or its encoding
 moved to the message thread with the instrument's state copied across. And
 the picture's capture and walk, each frame. Those are the next of these.
+(G8, below, took the capture, the walk and the rest a steady block made;
+the bookkeeping stays.)
 
 6 November, after an outside review against standard synths, measured
 before anything moved: the state's encode at a changed block's end is 1 to 4
@@ -2324,6 +2326,86 @@ echo; MIDI out is declared; the window opens at 1200x680 and is kept with the
 project as "pluginWindow"; and a computer with no web view is told so rather
 than shown a blank window. Not seen in a host here: the MIDI out, and the
 no-web-view message, which needs a Windows without WebView2.
+
+G8 (11 Nov), from the second review: a steady block allocates nothing, and
+the program's number is kept with the project.
+
+The blocks, measured first, with every operator new on the audio thread
+counted after twenty seconds of play: 42 to 98 allocations and 87 to 208 KB
+a 512-frame block at 48 kHz, on every path - a plain tone, two hands held,
+an input whole and in bands, the rack on, the morph walked by an LFO, notes
+struck, the arpeggio, the score. The review's 32 and 138 KB was read in the
+first seconds; the picture's meter only starts answering once its fifteen
+seconds of history are full, and its medians then made their list every
+frame, twice with two hands. What allocated, most first: the capture (every
+lane fetched, copied, shifted, turned and cut into new vectors, sixty
+frames a second, and the trigger's search four more lists), the meter's
+medians, the voices' budget (a list of the pools each step), the rack's
+four sides joined into a string past a string's own buffer each step, the
+walk's copy of its figures, and on a note a voice's quarter-turn ring and
+shaper (33 KB) and the arpeggio's stable_sort, which takes a buffer from
+the allocator; the score's step made its pitches, column and sort. Now the
+capture writes into a scratch and a frame kept from frame to frame and
+swapped with the one shown (`captureInto`, `CaptureScratch`; the source
+writes into lanes it is handed rather than returning new ones), with room
+made in `prepare` for the longest window and the lag's reach, about 1.5 MB
+for two lanes at 48 kHz and 2.7 for four; the trigger's search is one pass
+that comes to the same index; the medians sort a list kept; the pools are a
+pair; the sides are compared in a buffer; retired voices leave their ring
+and shaper for the next voice born; the arpeggio and the score sort by
+insertion, stable as the page's sorts are; and the processor reserves the
+host's MIDI and copies what it sends into the host's buffer rather than
+swapping buffers with it, which handed a host's empty buffer to the next
+block's arpeggio. Parity's `block_alloc_cpp` holds it on fifteen paths and
+at blocks of 64, 100, 441 and 2048 (prepared for 512), each with a number
+saying it was doing what it is named for; the shell test holds the
+processor's whole block on two hands, the band split and the arpeggio sent
+out. The nulls are the making and a host parameter moved every block. What
+still allocates there, and is meant to: a block in which a hand lands - the
+host moving a parameter (about 49 allocations a block, the hand and the
+state encoded for the page), the page's commands, a load - and a change in
+how many lanes are drawn (the layers' figures, the band split), which makes
+its lanes once. Moving the state's encoding off the audio thread is still
+the way to the first, and needs the state double-buffered.
+
+Handing a retired voice's ring and shaper to the next is only right if the
+voice then sounds as one that made them new, and nothing compared that, since
+the page's voices never reuse anything and the generator's parity runs never
+turn: `block_alloc_cpp reuse` plays one note after a history that left both
+and after one that left neither, the same to the bit, with a softer note as
+its null. And the trigger's one pass had to count the fetch's first sample
+as armed, which no capture run reached until one put the only edge there.
+Mutation: 31 in the core and 10 in the plugin. Thirty-seven caught - two of
+the core's only by the parity tool crashing, a shaper reset that kept its
+place running off the end at a new factor and the filter's probe read from
+an empty list - three only once the two checks above were written, and one
+(the lanes cleared each frame) only on a second try, its first form having
+copied an empty lane over a full one, which keeps the room. Four equivalent,
+said so: the arpeggio's sort unstable (the held list has one entry a key, so
+there is no tie to keep in order), a shaper reset that keeps only its input
+ring's place (a ring of noughts read from anywhere is noughts), and taking
+away a reservation the first seconds fill anyway (the MIDI list's) or
+swapping the MIDI buffers with a host that keeps a sized buffer, which a
+check that counts after a warm-up, with a buffer kept as a host's wrapper
+keeps one, cannot see.
+
+The program's number. `program_` was never saved, so a project reopened at
+the plain sine's number whatever it had been, and a host that chooses the
+saved program again as it opens - the case `setCurrentProgram` already
+guards - found a different number and loaded the bank's preset over the
+project. It is written beside the setup as `pluginProgram` by every save
+and read back by `setStateInformation`, which sets the number and loads
+nothing: the setup is what sounds. A state that names none shows the first.
+What moves it: the host's list, and the page loading a bank sound or the
+plain sine, which it now names with the code (`scopeSetup`'s second
+argument, the preset menu's value), told to the host with
+`updateHostDisplay`. Edits, a code pasted, a saved sound and undo leave it:
+the host's list has no "edited" and no "none", the plain sine's number
+would claim a sound that is not playing, and a host that sends the number
+back must find it unchanged. The shell test holds a project reopened at its
+number with its edit, the host's re-choosing leaving the edit, and each
+page load; its null is the same state without the number, which reopens at
+the first and has the organ loaded over the edit.
 
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording

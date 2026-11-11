@@ -56,7 +56,20 @@ class ScopeProcessor final : public juce::AudioProcessor {
      on, then the bank in the browser's order. A program chosen is a state
      handed over, as a project's is. The one already chosen chosen again is
      nothing: some hosts set the current program straight after restoring a
-     project, which would otherwise put the project back to the plain sine. */
+     project, which would otherwise put the project back to the plain sine.
+
+     The number is where in the bank the sound came from (G8): chosen from
+     the host's list, or a bank sound or the plain sine loaded on the page
+     (`pageSetup`, which the page tells which), and nothing else moves it. An
+     edit keeps it, as a synthesiser's display keeps the program it edits:
+     the host has no way to say "edited", and the number is also what a host
+     sends back as a project opens, which must find the same number and leave
+     the edits alone. A code pasted, a saved sound or an undo to one keeps it
+     too - the host's list has no "none", and the plain sine's number would
+     claim a sound that is not playing. The page's header is the place that
+     says Custom. Kept with the project as `pluginProgram`, beside the setup
+     and never in it, as `pluginOutput` is: a project reopens showing the
+     program it was saved at, with no preset loaded over what it saved. */
   int getNumPrograms() override { return 1 + static_cast<int>(scope::presets().size()); }
   int getCurrentProgram() override { return program_.load(); }
   void setCurrentProgram(int index) override;
@@ -189,7 +202,13 @@ class ScopeProcessor final : public juce::AudioProcessor {
      would save, with how many changes in it came from the host rather than
      the page, so the page applies only those and never echoes its own. */
   void pageSlider(const std::string& id, const std::u16string& text);
-  bool pageSetup(std::string_view code);
+  /* `chosen` is the page's preset menu as the setup lands: "b:" and a bank
+     sound's name, "n:" and the plain sine's, "s:" a saved sound's, or
+     nothing for a code or an edit put back. Only the first two move the
+     program's number. */
+  bool pageSetup(std::string_view code, std::string_view chosen = {});
+  // The program a page's preset menu names: the bank's index, or -1 for anything not in the bank.
+  static int programOf(std::string_view chosen);
   /* And a menu, a switch or a text box changed (its value as the browser
      holds it, or a switch's state as true or false), a button pressed, and
      the routings as an edit there left them, every depth to the last digit.
@@ -222,7 +241,7 @@ class ScopeProcessor final : public juce::AudioProcessor {
   // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
   void readBack(bool unmovedOnly);
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
-  std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block
+  std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block, with room made in prepare
   std::vector<float> inL_, inR_;                      // the host's input this block, copied out of the buffer
   juce::SpinLock stateLock_;                   // guards the hand-over of pending_ only, never the instrument
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay

@@ -265,11 +265,20 @@ with sync_playwright() as pw:
       const calls = t.log.slice();
       const sent = calls.length === 1 && calls[0][0] === 'scopeSetup' ? decodeSetup(calls[0][1]) : null;
       const glass = pick[1];
-      return { names: calls.map((c) => c[0]), fm: sent && sent.oscFm, wantFm: glass.oscFm, mod: sent && sent.mod, wantMod: glass.mod };
+      // And the preset menu as the load left it, for the host's program number
+      // (G8); a code pasted after it names no bank sound, which is the contrast.
+      const chosen = calls.length === 1 ? calls[0][2] : null;
+      t.log.length = 0;
+      loadCode(encodeSetup(snapshot()));
+      const pasted = t.log.length === 1 && t.log[0][0] === 'scopeSetup' ? t.log[0][2] : null;
+      return { names: calls.map((c) => c[0]), fm: sent && sent.oscFm, wantFm: glass.oscFm, mod: sent && sent.mod, wantMod: glass.mod,
+               chosen, want: 'b:' + pick[0], pasted };
     }""")
     check("a preset loaded on the page is sent to the plugin whole, as a code that reads back as that preset",
           preset["names"] == ["scopeSetup"] and preset["fm"] == preset["wantFm"] and preset["mod"] == preset["wantMod"]
           and preset["fm"] is not None and preset["mod"], str(preset))
+    check("with the bank sound it is named by, for the host's program; a code pasted after it is named by nothing",
+          preset["chosen"] == preset["want"] and preset["pasted"] == "", str(preset))
 
     sent = p.evaluate("""() => {
       const t = window.__hostTest, out = {};

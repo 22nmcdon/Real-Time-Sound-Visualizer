@@ -5866,3 +5866,41 @@ whitespace, and matches globally, so a failure names every stale line rather
 than the first. Its first null plants a sentence with the tab's name in a tag of
 its own and across a line break for exactly this reason. Run against the page
 before G8 it found six, all of them lines a player reads.
+
+**Counting allocations on the audio thread: wait for the meter (G8).** The
+second review measured 32 allocations a block; counted after twenty seconds
+of play it was 42 to 98. The picture's meter answers only once its fifteen
+seconds of history are full, and from then its medians made a list each
+frame, so a count taken in the first seconds misses a third of the cost.
+`block_alloc_cpp` plays twenty seconds before it counts. Four things that
+allocate without looking as if they do: a `std::string` past fifteen
+characters (the rack's four sides joined were nineteen; a `std::u16string`'s
+own buffer holds seven), `std::stable_sort` (it asks for a buffer: the
+arpeggio and the score sort by insertion now, which is as stable), a vector
+of lanes resized down (the lanes it drops are freed, and the next frame that
+wants them makes them again, so a lane count is changed only by a hand), and
+`std::function` handing back a vector (the capture's source writes into
+lanes it is given instead). A check that counts after a warm-up cannot see a
+reservation taken away when the warm-up fills it anyway; those mutants are
+equivalent for a steady block and are said to be in `plugin/PLAN.md`. A
+block in which the host moves a parameter still allocates, for the hand and
+the state the page reads, and is the counter's null. And memory handed on
+has to be checked for what it still holds: a retired voice's quarter-turn
+ring and shaper go to the next voice born, which nothing compared with the
+page, because the page never hands anything on; `block_alloc_cpp reuse`
+holds that voice to one that made its own, to the bit.
+
+**The program's number is where the sound came from, not what it is (G8).**
+The plugin keeps it beside the setup (`pluginProgram`) and shows it again on
+reopening without loading it, since the setup is what sounds. Only the
+host's list and a bank sound or the plain sine loaded on the page move it;
+the page names which as the second argument of `scopeSetup` (the preset
+menu's value), and the site's instrument ignores it. An edit, a code pasted,
+a saved sound and undo leave it: the host's list cannot say "edited" or
+"none", and a host that sends the saved program back as a project opens must
+find it unchanged, or it loads the bank's version over the project - which
+is what a missing number did. The page's header saying Custom is the honest
+place for an edited sound. A known limitation: a project reopened in the
+plugin says Custom there even when it is the program untouched, because the
+number does not say whether a code was loaded after it; the host's list is
+where the number shows.

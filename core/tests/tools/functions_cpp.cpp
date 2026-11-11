@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
       scope::CaptureSource source;
       source.rate = rate;
       source.capacity = num(p["cap"]);
-      source.latest = [&](std::size_t n) {
+      source.latest = scope::latestFrom([&](std::size_t n) {
         std::vector<scope::Lane> lanes(1, scope::Lane(n, 0.0f));
         const double end = (static_cast<double>(values.size()) + 1) * step;
         const auto f = splitOn(signal, ':');
@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
           lanes[0][k] = static_cast<float>(x);
         }
         return lanes;
-      };
+      });
       for (const auto& s : splitOn(p["steps"], ';')) {
         if (s == "on" || s == "off") v.lagOn = s == "on";
         else if (s == "auto" || s == "manual") v.lagAuto = s == "auto";

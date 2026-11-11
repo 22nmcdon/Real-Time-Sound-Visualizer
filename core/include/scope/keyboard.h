@@ -39,7 +39,9 @@
 //   where the page asks `Math.random`; the parity seeds the page's alike.
 // - The stack is reserved for every note there is, so a note never makes it
 //   grow. The chord handed to the generator is a list, and the generator
-//   copies it; that copy can allocate on a note, once per layer.
+//   copies it into the one it keeps, which grows only for a chord larger
+//   than any before it; the voices it makes take what retired voices left
+//   (G8), so a note struck on the audio thread allocates nothing.
 
 #pragma once
 
@@ -632,8 +634,17 @@ class Keyboard {
     seq.clear();
     std::vector<Held>& base = arpBase_;
     base = notes_;
+    /* By note, keeping the order notes came in for a note held twice, as the
+       page's sort does: an insertion sort, which needs nothing beyond the
+       list, where std::stable_sort asks the allocator for a buffer - every
+       step of the arpeggio, on the audio thread (G8). A dozen notes at most. */
     if (arp_.mode != "played") {
-      std::stable_sort(base.begin(), base.end(), [](const Held& a, const Held& b) { return a.note < b.note; });
+      for (std::size_t i = 1; i < base.size(); ++i) {
+        const Held h = base[i];
+        std::size_t j = i;
+        for (; j > 0 && h.note < base[j - 1].note; --j) base[j] = base[j - 1];
+        base[j] = h;
+      }
     }
     for (int o = 0; o < arp_.octaves; o++) for (const auto& h : base) seq.push_back({ h.note + 12 * o, h.velocity });
     if (arp_.mode == "down") std::reverse(seq.begin(), seq.end());

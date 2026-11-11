@@ -155,11 +155,32 @@ struct VoiceContext {
   std::vector<double> taps2 = lowpassTaps(2), taps4 = lowpassTaps(4);
   Random* random = nullptr;
   std::array<double, 2> mix {};  // left and right, drawn and heard
+  /* What retired voices leave: a quarter turn's ring and a shaper each, for
+     the next voices born to take rather than make. A voice made both the
+     first time it turned or was shaped, 33 kilobytes, so every note struck -
+     and every step of an arpeggio - allocated on the audio thread (G8). Room
+     for as many as are kept is made here, with the generator; one retired
+     past that is let go. */
+  static constexpr std::size_t kSpares = 64;
+  std::vector<std::vector<double>> spareRings;
+  std::vector<Shaper> spareShapers;
 
   explicit VoiceContext(double r)
       : rate(r), qHold(std::max(1, static_cast<int>(jsRound(0.025 * r)))),
-        cutSamples(std::max(1, static_cast<int>(jsRound(r * 0.01)))) {}
+        cutSamples(std::max(1, static_cast<int>(jsRound(r * 0.01)))) {
+    spareRings.reserve(kSpares);
+    spareShapers.reserve(kSpares);
+  }
 };
+
+// A voice let go: what it made is kept for the next voice born.
+inline void retireVoice(Voice& v, VoiceContext& c) {
+  if (v.ring.capacity() > 0 && c.spareRings.size() < c.spareRings.capacity()) c.spareRings.push_back(std::move(v.ring));
+  if (v.shp && c.spareShapers.size() < c.spareShapers.capacity()) {
+    c.spareShapers.push_back(std::move(*v.shp));
+    v.shp.reset();
+  }
+}
 
 // The voices against what the keyboard now asks of this layer: notes kept
 // where they are held, new ones born at nought - or, joining notes already
@@ -219,7 +240,7 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
   int tails = 0;
   for (const auto& v : voices) if (!v.held) tails++;
   for (std::size_t v = 0; v < voices.size() && tails > kPolyTails; v++) {
-    if (!voices[v].held) { voices.erase(voices.begin() + static_cast<long>(v)); v--; tails--; }
+    if (!voices[v].held) { retireVoice(voices[v], c); voices.erase(voices.begin() + static_cast<long>(v)); v--; tails--; }
   }
 }
 
@@ -253,7 +274,12 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       w = scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
     }
     if (vx.shaping) {
-      if (!voice.shp || voice.shp->factor() != c.shapeFactor) voice.shp.emplace(c.shapeFactor, c.shapeFactor == 4 ? c.taps4 : c.taps2);
+      if (!voice.shp || voice.shp->factor() != c.shapeFactor) {
+        const auto& taps = c.shapeFactor == 4 ? c.taps4 : c.taps2;
+        if (!voice.shp && !c.spareShapers.empty()) { voice.shp.emplace(std::move(c.spareShapers.back())); c.spareShapers.pop_back(); }
+        if (voice.shp) voice.shp->reset(c.shapeFactor, taps);
+        else voice.shp.emplace(c.shapeFactor, taps);
+      }
       w = voice.shp->step(w, c.shaping);
     }
     if (vx.crushing) w = crushStep(voice.cr, w, tone, vx, c.rate);
@@ -272,7 +298,11 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     double right = a;
     // Written whenever the switch is on, and glided over the mix's length (the page says why).
     if (round || voice.turn > 1e-9) {
-      if (voice.ring.empty()) { voice.ring.assign(kRoundRing, 0.0); voice.at = 0; }
+      if (voice.ring.empty()) {
+        if (!c.spareRings.empty()) { voice.ring = std::move(c.spareRings.back()); c.spareRings.pop_back(); }
+        voice.ring.assign(kRoundRing, 0.0);
+        voice.at = 0;
+      }
       voice.ring[static_cast<std::size_t>(voice.at)] = a;
       const double back = std::fmin(kRoundRing - 2, f > 0 ? c.rate / (4 * std::fabs(f)) : 0);
       const int whole = static_cast<int>(std::floor(back));

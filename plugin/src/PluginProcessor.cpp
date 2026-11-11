@@ -73,10 +73,31 @@ void ScopeProcessor::pageClick(const std::string& id) { queue(scope::Instrument:
 void ScopeProcessor::pageFade(std::string_view json) { queue(scope::Instrument::fade(json)); }
 void ScopeProcessor::pageRoutings(std::string_view text) { queue(scope::Instrument::routings(text)); }
 // A preset from the page: its drawn cycles built here first, as a drawing's are.
-bool ScopeProcessor::pageSetup(std::string_view code) {
+bool ScopeProcessor::pageSetup(std::string_view code, std::string_view chosen) {
   const auto decoded = scope::decodeSetup(code);
   if (decoded.kind == scope::DecodedSetup::Kind::Read) scope::warmCycles(decoded.setup);
-  return queue(scope::Instrument::setup(code));
+  if (!queue(scope::Instrument::setup(code))) return false;
+  /* A bank sound, or the plain sine, chosen on the page is that program for
+     the host too, told at once so its list follows. Set before the host is
+     told: a host answering with the same program finds it already chosen,
+     which is nothing (setCurrentProgram), rather than loading the bank's
+     version over a setup the page may have moved on from. */
+  const int program = programOf(chosen);
+  if (program >= 0 && program != program_.load()) {
+    program_.store(program);
+    updateHostDisplay(juce::AudioProcessorListener::ChangeDetails().withProgramChanged(true));
+  }
+  return true;
+}
+
+int ScopeProcessor::programOf(std::string_view chosen) {
+  // The base's name is the page's BASE_NAME, as getProgramName has it.
+  if (chosen == "n:Plain sine") return 0;
+  if (chosen.substr(0, 2) != "b:") return -1;
+  const auto& bank = scope::presets();
+  for (std::size_t i = 0; i < bank.size(); ++i)
+    if (bank[i].name == chosen.substr(2)) return 1 + static_cast<int>(i);
+  return -1;
 }
 
 ScopeProcessor::PageState ScopeProcessor::pageState() const {
@@ -144,6 +165,8 @@ void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
          that names its own keeps it. */
       if (!decoded.setup.get("pluginOutput"))
         decoded.setup.set("pluginOutput", scope::Json::number(static_cast<double>(knob(std::string_view("output"))->get())));
+      // And the program's number (G8), which the instrument never sees, always: a project reopens showing it.
+      decoded.setup.set("pluginProgram", scope::Json::number(static_cast<double>(program_.load())));
       if (const auto encoded = scope::encodeSetup(decoded.setup)) code = *encoded;
     }
   }
@@ -190,6 +213,16 @@ void ScopeProcessor::setStateInformation(const void* data, int size) {
       }
     }
     setup.erase("pluginWindow");
+    /* The program it was saved at (G8): shown again, not loaded - the setup
+       is what sounds, and is whatever the program became. A state from
+       before has none and opens at the plain sine's number, as every project
+       did; one that names a program the bank has not got, the same. */
+    int program = 0;
+    if (const scope::Json* saved = setup.get("pluginProgram"); saved && saved->type == scope::Json::Type::Number
+        && saved->n >= 0 && saved->n < getNumPrograms() && saved->n == std::floor(saved->n))
+      program = static_cast<int>(saved->n);
+    program_.store(program);
+    setup.erase("pluginProgram");
   }
   scope::warmCycles(setup);  // here rather than as the audio thread loads it
   const juce::SpinLock::ScopedLockType lock(stateLock_);
@@ -209,6 +242,10 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   outgoing_.ensureSize(2048);
   const auto most = static_cast<std::size_t>(std::max(64, samplesPerBlock));
   inL_.assign(most, 0.0f); inR_.assign(most, 0.0f);
+  /* Room for a block's MIDI, a dense controller sweep's worth, so a block
+     that brings the host's notes allocates nothing (G8); more than this in
+     one block is made room for as it comes. */
+  events_.reserve(1024);
   /* The sound the page opens on: its boot preset, loaded as the page loads
      it. SCOPE_PRESET names another, for looking at one in the standalone, or
      is a setup written out as JSON - which is how the shell test opens on the
@@ -307,8 +344,14 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
   instrument_.block(buffer.getWritePointer(0), right, frames, events_.data(), events_.size(), transport ? &*transport : nullptr,
                     moved_.data(), moved_.size(), input ? &*input : nullptr);
-  // The host's notes are spent; what goes back is what the out sent.
-  midi.swapWith(outgoing_);
+  /* The host's notes are spent; what goes back is what the out sent. Copied
+     into the host's buffer rather than swapped with it, so ours keeps the
+     room prepare made: swapped, it was the host's next block, and a host
+     handing over a buffer with no room left the arpeggio's next step to
+     allocate here (G8). The host's buffer is the host's to size, as JUCE's
+     wrappers do. */
+  midi.clear();
+  if (!outgoing_.isEmpty()) midi.addEvents(outgoing_, 0, -1, 0);
   outgoing_.clear();
   if (instrument_.changed()) tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
   publish(false);

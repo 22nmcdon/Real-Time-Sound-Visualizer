@@ -708,7 +708,7 @@ inline int timeOwnMask(const Brain& b) {
 
 // The plane section's, defined with the other refreshers below.
 inline std::string planeSide(const Brain& b, const Keyboard& keys);
-inline std::string echoSides(const Brain& b, const Keyboard& keys);
+inline bool echoSidesAre(const Brain& b, const Keyboard& keys, const std::string& shown);
 inline void syncPlanePanel(Brain& b, const Keyboard& keys);
 inline void syncEchoPanel(Brain& b, const Keyboard& keys);
 // syncLayerPanel: the layer the keyboard says is being edited, on the panel.
@@ -716,7 +716,7 @@ inline void syncLayerPanel(Brain& b, const Generator& gen, const Keyboard& keys)
   showLayerOnPanel(b, gen, b.panelHeldOnA ? 0 : keys.editLayer());
   // syncPlaneLayer: the plane section says whose plane it shows the moment that changes.
   if (planeSide(b, keys) != b.planeShown) syncPlanePanel(b, keys);
-  if (echoSides(b, keys) != b.echoShown) syncEchoPanel(b, keys);
+  if (!echoSidesAre(b, keys, b.echoShown)) syncEchoPanel(b, keys);
   syncPictureHand(b, keys);
 }
 
@@ -796,9 +796,24 @@ inline std::string rackSide(const Brain& b, const Keyboard& keys, int sec) {
   return !keys.layersOn() ? "one" : handLinked(b, sec) ? "both" : !b.panelHeldOnA && keys.editLayer() == 1 ? "b" : "a";
 }
 inline std::string planeSide(const Brain& b, const Keyboard& keys) { return rackSide(b, keys, kHandPlane); }
-inline std::string echoSides(const Brain& b, const Keyboard& keys) {
-  return rackSide(b, keys, kHandPhaser) + "," + rackSide(b, keys, kHandChorus) + "," + rackSide(b, keys, kHandDelay) + ","
-       + rackSide(b, keys, kHandReverb);
+/* The four modules' sides, the phaser's, the chorus's, the delay's and the
+   reverb's, joined by commas, written into `text`. Into a buffer rather than
+   made as a string: it is asked every step on the audio thread, and four
+   sides joined are past what a string holds without allocating, where each
+   side alone is not (G8). */
+inline std::string_view echoSides(const Brain& b, const Keyboard& keys, char (&text)[32]) {
+  std::size_t n = 0;
+  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb }) {
+    const std::string side = rackSide(b, keys, sec);
+    if (n > 0) text[n++] = ',';
+    for (const char c : side) if (n < sizeof text) text[n++] = c;
+  }
+  return std::string_view(text, n);
+}
+// Whether the four are what the panel shows.
+inline bool echoSidesAre(const Brain& b, const Keyboard& keys, const std::string& shown) {
+  char text[32];
+  return echoSides(b, keys, text) == shown;
 }
 inline void planeBFollow(Brain& b) { static_cast<Brain::PlaneShape&>(b.planeB) = b.plane; }
 inline void syncPlanePanel(Brain& b, const Keyboard& keys) {
@@ -836,7 +851,8 @@ inline Brain::EchoState& echoTarget(Brain& b, const Keyboard& keys, int sec) {
 // The time a synced echo shows is the tempo's, and its slider stands still.
 inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   // Each module the hand it shows (G6): four targets where there was one.
-  b.echoShown = echoSides(b, keys);
+  char sides[32];
+  b.echoShown.assign(echoSides(b, keys, sides));  // into the room it has: a morph walking the delay comes through here
   const Brain::EchoState& e = echoTarget(b, keys, kHandDelay);
   const Brain::EchoState& ec = echoTarget(b, keys, kHandChorus);
   const Brain::EchoState& ep = echoTarget(b, keys, kHandPhaser);

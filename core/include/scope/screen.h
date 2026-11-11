@@ -121,8 +121,11 @@ constexpr double kLagProbeSeconds = 4.0 / 20;  // four periods of 20 Hz
    heard in its own fifth of a second, trusted only when it is periodic and
    between 20 Hz and 5 kHz, approached slowly in the log domain so vibrato
    precesses the figure rather than holding it at a circle. `playedHz` is
-   the held note's pitch when the hands' note is the measurements' truth. */
-inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double> playedHz, PitchScratch& scratch) {
+   the held note's pitch when the hands' note is the measurements' truth.
+   `lanes` is where the probe is fetched, kept by a caller on the audio
+   thread so a steady readout allocates nothing (G8). */
+inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double> playedHz, PitchScratch& scratch,
+                          std::vector<Lane>& lanes) {
   if (!v.lagOn || !v.lagAuto) return;
   if (playedHz) { v.lagLock = 0.25 / *playedHz; return; }
   const double want = jsMathRound(kLagProbeSeconds * s.rate);
@@ -130,7 +133,7 @@ inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double>
   const double room = s.capacity == 0 || std::isnan(s.capacity) ? want : s.capacity;
   const auto probe = static_cast<std::size_t>(std::fmin(want, room));
   if (!s.latest) return;
-  const auto lanes = s.latest(probe);
+  s.latest(probe, lanes);
   if (lanes.empty()) return;
   const auto found = estimatePeriod(lanes[0].data(), lanes[0].size(), s.rate, scratch);
   if (!found || found->aperiodicity > kLagAperiodicMax) return;
@@ -139,6 +142,10 @@ inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double>
   if (!v.lagLock) { v.lagLock = target; return; }
   const double a = 1 - std::exp(-(kReadoutMs / 1000) / kLagLockSeconds);
   v.lagLock = std::pow(2, std::log2(*v.lagLock) + a * (std::log2(target) - std::log2(*v.lagLock)));
+}
+inline void lagLockUpdate(View& v, const CaptureSource& s, std::optional<double> playedHz, PitchScratch& scratch) {
+  std::vector<Lane> lanes;
+  lagLockUpdate(v, s, playedHz, scratch, lanes);
 }
 
 class PictureRun {
@@ -213,10 +220,12 @@ class PictureRun {
     /* Auto, or an edge found: this frame, and the one held. Normal and Single
        with nothing to show keep the frame held, as the page does rather than
        drawing the untriggered sweep the mode exists to suppress; before
-       anything has been held, the sweep. */
-    Frame fresh = capture(view, source);
-    if (brain_.view.mode == "auto" || fresh.triggered) { frame_ = std::move(fresh); held_ = true; }
-    else if (!held_) frame_ = std::move(fresh);
+       anything has been held, the sweep. Captured into the frame not shown
+       and then swapped, so each keeps its lanes from frame to frame and a
+       steady one allocates nothing (G8). */
+    captureInto(view, source, fresh_, scratch_);
+    if (brain_.view.mode == "auto" || fresh_.triggered) { std::swap(frame_, fresh_); held_ = true; }
+    else if (!held_) std::swap(frame_, fresh_);
     const bool spect = brain_.view.screen.display == "spect";
     pics_.photoStep(phosphor_, elapsed_, spect);
     const Screen& sc = brain_.view.screen;
@@ -272,12 +281,12 @@ class PictureRun {
   /* The readout's work, every fifth of a second of frames, after the draw as
      the page's comes after its frame: the automatic lag's lock. Its
      estimator was made with room for the probe, so after its first pass it
-     allocates nothing; the capture it reads does, as the frame's does. */
+     allocates nothing, and nor does its fetch, into lanes kept here (G8). */
   void readout(const CaptureSource& source, std::optional<double> playedHz) {
     if (readAt_ < 0) readAt_ = last_;
     if (last_ - readAt_ < kReadoutMs) return;
     readAt_ = last_;
-    lagLockUpdate(brain_.view.capture, source, playedHz, lagScratch_);
+    lagLockUpdate(brain_.view.capture, source, playedHz, lagScratch_, lagLanes_);
   }
 
   const Phosphor& phosphor() const { return phosphor_; }
@@ -291,6 +300,22 @@ class PictureRun {
   void setLayered(bool on) { layered_ = on; }
   const Frame& frame() const { return frame_; }
   const Plot& plot() const { return plot_; }
+  /* Room for `lanes` lanes of a source at `rate` holding `capacity` frames,
+     made where allocating is safe - the instrument's prepare - so no frame
+     of any timebase, lag or turn has to make it on the audio thread (G8):
+     the longest window and the lag's reach in each lane of the fetch, the
+     lag lane and the turned pair, both frames' lists and the lag lock's
+     fetch - about 1.5 MB for two lanes at 48 kHz, 2.7 for four, the price
+     of a 50 ms/div window nobody may choose. More lanes than these - the
+     layers' two figures, the band split - are made as they are asked for,
+     which is a hand on the face, not a steady block. */
+  void reserve(std::size_t lanes, double rate, double capacity) {
+    const std::size_t most = captureMost(rate, capacity);
+    scratch_.reserve(lanes, most);
+    for (Frame* f : { &frame_, &fresh_ }) reserveFrame(*f, lanes, most);
+    lagLanes_.resize(lanes);
+    for (auto& lane : lagLanes_) lane.reserve(most);
+  }
 
  private:
   Brain& brain_;
@@ -303,7 +328,9 @@ class PictureRun {
   PictureStage stage_;
   LayerPictures layers_;
   std::vector<std::unique_ptr<StageSource>> stageSources_;
-  Frame frame_;
+  Frame frame_, fresh_;    // the frame shown, and the one the next capture is written into
+  CaptureScratch scratch_;
+  std::vector<Lane> lagLanes_;
   Plot plot_;
   bool registered_ = false, held_ = false, layered_ = false;
   int restored_ = -1;
