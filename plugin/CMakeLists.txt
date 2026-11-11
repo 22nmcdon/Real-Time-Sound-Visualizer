@@ -13,6 +13,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SCOPE_JUCE_DIR "" CACHE PATH "A JUCE checkout to build against; fetched when empty")
+# The cloud environment's setup script clones JUCE at the tag below into
+# /opt/juce-<tag>, read from this file, so a new session builds without
+# fetching it again (11 Nov). Used only when nothing was given and that
+# checkout exists; a tag moved below finds no checkout and fetches as before.
+if(NOT SCOPE_JUCE_DIR AND EXISTS "/opt/juce-8.0.15/CMakeLists.txt")
+  set(SCOPE_JUCE_DIR "/opt/juce-8.0.15")
+endif()
 if(SCOPE_JUCE_DIR)
   add_subdirectory(${SCOPE_JUCE_DIR} juce)
 else()

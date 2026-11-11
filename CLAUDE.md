@@ -45,6 +45,14 @@ python3 core/tests/tools/write_schema.py                    # after any change t
 python3 web/tools/write_words.py                            # after any change to web/docs/what-each-control-says.md: the info line's words
 ```
 
+In a cloud session, set `CHROME=/opt/pw-browsers/chromium` for every browser
+suite and parity: the path the suites default to does not exist there, and a
+run without it fails in a minute and a half. The cloud environment's setup
+script installs the plugin's WebKit and GTK headers and the compiled core's
+wasm32 toolchain, and clones JUCE at the plugin's tag into `/opt/juce-<tag>`,
+which `plugin/CMakeLists.txt` uses when no `SCOPE_JUCE_DIR` is given - so a
+plugin build in a new session needs no fetch.
+
 Every suite in `run.py` says whether it is `parallel` or `serial - why`. The
 serial ones judge time and run first, alone; the rest run three at a time
 after. A new suite that measures anything over real seconds, a cost in
