@@ -5939,8 +5939,11 @@ velocity to the core's in every generator run. `modrowtest.py` reads the dot
 every frame and requires the stages in order, only forwards, on the curve, on
 both brains, Mono and Poly, following Play and its own; and over notes in a
 row, back only into an attack. Its null is the old guess put back in the
-page, which fails both. Not done: in the plugin the page is sent no readings
-at all, so its Envelope card's dot has never moved there.
+page, which fails both. In the plugin the page was sent none of these, so its
+dot never moved there until 12 Nov: the four (level, gate, stage, velocity)
+now follow the oscillators in `lfos.bin`, and the shell test watches the dot
+go round a note on the plugin's own face (`plugin/PLAN.md`, which also lists
+the readings the plugin's page still never gets).
 
 **Switching the photocell on is not patching it.** `setPhoto(true)` registers
 the source and leaves the reticle where it was, by default in the dark, so a

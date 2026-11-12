@@ -98,6 +98,8 @@ class ScopeProcessor final : public juce::AudioProcessor {
   std::vector<float> pictureServed() const { return instrument_.pictureServed(); }
   // The oscillators as they stood at the picture's newest frame: phase, held and value, each of two.
   std::array<double, 6> lfosServed() const { return instrument_.lfosServed(); }
+  // And the envelope at the same frame - level, gate, stage, velocity - for the Envelope card's dot.
+  std::array<double, 4> envelopeServed() const { return instrument_.envelopeServed(); }
   bool bands() const { return instrument_.bands(); }
   int lanes() const { return instrument_.lanes(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }

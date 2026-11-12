@@ -2510,6 +2510,48 @@ itself: the level's gain read off A's and B's lanes against a still run, and
 the cutoff part way from the old filter's sound to the new ten milliseconds
 on, landed later, each with a null.
 
+The Envelope card's dot in the plugin (12 Nov). The site's page places the
+dot by the envelope's level, stage and velocity, which its brain posts
+(`brain_readings` 11 and 12, 11 Nov); the plugin sent its page none of
+them, so its source's `gated` was undefined, the Envelope's value nought and
+the dot at rest whatever was played. The instrument now publishes the four
+beside the oscillators at the picture's newest frame (`envelopeServed`:
+four relaxed stores of atomics a block, before the frame's position is
+released, nothing allocated and nothing waited on), and the editor serves
+them after the oscillators in `lfos.bin`, ten float64s now, so the page
+gets them at the rate it already fetches the oscillators - once a picture -
+with no second request. The page's host source answers `envelope`,
+`envelopeStage`, `envelopeVelocity` and `gated` from them, as the brain
+source does on the site. Gated now reads true in the plugin as on the
+compiled site, so the run status's "gated, no note held" says so there too.
+
+Held by the shell test twice. The bytes: a note struck at velocity 100 is
+gated, in its attack or decay, its level above nought and under its
+velocity, and let go, in its release with the velocity kept, each slot a
+whole stage where a stage is; the null is the same bytes at rest. And the
+face, under xvfb: the page's own frames record the card's dot over a note
+held a second and a half and let go, with the audio stepped from the test's
+loop, and it goes attack, decay, the hold, the release and rest, only
+forwards along the card; the null is the same note with the page told
+nothing is gated, which is the page as it was, and finds no attack. Three
+mutants (the stage's slot given the velocity, the envelope left out of the
+bytes, the page dropping the stage) each turn one to three checks red.
+
+What else the site's page reads from its brain and the plugin's never gets,
+listed rather than mended:
+
+- the voice budget (`genBudget`), from which the run status says what the
+  budget has given up - unison thinned, voices silenced. The plugin's page
+  says nothing of it however many voices are refused.
+- the loop overlay's view of Scan (`loopView`: each picture's path, which
+  pictures each hand reads, its read-head and its playing table), which the
+  plugin's source answers with nothing, so the overlay draws none of Scan
+  there.
+- each hand's picture as the instrument reads it (`layerPictures`: its
+  coverage, change, three reads and hold, and whose sound it moves). Read
+  by nothing on the site's page but a test, so this one costs the player
+  nothing in either place.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.

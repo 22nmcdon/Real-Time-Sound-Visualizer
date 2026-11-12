@@ -650,6 +650,19 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = lfosServed_[i].load(std::memory_order_relaxed);
     return out;
   }
+  /* The generator's envelope as it stood at the picture's newest frame -
+     its level, whether it is gated (one or nought), its stage (nought to
+     four, as Envelope::Stage counts them) and its velocity - for the
+     Envelope card's dot on the plugin's page (12 Nov), which until then was
+     sent none of it and never moved. The site's page has the same four from
+     brain_readings. Published with the oscillators, so as cheaply: four
+     relaxed stores a block, nothing allocated and nothing waited on. */
+  std::array<double, 4> envelopeServed() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, 4> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[i].load(std::memory_order_relaxed);
+    return out;
+  }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
 
@@ -1065,6 +1078,10 @@ class Instrument {
       lfosServed_[i * 3 + 1].store(lfos_[i].held, std::memory_order_relaxed);
       lfosServed_[i * 3 + 2].store(lfos_[i].value, std::memory_order_relaxed);
     }
+    envServed_[0].store(core_->envelope(), std::memory_order_relaxed);
+    envServed_[1].store(core_->gated() ? 1.0 : 0.0, std::memory_order_relaxed);
+    envServed_[2].store(static_cast<double>(core_->envelopeStage()), std::memory_order_relaxed);
+    envServed_[3].store(core_->envelopeVelocity(), std::memory_order_relaxed);
     pictureAt_.store(ring, std::memory_order_release);
   }
   void render(float* left, float* right, int from, int to) {
@@ -1221,6 +1238,7 @@ class Instrument {
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
+  std::array<std::atomic<double>, 4> envServed_ {};
 };
 
 }  // namespace scope
