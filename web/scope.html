@@ -5777,6 +5777,33 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 <script>
 "use strict";
 
+/* The testing build keeps its own storage (12 Nov). The site is published
+   twice from one origin - the stable page at the root and the work in
+   progress under /testing/ - so both would read and write the same browser
+   storage, and a testing build that changes how a setting is kept could
+   leave the stable page reading something it does not understand. Under
+   /testing/ every key the page keeps gets a prefix of its own. The page
+   reaches storage only through localStorage's get, set and remove, so the
+   shim covers those (and key, length and clear for completeness); anywhere
+   else - the stable site, a file opened from the disk, the plugin - it does
+   nothing. A storage that throws is left as it is: the page already copes. */
+(function testingStorage() {
+  try {
+    if (!/\/testing\//.test(location.pathname)) return;
+    const real = window.localStorage, P = "testing:";
+    const own = () => { const keys = []; for (let i = 0; i < real.length; i++) { const k = real.key(i); if (k && k.startsWith(P)) keys.push(k); } return keys; };
+    const shim = {
+      getItem: (k) => real.getItem(P + k),
+      setItem: (k, v) => real.setItem(P + k, v),
+      removeItem: (k) => real.removeItem(P + k),
+      clear: () => { for (const k of own()) real.removeItem(k); },
+      key: (i) => { const k = own()[i]; return k === undefined ? null : k.slice(P.length); },
+      get length() { return own().length; },
+    };
+    Object.defineProperty(window, "localStorage", { value: shim, configurable: true });
+  } catch (error) { /* storage refused: the page copes without it */ }
+})();
+
 /* The webfonts, on the site and never inside the plugin (the head says why).
    rel is set with the href and never before it: a stylesheet link with no
    href counts as one still on its way, and holds up every script after it. */

@@ -26,6 +26,10 @@ engine (compiled to WebAssembly) runs on the site as its demo:
 
 **https://22nmcdon.github.io/Real-Time-Sound-Visualizer/**
 
+Work in progress is published beside it, at
+https://22nmcdon.github.io/Real-Time-Sound-Visualizer/testing/, and reaches the
+page above only when it has been tried there.
+
 It starts silent until a note: show the keys under the screen and play A to K, or connect
 a MIDI keyboard in Settings (Chromium or Firefox; Safari has no Web MIDI). Then open the
 preset browser and try a sound under each heading: *Settled* sounds move as each note

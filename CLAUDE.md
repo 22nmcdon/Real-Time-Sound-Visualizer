@@ -20,8 +20,8 @@ will save you rediscovering them.
 ## Always
 
 **Run the tests.** While building, run the suites near the change, as often as
-you like. Before anything reaches the working branch - a push there publishes the
-site - run the whole web suite **and** parity, once per batch of stages rather
+you like. Before anything reaches `testing` - a push there publishes the testing site
+(see Git, below) - run the whole web suite **and** parity, once per batch of stages rather
 than once per stage (the owner's call, 10 Nov: a batch costs one wait, and the
 cost is that a failure has more candidates). Changes that cannot alter behaviour
 - docs, design notes, the info line's words, whose own suite checks them - merge
@@ -196,8 +196,17 @@ rejected and the bugs found on the way.
 ## Git
 
 Work on the branch you were given and push there. Do not open a pull request
-unless asked. The default branch is currently the working branch, so a push
-publishes: GitHub Pages serves `web/scope.html` straight from it.
+unless asked.
+
+The site is published twice (12 Nov, `.github/workflows/pages.yml`): **`main`**
+is the stable page at the root, for anyone the owner sends the link to, and
+**`testing`** is the work in progress under `/testing/`, for the owner to try.
+Work lands on `testing` once its full checks pass (the paragraph on running the
+tests, above); it reaches `main` only when the owner says so, by fast-forwarding
+`main` to a `testing` commit that has passed them. A push to either branch
+republishes both. Never push to `main` without the owner's word. The testing page
+keeps its browser storage under a prefix of its own (the top of the page's
+script), so the two never read each other's settings or saved sounds.
 
 ## Layout decisions already made
 
