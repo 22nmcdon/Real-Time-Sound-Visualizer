@@ -1749,9 +1749,9 @@ gl_before, gl_at, st_at = gjump("loop-glide", 1900), gjump("loop-glide", 2040), 
 check("the picture's push glides into the fold: at its step the sound moves %.4f a sample, as before it (%.4f), where stepped %.4f"
       % (gl_at, gl_before, st_at), gl_at <= 1.5 * gl_before and st_at > 2 * gl_at)
 check("and it has arrived five time constants on, where the step put it, and a push made again starts where it is asked",
-      worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]) < 2e-3
+      worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]) < 0.03  # e^-5 of the step, through the fold's steep sine
       and worst(glided[6 * 7296:6 * 7360], stepped[6 * 7296:6 * 7360]) < 2e-3
-      and worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400]) > 1e-2,
+      and worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400]) > 0.3,
       "%.2g arrived, %.2g made again, %.2g while gliding" % (worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]),
       worst(glided[6 * 7296:6 * 7360], stepped[6 * 7296:6 * 7360]), worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400])))
 check("null: a route not marked the loop's is not glided", glided != stepped and gjump("loop-step", 2040) > 2 * gl_before)
