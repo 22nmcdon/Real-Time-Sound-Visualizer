@@ -103,11 +103,16 @@ with sync_playwright() as pw:
     # 0.8844 for 0.9. A routing on the amplitude rides on the Level unsmoothed
     # and only ever ducks: held at -1 at full depth it is nought from the next
     # sample, which is what nought on the Level used to be. Layer B's half
-    # too, so a run with B in it stops alike.
+    # too, so a run with B in it stops alike. Since 12 Nov a held route's
+    # change is walked over a block (the generator's `heldRamp`, notetest.py),
+    # and a core's first routes land at once, so a burst given routes of its
+    # own stopped over 128 samples and one given none stopped in one: the
+    # stop sets the walk to nought, the step as it was, so every burst ends
+    # in a sample alike.
     AMP = p.evaluate("() => MOD_DESTS.get('gen.amp').slot")
     STOP = {"held": -1, "heldB": -1, "slot": AMP, "amount": 1, "amountB": 1, "unipolar": True}
     def silence(n, routes=()):
-        return {"routes": list(routes) + [STOP], "n": n}
+        return {"tone": {"heldRamp": 0}, "routes": list(routes) + [STOP], "n": n}
 
     print("\n--- the repeats, sample for sample ---")
     # A burst of 2000 samples, then silence: 100 ms is 4410 samples, so each
