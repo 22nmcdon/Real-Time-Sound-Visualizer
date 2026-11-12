@@ -108,6 +108,20 @@ it. What to settle:
   sound synthesisers work; Softness rounds what would otherwise buzz, and a photograph is
   likely to read harsh. Worth trying in the study rather than promising.
 
+## What else does this
+
+Parts of it have been done, none of it whole: drawing read as sound (Murzin's ANS
+synthesiser and Zolotov's Virtual ANS, Oram's Oramics, Xenakis's UPIC and HighC,
+McLaren's drawn sound on film); images played as spectrograms (MetaSynth, Photosounder,
+Coagula, Harmor's image resynthesis, the spectral editors); sound composed to draw on an
+X-Y scope (Jerobeam Fenderson's oscilloscope music, OsciStudio); the reading itself
+(scanned synthesis, wave terrain synthesis); colour as sound (Harbisson's eyeborg, Chrome
+Music Lab's Kandinsky); and abstract visuals from music that nothing hears back (VJ tools
+such as Synesthesia). None closes the loop - the sound paints, the painting is read back
+as the sound, and a painting kept becomes the next instrument. The owner looked at them
+(12 Nov) and liked how none of them looks, so the look is this design's to find rather
+than to borrow; their sound is still worth hearing, Virtual ANS and MetaSynth first.
+
 ## How it is to be studied
 
 A study and a mockup before anything is built: a held pad, the owner's Crossed hands solo,
