@@ -485,6 +485,40 @@ and more) and 5 to 6 ms on a laptop's integrated one (about 50 GB/s). So 60 fram
 second at 1000 square looks likely, and at 1600 likely on a discrete card. The page's
 readout is how to find out: open it on the machine that matters.
 
+**The first measurement on real hardware (the owner's machine, 12 Nov).** It held 60
+frames a second at every size: the mean frame time was about 16.7 to 17 ms at 512, 1000 and
+1600 square, which is the display's 60 Hz refresh, so the page was waiting on the screen,
+not the paint. The graphics card's own time per frame, by `EXT_disjoint_timer_query_webgl2`:
+
+| Canvas | GPU time, mean | Share of a 60 Hz frame (16.7 ms) |
+|---|---|---|
+| 512 × 512 | 0.7 ms | 4 per cent |
+| 1000 × 1000 | 2.3 ms | 14 per cent |
+| 1600 × 1600 | 5.8 ms | 35 per cent |
+
+**Against the estimate,** which was about 1 ms at 1000 square on a discrete card and 5 to 6
+ms on an integrated one: 2.3 ms sits between the two. It is twice the discrete figure and
+under half the integrated one. The time also grows with the pixels almost exactly (0.7,
+2.3, 5.8 ms for 1, 3.8 and 9.8 times the pixels), which is what a bandwidth-bound per-pixel
+pass predicts. The estimate's model was right in kind, and a little optimistic for this
+machine.
+
+**Headroom.** At 1000 square, about 14 ms of every frame is left. That has to hold:
+
+- **the pick-up that was cut.** On the GPU it would be a small brush texture updated
+  from the canvas under each step, a few thousand pixels a step, not a full pass, so
+  probably well under a millisecond;
+- **the scope's own drawing,** the trace and the phosphor the page already draws each
+  frame;
+- **Scan's 64 by 64 read-back,** reduced on the GPU first;
+- **the plugin's webview,** which is a different browser engine on each platform and is
+  untested here.
+
+At 1600 square about 11 ms is left, which is still comfortable on this machine. A weaker
+integrated card would put 1600 square at risk first, and 1000 square is the sensible
+default. The owner's look: it has real potential, and it looks different from the CPU
+drawing because of the cut pick-up, which they expect can be fixed.
+
 **What a live version in the instrument would need.**
 
 - **Where the paint state lives:** in the plugin's webview, as these textures, on the
