@@ -248,6 +248,14 @@ class Plane {
   // What the governor costs it by: the factor, and which stages are on.
   int factor() const { return factor_; }
   bool nonlinearOn() const { return nonlinearOn_; }
+  /* How late the non-linear stage puts the pair, in base samples, as the
+     settings ask for it rather than where its crossfade has got to: an
+     oversampler of 32 taps a step delays by (32f - f) / f, 31 at either
+     factor (planetest.py measured 31.00 at both), and nothing at 1x or off. */
+  int nonlinearDelay() const {
+    const bool wanted = shapeA_.nonlinear || (shapeOwnB_ && shapeB_.nonlinear);
+    return wanted && factor_ > 1 ? (32 * factor_ - factor_) / factor_ : 0;
+  }
   // A sample's walk of the non-linear stage's crossfade, set each block.
   void setSwitchStep(double step, int prime) { switchStep_ = step; switchPrime_ = prime; }
   // Each pair's share where `setup` asks it, with no crossfade: the generator's first block.

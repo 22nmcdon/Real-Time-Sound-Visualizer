@@ -64,7 +64,7 @@ with sync_playwright() as pw:
     p.locator("#menvItsOwn").click(); p.wait_for_timeout(150)
     after = p.evaluate(STATE)
     check("following Play: the generator's field off, the card says so, the knobs asleep, Follows Play pressed",
-          before == {"own": False, "reading": "follows Play", "dis": True, "pressed": ["true", "false"]}, str(before))
+          before == {"own": False, "reading": "follows the amp envelope", "dis": True, "pressed": ["true", "false"]}, str(before))
     check("Its own pressed with the mouse: the generator's field turns, the card reads its own, the knobs wake, Its own pressed",
           after == {"own": True, "reading": "its own", "dis": False, "pressed": ["false", "true"]}, str(after))
     knobs = p.evaluate("""() => {
@@ -211,7 +211,7 @@ with sync_playwright() as pw:
           codes["every"] == [True, True, "true"], str(codes["every"]))
     check("and an old code is once a phrase", codes["oldEvery"] is False, str(codes["oldEvery"]))
     check("times past their range are held to it", codes["held"][1] == 2000 and codes["held"][4] == 1, str(codes["held"]))
-    check("an old code without them follows Play, as it did", codes["old"][0] is False and codes["reading"] == "follows Play",
+    check("an old code without them follows the amp envelope, as it did", codes["old"][0] is False and codes["reading"] == "follows the amp envelope",
           "%s %s" % (codes["old"], codes["reading"]))
 
     print("\n--- it fits the smallest window ---")

@@ -5939,8 +5939,11 @@ velocity to the core's in every generator run. `modrowtest.py` reads the dot
 every frame and requires the stages in order, only forwards, on the curve, on
 both brains, Mono and Poly, following Play and its own; and over notes in a
 row, back only into an attack. Its null is the old guess put back in the
-page, which fails both. Not done: in the plugin the page is sent no readings
-at all, so its Envelope card's dot has never moved there.
+page, which fails both. In the plugin the page was sent none of these, so its
+dot never moved there until 12 Nov: the four (level, gate, stage, velocity)
+now follow the oscillators in `lfos.bin`, and the shell test watches the dot
+go round a note on the plugin's own face (`plugin/PLAN.md`, which also lists
+the readings the plugin's page still never gets).
 
 **Switching the photocell on is not patching it.** `setPhoto(true)` registers
 the source and leaves the reticle where it was, by default in the dark, so a
@@ -6201,3 +6204,32 @@ phaser's sweeps advance only while they are on, so the two come back at
 different points of the sweep. A harness that can only send the worklet a tone,
 as `workletharness.mjs` does, has to wait out the 0.27 s before it calls
 anything silence, and read the difference before that.
+
+**A check that fails now and then is measuring something that moves (12 Nov).**
+Four of them, each found by reading what varied between runs rather than by
+running them again, and each mended in what is measured rather than in the
+bound:
+
+- *A fifth in equal temperament is a different figure every second.* G2
+  against D3 turns through its shapes at 3f1 - 2f2, a third of a hertz, and
+  twice a turn closes onto itself at half its length: one run laid 79 to 218
+  pixels of A's ink a frame. `inktest.py` read the most over half a second
+  against a bar inside that range; it reads over a whole turn, worked out
+  from the notes. Its pixel counter also gave charcoal's anti-aliased edge,
+  (66,62,59), to olive, 30 away against charcoal's 52; a pixel nearer some
+  ink's half-tone than its nearest ink is nobody's now.
+- *A timer is not a clock.* `honestytest.py` read movement as this window
+  against the one the last `setTimeout(250)` took, and those came 252 to
+  340 ms apart, so the reading grew with the machine's load. Two windows a
+  quarter second of samples apart, taken together from the ring, read the
+  sound and not the scheduler. What is left on the reverb's check is the
+  sound's own run-to-run spread, which the commit that made the change
+  gives in numbers.
+- *A steep edge makes correlation a phase meter.* Half a sample of phase on
+  a 220 Hz ramp costs 0.007 of correlation, so "correlates past 0.99 at the
+  phase found" was a test of the estimator's sub-sample accuracy, which
+  varies with where the note falls against the samples. `handtest.py` finds
+  the best-fitting phase and holds the phase found to it.
+- *A pitch over a whole span counts a gap as cycles.* Three render quanta of
+  silence in 8192 samples read 441 Hz as 421. `braintest.py` takes the mean
+  of single periods near their median, and says how many it left out.

@@ -146,8 +146,17 @@ void ScopeProcessor::takePage() {
     if (!lock.isLocked()) return;
     std::swap(queue_, taken_);
   }
-  for (const auto& command : taken_) instrument_.apply(command);
+  for (const auto& command : taken_) {
+    instrument_.apply(command);
+    // A setup from the page - a preset, a code, an undo step - is a load: the latency is read again after it.
+    if (command.kind == scope::Instrument::Command::Setup) latencyIn_ = kLatencyAfter;
+  }
   taken_.clear();
+}
+
+void ScopeProcessor::reportLatency() {
+  const int want = latencyWanted_.load();
+  if (want >= 0 && want != getLatencySamples()) setLatencySamples(want);
 }
 
 void ScopeProcessor::publish(bool wait) {
@@ -308,6 +317,9 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     pending_.reset();
   }
   tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
+  // Prepared is loaded: its latency is read after its first blocks, and told from the timer.
+  latencyIn_ = kLatencyAfter;
+  startTimerHz(10);
   publish(true);  // for a page that asks before the first block
   /* For looking at it without a keyboard: SCOPE_HOLD_NOTE=57 holds A3 from
      the start, and SCOPE_HOLD_NOTE=57,64 a fifth on it, so the standalone has
@@ -331,7 +343,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const juce::SpinLock::ScopedTryLockType lock(stateLock_);
     if (lock.isLocked() && pending_) { arrived = std::move(pending_); pending_.reset(); }
   }
-  if (arrived) instrument_.load(*arrived, true);
+  if (arrived) { instrument_.load(*arrived, true); latencyIn_ = kLatencyAfter; }
   takePage();
   // The host's transport, where it gives one.
   std::optional<scope::Instrument::Transport> transport;
@@ -390,6 +402,11 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   if (!outgoing_.isEmpty()) midi.addEvents(outgoing_, 0, -1, 0);
   outgoing_.clear();
   if (instrument_.changed()) tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
+  // Once the matrix has made the stages' routes after a load: how late they put the sound.
+  if (latencyIn_ >= 0) {
+    latencyIn_ -= frames;
+    if (latencyIn_ < 0) latencyWanted_.store(instrument_.stageDelay());
+  }
   publish(false);
 }
 

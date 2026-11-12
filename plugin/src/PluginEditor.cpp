@@ -174,10 +174,21 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
      little-endian float64s - each one's phase, held value and value - which
      the page fetches after the picture and makes its own, so the picture's
      destinations move with the oscillators that move the sound. Apart from
-     the picture so that its length goes on saying how many lanes it has. */
+     the picture so that its length goes on saying how many lanes it has.
+
+     Then, since 12 Nov, four more: the envelope's level, whether it is gated,
+     its stage and its velocity, for the Envelope card's dot, which had never
+     moved in the plugin. After the oscillators rather than a resource of
+     their own, so the dot costs the page no second fetch a frame: it comes
+     at the rate the oscillators already do, once a picture. The name stays,
+     being what the page and the host's tests already ask for. */
   if (path == "/lfos.bin") {
     const auto lfos = processor.lfosServed();
-    return bytes(lfos.data(), lfos.size() * sizeof(double), "application/octet-stream");
+    const auto env = processor.envelopeServed();
+    std::array<double, 10> out {};
+    std::copy(lfos.begin(), lfos.end(), out.begin());
+    std::copy(env.begin(), env.end(), out.begin() + 6);
+    return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   return std::nullopt;
 }

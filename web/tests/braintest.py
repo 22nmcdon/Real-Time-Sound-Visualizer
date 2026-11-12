@@ -321,15 +321,37 @@ with sync_playwright() as pw:
     }""")
     p.evaluate("() => { loadCorpus('Harmonic tone'); el.srcMic.click(); }")
     p.wait_for_timeout(1200)
+    # The pitch read from single periods between upward crossings, those
+    # within 5% of the median, averaged: once over the whole window, it read
+    # 422.5 and 630.9 on one full run (11 Nov) and never in twenty readings
+    # since, quiet or with every core kept busy. Both low by the share one
+    # gap of about 360 samples of silence takes from 8192 - three render
+    # quanta of the second context's stream late - since a reading over the
+    # whole span counts the gap as cycles. Planted below, that gap reads the
+    # old way as the failure did, and this way as the stream is; how many
+    # periods were left out is said with the reading, so a gap is still seen.
     drawn = p.evaluate("""async () => {
-      const pitchOf = (lane) => {
+      const crossings = (lane) => {
         const at = [];
         for (let k = 1; k < lane.length; k++) if (lane[k - 1] < 0 && lane[k] >= 0) at.push(k - 1 + lane[k - 1] / (lane[k - 1] - lane[k]));
-        return at.length < 3 ? 0 : (at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]);
+        return at;
       };
+      const pitchOf = (lane) => {
+        const at = crossings(lane), d = [];
+        for (let i = 1; i < at.length; i++) d.push(at[i] - at[i - 1]);
+        if (d.length < 2) return [0, 0];
+        const mid = d.slice().sort((x, y) => x - y)[d.length >> 1], kept = d.filter((v) => Math.abs(v - mid) <= 0.05 * mid);
+        return [kept.length * state.source.sampleRate / kept.reduce((x, y) => x + y, 0), d.length - kept.length];
+      };
+      const spanOf = (lane) => { const at = crossings(lane);
+        return at.length < 3 ? 0 : (at.length - 1) * state.source.sampleRate / (at[at.length - 1] - at[0]); };
       const [l, r] = state.source.getLatestWindow(8192);
+      const gapped = new Float32Array(8192);
+      gapped.set(l.subarray(0, 4096)); gapped.set(l.subarray(4096, 8192 - 360), 4096 + 360);
+      const [left, outL] = pitchOf(l), [right, outR] = pitchOf(r);
       const s = await scopeHost.call('scopeState');
-      return { left: pitchOf(l), right: pitchOf(r), connected: state.source.inputConnected, mic: el.srcMic.getAttribute('aria-checked'),
+      return { left, right, leftOut: outL, rightOut: outR, gappedOld: spanOf(gapped), gapped: pitchOf(gapped)[0],
+               connected: state.source.inputConnected, mic: el.srcMic.getAttribute('aria-checked'),
                state: decodeSetup(s.code).pluginInput === true, gain: Math.round(state.source.gain * 100) / 100,
                soundRow: !genVoice(), device: el.device.disabled, bands: el.micShapeRow.hidden,
                opened: window.__fakeIn.opened };
@@ -338,6 +360,9 @@ with sync_playwright() as pw:
           abs(drawn["left"] - 441) < 0.5 and abs(drawn["right"] - 661.5) < 0.5 and drawn["connected"] and drawn["mic"] == "true"
           and drawn["state"] and drawn["opened"] == 1, str(drawn))
     check("and the pitch check fails against the two lanes the other way round", not abs(drawn["right"] - 441) < 0.5)
+    check("and it reads through a gap of 360 samples planted in the left lane, which the reading over the whole span did not",
+          abs(drawn["gapped"] - 441) < 0.5 and not abs(drawn["gappedOld"] - 441) < 0.5,
+          "%.2f, over the whole span %.2f" % (drawn["gapped"], drawn["gappedOld"]))
     # Until 5j this asserted the Whole / Into bands row hidden: the band split was the page's alone.
     check("a microphone drawn is not heard, the generator's switch goes, the device is the page's to choose, and Whole or Into bands is offered",
           drawn["gain"] == 0 and drawn["soundRow"] and not drawn["device"] and not drawn["bands"], str(drawn))

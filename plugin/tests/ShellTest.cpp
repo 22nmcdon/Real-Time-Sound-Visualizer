@@ -2296,9 +2296,10 @@ int main() {
     osc.prepareToPlay(rate, block);
     juce::AudioBuffer<float> buf(2, block);
     const auto served = [&] {
+      // The oscillators' six first; the envelope's four after them since 12 Nov, read below.
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 6> v {};
-      if (r && r->data.size() == sizeof v) std::memcpy(v.data(), r->data.data(), sizeof v);
+      if (r && r->data.size() == 10 * sizeof(double)) std::memcpy(v.data(), r->data.data(), sizeof v);
       return std::make_pair(v, r ? r->data.size() : 0);
     };
     for (int k = 0; k < 3; ++k) { buf.clear(); juce::MidiBuffer m; osc.processBlock(buf, m); }
@@ -2312,7 +2313,7 @@ int main() {
     const double off2 = std::fabs(after[3] - before[3] - osc.lfoRate(1) * step);
     const double asOther = std::fabs(after[0] - before[0] - osc.lfoRate(1) * step);
     check("the page is served the plugin's oscillators: each a block on by its own rate, the bytes the values at the newest frame",
-          size == 48 && sizeAfter == 48 && off1 < 1e-12 && off2 < 1e-12 && asOther > 1e-4 && before[0] > 0
+          size == 80 && sizeAfter == 80 && off1 < 1e-12 && off2 < 1e-12 && asOther > 1e-4 && before[0] > 0
           && after == osc.lfosServed() && osc.lfoRate(0) != osc.lfoRate(1),
           "LFO 1 off by " + num(off1) + ", LFO 2 by " + num(off2) + "; LFO 1 at LFO 2's rate would be off by " + num(asOther));
     /* And each value in its place. Past two seconds LFO 2, at half a hertz,
@@ -2323,10 +2324,50 @@ int main() {
     const auto [late, lateSize] = served();
     const double sineOff = std::fmax(std::fabs(late[2] - std::sin(late[0])), std::fabs(late[5] - std::sin(late[3])));
     check("and each one's phase, held value and value in its place: LFO 2 round once and holding, LFO 1 not yet",
-          lateSize == 48 && sineOff < 1e-12 && late[1] == 0 && late[4] != 0 && late[3] < late[0]
+          lateSize == 80 && sineOff < 1e-12 && late[1] == 0 && late[4] != 0 && late[3] < late[0]
           && std::fabs(late[0] - std::sin(late[2])) > 1e-3,
           "phases " + num(late[0]) + ", " + num(late[3]) + "; held " + num(late[1]) + ", " + num(late[4])
           + "; values off their sines by " + num(sineOff));
+    /* The envelope after them (12 Nov): level, gate, stage and velocity, as
+       the instrument has them at the picture's newest frame. A note struck
+       at velocity 100 is in its attack or decay with its level under its
+       velocity and above nought; let go, it is in its release, still gated,
+       the velocity kept. Slots swapped about - the stage read as the level,
+       or the velocity as the stage - read a stage that is not a whole
+       number or a level past the velocity. The null is the same bytes
+       before any note: at rest, stage nought and level nought. */
+    const auto envServed = [&] {
+      const auto r = scopeResource("/lfos.bin", osc);
+      std::array<double, 10> v {};
+      if (r && r->data.size() == sizeof v) std::memcpy(v.data(), r->data.data(), sizeof v);
+      return v;
+    };
+    const auto rest = envServed();
+    {
+      juce::MidiBuffer m;
+      m.addEvent(juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)), 0);
+      buf.clear(); osc.processBlock(buf, m);
+      for (int k = 0; k < 2; ++k) { buf.clear(); juce::MidiBuffer more; osc.processBlock(buf, more); }
+    }
+    const auto struck = envServed();
+    const auto envNow = osc.envelopeServed();
+    {
+      juce::MidiBuffer m;
+      m.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
+      buf.clear(); osc.processBlock(buf, m);
+      buf.clear(); juce::MidiBuffer more; osc.processBlock(buf, more);
+    }
+    const auto letGo = envServed();
+    const auto whole = [](double x) { return x == std::floor(x); };
+    check("and after them the envelope: struck, in its attack or decay, gated, its level under its velocity; let go, its release",
+          (struck[8] == 1 || struck[8] == 2) && struck[7] == 1 && struck[6] > 0 && struck[6] <= struck[9] && struck[9] > 0.5 && struck[9] <= 1
+          && letGo[8] == 4 && letGo[7] == 1 && letGo[9] == struck[9] && whole(struck[8]) && whole(letGo[8])
+          && std::equal(envNow.begin(), envNow.end(), struck.begin() + 6),
+          "struck " + num(struck[6]) + " " + num(struck[7]) + " " + num(struck[8]) + " " + num(struck[9])
+          + "; let go " + num(letGo[6]) + " " + num(letGo[7]) + " " + num(letGo[8]) + " " + num(letGo[9]));
+    check("null: before any note the same bytes are at rest, stage nought and level nought",
+          rest[8] == 0 && rest[6] == 0 && !(rest[8] == 1 || rest[8] == 2),
+          num(rest[6]) + " " + num(rest[7]) + " " + num(rest[8]) + " " + num(rest[9]));
   }
 
   std::printf("\n--- the automatic lag ---\n");
@@ -3500,6 +3541,183 @@ int main() {
             held.size() >= 3 && held.compare(0, 1, "b") == 0 && held.find('e') == std::string::npos
             && Heard::balanced(heard.only(level)) == 1, held + " then " + heard.only(level));
       faced.removeListener(&heard);
+    }
+  }
+
+  std::printf("\n--- the latency told to the host ---\n");
+  {
+    /* The oversampled stages put the sound 31 samples late each - the
+       voice's shaper, then the plane's non-linear stage - and the host is
+       told so once a setup has loaded (12 Nov): the bank's base and its
+       Settled sounds run neither, Tines at the radius clips in the plane,
+       and a Breathing sound's picture stage switches both in. Loaded as a
+       host loads a program, each is read after its tenth of a second and
+       told from the message thread, and must be what the instrument's own
+       stages say. The null: the Picture amount moved to nought by the host,
+       which is no load, takes both stages out - the instrument says nought
+       - and the host is still told 62, which is the choice (never per
+       block); a report that followed the stages would read nought there. */
+    // On the base, as a fresh instance opens: the blocks above leave SCOPE_PRESET naming the corpus's sounds.
+    const char* was = std::getenv("SCOPE_PRESET");
+    const std::string kept = was ? was : "";
+    unsetenv("SCOPE_PRESET");
+    ScopeProcessor lat;
+    lat.prepareToPlay(rate, block);
+    if (was) setenv("SCOPE_PRESET", kept.c_str(), 1);
+    juce::AudioBuffer<float> buf(2, block);
+    const auto blocks = [&](int n) {
+      for (int k = 0; k < n; ++k) { buf.clear(); juce::MidiBuffer m; lat.processBlock(buf, m); }
+    };
+    const auto program = [&](const std::string& name) {
+      for (std::size_t i = 0; i < scope::presets().size(); ++i)
+        if (scope::presets()[i].name == name) return static_cast<int>(i) + 1;
+      return -1;
+    };
+    // A program's latency, told: and the stages' own at the same moment.
+    const auto told = [&](int index) {
+      if (index >= 0) lat.setCurrentProgram(index);
+      blocks(12);
+      lat.reportLatency();
+      return std::make_pair(lat.getLatencySamples(), lat.stageDelayNow());
+    };
+    const auto base = told(-1);
+    const auto breathing = told(program("Harmonic tone"));
+    const auto tines = told(program("Tines at the radius"));
+    const auto settled = told(program("Tine piano"));
+    const std::string settledCode = lat.pageState().code;  // its setup code, for the page to load below
+    const auto pad = told(program("Slow pad"));
+    const auto pair = [](std::pair<int, int> p) { return std::to_string(p.first) + " (stages " + std::to_string(p.second) + ")"; };
+    check("the host is told the stages' latency once a setup loads: the base and a Settled sound 0, the radial clip 31, a Breathing sound 62",
+          base == std::make_pair(0, 0) && settled == std::make_pair(0, 0) && tines == std::make_pair(31, 31)
+          && breathing == std::make_pair(62, 62) && pad == std::make_pair(62, 62),
+          "base " + pair(base) + ", Tine piano " + pair(settled) + ", Tines at the radius " + pair(tines)
+          + ", Harmonic tone " + pair(breathing) + ", Slow pad " + pair(pad));
+    auto* amount = lat.knob("picture");
+    static_cast<juce::AudioProcessorParameter*>(amount)->setValue(amount->convertTo0to1(0));
+    blocks(40);
+    lat.reportLatency();
+    const int moved = lat.getLatencySamples(), stages = lat.stageDelayNow();
+    check("null: the Picture amount taken to nought by the host is no load - the stages go, and the host is still told what the load said",
+          stages == 0 && moved == 62, "told " + std::to_string(moved) + ", the stages now " + std::to_string(stages));
+    // And a setup the page loads - a preset, a code, an undo step - is a load like a program: the Settled code, told 0 again.
+    const bool taken = lat.pageSetup(settledCode, "");
+    const auto paged = told(-1);
+    check("a setup loaded from the page is read again too: the Settled sound's code, told 0 after the 62 the null left",
+          taken && paged == std::make_pair(0, 0), (taken ? "taken, " : "refused, ") + pair(paged));
+  }
+
+  std::printf("\n--- the Envelope card's dot, on the plugin's face ---\n");
+  {
+    /* Until 12 Nov the plugin sent its page none of what the Envelope card's
+       dot reads - the envelope's level, gate, stage and velocity - so the
+       dot sat at rest whatever was played (the README's entry on the dot,
+       11 Nov). They are served now after the oscillators in lfos.bin. Read
+       here as a player would see them: the face open, a note from the host
+       held for a second and a half and let go, the audio stepped from this
+       loop at about its own pace, and every frame the page draws the card's
+       dot recorded by the page itself. The stages it passes through, from
+       its first attack, must be attack, decay, the hold and the release in
+       that order and only forwards, along the card and never back. The null
+       is the same note with the page's source told it is never gated, which
+       is the page as it was: the same reading must find no attack at all. */
+    ScopeProcessor dotted;
+    dotted.prepareToPlay(rate, block);
+    std::unique_ptr<juce::AudioProcessorEditor> owned(dotted.createEditor());
+    auto* face = dynamic_cast<ScopeEditor*>(owned.get());
+    if (face == nullptr || !face->hasFace()) {
+      check("a web view to open the face in (run under xvfb-run -a, with WebKitGTK)", false, "no web view");
+    } else {
+      owned->addToDesktop(juce::ComponentPeer::windowHasTitleBar);
+      owned->setVisible(true);
+      juce::AudioBuffer<float> buf(2, block);
+      // The audio, a block at a time, kept level with the clock while the message loop runs.
+      const auto clock0 = juce::Time::getMillisecondCounterHiRes();
+      double played = 0;
+      const auto run = [&](int ms, juce::MidiBuffer* first = nullptr) {
+        // A note given is played in the next block whatever the wait: run(0) does no more than that.
+        if (first != nullptr) { buf.clear(); dotted.processBlock(buf, *first); played += block; }
+        const double until = juce::Time::getMillisecondCounterHiRes() + ms;
+        while (juce::Time::getMillisecondCounterHiRes() < until) {
+          const double due = (juce::Time::getMillisecondCounterHiRes() - clock0) / 1000.0 * rate;
+          while (played < due) {
+            buf.clear();
+            juce::MidiBuffer m;
+            dotted.processBlock(buf, m);
+            played += block;
+          }
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+      };
+      const auto ask = [&](const juce::String& script, int waitMs) {
+        auto answer = std::make_shared<std::optional<juce::String>>();
+        face->evaluate(script, [answer](juce::WebBrowserComponent::EvaluationResult r) {
+          if (const juce::var* v = r.getResult()) *answer = v->toString();
+          else *answer = "error: " + (r.getError() ? r.getError()->message : juce::String("?"));
+        });
+        for (int waited = 0; !*answer && waited < waitMs; waited += 20) run(20);
+        return answer->value_or("no answer");
+      };
+      juce::String ready;
+      for (int k = 0; k < 300 && ready != "true"; ++k)
+        ready = ask("String(typeof faceLaidOut !== 'undefined' && !!faceLaidOut && !!state.source && state.source.kind === 'host'"
+                    " && !!el.modStrip.querySelector('[data-source=\"env.note\"] canvas'))", 200);
+      // Slow enough to be seen at the frames a virtual display draws: 500 ms up, 600 down to a half, 800 away.
+      ask(R"js((() => {
+          const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+          for (const [id, v] of [['envAttack', 500], ['envDecay', 600], ['envSustain', 50], ['envRelease', 800]]) setControl(id, v);
+          return 'set'; })())js", 1000);
+      run(600);
+      const auto note = [&](bool on) {
+        juce::MidiBuffer m;
+        m.addEvent(on ? juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)) : juce::MidiMessage::noteOff(1, 60), 0);
+        run(0, &m);
+      };
+      // Each frame the page draws, the card's dot: its stage and how far along the card it is.
+      const juce::String record = R"js((() => {
+          window.__dot = []; window.__dotOn = true;
+          const canvas = el.modStrip.querySelector('[data-source="env.note"] canvas');
+          const tick = () => { if (!window.__dotOn) return; const d = canvas._drawn;
+            if (d) window.__dot.push([d.stage, +d.dot[0].toFixed(2)]); requestAnimationFrame(tick); };
+          requestAnimationFrame(tick); return 'recording'; })())js";
+      // From the first attack: the stages in the order met, and the first step back along the card.
+      const juce::String read = R"js((() => {
+          window.__dotOn = false;
+          const t = window.__dot, start = t.findIndex((f) => f[0] === 'attack');
+          if (start < 0) return 'never an attack, ' + t.length + ' frames';
+          const order = ['attack', 'decay', 'sustain', 'release', 'idle'], seq = [];
+          let back = '';
+          for (let i = start; i < t.length; i++) {
+            if (seq[seq.length - 1] !== t[i][0]) seq.push(t[i][0]);
+            if (i > start && !back && order.indexOf(t[i][0]) < order.indexOf(t[i - 1][0])) back = ' back from ' + t[i - 1][0] + ' to ' + t[i][0];
+            if (i > start && !back && t[i][1] < t[i - 1][1] - 0.5) back = ' back along the card in ' + t[i][0];
+          }
+          return seq.join(' ') + back + ', ' + (t.length - start) + ' frames';
+        })())js";
+      const auto overNote = [&]() {
+        ask(record, 1000);
+        note(true); run(800);
+        // Half-way through the hold, what the page's source has been given: said with the reading, so a failure says why.
+        const auto mid = ask("JSON.stringify({ kind: state.source.kind, gated: state.source.gated, level: state.source.envelope,"
+                             " stage: state.source.envelopeStage, value: MOD_SOURCES.get('env.note').value(),"
+                             " fetches: state.source.timing && state.source.timing.fetches })", 1000);
+        run(800);
+        note(false); run(1400);
+        return ask(read, 1000).toStdString() + "; mid-note " + mid.toStdString();
+      };
+      const std::string seen = overNote();
+      check("over a held note the plugin's Envelope card's dot goes through attack, decay, the hold and the release, only forwards",
+            seen.rfind("attack decay sustain release", 0) == 0 && seen.find("back") == std::string::npos, seen);
+      ask("window.__gated = Object.getOwnPropertyDescriptor(state.source, 'gated');"
+          " Object.defineProperty(state.source, 'gated', { get: () => false, configurable: true }); 'ungated'", 1000);
+      run(300);
+      const std::string unread = overNote();
+      ask("Object.defineProperty(state.source, 'gated', window.__gated); 'gated'", 1000);
+      check("null: the same note, the page told nothing is gated as it was before, and the same reading finds no attack",
+            unread.rfind("never an attack", 0) == 0, unread);
+      owned->setVisible(false);
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      owned.reset();
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
     }
   }
 

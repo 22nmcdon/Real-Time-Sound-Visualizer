@@ -5,3 +5,4 @@ venv/
 # The core's and the plugin's build output.
 core/build/
 plugin/build/
+/build/

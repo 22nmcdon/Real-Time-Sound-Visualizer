@@ -2510,6 +2510,112 @@ itself: the level's gain read off A's and B's lanes against a still run, and
 the cutoff part way from the old filter's sound to the new ten milliseconds
 on, landed later, each with a null.
 
+The Envelope card's dot in the plugin (12 Nov). The site's page places the
+dot by the envelope's level, stage and velocity, which its brain posts
+(`brain_readings` 11 and 12, 11 Nov); the plugin sent its page none of
+them, so its source's `gated` was undefined, the Envelope's value nought and
+the dot at rest whatever was played. The instrument now publishes the four
+beside the oscillators at the picture's newest frame (`envelopeServed`:
+four relaxed stores of atomics a block, before the frame's position is
+released, nothing allocated and nothing waited on), and the editor serves
+them after the oscillators in `lfos.bin`, ten float64s now, so the page
+gets them at the rate it already fetches the oscillators - once a picture -
+with no second request. The page's host source answers `envelope`,
+`envelopeStage`, `envelopeVelocity` and `gated` from them, as the brain
+source does on the site. Gated now reads true in the plugin as on the
+compiled site, so the run status's "gated, no note held" says so there too.
+
+Held by the shell test twice. The bytes: a note struck at velocity 100 is
+gated, in its attack or decay, its level above nought and under its
+velocity, and let go, in its release with the velocity kept, each slot a
+whole stage where a stage is; the null is the same bytes at rest. And the
+face, under xvfb: the page's own frames record the card's dot over a note
+held a second and a half and let go, with the audio stepped from the test's
+loop, and it goes attack, decay, the hold, the release and rest, only
+forwards along the card; the null is the same note with the page told
+nothing is gated, which is the page as it was, and finds no attack. Three
+mutants (the stage's slot given the velocity, the envelope left out of the
+bytes, the page dropping the stage) each turn one to three checks red.
+
+What else the site's page reads from its brain and the plugin's never gets,
+listed rather than mended:
+
+- the voice budget (`genBudget`), from which the run status says what the
+  budget has given up - unison thinned, voices silenced. The plugin's page
+  says nothing of it however many voices are refused.
+- the loop overlay's view of Scan (`loopView`: each picture's path, which
+  pictures each hand reads, its read-head and its playing table), which the
+  plugin's source answers with nothing, so the overlay draws none of Scan
+  there.
+- each hand's picture as the instrument reads it (`layerPictures`: its
+  coverage, change, three reads and hold, and whose sound it moves). Read
+  by nothing on the site's page but a test, so this one costs the player
+  nothing in either place.
+
+The latency told to the host (12 Nov). The plugin told the host nothing, and
+two of its stages run oversampled, each between a lowpass up and one down of
+32 taps a step: the voice's shaper (31 samples late at either factor,
+drivetest.py) and after it the plane's non-linear stage (31.00 at either,
+planetest.py). In series, what is heard is 0, 31 or 62 samples late -
+1.29 ms at 48 kHz, 1.41 at 44.1 - and the stages cross in and out over the
+tone's 10 ms switch time whenever a setting or a routing asks (the README's
+entry on the wheel's crossover, 11 Nov), so the figure can change under a
+held note: the Picture amount crossing nought makes and drops the picture
+stage's routes onto the fold and the twist, and the amount is a host
+parameter and, by the owner's routing, the wheel. The bank at rest, a note
+held, measured off the native core: the base and three of the four Settled
+sounds run neither stage (0); Tines at the radius clips in the plane (31);
+every Breathing sound runs both (62), since any Picture amount does.
+
+Three ways to tell the host, weighed:
+
+| | told | right for | out by, at worst | host restarts |
+|---|---|---|---|---|
+| never (as it was) | 0 | the base, three Settled sounds | 62, every Breathing sound at rest | none |
+| a constant worst case | 62 | the five Breathing sounds | 62 early: the base and three Settled sounds at rest | none after the first |
+| the setup's, read as it loads | 0, 31 or 62 | every bank sound at rest | 62, while a knob, the wheel or a routing has crossed nought since the load | at each load that changes it |
+
+Hosts differ in what a change costs: told of one (VST3's `restartComponent`
+with `kLatencyChanged`, AU's latency property), most redo their delay
+compensation, many with a gap in the sound, and some only at the next start
+of playback. A load is a moment when the sound is changing anyway; a
+crossing of nought under a held note is not, and told then, the host would
+cut in mid-phrase.
+
+Done, as the clearly safe part: the setup's, read once a load has landed and
+never per block. A load is the plugin prepared, a state or a program handed
+over, or a setup from the page (a preset, a code, an undo step); a slider is
+not. The audio thread reads `Generator::stageDelay` - what the stages are
+asked for, not where their crossfades are - a tenth of a second after the
+load, when the matrix has stepped and the picture stage's routes are made,
+into an atomic, and a timer on the message thread hands it to
+`setLatencySamples`, which in JUCE tells the host's wrapper under a lock and
+so is kept off the audio thread. The shell test loads the base, Tine piano,
+Tines at the radius, Harmonic tone and Slow pad as programs and requires 0,
+0, 31, 62 and 62, each the stages' own at that moment, and a Settled code
+loaded from the page to be told 0 again; its null is the Picture amount
+taken to nought by the host under Slow pad, which takes both stages out
+(they say 0) while the host is still told 62. Six mutants (each stage left
+out of the sum, a page load or a program not read, read every block, never
+told) each turn a check red.
+
+Left for the owner:
+
+- whether to make the figure exact at all times instead: the stages' dry
+  side delayed by the stage's own 31 inside its crossfade, page and core
+  alike, so a stage crossing in or out is a change of timbre with no shift
+  in time, and the host is told a constant 62 for good. The cost is 1.3 ms
+  more on every sound that runs neither stage, the picture's pairs moving
+  with it unless they are kept apart from the heard one, and parity's runs
+  across the switches written again.
+- the host's MIDI out. Told a latency, a host moves the plugin's output that
+  much earlier to line it up, MIDI with the audio in most hosts, so the
+  arpeggio's steps and the score's notes, sent at the sample of what sent
+  them, land up to 62 samples ahead of the sound they mark. Delaying them by
+  the figure told is the mend if it matters; at 1.3 ms it may not.
+- whether a host knob crossing nought, which the shell test now holds as no
+  load, should ever be told, for instance once the transport stops.
+
 **6. Release.** macOS AU and VST3, signed and notarised; Windows VST3 with
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
