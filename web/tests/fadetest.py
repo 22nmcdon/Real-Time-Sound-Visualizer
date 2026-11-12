@@ -229,9 +229,15 @@ with sync_playwright() as pw:
       const walk = async (n, ms) => { const out = [pushed('gen.drive')];
         for (let i = 0; i < n; i++) { await wait(ms); out.push(pushed('gen.drive')); } return out; };
       midiConnect(); await wait(200);
-      setFade('off'); restore({ midiMode: 'poly', mod: 'midi.key>gen.drive@0.500;midi.key>view.rotate@0.500' }); await wait(200);
+      /* A release of a millisecond (12 Nov): the Key holds through a note's
+         release since then (keyHeard) and falls when the note has died away,
+         so on the default 180 ms a strike 100 ms after the last found the Key
+         still up and nothing to ease, and a release read at the key's lift
+         found it still held. Short, the Key's fall comes as the key lifts, and
+         each fall is read 60 ms after, once the envelope has reached nought. */
+      setFade('off'); restore({ midiMode: 'poly', rel: 1, mod: 'midi.key>gen.drive@0.500;midi.key>view.rotate@0.500' }); await wait(200);
       __send([0x90, 60, 127]); const offOn = pushed('gen.drive');
-      __send([0x80, 60, 0]); const offOff = pushed('gen.drive');
+      __send([0x80, 60, 0]); await wait(60); const offOff = pushed('gen.drive');
       await wait(100);
       setFade('in', 1); await wait(50);
       __send([0x90, 60, 127]); await wait(300);
@@ -239,7 +245,7 @@ with sync_playwright() as pw:
       const picture = rotation(), tick = +sweepOf(null, routingsFor('gen.drive')).live.toFixed(4);
       await wait(1000); __send([0x80, 60, 0]); await wait(100);
       __send([0x90, 60, 127]); const inRise = await walk(5, 250);
-      __send([0x80, 60, 0]); const inRelease = pushed('gen.drive');
+      __send([0x80, 60, 0]); await wait(60); const inRelease = pushed('gen.drive');
       await wait(100);
       setFade('both', 1); await wait(50);
       __send([0x90, 60, 127]); await wait(1200);

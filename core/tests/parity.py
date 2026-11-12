@@ -6496,18 +6496,26 @@ def imono(rows, spans): return all(p[0][:len(p[0]) // 2] == p[0][len(p[0]) // 2:
 def iside(rows, spans): return max(abs(x - y) for lo, hi in spans for p in rows[lo:hi] for x, y in zip(p[0][:len(p[0]) // 2], p[0][len(p[0]) // 2:]))
 check("the instrument's Width leaves its picture as it was, every lane, the generator's, the input's and the bands'",
       ipictures_same(wb, ub) and len(wb) == 274)
+# Landed later than the Output's quarter: from one to nought within a
+# millionth is 13.8 time constants, 104 blocks from block 4, so the
+# generator's span starts at 110 rather than 106.
+WSPANS = [(110, 124)] + OSPANS[1:]
 check("and at nought what it hears is one channel twice, to the bit, once landed: the generator, the input, the bands, and after a preset",
-      imono(wb, OSPANS), "widest %g" % iside(wb, OSPANS))
-check("null: at a hundred the same spans are two channels", all(iside(ub, [sp]) > 0.01 for sp in OSPANS),
-      "%s" % [round(iside(ub, [sp]), 3) for sp in OSPANS])
+      imono(wb, WSPANS), "widest %g" % iside(wb, WSPANS))
+check("null: at a hundred the same spans are two channels", all(iside(ub, [sp]) > 0.01 for sp in WSPANS),
+      "%s" % [round(iside(ub, [sp]), 3) for sp in WSPANS])
 whands = [h for st in istates("width") for h in st.get("pluginHands", []) if h[1] == "stereoWidth"]
 wfirst = next((i for i, st in enumerate(istates("width")) if "pluginWidth" in st), None)
 check("the state keeps the Width beside the setup, through a preset's load, and as no hand",
       istate("width").get("pluginWidth") == 0 and not whands and "pluginWidth" not in ustate and wfirst is not None
       and len(istates("width")) - wfirst >= 2 and all(st.get("pluginWidth") == 0 for st in istates("width")[wfirst:]),
       repr((istate("width").get("pluginWidth"), whands, wfirst)))
-wre, wre_most, wre_other = ireopen(istate("width"), "width reopened")
-wun, _, _ = ireopen(dict(istate("width"), pluginWidth=100), "width reopened full")
+# Reopened on Harmonic tone, a stereo pair, rather than the run's last state,
+# which is the Pluck preset's: one channel twice whatever the Width, so a
+# reopening that lost it would pass (the fixture has to be able to show it).
+WTONE = _json.loads(base64.b64decode(icode["Harmonic tone"] + "=" * (-len(icode["Harmonic tone"]) % 4)))
+wre, wre_most, wre_other = ireopen(dict(WTONE, pluginWidth=0), "width reopened")
+wun, _, _ = ireopen(dict(WTONE, pluginWidth=100), "width reopened full")
 wreb, wunb = ihalves(wre), ihalves(wun)
 check("a project reopened at nought is mono from its first sample, its picture the full project's, the compiled as the native",
       wre_most == 0 and not wre_other and imono(wreb, [(0, len(wreb))]) and ipictures_same(wreb, wunb))
