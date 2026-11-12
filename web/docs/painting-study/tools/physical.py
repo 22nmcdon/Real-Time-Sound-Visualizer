@@ -17,15 +17,16 @@ what a painter does with a loaded brush:
     impasto of the attack; the hardest also flick flecks off the brush.
     (A separate short stab for each strike was tried first and read as
     sticks poking out of the strokes.)
-  - The brush itself (cycle 2, the owner: strokes looked too alike) is set
-    by the spectrum as the stroke goes: brightness (centroid against the
-    pitch) makes the bristles stiff - streakier, harder-edged, ploughing
-    more and blending less - and darkness soft; spectral spread splays
-    them wider with gaps; noisiness drags the brush dry; roughness (beating
-    partials, Plomp and Levelt) shakes the line; harmonic richness loads
-    the brush; the attack's rise time shapes the start. Each stroke adds its
-    own small seeded variation, so the same performance paints the same
-    picture.
+  - The brush itself (cycle 2, the owner: strokes looked too alike, and
+    then: keep it to a few links a viewer can see) follows four pairings
+    people find natural between sound and sight: loudness is size and
+    thickness (the core's level presses the brush wider, a hard strike loads
+    it heavier); pitch is height (the composition's: each hand's brush drifts
+    to its register's height); brightness is lightness and sharpness (white
+    mixed into the dip, stiff hard-edged bristles); roughness is a jagged,
+    broken texture (the line shakes and the brush drags dry). Each stroke
+    adds its own small seeded variation, so the same performance paints the
+    same picture.
   - Drying (oilpaint.cpp's `dry`): paint's wetness falls to 1/e in
     DRY * (1 + THICK * thickness) seconds, so thin paint dries first and a
     heavy stroke stays wet longest, and the playing's timing decides whether
@@ -47,6 +48,7 @@ BUILD = os.path.join(os.path.dirname(HERE), "build")
 # stroke, 6 s or more for a heavy, hard-struck one. (Cycle 1: 1.2 s for all.)
 DRY = 1.5
 THICK = 3.0
+WHITE = "#f2eee6"
 ROLES = paint.ROLES
 
 
@@ -95,6 +97,19 @@ def _steps(sid, ts, pts, widths, press, brush=None):
     return out
 
 
+def bright_share(bright):
+    """Brightness, in octaves of centroid over the pitch, as nought (dark:
+    -0.3 or under) to one (bright: 1.3 or over)."""
+    return np.clip((np.asarray(bright) + 0.3) / 1.6, 0, 1)
+
+
+def white_of(ctx, t):
+    """How much of a dip is white: up to three fifths, as the sound is
+    bright when the brush is dipped. Brightness with lightness. (Two fifths
+    hardly lifted charcoal, which dominates any mix it is in.)"""
+    return 0.6 * float(bright_share(ctx.f("bright", t + 0.05)))
+
+
 def slow_noise(n, rng, every=120):
     """A smooth noise between -1 and 1 over n samples, a new value every
     `every` (a quarter second at the path's 2 ms)."""
@@ -131,7 +146,7 @@ def strokes(a, layout, w, h, seed=0):
         ts, pts, lev, vel = paint.path_of(ctx, chain, dt=0.002)
         srng = np.random.default_rng(seed * 7919 + sid * 104729 + 17)   # this stroke's own variation
         feat = lambda name: np.array([ctx.f(name, t) for t in ts])
-        bright, splay, grain, rough, rich = (feat(n) for n in ("bright", "splay", "grain", "rough", "rich"))
+        bright, rough = feat("bright"), feat("rough")
         pts = tremor(ctx, ts, pts, rough, srng)
         since = np.array([t - max(e["t0"] for e in chain if e["t0"] <= t) for t in ts])
         widths = u * (16 + 60 * np.power(np.clip(lev, 0, 1), 0.7)) * (1 + 0.8 * np.minimum(1, np.sqrt(since / 2.5)))
@@ -164,21 +179,22 @@ def strokes(a, layout, w, h, seed=0):
             # strike was hard and sharp (a hard attack is a loaded brush),
             # and as the sound is rich in partials (a full sound, a full brush).
             force = e["vel"] * max(0.0, 1 - e["rise"] / 0.12)
-            richness = ctx.f("rich", e["t0"] + 0.05)
-            amount = ((1.0 if j == 0 else 0.4) + 0.6 * e["vel"] + 0.8 * force ** 1.5) * (0.6 + 0.8 * richness)
-            lines.append((e["t0"] - 1e-4, f"load {sid} {e['t0']:.4f} {ROLES.index(ctx.role(e))} {amount:.3f}"))
+            amount = (1.0 if j == 0 else 0.4) + 0.6 * e["vel"] + 0.8 * force ** 1.5
+            lines.append((e["t0"] - 1e-4, f"load {sid} {e['t0']:.4f} {ROLES.index(ctx.role(e))} {amount:.3f} {white_of(ctx, e['t0']):.3f}"))
             # Re-dipped every two seconds a note is held.
             end = chain[j + 1]["t0"] if j + 1 < len(chain) else e["t1"]
             t = e["t0"] + 2.0
             while t < end - 0.3:
-                lines.append((t - 1e-4, f"load {sid} {t:.4f} {ROLES.index(ctx.role(e))} 0.35"))
+                lines.append((t - 1e-4, f"load {sid} {t:.4f} {ROLES.index(ctx.role(e))} 0.35 {white_of(ctx, t):.3f}"))
                 t += 2.0
-        # Bristles: stiff as the sound is bright (a dark sound, a soft
-        # blending brush), splayed as its spectrum is wide, dragged dry as it
-        # is noisy - each with the brush's own small offset.
-        stiff = np.clip((bright + 0.3) / 1.6 + srng.normal(0, 0.06), 0, 1)
-        spl = np.clip(splay + srng.normal(0, 0.05), 0, 1)
-        dry = np.clip(1.4 * grain, 0, 1)
+        # Brightness is sharpness: stiff bristles, hard-edged and streaky,
+        # for a bright sound, a soft blending brush for a dark one (and
+        # lightness, in the dip: `white_of`). Roughness is a broken texture:
+        # the brush drags dry, catching only on the weave, as the line shakes
+        # (`tremor`). Each with the brush's own small offset. No splay.
+        stiff = np.clip(bright_share(bright) + srng.normal(0, 0.06), 0, 1)
+        spl = np.zeros(len(ts))
+        dry = np.clip(0.6 * rough + srng.normal(0, 0.04), 0, 0.7)   # past 0.7 a stroke all but vanishes
         lines += _steps(sid, ts, pts, widths, press, (stiff, spl, dry))
         sid += 1
     # Flecks for the hardest, sharpest strikes: paint flicked off the brush.
@@ -206,6 +222,9 @@ def script(a, layout, w, h, palette, frame_times):
     head = [f"canvas {w} {h}", "ground %.5f %.5f %.5f" % tuple(g), f"dry {DRY} {THICK}"]
     for i, r in enumerate(ROLES):
         head.append("ink %d %.5f %.5f %.5f" % ((i,) + tuple(lin(hex_rgb(palette["inks"][r])))))
+    # Lead white, the same in every palette (on Night it lightens towards the
+    # light inks, as on the house and Earth grounds towards the paper).
+    head.append("ink 6 %.5f %.5f %.5f" % tuple(lin(hex_rgb(WHITE))))
     return "\n".join(head + [l[1] for l in lines]) + "\n"
 
 
@@ -226,3 +245,49 @@ def run(a, layout, w, h, palette, frame_times, on_frame):
     err = proc.stderr.read().decode()
     proc.wait()
     return err.strip().splitlines()[-1] if err.strip() else ""
+
+
+SAMPLER = (("quiet", "loud"), ("dark", "bright"), ("smooth", "rough"))
+
+
+def sampler(palette, w=1200, h=900, seed=3):
+    """One gesture painted six times: quiet and loud, dark and bright, smooth
+    and rough, each pair differing in that one link and nothing else, so
+    each link can be seen alone. The gesture is an S, left to right, the
+    same brush seed in every cell, in the left hand's related ink (slate in
+    the house palette), where lightness shows."""
+    lines, sid = [], 0
+    cw, ch = w / 2, h / 3
+    for row, pair in enumerate(SAMPLER):
+        for col, kind in enumerate(pair):
+            rng = np.random.default_rng(seed)
+            n = 400
+            f = np.linspace(0, 1, n)
+            x = col * cw + cw * (0.1 + 0.8 * f)
+            y = row * ch + ch * (0.5 + 0.18 * np.sin(f * 2 * math.pi))
+            loud = 1.0 if kind == "loud" else 0.45
+            lev = loud * np.where(f < 0.75, 1.0, np.clip(1 - (f - 0.75) / 0.25, 0, 1))
+            widths = (16 + 60 * np.power(lev, 0.7)) * 0.9
+            press = np.power(np.clip(lev / 0.6, 0, 1), 0.8)
+            press[lev < 0.015] = 0
+            bright = 1.0 if kind == "bright" else 0.0 if kind == "dark" else 0.35
+            rough = 1.0 if kind == "rough" else 0.0 if kind == "smooth" else 0.2
+            pts = np.stack([x, y], 1)
+            d = np.gradient(pts, axis=0); nrm = np.stack([-d[:, 1], d[:, 0]], 1)
+            nrm /= np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-6)
+            pts = pts + nrm * (slow_noise(n, rng, every=40) * (1.5 + 13 * rough))[:, None]
+            ts = 0.05 + 1.2 * f + row * 2 + col * 0.01
+            amount = 0.6 + 1.2 * loud
+            lines.append((ts[0] - 1e-4, f"load {sid} {ts[0]:.4f} 1 {amount:.3f} {0.6 * bright:.3f}"))
+            stiff = np.full(n, bright); dry = np.full(n, 0.6 * rough)
+            lines += _steps(sid, ts, pts, widths, press, (stiff, np.zeros(n), dry))
+            sid += 1
+    lines.sort(key=lambda l: (l[0], 0 if l[1].startswith("load") else 1))
+    g = lin(hex_rgb(palette["ground"]))
+    head = [f"canvas {w} {h}", "ground %.5f %.5f %.5f" % tuple(g), f"dry {DRY} {THICK}"]
+    for i, r in enumerate(ROLES):
+        head.append("ink %d %.5f %.5f %.5f" % ((i,) + tuple(lin(hex_rgb(palette["inks"][r])))))
+    head.append("ink 6 %.5f %.5f %.5f" % tuple(lin(hex_rgb(WHITE))))
+    text = "\n".join(head + [l[1] for l in lines] + ["frame 9"]) + "\n"
+    r = subprocess.run([os.path.join(BUILD, "oilpaint")], input=text.encode(), capture_output=True, check=True)
+    return np.frombuffer(r.stdout[:w * h * 3], np.uint8).reshape(h, w, 3)

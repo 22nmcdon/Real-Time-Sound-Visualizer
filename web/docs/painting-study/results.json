@@ -150,19 +150,6 @@
  ],
  "scan": [
   {
-   "style": "physical",
-   "held": "audio/scan-physical-held.mp3",
-   "fade": "audio/scan-physical-build.mp3",
-   "held_centroid": 2.26,
-   "fade_centroid_median": 2.28,
-   "fade_centroid_range": [
-    1.61,
-    2.39
-   ],
-   "dark_frames": 6,
-   "frames": 310
-  },
-  {
    "style": "ink",
    "held": "audio/scan-ink-held.mp3",
    "fade": "audio/scan-ink-fade.mp3",
@@ -422,48 +409,48 @@
      "src": "img/pad-physical-travel-brand.jpg",
      "landed": {
       "steps": 922,
-      "brush_s": 0.716,
+      "brush_s": 0.617,
       "frames": 1,
-      "render_s": 0.217,
-      "wet": 547305.1,
+      "render_s": 0.249,
+      "wet": 539709.8,
       "dry": 0.0,
-      "bare": 92663.4
+      "bare": 108125.0
      }
     },
     "crossed": {
      "src": "img/crossed-physical-travel-brand.jpg",
      "landed": {
       "steps": 1819,
-      "brush_s": 0.583,
+      "brush_s": 0.381,
       "frames": 1,
-      "render_s": 0.289,
-      "wet": 179616.4,
-      "dry": 101.9,
-      "bare": 266733.3
+      "render_s": 0.247,
+      "wet": 173681.3,
+      "dry": 6.3,
+      "bare": 282254.3
      }
     },
     "run": {
      "src": "img/run-physical-travel-brand.jpg",
      "landed": {
       "steps": 1487,
-      "brush_s": 0.199,
+      "brush_s": 0.151,
       "frames": 1,
-      "render_s": 0.244,
-      "wet": 642.0,
+      "render_s": 0.235,
+      "wet": 627.4,
       "dry": 0.0,
-      "bare": 261401.8
+      "bare": 272653.2
      }
     },
     "chords": {
      "src": "img/chords-physical-travel-brand.jpg",
      "landed": {
       "steps": 972,
-      "brush_s": 0.604,
+      "brush_s": 0.681,
       "frames": 1,
-      "render_s": 0.246,
-      "wet": 571192.6,
+      "render_s": 0.258,
+      "wet": 566489.3,
       "dry": 0.0,
-      "bare": 54902.3
+      "bare": 57773.8
      }
     }
    },
@@ -472,48 +459,48 @@
      "src": "img/pad-physical-cycles-brand.jpg",
      "landed": {
       "steps": 1902,
-      "brush_s": 1.434,
+      "brush_s": 1.166,
       "frames": 1,
-      "render_s": 0.231,
-      "wet": 942984.0,
+      "render_s": 0.251,
+      "wet": 802264.4,
       "dry": 0.0,
-      "bare": 288725.5
+      "bare": 342492.8
      }
     },
     "crossed": {
      "src": "img/crossed-physical-cycles-brand.jpg",
      "landed": {
       "steps": 2807,
-      "brush_s": 1.024,
+      "brush_s": 0.746,
       "frames": 1,
-      "render_s": 0.251,
-      "wet": 297765.6,
-      "dry": 20153.0,
-      "bare": 509460.0
+      "render_s": 0.227,
+      "wet": 268148.8,
+      "dry": 19327.9,
+      "bare": 544067.6
      }
     },
     "run": {
      "src": "img/run-physical-cycles-brand.jpg",
      "landed": {
       "steps": 2028,
-      "brush_s": 0.358,
+      "brush_s": 0.299,
       "frames": 1,
-      "render_s": 0.218,
-      "wet": 1584.8,
+      "render_s": 0.222,
+      "wet": 1309.7,
       "dry": 0.0,
-      "bare": 537409.3
+      "bare": 559512.3
      }
     },
     "chords": {
      "src": "img/chords-physical-cycles-brand.jpg",
      "landed": {
       "steps": 2046,
-      "brush_s": 1.401,
+      "brush_s": 1.216,
       "frames": 1,
-      "render_s": 0.247,
-      "wet": 1149116.3,
-      "dry": 9876.1,
-      "bare": 268760.9
+      "render_s": 0.23,
+      "wet": 1077646.3,
+      "dry": 8355.0,
+      "bare": 285767.4
      }
     }
    },
@@ -522,48 +509,48 @@
      "src": "img/pad-physical-clusters-brand.jpg",
      "landed": {
       "steps": 820,
-      "brush_s": 0.481,
+      "brush_s": 0.439,
       "frames": 1,
-      "render_s": 0.226,
-      "wet": 50397.3,
+      "render_s": 0.23,
+      "wet": 27028.6,
       "dry": 0.0,
-      "bare": 289539.7
+      "bare": 236362.2
      }
     },
     "crossed": {
      "src": "img/crossed-physical-clusters-brand.jpg",
      "landed": {
       "steps": 1862,
-      "brush_s": 0.461,
+      "brush_s": 0.313,
       "frames": 1,
-      "render_s": 0.225,
-      "wet": 14851.9,
+      "render_s": 0.233,
+      "wet": 2745.4,
       "dry": 0.0,
-      "bare": 317522.3
+      "bare": 305287.8
      }
     },
     "run": {
      "src": "img/run-physical-clusters-brand.jpg",
      "landed": {
       "steps": 2535,
-      "brush_s": 0.547,
+      "brush_s": 0.401,
       "frames": 1,
-      "render_s": 0.22,
-      "wet": 632.6,
+      "render_s": 0.23,
+      "wet": 613.0,
       "dry": 0.0,
-      "bare": 669058.7
+      "bare": 687901.4
      }
     },
     "chords": {
      "src": "img/chords-physical-clusters-brand.jpg",
      "landed": {
       "steps": 962,
-      "brush_s": 0.414,
+      "brush_s": 0.33,
       "frames": 1,
-      "render_s": 0.232,
-      "wet": 40789.7,
+      "render_s": 0.236,
+      "wet": 17573.8,
       "dry": 0.0,
-      "bare": 267709.1
+      "bare": 258674.1
      }
     }
    }
@@ -635,44 +622,36 @@
     "phrase": "pad",
     "src": "img/pad-physical-cycles-detail.jpg",
     "features": {
+     "db": -14.586,
      "bright": 0.359,
-     "splay": 0.453,
-     "rich": 0.8,
-     "rough": 0.263,
-     "grain": 0.069
+     "rough": 0.263
     }
    },
    {
     "phrase": "crossed",
     "src": "img/crossed-physical-cycles-detail.jpg",
     "features": {
+     "db": -18.198,
      "bright": 0.243,
-     "splay": 0.519,
-     "rich": 0.55,
-     "rough": 0.168,
-     "grain": 0.101
+     "rough": 0.168
     }
    },
    {
     "phrase": "run",
     "src": "img/run-physical-cycles-detail.jpg",
     "features": {
+     "db": -20.388,
      "bright": 1.177,
-     "splay": 0.407,
-     "rich": 1.0,
-     "rough": 0.326,
-     "grain": 0.0
+     "rough": 0.326
     }
    },
    {
     "phrase": "chords",
     "src": "img/chords-physical-cycles-detail.jpg",
     "features": {
+     "db": -16.453,
      "bright": -0.049,
-     "splay": 0.407,
-     "rich": 0.65,
-     "rough": 0.327,
-     "grain": 0.0
+     "rough": 0.327
     }
    }
   ],
@@ -694,12 +673,12 @@
     "src": "anim/crossed-physical-cycles-build.webm",
     "cost": {
      "steps": 2633,
-     "brush_s": 0.558,
+     "brush_s": 0.457,
      "frames": 310,
-     "render_s": 37.038,
-     "wet": 151265.0,
-     "dry": 9667.3,
-     "bare": 258246.5
+     "render_s": 39.297,
+     "wet": 135033.8,
+     "dry": 9354.6,
+     "bare": 275180.6
     }
    },
    {
@@ -709,33 +688,792 @@
      "steps": 1770,
      "brush_s": 0.212,
      "frames": 143,
-     "render_s": 16.246,
-     "wet": 908.6,
+     "render_s": 19.247,
+     "wet": 763.5,
      "dry": 0.0,
-     "bare": 273885.5
+     "bare": 285203.6
     }
    }
   ],
   "costs": {
    "512": {
-    "brush_ms_per_frame": 0.5,
-    "render_ms_per_frame": 30.45,
+    "brush_ms_per_frame": 0.55,
+    "render_ms_per_frame": 39.33,
     "steps": 2423,
     "frames": 310
    },
    "1000": {
-    "brush_ms_per_frame": 1.72,
-    "render_ms_per_frame": 115.77,
+    "brush_ms_per_frame": 1.53,
+    "render_ms_per_frame": 126.42,
     "steps": 2633,
     "frames": 310
    },
    "1600": {
-    "brush_ms_per_frame": 4.65,
-    "render_ms_per_frame": 307.7,
+    "brush_ms_per_frame": 4.16,
+    "render_ms_per_frame": 336.6,
     "steps": 2895,
     "frames": 310
    }
   },
-  "lead": "cycles"
+  "lead": "cycles",
+  "scan": {
+   "physical": {
+    "travel": {
+     "pad": {
+      "finished": {
+       "centroid_median": 1.95,
+       "centroid_p10": 1.95,
+       "centroid_p90": 1.95,
+       "high_share": 0.0,
+       "sine_share": 0.22,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.68,
+       "centroid_p10": 1.03,
+       "centroid_p90": 1.95,
+       "high_share": 0.0,
+       "sine_share": 0.347,
+       "movement": 0.0026,
+       "dark_frames": 5,
+       "frames": 240
+      },
+      "painting_audio": "audio/scan-physical-travel-pad-painting.mp3",
+      "finished_audio": "audio/scan-physical-travel-pad-finished.mp3"
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 2.17,
+       "centroid_p10": 2.17,
+       "centroid_p90": 2.17,
+       "high_share": 0.001,
+       "sine_share": 0.248,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.17,
+       "centroid_p10": 1.38,
+       "centroid_p90": 2.39,
+       "high_share": 0.001,
+       "sine_share": 0.248,
+       "movement": 0.0046,
+       "dark_frames": 6,
+       "frames": 310
+      },
+      "painting_audio": "audio/scan-physical-travel-crossed-painting.mp3",
+      "finished_audio": "audio/scan-physical-travel-crossed-finished.mp3"
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 1.34,
+       "centroid_p10": 1.34,
+       "centroid_p90": 1.34,
+       "high_share": 0.001,
+       "sine_share": 0.839,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.34,
+       "centroid_p10": 1.18,
+       "centroid_p90": 2.03,
+       "high_share": 0.0,
+       "sine_share": 0.815,
+       "movement": 0.0121,
+       "dark_frames": 6,
+       "frames": 143
+      },
+      "painting_audio": "audio/scan-physical-travel-run-painting.mp3",
+      "finished_audio": "audio/scan-physical-travel-run-finished.mp3"
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 2.17,
+       "centroid_p10": 2.17,
+       "centroid_p90": 2.17,
+       "high_share": 0.0,
+       "sine_share": 0.171,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.56,
+       "centroid_p10": 1.02,
+       "centroid_p90": 2.17,
+       "high_share": 0.0,
+       "sine_share": 0.494,
+       "movement": 0.0031,
+       "dark_frames": 6,
+       "frames": 232
+      },
+      "painting_audio": "audio/scan-physical-travel-chords-painting.mp3",
+      "finished_audio": "audio/scan-physical-travel-chords-finished.mp3"
+     }
+    },
+    "cycles": {
+     "pad": {
+      "finished": {
+       "centroid_median": 1.81,
+       "centroid_p10": 1.81,
+       "centroid_p90": 1.81,
+       "high_share": 0.0,
+       "sine_share": 0.236,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.02,
+       "centroid_p10": 1.2,
+       "centroid_p90": 2.1,
+       "high_share": 0.0,
+       "sine_share": 0.068,
+       "movement": 0.0033,
+       "dark_frames": 5,
+       "frames": 240
+      },
+      "painting_audio": "audio/scan-physical-cycles-pad-painting.mp3",
+      "finished_audio": "audio/scan-physical-cycles-pad-finished.mp3"
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 2.35,
+       "centroid_p10": 2.35,
+       "centroid_p90": 2.35,
+       "high_share": 0.001,
+       "sine_share": 0.276,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.37,
+       "centroid_p10": 1.56,
+       "centroid_p90": 2.56,
+       "high_share": 0.0,
+       "sine_share": 0.276,
+       "movement": 0.0042,
+       "dark_frames": 6,
+       "frames": 310
+      },
+      "painting_audio": "audio/scan-physical-cycles-crossed-painting.mp3",
+      "finished_audio": "audio/scan-physical-cycles-crossed-finished.mp3"
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 2.26,
+       "centroid_p10": 2.26,
+       "centroid_p90": 2.26,
+       "high_share": 0.004,
+       "sine_share": 0.507,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.19,
+       "centroid_p10": 1.65,
+       "centroid_p90": 3.32,
+       "high_share": 0.001,
+       "sine_share": 0.324,
+       "movement": 0.0272,
+       "dark_frames": 6,
+       "frames": 143
+      },
+      "painting_audio": "audio/scan-physical-cycles-run-painting.mp3",
+      "finished_audio": "audio/scan-physical-cycles-run-finished.mp3"
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 1.69,
+       "centroid_p10": 1.69,
+       "centroid_p90": 1.69,
+       "high_share": 0.001,
+       "sine_share": 0.497,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.92,
+       "centroid_p10": 1.33,
+       "centroid_p90": 2.28,
+       "high_share": 0.0,
+       "sine_share": 0.27,
+       "movement": 0.0047,
+       "dark_frames": 6,
+       "frames": 232
+      },
+      "painting_audio": "audio/scan-physical-cycles-chords-painting.mp3",
+      "finished_audio": "audio/scan-physical-cycles-chords-finished.mp3"
+     }
+    },
+    "clusters": {
+     "pad": {
+      "finished": {
+       "centroid_median": 2.55,
+       "centroid_p10": 2.55,
+       "centroid_p90": 2.55,
+       "high_share": 0.002,
+       "sine_share": 0.566,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.11,
+       "centroid_p10": 1.76,
+       "centroid_p90": 2.55,
+       "high_share": 0.001,
+       "sine_share": 0.581,
+       "movement": 0.0047,
+       "dark_frames": 6,
+       "frames": 240
+      },
+      "painting_audio": "audio/scan-physical-clusters-pad-painting.mp3",
+      "finished_audio": "audio/scan-physical-clusters-pad-finished.mp3"
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 2.72,
+       "centroid_p10": 2.72,
+       "centroid_p90": 2.72,
+       "high_share": 0.003,
+       "sine_share": 0.093,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.72,
+       "centroid_p10": 1.56,
+       "centroid_p90": 3.03,
+       "high_share": 0.001,
+       "sine_share": 0.093,
+       "movement": 0.0053,
+       "dark_frames": 6,
+       "frames": 310
+      },
+      "painting_audio": "audio/scan-physical-clusters-crossed-painting.mp3",
+      "finished_audio": "audio/scan-physical-clusters-crossed-finished.mp3"
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 2.71,
+       "centroid_p10": 2.71,
+       "centroid_p90": 2.71,
+       "high_share": 0.004,
+       "sine_share": 0.561,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.09,
+       "centroid_p10": 1.44,
+       "centroid_p90": 2.72,
+       "high_share": 0.0,
+       "sine_share": 0.561,
+       "movement": 0.0049,
+       "dark_frames": 6,
+       "frames": 143
+      },
+      "painting_audio": "audio/scan-physical-clusters-run-painting.mp3",
+      "finished_audio": "audio/scan-physical-clusters-run-finished.mp3"
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 1.95,
+       "centroid_p10": 1.95,
+       "centroid_p90": 1.95,
+       "high_share": 0.002,
+       "sine_share": 0.645,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.5,
+       "centroid_p10": 1.11,
+       "centroid_p90": 1.95,
+       "high_share": 0.0,
+       "sine_share": 0.746,
+       "movement": 0.0032,
+       "dark_frames": 6,
+       "frames": 232
+      },
+      "painting_audio": "audio/scan-physical-clusters-chords-painting.mp3",
+      "finished_audio": "audio/scan-physical-clusters-chords-finished.mp3"
+     }
+    },
+    "wheel": {
+     "pad": {
+      "finished": {
+       "centroid_median": 2.42,
+       "centroid_p10": 2.42,
+       "centroid_p90": 2.42,
+       "high_share": 0.001,
+       "sine_share": 0.26,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.68,
+       "centroid_p10": 2.42,
+       "centroid_p90": 3.67,
+       "high_share": 0.001,
+       "sine_share": 0.222,
+       "movement": 0.0052,
+       "dark_frames": 6,
+       "frames": 240
+      },
+      "painting_audio": "audio/scan-physical-wheel-pad-painting.mp3",
+      "finished_audio": "audio/scan-physical-wheel-pad-finished.mp3"
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 2.17,
+       "centroid_p10": 2.17,
+       "centroid_p90": 2.17,
+       "high_share": 0.003,
+       "sine_share": 0.094,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.18,
+       "centroid_p10": 2.17,
+       "centroid_p90": 2.38,
+       "high_share": 0.004,
+       "sine_share": 0.081,
+       "movement": 0.0015,
+       "dark_frames": 6,
+       "frames": 310
+      },
+      "painting_audio": "audio/scan-physical-wheel-crossed-painting.mp3",
+      "finished_audio": "audio/scan-physical-wheel-crossed-finished.mp3"
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 1.16,
+       "centroid_p10": 1.16,
+       "centroid_p90": 1.16,
+       "high_share": 0.0,
+       "sine_share": 0.858,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.16,
+       "centroid_p10": 1.08,
+       "centroid_p90": 1.26,
+       "high_share": 0.0,
+       "sine_share": 0.859,
+       "movement": 0.001,
+       "dark_frames": 6,
+       "frames": 143
+      },
+      "painting_audio": "audio/scan-physical-wheel-run-painting.mp3",
+      "finished_audio": "audio/scan-physical-wheel-run-finished.mp3"
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 3.96,
+       "centroid_p10": 3.96,
+       "centroid_p90": 3.96,
+       "high_share": 0.01,
+       "sine_share": 0.012,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 3.43,
+       "centroid_p10": 3.25,
+       "centroid_p90": 3.96,
+       "high_share": 0.01,
+       "sine_share": 0.147,
+       "movement": 0.0079,
+       "dark_frames": 6,
+       "frames": 232
+      },
+      "painting_audio": "audio/scan-physical-wheel-chords-painting.mp3",
+      "finished_audio": "audio/scan-physical-wheel-chords-finished.mp3"
+     }
+    }
+   },
+   "gesture": {
+    "travel": {
+     "pad": {
+      "finished": {
+       "centroid_median": 1.82,
+       "centroid_p10": 1.82,
+       "centroid_p90": 1.82,
+       "high_share": 0.0,
+       "sine_share": 0.344,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.05,
+       "centroid_p10": 1.03,
+       "centroid_p90": 1.09,
+       "high_share": 0.0,
+       "sine_share": 0.97,
+       "movement": 0.001,
+       "dark_frames": 5,
+       "frames": 240
+      }
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 1.85,
+       "centroid_p10": 1.85,
+       "centroid_p90": 1.85,
+       "high_share": 0.001,
+       "sine_share": 0.601,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.52,
+       "centroid_p10": 1.21,
+       "centroid_p90": 2.34,
+       "high_share": 0.0,
+       "sine_share": 0.676,
+       "movement": 0.007,
+       "dark_frames": 6,
+       "frames": 310
+      }
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 1.34,
+       "centroid_p10": 1.34,
+       "centroid_p90": 1.34,
+       "high_share": 0.001,
+       "sine_share": 0.885,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.68,
+       "centroid_p10": 1.1,
+       "centroid_p90": 2.0,
+       "high_share": 0.0,
+       "sine_share": 0.613,
+       "movement": 0.0103,
+       "dark_frames": 6,
+       "frames": 143
+      }
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 2.26,
+       "centroid_p10": 2.26,
+       "centroid_p90": 2.26,
+       "high_share": 0.0,
+       "sine_share": 0.166,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.11,
+       "centroid_p10": 1.02,
+       "centroid_p90": 1.32,
+       "high_share": 0.0,
+       "sine_share": 0.919,
+       "movement": 0.0016,
+       "dark_frames": 6,
+       "frames": 232
+      }
+     }
+    },
+    "cycles": {
+     "pad": {
+      "finished": {
+       "centroid_median": 1.93,
+       "centroid_p10": 1.93,
+       "centroid_p90": 1.93,
+       "high_share": 0.0,
+       "sine_share": 0.151,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.37,
+       "centroid_p10": 1.13,
+       "centroid_p90": 1.61,
+       "high_share": 0.0,
+       "sine_share": 0.729,
+       "movement": 0.0042,
+       "dark_frames": 5,
+       "frames": 240
+      }
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 1.53,
+       "centroid_p10": 1.53,
+       "centroid_p90": 1.53,
+       "high_share": 0.0,
+       "sine_share": 0.73,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.4,
+       "centroid_p10": 1.19,
+       "centroid_p90": 2.37,
+       "high_share": 0.0,
+       "sine_share": 0.705,
+       "movement": 0.0086,
+       "dark_frames": 6,
+       "frames": 310
+      }
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 2.63,
+       "centroid_p10": 2.63,
+       "centroid_p90": 2.63,
+       "high_share": 0.004,
+       "sine_share": 0.356,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.0,
+       "centroid_p10": 1.53,
+       "centroid_p90": 2.39,
+       "high_share": 0.0,
+       "sine_share": 0.346,
+       "movement": 0.0296,
+       "dark_frames": 6,
+       "frames": 143
+      }
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 2.22,
+       "centroid_p10": 2.22,
+       "centroid_p90": 2.22,
+       "high_share": 0.001,
+       "sine_share": 0.342,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.55,
+       "centroid_p10": 1.06,
+       "centroid_p90": 2.21,
+       "high_share": 0.0,
+       "sine_share": 0.617,
+       "movement": 0.0071,
+       "dark_frames": 6,
+       "frames": 232
+      }
+     }
+    },
+    "clusters": {
+     "pad": {
+      "finished": {
+       "centroid_median": 2.4,
+       "centroid_p10": 2.4,
+       "centroid_p90": 2.4,
+       "high_share": 0.002,
+       "sine_share": 0.59,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.86,
+       "centroid_p10": 1.81,
+       "centroid_p90": 2.42,
+       "high_share": 0.0,
+       "sine_share": 0.505,
+       "movement": 0.0028,
+       "dark_frames": 5,
+       "frames": 240
+      }
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 1.98,
+       "centroid_p10": 1.98,
+       "centroid_p90": 1.98,
+       "high_share": 0.004,
+       "sine_share": 0.627,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.45,
+       "centroid_p10": 1.26,
+       "centroid_p90": 2.65,
+       "high_share": 0.0,
+       "sine_share": 0.665,
+       "movement": 0.01,
+       "dark_frames": 6,
+       "frames": 310
+      }
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 2.55,
+       "centroid_p10": 2.55,
+       "centroid_p90": 2.55,
+       "high_share": 0.004,
+       "sine_share": 0.552,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.04,
+       "centroid_p10": 1.61,
+       "centroid_p90": 2.43,
+       "high_share": 0.001,
+       "sine_share": 0.443,
+       "movement": 0.0187,
+       "dark_frames": 6,
+       "frames": 143
+      }
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 2.51,
+       "centroid_p10": 2.51,
+       "centroid_p90": 2.51,
+       "high_share": 0.006,
+       "sine_share": 0.335,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 2.08,
+       "centroid_p10": 1.33,
+       "centroid_p90": 2.43,
+       "high_share": 0.0,
+       "sine_share": 0.454,
+       "movement": 0.0033,
+       "dark_frames": 6,
+       "frames": 232
+      }
+     }
+    },
+    "layered": {
+     "pad": {
+      "finished": {
+       "centroid_median": 1.62,
+       "centroid_p10": 1.62,
+       "centroid_p90": 1.62,
+       "high_share": 0.0,
+       "sine_share": 0.535,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.21,
+       "centroid_p10": 1.09,
+       "centroid_p90": 1.55,
+       "high_share": 0.0,
+       "sine_share": 0.859,
+       "movement": 0.0047,
+       "dark_frames": 5,
+       "frames": 240
+      }
+     },
+     "crossed": {
+      "finished": {
+       "centroid_median": 2.32,
+       "centroid_p10": 2.32,
+       "centroid_p90": 2.32,
+       "high_share": 0.0,
+       "sine_share": 0.021,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.55,
+       "centroid_p10": 1.1,
+       "centroid_p90": 2.04,
+       "high_share": 0.0,
+       "sine_share": 0.626,
+       "movement": 0.007,
+       "dark_frames": 6,
+       "frames": 310
+      }
+     },
+     "run": {
+      "finished": {
+       "centroid_median": 2.99,
+       "centroid_p10": 2.99,
+       "centroid_p90": 2.99,
+       "high_share": 0.001,
+       "sine_share": 0.048,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.61,
+       "centroid_p10": 1.07,
+       "centroid_p90": 2.14,
+       "high_share": 0.0,
+       "sine_share": 0.462,
+       "movement": 0.0102,
+       "dark_frames": 6,
+       "frames": 143
+      }
+     },
+     "chords": {
+      "finished": {
+       "centroid_median": 1.59,
+       "centroid_p10": 1.59,
+       "centroid_p90": 1.59,
+       "high_share": 0.001,
+       "sine_share": 0.533,
+       "movement": 0.0,
+       "dark_frames": 0,
+       "frames": 1
+      },
+      "painting": {
+       "centroid_median": 1.39,
+       "centroid_p10": 1.19,
+       "centroid_p90": 1.67,
+       "high_share": 0.0,
+       "sine_share": 0.771,
+       "movement": 0.0059,
+       "dark_frames": 6,
+       "frames": 232
+      }
+     }
+    }
+   }
+  },
+  "sampler": "img/physical-brush-sampler.jpg"
  }
 }

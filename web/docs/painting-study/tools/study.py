@@ -116,6 +116,51 @@ def mp3(samples, path, rate=48000):
                     "-b:a", "64k", path], check=True)
 
 
+def table_measures(tables, ok):
+    """What a run of Scan's tables sounds like, in numbers: each table's
+    harmonic centroid (in harmonics); how much of its energy is above the
+    eighth harmonic (harsh where large); how much is in the first (a sine,
+    dead, where it is nearly all); and how far the table moves from one
+    frame to the next, half the summed difference of its normalised harmonic
+    powers (nought for a table that does not change, one for one replaced)."""
+    pw = []
+    for t, k in zip(tables, ok):
+        if not k: continue
+        p = np.abs(np.fft.rfft(t))[1:65] ** 2
+        pw.append(p / max(p.sum(), 1e-12))
+    if not pw: return None
+    pw = np.array(pw)
+    h = np.arange(1, 65)
+    cen = (pw * h).sum(axis=1)
+    move = 0.5 * np.abs(np.diff(pw, axis=0)).sum(axis=1) if len(pw) > 1 else np.zeros(1)
+    return dict(centroid_median=round(float(np.median(cen)), 2), centroid_p10=round(float(np.percentile(cen, 10)), 2),
+                centroid_p90=round(float(np.percentile(cen, 90)), 2), high_share=round(float(np.median(pw[:, 8:].sum(axis=1))), 3),
+                sine_share=round(float(np.median(pw[:, 0])), 3), movement=round(float(np.median(move)), 4),
+                dark_frames=int((~np.asarray(ok)).sum()), frames=len(ok))
+
+
+def scan_composition(name, style, layout, size=512):
+    """Scan's read of one painting as it is made and once finished: the
+    density (physical paint: how far paint hides the ground) on the 64 by
+    64 grid each frame, through the core's own scan functions. Physical
+    paint builds up; the other styles fade by the Persistence, as Fade."""
+    a = analysis(name)
+    grids = []
+    if style == "physical":
+        times = [(f + 1) / FPS for f in range(int(a["length"] * FPS))]
+        physical.run(a, layout, size, size, palettes.PALETTES["brand"], times, lambda rgb, cov: grids.append(grid64(cov)))
+        final = grids[-1]
+    else:
+        w, h = SIZE.get(layout, (C2, C2))
+        ops = ops_for(name, style, layout)
+        for st in paint.fade_frames(ops, w, h, size / w, FPS, a["length"], PERSISTENCE):
+            grids.append(grid64(st.density))
+        final = grid64(paint.accumulate(ops, w, h, size / w).density)
+    ok, _, tabs = scan_tables(grids)
+    okf, _, tabf = scan_tables([final])
+    return ok, tabs, okf, tabf
+
+
 def harmonic_centroid(table):
     s = np.abs(np.fft.rfft(table))[1:65] ** 2
     return float((s * np.arange(1, 65)).sum() / max(s.sum(), 1e-12))
@@ -209,11 +254,32 @@ def cycle2(results, t0):
                 Image.fromarray(out["rgb"]).crop(box).save(cpath, quality=90, optimize=True)
                 summ = features.summary(analysis(name))
                 c2["details"].append(dict(phrase=name, src=os.path.relpath(cpath, STUDY),
-                                          features={k: summ[k] for k in ("bright", "splay", "rich", "rough", "grain")}))
+                                          features={k: summ[k] for k in ("db", "bright", "rough")}))
                 if name == "crossed": pdens["brand"] = out["cov"]
             _, grel = still(name, "gesture", comp, "brand")
             c2["gesture"].setdefault(comp, {})[name] = grel
             print("cycle 2", comp, name, round(time.time() - t0))
+    # What Scan reads off each composition (the owner: every composition is
+    # also a sound): physical paint with audio, gestural in numbers, and the
+    # first cycle's ring layouts beside them as the baseline.
+    c2["scan"] = {"physical": {}, "gesture": {}}
+    for style, comps in (("physical", COMPOSITIONS + ("wheel",)), ("gesture", COMPOSITIONS + ("layered",))):
+        for comp in comps:
+            for name in PHRASES:
+                ok, tabs, okf, tabf = scan_composition(name, style, comp)
+                m = dict(finished=table_measures(tabf, okf), painting=table_measures(tabs, ok))
+                if style == "physical":
+                    fpath = os.path.join(AUDIO, f"scan-physical-{comp}-{name}-painting.mp3")
+                    mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
+                    hpath = os.path.join(AUDIO, f"scan-physical-{comp}-{name}-finished.mp3")
+                    mp3(play(tabf, okf, 1, 4.0), hpath)
+                    m.update(painting_audio=os.path.relpath(fpath, STUDY), finished_audio=os.path.relpath(hpath, STUDY))
+                c2["scan"][style].setdefault(comp, {})[name] = m
+            print("scan", style, comp, round(time.time() - t0))
+    sim = physical.sampler(palettes.PALETTES["brand"])
+    spath = os.path.join(IMG, "physical-brush-sampler.jpg")
+    Image.fromarray(sim).save(spath, quality=88, optimize=True)
+    c2["sampler"] = os.path.relpath(spath, STUDY)
     for style in ("ink", "geometry"):
         for name in PHRASES:
             _, rel = still(name, style, LEAD, "brand")
@@ -229,18 +295,9 @@ def cycle2(results, t0):
         rel, cost, grids = build_up(name, LEAD)
         c2["builds"].append(dict(phrase=name, src=rel, cost=cost))
         print("cycle 2 build", name, round(time.time() - t0))
-        if name == "crossed":
-            ok, _, tabs = scan_tables(grids)
-            fpath = os.path.join(AUDIO, "scan-physical-build.mp3"); mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
-            ok2, _, tabs2 = scan_tables([grid64(pdens["brand"])])
-            hpath = os.path.join(AUDIO, "scan-physical-held.mp3"); mp3(play(tabs2, ok2, 1, 4.0), hpath)
-            hc = [harmonic_centroid(t) for t, k in zip(tabs, ok) if k]
-            results["scan"] = [x for x in results.get("scan", []) if x["style"] != "physical"]
-            results["scan"].insert(0, dict(style="physical", held=os.path.relpath(hpath, STUDY), fade=os.path.relpath(fpath, STUDY),
-                                           held_centroid=round(harmonic_centroid(tabs2[0]), 2),
-                                           fade_centroid_median=round(float(np.median(hc)), 2),
-                                           fade_centroid_range=[round(float(np.percentile(hc, 10)), 2), round(float(np.percentile(hc, 90)), 2)],
-                                           dark_frames=int((~ok).sum()), frames=len(ok)))
+    # The first cycle's single physical Scan entry is replaced by the
+    # per-composition reads above.
+    results["scan"] = [x for x in results.get("scan", []) if x["style"] != "physical"]
     # What a frame costs at the sizes a live version might run: Crossed hands,
     # the busiest phrase, painted and rendered every frame at 20 a second.
     for size in (512, 1000, 1600):

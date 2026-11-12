@@ -6,10 +6,12 @@
 //
 //   canvas W H                       the canvas, in pixels
 //   ground r g b                     the ground's linear reflectance
-//   ink i r g b                      pigment i's linear masstone reflectance (0 to 5)
+//   ink i r g b                      pigment i's linear masstone reflectance (0 to 5 the
+//                                    inks, 6 the white)
 //   dry tau thick                    wet paint's wetness falls to 1/e in tau * (1 + thick * a)
 //                                    seconds, a its thickness: thin paint dries first
-//   load s t role amount             brush s loaded at time t with pigment `role`
+//   load s t role amount [white]     brush s loaded at time t with pigment `role`, that
+//                                    share of the dip being white instead
 //   step s t x y dx dy w p [stiff splay dry]
 //                                    brush s at x,y moving along dx,dy, width w, pressure 0-1;
 //                                    and, each nought to one, how stiff its bristles are (stiff
@@ -56,7 +58,9 @@
 
 namespace {
 
-constexpr int kInks = 6;
+// Six inks, a hand's three each, and a white: the brush mapping (cycle 2)
+// lightens a bright sound's paint by mixing white into the dip.
+constexpr int kInks = 7;
 constexpr int kBins = 32;
 
 // Paint per unit of deposit, and the thickness at which paint hides the ground to 1/e.
@@ -152,8 +156,9 @@ int main() {
       in >> tau;
       if (!(in >> thick)) thick = 0;
     } else if (cmd == "load") {
-      int s, role; float t, amount;
+      int s, role; float t, amount, white = 0;
       in >> s >> t >> role >> amount;
+      if (!(in >> white)) white = 0;
       Brush& b = brushes[s];
       if (!b.seeded) {
         for (int k = 0; k < kBins; k++) b.share[k] = 0.45f + 0.55f * hash(static_cast<std::uint32_t>(s * 977 + k * 31 + 7));
@@ -163,7 +168,8 @@ int main() {
       for (int k = 0; k < kBins; k++) {
         const float add = amount * b.share[k];
         const float total = b.load[k] + add;
-        for (int i = 0; i < kInks; i++) b.mix[k][i] = (b.mix[k][i] * b.load[k] + (i == role ? add : 0.0f)) / std::max(total, 1e-6f);
+        for (int i = 0; i < kInks; i++)
+          b.mix[k][i] = (b.mix[k][i] * b.load[k] + (i == role ? add * (1 - white) : i == kInks - 1 ? add * white : 0.0f)) / std::max(total, 1e-6f);
         b.load[k] = std::min(total, 2.5f);
       }
     } else if (cmd == "step") {
