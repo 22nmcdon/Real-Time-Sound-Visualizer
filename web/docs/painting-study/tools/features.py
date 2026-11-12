@@ -62,6 +62,38 @@ def audio_frames(x, rate):
     return dict(t=t, db=db, centroid=centroid, spread=spread, flatness=flatness, flux=flux, unrest=unrest)
 
 
+def peaks_measures(mono, rate, times, n=8192):
+    """Two measures from the spectrum's own peaks, on a long window (170 ms,
+    so partials 6 Hz apart are told apart): roughness, the sensory
+    dissonance of every pair of peaks by Plomp and Levelt's curve in
+    Sethares's form (beating partials within a critical band - what makes a
+    chord or a detuned sound rough), normalised by the energy; and richness,
+    how many partials stand within 30 dB of the strongest, a twentieth each
+    up to one."""
+    win = np.hanning(n)
+    freqs = np.fft.rfftfreq(n, 1 / rate)
+    rough, rich = np.zeros(len(times)), np.zeros(len(times))
+    for i, t in enumerate(times):
+        c = int(t * rate); a = c - n // 2
+        seg = mono[max(a, 0):a + n]
+        if len(seg) < n: seg = np.pad(seg, (max(0, -a), n - len(seg) - max(0, -a)))
+        mag = np.abs(np.fft.rfft(seg * win))
+        top = mag.max()
+        if top < 1e-6: continue
+        pk = np.nonzero((mag[1:-1] > mag[:-2]) & (mag[1:-1] >= mag[2:]) & (mag[1:-1] > top * 10 ** (-30 / 20)))[0] + 1
+        pk = pk[(freqs[pk] > 25) & (freqs[pk] < 8000)]
+        if len(pk) == 0: continue
+        pk = pk[np.argsort(mag[pk])[::-1][:24]]
+        f, amp = freqs[pk], mag[pk] / top
+        rich[i] = min(1.0, len(pk) / 20)
+        fi, fj = np.meshgrid(f, f); ai, aj = np.meshgrid(amp, amp)
+        fmin = np.minimum(fi, fj); df = np.abs(fi - fj)
+        sc = 0.24 / (0.0207 * fmin + 18.96)
+        d = np.minimum(ai, aj) * (np.exp(-3.5 * sc * df) - np.exp(-5.75 * sc * df))
+        rough[i] = 0.5 * d.sum() / max((amp ** 2).sum(), 1e-9)
+    return {"rough": np.clip(rough / 0.8, 0, 1), "rich": rich}
+
+
 FIFTHS = {pc: (pc * 7) % 12 for pc in range(12)}
 
 
@@ -164,12 +196,16 @@ def analyse(name):
     # to white noise) at one.
     fr["grain"] = np.clip((np.log10(fr["flatness"]) + 2.0) / 1.5, 0, 1)
     fr["cover"] = np.interp(fr["t"], lt, [r[1] + r[2] for r in log])
+    fr.update(peaks_measures(x.mean(axis=1), rate, fr["t"]))
+    # Spread against the centroid: a narrow spectrum (a sine, a filtered
+    # pad) near nought, a wide one (a bright chord, noise) towards one.
+    fr["splay"] = np.clip(fr["spread"] / np.maximum(fr["centroid"], 1) - 0.2, 0, 1)
     return dict(name=name, meta=meta, frames=fr, events=events, length=meta["length"], split=split)
 
 
 def summary(a):
     fr = a["frames"]; live = fr["db"] > -50
-    return {k: round(float(np.median(fr[k][live])), 3) for k in ("db", "bright", "unrest", "flatness", "agitation", "grain")} | {
+    return {k: round(float(np.median(fr[k][live])), 3) for k in ("db", "bright", "unrest", "flatness", "agitation", "grain", "rough", "rich", "splay")} | {
         "notes": len(a["events"]), "spread_hz": round(float(np.median(fr["spread"][live])), 1)}
 
 

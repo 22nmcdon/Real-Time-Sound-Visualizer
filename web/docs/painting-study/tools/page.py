@@ -56,18 +56,46 @@ def swatches(key):
 
 def main():
     by = {(s["phrase"], s["style"]): s["src"] for s in R["stills"]}
-    PH = R["physical"]
-    for s_ in PH["stills"]: by[(s_["phrase"], "physical")] = s_["src"]
+    C = R["cycle2"]
+    LEAD = C["lead"]
+    COMP = {
+        "travel": ("Travel", "Each hand's brush travels, turned by each interval and bent by spectral change, hurried by agitation and lingering on held notes, drifting to its register's height, and steered back to where a recently played note was painted."),
+        "cycles": ("Cycles", "Travel, but where the sound is cyclic the gesture is: a hand holding notes without striking circles, and a repeated figure, steered hard back to its own marks, loops."),
+        "clusters": ("Clusters", "Time across, warped by how much is happening (a run takes room, a long hold little); pitch up; each gesture drawn in towards its own centre, so the phrase falls into clusters with air between."),
+    }
+    def grid(kind):
+        rows = []
+        for comp in ("travel", "cycles", "clusters"):
+            cells = "".join(fig(C[kind][comp][n]["src"] if kind == "physical" else C[kind][comp][n], f"<b>{PHRASE[n][0]}</b>") for n in ("pad", "crossed", "run", "chords"))
+            rows.append(f'<h3>{COMP[comp][0]}{" (the lead)" if comp == LEAD else ""}</h3><p class="measures">{COMP[comp][1]}</p><div class="four">{cells}</div>')
+        return "".join(rows)
+    pgrid, ggrid = grid("physical"), grid("gesture")
+    merged = []
+    for n in ("pad", "crossed", "run", "chords"):
+        L = C["physical"][LEAD][n]["landed"]; other = L["wet"] + L["dry"]
+        merged.append(f"<tr><td>{PHRASE[n][0]}</td><td>{100 * L['wet'] / other:.0f} per cent</td><td>{100 * L['dry'] / other:.0f} per cent</td></tr>" if other else f"<tr><td>{PHRASE[n][0]}</td><td colspan=2>none met other paint</td></tr>")
+    merged = "".join(merged)
+    def brushline(f):
+        stiff = max(0.0, min(1.0, (f["bright"] + 0.3) / 1.6))
+        return (f"brightness {f['bright']} (stiffness {stiff:.2f}), spread {f['splay']} (splay), richness {f['rich']} (load), "
+                f"roughness {f['rough']} (tremor), noise {f['grain']} (dry drag)")
+    details = "".join(fig(d["src"], f"<b>{PHRASE[d['phrase']][0]}</b> · {brushline(d['features'])}") for d in C["details"])
+    cbuilds = "".join(f'<figure><video controls preload="none" playsinline src="{e(b["src"])}"></video><figcaption><b>{PHRASE[b["phrase"]][0]}</b> · built up with its sound: the gloss is the paint still wet, and goes from thin paint first</figcaption></figure>' for b in C["builds"])
+    cpals = "".join(fig(p["src"], f"<b>Physical paint</b> · {e(PAL_NAME[p['palette']])} · Crossed hands, {COMP[LEAD][0]}") for p in C["palettes"])
+    cothers = "".join(fig(o["src"], f"<b>{STYLE[o['style']][0]}</b> · {PHRASE[o['phrase']][0]}") for o in C["others"] if o["style"] == "geometry")
+    cink = "".join(fig(o["src"], f"<b>{STYLE[o['style']][0]}</b> · {PHRASE[o['phrase']][0]}") for o in C["others"] if o["style"] == "ink")
+    costs = "".join(f"<tr><td>{k} × {k}</td><td>{v['brush_ms_per_frame']} ms</td><td>{v['render_ms_per_frame']} ms</td></tr>" for k, v in C["costs"].items())
+    audio = "".join(f'<figure><figcaption><b>{PHRASE[n][0]}</b></figcaption><audio controls preload="none" src="audio/{n}.mp3"></audio></figure>' for n in ("pad", "crossed", "run", "chords"))
     out = []
     for name in ("pad", "crossed", "run", "chords"):
         title, desc = PHRASE[name]
         ph = R["phrases"][name]
-        figs = "".join(fig(by[(name, st)], f"<b>{STYLE[st][0]}</b> · Layered, Accumulate, the house palette") for st in ("physical", "ink", "gesture", "geometry"))
+        figs = "".join(fig(by[(name, st)], f"<b>{STYLE[st][0]}</b> · Layered, Accumulate, the house palette") for st in ("ink", "gesture", "geometry"))
         out.append(f'''<section class="phrase" id="{name}">
 <p class="eyebrow">Phrase</p><h2>{title}</h2><p>{desc}</p>
 <audio controls preload="none" src="audio/{name}.mp3"></audio>
 <p class="measures">Measured: median level {ph["db"]:.1f} dB, brightness {ph["bright"]} octaves over the pitch, agitation {ph["agitation"]}, grain {ph["grain"]}; {ph["notes"]} notes.</p>
-<div class="four">{figs}</div></section>''')
+<div class="three">{figs}</div></section>''')
     phr = "\n".join(out)
     scroll = "".join(fig(s["src"], f"<b>{STYLE[s['style']][0]}</b> · Scroll: Crossed hands left to right, pitch up", "wide") for s in R["scroll"])
     pals = "".join(swatches(k) for k in ("brand", "earth", "night"))
@@ -82,23 +110,11 @@ def main():
 <p class="measures">Harmonic centroid of the table: {s["held_centroid"]} finished; {s["fade_centroid_median"]} median while {"painting" if s["style"] == "physical" else "fading"} (10th to 90th percentile {s["fade_centroid_range"][0]} to {s["fade_centroid_range"][1]}); {s["dark_frames"]} of {s["frames"]} frames too dark to read.</p></div>'''
                    for s in R["scan"])
     styles = "".join(f"<li><b>{v[0]}.</b> {v[1]}</li>" for v in STYLE.values())
-    pblocks = []
-    for st in PH["stills"]:
-        L = st["landed"]; other = L["wet"] + L["dry"]
-        share = f"{100 * L['wet'] / other:.0f} per cent" if other else "none"
-        pblocks.append(f'''<div class="pair"><h3>{PHRASE[st["phrase"]][0]}</h3>
-<audio controls preload="none" src="audio/{st["phrase"]}.mp3"></audio>
-<div class="two">{fig(st["src"], "The whole painting")}{fig(st["detail"], "A detail at full resolution: one pixel of the painting to one of the image")}</div>
-<p class="measures">Of the paint that landed on other paint, {share} went into paint still wet (merging) and the rest onto paint already dry (layering).</p></div>''')
-    pblocks = "".join(pblocks)
-    pbuilds = "".join(f'<figure><video controls preload="none" playsinline src="{e(b["src"])}"></video><figcaption><b>{PHRASE[b["phrase"]][0]}</b> · built up in time with its sound</figcaption></figure>' for b in PH["builds"])
-    ppals = "".join(fig(p["src"], f"<b>Physical paint</b> · {e(PAL_NAME[p['palette']])} · Crossed hands") for p in PH["palettes"])
-    costs = "".join(f"<tr><td>{k} × {k}</td><td>{v['brush_ms_per_frame']} ms</td><td>{v['render_ms_per_frame']} ms</td></tr>" for k, v in PH["costs"].items())
     chk = R["checks"]
     page = f'''<!doctype html>
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Painting the sound</title>
-<meta name="description" content="A visual study: four phrases rendered by the instrument's own core and painted in three styles, two layouts, two memories and three palettes.">
+<meta name="description" content="A visual study, in two cycles: four phrases rendered by the instrument's own core and painted as simulated oil paint and in three other styles, in compositions the sound steers.">
 <style>
 :root {{
   --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
@@ -115,7 +131,8 @@ main {{ max-width: 1180px; margin: 0 auto; padding: 32px 16px 80px; }}
 h1, h2, h3 {{ font-family: var(--serif); font-weight: 600; color: var(--charcoal); line-height: 1.2; }}
 h1 {{ font-size: clamp(32px, 6vw, 52px); margin: 4px 0 8px; }}
 h2 {{ font-size: clamp(24px, 4vw, 32px); margin: 4px 0 8px; }}
-h3 {{ font-size: 19px; margin: 0 0 6px; }}
+h3 {{ font-size: 19px; margin: 24px 0 6px; }}
+h2.sub {{ margin-top: 36px; }}
 .lede {{ font-family: var(--script); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--text); max-width: 46em; }}
 .eyebrow {{ font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--blush-deep); font-weight: 500; margin: 0; }}
 p {{ max-width: 46em; }}
@@ -153,19 +170,43 @@ th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spa
 <body><main>
 <p class="eyebrow">A study, 12 November</p>
 <h1>Painting the sound</h1>
-<p class="lede">Four phrases played through the instrument's own core, and each painted - first as oil paint on canvas, then in three other languages - from what the sound contains: a wash where a note is held, a stroke where a melody moves, spatter where a key is struck hard, grain where the sound is noisy, and harmony as which ink.</p>
+<p class="lede">Four phrases played through the instrument's own core, and each painted - as oil paint on canvas, and in three other languages - from what the sound contains: a wash where a note is held, a stroke where a melody moves, spatter where a key is struck hard, grain where the sound is noisy, and harmony as which ink.</p>
 <p>Nothing in the instrument was changed to make this. The write-up, with what was found and the questions for the owner, is <a href="../painting-the-sound.md"><code>painting-the-sound.md</code></a>; the scripts that made every file here are in <code>tools/</code>, and run again to the same pictures.</p>
 
-<section id="physical"><p class="eyebrow">The owner's first ask</p><h2>Physical paint</h2>
-<p>{STYLE["physical"][1]} Paint's wetness falls to 1/e in 1.2 seconds, so the playing's timing decides whether a stroke merges or layers: a run returning to its notes a moment later paints into its own wet paint; a note after a pause paints over dry paint. For that to happen, a note played again has to land where it was, so physical paint's Layered puts each note round the canvas by its pitch class, a turn an octave, and lets time turn the whole only slowly (once a minute).</p>
-{pblocks}
-<h3>Built up in time</h3><p>Press play for the sound; watch wet strokes glisten and lose their shine as they dry, and later strokes drag earlier ones.</p>
-<div class="three">{pbuilds}</div>
-<h3>In the other palettes, and in Scroll</h3>
-<div class="two">{ppals}</div>
-{fig(PH["scroll"]["src"], "<b>Physical paint</b> · Scroll: Crossed hands left to right, pitch up", "wide")}
-<h3>What it costs</h3><p>Measured on this machine, one core, Crossed hands painted at 20 frames a second: the brushwork for each frame's twentieth of a second, and lighting and mixing the whole canvas once.</p>
+<section id="cycle2"><p class="eyebrow">Second cycle, after the owner's look</p><h2>Where the sound puts the paint</h2>
+<p>The first cycle put every painting on rings, so every painting looked alike. Here are three compositions in which the sound decides where marks go - nothing placed at random beyond a brush's own small variation - on all four phrases, side by side. Physical paint first, then gestural, the style that already looked most like art. Listen to the four phrases:</p>
+<div class="four">{audio}</div>
+<h2 class="sub">Physical paint</h2>
+{pgrid}
+<h2 class="sub">Gestural</h2>
+{ggrid}
+</section>
+
+<section id="brush"><p class="eyebrow">Physical paint</p><h2>The sound guides the brush</h2>
+<p>Each stroke's brush is set by the spectrum as it goes: <b>brightness</b> makes the bristles stiff - streakier, harder-edged, ploughing more and blending less - and a dark sound soft; <b>spectral spread</b> splays them wider, with gaps; <b>harmonic richness</b> loads the brush; <b>noise</b> drags it dry, catching only on the weave; <b>roughness</b> (partials beating) shakes the line; the <b>attack</b> shapes the start, tapering in over a slow attack and pressing in square on a sharp one; <b>spectral change</b> bends the path (in the composition). Each stroke adds its own small seeded variation. Details at full resolution, one pixel to one, each captioned with its phrase's median measures:</p>
+<div class="two">{details}</div>
+<p>Also fixed: the thin hard lines that shot out of a stroke's end (a lifting brush's bristles were squeezed into the narrowing contact; now they keep their places and the end feathers), and the boxy patches and ribbing (paint was shoved from the whole footprint to one spot every step; now the leading edge ploughs it into a spread bank).</p>
+</section>
+
+<section id="drying"><p class="eyebrow">Physical paint</p><h2>Drying</h2>
+<p>Slower, and by thickness: paint's wetness falls to 1/e in 1.5 × (1 + 3 × thickness) seconds - about 1.5 s for a scumble, 3.5 s for an ordinary stroke and 6 s or more for a heavy, hard-struck one, where the first cycle dried everything in 1.2 s. So a scumble dries first and a loaded stroke stays wet to be dragged. In the videos the gloss is the wet paint. Where the paint landed on other paint in {COMP[LEAD][0]}:</p>
+<div class="table-wrap"><table><tr><th>Phrase</th><th>Into wet paint (merging)</th><th>Onto dry paint (layering)</th></tr>{merged}</table></div>
+<div class="two">{cbuilds}</div>
+<h3>What it costs</h3><p>Measured on one core of this machine, Crossed hands in {COMP[LEAD][0]} at 20 frames a second: the brushwork for each frame's twentieth of a second, and lighting and mixing the whole canvas once. Drying by thickness costs one multiply per pixel; it does not show in these numbers.</p>
 <div class="table-wrap"><table><tr><th>Canvas</th><th>Brushwork per frame</th><th>Render per frame</th></tr>{costs}</table></div>
+</section>
+
+<section id="others"><p class="eyebrow">Carried along</p><h2>The other styles in {COMP[LEAD][0]}</h2>
+<p>Physical paint in the two proposed palettes:</p>
+<div class="two">{cpals}</div>
+<p>Geometric, whose pieces all looked alike on rings:</p>
+<div class="four">{cothers}</div>
+<p>Ink and wash:</p>
+<div class="four">{cink}</div>
+</section>
+
+<section id="cycle1"><p class="eyebrow">First cycle</p><h2>As first shown</h2>
+<p>The first cycle's paintings in the other three styles, on the Layered layout that put time round the canvas, kept for comparison. Physical paint's first layout is superseded above.</p>
 </section>
 
 <section id="read"><p class="eyebrow">How to read them</p><h2>The mapping</h2>

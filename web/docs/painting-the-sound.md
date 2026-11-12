@@ -143,6 +143,9 @@ hear.
 
 ### Physical paint, the owner's first ask
 
+*The first cycle, as first shown. The second cycle (below) replaced its layout, its drying
+and its brush; what follows is kept as the record of what was tried.*
+
 Asked for mid-study (12 Nov), and the owner's priority: a style that looks and feels like
 an actual painting - *"a paintbrush stroke that has its depth and nuance, and how other
 strokes hitting the same one will affect it differently by merging and the texture
@@ -241,6 +244,149 @@ the bit under all three palettes, as the ink density is for the other styles. Re
 Scan, Crossed hands gives a table of harmonic centroid 2.13 finished and 2.07 to 2.28
 while being painted. That is steadier than the other styles, because paint does not fade
 and a stroke's body is solid.
+
+### The second cycle (12 Nov, after the owner's look)
+
+The owner called the first cycle "a really, really strong start" and asked for six things:
+
+1. A freer composition, with the sound deciding where marks go.
+2. Strokes that vary with the sound.
+3. No thin lines at a stroke's end.
+4. Slower drying, thin paint before thick.
+5. The boxy patches and ribbing fixed.
+6. Gestural carried along, and a verdict on geometric.
+
+All in the same page, `painting-study/index.html`, which now opens with this cycle;
+`tools/study.py cycle2` remakes it.
+
+**Three compositions, every phrase in each, side by side** (`Composed` in
+`tools/paint.py`). In all three the sound decides where marks go; the only randomness is a
+brush's own small variation. Each is fitted to the canvas with one scale, so the phrase's
+own extent sets the balance. Notes struck together sit beside their hand's leading note
+across the brush's direction, so a chord is a band of parallel strokes.
+
+- **Travel.** Each hand's brush travels:
+  - each strike turns it by the interval from the hand's last note (up one way, down the
+    other, a leap further than a step);
+  - how fast the spectrum is changing bends it, brighter one way, darker the other;
+  - agitation and level hurry it, so it lingers on a held chord;
+  - it drifts towards its register's height;
+  - a note struck again within three seconds steers it back to where that note was
+    painted.
+
+  The pad is one broad straight band, since it has no contour and nothing returns.
+  Crossed hands is a wandering right-hand line beside a short left-hand band. The run is
+  a meander. The chords are a slightly kinked band.
+- **Cycles.** Travel, with a circular gesture only where the sound is cyclic: a hand
+  holding without striking circles, and a repeated figure, steered hard back to its own
+  marks, loops. The pad coils into one ring whose colour shifts through the chord's inks
+  as they mix wet. The four held chords make four arcs of a ring. Crossed hands' run loops
+  beside the left hand's circling chord. The run's three passes loop over each other.
+- **Clusters.** Time across, warped by how much is happening, pitch up, and each gesture
+  (strikes without a pause over 0.35 s) drawn in towards its centre. The pad is five
+  horizontal bars, one a note. Crossed hands is two zigzags over the left hand's bands.
+  The run is three peaks. The chords are a grid of short strokes. It reads most like a
+  score and least like a painting.
+
+**The judgement: Cycles makes the strongest paintings.** Each phrase comes out as its own
+picture, a ring appears only where something is held or repeated, and the brush crosses
+its own wet paint where the playing returns. Travel is the next strongest, best on the run
+and weakest on the pad. Clusters is the most legible and the least painterly. The rest of
+the cycle is shown in Cycles.
+
+**The sound guides the brush** (`tools/physical.py`, `tools/oilpaint.cpp`; the features in
+`tools/features.py`). Set along each stroke from the spectrum at that moment:
+
+| The sound | Measured as | The brush |
+|---|---|---|
+| Brightness | Spectral centroid against the sounding pitch, in octaves; stiffness = (brightness + 0.3) / 1.6 | Stiff bristles: streakier (the least-loaded groups starve first), a harder edge, ploughing wet paint more and blending it less. Dark is soft and blending |
+| Spectral spread | Spread against the centroid, less 0.2 | Splay: the contact up to 40 per cent wider, with gaps between bristle groups |
+| Harmonic richness | Partials within 30 dB of the strongest, a twentieth each | Load: each dip scaled from 0.6 to 1.4 times |
+| Noisiness | Spectral flatness, log scale | A dry drag: catches only on the weave and dried ridges, whatever the load |
+| Roughness | Sethares's form of Plomp and Levelt's dissonance curve over every pair of the spectrum's peaks, on a 170 ms window | Tremor: the line shaken 1.5 to 15 pixels across, about six times a second, without turning the brush |
+| The attack | The core's envelope rise time, and velocity | A slow attack tapers the stroke in over its rise; a sharp hard one lands at full width and presses heavier for 60 ms |
+| Spectral change | Frame-to-frame change of the power spectrum's shape | Bends the path (in the composition) |
+
+Each stroke also has its own seeded variation: its bristles' loads, a slow breathing of
+its width (8 per cent) and small offsets to stiffness and splay. The same performance
+paints the same picture. The detail crops on the page differ visibly by sound:
+
+| Phrase | Brightness | Spread | Richness | Roughness | What the brush does |
+|---|---|---|---|---|---|
+| Fast run | 1.18 | 0.41 | 1.0 | 0.33 | Stiff, streaky, hard-edged |
+| Pad | 0.36 | 0.45 | 0.8 | 0.26 | Softer, blending |
+| Chord change | -0.05 | 0.41 | 0.65 | 0.33 | Soft, with the weave showing where it drags |
+
+**The thin lines at a stroke's end.** As the level fell, the brush's contact narrowed, and
+its 32 bristle groups were mapped across whatever the current contact was. Every streak was
+squeezed towards the centre line and ran on past the end as thin hard lines. Now a group's
+place is fixed on the brush, and fewer of them touch as it lifts. Below half pressure only
+some bristle tips touch, scattered, and each lays less, so the end feathers. It was found
+on a synthetic stroke that fades out, which drew the lines before the fix and feathers
+after it.
+
+**The boxy patches and ribbing.** The causes:
+
+- Paint was shoved from the whole footprint to one pixel past the flank on every step;
+  now it is shoved only by the leading half, into a spread of three places.
+- A slow brush ploughed its own paint from a moment before into bow waves. "Its own"
+  now means anything it laid in the last 1.5 s.
+- A tremor that turned the brush laid a slow stroke in scales. The heading now comes
+  from the path smoothed over a brush width, so a tremor moves the brush without
+  turning it.
+- The brush's tip stopped at half strength, so every step printed a rung. It now fades
+  to nothing.
+
+What ladder remains at a thin stroke's edge is the canvas weave showing through, which is
+meant.
+
+**Drying.** Wetness falls to 1/e in 1.5 × (1 + 3 × thickness) seconds: about 1.5 s for a
+scumble, 3.5 s for an ordinary stroke, 6 s or more for a heavy, hard-struck one (the first
+cycle: 1.2 s for everything). A scumble dries first and a loaded stroke stays wet to be
+dragged, and in the build-up videos the gloss goes from thin paint first. It costs one
+multiply per pixel where wetness is read.
+
+With the slower drying, nearly everything that meets other paint meets it wet. In Cycles,
+Crossed hands put 94 per cent of the paint that landed on other paint into wet paint and
+6 per cent onto dry, the chords 99 per cent wet, and the pad all of it. The other side of
+"a phrase after a pause layers" is rarer than in the first cycle, because paint now stays
+wet for most of these short phrases. A longer piece, or a pause of five seconds or more,
+would layer.
+
+**Cost per frame** (one core, Crossed hands in Cycles, 20 frames a second):
+
+| Canvas | Brushwork per frame | Render per frame |
+|---|---|---|
+| 512 × 512 | 0.5 ms (cycle 1: 0.8) | 30 ms (cycle 1: 28) |
+| 1000 × 1000 | 1.7 ms (2.5) | 116 ms (103) |
+| 1600 × 1600 | 4.7 ms (6.7) | 308 ms (267) |
+
+The brushwork is cheaper: the phrase's strokes are shorter in this composition, despite
+three more qualities per step. The render is about 12 per cent dearer, from the
+thickness-dependent wetness in the gloss. It is still the part to move to a fragment
+shader.
+
+**Gestural** carried through all three compositions and stays the most immediately
+art-like of the styles. Its flung skeins and spatter suit Travel and Cycles especially:
+Crossed hands and the run in Cycles are its best pieces yet. Its drips can run long past
+a fitted composition's edge.
+
+**Geometric** no longer looks alike piece to piece in Cycles: the run is a constellation
+of circles strung on its loops, and the chords are four separate constructions. But its
+marks sit at each note's onset while the fit is made over the whole orbit, so the held
+pad's circles crowd into one corner. The composition fixes the sameness; the style still
+needs its own placement for held notes.
+
+**Ink and wash** in Cycles keeps its quality: the pad as a soft coiled ring, the run as a
+calligraphic loop.
+
+**Questions for the owner, this cycle.**
+
+1. Cycles, Travel or Clusters, or a different one for different music?
+2. Is the brush's variety enough, or should the mapping be stronger? It is deliberately
+   moderate, so that one performance's strokes still read as one painter's.
+3. Is drying now right? At these speeds most merging is wet; is that what you want, or
+   should a phrase after a short pause layer more?
 
 ### What was played
 

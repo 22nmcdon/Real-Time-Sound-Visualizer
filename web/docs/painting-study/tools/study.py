@@ -1,14 +1,19 @@
 """Make everything the study page shows, from the rendered phrases.
 
     python3 phrases.py     # first: the four phrases through the core (45 s)
-    python3 study.py       # then: paintings, fades, Scan's read, results.json (a few minutes)
+    python3 study.py       # then: paintings, fades, Scan's read, results.json (about ten minutes)
+    python3 study.py cycle2   # or only the second cycle's
     python3 page.py        # and the page
 
-What is rendered (not every combination - the brief asks for these):
-  - physical paint first, the owner's priority (12 Nov): every phrase, with
-    a detail crop at full resolution; Crossed hands in Earth, Night and
-    Scroll; build-up animations for Crossed hands, the run and the chords;
-    its cost per frame at three canvas sizes;
+What is rendered (not every combination):
+  Cycle 2 (`cycle2`), after the owner's feedback:
+  - physical paint and gestural in each of three compositions the sound
+    steers (travel, cycles, clusters) on every phrase (24);
+  - in the lead composition: a full-resolution detail of each phrase's
+    physical painting; ink and wash and geometric on every phrase (8);
+    physical paint in Earth and Night; build-ups of Crossed hands and the
+    run; Scan's read; the cost per frame at three canvas sizes.
+  Cycle 1 (`cycle1`), as the owner first saw it:
   - every phrase in every other style, Layered and Accumulate, in the house palette (12);
   - each style once in Earth and once in Night, on Crossed hands, the one
     phrase with two hands and so all six inks (6);
@@ -39,9 +44,11 @@ PERSISTENCE = 4.0      # seconds for a mark to fade to a tenth, in Fade
 FPS, ANIM_PX = 20, 600
 SOFT = 3.0             # Scan's Softness, cells: the page's default
 SCAN_NOTE, SCAN_DEPTH = 220.0, 0.6
-PHYS = 1600                                  # physical paint's canvas, square
-PHYS_BUILDS = ("crossed", "run", "chords")    # its build-up animations
-PHYS_ANIM = 1000                              # simulated at this size for the animations, shown at 720
+PHYS_ANIM = 1000      # physical paint simulated at this size for the animations, shown at 720
+COMPOSITIONS = ("travel", "cycles", "clusters")
+LEAD = "cycles"       # the composition the rest of cycle 2 is shown in (the study's choice; see the write-up)
+C2 = 1400             # cycle 2's canvas, square
+for _c in COMPOSITIONS: SIZE[_c] = (C2, C2)
 
 _cache = {}
 
@@ -148,17 +155,9 @@ def physical_still(name, layout, pal, w, h):
     out = {}
     cost = physical.run(a, layout, w, h, palettes.PALETTES[pal], [a["length"] + 0.5],
                         lambda rgb, cov: out.update(rgb=rgb.copy(), cov=cov.copy()))
-    tag = f"{name}-physical-{'layered' if layout == 'wheel' else layout}-{pal}"
-    path = os.path.join(IMG, tag + ".jpg")
-    Image.fromarray(out["rgb"]).save(path, quality=86, optimize=True, progressive=True)
-    rel = os.path.relpath(path, STUDY)
-    crop = None
-    if layout == "wheel" and pal == "brand":
-        box = detail_box(out["rgb"])
-        cpath = os.path.join(IMG, tag + "-detail.jpg")
-        Image.fromarray(out["rgb"]).crop(box).save(cpath, quality=90, optimize=True)
-        crop = os.path.relpath(cpath, STUDY)
-    return out, rel, crop, cost
+    path = os.path.join(IMG, f"{name}-physical-{layout}-{pal}.jpg")
+    Image.fromarray(out["rgb"]).save(path, quality=84, optimize=True, progressive=True)
+    return out, os.path.relpath(path, STUDY), cost
 
 
 def parse_cost(line):
@@ -169,72 +168,97 @@ def parse_cost(line):
                 wet=float(p[k + 2]), dry=float(p[k + 4]), bare=float(p[k + 6]))
 
 
-def build_up(name):
+def build_up(name, layout):
     """The physical painting made in time with its sound, at 20 frames a
     second, simulated at PHYS_ANIM and shown at 720; and the brushwork's
     and the rendering's cost per frame."""
     a = analysis(name)
     n = int(a["length"] * FPS)
     times = [(f + 1) / FPS for f in range(n)]
-    path = os.path.join(ANIM, f"{name}-physical-build.webm")
+    path = os.path.join(ANIM, f"{name}-physical-{layout}-build.webm")
     ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{PHYS_ANIM}x{PHYS_ANIM}",
                            "-r", str(FPS), "-i", "-", "-i", os.path.join(AUDIO, name + ".mp3"), "-vf", "scale=720:720:flags=area",
                            "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "33", "-row-mt", "1", "-deadline", "good", "-cpu-used", "4",
                            "-c:a", "libopus", "-b:a", "48k", "-shortest", path], stdin=subprocess.PIPE)
     grids = []
-    cost = physical.run(a, "wheel", PHYS_ANIM, PHYS_ANIM, palettes.PALETTES["brand"], times,
+    cost = physical.run(a, layout, PHYS_ANIM, PHYS_ANIM, palettes.PALETTES["brand"], times,
                         lambda rgb, cov: (ff.stdin.write(rgb.tobytes()), grids.append(grid64(cov))))
     ff.stdin.close(); ff.wait()
     return os.path.relpath(path, STUDY), parse_cost(cost), grids
 
 
-def main():
-    for d in (IMG, ANIM): os.makedirs(d, exist_ok=True)
-    results = {"stills": [], "palettes": [], "scroll": [], "fades": [], "scan": [], "checks": {}, "physical": {}}
-    t0 = time.time()
+def cycle2(results, t0):
+    """The second cycle (12 Nov, after the owner saw the first): physical
+    paint and gestural in three compositions the sound steers, on every
+    phrase; physical paint's brush set by the spectrum and drying by
+    thickness; ink and wash and geometric in the lead composition."""
+    for d in (IMG, ANIM, AUDIO):
+        for f in os.listdir(d):
+            if "-physical-" in f or f.startswith("scan-physical"): os.remove(os.path.join(d, f))
     physical.build()
-    # Physical paint first: the owner's priority (12 Nov).
-    phys = results["physical"]
-    phys["stills"], phys["palettes"], phys["builds"], phys["costs"] = [], [], [], {}
+    c2 = results["cycle2"] = {"physical": {}, "gesture": {}, "others": [], "details": [], "palettes": [], "builds": [], "costs": {},
+                              "lead": LEAD}
     pdens = {}
-    for name in PHRASES:
-        out, rel, crop, cost = physical_still(name, "wheel", "brand", PHYS, PHYS)
-        phys["stills"].append(dict(phrase=name, src=rel, detail=crop, landed=parse_cost(cost)))
-        if name == "crossed": pdens["brand"] = out["cov"]
-        print("physical", name, round(time.time() - t0))
+    for comp in COMPOSITIONS:
+        for name in PHRASES:
+            out, rel, cost = physical_still(name, comp, "brand", C2, C2)
+            c2["physical"].setdefault(comp, {})[name] = dict(src=rel, landed=parse_cost(cost))
+            if comp == LEAD:
+                box = detail_box(out["rgb"])
+                cpath = os.path.join(IMG, f"{name}-physical-{comp}-detail.jpg")
+                Image.fromarray(out["rgb"]).crop(box).save(cpath, quality=90, optimize=True)
+                summ = features.summary(analysis(name))
+                c2["details"].append(dict(phrase=name, src=os.path.relpath(cpath, STUDY),
+                                          features={k: summ[k] for k in ("bright", "splay", "rich", "rough", "grain")}))
+                if name == "crossed": pdens["brand"] = out["cov"]
+            _, grel = still(name, "gesture", comp, "brand")
+            c2["gesture"].setdefault(comp, {})[name] = grel
+            print("cycle 2", comp, name, round(time.time() - t0))
+    for style in ("ink", "geometry"):
+        for name in PHRASES:
+            _, rel = still(name, style, LEAD, "brand")
+            c2["others"].append(dict(phrase=name, style=style, src=rel))
     for pal in ("earth", "night"):
-        out, rel, _, _ = physical_still("crossed", "wheel", pal, PHYS, PHYS)
-        phys["palettes"].append(dict(phrase="crossed", palette=pal, src=rel))
+        out, rel, _ = physical_still("crossed", LEAD, pal, C2, C2)
+        c2["palettes"].append(dict(phrase="crossed", palette=pal, src=rel))
         pdens[pal] = out["cov"]
-    results["checks"]["physical_coverage_palette_max_difference"] = float(max(np.abs(pdens[p] - pdens["brand"]).max() for p in ("earth", "night")))
-    assert results["checks"]["physical_coverage_palette_max_difference"] == 0.0, "the palette changed physical paint's coverage"
-    _, rel, _, _ = physical_still("crossed", "scroll", "brand", 2400, 900)
-    phys["scroll"] = dict(phrase="crossed", src=rel)
-    for name in PHYS_BUILDS:
-        rel, cost, grids = build_up(name)
-        phys["builds"].append(dict(phrase=name, src=rel, cost=cost))
-        print("physical build", name, round(time.time() - t0))
+    diff = float(max(np.abs(pdens[p] - pdens["brand"]).max() for p in ("earth", "night")))
+    results["checks"]["physical_coverage_palette_max_difference"] = diff
+    assert diff == 0.0, "the palette changed physical paint's coverage"
+    for name in ("crossed", "run"):
+        rel, cost, grids = build_up(name, LEAD)
+        c2["builds"].append(dict(phrase=name, src=rel, cost=cost))
+        print("cycle 2 build", name, round(time.time() - t0))
         if name == "crossed":
             ok, _, tabs = scan_tables(grids)
             fpath = os.path.join(AUDIO, "scan-physical-build.mp3"); mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
             ok2, _, tabs2 = scan_tables([grid64(pdens["brand"])])
             hpath = os.path.join(AUDIO, "scan-physical-held.mp3"); mp3(play(tabs2, ok2, 1, 4.0), hpath)
             hc = [harmonic_centroid(t) for t, k in zip(tabs, ok) if k]
-            results["scan"].append(dict(style="physical", held=os.path.relpath(hpath, STUDY), fade=os.path.relpath(fpath, STUDY),
-                                        held_centroid=round(harmonic_centroid(tabs2[0]), 2),
-                                        fade_centroid_median=round(float(np.median(hc)), 2),
-                                        fade_centroid_range=[round(float(np.percentile(hc, 10)), 2), round(float(np.percentile(hc, 90)), 2)],
-                                        dark_frames=int((~ok).sum()), frames=len(ok)))
+            results["scan"] = [x for x in results.get("scan", []) if x["style"] != "physical"]
+            results["scan"].insert(0, dict(style="physical", held=os.path.relpath(hpath, STUDY), fade=os.path.relpath(fpath, STUDY),
+                                           held_centroid=round(harmonic_centroid(tabs2[0]), 2),
+                                           fade_centroid_median=round(float(np.median(hc)), 2),
+                                           fade_centroid_range=[round(float(np.percentile(hc, 10)), 2), round(float(np.percentile(hc, 90)), 2)],
+                                           dark_frames=int((~ok).sum()), frames=len(ok)))
     # What a frame costs at the sizes a live version might run: Crossed hands,
-    # the busiest phrase, rendered every frame at 20 a second.
+    # the busiest phrase, painted and rendered every frame at 20 a second.
     for size in (512, 1000, 1600):
         a = analysis("crossed")
         times = [(f + 1) / FPS for f in range(int(a["length"] * FPS))]
-        c = parse_cost(physical.run(a, "wheel", size, size, palettes.PALETTES["brand"], times, lambda rgb, cov: None))
-        phys["costs"][str(size)] = dict(brush_ms_per_frame=round(1000 * c["brush_s"] / c["frames"], 2),
-                                        render_ms_per_frame=round(1000 * c["render_s"] / c["frames"], 2),
-                                        steps=c["steps"], frames=c["frames"])
-        print("cost", size, phys["costs"][str(size)])
+        c = parse_cost(physical.run(a, LEAD, size, size, palettes.PALETTES["brand"], times, lambda rgb, cov: None))
+        c2["costs"][str(size)] = dict(brush_ms_per_frame=round(1000 * c["brush_s"] / c["frames"], 2),
+                                      render_ms_per_frame=round(1000 * c["render_s"] / c["frames"], 2),
+                                      steps=c["steps"], frames=c["frames"])
+        print("cost", size, c2["costs"][str(size)])
+
+
+def cycle1(results, t0):
+    """The first cycle's other styles, as the owner saw them: Layered (time
+    round the canvas), palettes, Scroll, Fade and Scan's read. Physical
+    paint's first-cycle layout is superseded by cycle 2 and not re-made."""
+    for k in ("stills", "palettes", "scroll", "fades"): results[k] = []
+    results["scan"] = [x for x in results.get("scan", []) if x["style"] == "physical"]
     finals = {}
     for name in PHRASES:
         for style in STYLES:
@@ -293,13 +317,23 @@ def main():
                                         fade_centroid_median=round(float(np.median(hc)), 2) if hc else None,
                                         fade_centroid_range=[round(float(np.percentile(hc, 10)), 2), round(float(np.percentile(hc, 90)), 2)] if hc else None,
                                         dark_frames=int((~ok).sum()), frames=len(ok)))
+
+
+def main(parts):
+    for d in (IMG, ANIM): os.makedirs(d, exist_ok=True)
+    path = os.path.join(STUDY, "results.json")
+    results = json.load(open(path)) if os.path.exists(path) else {}
+    results.setdefault("checks", {}); results.pop("physical", None)
+    t0 = time.time()
+    if "cycle2" in parts: cycle2(results, t0)
+    if "cycle1" in parts: cycle1(results, t0)
     # The features each phrase measured, for the page and the write-up.
     results["phrases"] = {n: features.summary(analysis(n)) | {"preset": analysis(n)["meta"]["preset"],
                                                               "length": analysis(n)["length"]} for n in PHRASES}
     results["palette_measures"] = palettes.report()
-    json.dump(results, open(os.path.join(STUDY, "results.json"), "w"), indent=1)
+    json.dump(results, open(path, "w"), indent=1)
     print("done", round(time.time() - t0), "s")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:] or ["cycle2", "cycle1"])

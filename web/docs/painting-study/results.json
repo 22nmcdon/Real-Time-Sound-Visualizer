@@ -153,11 +153,11 @@
    "style": "physical",
    "held": "audio/scan-physical-held.mp3",
    "fade": "audio/scan-physical-build.mp3",
-   "held_centroid": 2.13,
-   "fade_centroid_median": 2.09,
+   "held_centroid": 2.26,
+   "fade_centroid_median": 2.28,
    "fade_centroid_range": [
-    2.07,
-    2.28
+    1.61,
+    2.39
    ],
    "dark_frames": 6,
    "frames": 310
@@ -207,143 +207,6 @@
   "density_palette_max_difference": 0.0,
   "lightness_palette_max_difference_null": 0.352
  },
- "physical": {
-  "stills": [
-   {
-    "phrase": "pad",
-    "src": "img/pad-physical-layered-brand.jpg",
-    "detail": "img/pad-physical-layered-brand-detail.jpg",
-    "landed": {
-     "steps": 607,
-     "brush_s": 0.394,
-     "frames": 1,
-     "render_s": 0.256,
-     "wet": 231141.7,
-     "dry": 75.0,
-     "bare": 113112.8
-    }
-   },
-   {
-    "phrase": "crossed",
-    "src": "img/crossed-physical-layered-brand.jpg",
-    "detail": "img/crossed-physical-layered-brand-detail.jpg",
-    "landed": {
-     "steps": 5788,
-     "brush_s": 1.746,
-     "frames": 1,
-     "render_s": 0.271,
-     "wet": 1917949.4,
-     "dry": 198732.6,
-     "bare": 667900.6
-    }
-   },
-   {
-    "phrase": "run",
-    "src": "img/run-physical-layered-brand.jpg",
-    "detail": "img/run-physical-layered-brand-detail.jpg",
-    "landed": {
-     "steps": 4338,
-     "brush_s": 1.614,
-     "frames": 1,
-     "render_s": 0.258,
-     "wet": 2214769.6,
-     "dry": 27603.0,
-     "bare": 659779.1
-    }
-   },
-   {
-    "phrase": "chords",
-    "src": "img/chords-physical-layered-brand.jpg",
-    "detail": "img/chords-physical-layered-brand-detail.jpg",
-    "landed": {
-     "steps": 858,
-     "brush_s": 0.476,
-     "frames": 1,
-     "render_s": 0.299,
-     "wet": 234268.7,
-     "dry": 31285.6,
-     "bare": 97185.3
-    }
-   }
-  ],
-  "palettes": [
-   {
-    "phrase": "crossed",
-    "palette": "earth",
-    "src": "img/crossed-physical-layered-earth.jpg"
-   },
-   {
-    "phrase": "crossed",
-    "palette": "night",
-    "src": "img/crossed-physical-layered-night.jpg"
-   }
-  ],
-  "builds": [
-   {
-    "phrase": "crossed",
-    "src": "anim/crossed-physical-build.webm",
-    "cost": {
-     "steps": 5428,
-     "brush_s": 0.711,
-     "frames": 310,
-     "render_s": 31.337,
-     "wet": 735772.3,
-     "dry": 73106.2,
-     "bare": 233611.0
-    }
-   },
-   {
-    "phrase": "run",
-    "src": "anim/run-physical-build.webm",
-    "cost": {
-     "steps": 3907,
-     "brush_s": 0.594,
-     "frames": 143,
-     "render_s": 14.212,
-     "wet": 839788.0,
-     "dry": 12040.0,
-     "bare": 263956.2
-    }
-   },
-   {
-    "phrase": "chords",
-    "src": "anim/chords-physical-build.webm",
-    "cost": {
-     "steps": 703,
-     "brush_s": 0.217,
-     "frames": 232,
-     "render_s": 23.617,
-     "wet": 75997.7,
-     "dry": 10683.8,
-     "bare": 32247.8
-    }
-   }
-  ],
-  "costs": {
-   "512": {
-    "brush_ms_per_frame": 0.77,
-    "render_ms_per_frame": 27.55,
-    "steps": 5443,
-    "frames": 310
-   },
-   "1000": {
-    "brush_ms_per_frame": 2.45,
-    "render_ms_per_frame": 103.26,
-    "steps": 5428,
-    "frames": 310
-   },
-   "1600": {
-    "brush_ms_per_frame": 6.71,
-    "render_ms_per_frame": 266.83,
-    "steps": 5788,
-    "frames": 310
-   }
-  },
-  "scroll": {
-   "phrase": "crossed",
-   "src": "img/crossed-physical-scroll-brand.jpg"
-  }
- },
  "phrases": {
   "pad": {
    "db": -14.586,
@@ -352,6 +215,9 @@
    "flatness": 0.013,
    "agitation": 0.066,
    "grain": 0.069,
+   "rough": 0.263,
+   "rich": 0.8,
+   "splay": 0.453,
    "notes": 5,
    "spread_hz": 220.5,
    "preset": "Slow pad",
@@ -364,6 +230,9 @@
    "flatness": 0.014,
    "agitation": 0.235,
    "grain": 0.101,
+   "rough": 0.168,
+   "rich": 0.55,
+   "splay": 0.519,
    "notes": 46,
    "spread_hz": 132.6,
    "preset": "Crossed hands (the owner's)",
@@ -376,6 +245,9 @@
    "flatness": 0.009,
    "agitation": 0.857,
    "grain": 0.0,
+   "rough": 0.326,
+   "rich": 1.0,
+   "splay": 0.407,
    "notes": 43,
    "spread_hz": 476.6,
    "preset": "Tine piano",
@@ -388,6 +260,9 @@
    "flatness": 0.002,
    "agitation": 0.183,
    "grain": 0.0,
+   "rough": 0.327,
+   "rich": 0.65,
+   "splay": 0.407,
    "notes": 16,
    "spread_hz": 106.7,
    "preset": "Drawbar organ",
@@ -539,5 +414,328 @@
     "b_clash": 37.5
    }
   }
+ },
+ "cycle2": {
+  "physical": {
+   "travel": {
+    "pad": {
+     "src": "img/pad-physical-travel-brand.jpg",
+     "landed": {
+      "steps": 922,
+      "brush_s": 0.716,
+      "frames": 1,
+      "render_s": 0.217,
+      "wet": 547305.1,
+      "dry": 0.0,
+      "bare": 92663.4
+     }
+    },
+    "crossed": {
+     "src": "img/crossed-physical-travel-brand.jpg",
+     "landed": {
+      "steps": 1819,
+      "brush_s": 0.583,
+      "frames": 1,
+      "render_s": 0.289,
+      "wet": 179616.4,
+      "dry": 101.9,
+      "bare": 266733.3
+     }
+    },
+    "run": {
+     "src": "img/run-physical-travel-brand.jpg",
+     "landed": {
+      "steps": 1487,
+      "brush_s": 0.199,
+      "frames": 1,
+      "render_s": 0.244,
+      "wet": 642.0,
+      "dry": 0.0,
+      "bare": 261401.8
+     }
+    },
+    "chords": {
+     "src": "img/chords-physical-travel-brand.jpg",
+     "landed": {
+      "steps": 972,
+      "brush_s": 0.604,
+      "frames": 1,
+      "render_s": 0.246,
+      "wet": 571192.6,
+      "dry": 0.0,
+      "bare": 54902.3
+     }
+    }
+   },
+   "cycles": {
+    "pad": {
+     "src": "img/pad-physical-cycles-brand.jpg",
+     "landed": {
+      "steps": 1902,
+      "brush_s": 1.434,
+      "frames": 1,
+      "render_s": 0.231,
+      "wet": 942984.0,
+      "dry": 0.0,
+      "bare": 288725.5
+     }
+    },
+    "crossed": {
+     "src": "img/crossed-physical-cycles-brand.jpg",
+     "landed": {
+      "steps": 2807,
+      "brush_s": 1.024,
+      "frames": 1,
+      "render_s": 0.251,
+      "wet": 297765.6,
+      "dry": 20153.0,
+      "bare": 509460.0
+     }
+    },
+    "run": {
+     "src": "img/run-physical-cycles-brand.jpg",
+     "landed": {
+      "steps": 2028,
+      "brush_s": 0.358,
+      "frames": 1,
+      "render_s": 0.218,
+      "wet": 1584.8,
+      "dry": 0.0,
+      "bare": 537409.3
+     }
+    },
+    "chords": {
+     "src": "img/chords-physical-cycles-brand.jpg",
+     "landed": {
+      "steps": 2046,
+      "brush_s": 1.401,
+      "frames": 1,
+      "render_s": 0.247,
+      "wet": 1149116.3,
+      "dry": 9876.1,
+      "bare": 268760.9
+     }
+    }
+   },
+   "clusters": {
+    "pad": {
+     "src": "img/pad-physical-clusters-brand.jpg",
+     "landed": {
+      "steps": 820,
+      "brush_s": 0.481,
+      "frames": 1,
+      "render_s": 0.226,
+      "wet": 50397.3,
+      "dry": 0.0,
+      "bare": 289539.7
+     }
+    },
+    "crossed": {
+     "src": "img/crossed-physical-clusters-brand.jpg",
+     "landed": {
+      "steps": 1862,
+      "brush_s": 0.461,
+      "frames": 1,
+      "render_s": 0.225,
+      "wet": 14851.9,
+      "dry": 0.0,
+      "bare": 317522.3
+     }
+    },
+    "run": {
+     "src": "img/run-physical-clusters-brand.jpg",
+     "landed": {
+      "steps": 2535,
+      "brush_s": 0.547,
+      "frames": 1,
+      "render_s": 0.22,
+      "wet": 632.6,
+      "dry": 0.0,
+      "bare": 669058.7
+     }
+    },
+    "chords": {
+     "src": "img/chords-physical-clusters-brand.jpg",
+     "landed": {
+      "steps": 962,
+      "brush_s": 0.414,
+      "frames": 1,
+      "render_s": 0.232,
+      "wet": 40789.7,
+      "dry": 0.0,
+      "bare": 267709.1
+     }
+    }
+   }
+  },
+  "gesture": {
+   "travel": {
+    "pad": "img/pad-gesture-travel-brand.jpg",
+    "crossed": "img/crossed-gesture-travel-brand.jpg",
+    "run": "img/run-gesture-travel-brand.jpg",
+    "chords": "img/chords-gesture-travel-brand.jpg"
+   },
+   "cycles": {
+    "pad": "img/pad-gesture-cycles-brand.jpg",
+    "crossed": "img/crossed-gesture-cycles-brand.jpg",
+    "run": "img/run-gesture-cycles-brand.jpg",
+    "chords": "img/chords-gesture-cycles-brand.jpg"
+   },
+   "clusters": {
+    "pad": "img/pad-gesture-clusters-brand.jpg",
+    "crossed": "img/crossed-gesture-clusters-brand.jpg",
+    "run": "img/run-gesture-clusters-brand.jpg",
+    "chords": "img/chords-gesture-clusters-brand.jpg"
+   }
+  },
+  "others": [
+   {
+    "phrase": "pad",
+    "style": "ink",
+    "src": "img/pad-ink-cycles-brand.jpg"
+   },
+   {
+    "phrase": "crossed",
+    "style": "ink",
+    "src": "img/crossed-ink-cycles-brand.jpg"
+   },
+   {
+    "phrase": "run",
+    "style": "ink",
+    "src": "img/run-ink-cycles-brand.jpg"
+   },
+   {
+    "phrase": "chords",
+    "style": "ink",
+    "src": "img/chords-ink-cycles-brand.jpg"
+   },
+   {
+    "phrase": "pad",
+    "style": "geometry",
+    "src": "img/pad-geometry-cycles-brand.jpg"
+   },
+   {
+    "phrase": "crossed",
+    "style": "geometry",
+    "src": "img/crossed-geometry-cycles-brand.jpg"
+   },
+   {
+    "phrase": "run",
+    "style": "geometry",
+    "src": "img/run-geometry-cycles-brand.jpg"
+   },
+   {
+    "phrase": "chords",
+    "style": "geometry",
+    "src": "img/chords-geometry-cycles-brand.jpg"
+   }
+  ],
+  "details": [
+   {
+    "phrase": "pad",
+    "src": "img/pad-physical-cycles-detail.jpg",
+    "features": {
+     "bright": 0.359,
+     "splay": 0.453,
+     "rich": 0.8,
+     "rough": 0.263,
+     "grain": 0.069
+    }
+   },
+   {
+    "phrase": "crossed",
+    "src": "img/crossed-physical-cycles-detail.jpg",
+    "features": {
+     "bright": 0.243,
+     "splay": 0.519,
+     "rich": 0.55,
+     "rough": 0.168,
+     "grain": 0.101
+    }
+   },
+   {
+    "phrase": "run",
+    "src": "img/run-physical-cycles-detail.jpg",
+    "features": {
+     "bright": 1.177,
+     "splay": 0.407,
+     "rich": 1.0,
+     "rough": 0.326,
+     "grain": 0.0
+    }
+   },
+   {
+    "phrase": "chords",
+    "src": "img/chords-physical-cycles-detail.jpg",
+    "features": {
+     "bright": -0.049,
+     "splay": 0.407,
+     "rich": 0.65,
+     "rough": 0.327,
+     "grain": 0.0
+    }
+   }
+  ],
+  "palettes": [
+   {
+    "phrase": "crossed",
+    "palette": "earth",
+    "src": "img/crossed-physical-cycles-earth.jpg"
+   },
+   {
+    "phrase": "crossed",
+    "palette": "night",
+    "src": "img/crossed-physical-cycles-night.jpg"
+   }
+  ],
+  "builds": [
+   {
+    "phrase": "crossed",
+    "src": "anim/crossed-physical-cycles-build.webm",
+    "cost": {
+     "steps": 2633,
+     "brush_s": 0.558,
+     "frames": 310,
+     "render_s": 37.038,
+     "wet": 151265.0,
+     "dry": 9667.3,
+     "bare": 258246.5
+    }
+   },
+   {
+    "phrase": "run",
+    "src": "anim/run-physical-cycles-build.webm",
+    "cost": {
+     "steps": 1770,
+     "brush_s": 0.212,
+     "frames": 143,
+     "render_s": 16.246,
+     "wet": 908.6,
+     "dry": 0.0,
+     "bare": 273885.5
+    }
+   }
+  ],
+  "costs": {
+   "512": {
+    "brush_ms_per_frame": 0.5,
+    "render_ms_per_frame": 30.45,
+    "steps": 2423,
+    "frames": 310
+   },
+   "1000": {
+    "brush_ms_per_frame": 1.72,
+    "render_ms_per_frame": 115.77,
+    "steps": 2633,
+    "frames": 310
+   },
+   "1600": {
+    "brush_ms_per_frame": 4.65,
+    "render_ms_per_frame": 307.7,
+    "steps": 2895,
+    "frames": 310
+   }
+  },
+  "lead": "cycles"
  }
 }

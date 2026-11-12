@@ -316,6 +316,174 @@ class Layout:
         return float(x), float(y)
 
 
+# --- compositions the sound steers (cycle 2) ---------------------------------------
+
+
+class Composed:
+    """Three placements in which the sound decides where marks go, asked
+    for by the owner after the first cycle, where every painting was rings.
+
+    `travel`: each hand's brush travels. Its heading turns at each strike
+    by the interval from the hand's last note (up turns it one way, down the
+    other, a leap further than a step) and bends with how fast the spectrum
+    is changing (brighter one way, darker the other); its speed is the
+    playing's agitation and level, so it hurries through a run and lingers
+    on a held chord; it drifts towards a height by its register (the low
+    hand low, the high hand high); and when a note comes back that was
+    struck in the last three seconds it steers back towards where that note
+    was painted - so the brush returns over wet paint where the playing
+    returns, rather than every repeat being forced onto one place.
+
+    `cycles`: travel, but where the sound is cyclic the gesture is too: a
+    hand holding notes without striking circles at a radius set by how much
+    it holds, and the return to a repeated note is strong, so a repeated
+    figure loops.
+
+    `clusters`: time across, warped by how much is happening (a strike
+    weighs by its velocity, a held note by its level, so a run takes room
+    and a long hold little), pitch up, and each gesture - strikes with no
+    pause over 0.35 s between them - drawn in towards its own centre, so
+    the phrase falls into clusters with air between.
+
+    All three are fitted to the canvas with one scale and a margin, so the
+    phrase's own extent sets the balance. Notes struck together sit beside
+    their hand's leading note across the brush's direction, a few pixels a
+    semitone, so a chord is a band of parallel strokes."""
+
+    def __init__(self, kind, a, w, h):
+        self.kind, self.a, self.w, self.h = kind, a, w, h
+        self.split = a["split"]
+        fr = a["frames"]
+        self.ft = fr["t"]
+        notes = [e["note"] for e in a["events"]]
+        self.lo, self.hi = min(notes), max(notes)
+        k = np.hanning(21); k /= k.sum()
+        self.bright = np.convolve(fr["bright"], k, mode="same")
+        self.unrest = np.convolve(fr["unrest"], k, mode="same")
+        self.agit = fr["agitation"]
+        self.T = a["length"]
+        self.dt = 0.01
+        self.grid = np.arange(0, self.T + self.dt, self.dt)
+        self.paths, self.lead, self.normal = {}, {}, {}
+        if kind in ("travel", "cycles"):
+            for hand in (0, 1): self._travel(hand)
+        else:
+            self._clusters()
+        self._fit()
+
+    def hand(self, pitch): return 0 if not self.split or pitch < self.split else 1
+
+    def f(self, arr, t): return float(np.interp(t, self.ft, arr))
+
+    def _travel(self, hand):
+        evs = sorted([e for e in self.a["events"] if e["hand"] == hand], key=lambda e: e["t0"])
+        if not evs: return
+        strikes = []
+        for e in evs:
+            if strikes and e["t0"] - strikes[-1][0] < 0.04: strikes[-1][1].append(e)
+            else: strikes.append([e["t0"], [e]])
+        span = max(self.hi - self.lo, 12)
+        reg = lambda p: (p - self.lo) / span                         # nought low, one high
+        lead0 = max(strikes[0][1], key=lambda e: e["note"])["note"]
+        pos = np.array([0.0, -reg(lead0) * 1.4])
+        th = 0.0 if hand == 0 else math.pi
+        lead, j, last_strike = lead0, 0, strikes[0][0]
+        memory = {}
+        n = len(self.grid)
+        P = np.zeros((n, 2)); L = np.zeros(n); N = np.zeros((n, 2))
+        target = None
+        cyc = self.kind == "cycles"
+        for i, t in enumerate(self.grid):
+            if j < len(strikes) and strikes[j][0] <= t:
+                st = strikes[j][1]
+                top = max(st, key=lambda e: e["note"])["note"]
+                # Steered by the interval: a semitone turns it 0.12 rad, an octave 1.4.
+                th += 0.12 * (top - lead) * (1 if hand == 0 else -1)
+                m = memory.get(top)
+                target = m[0] if m and t - m[1] < 3.0 else None
+                lead, last_strike = top, t
+                j += 1
+            sounding = [e for e in evs if e["t0"] <= t <= e["t1"]]
+            lv = max([level_at(e, t) for e in sounding], default=0.0)
+            agit = self.f(self.agit, t)
+            speed = 0.15 + 1.6 * agit + 0.5 * lv                    # canvas units a second
+            holding = sounding and t - last_strike > 0.35
+            if holding: speed = 0.12 + 0.3 * lv
+            # Spectral change bends the path, brighter one way, darker the other.
+            db = self.f(np.gradient(self.bright) / self.dt, t)
+            th += self.dt * 2.0 * self.f(self.unrest, t) * np.sign(db)
+            if cyc and holding:
+                held = sum(1 for e in sounding)
+                th += self.dt * speed / (0.18 + 0.06 * held) * (1 if hand == 0 else -1)
+            if target is not None:
+                want = math.atan2(target[1] - pos[1], target[0] - pos[0])
+                gain = 6.0 if cyc else 2.5
+                th += self.dt * gain * math.sin(want - th)
+                if np.hypot(*(target - pos)) < 0.05: target = None
+            # Towards the register's height, gently - except while a hand
+            # circles a held chord in `cycles`, which the pull straightened.
+            want_y = -reg(lead) * 1.4
+            if not (cyc and holding):
+                th += self.dt * 1.2 * math.sin(math.atan2(want_y - pos[1], 0.6) - th) * min(1.0, abs(want_y - pos[1]) * 2)
+            if not sounding and t > evs[-1]["t1"]: speed = 0
+            pos = pos + speed * self.dt * np.array([math.cos(th), math.sin(th)])
+            memory[lead] = (pos.copy(), t)
+            P[i] = pos; L[i] = lead; N[i] = [-math.sin(th), math.cos(th)]
+        self.paths[hand], self.lead[hand], self.normal[hand] = P, L, N
+
+    def _clusters(self):
+        evs = sorted(self.a["events"], key=lambda e: e["t0"])
+        mass = np.zeros(len(self.grid))
+        for e in evs:
+            mass[int(e["t0"] / self.dt)] += 1.0 * e["vel"]
+            for i in range(int(e["t0"] / self.dt), min(len(self.grid), int(e["t1"] / self.dt))):
+                mass[i] += 0.04 * level_at(e, self.grid[i])
+        x = np.cumsum(mass); x = x / max(x[-1], 1e-9)
+        # Gestures, and each one's centre in warped time.
+        gest, cur = [], [evs[0]]
+        for e in evs[1:]:
+            if e["t0"] - max(c["t0"] for c in cur) > 0.35: gest.append(cur); cur = [e]
+            else: cur.append(e)
+        gest.append(cur)
+        self.warp = x
+        self.gest = [(min(e["t0"] for e in g), max(e["t1"] for e in g),
+                      float(np.mean([np.interp(e["t0"], self.grid, x) for e in g])),
+                      float(np.mean([e["note"] for e in g]))) for g in gest]
+
+    def _raw(self, t, pitch):
+        if self.kind == "clusters":
+            x = float(np.interp(t, self.grid, self.warp)) * 2.2
+            y = -(pitch - self.lo) / max(self.hi - self.lo, 12) * 1.4
+            for g0, g1, cx, cp in self.gest:
+                if g0 - 0.05 <= t <= g1 + 0.05:
+                    cy = -(cp - self.lo) / max(self.hi - self.lo, 12) * 1.4
+                    x = cx * 2.2 + (x - cx * 2.2) * 0.45
+                    y = cy + (y - cy) * 0.8
+                    break
+            return np.array([x, y])
+        hand = self.hand(pitch)
+        if hand not in self.paths: hand = next(iter(self.paths))
+        i = int(np.clip(t / self.dt, 0, len(self.grid) - 1))
+        off = float(np.clip(pitch - self.lead[hand][i], -24, 24)) * 0.018
+        return self.paths[hand][i] + self.normal[hand][i] * off
+
+    def _fit(self):
+        pts = []
+        for e in self.a["events"]:
+            for t in np.linspace(e["t0"], max(e["t1"], e["t0"] + 0.05), 12):
+                pts.append(self._raw(t, e["note"]))
+        pts = np.array(pts)
+        lo, hi = pts.min(axis=0), pts.max(axis=0)
+        span = np.maximum(hi - lo, 1e-3)
+        m = 0.13
+        self.scale = min((1 - 2 * m) * self.w / span[0], (1 - 2 * m) * self.h / span[1])
+        self.off = np.array([self.w, self.h]) / 2 - (lo + hi) / 2 * self.scale
+
+    def at(self, t, pitch):
+        p = self._raw(t, pitch) * self.scale + self.off
+        return float(p[0]), float(p[1])
+
+
 # --- the marks --------------------------------------------------------------------
 
 
@@ -730,8 +898,15 @@ STYLES = {"ink": ink_and_wash, "gesture": gestural, "geometry": geometric}
 ROLES = ("a_main", "a_related", "a_clash", "b_main", "b_related", "b_clash")
 
 
+COMPOSED = ("travel", "cycles", "clusters")
+
+
+def layout_of(kind, a, w, h):
+    return Composed(kind, a, w, h) if kind in COMPOSED else Layout(kind, a, w, h)
+
+
 def marks(a, style, layout, w, h, seed=0):
-    ctx = Ctx(a, Layout(layout, a, w, h), style, w, h)
+    ctx = Ctx(a, layout_of(layout, a, w, h), style, w, h)
     rng = np.random.default_rng(seed + {"ink": 1, "gesture": 2, "geometry": 3}[style] * 1000 + (0 if layout == "layered" else 500))
     STYLES[style](ctx, rng)
     ctx.ops.sort(key=lambda o: o.t)
