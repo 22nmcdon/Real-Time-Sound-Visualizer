@@ -3,6 +3,7 @@
     python3 phrases.py     # first: the four phrases through the core (45 s)
     python3 study.py       # then: paintings, fades, Scan's read, results.json (about ten minutes)
     python3 study.py cycle2   # or only the second cycle's
+    python3 study.py scan     # or only the second cycle's Scan reads
     python3 page.py        # and the page
 
 What is rendered (not every combination):
@@ -232,6 +233,26 @@ def build_up(name, layout):
     return os.path.relpath(path, STUDY), parse_cost(cost), grids
 
 
+def scan_compositions(c2, t0):
+    # What Scan reads off each composition (the owner: every composition is
+    # also a sound): physical paint and gestural, with audio, and the
+    # first cycle's ring layouts beside them as the baseline.
+    c2["scan"] = {"physical": {}, "gesture": {}}
+    for style, comps in (("physical", COMPOSITIONS + ("wheel",)), ("gesture", COMPOSITIONS + ("layered",))):
+        for comp in comps:
+            for name in PHRASES:
+                ok, tabs, okf, tabf = scan_composition(name, style, comp)
+                m = dict(finished=table_measures(tabf, okf), painting=table_measures(tabs, ok))
+                if True:   # audio for both styles (physical builds up; gestural is read as it fades)
+                    fpath = os.path.join(AUDIO, f"scan-{style}-{comp}-{name}-painting.mp3")
+                    mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
+                    hpath = os.path.join(AUDIO, f"scan-{style}-{comp}-{name}-finished.mp3")
+                    mp3(play(tabf, okf, 1, 4.0), hpath)
+                    m.update(painting_audio=os.path.relpath(fpath, STUDY), finished_audio=os.path.relpath(hpath, STUDY))
+                c2["scan"][style].setdefault(comp, {})[name] = m
+            print("scan", style, comp, round(time.time() - t0))
+
+
 def cycle2(results, t0):
     """The second cycle (12 Nov, after the owner saw the first): physical
     paint and gestural in three compositions the sound steers, on every
@@ -259,23 +280,7 @@ def cycle2(results, t0):
             _, grel = still(name, "gesture", comp, "brand")
             c2["gesture"].setdefault(comp, {})[name] = grel
             print("cycle 2", comp, name, round(time.time() - t0))
-    # What Scan reads off each composition (the owner: every composition is
-    # also a sound): physical paint with audio, gestural in numbers, and the
-    # first cycle's ring layouts beside them as the baseline.
-    c2["scan"] = {"physical": {}, "gesture": {}}
-    for style, comps in (("physical", COMPOSITIONS + ("wheel",)), ("gesture", COMPOSITIONS + ("layered",))):
-        for comp in comps:
-            for name in PHRASES:
-                ok, tabs, okf, tabf = scan_composition(name, style, comp)
-                m = dict(finished=table_measures(tabf, okf), painting=table_measures(tabs, ok))
-                if style == "physical":
-                    fpath = os.path.join(AUDIO, f"scan-physical-{comp}-{name}-painting.mp3")
-                    mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
-                    hpath = os.path.join(AUDIO, f"scan-physical-{comp}-{name}-finished.mp3")
-                    mp3(play(tabf, okf, 1, 4.0), hpath)
-                    m.update(painting_audio=os.path.relpath(fpath, STUDY), finished_audio=os.path.relpath(hpath, STUDY))
-                c2["scan"][style].setdefault(comp, {})[name] = m
-            print("scan", style, comp, round(time.time() - t0))
+    scan_compositions(c2, t0)
     sim = physical.sampler(palettes.PALETTES["brand"])
     spath = os.path.join(IMG, "physical-brush-sampler.jpg")
     Image.fromarray(sim).save(spath, quality=88, optimize=True)
@@ -383,6 +388,7 @@ def main(parts):
     results.setdefault("checks", {}); results.pop("physical", None)
     t0 = time.time()
     if "cycle2" in parts: cycle2(results, t0)
+    elif "scan" in parts: scan_compositions(results["cycle2"], t0)
     if "cycle1" in parts: cycle1(results, t0)
     # The features each phrase measured, for the page and the write-up.
     results["phrases"] = {n: features.summary(analysis(n)) | {"preset": analysis(n)["meta"]["preset"],

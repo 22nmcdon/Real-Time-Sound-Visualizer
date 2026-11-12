@@ -293,7 +293,8 @@ the canvas read as it is painted (built up for physical paint), and the finished
 held under A3. It is the same first approximation as the first cycle: density on the
 64 by 64 grid, the core's own scan functions at Softness 3, a depth of 0.6 against a sine.
 Physical paint was read at 512 square, frame by frame; gestural as it fades, by the
-Persistence. The first cycle's ring layouts are the baseline.
+Persistence. Both have their audio beside every painting. The first cycle's ring layouts
+are the baseline, and their sounds are on the page too, so the old layout can be heard.
 
 The measures:
 
@@ -344,8 +345,8 @@ What these say:
   - the ring's run was dead and its chords the brightest;
   - in the new compositions, no phrase is both that dull and that bright.
 
-Gestural, read as it fades, tells the same story, duller throughout because a fading
-canvas holds less ink. Cycles' run moves most (0.030), and Travel's held phrases are
+Gestural, read as it fades (audio beside each painting), tells the same story, duller
+throughout because a fading canvas holds less ink. Cycles' run moves most (0.030), and Travel's held phrases are
 nearest a sine. The full numbers, with the high and sine shares, are in `results.json`
 and on the page.
 

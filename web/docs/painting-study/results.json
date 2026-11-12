@@ -1133,7 +1133,9 @@
        "movement": 0.001,
        "dark_frames": 5,
        "frames": 240
-      }
+      },
+      "painting_audio": "audio/scan-gesture-travel-pad-painting.mp3",
+      "finished_audio": "audio/scan-gesture-travel-pad-finished.mp3"
      },
      "crossed": {
       "finished": {
@@ -1155,7 +1157,9 @@
        "movement": 0.007,
        "dark_frames": 6,
        "frames": 310
-      }
+      },
+      "painting_audio": "audio/scan-gesture-travel-crossed-painting.mp3",
+      "finished_audio": "audio/scan-gesture-travel-crossed-finished.mp3"
      },
      "run": {
       "finished": {
@@ -1177,7 +1181,9 @@
        "movement": 0.0103,
        "dark_frames": 6,
        "frames": 143
-      }
+      },
+      "painting_audio": "audio/scan-gesture-travel-run-painting.mp3",
+      "finished_audio": "audio/scan-gesture-travel-run-finished.mp3"
      },
      "chords": {
       "finished": {
@@ -1199,7 +1205,9 @@
        "movement": 0.0016,
        "dark_frames": 6,
        "frames": 232
-      }
+      },
+      "painting_audio": "audio/scan-gesture-travel-chords-painting.mp3",
+      "finished_audio": "audio/scan-gesture-travel-chords-finished.mp3"
      }
     },
     "cycles": {
@@ -1223,7 +1231,9 @@
        "movement": 0.0042,
        "dark_frames": 5,
        "frames": 240
-      }
+      },
+      "painting_audio": "audio/scan-gesture-cycles-pad-painting.mp3",
+      "finished_audio": "audio/scan-gesture-cycles-pad-finished.mp3"
      },
      "crossed": {
       "finished": {
@@ -1245,7 +1255,9 @@
        "movement": 0.0086,
        "dark_frames": 6,
        "frames": 310
-      }
+      },
+      "painting_audio": "audio/scan-gesture-cycles-crossed-painting.mp3",
+      "finished_audio": "audio/scan-gesture-cycles-crossed-finished.mp3"
      },
      "run": {
       "finished": {
@@ -1267,7 +1279,9 @@
        "movement": 0.0296,
        "dark_frames": 6,
        "frames": 143
-      }
+      },
+      "painting_audio": "audio/scan-gesture-cycles-run-painting.mp3",
+      "finished_audio": "audio/scan-gesture-cycles-run-finished.mp3"
      },
      "chords": {
       "finished": {
@@ -1289,7 +1303,9 @@
        "movement": 0.0071,
        "dark_frames": 6,
        "frames": 232
-      }
+      },
+      "painting_audio": "audio/scan-gesture-cycles-chords-painting.mp3",
+      "finished_audio": "audio/scan-gesture-cycles-chords-finished.mp3"
      }
     },
     "clusters": {
@@ -1313,7 +1329,9 @@
        "movement": 0.0028,
        "dark_frames": 5,
        "frames": 240
-      }
+      },
+      "painting_audio": "audio/scan-gesture-clusters-pad-painting.mp3",
+      "finished_audio": "audio/scan-gesture-clusters-pad-finished.mp3"
      },
      "crossed": {
       "finished": {
@@ -1335,7 +1353,9 @@
        "movement": 0.01,
        "dark_frames": 6,
        "frames": 310
-      }
+      },
+      "painting_audio": "audio/scan-gesture-clusters-crossed-painting.mp3",
+      "finished_audio": "audio/scan-gesture-clusters-crossed-finished.mp3"
      },
      "run": {
       "finished": {
@@ -1357,7 +1377,9 @@
        "movement": 0.0187,
        "dark_frames": 6,
        "frames": 143
-      }
+      },
+      "painting_audio": "audio/scan-gesture-clusters-run-painting.mp3",
+      "finished_audio": "audio/scan-gesture-clusters-run-finished.mp3"
      },
      "chords": {
       "finished": {
@@ -1379,7 +1401,9 @@
        "movement": 0.0033,
        "dark_frames": 6,
        "frames": 232
-      }
+      },
+      "painting_audio": "audio/scan-gesture-clusters-chords-painting.mp3",
+      "finished_audio": "audio/scan-gesture-clusters-chords-finished.mp3"
      }
     },
     "layered": {
@@ -1403,7 +1427,9 @@
        "movement": 0.0047,
        "dark_frames": 5,
        "frames": 240
-      }
+      },
+      "painting_audio": "audio/scan-gesture-layered-pad-painting.mp3",
+      "finished_audio": "audio/scan-gesture-layered-pad-finished.mp3"
      },
      "crossed": {
       "finished": {
@@ -1425,7 +1451,9 @@
        "movement": 0.007,
        "dark_frames": 6,
        "frames": 310
-      }
+      },
+      "painting_audio": "audio/scan-gesture-layered-crossed-painting.mp3",
+      "finished_audio": "audio/scan-gesture-layered-crossed-finished.mp3"
      },
      "run": {
       "finished": {
@@ -1447,7 +1475,9 @@
        "movement": 0.0102,
        "dark_frames": 6,
        "frames": 143
-      }
+      },
+      "painting_audio": "audio/scan-gesture-layered-run-painting.mp3",
+      "finished_audio": "audio/scan-gesture-layered-run-finished.mp3"
      },
      "chords": {
       "finished": {
@@ -1469,7 +1499,9 @@
        "movement": 0.0059,
        "dark_frames": 6,
        "frames": 232
-      }
+      },
+      "painting_audio": "audio/scan-gesture-layered-chords-painting.mp3",
+      "finished_audio": "audio/scan-gesture-layered-chords-finished.mp3"
      }
     }
    }

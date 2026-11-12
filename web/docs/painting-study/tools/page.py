@@ -64,12 +64,15 @@ def main():
         "clusters": ("Clusters", "Time across, warped by how much is happening (a run takes room, a long hold little); pitch up; each gesture drawn in towards its own centre, so the phrase falls into clusters with air between."),
     }
     SC = C["scan"]
-    def cell(kind, comp, n):
-        if kind != "physical": return fig(C[kind][comp][n], f"<b>{PHRASE[n][0]}</b>")
-        m = SC["physical"][comp][n]
-        return (fig(C[kind][comp][n]["src"], f"<b>{PHRASE[n][0]}</b>") +
-                f'<p class="scanline">Scan, as it is painted</p><audio controls preload="none" src="{e(m["painting_audio"])}"></audio>'
+    def sounds(m, kind):
+        return (f'<p class="scanline">Scan, as it is {"painted" if kind == "physical" else "painted, fading"}</p><audio controls preload="none" src="{e(m["painting_audio"])}"></audio>'
                 f'<p class="scanline">Scan, the finished painting held</p><audio controls preload="none" src="{e(m["finished_audio"])}"></audio>')
+    def cell(kind, comp, n):
+        src = C[kind][comp][n]["src"] if kind == "physical" else C[kind][comp][n]
+        return fig(src, f"<b>{PHRASE[n][0]}</b>") + sounds(SC[kind][comp][n], kind)
+    def ringrow(kind, comp):
+        return "".join(f'<div><p class="scanline"><b>{PHRASE[n][0]}</b></p>{sounds(SC[kind][comp][n], kind)}</div>' for n in ("pad", "crossed", "run", "chords"))
+    ring_p, ring_g = ringrow("physical", "wheel"), ringrow("gesture", "layered")
     def grid(kind):
         rows = []
         for comp in ("travel", "cycles", "clusters"):
@@ -195,7 +198,7 @@ th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spa
 <p>Nothing in the instrument was changed to make this. The write-up, with what was found and the questions for the owner, is <a href="../painting-the-sound.md"><code>painting-the-sound.md</code></a>; the scripts that made every file here are in <code>tools/</code>, and run again to the same pictures.</p>
 
 <section id="cycle2"><p class="eyebrow">Second cycle, after the owner's look</p><h2>Where the sound puts the paint</h2>
-<p>The first cycle put every painting on rings, so every painting looked alike. Here are three compositions in which the sound decides where marks go - nothing placed at random beyond a brush's own small variation - on all four phrases, side by side. Physical paint first, each painting with what Scan reads off it, then gestural, the style that already looked most like art. Listen to the four phrases:</p>
+<p>The first cycle put every painting on rings, so every painting looked alike. Here are three compositions in which the sound decides where marks go - nothing placed at random beyond a brush's own small variation - on all four phrases, side by side. Physical paint first, then gestural, each painting with what Scan reads off it, the style that already looked most like art. Listen to the four phrases:</p>
 <div class="four">{audio}</div>
 <h2 class="sub">Physical paint</h2>
 {pgrid}
@@ -206,6 +209,9 @@ th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spa
 <section id="scan2"><p class="eyebrow">Every composition is also a sound</p><h2>What Scan reads off each</h2>
 <p>Where the paint lands against Scan's circle decides the tone, so each painting above has two sounds under it: Scan's read of the canvas as it is painted, and of the finished painting held. A first approximation, as before: the ink's density (for physical paint, how far the paint hides the ground) on the 64 by 64 grid, read by the core's own <code>scanGeometry</code>, <code>scanBlur</code> (Softness 3), <code>scanRead</code> and <code>scanTables</code>, played as A3 with the table at a depth of 0.6 against a sine. The first cycle's ring layouts are the baseline.</p>
 <p class="measures">Centroid: the table's harmonic centroid, in harmonics (a sine is 1). Movement: how far the table changes from one frame to the next, nought to one. High: its energy above the eighth harmonic (harsh where large). Sine: its energy in the first harmonic (dead where nearly all).</p>
+<h3>The baseline, heard: the first cycle's rings</h3>
+<p class="measures">Physical paint on its ring:</p><div class="four">{ring_p}</div>
+<p class="measures">Gestural on its ring (time round the canvas), read as it fades:</p><div class="four">{ring_g}</div>
 <h3>Physical paint</h3>
 <div class="table-wrap"><table><tr><th>Composition</th><th>Phrase</th><th>Finished centroid</th><th>Painting centroid (10th to 90th)</th><th>Movement</th><th>High</th><th>Sine</th></tr>{ptab}</table></div>
 <h3>Gestural (read as it fades)</h3>
