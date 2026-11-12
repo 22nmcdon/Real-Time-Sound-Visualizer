@@ -6201,3 +6201,60 @@ phaser's sweeps advance only while they are on, so the two come back at
 different points of the sweep. A harness that can only send the worklet a tone,
 as `workletharness.mjs` does, has to wait out the 0.27 s before it calls
 anything silence, and read the difference before that.
+
+**The constellation is drawn on the main thread, and only the page's brain
+hears it (12 Nov, ways-to-draw step 2).** The prototype draws each held note's
+figure at its own place instead of the one figure. The obvious home was the
+generator, a figure a voice, but on `?brain=js` the generator runs in a worklet
+and is the compiled core unless the address also says `?core=js`, so a voice's
+own samples never reach the page; reaching for them is a change to the core.
+So `drawConstellation` makes each figure from what the page knows - the voice
+lists it sends, an envelope a note run here against the hand's times, the
+hand's shape and Level - and the voice's chain after the oscillator (the
+filter, the drive, Scan itself) does not reshape a figure. On the site's
+default brain the instrument draws and reads its own screen in the core, which
+nothing drawn here reaches: a constellation there would be seen and not heard,
+so the choice there links to `?brain=js&draw=constellation` instead.
+
+**It hides the one figure through the source, because `drawXY` and
+`sourceFigures` are lifted.** `core/tests/tools/beam_js.mjs` lifts both into the
+parity harness by name, where a new name either calls throws on the first frame
+while the web suite stays green. So nothing in them changed: the tone source's
+`figures()` (not lifted) answers an empty list while the constellation is live,
+`drawXY` draws the graticule and no figure, and the frame loop calls
+`drawConstellation` after `drawMain`. An empty list is not null, so the layer
+pictures (each hand's own grid, the picture stage's) are off while it draws,
+and both hands' Scan read the one screen.
+
+**Scan's circle follows the picture, so nothing can be placed on it.** The
+path is the grid's centre of light and its spread, read off-centre by
+(0.35, 0.2) of the radius at 0.8 of it (`scanRead`). Figures laid on the circle
+Scan is reading move the centre of light to the circle's centre, which moves
+the circle by the offset again: the path walks away a radius a second. The
+Clock place is a ring of 0.4 with figures large enough (0.32 held) that the
+circle Scan then finds crosses every note, found by simulating the follow and
+the read on the 64-cell grid, and `constellationtest.py` holds it on the page.
+
+**A figure clear of Scan's circle is not silent.** By Pitch a middle triad sits
+clear of the circle and Scan reads a tenth of the light it reads on the Clock,
+but taking one of its figures out still changes the table by up to 0.25 against
+0.33 on the Clock: `scanTables` evens every table to a peak of one, so the
+blur's faint tails are played as a shape as loud as a figure across the
+circle. The suite asserts the light and prints the table's change; whether
+"clear" should mean silent (a darkness floor above the tails) is the owner's to
+hear.
+
+**On a 64-cell grid a small figure is a blob, and neighbours run together.**
+Pitch's figures were 0.12 of the half-width at first; a chromatic run's figures
+are a quarter apart on the middle ring, and at that size they touched and the
+grid held four patches of light for twelve notes. At 0.09 they are twelve.
+Counting the trail by patches of light needs the figures apart on the grid, not
+only on the canvas, which draws them sharp at any size.
+
+**To compare a frame drawn two ways, forget the beam's anchor between them.**
+The X-Y beam shades a segment by its speed against a smoothed anchor kept per
+display (`beamRefs`), so the same frame drawn after a different history lays
+different light, and an "off is the same as absent" check comparing two runs
+compares their histories. `constellationtest.py` stops the scope, takes
+nothing held so the frame loop draws nothing, and before each condition clears
+`beamRefs`, wipes the grid and draws the one frame thirty times.

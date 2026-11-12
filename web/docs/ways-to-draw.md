@@ -1,8 +1,9 @@
 # Ways to draw
 
 Agreed with the owner on 10 November, to build **after the redesign** (the second pass's
-G6 and G7, and the silent start). Nothing here is built yet; this is what to build and why,
-so the ideas are not lost.
+G6 and G7, and the silent start). This is what to build and why, so the ideas are not lost.
+**Step 2 is built** (12 Nov): a page-only prototype of the constellation, *Note* figures on
+the three places, still, behind a switch - see *The prototype*, below. Nothing else is.
 
 ## The problem
 
@@ -107,7 +108,7 @@ What Free costs, so it stays a choice and not the default:
    a run; Figure on a triad and six notes; Motion at three moments after a strike; and a
    split's two layouts. A gold dot marks where a figure crosses Scan's circle.
 2. A page-only prototype behind a switch, to hear what Scan makes of a constellation
-   before anything is ported.
+   before anything is ported. **Built 12 Nov** - *The prototype*, below.
 3. Then the core, with parity; a voice budget for many small figures; and new honesty
    measurements for any preset that uses it.
 4. In order: Constellation with *Note* and the three places first; *Pair* and *Ripple*
@@ -119,3 +120,93 @@ What Free costs, so it stays a choice and not the default:
   mockup should show both.
 - How the two hands of a split draw in constellation mode: one constellation each, or one
   shared.
+
+## The prototype (step 2, built 12 Nov)
+
+**Where:** Play, the Keyboard's *Draw* row, in Poly: the way - *one figure* (the default) or
+*constellation (a prototype)* - on the label's line, and while the constellation is chosen
+its *Place* (by pitch, clock, seeded), *Hands* (with two) and *Reseed* (when seeded) take the
+line where the outline's two menus were (they keep their values, and still lean the heard
+notes). Heard only on the page's own brain, **`?brain=js`**: on the site's default, the
+instrument draws and reads its own screen in the core, which nothing the page draws reaches,
+so choosing it there says so and links to `?brain=js&draw=constellation`; in the plugin it is
+not offered. Not a setup field: not in a preset, a code, undo, the morph or a host's
+parameters, not remembered by the browser; the address can ask for it (`?draw=constellation`).
+
+**What it draws.** Each note the generator is playing (each hand's voice list) draws the
+figure it would draw alone with the quarter turn - one cycle of the hand's shape against
+itself a quarter-cycle late: a sine a ring, a triangle a diamond, a saw its own shape - at
+its place, as large as it is loud: an envelope per note, run against the hand's own times,
+times its velocity, times the hand's Level over Level's default. It grows on the attack,
+shrinks with the release and goes when the release ends, as the voice does; Persistence
+decides how long the light stays. Laid into the phosphor grid at the beam's full level, as
+the one figure is with the Beam off. Drawn on the main thread from what the page knows, not
+from the voice's samples: the page's brain runs its generator in a worklet, compiled unless
+`?core=js`, and reaching for a voice's output would have been a change to the core. What
+that costs: the filter, the drive, the crush and Scan itself do not reshape a note's figure.
+
+**The lanes and the sound are untouched.** The generator still makes the one pair and is
+heard as it was; only the screen draws the constellation instead of it. So while it is on,
+what is heard is not what is drawn, except through Scan, which reads the constellation -
+that is the experiment. The readouts, the tuner and the picture stage's reads go on reading
+the lanes.
+
+**Radii and sizes** (half-widths of the screen at zoom one; held sizes are at the default
+Level and sustain, struck from the screen's keys):
+
+| Place | Where | A figure, full / held |
+|---|---|---|
+| Clock | pitch class round a circle of 0.4, C at the top, clockwise; octave ignored | 0.58 / 0.32 |
+| Pitch | the same clock face; octave 2 at 0.14, out 0.17 an octave to 0.82 at octave 6 (beyond: the end rings) | 0.09 / 0.05 |
+| Seeded | a place per note dealt from the seed within 0.72 of the middle | 0.2 / 0.11 |
+
+Scan's circle is not a fixed circle: it follows the picture's centre and spread and is read
+off-centre, so "on Scan's circle" could not mean placed on it (placed there, the centre
+would walk off by the offset every second). It means laid out so the circle Scan finds
+crosses every note. The numbers were found by simulating Scan's follow and read on the
+64-cell grid: on Clock, with a figure at 0.8 of the ring's radius (held), every
+root-position triad, seventh and six-note chord tried has every note crossed; by Pitch, C,
+E and G in octave 4 sit just clear of it, and every root-position triad there has a note
+clear. Pitch's figures were 0.12 at first, and a chromatic run's figures, a quarter apart
+on the middle ring, touched and lit four patches of light rather than twelve.
+
+**Two hands, both prototyped:** *one each* lays each hand out by pitch class alone (Pitch on
+its middle ring, Seeded by a seed of its own), so the lower hand's G3 and the upper's G5
+land on one place; *shared* lays every note out by its place, octave and all. Each hand in
+its figure's ink. It is one screen: both hands' Scan read it (the layer pictures, each
+hand's own grid, belong to the picture stage and were left alone).
+
+**Measured** (`web/tests/constellationtest.py`, on the page's brain, a C major triad at
+velocity 100, Scan at 60, Strike off, after Scan's path had followed for 4.5 s):
+
+| | Clock | Pitch |
+|---|---|---|
+| Notes Scan's circle crosses | 3 of 3 | 0 of 3 |
+| Light Scan reads, mean round the circle | 0.135 | 0.013 |
+| Light one figure gives the read, taken out | 0.027 to 0.070 | 0.0002 to 0.008 |
+| The table's change with one figure taken out (mean, of a peak of one) | 0.33 to 0.51 | 0.008 to 0.25 |
+
+So by Pitch Scan reads a tenth of the light, but the table changes nearly as much for two of
+the three figures: Scan evens every table to a peak of one, so the faint light at the edge
+of the blur is played as a shape as loud as a figure across the circle. Whether a chord
+placed clear of the circle *sounds* quieter in the timbre, or only different, is for the
+owner to hear; a darkness floor above the blur's tails would make "clear" mean clear.
+
+A fast run (thirteen notes, C4 to C5, 70 ms each, Persistence at 0.02 a frame) leaves light
+at the places of eleven of the thirteen notes half a second later, in twelve patches (C4
+and C5 run together); the one figure leaves one smear at none of them.
+
+Cost of a frame, drawing and laying into the grid (`drawMain` and the constellation, on this
+machine, headless): one figure, six notes 0.20 ms, the constellation's six figures 0.08 ms;
+one figure on two layers of eight 0.43 ms, sixteen figures 0.19 ms. A figure is 96 segments
+against the one figure's beam of up to 6000 points, so many small figures cost less than one
+large one here. The voice budget step 3 needs is the core's: its walk of the grid per
+segment, and a sixteen-voice layered chord's tails.
+
+**Left:** *Pair* and *Ripple* (step 4, once this has been heard); the core port with parity
+(step 3), which would draw from each voice's own output and let the plugin and the site's
+default play it; honesty (`honestytest.py`) for any preset that uses it; the Beam's
+speed-shading, the Turn and zoom on the constellation (it is drawn in the screen's own
+units, unturned); a darkness floor for Scan, if clear should mean silent; whether *Fixed*
+places by pitch or by a scatter seeded by the note, and which of *one each* and *shared*
+the owner wants.
