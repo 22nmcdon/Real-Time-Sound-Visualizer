@@ -64,6 +64,29 @@ still be chosen for composition.
   where it is kept (the browser, the plugin's state, or the setup so a preset carries it)
   is to decide, and a low-contrast one is their choice, perhaps with a quiet warning.
 
+## A painting loaded as a sound (the owner, 12 Nov)
+
+Since Scan reads the canvas, a saved painting can be loaded back onto it and played:
+one performance's painting becomes the instrument for the next. Pitch still comes from
+the held note, so the painting sets only the timbre, and whatever is played paints over
+it. What to settle:
+
+- **What is saved.** The density Scan reads, not only the coloured image, so a painting
+  loads back exactly whatever palette it was shown in; the image with its density beside
+  it, kept with saved sounds rather than in a setup code, which would grow by the grid.
+- **A ground that does not fade.** Loaded as ordinary light it would fade by the
+  Persistence and be gone in seconds. As a ground layer under the light - read by Scan,
+  never fading, the new strokes fading over it - the painting stays the instrument's body.
+- **Where Scan reads it.** On a whole canvas, where the circle sits and how large it is
+  decides which part of the painting is heard; moving it explores the painting, as the
+  photocell's reticle moves now.
+- **A scroll painting replays.** The score already plays notes from a playhead across the
+  grid's columns, so a painting in the Scroll layout could be played back as the piece
+  it came from, or as a new one.
+- **Any image.** Lightness as density makes any picture a ground, which is how image-to-
+  sound synthesisers work; Softness rounds what would otherwise buzz, and a photograph is
+  likely to read harsh. Worth trying in the study rather than promising.
+
 ## How it is to be studied
 
 A study and a mockup before anything is built: a held pad, the owner's Crossed hands solo,
