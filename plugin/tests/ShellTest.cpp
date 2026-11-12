@@ -3544,6 +3544,68 @@ int main() {
     }
   }
 
+  std::printf("\n--- the latency told to the host ---\n");
+  {
+    /* The oversampled stages put the sound 31 samples late each - the
+       voice's shaper, then the plane's non-linear stage - and the host is
+       told so once a setup has loaded (12 Nov): the bank's base and its
+       Settled sounds run neither, Tines at the radius clips in the plane,
+       and a Breathing sound's picture stage switches both in. Loaded as a
+       host loads a program, each is read after its tenth of a second and
+       told from the message thread, and must be what the instrument's own
+       stages say. The null: the Picture amount moved to nought by the host,
+       which is no load, takes both stages out - the instrument says nought
+       - and the host is still told 62, which is the choice (never per
+       block); a report that followed the stages would read nought there. */
+    // On the base, as a fresh instance opens: the blocks above leave SCOPE_PRESET naming the corpus's sounds.
+    const char* was = std::getenv("SCOPE_PRESET");
+    const std::string kept = was ? was : "";
+    unsetenv("SCOPE_PRESET");
+    ScopeProcessor lat;
+    lat.prepareToPlay(rate, block);
+    if (was) setenv("SCOPE_PRESET", kept.c_str(), 1);
+    juce::AudioBuffer<float> buf(2, block);
+    const auto blocks = [&](int n) {
+      for (int k = 0; k < n; ++k) { buf.clear(); juce::MidiBuffer m; lat.processBlock(buf, m); }
+    };
+    const auto program = [&](const std::string& name) {
+      for (std::size_t i = 0; i < scope::presets().size(); ++i)
+        if (scope::presets()[i].name == name) return static_cast<int>(i) + 1;
+      return -1;
+    };
+    // A program's latency, told: and the stages' own at the same moment.
+    const auto told = [&](int index) {
+      if (index >= 0) lat.setCurrentProgram(index);
+      blocks(12);
+      lat.reportLatency();
+      return std::make_pair(lat.getLatencySamples(), lat.stageDelayNow());
+    };
+    const auto base = told(-1);
+    const auto breathing = told(program("Harmonic tone"));
+    const auto tines = told(program("Tines at the radius"));
+    const auto settled = told(program("Tine piano"));
+    const std::string settledCode = lat.pageState().code;  // its setup code, for the page to load below
+    const auto pad = told(program("Slow pad"));
+    const auto pair = [](std::pair<int, int> p) { return std::to_string(p.first) + " (stages " + std::to_string(p.second) + ")"; };
+    check("the host is told the stages' latency once a setup loads: the base and a Settled sound 0, the radial clip 31, a Breathing sound 62",
+          base == std::make_pair(0, 0) && settled == std::make_pair(0, 0) && tines == std::make_pair(31, 31)
+          && breathing == std::make_pair(62, 62) && pad == std::make_pair(62, 62),
+          "base " + pair(base) + ", Tine piano " + pair(settled) + ", Tines at the radius " + pair(tines)
+          + ", Harmonic tone " + pair(breathing) + ", Slow pad " + pair(pad));
+    auto* amount = lat.knob("picture");
+    static_cast<juce::AudioProcessorParameter*>(amount)->setValue(amount->convertTo0to1(0));
+    blocks(40);
+    lat.reportLatency();
+    const int moved = lat.getLatencySamples(), stages = lat.stageDelayNow();
+    check("null: the Picture amount taken to nought by the host is no load - the stages go, and the host is still told what the load said",
+          stages == 0 && moved == 62, "told " + std::to_string(moved) + ", the stages now " + std::to_string(stages));
+    // And a setup the page loads - a preset, a code, an undo step - is a load like a program: the Settled code, told 0 again.
+    const bool taken = lat.pageSetup(settledCode, "");
+    const auto paged = told(-1);
+    check("a setup loaded from the page is read again too: the Settled sound's code, told 0 after the 62 the null left",
+          taken && paged == std::make_pair(0, 0), (taken ? "taken, " : "refused, ") + pair(paged));
+  }
+
   std::printf("\n--- the Envelope card's dot, on the plugin's face ---\n");
   {
     /* Until 12 Nov the plugin sent its page none of what the Envelope card's

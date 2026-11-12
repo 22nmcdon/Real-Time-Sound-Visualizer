@@ -665,6 +665,8 @@ class Instrument {
   }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
+  // How late the oversampled stages put the sound, as the setup stands (Generator::stageDelay).
+  int stageDelay() const { return core_ ? core_->stageDelay() : 0; }
 
   // What the owners and their tests read.
   const Tone& tone() const { return core_->tone(); }

@@ -25,9 +25,10 @@
 // of the panel's sliders; the page's commands, queued under a lock for the
 // top of the next block; and the state, saved as a setup code - the setup it
 // was loaded with, the hands on it since, and the controllers it has learned.
-class ScopeProcessor final : public juce::AudioProcessor {
+class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
  public:
   ScopeProcessor();
+  ~ScopeProcessor() override { stopTimer(); }
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
   void releaseResources() override {}
@@ -50,6 +51,27 @@ class ScopeProcessor final : public juce::AudioProcessor {
      layer B's own echo, and a loop that keeps itself going under Scan, are
      not counted; the second has no end to report. */
   double getTailLengthSeconds() const override { return tail_.load(); }
+
+  /* The latency told to the host (12 Nov): how late the oversampled stages
+     put the sound - the voice's shaper and the plane's non-linear stage, 31
+     samples each, so nought, 31 or 62 (Generator::stageDelay) - read once a
+     setup has loaded and never again until the next. A load is the plugin
+     prepared, a project's state or a program handed over, or the page's
+     preset, code or undo step; a slider is not, so the Picture amount moved
+     across nought, which switches both stages in or out under a held note,
+     leaves the host's figure where the load put it, up to 62 samples out
+     until the next load. That is the choice: a host told of every switch
+     would be told mid-phrase, and most redo their delay compensation with a
+     gap in the sound (plugin/PLAN.md says what the rest would cost).
+
+     Measured on the audio thread a tenth of a second after the load, when the
+     stages' routes have been made, into `latencyWanted_`; told to JUCE on
+     the message thread by `reportLatency`, which a timer calls, since
+     setLatencySamples tells the host's wrapper under a lock. */
+  void reportLatency();
+  int latencyMeasured() const { return latencyWanted_.load(); }
+  // How late the stages put the sound this block, whatever the host was told: the shell test's way in.
+  int stageDelayNow() const { return instrument_.stageDelay(); }
   static double tailFor(const scope::Tone& a, const scope::LayerSettings& b);
 
   /* The bank as the host's programs (6 Nov): the plain sine the plugin opens
@@ -271,6 +293,12 @@ class ScopeProcessor final : public juce::AudioProcessor {
   PageState published_;
   std::atomic<double> rate_ { 48000.0 };
   std::atomic<double> tail_ { 0.5 };
+  void timerCallback() override { reportLatency(); }
+  // A tenth of a second at 48 kHz, whatever the host's block: the matrix has stepped many times by then.
+  static constexpr int kLatencyAfter = 4800;
+  // Samples until the latency is read after a load, or -1 for none owed; and what it read, -1 before the first.
+  int latencyIn_ = -1;
+  std::atomic<int> latencyWanted_ { -1 };
   std::atomic<int> program_ { 0 };
   std::atomic<int> windowW_ { kWindowW }, windowH_ { kWindowH };
   juce::String pictureReport_;

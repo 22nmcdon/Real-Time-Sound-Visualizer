@@ -331,6 +331,17 @@ class Generator {
     return lead ? lead->velocity() : 1;
   }
   bool gated() const { return gated_; }
+  /* How late the oversampled stages put what is heard, in samples, as the
+     settings stand after the last block (12 Nov): the voice's shaper, 31 at
+     either factor (drivetest.py's "the voice 31 samples late"), while A's
+     voice shapes or a layered B's does, and the plane's non-linear stage
+     after it, 31 more. So nought, 31 or 62. What the stages are asked for,
+     not where their crossfades are, and so what a host is told the sound's
+     latency is once a setup has loaded (the plugin's reportLatency). */
+  int stageDelay() const {
+    const bool shaped = vxA_.shaping || (b_.voices.has_value() && vxB_.shaping);
+    return (shaped ? (32 * ctx_.shapeFactor - ctx_.shapeFactor) / ctx_.shapeFactor : 0) + plane_.nonlinearDelay();
+  }
   double pitch() const { return lastHz_; }
   const std::vector<Voice>& voices() const { return voices_; }
   const std::vector<Voice>& voicesB() const { return voicesB_; }
