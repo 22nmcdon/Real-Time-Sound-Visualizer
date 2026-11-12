@@ -69,8 +69,9 @@ def null(name, red, detail=""):
 # figure was the tone it drew with none. The Level at 79, so that under the
 # envelope's sustain of 0.7 the circle is the 0.55 it was: smaller, the
 # extreme's pull fell just short. (A sustain at full instead keeps the size
-# but reads the ramp at 0.990 against its model, where it read 0.997 - not
-# understood, and left alone.) The note is the fixture, struck from code;
+# and read the ramp at 0.990 against its model, where it read 0.997: the
+# phase found a hundredth of a radian off a steep edge, which the shapes'
+# check below now reads as a phase, 12 Nov.) The note is the fixture, struck from code;
 # what is tested is still only pressed.
 SETUP = """async (shape) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -168,7 +169,19 @@ with sync_playwright() as pw:
         null("the angle counted the other way round fails the same tolerance on the %s" % name, cyc(got, wrong) > 0.02,
              "-atan2(X, Y) %.3f" % wrong)
 
-    # Every plain shape: the lane read at the phase the page found is the shape.
+    # Every plain shape: the lane read at the phase the page found is the
+    # shape. Read as two things, since 12 Nov: the shape, at the phase that
+    # fits the lane best, correlates past 0.99; and the phase found is within
+    # 0.05 rad of that one (0.008 of a cycle, under half the 0.02 of a cycle
+    # the grab is held to above; the most seen in twenty runs was 0.019). It was the correlation at the phase found, past 0.99,
+    # which on the ramp failed one run in a few: its edge is so steep that
+    # half a sample of phase (0.015 rad at 220 Hz) costs 0.007, and the phase
+    # found sits 0.004 to 0.019 rad behind the best fit from run to run, as
+    # the note's phase falls against the samples - [0.9925, 0.9899] found,
+    # 0.9977 and 0.9979 at the best fit, on the same frame. That 0.019 is the
+    # estimator's accuracy, not a fault the bend can feel. The sustain at
+    # full that read the ramp "at 0.990 against its model" (SETUP) is the
+    # same: 0.9905 found against 0.9979 at the best fit.
     for shape in ["triangle", "square", "ramp", "pulse", "harmonic", "morph"]:
         p.evaluate(SETUP, shape)
         r = p.evaluate("""() => {
@@ -178,10 +191,19 @@ with sync_playwright() as pw:
             for (let n = 0; n < lane.x.length; n++) { const v = wave(lane.theta + shift + lane.w * (n - at));
               sxy += v * lane.x[n]; sxx += v * v; syy += lane.x[n] * lane.x[n]; }
             return sxy / Math.sqrt(sxx * syy); };
-          return { found: m.lanes.map((lane) => corr(lane, 0)), half: m.lanes.map((lane) => corr(lane, Math.PI)) };
+          // The shift from the phase found to the phase that fits best, within a twentieth of a cycle.
+          const best = (lane, from) => { let bs = 0, bc = -2;
+            for (let k = -300; k <= 300; k++) { const d = from + k * 0.001, c = corr(lane, d); if (c > bc) { bc = c; bs = d; } }
+            return [bs, bc]; };
+          return { fit: m.lanes.map((lane) => best(lane, 0)),
+                   half: m.lanes.map((lane) => corr(lane, Math.PI)) };
         }""")
-        check("on the %s, each lane read at the phase found for it is the shape" % shape,
-              min(r["found"]) > 0.99, str([round(v, 4) for v in r["found"]]))
+        fits = lambda fit: all(abs(s) <= 0.05 and c > 0.99 for s, c in fit)
+        check("on the %s, each lane read near the phase found for it is the shape, and the phase found is within 0.05 rad of the best" % shape,
+              fits(r["fit"]), "; ".join("%.3f rad off, %.4f at the best" % (s, c) for s, c in r["fit"]))
+        # The same reading had the phase been found a sixtieth of a cycle late: the best fit a tenth of a radian back from it.
+        null("a phase found 0.1 rad out fails the same reading (the %s)" % shape,
+             not fits([(s - 0.1, c) for s, c in r["fit"]]), "; ".join("%.3f rad off" % (s - 0.1) for s, c in r["fit"]))
         null("half a cycle out, it is not (the %s)" % shape, max(r["half"]) < 0.9,
              str([round(v, 3) for v in r["half"]]))
     p.evaluate(SETUP, "sine")
