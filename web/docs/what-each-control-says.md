@@ -385,14 +385,14 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | menvOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope. | 108 | yes — its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
-| menvFollow | Follows Play | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 99 | - |
+| menvFollow | Follows the amp envelope | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 99 | - |
 | menvItsOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs. | 93 | - |
 | menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope. | 114 | - |
 | menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope. | 124 | - |
-| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play. | 100 | - |
-| menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play. | 100 | - |
-| menvSus | Sustain | Where it rests while notes are held, from nought to the top. Greyed while it follows Play. | 90 | - |
-| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows Play. | 111 | - |
+| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows the amp envelope. | 112 | - |
+| menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows the amp envelope. | 112 | - |
+| menvSus | Sustain | Where it rests while notes are held, from nought to the top. Greyed while it follows the amp envelope. | 102 | - |
+| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows the amp envelope. | 123 | - |
 
 ### The on-screen keyboard
 

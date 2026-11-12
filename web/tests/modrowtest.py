@@ -443,6 +443,35 @@ with sync_playwright() as pw:
           and chips[(1400, 860)]["height"] <= 40 and chips[(1200, 680)]["chips"], str(chips))
     null("the cards' row is taller than the chips'", chips[(1400, 900)]["height"] > 2 * chips[(1400, 860)]["height"])
 
+    print("\n--- the Envelope's corner word, at every window fittest.py measures ---")
+    # "follows the amp envelope" (11 Nov, the owner's words over "follows
+    # Play") is twice as long as what it replaced. The card's reading is the
+    # auto column and the count the one that gives way, so the word must come
+    # out whole - its box no wider than its text needs and inside its card -
+    # on the card and the chip, and the row must still end short of Routings.
+    WORD = """(said) => {
+      const card = el.modStrip.querySelector('[data-source="env.note"]'), reading = card.querySelector('.reading');
+      if (said !== null) reading.textContent = said;
+      const r = reading.getBoundingClientRect(), c = card.getBoundingClientRect(), pad = parseFloat(getComputedStyle(card).paddingRight);
+      const last = el.modStrip.lastElementChild.getBoundingClientRect(), routes = el.routingsButton.getBoundingClientRect();
+      return { text: reading.textContent, whole: reading.scrollWidth <= reading.clientWidth, inside: r.right <= c.right - pad + 0.5,
+               clear: last.right <= routes.left, chips: document.body.dataset.chips !== undefined, width: Math.round(r.width) };
+    }"""
+    words = {}
+    for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)):
+        p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(350)
+        words[(w, h)] = p.evaluate(WORD, None)
+    print("    %s" % words)
+    fits = lambda m: m["text"] == "follows the amp envelope" and m["whole"] and m["inside"] and m["clear"]
+    check("following Play's envelope, the card says so whole, card and chip, at every window", all(fits(m) for m in words.values())
+          and words[(1400, 900)]["chips"] is False and words[(960, 600)]["chips"] is True, str(words))
+    # The same measure, at the narrowest card, given a word longer than the
+    # card has room for: it has to see the ellipsis.
+    long = p.evaluate(WORD, "follows the amp envelope, and then a good deal more")
+    null("a reading the card cannot hold is not whole", not long["whole"], str(long))
+    p.evaluate("() => paintCards()")
+    p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(350)
+
 
     print("\n--- the Envelope's dot, along a note ---")
     # Every frame's dot off the card: its stage, where it is, and how far it

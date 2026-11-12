@@ -4282,7 +4282,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <div class="src-env-top">
               <input type="checkbox" id="menvOwn" hidden>
               <div class="switch" role="radiogroup" aria-label="Whether the Envelope follows Play's amp envelope or has its own">
-                <button type="button" class="caps" id="menvFollow" role="radio" aria-checked="true">Follows Play</button>
+                <button type="button" class="caps" id="menvFollow" role="radio" aria-checked="true">Follows the amp envelope</button>
                 <button type="button" class="caps" id="menvItsOwn" role="radio" aria-checked="false">Its own</button>
               </div>
               <!-- Once a phrase, or again on every note (8 Nov). The bank's two headings
@@ -4294,7 +4294,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <button type="button" class="caps" id="menvEvery" role="radio" aria-checked="false">Every note</button>
               </div>
             </div>
-            <!-- Its curve, with a dot where the phrase is: Play's, greyed, while it follows Play. -->
+            <!-- Its curve, with a dot where the phrase is: Play's, greyed, while it follows the amp envelope. -->
             <canvas class="src-draw" id="menvCurve" role="img" aria-label="The Envelope's curve"></canvas>
             <div class="src-knobs">
             <div class="menu-row">
@@ -5064,7 +5064,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         with a small drawing. Press it and its editor opens over the tabs, beside the screen so
         the picture stays in view: the source drawn large (an oscillator's wave with the dot
         at its phase and its shape, sync and rate under it; the Envelope's curve, Play's and
-        greyed while it follows Play, with its four times, drawn at the height the note it is
+        greyed while it follows the amp envelope, with its four times, drawn at the height the note it is
         following was struck, its dot riding up the attack, down the decay, along the hold and
         down the release, and resting where the release ends; what the Photocell sees around its
         reticle, its last four seconds and its value now, <i>On</i> and <i>Place it on the
@@ -21200,7 +21200,7 @@ function stepEnvWhere(level, stage, velocity) {
   if (named === "release" && envWhere.stage !== "release") envWhere.from = u;
   envWhere.level = level; envWhere.stage = named; envWhere.velocity = vel;
 }
-// Its four times and its sustain: its own when it has them, Play's while it follows Play.
+// Its four times and its sustain: its own when it has them, Play's while it follows the amp envelope.
 function envTimes() {
   const own = el.menvOwn.checked;
   return { own, a: Number((own ? el.menvAtk : el.envAttack).value), d: Number((own ? el.menvDec : el.envDecay).value),
@@ -21358,7 +21358,7 @@ function paintModLive() {
 }
 
 /* The Envelope's own (8 Nov): into the generator, and its readings. The
-   knobs are greyed while it follows Play, not hidden, so the editor does not
+   knobs are greyed while it follows the amp envelope, not hidden, so the editor does not
    jump when it is switched. Since G5a the switch is two buttons along the top,
    Follows Play and Its own, over the checkbox that is its value. */
 function paintMenv() {
@@ -21389,7 +21389,7 @@ function syncMenv() {
 function cardReading(source) {
   if (source.index !== undefined) return lfoRateReading(lfos[source.index]);
   if (source.id === "photo.1") return photo.on ? photo.value.toFixed(2) : "off";
-  return el.menvOwn.checked ? "its own" : "follows Play";
+  return el.menvOwn.checked ? "its own" : "follows the amp envelope";
 }
 
 function paintCards() {
@@ -22334,7 +22334,7 @@ const SETUP_FIELDS = {
      voice, each held to its control's range (LAYER_KEYS). And the drawn
      cycle's other slots, empty until drawn. */
   /* The Envelope's own (8 Nov): off, and the times it starts with, so a code
-     without them follows Play as it always did. Added, so no version bump. */
+     without them follows the amp envelope as it always did. Added, so no version bump. */
   menvOwn: [false, ["flag"]], menvEvery: [false, ["flag"]], menvAtk: [10, ["within", 0, 2000]], menvDec: [300, ["within", 1, 4000]],
   menvSus: [50, ["within", 0, 100]], menvRel: [400, ["within", 1, 4000]],
   bTurn: [null, ["within", -50, 50]], cycles: [null, ["custom"]],
@@ -28227,14 +28227,14 @@ const CONTROL_WORDS = {
   "lfoRate0": ["Rate", "How fast the LFO sweeps, from 0.01 to 8 cycles a second. Greyed while Sync locks it to the tempo."],
   "srcDetail-add": ["Add a destination", "Puts this source on another control, from every one it can reach. Dragging its card onto a knob does the same."],
   "menvOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope."],
-  "menvFollow": ["Follows Play", "The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play."],
+  "menvFollow": ["Follows the amp envelope", "The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play."],
   "menvItsOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs."],
   "menvPhrase": ["Each phrase", "Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope."],
   "menvEvery": ["Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope."],
-  "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows Play."],
-  "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows Play."],
-  "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Greyed while it follows Play."],
-  "menvRel": ["Release", "How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows Play."],
+  "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows the amp envelope."],
+  "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows the amp envelope."],
+  "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Greyed while it follows the amp envelope."],
+  "menvRel": ["Release", "How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows the amp envelope."],
   "keysDown": ["Down an octave", "Moves the on-screen keys down an octave; Z does the same from the computer keyboard."],
   "keysUp": ["Up an octave", "Moves the on-screen keys up an octave; X does the same from the computer keyboard."],
   "keysLatch": ["Tap to hold", "Each tap holds its note until you tap it again, so a mouse can hold a chord. Unticking lets go of every note it held."],
