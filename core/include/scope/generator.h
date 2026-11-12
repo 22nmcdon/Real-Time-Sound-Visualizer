@@ -130,7 +130,11 @@ struct Route {
   int slot = 0;
   double amount = 0, amountB = 0;
   bool unipolar = false;
+  bool loop = false;  // the picture's pushes into one slot, combined: glided at the destination
 };
+
+// LOOP_GLIDE_MS: how long the picture's pushes take to arrive, the page's tone says why.
+constexpr double kLoopGlideMs = 20;
 
 // S10's report of the last block.
 struct Budget {
@@ -148,6 +152,7 @@ class Generator {
   Generator(double rate, int slots, std::vector<Lfo>& lfos, std::uint32_t seed = 1)
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
         genMod_(static_cast<std::size_t>(std::max(slots, slot::Used)), 0.0f), genModB_(genMod_),
+        loopNow_(genMod_.size(), 0.0), loopNowB_(genMod_.size(), 0.0), loopOn_(genMod_.size(), 0), loopSeen_(genMod_.size(), 0),
         env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), ctx_(rate),
         scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
@@ -362,6 +367,7 @@ class Generator {
 
   void effect(const float* inL, const float* inR, float* outL, float* outR, int n) {
     const double dt = 1 / rate_;
+    loopGlideStart();
     bool twistRouted = false, echoRouted = false, phaserRouted = false, reverbRouted = false;
     for (const auto& r : routes_) {
       if (r.slot == slot::Twist) twistRouted = true;
@@ -391,6 +397,7 @@ class Generator {
   void block(float* outL, float* outR, int n, float* heardL = nullptr, float* heardR = nullptr,
              float* outBL = nullptr, float* outBR = nullptr) {
     const double dt = 1 / rate_;
+    loopGlideStart();
     const bool poly = a_.voices.has_value();
     const bool layered = b_.voices.has_value();
     const double roleGlide = poleFor(4, rate_);
@@ -799,6 +806,17 @@ class Generator {
   double modOr0(int k) const { const double v = mod(k); return std::isnan(v) ? 0 : v; }
   double modBOr0(int k) const { const double v = modB(k); return std::isnan(v) ? 0 : v; }
 
+  /* loopGlideStart: once a block, the glide's pole for the rate, and a slot
+     no push reaches this block forgets where it had glided to, so a push that
+     comes back starts where it is asked, as the stages it switches in do. */
+  void loopGlideStart() {
+    loopGlide_ = poleFor(kLoopGlideMs, rate_);
+    std::fill(loopSeen_.begin(), loopSeen_.end(), 0);
+    for (const auto& route : routes_)
+      if (route.loop && route.slot >= 0 && route.slot < slots_) loopSeen_[static_cast<std::size_t>(route.slot)] = 1;
+    for (std::size_t s = 0; s < loopOn_.size(); s++) if (!loopSeen_[s]) loopOn_[s] = 0;
+  }
+
   void sumRoutes() {
     std::fill(genMod_.begin(), genMod_.end(), 0.0f);
     std::fill(genModB_.begin(), genModB_.end(), 0.0f);
@@ -807,7 +825,13 @@ class Generator {
       const auto s = static_cast<std::size_t>(route.slot);
       const bool osc = route.index >= 0;
       const double o = osc ? lfos_[static_cast<std::size_t>(route.index)].value : 0;
-      const double value = osc ? o : route.held, valueB = osc ? o : route.heldB;
+      double value = osc ? o : route.held, valueB = osc ? o : route.heldB;
+      // The picture's push, glided a sample at a time rather than stepped at each frame (the page's sumRoutes).
+      if (route.loop && !osc) {
+        if (!loopOn_[s]) { loopNow_[s] = value; loopNowB_[s] = valueB; loopOn_[s] = 1; }
+        else { loopNow_[s] += (value - loopNow_[s]) * loopGlide_; loopNowB_[s] += (valueB - loopNowB_[s]) * loopGlide_; }
+        value = loopNow_[s]; valueB = loopNowB_[s];
+      }
       genMod_[s] = static_cast<float>(genMod_[s] + (route.unipolar ? route.amount * (1 - value) / 2 : route.amount * value));
       genModB_[s] = static_cast<float>(genModB_[s] + (route.unipolar ? route.amountB * (1 - valueB) / 2 : route.amountB * valueB));
     }
@@ -967,6 +991,10 @@ class Generator {
   Tone a_;
   LayerBSettings b_;
   std::vector<float> genMod_, genModB_;
+  // Where each slot's picture push has glided to, on each hand, and whether it has one (the page's loopNow).
+  std::vector<double> loopNow_, loopNowB_;
+  std::vector<char> loopOn_, loopSeen_;
+  double loopGlide_ = 1;
   std::vector<Route> routes_;
   Registration barsA_, barsB_;
 

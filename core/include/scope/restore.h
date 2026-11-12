@@ -279,7 +279,16 @@ struct Brain {
      Picture section's Amount and Strike on each hand in the sliders' units
      (pictureHands), which the sliders show one of. */
   std::array<bool, 11> handOwn {};
-  struct PictureHand { double amount = 60, strike = 50; };
+  /* How each hand's picture responds (11 Nov, the-picture-amount.md): what it
+     responds to (0 Change, 1 Level, 2 Both), its rise and fall in
+     milliseconds, and whether it swells by itself. */
+  struct PictureHand {
+    double amount = 60, strike = 50;
+    int responds = 0;       // 0 Change, 1 Level, 2 Both: the page's "change", "level", "both"
+    int feel = 1;           // 0 Snappy, 1 Smooth, 2 Slow, 3 Custom: the Rise and Fall menu
+    double rise = 80, fall = 800;  // Custom's two knobs, in milliseconds
+    bool swell = false;
+  };
   std::array<PictureHand, 2> pictureHands {};
   // What each layer's Scan reads (P7b, cross-scan): the page's `scan.reads`, "A", "B" or "both".
   std::array<std::string, 2> scanReads { { "A", "B" } };
@@ -516,7 +525,10 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
       { "gen.fm", "gen.sync", "gen.bend", "gen.bendAt" }, 0 },
     { "shp", "linkShp", { "shpDrive", "shpFold", "shpBits", "shpRate" }, { "bDrive", "bFold", "bBits", "bRate" },
       { "gen.drive", "gen.fold" }, 0 },
-    { "picture", "linkPicture", { "pictureAmount", "oscScan", "scanStrike" }, { "bPictureAmount", "bScan", "bScanStrike" }, {}, 0 },
+    { "picture", "linkPicture", { "pictureAmount", "oscScan", "scanStrike", "pictureResponds", "pictureSwell", "pictureFeel", "pictureRise",
+                                  "pictureFall" },
+      { "bPictureAmount", "bScan", "bScanStrike", "bPictureResponds", "bPictureSwell", "bPictureFeel", "bPictureRise", "bPictureFall" },
+      {}, 0 },
     { "plane", "linkPlane", { "planeMirror", "planeLimit", "planeRadius", "planeTwist", "planeSnap", "planeScaleX", "planeScaleY",
                               "planeShear", "planeTurn" },
       { "bMirror", "bLimit", "bRadius", "bTwist", "bSnap", "bScaleX", "bScaleY", "bShear", "bTurn" },
@@ -686,10 +698,31 @@ inline void pictureWrite(Brain& b, const Keyboard& keys, bool strike, double v) 
   b.scanStrike = b.pictureHands[0].strike / 100;
   b.scanStrikeB = b.pictureHands[1].strike / 100;
 }
+/* How a hand's picture responds (11 Nov): the menus' values as numbers, and
+   the Rise and Fall in milliseconds by the menu, the page's PICTURE_FEELS. */
+inline int pictureRespondsOf(std::u16string_view v) { return v == u"level" ? 1 : v == u"both" ? 2 : 0; }
+inline const char16_t* pictureRespondsName(int r) { return r == 1 ? u"level" : r == 2 ? u"both" : u"change"; }
+inline int pictureFeelOf(std::u16string_view v) { return v == u"snappy" ? 0 : v == u"slow" ? 2 : v == u"custom" ? 3 : 1; }
+inline const char16_t* pictureFeelName(int f) { return f == 0 ? u"snappy" : f == 2 ? u"slow" : f == 3 ? u"custom" : u"smooth"; }
+inline std::array<double, 2> pictureFeelMs(const Brain::PictureHand& h) {
+  if (h.feel == 0) return { 20, 250 };
+  if (h.feel == 1) return { 80, 800 };
+  if (h.feel == 2) return { 400, 3000 };
+  return { h.rise, h.fall };
+}
+// The Picture's other controls (11 Nov), written to the hands its link says.
+template <typename Write> inline void pictureWriteWith(Brain& b, const Keyboard& keys, Write write) {
+  for (int hand = 0; hand < 2; hand++)
+    if (handWrites(b, keys, kHandPicture, hand)) write(b.pictureHands[static_cast<std::size_t>(hand)]);
+}
 inline void syncPictureHand(Brain& b, const Keyboard& keys) {
   const Brain::PictureHand& hand = b.pictureHands[handLinked(b, kHandPicture) ? 0 : static_cast<std::size_t>(keys.editLayer())];
   b.panel.setRangeNumber("pictureAmount", hand.amount);
   b.panel.setRangeNumber("scanStrike", hand.strike);
+  b.panel.setRangeNumber("pictureRise", hand.rise);
+  b.panel.setRangeNumber("pictureFall", hand.fall);
+  b.panel.setSelect("pictureResponds", pictureRespondsName(hand.responds));
+  b.panel.setSelect("pictureFeel", pictureFeelName(hand.feel));
   b.scanStrike = b.pictureHands[0].strike / 100;
   b.scanStrikeB = b.pictureHands[1].strike / 100;
 }
@@ -1742,6 +1775,29 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       brain.pictureHands[1].strike = strikeB ? rangeSanitiseNumber(*rangeSpec("scanStrike"), strikeB->n) : brain.pictureHands[0].strike;
       brain.scanStrike = brain.pictureHands[0].strike / 100;
       brain.scanStrikeB = brain.pictureHands[1].strike / 100;
+      /* How each hand's picture responds (11 Nov), by the same rule: the
+         upper's own where the Picture is its own and the setup gives one. */
+      {
+        const bool linkedPicture = handLinked(brain, kHandPicture);
+        Brain::PictureHand &a = brain.pictureHands[0], &h = brain.pictureHands[1];
+        const auto ownOf = [&](std::string_view key) { return linkedPicture ? std::nullopt : own(key); };
+        a.responds = pictureRespondsOf(fieldStr("pictureResponds"));
+        a.swell = fieldFlag("pictureSwell");
+        a.feel = pictureFeelOf(fieldStr("pictureFeel"));
+        panel.setRange("pictureRise", fieldText("pictureRise"));
+        panel.setRange("pictureFall", fieldText("pictureFall"));
+        a.rise = panel.range("pictureRise");
+        a.fall = panel.range("pictureFall");
+        const auto responds = ownOf("bPictureResponds"), swell = ownOf("bPictureSwell"), feel = ownOf("bPictureFeel");
+        const auto rise = ownOf("bPictureRise"), fall = ownOf("bPictureFall");
+        h.responds = responds ? pictureRespondsOf(responds->s) : a.responds;
+        h.swell = swell ? swell->b : a.swell;
+        h.feel = feel ? pictureFeelOf(feel->s) : a.feel;
+        h.rise = rise ? rangeSanitiseNumber(*rangeSpec("pictureRise"), rise->n) : a.rise;
+        h.fall = fall ? rangeSanitiseNumber(*rangeSpec("pictureFall"), fall->n) : a.fall;
+        panel.setSelect("pictureResponds", pictureRespondsName(a.responds));
+        panel.setSelect("pictureFeel", pictureFeelName(a.feel));
+      }
       for (int l = 0; l < 2; l++) {
         const std::string own = l == 0 ? "A" : "B";
         const Json* v = s(l == 0 ? "scanReadsA" : "scanReadsB");
@@ -1809,6 +1865,9 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
   else if (id == "scanStrike") pictureWrite(b, keys, true, v);
+  // How the picture responds (11 Nov): Custom's Rise and Fall.
+  else if (id == "pictureRise") pictureWriteWith(b, keys, [v](Brain::PictureHand& h) { h.rise = v; });
+  else if (id == "pictureFall") pictureWriteWith(b, keys, [v](Brain::PictureHand& h) { h.fall = v; });
   else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
@@ -1965,6 +2024,10 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiLayers") keys.setLayers(text == "split" ? LayerMode::Split : text == "layer" ? LayerMode::Layer : LayerMode::Off);
   else if (id == "midiLayerPair") keys.setPair(text == "against");
   else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");
+  // How the picture responds (11 Nov), on the hands the Picture's link says.
+  else if (id == "pictureResponds") pictureWriteWith(b, keys, [&](Brain::PictureHand& h) { h.responds = pictureRespondsOf(toU16(text)); });
+  else if (id == "pictureFeel") pictureWriteWith(b, keys, [&](Brain::PictureHand& h) { h.feel = pictureFeelOf(toU16(text)); });
+  else if (id == "pictureSwell") pictureWriteWith(b, keys, [&](Brain::PictureHand& h) { h.swell = checked; });
   else if (id == "pictureMovesB") b.pictureMoves[1] = pictureMovesOf(text, "B");
   else if (id == "scanReadsA") b.scanReads[0] = scanReadsOf(text, "A");
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
@@ -2122,8 +2185,11 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
   if (sec == kHandPhaser) return f.phaser == e.phaser && f.phRate == e.phRate && f.phDepth == e.phDepth && f.phFeedback == e.phFeedback;
   if (sec == kHandReverb)
     return f.rvMix == e.rvMix && f.rvSize == e.rvSize && f.rvTone == e.rvTone && f.rvPre == e.rvPre && f.rvSpread == e.rvSpread;
-  if (sec == kHandPicture && (b.pictureHands[0].amount != b.pictureHands[1].amount
-                              || b.pictureHands[0].strike != b.pictureHands[1].strike)) return false;
+  if (sec == kHandPicture) {
+    const Brain::PictureHand &p = b.pictureHands[0], &q = b.pictureHands[1];
+    if (p.amount != q.amount || p.strike != q.strike || p.responds != q.responds || p.feel != q.feel || p.rise != q.rise
+        || p.fall != q.fall || p.swell != q.swell) return false;
+  }
   const LayerSettings &a = gen.tone(), &t = gen.toneB();
   for (const auto& row : layerControls()) {
     if (handSectionOfControl(row.id) != sec) continue;

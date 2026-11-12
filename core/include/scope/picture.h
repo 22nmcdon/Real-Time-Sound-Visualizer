@@ -425,38 +425,99 @@ class PictureSources {
 };
 
 // The picture stage (P3 of making-it-one-instrument.md): three reads of the
-// picture that move the sound always, with no routing made by hand. Glow is
-// the coverage and Motion the change, each rescaled to the range it has had
-// lately, with a least span so that a still picture stays still rather than
-// having its jitter stretched into full swings; Memory is how long it has
-// been repeating itself, still or cycling, and never less than boredom.
-// The page's `pictureStageStep`, held to it by parity.
-constexpr double kStageRelax = 0.5;  // of the way back to the reading, a second: see STAGE_RELAX
-constexpr double kStageGlowSpan = 0.1, kStageMotionSpan = 0.05;
+// picture that move the sound always, with no routing made by hand. The
+// page's `pictureStageStep`, held to it by parity, and its comment over
+// STAGE_LEVEL_EPS gives the reasons for each read (11 Nov, the-picture-amount.md).
+//
+// Glow is how the hand's picture responds, by its Responds to: Level, how
+// much is lit on a fixed scale that compresses as more is lit; Change, the
+// level above where it has lately settled; or Both. Then smoothed by the
+// hand's Rise and Fall, and, with Swell on, breathing by a designed wave at
+// a rate the Persistence sets. Motion is the light that changed from one
+// frame to the next, on a fixed scale, smoothed alike. Memory is how long it
+// has been repeating itself, still or cycling, and never less than boredom.
+constexpr double kStageLevelEps = 0.003;     // STAGE_LEVEL_EPS: the coverage the level's log scale is out of
+constexpr double kStageChangeSpan = 0.6;     // STAGE_CHANGE_SPAN: the level a full Change is, the span's floor
+constexpr double kStageSettle = 0.2;         // STAGE_SETTLE: a second, the base rising to a level kept up
+constexpr double kStageRelease = 3;          // STAGE_RELEASE: a second, the base falling to a level let go
+constexpr double kStageBothBase = 0.5;       // STAGE_BOTH_BASE: Both's share of the level
+constexpr double kStageMotionScale = 0.05;   // STAGE_MOTION_SCALE: the changed light a full Motion is
+constexpr double kStageSwellDepth = 0.5;     // STAGE_SWELL_DEPTH: the breath's share of the push at a full level
+constexpr double kStageSwellLeast = 2, kStageSwellPerHalf = 8, kStageSwellMost = 20;  // STAGE_SWELL_*: the period, seconds
+constexpr double kStageLitFloor = 0.02;      // STAGE_LIT_FLOOR: a level under it is a dark screen, the breath starting again
 constexpr double kStageDefault = 60;   // the Picture slider's start, in per cent
 // The hold on the stage's push while the meter says the loop is running away:
 // the page's STAGE_HOLD_*, and its comment says why these.
 constexpr double kStageHoldFall = 0.5, kStageHoldRise = 0.1, kStageHoldFloor = 0.25;
 
+// How a hand's picture responds (the Picture's Advanced): the page's
+// `pictureResponse` for a hand, as the stage reads it.
+struct StageResponse {
+  int respondsTo = 0;           // 0 Change, 1 Level, 2 Both
+  double riseMs = 80, fallMs = 800;
+  bool swell = false;
+  double persistence = 0;       // the screen's, which the breath's period follows
+};
+
+// The level's scale: nought dark, one with a quarter of the screen lit, and
+// half of it by a fiftieth of that.
+inline double stageLevel(double cover) {
+  static const double top = std::log(1 + 1 / kStageLevelEps);
+  return std::fmax(0.0, std::fmin(1.0, std::log(1 + std::fmax(0.0, cover) / kStageLevelEps) / top));
+}
+// The breath's period: a picture that lingers breathes slowly. Off is the
+// quickest, held for ever the slowest.
+inline double stageSwellPeriod(double persistence) {
+  if (persistence == 0) return kStageSwellLeast;
+  if (persistence < 0 || persistence >= 1) return kStageSwellMost;
+  const double half = -1 / (60 * std::log2(1 - persistence));
+  return std::fmax(kStageSwellLeast, std::fmin(kStageSwellMost, kStageSwellLeast + kStageSwellPerHalf * half));
+}
+// A one-pole towards `to`, at the rise's time going up and the fall's going down.
+inline double stageToward(double from, double to, double dt, double riseMs, double fallMs) {
+  const double ms = to > from ? riseMs : fallMs;
+  if (!(ms > 0)) return to;
+  return from + (to - from) * (1 - std::exp(-dt * 1000 / ms));
+}
+
 class PictureStage {
  public:
-  // `values` slewed, as the sources read them; `raw` for novelty, as the page's
-  // pictureStageStep says why.
-  void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram, bool running) {
+  // `values` slewed, as the sources read them; `raw` for the reads, as the
+  // page's pictureStageStep says why.
+  void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram, bool running,
+            const StageResponse& r = {}) {
     if (spectrogram) { glow_ = motion_ = memory_ = familiar_ = 0; return; }
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
     hold_ = running ? std::fmax(kStageHoldFloor, hold_ - kStageHoldFall * dt) : std::fmin(1.0, hold_ + kStageHoldRise * dt);
     const double repeating = std::fmax(0.0, std::fmin(1.0, 1 - raw.novelty / (2 * kNoveltyFloor)));
     familiar_ += dt * (kBoredRise * repeating - kBoredLeak * familiar_);
     familiar_ = std::fmax(0.0, std::fmin(1.0, familiar_));
-    glow_ = rescale(glowRange_, values.cover, dt, kStageGlowSpan);
-    motion_ = rescale(motionRange_, values.change, dt, kStageMotionSpan);
+    level_ = stageLevel(raw.cover);
+    if (!seen_) { base_ = level_; lastCover_ = raw.cover; seen_ = true; }
+    base_ += (level_ - base_) * (1 - std::exp(-dt * (level_ > base_ ? kStageSettle : kStageRelease)));
+    change_ = std::fmax(0.0, std::fmin(1.0, (level_ - base_) / kStageChangeSpan));
+    const double want = r.respondsTo == 1 ? level_ : r.respondsTo == 2 ? std::fmin(1.0, kStageBothBase * level_ + change_) : change_;
+    smooth_ = stageToward(smooth_, want, dt, r.riseMs, r.fallMs);
+    const double moved = std::fmax(0.0, std::fmin(1.0, raw.change * (raw.cover + lastCover_) / 2 / kStageMotionScale));
+    lastCover_ = raw.cover;
+    motionSmooth_ = stageToward(motionSmooth_, moved, dt, r.riseMs, r.fallMs);
+    double breath = 0;
+    if (r.swell && level_ >= kStageLitFloor) {
+      phase_ += dt / stageSwellPeriod(r.persistence);
+      phase_ -= std::floor(phase_);
+      const double wave = (1 - std::cos(2 * 3.14159265358979323846 * phase_)) / 2;
+      breath = kStageSwellDepth * level_ * (wave - smooth_);
+    } else phase_ = 0;
+    glow_ = std::fmax(0.0, std::fmin(1.0, smooth_ + breath));
+    motion_ = motionSmooth_;
     memory_ = std::fmax(values.bored, familiar_);
   }
   double glow() const { return glow_; }
   double motion() const { return motion_; }
   double memory() const { return memory_; }
   double hold() const { return hold_; }
+  double level() const { return level_; }
+  double change() const { return change_; }
   // What each read hands the matrix: the read, held back while the loop runs
   // away. The page's stage sources' value.
   double pushGlow() const { return glow_ * hold_; }
@@ -466,20 +527,9 @@ class PictureStage {
   void put(double glow, double motion, double memory, double hold) { glow_ = glow; motion_ = motion; memory_ = memory; hold_ = hold; }
 
  private:
-  struct Range { double lo = 0, hi = 0; bool seen = false; };
-  // The range follows a reading outwards at once and relaxes back towards it
-  // at kStageRelax a second, so a quiet spell narrows it again. The first
-  // reading is its own range, and reads nought.
-  static double rescale(Range& range, double x, double dt, double least) {
-    if (!range.seen) { range = { x, x, true }; return 0; }
-    const double k = std::fmin(1.0, kStageRelax * dt);
-    const double hi = std::fmax(x, range.hi - (range.hi - x) * k);
-    const double lo = std::fmin(x, range.lo + (x - range.lo) * k);
-    range.lo = lo; range.hi = hi;
-    return std::fmax(0.0, std::fmin(1.0, (x - lo) / std::fmax(hi - lo, least)));
-  }
   double glow_ = 0, motion_ = 0, memory_ = 0, familiar_ = 0, hold_ = 1;
-  Range glowRange_, motionRange_;
+  double level_ = 0, change_ = 0, base_ = 0, smooth_ = 0, motionSmooth_ = 0, lastCover_ = 0, phase_ = 0;
+  bool seen_ = false;
 };
 
 /* EACH LAYER'S PICTURE (P6, the owner's): the page's `layerPictures`. Split
@@ -529,13 +579,15 @@ class LayerPictures {
   /* layerPicturesStep: each grid measured and staged on its own, from each
      figure's own shape - nothing for a figure with no frame. Not two figures
      any more, and the layers are not live until the next fade finds them. */
-  void step(bool two, const PairShape* a, const PairShape* b, double elapsedMs, bool spect, double limiting) {
+  void step(bool two, const PairShape* a, const PairShape* b, double elapsedMs, bool spect, double limiting,
+            const std::array<StageResponse, 2>& responses = {}) {
     if (!live_) return;
     if (!two) { live_ = false; return; }
     const PairShape* shapes[2] = { a, b };
     for (std::size_t l = 0; l < 2; l++) {
       pics_[l].pictureStep(grids_[l], shapes[l], elapsedMs, spect, limiting);
-      stages_[l].step(pics_[l].values(), pics_[l].raw(), elapsedMs, spect, pics_[l].meter().verdict() == "running away");
+      stages_[l].step(pics_[l].values(), pics_[l].raw(), elapsedMs, spect, pics_[l].meter().verdict() == "running away",
+                      responses[l]);
     }
   }
 

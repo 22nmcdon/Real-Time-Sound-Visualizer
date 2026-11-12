@@ -13,7 +13,7 @@
    then `end`. N is a sample at the start of a block. Commands:
      set FIELD VALUE [LAYER]      a number, true or false, or a word
      bars LAYER v,v,...           voices LAYER null | note/hz/vel/role+...
-     routes none | index/held/heldB/slot/amount/amountB/unipolar+...
+     routes none | index/held/heldB/slot/amount/amountB/flags+...   (flags: 1 unipolar, 2 the loop's, glided)
      gate 0|1 VEL   gated 0|1     strike HZ VEL   reswing
      cycle T:...   wavetable B:...   (each, or none)   lfo I SHAPE RATE
      scan LAYER T:... | none      (Scan's latest table for a layer, P7a)
@@ -130,7 +130,9 @@ function run(head, events) {
       } else if (cmd === "routes") {
         core.setRoutes(a[0] === "none" ? [] : a[0].split("+").map((r) => {
           const [index, held, heldB, slot, amount, amountB, unipolar] = r.split("/").map(Number);
-          return { index: index < 0 ? undefined : index, held, heldB, slot, amount, amountB, unipolar: unipolar === 1 };
+          // The last number is the flags, as the wasm route has them: one unipolar, two the loop's.
+          return { index: index < 0 ? undefined : index, held, heldB, slot, amount, amountB, unipolar: (unipolar & 1) === 1,
+                   loop: (unipolar & 2) === 2 };
         }));
       } else if (cmd === "gate") core.gate(a[0] === "1", Number(a[1]));
       else if (cmd === "noteDown") core.noteDown();

@@ -81,7 +81,9 @@ with sync_playwright() as pw:
     # F2: what Scan reads and the score behind the Picture's Advanced.
     pictured = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#picturePanel')).map(groupTitle).sort()""")
     # And the beam's ink since F7b, as only the look.
-    check("the Picture's Advanced holds what Scan reads, the score and the beam", pictured == ["Beam", "Score", "What Scan reads"], str(pictured))
+    # And how the picture responds since 11 Nov, beside what Scan reads.
+    check("the Picture's Advanced holds what Scan reads, how the picture responds, the score and the beam",
+          pictured == ["Beam", "How the picture responds", "Score", "What Scan reads"], str(pictured))
     performed = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#performPanel')).map(groupTitle).sort()""")
     check("the header's Perform menu holds the arpeggiator, the clock, the key and tempo and the morph",
           performed == ["Arpeggiator", "Clock", "Key and tempo", "Morph"], str(performed))
@@ -613,7 +615,9 @@ with sync_playwright() as pw:
       for (const view of ['bench']) {
         setView(view);
         const bar = el.pictureBar.getBoundingClientRect();
-        const knobs = Array.from(el.pictureBar.querySelectorAll('.knob-row input[type=range]')).map((i) => i.id);
+        // The bar's own, not its Advanced's (the Rise and Fall knobs since 11 Nov).
+        const knobs = Array.from(el.pictureBar.querySelectorAll('.knob-row input[type=range]'))
+          .filter((i) => !i.closest('#picturePanel')).map((i) => i.id);
         setPictureOpen(true);
         const box = el.picturePanel.getBoundingClientRect();
         out[view] = { bottom: Math.abs(bar.bottom - innerHeight) < 2, knobs,

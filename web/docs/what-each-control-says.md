@@ -7,14 +7,15 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-317 controls: 317 lines, none marked as removed by a later stage, 76 wanting a paragraph
+322 controls: 322 lines, none marked as removed by a later stage, 77 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
 right-click menu has no controls of its own to describe: its items are its words, and
 *What is this?* in it opens a control's card; and in G6, which took Edit A / B, the rack's
 Together / A / B and B's turn on a row of its own, gave the turn the Turn's place, and
-added the header's Editing and a link on eleven sections).
+added the header's Editing and a link on eleven sections; and on 11 Nov, which added the five
+of *How the picture responds*).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -327,6 +328,16 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | scanReadsB | Reads (Upper) | Whose picture the upper hand’s Scan reads: its own, the lower’s, or both averaged. Shown only while each hand draws a figure of its own. | 136 | - |
 | pictureMovesA | Pictures (Lower) | Whose sound the lower hand’s picture moves through the Amount: its own, the upper’s, or both. A sound hearing two takes their average. | 134 | - |
 | pictureMovesB | Pictures (Upper) | Whose sound the upper hand’s picture moves through the Amount: its own, the lower’s, or both. Shown only while each hand draws a figure. | 136 | - |
+
+### Picture › Advanced › How the picture responds
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| pictureResponds | Responds to | What the Amount’s push follows: Change flares at a new or harder gesture and settles; Level follows how much is lit; Both is a base with a flare. | 145 | yes — each hand’s own on the Picture’s link, or both while it is linked; Change is the start until the owner has heard the three; the read is the hand’s own picture’s, so with *Pictures* crossed a hand’s response goes with its picture to the other’s sound; on a fixed scale, so a held chord settles rather than swelling by itself |
+| pictureSwell | Swell | The picture breathing by itself while a chord is held, smoothly, at a rate the Persistence sets: slower as the light lingers. Off, a held chord rests. | 150 | - |
+| pictureFeel | Rise, fall | How quickly the push comes and how slowly it goes: Snappy, Smooth or Slow, or Custom with a knob for each. | 106 | - |
+| pictureRise | Rise | How long the push takes to come when the picture asks for more. Shown with Custom. | 82 | - |
+| pictureFall | Fall | How long the push takes to go when the picture asks for less. Longer, and a swell outlasts the playing that made it. | 116 | - |
 
 ### Picture › Advanced › Score
 

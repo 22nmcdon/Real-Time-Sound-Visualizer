@@ -154,6 +154,32 @@ SWEEP = """async ([bands]) => {
   return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row };
 }"""
 
+# The Picture's Advanced (11 Nov): with a split, so what Scan reads and the
+# Pictures rows show, and How the picture responds on Custom, so its two
+# knobs show - every row it can have at once - inside the window and not
+# scrolling. `extra` copies of the response group are put in for the null,
+# which must go over.
+ADVANCED = r"""async (extra) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  setMidiMode('poly');
+  el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
+  el.pictureFeel.value = 'custom'; el.pictureFeel.dispatchEvent(new Event('change'));
+  el.pictureSwell.checked = true; el.pictureSwell.dispatchEvent(new Event('change'));
+  const group = document.getElementById('responseGroup');
+  const copies = [];
+  for (let k = 0; k < extra; k++) { const c = group.cloneNode(true); c.removeAttribute('id');
+    c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); group.after(c); copies.push(c); }
+  setPictureOpen(true); await wait(150);
+  const box = el.picturePanel.getBoundingClientRect();
+  const shown = [el.pictureMovesRow, el.scanReadsRow, el.pictureRiseRow, el.pictureFallRow].map((r) => !r.hidden && !!r.offsetParent);
+  const out = { inside: box.top >= 0 && box.bottom <= innerHeight + 1 && box.left >= 0 && box.right <= innerWidth + 1,
+                over: el.picturePanel.scrollHeight - el.picturePanel.clientHeight, shown,
+                knobs: [el.pictureRise, el.pictureFall].every((i) => i.classList.contains('knob-dial')) };
+  setPictureOpen(false);
+  copies.forEach((c) => c.remove());
+  return out;
+}"""
+
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME,
                            args=["--autoplay-policy=no-user-gesture-required",
@@ -188,6 +214,19 @@ with sync_playwright() as pw:
             zooms[(w, h)] = (p.evaluate("() => pageZoom"), want_zoom)
             results[("bands" if bands else "tone", w, h)] = p.evaluate(SWEEP, [bands])
             p.close()
+        p = ctx.new_page()
+        p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+        if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+        if zoom != "auto": p.evaluate("(z) => setSize(z)", zoom); p.wait_for_timeout(300)
+        adv = p.evaluate(ADVANCED, 0)
+        check("the Picture's Advanced at %dx%d, split and on Custom - Reads, Pictures, Responds to, Rise, fall and its two "
+              "knobs - is inside the window and does not scroll" % (w, h),
+              adv["inside"] and adv["over"] <= 1 and adv["shown"] == [True] * 4 and adv["knobs"], str(adv))
+        if (w, h) == (960, 600):
+            crowded = p.evaluate(ADVANCED, 3)
+            check("null: three more such groups in it at 960x600 go over", not (crowded["inside"] and crowded["over"] <= 1), str(crowded))
+        p.close()
         ctx.close()
 
     for (name, w, h), r in results.items():

@@ -209,7 +209,7 @@ EXPORT(scope_scan) void scopeScan(int layer, int count) {
 
 // setRoutes: `count` routes, seven numbers each in the numbers buffer - index
 // (below nought for a held value), held, held on B, slot, amount, amount on B,
-// unipolar.
+// and the flags: one for unipolar, two for the picture's pushes combined.
 EXPORT(scope_routes) void scopeRoutes(int count) {
   std::vector<scope::Route> list;
   for (int i = 0; i < count; i++) {
@@ -217,7 +217,8 @@ EXPORT(scope_routes) void scopeRoutes(int count) {
     scope::Route route;
     route.index = static_cast<int>(r[0]);
     route.held = r[1]; route.heldB = r[2]; route.slot = static_cast<int>(r[3]);
-    route.amount = r[4]; route.amountB = r[5]; route.unipolar = r[6] != 0;
+    route.amount = r[4]; route.amountB = r[5]; route.unipolar = (static_cast<int>(r[6]) & 1) != 0;
+    route.loop = (static_cast<int>(r[6]) & 2) != 0;
     list.push_back(route);
   }
   core->setRoutes(list);

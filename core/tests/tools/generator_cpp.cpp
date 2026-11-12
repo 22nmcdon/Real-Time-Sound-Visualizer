@@ -99,7 +99,8 @@ void run(const std::vector<std::string>& head, const Events& events) {
               scope::Route route;
               route.index = static_cast<int>(num(g[0]));
               route.held = num(g[1]); route.heldB = num(g[2]); route.slot = static_cast<int>(num(g[3]));
-              route.amount = num(g[4]); route.amountB = num(g[5]); route.unipolar = num(g[6]) == 1;
+              route.amount = num(g[4]); route.amountB = num(g[5]); route.unipolar = (static_cast<int>(num(g[6])) & 1) != 0;
+              route.loop = (static_cast<int>(num(g[6])) & 2) != 0;
               list.push_back(route);
             }
           }
