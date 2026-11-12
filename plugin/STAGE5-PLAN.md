@@ -1,0 +1,291 @@
+# Finishing stage 5: one engine
+
+A plan, for the owner to read before anything is built. Nothing here has been
+changed yet. The question it answers: what does it take to retire the page's
+own JavaScript engine and brain, so that the C++ core is the only thing that
+makes the sound and the picture, on the site and in the plugin?
+
+## In short
+
+The site already plays the compiled core by default. What keeps the
+JavaScript engine alive is not the site; it is **the tests**. Parity holds the
+core to the page's JavaScript sample for sample, and 47 of the web
+suites open the page on `?brain=js` to read that JavaScript directly. So the
+work is mostly test work: give every check something else to stand on, then
+switch the old engine off, then delete it. About 8 to 15 working sessions,
+in six steps, each of which leaves the site and the plugin shippable.
+
+## 1. What is left
+
+The page's script is 25,195 lines. Measured by its own section markers:
+
+| Area | Lines | Runs on the site today? |
+|---|---|---|
+| The sound engine: the envelope and the generator's per-sample loop (`makeEnvelope`, `makeGeneratorCore`, with its voices, effects, reverb, delay, phaser) | 2,936 | Only on `?brain=js` with `?core=js`, or in a browser with no WebAssembly |
+| The wrappers that let the page's brain drive the compiled engine (`makeWasmCore`, `makeWorkletCore`, `makeMainCore`) | 267 | Only on `?brain=js` |
+| The page brain's audio plumbing: its generator and effects worklets, its generator "voice", its live-input insert | about 1,000 | Only on `?brain=js` |
+| The picture engine's JavaScript (`makePictureEngine`) and the setup codec's (`encodeSetupHere`, `decodeSetupHere`) | about 200 | Only as fallbacks |
+| **Engine code that goes whole** | **about 4,400** | |
+| The page's brain: keyboard and voices, the matrix and its fades, the clock, the arpeggiator, the score, the hearing, Scan, the morph, the picture's sources and stage | about 4,400, interleaved with the controls that show them | Partly - see below |
+
+So retiring the engine removes about a sixth of the script outright, and
+up to a third once the brain's half is done.
+
+The brain is the harder half, for a reason that was not obvious until the frame loop was
+read. On the default site the page **still steps its own brain every
+frame, beside the instrument's**: `applyModMatrix` calls the hearing, the
+score, the arpeggiator, the photocell, the picture's sources and Scan on every
+frame whatever is playing. Some of that is needed - the fade's dot and the
+modulation cards' moving dots follow the page's own reckoning of the routes
+(5m, "the fade's dot stood still"), and the page still runs a picture
+engine of its own on the main thread, which looks like a second grid beside
+the instrument's, not yet confirmed - and some of it returns at once because the source is the
+instrument (`scanStep` asks for a tone and leaves). Nobody has listed which is
+which. That list is step 1.
+
+What already runs only in the core: the sound on the site (since 5m), the
+plugin entirely, the instrument's own picture grid and Scan (5p, 5u), the
+hearing on the audio thread (5t), the arpeggiator on the audio clock, MIDI
+out, the morph's walk and the host's parameters (5v), and the setup codec
+(5e, with the page's kept as a fallback).
+
+One prototype runs *only* on the page's brain: the constellation (ways to
+draw, step 2, 12 Nov). On the default site it links to
+`?brain=js&draw=constellation`, because what it lays in the grid is the
+page's and the instrument never sees it. It has to have a home before the
+switch can go (step 4).
+
+## 2. What parity becomes
+
+Parity (`core/tests/parity.py`, 6,791 lines, 26 sections, 928 checks, 22 minutes on this container) does two
+different jobs today, and only one of them needs the JavaScript:
+
+- **The port is the same as the original.** The envelope, the generator, the
+  keyboard, the matrix, the clock, the level, the capture, the beam's walk,
+  the picture's sources, Scan, the hearing, the score, setup codes. Each runs
+  a scenario through the page's function (lifted by name, 2,534 lines of
+  JavaScript harness) and through the C++ (3,409 lines), and compares.
+- **The face and the core agree.** The page's `restore` against the core's,
+  every menu, slider and switch against the core's panel, the hands' links,
+  the view, the compiled module being the one the page carries, the bridge.
+  These compare the page's *face* with the core, not its engine, and they stay
+  whatever happens.
+
+Once there is no JavaScript engine, the first job has nothing to compare
+with. The options:
+
+| Option | What it is | For | Against |
+|---|---|---|---|
+| **Golden renders** | Record what the JavaScript produces for every parity scenario today, check it in, and compare the core with the file instead of the page | Keeps every scenario parity has; catches any change to the sound you did not mean, to the same 1e-12; needs no JavaScript | A file only says "this changed", never "this is wrong". Every intended change to the sound means regenerating it, and a regenerated file is believed, so the review moves to the diff of a number dump |
+| **Freeze the JavaScript as an oracle** | Copy the engine out of the page into `core/tests/oracle/` and keep lifting from there | Nothing to build; parity unchanged | A second copy that nobody changes is the drift parity was built to prevent, the other way round: every new feature in the core has no reference, so the oracle covers less each week. Worth it only as a bridge |
+| **The core's own tests** | Checks written against what the sound should be - "Spread nought is the same to the bit", "Size's T60 by its law", "the limiter turns 17.26 into 0.961" - run on offline renders of the core | These are the checks that say *wrong*, not *different*; most already exist in the web suites, against the page in a browser | They have to be written, one property at a time; a property nobody thought to state is not held |
+| **A mix** | Golden renders for regressions, the core's own tests for meaning, the face-and-core checks as they are | Each covers the other's blind spot | Two kinds of test to keep, though both are smaller than parity is now |
+
+**Recommendation: the mix**, with the frozen oracle only for the days between
+steps 2 and 5, so that the golden files are checked against the live
+JavaScript before the JavaScript goes.
+
+What would still catch the bugs parity has caught? Reading its record in
+`PLAN.md`, they were of three kinds:
+
+1. *The port differs from the original* - the drawing's readings, the lane
+   order, the bank arriving a slot short. Golden renders catch every one of
+   these, and after retirement there is no port to differ.
+2. *Both differ from what was meant* - the comparison that skipped NaN, a run
+   the page answered with NaN and the core with memory read past a vector.
+   Parity caught these by accident of having two implementations; golden
+   renders would have frozen them in. These are the core's own tests' job, and
+   the NaN rule (`worst()`) goes with the golden comparison.
+3. *The face and the core disagree* - a hosted page with no generator, a menu
+   only the page has, the panel at the wrong detent. These are the second job,
+   which stays.
+
+The honest loss is kind 2. Two implementations written apart disagree where
+one of them is wrong; one implementation and a file agree with themselves.
+The null tests (CLAUDE.md) and mutation passes are what replace it, and they
+are already the house rule.
+
+## 3. The tests
+
+Of the 95 suites in `run.py`, 47 open the page on `?brain=js`
+(33 wholly, the rest for one leg). By what they check:
+
+- **About two dozen check numbers the engine makes** - the alias, the
+  drawbars, the filter, the plane, the pulse, the envelope, the layers, the
+  matrix, the clock, the morph, Scan and the strike, the loop. Their
+  assertions are worth keeping; the browser is not. They move to offline
+  renders of the core, as `responsetest.py` already does (`response_cpp`: a
+  setup code and timed MIDI in, numbers out, at 48 kHz, no browser). A check
+  that took a page, a worklet and real seconds then takes a fraction of a
+  second.
+- **About ten check the page's brain as a page** - its keyboard, its gate
+  flag, its LFOs set by hand, `genSet` and `restore()` called directly. Each
+  check either becomes a click on the default (the README's rule: "a check
+  meant for the instrument clicks the button") or goes, because it tested
+  something only the page's brain had.
+- **Two exist only to compare the two engines**: `wasmtest.py` and
+  `worklettest.py`. They go, and with them the `?core=js` fallback's checks
+  in `braintest.py`.
+- **About a dozen have one `?brain=js` leg** beside a default one (the fade,
+  Enlarge, the overlay, the photocell, the modulation row, the constellation).
+  The leg goes or moves to the default.
+
+Time, measured on this container today (`run.py`, three at a time):
+
+
+| | Minutes |
+|---|---|
+| Web suite, whole (12 Nov, this container) | 55.9 |
+| - the 39 serial suites, alone | 44.2 |
+| - of which the 33 suites wholly on `?brain=js` | 15.0 |
+| - and the serial suites with one `?brain=js` leg | 11.6 |
+| - the 56 parallel suites, three at a time | 11.7 |
+| Parity | 22.2 |
+| **A full check before a push** | **78** |
+
+(The README's 36 to 37 minutes for the web suite is from before the last
+week's suites; it takes 56 now. The run went 92 suites green and 3 red -
+`picturepresets`, `loop` and `honesty`, each a judgement over real seconds
+on a plan that changed no code, so the timing flakes those suites are
+marked serial for.)
+
+What would go: the 33 whole `?brain=js` suites' checks move to offline
+renders, which run in seconds rather than minutes, so most of their 15
+minutes (and about 4 of the pool's) goes; `wasmtest.py` alone is 6.6
+minutes of suite time and goes entirely. The one-leg suites lose a leg, a
+few minutes. Parity loses its JavaScript runs but keeps the browser it
+needs for the page's `restore`; what that saves was not measured and is part
+of step 1. A fair estimate: **from about 78 minutes to about 55 to 60.**
+
+That is a real saving but not the big one, and it should not be oversold.
+The longest suites are on the default already and listen over real seconds:
+`honesty` alone is 10.3 minutes, `picturepresets` 4, `loop` 4, `perform` 3.2,
+`noise` 2.9. Once the offline render exists (step 3), the same move -
+judging a preset's sound from the core rendered offline rather than a page
+playing in real time - would take most of those too, and would end the
+timing flakes with them. That is the larger lever on the suite's time, and a
+natural next stage after this one.
+
+## 4. The order
+
+Each step is shippable on its own: the site and the plugin work after it, and
+the full suite and parity pass.
+
+1. **The inventory** (no behaviour change). Record which of the page brain's
+   per-frame functions do anything on the default site, with a counter each,
+   over the full suite; and sort every `?brain=js` check into *numbers*,
+   *page* and *engines compared*. *Removes:* nothing. *Checked by:* the list,
+   which the next steps are measured against.
+2. **Golden renders.** Parity writes what the JavaScript produced for each
+   scenario into `core/tests/golden/`, and gains a mode that compares the core
+   with the files. For as long as both exist, it compares all three, so the
+   files are proven against the JavaScript before they replace it. *Removes:*
+   nothing yet. *Checked by:* the files agreeing with the live page, and a
+   null - one value in a file changed - failing.
+3. **The suites, one batch at a time.** The *numbers* checks go to offline
+   renders of the core (a general `render_cpp` grown from `response_cpp`); the
+   *page* checks to clicks on the default; the *engines compared* checks go.
+   Each moved check is null-tested as it lands. *Removes:* `?brain=js` from
+   each suite in the batch. *Checked by:* every moved check seen to fail on a
+   known-wrong value, and a mutation pass on the core per batch.
+4. **The constellation, and anything else only the page's brain does.** Port
+   it to the core (ways-to-draw's own step 3), or keep it as a look-only
+   drawing on the page, seen and not heard, until it is ported. The owner's
+   call; see section 5. *Removes:* the last reason to open `?brain=js`.
+5. **Switch the page's brain off.** `?brain=js` and `?core=js` go; the page
+   stops stepping its brain beside the instrument, and the face reads what it
+   shows (the dots, the readouts, the photocell's numbers) from the
+   instrument's readings. A browser without WebAssembly gets a line saying
+   so, as it would from the plugin, instead of the JavaScript engine.
+   *Removes:* the switch, the per-frame duplicate work. *Checked by:* the full
+   suite on the default, and the step 1 counters at nought.
+6. **Delete.** The engine, the wrappers, the page's worklets, the fallback
+   codec and picture engine, parity's JavaScript harness (`*_js.mjs`,
+   `js_core.mjs`), and the README's and PLAN's paragraphs about two brains.
+   Parity is renamed for what it is now (the core's tests, with the golden
+   files and the face's agreement). *Removes:* about 4,400 lines of the page
+   and 2,500 of harness. *Checked by:* the full suite, the core's tests, and
+   `extract.py` plus `node --check`.
+
+**The riskiest is step 5.** Not because the sound changes - it does not; the
+site already plays the core - but because the face quietly leans on the
+page's brain for things it shows. That is how 5m went: flipping the default
+turned up 109 failures, of which the fade's dot, the cards' readouts, layer B
+not drawn and the quiet screen's explanation were all the face reading the
+wrong brain. Step 1's counters exist to find those before step 5, not during
+it. The second riskiest is step 3, by volume: it is most of the work, and a
+moved check that passes for the wrong reason is exactly the kind of test this
+repository has shipped eight times.
+
+## 5. How new work is prototyped afterwards
+
+Today a new idea is cheapest as page JavaScript on `?brain=js`, heard at
+once, ported later. After this, there are three ways, by what the idea is:
+
+- **It only changes what you see** (a way of drawing that Scan does not read,
+  a readout, a panel). Write it in the page, as now. The face stays
+  JavaScript; nothing here touches that.
+- **It changes the sound, and you want to know if it is worth having.** An
+  offline sketch: render the core with a setup and a performance (the same
+  `render_cpp` as step 3), dump the phosphor grid frame by frame and the
+  sound, and try the idea in Python on those files, as the Scan experiment
+  did (`web/docs/scan-experiment/`). Seconds to rerun, a WAV to listen to, no
+  build. This is how Scan itself was decided.
+- **It is worth having, and you want to play it.** Write it in the core, behind
+  a field the setup does not store, build the module (`core/wasm/build.py`)
+  and play it on the site. That is a C++ edit and a rebuild where it used to
+  be a page edit and a reload, but there is no port afterwards, no parity
+  scenario to write against a second copy, and the plugin has it the same day.
+
+The constellation would have been the second, then the third.
+
+## 6. Risks and what it costs
+
+What the page's engine does better today, honestly:
+
+- **Debugging.** A breakpoint in `makeGeneratorCore` stops in the browser's
+  devtools with every variable in view; the compiled core is a black box from
+  the page, debugged natively under `g++` and `gdb` through the offline
+  render instead. For sound bugs that is fine; for a bug that shows only live,
+  in a browser, it is slower.
+- **Iteration speed for heard experiments.** A page edit is heard on reload.
+  A core edit needs the wasm build: 21 seconds here, for an 836 KB module, before the page is reloaded. Small, but not nothing, and it
+  needs the toolchain (the cloud setup installs it; a laptop needs clang's
+  wasm32 target and the WASI libraries).
+- **Browsers without WebAssembly in an AudioWorklet.** Every current
+  Chrome, Edge, Firefox and Safari has both; the JavaScript fallback serves
+  only very old browsers. After step 5 they get a message instead of a sound.
+- **Latency.** No loss: notes reach the instrument at the top of the next
+  128-sample block (under 3 ms), which `?brain=js` did not beat, and the
+  arpeggiator moves from the page's timers to the audio clock.
+- **Kind 2 bugs** (section 2), which two independent implementations caught
+  by disagreeing. The replacement is discipline - nulls and mutation - rather
+  than structure.
+
+What the owner gets: one engine; a change made once, in C++, with no port and
+no parity scenario against a second copy; roughly a quarter of an hour off a full run; about
+7,000 fewer lines between the page and the harness; and the README's
+"two brains" sections gone, which are a fair share of why the repository is
+hard to read.
+
+## 7. Recommendation and size
+
+Do it, in the order above, with golden renders plus the core's own tests
+replacing parity's comparison, and decide the constellation's home (port it,
+or keep it look-only) before step 5.
+
+| Step | Sessions |
+|---|---|
+| 1. The inventory | 0.5 |
+| 2. Golden renders | 1 |
+| 3. The suites | 4 to 8 |
+| 4. The constellation | 0.5 (look-only) to 3 (ported) |
+| 5. The brain off | 1 to 2 |
+| 6. Delete, and the docs | 1 |
+| **Total** | **8 to 15** |
+
+A session here is a few hours with one full run at the end. The uncertainty is
+almost all in step 3: two dozen suites whose checks move one by one, each with
+its null, and some will turn up a check that was passing for a reason of its
+own. If step 1 finds the face leaning on the page's brain in many places, step
+5 grows by a session or two.
