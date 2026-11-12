@@ -6124,6 +6124,44 @@ its comment says, but the FM'd saw the run before it left playing; and
 in one history and not the other, so it lets the shaper cross in during a
 block of silence first.
 
+**A route held across a block is a staircase, and on the FM depth every stair
+clicks (12 Nov).** The owner, on the site, on the Bass under the tine piano:
+"when I play a note it clips or something at the start of every sound, very
+similar to how something sounds when it's getting hung up on the audio
+thread." It sounded like an overrun and was not one: recorded after the
+worklet at real time, the frames came without a gap, and the blocks the
+worklet took 2 ms or more over (by its own clock, which counts whole
+milliseconds) were as many on the commit before, 320, as on the live one,
+349, in the same run of notes. Nor was it a regression. Offline, on
+the compiled core, the bass's E2 stepped by 0.78 from one sample to the next
+at sample 128 against 0.012 when steady, the same to the last digit on the live commit,
+on the one before it and on f8cad3a, which made the preset on 8 Nov. The
+cause was the routes. A route from a source that is not an oscillator - the
+Envelope, the Key, a controller - is a value the matrix works out at a
+block's top (the core's step, the worklet's block), and the generator held
+it flat across the block. A note struck in a block plays that block with
+the routes as they were before it, the Envelope and the Key at nought, and
+at the next top the tine's two routes, `env.note` and `midi.key` onto
+`gen.fm`, put the depth up by about three at once - on the bass too, which
+has no FM of its own, since a routing reaches both hands unless it says. On
+phase modulation a step of the index is a step of the wave: +0.42 to -0.35
+in one sample, every note. Play's Velocity on FM does the same to the plain
+sine. The 20 ms glide the picture's pushes have was not the answer, since
+the page had said why a route by hand steps rather than lags: it would have
+softened the tine's bark. So each slot's held routes are walked in a straight line to where a
+block puts them over that block's 128 samples (`heldAim`, the tone's
+`heldRamp`, page and core), arriving at its last sample: at every block's
+end the note is what it was with the step, to the bit, and between it is
+the line. The bass's onset is 0.017 against its steady 0.013, the tine's
+corner 3.3 times its steady note's where it was 11. `notetest.py` holds
+both hands and the velocity FM, each against the step at the block's top
+as it was (`heldRamp` nought) as its null. The tine is held by its corner
+(the second difference), not its step, because its bark steps by three
+times its steady note with the walk or without. The lesson: a value that
+moves once a block is a staircase whatever reads it, and only what reads it
+decides whether the stairs are heard. A cutoff or a level hides them; a
+phase or an FM index does not.
+
 **The hearing runs only while something hears it (second review, part 2).**
 The parked hearing family - pitch, brightness, the four bands, width, flux
 and the onset - analysed a 4096-sample window every frame on the page and

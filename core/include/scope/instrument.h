@@ -760,6 +760,11 @@ class Instrument {
        was, at nought, which is the null for its check that the wheel on the
        Picture amount no longer clicks. Nothing on the page sends it. */
     if (id == "switchMs") { core_->set("switchMs", jsNumber(utf16To8(text))); return; }
+    /* And how many samples a held route's change is walked over (the
+       generator's `heldRamp`): at nought, the step at a block's top as it
+       was, the null for notetest.py's check that a note no longer clicks
+       where a route on its FM depth catches up with it. */
+    if (id == "heldRamp") { core_->set("heldRamp", jsNumber(utf16To8(text))); return; }
     if (id == "drawn") { drawnFrom(text); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
     Json hand = Json::array();

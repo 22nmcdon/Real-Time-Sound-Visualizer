@@ -121,6 +121,8 @@ struct Tone : LayerSettings, PlaneTone {
   double output = 1;
   // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
   double switchMs = kSwitchMs;
+  // How many samples a held route's change is walked over (the page's tone's heldRamp, which says why).
+  double heldRamp = 128;
 };
 
 // A routing, as `setRoutes` copies one: an LFO's index or a held value.
@@ -153,6 +155,8 @@ class Generator {
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
         genMod_(static_cast<std::size_t>(std::max(slots, slot::Used)), 0.0f), genModB_(genMod_),
         loopNow_(genMod_.size(), 0.0), loopNowB_(genMod_.size(), 0.0), loopOn_(genMod_.size(), 0), loopSeen_(genMod_.size(), 0),
+        heldNow_(genMod_.size(), 0.0), heldNowB_(genMod_.size(), 0.0), heldTo_(genMod_.size(), 0.0), heldToB_(genMod_.size(), 0.0),
+        heldStep_(genMod_.size(), 0.0), heldStepB_(genMod_.size(), 0.0), heldMoving_(genMod_.size(), 0),
         env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), ctx_(rate),
         scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
@@ -212,6 +216,7 @@ class Generator {
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "output") a.output = value;
     else if (field == "switchMs") a.switchMs = value;
+    else if (field == "heldRamp") a.heldRamp = value;
     else if (field == "planeOS") a.planeOS = value;
   }
 
@@ -258,7 +263,11 @@ class Generator {
     menvGate(held);
   }
 
-  void setRoutes(const std::vector<Route>& list) { routes_ = list; }
+  // Copied into the room the last list left, and the held routes' sums aimed at (the page's setRoutes).
+  void setRoutes(const std::vector<Route>& list) {
+    routes_ = list;
+    heldAim();
+  }
 
   // --- the rest of the worklet's calls --------------------------------------
 
@@ -828,11 +837,50 @@ class Generator {
     for (std::size_t s = 0; s < loopOn_.size(); s++) if (!loopSeen_[s]) loopOn_[s] = 0;
   }
 
+  /* HELD_RAMP and the page's heldAim: every held route's sum on a slot,
+     walked in a straight line over a block to where the routes put it,
+     rather than stepped at the block's top, where on the FM depth a step was
+     a click on every note struck (the page says why). */
+  void heldAim() {
+    std::fill(heldTo_.begin(), heldTo_.end(), 0.0);
+    std::fill(heldToB_.begin(), heldToB_.end(), 0.0);
+    for (const auto& route : routes_) {
+      if (route.index >= 0 || route.loop || route.slot < 0 || route.slot >= slots_) continue;
+      const auto s = static_cast<std::size_t>(route.slot);
+      heldTo_[s] += route.unipolar ? route.amount * (1 - route.held) / 2 : route.amount * route.held;
+      heldToB_[s] += route.unipolar ? route.amountB * (1 - route.heldB) / 2 : route.amountB * route.heldB;
+    }
+    heldMoves_ = 0;
+    const int ramp = static_cast<int>(std::fmax(0.0, jsRound(a_.heldRamp)));
+    for (std::size_t s = 0; s < static_cast<std::size_t>(std::max(0, slots_)) && s < heldNow_.size(); s++) {
+      if (!heldStarted_ || ramp == 0 || !std::isfinite(heldNow_[s]) || !std::isfinite(heldNowB_[s])) {
+        heldNow_[s] = heldTo_[s]; heldNowB_[s] = heldToB_[s];
+      }
+      if (heldNow_[s] == heldTo_[s] && heldNowB_[s] == heldToB_[s]) continue;
+      heldStep_[s] = (heldTo_[s] - heldNow_[s]) / ramp;
+      heldStepB_[s] = (heldToB_[s] - heldNowB_[s]) / ramp;
+      heldMoving_[heldMoves_++] = static_cast<int>(s);
+    }
+    heldStarted_ = true;
+    heldLeft_ = heldMoves_ > 0 ? ramp : 0;
+  }
+
   void sumRoutes() {
-    std::fill(genMod_.begin(), genMod_.end(), 0.0f);
-    std::fill(genModB_.begin(), genModB_.end(), 0.0f);
+    if (heldLeft_ > 0) {
+      heldLeft_--;
+      for (std::size_t m = 0; m < heldMoves_; m++) {
+        const auto s = static_cast<std::size_t>(heldMoving_[m]);
+        if (heldLeft_ == 0) { heldNow_[s] = heldTo_[s]; heldNowB_[s] = heldToB_[s]; }
+        else { heldNow_[s] += heldStep_[s]; heldNowB_[s] += heldStepB_[s]; }
+      }
+    }
+    for (std::size_t s = 0; s < genMod_.size(); s++) {
+      genMod_[s] = static_cast<float>(heldNow_[s]);
+      genModB_[s] = static_cast<float>(heldNowB_[s]);
+    }
     for (const auto& route : routes_) {
       if (route.slot < 0 || route.slot >= slots_) continue;  // the page's typed array ignores the write
+      if (route.index < 0 && !route.loop) continue;  // held: heldNow_ has it
       const auto s = static_cast<std::size_t>(route.slot);
       const bool osc = route.index >= 0;
       const double o = osc ? lfos_[static_cast<std::size_t>(route.index)].value : 0;
@@ -1006,6 +1054,12 @@ class Generator {
   std::vector<double> loopNow_, loopNowB_;
   std::vector<char> loopOn_, loopSeen_;
   double loopGlide_ = 1;
+  // Where each slot's held routes have walked to, where they are going, by how much a sample, and which are moving (the page's heldNow).
+  std::vector<double> heldNow_, heldNowB_, heldTo_, heldToB_, heldStep_, heldStepB_;
+  std::vector<int> heldMoving_;
+  std::size_t heldMoves_ = 0;
+  int heldLeft_ = 0;
+  bool heldStarted_ = false;
   std::vector<Route> routes_;
   Registration barsA_, barsB_;
 
