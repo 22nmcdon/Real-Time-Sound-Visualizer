@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painting the sound</title>
+<meta name="description" content="A visual study: four phrases rendered by the instrument's own core and painted in three styles, two layouts, two memories and three palettes.">
+<style>
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+  --line: #e4d9cc; --blush: #d9a6a0; --blush-deep: #c07f79;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--cream); color: var(--text); font: 300 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+main { max-width: 1180px; margin: 0 auto; padding: 32px 16px 80px; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; color: var(--charcoal); line-height: 1.2; }
+h1 { font-size: clamp(32px, 6vw, 52px); margin: 4px 0 8px; }
+h2 { font-size: clamp(24px, 4vw, 32px); margin: 4px 0 8px; }
+h3 { font-size: 19px; margin: 0 0 6px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--text); max-width: 46em; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--blush-deep); font-weight: 500; margin: 0; }
+p { max-width: 46em; }
+section { border-top: 1px solid var(--line); padding-top: 28px; margin-top: 40px; }
+a { color: inherit; text-decoration-color: var(--blush); text-underline-offset: 3px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.measures, figcaption, .meas, .ground { font-size: 13px; color: var(--text-soft); }
+figure { margin: 0; }
+figure img, figure video { display: block; width: 100%; height: auto; background: var(--paper);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); }
+figcaption { padding: 8px 2px 0; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }
+.wide { margin-top: 18px; }
+audio { width: 100%; max-width: 520px; margin: 4px 0; }
+.palettes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.palette { background: var(--g); color: var(--fg); padding: 16px; border: 1px solid var(--line); }
+.palette h3, .palette .meas, .palette .ground { color: var(--fg); }
+.sw { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; }
+.sw li { display: flex; gap: 8px; align-items: center; }
+.chip { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.scans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.scan p { margin: 6px 0; font-size: 14px; }
+table { border-collapse: collapse; font-size: 14px; width: 100%; max-width: 900px; }
+td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-soft); }
+.table-wrap { overflow-x: auto; }
+@media (max-width: 760px) {
+  .three, .palettes, .scans { grid-template-columns: 1fr; }
+}
+</style></head>
+<body><main>
+<p class="eyebrow">A study, 12 November</p>
+<h1>Painting the sound</h1>
+<p class="lede">Four phrases played through the instrument's own core, and each painted from what the sound contains: a wash where a note is held, a stroke where a melody moves, spatter where a key is struck hard, grain where the sound is noisy, and harmony as which ink.</p>
+<p>Nothing in the instrument was changed to make this. The write-up, with what was found and the questions for the owner, is <a href="../painting-the-sound.md"><code>painting-the-sound.md</code></a>; the scripts that made every file here are in <code>tools/</code>, and run again to the same pictures.</p>
+
+<section id="read"><p class="eyebrow">How to read them</p><h2>The mapping</h2>
+<div class="table-wrap"><table>
+<tr><th>The sound</th><th>Read from</th><th>The mark</th></tr>
+<tr><td>Which note, how loud, still held</td><td>The core's own voices, every 2.7 ms</td><td>Where it lands; a stroke's width (tapering as the level falls)</td></tr>
+<tr><td>A held tone</td><td>A voice's level above a twelfth of its peak, past its attack</td><td>A wash (or pool, or circle) that grows and deepens as long as it is held</td></tr>
+<tr><td>A melody</td><td>Strikes in one hand within 0.45 s of each other</td><td>One stroke through them, gliding to each next note</td></tr>
+<tr><td>A sharp attack</td><td>Velocity and the core's attack time</td><td>Spatter, drops or rays: how many by velocity squared and sharpness, how far by velocity</td></tr>
+<tr><td>Agitation</td><td>Strikes in the last half second, and how fast the spectrum changes</td><td>How far the brush shakes off its line; how far a strike flings</td></tr>
+<tr><td>Brightness</td><td>Spectral centroid against the sounding pitch</td><td>How fast the ink-and-wash brush dries into dry-brush streaks</td></tr>
+<tr><td>Noise and grit</td><td>Spectral flatness</td><td>Granulation in washes; specks of grain; a grit of small squares</td></tr>
+<tr><td>Harmony</td><td>Each note against the lowest sounding, round the circle of fifths</td><td>Its hand's own ink (unison, fifth, fourth), a related ink (seconds, thirds, sixths), or the clash ink (semitone, major seventh, tritone)</td></tr>
+<tr><td>Each hand</td><td>The split (Crossed hands only; the others are one hand)</td><td>Its own three inks</td></tr>
+</table></div>
+<p><b>Layered</b> lays the piece round the canvas, one turn every eight seconds clockwise from the top, pitch outward from the centre, so a longer piece paints over its own beginning. <b>Scroll</b> lays it left to right in time, pitch up. <b>Accumulate</b> keeps everything; <b>Fade</b> lets every mark fall to a tenth in four seconds.</p>
+<ul><li><b>Ink and wash.</b> Washes that deepen while a note is held; a broad nib at a fixed angle following the melody, drying as it goes; a few drops on a hard strike.</li><li><b>Gestural.</b> Poured pools for held notes, which drip when heavy; flung skeins for the melody, thinner the faster the hand moves, overshooting on hard strikes; spatter in the direction of travel.</li><li><b>Geometric.</b> A circle for each held note with a halo; arcs for steps and straight lines for leaps; a band round the turn for a consonant chord, a plane across it for a tense one; a dot and rays for each strike.</li></ul>
+</section>
+
+<section class="phrase" id="pad">
+<p class="eyebrow">Phrase</p><h2>A held pad</h2><p><em>Slow pad</em>, from the bank: a Cmaj9 voicing (C3 G3 D4 E4 B4) held nine seconds and let go into its 1.5 s release.</p>
+<audio controls preload="none" src="audio/pad.mp3"></audio>
+<p class="measures">Measured: median level -14.6 dB, brightness 0.359 octaves over the pitch, agitation 0.066, grain 0.069; 5 notes.</p>
+<div class="three"><figure class=""><a href="img/pad-ink-layered-brand.jpg"><img src="img/pad-ink-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Ink and wash</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/pad-gesture-layered-brand.jpg"><img src="img/pad-gesture-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Gestural</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/pad-geometry-layered-brand.jpg"><img src="img/pad-geometry-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Geometric</b> · Layered, Accumulate, the house palette</figcaption></figure></div></section>
+<section class="phrase" id="crossed">
+<p class="eyebrow">Phrase</p><h2>Crossed hands</h2><p>The owner's repeatable setup (Picture 47, delay, phaser and reverb on, split at C4) and sequence, compressed from 27 s to 15: D♭2 A♭2 C3 held; a right-hand run in D♭ major pentatonic with C, five notes a second at velocity 55 and then eight at 95; the chord changed to G♭2 D♭3 F3 during it; the run stopping; soft B♭-to-C and G♭-to-A♭4 grace notes.</p>
+<audio controls preload="none" src="audio/crossed.mp3"></audio>
+<p class="measures">Measured: median level -18.2 dB, brightness 0.243 octaves over the pitch, agitation 0.235, grain 0.101; 46 notes.</p>
+<div class="three"><figure class=""><a href="img/crossed-ink-layered-brand.jpg"><img src="img/crossed-ink-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Ink and wash</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/crossed-gesture-layered-brand.jpg"><img src="img/crossed-gesture-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Gestural</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/crossed-geometry-layered-brand.jpg"><img src="img/crossed-geometry-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Geometric</b> · Layered, Accumulate, the house palette</figcaption></figure></div></section>
+<section class="phrase" id="run">
+<p class="eyebrow">Phrase</p><h2>A fast run</h2><p><em>Tine piano</em>, from the bank: C major from C4 to C5 and back three times at nine notes a second, each pass swelling to its top and falling back, a little louder each time, ending on a held C4.</p>
+<audio controls preload="none" src="audio/run.mp3"></audio>
+<p class="measures">Measured: median level -20.4 dB, brightness 1.177 octaves over the pitch, agitation 0.857, grain 0.0; 43 notes.</p>
+<div class="three"><figure class=""><a href="img/run-ink-layered-brand.jpg"><img src="img/run-ink-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Ink and wash</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/run-gesture-layered-brand.jpg"><img src="img/run-gesture-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Gestural</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/run-geometry-layered-brand.jpg"><img src="img/run-geometry-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Geometric</b> · Layered, Accumulate, the house palette</figcaption></figure></div></section>
+<section class="phrase" id="chords">
+<p class="eyebrow">Phrase</p><h2>A chord change</h2><p><em>Drawbar organ</em>, from the bank: Dm7, G7, Cmaj7 and Am7 in four-note voicings, two and a half seconds each.</p>
+<audio controls preload="none" src="audio/chords.mp3"></audio>
+<p class="measures">Measured: median level -16.5 dB, brightness -0.049 octaves over the pitch, agitation 0.183, grain 0.0; 16 notes.</p>
+<div class="three"><figure class=""><a href="img/chords-ink-layered-brand.jpg"><img src="img/chords-ink-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Ink and wash</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/chords-gesture-layered-brand.jpg"><img src="img/chords-gesture-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Gestural</b> · Layered, Accumulate, the house palette</figcaption></figure><figure class=""><a href="img/chords-geometry-layered-brand.jpg"><img src="img/chords-geometry-layered-brand.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Layered, Accumulate, the house palette"></a><figcaption><b>Geometric</b> · Layered, Accumulate, the house palette</figcaption></figure></div></section>
+
+<section id="scroll"><p class="eyebrow">The other layout</p><h2>Scroll</h2>
+<p>The same marks laid left to right in time, so the piece can be read back. Crossed hands, the busiest phrase, in each style.</p>
+<figure class="wide"><a href="img/crossed-ink-scroll-brand.jpg"><img src="img/crossed-ink-scroll-brand.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Scroll: Crossed hands left to right, pitch up"></a><figcaption><b>Ink and wash</b> · Scroll: Crossed hands left to right, pitch up</figcaption></figure><figure class="wide"><a href="img/crossed-gesture-scroll-brand.jpg"><img src="img/crossed-gesture-scroll-brand.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Scroll: Crossed hands left to right, pitch up"></a><figcaption><b>Gestural</b> · Scroll: Crossed hands left to right, pitch up</figcaption></figure><figure class="wide"><a href="img/crossed-geometry-scroll-brand.jpg"><img src="img/crossed-geometry-scroll-brand.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Scroll: Crossed hands left to right, pitch up"></a><figcaption><b>Geometric</b> · Scroll: Crossed hands left to right, pitch up</figcaption></figure></section>
+
+<section id="palettes"><p class="eyebrow">Palettes</p><h2>Three palettes</h2>
+<p>The house palette is the six lane inks on the cream, exactly as <code>DESIGN.md</code> has them: the left hand's figure inks charcoal and slate, the right hand's olive and sage, terracotta and plum as each hand's clash. Earth and Night are proposals for a product table, not tokens. Measured as <code>DESIGN.md</code> measures the lane inks: OKLab distance times a hundred, worst of all pairs, with colour vision deficiency simulated (Machado et al., full severity). The palette is only the look: the ink density the paintings are made of was compared across all three palettes and differs by 0.0 (the lightness of the coloured images, the null, differs by up to 0.352).</p>
+<div class="palettes"><div class="palette" style="--g:#faf6f0;--fg:#241f1d"><h3>The house</h3><p class="ground">ground <code>#faf6f0</code></p><ul class="sw"><li><span class="chip" style="background:#241f1d"></span><span><b>charcoal (ch1)</b><br><code>#241f1d</code> · 15.14:1</span></li><li><span class="chip" style="background:#5c6488"></span><span><b>slate (ch2)</b><br><code>#5c6488</code> · 5.37:1</span></li><li><span class="chip" style="background:#a6552d"></span><span><b>terracotta (ch6)</b><br><code>#a6552d</code> · 4.93:1</span></li><li><span class="chip" style="background:#4c4921"></span><span><b>olive (ch3)</b><br><code>#4c4921</code> · 8.55:1</span></li><li><span class="chip" style="background:#6f9169"></span><span><b>sage (ch4)</b><br><code>#6f9169</code> · 3.29:1</span></li><li><span class="chip" style="background:#72245e"></span><span><b>plum (ch5)</b><br><code>#72245e</code> · 9.16:1</span></li></ul><p class="meas">Worst pair <b>16.1</b> (a_related/b_related) with normal vision, <b>8.8</b> simulated (protan 9.5, deutan 8.8, tritan 10.0); bars 15 and 8. Least contrast on the ground 3.29:1.</p></div><div class="palette" style="--g:#f0e7d6;--fg:#33221a"><h3>Earth</h3><p class="ground">ground <code>#f0e7d6</code></p><ul class="sw"><li><span class="chip" style="background:#33221a"></span><span><b>burnt umber</b><br><code>#33221a</code> · 12.36:1</span></li><li><span class="chip" style="background:#af3d0b"></span><span><b>burnt sienna</b><br><code>#af3d0b</code> · 4.89:1</span></li><li><span class="chip" style="background:#294e81"></span><span><b>smalt</b><br><code>#294e81</code> · 6.84:1</span></li><li><span class="chip" style="background:#556d50"></span><span><b>terre verte</b><br><code>#556d50</code> · 4.64:1</span></li><li><span class="chip" style="background:#a87f0f"></span><span><b>yellow ochre</b><br><code>#a87f0f</code> · 3.0:1</span></li><li><span class="chip" style="background:#6f2a4a"></span><span><b>madder</b><br><code>#6f2a4a</code> · 8.12:1</span></li></ul><p class="meas">Worst pair <b>15.3</b> (a_clash/b_clash) with normal vision, <b>8.2</b> simulated (protan 9.3, deutan 8.2, tritan 9.5); bars 15 and 8. Least contrast on the ground 3.0:1.</p></div><div class="palette" style="--g:#151a24;--fg:#ece3d0"><h3>Night</h3><p class="ground">ground <code>#151a24</code></p><ul class="sw"><li><span class="chip" style="background:#ece3d0"></span><span><b>chalk</b><br><code>#ece3d0</code> · 13.66:1</span></li><li><span class="chip" style="background:#8ba4d6"></span><span><b>cerulean</b><br><code>#8ba4d6</code> · 6.95:1</span></li><li><span class="chip" style="background:#e8734f"></span><span><b>vermilion</b><br><code>#e8734f</code> · 5.81:1</span></li><li><span class="chip" style="background:#d8b349"></span><span><b>gold</b><br><code>#d8b349</code> · 8.68:1</span></li><li><span class="chip" style="background:#48c79f"></span><span><b>jade</b><br><code>#48c79f</code> · 8.25:1</span></li><li><span class="chip" style="background:#bb65b0"></span><span><b>orchid</b><br><code>#bb65b0</code> · 4.65:1</span></li></ul><p class="meas">Worst pair <b>15.8</b> (a_clash/b_main) with normal vision, <b>8.4</b> simulated (protan 9.9, deutan 8.4, tritan 8.4); bars 15 and 8. Least contrast on the ground 4.65:1.</p></div></div>
+<div class="three"><figure class=""><a href="img/crossed-ink-layered-earth.jpg"><img src="img/crossed-ink-layered-earth.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Earth · Crossed hands"></a><figcaption><b>Ink and wash</b> · Earth · Crossed hands</figcaption></figure><figure class=""><a href="img/crossed-gesture-layered-earth.jpg"><img src="img/crossed-gesture-layered-earth.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Earth · Crossed hands"></a><figcaption><b>Gestural</b> · Earth · Crossed hands</figcaption></figure><figure class=""><a href="img/crossed-geometry-layered-earth.jpg"><img src="img/crossed-geometry-layered-earth.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Earth · Crossed hands"></a><figcaption><b>Geometric</b> · Earth · Crossed hands</figcaption></figure><figure class=""><a href="img/crossed-ink-layered-night.jpg"><img src="img/crossed-ink-layered-night.jpg" loading="lazy" alt="&lt;b&gt;Ink and wash&lt;/b&gt; · Night · Crossed hands"></a><figcaption><b>Ink and wash</b> · Night · Crossed hands</figcaption></figure><figure class=""><a href="img/crossed-gesture-layered-night.jpg"><img src="img/crossed-gesture-layered-night.jpg" loading="lazy" alt="&lt;b&gt;Gestural&lt;/b&gt; · Night · Crossed hands"></a><figcaption><b>Gestural</b> · Night · Crossed hands</figcaption></figure><figure class=""><a href="img/crossed-geometry-layered-night.jpg"><img src="img/crossed-geometry-layered-night.jpg" loading="lazy" alt="&lt;b&gt;Geometric&lt;/b&gt; · Night · Crossed hands"></a><figcaption><b>Geometric</b> · Night · Crossed hands</figcaption></figure></div></section>
+
+<section id="fades"><p class="eyebrow">Memory</p><h2>Fade</h2>
+<p>Each painting made in time with its sound, older marks fading to a tenth in four seconds, as the screen's Persistence fades the trace. Two phrases per style; press play for sound.</p>
+<div class="three"><figure><video controls preload="none" playsinline src="anim/pad-ink-fade.webm"></video><figcaption><b>Ink and wash</b> · A held pad · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure><figure><video controls preload="none" playsinline src="anim/crossed-ink-fade.webm"></video><figcaption><b>Ink and wash</b> · Crossed hands · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure><figure><video controls preload="none" playsinline src="anim/run-gesture-fade.webm"></video><figcaption><b>Gestural</b> · A fast run · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure><figure><video controls preload="none" playsinline src="anim/crossed-gesture-fade.webm"></video><figcaption><b>Gestural</b> · Crossed hands · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure><figure><video controls preload="none" playsinline src="anim/chords-geometry-fade.webm"></video><figcaption><b>Geometric</b> · A chord change · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure><figure><video controls preload="none" playsinline src="anim/run-geometry-fade.webm"></video><figcaption><b>Geometric</b> · A fast run · Fade, a mark at a tenth after four seconds, with its sound</figcaption></figure></div></section>
+
+<section id="scan"><p class="eyebrow">A first approximation</p><h2>What Scan would hear</h2>
+<p>Each style's Crossed hands painting, reduced to a 64 by 64 grid of ink density and read by the core's own Scan functions (<code>scanGeometry</code>, <code>scanBlur</code> at the default Softness of 3, <code>scanRead</code>, <code>scanTables</code>), then played as a held A3 with the table at a depth of 0.6 against a sine. This is not the instrument playing a painting: nothing yet puts a painting on its screen, the voice's other stages are left out, and the density grid is the study's assumption about what Scan would read.</p>
+<div class="scans"><div class="scan"><h3>Ink and wash</h3>
+<p>The finished painting, held under A3:</p><audio controls preload="none" src="audio/scan-ink-held.mp3"></audio>
+<p>The fading canvas, read as it is painted:</p><audio controls preload="none" src="audio/scan-ink-fade.mp3"></audio>
+<p class="measures">Harmonic centroid of the table: 2.51 finished; 1.66 median while fading (10th to 90th percentile 1.18 to 2.22); 6 of 310 frames too dark to read.</p></div><div class="scan"><h3>Gestural</h3>
+<p>The finished painting, held under A3:</p><audio controls preload="none" src="audio/scan-gesture-held.mp3"></audio>
+<p>The fading canvas, read as it is painted:</p><audio controls preload="none" src="audio/scan-gesture-fade.mp3"></audio>
+<p class="measures">Harmonic centroid of the table: 2.33 finished; 1.53 median while fading (10th to 90th percentile 1.1 to 2.03); 6 of 310 frames too dark to read.</p></div><div class="scan"><h3>Geometric</h3>
+<p>The finished painting, held under A3:</p><audio controls preload="none" src="audio/scan-geometry-held.mp3"></audio>
+<p>The fading canvas, read as it is painted:</p><audio controls preload="none" src="audio/scan-geometry-fade.mp3"></audio>
+<p class="measures">Harmonic centroid of the table: 2.6 finished; 2.13 median while fading (10th to 90th percentile 1.29 to 2.76); 6 of 310 frames too dark to read.</p></div></div></section>
+</main></body></html>

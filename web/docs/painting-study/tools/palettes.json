@@ -1,0 +1,146 @@
+{
+ "brand": {
+  "worst": {
+   "normal": [
+    16.1,
+    "a_related/b_related"
+   ],
+   "protan": [
+    9.5,
+    "a_clash/b_main"
+   ],
+   "deutan": [
+    8.8,
+    "a_clash/b_related"
+   ],
+   "tritan": [
+    10.0,
+    "b_main/b_clash"
+   ]
+  },
+  "simulated": [
+   8.8,
+   "a_clash/b_related"
+  ],
+  "contrast": {
+   "a_main": 15.14,
+   "a_related": 5.37,
+   "a_clash": 4.93,
+   "b_main": 8.55,
+   "b_related": 3.29,
+   "b_clash": 9.16
+  },
+  "ground": {
+   "a_main": 73.0,
+   "a_related": 46.8,
+   "a_clash": 44.9,
+   "b_main": 57.8,
+   "b_related": 36.1,
+   "b_clash": 58.9
+  },
+  "ground_simulated": {
+   "a_main": 73.0,
+   "a_related": 46.0,
+   "a_clash": 43.3,
+   "b_main": 57.5,
+   "b_related": 34.2,
+   "b_clash": 57.5
+  }
+ },
+ "earth": {
+  "worst": {
+   "normal": [
+    15.3,
+    "a_clash/b_clash"
+   ],
+   "protan": [
+    9.3,
+    "a_related/b_main"
+   ],
+   "deutan": [
+    8.2,
+    "a_related/b_main"
+   ],
+   "tritan": [
+    9.5,
+    "a_clash/b_main"
+   ]
+  },
+  "simulated": [
+   8.2,
+   "a_related/b_main"
+  ],
+  "contrast": {
+   "a_main": 12.36,
+   "a_related": 4.89,
+   "a_clash": 6.84,
+   "b_main": 4.64,
+   "b_related": 3.0,
+   "b_clash": 8.12
+  },
+  "ground": {
+   "a_main": 66.0,
+   "a_related": 43.7,
+   "a_clash": 52.2,
+   "b_main": 42.6,
+   "b_related": 32.6,
+   "b_clash": 54.6
+  },
+  "ground_simulated": {
+   "a_main": 66.0,
+   "a_related": 41.1,
+   "a_clash": 49.7,
+   "b_main": 40.9,
+   "b_related": 31.5,
+   "b_clash": 53.5
+  }
+ },
+ "night": {
+  "worst": {
+   "normal": [
+    15.8,
+    "a_clash/b_main"
+   ],
+   "protan": [
+    9.9,
+    "b_main/b_related"
+   ],
+   "deutan": [
+    8.4,
+    "a_related/b_clash"
+   ],
+   "tritan": [
+    8.4,
+    "a_related/b_related"
+   ]
+  },
+  "simulated": [
+   8.4,
+   "a_related/b_clash"
+  ],
+  "contrast": {
+   "a_main": 13.66,
+   "a_related": 6.95,
+   "a_clash": 5.81,
+   "b_main": 8.68,
+   "b_related": 8.25,
+   "b_clash": 4.65
+  },
+  "ground": {
+   "a_main": 70.2,
+   "a_related": 50.4,
+   "a_clash": 49.8,
+   "b_main": 58.2,
+   "b_related": 54.7,
+   "b_clash": 43.6
+  },
+  "ground_simulated": {
+   "a_main": 69.3,
+   "a_related": 49.9,
+   "a_clash": 40.6,
+   "b_main": 55.8,
+   "b_related": 53.3,
+   "b_clash": 37.5
+  }
+ }
+}

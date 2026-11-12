@@ -1,0 +1,392 @@
+{
+ "stills": [
+  {
+   "phrase": "pad",
+   "style": "ink",
+   "src": "img/pad-ink-layered-brand.jpg"
+  },
+  {
+   "phrase": "pad",
+   "style": "gesture",
+   "src": "img/pad-gesture-layered-brand.jpg"
+  },
+  {
+   "phrase": "pad",
+   "style": "geometry",
+   "src": "img/pad-geometry-layered-brand.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "ink",
+   "src": "img/crossed-ink-layered-brand.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "gesture",
+   "src": "img/crossed-gesture-layered-brand.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "geometry",
+   "src": "img/crossed-geometry-layered-brand.jpg"
+  },
+  {
+   "phrase": "run",
+   "style": "ink",
+   "src": "img/run-ink-layered-brand.jpg"
+  },
+  {
+   "phrase": "run",
+   "style": "gesture",
+   "src": "img/run-gesture-layered-brand.jpg"
+  },
+  {
+   "phrase": "run",
+   "style": "geometry",
+   "src": "img/run-geometry-layered-brand.jpg"
+  },
+  {
+   "phrase": "chords",
+   "style": "ink",
+   "src": "img/chords-ink-layered-brand.jpg"
+  },
+  {
+   "phrase": "chords",
+   "style": "gesture",
+   "src": "img/chords-gesture-layered-brand.jpg"
+  },
+  {
+   "phrase": "chords",
+   "style": "geometry",
+   "src": "img/chords-geometry-layered-brand.jpg"
+  }
+ ],
+ "palettes": [
+  {
+   "phrase": "crossed",
+   "style": "ink",
+   "palette": "earth",
+   "src": "img/crossed-ink-layered-earth.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "ink",
+   "palette": "night",
+   "src": "img/crossed-ink-layered-night.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "gesture",
+   "palette": "earth",
+   "src": "img/crossed-gesture-layered-earth.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "gesture",
+   "palette": "night",
+   "src": "img/crossed-gesture-layered-night.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "geometry",
+   "palette": "earth",
+   "src": "img/crossed-geometry-layered-earth.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "geometry",
+   "palette": "night",
+   "src": "img/crossed-geometry-layered-night.jpg"
+  }
+ ],
+ "scroll": [
+  {
+   "phrase": "crossed",
+   "style": "ink",
+   "src": "img/crossed-ink-scroll-brand.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "gesture",
+   "src": "img/crossed-gesture-scroll-brand.jpg"
+  },
+  {
+   "phrase": "crossed",
+   "style": "geometry",
+   "src": "img/crossed-geometry-scroll-brand.jpg"
+  }
+ ],
+ "fades": [
+  {
+   "phrase": "pad",
+   "style": "ink",
+   "src": "anim/pad-ink-fade.webm"
+  },
+  {
+   "phrase": "crossed",
+   "style": "ink",
+   "src": "anim/crossed-ink-fade.webm"
+  },
+  {
+   "phrase": "run",
+   "style": "gesture",
+   "src": "anim/run-gesture-fade.webm"
+  },
+  {
+   "phrase": "crossed",
+   "style": "gesture",
+   "src": "anim/crossed-gesture-fade.webm"
+  },
+  {
+   "phrase": "chords",
+   "style": "geometry",
+   "src": "anim/chords-geometry-fade.webm"
+  },
+  {
+   "phrase": "run",
+   "style": "geometry",
+   "src": "anim/run-geometry-fade.webm"
+  }
+ ],
+ "scan": [
+  {
+   "style": "ink",
+   "held": "audio/scan-ink-held.mp3",
+   "fade": "audio/scan-ink-fade.mp3",
+   "held_centroid": 2.51,
+   "fade_centroid_median": 1.66,
+   "fade_centroid_range": [
+    1.18,
+    2.22
+   ],
+   "dark_frames": 6,
+   "frames": 310
+  },
+  {
+   "style": "gesture",
+   "held": "audio/scan-gesture-held.mp3",
+   "fade": "audio/scan-gesture-fade.mp3",
+   "held_centroid": 2.33,
+   "fade_centroid_median": 1.53,
+   "fade_centroid_range": [
+    1.1,
+    2.03
+   ],
+   "dark_frames": 6,
+   "frames": 310
+  },
+  {
+   "style": "geometry",
+   "held": "audio/scan-geometry-held.mp3",
+   "fade": "audio/scan-geometry-fade.mp3",
+   "held_centroid": 2.6,
+   "fade_centroid_median": 2.13,
+   "fade_centroid_range": [
+    1.29,
+    2.76
+   ],
+   "dark_frames": 6,
+   "frames": 310
+  }
+ ],
+ "checks": {
+  "density_palette_max_difference": 0.0,
+  "lightness_palette_max_difference_null": 0.352
+ },
+ "phrases": {
+  "pad": {
+   "db": -14.586,
+   "bright": 0.359,
+   "unrest": 0.159,
+   "flatness": 0.013,
+   "agitation": 0.066,
+   "grain": 0.069,
+   "notes": 5,
+   "spread_hz": 220.5,
+   "preset": "Slow pad",
+   "length": 12.0
+  },
+  "crossed": {
+   "db": -18.198,
+   "bright": 0.243,
+   "unrest": 0.221,
+   "flatness": 0.014,
+   "agitation": 0.235,
+   "grain": 0.101,
+   "notes": 46,
+   "spread_hz": 132.6,
+   "preset": "Crossed hands (the owner's)",
+   "length": 15.5
+  },
+  "run": {
+   "db": -20.388,
+   "bright": 1.177,
+   "unrest": 0.17,
+   "flatness": 0.009,
+   "agitation": 0.857,
+   "grain": 0.0,
+   "notes": 43,
+   "spread_hz": 476.6,
+   "preset": "Tine piano",
+   "length": 7.166666666666665
+  },
+  "chords": {
+   "db": -16.453,
+   "bright": -0.049,
+   "unrest": 0.269,
+   "flatness": 0.002,
+   "agitation": 0.183,
+   "grain": 0.0,
+   "notes": 16,
+   "spread_hz": 106.7,
+   "preset": "Drawbar organ",
+   "length": 11.6
+  }
+ },
+ "palette_measures": {
+  "brand": {
+   "worst": {
+    "normal": [
+     16.1,
+     "a_related/b_related"
+    ],
+    "protan": [
+     9.5,
+     "a_clash/b_main"
+    ],
+    "deutan": [
+     8.8,
+     "a_clash/b_related"
+    ],
+    "tritan": [
+     10.0,
+     "b_main/b_clash"
+    ]
+   },
+   "simulated": [
+    8.8,
+    "a_clash/b_related"
+   ],
+   "contrast": {
+    "a_main": 15.14,
+    "a_related": 5.37,
+    "a_clash": 4.93,
+    "b_main": 8.55,
+    "b_related": 3.29,
+    "b_clash": 9.16
+   },
+   "ground": {
+    "a_main": 73.0,
+    "a_related": 46.8,
+    "a_clash": 44.9,
+    "b_main": 57.8,
+    "b_related": 36.1,
+    "b_clash": 58.9
+   },
+   "ground_simulated": {
+    "a_main": 73.0,
+    "a_related": 46.0,
+    "a_clash": 43.3,
+    "b_main": 57.5,
+    "b_related": 34.2,
+    "b_clash": 57.5
+   }
+  },
+  "earth": {
+   "worst": {
+    "normal": [
+     15.3,
+     "a_clash/b_clash"
+    ],
+    "protan": [
+     9.3,
+     "a_related/b_main"
+    ],
+    "deutan": [
+     8.2,
+     "a_related/b_main"
+    ],
+    "tritan": [
+     9.5,
+     "a_clash/b_main"
+    ]
+   },
+   "simulated": [
+    8.2,
+    "a_related/b_main"
+   ],
+   "contrast": {
+    "a_main": 12.36,
+    "a_related": 4.89,
+    "a_clash": 6.84,
+    "b_main": 4.64,
+    "b_related": 3.0,
+    "b_clash": 8.12
+   },
+   "ground": {
+    "a_main": 66.0,
+    "a_related": 43.7,
+    "a_clash": 52.2,
+    "b_main": 42.6,
+    "b_related": 32.6,
+    "b_clash": 54.6
+   },
+   "ground_simulated": {
+    "a_main": 66.0,
+    "a_related": 41.1,
+    "a_clash": 49.7,
+    "b_main": 40.9,
+    "b_related": 31.5,
+    "b_clash": 53.5
+   }
+  },
+  "night": {
+   "worst": {
+    "normal": [
+     15.8,
+     "a_clash/b_main"
+    ],
+    "protan": [
+     9.9,
+     "b_main/b_related"
+    ],
+    "deutan": [
+     8.4,
+     "a_related/b_clash"
+    ],
+    "tritan": [
+     8.4,
+     "a_related/b_related"
+    ]
+   },
+   "simulated": [
+    8.4,
+    "a_related/b_clash"
+   ],
+   "contrast": {
+    "a_main": 13.66,
+    "a_related": 6.95,
+    "a_clash": 5.81,
+    "b_main": 8.68,
+    "b_related": 8.25,
+    "b_clash": 4.65
+   },
+   "ground": {
+    "a_main": 70.2,
+    "a_related": 50.4,
+    "a_clash": 49.8,
+    "b_main": 58.2,
+    "b_related": 54.7,
+    "b_clash": 43.6
+   },
+   "ground_simulated": {
+    "a_main": 69.3,
+    "a_related": 49.9,
+    "a_clash": 40.6,
+    "b_main": 55.8,
+    "b_related": 53.3,
+    "b_clash": 37.5
+   }
+  }
+ }
+}
