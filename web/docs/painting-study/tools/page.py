@@ -233,6 +233,10 @@ th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spa
 <div class="table-wrap"><table><tr><th>Canvas</th><th>Brushwork per frame</th><th>Render per frame</th></tr>{costs}</table></div>
 </section>
 
+<section id="gpu"><p class="eyebrow">Can it run live?</p><h2>The graphics-card test</h2>
+<p>Crossed hands in physical paint, Cycles, replayed live in WebGL 2 with its sound, at a choice of canvas sizes, with a frame-time readout: <a href="gpu/index.html">the test page</a>. Open it on your own machine to see whether it holds 60 frames a second there.</p>
+</section>
+
 <section id="others"><p class="eyebrow">Carried along</p><h2>The other styles in {COMP[LEAD][0]}</h2>
 <p>Physical paint in the two proposed palettes:</p>
 <div class="two">{cpals}</div>

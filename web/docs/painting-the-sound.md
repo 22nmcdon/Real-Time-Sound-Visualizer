@@ -417,6 +417,99 @@ place while Cycles' fit spans the orbit, so the pad's circles crowd into a corne
 2. Is the brush legible enough at four links, or is any link too weak? Brightness as
    lightness is the subtlest on dark inks.
 
+### The graphics-card test (12 Nov)
+
+Can physical paint run live? `painting-study/gpu/index.html` replays Crossed hands in
+Cycles in WebGL 2, in step with its sound. You choose a canvas of 512, 1000 or 1600
+square. A frame-time readout shows the mean and worst frame over the last second, and the
+GPU time where the browser offers `EXT_disjoint_timer_query_webgl2`. The CPU render of
+the same moments sits beside it. A plain message says which is missing if WebGL 2 or
+float render targets are not there. Everything is inline except `strokes.bin`,
+`crossed.mp3` and the two CPU stills, all in the same folder. Kept a test, not a product.
+
+**What runs where.**
+
+- **On the graphics card,** per pixel, every frame, in fragment shaders over two
+  ping-ponged float textures (seven pigment amounts and each pixel's last wet time):
+  - stamping each of the frame's brush steps: bristle groups and their loads, the
+    feathered lift, dry brush catching on the weave;
+  - wet paint smudged along the stroke;
+  - covering dry paint;
+  - wetness by thickness;
+  - then, to the screen: Kubelka-Munk over all seven pigments, the height over the
+    weave lit by the raking light, and the wet gloss.
+
+  The weave is computed once per size, from oilpaint.cpp's own function.
+- **On the CPU, in the page:** choosing the frame's steps and uploading them, at most
+  55 in a sixtieth of a second, a few kilobytes.
+- **Precomputed, offline** (`tools/export_gpu.py`, into a 229 KB `strokes.bin`): the
+  brushwork itself, 2,633 steps of where each brush is, its width, pressure,
+  stiffness, dryness, its mixture and its 32 bristle groups' loads. This replays
+  oilpaint.cpp's brush rules, which do not depend on the canvas except through
+  pick-up.
+
+**What was cut.**
+
+- **The brush picking paint up and carrying it on.** It needs the canvas under the brush
+  read back every step. Here, wet paint is smudged along the stroke instead.
+- **The ridges** pushed to a stroke's flanks.
+- **The per-brush test** that keeps a brush from dragging its own fresh paint. Here,
+  paint younger than 0.15 s is left alone, whoever laid it.
+- **One mixture per bristle group.** It is one per step.
+
+All seven pigments fit (two RGBA textures, with the wet time in the eighth channel), so
+none was cut. The look is close: at the end of the phrase the two renders match in the
+weave, the bristle streaks, the light and the mixes. The visible difference is the left
+hand's circling chord, greyer and more striped on the GPU and browner on the CPU, which is
+the pick-up's carried colour.
+
+**Measured in headless Chromium, which has no graphics card.** It runs WebGL in software
+(SwiftShader, on this machine's four CPU cores), so these are a floor, not the owner's
+machine:
+
+| Canvas | Mean frame | 95th percentile | Worst |
+|---|---|---|---|
+| 512 × 512 | 39 ms | 83 ms | 633 ms |
+| 1000 × 1000 | 619 ms | 3.5 s | 4.1 s |
+| 1600 × 1600 | 1.8 s | 6.1 s | 6.1 s |
+
+Even in software, 512 square runs at about 26 frames a second. The cost grows faster
+than the pixel count because a slow frame has to catch up on more brush steps, and the
+stamping shader loops over each of them across the frame's box. At a real 60 frames a
+second, a frame carries at most 55 steps.
+
+**An estimate for real hardware, not a measurement.** Each frame reads and writes the
+paint state once (64 bytes a pixel) and reads it about five times to light it. At 1000
+square that is about 300 MB a frame: about 1 ms on a discrete graphics card (300 GB/s
+and more) and 5 to 6 ms on a laptop's integrated one (about 50 GB/s). So 60 frames a
+second at 1000 square looks likely, and at 1600 likely on a discrete card. The page's
+readout is how to find out: open it on the machine that matters.
+
+**What a live version in the instrument would need.**
+
+- **Where the paint state lives:** in the plugin's webview, as these textures, on the
+  graphics card. Not in the core.
+- **What the core sends each frame:** the brush steps, about 50 at most per frame,
+  each about 200 bytes, so about 10 KB a frame, through the bridge that already carries
+  the picture to the page. Computing the brushwork live needs only the voices and the
+  spectral measures the core already has (levels, envelopes, brightness, roughness).
+- **What Scan would read:** the paint's density. That needs a read-back from the
+  graphics card at Scan's 60 a second, reduced to 64 by 64 on the GPU first: a few
+  kilobytes, but a synchronous read stalls the pipeline unless it is asynchronous and a
+  frame late.
+
+The honest risks:
+
+- **Scan's read is a round trip.** The sound would depend on the graphics card, so the
+  same performance could sound different on two machines, against the determinism
+  parity holds the core to.
+- **The plugin's webview may lack float render targets.** That is WebKitGTK on Linux;
+  the page detects it, but the instrument would need a fallback.
+- **The pick-up is cut.** Carrying colour on a brush wants a read-back or a different
+  model.
+- **The paint never fades.** A live screen would need to wipe or glaze it, which is the
+  Persistence question again.
+
 ### What was played
 
 Four phrases through the instrument's own core (`scope::Instrument`, natively, at 48 kHz in

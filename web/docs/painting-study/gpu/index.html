@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Paint on the GPU</title>
+<meta name="description" content="A test: the physical paint of Crossed hands, replayed live in WebGL 2 with its sound, to see whether it holds 60 frames a second.">
+<style>
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+  --line: #e4d9cc; --blush: #d9a6a0; --blush-deep: #c07f79; --rust: #a4553f; --sage: #6f7f63;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cream); color: var(--text); font: 300 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+main { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+h1, h2 { font-family: var(--serif); font-weight: 600; color: var(--charcoal); line-height: 1.2; }
+h1 { font-size: clamp(28px, 5vw, 44px); margin: 4px 0 8px; }
+h2 { font-size: 22px; margin: 32px 0 8px; }
+p { max-width: 46em; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--blush-deep); font-weight: 500; margin: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+button, select { font: 500 12px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--charcoal);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 30px; padding: 10px 16px; cursor: pointer; }
+button.primary { background: var(--charcoal); color: var(--paper); border-color: var(--charcoal); }
+button:hover, select:hover { border-color: var(--blush); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.readout { font: 13px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); background: var(--paper);
+  border: 1px solid var(--line); padding: 8px 12px; min-width: 18em; }
+.readout b { font-weight: 600; }
+.ok { color: var(--sage); } .over { color: var(--rust); }
+.stage { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+figure { margin: 0; }
+canvas, figure img { display: block; width: 100%; height: auto; aspect-ratio: 1; background: var(--paper);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); }
+figcaption { font-size: 13px; color: var(--text-soft); padding: 8px 2px 0; }
+.fallback { border: 1px solid var(--rust); color: var(--rust); background: var(--paper); padding: 12px 16px; display: none; }
+code { font-family: var(--mono); font-size: 0.86em; }
+@media (max-width: 760px) { .stage { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<p class="eyebrow">Painting the sound · a test</p>
+<h1>Paint on the graphics card</h1>
+<p>Crossed hands, painted in physical paint in the Cycles composition, replayed live: the brushwork the study already computes, laid down, mixed, dried and lit in WebGL 2 fragment shaders, in step with the sound. The question is only whether it can run live. The readout shows the frame time on this machine; 16.7 ms holds 60 frames a second.</p>
+<div class="fallback" id="fallback"></div>
+<div class="bar">
+  <button class="primary" id="play" type="button">Play</button>
+  <label>Canvas <select id="size"><option>512</option><option selected>1000</option><option>1600</option></select></label>
+  <button id="mid" type="button">Jump to 7.5 s</button>
+  <button id="end" type="button">Jump to the end</button>
+  <div class="readout" id="readout">Loading…</div>
+</div>
+<div class="stage">
+  <figure><canvas id="paint" width="1000" height="1000"></canvas><figcaption id="gpucap">The graphics card, live.</figcaption></figure>
+  <figure><img id="cpu" src="cpu-end.jpg" alt="The CPU render of the same phrase"><figcaption id="cpucap">The CPU version (oilpaint.cpp) at the end of the phrase, 1000 square. Jump to a moment to compare it with the same moment here.</figcaption></figure>
+</div>
+<audio id="audio" src="crossed.mp3" preload="auto"></audio>
+
+<h2>What runs where</h2>
+<p>On the graphics card, per pixel, every frame: each brush step of the frame stamped into the paint (its bristle groups, their loads, the feathered lift, dry brush catching on the weave), wet paint smudged along the stroke, a stroke over dry paint covering it, wetness by thickness, then the paint mixed by Kubelka-Munk over seven pigments, its height over the canvas weave lit by a raking light, and the wet gloss. The paint state is two float textures (seven pigment amounts and each pixel's last wet time), ping-ponged. On the CPU, in the page: only reading which steps fall in the frame and uploading them, a few kilobytes. The brushwork itself - where each brush is, how wide, how hard, what it holds - is precomputed from the sound (<code>tools/export_gpu.py</code>) into <code>strokes.bin</code>.</p>
+<p>Cut from the CPU version: the brush picking paint up and carrying it on (it needs the canvas under the brush read back every step; here wet paint is smudged along the stroke instead), the paint pushed into ridges at a stroke's flanks, and the per-brush test that keeps a brush from dragging its own fresh paint (here paint younger than 0.15 s is left alone, whichever brush laid it). The brush's mixture is one per step rather than one per bristle group.</p>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const readout = $("readout"), canvas = $("paint"), audio = $("audio");
+
+function fail(msg) {
+  const f = $("fallback"); f.style.display = "block"; f.textContent = msg; readout.textContent = "Not running.";
+  for (const id of ["play", "mid", "end", "size"]) $(id).disabled = true;
+  window.__bench = { error: msg };
+}
+
+const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, preserveDrawingBuffer: false });
+let FLOAT = null;
+if (!gl) fail("This browser has no WebGL 2, so the paint cannot run on its graphics card here.");
+else if (gl.getExtension("EXT_color_buffer_float")) FLOAT = { internal: gl.RGBA32F, type: gl.FLOAT, name: "32-bit float" };
+else if (gl.getExtension("EXT_color_buffer_half_float")) FLOAT = { internal: gl.RGBA16F, type: gl.HALF_FLOAT, name: "16-bit float" };
+else fail("This browser has WebGL 2 but cannot render into float textures (neither EXT_color_buffer_float nor EXT_color_buffer_half_float), which the paint needs.");
+const timerExt = gl ? gl.getExtension("EXT_disjoint_timer_query_webgl2") : null;
+
+// --- shaders -------------------------------------------------------------------------
+const COMMON = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+const float PI = 3.14159265;
+float hash(uint x) { x ^= x >> 16u; x *= 0x7feb352du; x ^= x >> 15u; x *= 0x846ca68bu; x ^= x >> 16u; return float(x & 0xffffffu) / 16777215.0; }
+`;
+const VERT = `#version 300 es
+in vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+
+// The canvas weave, oilpaint.cpp's, computed once per size.
+const WEAVE = COMMON + `
+out vec4 o;
+float sn(float x, uint seed) { float i = floor(x); float f = x - i; float g = f * f * (3.0 - 2.0 * f);
+  uint ii = uint(int(i)); return hash(ii * 2654435761u + seed) * (1.0 - g) + hash((ii + 1u) * 2654435761u + seed) * g; }
+void main() {
+  float x = floor(gl_FragCoord.x), y = floor(gl_FragCoord.y);
+  float xw = x + 1.6 * sn(y / 23.0, 11u) + 0.7 * sn(y / 5.0, 12u);
+  float yw = y + 1.6 * sn(x / 23.0, 13u) + 0.7 * sn(x / 5.0, 14u);
+  int tx = int(floor(xw / 4.0)), ty = int(floor(yw / 4.0));
+  bool warp = ((tx + ty) % 2) == 0;
+  float th = 0.6 + 0.4 * hash(uint(warp ? tx * 7 + 1 : ty * 13 + 2));
+  float a = abs(sin(PI * (warp ? xw : yw) / 4.0)) * th;
+  float b = 0.3 * abs(sin(PI * (warp ? yw : xw) / 4.0));
+  o = vec4(0.6 * a + 0.2 * b + 0.25 * hash(uint(int(y) * 7919 + int(x) * 104729)), 0.0, 0.0, 1.0);
+}`;
+
+// Stamping: every pixel in the frame's box runs the frame's steps in order.
+const PAINT = COMMON + `
+uniform sampler2D uA, uB, uSteps, uWeave;
+uniform int uN; uniform vec4 uBox; uniform float uTau, uThick;
+layout(location = 0) out vec4 oA; layout(location = 1) out vec4 oB;
+const float kDeposit = 0.6, kHide = 0.15;
+vec4 st(int i, int k) { return texelFetch(uSteps, ivec2(k, i), 0); }
+void main() {
+  ivec2 ip = ivec2(gl_FragCoord.xy);
+  vec4 A = texelFetch(uA, ip, 0), B = texelFetch(uB, ip, 0);
+  vec2 pos = gl_FragCoord.xy;
+  if (pos.x < uBox.x || pos.y < uBox.y || pos.x > uBox.z || pos.y > uBox.w) { oA = A; oB = B; return; }
+  float wv = texelFetch(uWeave, ip, 0).r;
+  for (int i = 0; i < uN; i++) {
+    vec4 s0 = st(i, 0), s1 = st(i, 1), s2 = st(i, 2);
+    vec2 d = s0.zw, n = vec2(-d.y, d.x);
+    float w = s1.x, p = s1.y, stiff = s1.z, dry = s1.w, t = s2.x, per = s2.z, span = s2.w;
+    uint sid = uint(s2.y);
+    float hw = max(0.8, w * 0.5 * (0.4 + 0.6 * min(p, 1.0)));
+    float hl = max(1.2, 0.12 * w);
+    vec2 rel = pos - s0.xy;
+    float u = dot(rel, n), v = dot(rel, d);
+    if (abs(u) > hw || (u * u) / (hw * hw) + (v * v) / (hl * hl) > 1.6) continue;
+    int k = clamp(int((u / span + 1.0) * 0.5 * 32.0), 0, 31);
+    float load = st(i, 5 + k / 4)[k % 4];
+    float rag = 0.72 + 0.28 * hash(sid * 131u + uint(k) * 17u);
+    float edge = max(0.0, 1.0 - pow(abs(u) / (hw * rag + (1.0 - rag) * hw * 0.6), 2.0 + 6.0 * stiff));
+    float tip = max(0.0, 1.0 - (v * v) / (hl * hl * 1.6));
+    float amount = A.x + A.y + A.z + A.w + B.x + B.y + B.z;
+    float wet = amount > 1e-5 ? exp(-(t - B.w) / (uTau * (1.0 + uThick * amount))) : 0.0;
+    // Wet paint not laid in the last 0.15 s is smudged along the stroke:
+    // what is behind the brush is dragged over this pixel (the CPU version's
+    // pick-up, which carries colour on in the brush, needs a read-back).
+    if (wet > 0.01 && t - B.w > 0.15) {
+      float f = clamp(0.35 * wet * edge * tip * per * (1.3 - 0.8 * stiff), 0.0, 0.6);
+      ivec2 bp = ivec2(pos - d * hl * 0.8);
+      vec4 Ab = texelFetch(uA, bp, 0), Bb = texelFetch(uB, bp, 0);
+      A = mix(A, Ab, f); B.xyz = mix(B.xyz, Bb.xyz, f);
+      amount = A.x + A.y + A.z + A.w + B.x + B.y + B.z;
+    }
+    float dep = kDeposit * p * load * edge * tip * per;
+    if (p < 0.5) {
+      float touch = hash((uint(ip.x / 2) * 73856093u) ^ (uint(ip.y / 2) * 19349663u) ^ (uint(k) * 83492791u));
+      dep *= clamp((p * 2.2 - touch) / 0.25, 0.0, 1.0) * (p * 2.0);
+    }
+    float share = 0.45 + 0.55 * hash(sid * 977u + uint(k) * 31u + 7u);
+    dep *= 1.0 - 0.75 * stiff * (1.0 - share);
+    float eff = load * (1.0 - 0.8 * dry);
+    if (eff < 0.5) {
+      float relief = (wv - 0.5) * 0.15;
+      float need = 0.1 * (1.0 - eff / 0.5) - 0.03;
+      dep *= clamp((relief - need) / 0.03, 0.0, 1.0);
+    }
+    if (dep <= 1e-6) continue;
+    float hide = (1.0 - exp(-dep / kHide)) * (1.0 - wet);
+    vec4 m0 = st(i, 3), m1 = st(i, 4);
+    A = A * (1.0 - hide) + dep * m0;
+    B.xyz = B.xyz * (1.0 - hide) + dep * m1.xyz;
+    float frac = dep / (amount + dep);
+    B.w = wet > 0.01 ? mix(B.w, t, frac) : t;
+  }
+  oA = A; oB = B;
+}`;
+
+// Mixing, light and gloss, to the screen.
+const RENDER = COMMON + `
+uniform sampler2D uA, uB, uWeave; uniform int uH; uniform float uT, uTau, uThick;
+uniform vec3 uGround; uniform vec3 uKS[7];
+out vec4 o;
+const float kHide = 0.15;
+float amountAt(ivec2 q) { vec4 A = texelFetch(uA, q, 0), B = texelFetch(uB, q, 0); return A.x + A.y + A.z + A.w + B.x + B.y + B.z; }
+float heightAt(ivec2 q) { float a = amountAt(q); return texelFetch(uWeave, q, 0).r * 0.6 / (1.0 + a * 6.0) + a * 3.0; }
+float srgb(float c) { c = clamp(c, 0.0, 1.0); return c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1.0 / 2.4) - 0.055; }
+void main() {
+  ivec2 sz = textureSize(uA, 0);
+  ivec2 q = ivec2(int(gl_FragCoord.x), uH - 1 - int(gl_FragCoord.y));
+  vec4 A = texelFetch(uA, q, 0), B = texelFetch(uB, q, 0);
+  float P[7] = float[7](A.x, A.y, A.z, A.w, B.x, B.y, B.z);
+  float a = 0.0; for (int i = 0; i < 7; i++) a += P[i];
+  float cover = 1.0 - exp(-a / kHide);
+  vec3 col = uGround;
+  if (a > 1e-6) {
+    vec3 k = vec3(0.0); for (int i = 0; i < 7; i++) k += P[i] / a * uKS[i];
+    vec3 R = 1.0 + k - sqrt(k * k + 2.0 * k);
+    col = R * cover + uGround * (1.0 - cover);
+  }
+  ivec2 xp = ivec2(min(q.x + 1, sz.x - 1), q.y), xm = ivec2(max(q.x - 1, 0), q.y);
+  ivec2 yp = ivec2(q.x, min(q.y + 1, sz.y - 1)), ym = ivec2(q.x, max(q.y - 1, 0));
+  float hx = heightAt(xp) - heightAt(xm), hy = heightAt(yp) - heightAt(ym);
+  vec3 n = normalize(vec3(-hx * 0.5, -hy * 0.5, 1.0));
+  vec3 L = vec3(-0.55, -0.62, 0.56);
+  float shade = clamp(0.25 + 0.75 * dot(n, L) / L.z, 0.35, 1.6);
+  float wet = a > 1e-5 ? exp(-(uT - B.w) / (uTau * (1.0 + uThick * a))) : 0.0;
+  vec3 hv = normalize(vec3(L.xy, L.z + 1.0));
+  float spec = pow(max(0.0, dot(n, hv)), 40.0) * (0.05 + 0.3 * wet) * cover;
+  vec3 c = col * shade + spec;
+  o = vec4(srgb(c.r), srgb(c.g), srgb(c.b), 1.0);
+}`;
+
+function program(fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, VERT], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(p, i).name.replace(/\[0\]$/, ""); u[name] = gl.getUniformLocation(p, name); }
+  return { p, u };
+}
+
+// --- the stroke stream ------------------------------------------------------------------
+let D = null;
+async function load() {
+  const buf = await (await fetch("strokes.bin")).arrayBuffer();
+  const dv = new DataView(buf);
+  if (String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== "PNT1") throw new Error("strokes.bin is not a stroke stream");
+  const n = dv.getUint32(4, true), length = dv.getFloat32(8, true), tau = dv.getFloat32(16, true), thick = dv.getFloat32(20, true);
+  const col = new Float32Array(buf, 24, 24);
+  let off = 24 + 96;
+  const steps = new Float32Array(buf, off, n * 12); off += n * 12 * 4;
+  const mix = new Uint8Array(buf, off, n * 7); off += n * 7;
+  const bins = new Uint8Array(buf, off, n * 32);
+  return { n, length, tau, thick, ground: col.slice(0, 3), inks: col.slice(3), steps, mix, bins };
+}
+
+// --- state ------------------------------------------------------------------------------------
+const MAXN = 256, TEX_W = 13;
+let S = 0, progs, quad, pair = [], cur = 0, weaveTex, stepTex, fbo, cursor = 0, clock = 0;
+const stepData = new Float32Array(MAXN * TEX_W * 4);
+
+function tex(w, h, internal, format, type) {
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, internal, w, h);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  return t;
+}
+
+function setup(size) {
+  S = size; canvas.width = canvas.height = size;
+  for (const p of pair) { gl.deleteTexture(p.A); gl.deleteTexture(p.B); gl.deleteFramebuffer(p.fb); }
+  if (weaveTex) gl.deleteTexture(weaveTex);
+  pair = [0, 1].map(() => {
+    const A = tex(size, size, FLOAT.internal), B = tex(size, size, FLOAT.internal);
+    const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, A, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, B, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error("float framebuffer incomplete");
+    gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]);
+    gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, FLOAT.type === gl.FLOAT ? -1e9 : -1000]);
+    return { A, B, fb };
+  });
+  weaveTex = tex(size, size, FLOAT.internal);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, weaveTex, 0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+  gl.viewport(0, 0, size, size); gl.useProgram(progs.weave.p); draw();
+  cur = 0; cursor = 0; clock = 0;
+}
+
+function draw() { gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+// Lay every step up to time t, MAXN at a time.
+function paintTo(t) {
+  while (cursor < D.n && D.steps[cursor * 12] <= t) {
+    let n = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    while (n < MAXN && cursor < D.n && D.steps[cursor * 12] <= t) {
+      const s = D.steps.subarray(cursor * 12, cursor * 12 + 12), o = n * TEX_W * 4;
+      const x = s[2] * S, y = s[3] * S, w = s[6] * S, span = s[11] * S;
+      stepData.set([x, y, s[4], s[5], w, s[7], s[8], s[9], s[0], s[1], s[10], span], o);
+      for (let k = 0; k < 7; k++) stepData[o + 12 + k] = D.mix[cursor * 7 + k] / 255;
+      stepData[o + 19] = 0;
+      for (let k = 0; k < 32; k++) stepData[o + 20 + k] = D.bins[cursor * 32 + k] / 100;
+      const r = w * 0.8 + 4; x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
+      n++; cursor++;
+    }
+    gl.bindTexture(gl.TEXTURE_2D, stepTex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, TEX_W, n, gl.RGBA, gl.FLOAT, stepData.subarray(0, n * TEX_W * 4));
+    const src = pair[cur], dst = pair[1 - cur];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, S, S);
+    const P = progs.paint; gl.useProgram(P.p);
+    bindTex(0, src.A, P.u.uA); bindTex(1, src.B, P.u.uB); bindTex(2, stepTex, P.u.uSteps); bindTex(3, weaveTex, P.u.uWeave);
+    gl.uniform1i(P.u.uN, n); gl.uniform4f(P.u.uBox, x0, y0, x1, y1); gl.uniform1f(P.u.uTau, D.tau); gl.uniform1f(P.u.uThick, D.thick);
+    draw(); cur = 1 - cur;
+  }
+}
+
+function bindTex(unit, t, loc) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(loc, unit); }
+
+function render(t) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, S, S);
+  const R = progs.render; gl.useProgram(R.p);
+  bindTex(0, pair[cur].A, R.u.uA); bindTex(1, pair[cur].B, R.u.uB); bindTex(2, weaveTex, R.u.uWeave);
+  gl.uniform1i(R.u.uH, S); gl.uniform1f(R.u.uT, t); gl.uniform1f(R.u.uTau, D.tau); gl.uniform1f(R.u.uThick, D.thick);
+  gl.uniform3fv(R.u.uGround, D.ground); gl.uniform3fv(R.u.uKS, KS);
+  draw();
+}
+
+let KS;
+function kubelkaMunk() {
+  KS = new Float32Array(21);
+  for (let i = 0; i < 21; i++) { const r = Math.min(Math.max(D.inks[i], 0.004), 0.995); KS[i] = (1 - r) * (1 - r) / (2 * r); }
+}
+
+// --- timing ------------------------------------------------------------------------------------
+const deltas = []; let lastFrame = 0; const gpuTimes = []; const pending = [];
+function report() {
+  const now = performance.now();
+  while (deltas.length && deltas[0].at < now - 1000) deltas.shift();
+  while (gpuTimes.length && gpuTimes[0].at < now - 1000) gpuTimes.shift();
+  if (!deltas.length) return;
+  const ms = deltas.map((d) => d.ms), mean = ms.reduce((a, b) => a + b, 0) / ms.length, worst = Math.max(...ms);
+  const g = gpuTimes.length ? gpuTimes.reduce((a, b) => a + b.ms, 0) / gpuTimes.length : null;
+  const cls = (v) => (v <= 17.5 ? "ok" : "over");
+  readout.innerHTML = `${S}² · frame <b class="${cls(mean)}">${mean.toFixed(1)}</b> ms mean, <b class="${cls(worst)}">${worst.toFixed(1)}</b> worst (last second)` +
+    `<br>GPU ${g === null ? (timerExt ? "timing…" : "time not offered by this browser") : `<b>${g.toFixed(1)}</b> ms mean`} · ${FLOAT.name} · t ${clock.toFixed(2)} s`;
+}
+
+function timed(fn) {
+  if (!timerExt) { fn(); return; }
+  const q = gl.createQuery(); gl.beginQuery(timerExt.TIME_ELAPSED_EXT, q); fn(); gl.endQuery(timerExt.TIME_ELAPSED_EXT);
+  pending.push(q);
+  while (pending.length && gl.getQueryParameter(pending[0], gl.QUERY_RESULT_AVAILABLE)) {
+    const p = pending.shift();
+    if (!gl.getParameter(timerExt.GPU_DISJOINT_EXT)) gpuTimes.push({ at: performance.now(), ms: gl.getQueryParameter(p, gl.QUERY_RESULT) / 1e6 });
+    gl.deleteQuery(p);
+  }
+}
+
+// --- the loop ------------------------------------------------------------------------------------
+const params = new URLSearchParams(location.search);
+const bench = params.has("bench");
+let playing = false, benchStart = 0; const benchLog = [];
+function frame(now) {
+  if (lastFrame) { const ms = now - lastFrame; deltas.push({ at: now, ms }); if (bench && playing) benchLog.push(ms); }
+  lastFrame = now;
+  if (playing) {
+    clock = bench ? (now - benchStart) / 1000 : audio.currentTime;
+    if (clock >= D.length) { playing = false; clock = D.length; if (bench) finishBench(); else $("play").textContent = "Play again"; }
+  }
+  timed(() => { paintTo(clock); render(clock); });
+  report();
+  requestAnimationFrame(frame);
+}
+
+function finishBench() {
+  const ms = benchLog.slice(5).sort((a, b) => a - b);
+  const mean = ms.reduce((a, b) => a + b, 0) / ms.length;
+  window.__bench = { size: S, frames: ms.length, mean, p95: ms[Math.floor(ms.length * 0.95)], worst: ms[ms.length - 1],
+                     gpu: gpuTimes.length ? gpuTimes.reduce((a, b) => a + b.ms, 0) / gpuTimes.length : null, float: FLOAT.name, steps: cursor };
+}
+
+function restart(size) { setup(size); render(0); }
+function jump(t, img, cap) {
+  playing = false; audio.pause(); $("play").textContent = "Play";
+  setup(S); clock = t; paintTo(t); render(t);
+  $("cpu").src = img; $("cpucap").textContent = cap;
+  $("gpucap").textContent = `The graphics card at ${t.toFixed(1)} s, ${S} square.`;
+}
+
+async function main() {
+  if (!FLOAT) return;
+  try {
+    D = await load();
+    progs = { weave: program(WEAVE), paint: program(PAINT), render: program(RENDER) };
+    kubelkaMunk();
+    quad = gl.createVertexArray(); gl.bindVertexArray(quad);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    fbo = gl.createFramebuffer();
+    stepTex = tex(TEX_W, MAXN, gl.RGBA32F);
+    const size = parseInt(params.get("size") || params.get("bench") || $("size").value, 10);
+    $("size").value = String(size);
+    restart(size);
+  } catch (err) { fail("The paint could not start: " + err.message); return; }
+  $("size").addEventListener("change", () => { playing = false; audio.pause(); $("play").textContent = "Play"; restart(parseInt($("size").value, 10)); });
+  $("play").addEventListener("click", async () => {
+    if (playing) { playing = false; audio.pause(); $("play").textContent = "Play"; return; }
+    restart(S); audio.currentTime = 0;
+    try { await audio.play(); } catch (e) { /* without sound, the clock still runs from the audio element */ }
+    playing = true; $("play").textContent = "Pause";
+    $("cpu").src = "cpu-end.jpg"; $("cpucap").textContent = "The CPU version at the end of the phrase, 1000 square.";
+    $("gpucap").textContent = "The graphics card, live, in step with the sound.";
+  });
+  $("mid").addEventListener("click", () => jump(7.5, "cpu-mid.jpg", "The CPU version (oilpaint.cpp) at 7.5 s, 1000 square."));
+  $("end").addEventListener("click", () => jump(D.length + 0.5, "cpu-end.jpg", "The CPU version (oilpaint.cpp) at the end, 1000 square."));
+  if (params.get("jump")) { const j = params.get("jump") === "mid" ? 7.5 : D.length + 0.5; jump(j, j === 7.5 ? "cpu-mid.jpg" : "cpu-end.jpg", ""); window.__ready = true; }
+  if (bench) { playing = true; benchStart = performance.now(); }
+  requestAnimationFrame(frame);
+}
+main();
+</script>
+</body>
+</html>
