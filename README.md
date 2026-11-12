@@ -1,53 +1,49 @@
 # Real-Time Sound Visualizer
 
-An oscilloscope you play. It draws sound the way a bench scope does, phosphor and
-all, and it is becoming an instrument whose sound is made from its own picture:
+A synthesiser that plays its own picture. It is a JUCE plugin (VST3 and a standalone
+app) whose sound is drawn on an oscilloscope's screen and read back off it, so what you
+see is part of what you hear:
 
 > **You play → the beam draws → the screen remembers → it is read back → you hear it →
 > the beam draws.**
 
-That loop is where it is going rather than all of where it is. Today the picture can
-already shape the sound, through the photocell, the picture's readings and a score read
-off the screen; the plan that makes it the heart of the instrument, and says what goes to
-make room, is [`web/docs/making-it-one-instrument.md`](web/docs/making-it-one-instrument.md).
-Read it before adding anything: its first rule is that a feature has to act on one of the
-arrows above.
+Notes light the screen where they land (*Strike*), the light lingers (*Persistence*),
+and *Scan* reads the brightness round a circle as the voice's own wave, at the pitch you
+hold - so a figure that moves is a tone that moves, and a held chord either settles or
+keeps breathing. The *Picture amount* lets what the screen is doing (how much is lit,
+how fast it changes, how much it repeats) push the sound further.
 
-## Seeing it
+Where it is going next is a screen that paints rather than traces: a picture that looks
+like a painting, true to the sound, that the instrument then plays back
+([`web/docs/painting-the-sound.md`](web/docs/painting-the-sound.md)). The plan behind all
+of it, and its first rule - a feature has to act on the loop above - is
+[`web/docs/making-it-one-instrument.md`](web/docs/making-it-one-instrument.md).
 
-The site is served from this repository by GitHub Pages:
+## Trying it
+
+The plugin is the product; its face is a web page, and the same page with the same
+engine (compiled to WebAssembly) runs on the site as its demo:
 
 **https://22nmcdon.github.io/Real-Time-Sound-Visualizer/**
 
-Or open `web/scope.html` in Chromium or Firefox; it runs from disk. Safari has no Web
-MIDI, so a MIDI keyboard does not reach it there; the keys on screen still do.
+It starts silent until a note: show the keys under the screen and play A to K, or connect
+a MIDI keyboard in Settings (Chromium or Firefox; Safari has no Web MIDI). Then open the
+preset browser and try a sound under each heading: *Settled* sounds move as each note
+strikes the screen and come to rest while held; *Breathing* ones keep moving while held.
+
+Building the plugin: [`plugin/`](plugin/) (`cmake -B build -G Ninja plugin && ninja -C
+build`; Linux needs WebKitGTK 4.1 and GTK 3). There are no signed builds yet.
 
 ## What is here
 
 | | |
 |---|---|
-| [`web/`](web/) | `scope.html`: the whole page in one file, the instrument's face on the site and inside the plugin. Work lands here first. |
-| [`core/`](core/) | The instrument in C++, held to the page sample for sample by `core/tests/parity.py`, and compiled to WebAssembly so the site runs it too. |
-| [`plugin/`](plugin/) | The instrument as a JUCE plugin, with the page as its interface. The plugin is the product; the site is its demo. Its staged history is [`plugin/PLAN.md`](plugin/PLAN.md). |
-| [`DESIGN.md`](DESIGN.md) | How it looks: which parts are the house it shares with the jazz and guitar learning apps, and which are the oscilloscope's own. |
+| [`plugin/`](plugin/) | The instrument as a JUCE plugin, with the page as its interface. Its staged history and what is left is [`plugin/PLAN.md`](plugin/PLAN.md). |
+| [`core/`](core/) | The instrument in C++, shared by the plugin and (as WebAssembly) the site, held to the page sample for sample by `core/tests/parity.py`. |
+| [`web/`](web/) | `scope.html`: the face, one file, which still carries an engine of its own in JavaScript that the core is checked against - retiring it so the core is the only engine is the next simplification. |
+| [`DESIGN.md`](DESIGN.md) | How it looks: which parts are the house it shares with the jazz and guitar learning apps, and which are the instrument's own. |
 | [`CLAUDE.md`](CLAUDE.md) | How work is done here: the tests, the house style, and the layout decisions already made. |
-
-## What it does now
-
-A scope done properly: a real trigger with hysteresis and holdoff, calibrated 1-2-5
-timebases, persistence, and a beam whose brightness goes as one over its speed, laid on a
-64-by-64 phosphor grid that remembers it.
-
-**X-Y** draws one channel against another, so an interval becomes a Lissajous figure.
-**Lag X-Y** plots a signal against a delayed copy of itself, which gives a mono sound a
-figure of its own. A generator draws figures and plays them, from a MIDI keyboard or the
-keys on screen, and the picture's transforms (mirror, fold, twist, kaleidoscope) shape
-the sound as well as the image. The **photocell** and the picture's readings feed back
-into the sound, and the **score** plays notes read off the screen.
-
-It also does a good deal the plan intends to cut, because it grew into three instruments
-sharing one screen: a synth, an image generator and a visualizer. The plan says which is
-which.
+| [`web/docs/`](web/docs/) | The plans and studies, each dated, including the [handoff](web/docs/handoff-p8.md) written at P8, kept as history. |
 
 ## Working on it
 

@@ -1,4 +1,8 @@
-# Handoff
+# Handoff (P8, kept as history)
+
+*Moved here from the repository's root on 12 Nov: it describes the instrument at the end
+of P8g and is no longer kept up to date. Where it stands now is in `plugin/PLAN.md`,
+`web/docs/the-face-second-pass.md` and the dated notes beside this one.*
 
 Where the instrument stands, what is decided, what is open, and how to work on
 it without rediscovering the last month. Written at the end of P8f

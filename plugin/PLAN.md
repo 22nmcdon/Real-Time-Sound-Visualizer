@@ -2311,7 +2311,7 @@ parity is untouched. The shell test counts the builds: one at each
 hand-over, none while the blocks that load them play, and with the warming
 taken out the audio thread builds them again (the null). The bookkeeping's
 allocations go with stepping the core in fixed 128-sample pieces, which
-reshapes `block()` anyway (handoff.md, step 3). A new controller's first
+reshapes `block()` anyway (`web/docs/handoff-p8.md`, step 3). A new controller's first
 message allocates nothing in the keyboard - its list is reserved for 128 and
 every name it gives fits a string's own buffer; what follows it is the
 state's publishing, the same bookkeeping.
