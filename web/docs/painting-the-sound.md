@@ -64,6 +64,27 @@ still be chosen for composition.
   where it is kept (the browser, the plugin's state, or the setup so a preset carries it)
   is to decide, and a low-contrast one is their choice, perhaps with a quiet warning.
 
+## Colour heard, as a choice (the owner, 12 Nov)
+
+The rule above keeps the palette out of the sound by default: Scan reads density, so
+colours are only the look. The owner's idea is a choice beside it, **Colour heard**, in
+which the differences between neighbouring colours - not the colours themselves - shape
+the tone, for a wider variety of sound. Ways it could sound:
+
+- **Edges as brightness.** Along Scan's path, a jump between unlike colours is a sharp
+  step in the wave, so more harmonics; a smooth blend between like ones a soft tone.
+  Contrast becomes roughness, which is what the eye already reads as harsh or calm.
+- **Adjacency as harmony.** Neighbouring colours that sit close on the wheel read as
+  consonant partials, ones far apart as a clash - the same mapping the vocabulary uses
+  for drawing harmony, run backwards.
+
+To settle when it is studied: the difference measured in a perceptual colour space (so
+"unlike" means unlike to the eye, not to the numbers); what a player with a colour vision
+deficiency hears from colours they cannot tell apart (`DESIGN.md` measures the lane inks
+under simulated colour blindness for the same reason); and that a saved sound with Colour
+heard keeps its palette, since there changing the palette changes the sound - which is the
+point of the choice, and why *Ink only* stays the default.
+
 ## A painting loaded as a sound (the owner, 12 Nov)
 
 Since Scan reads the canvas, a saved painting can be loaded back onto it and played:
