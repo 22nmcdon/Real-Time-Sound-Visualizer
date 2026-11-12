@@ -1,0 +1,58 @@
+# Publishes the site twice from one repository (12 Nov): the stable page from
+# `main` at the root, for anyone the owner sends the link to, and the work in
+# progress from `testing` under /testing/, for the owner to try before it is
+# promoted. Pages serves one artifact, so every push to either branch lays out
+# both and publishes them together. The page is one self-contained file, so
+# nothing is built: the two trees are copied into place. The testing page
+# keeps its browser storage under its own prefix (the top of scope.html's
+# script says why). Needs Settings > Pages > Source set to "GitHub Actions".
+name: Publish the site
+
+on:
+  push:
+    branches: [main, testing]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: stable
+      - uses: actions/checkout@v4
+        with:
+          ref: testing
+          path: testing
+      - name: Lay out the stable site at the root and the testing site under /testing/
+        run: |
+          mkdir -p site/testing
+          cp stable/index.html site/
+          cp -r stable/web site/web
+          cp testing/index.html site/testing/
+          cp -r testing/web site/testing/web
+          # The suites are not part of the site.
+          rm -rf site/web/tests site/testing/web/tests
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
