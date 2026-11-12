@@ -17,7 +17,9 @@ the player rather than guessed.
 How far the sound moves is read as its spectrum: the left channel's last 4096
 samples, Hann-windowed, in forty-eight bands a fifth of an octave wide from
 40 Hz, each band's share of the whole as an amplitude, so loudness drops out.
-Every quarter second, the distance from the last reading is the movement. One
+Every quarter second, the distance between that window and the one a
+quarter second of samples before it, taken together from the ring, is the
+movement: on the sound's own clock, not the timer's (12 Nov). One
 note held is the probe, since a chord's own partials beat against each other
 and move its spectrum with nothing else doing anything (a saw triad with the
 loop open moved 0.15 a reading, where one saw note moves nought); a preset
@@ -116,17 +118,39 @@ RUN = r"""async ([value, notes, hold, after, wet]) => {
     let total = 0; for (const v of bands) total += v;
     return Array.from(bands, (v) => total > 0 ? Math.sqrt(v / total) : 0);
   }
-  const out = []; let last = null;
+  /* Each reading is the movement over exactly a quarter second of the
+     sound, measured on its own samples: two windows a quarter second apart
+     in one stretch taken from the ring, rather than this window against the
+     one the last timer took. The timer is late under load - 252 to 340 ms
+     between reads, 268 to 285 on average, on a quiet machine on 11 Nov -
+     and a longer gap is more movement, so the reading moved with how busy
+     the machine was: the Bass under the tine piano's upper hand, with the
+     reverb on, read 0.0105 to 0.0175 late over eight runs this way, and
+     0.0100 to 0.0127 when the same sound was scored at exactly a quarter
+     second. The first reading still counts no movement, as it had no last,
+     so every window falls where it did.
+
+     Tried and not kept: the mean of five such pairs a reading, tiling the
+     stretch since the last. It steadied the late further, but its pairs
+     reach back in time, and on a strike that dies in half a second that
+     changed what early reads - the bass hand's fell from 0.047 to 0.022 -
+     which is a change to the rule, not to the measure. */
+  const out = [];
+  const rate = state.source.sampleRate || 44100, N = 4096, GAP = Math.round(rate / 4);
+  let first = true;
   const read = (t, phase) => {
     // A split hands back a pair a layer; heard, they are summed.
-    const w = state.source.getLatestWindow(4096);
+    const w = state.source.getLatestWindow(N + GAP);
     const l = w.length >= 4 ? w[0].map((x, i) => x + w[2][i]) : w[0];
-    let e = 0; for (let k = 0; k < l.length; k++) e += l[k] * l[k];
-    const sp = spectrum(l);
+    let e = 0; for (let k = GAP; k < GAP + N; k++) e += l[k] * l[k];
     let move = 0;
-    if (last) { for (let b = 0; b < sp.length; b++) move += (sp[b] - last[b]) ** 2; move = Math.sqrt(move); }
-    last = sp;
-    out.push({ t, phase, move, rms: Math.sqrt(e / l.length) });
+    if (!first) {
+      const a = spectrum(l.subarray(0, N)), b = spectrum(l.subarray(GAP, GAP + N));
+      for (let k = 0; k < a.length; k++) move += (b[k] - a[k]) ** 2;
+      move = Math.sqrt(move);
+    }
+    first = false;
+    out.push({ t, phase, move, rms: Math.sqrt(e / N) });
   };
   for (const n of notes) midiBytes(new Uint8Array([0x90, n, 100]));
   const t0 = performance.now();
