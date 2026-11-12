@@ -103,7 +103,7 @@ GENERATOR = """([w]) => {
   const a = makeGeneratorCore(48000, GEN_SLOTS, lfosOf()), b = makeGeneratorCore(48000, GEN_SLOTS, lfosOf());
   for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('phase', Math.PI / 2); x.set('delayMix', 0.4); x.set('delayMs', 30); }
   b.set('stereoWidth', w);
-  const out = { picture: true, mono: true, asDrawn: true, side: 0, half: 0 };
+  const out = { picture: true, mono: true, asDrawn: true, side: 0, half: 0, firstMono: true };
   for (let k = 0; k < 160; k++) {
     const pa = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128)), pb = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
     a.block(pa[0], pa[1], 128, pa[2], pa[3], pa[4], pa[5]);
@@ -114,6 +114,7 @@ GENERATOR = """([w]) => {
       if (pb[2][i] !== pb[0][i] || pb[3][i] !== pb[1][i]) out.asDrawn = false;
       out.side = Math.max(out.side, Math.abs(pa[2][i] - pa[3][i]));
       if (k >= 110 && pb[2][i] !== pb[3][i]) out.mono = false;
+      if (k === 0 && pb[2][i] !== pb[3][i]) out.firstMono = false;
       const sa = pa[2][i] - pa[3][i], sb = pb[2][i] - pb[3][i];
       if (k >= 110 && Math.abs(sa) > 0.02) out.half = Math.max(out.half, Math.abs(sb / sa - w));
     }
@@ -285,6 +286,7 @@ with sync_playwright() as pw:
     gnull = p.evaluate(GENERATOR, [1])
     check("the page's own generator: the picture pair and B's the same to the bit, the heard pair mono at nought",
           gen["picture"] and gen["mono"] and gen["side"] > 0.05, str(gen))
+    check("glided there, not stepped: its first block is not mono", not gen["firstMono"], str(gen))
     check("and its side half at fifty", ghalf["picture"] and ghalf["half"] < 1e-5 and not ghalf["mono"], str(ghalf))
     check("null: at one it is not mono, and is the lanes to the bit", gnull["picture"] and not gnull["mono"] and gnull["asDrawn"], str(gnull))
     check("null: at nought the heard pair is not the lanes", not gen["asDrawn"], str(gen))
