@@ -562,8 +562,11 @@ with sync_playwright() as pw:
         # The reverb at its fullest too, since 11 Nov: its tail fills the
         # screen from the first frame to the last, and Change, on a fixed
         # scale, has nothing to flare on in a screen that never changes how
-        # much is lit - the same evidence is asked of it.
-        saturated = mode in ("strike", "reverb") and w["grid"] >= 1 - 1e-9 and tenths > 0 and running >= 0.9 * tenths
+        # much is lit - the same evidence is asked of it. And the crossed
+        # split since 12 Nov, when Change's dead zone came in: its screens are
+        # as full (239 tenths of 240 running away), and a level that cannot
+        # rise is no gesture.
+        saturated = mode in ("strike", "reverb", "cross") and w["grid"] >= 1 - 1e-9 and tenths > 0 and running >= 0.9 * tenths
         pinned = lambda r: saturated and r[0] >= 0.5 - 1e-9
         check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
               (mv["res"][1] - mv["res"][0]) > 1 and ((mv["freq"][1] - mv["freq"][0]) > 0.01 or pinned(mv["freq"]))

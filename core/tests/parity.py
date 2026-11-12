@@ -6046,6 +6046,8 @@ print("\n--- the instrument, compiled (5f) ---")
 iexe = build("instrument_cpp")
 inames = [n for n in subprocess.run([iexe, "--names"], check=True, capture_output=True, text=True).stdout.split("\n") if n]
 icode = dict(zip(inames, subprocess.run([iexe, "--code", *inames], check=True, capture_output=True, text=True).stdout.split("\n")))
+# Harmonic tone's Picture amount as the bank names it, which the layers' runs below push at.
+HARMONIC_AMOUNT = _json.loads(base64.b64decode(icode["Harmonic tone"] + "=" * (-len(icode["Harmonic tone"]) % 4)))["pictureAmount"]
 # The old library's setups (P8g), as codes of the version a code is written
 # at now, so no decode pass changes them: the runs below that were written
 # against a preset since cut open on its old setup, and every one of them is
@@ -6619,8 +6621,11 @@ check("and with B's own plane the screen's rotation leaves B's figure alone, whe
       g_own_turned == g_own_still and g_together_turned != g_own_still, "%r %r %r" % (g_own_turned, g_own_still, g_together_turned))
 # Each layer's picture (P6), read natively off the instrument: a split in
 # X-Y, layer A a turning fifth and layer B one note, and the loop's routes as
-# the generator is given them. The fold's slot (22) hears Glow at 0.6 x 0.5 (the weight its reach since 11 Nov):
-# layer A's sound held at 0.3 of A's glow through A's hold, B's of B's.
+# the generator is given them. The fold's slot (22) hears Glow at Harmonic
+# tone's amount times the fold's weight, read off the bank (0.96 x 0.5 since
+# 12 Nov; 0.6 x 0.8 until 11 Nov): layer A's sound held at that of A's glow
+# through A's hold, B's of B's.
+I_FOLD = HARMONIC_AMOUNT / 100 * 0.5
 def ilayers(*hands, split=True, display="dispXY", notes=(48, 55, 72)):
     lines = [["make", 48000, 512, icode["Harmonic tone"]], ["click", display], ["click", "midiPoly"], ["click", "tuneEqual"]] \
         + ([["control", "midiLayers", "split"]] if split else []) + list(hands) + [NOTE_ON(n) for n in notes]
@@ -6635,8 +6640,8 @@ def ilayers(*hands, split=True, display="dispXY", notes=(48, 55, 72)):
                     "shared": [float(x) for x in w[w.index("shared") + 1:w.index("shared") + 5]], "fold": routes.get(22)})
     return out
 def ifold(read, want_a, want_b):
-    """Every reading's fold route is 0.3 of the glow each layer's sound should hear, and the two differ somewhere."""
-    return bool(read) and all(abs(r["fold"][0] - 0.3 * want_a(r)) < 1e-12 and abs(r["fold"][1] - 0.3 * want_b(r)) < 1e-12 for r in read) \
+    """Every reading's fold route is I_FOLD of the glow each layer's sound should hear, and the two differ somewhere."""
+    return bool(read) and all(abs(r["fold"][0] - I_FOLD * want_a(r)) < 1e-12 and abs(r["fold"][1] - I_FOLD * want_b(r)) < 1e-12 for r in read) \
         and any(abs(r["fold"][0] - r["fold"][1]) > 0.01 for r in read)
 own_glow = lambda k: lambda r: r["L"][k][1] * r["L"][k][4]
 cross_glow = lambda k: lambda r: r["L"][k][1] * min(r["L"][0][4], r["L"][1][4])
@@ -6722,7 +6727,7 @@ check("in a split, the upper note lands in B's picture and leaves A's alone; wit
       and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))
 lu = ilayers(split=False, notes=(48, 55))
 lt = ilayers(display="dispYT")
-shared_fold = lambda r: abs(r["fold"][0] - 0.3 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
+shared_fold = lambda r: abs(r["fold"][0] - I_FOLD * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
 check("unsplit, no layer pictures: both sounds hear exactly the shared picture, which moves",
       all(not r["live"] and shared_fold(r) for r in lu) and any(r["fold"][0] > 0.01 for r in lu))
 # (The second generator's two figures with no layers stayed on the one picture too, until G2.)

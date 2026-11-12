@@ -227,7 +227,8 @@ with sync_playwright() as pw:
     check("a code says the amount at its default, and a preset at 60 after one at nought moves the site's sound; at nought it stands still",
           # Moved past 0.02, four times the null's ceiling: 0.05 until 11 Nov, when the note's own loop
           # swelled it by itself, which it no longer does (its Swell breathes it, measured 0.044).
-          after["code"] == 60 and after["moved"] > 0.02 and after["still"] < 0.005, str(after))
+          # The amount Harmonic tone names: 96 since 12 Nov, when the bank's amounts were scaled to the push they meant.
+          after["code"] == 96 and after["moved"] > 0.02 and after["still"] < 0.005, str(after))
     held = {}
     # Held down past the preset naming the most, and up past the first Settled
     # one, which names nought.
