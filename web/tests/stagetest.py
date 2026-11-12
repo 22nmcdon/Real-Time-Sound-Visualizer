@@ -225,7 +225,9 @@ with sync_playwright() as pw:
     }""")
     b.close()
     check("a code says the amount at its default, and a preset at 60 after one at nought moves the site's sound; at nought it stands still",
-          after["code"] == 60 and after["moved"] > 0.05 and after["still"] < 0.005, str(after))
+          # Moved past 0.02, four times the null's ceiling: 0.05 until 11 Nov, when the note's own loop
+          # swelled it by itself, which it no longer does (its Swell breathes it, measured 0.044).
+          after["code"] == 60 and after["moved"] > 0.02 and after["still"] < 0.005, str(after))
     held = {}
     # Held down past the preset naming the most, and up past the first Settled
     # one, which names nought.
@@ -255,7 +257,7 @@ with sync_playwright() as pw:
     }""")
     b.close()
     check("the expression pedal sets the Picture amount, on its step, and is not learned; another controller does not",
-          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": False, "routes": [0.8, 0.8, 0.6, 0.4, 0.5]},
+          foot == {"swell": "25", "heel": "0", "toe": "100", "volume": "100", "learned": False, "routes": [0.5, 0.5, 0.3, 0.3, 0.3]},  # each at its reach since 11 Nov
           str(foot))
 
 print()

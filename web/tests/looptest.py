@@ -559,7 +559,11 @@ with sync_playwright() as pw:
         # nine tenths of the run, which a dead loop - settled, never held -
         # cannot show. The resonance still has to move, as everywhere.
         tenths = sum(run["verdicts"].values())
-        saturated = mode == "strike" and w["grid"] >= 1 - 1e-9 and tenths > 0 and running >= 0.9 * tenths
+        # The reverb at its fullest too, since 11 Nov: its tail fills the
+        # screen from the first frame to the last, and Change, on a fixed
+        # scale, has nothing to flare on in a screen that never changes how
+        # much is lit - the same evidence is asked of it.
+        saturated = mode in ("strike", "reverb") and w["grid"] >= 1 - 1e-9 and tenths > 0 and running >= 0.9 * tenths
         pinned = lambda r: saturated and r[0] >= 0.5 - 1e-9
         check("from %s, and the loop was really running - it moved what it drives, the stage's fold too" % seed,
               (mv["res"][1] - mv["res"][0]) > 1 and ((mv["freq"][1] - mv["freq"][0]) > 0.01 or pinned(mv["freq"]))
