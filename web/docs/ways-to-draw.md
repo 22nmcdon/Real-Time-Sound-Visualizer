@@ -210,3 +210,23 @@ speed-shading, the Turn and zoom on the constellation (it is drawn in the screen
 units, unturned); a darkness floor for Scan, if clear should mean silent; whether *Fixed*
 places by pitch or by a scatter seeded by the note, and which of *one each* and *shared*
 the owner wants.
+
+## The prototype's shortcut, and what fixes it (the owner, 12 Nov)
+
+Played on the site, every constellation looked still and alike whatever the sound. Part of
+that is the idea: a steady note drawn alone repeats exactly each cycle, so its figure is
+still, where One figure moves because its notes drift against each other. The rest is a
+shortcut, and **the shortcut is the real problem**: on the site the voices run in the
+compiled core in the worklet and their samples never reach the page, so the prototype draws
+each note from a description - its pitch, its waveform's shape, its level and envelope -
+and not from its sound. The filter, the FM's bark decaying, drive, unison and Scan itself
+never reshape a figure, which breaks the rule that the picture is true to the sound.
+
+**The fix, decided to wait until after stage 5** (the page's own engine retired): the core
+sends the page one cycle of each sounding voice every frame (sixteen voices of about 256
+samples, a few kilobytes), and each note's figure is drawn from its own real cycle. A tine's
+figure then changes as its bark fades, a filtered pad's softens as the filter closes, and
+Scan's effect on a note shows in its figure; a note moves when its sound moves and is still
+only when its sound is. The painting's brush wants the same per-voice data, so it is built
+once for both. Ripples and Pairs, which add motion and interaction between notes, come
+after it.
